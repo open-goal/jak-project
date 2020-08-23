@@ -51,8 +51,8 @@ Here is the plan for writing the decompiler:
 
 GOAL Runtime
 --------------
-The "runtime" will be a replacement for:
-- The "C Kernel" which contains
+The "runtime" will be a replacement for all of the C/C++ code of the original game.  There is C/C++ code that runs on the main processor (EE) and the separate I/O processor (IOP).
+- The "C Kernel", which runs on the EE and contains
   - [ ] File I/O (for debugging, not used by retail game)
   - [x] Initialization to boostrap the GOAL Kernel and start the game engine
   - [x] Connection to compiler for debugging/live code patching
@@ -64,20 +64,20 @@ The "runtime" will be a replacement for:
   - [x] GOAL printf (called `format`) implementation
   - [x] GOAL hash/symbol table implementation
   - [x] Implementation of some built-in GOAL methods/functions
-- The "OVERLORD" IOP driver, which ran on the PS2's separate I/O Processor
+- The "OVERLORD" IOP driver, which ran on the PS2's separate I/O Processor for loading things off the DVD and doing sound things
   - [x] DGO loader
   - [x] File system for loading from DVD or "fakeiso" mode for loading from a folder
   - [x] "ISOThread" queue system for prioritizing reads
   - [ ] Sound stuff
   - [ ] Streaming animation stuff
   - [ ] Ramdisk stuff (implemented but totally untested)
-- The "989_snd" sound driver (no progress has been made here)
+- The "989_snd" sound driver (no progress has been made here, the rough plan is to do a high level emulation of the sound system)
 - Sony libraries
   - [x] SIF (interface between EE/IOP for sending data, receiving data, and making remote procedure calls)
   - [x] IOP Kernel (single-processor non-preemptive multitasking)
   - [x] stubs for stuff that doesn't really matter
 
-The "Sony libraries" are a simple wrapper around my `system` library.
+The "Sony libraries" are a simple wrapper around my `system` library, which implements the threading/communication stuff.
 
 Likely there will be sound/graphics code in here at some point, but this part is not fully planned yet.
 
@@ -85,15 +85,17 @@ GOAL Compiler
 ---------------
 The GOAL compiler will target x86-64. At first just Linux. There is a macro language called GOOS which is basically just Scheme but with a few bonus features.
 
-The compiler will reuse a significant amount of code from my existing LISP compiler for x86-64. I have a very bad WIP combination which is capable of building a modified `gkernel.gc` for x86 as a proof of concept. An important part of the compiler is the test suite.  Without tests the compiler will be full of bugs. So every feature should have a good set of tests.
+The compiler will reuse a significant amount of code from my existing LISP compiler for x86-64. I have a very bad WIP combination which is capable of building a modified `gkernel.gc` for x86 as a proof of concept.  It can create and run functions in threads.
+
+An important part of the compiler is the test suite.  Without tests the compiler will be full of bugs. So every feature should have a good set of tests.
 
 The major components are
 
-- [ ] GOAL-IR, a linear intermediate representation for GOAL code
+- [ ] GOAL-IR, a typed linear intermediate representation for GOAL code
   - [ ] "Environment"
   - [ ] "Ref"
   - [ ] Constant propagation of integers/floats
-  - [ ] Constant propagation of memory locations
+  - [ ] Constant propagation of memory locations (this is required to make sure bitfields updates know where to write their result)
   - [ ] Ref `in_gpr`
 
 - [ ] The type system
@@ -119,7 +121,7 @@ The major components are
   - [x] Reader text db (for error messages that point to a specific line)
   - [x] Scheme interpreter
  
-- [ ] Front-end (convert s-expressions to GOAL-IR)
+- [ ] Front-end (convert s-expressions (a tree structure) to GOAL-IR (a linear representation))
  - [ ] Parsing helpers
  - [ ] Macro expansion
  - [ ] Control flow/block forms
@@ -139,7 +141,9 @@ The major components are
  - [ ] `xmm` and `gpr` promotion/demotions for EE 128-bit register usage
 
 
-- [ ] Codegen (convert GOAL-IR + register allocations to x86 object file format)
+- [ ] Codegen / Emitter (convert GOAL-IR + register allocations to x86 object file format)
+ - [ ] Emitter (convert GOAL-IR to instructions)
+ - [ ] x86-64 instruction generation (actually generate the machine code)
  - [ ] Linking data
  - [ ] 64-bit GPR
  - [ ] 32-bit float
@@ -147,6 +151,7 @@ The major components are
  - [ ] 32-bit float x4 vector register
  - [ ] function prologue/epilogue
  - [ ] stack spilling
+ - [ ] static object and static object links
 
 - [ ] Listener/REPL
   - [ ] Network connection
@@ -159,7 +164,9 @@ The major components are
 
 Asset Extraction Tool
 -----------------------
-Not started yet.  The simplest version of this tool is just to use the decompiler logic to turn the level/art-group/texture/TXT files into GOAL source code, and copy all STR/sound/visibility files.
+Not started yet.  The simplest version of this tool is just to use the decompiler logic to turn the level/art-group/texture/TXT files into GOAL source code, and copy all STR/sound/visibility files, as these don't need to be modified.
+
+Eventually this should export to a more useful format.
 
 File formats:
 - [ ] Art group (a GOAL object format)
@@ -179,5 +186,7 @@ File formats:
 
 Asset Packing Tool
 -----------------------
-Packs together all assets into a format that can be played.  The simplest version to go with the simplest extraction tool will just pass the level/art-group/texture/TXT files to the compiler, and copy STR/sound/visbility files into the fakeiso. Then pack in CGOs/DGOs.
+Packs together all assets/compiled code/runtime into a format that can be played.  The simplest version to go with the simplest extraction tool will just pass the level/art-group/texture/TXT files to the compiler, and copy STR/sound/visbility files into the fakeiso. Then pack in CGOs/DGOs.
+
+It's important that the asset extraction/packing can be automated so we can avoid distributing the assets, which are large and probably not supposed to be distributed.
 
