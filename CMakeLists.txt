@@ -30,3 +30,6 @@ add_subdirectory(third-party/googletest)
 
 # build tests
 add_subdirectory(test)
+
+# build minilzo library
+add_subdirectory(third-party/minilzo)

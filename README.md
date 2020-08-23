@@ -17,6 +17,7 @@ Layout:
   - `gs` contains GOOS code for parts of GOOS implemented in GOOS
   - `gc` contains GOAL code for parts of GOAL implemented in GOAL (must generate no machine code, just defining macros)
 - `decompiler` is the decompiler
+- `decompiler_out` is the decompiler output
 - `data` will contain big assets and the output of the GOAL compiler (not checked in to git)
 - `out` will contain the finished game (not checked into git)
 - `resources` will contain data which is checked into git
@@ -78,7 +79,9 @@ TODOS:
   - performance stats for `SystemThread` (probably just get rid of these performance stats completely)
   - `mmap`ing executable memory
   - line input library (appears windows compatible?)
- 
+- Clean up possible duplicate code in compiler/decompiler `util` folder
+- Investigate a better config format
+  - The current JSON library seems to have issues with comments, which I really like 
 - Clean up use of namespaces  
 - Clean up the print message when `gk` starts.
 - Finish commenting runtime stuff
