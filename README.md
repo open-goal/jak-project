@@ -7,6 +7,11 @@ Requirements:
 - `nasm` for assembling x86. There isn't much x86 assembly so if there's a better way to do this for windows, we can change.
 - Third party libraries (`nlohmann/json`, `minilzo`, and `linenoise`) are provided in the `third-party` folder
 
+Setup (for Ubuntu):
+```
+sudo apt install gcc make cmake build-essential g++ nasm clang-format
+```
+
 Layout:
 - `goalc` is the GOAL compiler
   - `gs` contains GOOS code for parts of GOOS implemented in GOOS
