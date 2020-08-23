@@ -47,7 +47,7 @@ Design:
 - Workflow for development:
   - `./gc.sh` : run the compiler in interactive mode
   - `./gs.sh` : run a goos interpreter in interactive mode
-  - `./decomp.sh ./iso_data` : run the decompiler
+  - `./decomp.sh : run the decompiler
   
 Current state:
 - GOAL compiler just implements the GOOS Scheme Macro Language. Running `./gc.sh` just loads the GOOS library (`goalc/gs/goos-lib.gs`) and then goes into an interactive mode. Use `(exit)` to exit.
@@ -79,7 +79,8 @@ TODOS:
   - performance stats for `SystemThread` (probably just get rid of these performance stats completely)
   - `mmap`ing executable memory
   - line input library (appears windows compatible?)
-- Clean up possible duplicate code in compiler/decompiler `util` folder
+- Clean up possible duplicate code in compiler/decompiler `util` folder, consider a common utility library
+- Clean up header guard names (or just use `#pragma once`?)
 - Investigate a better config format
   - The current JSON library seems to have issues with comments, which I really like 
 - Clean up use of namespaces  
@@ -90,9 +91,9 @@ TODOS:
 - Listener protocol document
 - GOAL Compiler IR
 - GOAL Compiler Skeleton
-
-In Progress:
-- GOAL emitter / emitter testing setup
+- Gtest setup for checking decompiler results against hand-decompiled stuff
+- Clean up decompiler print spam, finish up the CFG stuff
+- Decompiler document
 
 
 Project Description
