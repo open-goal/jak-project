@@ -1,3 +1,92 @@
+Project Structure
+----------------------
+Requirements:
+- `cmake` for build system
+- `clang-format` for formatting code (there is already a `.clang-format` provided)
+- `gtest` for testing. (Run `git submodule update --init --recursive` to check out the repository)
+- `nasm` for assembling x86. There isn't much x86 assembly so if there's a better way to do this for windows, we can change.
+- Third party libraries (`nlohmann/json`, `minilzo`, and `linenoise`) are provided in the `third-party` folder
+
+Layout:
+- `goalc` is the GOAL compiler
+  - `gs` contains GOOS code for parts of GOOS implemented in GOOS
+  - `gc` contains GOAL code for parts of GOAL implemented in GOAL (must generate no machine code, just defining macros)
+- `decompiler` is the decompiler
+- `data` will contain big assets and the output of the GOAL compiler (not checked in to git)
+- `out` will contain the finished game (not checked into git)
+- `resources` will contain data which is checked into git
+- `game` will contain the game source code
+- `common` will contain all data/type shared between different applications.
+- `doc` will contain documentation (markdown format?)
+- `iso_data` is where the files from the DVD go
+- `third-party` will contain code we didn't write. Google Test is a git submodule in this folder.
+- `tests` will contain all tests
+- `asset_tool` will contain the asset packer/unpacker
+
+Design:
+(if anybody has better ideas, feel free to suggest improvements! This is just a rough plan for now)
+- All C++ code should build from the top-level `cmake`.
+- All C++ applications (GOAL compiler, asset extractor, asset packer, runtime, test) should have a script in the top level which launches them.
+- All file paths should be relative to the `jak` folder.
+- The planned workflow for building a game:
+  - `git submodule update --init --recursive` : check out gtest
+  - `mkdir build; cd build` : create build folder for C++
+  - `cmake ..; make -j` : build C++ code
+  - `cd ..`
+  - `./test.sh` : run gtests
+  - `./asset_extractor.sh ./iso_data` : extract assets from game
+  - `./build_engine.sh` : run GOAL compiler to build all game code
+  - `./build_game.sh` : run the asset packer to build the game
+  - `./run_game.sh` : run the game
+- Workflow for development:
+  - `./gc.sh` : run the compiler in interactive mode
+  - `./gs.sh` : run a goos interpreter in interactive mode
+  - `./decomp.sh ./iso_data` : run the decompiler
+  
+Current state:
+- GOAL compiler just implements the GOOS Scheme Macro Language. Running `./gc.sh` just loads the GOOS library (`goalc/gs/goos-lib.gs`) and then goes into an interactive mode. Use `(exit)` to exit.
+- `./test.sh` runs tests for some game C++ code, for GOOS, for the reader, for the listener connection, and for some early emitter stuff.
+- The runtime boots in `fakeiso` mode which will load some dummy files.  Then the C Kernel (`game/kernel`) will load the `KERNEL.CGO` and `GAME.CGO` files, which are from the "proof of concept" GOAL compiler.  If you run `./gk.sh`, you should see it load stuff, then print:
+```
+calling play!
+~~ HACK ~~ : fake play has been called
+InitListenerConnect
+InitCheckListener
+kernel: machine started
+
+```
+where the `~~ HACK ~~` message is from code in `KERNEL.CGO`.
+
+Code Guidelines:
+- Avoid warnings
+- Use asserts over throwing exceptions in game code (throwing exceptions from C code called by GOAL code is sketchy)
+
+TODOS:
+- Build on Windows!
+  - Networking
+  - File paths
+  - Timer
+  - CMake?
+  - Assembly
+  - Windows calling convention for assembly stuff
+  - pthreads (can probably replace with `std::thread`, I don't remember why I used `pthread`s)
+  - performance stats for `SystemThread` (probably just get rid of these performance stats completely)
+  - `mmap`ing executable memory
+  - line input library (appears windows compatible?)
+ 
+- Clean up use of namespaces  
+- Clean up the print message when `gk` starts.
+- Finish commenting runtime stuff
+- Runtime document
+- GOOS document
+- Listener protocol document
+- GOAL Compiler IR
+- GOAL Compiler Skeleton
+
+In Progress:
+- GOAL emitter / emitter testing setup
+
+
 Project Description
 -----------------------
 
@@ -28,6 +117,7 @@ Some statistics:
 - 5451 functions with no control flow (no branching, loops, if/else, short-circuiting boolean operators, gotos, etc)
 
 The rough timeline is to finish sometime in 2022.  If it looks like this is impossible, the project will be abandoned. But I have already spent about 4 months preparing to start this and seems doable. I also have some background in compilers, and familiarity with PS2 (worked on DobieStation PS2 emulator) / MIPS in general (wrote a PS1 emulator).  I think the trick will be making good automated tools - the approach taken for SM64 and other N64 decompilations is way too labor-intensive to work.
+
 
 GOAL Decompiler
 ------------------
@@ -189,4 +279,6 @@ Asset Packing Tool
 Packs together all assets/compiled code/runtime into a format that can be played.  The simplest version to go with the simplest extraction tool will just pass the level/art-group/texture/TXT files to the compiler, and copy STR/sound/visbility files into the fakeiso. Then pack in CGOs/DGOs.
 
 It's important that the asset extraction/packing can be automated so we can avoid distributing the assets, which are large and probably not supposed to be distributed.
+
+
 
