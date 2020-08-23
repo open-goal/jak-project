@@ -1,0 +1,35 @@
+					;-*-Scheme-*-
+
+(test-setup 1.2339 #f)
+
+;; awful hack to create a bfloat at #x6000000
+(define-extern hack-bfloat integer)
+(define hack-bfloat (+ #x6000000 *gtype-basic-offset*))
+(define-extern hack-bfloat bfloat)
+
+;; we have to manually set the type field.
+(set! (-> hack-bfloat type) bfloat)
+
+;; set the data field
+(set! (-> hack-bfloat data) 1.234)
+
+(defun test-print-bfloat ((obj bfloat))
+  (format #t "~f~%" (-> obj data))
+  )
+
+;; to make test pass
+;;(format #t "~f~%" (-> hack-bfloat data))
+(test-print-bfloat hack-bfloat)
+
+;; try printing it as a basic (should use default basic printer)
+(format #t "Here's a bfloat ~A~%" hack-bfloat)
+
+;; or access the field directly and print as float
+(format #t "Here's (-> flt data) ~f~%" (-> hack-bfloat data))
+
+;; or inspect it (compiler should generate this method
+(format #t  "Here's its inspect~%~I~%" hack-bfloat)
+
+(format #t "It's type is `~A`~%" (-> hack-bfloat type))
+
+
