@@ -6,6 +6,7 @@ add_executable(goalc-test
         test_listener_deci2.cpp
         test_kernel.cpp
         test_CodeTester.cpp
-        all_jak1_symbols.cpp)
+        all_jak1_symbols.cpp
+        test_type_system.cpp)
 
-target_link_libraries(goalc-test goos util listener runtime emitter gtest)
+target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)
