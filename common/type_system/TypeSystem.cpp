@@ -10,7 +10,8 @@ TypeSystem::TypeSystem() {
 }
 
 /*!
- * Specify a new type. If the type definition changes, it is an error if throw_on_redefine is set.
+ * Add a new type. If the type exists, and this new type is different, it is an error if
+ * throw_on_redefine is set. The type should be fully set up (fields, etc) before running this.
  */
 Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) {
   auto kv = m_types.find(name);
@@ -61,14 +62,72 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
 
 /*!
  * Inform the type system that there will eventually be a type named "name".
- * This will allow the type system to generate TypeSpecs for this type, but not access a Type*.
+ * This will allow the type system to generate TypeSpecs for this type, but not access detailed
+ * information, or know the exact size.
  */
 void TypeSystem::forward_declare_type(std::string name) {
   m_forward_declared_types.insert(std::move(name));
 }
 
 /*!
+ * Get the runtime type (as a name string) of a TypeSpec.  Gets the runtime type of the primary
+ * type of the TypeSpec.
+ */
+std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
+  return lookup_type(ts)->get_runtime_name();
+}
+
+/*!
+ * Get information about what happens if you dereference an object of given type
+ */
+DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
+  DerefInfo info;
+
+  // default to GPR
+  info.reg = RegKind::GPR_64;
+  info.mem_deref = true;
+
+  if (ts.base_type() == "inline-array") {
+    // it's an inline array of structures. We can "dereference". But really we don't do a memory
+    // dereference, we just add stride*idx to the pointer.
+    info.can_deref = true;                   // deref operators should work...
+    info.mem_deref = false;                  // but don't actually dereference a pointer
+    info.result_type = ts.get_single_arg();  // what we're an inline-array of
+    info.sign_extend = false;                // not applicable anyway
+
+    auto result_type = lookup_type(info.result_type);
+    if (result_type->is_reference()) {
+      info.stride =
+          align(result_type->get_size_in_memory(), result_type->get_inline_array_alignment());
+    } else {
+      // can't have an inline array of value types!
+      assert(false);
+    }
+  } else if (ts.base_type() == "pointer") {
+    info.can_deref = true;
+    info.result_type = ts.get_single_arg();
+    auto result_type = lookup_type(info.result_type);
+    if (result_type->is_reference()) {
+      // in memory, an array of pointers
+      info.stride = POINTER_SIZE;
+      info.sign_extend = false;
+    } else {
+      // an array of values, which should be loaded in the correct way to the correct register
+      info.stride = result_type->get_size_in_memory();
+      info.sign_extend = result_type->get_load_signed();
+      info.reg = result_type->get_preferred_reg_kind();
+      assert(result_type->get_size_in_memory() == result_type->get_load_size());
+    }
+  } else {
+    info.can_deref = false;
+  }
+
+  return info;
+}
+
+/*!
  * Create a simple typespec.  The type must be defined or forward declared for this to work.
+ * If you really need a TypeSpec which refers to a non-existent type, just construct your own.
  */
 TypeSpec TypeSystem::make_typespec(const std::string& name) {
   if (m_types.find(name) != m_types.end() ||
@@ -81,7 +140,8 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) {
 }
 
 /*!
- * Create a typespec for a function.
+ * Create a typespec for a function.  If the function doesn't return anything, use "none" as the
+ * return type.
  */
 TypeSpec TypeSystem::make_function_typespec(const std::vector<std::string>& arg_types,
                                             const std::string& return_type) {
@@ -94,7 +154,38 @@ TypeSpec TypeSystem::make_function_typespec(const std::vector<std::string>& arg_
 }
 
 /*!
- * Get full type information. Throws if the type doesn't exist.
+ * Create a TypeSpec for a pointer to a type.
+ */
+TypeSpec TypeSystem::make_pointer_typespec(const std::string& type) {
+  return make_pointer_typespec(make_typespec(type));
+}
+
+/*!
+ * Create a TypeSpec for a pointer to a type.
+ */
+TypeSpec TypeSystem::make_pointer_typespec(const TypeSpec& type) {
+  return TypeSpec("pointer", {type});
+}
+
+/*!
+ * Create a TypeSpec for an inline-array of type
+ */
+TypeSpec TypeSystem::make_inline_array_typespec(const std::string& type) {
+  return make_inline_array_typespec(make_typespec(type));
+}
+
+/*!
+ * Create a TypeSpec for an inline-array of type
+ */
+TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) {
+  return TypeSpec("inline-array", {type});
+}
+
+/*!
+ * Get full type information. Throws if the type doesn't exist. If the given type is redefined after
+ * a call to lookup_type, the Type* will still be valid, but will point to the old data. Whenever
+ * possible, don't store a Type* and store a TypeSpec instead.  The TypeSpec can then be used with
+ * lookup_type to find the most up-to-date type information.
  */
 Type* TypeSystem::lookup_type(const std::string& name) {
   auto kv = m_types.find(name);
@@ -112,21 +203,34 @@ Type* TypeSystem::lookup_type(const std::string& name) {
 }
 
 /*!
- * Get the method ID for the specified method.  If it doesn't exist, add it.
- * If it does exist, and newly specified method is different, throws an error.
+ * Get full type information. Throws if the type doesn't exist. If the given type is redefined after
+ * a call to lookup_type, the Type* will still be valid, but will point to the old data. Whenever
+ * possible, don't store a Type* and store a TypeSpec instead.  The TypeSpec can then be used with
+ * lookup_type to find the most up-to-date type information.
+ */
+Type* TypeSystem::lookup_type(const TypeSpec& ts) {
+  return lookup_type(ts.base_type());
+}
+
+/*!
+ * Add a method, if it doesn't exist. If the method already exists (possibly in a parent), checks to
+ * see if this is an identical definition.  If not, it's an error, and if so, nothing happens.
+ * Returns the info of either the existing or newly created method.
+ *
+ * This is not used to override methods, but instead to create truly new methods.  The one exception
+ * is overriding the "new" method - the TypeSystem will track that because overridden new methods
+ * may have different arguments.
  */
 MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, const TypeSpec& ts) {
   if (method_name == "new") {
     return add_new_method(type, ts);
   }
-  MethodInfo existing_info;
-  bool got_existing = false;
-
-  // first lookup the type
-
-  auto* iter_type = type;
 
   // look up the method
+  MethodInfo existing_info;
+  bool got_existing = false;
+  auto* iter_type = type;
+
   while (true) {
     if (iter_type->get_my_method(method_name, &existing_info)) {
       got_existing = true;
@@ -148,6 +252,8 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
           "[TypeSystem] The method {} of type {} was originally defined as {}, but has been "
           "redefined as {}\n",
           method_name, type->get_name(), existing_info.type.print(), ts.print());
+      // unlike type re-definition, method re-definition is almost certain to go wrong.
+      // probably better to give up.
       throw std::runtime_error("method redefinition");
     }
 
@@ -160,6 +266,8 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
 
 /*!
  * Special case to add a new method, as new methods can specialize the arguments.
+ * If it turns out that other child methods can specialize arguments (seems like a bad idea), this
+ * may be generalized.
  */
 MethodInfo TypeSystem::add_new_method(Type* type, const TypeSpec& ts) {
   MethodInfo existing;
@@ -241,36 +349,70 @@ MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) {
 }
 
 /*!
- * Get the next free method ID of a type.
+ * Makes sure a method exists at the given ID for the given type, possibly defined in a parent.
  */
-int TypeSystem::get_next_method_id(Type* type) {
-  MethodInfo info;
+void TypeSystem::assert_method_id(const std::string& type_name,
+                                  const std::string& method_name,
+                                  int id) {
+  auto info = lookup_method(type_name, method_name);
+  if (info.id != id) {
+    fmt::print(
+        "[TypeSystem] Method ID assertion failed: type {}, method {} id was {}, expected {}\n",
+        type_name, method_name, info.id, id);
+  }
+}
 
-  while (true) {
-    if (type->get_my_last_method(&info)) {
-      return info.id + 1;
-    }
+/*!
+ * Lookup detailed information about a field of a type by name, including type, offset,
+ * and how to access it.
+ */
+FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
+                                              const std::string& field_name) {
+  FieldLookupInfo info;
+  info.field = lookup_field(type_name, field_name);
 
-    if (type->has_parent()) {
-      type = lookup_type(type->get_parent());
+  // get array size, for bounds checking (when possible)
+  if (info.field.is_array() && !info.field.is_dynamic()) {
+    info.array_size = info.field.array_size();
+  }
+
+  auto base_type = lookup_type(info.field.type());
+  if (base_type->is_reference()) {
+    if (info.field.is_inline()) {
+      if (info.field.is_array()) {
+        // inline array of reference types
+        info.needs_deref = false;
+        info.type = make_inline_array_typespec(info.field.type());
+      } else {
+        // inline object
+        info.needs_deref = false;
+        info.type = info.field.type();
+      }
     } else {
-      // nobody has defined any method yet. New is special and doens't use this, so we return
-      // one after new.
-      return 1;
+      if (info.field.is_array()) {
+        info.needs_deref = false;
+        info.type = make_pointer_typespec(info.field.type());
+      } else {
+        info.needs_deref = true;
+        info.type = info.field.type();
+      }
+    }
+  } else {
+    if (info.field.is_array()) {
+      info.needs_deref = false;
+      info.type = make_pointer_typespec(info.field.type());
+    } else {
+      // not array
+      info.needs_deref = true;
+      info.type = info.field.type();
     }
   }
+  return info;
 }
 
-Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) {
-  auto type = get_type_of_type<StructureType>(type_name);
-  Field field;
-  if (!type->lookup_field(field_name, &field)) {
-    fmt::print("[TypeSystem] Type {} has no field named {}\n", type_name, field_name);
-    throw std::runtime_error("lookup_field failed");
-  }
-  return field;
-}
-
+/*!
+ * Make sure a field is located at the specified offset.
+ */
 void TypeSystem::assert_field_offset(const std::string& type_name,
                                      const std::string& field_name,
                                      int offset) {
@@ -282,30 +424,63 @@ void TypeSystem::assert_field_offset(const std::string& type_name,
   }
 }
 
-StructureType* TypeSystem::add_builtin_structure(const std::string& parent,
-                                                 const std::string& type_name) {
-  add_type(type_name, std::make_unique<StructureType>(parent, type_name));
-  return get_type_of_type<StructureType>(type_name);
-}
+/*!
+ * Add a field to a type. If offset_override is -1 (the default), will place it automatically.
+ */
+int TypeSystem::add_field_to_type(StructureType* type,
+                                  const std::string& field_name,
+                                  const TypeSpec& field_type,
+                                  bool is_inline,
+                                  bool is_dynamic,
+                                  int array_size,
+                                  int offset_override) {
+  if (type->lookup_field(field_name, nullptr)) {
+    fmt::print("[TypeSystem] Type {} already has a field named {}\n", type->get_name(), field_name);
+    throw std::runtime_error("add_field_to_type duplicate field names");
+  }
 
-BasicType* TypeSystem::add_builtin_basic(const std::string& parent, const std::string& type_name) {
-  add_type(type_name, std::make_unique<BasicType>(parent, type_name));
-  return get_type_of_type<BasicType>(type_name);
-}
+  // first, construct the field
+  Field field(field_name, field_type);
+  if (is_inline) {
+    field.set_inline();
+  }
 
-ValueType* TypeSystem::add_builtin_value_type(const std::string& parent,
-                                              const std::string& type_name,
-                                              int size,
-                                              bool boxed,
-                                              bool sign_extend,
-                                              RegKind reg) {
-  add_type(type_name,
-           std::make_unique<ValueType>(parent, type_name, boxed, size, sign_extend, reg));
-  return get_type_of_type<ValueType>(type_name);
-}
+  if (is_dynamic) {
+    field.set_dynamic();
+    type->set_dynamic();
+  }
 
-void TypeSystem::builtin_structure_inherit(StructureType* st) {
-  st->inherit(get_type_of_type<StructureType>(st->get_parent()));
+  if (array_size != -1) {
+    field.set_array(array_size);
+  }
+
+  int offset = offset_override;
+  int field_alignment = get_alignment_in_type(field);
+
+  if (offset == -1) {
+    // we need to compute the offset ourself!
+    offset = align(type->get_size_in_memory(), field_alignment);
+  } else {
+    int aligned_offset = align(type->get_size_in_memory(), field_alignment);
+    if (offset != aligned_offset) {
+      fmt::print(
+          "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
+          "correctly\n",
+          offset);
+      throw std::runtime_error("add_field_to_type bad offset_override");
+    }
+  }
+
+  field.set_offset(offset);
+  field.set_alignment(field_alignment);
+
+  int after_field = offset + get_size_in_type(field);
+  if (type->get_size_in_memory() < after_field) {
+    type->override_size_in_memory(after_field);
+  }
+  type->add_field(field, type->get_size_in_memory());
+
+  return offset;
 }
 
 /*!
@@ -417,6 +592,41 @@ void TypeSystem::add_builtin_types() {
   // don't inherit
 }
 
+/*!
+ * Debugging function to print out all types, and their methods and fields.
+ */
+std::string TypeSystem::print_all_type_information() const {
+  std::string result;
+  for (auto& kv : m_types) {
+    result += kv.second->print() + "\n";
+  }
+  return result;
+}
+
+/*!
+ * Get the next free method ID of a type.
+ */
+int TypeSystem::get_next_method_id(Type* type) {
+  MethodInfo info;
+
+  while (true) {
+    if (type->get_my_last_method(&info)) {
+      return info.id + 1;
+    }
+
+    if (type->has_parent()) {
+      type = lookup_type(type->get_parent());
+    } else {
+      // nobody has defined any method yet. New is special and doens't use this, so we return
+      // one after new.
+      return 1;
+    }
+  }
+}
+
+/*!
+ * For debugging, todo remove.
+ */
 int TypeSystem::manual_add_field_to_type(StructureType* type,
                                          const std::string& field_name,
                                          const TypeSpec& field_type,
@@ -431,90 +641,29 @@ int TypeSystem::manual_add_field_to_type(StructureType* type,
   return offset;
 }
 
-int TypeSystem::add_field_to_type(StructureType* type,
-                                  const std::string& field_name,
-                                  const TypeSpec& field_type,
-                                  bool is_inline,
-                                  bool is_dynamic,
-                                  int array_size,
-                                  int offset_override) {
-  if (type->lookup_field(field_name, nullptr)) {
-    fmt::print("[TypeSystem] Type {} already has a field named {}\n", type->get_name(), field_name);
-    throw std::runtime_error("add_field_to_type duplicate field names");
+/*!
+ * Lookup a field of a type by name
+ */
+Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) {
+  auto type = get_type_of_type<StructureType>(type_name);
+  Field field;
+  if (!type->lookup_field(field_name, &field)) {
+    fmt::print("[TypeSystem] Type {} has no field named {}\n", type_name, field_name);
+    throw std::runtime_error("lookup_field failed");
   }
-
-  // first, construct the field
-  Field field(field_name, field_type);
-  if (is_inline) {
-    field.set_inline();
-  }
-
-  if (is_dynamic) {
-    field.set_dynamic();
-    type->set_dynamic();
-  }
-
-  if (array_size != -1) {
-    field.set_array(array_size);
-  }
-
-  int offset = offset_override;
-  int field_alignment = get_alignment_in_type(field);
-
-  if (offset == -1) {
-    // we need to compute the offset ourself!
-    offset = align(type->get_size_in_memory(), field_alignment);
-  } else {
-    int aligned_offset = align(type->get_size_in_memory(), field_alignment);
-    if (offset != aligned_offset) {
-      fmt::print(
-          "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
-          "correctly\n",
-          offset);
-      throw std::runtime_error("add_field_to_type bad offset_override");
-    }
-  }
-
-  field.set_offset(offset);
-  field.set_alignment(field_alignment);
-
-  int after_field = offset + get_size_in_type(field);
-  if (type->get_size_in_memory() < after_field) {
-    type->override_size_in_memory(after_field);
-  }
-  type->add_field(field, type->get_size_in_memory());
-
-  return offset;
+  return field;
 }
 
-std::string TypeSystem::print_all_type_information() const {
-  std::string result;
-  for (auto& kv : m_types) {
-    result += kv.second->print() + "\n";
-  }
-  return result;
-}
-
-void TypeSystem::assert_method_id(const std::string& type_name,
-                                  const std::string& method_name,
-                                  int id) {
-  auto info = lookup_method(type_name, method_name);
-  if (info.id != id) {
-    fmt::print(
-        "[TypeSystem] Method ID assertion failed: type {}, method {} id was {}, expected {}\n",
-        type_name, method_name, info.id, id);
-  }
-}
-
-Type* TypeSystem::lookup_type(const TypeSpec& ts) {
-  return lookup_type(ts.base_type());
-}
-
+/*!
+ * Get the minimum required aligment of a field.
+ */
 int TypeSystem::get_alignment_in_type(const Field& field) {
   auto field_type = lookup_type(field.type());
 
   if (field.is_inline()) {
     if (field.is_array()) {
+      // TODO - is this actually correct? or do we use in_memory for the first element and
+      // inline_array for the ones that follow?
       return field_type->get_inline_array_alignment();
     } else {
       // it is an inlined field, so return the alignment in memory
@@ -532,6 +681,10 @@ int TypeSystem::get_alignment_in_type(const Field& field) {
   return POINTER_SIZE;
 }
 
+/*!
+ * Get the size of a field in a type.  The array sizes should be consistent with get_deref_info's
+ * stride.
+ */
 int TypeSystem::get_size_in_type(const Field& field) {
   if (field.is_dynamic()) {
     return 0;
@@ -564,4 +717,45 @@ int TypeSystem::get_size_in_type(const Field& field) {
       }
     }
   }
+}
+
+/*!
+ * Add a simple structure type - don't use this outside of add_builtin_types as it forces you to do
+ * things in the wrong order.
+ */
+StructureType* TypeSystem::add_builtin_structure(const std::string& parent,
+                                                 const std::string& type_name) {
+  add_type(type_name, std::make_unique<StructureType>(parent, type_name));
+  return get_type_of_type<StructureType>(type_name);
+}
+
+/*!
+ * Add a simple basic type - don't use this outside of add_builtin_types as it forces you to do
+ * things in the wrong order.
+ */
+BasicType* TypeSystem::add_builtin_basic(const std::string& parent, const std::string& type_name) {
+  add_type(type_name, std::make_unique<BasicType>(parent, type_name));
+  return get_type_of_type<BasicType>(type_name);
+}
+
+/*!
+ * Add a simple value type - don't use this outside of add_builtin_types as it forces you to do
+ * things in the wrong order.
+ */
+ValueType* TypeSystem::add_builtin_value_type(const std::string& parent,
+                                              const std::string& type_name,
+                                              int size,
+                                              bool boxed,
+                                              bool sign_extend,
+                                              RegKind reg) {
+  add_type(type_name,
+           std::make_unique<ValueType>(parent, type_name, boxed, size, sign_extend, reg));
+  return get_type_of_type<ValueType>(type_name);
+}
+
+/*!
+ * Helper for inheritance of structure types when setting up builtin types.
+ */
+void TypeSystem::builtin_structure_inherit(StructureType* st) {
+  st->inherit(get_type_of_type<StructureType>(st->get_parent()));
 }

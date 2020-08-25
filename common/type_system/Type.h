@@ -58,7 +58,9 @@ class Type {
   bool has_parent() const;
 
   std::string get_name() const;
+  std::string get_runtime_name() const;
   std::string get_parent() const;
+  void set_runtime_type(std::string name);
   bool get_my_method(const std::string& name, MethodInfo* out) const;
   bool get_my_last_method(MethodInfo* out) const;
   bool get_my_new_method(MethodInfo* out) const;
@@ -77,6 +79,7 @@ class Type {
 
   std::string m_parent;  // the parent type (is empty for none and object)
   std::string m_name;
+  std::string m_runtime_name;
   bool m_is_boxed = false;  // does this have runtime type information?
 };
 

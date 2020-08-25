@@ -95,7 +95,9 @@ bool Field::operator==(const Field& other) const {
 // parent class of types, also has method logic.
 
 Type::Type(std::string parent, std::string name, bool is_boxed)
-    : m_parent(std::move(parent)), m_name(std::move(name)), m_is_boxed(is_boxed) {}
+    : m_parent(std::move(parent)), m_name(std::move(name)), m_is_boxed(is_boxed) {
+  m_runtime_name = m_name;
+}
 
 /*!
  * Get the name of a type. This should be a unique identifier that can be used to find this
@@ -103,6 +105,14 @@ Type::Type(std::string parent, std::string name, bool is_boxed)
  */
 std::string Type::get_name() const {
   return m_name;
+}
+
+std::string Type::get_runtime_name() const {
+  return m_runtime_name;
+}
+
+void Type::set_runtime_type(std::string name) {
+  m_runtime_name = std::move(name);
 }
 
 /*!

@@ -10,23 +10,52 @@
 #include "TypeSpec.h"
 #include "Type.h"
 
+struct FieldLookupInfo {
+  Field field;
+  TypeSpec type;
+  bool needs_deref = true;
+  int array_size = -1;
+};
+
+struct DerefInfo {
+  bool can_deref = false;
+  bool mem_deref = false;
+  bool sign_extend = false;
+  RegKind reg = RegKind::INVALID;
+  int stride = -1;
+  TypeSpec result_type;
+};
+
 class TypeSystem {
  public:
   TypeSystem();
 
-  void add_builtin_types();
-  void add_builtin_globals();
-
-  void forward_declare_type(std::string name);
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
+  void forward_declare_type(std::string name);
+  std::string get_runtime_type(const TypeSpec& ts);
+
+  DerefInfo get_deref_info(const TypeSpec& ts);
+
+  TypeSpec make_typespec(const std::string& name);
+  TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
+                                  const std::string& return_type);
+
+  TypeSpec make_pointer_typespec(const std::string& type);
+  TypeSpec make_pointer_typespec(const TypeSpec& type);
+  TypeSpec make_inline_array_typespec(const std::string& type);
+  TypeSpec make_inline_array_typespec(const TypeSpec& type);
+
+  Type* lookup_type(const TypeSpec& ts);
+  Type* lookup_type(const std::string& name);
+
   MethodInfo add_method(Type* type, const std::string& method_name, const TypeSpec& ts);
-  MethodInfo lookup_method(const std::string& type_name, const std::string& method_name);
-
-  Field lookup_field(const std::string& type_name, const std::string& field_name);
-
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
+  MethodInfo lookup_method(const std::string& type_name, const std::string& method_name);
   MethodInfo lookup_new_method(const std::string& type_name);
+  void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
 
+  FieldLookupInfo lookup_field_info(const std::string& type_name, const std::string& field_name);
+  void assert_field_offset(const std::string& type_name, const std::string& field_name, int offset);
   int add_field_to_type(StructureType* type,
                         const std::string& field_name,
                         const TypeSpec& field_type,
@@ -35,17 +64,13 @@ class TypeSystem {
                         int array_size = -1,
                         int offset_override = -1);
 
-  Type* lookup_type(const TypeSpec& ts);
-  Type* lookup_type(const std::string& name);
-  TypeSpec make_typespec(const std::string& name);
-  TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
-                                  const std::string& return_type);
-
-  void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
-  void assert_field_offset(const std::string& type_name, const std::string& field_name, int offset);
+  void add_builtin_types();
 
   std::string print_all_type_information() const;
 
+  /*!
+   * Get a type by name and cast to a child class of Type*. Must succeed.
+   */
   template <typename T>
   T* get_type_of_type(const std::string& type_name) {
     auto x = lookup_type(type_name);
@@ -56,10 +81,10 @@ class TypeSystem {
     return result;
   }
 
+ private:
   int get_size_in_type(const Field& field);
   int get_alignment_in_type(const Field& field);
-
- private:
+  Field lookup_field(const std::string& type_name, const std::string& field_name);
   int get_next_method_id(Type* type);
   int manual_add_field_to_type(StructureType* type,
                                const std::string& field_name,
