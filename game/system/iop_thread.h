@@ -4,12 +4,7 @@
 #include "common/common_types.h"
 #include "IOP_Kernel.h"
 
-enum IOP_Status {
-  IOP_WAIT_FOR_LOAD,
-  IOP_OVERLORD_INIT,
-  IOP_OVERLORD_RUN,
-  IOP_OVERLORD_STOP
-};
+enum IOP_Status { IOP_WAIT_FOR_LOAD, IOP_OVERLORD_INIT, IOP_OVERLORD_RUN, IOP_OVERLORD_STOP };
 
 class IOP {
  public:
@@ -25,9 +20,7 @@ class IOP {
   void wait_run_iop();
   void kill_from_ee();
 
-  void set_ee_main_mem(u8* mem) {
-    ee_main_mem = mem;
-  }
+  void set_ee_main_mem(u8* mem) { ee_main_mem = mem; }
 
   IOP_Status status = IOP_WAIT_FOR_LOAD;
 
@@ -40,6 +33,7 @@ class IOP {
   u64 iop_iters_des = 0;
   u64 iop_iters_act = 0;
   bool want_exit = false;
+
  private:
   std::vector<void*> allocations;
   std::condition_variable cv;

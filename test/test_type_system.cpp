@@ -12,7 +12,6 @@ TEST(TypeSystem, DefaultMethods) {
   TypeSystem ts;
   ts.add_builtin_types();
 
-
   ts.assert_method_id("object", "new", 0);
   ts.assert_method_id("object", "delete", 1);
   ts.assert_method_id("object", "print", 2);

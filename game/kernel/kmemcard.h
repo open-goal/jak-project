@@ -3,7 +3,6 @@
  * Memory card interface. Very messy code.
  */
 
-
 #ifndef JAK_KMEMCARD_H
 #define JAK_KMEMCARD_H
 

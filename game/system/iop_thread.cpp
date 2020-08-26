@@ -23,10 +23,7 @@
 //#include "overlord/ssound.h"
 //#include "overlord/stream.h"
 
-
-IOP::IOP() {
-
-}
+IOP::IOP() {}
 
 void IOP::send_status(IOP_Status new_status) {
   {
@@ -38,16 +35,18 @@ void IOP::send_status(IOP_Status new_status) {
 
 void IOP::wait_for_overlord_start_cmd() {
   std::unique_lock<std::mutex> lk(iop_mutex);
-  if(status != IOP_WAIT_FOR_LOAD) return;
+  if (status != IOP_WAIT_FOR_LOAD)
+    return;
 
-  cv.wait(lk, [&]{return status != IOP_WAIT_FOR_LOAD;});
+  cv.wait(lk, [&] { return status != IOP_WAIT_FOR_LOAD; });
 }
 
 void IOP::wait_for_overlord_init_finish() {
   std::unique_lock<std::mutex> lk(iop_mutex);
-  if(overlord_init_done) return;
+  if (overlord_init_done)
+    return;
 
-  cv.wait(lk, [&]{return overlord_init_done;});
+  cv.wait(lk, [&] { return overlord_init_done; });
 }
 
 void IOP::signal_overlord_init_finish() {
@@ -57,7 +56,7 @@ void IOP::signal_overlord_init_finish() {
 }
 
 void IOP::reset_allocator() {
-  for(auto x : allocations) {
+  for (auto x : allocations) {
     free(x);
   }
   allocations.clear();
@@ -71,12 +70,12 @@ void* IOP::iop_alloc(int size) {
 
 void IOP::wait_run_iop() {
   std::unique_lock<std::mutex> lk(iters_mutex);
-  if(iop_iters_des > iop_iters_act) {
+  if (iop_iters_des > iop_iters_act) {
     iop_iters_act++;
     return;
   }
 
-  iop_run_cv.wait(lk, [&]{return iop_iters_des > iop_iters_act;});
+  iop_run_cv.wait(lk, [&] { return iop_iters_des > iop_iters_act; });
   iop_iters_act++;
 }
 
@@ -87,7 +86,7 @@ void IOP::kill_from_ee() {
 
 void IOP::signal_run_iop() {
   std::unique_lock<std::mutex> lk(iters_mutex);
-  iop_iters_des += 100; // todo, tune this
+  iop_iters_des += 100;  // todo, tune this
   iop_run_cv.notify_all();
 }
 
@@ -95,7 +94,7 @@ IOP::~IOP() {
   reset_allocator();
 }
 
-//void launch_iop(SystemThreadInterface& interface) {
+// void launch_iop(SystemThreadInterface& interface) {
 //  IOP iop;
 //
 //  printf("\n\n\n[IOP] Restart!\n");
@@ -141,13 +140,14 @@ IOP::~IOP() {
 //
 //  // IOP Kernel loop
 //  while(!interface.get_want_exit() && !iop.want_exit) {
-//    // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the IOP.
+//    // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on
+//    the IOP.
 //    // Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
 //    iop.wait_run_iop();
 //    iop.kernel.dispatchAll();
 //  }
 //
 //  // stop all threads in the iop kernel.
-//  // if the threads are not stopped nicely, we will deadlock on trying to destroy the kernel's condition variables.
-//  iop.kernel.shutdown();
+//  // if the threads are not stopped nicely, we will deadlock on trying to destroy the kernel's
+//  condition variables. iop.kernel.shutdown();
 //}

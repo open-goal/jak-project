@@ -14,4 +14,4 @@ void init_crc();
 uint32_t crc32(const uint8_t* data, size_t size);
 uint32_t crc32(const std::vector<uint8_t>& data);
 
-#endif //JAK_V2_FILEIO_H
+#endif  // JAK_V2_FILEIO_H

@@ -25,9 +25,8 @@ class CodeTester {
   u64 execute();
   void clear();
   ~CodeTester();
+
  private:
-
-
   int code_buffer_size = 0;
   int code_buffer_capacity = 0;
   u8* code_buffer = nullptr;

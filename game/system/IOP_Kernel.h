@@ -12,7 +12,7 @@
 
 class IOP_Kernel;
 namespace iop {
-  struct sceSifQueueData;
+struct sceSifQueueData;
 }
 
 struct SifRpcCommand {
@@ -28,7 +28,6 @@ struct SifRpcCommand {
   int copy_back_size;
 };
 
-
 struct SifRecord {
   iop::sceSifQueueData* qd;
   SifRpcCommand cmd;
@@ -36,13 +35,13 @@ struct SifRecord {
 };
 
 struct IopThreadRecord {
-  IopThreadRecord(std::string n, u32 (*f)(), s32 ID, IOP_Kernel* k) : name(n), function(f), thID(ID), kernel(k) {
+  IopThreadRecord(std::string n, u32 (*f)(), s32 ID, IOP_Kernel* k)
+      : name(n), function(f), thID(ID), kernel(k) {
     kernelToThreadCV = new std::condition_variable;
     threadToKernelCV = new std::condition_variable;
     kernelToThreadMutex = new std::mutex;
     threadToKernelMutex = new std::mutex;
   }
-
 
   ~IopThreadRecord() {
     delete kernelToThreadCV;
@@ -72,9 +71,8 @@ struct IopThreadRecord {
   void dispatch();
 };
 
-
 class IOP_Kernel {
-public:
+ public:
   IOP_Kernel() {
     // this ugly hack
     threads.reserve(16);
@@ -90,7 +88,7 @@ public:
   void SleepThread();
   void WakeupThread(s32 id);
   void dispatchAll();
-  void set_rpc_queue(iop::sceSifQueueData *qd, u32 thread);
+  void set_rpc_queue(iop::sceSifQueueData* qd, u32 thread);
   void rpc_loop(iop::sceSifQueueData* qd);
   void shutdown();
 
@@ -98,17 +96,15 @@ public:
    * Resume the kernel.
    */
   void returnToKernel() {
-    if(_currentThread < 0) throw std::runtime_error("tried to return to kernel not in a thread");
+    if (_currentThread < 0)
+      throw std::runtime_error("tried to return to kernel not in a thread");
     threads[_currentThread].returnToKernel();
   }
 
   /*!
    * Get current thread ID.
    */
-  s32 getCurrentThread() {
-    return _currentThread;
-  }
-
+  s32 getCurrentThread() { return _currentThread; }
 
   /*!
    * Create a message box
@@ -124,17 +120,18 @@ public:
    * Returns if it got something.
    */
   s32 PollMbx(void** msg, s32 mbx) {
-    if(_currentThread != -1 && threads.at(_currentThread).wantExit) {
+    if (_currentThread != -1 && threads.at(_currentThread).wantExit) {
       // total hack - returning this value causes the ISO thread to error out and quit.
       return -0x1a9;
     }
-//    printf("poll %d %ld\n", mbx, mbxs.size());
-    if(mbx >= (s32) mbxs.size()) throw std::runtime_error("invalid PollMbx");
-    s32 gotSomething =  mbxs[mbx].empty() ? 0 : 1;
-    if(gotSomething) {
+    //    printf("poll %d %ld\n", mbx, mbxs.size());
+    if (mbx >= (s32)mbxs.size())
+      throw std::runtime_error("invalid PollMbx");
+    s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
+    if (gotSomething) {
       void* thing = mbxs[mbx].front();
-//      printf("pop from msgbox %d %p\n", mbx, thing);
-      if(msg)
+      //      printf("pop from msgbox %d %p\n", mbx, thing);
+      if (msg)
         *msg = thing;
       mbxs[mbx].pop();
     }
@@ -146,24 +143,28 @@ public:
    * Push something into a mbx
    */
   s32 SendMbx(s32 mbx, void* value) {
-    if(mbx >= (s32) mbxs.size()) throw std::runtime_error("invalid SendMbx");
+    if (mbx >= (s32)mbxs.size())
+      throw std::runtime_error("invalid SendMbx");
     mbxs[mbx].push(value);
-//    printf("push into messagebox %d %p\n", mbx, value);
-//    printf("mbx size %ld\n", mbxs.size());
+    //    printf("push into messagebox %d %p\n", mbx, value);
+    //    printf("mbx size %ld\n", mbxs.size());
     return 0;
   }
 
-  s32 CreateSema() {
-    return 1;
-  }
+  s32 CreateSema() { return 1; }
 
   void read_disc_sectors(u32 sector, u32 sectors, void* buffer);
   bool sif_busy(u32 id);
 
-  void sif_rpc(s32 rpcChannel, u32 fno, bool async, void *sendBuff, s32 sendSize, void *recvBuff, s32 recvSize);
+  void sif_rpc(s32 rpcChannel,
+               u32 fno,
+               bool async,
+               void* sendBuff,
+               s32 sendSize,
+               void* recvBuff,
+               s32 recvSize);
 
-
-private:
+ private:
   void setupThread(s32 id);
   void runThread(s32 id);
   s32 _nextThID = 0;
@@ -176,5 +177,4 @@ private:
   std::mutex sif_mtx;
 };
 
-
-#endif //JAK_IOP_KERNEL_H
+#endif  // JAK_IOP_KERNEL_H

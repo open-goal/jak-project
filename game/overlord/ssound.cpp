@@ -1,5 +1,3 @@
 #include "ssound.h"
 
-void InitSound_Overlord() {
-
-}
+void InitSound_Overlord() {}

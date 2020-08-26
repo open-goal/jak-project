@@ -767,7 +767,6 @@ u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
 // TODO - UpdatePlayPos
 // TODO - CheckVAGStreamProgress
 
-
 void* RPC_DGO(unsigned int fno, void* _cmd, int y);
 void LoadDGO(RPC_Dgo_Cmd* cmd);
 void LoadNextDGO(RPC_Dgo_Cmd* cmd);
@@ -913,7 +912,7 @@ void CancelDGO(RPC_Dgo_Cmd* cmd) {
     SendMbx(sync_mbx, nullptr);
     // wait for it to abort.
     WaitMbx(dgo_mbx);
-    assert(cmd); // bug
+    assert(cmd);  // bug
     cmd->result = DGO_RPC_RESULT_ABORTED;
     scmd.cmd_id = 0;
   }

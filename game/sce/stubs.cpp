@@ -3,7 +3,7 @@
 #include "stubs.h"
 
 namespace ee {
-s32 sceOpen(const char *filename, s32 flag) {
+s32 sceOpen(const char* filename, s32 flag) {
   (void)filename;
   (void)flag;
   throw std::runtime_error("sceOpen NYI");
@@ -14,14 +14,14 @@ s32 sceClose(s32 fd) {
   throw std::runtime_error("sceClose NYI");
 }
 
-s32 sceRead(s32 fd, void *buf, s32 nbyte) {
+s32 sceRead(s32 fd, void* buf, s32 nbyte) {
   (void)fd;
   (void)buf;
   (void)nbyte;
   throw std::runtime_error("sceRead NYI");
 }
 
-s32 sceWrite(s32 fd, const void *buf, s32 nbyte) {
+s32 sceWrite(s32 fd, const void* buf, s32 nbyte) {
   (void)fd;
   (void)buf;
   (void)nbyte;
@@ -79,7 +79,7 @@ void FlushCache() {
   assert(false);
 }
 
-}
+}  // namespace ee
 
 namespace iop {
 u32 snd_BankLoadByLoc(u32 sector, u32 unk) {
@@ -98,4 +98,4 @@ void snd_ResolveBankXREFS() {
   assert(false);
 }
 
-}
+}  // namespace iop

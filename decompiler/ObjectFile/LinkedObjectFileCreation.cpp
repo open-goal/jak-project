@@ -213,7 +213,6 @@ static uint32_t align16(uint32_t in) {
   return (in + 15) & (~15);
 }
 
-
 /*!
  * Process link data for a "V4" object file.
  * In reality a V4 seems to be just a V2 object, but with the link data after the real data.

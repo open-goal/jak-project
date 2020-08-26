@@ -421,8 +421,8 @@ void ObjectFileDB::analyze_functions() {
       (void)segment_id;
       auto name = func.guessed_name.to_string();
       if (func.guessed_name.expected_unique()) {
-        if(unique_names.find(name) != unique_names.end()) {
-            duplicated_functions[name].insert(data.record.to_unique_name());
+        if (unique_names.find(name) != unique_names.end()) {
+          duplicated_functions[name].insert(data.record.to_unique_name());
         }
 
         unique_names.insert(name);
@@ -435,22 +435,22 @@ void ObjectFileDB::analyze_functions() {
     });
 
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-        (void)segment_id;
-        auto name = func.guessed_name.to_string();
-        if(func.guessed_name.expected_unique()) {
-          if(duplicated_functions.find(name) != duplicated_functions.end()) {
-            duplicated_functions[name].insert(data.record.to_unique_name());
-            func.warnings += "this function exists in multiple non-identical object files";
-          }
+      (void)segment_id;
+      auto name = func.guessed_name.to_string();
+      if (func.guessed_name.expected_unique()) {
+        if (duplicated_functions.find(name) != duplicated_functions.end()) {
+          duplicated_functions[name].insert(data.record.to_unique_name());
+          func.warnings += "this function exists in multiple non-identical object files";
         }
+      }
     });
 
-//    for(const auto& kv : duplicated_functions) {
-//      printf("Function %s is found in non-identical object files:\n", kv.first.c_str());
-//      for(const auto& obj : kv.second) {
-//        printf(" %s\n", obj.c_str());
-//      }
-//    }
+    //    for(const auto& kv : duplicated_functions) {
+    //      printf("Function %s is found in non-identical object files:\n", kv.first.c_str());
+    //      for(const auto& obj : kv.second) {
+    //        printf(" %s\n", obj.c_str());
+    //      }
+    //    }
   }
 
   int total_nontrivial_functions = 0;
@@ -466,45 +466,48 @@ void ObjectFileDB::analyze_functions() {
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
 
-      if(!func.suspected_asm) {
-          func.analyze_prologue(data.linked_data);
-          func.cfg = build_cfg(data.linked_data, segment_id, func);
-          total_functions++;
-          if (func.cfg->is_fully_resolved()) {
-              resolved_cfg_functions++;
-          }
+      if (!func.suspected_asm) {
+        func.analyze_prologue(data.linked_data);
+        func.cfg = build_cfg(data.linked_data, segment_id, func);
+        total_functions++;
+        if (func.cfg->is_fully_resolved()) {
+          resolved_cfg_functions++;
+        }
       } else {
         resolved_cfg_functions++;
       }
 
-
-      if(func.basic_blocks.size() > 1 && !func.suspected_asm) {
+      if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
         total_nontrivial_functions++;
-        if(func.cfg->is_fully_resolved()) {
+        if (func.cfg->is_fully_resolved()) {
           total_resolved_nontrivial_functions++;
         } else {
-          if(!func.guessed_name.empty()) {
-            unresolved_by_length[func.end_word - func.start_word].push_back(func.guessed_name.to_string());
+          if (!func.guessed_name.empty()) {
+            unresolved_by_length[func.end_word - func.start_word].push_back(
+                func.guessed_name.to_string());
           }
         }
       }
 
-      if(!func.guessed_name.empty()) {
+      if (!func.guessed_name.empty()) {
         total_named_functions++;
       }
     });
 
-    printf("Found %d functions (%d with nontrivial cfgs)\n", total_functions, total_nontrivial_functions);
-    printf("Named %d/%d functions (%.2f%%)\n", total_named_functions, total_functions, 100.f * float(total_named_functions) / float(total_functions));
+    printf("Found %d functions (%d with nontrivial cfgs)\n", total_functions,
+           total_nontrivial_functions);
+    printf("Named %d/%d functions (%.2f%%)\n", total_named_functions, total_functions,
+           100.f * float(total_named_functions) / float(total_functions));
     printf("Found %d basic blocks in %.3f ms\n", total_basic_blocks, timer.getMs());
-    printf(" %d/%d functions passed cfg analysis stage (%.2f%%)\n", resolved_cfg_functions, total_functions,
-           100.f * float(resolved_cfg_functions) / float(total_functions));
-    printf(" %d/%d nontrivial cfg's resolved (%.2f%%)\n", total_resolved_nontrivial_functions, total_nontrivial_functions,
+    printf(" %d/%d functions passed cfg analysis stage (%.2f%%)\n", resolved_cfg_functions,
+           total_functions, 100.f * float(resolved_cfg_functions) / float(total_functions));
+    printf(" %d/%d nontrivial cfg's resolved (%.2f%%)\n", total_resolved_nontrivial_functions,
+           total_nontrivial_functions,
            100.f * float(total_resolved_nontrivial_functions) / float(total_nontrivial_functions));
 
-    for(auto& kv : unresolved_by_length) {
+    for (auto& kv : unresolved_by_length) {
       printf("LEN %d\n", kv.first);
-      for(auto& x : kv.second) {
+      for (auto& x : kv.second) {
         printf("  %s\n", x.c_str());
       }
     }

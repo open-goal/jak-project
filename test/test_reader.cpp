@@ -316,8 +316,7 @@ TEST(GoosReader, TopLevel) {
 
 TEST(GoosReader, FromFile) {
   Reader reader;
-  auto result =
-      reader.read_from_file(util::combine_path({"test", "test_reader_file0.gc"})).print();
+  auto result = reader.read_from_file(util::combine_path({"test", "test_reader_file0.gc"})).print();
   EXPECT_TRUE(result == "(top-level (1 2 3 4))");
 }
 

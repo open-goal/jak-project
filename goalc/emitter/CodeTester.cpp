@@ -36,8 +36,8 @@ void CodeTester::emit_return() {
 }
 
 void CodeTester::emit_pop_all_gprs(bool exclude_rax) {
-  for(int i = 16; i-- > 0;) {
-    if(i != RAX || !exclude_rax) {
+  for (int i = 16; i-- > 0;) {
+    if (i != RAX || !exclude_rax) {
       emit(IGen::pop_gpr64(i));
     }
   }
@@ -45,10 +45,9 @@ void CodeTester::emit_pop_all_gprs(bool exclude_rax) {
 
 void CodeTester::emit_push_all_gprs(bool exclude_rax) {
   for (int i = 0; i < 16; i++) {
-    if(i != RAX || !exclude_rax) {
+    if (i != RAX || !exclude_rax) {
       emit(IGen::push_gpr64(i));
     }
-
   }
 }
 

@@ -14,7 +14,6 @@
 #include <condition_variable>
 #include "Timer.h"
 
-
 constexpr int MAX_SYSTEM_THREADS = 16;
 
 class SystemThreadInterface;
@@ -28,13 +27,13 @@ class SystemThreadManager;
  * statistics.
  */
 class SystemThread {
-public:
+ public:
   void start(std::function<void(SystemThreadInterface&)> f);
   void join();
   void stop();
   SystemThread() = default;
 
-private:
+ private:
   friend class SystemThreadInterface;
   friend class SystemThreadManager;
   friend void* bootstrap_thread_func(void* thd);
@@ -42,7 +41,7 @@ private:
   std::string name = "invalid";
   pthread_t thread;
   SystemThreadManager* manager;
-  std::function<void(SystemThreadInterface &)> function;
+  std::function<void(SystemThreadInterface&)> function;
   bool initialization_complete = false;
   std::mutex initialization_mutex;
   std::condition_variable initialization_cv;
@@ -60,15 +59,14 @@ private:
  * The interface used by a thread in the runtime.
  */
 class SystemThreadInterface {
-public:
-  SystemThreadInterface(SystemThread* p) : thread(*p) {
-
-  }
+ public:
+  SystemThreadInterface(SystemThread* p) : thread(*p) {}
   void initialization_complete();
   void report_perf_stats();
   bool get_want_exit() const;
   void trigger_shutdown();
-private:
+
+ private:
   SystemThread& thread;
 };
 
@@ -76,14 +74,15 @@ private:
  * A manager of all threads in the runtime.
  */
 class SystemThreadManager {
-public:
+ public:
   SystemThread& create_thread(const std::string& name);
   void print_stats();
   void shutdown();
   void join();
-private:
+
+ private:
   std::array<SystemThread, MAX_SYSTEM_THREADS> threads;
   int thread_count = 0;
 };
 
-#endif //RUNTIME_SYSTEMTHREAD_H
+#endif  // RUNTIME_SYSTEMTHREAD_H

@@ -11,7 +11,7 @@ namespace ee {
 namespace {
 // CD/DVD media type set by sceCdMMode
 int media_mode;
-}
+}  // namespace
 
 void LIBRARY_INIT_sceCd() {
   media_mode = -1;
@@ -21,9 +21,9 @@ void LIBRARY_INIT_sceCd() {
  * Initialize the CD/DVD subsystem.
  * init_mode should be SCECdINIT
  */
-int sceCdInit(int init_mode){
+int sceCdInit(int init_mode) {
   assert(init_mode == SCECdINIT);
-  return 1; // Initialization was performed normally
+  return 1;  // Initialization was performed normally
 }
 
 /*!
@@ -31,7 +31,7 @@ int sceCdInit(int init_mode){
  */
 int sceCdMmode(int media) {
   media_mode = media;
-  return 1; // If successful, returns 1
+  return 1;  // If successful, returns 1
 }
 
 /*!
@@ -49,7 +49,7 @@ int sceCdDiskReady(int mode) {
  */
 int sceCdGetDiskType() {
   // if we set CD or DVD, return the appropriate PS2 game disk type.
-  switch(media_mode) {
+  switch (media_mode) {
     case SCECdCD:
       return SCECdPS2CD;
     case SCECdDVD:
