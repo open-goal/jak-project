@@ -1,0 +1,26 @@
+name: Linux Workflow
+on: [push]
+
+jobs:
+  build:
+    name: Build and Test Project (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Get Package Dependencies
+        run: sudo apt install gcc make cmake build-essential g++ nasm clang-format
+      - name: Initialize Submodules
+        run: git submodule update --init --recursive
+      - name: Build Project with CMake
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make -j
+      - name: Test Project with gTest
+        run: ./test.sh
+      - name: Check Clang-Formatting
+        run: |
+          chmod +x ./third-party/run-clang-format/run-clang-format.py
+          ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test --color always
