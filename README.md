@@ -64,11 +64,29 @@ Once Scoop is installed, run the following command:
 scoop install llvm nasm
 ```
 
+Initialize the repository's third-party dependencies:
+
+```bash
+git submodule update --init --recursive
+```
+
 Open the project as a CMake project, browse for the root level `CMakeLists.txt`:
 
 ![](./doc/imgs/open-cmake-vs.png)
 
-TODO - more steps to follow as we actually figure it out!
+In the toolbar, you should be able to select an individual component to compile, or combine within the root CMakeLists.txt. In the future we will pre-define configurations to make this easier.
+
+![](./doc/imgs/cmake-build-vs.png)
+
+You may also wish to view the files that pertain to each CMake target, rather than the project as it is normally:
+
+![](./doc/imgs/cmake-target-view.png)
+
+TODO
+
+- more steps to follow as we actually figure it out!
+- running tests
+- etc
 
 ## Project Layout
 
