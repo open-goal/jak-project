@@ -6,7 +6,7 @@
 
 namespace ee {
 
-namespace  {
+namespace {
 ::IOP* iop;
 }
 
@@ -30,17 +30,16 @@ int sceSifSyncIop() {
   return 1;
 }
 
-void sceFsReset() {
-
-}
+void sceFsReset() {}
 
 int sceSifLoadModule(const char* name, int arg_size, const char* args) {
-  if(!strcmp(name, "cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1") || !strcmp(name, "host0:binee/overlord.irx")) {
+  if (!strcmp(name, "cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1") ||
+      !strcmp(name, "host0:binee/overlord.irx")) {
     const char* src = args;
     char* dst = iop->overlord_arg_data;
     int cnt;
     iop->overlord_argv[0] = nullptr;
-    for(cnt = 1; src - args < arg_size; cnt++) {
+    for (cnt = 1; src - args < arg_size; cnt++) {
       auto len = strlen(src);
       memcpy(dst, src, len + 1);
       iop->overlord_argv[cnt] = dst;
@@ -49,8 +48,8 @@ int sceSifLoadModule(const char* name, int arg_size, const char* args) {
     }
     iop->overlord_argc = cnt;
 
-    for(int i = 0; i < cnt; i++) {
-      if(iop->overlord_argv[i])
+    for (int i = 0; i < cnt; i++) {
+      if (iop->overlord_argv[i])
         printf("arg %d : %s\n", i, iop->overlord_argv[i]);
     }
     iop->set_ee_main_mem(g_ee_main_mem);
@@ -65,10 +64,18 @@ int sceMcInit() {
   return 1;
 }
 
-s32 sceSifCallRpc(sceSifClientData* bd, u32 fno, u32 mode, void* send, s32 ssize, void* recv, s32 rsize, void* end_func, void* end_para) {
+s32 sceSifCallRpc(sceSifClientData* bd,
+                  u32 fno,
+                  u32 mode,
+                  void* send,
+                  s32 ssize,
+                  void* recv,
+                  s32 rsize,
+                  void* end_func,
+                  void* end_para) {
   assert(!end_func);
   assert(!end_para);
-  assert(mode == 1); // async
+  assert(mode == 1);  // async
   iop->kernel.sif_rpc(bd->rpcd.id, fno, mode, send, ssize, recv, rsize);
   return 0;
 }
@@ -79,9 +86,9 @@ s32 sceSifCheckStatRpc(sceSifRpcData* bd) {
 }
 
 s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode) {
-  assert(mode == 1); // async
+  assert(mode == 1);  // async
   bd->rpcd.id = request;
   bd->serve = (sceSifServeData*)1;
   return 0;
 }
-}
+}  // namespace ee

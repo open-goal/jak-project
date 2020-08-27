@@ -17,4 +17,4 @@ u8 xmm_to_id(u8 reg) {
   return reg - 16;
 }
 
-}
+}  // namespace goal

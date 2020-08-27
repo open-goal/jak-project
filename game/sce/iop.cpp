@@ -31,22 +31,19 @@ void sceSifInitRpc(int mode) {
  * Flush Data Cache
  */
 void FlushDcache() {
-  // Do nothing! The data cache does not need to be flushed on x86 as we have no DMA which bypasses cache.
+  // Do nothing! The data cache does not need to be flushed on x86 as we have no DMA which bypasses
+  // cache.
 }
 
 /*!
  * Enable CPU Interrupts
  */
-void CpuDisableIntr() {
-
-}
+void CpuDisableIntr() {}
 
 /*!
  * Disable CPU Interrupts
  */
-void CpuEnableIntr() {
-
-}
+void CpuEnableIntr() {}
 
 namespace {
 ::IOP* iop;
@@ -68,15 +65,15 @@ void LIBRARY_kill() {
  * How much free memory is there, in bytes?
  */
 int QueryTotalFreeMemSize() {
-  // this value is somewhat arbitrary - it's a lot, but not enough to make OVERLORD think it is running on
-  // an 8MB-of-IOP-RAM development machine.
+  // this value is somewhat arbitrary - it's a lot, but not enough to make OVERLORD think it is
+  // running on an 8MB-of-IOP-RAM development machine.
   return 0x100000;
 }
 
 /*!
-  * Allocate memory.
-  */
-void *AllocSysMemory(int type, unsigned long size, void *addr) {
+ * Allocate memory.
+ */
+void* AllocSysMemory(int type, unsigned long size, void* addr) {
   assert(type == SMEM_Low);
   assert(addr == nullptr);
   return iop->iop_alloc(size);
@@ -112,8 +109,13 @@ void sceSifSetRpcQueue(sceSifQueueData* dq, int key) {
   iop->kernel.set_rpc_queue(dq, key);
 }
 
-void sceSifRegisterRpc(sceSifServeData* serve, unsigned int request,
-                       sceSifRpcFunc func, void* buff, sceSifRpcFunc cfunc, void* cbuff, sceSifQueueData* qd) {
+void sceSifRegisterRpc(sceSifServeData* serve,
+                       unsigned int request,
+                       sceSifRpcFunc func,
+                       void* buff,
+                       sceSifRpcFunc cfunc,
+                       void* cbuff,
+                       sceSifQueueData* qd) {
   serve->command = request;
   serve->func = func;
   serve->buff = buff;
@@ -140,11 +142,11 @@ int sceCdSync(int mode) {
 }
 
 int sceCdGetError() {
-  return 0; // no error
+  return 0;  // no error
 }
 
 int sceCdGetDiskType() {
-  return SCECdPS2DVD; // always a DVD (for now)
+  return SCECdPS2DVD;  // always a DVD (for now)
 }
 
 int sceCdMmode(int media) {
@@ -213,4 +215,4 @@ s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
   return 0;
 }
-}
+}  // namespace iop

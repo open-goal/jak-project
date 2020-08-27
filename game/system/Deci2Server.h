@@ -30,7 +30,6 @@ class Deci2Server {
 
   void run();
 
-
  private:
   void accept_thread_func();
   bool kill_accept_thread = false;
@@ -50,7 +49,5 @@ class Deci2Server {
   Deci2Driver* d2_drivers = nullptr;
   int* d2_driver_count = nullptr;
 };
-
-
 
 #endif  // JAK1_DECI2SERVER_H

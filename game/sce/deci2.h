@@ -10,7 +10,6 @@
 
 class Deci2Server;
 
-
 namespace ee {
 
 void LIBRARY_INIT_sceDeci2();

@@ -17,4 +17,4 @@
 void fake_iso_init_globals();
 extern IsoFs fake_iso;
 
-#endif //JAK_V2_FAKE_ISO_H
+#endif  // JAK_V2_FAKE_ISO_H

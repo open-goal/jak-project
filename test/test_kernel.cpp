@@ -263,8 +263,7 @@ TEST(Kernel, itoa_base_16) {
   EXPECT_EQ("1", std::string(buffer));
 
   kitoa(buffer, -1, 16, -1, ' ', 0);
-  EXPECT_EQ("ffffffffffffffff",
-            std::string(buffer));
+  EXPECT_EQ("ffffffffffffffff", std::string(buffer));
 
   kitoa(buffer, -1, 16, 5, ' ', 0);
   EXPECT_EQ("-fffff", std::string(buffer));
@@ -282,8 +281,7 @@ TEST(Kernel, itoa_base_16) {
   EXPECT_EQ("jjjjbadbeef", std::string(buffer));
 
   kitoa(buffer, INT64_MIN, 16, 0, ' ', 0);
-  EXPECT_EQ("8000000000000000",
-            std::string(buffer));
+  EXPECT_EQ("8000000000000000", std::string(buffer));
 }
 
 namespace {
@@ -343,7 +341,6 @@ TEST(Kernel, PrintBuffer) {
   // more complicated tests for format will be done from within GOAL.
 }
 
-
 TEST(Kernel, HashTable) {
   constexpr int size = 32 * 1024 * 1024;
   auto mem = new u8[size];
@@ -360,7 +357,7 @@ TEST(Kernel, HashTable) {
   std::unordered_map<std::string, u32> symbol_locations;
   std::unordered_set<u32> unique_locations;
 
-  for(auto name : all_syms) {
+  for (auto name : all_syms) {
     auto loc = intern_from_c(name).offset;
     symbol_locations[name] = loc;
     unique_locations.insert(loc);
@@ -369,7 +366,7 @@ TEST(Kernel, HashTable) {
   EXPECT_EQ(7941, symbol_locations.size());
   EXPECT_EQ(7941, unique_locations.size());
 
-  for(auto name : all_syms) {
+  for (auto name : all_syms) {
     EXPECT_EQ(symbol_locations.at(name), intern_from_c(name).offset);
   }
 
@@ -380,11 +377,10 @@ TEST(Kernel, HashTable) {
 
   // expect no crc32 hash collisions. This doesn't matter, but it's nice to know.
   std::unordered_set<u32> crc32s;
-  for(auto name : all_syms) {
+  for (auto name : all_syms) {
     crc32s.insert(crc32((const u8*)name, strlen(name)));
   }
   EXPECT_EQ(7941, crc32s.size());
 
   delete[] mem;
 }
-

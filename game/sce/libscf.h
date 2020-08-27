@@ -26,6 +26,6 @@ int sceScfGetAspect();
  * Return a SONY SCE_LANGUAGE value, which differs from GOAL.
  */
 int sceScfGetLanguage();
-}
+}  // namespace ee
 
 #endif  // JAK1_LIBSCF_H

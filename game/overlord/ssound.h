@@ -3,4 +3,4 @@
 
 void InitSound_Overlord();
 
-#endif //JAK_V2_SSOUND_H
+#endif  // JAK_V2_SSOUND_H

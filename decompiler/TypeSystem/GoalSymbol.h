@@ -13,14 +13,13 @@ class GoalSymbol {
     m_has_type_info = true;
   }
 
-  bool has_type_info() const {
-    return m_has_type_info;
-  }
+  bool has_type_info() const { return m_has_type_info; }
 
   void set_type(TypeSpec ts) {
-    if(m_has_type_info) {
-      if(ts != m_type) {
-        printf("symbol %s %s -> %s", m_name.c_str(), m_type.to_string().c_str(), ts.to_string().c_str());
+    if (m_has_type_info) {
+      if (ts != m_type) {
+        printf("symbol %s %s -> %s", m_name.c_str(), m_type.to_string().c_str(),
+               ts.to_string().c_str());
         assert(false);
       }
     }

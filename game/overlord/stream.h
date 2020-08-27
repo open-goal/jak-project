@@ -5,4 +5,4 @@
 u32 STRThread();
 u32 PLAYThread();
 
-#endif //JAK_V2_STREAM_H
+#endif  // JAK_V2_STREAM_H

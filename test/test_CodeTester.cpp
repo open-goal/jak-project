@@ -135,17 +135,17 @@ TEST(CodeTester, xmm_move) {
   CodeTester tester;
   tester.init_code_buffer(256);
 
-  for(auto constant : u32_constants) {
-    for(int r1 = 0; r1 < 16; r1++) {
-      if(r1 == RSP) {
+  for (auto constant : u32_constants) {
+    for (int r1 = 0; r1 < 16; r1++) {
+      if (r1 == RSP) {
         continue;
       }
-      for(int r2 = 0; r2 < 16; r2++) {
-        if(r2 == RSP) {
+      for (int r2 = 0; r2 < 16; r2++) {
+        if (r2 == RSP) {
           continue;
         }
-        for(int r3 = 0; r3 < 16; r3++) {
-          for(int r4 = 0; r4 < 16; r4++) {
+        for (int r3 = 0; r3 < 16; r3++) {
+          for (int r4 = 0; r4 < 16; r4++) {
             tester.clear();
             tester.emit_push_all_gprs(true);
             // move constant to gpr
