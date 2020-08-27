@@ -57,9 +57,9 @@ u32 ReceiveToBuffer(char* buff) {
  * The message type is OUTPUT
  * DONE, EXACT
  */
-s32 SendFromBuffer(char* buff, s32 size) {
-  return SendFromBufferD(u16(ListenerMessageKind::MSG_OUTPUT), 0, buff, size);
-}
+//s32 SendFromBuffer(char* buff, s32 size) {
+//  return SendFromBufferD(u16(ListenerMessageKind::MSG_OUTPUT), 0, buff, size);
+
 
 /*!
  * Just prepare the Ack buffer, doesn't actually connect.

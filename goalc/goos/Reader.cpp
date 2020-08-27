@@ -588,7 +588,7 @@ bool Reader::try_token_as_binary(const Token& tok, Object& obj) {
 
     for (uint32_t i = 2; i < tok.text.size(); i++) {
       if (value & (0x8000000000000000)) {
-        throw std::exception("overflow in binary constant:)");
+        throw std::runtime_error("overflow in binary constant:)");
       }
 
       value <<= 1u;

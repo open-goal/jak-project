@@ -329,7 +329,7 @@ int InitMachine() {
   //  }
 
   if (MasterDebug) {  // connect to GOAL compiler
-    InitGoalProto();
+//    InitGoalProto();
   }
 
   printf("InitSound\n");
@@ -359,7 +359,7 @@ int ShutdownMachine() {
   StopIOP();
   CloseListener();
   ShutdownSound();
-  ShutdownGoalProto();
+//  ShutdownGoalProto();
   Msg(6, "kernel: machine shutdown");
   return 0;
 }

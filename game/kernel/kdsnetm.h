@@ -55,13 +55,13 @@ void kdsnetm_init_globals();
  * Register GOAL DECI2 Protocol Driver with DECI2 service
  * DONE, EXACT
  */
-void InitGoalProto();
+//void InitGoalProto();
 
 /*!
  * Close the DECI2 Protocol Driver
  * DONE, EXACT
  */
-void ShutdownGoalProto();
+//void ShutdownGoalProto();
 
 /*!
  * Handle a DECI2 Protocol Event for the GOAL Proto.
@@ -76,7 +76,7 @@ void GoalProtoHandler(int event, int param, void* data);
  * DONE, original version used an uncached address and had a FlushCache call, which were both
  * removed
  */
-s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
+//s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
 
 /*!
  * Print GOAL Protocol status

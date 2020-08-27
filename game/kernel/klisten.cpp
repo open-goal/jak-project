@@ -71,7 +71,7 @@ void ClearPending() {
         Ptr<char> msg = OutputBufArea.cast<char>() + sizeof(GoalMessageHeader);
         auto size = strlen(msg.c());
         // note - if size is ever greater than 2^16 this will cause an issue.
-        SendFromBuffer(msg.c(), size);
+       // SendFromBuffer(msg.c(), size);
         clear_output();
       }
 
@@ -84,7 +84,7 @@ void ClearPending() {
           if (send_size > 64000) {
             send_size = 64000;
           }
-          SendFromBufferD(2, 0, msg, send_size);
+//          SendFromBufferD(2, 0, msg, send_size);
           size -= send_size;
           msg += send_size;
         }
@@ -103,9 +103,9 @@ void ClearPending() {
  */
 void SendAck() {
   if (MasterDebug) {
-    SendFromBufferD(u16(ListenerMessageKind::MSG_ACK), protoBlock.msg_id,
-                    AckBufArea + sizeof(GoalMessageHeader),
-                    strlen(AckBufArea + sizeof(GoalMessageHeader)));
+//    SendFromBufferD(u16(ListenerMessageKind::MSG_ACK), protoBlock.msg_id,
+                  // AckBufArea + sizeof(GoalMessageHeader),
+                  //  strlen(AckBufArea + sizeof(GoalMessageHeader)));
   }
 }
 
