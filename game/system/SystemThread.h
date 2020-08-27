@@ -8,7 +8,6 @@
 
 #include <string>
 #include <functional>
-#include <pthread.h>
 #include <array>
 #include <mutex>
 #include <condition_variable>
@@ -40,7 +39,7 @@ private:
   friend void* bootstrap_thread_func(void* thd);
 
   std::string name = "invalid";
-  pthread_t thread;
+  std::thread thread;
   SystemThreadManager* manager;
   std::function<void(SystemThreadInterface &)> function;
   bool initialization_complete = false;

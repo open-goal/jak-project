@@ -25,6 +25,8 @@ extern Ptr<u8> MessBufArea;
 extern Ptr<u8> OutputBufArea;
 extern Ptr<u8> PrintBufArea;
 
+#define __attribute__(A) /* do nothing */
+
 /*!
  * Initialize global variables for kprint
  */

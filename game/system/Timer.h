@@ -12,7 +12,6 @@ public:
   }
 
   void start() {
-    clock_gettime(CLOCK_MONOTONIC, &_startTime);
   }
 
   double getMs() {
@@ -21,7 +20,6 @@ public:
 
   int64_t getNs() {
     struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
     return (int64_t)(now.tv_nsec - _startTime.tv_nsec) + 1000000000 * (now.tv_sec - _startTime.tv_sec);
 
   }
