@@ -15,7 +15,7 @@ int format_float(char* buf, std::size_t size, const char* format, int precision,
                  T value) {
 #ifdef FMT_FUZZ
   if (precision > 100000)
-    throw std::exception(
+    throw std::runtime_error(
         "fuzz mode - avoid large allocation inside snprintf");
 #endif
   // Suppress the warning about nonliteral format string.

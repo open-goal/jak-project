@@ -2324,7 +2324,7 @@ namespace detail
 /*!
 @brief general exception of the @ref basic_json class
 
-This class is an extension of `std::exception` objects with a member @a id for
+This class is an extension of `std::runtime_error` objects with a member @a id for
 exception ids. It is used as the base class for all exceptions thrown by the
 @ref basic_json class. This class can hence be used as "wildcard" to catch
 exceptions.
@@ -2339,7 +2339,7 @@ Subclasses:
 
 @internal
 @note To have nothrow-copy-constructible exceptions, we internally use
-      `std::exception` which can cope with arbitrary-length error messages.
+      `std::runtime_error` which can cope with arbitrary-length error messages.
       Intermediate strings are built with static functions and then passed to
       the actual constructor.
 @endinternal
@@ -2349,7 +2349,7 @@ caught.,exception}
 
 @since version 3.0.0
 */
-class exception : public std::exception
+class exception : public std::runtime_error
 {
   public:
     /// returns the explanatory string
@@ -2373,7 +2373,7 @@ class exception : public std::exception
 
   private:
     /// an exception object as storage for error messages
-    std::exception m;
+    std::runtime_error m;
 };
 
 /*!

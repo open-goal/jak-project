@@ -134,7 +134,7 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:
-          throw std::exception("unhandled SymbolLinkKind");
+          throw std::runtime_error("unhandled SymbolLinkKind");
       }
 
       f.symbol_link_word(seg_id, code_ptr_offset - initial_offset, name, word_kind);
@@ -191,7 +191,7 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:
-          throw std::exception("unhandled SymbolLinkKind");
+          throw std::runtime_error("unhandled SymbolLinkKind");
       }
 
       f.symbol_link_word(seg, code_ptr - initial_offset, name, word_kind);

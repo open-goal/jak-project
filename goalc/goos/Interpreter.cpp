@@ -126,7 +126,7 @@ void Interpreter::execute_repl() {
       Object evald = eval_with_rewind(obj, global_environment.as_env());
       // print
       printf("%s\n", evald.print().c_str());
-    } catch (std::exception& e) {
+    } catch (std::runtime_error& e) {
       printf("REPL Error: %s\n", e.what());
     }
   }
@@ -137,7 +137,7 @@ void Interpreter::execute_repl() {
  * for debugging.
  */
 void Interpreter::throw_eval_error(const Object& o, const std::string& err) {
- // throw std::exception("[GOOS] Evaluation error on " + o.print() + ": " + err + "\n" +
+ // throw std::runtime_error("[GOOS] Evaluation error on " + o.print() + ": " + err + "\n" +
                           // reader.db.get_info_for(o));
 }
 
@@ -151,7 +151,7 @@ Object Interpreter::eval_with_rewind(const Object& obj,
   Object result = EmptyListObject::make_new();
   try {
     result = eval(obj, env);
-  } catch (std::exception& e) {
+  } catch (std::runtime_error& e) {
     if (!disable_printing) {
       printf("-----------------------------------------\n");
       printf("From object %s\nat %s\n", obj.inspect().c_str(), reader.db.get_info_for(obj).c_str());

@@ -7,9 +7,9 @@
  * Create a new thread.  Will not run the thread.
  */
 s32 IOP_Kernel::CreateThread(std::string name, u32 (*func)()) {
-  if(_currentThread != -1) throw std::exception("tried to create thread from thread");
+  if(_currentThread != -1) throw std::runtime_error("tried to create thread from thread");
   u32 ID = (u32)_nextThID++;
-  if(threads.size() != ID) throw std::exception("thread number error?");
+  if(threads.size() != ID) throw std::runtime_error("thread number error?");
   // add entry
   threads.emplace_back(name, func, ID, this);
   // setup the thread!
@@ -47,7 +47,7 @@ void IOP_Kernel::setupThread(s32 id) {
   threads.at(id).waitForDispatch();
   // printf("[IOP Kernel] Thread %s first dispatch!\n", threads.at(id).name.c_str());
   if(_currentThread != id) {
-    throw std::exception("the wrong thread has run!\n");
+    throw std::runtime_error("the wrong thread has run!\n");
   }
   (threads.at(id).function)();
   printf("Thread %s has returned!\n", threads.at(id).name.c_str());
@@ -59,7 +59,7 @@ void IOP_Kernel::setupThread(s32 id) {
  * Run a thread (call from kernel)
  */
 void IOP_Kernel::runThread(s32 id) {
-  if(_currentThread != -1) throw std::exception("tried to runThread in a thread");
+  if(_currentThread != -1) throw std::runtime_error("tried to runThread in a thread");
   _currentThread = id;
   threads.at(id).dispatch();
   threads.at(id).waitForReturnToKernel();
@@ -76,7 +76,7 @@ void IOP_Kernel::SuspendThread() {
   threads.at(oldThread).returnToKernel();
   threads.at(oldThread).waitForDispatch();
   if(_currentThread != oldThread) {
-    throw std::exception("bad resume");
+    throw std::runtime_error("bad resume");
   }
 }
 
@@ -128,7 +128,7 @@ void IOP_Kernel::dispatchAll() {
  */
 void IopThreadRecord::returnToKernel() {
   runThreadReady = false;
-  if(kernel->getCurrentThread() != thID) throw std::exception("tried to sleep the wrong thread!");
+  if(kernel->getCurrentThread() != thID) throw std::runtime_error("tried to sleep the wrong thread!");
 
   {
     std::lock_guard<std::mutex> lck(*threadToKernelMutex);
@@ -142,7 +142,7 @@ void IopThreadRecord::returnToKernel() {
  */
 void IopThreadRecord::dispatch() {
   syscallReady = false;
-  if(kernel->getCurrentThread() != thID) throw std::exception("tried to dispatch the wrong thread!");
+  if(kernel->getCurrentThread() != thID) throw std::runtime_error("tried to dispatch the wrong thread!");
   {
     std::lock_guard<std::mutex> lck(*kernelToThreadMutex);
     runThreadReady = true;
@@ -163,7 +163,7 @@ void IopThreadRecord::waitForReturnToKernel() {
  * Thread waits for kernel to dispatch it.
  */
 void IopThreadRecord::waitForDispatch() {
-  //if(kernel->getCurrentThread() == -1) throw std::exception("tried to suspend main!\n");
+  //if(kernel->getCurrentThread() == -1) throw std::runtime_error("tried to suspend main!\n");
   std::unique_lock<std::mutex> lck(*kernelToThreadMutex);
   kernelToThreadCV->wait(lck, [this]{return runThreadReady;});
   //runThreadReady = false;

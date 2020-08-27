@@ -272,7 +272,7 @@ void LinkedObjectFile::append_word_to_string(std::string& dest, const LinkedWord
       sprintf(buff, "    .sym-off 0x%x %s\n", word.data >> 16, word.symbol_name.c_str());
       break;
     default:
-      throw std::exception("nyi");
+      throw std::runtime_error("nyi");
   }
 
   dest += buff;

@@ -33,7 +33,7 @@ std::string object_type_to_string(ObjectType type) {
     case ObjectType::ENVIRONMENT:
       return "[environment]";
     default:
-      throw std::exception("unknown object type in object_type_to_string");
+      throw std::runtime_error("unknown object type in object_type_to_string");
   }
 }
 
@@ -151,7 +151,7 @@ bool Object::operator==(const Object& other) const {
     }
 
     default:
-      throw std::exception("equality not implemented for");
+      throw std::runtime_error("equality not implemented for");
   }
 }
 

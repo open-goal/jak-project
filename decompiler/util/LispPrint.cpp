@@ -72,7 +72,7 @@ void Form::buildStringSimple(std::string &str) {
         str.append(*token.str);
         break;
       default:
-        throw std::exception("buildStringSimple unknown token kind");
+        throw std::runtime_error("buildStringSimple unknown token kind");
     }
   }
 }
@@ -110,7 +110,7 @@ void Form::toTokenList(std::vector<FormToken> &tokens) {
       tokens.emplace_back(TokenKind::EMPTY_PAIR);
       break;
     default:
-      throw std::exception("unhandled form type in buildSimpleString");
+      throw std::runtime_error("unhandled form type in buildSimpleString");
       break;
   }
 }

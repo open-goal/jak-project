@@ -63,7 +63,7 @@ void deci2_runner(SystemThreadInterface& interfaces) {
 //  server.wait_for_protos_ready();
 //  // then allow the server to accept connections
 //  if (!server.init()) {
-//    throw std::exception("DECI2 server init failed");
+//    throw std::runtime_error("DECI2 server init failed");
 //  }
 //
 //  printf("[DECI2] waiting for listener...\n");

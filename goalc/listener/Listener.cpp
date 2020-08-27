@@ -43,7 +43,7 @@ bool Listener::is_connected() const {
 /*
 bool Listener::connect_to_target(const std::string& ip, int port) {
   if (m_connected) {
-    throw std::exception("attempted a Listener::connect_to_target when already connected!");
+    throw std::runtime_error("attempted a Listener::connect_to_target when already connected!");
   }
 
   if (socket_fd >= 0) {

@@ -264,7 +264,7 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   } else if (size == 8) {
     *Ptr<int64_t>(offset_of_patch).c() = diff;
   } else {
-    throw std::exception("unknown size in cross_seg_dist_link_v3");
+    throw std::runtime_error("unknown size in cross_seg_dist_link_v3");
   }
 
   return 1 + 3 * 4;

@@ -102,7 +102,7 @@ Reader::Reader() {
   // find the source directory
   auto result = std::getenv("NEXT_DIR");
   if (!result) {
-    throw std::exception(
+    throw std::runtime_error(
         "Environment variable NEXT_DIR is not set.  Please set this to point to next/");
   }
 
@@ -278,7 +278,7 @@ bool Reader::read_object(Token& tok, TextStream& ts, Object& obj) {
     if (try_token_as_symbol(tok, obj)) {
       return true;
     }
-  } catch (std::exception& e) {
+  } catch (std::runtime_error& e) {
     throw_reader_error(ts, "parsing token " + tok.text + " failed: " + e.what(), -1);
   }
 
@@ -564,7 +564,7 @@ bool Reader::try_token_as_float(const Token& tok, Object& obj) {
         return false;
       obj = Object::make_float(v);
       return true;
-    } catch (std::exception& e) {
+    } catch (std::runtime_error& e) {
       return false;
     }
   }
@@ -627,8 +627,8 @@ bool Reader::try_token_as_hex(const Token& tok, Object& obj) {
         return false;
       obj = Object::make_integer(v);
       return true;
-    } catch (std::exception& e) {
-      throw std::exception("The number cannot be a hexadecimal constant");
+    } catch (std::runtime_error& e) {
+      throw std::runtime_error("The number cannot be a hexadecimal constant");
     }
   }
   return false;
@@ -661,8 +661,8 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
         return false;
       obj = Object::make_integer(v);
       return true;
-    } catch (std::exception& e) {
-      throw std::exception("The number cannot be an integer constant");
+    } catch (std::runtime_error& e) {
+      throw std::runtime_error("The number cannot be an integer constant");
     }
   }
   return false;
@@ -697,7 +697,7 @@ bool Reader::try_token_as_char(const Token& tok, Object& obj) {
  * Used for reader errors, like "missing close paren" or similar.
  */
 void Reader::throw_reader_error(TextStream& here, const std::string& err, int seek_offset) {
-  throw std::exception("Reader error at");
+  throw std::runtime_error("Reader error at");
 }
 
 /*!

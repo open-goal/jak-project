@@ -226,8 +226,8 @@ FMT_FUNC void system_error::init(int err_code, string_view format_str,
   error_code_ = err_code;
   memory_buffer buffer;
   format_system_error(buffer, err_code, vformat(format_str, args));
-  std::exception& base = *this;
-//  base = std::exception(to_string(buffer));
+  std::runtime_error& base = *this;
+//  base = std::runtime_error(to_string(buffer));
 }
 
 namespace detail {
@@ -1175,7 +1175,7 @@ int snprintf_float(T value, int precision, float_specs specs,
     auto capacity = buf.capacity() - offset;
 #ifdef FMT_FUZZ
     if (precision > 100000)
-      throw std::exception(
+      throw std::runtime_error(
           "fuzz mode - avoid large allocation inside snprintf");
 #endif
     // Suppress the warning about a nonliteral format string.
@@ -1327,7 +1327,7 @@ FMT_FUNC detail::utf8_to_utf16::utf8_to_utf16(string_view s) {
     auto cp = uint32_t();
     auto error = 0;
     p = utf8_decode(p, &cp, &error);
-    if (error != 0) FMT_THROW(std::exception("invalid utf8"));
+    if (error != 0) FMT_THROW(std::runtime_error("invalid utf8"));
     if (cp <= 0xFFFF) {
       buffer_.push_back(static_cast<wchar_t>(cp));
     } else {

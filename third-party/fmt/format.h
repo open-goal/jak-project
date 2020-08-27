@@ -683,7 +683,7 @@ class basic_memory_buffer : public detail::buffer<T> {
 template <typename T, size_t SIZE, typename Allocator>
 void basic_memory_buffer<T, SIZE, Allocator>::grow(size_t size) {
 #ifdef FMT_FUZZ
-  if (size > 5000) throw std::exception("fuzz mode - won't grow that much");
+  if (size > 5000) throw std::runtime_error("fuzz mode - won't grow that much");
 #endif
   size_t old_capacity = this->capacity();
   size_t new_capacity = old_capacity + old_capacity / 2;
@@ -710,11 +710,11 @@ struct is_contiguous<basic_memory_buffer<T, SIZE, Allocator>> : std::true_type {
 
 /** A formatting error such as invalid format string. */
 FMT_CLASS_API
-class FMT_API format_error : public std::exception {
+class FMT_API format_error : public std::runtime_error {
  public:
-  explicit format_error(const char* message) : std::exception(message) {}
+  explicit format_error(const char* message) : std::runtime_error(message) {}
   explicit format_error(const std::string& message);
-  //    : std::exception(message) {}
+  //    : std::runtime_error(message) {}
   format_error(const format_error&) = default;
   format_error& operator=(const format_error&) = default;
   format_error(format_error&&) = default;
@@ -1145,7 +1145,7 @@ template <typename Char> class float_writer {
         }
 #ifdef FMT_FUZZ
         if (num_zeros > 5000)
-          throw std::exception("fuzz mode - avoiding excessive cpu use");
+          throw std::runtime_error("fuzz mode - avoiding excessive cpu use");
 #endif
         it = std::fill_n(it, num_zeros, static_cast<Char>('0'));
       }
@@ -2952,14 +2952,14 @@ using arg_formatter FMT_DEPRECATED_ALIAS =
  for example a file opening error.
 */
 FMT_CLASS_API
-class FMT_API system_error : public std::exception {
+class FMT_API system_error : public std::runtime_error {
  private:
   void init(int err_code, string_view format_str, format_args args);
 
  protected:
   int error_code_;
 
-  system_error() : std::exception(""), error_code_(0) {}
+  system_error() : std::runtime_error(""), error_code_(0) {}
 
  public:
   /**
@@ -2982,7 +2982,7 @@ class FMT_API system_error : public std::exception {
   */
   template <typename... Args>
   system_error(int error_code, string_view message, const Args&... args)
-      : std::exception("") {
+      : std::runtime_error("") {
     init(error_code, message, make_format_args(args...));
   }
   system_error(const system_error&) = default;

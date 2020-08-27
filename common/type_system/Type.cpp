@@ -227,35 +227,35 @@ std::string Type::print_method_info() const {
 NoneType::NoneType() : Type("", "none", false) {}
 
 bool NoneType::is_reference() const {
-  throw std::exception("is_reference called on NoneType");
+  throw std::runtime_error("is_reference called on NoneType");
 }
 
 int NoneType::get_load_size() const {
-  throw std::exception("get_load_size called on NoneType");
+  throw std::runtime_error("get_load_size called on NoneType");
 }
 
 bool NoneType::get_load_signed() const {
-  throw std::exception("get_load_size called on NoneType");
+  throw std::runtime_error("get_load_size called on NoneType");
 }
 
 int NoneType::get_size_in_memory() const {
-  throw std::exception("get_size_in_memory called on NoneType");
+  throw std::runtime_error("get_size_in_memory called on NoneType");
 }
 
 RegKind NoneType::get_preferred_reg_kind() const {
-  throw std::exception("get_preferred_reg_kind called on NoneType");
+  throw std::runtime_error("get_preferred_reg_kind called on NoneType");
 }
 
 int NoneType::get_offset() const {
-  throw std::exception("get_offset called on NoneType");
+  throw std::runtime_error("get_offset called on NoneType");
 }
 
 int NoneType::get_in_memory_alignment() const {
-  throw std::exception("get_in_memory_alignment called on NoneType");
+  throw std::runtime_error("get_in_memory_alignment called on NoneType");
 }
 
 int NoneType::get_inline_array_alignment() const {
-  throw std::exception("get_inline_array_alignment called on NoneType");
+  throw std::runtime_error("get_inline_array_alignment called on NoneType");
 }
 
 std::string NoneType::print() const {
