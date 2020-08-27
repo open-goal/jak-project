@@ -71,4 +71,11 @@ add_executable(gk ${RUNTIME_SOURCE})
 # can be used to test other things.
 add_library(runtime ${RUNTIME_SOURCE})
 
-target_link_libraries(gk pthread)
+
+IF (WIN32)
+  # set stuff for windows
+  target_link_libraries(gk)
+ELSE()
+  # set stuff for other systems
+  target_link_libraries(gk pthread)
+ENDIF()
