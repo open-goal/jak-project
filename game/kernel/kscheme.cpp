@@ -1225,7 +1225,8 @@ u64 inspect_object(u32 obj) {
     } else if ((obj & OFFSET_MASK) == PAIR_OFFSET) {
       return inspect_pair(obj);
     } else if ((obj & OFFSET_MASK) == BASIC_OFFSET) {
-      return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)), GOAL_INSPECT_METHOD);
+      return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)),
+                                 GOAL_INSPECT_METHOD);
     } else {
       cprintf("#<unknown type %d @ #x%x>", obj & OFFSET_MASK, obj);
     }

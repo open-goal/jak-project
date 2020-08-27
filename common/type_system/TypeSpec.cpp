@@ -39,7 +39,7 @@ bool TypeSpec::operator==(const TypeSpec& other) const {
 TypeSpec TypeSpec::substitute_for_method_call(const std::string& method_type) const {
   TypeSpec result;
   result.m_type = (m_type == "_type_") ? method_type : m_type;
-  for(const auto& x : m_arguments) {
+  for (const auto& x : m_arguments) {
     result.m_arguments.push_back(x.substitute_for_method_call(method_type));
   }
   return result;

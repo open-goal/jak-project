@@ -46,8 +46,8 @@ class TypeSystem {
   TypeSpec make_inline_array_typespec(const std::string& type);
   TypeSpec make_inline_array_typespec(const TypeSpec& type);
 
-  Type* lookup_type(const TypeSpec& ts);
-  Type* lookup_type(const std::string& name);
+  Type* lookup_type(const TypeSpec& ts) const;
+  Type* lookup_type(const std::string& name) const;
 
   MethodInfo add_method(Type* type, const std::string& method_name, const TypeSpec& ts);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
@@ -68,6 +68,11 @@ class TypeSystem {
   void add_builtin_types();
 
   std::string print_all_type_information() const;
+  bool typecheck(const TypeSpec& expected,
+                 const TypeSpec& actual,
+                 const std::string& error_source_name = "",
+                 bool print_on_error = true,
+                 bool throw_on_error = true) const;
 
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
@@ -83,6 +88,7 @@ class TypeSystem {
   }
 
  private:
+  bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_size_in_type(const Field& field);
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name);

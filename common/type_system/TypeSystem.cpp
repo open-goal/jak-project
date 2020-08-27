@@ -84,7 +84,7 @@ std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
 DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
   DerefInfo info;
 
-  if(!ts.has_single_arg()) {
+  if (!ts.has_single_arg()) {
     // not enough info.
     info.can_deref = false;
     return info;
@@ -97,7 +97,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
   if (ts.base_type() == "inline-array") {
     auto result_type = lookup_type(ts.get_single_arg());
     auto result_structure_type = dynamic_cast<StructureType*>(result_type);
-    if(!result_structure_type || result_structure_type->is_dynamic()) {
+    if (!result_structure_type || result_structure_type->is_dynamic()) {
       info.can_deref = false;
       return info;
     }
@@ -108,7 +108,6 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
     info.mem_deref = false;                  // but don't actually dereference a pointer
     info.result_type = ts.get_single_arg();  // what we're an inline-array of
     info.sign_extend = false;                // not applicable anyway
-
 
     if (result_type->is_reference()) {
       info.stride =
@@ -203,7 +202,7 @@ TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) {
  * possible, don't store a Type* and store a TypeSpec instead.  The TypeSpec can then be used with
  * lookup_type to find the most up-to-date type information.
  */
-Type* TypeSystem::lookup_type(const std::string& name) {
+Type* TypeSystem::lookup_type(const std::string& name) const {
   auto kv = m_types.find(name);
   if (kv != m_types.end()) {
     return kv->second.get();
@@ -224,7 +223,7 @@ Type* TypeSystem::lookup_type(const std::string& name) {
  * possible, don't store a Type* and store a TypeSpec instead.  The TypeSpec can then be used with
  * lookup_type to find the most up-to-date type information.
  */
-Type* TypeSystem::lookup_type(const TypeSpec& ts) {
+Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
   return lookup_type(ts.base_type());
 }
 
@@ -609,6 +608,39 @@ void TypeSystem::add_builtin_types() {
 
   // VU FUNCTION
   // don't inherit
+  (void)vu_function_type;
+
+  // link block
+  (void)link_block_type;
+
+  (void)kheap_type;
+  (void)array_type;
+  (void)pair_type;
+  (void)process_tree_type;
+  (void)process_type;
+  (void)thread_type;
+  (void)connectable_type;
+  (void)stack_frame_type;
+  (void)file_stream_type;
+  (void)pointer_type;
+  (void)inline_array_type;
+
+  (void)number_type;  // sign extend?
+  (void)float_type;
+  (void)integer_type;   // sign extend?
+  (void)binteger_type;  // sign extend?
+  (void)sinteger_type;
+  (void)int8_type;
+  (void)int16_type;
+  (void)int32_type;
+  (void)int64_type;
+  (void)int128_type;
+  (void)uinteger_type;
+  (void)uint8_type;
+  (void)uint16_type;
+  (void)uint32_type;
+  (void)uint64_type;
+  (void)uint128_type;
 }
 
 /*!
@@ -777,4 +809,88 @@ ValueType* TypeSystem::add_builtin_value_type(const std::string& parent,
  */
 void TypeSystem::builtin_structure_inherit(StructureType* st) {
   st->inherit(get_type_of_type<StructureType>(st->get_parent()));
+}
+
+/*!
+ * Main compile-time type check!
+ * @param expected - the expected type
+ * @param actual - the actual type (can be more specific)
+ * @param error_source_name - optional, can provide a name for where the error comes from
+ * @param print_on_error - print a message explaining the type error, if there is one
+ * @param throw_on_error - throw a std::runtime_error on failure if set.
+ * @return if the type check passes
+ */
+bool TypeSystem::typecheck(const TypeSpec& expected,
+                           const TypeSpec& actual,
+                           const std::string& error_source_name,
+                           bool print_on_error,
+                           bool throw_on_error) const {
+  bool success = true;
+  // first, typecheck the base types:
+  if (!typecheck_base_types(expected.base_type(), actual.base_type())) {
+    success = false;
+  }
+
+  // next argument checks:
+  if (expected.m_arguments.size() == actual.m_arguments.size()) {
+    for (size_t i = 0; i < expected.m_arguments.size(); i++) {
+      // don't print/throw because the error would be confusing. Better to fail only the
+      // outer most check and print a single error message.
+      if (!typecheck(expected.m_arguments[i], actual.m_arguments[i], "", false, false)) {
+        success = false;
+        break;
+      }
+    }
+  } else {
+    // different sizes of arguments.
+    if (expected.m_arguments.empty()) {
+      // we expect zero arguments, but got some. The actual type is more specific, so this is fine.
+    } else {
+      // different sizes, and we expected arguments. No good!
+      success = false;
+    }
+  }
+
+  if (!success) {
+    if (print_on_error) {
+      if (error_source_name.empty()) {
+        fmt::print("[TypeSystem] Got type \"{}\" when expecting \"{}\"\n", actual.print(),
+                   expected.print());
+      } else {
+        fmt::print("[TypeSystem] For {}, got type \"{}\" when expecting \"{}\"\n",
+                   error_source_name, actual.print(), expected.print());
+      }
+    }
+
+    if (throw_on_error) {
+      throw std::runtime_error("typecheck failed");
+    }
+  }
+
+  return success;
+}
+
+bool TypeSystem::typecheck_base_types(const std::string& expected,
+                                      const std::string& actual) const {
+  // just to make sure it exists. (note - could there be a case when it just has to be forward
+  // declared, but not defined?)
+  lookup_type(expected);
+
+  if (expected == actual) {
+    lookup_type(actual);  // make sure it exists
+    return true;
+  }
+
+  std::string actual_name = actual;
+  auto actual_type = lookup_type(actual_name);
+  while (actual_type->has_parent()) {
+    actual_name = actual_type->get_parent();
+    actual_type = lookup_type(actual_name);
+
+    if (expected == actual_name) {
+      return true;
+    }
+  }
+
+  return false;
 }

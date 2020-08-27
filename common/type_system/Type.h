@@ -217,9 +217,7 @@ class StructureType : public ReferenceType {
   int get_in_memory_alignment() const override;
   int get_inline_array_alignment() const override;
   bool lookup_field(const std::string& name, Field* out);
-  bool is_dynamic() const {
-    return m_dynamic;
-  }
+  bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
 
  protected:

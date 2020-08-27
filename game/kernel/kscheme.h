@@ -19,12 +19,10 @@ extern Ptr<u32> LastSymbol;
 
 constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
 
-
 constexpr s32 SYM_INFO_OFFSET = 0xff34;
 constexpr u32 EMPTY_HASH = 0x8454B6E6;
 constexpr u32 OFFSET_MASK = 7;
 constexpr u32 CRC_POLY = 0x04c11db7;
-
 
 constexpr u32 DEFAULT_METHOD_COUNT = 12;
 constexpr u32 FALLBACK_UNKNOWN_METHOD_COUNT = 44;

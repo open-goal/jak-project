@@ -34,6 +34,11 @@ TEST(Listener, DeciInit) {
  */
 TEST(Listener, ListenToNothing) {
   Listener l;
+  if (l.connect_to_target()) {
+    printf(
+        "~~~~~~ Test connected to a runtime when there shouldn't be anything running! Check that "
+        "you don't have gk running in the background!\n");
+  }
   EXPECT_FALSE(l.connect_to_target());
   l.disconnect();
 }

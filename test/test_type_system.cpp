@@ -143,16 +143,13 @@ TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
   EXPECT_EQ(info.result_type.print(), "int64");
 
   // test inline-array (won't work because type is dynamically sized)
-  type_spec =
-      ts.make_inline_array_typespec("type");
+  type_spec = ts.make_inline_array_typespec("type");
   info = ts.get_deref_info(type_spec);
   EXPECT_FALSE(info.can_deref);
 
-
   // TODO - replace with a better type.
   // TODO - maybe block basic or structure from being inline-array-able?
-  type_spec =
-      ts.make_inline_array_typespec("basic");
+  type_spec = ts.make_inline_array_typespec("basic");
   auto type = ts.lookup_type("basic");
   info = ts.get_deref_info(type_spec);
   EXPECT_TRUE(info.can_deref);
@@ -203,29 +200,83 @@ TEST(TypeSystem, NewMethod) {
   TypeSystem ts;
   ts.add_builtin_types();
   ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1"));
-  ts.add_method(ts.lookup_type("test-1"), "new", ts.make_function_typespec({"symbol", "string"}, "test-1"));
+  ts.add_method(ts.lookup_type("test-1"), "new",
+                ts.make_function_typespec({"symbol", "string"}, "test-1"));
   ts.add_type("test-2", std::make_unique<BasicType>("test-1", "test-2"));
-  ts.add_method(ts.lookup_type("test-2"), "new", ts.make_function_typespec({"symbol", "string", "symbol"}, "test-2"));
+  ts.add_method(ts.lookup_type("test-2"), "new",
+                ts.make_function_typespec({"symbol", "string", "symbol"}, "test-2"));
 
   EXPECT_EQ(ts.lookup_method("test-1", "new").type.print(), "(function symbol string test-1)");
-  EXPECT_EQ(ts.lookup_method("test-2", "new").type.print(), "(function symbol string symbol test-2)");
+  EXPECT_EQ(ts.lookup_method("test-2", "new").type.print(),
+            "(function symbol string symbol test-2)");
 
   ts.add_type("test-3", std::make_unique<BasicType>("test-1", "test-3"));
   EXPECT_EQ(ts.lookup_method("test-3", "new").type.print(), "(function symbol string test-1)");
 
   ts.add_type("test-4", std::make_unique<BasicType>("test-2", "test-4"));
-  EXPECT_EQ(ts.lookup_method("test-4", "new").type.print(), "(function symbol string symbol test-2)");
+  EXPECT_EQ(ts.lookup_method("test-4", "new").type.print(),
+            "(function symbol string symbol test-2)");
 }
-
 
 TEST(TypeSystem, MethodSubstitute) {
   TypeSystem ts;
   ts.add_builtin_types();
   ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1"));
-  ts.add_method(ts.lookup_type("test-1"), "new", ts.make_function_typespec({"symbol", "string", "_type_"}, "_type_"));
+  ts.add_method(ts.lookup_type("test-1"), "new",
+                ts.make_function_typespec({"symbol", "string", "_type_"}, "_type_"));
 
   auto final_type = ts.lookup_method("test-1", "new").type.substitute_for_method_call("test-1");
   EXPECT_EQ(final_type.print(), "(function symbol string test-1 test-1)");
+}
+
+namespace {
+bool ts_name_name(TypeSystem& ts, const std::string& ex, const std::string& act) {
+  return ts.typecheck(ts.make_typespec(ex), ts.make_typespec(act), "", false, false);
+}
+}  // namespace
+
+TEST(TypeSystem, TypeCheck) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+
+  EXPECT_TRUE(ts_name_name(ts, "none",
+                           "none"));  // none - none _shouldn't_ fail (for function return types!)
+  EXPECT_TRUE(ts_name_name(ts, "object", "object"));
+  EXPECT_TRUE(ts_name_name(ts, "object", "type"));
+  EXPECT_TRUE(ts_name_name(ts, "basic", "type"));
+  EXPECT_FALSE(ts_name_name(ts, "type", "basic"));
+  EXPECT_TRUE(ts_name_name(ts, "type", "type"));
+
+  auto f = ts.make_typespec("function");
+  auto f_s_n = ts.make_function_typespec({"string"}, "none");
+  auto f_b_n = ts.make_function_typespec({"basic"}, "none");
+
+  // complex
+  EXPECT_TRUE(ts.typecheck(f, f_s_n));
+  EXPECT_TRUE(ts.typecheck(f_s_n, f_s_n));
+  EXPECT_TRUE(ts.typecheck(f_b_n, f_s_n));
+
+  EXPECT_FALSE(ts.typecheck(f_s_n, f, "", false, false));
+  EXPECT_FALSE(ts.typecheck(f_s_n, f_b_n, "", false, false));
+
+  // number of parameter mismatch
+  auto f_s_s_n = ts.make_function_typespec({"string", "string"}, "none");
+  EXPECT_FALSE(ts.typecheck(f_s_n, f_s_s_n, "", false, false));
+  EXPECT_FALSE(ts.typecheck(f_s_s_n, f_s_n, "", false, false));
+}
+
+TEST(TypeSystem, FieldLookup) {
+  // note - this test isn't testing the specific needs_deref, type of the returned info.  Until more
+  // stuff is set up that test is kinda useless - it would just be testing against the exact
+  // implementation of lookup_field_info
+
+  TypeSystem ts;
+  ts.add_builtin_types();
+
+  EXPECT_EQ(ts.lookup_field_info("type", "parent").field.offset(), 8);
+  EXPECT_EQ(ts.lookup_field_info("string", "data").type.print(), "(pointer uint8)");
+
+  EXPECT_ANY_THROW(ts.lookup_field_info("type", "not-a-real-field"));
 }
 
 // field lookup
