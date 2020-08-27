@@ -102,7 +102,7 @@ Reader::Reader() {
   // find the source directory
   auto result = std::getenv("NEXT_DIR");
   if (!result) {
-    throw std::runtime_error(
+    throw std::exception(
         "Environment variable NEXT_DIR is not set.  Please set this to point to next/");
   }
 
@@ -588,7 +588,7 @@ bool Reader::try_token_as_binary(const Token& tok, Object& obj) {
 
     for (uint32_t i = 2; i < tok.text.size(); i++) {
       if (value & (0x8000000000000000)) {
-        throw std::runtime_error("overflow in binary constant: " + tok.text);
+        throw std::exception("overflow in binary constant: " + tok.text);
       }
 
       value <<= 1u;
@@ -628,7 +628,7 @@ bool Reader::try_token_as_hex(const Token& tok, Object& obj) {
       obj = Object::make_integer(v);
       return true;
     } catch (std::exception& e) {
-      throw std::runtime_error("The number " + tok.text + " cannot be a hexadecimal constant");
+      throw std::exception("The number " + tok.text + " cannot be a hexadecimal constant");
     }
   }
   return false;
@@ -662,7 +662,7 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
       obj = Object::make_integer(v);
       return true;
     } catch (std::exception& e) {
-      throw std::runtime_error("The number " + tok.text + " cannot be an integer constant");
+      throw std::exception("The number " + tok.text + " cannot be an integer constant");
     }
   }
   return false;
@@ -697,7 +697,7 @@ bool Reader::try_token_as_char(const Token& tok, Object& obj) {
  * Used for reader errors, like "missing close paren" or similar.
  */
 void Reader::throw_reader_error(TextStream& here, const std::string& err, int seek_offset) {
-  throw std::runtime_error("Reader error:\n" + err + "\nat " +
+  throw std::exception("Reader error:\n" + err + "\nat " +
                            db.get_info_for(here.text, here.seek + seek_offset));
 }
 

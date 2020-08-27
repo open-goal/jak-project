@@ -4,7 +4,7 @@
  * DONE!
  */
 
-#include <unistd.h>
+#include <io.h>
 #include <cstring>
 #include "common/common_types.h"
 #include "game/sce/libscf.h"
@@ -13,7 +13,7 @@
 #include "kscheme.h"
 #include "ksocket.h"
 #include "klisten.h"
-
+#include "Windows.h"
 using namespace ee;
 
 // Level to load on boot
@@ -135,7 +135,7 @@ void KernelCheckAndDispatch() {
       SendAck();
     }
 
-    usleep(1000);  // todo - remove this
+    Sleep(1000);  // todo - remove this
   }
 }
 

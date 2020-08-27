@@ -1,12 +1,11 @@
 /*!
  * @file Listener.cpp
  * The Listener can connect to a Deci2Server for debugging.
- */
+ 
 
 #include <stdexcept>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include <Winsock2.h>
+#include <io.h>
 #include <cassert>
 #include "Listener.h"
 #include "common/versions.h"
@@ -40,13 +39,11 @@ bool Listener::is_connected() const {
   return m_connected;
 }
 
-/*!
- * Attempt to connect to the target. If the target isn't running, this should fail quickly.
- * Returns true if successfully connected.
- */
+
+/*
 bool Listener::connect_to_target(const std::string& ip, int port) {
   if (m_connected) {
-    throw std::runtime_error("attempted a Listener::connect_to_target when already connected!");
+    throw std::exception("attempted a Listener::connect_to_target when already connected!");
   }
 
   if (socket_fd >= 0) {
@@ -73,8 +70,8 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
 
   // set nodelay, which makes small rapid messages faster, but large messages slower
-  int one = 1;
-  if (setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one))) {
+  const char one = 1;
+  if (setsockopt(socket_fd, SOL_SOCKET, TCP_NODELAY, &one, sizeof(one))) {
     printf("[Listener] failed to TCP_NODELAY\n");
     close(socket_fd);
     socket_fd = -1;
@@ -144,7 +141,15 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
 /*!
  * Runs in a separate thread to receive messages.
  * Will print messages to stdout, or optionally save them.
- */
+
+
+
+
+/*!
+ * Attempt to connect to the target. If the target isn't running, this should fail quickly.
+ * Returns true if successfully connected.
+ 
+
 void Listener::receive_func() {
   while (m_connected) {
     // attempt to receive a ListenerMessageHeader
@@ -239,3 +244,5 @@ void Listener::receive_func() {
 }
 
 }  // namespace listener
+
+*/

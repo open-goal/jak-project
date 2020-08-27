@@ -49,7 +49,7 @@ Object Interpreter::eval_read(const Object& form,
 
   try {
     return reader.read_from_string(args.unnamed.at(0).as_string()->data);
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     throw_eval_error(form, std::string("reader error inside of read:\n") + e.what());
   }
 
@@ -67,7 +67,7 @@ Object Interpreter::eval_read_file(const Object& form,
 
   try {
     return reader.read_from_file(args.unnamed.at(0).as_string()->data);
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     throw_eval_error(form, std::string("reader error inside of read-file:\n") + e.what());
   }
   return EmptyListObject::make_new();
@@ -85,13 +85,13 @@ Object Interpreter::eval_load_file(const Object& form,
   Object o;
   try {
     o = reader.read_from_file(args.unnamed.at(0).as_string()->data);
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     throw_eval_error(form, std::string("reader error inside of load-file:\n") + e.what());
   }
 
   try {
     return eval_with_rewind(o, global_environment.as_env());
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     throw_eval_error(form, std::string("eval error inside of load-file:\n") + e.what());
   }
   return EmptyListObject::make_new();

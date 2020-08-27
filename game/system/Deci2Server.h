@@ -2,13 +2,12 @@
  * @file Deci2Server.h
  * Basic implementation of a DECI2 server.
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
- */
+ 
 
 #ifndef JAK1_DECI2SERVER_H
 #define JAK1_DECI2SERVER_H
 
 #include <Winsock2.h>
-
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -55,3 +54,5 @@ class Deci2Server {
 
 
 #endif  // JAK1_DECI2SERVER_H
+
+*/

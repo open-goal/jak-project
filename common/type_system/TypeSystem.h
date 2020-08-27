@@ -76,7 +76,7 @@ class TypeSystem {
     auto x = lookup_type(type_name);
     T* result = dynamic_cast<T*>(x);
     if (!result) {
-      throw std::runtime_error("Failed to get " + type_name + " as the right type");
+      throw std::exception("Failed to get the right type");
     }
     return result;
   }

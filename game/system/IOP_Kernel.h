@@ -98,7 +98,7 @@ public:
    * Resume the kernel.
    */
   void returnToKernel() {
-    if(_currentThread < 0) throw std::runtime_error("tried to return to kernel not in a thread");
+    if(_currentThread < 0) throw std::exception("tried to return to kernel not in a thread");
     threads[_currentThread].returnToKernel();
   }
 
@@ -129,7 +129,7 @@ public:
       return -0x1a9;
     }
 //    printf("poll %d %ld\n", mbx, mbxs.size());
-    if(mbx >= (s32) mbxs.size()) throw std::runtime_error("invalid PollMbx");
+    if(mbx >= (s32) mbxs.size()) throw std::exception("invalid PollMbx");
     s32 gotSomething =  mbxs[mbx].empty() ? 0 : 1;
     if(gotSomething) {
       void* thing = mbxs[mbx].front();
@@ -146,7 +146,7 @@ public:
    * Push something into a mbx
    */
   s32 SendMbx(s32 mbx, void* value) {
-    if(mbx >= (s32) mbxs.size()) throw std::runtime_error("invalid SendMbx");
+    if(mbx >= (s32) mbxs.size()) throw std::exception("invalid SendMbx");
     mbxs[mbx].push(value);
 //    printf("push into messagebox %d %p\n", mbx, value);
 //    printf("mbx size %ld\n", mbxs.size());

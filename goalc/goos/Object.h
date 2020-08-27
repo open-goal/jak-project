@@ -222,78 +222,78 @@ class Object {
 
   std::shared_ptr<PairObject> as_pair() const {
     if (type != ObjectType::PAIR) {
-      throw std::runtime_error("as_pair called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_pair called on a " + object_type_to_string(type) + " " +
+                          //     print());
     }
     return std::dynamic_pointer_cast<PairObject>(heap_obj);
   }
 
   std::shared_ptr<EnvironmentObject> as_env() const {
     if (type != ObjectType::ENVIRONMENT) {
-      throw std::runtime_error("as_env called on a " + object_type_to_string(type) + " " + print());
+     // throw std::exception("as_env called on a " + object_type_to_string(type) + " " + print());
     }
     return std::dynamic_pointer_cast<EnvironmentObject>(heap_obj);
   }
 
   std::shared_ptr<SymbolObject> as_symbol() const {
     if (type != ObjectType::SYMBOL) {
-      throw std::runtime_error("as_symbol called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_symbol called on a " + object_type_to_string(type) + " " +
+                             //  print());
     }
     return std::dynamic_pointer_cast<SymbolObject>(heap_obj);
   }
 
   std::shared_ptr<StringObject> as_string() const {
     if (type != ObjectType::STRING) {
-      throw std::runtime_error("as_string called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_string called on a " + object_type_to_string(type) + " " +
+                              // print());
     }
     return std::dynamic_pointer_cast<StringObject>(heap_obj);
   }
 
   std::shared_ptr<LambdaObject> as_lambda() const {
     if (type != ObjectType::LAMBDA) {
-      throw std::runtime_error("as_lambda called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_lambda called on a " + object_type_to_string(type) + " " +
+                            //   print());
     }
     return std::dynamic_pointer_cast<LambdaObject>(heap_obj);
   }
 
   std::shared_ptr<MacroObject> as_macro() const {
     if (type != ObjectType::MACRO) {
-      throw std::runtime_error("as_macro called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_macro called on a " + object_type_to_string(type) + " " +
+                            //   print());
     }
     return std::dynamic_pointer_cast<MacroObject>(heap_obj);
   }
 
   std::shared_ptr<ArrayObject> as_array() const {
     if (type != ObjectType::ARRAY) {
-      throw std::runtime_error("as_array called on a " + object_type_to_string(type) + " " +
-                               print());
+    //  throw std::exception("as_array called on a " + object_type_to_string(type) + " " +
+                             //  print());
     }
     return std::dynamic_pointer_cast<ArrayObject>(heap_obj);
   }
 
   IntType& as_int() {
     if (type != ObjectType::INTEGER) {
-      throw std::runtime_error("as_int called on a " + object_type_to_string(type) + " " + print());
+     // throw std::exception("as_int called on a " + object_type_to_string(type) + " " + print());
     }
     return integer_obj.value;
   }
 
   FloatType& as_float() {
     if (type != ObjectType::FLOAT) {
-      throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_float called on a " + object_type_to_string(type) + " " +
+                           //    print());
     }
     return float_obj.value;
   }
 
   char& as_char() {
     if (type != ObjectType::CHAR) {
-      throw std::runtime_error("as_char called on a " + object_type_to_string(type) + " " +
-                               print());
+     // throw std::exception("as_char called on a " + object_type_to_string(type) + " " +
+                       //        print());
     }
     return char_obj.value;
   }

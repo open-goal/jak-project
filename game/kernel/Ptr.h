@@ -40,7 +40,7 @@ struct Ptr {
     if (offset) {
       return (T*)(g_ee_main_mem + offset);
     } else {
-      throw std::runtime_error("Ptr null dereference!");
+      throw std::exception("Ptr null dereference!");
     }
   }
 
@@ -51,7 +51,7 @@ struct Ptr {
     if (offset) {
       return *(T*)(g_ee_main_mem + offset);
     } else {
-      throw std::runtime_error("Ptr null dereference!");
+      throw std::exception("Ptr null dereference!");
     }
   }
 

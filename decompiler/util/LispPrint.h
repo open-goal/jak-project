@@ -70,7 +70,7 @@ struct FormToken {
         s.append(*str);
         break;
       default:
-        throw std::runtime_error("toString unknown token kind");
+        throw std::exception("toString unknown token kind");
     }
     return s;
   }

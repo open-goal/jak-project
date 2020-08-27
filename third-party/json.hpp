@@ -70,7 +70,7 @@ SOFTWARE.
 
 
 #include <exception> // exception
-#include <stdexcept> // runtime_error
+#include <stdexcept> // exception
 #include <string> // to_string
 
 // #include <nlohmann/detail/input/position_t.hpp>
@@ -92,7 +92,7 @@ struct position_t
     /// the number of lines read
     std::size_t lines_read = 0;
 
-    /// conversion to size_t to preserve SAX interface
+    /// conversion to size_t to preserve SAX interfaces
     constexpr operator size_t() const
     {
         return chars_read_total;
@@ -2339,7 +2339,7 @@ Subclasses:
 
 @internal
 @note To have nothrow-copy-constructible exceptions, we internally use
-      `std::runtime_error` which can cope with arbitrary-length error messages.
+      `std::exception` which can cope with arbitrary-length error messages.
       Intermediate strings are built with static functions and then passed to
       the actual constructor.
 @endinternal
@@ -2373,7 +2373,7 @@ class exception : public std::exception
 
   private:
     /// an exception object as storage for error messages
-    std::runtime_error m;
+    std::exception m;
 };
 
 /*!
@@ -4823,7 +4823,7 @@ class input_stream_adapter
     std::char_traits<char>::int_type get_character()
     {
         auto res = sb->sbumpc();
-        // set eof manually, as we don't use the istream interface.
+        // set eof manually, as we don't use the istream interfaces.
         if (JSON_HEDLEY_UNLIKELY(res == EOF))
         {
             is->clear(is->rdstate() | std::ios::eofbit);
@@ -5191,9 +5191,9 @@ namespace nlohmann
 {
 
 /*!
-@brief SAX interface
+@brief SAX interfaces
 
-This class describes the SAX interface used by @ref nlohmann::json::sax_parse.
+This class describes the SAX interfaces used by @ref nlohmann::json::sax_parse.
 Each function is called in different situations while the input is parsed. The
 boolean return value informs the parser whether to continue processing the
 input.
@@ -5314,7 +5314,7 @@ namespace detail
 /*!
 @brief SAX implementation to create a JSON value from SAX events
 
-This class implements the @ref json_sax interface and processes the SAX events
+This class implements the @ref json_sax interfaces and processes the SAX events
 to create a JSON value which makes it basically a DOM parser. The structure or
 hierarchy of the JSON value is managed by the stack `ref_stack` which contains
 a pointer to the respective array or object for each recursion depth.
@@ -7198,7 +7198,7 @@ scan_number_done:
     /*
     @brief get next character from the input
 
-    This function provides the interface to the used input adapter. It does
+    This function provides the interfaces to the used input adapter. It does
     not throw in case the input reached EOF, but returns a
     `std::char_traits<char>::eof()` in that case.  Stores the scanned characters
     for use in error messages.
@@ -9881,7 +9881,7 @@ class binary_reader
     /*!
     @brief get next character from the input
 
-    This function provides the interface to the used input adapter. It does
+    This function provides the interfaces to the used input adapter. It does
     not throw in case the input reached EOF, but returns a -'ve valued
     `std::char_traits<char_type>::eof()` in that case.
 
@@ -10184,7 +10184,7 @@ class parser
     }
 
     /*!
-    @brief public parser interface
+    @brief public parser interfaces
 
     @param[in] strict      whether to expect the last token to be EOF
     @param[in,out] result  parsed JSON value
@@ -10249,7 +10249,7 @@ class parser
     }
 
     /*!
-    @brief public accept interface
+    @brief public accept interfaces
 
     @param[in] strict  whether to expect the last token to be EOF
     @return whether the input is a proper JSON text
@@ -12628,7 +12628,7 @@ namespace nlohmann
 {
 namespace detail
 {
-/// abstract output adapter interface
+/// abstract output adapter interfaces
 template<typename CharType> struct output_adapter_protocol
 {
     virtual void write_character(CharType c) = 0;
@@ -16724,7 +16724,7 @@ class basic_json
     using initializer_list_t = std::initializer_list<detail::json_ref<basic_json>>;
 
     using input_format_t = detail::input_format_t;
-    /// SAX interface type, see @ref nlohmann::json_sax
+    /// SAX interfaces type, see @ref nlohmann::json_sax
     using json_sax_t = json_sax<basic_json>;
 
     ////////////////
@@ -21253,7 +21253,7 @@ class basic_json
           element as string (see example).
 
     @param[in] ref  reference to a JSON value
-    @return iteration proxy object wrapping @a ref with an interface to use in
+    @return iteration proxy object wrapping @a ref with an interfaces to use in
             range-based for loops
 
     @liveexample{The following code shows how the wrapper is used,iterator_wrapper}
@@ -21341,7 +21341,7 @@ class basic_json
              <https://github.com/nlohmann/json/issues/2040> for more
              information.
 
-    @return iteration proxy object wrapping @a ref with an interface to use in
+    @return iteration proxy object wrapping @a ref with an interfaces to use in
             range-based for loops
 
     @liveexample{The following code shows how the function is used.,items}
@@ -23249,7 +23249,7 @@ class basic_json
     /*!
     @brief generate SAX events
 
-    The SAX event lister must follow the interface of @ref json_sax.
+    The SAX event lister must follow the interfaces of @ref json_sax.
 
     This function reads from a compatible input. Examples are:
     - an std::istream object
