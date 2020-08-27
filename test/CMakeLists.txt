@@ -9,4 +9,10 @@ add_executable(goalc-test
         all_jak1_symbols.cpp
         test_type_system.cpp)
 
-target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)
+IF (WIN32)
+  # TODO - implement windows listener
+  message("Windows Listener Not Implemented!")
+  target_link_libraries(goalc-test goos util runtime emitter type_system gtest)
+ELSE()
+  target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)
+ENDIF()

@@ -6,8 +6,8 @@
  * @file Deci2Server.cpp
  * Basic implementation of a DECI2 server.
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
- 
-
+ */
+#ifdef __unix__
 #include <cstdio>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
@@ -266,4 +266,5 @@ void Deci2Server::accept_thread_func() {
     }
   }
 }
-*/
+
+#endif

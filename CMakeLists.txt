@@ -25,6 +25,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
         -Wsign-promo")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
+IF (WIN32)
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+ENDIF()
+
 # includes relative to top level jak-project folder
 include_directories(./)
 
@@ -54,3 +58,8 @@ add_subdirectory(third-party/minilzo)
 
 # build format library
 add_subdirectory(third-party/fmt)
+
+# windows memory management lib
+IF (WIN32)
+  add_subdirectory(third-party/mman)
+ENDIF()

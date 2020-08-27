@@ -46,44 +46,42 @@ namespace {
  */
 
 
-/*
 
 void deci2_runner(SystemThreadInterface& interfaces) {
-  // callback function so the server knows when to give up and shutdown
-  std::function<bool()> shutdown_callback = [&]() { return interfaces.get_want_exit(); };
-
-  // create and register server
-//  Deci2Server server(shutdown_callback);
-//  ee::LIBRARY_sceDeci2_register(&server);
-
-  // now its ok to continue with initialization
-  interfaces.initialization_complete();
-
-  // in our own thread, wait for the EE to register the first protocol driver
-  printf("[DECI2] waiting for EE to register protos\n");
-  server.wait_for_protos_ready();
-  // then allow the server to accept connections
-  if (!server.init()) {
-    throw std::exception("DECI2 server init failed");
-  }
-
-  printf("[DECI2] waiting for listener...\n");
-  bool saw_listener = false;
-  while (!interfaces.get_want_exit()) {
-    if (server.check_for_listener()) {
-      if (!saw_listener) {
-        printf("[DECI2] Connected!\n");
-      }
-      saw_listener = true;
-      // we have a listener, run!
-      server.run();
-    } else {
-      // no connection yet.  Do a sleep so we don't spam checking the listener.
-      Sleep(1000);
-    }
-  }
+//  // callback function so the server knows when to give up and shutdown
+//  std::function<bool()> shutdown_callback = [&]() { return interfaces.get_want_exit(); };
+//
+//  // create and register server
+////  Deci2Server server(shutdown_callback);
+////  ee::LIBRARY_sceDeci2_register(&server);
+//
+//  // now its ok to continue with initialization
+//  interfaces.initialization_complete();
+//
+//  // in our own thread, wait for the EE to register the first protocol driver
+//  printf("[DECI2] waiting for EE to register protos\n");
+//  server.wait_for_protos_ready();
+//  // then allow the server to accept connections
+//  if (!server.init()) {
+//    throw std::exception("DECI2 server init failed");
+//  }
+//
+//  printf("[DECI2] waiting for listener...\n");
+//  bool saw_listener = false;
+//  while (!interfaces.get_want_exit()) {
+//    if (server.check_for_listener()) {
+//      if (!saw_listener) {
+//        printf("[DECI2] Connected!\n");
+//      }
+//      saw_listener = true;
+//      // we have a listener, run!
+//      server.run();
+//    } else {
+//      // no connection yet.  Do a sleep so we don't spam checking the listener.
+//      Sleep(1000);
+//    }
+//  }
 }
-*/
 
 
 // EE System
