@@ -159,7 +159,7 @@ The "runtime" will be a replacement for all of the C/C++ code of the original ga
   - [x] GOAL Linker
   - [ ] PS2-specific hardware initialization as required by Sony libraries
   - [x] GOAL "kheap" allocator
-  - [ ] Memory card interface
+  - [ ] Memory card interfaces
   - [x] GOAL printf (called `format`) implementation
   - [x] GOAL hash/symbol table implementation
   - [x] Implementation of some built-in GOAL methods/functions
@@ -172,7 +172,7 @@ The "runtime" will be a replacement for all of the C/C++ code of the original ga
   - [ ] Ramdisk stuff (implemented but totally untested)
 - The "989_snd" sound driver (no progress has been made here, the rough plan is to do a high level emulation of the sound system)
 - Sony libraries
-  - [x] SIF (interface between EE/IOP for sending data, receiving data, and making remote procedure calls)
+  - [x] SIF (interfaces between EE/IOP for sending data, receiving data, and making remote procedure calls)
   - [x] IOP Kernel (single-processor non-preemptive multitasking)
   - [x] stubs for stuff that doesn't really matter
 

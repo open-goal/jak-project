@@ -13,6 +13,8 @@ constexpr u32 DEBUG_OUTPUT_BUFFER_SIZE = 0x80000;
 constexpr u32 DEBUG_PRINT_BUFFER_SIZE = 0x200000;
 constexpr u32 PRINT_BUFFER_SIZE = 0x2000;
 
+#define __attribute__(A) /* do nothing */
+
 ///////////
 // SDATA
 ///////////

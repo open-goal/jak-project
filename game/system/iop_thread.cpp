@@ -1,6 +1,6 @@
 #include "iop_thread.h"
 
-#include <unistd.h>
+#include <io.h>
 #include "SystemThread.h"
 //#include "shared_config.h"
 //#include "ps2/SCE_IOP.h"
@@ -95,7 +95,7 @@ IOP::~IOP() {
   reset_allocator();
 }
 
-//void launch_iop(SystemThreadInterface& interface) {
+//void launch_iop(SystemThreadInterface& interfaces) {
 //  IOP iop;
 //
 //  printf("\n\n\n[IOP] Restart!\n");
@@ -118,7 +118,7 @@ IOP::~IOP() {
 //
 ////  SCE_IOP::PS2_RegisterIOP(&iop);
 ////  PS2_RegisterIOP_EE(&iop);
-//  interface.initialization_complete();
+//  interfaces.initialization_complete();
 //
 //  printf("[IOP] Wait for OVERLORD to be started...\n");
 //  iop.wait_for_overlord_start_cmd();
@@ -140,7 +140,7 @@ IOP::~IOP() {
 //  iop.signal_overlord_init_finish();
 //
 //  // IOP Kernel loop
-//  while(!interface.get_want_exit() && !iop.want_exit) {
+//  while(!interfaces.get_want_exit() && !iop.want_exit) {
 //    // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the IOP.
 //    // Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
 //    iop.wait_run_iop();

@@ -3,9 +3,10 @@
  * Setup and launcher for the runtime.
  */
 
-#include <unistd.h>
-#include <sys/mman.h>
+#include <io.h>
+#include <third-party\mman.h>
 #include <cstring>
+#include <Windows.h>
 
 #include "runtime.h"
 #include "system/SystemThread.h"
@@ -43,28 +44,32 @@ namespace {
 /*!
  * SystemThread function for running the DECI2 communication with the GOAL compiler.
  */
-void deci2_runner(SystemThreadInterface& interface) {
+
+
+/*
+
+void deci2_runner(SystemThreadInterface& interfaces) {
   // callback function so the server knows when to give up and shutdown
-  std::function<bool()> shutdown_callback = [&]() { return interface.get_want_exit(); };
+  std::function<bool()> shutdown_callback = [&]() { return interfaces.get_want_exit(); };
 
   // create and register server
-  Deci2Server server(shutdown_callback);
-  ee::LIBRARY_sceDeci2_register(&server);
+//  Deci2Server server(shutdown_callback);
+//  ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
-  interface.initialization_complete();
+  interfaces.initialization_complete();
 
   // in our own thread, wait for the EE to register the first protocol driver
   printf("[DECI2] waiting for EE to register protos\n");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
   if (!server.init()) {
-    throw std::runtime_error("DECI2 server init failed");
+    throw std::exception("DECI2 server init failed");
   }
 
   printf("[DECI2] waiting for listener...\n");
   bool saw_listener = false;
-  while (!interface.get_want_exit()) {
+  while (!interfaces.get_want_exit()) {
     if (server.check_for_listener()) {
       if (!saw_listener) {
         printf("[DECI2] Connected!\n");
@@ -74,10 +79,12 @@ void deci2_runner(SystemThreadInterface& interface) {
       server.run();
     } else {
       // no connection yet.  Do a sleep so we don't spam checking the listener.
-      usleep(50000);
+      Sleep(1000);
     }
   }
 }
+*/
+
 
 // EE System
 constexpr int EE_MAIN_MEM_SIZE = 128 * (1 << 20);  // 128 MB, same as PS2 TOOL
@@ -95,7 +102,7 @@ constexpr int GOAL_ARGC = 4;
 /*!
  * SystemThread Function for the EE (PS2 Main CPU)
  */
-void ee_runner(SystemThreadInterface& interface) {
+void ee_runner(SystemThreadInterface& interfaces) {
   // Allocate Main RAM. Must have execute enabled.
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =
@@ -109,7 +116,7 @@ void ee_runner(SystemThreadInterface& interface) {
 
   if (g_ee_main_mem == (u8*)(-1)) {
     printf("  Failed to initialize main memory! %s\n", strerror(errno));
-    interface.initialization_complete();
+    interfaces.initialization_complete();
     return;
   }
 
@@ -118,7 +125,7 @@ void ee_runner(SystemThreadInterface& interface) {
          (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
   printf("[EE] Initialization complete!\n");
-  interface.initialization_complete();
+  interfaces.initialization_complete();
 
   printf("[EE] Run!\n");
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
@@ -145,13 +152,13 @@ void ee_runner(SystemThreadInterface& interface) {
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
 
   // after main returns, trigger a shutdown.
-  interface.trigger_shutdown();
+  interfaces.trigger_shutdown();
 }
 
 /*!
  * SystemThread function for running the IOP (separate I/O Processor)
  */
-void iop_runner(SystemThreadInterface& interface) {
+void iop_runner(SystemThreadInterface& interfaces) {
   IOP iop;
   printf("\n\n\n[IOP] Restart!\n");
   iop.reset_allocator();
@@ -174,7 +181,7 @@ void iop_runner(SystemThreadInterface& interface) {
   // ssound
   // stream
 
-  interface.initialization_complete();
+  interfaces.initialization_complete();
 
   printf("[IOP] Wait for OVERLORD to be started...\n");
   iop.wait_for_overlord_start_cmd();
@@ -195,7 +202,7 @@ void iop_runner(SystemThreadInterface& interface) {
   iop.signal_overlord_init_finish();
 
   // IOP Kernel loop
-  while (!interface.get_want_exit() && !iop.want_exit) {
+  while (!interfaces.get_want_exit() && !iop.want_exit) {
     // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the
     // IOP. Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
     iop.wait_run_iop();
@@ -232,8 +239,8 @@ void exec_runtime(int argc, char** argv) {
   // step 3: start the EE!
   iop_thread.start(iop_runner);
   ee_thread.start(ee_runner);
-  deci_thread.start(deci2_runner);
-
+  //deci_thread.start(deci2_runner);
+  
   // step 4: wait for EE to signal a shutdown, which will cause the DECI thread to join.
   deci_thread.join();
   // DECI has been killed, shutdown!

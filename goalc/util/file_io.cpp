@@ -7,7 +7,7 @@ namespace util {
 std::string read_text_file(const std::string& path) {
   std::ifstream file(path);
   if (!file.good()) {
-    throw std::runtime_error("couldn't open " + path);
+    throw std::exception("couldn't open ");
   }
   std::stringstream ss;
   ss << file.rdbuf();

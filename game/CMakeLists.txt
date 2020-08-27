@@ -1,9 +1,6 @@
 # We define our own compilation flags here.
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall \
--Wextra -Wcast-align -Wcast-qual -Wdisabled-optimization -Wformat=2 \
--Winit-self -Wmissing-include-dirs -Woverloaded-virtual \
--Wredundant-decls -Wshadow -Wsign-promo ")
+set(CMAKE_CXX_FLAGS " ")
 
 enable_language(ASM_NASM)
 set(RUNTIME_SOURCE
@@ -55,4 +52,3 @@ add_executable(gk ${RUNTIME_SOURCE})
 # can be used to test other things.
 add_library(runtime ${RUNTIME_SOURCE})
 
-target_link_libraries(gk pthread)

@@ -32,7 +32,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
         // update the type
         m_types[name] = std::move(type);
       } else {
-        throw std::runtime_error("Type was redefined with throw_on_redefine set.");
+        throw std::exception("Type was redefined with throw_on_redefine set.");
       }
     }
   } else {
@@ -43,13 +43,13 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         fmt::print("[TypeSystem] Type {} has incompletely defined parent {}\n", type->get_name(),
                    type->get_parent());
-        throw std::runtime_error("add_type failed");
+        throw std::exception("add_type failed");
       }
 
       if (m_types.find(type->get_parent()) == m_types.end()) {
         fmt::print("[TypeSystem] Type {} has undefined parent {}\n", type->get_name(),
                    type->get_parent());
-        throw std::runtime_error("add_type failed");
+        throw std::exception("add_type failed");
       }
     }
 
@@ -135,7 +135,7 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) {
     return TypeSpec(name);
   } else {
     fmt::print("[TypeSystem] The type {} is unknown.\n", name);
-    throw std::runtime_error("make_typespec failed");
+    throw std::exception("make_typespec failed");
   }
 }
 
@@ -199,7 +199,7 @@ Type* TypeSystem::lookup_type(const std::string& name) {
     fmt::print("[TypeSystem] The type {} is not defined.\n", name);
   }
 
-  throw std::runtime_error("lookup_type failed");
+  throw std::exception("lookup_type failed");
 }
 
 /*!
@@ -254,7 +254,7 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
           method_name, type->get_name(), existing_info.type.print(), ts.print());
       // unlike type re-definition, method re-definition is almost certain to go wrong.
       // probably better to give up.
-      throw std::runtime_error("method redefinition");
+      throw std::exception("method redefinition");
     }
 
     return existing_info;
@@ -278,7 +278,7 @@ MethodInfo TypeSystem::add_new_method(Type* type, const TypeSpec& ts) {
           "[TypeSystem] The new method of {} was originally defined as {}, but has been redefined "
           "as {}\n",
           type->get_name(), existing.type.print(), ts.print());
-      throw std::runtime_error("add_new_method failed");
+      throw std::exception("add_new_method failed");
     }
 
     return existing;
@@ -317,7 +317,7 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, const std::st
   }
 
   fmt::print("[TypeSystem] The method {} of type {} could not be found.\n", method_name, type_name);
-  throw std::runtime_error("lookup_method failed");
+  throw std::exception("lookup_method failed");
 }
 
 /*!
@@ -345,7 +345,7 @@ MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) {
   }
 
   fmt::print("[TypeSystem] The new method of type {} could not be found.\n", type_name);
-  throw std::runtime_error("lookup_new_method failed");
+  throw std::exception("lookup_new_method failed");
 }
 
 /*!
@@ -420,7 +420,7 @@ void TypeSystem::assert_field_offset(const std::string& type_name,
   if (field.offset() != offset) {
     fmt::print("[TypeSystem] assert_field_offset({}, {}, {}) failed - got {}\n", type_name,
                field_name, offset);
-    throw std::runtime_error("assert_field_offset failed");
+    throw std::exception("assert_field_offset failed");
   }
 }
 
@@ -436,7 +436,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   int offset_override) {
   if (type->lookup_field(field_name, nullptr)) {
     fmt::print("[TypeSystem] Type {} already has a field named {}\n", type->get_name(), field_name);
-    throw std::runtime_error("add_field_to_type duplicate field names");
+    throw std::exception("add_field_to_type duplicate field names");
   }
 
   // first, construct the field
@@ -467,7 +467,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
           "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
           "correctly\n",
           offset);
-      throw std::runtime_error("add_field_to_type bad offset_override");
+      throw std::exception("add_field_to_type bad offset_override");
     }
   }
 
@@ -649,7 +649,7 @@ Field TypeSystem::lookup_field(const std::string& type_name, const std::string& 
   Field field;
   if (!type->lookup_field(field_name, &field)) {
     fmt::print("[TypeSystem] Type {} has no field named {}\n", type_name, field_name);
-    throw std::runtime_error("lookup_field failed");
+    throw std::exception("lookup_field failed");
   }
   return field;
 }

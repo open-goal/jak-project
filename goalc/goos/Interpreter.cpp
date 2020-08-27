@@ -137,8 +137,8 @@ void Interpreter::execute_repl() {
  * for debugging.
  */
 void Interpreter::throw_eval_error(const Object& o, const std::string& err) {
-  throw std::runtime_error("[GOOS] Evaluation error on " + o.print() + ": " + err + "\n" +
-                           reader.db.get_info_for(o));
+ // throw std::exception("[GOOS] Evaluation error on " + o.print() + ": " + err + "\n" +
+                          // reader.db.get_info_for(o));
 }
 
 /*!
@@ -151,7 +151,7 @@ Object Interpreter::eval_with_rewind(const Object& obj,
   Object result = EmptyListObject::make_new();
   try {
     result = eval(obj, env);
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     if (!disable_printing) {
       printf("-----------------------------------------\n");
       printf("From object %s\nat %s\n", obj.inspect().c_str(), reader.db.get_info_for(obj).c_str());

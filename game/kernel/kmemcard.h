@@ -1,6 +1,6 @@
 /*!
  * @file kmemcard.h
- * Memory card interface. Very messy code.
+ * Memory card interfaces. Very messy code.
  */
 
 

@@ -48,7 +48,7 @@ int64_t Timer::getNs() {
   clock_gettime(CLOCK_MONOTONIC, &now);
 #elif _WIN32
   clock_gettime_monotonic(&now);
-#endif
+#endif;
   return (int64_t)(now.tv_nsec - _startTime.tv_nsec) +
          1000000000 * (now.tv_sec - _startTime.tv_sec);
 }

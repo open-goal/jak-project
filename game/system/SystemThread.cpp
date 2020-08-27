@@ -13,7 +13,7 @@
  */
 SystemThread& SystemThreadManager::create_thread(const std::string& name) {
   if (thread_count >= MAX_SYSTEM_THREADS) {
-    throw std::runtime_error("Out of System Threads!  Please increase MAX_SYSTEM_THREADS");
+    throw std::exception("Out of System Threads!  Please increase MAX_SYSTEM_THREADS");
   }
   auto& thread = threads[thread_count];
 
@@ -71,8 +71,8 @@ void SystemThreadManager::join() {
  */
 void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
-  SystemThreadInterface interface(thd);
-  thd->function(interface);
+  SystemThreadInterface interfaces(thd);
+  thd->function(interfaces);
   printf("[SYSTEM] Thread %s is returning\n", thd->name.c_str());
   return nullptr;
 }
@@ -83,7 +83,7 @@ void* bootstrap_thread_func(void* x) {
 void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
   printf("# Initialize %s...\n", name.c_str());
   function = f;
-  pthread_create(&thread, nullptr, bootstrap_thread_func, this);
+  std::thread(thread);
   running = true;
 
   // and wait for initialization
@@ -100,7 +100,7 @@ void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
  */
 void SystemThread::join() {
   void* x;
-  pthread_join(thread, &x);
+  thread.join();
   running = false;
 }
 
@@ -134,34 +134,4 @@ bool SystemThreadInterface::get_want_exit() const {
  */
 void SystemThreadInterface::trigger_shutdown() {
   thread.manager->shutdown();
-}
-
-#include <sys/time.h>
-#include <sys/resource.h>
-
-/*!
- * Get thread performance statistics and report them.
- */
-void SystemThreadInterface::report_perf_stats() {
-  if (thread.stat_diff_timer.getMs() > 16.f) {
-    thread.stat_diff_timer.start();
-
-    uint64_t current_ns = thread.stats_timer.getNs();
-    rusage stats;
-    getrusage(RUSAGE_THREAD, &stats);
-
-    uint64_t current_kernel = stats.ru_stime.tv_usec + (1000000 * stats.ru_stime.tv_sec);
-    uint64_t current_user = stats.ru_utime.tv_usec + (1000000 * stats.ru_utime.tv_sec);
-
-    uint64_t ns_dt = current_ns - thread.last_collection_nanoseconds;
-    uint64_t dt_kernel = current_kernel - thread.last_cpu_kernel;
-    uint64_t dt_user = current_user - thread.last_cpu_user;
-
-    thread.cpu_kernel = dt_kernel * 1000. / (double)ns_dt;
-    thread.cpu_user = dt_user * 1000. / (double)ns_dt;
-
-    thread.last_cpu_kernel = current_kernel;
-    thread.last_cpu_user = current_user;
-    thread.last_collection_nanoseconds = current_ns;
-  }
 }

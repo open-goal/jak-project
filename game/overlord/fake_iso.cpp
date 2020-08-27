@@ -343,6 +343,7 @@ uint32_t FS_LoadMusic(char* name, void* buffer) {
   (void)name;
   (void)buffer;
   assert(false);
+  return 0;
 }
 
 // TODO FS_LoadSoundBank
@@ -350,4 +351,5 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   (void)name;
   (void)buffer;
   assert(false);
+  return 0;
 }

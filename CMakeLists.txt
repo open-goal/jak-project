@@ -5,10 +5,7 @@ project(jak)
 set(CMAKE_CXX_STANDARD 14)
 
 # optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall \
--Wextra -Wcast-align -Wcast-qual -Wdisabled-optimization -Wformat=2 \
--Winit-self -Wmissing-include-dirs -Woverloaded-virtual \
--Wredundant-decls -Wshadow -Wsign-promo ")
+set(CMAKE_CXX_FLAGS "")
 
 # includes relative to top level jak-project folder
 include_directories(./)

@@ -1,7 +1,7 @@
 /*!
  * @file deci2.cpp
  * Implementation of SCE DECI2 library.
- */
+ 
 
 #include <cassert>
 #include <cstdio>
@@ -19,9 +19,9 @@ Deci2Driver* sending_driver;                 // currently sending protocol drive
 ::Deci2Server* server;                       // the server to send data to
 }  // namespace
 
-/*!
+
  * Initialize the library.
- */
+ 
 void LIBRARY_INIT_sceDeci2() {
   // reset protocols
   for (auto& p : protocols) {
@@ -34,7 +34,7 @@ void LIBRARY_INIT_sceDeci2() {
 
 /*!
  * Run any pending requested sends.
- */
+ 
 void LIBRARY_sceDeci2_run_sends() {
   for (auto& prot : protocols) {
     if (prot.active && prot.pending_send == 'H') {
@@ -49,7 +49,7 @@ void LIBRARY_sceDeci2_run_sends() {
 
 /*!
  * Register a Deci2Server with this library.
- */
+ 
 void LIBRARY_sceDeci2_register(::Deci2Server* s) {
   server = s;
 }
@@ -58,7 +58,7 @@ void LIBRARY_sceDeci2_register(::Deci2Server* s) {
  * Open a new socket with given protocol number and handler.
  * The "opt" pointer is passed to the handler function.
  * I don't know why it's like this.
- */
+ 
 s32 sceDeci2Open(u16 protocol, void* opt, void (*handler)(s32 event, s32 param, void* opt)) {
   server->lock();
   Deci2Driver drv;
@@ -82,7 +82,7 @@ s32 sceDeci2Open(u16 protocol, void* opt, void (*handler)(s32 event, s32 param, 
 
 /*!
  * Deactivate a DECI2 protocol by socket descriptor.
- */
+ 
 s32 sceDeci2Close(s32 s) {
   assert(s - 1 < protocol_count);
   protocols[s - 1].active = false;
@@ -91,7 +91,7 @@ s32 sceDeci2Close(s32 s) {
 
 /*!
  * Start a send.
- */
+ 
 s32 sceDeci2ReqSend(s32 s, char dest) {
   assert(s - 1 < protocol_count);
   auto& proto = protocols[s - 1];
@@ -102,7 +102,7 @@ s32 sceDeci2ReqSend(s32 s, char dest) {
 /*!
  * Do a receive from socket s into buf of size len.
  * Returns after data is copied.
- */
+ 
 s32 sceDeci2ExRecv(s32 s, void* buf, u16 len) {
   assert(s - 1 < protocol_count);
   protocols[s - 1].recv_size = len;
@@ -118,7 +118,7 @@ s32 sceDeci2ExRecv(s32 s, void* buf, u16 len) {
 
 /*!
  * Do a send.
- */
+ 
 s32 sceDeci2ExSend(s32 s, void* buf, u16 len) {
   assert(s - 1 < protocol_count);
   if (!sending_driver) {
@@ -134,3 +134,5 @@ s32 sceDeci2ExSend(s32 s, void* buf, u16 len) {
 }
 
 }  // namespace ee
+
+*/
