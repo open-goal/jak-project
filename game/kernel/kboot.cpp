@@ -128,7 +128,7 @@ void KernelCheckAndDispatch() {
     // dispatch the kernel
     //(**kernel_dispatcher)();
     call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-    ClearPending();
+    //ClearPending();
 
     // if the listener function changed, it means the kernel ran it, so we should notify compiler.
     if (MasterDebug && ListenerFunction->value != old_listener) {

@@ -151,7 +151,7 @@ bool Object::operator==(const Object& other) const {
     }
 
     default:
-     throw std::runtime_error("equality not implemented for " + print());
+      throw std::exception("equality not implemented for");
   }
 }
 

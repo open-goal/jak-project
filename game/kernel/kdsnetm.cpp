@@ -1,3 +1,6 @@
+
+
+/*
 /*!
  * @file kdsnetm.cpp
  * Low-level DECI2 wrapper for ksocket
@@ -30,7 +33,7 @@ void kdsnetm_init_globals() {
 /*!
  * Register GOAL DECI2 Protocol Driver with DECI2 service
  * DONE, EXACT
- */
+
 void InitGoalProto() {
   protoBlock.socket = sceDeci2Open(DECI2_PROTOCOL, &protoBlock, GoalProtoHandler);
   if (protoBlock.socket < 0) {
@@ -46,10 +49,12 @@ void InitGoalProto() {
   }
 }
 
+*/
+
 /*!
  * Close the DECI2 Protocol Driver
  * DONE, EXACT
- */
+
 void ShutdownGoalProto() {
   if (protoBlock.socket > 0) {
     sceDeci2Close(protoBlock.socket);
@@ -60,7 +65,7 @@ void ShutdownGoalProto() {
  * Handle a DECI2 Protocol Event for the GOAL Proto.
  * Called by the DECI2 Protocol driver
  * DONE, added print statements on errors for debugging, EI and SYNC at the end were removed
- */
+ 
 void GoalProtoHandler(int event, int param, void* opt) {
   // verify we got the correct opt pointer.  It's not clear why the opt pointer is used
   // like this?
@@ -160,7 +165,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
  * Will block until send is complete.
  * DONE, original version used an uncached address and had a FlushCache call, which were both
  * removed
- */
+ 
 s32 SendFromBufferD(s32 msg_kind, u64 p2, char* data, s32 size) {
   // wait for send to finish or error first...
   while (protoBlock.send_status > 0) {
@@ -215,8 +220,11 @@ s32 SendFromBufferD(s32 msg_kind, u64 p2, char* data, s32 size) {
 
 /*!
  * Print GOAL Protocol status
- */
+ 
 void GoalProtoStatus() {
   Msg(6, "gproto: got %d %d\n", protoBlock.most_recent_event, protoBlock.most_recent_param);
   Msg(6, "gproto: %d %d\n", protoBlock.last_receive_size, protoBlock.send_remaining);
 }
+
+
+*/
