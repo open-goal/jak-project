@@ -227,7 +227,7 @@ void exec_runtime(int argc, char** argv) {
   // step 1: sce library prep
   iop::LIBRARY_INIT();
   ee::LIBRARY_INIT_sceCd();
-  ee::LIBRARY_INIT_sceDeci2();
+  //ee::LIBRARY_INIT_sceDeci2();
   ee::LIBRARY_INIT_sceSif();
 
   // step 2: system prep
