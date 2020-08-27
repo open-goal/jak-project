@@ -3,4 +3,4 @@
 
 void PrintBankInfo(void* buffer);
 
-#endif //JAK_V2_SOUNDCOMMON_H
+#endif  // JAK_V2_SOUNDCOMMON_H

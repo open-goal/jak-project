@@ -72,46 +72,46 @@ class IGen {
     return instr;
   }
 
-    /*!
-     * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
-     */
-    static Instruction movd_gpr32_xmm32(uint8_t dst, uint8_t src) {
-      assert(is_gpr(dst));
-      assert(is_xmm(src));
-      Instruction instr(0x66);
-      instr.set_op2(0x0f);
-      instr.set_op3(0x7e);
-      instr.set_modrm_and_rex(xmm_to_id(src), dst, 3, false);
-      instr.swap_op0_rex();
-      return instr;
-    }
+  /*!
+   * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
+   */
+  static Instruction movd_gpr32_xmm32(uint8_t dst, uint8_t src) {
+    assert(is_gpr(dst));
+    assert(is_xmm(src));
+    Instruction instr(0x66);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x7e);
+    instr.set_modrm_and_rex(xmm_to_id(src), dst, 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
 
-    /*!
-     * Move 32-bits of gpr to 32-bits of xmm (no sign extenion)
-     */
-    static Instruction movd_xmm32_gpr32(uint8_t dst, uint8_t src) {
-      assert(is_xmm(dst));
-      assert(is_gpr(src));
-      Instruction instr(0x66);
-      instr.set_op2(0x0f);
-      instr.set_op3(0x6e);
-      instr.set_modrm_and_rex(dst, xmm_to_id(src), 3, false);
-      instr.swap_op0_rex();
-      return instr;
-    }
+  /*!
+   * Move 32-bits of gpr to 32-bits of xmm (no sign extenion)
+   */
+  static Instruction movd_xmm32_gpr32(uint8_t dst, uint8_t src) {
+    assert(is_xmm(dst));
+    assert(is_gpr(src));
+    Instruction instr(0x66);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x6e);
+    instr.set_modrm_and_rex(dst, xmm_to_id(src), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
 
-    /*!
-     * Move 32-bits between xmm's
-     */
-    static Instruction mov_xmm32_xmm32(uint8_t dst, uint8_t src) {
-      assert(is_xmm(dst));
-      assert(is_xmm(src));
-      Instruction instr(0xf3);
-      instr.set_op2(0x0f);
-      instr.set_op3(0x10);
-      instr.set_modrm_and_rex(xmm_to_id(dst), xmm_to_id(src), 3, false);
-      return instr;
-    }
+  /*!
+   * Move 32-bits between xmm's
+   */
+  static Instruction mov_xmm32_xmm32(uint8_t dst, uint8_t src) {
+    assert(is_xmm(dst));
+    assert(is_xmm(src));
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x10);
+    instr.set_modrm_and_rex(xmm_to_id(dst), xmm_to_id(src), 3, false);
+    return instr;
+  }
   //
   //  //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //  //   LOADS n' STORES

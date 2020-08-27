@@ -18,9 +18,7 @@ struct ModRM {
   uint8_t reg_op;
   uint8_t rm;
 
-  uint8_t operator()() const {
-    return (mod << 6) | (reg_op << 3) | (rm << 0);
-  }
+  uint8_t operator()() const { return (mod << 6) | (reg_op << 3) | (rm << 0); }
 };
 
 /*!
@@ -29,9 +27,7 @@ struct ModRM {
 struct SIB {
   uint8_t scale, index, base;
 
-  uint8_t operator()() const {
-    return (scale << 6) | (index << 3) | (base << 0);
-  }
+  uint8_t operator()() const { return (scale << 6) | (index << 3) | (base << 0); }
 };
 
 /*!
@@ -39,35 +35,33 @@ struct SIB {
  */
 struct Imm {
   Imm() = default;
-  Imm(uint8_t sz, uint64_t v) : size(sz), value(v) { }
+  Imm(uint8_t sz, uint64_t v) : size(sz), value(v) {}
   uint8_t size;
   union {
     uint64_t value;
     uint8_t v_arr[8];
   };
-
 };
 
 /*!
  * The REX prefix byte
  */
 struct REX {
-  explicit REX(bool w = false, bool r = false, bool x = false, bool b = false) : W(w), R(r), X(x), B(b) { }
+  explicit REX(bool w = false, bool r = false, bool x = false, bool b = false)
+      : W(w), R(r), X(x), B(b) {}
   // W - 64-bit operands
   // R - reg extension
   // X - SIB i extnsion
   // B - other extension
   bool W, R, X, B;
-  uint8_t operator()() const {
-    return (1 << 6) | (W << 3) | (R << 2) | (X << 1) | (B << 0);
-  }
+  uint8_t operator()() const { return (1 << 6) | (W << 3) | (R << 2) | (X << 1) | (B << 0); }
 };
 
 /*!
  * A high-level description of an x86-64 opcode.  It can emit itself.
  */
 struct Instruction {
-  Instruction(uint8_t opcode) : op(opcode) { }
+  Instruction(uint8_t opcode) : op(opcode) {}
   uint8_t op;
 
   bool op2_set = false;
@@ -110,7 +104,8 @@ struct Instruction {
    * Move opcode byte 0 to before the rex prefix.
    */
   void swap_op0_rex() {
-    if(!set_rex) return;
+    if (!set_rex)
+      return;
     auto temp = op;
     op = m_rex;
     m_rex = temp;
@@ -157,12 +152,12 @@ struct Instruction {
   void set_modrm_and_rex(uint8_t reg, uint8_t rm, uint8_t mod, bool rex_w = false) {
     bool rex_b = false, rex_r = false;
 
-    if(rm >= 8) {
+    if (rm >= 8) {
       rm -= 8;
       rex_b = true;
     }
 
-    if(reg >= 8) {
+    if (reg >= 8) {
       reg -= 8;
       rex_r = true;
     }
@@ -174,7 +169,7 @@ struct Instruction {
 
     set(modrm);
 
-    if(rex_b || rex_w || rex_r) {
+    if (rex_b || rex_w || rex_r) {
       set(REX(rex_w, rex_r, false, rex_b));
     }
   }
@@ -186,12 +181,12 @@ struct Instruction {
   void set_modrm_and_rex_for_addr(uint8_t reg, uint8_t rm, uint8_t mod, bool rex_w = false) {
     bool rex_b = false, rex_r = false;
 
-    if(rm >= 8) {
+    if (rm >= 8) {
       rm -= 8;
       rex_b = true;
     }
 
-    if(reg >= 8) {
+    if (reg >= 8) {
       reg -= 8;
       rex_r = true;
     }
@@ -203,7 +198,7 @@ struct Instruction {
 
     set(modrm);
 
-    if(rm == 4) {
+    if (rm == 4) {
       SIB sib;
       sib.scale = 0;
       sib.base = 4;
@@ -212,13 +207,13 @@ struct Instruction {
       set(sib);
     }
 
-    if(rex_b || rex_w || rex_r) {
+    if (rex_b || rex_w || rex_r) {
       set(REX(rex_w, rex_r, false, rex_b));
     }
   }
 
   void add_rex() {
-    if(!set_rex) {
+    if (!set_rex) {
       set(REX());
     }
   }
@@ -230,7 +225,7 @@ struct Instruction {
     ModRM modrm;
 
     bool rex_r = false;
-    if(reg >= 8) {
+    if (reg >= 8) {
       reg -= 8;
       rex_r = true;
     }
@@ -238,13 +233,13 @@ struct Instruction {
 
     modrm.mod = mod;
 
-    modrm.rm = 4; // use sib
+    modrm.rm = 4;  // use sib
 
     SIB sib;
     sib.scale = 0;
     sib.index = 4;
     bool rex_b = false;
-    if(rm >= 8) {
+    if (rm >= 8) {
       rex_b = true;
       rm -= 8;
     }
@@ -254,25 +249,30 @@ struct Instruction {
     set(modrm);
     set(sib);
 
-    if(rex_r || rex_w || rex_b) {
+    if (rex_r || rex_w || rex_b) {
       set(REX(rex_w, rex_r, false, rex_b));
     }
   }
-
 
   /*!
    * Get the position of the disp immediate relative to the start of the instruction
    */
   int offset_of_disp() const {
-    if(is_null) return 0;
+    if (is_null)
+      return 0;
     assert(set_disp_imm);
     int offset = 0;
-    if(set_rex) offset++;
-    offset++; // opcode
-    if(op2_set) offset++;
-    if(op3_set) offset++;
-    if(set_modrm) offset++;
-    if(set_sib) offset++;
+    if (set_rex)
+      offset++;
+    offset++;  // opcode
+    if (op2_set)
+      offset++;
+    if (op3_set)
+      offset++;
+    if (set_modrm)
+      offset++;
+    if (set_sib)
+      offset++;
     return offset;
   }
 
@@ -280,16 +280,23 @@ struct Instruction {
    * Get the position of the imm immediate relative to the start of the instruction
    */
   int offset_of_imm() const {
-    if(is_null) return 0;
+    if (is_null)
+      return 0;
     assert(set_imm);
     int offset = 0;
-    if(set_rex) offset++;
-    offset++; // opcode
-    if(op2_set) offset++;
-    if(op3_set) offset++;
-    if(set_modrm) offset++;
-    if(set_sib) offset++;
-    if(set_disp_imm) offset += disp.size;
+    if (set_rex)
+      offset++;
+    offset++;  // opcode
+    if (op2_set)
+      offset++;
+    if (op3_set)
+      offset++;
+    if (set_modrm)
+      offset++;
+    if (set_sib)
+      offset++;
+    if (set_disp_imm)
+      offset += disp.size;
     return offset;
   }
 
@@ -297,44 +304,45 @@ struct Instruction {
    * Emit into a buffer and return how many bytes written (can be zero)
    */
   uint8_t emit(uint8_t* buffer) const {
-    if(is_null) return 0;
+    if (is_null)
+      return 0;
     uint8_t count = 0;
-    if(set_rex) {
+    if (set_rex) {
       buffer[count++] = m_rex;
     }
 
     buffer[count++] = op;
 
-    if(op2_set) {
+    if (op2_set) {
       buffer[count++] = op2;
     }
 
-    if(op3_set) {
+    if (op3_set) {
       buffer[count++] = op3;
     }
 
-    if(set_modrm) {
+    if (set_modrm) {
       buffer[count++] = m_modrm;
     }
 
-    if(set_sib) {
+    if (set_sib) {
       buffer[count++] = m_sib;
     }
 
-    if(set_disp_imm) {
-      for(int i = 0; i < disp.size; i++) {
+    if (set_disp_imm) {
+      for (int i = 0; i < disp.size; i++) {
         buffer[count++] = disp.v_arr[i];
       }
     }
 
-    if(set_imm) {
-      for(int i = 0; i < imm.size; i++) {
+    if (set_imm) {
+      for (int i = 0; i < imm.size; i++) {
         buffer[count++] = imm.v_arr[i];
       }
     }
     return count;
   }
 };
-}
+}  // namespace goal
 
 #endif  // JAK1_INSTRUCTION_H

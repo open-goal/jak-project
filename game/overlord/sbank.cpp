@@ -1,5 +1,3 @@
 #include "sbank.h"
 
-void InitBanks() {
-
-}
+void InitBanks() {}

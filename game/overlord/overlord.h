@@ -4,4 +4,4 @@
 int start_overlord(int argc, const char* const* argv);
 void ExitIOP();
 
-#endif //JAK_V2_OVERLORD_H
+#endif  // JAK_V2_OVERLORD_H

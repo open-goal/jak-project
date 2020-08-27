@@ -8,4 +8,4 @@ int sceScfGetAspect() {
 int sceScfGetLanguage() {
   return SCE_ENGLISH_LANGUAGE;
 }
-}
+}  // namespace ee

@@ -6,7 +6,7 @@ using namespace iop;
 /*!
  * Load a File to IOP memory (blocking)
  */
-void LoadISOFileToIOP(FileRecord *file, void *addr, uint32_t length) {
+void LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
   printf("[OVERLORD] LoadISOFileToIOP %s, %d/%d bytes\n", file->name, length, file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_IOP_CMD_ID;
@@ -18,7 +18,7 @@ void LoadISOFileToIOP(FileRecord *file, void *addr, uint32_t length) {
   SendMbx(iso_mbx, &cmd);
   SleepThread();
 
-  if(cmd.status) {
+  if (cmd.status) {
     cmd.length_to_copy = 0;
   }
 }
@@ -26,7 +26,7 @@ void LoadISOFileToIOP(FileRecord *file, void *addr, uint32_t length) {
 /*!
  * Load a File to IOP memory (blocking)
  */
-void LoadISOFileToEE(FileRecord *file, uint32_t addr, uint32_t length) {
+void LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
   printf("[OVERLORD] LoadISOFileToEE %s, %d/%d bytes\n", file->name, length, file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_CMD_ID;
@@ -38,7 +38,7 @@ void LoadISOFileToEE(FileRecord *file, uint32_t addr, uint32_t length) {
   SendMbx(iso_mbx, &cmd);
   SleepThread();
 
-  if(cmd.status) {
+  if (cmd.status) {
     cmd.length_to_copy = 0;
   }
 }

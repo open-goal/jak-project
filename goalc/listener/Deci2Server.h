@@ -12,8 +12,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
-#include "game/system/deci_common.h" // todo, move me!
-
+#include "game/system/deci_common.h"  // todo, move me!
 
 class Deci2Server {
  public:
@@ -30,7 +29,6 @@ class Deci2Server {
   void send_proto_ready(Deci2Driver* drivers, int* driver_count);
 
   void run();
-
 
  private:
   void accept_thread_func();
@@ -51,7 +49,5 @@ class Deci2Server {
   Deci2Driver* d2_drivers = nullptr;
   int* d2_driver_count = nullptr;
 };
-
-
 
 #endif  // JAK1_DECI2SERVER_H

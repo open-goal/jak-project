@@ -48,9 +48,10 @@ std::string TypeInfo::get_summary() {
           " Total Types: %d\n"
           "   with info: %d (%.2f%%)\n"
           "   with method count: %d (%.2f%%)\n",
-          total_symbols, syms_with_type_info, 100.f * float(syms_with_type_info) / float(total_symbols),
-          total_types, types_with_info, 100.f * float(types_with_info) / float(total_types),
-          types_with_method_count, 100.f * float(types_with_method_count) / float(total_types));
+          total_symbols, syms_with_type_info,
+          100.f * float(syms_with_type_info) / float(total_symbols), total_types, types_with_info,
+          100.f * float(types_with_info) / float(total_types), types_with_method_count,
+          100.f * float(types_with_method_count) / float(total_types));
 
   return {buffer};
 }
@@ -67,7 +68,7 @@ void TypeInfo::inform_symbol_with_no_type_info(const std::string& name) {
   }
 }
 
-void TypeInfo::inform_symbol(const std::string &name, TypeSpec type) {
+void TypeInfo::inform_symbol(const std::string& name, TypeSpec type) {
   inform_symbol_with_no_type_info(name);
   m_symbols.at(name).set_type(std::move(type));
 }
@@ -88,10 +89,10 @@ void TypeInfo::inform_type_method_count(const std::string& name, int methods) {
 
 std::string TypeInfo::get_all_symbols_debug() {
   std::string result = "const char* all_syms[" + std::to_string(m_symbols.size()) + "] = {";
-  for(auto& x : m_symbols) {
+  for (auto& x : m_symbols) {
     result += "\"" + x.first + "\",";
   }
-  if(!result.empty()) {
+  if (!result.empty()) {
     result.pop_back();
   }
   return result + "};";

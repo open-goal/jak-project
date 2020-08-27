@@ -4,7 +4,7 @@
 struct Deci2Driver {
   u16 protocol = 0;
   void* opt = nullptr;
-  void (*handler)(s32 event, s32 param, void *opt) = nullptr;
+  void (*handler)(s32 event, s32 param, void* opt) = nullptr;
   u8 id = 0;
   bool active = false;
   void* recv_buffer = nullptr;
