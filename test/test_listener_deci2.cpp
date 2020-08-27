@@ -1,3 +1,5 @@
+#ifdef __unix__
+
 #include "gtest/gtest.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/listener/Deci2Server.h"
@@ -118,5 +120,6 @@ TEST(Listener, ListenerMultipleDecis) {
     }
     l.disconnect();
   }
-
 }
+
+#endif
