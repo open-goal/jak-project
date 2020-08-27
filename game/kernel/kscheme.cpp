@@ -619,7 +619,7 @@ Ptr<Type> intern_type_from_c(const char* name, u64 methods) {
           "dkernel: trying to redefine a type '%s' with %d methods when it had %d, try "
           "restarting\n",
           name, (u32)methods, type->num_methods);
-      assert(false);
+      //      assert(false);
     }
     return type;
   }

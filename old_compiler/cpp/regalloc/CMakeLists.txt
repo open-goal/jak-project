@@ -1,0 +1,1 @@
+add_library(regalloc SHARED RegAllocInstr.cpp RegAllocProgram.cpp)

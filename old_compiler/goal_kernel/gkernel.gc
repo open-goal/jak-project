@@ -1,0 +1,61 @@
+;-*-Lisp-*-
+(in-package goal)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GOAL Kernel
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; added globals:
+(define fancy-listener-print #f)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; globals (done!)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the C Kernel will check this to see if the kernel loaded correctly.
+(define *kernel-version* (the binteger (logior (ash *kernel-major-version* 16) *kernel-minor-version*)))
+
+;; version of the overlord (don't know if checked yet)
+(define *irx-version* (the binteger (logior (ash *irx-major-version* 16) *irx-minor-version*)))
+
+;; If the game is booting is DiskBoot mode, this is set to 'boot'
+(define *kernel-boot-mode* 'listener)
+
+;; default level is #f.  The C Kernel may set a level after loading the kernel though through DebugBootLevel
+(define *kernel-boot-level* (the symbol #f))
+
+;; number of deci messages.
+(define *deci-count* 0)
+
+;; some stats tracking. unused?
+(define *last-loado-length* 0)
+(define *last-loado-global-usage* 0)
+(define *last-loado-debug-usage* 0)
+
+
+(define *kernel-packages* '())
+
+
+(defun kernel-dispatcher ()
+  "The real kernel dispatcher"
+  
+  ;; First, check for a new listener function
+  (when *listener-function*
+    ;; enable method set functionality so we can add methods from the listener.
+    (+! *enable-method-set* 1)
+    
+    ;; run the listener function in the listener process
+    (let ((result (the object (*listener-function*))))
+      (if fancy-listener-print
+          (format #t "~D        #x~X        ~F        ~A~%" result result result result)
+          (format #t "~d~%" result)
+          )
+      )
+    (+! *enable-method-set* -1)
+    (set! *listener-function* (the (function object) #f))
+    )
+
+
+  )
+
+

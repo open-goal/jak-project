@@ -39,3 +39,6 @@ add_subdirectory(third-party/minilzo)
 
 # build format library
 add_subdirectory(third-party/fmt)
+
+# for now...
+add_subdirectory(old_compiler/cpp)

@@ -1,0 +1,711 @@
+DONE
+(gs) enter GOOS listener
+(:exit) exit GOAL
+
+TODO
+--------
+Method inheritance
+defmethod
+method calls
+access types
+FLOAT to INTEGER conversions
+buggy test print result timing
+TEST for logior,and,xor,not,nor
+real test for format
+BINTEGER for all the existing math
+Rigorous signed/unsigned integer stuff.
+MORE REASONABLE ERROR MESSAGE WHEN (inline func-name) is used not in the head of function call
+UNCOLORABLE FUNCTIONS (insert a print in the recursive factorial, todo is this still bad?)
+UNCOLORABLE NESTED FUNCTIONS
+MAKE ST A GOAL POINTER
+CONST PROP / more rigourous use of none and resolve to gpr
+COLORING HINTS
+THE
+ASH in the compiler
+MIN/MAX in the compiler
+INTEGER SIZE / SIGNED ISSUES
+STACK SPILLS/STACK FRAMES
+only push regs which need to be pushed
+stack alignment hack removal
+methods
+named arguments and default arguments
+coloring hints
+put link data inside the code where possible
+shorter immediates where possible
+REGISTER SAVING / correct prologues
+log/don't spam print statements
+defun docstrings
+reader #| bug
+Test for string->symbol function
+coloring spills / bonus moves
+register backups
+constant propagation
+lambda keywords and defaults
+type system
+type system in compiler
+type system constant prop.
+method system
+lambda / inline lambda
+linking of symbols (pointer to symbol)
+linking of types
+linking of addresses
+segments
+symbol file
+write file to disk
+runtime load file
+CGO/DGO
+object file assembly
+static stuff
+xmm
+decompiler
+emulator
+
+Skipped
+---------
+label& (needs linking stuff)
+catch  (needs kernel)
+throw  (needs kernel)
+unwind-protect (is a macro, needs kernel/throw/catch)
+*user*
+(user?)
+&file, &line, &column
+(param x) ;; this seems like a bad idea.
+protect - requires gensym and set!
+define-perm - requires branching and comparison
+quasiquote (will require pair/list support in compiler)
+unquote (requires quasiquote)
+defenum (probably easier when more typesystem exists)
+alias-enum (requires enum)
+enum-size (requires enum)
+aop-align (not needed on x86-64 IMO)
+case (needs or)
+unless (needs not)
+
+
+
+Done
+------
+begin
+block
+return-from
+label
+goto
+#cond
+#when
+#unless
+defglobalconstant
+seval
+lambda (no keyword arguments or method/behavior or friends work yet)
+inline (error handling is bad!)
+with-inline
+rlet (only does the default bind, no reg-type other than gprs)
+let
+let*
+mlet
+define
+define-extern
+set! (doesn't do ->'s or car's/cdr's or methods
+defun
+defun-extern
+true! (needs a test)
+false! (needs a test)
+print-type
+quote (symbols only, no pairs yet)
+defmacro
+defconstant
+defsmacro
+desfun
+in-package
+declare (only works for inline)
+cond
+if
+when
+while
+
+
+
+v1.0
+-------------------------------------------
+Runtime/compiler connection for sending code and getting prints/status/reset messages.
+Most of GOOS implemented.
+GOAL "env" framework partially implemented - can set and return GPR places
+GOAL codegen framework partially implemented - can generate some code
+GOAL coloring framework partially implemented - only "greedy" coloring algorithm, no concept of blocks/dependencies yet
+Can work with extremely simple programs (at this point, can compile/send/run/see results from a function which returns a constant number)
+Support for GOOS macros in GOAL.
+GOOS macros for connecting/resetting the target.
+Bug: if target dies, compiler hangs.
+Bug: empty programs are sent when no program should be sent, which return garbage.
+
+- (lt) listen to target
+- (:r) reset target and reconnect
+- (:status) - poke the target and get any pending prints
+- (:exit) exit GOAL/GOOS
+- (gs) run GOOS interpreter
+- (begin)
+- (seval) run GOOS code
+
+
+v1.1
+------------------------------------------
+- introduction of "Label"
+- introduction of "BlockEnv" (label spaces)
+- support for (block)
+- support for (return-from) (generate IR only)
+- (asm-file) now supports choosing if you want to color or load
+- tests framework set up and test macros
+- Types exist, but are not part of the compilation process yet
+
+- (test) form to run all tests
+- (goto) form (IR only)
+- #cond, #while, #unless conditional compilation forms
+- defglobalconstant partial implementation
+
+
+v1.2
+----------------------------
+- Register coloring using linear scan (live range) allocator
+  - relatively untested, but no known bugs with simple programs
+  - no support for spilling to stack or other regs
+  - no support for function calls
+  - no support for saving/restoring registers
+- Added basic tests related to register coloring
+- IOP Framework partially implemented
+- Support for goto and return-from in generated code
+- added macros for asm-file - (m) to compile and color, (ml) to compile color and load
+
+v1.3
+-----------------
+- define allows you to define a symbol
+- symbols can now be read from the symbol table
+- defglobalconstant works fully
+- emitter supports multiple segments
+- runtime supports object files with multiple segments
+- runtime linker support interning symbols and linking their writes
+- fixed null termination bug in printing messages from the target
+
+
+v1.4
+----------------
+- define-extern works
+- basic type checking for
+    - define
+    - define-extern
+    - function calls (just make sure it's a function you're calling, doesn't check args)
+- function calls are supported
+- more of the type system exists in the compiler
+- lambdas can be created and can be inline applied (but no functions generated yet)
+- let and let* work
+- static objects can be inserted into the object file (so far just string)
+- static strings work like you would expect in most places.
+  - static strings always go into the debug segment currently
+
+v1.5
+------------
+- you can now define and call functions!
+  - but a lot of functions will fail to color correctly
+  - functions other than top level functions will default to going into the debug segment
+  - and functions themselves are not typed properly at runtime or aligned properly
+- lambdas can be marked :inline-only to prevent code form being generated (useful for let and let*)
+  - still no inline lambdas
+
+v1.6
+----------
+- the coloring is significantly better
+- it stands a chance to get some harder colorings by being allowed to insert moves
+   - for a return
+   - for function args
+   - for function pointer
+- but it is still a greedy algorithm and can miss things sometimes
+- it also is kinda dumb and will insert some extra moves
+   - I think this is very solvable by inserting a "hinting" system
+   - this would make it default to eliminating moves greedily
+- + now works for integers
+
+v1.7
+-----------
+- function types are now working so the compiler knows the return type of a function
+- function argument types are also working
+- typechecking of function is still not fully implemented
+    - if you have a symbol that's defined to be a function returning a certain type, you can redefine the function
+    - to a function returning a different type and the checker won't catch it at this point.
+- internal cleanup of TypeSpec required to get correct typing
+
+v1.8
+------------------------------
+- coloring can spill/unspill, some vague amount of stack things are working.
+- subtraction works for integers
+- defconstant has been added.
+- multiplication works for integers, but uses signed multiplication always.
+- (declare) exists for immediate and function lambdas, but only inline, allow-inline are accepted.
+- functions can now be inlined using either (declare (inline)) or with (declare (allow-inline)) and (inline func-sym)
+
+
+v1.9
+-------------
+- coloring spilling now works correctly when a single operation either reads/write multiple spilled vars
+- (with-inline) is added
+- rlet is added, but only works for GPR and with a single bind type (works with coloring system, doesn't reserve)
+- mlet is added
+
+
+v1.10
+----------------
+- set! exists and works on global symbols, function parameters, and lexical vars
+- defun-extern works
+- some C kernel functions are defun-extern'd
+- the debugging form "print-type" has been added
+- quote works, but only on symbols for now
+- defsmacro from goal works
+- desfun from goal works
+
+
+v2.0
+--------------
+- the "cond" control flow works, for tests =, !=, and else
+- if and when work
+- integer division works (requiring some coloring weirdness because x86 is annoying)
+- bug fix in inline lambdas
+- bug fix in register coloring when calling a function and not using return value
+- goos now has (type?) form for checking the GOOS type of something
+- off by one bug fix in clobbering checks
+- defun can now have doc strings
+- protect form works
+
+
+v2.1
+------------
+- support for variable shift of integers
+- support for ">" number test (only works on signed integers currently)
+- cleanup of emitter for cmp/jump instruction pairs
+- added ash to gcommon
+- cond has correct typing of its result
+- integer divide colors better and has one fewer instruction
+- coloring adds "exclusive" field for holding a register differently from a function call.
+- DECI2 over TCP uses TCP_NODELAY to massively speed up compiler tests.
+
+v2.2
+--------------
+- new logging framework to reduce print spam
+- sign extension when loading memory implemented for symbols and test
+- bug fix for branches when there are multiple functions and test
+- mod/rem/abs work
+- integers are now integer by default, not int32
+- added logior, logxor, logand, lognor, lognot
+
+v2.3
+-------------
+- build system for runtime now allows for nasm assembled files, so we can get functions written in assembly
+- x86 emitter finally gets stack alignment correct!
+- loading gcommon is now a test
+- added fact (recursive) to gcommon
+- added format (and a good assembly hack to make it work!)
+- added defun-recursive
+- made call_goal (c function in runtime) an assembly function so it gets stack alignment right
+
+
+v2.4
+--------------------
+- preliminary support for floating point variables!
+- you can have floating point immediates
+- you can print floats with format ~f, ~F
+- you can write functions with float arguments and returns
+- * and / are the only supported functions
+- can't mix/convert floating point and integers yet
+- Listener now has larger buffer to avoid message over-size error messages.
+- Symbols can now start with a number (so you can have 1/ as a function)
+
+- coloring system works with XMM registers
+- ability to set XMM (float) and GPR registers to each others
+- support for 3 byte x86-64 opcodes, XMM regs in emitter
+- split link table entry LINK_DISTANCE_TO_OTHER_SEG into LINK_DISTANCE_TO_OTHER_SEG_32, LINK_DISTANCE_TO_OTHER_SEG_64
+- change OFF_REG (RBP) to be an actual memory address, not GOAL pointer offset
+- support for loading 32-bit static variables relative to RBP into GPR/XMM
+- resolve to xmm and resolve to gpr work and work with each other
+- static addr system allows loading and pointers
+
+
+(mg) make group
+(mgf) make group force
+(lg) reload/recompile GOAL
+(cga) force recompile of GOAL
+(:mch) output C header file for runtime
+(m "file") make file, don't load
+(ml "file") make file and load
+(asm-file "file") compile
+(sml "file") set list of files to be a project
+(set-user-machine "target-machine") set target machine
+(get-user-machine) get target machine
+(lt) connect to target
+(:r) connect to target and reset and run
+(:rh) connect to target and hard reset
+(:kfs) kill fileserver
+:pop go up one error level
+:p ACL->listener
+(:mac1 expr) macro expand
+(loaded-object-files) list loaded object files
+(listen-to-target) connect to target
+(get-user-server)
+(set-user-server)
+(load "file")
+(:status)
+(:pa addr)
+(:ia addr)
+(:iall)
+(:reset)
+
+// DEBUGGER
+(:break)
+(:c)
+(:cont)
+(:s)
+(:n)
+(:ss)
+(:sn)
+(:getbps)
+(:abp)
+(:rbp)
+(:tbp)
+(:gbp address-spec)
+(:cbp)
+(:hbp r|w|i|rw|v address-spec [mask])
+(:chbp [r|w|i|rw|v])
+(:dm address-spec word-length)
+(:bm address-spec byte-length)
+(:hm address-spec byte-length)
+(:wm address-spec byte-length)
+(:lm address-spec byte-length)
+(:qm address-spec byte-length)
+(:sm address-spec byte-length)
+(:la address-spec [word count])
+(:lam address-spec [word count])
+(:las address-spec [word count])
+(:lams address-spec [word count])
+(:dis #t|#f|t|nil)
+(:cs)
+(:getreg rreg|freg|sreg)
+(:printregs [vu])
+(:getconf)
+(:w [expression])
+(:rw [index])
+(:tw [index])
+(:minst mips-instruction)
+(:ginst goal-instruction)
+(:syms file [p|d|dd|ad|a|ed|u|au])
+(:eval lisp-expression)
+(:seval goos-expression)
+(:mac1 goal-expression)
+(:mac goal-expression)
+(:ver)
+(:gc)
+(:help)
+
+(loaded-object-files)
+(load-object-file “filename”)
+(unload-object-file “filename”)
+(asm-file “filename” [:write t] [:color t] [:load nil])
+(m “filename”)
+(load “filename”)
+
+// make
+(make node-name [:message ‘compile-and-load] [:force nil])
+(mg [f | force | compile | load])
+(collect-goal-nodes node-name)
+
+// reader
+#t - boolean true
+#f - boolan false
+n – any integer
+n.m – any float (fractions must lead with 0, for example 0.5)
+#xn – any hex integer
+#bn – any binary integer
+#(...) – an array
+#\n – the character n (see lisp or R5 manual)
+“string” – any string
+symbol
+‘symbol
+#| - start a comment (may be nested)
+|# - end a comment (may be nested)
+; - comment until end of line
+(...) – a list of atoms or other lists
+‘(...) – a quoted list
+`(... ,n ...) – a quasi-quoted list
+`(... ,@n ...) – a quasi-quoted list with splicing
+`(...,+(a b) ...) – a quasi-quoted list in which the special “,+” operator evaluates all the
+
+// allocations
+static
+global
+process
+stack
+scratch
+
+// types
+object
+none
+symbol
+boolean
+number
+float
+integer
+sinteger
+binteger
+bint64
+buint64
+int128
+int64
+int32
+int16
+int8
+uint128
+uint64
+uint32
+uint16
+uint8
+char
+object64
+pair
+pointer
+structure
+basic
+array
+function
+link-block
+process-tree
+process
+stack-frame
+catch-frame
+protect-frame
+state
+string
+type
+thread
+vu-function
+
+// type stuff
+(current-method-friends)
+(declare (friends))
+(add-method-friends)
+(declare (inline))
+
+// BLOCK stuff
+(begin)
+(block)
+(return-from)
+(label)
+(label&)
+(goto)
+(catch)
+(throw)
+(unwind-protect)
+
+// Conditional Compilation
+(#cond)
+(#when)
+(#unless)
+*user*
+(user?)
+(defglobalconstant)
+(seval)
+&file
+&line
+&column
+
+// Function
+(lambda)
+(inline)
+(with-inline)
+(param)
+(rlet)
+(let)
+(let*)
+(protect)
+(mlet)
+
+// Define
+(define)
+(define-extern)
+(define-perm)
+(set!)
+(defun)
+(defun-extern)
+(true!)
+(false!)
+
+// Macro
+(print-type)
+(quote)
+(quasiquote)
+(unquote)
+(defenum)
+(alias-enum)
+(enum-size)
+(defmacro)
+(defconstant)
+(defsconstant)
+(defsmacro)
+(desfun)
+(in-package)
+(declare)
+(aop-align)
+
+// Flow
+(cond)
+(case)
+(if)
+(when)
+(unless)
+(do)
+(do*)
+(while)
+(until)
+(loop)
+(for)
+(dotimes)
+(doarray)
+(aif)
+(awhen)
+(aunless)
+(acond)
+(awhile)
+(aand)
+
+// object
+(deftype)
+(deftype-extern)
+(the)
+(the-as)
+(&)
+(->)
+(&->)
+(type-of)
+(type=)
+(type?)
+(type?)
+(type->symbol)
+(type->string)
+(psize-of)
+(element-psize-of)
+(element-pshift-of)
+(offset-of)
+(bit-ffset-of)
+(mask-of-bit-field-type-spec)
+(method)
+(defmethod)
+(current-functrion-param-length)
+(current-function-param)
+(current-function-name)
+(current-method-type)
+(current-method-friends)
+(with-method-friends)
+(new)
+(object-new)
+(reset-scratch)
+(call-parent-method)
+
+// methods
+(new)
+(delete)
+(print)
+(inspect)
+(length)
+(asize-of)
+(copy)
+(copy!)
+
+// maths
+(+)
+(1+)
+(+!)
+(&+)
+(&+!)
+(-)
+(1-)
+(-!)
+(*)
+(/)
+(rem)
+(mod)
+(ash)
+(abs)
+(min)
+(max)
+(lognot)
+(logand)
+(logior)
+(logxor)
+(lognor)
+(logtest?)
+(logbit?)
+(bit-field)
+
+// logical
+(and)
+(or)
+(not)
+(identity)
+(nothing)
+(zero?)
+(eq?)
+(eqv?)
+(equal?)
+(=)
+(!=)
+(<)
+(>)
+(<=)
+(>=)
+
+// pair
+(pair?)
+(cons)
+(list)
+(null?)
+(car)
+(cdr)
+(second) (third) (fourth)
+(push)
+(pop)
+(length)
+(last)
+(member)
+(assoc)
+(delete!)
+(delete-car!)
+(append!)
+(insert-cons!)
+
+// array
+(length)
+
+// string/symbol
+(string->symbol)
+(symbol->string)
+(legnth)
+(copy-string->string)
+(clear)
+
+// I/O
+(print)
+(inspect)
+(format)
+*print-column*
+*tab-size*
+(load)
+(loado)
+
+// File
+(file-stream-error?)
+(new)
+(file-stream-open)
+(file-stream-close)
+(file-stream-length)
+(length)
+(file-stream-seek)
+(file-stream-read)
+(file-stream-write)
+(file-stream-string-read)
+(with-open-file)
+
+// LANGUAGE
+(in-package goal)

@@ -1,0 +1,861 @@
+;-*-Scheme-*-
+(in-package goal)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GOAL Common Library
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; filename: gcommon.gc
+;; dgo: KERNEL
+;; load order: 1
+;; description: random collection of functions needed for the GOAL language to work
+;; Version differences: Same in ntsc-demo, pal-dvd-demo, pal, japan, pal-cd-demo, ntsc-1, ntsc-2, japan-demo
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; forward declarations
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun-extern name= ((a basic) (b basic)) boolean)
+
+;; HACK! 
+(defun play ()
+  (format 0 "~~~~ HACK ~~~~ : fake play has been called~%")
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; basic functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; these functions are mostly just wrappers around built-in compiler forms.
+;; in normal use, the compiler forms will be used instead 
+;;  (ie, using (+ 2 2) won't call the '+' function, but will use a add instruction).
+
+;; these functions exist so that you can have a GOAL function object for these operations
+;; which you might use to do something like (apply some-builtin-function my-data)
+
+(defun identity ((x object))
+  "Function which returns its input.  The first function written in GOAL!"
+  x
+  )
+
+
+(defun 1/ ((x float))
+  "Reciprocal floating point function."
+  ;; Note that "1/" is not handled by the compiler, so all code using 1/ will use this function.
+  ;; to get good performance, this is inlined when possible.
+  (declare (inline))
+  (/ 1. x)
+  )
+
+
+(defun + ((a integer) (b integer))
+  "Compute the sum of two integers."
+  ;; + is handled by the compiler when in the head of a form, so this isn't a recursive function call.
+  (+ a b)
+  )
+
+
+(defun - ((a integer) (b integer))
+  "Compute the difference of two integers."
+  (- a b)
+  )
+
+
+(defun * ((a integer) (b integer))
+  "Compute the product of two integers, using GOAL-style multiplication"
+
+  ;; The original implementation uses "mult $v0, $a0, $a1" which is the EE's special 3-op multiply
+  ;; is effectively a 32-bit multiply.
+  ;; In GOAL-x86, the multiplication operator will imitate the 32-bit multiply of the EE
+  (* a b)
+  )
+
+
+(defun / ((a integer) (b integer))
+  "Compute the quotient of two integers, using GOAL-style division"
+
+  ;; this is MIPS "div $a0, $a1
+  ;;               mflo $v0"
+  ;; Like with multiplication, the division operator of GOAL-x86 will imitate the behavior of the EE
+  (/ a b)
+  )
+
+
+;; TODO - compiler support for ASH
+(defun ash ((value integer) (shift-amount integer))
+  "Arithmetic shift value by shift-amount.  
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+
+  ;; currently the compiler does not support "ash", so this function is also used to implement "ash".
+  ;; in the future, the compiler should be able to use constant propagation to turn constant shifts
+  ;; into x86 constant shifts when possible (which are faster).
+
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v1 a0 r0)      ;; likely inserted by register coloring, not entirely needed
+  ;;  (bgezl a1 end)     ;; branch to function end if positive shift (left)...
+  ;;  (dsllv v0 v1 a1)   ;; do left shift in delay slot
+  ;;  
+  ;;  (dsubu a0 r0 a1)   ;; negative shift amount for right shift
+  ;;  (dsrav v0 v1 a0)   ;; do right shift
+  ;;  (label end)
+
+  (declare (inline))
+  (if (> shift-amount 0)
+    ;; these correspond to x86-64 variable shift instructions.
+    (shlv value shift-amount)
+    (sarv value (- shift-amount))
+    )
+  )
+
+
+(defun mod ((a integer) (b integer))
+  "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
+  This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
+
+  ;; The original implementation is div, mfhi
+  (mod a b)
+  )
+
+
+(defun rem ((a integer) (b integer))
+  "Compute remainder (32-bit).  Like GOAL, it is identical to mod. It uses a idiv and gets the remainder"
+
+  ;; The original implementation is div, mfhi
+  (mod a b)
+  )
+
+
+(defun abs ((a integer))
+  "Compute absolute value."
+
+  ;; Currently the compiler does not support "abs", so this function is used to implement it.
+  ;; Eventually the compiler should support "abs" and use fancier instructions.
+
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)     ;; move input to output unchanged, for positive case
+  ;;  (bltzl v0 end)    ;; if negative, execute the branch delay slot below...
+  ;;  (dsubu v0 r0 v0)  ;; negate
+  ;;  (label end)
+
+  (declare (inline))
+  (if (> a 0) a (- a))
+  )
+
+(defun min ((a integer) (b integer))
+  "Compute minimum."
+
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)    ;; move first arg to output (case of second arg being min)
+  ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
+  ;;  (slt a0 v0 v1)   ;; compare args
+  ;;  (movz v0 v1 a0)  ;; conditional move the second arg to v0 if it's the minimum
+
+  (declare (inline))
+  (if (> a b) b a)
+  )
+
+(defun max ((a integer) (b integer))
+  "Compute maximum."
+  (declare (inline))
+  (if (> a b) a b)
+  )
+
+(defun logior ((a integer) (b integer))
+  "Compute the bitwise inclusive-or"
+  (logior a b)
+  )
+
+(defun logand ((a integer) (b integer))
+  "Compute the bitwise and"
+  (logand a b)
+  )
+
+(defun lognor ((a integer) (b integer))
+  "Compute the not or."
+  ;; Note - MIPS has a 'nor' instruction, but x86 doesn't.
+  ;; the GOAL x86 compiler therefore doesn't have a nor operation,
+  ;; so lognor is implemented by this inline function.
+  (declare (inline))
+  (lognot (logior a b))
+  )
+
+(defun logxor ((a integer) (b integer))
+  "Compute the logical exclusive-or"
+  (logxor a b)
+  )
+
+(defun lognot ((a integer))
+  "Compute the bitwise not"
+  (lognot a)
+  )
+
+(defun false-func ()
+  "Return false"
+  '#f
+  )
+
+(defun true-func ()
+  "Return true"
+  '#t
+  )
+
+;; The C Kernel provides the format function in a symbol named _format. (this is GOAL's "printf")
+;; I suspect this was to let us define a function here which set up C-style var args
+;; but this was never implemented, so we just put _format in format to make format work.
+(define format _format)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; basic types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; some types
+
+;; todo - this is a bitfield type in a 128-bit register, which is not supported yet.
+;;(deftype vec4s (uint128)
+;;  (x int32)
+;;  (y int32)
+;;  (z int32)
+;;  (w int32)
+;;  (quad uint128 :overlay-at x)
+;;  (:documentation "bitfield vec4s type")
+;;  )
+;; todo print and inspect methods
+
+;; the "boxed float" type bfloat.  It's less efficient than float, but
+;; can identify itself as a bfloat, and knows how to print itself.
+;; The parent type is "basic", meaning it's a structure with runtime type information.
+;; It has one field, named data, which is of type float.
+(deftype bfloat (basic)
+  ((data float))
+  )
+
+(defmethod print bfloat ((obj bfloat))
+  ;"Override the default print method to print a bfloat like a normal float"
+  (format #t "~f" (-> obj data))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; type system
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; some runtime type system stuff is implemented in GOAL itelf.
+
+
+(defmethod asize-of type ((obj type))
+  ;"What's the size of a type?
+  ;NOTE: this appears to use the wrong value (28?)
+  (align16 (+ 28 (* 4 (-> type num-methods))))
+  )
+
+(defun basic-type? ((obj basic) (input-type type))
+  "Is obj an object of type input-type, or of child type of input-type?
+  Note: checking if a basic is of type object will return #f."
+  (let ((basics-type (-> obj type))
+        (object-type object))
+    (until (eq? (set! basics-type (-> basics-type parent)) object-type)
+           (if (eq? basics-type input-type)
+             ;; return-from #f will return from the function with the value of #t
+             (return-from #f #t)
+             )
+           )
+    )
+  #f ;; didn't find it, return false
+  )
+
+(defun type-type? ((a type) (b type))
+  "is a a type (or child type) of type b?"
+  (until (eq? a object)
+         ;; it's not clear why a might be zero?
+         ;; perhaps if the type system is not yet initialized fully for the type?
+         (if (or (eq? a b) (zero? a))
+           (return-from #f #t)
+           )
+         (set! a (-> a parent))
+         )
+  #f
+  )
+
+(defun find-parent-method ((the-type type) (method-id integer))
+  "Find the nearest parent which has a different method, and get that method."
+  (let* ((child-method (-> the-type methods method-id))
+         (parent-method child-method)
+         )
+
+    ;; keep looking until we find a different parent method
+    (until (not (eq? parent-method child-method))
+           ;; at the top of the type tree.
+           (if (eq? the-type object)
+             (return-from #f nothing)
+             )
+
+           (set! the-type (-> the-type parent))
+           (set! parent-method (-> the-type methods method-id))
+           (if (eq? 0 (the integer parent-method))
+             (return-from #f nothing)
+             )
+           )
+    parent-method
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; pair and list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; the following functions feel like an old-school CS101 with Scheme homework assignment.
+; but with the requirement that you don't use recursion.
+
+(defun ref ((obj object) (idx integer))
+  "Get the nth item from a list.  No type checking or range checking is done, so be careful!"
+  (dotimes (i idx (car obj))
+    (set! obj (cdr obj))
+    )
+  )
+
+(defmethod length pair ((obj object))
+  ;"Get the number of elements in a proper list"
+  (if (eq? obj '())
+    (return-from #f 0)
+    )
+
+  (let ((lst (cdr obj))
+        (len 1))
+    (while (and (not (eq? lst '()))
+                (pair? lst)
+                )
+           (+1! len)
+           (set! lst (cdr lst))
+           )
+    len)
+  )
+
+
+
+(defmethod asize-of pair ((obj object))
+  ;"Get the asize of a pair"
+  (-> pair asize)
+  )
+
+(defun last ((obj object))
+  "Get the last pair in a list."
+  (while (not (eq? (cdr obj) '()))
+         (set! obj (cdr obj))
+         )
+  obj
+  )
+
+(defun member ((obj object) (lst object))
+  "if obj is a member of the list, return the pair containing obj as its car.
+  if not, return #f."
+  (while (and (not (eq? lst '()))
+              (not (eq? (car lst) obj)))
+         (set! lst (cdr lst))
+         )
+
+  (if (eq? lst '())
+    #f
+    lst
+    )
+  )
+
+(defun nmember ((obj basic) (lst object))
+  "If obj is a member of the list, return the pair containing obj as its car.
+   If not, return #f.  Use name= (see gstring.gc) to check equality."
+   (while (and (not (eq? lst '()))
+               (not (name= (the basic (car lst)) obj))
+               )
+     (set! lst (cdr lst))
+     )
+   
+   (if (eq? lst '())
+       #f
+       lst
+       )
+  )
+
+(defun assoc ((item object) (alst object))
+  "Get a pair with car of item from the association list (list of pairs) alst."
+  (while (and (not (null? alst))
+              (not (eq? (caar alst) item)))
+         (set! alst (cdr alst))
+         )
+  (if (not (null? alst))
+    (car alst)
+    #f
+    )
+  )
+
+(defun assoce ((item object) (alst object))
+  "Like assoc, but a pair with car of 'else will match anything"
+  (while (and (not (null? alst))
+              (not (eq? (caar alst) item))
+              (not (eq? (caar alst) 'else))
+              )
+         (set! alst (cdr alst))
+         )
+  (if (not (null? alst))
+    (car alst)
+    #f
+    )
+  )
+
+;; todo
+;; nassoc
+;; nassce
+
+(defun append! ((front object) (back object))
+  "Append back to front."
+  (if (null? front)
+    (return-from #f back)
+    )
+
+  (let ((lst front))
+    ;; seek to the end of front
+    (while (not (null? (cdr lst)))
+           (set! lst (cdr lst))
+           )
+
+    ;; this check seems not needed
+    (if (not (null? lst))
+      (set! (cdr lst) back)
+      )
+
+    front
+    )
+  )
+
+(defun delete! ((item object) (lst object))
+  "Delete the first occurance of item from a list and return the list.
+  Does nothing if the item isn't in the list."
+  (if (eq? (car lst) item)
+    (return-from #f (cdr lst))
+    )
+
+  (let ((iter (cdr lst))
+        (rep lst))
+
+    (while (and (not (null? iter))
+                (not (eq? (car iter) item)))
+           (set! rep iter)
+           (set! iter (cdr iter))
+           )
+
+    (if (not (null? iter))
+      (set! (cdr rep) (cdr iter))
+      )
+    )
+  (the pair lst)
+  )
+
+(defun delete-car! ((item object) (lst object))
+  "Like delete, but will delete if (car item-from-list) is equal to item.  Useful for deleting from association list by key."
+  ;(format #t "call to delete car: ~A ~A~%" item lst)
+  (if (eq? (caar lst) item)
+    (return-from #f (cdr lst))
+    )
+
+  (let ((rep lst)
+        (iter (cdr lst)))
+    (while (and (not (null? iter))
+                (not (eq? (caar iter) item)))
+           (set! rep iter)
+           (set! iter (cdr iter))
+           )
+
+    (if (not (null? iter))
+      (set! (cdr rep) (cdr iter))
+      )
+    )
+  lst
+  )
+
+(defun insert-cons! ((kv object) (alst object))
+  "Insert key-value pair into an association list.  Also removes the old one if it was there."
+  (cons kv (delete-car! (car kv) alst))
+  )
+
+(defun sort ((lst object) (compare function))
+  "Sort the given list in place.  Uses the given comparison function. The comparison function can 
+  either return #t/#f or an integer, in which case the sign of the integer determines lt/gt."
+  (let ((flag -1))
+    (while (not (zero? flag))
+           ;; L220
+           (set! flag 0)
+           (let ((iter lst))
+             (while 
+               ;; L225
+               (and (not (null? (cdr iter)))
+                    (pair? (cdr iter)))
+               ;; L221
+               (let* ((val1 (car iter))
+                      (val2 (car (cdr iter)))
+                      (c-result (compare val1 val2)))
+                 (unless (or
+                           (and c-result (<= (the integer c-result) 0))
+                           (eq? c-result #t)
+                           )
+                   (+1! flag)
+                   (set! (car iter) val2)
+                   (set! (car (cdr iter)) val1)
+                   )
+                 (set! iter (cdr iter))
+                 )
+               )
+             )
+           )
+    )
+  lst
+  )
+
+                      
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; inline array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; a parent class for "inline arrays" , which are arrays with a 
+;; bunch of objects back-to-back.
+;; the "heap-base" field of the type is used to store the indexing scale.
+
+
+
+(deftype inline-array-class (basic)
+  ((length int32)
+   (allocated-length int32)
+   (data uint8 :dynamic)
+   ;; ??
+   )
+  )
+
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (cnt integer))
+  ;"Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
+  ;of the type-to-make to determine the element size"
+  (let* ((sz (+ (-> type-to-make asize) (* (-> type-to-make heap-base) cnt)))
+         (new-object (object-new sz)))
+    ;;(format 0 "create sz ~d at #x~X~%" sz new-object)
+    (unless (zero? new-object)
+      (set! (-> new-object length) cnt)
+      (set! (-> new-object allocated-length) cnt)
+      )
+    new-object
+    )
+  )
+
+(defmethod length inline-array-class ((obj inline-array-class))
+  ;"Get the length of an inline-array"
+  (-> obj length)
+  )
+
+(defmethod asize-of inline-array-class ((obj inline-array-class))
+  ;"Get the size in memory of an inline-array-class"
+  (+ (-> obj type asize) 
+     (* (-> obj allocated-length) (-> obj type heap-base))
+     )
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod new array ((allocation symbol) (type-to-make type) (elt-type type) (elt-count integer))
+  ;"Create a new array. The length is initialized to elt-count."
+  (let ((arr (object-new (+ (-> type-to-make asize)
+                 (* elt-count (if (type-type? elt-type number)
+                                (-> elt-type asize) ;; if number, inline
+                                4 ;; otherwise, they're pointers
+                                ))
+                 ))))
+    (set! (-> arr allocated-length) elt-count)
+    (set! (-> arr length) elt-count)
+    (set! (-> arr elt-type) elt-type)
+  )
+  )
+
+;; TODO
+(defmethod print array ((obj array))
+  ;"Print an array..."
+  (format #t "array print is not yet implemented")
+  ;;(format #t "#(")
+ ;; (cond ((type-type? (-> obj elt-type) integer)
+ ;;        ;; we're an integer!
+ ;;        (when (eq? (-> obj elt-type symbol) 'int32)
+ ;;          (let ((cnt 0))
+ ;;            (while (< cnt (-> obj length))
+
+ ;;          )
+ ;;        ;; L154
+
+
+ ;;        )
+ ;;       )
+  )
+
+;; TODO
+(defmethod inspect array ((obj array))
+  ;"Inspect an array..."
+  (format #t "array inpsect is not yet implemented.~%")
+  )
+
+(defmethod length array ((obj array))
+  ;"Get the length of an array."
+  (-> obj length)
+  )
+
+(defmethod asize-of array ((obj array))
+  ;"Get the allocated size of an array"
+
+  ;; sum of the array's non-dynamic stuff
+  (+ (-> array asize)
+     ;; and the product of the number of slots
+     (* (-> obj allocated-length)
+        ;; and the size of each slot
+        (if (type-type? (-> obj elt-type) number)
+          (-> obj elt-type asize) ;; numbers use their size
+          4 ;; otherwise pointers
+          )
+        )
+     )
+  )
+
+(defun mem-copy! ((dst pointer) (src pointer) (size integer))
+  "Copy memory from src to dst.  Size is in bytes.  This is not an efficient implementation,
+  however, there are _no restrictions_ on size, alignment etc. Increasing address copy."
+  (let ((i 0)
+        (d (the (pointer uint8) dst))
+        (s (the (pointer uint8) src))
+        )
+    (while (< i size)
+           (set! (-> d 0) (-> s 0))
+           (&+! d 1)
+           (&+! s 1)
+           (+1! i)
+           )
+    )
+  dst
+  )
+
+
+(defun qmem-copy<-! ((dst pointer) (src pointer) (size integer))
+  "Copy memory by quadword. Destination and source addresses will be rounded down to nearest 16-byte boundary
+  Copies by increasing address.  Size rounded up to nearest 16-bytes. Not a particularly efficient implementation, but
+  likely copies faster than mem-copy!
+  TODO: currently this is implemented with doublewords, not quadwords."
+  (let ((sz (/ (+ size 15) 16))
+        ;; the PS2's lq/sq instructions have this behavior, I believe.
+        (d (the (pointer uint64) (logand (the integer dst) #xfffffff0)))
+        (s (the (pointer uint64) (logand (the integer src) #xfffffff0)))
+        )
+
+    (while (!= 0 sz)
+           ;; these can't overlap due to the rounding (or they are the same address, and its fine), 
+           ;; so splitting this into two ops should give the same result.
+           (set! (-> d 0) (-> s 0))
+           (set! (-> d 1) (-> s 1))
+           (&+! d 16)
+           (&+! s 16)
+           (-! sz 1)
+           )
+    )
+  dst
+  )
+
+(defun qmem-copy->! ((dst pointer) (src pointer) (size integer))
+  "Copy memory by quadword.  Destination and source addrs round down to nearest 16-byte boundary.
+  Copies by decreasing address.  Size rounded up to nearest 16-bytes.  Not particularly efficient, but faster than
+  a mem-copy!
+  TODO: currently implemented with doublewords, not quadwords."
+  (let* ((sz (/ (+ size 15) 16))
+         ;; move to end, and round off
+         (d (the (pointer uint64) (+ (* sz 16) (logand (the integer dst) #xfffffff0))))
+         (s (the (pointer uint64) (+ (* sz 16) (logand (the integer src) #xfffffff0))))
+         )
+    (while (!= 0 sz)
+           (&+! d -16)
+           (&+! s -16)
+           (-! sz 1)
+           (set! (-> d 0) (-> s 0))
+           (set! (-> d 1) (-> s 1))
+           )
+    )
+  dst
+  )
+
+
+(defun mem-set32! ((dst pointer) (value integer) (n integer))
+  "Memset a 32-bit value n times.  Total memory filled is 4 * n bytes."
+  (let ((p (the (pointer int32) dst))
+        (i 0))
+    (while (< i n)
+           (set! (-> p 0) value)
+           (&+! p 4)
+           (+1! i)
+           )
+    )
+  dst
+  )
+
+
+(defun mem-or! ((dst pointer) (src pointer) (n integer))
+  "Take the memory at dst, or it with src, and write it back into dst.  Does this for n bytes.
+  Not fast, but no restriction on size/alignment.  Increasing address."
+  (let ((i 0)
+        (d (the (pointer uint8) dst))
+        (s (the (pointer uint8) src))
+        )
+    (while (< i n)
+           (set! (-> d 0) (logior (-> s 0) (-> d 0)))
+           (&+! d 1)
+           (&+! s 1)
+           (+1! i)
+           )
+    )
+  dst
+  )
+
+(defun quad-copy! ((dst pointer) (src pointer) (qwc integer))
+  "A _good_ implementation of copying by quadword.  Increasing addresses.
+  The original assembly is well written and is commented below for entertainment."
+
+  ;; we do not yet have an optimized memcpy for x86-64.
+  ;; qmem-copy<-! has the same rounding/order behavior, so it should be a safe stand-in.
+  (qmem-copy<-! dst src (* qwc 16))
+
+  ;; Software pipelined 4-wide memory copy
+;; entry:
+;; 	nop                     ; unclear why this is here. this is a pipe 0 (I think this bit was generated by strange coloring)
+;; 	daddiu a3, a2, -4       ; a3 contains the remaining quadword count, if we copy 4 more (remainder)
+;; 	or v1, a0, r0           ; v1 contains the destination
+;; 	bltz a3, qwc_lt_4       ; branch if quadword count is less than 4
+;; 	or a0, a1, r0           ; a0 contains the source
+;; 
+;; loop:                    ; software pipelined copy (4 quadwords at a time!)
+;; 	nop                     ; why not put the load in pipe 0?
+;; 	lq t1, 0(a0)            ; load
+;; 	nop                     ; nothing to do... faster to nop than have cpu stall?
+;; 	lq a1, 16(a0)           ; load
+;; 	daddiu a2, a2, -4       ; decrement qwc
+;; 	lq a3, 32(a0)           ; load
+;; 	daddiu v1, v1, 64       ; increment destination pointer (we do this early because we have time for it now)
+;; 	lq t0, 48(a0)           ; load
+;; 	daddiu a0, a0, 64       ; increment source pointer
+;; 	sq t1, -64(v1)          ; store (undo early increment)
+;; 	daddiu t1, a2, -4       ; qwc if we do another 4 (can go negative, if < 4 are left)
+;; 	sq a1, -48(v1)          ; store
+;; 	nop                     ; nothing to do, best to keep loads in pipe 1 I guess
+;; 	sq a3, -32(v1)          ; store
+;; 	bgez t1, loop           ; branch on remainder being negative (not enough for another round)
+;; 	sq t0, -16(v1)          ; final store
+;; 
+;; qwc_lt_4:                ; here we have 3 or fewer qw left.
+;; 	beq a2, r0, end         ; none left, we finished exactly!
+;; 	lq a1, 0(a0)            ; oh no, we have at least one left.  better load it asap.
+;; 
+;; 	daddiu a0, a0, 16       ; now we have some time as it loads, increment source
+;; 	daddiu v1, v1, 16       ; increment dst
+;; 	daddiu a2, a2, -1       ; decrement qwc
+;; 	sq a1, -16(v1)          ; do the store
+;; 	beq a2, r0, end         ; any left?
+;; 	lq a1, 0(a0)            ; oh no, we have at least one left. better load it asap
+;;                          ; repeat same thing three more times...
+;; 	daddiu a0, a0, 16
+;; 	daddiu v1, v1, 16
+;; 	daddiu a2, a2, -1
+;; 	sq a1, -16(v1)
+;; 	beq a2, r0, end
+;; 	lq a1, 0(a0)
+;; 
+;; 	daddiu a0, a0, 16
+;; 	daddiu v1, v1, 16
+;; 	daddiu a2, a2, -1
+;; 	sq a1, -16(v1)
+;; 	beq a2, r0, end
+;; 	lq a1, 0(a0)
+;; 
+;; 	daddiu a0, a0, 16
+;; 	daddiu v1, v1, 16
+;; 	daddiu a0, a2, -1
+;; 	sq a1, -16(v1)
+;; end:                 ; none left, return 0
+;; 	or v0, r0, r0
+;; 	jr ra
+)
+
+(defun-recursive fact ((x integer)) integer
+   "Factorial!"
+   (if (= 1 x)
+     1
+     (* x (fact (- x 1)))
+     )
+   )
+
+;; todo, the binteger 0
+(define *print-column* (the binteger 0))
+
+(defun print ((obj object))
+  "Dispatch the appropriate method to print a boxed object.
+  This works on any boxed object, including pairs, bintegers, and any basic type"
+  ;; if obj isn't a basic (-> obj type) won't work.
+  ;; so we use rtype-of (a macro) to get the runtime type.
+  ;; this will work on basics, bintegers, and pairs
+  ((-> (rtype-of obj) methods 2) obj)
+  )
+
+(defun printl ((obj object))
+  "Dispatch the appropriate method to print a boxed object, with a newline at the end
+  This works on any boxed object, including pairs, bintegers, and any basic type"
+  ((-> (rtype-of obj) methods 2) obj)
+  (format #t "~%")
+  )
+
+(defun inspect ((obj object))
+  "Dispatch the appropriate method to inspect a boxed object.
+  This works on any boxed object, including pairs, bintegers, and any basic type"
+  ((-> (rtype-of obj) methods 3) obj)
+  )
+
+;; todo:
+
+(defun-debug mem-print ((mem pointer) (size integer))
+  "Print memory.  Size in words. Prints by quadword (rounding up).
+  Originally was a (format 0 ...) print, but changed to (format #t ...)
+  so that it is more useful for debugging.  Unused."
+  (let ((qwc 0)
+        (p (the (pointer int32) mem)))
+    (while (< (* qwc 4) size)
+           ;; note, this was originally a format 0, but has been changed.
+           (format #t "~X: ~X ~X ~X ~X~%"
+                   (+ (the integer p) (* qwc 4))
+                   (-> p (* qwc 4))
+                   (-> p (+ 1 (* qwc 4)))
+                   (-> p (+ 2 (* qwc 4)))
+                   (-> p (+ 3 (* qwc 4)))
+                   )
+           (+1! qwc)
+           )
+    )
+  )
+
+;; its purpose is unknown
+(define *trace-list* '())
+
+
+(defun print-tree-bitmask ((bitmask integer) (len integer))
+  "The purpose of this function is unknown"
+  ;(format #t "print-tree-bitmask ~d ~d~%" bitmask len)
+  (dotimes (i len #f)
+    (if (zero? (logand bitmask 1))
+      (format #t "    ")
+      (format #t "|   ")
+      )
+    (set! bitmask (ash bitmask -1))
+    )
+  )
+
+(defun breakpoint-range-set! ((a0 integer) (a1 integer) (a2 integer))
+  "This function is not supported.  It is used to enable the EE's hardware breakpoints."
+  ;; (mtc0 a0 cpr24)
+  ;; (mtdab a1)
+  ;; (mtdab2 a2)
+  ;; (or v0 r0 r0)
+  (format #t "[UNSUPPORTED] call (breakpoint-range-set! #x~x #x~x #x~x)~%" a0 a1 a2)
+  0
+  )

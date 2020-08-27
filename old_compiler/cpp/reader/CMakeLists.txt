@@ -1,0 +1,1 @@
+add_library(reader_old SHARED Reader.cpp TextDb.cpp)

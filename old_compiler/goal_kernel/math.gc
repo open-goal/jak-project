@@ -1,0 +1,110 @@
+;-*-Scheme-*-
+(in-package goal)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; float utility
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun truncate ((x float))
+  "Truncate a floating point number by converting to an integer and back."
+  (declare (inline))
+  (the float (the integer x))
+  )
+
+
+(defun integral? ((x float))
+  "Is a floatint point number an exact integer?"
+  (= (truncate x) x)
+  )
+
+(defun fractional-part ((x float))
+  "Get the fractional part of a floating point number"
+  (- x (truncate x))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; bitfield types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype rgba (uint32)
+  ((r uint8)
+   (g uint8)
+   (b uint8)
+   (a uint8)
+   )
+  )
+
+;; todo xyzw, xyzwh
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; math utils and tricks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun log2 ((x integer))
+  "Straight out of Bit Twiddling Hacks graphics.stanford.edu"
+  (- (sar (the-as integer (the float x)) 23) 127)
+  )
+
+
+(defun seek ((x float) (target float) (diff float))
+  "Move x toward target by at most diff, with floats"
+  (let ((err (- target x)))
+    ;; if we can get there all at once
+    (if (<= (fabs err) diff)
+      (return-from #f target)
+      )
+
+    (if (>= err 0)
+      (+ x diff)
+      (- x diff)
+      )
+    )
+  )
+
+(defun lerp ((minimum float) (maximum float) (amount float))
+  "Interpolate between minimum and maximum.  The output is not clamped."
+  (+ minimum (* amount (- maximum minimum)))
+  )
+
+(defun lerp-scale ((min-out float) (max-out float) 
+                   (in float) (min-in float) (max-in float))
+  "Interpolate from [min-in, max-in] to [min-out, max-out].
+   If the output is out of range, it will be clamped.
+   This is not a great implementation."
+   (let ((scale (fmax 0.0 (fmin 1.0 (/ (- in min-in) (- max-in min-in))))))
+     (+ (* (- 1 scale) min-out)
+        (* scale max-out)
+        )
+     )
+   )
+
+(defun lerp-clamp ((minimum float) (maximum float) (amount float))
+  "Interpolate between minimum and maximum.  Clamp output.
+  For some reason, the interpolate here is done in a less efficient way than lerp."
+  (if (<= amount 0.0)
+    (return-from #f minimum)
+    )
+
+  (if (>= amount 1.0)
+    (return-from #f maximum)
+    )
+  ;; lerp computes this part, but more efficiently
+  (+ (* (- 1 amount) minimum)
+     (* amount maximum)
+     )
+  )
+
+(defun seekl ((x integer) (target integer) (diff integer))
+  "Move x toward a target by at most diff, with integers"
+  (let ((err (- target x)))
+    (if (< (abs err) diff)
+      (return-from #f target)
+      )
+
+    (if (>= err 0)
+      (+ x diff)
+      (- x diff)
+      )
+    )
+  )

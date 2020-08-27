@@ -1,0 +1,163 @@
+;-*-Scheme-*-
+(in-package goal)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GOAL String Utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; filename: gstring.gc
+;; dgo: KERNEL
+;; load order: 1
+;; description: random collection of functions for strings
+
+;; Note on strings:
+;;  the allocated length does not include an extra byte on the end for the null terminator!
+
+(defmethod length string ((obj string))
+  ; Get the length of a string. Like strlen
+  (let ((str-ptr (-> obj data)))
+    (while (!= 0 (-> str-ptr 0))
+      (&+! str-ptr 1)
+      )
+    (- (the integer str-ptr) (the integer (-> obj data)))
+    )
+  )
+
+(defmethod asize-of string ((obj string))
+  ;; get the size in bytes of a string.
+  ;; BUG - string should probably be (-> obj type), not that it matters, I don't think
+  ;;  anybody makes a subclass of string.
+  (+ (-> obj allocated-length) 1 (-> string asize))
+  )
+
+(defun copy-string<-string ((dst string) (src string))
+  "Copy data from one string to another. Same behavior as strcpy."
+  (let ((dst-ptr (-> dst data))
+        (src-ptr (-> src data)))
+    (while (!= 0 (-> src-ptr 0))
+      ;(format #t "set!~%")
+      (set! (-> dst-ptr 0) (-> src-ptr 0))
+      ;(format #t "~C <- ~C~%" (-> dst-ptr 0) (-> src-ptr 0))
+      (&+! dst-ptr 1)
+      (&+! src-ptr 1)
+      )
+    
+    ;; null terminate the string.
+    (set! (-> dst-ptr 0) 0)
+    dst
+  	)
+  )
+
+
+(defmethod new string ((allocation symbol) (type-to-make type) (size integer) (other string))
+  "Create a new string of the given size.  If other is not #f, copy data from it."
+  (cond
+    (other
+      (let* ((desired-size (max (the integer (length other)) size))
+             (new-obj (object-new (+ 1 desired-size (-> type-to-make asize)))))
+        (set! (-> new-obj allocated-length) size)
+        (copy-string<-string new-obj other)
+        )
+      )
+     (else
+       (let ((new-obj (object-new (+ 1 size (-> type-to-make asize)))))
+         (set! (-> new-obj allocated-length) size)
+         new-obj
+         )
+       )
+    )
+  )
+
+
+(defun string= ((a string) (b string))
+  "Are two strings equal?
+   Strings are considered equal if their data up to their null terminator
+   are the same."
+  (let ((a-ptr (-> a data))
+        (b-ptr (-> b data)))
+    
+    ;; null pointer check
+    (if (or (eq? 0 a) (eq? 0 b))
+        (return-from #f #f)
+        )
+    
+    (while (and (!= (-> a-ptr) 0) (!= (-> b-ptr) 0))
+      
+      (if (!= (-> a-ptr) (-> b-ptr))
+          (return-from #f #f)
+          )
+      
+      (&+! a-ptr 1)
+      (&+! b-ptr 1)
+      )
+    
+    (and (eq? (-> a-ptr 0) (-> b-ptr 0)))
+    )
+  )
+
+;; todo string-charp=
+
+;; todo remove
+(defmacro hack-symbol-to-string (sym)
+  `(-> (the (pointer string) (+ 65336 (the integer ,sym))))
+  )
+
+(defun name= ((a basic) (b basic))
+  
+  ; in the case we get the same object, return #t immediately
+  (if (eq? a b)
+      (return-from #f (the boolean #t))
+      )
+
+  ; in the case we get two strings, use string=
+  (if (and (eq? string (-> a type))
+           (eq? string (-> b type))
+           )
+      (return-from #f (string= (the string a) (the string b)))
+      )
+  
+  (if (and (eq? string (-> a type))
+           (eq? symbol (-> b type)))
+      (return-from #f (string= (the string a) (hack-symbol-to-string b)))
+      )
+  
+    (if (and (eq? string (-> b type))
+             (eq? symbol (-> a type)))
+      (string= (the string b) (hack-symbol-to-string a))
+      )
+  
+  )
+
+;; todo copyn-string<-charp
+;; todo string<-charp
+;; todo charp<-string 
+;; todo copy-charp<-charp
+;; todo cat-string<-string 
+;; todo catn-string<-charp 
+;; todo cat-string<-string_to_charp
+;; todo append-character-to-string
+;; todo charp-basename
+;; todo clear
+;; todo string<?
+;; todo string>?
+;; todo string<=?
+;; todo string>=? 
+(define *string-tmp-string* (new 'global 'string 128 (the string #f)))
+;; todo string-skip-to-char
+;; todo string-cat-to-last-char
+;; todo string-skip-whitespace
+;; todo string-suck-up!
+;; todo string-strip-leading-whitespace! 
+;; todo string-strip-trailing-whitespace!
+;; todo string-strip-whitespace!
+;; todo string-get-arg!!
+;; todo string->int
+;; todo string->float
+;; todo string-get-int32!!
+;; todo string-get-float!!
+;; todo string-get-flag!!
+
+(define *debug-draw-pauseable* #f)
+(define *stdcon0* (new 'global 'string 16384 (the string #f)))
+(define *stdcon1* (new 'global 'string 16384 (the string #f)))
+(define *stdcon* *stdcon0*)
+(define *temp-string* (new 'global 'string 256 (the string #f)))
