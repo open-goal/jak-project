@@ -191,17 +191,18 @@ All type definitions should also define all the methods, in the order they appea
 Todo
 ---------
 - [x] Difference between "runtime" and "compile time" types?
-    - [ ] `inline-array` and `pointer`
+    - [x] `inline-array` and `pointer`
 - [x] Arrays which aren't `array`s and aren't fields.
 - [x] `lookup_field_info` (returning the correct field type for arrays/dynamics, info about how to deref)
 - [x] `deref_info`
+- [ ] `int` and `uint`
 - [ ] Finish builtin types
 - [ ] Tests for...
   - [ ] Builtin types
-  - [ ] Methods
-  - [ ] Multiple definition checks
-  - [ ] Deref
-  - [ ] Array access
+  - [x] Methods
+  - [ ] Multiple definition checks for types
+  - [x] Multiple definition checks for methods
+  - [x] Deref/Array access
   - [ ] Field creation
 - [ ] Support for `_type_` / method specific stuff. (maybe this should live outside the type system?)
 - [ ] Ability to export type in `deftype` form.
@@ -217,3 +218,12 @@ Todo
   - [ ] In the decompiler
   - [ ] In the compiler, with the ability to do constant propagation and put things like `(+ 1 2)` or `MY_CONSTANT` as compile-time array size constants by providing a function evaluating an `Object` to an `int`.
 - [ ] Bitfield types
+
+
+Todo In the Long Term Future
+----------------------------
+- [ ] Bitfield Types
+- [ ] Utilities for number types?
+- [ ] Tests for field layout/alignment rules (waiting on having good examples)
+- [ ] Tests for field access (waiting on real examples)
+- [ ] Signed/unsigned for builtin types.

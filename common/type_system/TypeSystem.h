@@ -23,6 +23,7 @@ struct DerefInfo {
   bool sign_extend = false;
   RegKind reg = RegKind::INVALID;
   int stride = -1;
+  int load_size = -1;
   TypeSpec result_type;
 };
 

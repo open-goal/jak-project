@@ -5,8 +5,9 @@
 #include <cassert>
 
 TypeSystem::TypeSystem() {
-  // the "none" type is included by default.
-  add_type("none", std::make_unique<NoneType>());
+  // the "none" and "_type_" types are included by default.
+  add_type("none", std::make_unique<NullType>("none"));
+  add_type("_type_", std::make_unique<NullType>("_type_"));
 }
 
 /*!
@@ -39,7 +40,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     // newly defined!
 
     // none/object get to skip these checks because they are roots.
-    if (name != "object" && name != "none") {
+    if (name != "object" && name != "none" && name != "_type_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         fmt::print("[TypeSystem] Type {} has incompletely defined parent {}\n", type->get_name(),
                    type->get_parent());
@@ -83,11 +84,24 @@ std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
 DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
   DerefInfo info;
 
+  if(!ts.has_single_arg()) {
+    // not enough info.
+    info.can_deref = false;
+    return info;
+  }
+
   // default to GPR
   info.reg = RegKind::GPR_64;
   info.mem_deref = true;
 
   if (ts.base_type() == "inline-array") {
+    auto result_type = lookup_type(ts.get_single_arg());
+    auto result_structure_type = dynamic_cast<StructureType*>(result_type);
+    if(!result_structure_type || result_structure_type->is_dynamic()) {
+      info.can_deref = false;
+      return info;
+    }
+
     // it's an inline array of structures. We can "dereference". But really we don't do a memory
     // dereference, we just add stride*idx to the pointer.
     info.can_deref = true;                   // deref operators should work...
@@ -95,7 +109,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
     info.result_type = ts.get_single_arg();  // what we're an inline-array of
     info.sign_extend = false;                // not applicable anyway
 
-    auto result_type = lookup_type(info.result_type);
+
     if (result_type->is_reference()) {
       info.stride =
           align(result_type->get_size_in_memory(), result_type->get_inline_array_alignment());
@@ -111,11 +125,13 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
       // in memory, an array of pointers
       info.stride = POINTER_SIZE;
       info.sign_extend = false;
+      info.load_size = POINTER_SIZE;
     } else {
       // an array of values, which should be loaded in the correct way to the correct register
       info.stride = result_type->get_size_in_memory();
       info.sign_extend = result_type->get_load_signed();
       info.reg = result_type->get_preferred_reg_kind();
+      info.load_size = result_type->get_load_size();
       assert(result_type->get_size_in_memory() == result_type->get_load_size());
     }
   } else {
@@ -513,6 +529,9 @@ void TypeSystem::add_builtin_types() {
   auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
   auto pointer_type = add_builtin_value_type("object", "pointer", 4);
+  auto inline_array_type = add_builtin_value_type("object", "inline-array", 4);
+  inline_array_type->set_runtime_type("pointer");
+
   auto number_type = add_builtin_value_type("object", "number", 8);  // sign extend?
   auto float_type = add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
   auto integer_type = add_builtin_value_type("number", "integer", 8, false, false);  // sign extend?
@@ -536,17 +555,17 @@ void TypeSystem::add_builtin_types() {
   // Methods and Fields
 
   // OBJECT
-  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int32"}, "object"));
-  add_method(obj_type, "delete", make_function_typespec({"object"}, "none"));
-  add_method(obj_type, "print", make_function_typespec({"object"}, "object"));
-  add_method(obj_type, "inspect", make_function_typespec({"object"}, "object"));
+  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int32"}, "_type_"));
+  add_method(obj_type, "delete", make_function_typespec({"_type_"}, "none"));
+  add_method(obj_type, "print", make_function_typespec({"_type_"}, "_type_"));
+  add_method(obj_type, "inspect", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "length",
-             make_function_typespec({"object"}, "int32"));  // todo - this integer type?
-  add_method(obj_type, "asize-of", make_function_typespec({"object"}, "int32"));
-  add_method(obj_type, "copy", make_function_typespec({"object", "symbol"}, "object"));
-  add_method(obj_type, "relocate", make_function_typespec({"object", "int32"}, "object"));
+             make_function_typespec({"_type_"}, "int32"));  // todo - this integer type?
+  add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int32"));
+  add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
+  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int32"}, "_type_"));
   add_method(obj_type, "mem-usage",
-             make_function_typespec({"object"}, "int32"));  // todo - this is a guess.
+             make_function_typespec({"_type_"}, "int32"));  // todo - this is a guess.
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from

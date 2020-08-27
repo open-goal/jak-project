@@ -87,9 +87,9 @@ class Type {
  * Used only for "none" - this is a type that the compiler can use for "this has no value".
  * Attempting to do anything with a NoneType is an error.
  */
-class NoneType : public Type {
+class NullType : public Type {
  public:
-  NoneType();
+  NullType(std::string name);
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
@@ -100,7 +100,7 @@ class NoneType : public Type {
   int get_in_memory_alignment() const override;
   std::string print() const override;
   bool operator==(const Type& other) const override;
-  ~NoneType() = default;
+  ~NullType() = default;
 };
 
 /*!
@@ -217,6 +217,9 @@ class StructureType : public ReferenceType {
   int get_in_memory_alignment() const override;
   int get_inline_array_alignment() const override;
   bool lookup_field(const std::string& name, Field* out);
+  bool is_dynamic() const {
+    return m_dynamic;
+  }
   ~StructureType() = default;
 
  protected:
