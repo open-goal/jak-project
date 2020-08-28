@@ -1,3 +1,7 @@
+Build Status
+--------------
+![Linux Workflow](https://github.com/water111/jak-project/workflows/Linux%20Workflow/badge.svg?branch=master)
+
 Project Structure
 ----------------------
 Requirements:
