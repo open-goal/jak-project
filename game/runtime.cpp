@@ -39,6 +39,10 @@
 
 u8* g_ee_main_mem = nullptr;
 
+/*!
+* runtime.cpp - Deci2Listener has been disabled for now, pending rewriting for Windows.
+*/
+
 namespace {
 
 /*!
@@ -48,7 +52,11 @@ namespace {
 
 
 void deci2_runner(SystemThreadInterface& interfaces) {
-//  // callback function so the server knows when to give up and shutdown
+  interfaces.initialization_complete();
+  while (true) {
+  }
+
+  //  // callback function so the server knows when to give up and shutdown
 //  std::function<bool()> shutdown_callback = [&]() { return interfaces.get_want_exit(); };
 //
 //  // create and register server
@@ -237,7 +245,7 @@ void exec_runtime(int argc, char** argv) {
   // step 3: start the EE!
   iop_thread.start(iop_runner);
   ee_thread.start(ee_runner);
-  //deci_thread.start(deci2_runner);
+  deci_thread.start(deci2_runner);
   
   // step 4: wait for EE to signal a shutdown, which will cause the DECI thread to join.
   deci_thread.join();

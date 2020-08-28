@@ -19,7 +19,7 @@ s32 IOP_Kernel::CreateThread(std::string name, u32 (*func)()) {
   if(func) {
     _currentThread = ID;
     // create OS thread, will run the setupThread function
-    //threads.back().thread = new std::thread(&IOP_Kernel::setupThread, this, ID); --- quick hack to make the build
+    threads.back().thread = new std::thread(&IOP_Kernel::setupThread, this, ID);
     // wait for thread to finish setup.
     threads.back().waitForReturnToKernel();
     // ensure we are back in the kernel.

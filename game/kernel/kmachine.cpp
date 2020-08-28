@@ -153,7 +153,7 @@ void InitCD() {
 
 /*!
  * Initialize the I/O Processor
- * Removed calls to exit(0) if loading modules fails.
+ * Removed calls to exit(0) if loading modules fails. 
  */
 void InitIOP() {
   // before doing anything with the I/O Processor, we need to set up SIF RPC

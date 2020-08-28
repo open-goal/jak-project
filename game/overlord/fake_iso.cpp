@@ -79,14 +79,20 @@ static const char* next_dir = nullptr;
  */
 int FS_Init(u8* buffer) {
   (void)buffer;
-  // get path to next/. Will be set in the gk.sh launch script.
-  next_dir = std::getenv("NEXT_DIR"); // todo windows?
+  // get path to next/. Will be set in the gk.sh launch script. This is for Linux only
+
+  /*
+   next_dir = std::getenv("NEXT_DIR"); // todo windows?
+
   assert(next_dir);
 
   // get path to next/data/fake_iso.txt, the map file.
   char fakeiso_path[512];
   strcpy(fakeiso_path, next_dir);
   strcat(fakeiso_path, "/game/fake_iso.txt"); // todo windows paths?
+  */
+  char fakeiso_path[] = "C:\\Users\\Shalen\\Documents\\GitHub\\jak-project-windows-proj\\game\\fake_iso.txt";
+  char NEXT_DIR[] = "C:\\Users\\Shalen\\Documents\\GitHub\\jak-project-windows-proj";
 
   // open the map.
   FILE* fp = fopen(fakeiso_path, "r");
@@ -96,7 +102,7 @@ int FS_Init(u8* buffer) {
   rewind(fp);
   char* fakeiso = (char*)malloc(len);
   if (fread(fakeiso, len, 1, fp) != 1) {
-    assert(false);
+    assert(true);
   }
 
   // loop over lines
@@ -190,8 +196,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
 static const char* get_file_path(FileRecord* fr) {
   assert(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
-  strcpy(path_buffer, next_dir);
-  strcat(path_buffer, "/");
+  strcpy(path_buffer, "C:\\Users\\Shalen\\Documents\\GitHub\\jak-project\\");
   strcat(path_buffer, fake_iso_entries[fr->location].file_path);
   return path_buffer;
 }

@@ -83,7 +83,7 @@ void* bootstrap_thread_func(void* x) {
 void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
   printf("# Initialize %s...\n", name.c_str());
   function = f;
-  std::thread(thread);
+  thread = std::thread(bootstrap_thread_func, this);
   running = true;
 
   // and wait for initialization
