@@ -533,7 +533,7 @@ void TypeSystem::add_builtin_types() {
 
   add_builtin_value_type("object", "number", 8);  // sign extend?
   add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
-  add_builtin_value_type("number", "integer", 8, false, false);  // sign extend?
+  add_builtin_value_type("number", "integer", 8, false, false);   // sign extend?
   add_builtin_value_type("integer", "binteger", 8, true, false);  // sign extend?
   add_builtin_value_type("integer", "sinteger", 8, false, true);
   add_builtin_value_type("sinteger", "int8", 1, false, true);
@@ -855,6 +855,9 @@ bool TypeSystem::typecheck(const TypeSpec& expected,
   return success;
 }
 
+/*!
+ * Is actual of type expected? For base types.
+ */
 bool TypeSystem::typecheck_base_types(const std::string& expected,
                                       const std::string& actual) const {
   // just to make sure it exists. (note - could there be a case when it just has to be forward
@@ -878,4 +881,85 @@ bool TypeSystem::typecheck_base_types(const std::string& expected,
   }
 
   return false;
+}
+
+/*!
+ * Get a path from type to object.
+ */
+std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) {
+  auto parent = lookup_type(type)->get_parent();
+  std::vector<std::string> path = {type};
+  path.push_back(parent);
+  auto parent_type = lookup_type(parent);
+
+  while (parent_type->has_parent()) {
+    parent = parent_type->get_parent();
+    parent_type = lookup_type(parent);
+    path.push_back(parent);
+  }
+
+  return path;
+}
+
+/*!
+ * Lowest common ancestor of two base types.
+ */
+std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
+  if (a == b) {
+    return a;
+  }
+
+  auto a_up = get_path_up_tree(a);
+  auto b_up = get_path_up_tree(b);
+
+  int ai = a_up.size() - 1;
+  int bi = b_up.size() - 1;
+
+  std::string* result = nullptr;
+  while (ai >= 0 && bi >= 0) {
+    if (a_up.at(ai) == b_up.at(bi)) {
+      result = &a_up.at(ai);
+    } else {
+      break;
+    }
+    ai--;
+    bi--;
+  }
+
+  assert(result);
+  return *result;
+}
+
+/*!
+ * Lowest common ancestor of two typespecs.  Will recursively apply to arguments, if compatible.
+ * Otherwise arguments are stripped off.
+ * In a situation like lca("(a b)", "(c d)"), the result will be
+ * (lca(a, b) lca(b, d)).
+ */
+TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) {
+  auto result = make_typespec(lca_base(a.base_type(), b.base_type()));
+  if (!a.m_arguments.empty() && !b.m_arguments.empty() &&
+      a.m_arguments.size() == b.m_arguments.size()) {
+    // recursively add arguments
+    for (size_t i = 0; i < a.m_arguments.size(); i++) {
+      result.add_arg(lowest_common_ancestor(a.m_arguments.at(i), b.m_arguments.at(i)));
+    }
+  }
+  return result;
+}
+
+/*!
+ * Lowest common ancestor of multiple (or at least one) type.
+ */
+TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) {
+  assert(!types.empty());
+  if (types.size() == 1) {
+    return types.front();
+  }
+
+  auto result = lowest_common_ancestor(types.at(0), types.at(1));
+  for (size_t i = 2; i < types.size(); i++) {
+    result = lowest_common_ancestor(result, types.at(i));
+  }
+  return result;
 }

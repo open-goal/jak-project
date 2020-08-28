@@ -279,6 +279,40 @@ TEST(TypeSystem, FieldLookup) {
   EXPECT_ANY_THROW(ts.lookup_field_info("type", "not-a-real-field"));
 }
 
-// field lookup
+TEST(TypeSystem, get_path_up_tree) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+  EXPECT_EQ(ts.get_path_up_tree("type"),
+            std::vector<std::string>({"type", "basic", "structure", "object"}));
+}
 
+TEST(TypeSystem, lca) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+  EXPECT_EQ(
+      ts.lowest_common_ancestor(ts.make_typespec("string"), ts.make_typespec("basic")).print(),
+      "basic");
+  EXPECT_EQ(
+      ts.lowest_common_ancestor(ts.make_typespec("basic"), ts.make_typespec("string")).print(),
+      "basic");
+  EXPECT_EQ(
+      ts.lowest_common_ancestor(ts.make_typespec("string"), ts.make_typespec("int32")).print(),
+      "object");
+  EXPECT_EQ(
+      ts.lowest_common_ancestor(ts.make_typespec("int32"), ts.make_typespec("string")).print(),
+      "object");
+  EXPECT_EQ(
+      ts.lowest_common_ancestor({ts.make_typespec("int32"), ts.make_typespec("string")}).print(),
+      "object");
+  EXPECT_EQ(ts.lowest_common_ancestor({ts.make_typespec("int32")}).print(), "int32");
+  EXPECT_EQ(ts.lowest_common_ancestor({ts.make_typespec("string"), ts.make_typespec("kheap"),
+                                       ts.make_typespec("pointer")})
+                .print(),
+            "object");
+
+  EXPECT_EQ(ts.lowest_common_ancestor(ts.make_pointer_typespec("int32"),
+                                      ts.make_pointer_typespec("string"))
+                .print(),
+            "(pointer object)");
+}
 // TODO - a big test to make sure all the builtin types are what we expect.

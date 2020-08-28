@@ -225,9 +225,7 @@ class StructureType : public ReferenceType {
 
  protected:
   friend class TypeSystem;
-  void override_offset(int offset) {
-    m_offset = offset;
-  }
+  void override_offset(int offset) { m_offset = offset; }
   void override_size_in_memory(
       int size);  // only to be used for setting up weird types like "structure"
   void add_field(const Field& f, int new_size_in_mem) {

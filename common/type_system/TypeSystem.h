@@ -73,6 +73,7 @@ class TypeSystem {
                  const std::string& error_source_name = "",
                  bool print_on_error = true,
                  bool throw_on_error = true) const;
+  std::vector<std::string> get_path_up_tree(const std::string& type);
 
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
@@ -87,7 +88,11 @@ class TypeSystem {
     return result;
   }
 
+  TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b);
+  TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types);
+
  private:
+  std::string lca_base(const std::string& a, const std::string& b);
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_size_in_type(const Field& field);
   int get_alignment_in_type(const Field& field);
