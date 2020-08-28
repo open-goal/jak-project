@@ -18,22 +18,11 @@ extern Ptr<u32> SymbolTable2;
 extern Ptr<u32> LastSymbol;
 
 constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
-constexpr s32 BINTEGER_OFFSET = 0;
-constexpr s32 PAIR_OFFSET = 2;
-constexpr s32 BASIC_OFFSET = 4;
+
 constexpr s32 SYM_INFO_OFFSET = 0xff34;
 constexpr u32 EMPTY_HASH = 0x8454B6E6;
 constexpr u32 OFFSET_MASK = 7;
 constexpr u32 CRC_POLY = 0x04c11db7;
-
-constexpr u32 GOAL_NEW_FUNC = 0;      // method ID of GOAL new
-constexpr u32 GOAL_DEL_FUNC = 1;      // method ID of GOAL delete
-constexpr u32 GOAL_PRINT_FUNC = 2;    // method ID of GOAL print
-constexpr u32 GOAL_INSPECT_FUNC = 3;  // method ID of GOAL inspect
-constexpr u32 GOAL_LENGTH_FUNC = 4;   // method ID of GOAL length
-constexpr u32 GOAL_ASIZE_FUNC = 5;    // method ID of GOAL size
-constexpr u32 GOAL_COPY_FUNC = 6;     // method ID of GOAL copy
-constexpr u32 GOAL_RELOC_FUNC = 7;    // method ID of GOAL relocate
 
 constexpr u32 DEFAULT_METHOD_COUNT = 12;
 constexpr u32 FALLBACK_UNKNOWN_METHOD_COUNT = 44;

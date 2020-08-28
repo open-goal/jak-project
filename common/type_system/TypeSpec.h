@@ -33,12 +33,18 @@ class TypeSpec {
   void add_arg(const TypeSpec& ts) { m_arguments.push_back(ts); }
 
   const std::string base_type() const { return m_type; }
+
+  bool has_single_arg() const { return m_arguments.size() == 1; }
+
   const TypeSpec& get_single_arg() const {
     assert(m_arguments.size() == 1);
     return m_arguments.front();
   }
 
+  TypeSpec substitute_for_method_call(const std::string& method_type) const;
+
  private:
+  friend class TypeSystem;
   std::string m_type;
   std::vector<TypeSpec> m_arguments;
 };

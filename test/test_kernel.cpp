@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include "gtest/gtest.h"
 #include "common/symbols.h"
+#include "common/goal_constants.h"
 #include "game/kernel/fileio.h"
 #include "game/kernel/kboot.h"
 #include "game/kernel/kprint.h"

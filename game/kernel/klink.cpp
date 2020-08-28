@@ -14,6 +14,7 @@
 #include "kboot.h"
 #include "kprint.h"
 #include "common/symbols.h"
+#include "common/goal_constants.h"
 
 namespace {
 // turn on printf's for debugging linking issues.

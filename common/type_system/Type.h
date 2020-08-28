@@ -68,6 +68,8 @@ class Type {
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
 
+  void disallow_in_runtime() { m_allow_in_runtime = false; }
+
   virtual ~Type() = default;
 
  protected:
@@ -79,6 +81,7 @@ class Type {
 
   std::string m_parent;  // the parent type (is empty for none and object)
   std::string m_name;
+  bool m_allow_in_runtime = true;
   std::string m_runtime_name;
   bool m_is_boxed = false;  // does this have runtime type information?
 };
@@ -87,9 +90,9 @@ class Type {
  * Used only for "none" - this is a type that the compiler can use for "this has no value".
  * Attempting to do anything with a NoneType is an error.
  */
-class NoneType : public Type {
+class NullType : public Type {
  public:
-  NoneType();
+  NullType(std::string name);
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
@@ -100,7 +103,7 @@ class NoneType : public Type {
   int get_in_memory_alignment() const override;
   std::string print() const override;
   bool operator==(const Type& other) const override;
-  ~NoneType() = default;
+  ~NullType() = default;
 };
 
 /*!
@@ -217,10 +220,12 @@ class StructureType : public ReferenceType {
   int get_in_memory_alignment() const override;
   int get_inline_array_alignment() const override;
   bool lookup_field(const std::string& name, Field* out);
+  bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
 
  protected:
   friend class TypeSystem;
+  void override_offset(int offset) { m_offset = offset; }
   void override_size_in_memory(
       int size);  // only to be used for setting up weird types like "structure"
   void add_field(const Field& f, int new_size_in_mem) {
@@ -234,6 +239,7 @@ class StructureType : public ReferenceType {
   bool m_dynamic = false;
   int m_size_in_mem = 0;
   bool m_pack = false;
+  int m_offset = 0;
 };
 
 class BasicType : public StructureType {

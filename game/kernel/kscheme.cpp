@@ -18,6 +18,7 @@
 #include "klink.h"
 #include "common/symbols.h"
 #include "common/versions.h"
+#include "common/goal_constants.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -986,7 +987,7 @@ u64 print_object(u32 obj) {
     } else if ((obj & OFFSET_MASK) == PAIR_OFFSET) {
       return print_pair(obj);
     } else if ((obj & OFFSET_MASK) == BASIC_OFFSET) {
-      return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - 4)), GOAL_PRINT_FUNC);
+      return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - 4)), GOAL_PRINT_METHOD);
     } else {
       cprintf("#<unknown type %d @ #x%x>", obj & OFFSET_MASK, obj);
     }
@@ -1194,7 +1195,7 @@ u64 copy_structure(u32 it, u32 unknown) {
 u64 copy_basic(u32 obj, u32 heap) {
   // determine size of basic. We call a method instead of using asize_of_basic in case the type has
   // overridden the default asize_of method.
-  u32 size = call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)), GOAL_ASIZE_FUNC);
+  u32 size = call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)), GOAL_ASIZE_METHOD);
   u32 result;
 
   if (*Ptr<u32>(heap - 4) == *(s7 + FIX_SYM_SYMBOL_TYPE)) {
@@ -1224,7 +1225,8 @@ u64 inspect_object(u32 obj) {
     } else if ((obj & OFFSET_MASK) == PAIR_OFFSET) {
       return inspect_pair(obj);
     } else if ((obj & OFFSET_MASK) == BASIC_OFFSET) {
-      return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)), GOAL_INSPECT_FUNC);
+      return call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)),
+                                 GOAL_INSPECT_METHOD);
     } else {
       cprintf("#<unknown type %d @ #x%x>", obj & OFFSET_MASK, obj);
     }

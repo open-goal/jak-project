@@ -108,6 +108,11 @@ std::string Type::get_name() const {
 }
 
 std::string Type::get_runtime_name() const {
+  if (!m_allow_in_runtime) {
+    fmt::print("[TypeSystem] Tried to use type {} as a runtime type, which is not allowed.\n",
+               get_name());
+    throw std::runtime_error("get_runtime_name");
+  }
   return m_runtime_name;
 }
 
@@ -137,7 +142,7 @@ bool Type::is_equal(const Type& other) const {
  * parents.
  */
 bool Type::has_parent() const {
-  return m_parent != "object" && !m_parent.empty();
+  return m_name != "object" && !m_parent.empty();
 }
 
 /*!
@@ -218,52 +223,53 @@ std::string Type::print_method_info() const {
 }
 
 /////////////
-// NoneType
+// NullType
 /////////////
 
-// Special Type representing nothing.
-// it's an error to try to do anything with None.
+// Special Type for both "none" and "_type_" types
+// it's an error to try to do anything with Null.
 
-NoneType::NoneType() : Type("", "none", false) {}
+NullType::NullType(std::string name) : Type("", std::move(name), false) {}
 
-bool NoneType::is_reference() const {
-  throw std::runtime_error("is_reference called on NoneType");
+bool NullType::is_reference() const {
+  throw std::runtime_error("is_reference called on NullType");
 }
 
-int NoneType::get_load_size() const {
-  throw std::runtime_error("get_load_size called on NoneType");
+int NullType::get_load_size() const {
+  throw std::runtime_error("get_load_size called on NullType");
 }
 
-bool NoneType::get_load_signed() const {
-  throw std::runtime_error("get_load_size called on NoneType");
+bool NullType::get_load_signed() const {
+  throw std::runtime_error("get_load_size called on NullType");
 }
 
-int NoneType::get_size_in_memory() const {
-  throw std::runtime_error("get_size_in_memory called on NoneType");
+int NullType::get_size_in_memory() const {
+  throw std::runtime_error("get_size_in_memory called on NullType");
 }
 
-RegKind NoneType::get_preferred_reg_kind() const {
-  throw std::runtime_error("get_preferred_reg_kind called on NoneType");
+RegKind NullType::get_preferred_reg_kind() const {
+  throw std::runtime_error("get_preferred_reg_kind called on NullType");
 }
 
-int NoneType::get_offset() const {
+int NullType::get_offset() const {
   throw std::runtime_error("get_offset called on NoneType");
 }
 
-int NoneType::get_in_memory_alignment() const {
-  throw std::runtime_error("get_in_memory_alignment called on NoneType");
+int NullType::get_in_memory_alignment() const {
+  throw std::runtime_error("get_in_memory_alignment called on NullType");
 }
 
-int NoneType::get_inline_array_alignment() const {
-  throw std::runtime_error("get_inline_array_alignment called on NoneType");
+int NullType::get_inline_array_alignment() const {
+  throw std::runtime_error("get_inline_array_alignment called on NullType");
 }
 
-std::string NoneType::print() const {
-  return "none";
+std::string NullType::print() const {
+  return m_name;
 }
 
-bool NoneType::operator==(const Type& other) const {
-  // there should be only one none type, so this is safe.
+bool NullType::operator==(const Type& other) const {
+  // any redefinition by the user should be invalid, so this will always return false unless
+  // you're calling it on the same object.
   return this == &other;
 }
 
@@ -484,7 +490,7 @@ void StructureType::override_size_in_memory(int size) {
 }
 
 int StructureType::get_offset() const {
-  return 0;
+  return m_offset;
 }
 
 int StructureType::get_in_memory_alignment() const {

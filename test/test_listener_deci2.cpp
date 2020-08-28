@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "goalc/listener/Listener.h"
-#include "goalc/listener/Deci2Server.h"
+#include "game/system/Deci2Server.h"
 
 using namespace listener;
 
@@ -34,6 +34,11 @@ TEST(Listener, DeciInit) {
  */
 TEST(Listener, ListenToNothing) {
   Listener l;
+  if (l.connect_to_target()) {
+    printf(
+        "~~~~~~ Test connected to a runtime when there shouldn't be anything running! Check that "
+        "you don't have gk running in the background!\n");
+  }
   EXPECT_FALSE(l.connect_to_target());
   l.disconnect();
 }
@@ -89,7 +94,7 @@ TEST(Listener, ListenerThenDeci) {
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
     while (!s.check_for_listener()) {
-      printf("...\n");
+      //      printf("...\n");
     }
   }
 }
