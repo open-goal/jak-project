@@ -94,7 +94,7 @@ TEST(Listener, ListenerThenDeci) {
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
     while (!s.check_for_listener()) {
-      printf("...\n");
+      //      printf("...\n");
     }
   }
 }
