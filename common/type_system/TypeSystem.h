@@ -93,14 +93,9 @@ class TypeSystem {
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name);
   int get_next_method_id(Type* type);
-  int manual_add_field_to_type(StructureType* type,
-                               const std::string& field_name,
-                               const TypeSpec& field_type,
-                               int offset,
-                               int size,
-                               int alignment);
-
-  StructureType* add_builtin_structure(const std::string& parent, const std::string& type_name);
+  StructureType* add_builtin_structure(const std::string& parent,
+                                       const std::string& type_name,
+                                       bool boxed = false);
   BasicType* add_builtin_basic(const std::string& parent, const std::string& type_name);
   ValueType* add_builtin_value_type(const std::string& parent,
                                     const std::string& type_name,
@@ -111,7 +106,6 @@ class TypeSystem {
   void builtin_structure_inherit(StructureType* st);
 
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
-  std::unordered_map<std::string, Type*> m_global_types;
   std::unordered_set<std::string> m_forward_declared_types;
   std::vector<std::unique_ptr<Type>> m_old_types;
 

@@ -108,6 +108,11 @@ std::string Type::get_name() const {
 }
 
 std::string Type::get_runtime_name() const {
+  if (!m_allow_in_runtime) {
+    fmt::print("[TypeSystem] Tried to use type {} as a runtime type, which is not allowed.\n",
+               get_name());
+    throw std::runtime_error("get_runtime_name");
+  }
   return m_runtime_name;
 }
 
@@ -485,7 +490,7 @@ void StructureType::override_size_in_memory(int size) {
 }
 
 int StructureType::get_offset() const {
-  return 0;
+  return m_offset;
 }
 
 int StructureType::get_in_memory_alignment() const {

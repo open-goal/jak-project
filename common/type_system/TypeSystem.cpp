@@ -502,7 +502,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
  * Add types which are built-in to GOAL.
  */
 void TypeSystem::add_builtin_types() {
-  // some of the basic types having confusing circular dependencies, so this is done manually.
+  // some of the basic types have confusing circular dependencies, so this is done manually.
   // there are no inlined things so its ok to do some things out of order because the actual size
   // doesn't really matter.
 
@@ -520,36 +520,38 @@ void TypeSystem::add_builtin_types() {
   auto link_block_type = add_builtin_basic("basic", "link-block");
   auto kheap_type = add_builtin_structure("structure", "kheap");
   auto array_type = add_builtin_basic("basic", "array");
-  auto pair_type = add_builtin_structure("object", "pair");
+  auto pair_type = add_builtin_structure("object", "pair", true);
   auto process_tree_type = add_builtin_basic("basic", "process-tree");
   auto process_type = add_builtin_basic("process-tree", "process");
   auto thread_type = add_builtin_basic("basic", "thread");
   auto connectable_type = add_builtin_structure("structure", "connectable");
   auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
-  auto pointer_type = add_builtin_value_type("object", "pointer", 4);
+  add_builtin_value_type("object", "pointer", 4);
   auto inline_array_type = add_builtin_value_type("object", "inline-array", 4);
   inline_array_type->set_runtime_type("pointer");
 
-  auto number_type = add_builtin_value_type("object", "number", 8);  // sign extend?
-  auto float_type = add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
-  auto integer_type = add_builtin_value_type("number", "integer", 8, false, false);  // sign extend?
-  auto binteger_type =
-      add_builtin_value_type("integer", "binteger", 8, true, false);  // sign extend?
-  auto sinteger_type = add_builtin_value_type("integer", "sinteger", 8, false, true);
-  auto int8_type = add_builtin_value_type("sinteger", "int8", 1, false, true);
-  auto int16_type = add_builtin_value_type("sinteger", "int16", 2, false, true);
-  auto int32_type = add_builtin_value_type("sinteger", "int32", 4, false, true);
-  auto int64_type = add_builtin_value_type("sinteger", "int64", 8, false, true);
-  auto int128_type =
-      add_builtin_value_type("sinteger", "int128", 16, false, true, RegKind::INT_128);
-  auto uinteger_type = add_builtin_value_type("integer", "uinteger", 8);
-  auto uint8_type = add_builtin_value_type("uinteger", "uint8", 1);
-  auto uint16_type = add_builtin_value_type("uinteger", "uint16", 2);
-  auto uint32_type = add_builtin_value_type("uinteger", "uint32", 4);
-  auto uint64_type = add_builtin_value_type("uinteger", "uint64", 81);
-  auto uint128_type =
-      add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
+  add_builtin_value_type("object", "number", 8);  // sign extend?
+  add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
+  add_builtin_value_type("number", "integer", 8, false, false);  // sign extend?
+  add_builtin_value_type("integer", "binteger", 8, true, false);  // sign extend?
+  add_builtin_value_type("integer", "sinteger", 8, false, true);
+  add_builtin_value_type("sinteger", "int8", 1, false, true);
+  add_builtin_value_type("sinteger", "int16", 2, false, true);
+  add_builtin_value_type("sinteger", "int32", 4, false, true);
+  add_builtin_value_type("sinteger", "int64", 8, false, true);
+  add_builtin_value_type("sinteger", "int128", 16, false, true, RegKind::INT_128);
+  add_builtin_value_type("integer", "uinteger", 8);
+  add_builtin_value_type("uinteger", "uint8", 1);
+  add_builtin_value_type("uinteger", "uint16", 2);
+  add_builtin_value_type("uinteger", "uint32", 4);
+  add_builtin_value_type("uinteger", "uint64", 81);
+  add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
+
+  auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
+  int_type->disallow_in_runtime();
+  auto uint_type = add_builtin_value_type("uinteger", "uint", 8, false, false);
+  uint_type->disallow_in_runtime();
 
   // Methods and Fields
 
@@ -608,39 +610,38 @@ void TypeSystem::add_builtin_types() {
 
   // VU FUNCTION
   // don't inherit
-  (void)vu_function_type;
+  add_field_to_type(vu_function_type, "length", make_typespec("int32"));    // todo integer type
+  add_field_to_type(vu_function_type, "origin", make_typespec("pointer"));  // todo sign extend?
+  add_field_to_type(vu_function_type, "qlength", make_typespec("int32"));   // todo integer type
 
   // link block
-  (void)link_block_type;
+  builtin_structure_inherit(link_block_type);
+  add_field_to_type(link_block_type, "allocated-length",
+                    make_typespec("int32"));                              // todo integer type
+  add_field_to_type(link_block_type, "version", make_typespec("int32"));  // todo integer type
+  // there's probably some dynamically sized stuff after this...
 
-  (void)kheap_type;
+  // kheap
+  add_field_to_type(kheap_type, "base", make_typespec("pointer"));
+  add_field_to_type(kheap_type, "top", make_typespec("pointer"));
+  add_field_to_type(kheap_type, "current", make_typespec("pointer"));
+  add_field_to_type(kheap_type, "top-base", make_typespec("pointer"));
+
+  // todo
   (void)array_type;
-  (void)pair_type;
+
+  // pair
+  pair_type->override_offset(2);
+  add_field_to_type(pair_type, "car", make_typespec("object"));
+  add_field_to_type(pair_type, "cdr", make_typespec("object"));
+
+  // todo, with kernel
   (void)process_tree_type;
   (void)process_type;
   (void)thread_type;
   (void)connectable_type;
   (void)stack_frame_type;
   (void)file_stream_type;
-  (void)pointer_type;
-  (void)inline_array_type;
-
-  (void)number_type;  // sign extend?
-  (void)float_type;
-  (void)integer_type;   // sign extend?
-  (void)binteger_type;  // sign extend?
-  (void)sinteger_type;
-  (void)int8_type;
-  (void)int16_type;
-  (void)int32_type;
-  (void)int64_type;
-  (void)int128_type;
-  (void)uinteger_type;
-  (void)uint8_type;
-  (void)uint16_type;
-  (void)uint32_type;
-  (void)uint64_type;
-  (void)uint128_type;
 }
 
 /*!
@@ -673,23 +674,6 @@ int TypeSystem::get_next_method_id(Type* type) {
       return 1;
     }
   }
-}
-
-/*!
- * For debugging, todo remove.
- */
-int TypeSystem::manual_add_field_to_type(StructureType* type,
-                                         const std::string& field_name,
-                                         const TypeSpec& field_type,
-                                         int offset,
-                                         int size,
-                                         int alignment) {
-  Field field(field_name, field_type);
-  field.set_alignment(alignment);
-  field.set_offset(offset);
-  int new_size = type->get_size_in_memory() + size;
-  type->add_field(field, new_size);
-  return offset;
 }
 
 /*!
@@ -775,8 +759,9 @@ int TypeSystem::get_size_in_type(const Field& field) {
  * things in the wrong order.
  */
 StructureType* TypeSystem::add_builtin_structure(const std::string& parent,
-                                                 const std::string& type_name) {
-  add_type(type_name, std::make_unique<StructureType>(parent, type_name));
+                                                 const std::string& type_name,
+                                                 bool boxed) {
+  add_type(type_name, std::make_unique<StructureType>(parent, type_name, boxed));
   return get_type_of_type<StructureType>(type_name);
 }
 
