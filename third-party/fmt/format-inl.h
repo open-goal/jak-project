@@ -227,7 +227,7 @@ FMT_FUNC void system_error::init(int err_code, string_view format_str,
   memory_buffer buffer;
   format_system_error(buffer, err_code, vformat(format_str, args));
   std::runtime_error& base = *this;
-//  base = std::runtime_error(to_string(buffer));
+  base = std::runtime_error(to_string(buffer));
 }
 
 namespace detail {

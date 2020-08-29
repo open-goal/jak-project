@@ -97,7 +97,7 @@ void Interpreter::disable_printfs() {
  */
 void Interpreter::load_goos_library() {
   auto cmd = "(load-file \"goalc/gs/goos-lib.gs\")";
-     eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env());
+  eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env());
 }
 
 /*!
@@ -137,8 +137,8 @@ void Interpreter::execute_repl() {
  * for debugging.
  */
 void Interpreter::throw_eval_error(const Object& o, const std::string& err) {
- throw std::runtime_error("[GOOS] Evaluation error on " + o.print() + ": " + err + "\n" +
-                          reader.db.get_info_for(o));
+  throw std::runtime_error("[GOOS] Evaluation error on " + o.print() + ": " + err + "\n" +
+                           reader.db.get_info_for(o));
 }
 
 /*!

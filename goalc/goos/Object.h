@@ -222,7 +222,7 @@ class Object {
 
   std::shared_ptr<PairObject> as_pair() const {
     if (type != ObjectType::PAIR) {
-     throw std::runtime_error("as_pair called on a " + object_type_to_string(type) + " " +
+      throw std::runtime_error("as_pair called on a " + object_type_to_string(type) + " " +
                                print());
     }
     return std::dynamic_pointer_cast<PairObject>(heap_obj);
@@ -246,7 +246,7 @@ class Object {
   std::shared_ptr<StringObject> as_string() const {
     if (type != ObjectType::STRING) {
       throw std::runtime_error("as_string called on a " + object_type_to_string(type) + " " +
-                              print());
+                               print());
     }
     return std::dynamic_pointer_cast<StringObject>(heap_obj);
   }
@@ -269,7 +269,7 @@ class Object {
 
   std::shared_ptr<ArrayObject> as_array() const {
     if (type != ObjectType::ARRAY) {
-     throw std::runtime_error("as_array called on a " + object_type_to_string(type) + " " +
+      throw std::runtime_error("as_array called on a " + object_type_to_string(type) + " " +
                                print());
     }
     return std::dynamic_pointer_cast<ArrayObject>(heap_obj);
@@ -284,7 +284,7 @@ class Object {
 
   FloatType& as_float() {
     if (type != ObjectType::FLOAT) {
-     throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +
+      throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +
                                print());
     }
     return float_obj.value;

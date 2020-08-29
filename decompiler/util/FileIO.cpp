@@ -16,7 +16,7 @@ std::string combine_path(const std::string& parent, const std::string& child) {
 
 std::vector<uint8_t> read_binary_file(const std::string& filename) {
   auto fp = fopen(filename.c_str(), "rb");
-  if(!fp) throw std::runtime_error("File cannot be opened");
+  if(!fp) throw std::runtime_error("File " + filename + " cannot be opened");
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
   rewind(fp);
@@ -25,7 +25,7 @@ std::vector<uint8_t> read_binary_file(const std::string& filename) {
   data.resize(len);
 
   if(fread(data.data(), len, 1, fp) != 1) {
-    throw std::runtime_error("File cannot be read");
+    throw std::runtime_error("File " + filename + " cannot be read");
   }
 
   return data;

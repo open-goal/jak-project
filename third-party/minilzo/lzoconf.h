@@ -264,7 +264,7 @@ typedef int
                                      const lzo_bytep dict, lzo_uint dict_len );
 
 
-/* Callback interfaces. Currently only the progress indicator ("nprogress")
+/* Callback interface. Currently only the progress indicator ("nprogress")
  * is used, but this may change in a future release. */
 
 struct lzo_callback_t;

@@ -19,8 +19,6 @@ class Timer {
   int clock_gettime_monotonic(struct timespec* tv);
 #endif
 
-
-
   /*!
    * Start the timer
    */
@@ -29,7 +27,7 @@ class Timer {
   /*!
    * Get milliseconds elapsed
    */
- double getMs() { return (double)getNs() / 1.e6; }
+  double getMs() { return (double)getNs() / 1.e6; }
 
   double getUs() { return (double)getNs() / 1.e3; }
 
