@@ -278,7 +278,7 @@ bool Reader::read_object(Token& tok, TextStream& ts, Object& obj) {
     if (try_token_as_symbol(tok, obj)) {
       return true;
     }
-  } catch (std::runtime_error& e) {
+  } catch (std::exception& e) {
     throw_reader_error(ts, "parsing token " + tok.text + " failed: " + e.what(), -1);
   }
 
@@ -564,7 +564,7 @@ bool Reader::try_token_as_float(const Token& tok, Object& obj) {
         return false;
       obj = Object::make_float(v);
       return true;
-    } catch (std::runtime_error& e) {
+    } catch (std::exception& e) {
       return false;
     }
   }
@@ -627,7 +627,7 @@ bool Reader::try_token_as_hex(const Token& tok, Object& obj) {
         return false;
       obj = Object::make_integer(v);
       return true;
-    } catch (std::runtime_error& e) {
+    } catch (std::exception& e) {
       throw std::runtime_error("The number cannot be a hexadecimal constant");
     }
   }
@@ -661,7 +661,7 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
         return false;
       obj = Object::make_integer(v);
       return true;
-    } catch (std::runtime_error& e) {
+    } catch (std::exception& e) {
       throw std::runtime_error("The number cannot be an integer constant");
     }
   }
