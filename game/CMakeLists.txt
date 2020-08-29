@@ -7,7 +7,6 @@ set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall \
 
 enable_language(ASM_NASM)
 set(RUNTIME_SOURCE
-        main.cpp
         runtime.cpp
         system/SystemThread.cpp
         system/IOP_Kernel.cpp
@@ -49,7 +48,7 @@ set(RUNTIME_SOURCE
         overlord/stream.cpp)
 
 # the runtime should be built without any static/dynamic libraries.
-add_executable(gk ${RUNTIME_SOURCE})
+add_executable(gk ${RUNTIME_SOURCE} main.cpp)
 
 # we also build a runtime library for testing. This version is likely unable to call GOAL code correctly, but
 # can be used to test other things.

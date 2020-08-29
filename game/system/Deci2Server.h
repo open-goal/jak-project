@@ -34,9 +34,9 @@ class Deci2Server {
   void accept_thread_func();
   bool kill_accept_thread = false;
   char* buffer = nullptr;
-  int server_fd;
+  int server_fd = -1;
   sockaddr_in addr;
-  int new_sock;
+  int new_sock = -1;
   bool server_initialized = false;
   bool accept_thread_running = false;
   bool server_connected = false;

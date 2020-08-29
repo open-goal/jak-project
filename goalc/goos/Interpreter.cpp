@@ -85,6 +85,14 @@ Interpreter::Interpreter() {
   load_goos_library();
 }
 
+
+Interpreter::~Interpreter() {
+  // There are some circular references that prevent shared_ptrs from cleaning up if we
+  // don't do this.
+  global_environment.as_env()->vars.clear();
+  goal_env.as_env()->vars.clear();
+}
+
 /*!
  * Disable printfs on errors, to make test output look less messy.
  */
