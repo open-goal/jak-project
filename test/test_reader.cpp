@@ -57,175 +57,186 @@ TEST(GoosReader, Integer) {
   printf("got here");
 }
 
-//TEST(GoosReader, Hex) {
-//  Reader reader;
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x0"), 0));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x1"), 1));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xf"), 15));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xF"), 15));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x0F"), 15));
-//  EXPECT_TRUE(check_first_integer(
-//      reader.read_from_string("#x0000000000000000000000000000000000000000000000000000f"), 15));
-//
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xffffffff"), UINT32_MAX));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x100000000"), (1LL << 32LL)));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x7FFFFFFFFFFFFFFF"), INT64_MAX));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x8000000000000000"), INT64_MIN));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xffffffffffffffff"), -1));
-//
-//  EXPECT_ANY_THROW(reader.read_from_string("#x10000000000000000"));
-//
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#x"), "#x"));
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#x-1"), "#x-1"));
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#x.1"), "#x.1"));
-//}
-//
-//TEST(GoosReader, Binary) {
-//  Reader reader;
-//
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b0"), 0));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b0000000000"), 0));
-//  EXPECT_TRUE(check_first_integer(
-//      reader.read_from_string("#b000000000000000000000000000000000000000000000000000000000000000000"
-//                              "00000000000000000000000000000000"),
-//      0));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b1"), 1));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b10"), 2));
-//  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b01011"), 11));
-//  EXPECT_TRUE(check_first_integer(
-//      reader.read_from_string("#b1111111111111111111111111111111111111111111111111111111111111111"),
-//      -1));
-//  EXPECT_TRUE(check_first_integer(
-//      reader.read_from_string(
-//          "#b000001111111111111111111111111111111111111111111111111111111111111111"),
-//      -1));
-//
-//  EXPECT_TRUE(check_first_integer(
-//      reader.read_from_string("#b0111111111111111111111111111111111111111111111111111111111111111"),
-//      INT64_MAX));
-//  EXPECT_TRUE(check_first_integer(
-//      reader.read_from_string("#b1000000000000000000000000000000000000000000000000000000000000000"),
-//      INT64_MIN));
-//
-//  EXPECT_ANY_THROW(reader.read_from_string(
-//      "#b11111111111111111111111111111111111111111111111111111111111111111"));
-//
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b"), "#b"));
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b-1"), "#b-1"));
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b.1"), "#b.1"));
-//}
+TEST(GoosReader, Hex) {
+  Reader reader;
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x0"), 0));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x1"), 1));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xf"), 15));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xF"), 15));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x0F"), 15));
+  EXPECT_TRUE(check_first_integer(
+      reader.read_from_string("#x0000000000000000000000000000000000000000000000000000f"), 15));
 
-//TEST(GoosReader, Float) {
-//  Reader reader;
-//
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("1.6"), 1.6));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("0000001.6"), 1.6));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("0.6"), 0.6));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("00000.6"), 0.6));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-0.6"), -0.6));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-000000.6"), -0.6));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-.6"), -.6));
-//
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("1."), 1));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("1.0"), 1));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("01."), 1));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("01.0"), 1));
-//
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("0."), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string(".0"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("0.0"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("000."), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string(".000"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("0.000"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("000.0"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("000.0000"), 0));
-//
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-0."), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-.0"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-0.0"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-000."), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-.000"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-0.000"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-000.0"), 0));
-//  EXPECT_TRUE(check_first_float(reader.read_from_string("-000.0000"), 0));
-//
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("1e0"), "1e0"));
-//  EXPECT_ANY_THROW(reader.read_from_string("."));
-//}
-//
-//TEST(GoosReader, Boolean) {
-//  Reader reader;
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#f"), "#f"));
-//  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#t"), "#t"));
-//}
-//
-//TEST(GoosReader, String) {
-//  Reader reader;
-//  EXPECT_TRUE(
-//      check_first_string(reader.read_from_string("\"testing string ()\""), "testing string ()"));
-//  EXPECT_TRUE(check_first_string(reader.read_from_string("\"\""), ""));
-//  EXPECT_TRUE(check_first_string(reader.read_from_string("\"  \\t  \""), "  \t  "));
-//  EXPECT_TRUE(check_first_string(reader.read_from_string("\"  \\n  \""), "  \n  "));
-//  EXPECT_TRUE(check_first_string(reader.read_from_string("\"test  \\n\""), "test  \n"));
-//  EXPECT_TRUE(check_first_string(reader.read_from_string("\"  \\\\  \""), "  \\  "));
-//  EXPECT_ANY_THROW(reader.read_from_string("\"\\\""));   // "\" invalid escape
-//  EXPECT_ANY_THROW(reader.read_from_string("\"\\w\""));  // "\w" invalid escape
-//}
-//
-//TEST(GoosReader, Symbol) {
-//  std::vector<std::string> test_symbols = {
-//      "test", "test-two", "__werid-sym__", "-a", "-", "/", "*", "+", "a", "#f"};
-//
-//  Reader reader;
-//
-//  for (const auto& sym : test_symbols) {
-//    EXPECT_TRUE(check_first_symbol(reader.read_from_string(sym), sym));
-//  }
-//}
-//
-//namespace {
-//bool first_list_matches(Object o, std::vector<Object> stuff) {
-//  auto lst = o.as_pair()->cdr.as_pair()->car;
-//  for (const auto& x : stuff) {
-//    const auto check = x.as_pair()->cdr.as_pair()->car;
-//    if (lst.as_pair()->car != check) {
-//      return false;
-//    }
-//    lst = lst.as_pair()->cdr;
-//  }
-//
-//  return lst.is_empty_list();
-//}
-//
-//bool first_array_matches(Object o, std::vector<Object> stuff) {
-//  auto array = o.as_pair()->cdr.as_pair()->car.as_array();
-//  if (stuff.size() != array->size()) {
-//    return false;
-//  }
-//
-//  for (size_t i = 0; i < array->size(); i++) {
-//    if ((*array)[i] != stuff.at(i)) {
-//      return false;
-//    }
-//  }
-//  return true;
-//}
-//
-//bool first_pair_matches(Object o, Object car, Object cdr) {
-//  auto lst = o.as_pair()->cdr.as_pair()->car;
-//  return (lst.as_pair()->car == car) && (lst.as_pair()->cdr == cdr);
-//}
-//
-//bool print_matches(Object o, std::string expected) {
-//  return o.as_pair()->cdr.as_pair()->car.print() == expected;
-//}
-//
-//bool first_char_matches(Object o, char c) {
-//  return o.as_pair()->cdr.as_pair()->car.as_char() == c;
-//}
-//
-//}  // namespace
-//
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xffffffff"), UINT32_MAX));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x100000000"), (1LL << 32LL)));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x7FFFFFFFFFFFFFFF"), INT64_MAX));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#x8000000000000000"), INT64_MIN));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#xffffffffffffffff"), -1));
+
+  EXPECT_ANY_THROW(reader.read_from_string("#x10000000000000000"));
+
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#x"), "#x"));
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#x-1"), "#x-1"));
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#x.1"), "#x.1"));
+  printf("got here");
+}
+
+TEST(GoosReader, Binary) {
+  Reader reader;
+
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b0"), 0));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b0000000000"), 0));
+  EXPECT_TRUE(check_first_integer(
+      reader.read_from_string("#b000000000000000000000000000000000000000000000000000000000000000000"
+                              "00000000000000000000000000000000"),
+      0));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b1"), 1));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b10"), 2));
+  EXPECT_TRUE(check_first_integer(reader.read_from_string("#b01011"), 11));
+  EXPECT_TRUE(check_first_integer(
+      reader.read_from_string("#b1111111111111111111111111111111111111111111111111111111111111111"),
+      -1));
+  EXPECT_TRUE(check_first_integer(
+      reader.read_from_string(
+          "#b000001111111111111111111111111111111111111111111111111111111111111111"),
+      -1));
+
+  EXPECT_TRUE(check_first_integer(
+      reader.read_from_string("#b0111111111111111111111111111111111111111111111111111111111111111"),
+      INT64_MAX));
+  EXPECT_TRUE(check_first_integer(
+      reader.read_from_string("#b1000000000000000000000000000000000000000000000000000000000000000"),
+      INT64_MIN));
+
+  EXPECT_ANY_THROW(reader.read_from_string(
+      "#b11111111111111111111111111111111111111111111111111111111111111111"));
+
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b"), "#b"));
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b-1"), "#b-1"));
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b.1"), "#b.1"));
+  printf("got here");
+}
+
+TEST(GoosReader, Float) {
+  Reader reader;
+
+  EXPECT_TRUE(check_first_float(reader.read_from_string("1.6"), 1.6));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("0000001.6"), 1.6));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("0.6"), 0.6));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("00000.6"), 0.6));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-0.6"), -0.6));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-000000.6"), -0.6));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-.6"), -.6));
+
+  EXPECT_TRUE(check_first_float(reader.read_from_string("1."), 1));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("1.0"), 1));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("01."), 1));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("01.0"), 1));
+
+  EXPECT_TRUE(check_first_float(reader.read_from_string("0."), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string(".0"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("0.0"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("000."), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string(".000"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("0.000"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("000.0"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("000.0000"), 0));
+
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-0."), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-.0"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-0.0"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-000."), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-.000"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-0.000"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-000.0"), 0));
+  EXPECT_TRUE(check_first_float(reader.read_from_string("-000.0000"), 0));
+
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("1e0"), "1e0"));
+  EXPECT_ANY_THROW(reader.read_from_string("."));
+  printf("got here");
+}
+
+TEST(GoosReader, Boolean) {
+  Reader reader;
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#f"), "#f"));
+  EXPECT_TRUE(check_first_symbol(reader.read_from_string("#t"), "#t"));
+  printf("got here");
+}
+
+TEST(GoosReader, String) {
+  Reader reader;
+  EXPECT_TRUE(
+      check_first_string(reader.read_from_string("\"testing string ()\""), "testing string ()"));
+  EXPECT_TRUE(check_first_string(reader.read_from_string("\"\""), ""));
+  EXPECT_TRUE(check_first_string(reader.read_from_string("\"  \\t  \""), "  \t  "));
+  EXPECT_TRUE(check_first_string(reader.read_from_string("\"  \\n  \""), "  \n  "));
+  EXPECT_TRUE(check_first_string(reader.read_from_string("\"test  \\n\""), "test  \n"));
+  EXPECT_TRUE(check_first_string(reader.read_from_string("\"  \\\\  \""), "  \\  "));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\\""));   // "\" invalid escape
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\w\""));  // "\w" invalid escape
+  printf("got here");
+}
+
+TEST(GoosReader, Symbol) {
+  std::vector<std::string> test_symbols = {
+      "test", "test-two", "__werid-sym__", "-a", "-", "/", "*", "+", "a", "#f"};
+
+  Reader reader;
+
+  for (const auto& sym : test_symbols) {
+    EXPECT_TRUE(check_first_symbol(reader.read_from_string(sym), sym));
+  }
+  printf("got here");
+}
+
+namespace {
+bool first_list_matches(Object o, std::vector<Object> stuff) {
+  auto lst = o.as_pair()->cdr.as_pair()->car;
+  for (const auto& x : stuff) {
+    const auto check = x.as_pair()->cdr.as_pair()->car;
+    if (lst.as_pair()->car != check) {
+      return false;
+    }
+    lst = lst.as_pair()->cdr;
+  }
+
+  return lst.is_empty_list();
+  printf("got here");
+}
+
+bool first_array_matches(Object o, std::vector<Object> stuff) {
+  auto array = o.as_pair()->cdr.as_pair()->car.as_array();
+  if (stuff.size() != array->size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < array->size(); i++) {
+    if ((*array)[i] != stuff.at(i)) {
+      return false;
+    }
+  }
+  return true;
+  printf("got here");
+}
+
+bool first_pair_matches(Object o, Object car, Object cdr) {
+  auto lst = o.as_pair()->cdr.as_pair()->car;
+  return (lst.as_pair()->car == car) && (lst.as_pair()->cdr == cdr);
+  printf("got here");
+}
+
+bool print_matches(Object o, std::string expected) {
+  return o.as_pair()->cdr.as_pair()->car.print() == expected;
+  printf("got here");
+}
+
+bool first_char_matches(Object o, char c) {
+  return o.as_pair()->cdr.as_pair()->car.as_char() == c;
+  printf("got here");
+}
+
+}  // namespace
+
 //TEST(GoosReader, List) {
 //  Reader reader;
 //  auto r = [&](std::string s) { return reader.read_from_string(s); };
@@ -252,6 +263,7 @@ TEST(GoosReader, Integer) {
 //  for (const auto& x : expected_to_throw) {
 //    EXPECT_ANY_THROW(r(x));
 //  }
+//  printf("got here");
 //}
 //
 //TEST(GoosReader, Comments) {
@@ -286,8 +298,9 @@ TEST(GoosReader, Integer) {
 //  EXPECT_TRUE(first_char_matches(r("#\\\\n"), '\n'));
 //  EXPECT_TRUE(first_char_matches(r("#\\\\t"), '\t'));
 //  EXPECT_TRUE(first_char_matches(r("#\\\\s"), ' '));
+//  printf("got here");
 //}
-//
+
 //TEST(GoosReader, Array) {
 //  Reader reader;
 //  auto r = [&](std::string s) { return reader.read_from_string(s); };

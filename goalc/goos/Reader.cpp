@@ -102,7 +102,7 @@ Reader::Reader() {
   // find the source directory
   auto result = std::getenv("NEXT_DIR");
   if (!result) {
-    throw std::runtime_error(
+    throw std::exception(
         "Environment variable NEXT_DIR is not set.  Please set this to point to next/");
   }
 
