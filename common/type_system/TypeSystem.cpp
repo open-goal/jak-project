@@ -3,6 +3,7 @@
 #include "TypeSystem.h"
 #include "type_util.h"
 #include <cassert>
+#include <stdexcept>
 
 TypeSystem::TypeSystem() {
   // the "none" type is included by default.

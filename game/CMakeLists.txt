@@ -22,6 +22,10 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 enable_language(ASM_NASM)
+#set(CMAKE_ASM_NASM_OBJECT_FORMAT elf64)
+set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)
+set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> <FLAGS> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
+set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         main.cpp
         runtime.cpp
@@ -35,7 +39,7 @@ set(RUNTIME_SOURCE
         sce/sif_ee.cpp
         sce/iop.cpp
         sce/stubs.cpp
-        kernel/asm_funcs.nasm
+        kernel/asm_funcs.asm
         kernel/fileio.cpp
         kernel/kboot.cpp
         kernel/kdgo.cpp
