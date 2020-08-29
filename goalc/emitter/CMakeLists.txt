@@ -1,3 +1,3 @@
 add_library(emitter
-        CodeTester.cpp
-        registers.cpp)
+        Register.cpp
+        CodeTester.cpp)
