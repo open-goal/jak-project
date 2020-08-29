@@ -54,7 +54,6 @@ TEST(GoosReader, Integer) {
   // too big or too small.
   EXPECT_ANY_THROW(reader.read_from_string("9223372036854775808"));
   EXPECT_ANY_THROW(reader.read_from_string("-9223372036854775809"));
-  printf("got here");
 }
 
 TEST(GoosReader, Hex) {
@@ -116,7 +115,6 @@ TEST(GoosReader, Binary) {
   EXPECT_TRUE(check_first_symbol(reader.read_from_string("#b.1"), "#b.1"));
   printf("got here");
 }
-
 TEST(GoosReader, Float) {
   Reader reader;
 
@@ -237,110 +235,110 @@ bool first_char_matches(Object o, char c) {
 
 }  // namespace
 
-//TEST(GoosReader, List) {
-//  Reader reader;
-//  auto r = [&](std::string s) { return reader.read_from_string(s); };
-//  EXPECT_TRUE(first_list_matches(r("()"), {}));
-//  EXPECT_TRUE(first_list_matches(r("(1)"), {r("1")}));
-//  EXPECT_TRUE(first_list_matches(r("  (  1 )  "), {r("1")}));
-//  EXPECT_TRUE(first_list_matches(r("(1 2 3)"), {r("1"), r("2"), r("3")}));
-//  EXPECT_TRUE(first_list_matches(r("  (  1  bbbb  3  )  "), {r("1"), r("bbbb"), r("3")}));
-//
-//  EXPECT_TRUE(first_pair_matches(r("(1 . 2)"), Object::make_integer(1), Object::make_integer(2)));
-//
-//  EXPECT_TRUE(print_matches(r("  (  1  .  2  ) "), "(1 . 2)"));
-//  EXPECT_TRUE(print_matches(r("  (  1      1  .  2   ) "), "(1 1 . 2)"));
-//  EXPECT_TRUE(print_matches(r("  (  1  .   ( 1  .  2 )  ) "), "(1 1 . 2)"));
-//  EXPECT_TRUE(
-//      print_matches(r("  ( 1  ( 1  2 )  ( 1  ( 12  3 ) )  .  3 ) "), "(1 (1 2) (1 (12 3)) . 3)"));
-//  EXPECT_TRUE(
-//      print_matches(r("  ( 1  ( 1  2 )  ( 1  ( 12  3 ) )  .  (   ) ) "), "(1 (1 2) (1 (12 3)))"));
-//
-//  std::vector<std::string> expected_to_throw = {"(",      ")",         " (",      "  )()() ",
-//                                                ")(",     "(1 2 ))",   "(( 1 2)", "(1 . . 2)",
-//                                                "(1 . )", "(1 . 2 3)", "( . 2)"};
-//
-//  for (const auto& x : expected_to_throw) {
-//    EXPECT_ANY_THROW(r(x));
-//  }
-//  printf("got here");
-//}
-//
-//TEST(GoosReader, Comments) {
-//  Reader reader;
-//  auto r = [&](std::string s) { return reader.read_from_string(s); };
-//  EXPECT_TRUE(first_list_matches(r(";;\n(1)\n;;"), {r("1")}));
-//  EXPECT_TRUE(first_list_matches(r(";;\n(;1\n1;)\n);;\n;"), {r("1")}));
-//
-//  r(";");
-//  r(" ;");
-//  r("\n;");
-//  r(";\n");
-//
-//  EXPECT_TRUE(first_list_matches(
-//      r("#|multi line\n com(((((ment |# (1) #| multi line\n comm)))))ent |#"), {r("1")}));
-//  EXPECT_TRUE(first_list_matches(
-//      r("#| #| multi l#|ine\n com#|ment |# (1) #| multi line\n commen))))))t |#"), {r("1")}));
-//
-//  std::vector<std::string> expected_to_throw = {"|#", "#| |# |#"};
-//
-//  for (const auto& x : expected_to_throw) {
-//    EXPECT_ANY_THROW(r(x));
-//  }
-//}
-//
-//TEST(GoosReader, Char) {
-//  Reader reader;
-//  auto r = [&](std::string s) { return reader.read_from_string(s); };
-//
-//  EXPECT_TRUE(first_char_matches(r("#\\c"), 'c'));
-//  EXPECT_TRUE(first_char_matches(r("#\\n"), 'n'));
-//  EXPECT_TRUE(first_char_matches(r("#\\\\n"), '\n'));
-//  EXPECT_TRUE(first_char_matches(r("#\\\\t"), '\t'));
-//  EXPECT_TRUE(first_char_matches(r("#\\\\s"), ' '));
-//  printf("got here");
-//}
+TEST(GoosReader, List) {
+  Reader reader;
+  auto r = [&](std::string s) { return reader.read_from_string(s); };
+  EXPECT_TRUE(first_list_matches(r("()"), {}));
+  EXPECT_TRUE(first_list_matches(r("(1)"), {r("1")}));
+  EXPECT_TRUE(first_list_matches(r("  (  1 )  "), {r("1")}));
+  EXPECT_TRUE(first_list_matches(r("(1 2 3)"), {r("1"), r("2"), r("3")}));
+  EXPECT_TRUE(first_list_matches(r("  (  1  bbbb  3  )  "), {r("1"), r("bbbb"), r("3")}));
 
-//TEST(GoosReader, Array) {
-//  Reader reader;
-//  auto r = [&](std::string s) { return reader.read_from_string(s); };
-//  EXPECT_TRUE(print_matches(r("  #(  ) "), "#()"));
-//  EXPECT_TRUE(first_array_matches(r("#()"), {}));
-//  EXPECT_TRUE(first_array_matches(r("#(1 2)"), {Object::make_integer(1), Object::make_integer(2)}));
-//  EXPECT_TRUE(first_array_matches(r("#( 1 #| 2 |# 3 )"),
-//                                  {Object::make_integer(1), Object::make_integer(3)}));
-//  EXPECT_TRUE(
-//      first_array_matches(r("#( 1 #|2|# 3 )"), {Object::make_integer(1), Object::make_integer(3)}));
-//}
-//
-//TEST(GoosReader, Macros) {
-//  Reader reader;
-//  auto r = [&](std::string s) { return reader.read_from_string(s); };
-//  EXPECT_TRUE(print_matches(r("'x"), "(quote x)"));
-//  EXPECT_TRUE(print_matches(r("`x"), "(quasiquote x)"));
-//  EXPECT_TRUE(print_matches(r(",x"), "(unquote x)"));
-//  EXPECT_TRUE(print_matches(r(",@x"), "(unquote-splicing x)"));
-//}
-//
-//TEST(GoosReader, TopLevel) {
-//  Reader reader;
-//  auto r = [&](std::string s) { return reader.read_from_string(s); };
-//  EXPECT_EQ(r("x").print(), "(top-level x)");
-//}
-//
-//TEST(GoosReader, FromFile) {
-//  Reader reader;
-//  auto result =
-//      reader.read_from_file(util::combine_path({"test", "test_reader_file0.gc"})).print();
-//  EXPECT_TRUE(result == "(top-level (1 2 3 4))");
-//}
-//
-//TEST(GoosReader, TextDb) {
-//  // very specific to this particular test file, but whatever.
-//  Reader reader;
-//  auto file_path = util::combine_path({"test", "test_reader_file0.gc"});
-//  auto result = reader.read_from_file(file_path).as_pair()->cdr.as_pair()->car;
-//  std::string expected = "text from " + util::combine_path(reader.get_source_dir(), file_path) +
-//                         ", line: 5\n(1 2 3 4)\n";
-//  EXPECT_EQ(expected, reader.db.get_info_for(result));
-//}
+  EXPECT_TRUE(first_pair_matches(r("(1 . 2)"), Object::make_integer(1), Object::make_integer(2)));
+
+  EXPECT_TRUE(print_matches(r("  (  1  .  2  ) "), "(1 . 2)"));
+  EXPECT_TRUE(print_matches(r("  (  1      1  .  2   ) "), "(1 1 . 2)"));
+  EXPECT_TRUE(print_matches(r("  (  1  .   ( 1  .  2 )  ) "), "(1 1 . 2)"));
+  EXPECT_TRUE(
+      print_matches(r("  ( 1  ( 1  2 )  ( 1  ( 12  3 ) )  .  3 ) "), "(1 (1 2) (1 (12 3)) . 3)"));
+  EXPECT_TRUE(
+      print_matches(r("  ( 1  ( 1  2 )  ( 1  ( 12  3 ) )  .  (   ) ) "), "(1 (1 2) (1 (12 3)))"));
+
+  std::vector<std::string> expected_to_throw = {"(",      ")",         " (",      "  )()() ",
+                                                ")(",     "(1 2 ))",   "(( 1 2)", "(1 . . 2)",
+                                                "(1 . )", "(1 . 2 3)", "( . 2)"};
+
+  for (const auto& x : expected_to_throw) {
+    EXPECT_ANY_THROW(r(x));
+  }
+  printf("got here");
+}
+
+TEST(GoosReader, Comments) {
+  Reader reader;
+  auto r = [&](std::string s) { return reader.read_from_string(s); };
+  EXPECT_TRUE(first_list_matches(r(";;\n(1)\n;;"), {r("1")}));
+  EXPECT_TRUE(first_list_matches(r(";;\n(;1\n1;)\n);;\n;"), {r("1")}));
+
+  r(";");
+  r(" ;");
+  r("\n;");
+  r(";\n");
+
+  EXPECT_TRUE(first_list_matches(
+      r("#|multi line\n com(((((ment |# (1) #| multi line\n comm)))))ent |#"), {r("1")}));
+  EXPECT_TRUE(first_list_matches(
+      r("#| #| multi l#|ine\n com#|ment |# (1) #| multi line\n commen))))))t |#"), {r("1")}));
+
+  std::vector<std::string> expected_to_throw = {"|#", "#| |# |#"};
+
+  for (const auto& x : expected_to_throw) {
+    EXPECT_ANY_THROW(r(x));
+  }
+}
+
+TEST(GoosReader, Char) {
+  Reader reader;
+  auto r = [&](std::string s) { return reader.read_from_string(s); };
+
+  EXPECT_TRUE(first_char_matches(r("#\\c"), 'c'));
+  EXPECT_TRUE(first_char_matches(r("#\\n"), 'n'));
+  EXPECT_TRUE(first_char_matches(r("#\\\\n"), '\n'));
+  EXPECT_TRUE(first_char_matches(r("#\\\\t"), '\t'));
+  EXPECT_TRUE(first_char_matches(r("#\\\\s"), ' '));
+  printf("got here");
+}
+
+TEST(GoosReader, Array) {
+  Reader reader;
+  auto r = [&](std::string s) { return reader.read_from_string(s); };
+  EXPECT_TRUE(print_matches(r("  #(  ) "), "#()"));
+  EXPECT_TRUE(first_array_matches(r("#()"), {}));
+  EXPECT_TRUE(first_array_matches(r("#(1 2)"), {Object::make_integer(1), Object::make_integer(2)}));
+  EXPECT_TRUE(first_array_matches(r("#( 1 #| 2 |# 3 )"),
+                                  {Object::make_integer(1), Object::make_integer(3)}));
+  EXPECT_TRUE(
+      first_array_matches(r("#( 1 #|2|# 3 )"), {Object::make_integer(1), Object::make_integer(3)}));
+}
+
+TEST(GoosReader, Macros) {
+  Reader reader;
+  auto r = [&](std::string s) { return reader.read_from_string(s); };
+  EXPECT_TRUE(print_matches(r("'x"), "(quote x)"));
+  EXPECT_TRUE(print_matches(r("`x"), "(quasiquote x)"));
+  EXPECT_TRUE(print_matches(r(",x"), "(unquote x)"));
+  EXPECT_TRUE(print_matches(r(",@x"), "(unquote-splicing x)"));
+}
+
+TEST(GoosReader, TopLevel) {
+  Reader reader;
+  auto r = [&](std::string s) { return reader.read_from_string(s); };
+  EXPECT_EQ(r("x").print(), "(top-level x)");
+}
+
+TEST(GoosReader, FromFile) {
+  Reader reader;
+  auto result =
+      reader.read_from_file(util::combine_path({"test", "test_reader_file0.gc"})).print();
+  EXPECT_TRUE(result == "(top-level (1 2 3 4))");
+}
+
+TEST(GoosReader, TextDb) {
+  // very specific to this particular test file, but whatever.
+  Reader reader;
+  auto file_path = util::combine_path({"test", "test_reader_file0.gc"});
+  auto result = reader.read_from_file(file_path).as_pair()->cdr.as_pair()->car;
+  std::string expected = "text from " + util::combine_path(reader.get_source_dir(), file_path) +
+                         ", line: 5\n(1 2 3 4)\n";
+  EXPECT_EQ(expected, reader.db.get_info_for(result));
+}

@@ -5,7 +5,7 @@ project(jak)
 set(CMAKE_CXX_STANDARD 14)
 
 # optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-set(CMAKE_CXX_FLAGS "-O3 -ggdb")
+set(CMAKE_CXX_FLAGS "-O3 -ggdb /EHsc")
 
 # Set default compile flags for GCC
 if(CMAKE_COMPILER_IS_GNUCXX)
