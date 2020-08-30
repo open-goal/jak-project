@@ -51,8 +51,6 @@ enum X86_REG : u8 {
   XMM15
 };
 
-
-
 class Register {
  public:
   Register() = default;
@@ -75,9 +73,7 @@ class Register {
     return 0xff;
   }
 
-  int id() const {
-    return m_id;
-  }
+  int id() const { return m_id; }
 
   struct hash {
     auto operator()(const Register& x) const { return std::hash<u8>()(x.m_id); }
@@ -109,37 +105,21 @@ class RegisterInfo {
     std::string name;
   };
 
-  const Info& get_info(Register r) const {
-    return m_info.at(r.id());
-  }
+  const Info& get_info(Register r) const { return m_info.at(r.id()); }
 
-  Register get_arg_reg(int id) const {
-    return m_arg_regs.at(id);
-  }
+  Register get_arg_reg(int id) const { return m_arg_regs.at(id); }
 
-  Register get_saved_gpr(int id) const {
-    return m_saved_gprs.at(id);
-  }
+  Register get_saved_gpr(int id) const { return m_saved_gprs.at(id); }
 
-  Register get_saved_xmm(int id) const {
-    return m_saved_xmms.at(id);
-  }
+  Register get_saved_xmm(int id) const { return m_saved_xmms.at(id); }
 
-  Register get_process_reg() const {
-    return R13;
-  }
+  Register get_process_reg() const { return R13; }
 
-  Register get_st_reg() const {
-    return R14;
-  }
+  Register get_st_reg() const { return R14; }
 
-  Register get_offset_reg() const {
-    return R15;
-  }
+  Register get_offset_reg() const { return R15; }
 
-  Register get_ret_reg() const {
-    return RAX;
-  }
+  Register get_ret_reg() const { return RAX; }
 
  private:
   RegisterInfo() = default;

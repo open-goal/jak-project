@@ -85,7 +85,6 @@ Interpreter::Interpreter() {
   load_goos_library();
 }
 
-
 Interpreter::~Interpreter() {
   // There are some circular references that prevent shared_ptrs from cleaning up if we
   // don't do this.

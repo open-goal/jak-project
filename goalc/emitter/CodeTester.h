@@ -26,7 +26,7 @@ class CodeTester {
 
   Register get_c_abi_arg_reg(int i) {
     // todo - this should be different for windows.
-    switch(i) {
+    switch (i) {
       case 0:
         return RDI;
       case 1:
@@ -40,9 +40,7 @@ class CodeTester {
     }
   }
 
-  std::string reg_name(Register x) {
-    return m_info.get_info(x).name;
-  }
+  std::string reg_name(Register x) { return m_info.get_info(x).name; }
 
  private:
   int code_buffer_size = 0;
@@ -50,5 +48,5 @@ class CodeTester {
   u8* code_buffer = nullptr;
   RegisterInfo m_info;
 };
-}  // namespace goal
+}  // namespace emitter
 #endif  // JAK_CODETESTER_H

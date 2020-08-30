@@ -4,15 +4,13 @@
 
 namespace emitter {
 
-CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()) {
-
-}
+CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()) {}
 
 std::string CodeTester::dump_to_hex_string(bool nospace) {
   std::string result;
   char buff[32];
   for (int i = 0; i < code_buffer_size; i++) {
-    if(nospace) {
+    if (nospace) {
       sprintf(buff, "%02X", code_buffer[i]);
     } else {
       sprintf(buff, "%02x ", code_buffer[i]);
@@ -60,14 +58,14 @@ void CodeTester::emit_push_all_gprs(bool exclude_rax) {
 
 void CodeTester::emit_push_all_xmms() {
   emit(IGen::sub_gpr64_imm8s(RSP, 8));
-  for(int i = 0; i < 16; i++) {
+  for (int i = 0; i < 16; i++) {
     emit(IGen::sub_gpr64_imm8s(RSP, 16));
     emit(IGen::store128_gpr64_xmm128(RSP, XMM0 + i));
   }
 }
 
 void CodeTester::emit_pop_all_xmms() {
-  for(int i = 0; i < 16; i++) {
+  for (int i = 0; i < 16; i++) {
     emit(IGen::load128_xmm128_gpr64(XMM0 + i, RSP));
     emit(IGen::add_gpr64_imm8s(RSP, 16));
   }
@@ -103,4 +101,4 @@ CodeTester::~CodeTester() {
     munmap(code_buffer, code_buffer_capacity);
   }
 }
-}
+}  // namespace emitter

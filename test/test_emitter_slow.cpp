@@ -11,8 +11,6 @@
 //
 using namespace emitter;
 
-
-
 TEST(EmitterSlow, xmm32_move) {
   std::vector<u32> u32_constants = {0, INT32_MAX, UINT32_MAX, 17};
 

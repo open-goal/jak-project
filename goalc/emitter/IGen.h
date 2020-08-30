@@ -142,6 +142,21 @@ class IGen {
     return instr;
   }
 
+  static Instruction store8_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, Register value) {
+    assert(value.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    Instruction instr(0x88);
+    instr.set_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id());
+    if (value.id() > RBX) {
+      instr.add_rex();
+    }
+    return instr;
+  }
+
   static Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
                                                            Register addr1,
                                                            Register addr2,
@@ -160,6 +175,26 @@ class IGen {
     return instr;
   }
 
+  static Instruction store8_gpr64_gpr64_plus_gpr64_plus_s8(Register addr1,
+                                                           Register addr2,
+                                                           Register value,
+                                                           s64 offset) {
+    assert(value.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x88);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, false);
+    if (value.id() > RBX) {
+      instr.add_rex();
+    }
+    return instr;
+  }
+
   static Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
                                                             Register addr1,
                                                             Register addr2,
@@ -175,6 +210,26 @@ class IGen {
     instr.set_op2(0xbe);
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
                                                       offset, true);
+    return instr;
+  }
+
+  static Instruction store8_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
+                                                            Register addr2,
+                                                            Register value,
+                                                            s64 offset) {
+    assert(value.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x88);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, false);
+    if (value.id() > RBX) {
+      instr.add_rex();
+    }
     return instr;
   }
 
@@ -249,6 +304,60 @@ class IGen {
     instr.set_op2(0xbf);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true,
                                                   false);
+    return instr;
+  }
+
+  static Instruction store16_gpr64_gpr64_plus_gpr64(Register addr1,
+                                                    Register addr2,
+                                                    Register value) {
+    assert(value.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    Instruction instr(0x66);
+    instr.set_op2(0x89);
+    instr.set_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id());
+    instr.swap_op0_rex();  // why?????
+    return instr;
+  }
+
+  static Instruction store16_gpr64_gpr64_plus_gpr64_plus_s8(Register addr1,
+                                                            Register addr2,
+                                                            Register value,
+                                                            s64 offset) {
+    assert(value.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x66);
+    instr.set_op2(0x89);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, false);
+    instr.swap_op0_rex();  // why?????
+    return instr;
+  }
+
+  static Instruction store16_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
+                                                             Register addr2,
+                                                             Register value,
+                                                             s64 offset) {
+    assert(value.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x66);
+    instr.set_op2(0x89);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, false);
+    instr.swap_op0_rex();  // why?????
     return instr;
   }
 
@@ -496,6 +605,41 @@ class IGen {
     return instr;
   }
 
+  static Instruction store_goal_gpr(Register addr,
+                                    Register value,
+                                    Register off,
+                                    int offset,
+                                    int size) {
+    switch (size) {
+      case 1:
+        if (offset == 0) {
+          return store8_gpr64_gpr64_plus_gpr64(addr, off, value);
+        } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+          return store8_gpr64_gpr64_plus_gpr64_plus_s8(addr, off, value, offset);
+        } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+          return store8_gpr64_gpr64_plus_gpr64_plus_s32(addr, off, value, offset);
+        } else {
+          assert(false);
+        }
+      case 2:
+        if (offset == 0) {
+          return store16_gpr64_gpr64_plus_gpr64(addr, off, value);
+        } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+          return store16_gpr64_gpr64_plus_gpr64_plus_s8(addr, off, value, offset);
+        } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+          return store16_gpr64_gpr64_plus_gpr64_plus_s32(addr, off, value, offset);
+        } else {
+          assert(false);
+        }
+      default:
+        assert(false);
+    }
+  }
+
+  /*!
+   * Load memory at addr + offset, where addr is a GOAL pointer and off is the offset register.
+   * This will pick the appropriate fancy addressing mode instruction.
+   */
   static Instruction load_goal_gpr(Register dst,
                                    Register addr,
                                    Register off,

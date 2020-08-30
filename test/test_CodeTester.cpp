@@ -167,4 +167,3 @@ TEST(CodeTester, push_pop_all_the_things) {
   tester.emit_return();
   tester.execute();
 }
-
