@@ -9,7 +9,8 @@ add_executable(goalc-test
         test_type_system.cpp
         test_CodeTester.cpp
         test_emitter_slow.cpp
-        test_emitter_fast.cpp
+        test_emitter_loads_and_store.cpp
+        test_emitter_xmm32.cpp
         )
 
 target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)

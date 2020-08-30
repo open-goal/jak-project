@@ -230,7 +230,7 @@ struct Instruction {
   void set_modrm_and_rex_for_reg_plus_reg_plus_s32(uint8_t reg,
                                                    uint8_t addr1,
                                                    uint8_t addr2,
-                                                   s8 offset,
+                                                   s32 offset,
                                                    bool rex_w) {
     bool rex_b = false, rex_r = false, rex_x = false;
     bool addr1_ext = false;
