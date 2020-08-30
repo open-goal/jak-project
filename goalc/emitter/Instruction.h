@@ -169,6 +169,114 @@ struct Instruction {
     }
   }
 
+  void set_modrm_and_rex_for_reg_plus_reg_plus_s8(uint8_t reg, uint8_t addr1, uint8_t addr2, s8 offset, bool rex_w) {
+    bool rex_b = false, rex_r = false, rex_x = false;
+    bool addr1_ext = false;
+    bool addr2_ext = false;
+
+    if (addr1 >= 8) {
+      addr1 -= 8;
+      addr1_ext = true;
+    }
+
+    if (addr2 >= 8) {
+      addr2 -= 8;
+      addr2_ext = true;
+    }
+
+    if (reg >= 8) {
+      reg -= 8;
+      rex_r = true;
+    }
+
+    ModRM modrm;
+    modrm.mod = 1; // no disp
+    modrm.rm = 4; // sib!
+    modrm.reg_op = reg;
+
+    SIB sib;
+    sib.scale = 0;
+
+    Imm imm2(1, offset);
+
+    // default  addr1 in index
+    if(addr1 == 4) {
+      sib.index = addr2;
+      sib.base = addr1;
+      rex_x = addr2_ext;
+      rex_b = addr1_ext;
+    } else {
+      // addr1 in index
+      sib.index = addr1;
+      sib.base = addr2;
+      rex_x = addr1_ext;
+      rex_b = addr2_ext;
+    }
+    assert(sib.index != 4);
+
+    if(rex_b || rex_w || rex_r || rex_x) {
+      set(REX(rex_w, rex_r, rex_x, rex_b));
+    }
+
+    set(modrm);
+    set(sib);
+    set_disp(imm2);
+  }
+
+  void set_modrm_and_rex_for_reg_plus_reg_plus_s32(uint8_t reg, uint8_t addr1, uint8_t addr2, s8 offset, bool rex_w) {
+    bool rex_b = false, rex_r = false, rex_x = false;
+    bool addr1_ext = false;
+    bool addr2_ext = false;
+
+    if (addr1 >= 8) {
+      addr1 -= 8;
+      addr1_ext = true;
+    }
+
+    if (addr2 >= 8) {
+      addr2 -= 8;
+      addr2_ext = true;
+    }
+
+    if (reg >= 8) {
+      reg -= 8;
+      rex_r = true;
+    }
+
+    ModRM modrm;
+    modrm.mod = 2; // no disp
+    modrm.rm = 4; // sib!
+    modrm.reg_op = reg;
+
+    SIB sib;
+    sib.scale = 0;
+
+    Imm imm2(4, offset);
+
+    // default  addr1 in index
+    if(addr1 == 4) {
+      sib.index = addr2;
+      sib.base = addr1;
+      rex_x = addr2_ext;
+      rex_b = addr1_ext;
+    } else {
+      // addr1 in index
+      sib.index = addr1;
+      sib.base = addr2;
+      rex_x = addr1_ext;
+      rex_b = addr2_ext;
+    }
+    assert(sib.index != 4);
+
+    if(rex_b || rex_w || rex_r || rex_x) {
+      set(REX(rex_w, rex_r, rex_x, rex_b));
+    }
+
+    set(modrm);
+    set(sib);
+    set_disp(imm2);
+  }
+
   void set_modrm_and_rex_for_reg_plus_reg_addr(uint8_t reg, uint8_t addr1, uint8_t addr2, bool rex_w = false, bool rex_always = false) {
     bool rex_b = false, rex_r = false, rex_x = false;
     bool addr1_ext = false;
@@ -203,7 +311,7 @@ struct Instruction {
       rex_x = addr1_ext;
       rex_b = addr2_ext;
       modrm.mod = 1;
-      set(Imm(1, 0));
+      set_disp(Imm(1, 0));
 
     } else {
       // default  addr1 in index
@@ -267,7 +375,7 @@ struct Instruction {
 
     if (rm == 5) {
       modrm.mod = 1;  // 1 byte imm
-      set(Imm(1, 0));
+      set_disp(Imm(1, 0));
     }
 
     set(modrm);

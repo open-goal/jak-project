@@ -115,8 +115,12 @@ class IGen {
     return instr;
   }
 
+  // todo - GPR64 -> XMM64 (zext)
+  // todo - XMM -> GPR64
+  // todo - XMM128 - XMM128
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  //   LOADS n' STORES - reg + reg addr
+  //   GOAL Loads
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   /*!
@@ -135,6 +139,42 @@ class IGen {
     instr.set_op2(0xbe);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true,
                                                   false);
+    return instr;
+  }
+
+  static Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                           Register addr1,
+                                                           Register addr2,
+                                                           s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xbe);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, true);
+    return instr;
+  }
+
+  static Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xbe);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, true);
     return instr;
   }
 
@@ -157,6 +197,42 @@ class IGen {
     return instr;
   }
 
+  static Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                           Register addr1,
+                                                           Register addr2,
+                                                           s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xb6);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, true);
+    return instr;
+  }
+
+  static Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xb6);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, true);
+    return instr;
+  }
+
   /*!
    * movsx dst, WORD PTR [addr1 + addr2]
    * addr1 and addr2 have to be different registers.
@@ -176,6 +252,41 @@ class IGen {
     return instr;
   }
 
+  static Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xbf);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, true);
+    return instr;
+  }
+
+  static Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                             Register addr1,
+                                                             Register addr2,
+                                                             s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xbf);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, true);
+    return instr;
+  }
 
   /*!
    * movzx dst, WORD PTR [addr1 + addr2]
@@ -196,6 +307,42 @@ class IGen {
     return instr;
   }
 
+  static Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xb7);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, true);
+    return instr;
+  }
+
+  static Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                             Register addr1,
+                                                             Register addr2,
+                                                             s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xb7);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, true);
+    return instr;
+  }
+
   /*!
    * movsxd dst, DWORD PTR [addr1 + addr2]
    * addr1 and addr2 have to be different registers.
@@ -210,6 +357,40 @@ class IGen {
     assert(addr2 != RSP);
     Instruction instr(0x63);
     instr.set_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(), true);
+    return instr;
+  }
+
+  static Instruction load32s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x63);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, true);
+    return instr;
+  }
+
+  static Instruction load32s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                             Register addr1,
+                                                             Register addr2,
+                                                             s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x63);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, true);
     return instr;
   }
 
@@ -230,6 +411,40 @@ class IGen {
     return instr;
   }
 
+  static Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x8b);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, false);
+    return instr;
+  }
+
+  static Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                             Register addr1,
+                                                             Register addr2,
+                                                             s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8b);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, false);
+    return instr;
+  }
+
   /*!
    * mov dst, QWORD PTR [addr1 + addr2]
    * addr1 and addr2 have to be different registers.
@@ -247,8 +462,125 @@ class IGen {
     return instr;
   }
 
+  static Instruction load64_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                           Register addr1,
+                                                           Register addr2,
+                                                           s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x8b);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                     offset, true);
+    return instr;
+  }
+
+  static Instruction load64_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                            Register addr1,
+                                                            Register addr2,
+                                                            s64 offset) {
+    assert(dst.is_gpr());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8b);
+    instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      offset, true);
+    return instr;
+  }
+
+  static Instruction load_goal_gpr(Register dst,
+                                   Register addr,
+                                   Register off,
+                                   int offset,
+                                   int size,
+                                   bool sign_extend) {
+    switch (size) {
+      case 1:
+        if (offset == 0) {
+          if (sign_extend) {
+            return load8s_gpr64_gpr64_plus_gpr64(dst, addr, off);
+          } else {
+            return load8u_gpr64_gpr64_plus_gpr64(dst, addr, off);
+          }
+        } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+          if (sign_extend) {
+            return load8s_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+          } else {
+            return load8u_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+          }
+        } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+          if (sign_extend) {
+            return load8s_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+          } else {
+            return load8u_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+          }
+        } else {
+          assert(false);
+        }
+      case 2:
+        if (offset == 0) {
+          if (sign_extend) {
+            return load16s_gpr64_gpr64_plus_gpr64(dst, addr, off);
+          } else {
+            return load16u_gpr64_gpr64_plus_gpr64(dst, addr, off);
+          }
+        } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+          if (sign_extend) {
+            return load16s_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+          } else {
+            return load16u_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+          }
+        } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+          if (sign_extend) {
+            return load16s_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+          } else {
+            return load16u_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+          }
+        } else {
+          assert(false);
+        }
+      case 4:
+        if (offset == 0) {
+          if (sign_extend) {
+            return load32s_gpr64_gpr64_plus_gpr64(dst, addr, off);
+          } else {
+            return load32u_gpr64_gpr64_plus_gpr64(dst, addr, off);
+          }
+        } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+          if (sign_extend) {
+            return load32s_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+          } else {
+            return load32u_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+          }
+        } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+          if (sign_extend) {
+            return load32s_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+          } else {
+            return load32u_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+          }
+        } else {
+          assert(false);
+        }
+      case 8:
+      default:
+        assert(false);
+    }
+  }
+
+  //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  //   LOADS n' STORES - XMM128
+  //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
   /*!
-   * Store a 128-bit xmm into a register, no offset
+   * Store a 128-bit xmm into an address stored in a register, no offset
    */
   static Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
     assert(gpr_addr.is_gpr());
