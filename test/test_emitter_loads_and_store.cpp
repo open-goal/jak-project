@@ -2297,3 +2297,190 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s32) {
     }
   }
 }
+
+TEST(EmitterLoadsAndStores, load64_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load64_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 8b 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load64_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "488B050C000000488B0D0C000000488B150C000000488B1D0C000000488B250C000000488B2D0C00000048"
+            "8B350C000000488B3D0C0000004C8B050C0000004C8B0D0C0000004C8B150C0000004C8B1D0C0000004C8B"
+            "250C0000004C8B2D0C0000004C8B350C0000004C8B3D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, load32s_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load32s_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 63 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load32s_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "4863050C00000048630D0C0000004863150C00000048631D0C0000004863250C00000048632D0C00000048"
+            "63350C00000048633D0C0000004C63050C0000004C630D0C0000004C63150C0000004C631D0C0000004C63"
+            "250C0000004C632D0C0000004C63350C0000004C633D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, load32u_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load32u_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "8b 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load32u_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "8B050C0000008B0D0C0000008B150C0000008B1D0C0000008B250C0000008B2D0C0000008B350C0000008B"
+            "3D0C000000448B050C000000448B0D0C000000448B150C000000448B1D0C000000448B250C000000448B2D"
+            "0C000000448B350C000000448B3D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, load16u_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load16u_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b7 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load16u_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "480FB7050C000000480FB70D0C000000480FB7150C000000480FB71D0C000000480FB7250C000000480FB7"
+            "2D0C000000480FB7350C000000480FB73D0C0000004C0FB7050C0000004C0FB70D0C0000004C0FB7150C00"
+            "00004C0FB71D0C0000004C0FB7250C0000004C0FB72D0C0000004C0FB7350C0000004C0FB73D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, load16s_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load16s_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f bf 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load16s_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "480FBF050C000000480FBF0D0C000000480FBF150C000000480FBF1D0C000000480FBF250C000000480FBF"
+            "2D0C000000480FBF350C000000480FBF3D0C0000004C0FBF050C0000004C0FBF0D0C0000004C0FBF150C00"
+            "00004C0FBF1D0C0000004C0FBF250C0000004C0FBF2D0C0000004C0FBF350C0000004C0FBF3D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, load8s_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load8s_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f be 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load8s_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "480FBE050C000000480FBE0D0C000000480FBE150C000000480FBE1D0C000000480FBE250C000000480FBE"
+            "2D0C000000480FBE350C000000480FBE3D0C0000004C0FBE050C0000004C0FBE0D0C0000004C0FBE150C00"
+            "00004C0FBE1D0C0000004C0FBE250C0000004C0FBE2D0C0000004C0FBE350C0000004C0FBE3D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, load8u_rip) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::load8u_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b6 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::load8u_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "480FB6050C000000480FB60D0C000000480FB6150C000000480FB61D0C000000480FB6250C000000480FB6"
+            "2D0C000000480FB6350C000000480FB63D0C0000004C0FB6050C0000004C0FB60D0C0000004C0FB6150C00"
+            "00004C0FB61D0C0000004C0FB6250C0000004C0FB62D0C0000004C0FB6350C0000004C0FB63D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, store64_rip_s32) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::store64_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "48 89 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::store64_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "4889050C00000048890D0C0000004889150C00000048891D0C0000004889250C00000048892D0C00000048"
+            "89350C00000048893D0C0000004C89050C0000004C890D0C0000004C89150C0000004C891D0C0000004C89"
+            "250C0000004C892D0C0000004C89350C0000004C893D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, store32_rip_s32) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::store32_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "89 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::store32_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "89050C000000890D0C00000089150C000000891D0C00000089250C000000892D0C00000089350C00000089"
+            "3D0C0000004489050C00000044890D0C0000004489150C00000044891D0C0000004489250C00000044892D"
+            "0C0000004489350C00000044893D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, store16_rip_s32) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::store16_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 89 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::store16_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "6689050C00000066890D0C0000006689150C00000066891D0C0000006689250C00000066892D0C00000066"
+            "89350C00000066893D0C000000664489050C0000006644890D0C000000664489150C0000006644891D0C00"
+            "0000664489250C0000006644892D0C000000664489350C0000006644893D0C000000");
+}
+
+TEST(EmitterLoadsAndStores, store8_rip_s32) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  tester.emit(IGen::store8_rip_s32(RAX, 12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "88 05 0c 00 00 00");
+
+  tester.clear();
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::store8_rip_s32(i, 12));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "88050C000000880D0C00000088150C000000881D0C0000004088250C00000040882D0C0000004088350C00"
+            "000040883D0C0000004488050C00000044880D0C0000004488150C00000044881D0C0000004488250C0000"
+            "0044882D0C0000004488350C00000044883D0C000000");
+}

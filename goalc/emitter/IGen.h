@@ -831,6 +831,18 @@ class IGen {
           assert(false);
         }
       case 8:
+        if (offset == 0) {
+          return load64_gpr64_gpr64_plus_gpr64(dst, addr, off);
+
+        } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+          return load64_gpr64_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+
+        } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+          return load64_gpr64_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+
+        } else {
+          assert(false);
+        }
       default:
         assert(false);
     }
@@ -947,6 +959,30 @@ class IGen {
     return instr;
   }
 
+  static Instruction load_goal_xmm32(Register xmm_dest, Register addr, Register off, s64 offset) {
+    if (offset == 0) {
+      return load32_xmm32_gpr64_plus_gpr64(xmm_dest, addr, off);
+    } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return load32_xmm32_gpr64_plus_gpr64_plus_s8(xmm_dest, addr, off, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return load32_xmm32_gpr64_plus_gpr64_plus_s32(xmm_dest, addr, off, offset);
+    } else {
+      assert(false);
+    }
+  }
+
+  static Instruction store_goal_xmm32(Register addr, Register xmm_value, Register off, s64 offset) {
+    if (offset == 0) {
+      return store32_xmm32_gpr64_plus_gpr64(addr, off, xmm_value);
+    } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return store32_xmm32_gpr64_plus_gpr64_plus_s8(addr, off, xmm_value, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return store32_xmm32_gpr64_plus_gpr64_plus_s32(addr, off, xmm_value, offset);
+    } else {
+      assert(false);
+    }
+  }
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   LOADS n' STORES - XMM128
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -977,10 +1013,145 @@ class IGen {
   }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  //   RIP
+  //   RIP loads and stores
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  // TODO
+  static Instruction load64_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8b);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction load32s_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x63);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction load32u_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8b);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, false);
+    return instr;
+  }
+
+  static Instruction load16u_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xb7);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction load16s_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xbf);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction load8u_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xb6);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction load8s_rip_s32(Register dest, s64 offset) {
+    assert(dest.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf);
+    instr.set_op2(0xbe);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction static_load(Register dest, s64 offset, int size, bool sign_extend) {
+    switch (size) {
+      case 1:
+        if (sign_extend) {
+          return load8s_rip_s32(dest, offset);
+        } else {
+          return load8u_rip_s32(dest, offset);
+        }
+        break;
+      case 2:
+        if (sign_extend) {
+          return load16s_rip_s32(dest, offset);
+        } else {
+          return load16u_rip_s32(dest, offset);
+        }
+        break;
+      case 4:
+        if (sign_extend) {
+          return load32s_rip_s32(dest, offset);
+        } else {
+          return load32u_rip_s32(dest, offset);
+        }
+        break;
+      case 8:
+        return load64_rip_s32(dest, offset);
+      default:
+        assert(false);
+    }
+  }
+
+  static Instruction store64_rip_s32(Register src, s64 offset) {
+    assert(src.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x89);
+    instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction store32_rip_s32(Register src, s64 offset) {
+    assert(src.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x89);
+    instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, false);
+    return instr;
+  }
+
+  static Instruction store16_rip_s32(Register src, s64 offset) {
+    assert(src.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x66);
+    instr.set_op2(0x89);
+    instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction store8_rip_s32(Register src, s64 offset) {
+    assert(src.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x88);
+    instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(), offset, false);
+    if (src.id() > RBX) {
+      instr.add_rex();
+    }
+    return instr;
+  }
+
+  // todo - lea rip
+  // todo - static load and store floating points? (this is probably big for loading float
+  // constants)
+
+  // TODO, consider specialized stack loads and stores?
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   FUNCTION STUFF
@@ -1018,6 +1189,7 @@ class IGen {
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   INTEGER MATH
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  // todo - add test
   static Instruction sub_gpr64_imm8s(Register reg, int64_t imm) {
     assert(reg.is_gpr());
     assert(imm >= INT8_MIN && imm <= INT8_MAX);
@@ -1028,6 +1200,9 @@ class IGen {
     return instr;
   }
 
+  // sub imm32, imm64, reg
+
+  // todo - add test
   static Instruction add_gpr64_imm8s(Register reg, int8_t v) {
     Instruction instr(0x83);
     instr.set_modrm_and_rex(0, reg.hw_id(), 3, true);
@@ -1035,21 +1210,53 @@ class IGen {
     return instr;
   }
 
+  // add imm32, imm64, reg
+
+  // mul imm8, imm32, imm64, reg
+
+  // idiv, cdq, movsx for div
+
+  // cmp imm8, imm32, imm64, reg
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   BIT STUFF
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  // and imm8, imm32, imm64, reg
+  // or imm8, imm32, imm64, reg
+  // xor imm8, imm32, imm64, reg
+  // "fancy register zero xor"
+  // not
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   SHIFTS
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+  // sllv reg, imm
+  // srlv reg, imm
+  // srav reg, imm
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   CONTROL FLOW
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+  // call, jump reg
+
+  // jump imm8, imm32 ?? (is there an imm16?)
+
+  // je, jne, jle, jge, jl, jg, jbe, jae, jb, ja
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   FLOAT MATH
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  // cmp_flt
+  // mulss
+  // divss
+  // subss
+  // addss
+  // float to int
+  // int to float
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   UTILITIES

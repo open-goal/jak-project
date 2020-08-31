@@ -395,6 +395,27 @@ struct Instruction {
     }
   }
 
+  void set_modrm_and_rex_for_rip_plus_s32(uint8_t reg, s32 offset, bool rex_w = false) {
+    bool rex_r = false;
+
+    if (reg >= 8) {
+      reg -= 8;
+      rex_r = true;
+    }
+
+    ModRM modrm;
+    modrm.mod = 0;
+    modrm.reg_op = reg;
+    modrm.rm = 5;  // use the RIP addressing mode
+    set(modrm);
+
+    if (rex_r || rex_w) {
+      set(REX(rex_w, rex_r, false, false));
+    }
+
+    set_disp(Imm(4, offset));
+  }
+
   void add_rex() {
     if (!set_rex) {
       set(REX());
