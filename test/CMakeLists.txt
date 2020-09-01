@@ -1,7 +1,7 @@
 enable_testing()
 
 add_executable(goalc-test
-        test_main.cpp
+        #test_main.cpp
         #test_test.cpp
         test_reader.cpp #problematic
         #test_goos.cpp #problematic
