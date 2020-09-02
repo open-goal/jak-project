@@ -1,3 +1,11 @@
+/*!
+ * @file CodeTester.h
+ * The CodeTester is a utility to run the output of the compiler as part of a unit test.
+ * This is effective for tests which try all combinations of registers, etc.
+ *
+ * The CodeTester can't be used for tests requiring the full GOAL language/linking.
+ */
+
 #ifndef JAK_CODETESTER_H
 #define JAK_CODETESTER_H
 
@@ -17,11 +25,13 @@ class CodeTester {
   void emit_push_all_xmms();
   void emit_pop_all_xmms();
   void emit_return();
-  void emit_set_gpr_as_return(Register gpr);
   void emit(const Instruction& instr);
   u64 execute();
   u64 execute(u64 in0, u64 in1, u64 in2, u64 in3);
 
+  /*!
+   * Execute the function, get the return value in RAX, convert to a T, and return it.
+   */
   template <typename T>
   T execute_ret(u64 in0, u64 in1, u64 in2, u64 in3) {
     u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
@@ -30,6 +40,9 @@ class CodeTester {
     return result_T;
   }
 
+  /*!
+   * Add data to the code buffer.
+   */
   template <typename T>
   int emit_data(T x) {
     auto ret = code_buffer_size;
@@ -39,12 +52,8 @@ class CodeTester {
     return ret;
   }
 
-  void clear();
-  ~CodeTester();
-
   /*!
    * Should allow emitter tests which run code to do the right thing on windows.
-   * Assumes RAX is return and RSP is stack pointer.
    */
   Register get_c_abi_arg_reg(int i) {
 #ifdef _WIN32
@@ -76,10 +85,20 @@ class CodeTester {
 #endif
   }
 
+  /*!
+   * Get the name of the given register, for debugging.
+   */
   std::string reg_name(Register x) { return m_info.get_info(x).name; }
 
+  /*!
+   * Get number of bytes currently in use (offset of the next thing to be added)
+   */
   int size() const { return code_buffer_size; }
+  const u8* data() const { return code_buffer; }
 
+  /*!
+   * Write over existing data at the given offset.
+   */
   template <typename T>
   void write(T x, int at) {
     assert(at >= 0);
@@ -87,6 +106,9 @@ class CodeTester {
     memcpy(code_buffer + at, &x, sizeof(T));
   }
 
+  /*!
+   * Read existing data at the given offset.
+   */
   template <typename T>
   T read(int at) {
     assert(at >= 0);
@@ -96,7 +118,8 @@ class CodeTester {
     return result;
   }
 
-  const u8* data() const { return code_buffer; }
+  void clear();
+  ~CodeTester();
 
  private:
   int code_buffer_size = 0;

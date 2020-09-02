@@ -16,23 +16,23 @@ namespace emitter {
 // registers by name
 enum X86_REG : u8 {
   RAX,  // return, temp
-  RCX,  // arg 3
-  RDX,  // arg 2
-  RBX,  // X saved
+  RCX,  // arg 3, temp
+  RDX,  // arg 2, temp
+  RBX,  // saved
 
-  RSP,  // stack pointer !!!!
-  RBP,  // saved !!!!
-  RSI,  // arg 1
-  RDI,  // arg 0
+  RSP,  // stack pointer (special)
+  RBP,  // saved
+  RSI,  // arg 1, temp
+  RDI,  // arg 0, temp
 
-  R8,   // arg 4
-  R9,   // arg 5, saved
+  R8,   // arg 4, temp
+  R9,   // arg 5, temp
   R10,  // arg 6, saved (arg in GOAL only)
   R11,  // arg 7, saved (arg in GOAL only)
-  R12,  // X saved - pp register (like s6) !!
-  R13,  // X saved - function call register (like t9) !!
-  R14,  // X saved - offset (added in GOAL x86)
-  R15,  // X saved - st (like s7)
+  R12,  // saved
+  R13,  // pp (special!)
+  R14,  // st (special!)
+  R15,  // offset (special!)
   XMM0,
   XMM1,
   XMM2,
