@@ -199,9 +199,24 @@ char* basename_goal(char* s) {
     }
   }
 
+  /* Original code, has memory bug.
   // back up...
   for (;;) {
     if (pt < input) {
+      return input;
+    }
+    pt--;
+    char c = *pt;
+    // until we hit a slash.
+    if (c == '\\' || c == '/') {  // slashes
+      return pt + 1;              // and return one past
+    }
+  }
+   */
+
+  // back up...
+  for (;;) {
+    if (pt <= input) {
       return input;
     }
     pt--;

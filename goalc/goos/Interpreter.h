@@ -15,6 +15,7 @@ namespace goos {
 class Interpreter {
  public:
   Interpreter();
+  ~Interpreter();
   void execute_repl();
   void throw_eval_error(const Object& o, const std::string& err);
   Object eval_with_rewind(const Object& obj, const std::shared_ptr<EnvironmentObject>& env);
