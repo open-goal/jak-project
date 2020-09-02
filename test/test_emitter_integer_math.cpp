@@ -391,3 +391,238 @@ TEST(EmitterIntegerMath, not_gpr64) {
     }
   }
 }
+
+TEST(EmitterIntegerMath, shl_gpr64_cl) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
+                           INT64_MAX, 117, 32, -348473,   83747382};
+  std::vector<u8> sas = {0, 1, 23, 53, 64};
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP || i == RCX) {
+      continue;
+    }
+    for (auto v : vals) {
+      for (auto sa : sas) {
+        auto expected = v << sa;
+        tester.clear();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(i, v));
+        tester.emit(IGen::mov_gpr64_u64(RCX, sa));
+        tester.emit(IGen::shl_gpr64_cl(i));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_return();
+        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterIntegerMath, shr_gpr64_cl) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  std::vector<u64> vals = {0,         1,   u64(-2), u64(INT32_MIN), INT32_MAX, u64(INT64_MIN),
+                           INT64_MAX, 117, 32,      u64(-348473),   83747382};
+  std::vector<u8> sas = {0, 1, 23, 53, 64};
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP || i == RCX) {
+      continue;
+    }
+    for (auto v : vals) {
+      for (auto sa : sas) {
+        auto expected = v >> sa;
+        tester.clear();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(i, v));
+        tester.emit(IGen::mov_gpr64_u64(RCX, sa));
+        tester.emit(IGen::shr_gpr64_cl(i));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_return();
+        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterIntegerMath, sar_gpr64_cl) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
+                           INT64_MAX, 117, 32, -348473,   83747382};
+  std::vector<u8> sas = {0, 1, 23, 53, 64};
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP || i == RCX) {
+      continue;
+    }
+    for (auto v : vals) {
+      for (auto sa : sas) {
+        auto expected = v >> sa;
+        tester.clear();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(i, v));
+        tester.emit(IGen::mov_gpr64_u64(RCX, sa));
+        tester.emit(IGen::sar_gpr64_cl(i));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_return();
+        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterIntegerMath, shl_gpr64_u8) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
+                           INT64_MAX, 117, 32, -348473,   83747382};
+  std::vector<u8> sas = {0, 1, 23, 53, 64};
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP) {
+      continue;
+    }
+    for (auto v : vals) {
+      for (auto sa : sas) {
+        auto expected = v << sa;
+        tester.clear();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(i, v));
+        tester.emit(IGen::shl_gpr64_u8(i, sa));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_return();
+        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterIntegerMath, shr_gpr64_u8) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  std::vector<u64> vals = {0,         1,   u64(-2), u64(INT32_MIN), INT32_MAX, u64(INT64_MIN),
+                           INT64_MAX, 117, 32,      u64(-348473),   83747382};
+  std::vector<u8> sas = {0, 1, 23, 53, 64};
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP) {
+      continue;
+    }
+    for (auto v : vals) {
+      for (auto sa : sas) {
+        auto expected = v >> sa;
+        tester.clear();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(i, v));
+        tester.emit(IGen::shr_gpr64_u8(i, sa));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_return();
+        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterIntegerMath, sar_gpr64_u8) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+  std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
+                           INT64_MAX, 117, 32, -348473,   83747382};
+  std::vector<u8> sas = {0, 1, 23, 53, 64};
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP) {
+      continue;
+    }
+    for (auto v : vals) {
+      for (auto sa : sas) {
+        auto expected = v >> sa;
+        tester.clear();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(i, v));
+        tester.emit(IGen::sar_gpr64_u8(i, sa));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_return();
+        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterIntegerMath, jumps) {
+  CodeTester tester;
+  tester.init_code_buffer(256);
+
+  std::vector<int> reads;
+
+  auto x = IGen::jmp_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::je_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jne_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jle_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jge_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jl_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jg_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jbe_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jae_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::jb_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  x = IGen::ja_32();
+  reads.push_back(tester.size() + x.offset_of_imm());
+  tester.emit(x);
+
+  for (auto off : reads) {
+    EXPECT_EQ(0, tester.read<s32>(off));
+  }
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "E9000000000F84000000000F85000000000F8E000000000F8D000000000F8C000000000F8F000000000F86"
+            "000000000F83000000000F82000000000F8700000000");
+}
+
+TEST(EmitterIntegerMath, null) {
+  auto instr = IGen::null();
+  EXPECT_EQ(0, instr.emit(nullptr));
+}

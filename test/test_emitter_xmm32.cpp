@@ -441,3 +441,219 @@ TEST(EmitterXmm32, static_store_xmm32) {
     EXPECT_EQ(-44.567f, tester.read<float>(loc_of_float));
   }
 }
+
+TEST(EmitterXmm32, ucomiss) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+  tester.emit(IGen::cmp_flt_flt(XMM13, XMM14));
+  EXPECT_EQ("45 0f 2e ee", tester.dump_to_hex_string());
+}
+
+TEST(EmitterXmm32, mul) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for (int i = 0; i < 16; i++) {
+        for (int j = 0; j < 16; j++) {
+          if (i == j) {
+            continue;
+          }
+          auto expected = f * g;
+          tester.clear();
+          tester.emit_push_all_xmms();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, RAX));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + j, RAX));
+          tester.emit(IGen::mulss_xmm_xmm(XMM0 + j, XMM0 + i));
+          tester.emit(IGen::movd_gpr32_xmm32(RAX, XMM0 + j));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_xmms();
+          tester.emit_return();
+          auto result = tester.execute_ret<float>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+        }
+      }
+    }
+  }
+}
+
+TEST(EmitterXmm32, div) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  std::vector<float> vals = {1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for (int i = 0; i < 16; i++) {
+        for (int j = 0; j < 16; j++) {
+          if (i == j) {
+            continue;
+          }
+          auto expected = g / f;
+          tester.clear();
+          tester.emit_push_all_xmms();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, RAX));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + j, RAX));
+          tester.emit(IGen::divss_xmm_xmm(XMM0 + j, XMM0 + i));
+          tester.emit(IGen::movd_gpr32_xmm32(RAX, XMM0 + j));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_xmms();
+          tester.emit_return();
+          auto result = tester.execute_ret<float>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+        }
+      }
+    }
+  }
+}
+
+TEST(EmitterXmm32, add) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for (int i = 0; i < 16; i++) {
+        for (int j = 0; j < 16; j++) {
+          if (i == j) {
+            continue;
+          }
+          auto expected = g + f;
+          tester.clear();
+          tester.emit_push_all_xmms();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, RAX));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + j, RAX));
+          tester.emit(IGen::addss_xmm_xmm(XMM0 + j, XMM0 + i));
+          tester.emit(IGen::movd_gpr32_xmm32(RAX, XMM0 + j));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_xmms();
+          tester.emit_return();
+          auto result = tester.execute_ret<float>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+        }
+      }
+    }
+  }
+}
+
+TEST(EmitterXmm32, sub) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for (int i = 0; i < 16; i++) {
+        for (int j = 0; j < 16; j++) {
+          if (i == j) {
+            continue;
+          }
+          auto expected = g - f;
+          tester.clear();
+          tester.emit_push_all_xmms();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, RAX));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(RAX, val));
+          tester.emit(IGen::movd_xmm32_gpr32(XMM0 + j, RAX));
+          tester.emit(IGen::subss_xmm_xmm(XMM0 + j, XMM0 + i));
+          tester.emit(IGen::movd_gpr32_xmm32(RAX, XMM0 + j));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_xmms();
+          tester.emit_return();
+          auto result = tester.execute_ret<float>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+        }
+      }
+    }
+  }
+}
+
+TEST(EmitterXmm32, float_to_int) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  std::vector<float> vals = {0.f,    1.f,  0.2f, -1.f,  1235423.2f, -3457343.3f,
+                             7.545f, 0.1f, 0.9f, -0.1f, -0.9f};
+
+  for (auto g : vals) {
+    for (int i = 0; i < 16; i++) {
+      for (int j = 0; j < 16; j++) {
+        if (j == RSP) {
+          continue;
+        }
+        s32 expected = g;
+        tester.clear();
+        tester.emit_push_all_xmms();
+        tester.emit_push_all_gprs(true);
+        u64 val = 0;
+        memcpy(&val, &g, sizeof(float));
+        tester.emit(IGen::mov_gpr64_u64(RAX, val));
+        tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, RAX));
+        tester.emit(IGen::float_to_int32(j, XMM0 + i));
+        tester.emit(IGen::mov_gpr64_gpr64(RAX, j));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_xmms();
+        tester.emit_return();
+        auto result = tester.execute_ret<s32>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}
+
+TEST(EmitterXmm32, int_to_float) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  std::vector<s64> vals = {0, 1, -1, INT32_MAX, -3457343, 7, INT32_MIN};
+
+  for (auto g : vals) {
+    for (int i = 0; i < 16; i++) {
+      for (int j = 0; j < 16; j++) {
+        if (j == RSP) {
+          continue;
+        }
+        float expected = g;
+        tester.clear();
+        tester.emit_push_all_xmms();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(j, g));
+        tester.emit(IGen::int32_to_float(XMM0 + i, j));
+        tester.emit(IGen::movd_gpr32_xmm32(RAX, XMM0 + i));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_xmms();
+        tester.emit_return();
+        auto result = tester.execute_ret<float>(0, 0, 0, 0);
+        EXPECT_EQ(result, expected);
+      }
+    }
+  }
+}

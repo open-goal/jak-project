@@ -1451,35 +1451,295 @@ class IGen {
   //   SHIFTS
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  // sllv reg, imm
-  // srlv reg, imm
-  // srav reg, imm
+  /*!
+   * Shift 64-bit gpr left by CL register
+   */
+  static Instruction shl_gpr64_cl(uint8_t reg) {
+    Instruction instr(0xd3);
+    instr.set_modrm_and_rex(4, reg, 3, true);
+    return instr;
+  }
+
+  /*!
+   * Shift 64-bit gpr right (logical) by CL register
+   */
+  static Instruction shr_gpr64_cl(uint8_t reg) {
+    Instruction instr(0xd3);
+    instr.set_modrm_and_rex(5, reg, 3, true);
+    return instr;
+  }
+
+  /*!
+   * Shift 64-bit gpr right (arithmetic) by CL register
+   */
+  static Instruction sar_gpr64_cl(uint8_t reg) {
+    Instruction instr(0xd3);
+    instr.set_modrm_and_rex(7, reg, 3, true);
+    return instr;
+  }
+
+  /*!
+   * Shift 64-ptr left (logical) by the constant shift amount "sa".
+   */
+  static Instruction shl_gpr64_u8(uint8_t reg, uint8_t sa) {
+    Instruction instr(0xc1);
+    instr.set_modrm_and_rex(4, reg, 3, true);
+    instr.set(Imm(1, sa));
+    return instr;
+  }
+
+  /*!
+   * Shift 64-ptr right (logical) by the constant shift amount "sa".
+   */
+  static Instruction shr_gpr64_u8(uint8_t reg, uint8_t sa) {
+    Instruction instr(0xc1);
+    instr.set_modrm_and_rex(5, reg, 3, true);
+    instr.set(Imm(1, sa));
+    return instr;
+  }
+
+  /*!
+   * Shift 64-ptr right (arithmetic) by the constant shift amount "sa".
+   */
+  static Instruction sar_gpr64_u8(uint8_t reg, uint8_t sa) {
+    Instruction instr(0xc1);
+    instr.set_modrm_and_rex(7, reg, 3, true);
+    instr.set(Imm(1, sa));
+    return instr;
+  }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   CONTROL FLOW
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  // call, jump reg
+  /*!
+   * Jump, 32-bit constant offset.  The offset is by default 0 and must be patched later.
+   */
+  static Instruction jmp_32() {
+    Instruction instr(0xe9);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
 
-  // jump imm8, imm32 ?? (is there an imm16?)
+  /*!
+   * Jump if equal.
+   */
+  static Instruction je_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x84);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
 
-  // je, jne, jle, jge, jl, jg, jbe, jae, jb, ja
+  /*!
+   * Jump not equal.
+   */
+  static Instruction jne_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x85);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump less than or equal.
+   */
+  static Instruction jle_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x8e);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump greater than or equal.
+   */
+  static Instruction jge_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x8d);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump less than
+   */
+  static Instruction jl_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x8c);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump greater than
+   */
+  static Instruction jg_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x8f);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump below or equal
+   */
+  static Instruction jbe_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x86);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump above or equal
+   */
+  static Instruction jae_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x83);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump below
+   */
+  static Instruction jb_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x82);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
+
+  /*!
+   * Jump above
+   */
+  static Instruction ja_32() {
+    Instruction instr(0x0f);
+    instr.set_op2(0x87);
+    instr.set(Imm(4, 0));
+    return instr;
+  }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   FLOAT MATH
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  // cmp_flt
-  // mulss
-  // divss
-  // subss
-  // addss
-  // float to int
-  // int to float
+  /*!
+   * Compare two floats and set flag register for jump (ucomiss)
+   */
+  static Instruction cmp_flt_flt(Register a, Register b) {
+    assert(a.is_xmm());
+    assert(b.is_xmm());
+    Instruction instr(0x0f);
+    instr.set_op2(0x2e);
+    instr.set_modrm_and_rex(a.hw_id(), b.hw_id(), 3, false);
+    return instr;
+  }
+
+  /*!
+   * Multiply two floats in xmm's
+   */
+  static Instruction mulss_xmm_xmm(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x59);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Divide two floats in xmm's
+   */
+  static Instruction divss_xmm_xmm(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x5e);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Subtract two floats in xmm's
+   */
+  static Instruction subss_xmm_xmm(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x5c);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Add two floats in xmm's
+   */
+  static Instruction addss_xmm_xmm(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x58);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Convert GPR int32 to XMM float (single precision)
+   */
+  static Instruction int32_to_float(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_gpr());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x2a);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Convert XMM float to GPR int32(single precision) (truncate)
+   */
+  static Instruction float_to_int32(Register dst, Register src) {
+    assert(dst.is_gpr());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x2c);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  // eventually...
+  // sqrt
+  // rsqrt
+  // abs
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   UTILITIES
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  /*!
+   * A "null" instruction.  This instruction does not generate any bytes
+   * but can be referred to by a label.  Useful to insert in place of a real instruction
+   * if the real instruction has been optimized out.
+   */
+  static Instruction null() {
+    Instruction i(0);
+    i.is_null = true;
+    return i;
+  }
 };
 }  // namespace emitter
 
