@@ -30,11 +30,37 @@ class CodeTester {
     return result_T;
   }
 
+  template <typename T>
+  int emit_data(T x) {
+    auto ret = code_buffer_size;
+    assert(int(sizeof(T)) + code_buffer_size <= code_buffer_capacity);
+    memcpy(code_buffer + code_buffer_size, &x, sizeof(T));
+    code_buffer_size += sizeof(T);
+    return ret;
+  }
+
   void clear();
   ~CodeTester();
 
+  /*!
+   * Should allow emitter tests which run code to do the right thing on windows.
+   * Assumes RAX is return and RSP is stack pointer.
+   */
   Register get_c_abi_arg_reg(int i) {
-    // todo - this should be different for windows.
+#ifdef _WIN32
+    switch (i) {
+      case 0:
+        return RCX;
+      case 1:
+        return RDX;
+      case 2:
+        return R8;
+      case 3:
+        return R9;
+      default:
+        assert(false);
+    }
+#else
     switch (i) {
       case 0:
         return RDI;
@@ -47,9 +73,30 @@ class CodeTester {
       default:
         assert(false);
     }
+#endif
   }
 
   std::string reg_name(Register x) { return m_info.get_info(x).name; }
+
+  int size() const { return code_buffer_size; }
+
+  template <typename T>
+  void write(T x, int at) {
+    assert(at >= 0);
+    assert(int(sizeof(T)) + at <= code_buffer_capacity);
+    memcpy(code_buffer + at, &x, sizeof(T));
+  }
+
+  template <typename T>
+  T read(int at) {
+    assert(at >= 0);
+    assert(int(sizeof(T)) + at <= code_buffer_capacity);
+    T result;
+    memcpy(&result, code_buffer + at, sizeof(T));
+    return result;
+  }
+
+  const u8* data() const { return code_buffer; }
 
  private:
   int code_buffer_size = 0;

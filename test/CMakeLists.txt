@@ -11,6 +11,7 @@ add_executable(goalc-test
         test_emitter_slow.cpp
         test_emitter_loads_and_store.cpp
         test_emitter_xmm32.cpp
+        test_emitter_integer_math.cpp
         )
 
 target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)

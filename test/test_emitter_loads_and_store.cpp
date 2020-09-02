@@ -2484,3 +2484,30 @@ TEST(EmitterLoadsAndStores, store8_rip_s32) {
             "000040883D0C0000004488050C00000044880D0C0000004488150C00000044881D0C0000004488250C0000"
             "0044882D0C0000004488350C00000044883D0C000000");
 }
+
+TEST(EmitterLoadsAndStores, static_addr) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+
+  for (int i = 0; i < 16; i++) {
+    if (i == RSP) {
+      continue;
+    }
+
+    tester.clear();
+    tester.emit_push_all_gprs(true);
+    tester.emit(IGen::mov_gpr64_u64(i, 12345));  // load test reg with junk
+    int start_of_lea = tester.size();
+    auto lea_instr = IGen::static_addr(i, INT32_MAX);
+    tester.emit(lea_instr);
+    // patch instruction to lea the start of this code + 1.
+    tester.write<s32>(-start_of_lea - lea_instr.length() + 1,
+                      start_of_lea + lea_instr.offset_of_disp());
+    tester.emit(IGen::mov_gpr64_gpr64(RAX, i));
+    tester.emit_pop_all_gprs(true);
+    tester.emit_return();
+
+    auto result = tester.execute();
+    EXPECT_EQ(result, (u64)(tester.data()) + 1);
+  }
+}

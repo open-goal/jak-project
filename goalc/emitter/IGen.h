@@ -1147,9 +1147,56 @@ class IGen {
     return instr;
   }
 
-  // todo - lea rip
-  // todo - static load and store floating points? (this is probably big for loading float
-  // constants)
+  static Instruction static_store(Register value, s64 offset, int size) {
+    switch (size) {
+      case 1:
+        return store8_rip_s32(value, offset);
+      case 2:
+        return store16_rip_s32(value, offset);
+      case 4:
+        return store32_rip_s32(value, offset);
+      case 8:
+        return store64_rip_s32(value, offset);
+      default:
+        assert(false);
+    }
+  }
+
+  static Instruction static_addr(Register dst, s64 offset) {
+    assert(dst.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8d);
+    instr.set_modrm_and_rex_for_rip_plus_s32(dst.hw_id(), offset, true);
+    return instr;
+  }
+
+  static Instruction static_load_xmm32(Register xmm_dest, s64 offset) {
+    assert(xmm_dest.is_xmm());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x10);
+    instr.set_modrm_and_rex_for_rip_plus_s32(xmm_dest.hw_id(), offset, false);
+
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction static_store_xmm32(Register xmm_value, s64 offset) {
+    assert(xmm_value.is_xmm());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x11);
+    instr.set_modrm_and_rex_for_rip_plus_s32(xmm_value.hw_id(), offset, false);
+
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  // TODO, special load/stores of 128 bit values.
 
   // TODO, consider specialized stack loads and stores?
 
@@ -1186,10 +1233,45 @@ class IGen {
     return Instruction(0x58 + reg.hw_id());
   }
 
+  /*!
+   * Call a function stored in a 64-bit gpr
+   */
+  static Instruction call_r64(uint8_t reg) {
+    Instruction instr(0xff);
+    if (reg >= 8) {
+      instr.set(REX(false, false, false, true));
+      reg -= 8;
+    }
+    assert(reg < 8);
+    ModRM mrm;
+    mrm.rm = reg;
+    mrm.reg_op = 2;
+    mrm.mod = 3;
+    instr.set(mrm);
+    return instr;
+  }
+
+  /*!
+   * Call a function stored in a 64-bit gpr
+   */
+  static Instruction jmp_r64(uint8_t reg) {
+    Instruction instr(0xff);
+    if (reg >= 8) {
+      instr.set(REX(false, false, false, true));
+      reg -= 8;
+    }
+    assert(reg < 8);
+    ModRM mrm;
+    mrm.rm = reg;
+    mrm.reg_op = 4;
+    mrm.mod = 3;
+    instr.set(mrm);
+    return instr;
+  }
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   INTEGER MATH
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  // todo - add test
   static Instruction sub_gpr64_imm8s(Register reg, int64_t imm) {
     assert(reg.is_gpr());
     assert(imm >= INT8_MIN && imm <= INT8_MAX);
@@ -1200,33 +1282,170 @@ class IGen {
     return instr;
   }
 
-  // sub imm32, imm64, reg
+  static Instruction sub_gpr64_imm32s(Register reg, int64_t imm) {
+    assert(reg.is_gpr());
+    assert(imm >= INT32_MIN && imm <= INT32_MAX);
+    Instruction instr(0x81);
+    instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
+    instr.set(Imm(4, imm));
+    return instr;
+  }
 
-  // todo - add test
-  static Instruction add_gpr64_imm8s(Register reg, int8_t v) {
+  static Instruction add_gpr64_imm8s(Register reg, int64_t v) {
+    assert(v >= INT8_MIN && v <= INT8_MAX);
     Instruction instr(0x83);
     instr.set_modrm_and_rex(0, reg.hw_id(), 3, true);
     instr.set(Imm(1, v));
     return instr;
   }
 
-  // add imm32, imm64, reg
+  static Instruction add_gpr64_imm32s(Register reg, int64_t v) {
+    assert(v >= INT32_MIN && v <= INT32_MAX);
+    Instruction instr(0x81);
+    instr.set_modrm_and_rex(0, reg.hw_id(), 3, true);
+    instr.set(Imm(4, v));
+    return instr;
+  }
 
-  // mul imm8, imm32, imm64, reg
+  static Instruction add_gpr64_imm(Register reg, int64_t imm) {
+    if (imm >= INT8_MIN && imm <= INT8_MAX) {
+      return add_gpr64_imm8s(reg, imm);
+    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
+      return add_gpr64_imm32s(reg, imm);
+    } else {
+      assert(false);
+    }
+  }
 
-  // idiv, cdq, movsx for div
+  static Instruction sub_gpr64_imm(Register reg, int64_t imm) {
+    if (imm >= INT8_MIN && imm <= INT8_MAX) {
+      return sub_gpr64_imm8s(reg, imm);
+    } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
+      return sub_gpr64_imm32s(reg, imm);
+    } else {
+      assert(false);
+    }
+  }
 
-  // cmp imm8, imm32, imm64, reg
+  static Instruction add_gpr64_gpr64(Register dst, Register src) {
+    Instruction instr(0x01);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
+    return instr;
+  }
+
+  static Instruction sub_gpr64_gpr64(Register dst, Register src) {
+    Instruction instr(0x29);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
+    return instr;
+  }
+
+  /*!
+   * Multiply gprs (32-bit, signed).
+   * (Note - probably worth doing imul on gpr64's to implement the EE's unsigned multiply)
+   */
+  static Instruction imul_gpr32_gpr32(Register dst, Register src) {
+    Instruction instr(0xf);
+    instr.set_op2(0xaf);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    return instr;
+  }
+
+  /*!
+   * Divide (idiv, 32 bit)
+   * todo UNTESTED
+   */
+  static Instruction idiv_gpr32(Register reg) {
+    Instruction instr(0xf7);
+    assert(reg.is_gpr());
+    instr.set_modrm_and_rex(7, reg.hw_id(), 3, false);
+    return instr;
+  }
+
+  /*!
+   * Convert doubleword to quadword for division.
+   * todo UNTESTED
+   */
+  static Instruction cdq() {
+    Instruction instr(0x99);
+    return instr;
+  }
+
+  /*!
+   * Move from gpr32 to gpr64, with sign extension.
+   * Needed for multiplication/divsion madness.
+   */
+  static Instruction movsx_r64_r32(Register dst, Register src) {
+    Instruction instr(0x63);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    return instr;
+  }
+
+  /*!
+   * Compare gpr64.  This sets the flags for the jumps.
+   * todo UNTESTED
+   */
+  static Instruction cmp_gpr64_gpr64(Register a, Register b) {
+    Instruction instr(0x3b);
+    assert(a.is_gpr());
+    assert(b.is_gpr());
+    instr.set_modrm_and_rex(a.hw_id(), b.hw_id(), 3, true);
+    return instr;
+  }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   BIT STUFF
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  // and imm8, imm32, imm64, reg
-  // or imm8, imm32, imm64, reg
-  // xor imm8, imm32, imm64, reg
-  // "fancy register zero xor"
-  // not
+  /*!
+   * Or of two gprs
+   */
+  static Instruction or_gpr64_gpr64(Register dst, Register src) {
+    Instruction instr(0x0b);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    return instr;
+  }
+
+  /*!
+   * And of two gprs
+   */
+  static Instruction and_gpr64_gpr64(Register dst, Register src) {
+    Instruction instr(0x23);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    return instr;
+  }
+
+  /*!
+   * Xor of two gprs
+   */
+  static Instruction xor_gpr64_gpr64(Register dst, Register src) {
+    Instruction instr(0x33);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    return instr;
+  }
+
+  /*!
+   * Bitwise not a gpr
+   */
+  static Instruction not_gpr64(Register reg) {
+    Instruction instr(0xf7);
+    assert(reg.is_gpr());
+    instr.set_modrm_and_rex(2, reg.hw_id(), 3, true);
+    return instr;
+  }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   SHIFTS

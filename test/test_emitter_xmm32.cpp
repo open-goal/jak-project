@@ -389,3 +389,55 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
     }
   }
 }
+
+TEST(EmitterXmm32, static_load_xmm32) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+  for (int i = 0; i < 16; i++) {
+    tester.clear();
+    tester.emit_push_all_xmms();
+    tester.emit_push_all_gprs(true);
+
+    auto loc_of_load = tester.size();
+    auto load_instr = IGen::static_load_xmm32(XMM0 + i, INT32_MAX);
+
+    tester.emit(load_instr);
+    tester.emit(IGen::movd_gpr32_xmm32(RAX, XMM0 + i));
+    tester.emit_pop_all_gprs(true);
+    tester.emit_pop_all_xmms();
+    tester.emit_return();
+    auto loc_of_float = tester.emit_data(float(1.2345f));
+
+    // patch offset
+    tester.write<s32>(loc_of_float - loc_of_load - load_instr.length(),
+                      loc_of_load + load_instr.offset_of_disp());
+
+    auto result = tester.execute_ret<float>(0, 0, 0, 0);
+    EXPECT_EQ(result, 1.2345f);
+  }
+}
+
+TEST(EmitterXmm32, static_store_xmm32) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+  for (int i = 0; i < 16; i++) {
+    tester.clear();
+    tester.emit_push_all_xmms();
+    tester.emit_push_all_gprs(true);
+    tester.emit(IGen::movd_xmm32_gpr32(XMM0 + i, tester.get_c_abi_arg_reg(0)));
+
+    auto loc_of_store = tester.size();
+    auto store_instr = IGen::static_store_xmm32(XMM0 + i, INT32_MAX);
+
+    tester.emit(store_instr);
+    tester.emit_pop_all_gprs(true);
+    tester.emit_pop_all_xmms();
+    tester.emit_return();
+    auto loc_of_float = tester.emit_data(float(1.2345f));
+
+    tester.write<s32>(loc_of_float - loc_of_store - store_instr.length(),
+                      loc_of_store + store_instr.offset_of_disp());
+    tester.execute(as_u32(-44.567f), 0, 0, 0);
+    EXPECT_EQ(-44.567f, tester.read<float>(loc_of_float));
+  }
+}

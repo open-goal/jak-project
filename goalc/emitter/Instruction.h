@@ -546,6 +546,46 @@ struct Instruction {
     }
     return count;
   }
+
+  uint8_t length() const {
+    if (is_null)
+      return 0;
+    uint8_t count = 0;
+    if (set_rex) {
+      count++;
+    }
+
+    count++;
+
+    if (op2_set) {
+      count++;
+    }
+
+    if (op3_set) {
+      count++;
+    }
+
+    if (set_modrm) {
+      count++;
+    }
+
+    if (set_sib) {
+      count++;
+    }
+
+    if (set_disp_imm) {
+      for (int i = 0; i < disp.size; i++) {
+        count++;
+      }
+    }
+
+    if (set_imm) {
+      for (int i = 0; i < imm.size; i++) {
+        count++;
+      }
+    }
+    return count;
+  }
 };
 }  // namespace emitter
 
