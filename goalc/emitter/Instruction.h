@@ -141,6 +141,14 @@ struct Instruction {
     op3 = b;
   }
 
+  int get_imm_size() const {
+    if (set_imm) {
+      return imm.size;
+    } else {
+      return 0;
+    }
+  }
+
   /*!
    * Set modrm and rex as needed for two regs.
    */

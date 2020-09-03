@@ -14,4 +14,4 @@ add_executable(goalc-test
         test_emitter_integer_math.cpp
         )
 
-target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)
+target_link_libraries(goalc-test goos util listener runtime compiler type_system gtest)
