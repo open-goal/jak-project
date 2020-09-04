@@ -87,7 +87,7 @@ int FS_Init(u8* buffer) {
   // get path to next/data/fake_iso.txt, the map file.
   char fakeiso_path[512];
   strcpy(fakeiso_path, next_dir);
-  fake_iso_path = std::getenv("FAKE_ISO_PATH");  
+  fake_iso_path = std::getenv("FAKE_ISO_PATH");
   assert(fake_iso_path);
   strcat(fakeiso_path, fake_iso_path);
 

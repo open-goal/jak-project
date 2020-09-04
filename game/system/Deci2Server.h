@@ -8,7 +8,7 @@
 #ifndef JAK1_DECI2SERVER_H
 #define JAK1_DECI2SERVER_H
 
-#include <Winsock2.h>
+#include <netinet/in.h>
 #include <thread>
 #include <mutex>
 #include <condition_variable>

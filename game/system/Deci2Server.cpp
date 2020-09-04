@@ -7,20 +7,16 @@
 // TODO-WINDOWS
 #ifdef __linux__
 
+#include <cstdio>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
-#include <cstdio>
-#include <Winsock2.h>
-#include <io.h>
 #include <cassert>
 #include <utility>
 
 #include "common/listener_common.h"
 #include "common/versions.h"
 #include "Deci2Server.h"
-
-typedef int socklen_t;
 
 Deci2Server::Deci2Server(std::function<bool()> shutdown_callback) {
   buffer = new char[BUFFER_SIZE];
@@ -56,7 +52,7 @@ bool Deci2Server::init() {
     return false;
   }
 
-  const char opt = 1;
+  int opt = 1;
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
     printf("[Deci2Server] Failed to setsockopt 1\n");
     close(server_fd);
@@ -64,7 +60,7 @@ bool Deci2Server::init() {
     return false;
   }
 
-  const char one = 1;
+  int one = 1;
   if (setsockopt(server_fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one))) {
     printf("[Deci2Server] Failed to setsockopt 2\n");
     close(server_fd);

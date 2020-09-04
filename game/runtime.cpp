@@ -11,6 +11,7 @@
 #include <third-party/mman/mman.h>
 #include <Windows.h>
 #endif
+
 #include <cstring>
 
 #include "runtime.h"
@@ -55,18 +56,18 @@ namespace {
  * SystemThread function for running the DECI2 communication with the GOAL compiler.
  */
 
-void deci2_runner(SystemThreadInterface& interfaces) {
-	// TODO-WINDOWS
-	#ifdef __linux__
+void deci2_runner(SystemThreadInterface& iface) {
+// TODO-WINDOWS
+#ifdef __linux__
   // callback function so the server knows when to give up and shutdown
-  std::function<bool()> shutdown_callback = [&]() { return interface.get_want_exit(); };
+  std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
   Deci2Server server(shutdown_callback);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
-  interface.initialization_complete();
+  iface.initialization_complete();
 
   // in our own thread, wait for the EE to register the first protocol driver
   printf("[DECI2] waiting for EE to register protos\n");
@@ -78,7 +79,7 @@ void deci2_runner(SystemThreadInterface& interfaces) {
 
   printf("[DECI2] waiting for listener...\n");
   bool saw_listener = false;
-  while (!interface.get_want_exit()) {
+  while (!iface.get_want_exit()) {
     if (server.check_for_listener()) {
       if (!saw_listener) {
         printf("[DECI2] Connected!\n");
@@ -91,7 +92,7 @@ void deci2_runner(SystemThreadInterface& interfaces) {
       usleep(50000);
     }
   }
-	#endif
+#endif
 }
 
 // EE System
@@ -235,10 +236,10 @@ void exec_runtime(int argc, char** argv) {
   // step 1: sce library prep
   iop::LIBRARY_INIT();
   ee::LIBRARY_INIT_sceCd();
-	// TODO-WINDOWS
-	#ifdef __linux__
+// TODO-WINDOWS
+#ifdef __linux__
   ee::LIBRARY_INIT_sceDeci2();
-	#endif
+#endif
   ee::LIBRARY_INIT_sceSif();
 
   // step 2: system prep

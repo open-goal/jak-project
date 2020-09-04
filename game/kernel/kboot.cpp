@@ -134,7 +134,7 @@ void KernelCheckAndDispatch() {
     // dispatch the kernel
     //(**kernel_dispatcher)();
     call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-		// TODO-WINDOWS
+    // TODO-WINDOWS
 #ifdef __linux__
     ClearPending();
 #endif
@@ -147,7 +147,7 @@ void KernelCheckAndDispatch() {
 #ifdef _WIN32
     Sleep(1000);  // todo - remove this
 #elif __linux__
-		usleep(1000);
+    usleep(1000);
 #endif
   }
 }

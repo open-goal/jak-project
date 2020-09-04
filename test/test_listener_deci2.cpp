@@ -1,4 +1,4 @@
-#ifdef __unix__
+#ifdef __linux__
 
 #include "gtest/gtest.h"
 #include "goalc/listener/Listener.h"

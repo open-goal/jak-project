@@ -10,7 +10,9 @@
 #include <functional>
 #include <array>
 #include <mutex>
+#include <thread>
 #include <condition_variable>
+
 #include "Timer.h"
 
 constexpr int MAX_SYSTEM_THREADS = 16;

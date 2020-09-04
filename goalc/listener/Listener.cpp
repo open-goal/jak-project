@@ -10,8 +10,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <Winsock2.h>
-#include <io.h>
 #include <cassert>
 #include "Listener.h"
 #include "common/versions.h"
@@ -74,7 +72,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
 
   // set nodelay, which makes small rapid messages faster, but large messages slower
-  const char one = 1;
+  int one = 1;
   if (setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one))) {
     printf("[Listener] failed to TCP_NODELAY\n");
     close(socket_fd);

@@ -66,9 +66,7 @@ void TextStream::seek_past_whitespace_and_comments() {
   }
 }
 
-Reader::~Reader() {
-  printf("destroying reader\n");
-}
+Reader::~Reader() {}
 
 Reader::Reader() {
   // third-party library used for a fancy line in
@@ -634,7 +632,6 @@ bool Reader::try_token_as_hex(const Token& tok, Object& obj) {
  * 64-bit signed. Won't accept values between INT64_MAX and UINT64_MAX.
  */
 bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
-  printf("try token as integer %ld %s\n", tok.text.size(), tok.text.c_str());
   if (decimal_start(tok.text[0]) && !str_contains(tok.text, '.')) {
     // determine if we look like a number or not. If we look like a number, but stoll fails,
     // it means that the number is too big or too small, and we should error
@@ -648,18 +645,13 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
         return false;
       }
     }
-
-    printf("going to try stoll...\n");
     uint64_t v = 0;
     try {
       std::size_t end = 0;
       v = std::stoll(tok.text, &end);
-      printf("stoll didn't throw, got %ld\n", v);
       if (end != tok.text.size()) {
-        printf("didn't read whole thing\n");
         return false;
       }
-      printf("returning object!\n");
       obj = Object::make_integer(v);
       return true;
     } catch (std::exception& e) {
@@ -667,7 +659,6 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
     }
   }
   return false;
-
 }
 
 bool Reader::try_token_as_char(const Token& tok, Object& obj) {

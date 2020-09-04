@@ -157,7 +157,7 @@ TEST(Kernel, ftoa) {
   ftoa(buffer, 1., 1, ' ', 1, 0);
   EXPECT_EQ("1.0", std::string(buffer));
 
-	float zero = 0.0f;
+  float zero = 0.0f;
   ftoa(buffer, 0.f / zero, 1, ' ', 4, 0);
   EXPECT_EQ("NaN", std::string(buffer));
 

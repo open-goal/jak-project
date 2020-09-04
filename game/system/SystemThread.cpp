@@ -99,7 +99,6 @@ void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
  * Join a system thread
  */
 void SystemThread::join() {
-  void* x;
   thread.join();
   running = false;
 }
@@ -166,5 +165,5 @@ void SystemThreadInterface::report_perf_stats() {
     thread.last_cpu_user = current_user;
     thread.last_collection_nanoseconds = current_ns;
   }
-} 
+}
 #endif
