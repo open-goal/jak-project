@@ -7,6 +7,7 @@
 
 #include "ObjectFileDB.h"
 #include <algorithm>
+#include <set>
 #include <cstring>
 #include <map>
 #include "LinkedObjectFileCreation.h"
@@ -22,6 +23,39 @@
  */
 std::string ObjectFileRecord::to_unique_name() const {
   return name + "-v" + std::to_string(version);
+}
+
+std::string ObjectFileData::to_unique_name() const {
+  if (has_multiple_versions) {
+    std::string result = record.name + "-";
+    auto dgo_names_sorted = dgo_names;
+    std::sort(dgo_names_sorted.begin(), dgo_names_sorted.end());
+    for (auto x : dgo_names_sorted) {
+      auto ext = x.substr(x.length() - 4, 4);
+      if (ext == ".CGO" || ext == ".cgo" || ext == ".DGO" || ext == ".dgo") {
+        x = x.substr(0, x.length() - 4);
+      }
+      result += x + "-";
+    }
+    result.pop_back();
+    return result;
+  } else {
+    return record.name;
+  }
+}
+ObjectFileData& ObjectFileDB::lookup_record(ObjectFileRecord rec) {
+  ObjectFileData* result = nullptr;
+
+  for (auto& x : obj_files_by_name[rec.name]) {
+    if (x.record.version == rec.version) {
+      assert(x.record.hash == rec.hash);
+      assert(!result);
+      result = &x;
+    }
+  }
+
+  assert(result);
+  return *result;
 }
 
 /*!
@@ -66,6 +100,40 @@ void assert_string_empty_after(const char* str, int size) {
     assert(!*ptr);
     ptr++;
   }
+}
+}  // namespace
+
+namespace {
+std::string get_object_file_name(const std::string& original_name, uint8_t* data, int size) {
+  const char art_group_text[] =
+      "/src/next/data/art-group6/";  // todo, this may change in other games
+  const char suffix[] = "-ag.go";
+
+  int len = int(strlen(art_group_text));
+  for (int start = 0; start < size; start++) {
+    bool failed = false;
+    for (int i = 0; i < len; i++) {
+      if (start + i >= size || data[start + i] != art_group_text[i]) {
+        failed = true;
+        break;
+      }
+    }
+
+    if (!failed) {
+      for (int i = 0; i < int(original_name.length()); i++) {
+        if (start + len + i >= size || data[start + len + i] != original_name[i]) {
+          assert(false);
+        }
+      }
+
+      assert(int(strlen(suffix)) + start + len + int(original_name.length()) < size);
+      assert(!memcmp(data + start + len + original_name.length(), suffix, strlen(suffix) + 1));
+
+      return original_name + "-ag";
+    }
+  }
+
+  return original_name;
 }
 }  // namespace
 
@@ -141,7 +209,9 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
     assert(reader.bytes_left() >= obj_header.size);
     assert_string_empty_after(obj_header.name, 60);
 
-    add_obj_from_dgo(obj_header.name, reader.here(), obj_header.size, dgo_base_name);
+    auto name = get_object_file_name(obj_header.name, reader.here(), obj_header.size);
+
+    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.size, dgo_base_name);
     reader.ffwd(obj_header.size);
   }
 
@@ -153,22 +223,37 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
  * Add an object file to the ObjectFileDB
  */
 void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
+                                    const std::string& name_in_dgo,
                                     uint8_t* obj_data,
                                     uint32_t obj_size,
                                     const std::string& dgo_name) {
   stats.total_obj_files++;
-
+  assert(obj_size > 128);
+  uint16_t version = *(uint16_t*)(obj_data + 8);
   auto hash = crc32(obj_data, obj_size);
 
+  bool duplicated = false;
   // first, check to see if we already got it...
   for (auto& e : obj_files_by_name[obj_name]) {
     if (e.data.size() == obj_size && e.record.hash == hash) {
+      // just to make sure we don't have a hash collision.
+      assert(!memcmp(obj_data, e.data.data(), obj_size));
+
       // already got it!
       e.reference_count++;
-      auto rec = e.record;
+      auto& rec = e.record;
+      assert(name_in_dgo == e.name_in_dgo);
+      e.dgo_names.push_back(dgo_name);
       obj_files_by_dgo[dgo_name].push_back(rec);
-      return;
+      duplicated = true;
+      break;
+    } else {
+      e.has_multiple_versions = true;
     }
+  }
+
+  if (duplicated) {
+    return;
   }
 
   // nope, have to add a new one.
@@ -177,15 +262,24 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   memcpy(data.data.data(), obj_data, obj_size);
   data.record.hash = hash;
   data.record.name = obj_name;
+  data.dgo_names.push_back(dgo_name);
   if (obj_files_by_name[obj_name].empty()) {
     // if this is the first time we've seen this object file name, add it in the order.
     obj_file_order.push_back(obj_name);
   }
   data.record.version = obj_files_by_name[obj_name].size();
+  data.name_in_dgo = name_in_dgo;
+  data.obj_version = version;
   obj_files_by_dgo[dgo_name].push_back(data.record);
   obj_files_by_name[obj_name].emplace_back(std::move(data));
   stats.unique_obj_files++;
   stats.unique_obj_bytes += obj_size;
+
+  if (obj_files_by_name[obj_name].size() > 1) {
+    for (auto& e : obj_files_by_name[obj_name]) {
+      e.has_multiple_versions = true;
+    }
+  }
 }
 
 /*!
@@ -202,12 +296,36 @@ std::string ObjectFileDB::generate_dgo_listing() {
 
   for (const auto& name : dgo_names) {
     result += "(\"" + name + "\"\n";
-    for (auto& obj : obj_files_by_dgo[name]) {
-      result += "  " + obj.name + " :version " + std::to_string(obj.version) + "\n";
+    for (auto& obj_rec : obj_files_by_dgo[name]) {
+      auto obj = lookup_record(obj_rec);
+      std::string extension = ".o";
+      if (obj.obj_version == 4 || obj.obj_version == 2) {
+        extension = ".go";
+      }
+      result += "  (\"" + obj.to_unique_name() + extension + "\" \"" + obj.name_in_dgo + "\")\n";
     }
     result += "  )\n\n";
   }
 
+  return result;
+}
+
+std::string ObjectFileDB::generate_obj_listing() {
+  std::string result;
+  std::set<std::string> all_unique_names;
+  int unique_count = 0;
+  for (auto& obj_file : obj_file_order) {
+    for (auto& x : obj_files_by_name.at(obj_file)) {
+      result +=
+          x.to_unique_name() + +", " + x.name_in_dgo + ", " + std::to_string(x.obj_version) + "\n";
+      unique_count++;
+      all_unique_names.insert(x.to_unique_name());
+    }
+  }
+
+  // this check is extremely important. It makes sure we don't have any repeat names. This could
+  // be caused by two files with the same name, in the same DGOs, but different data.
+  assert(int(all_unique_names.size()) == unique_count);
   return result;
 }
 
