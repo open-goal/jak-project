@@ -1,6 +1,6 @@
 /*!
  * @file kmemcard.h
- * Memory card interfaces. Very messy code.
+ * Memory card interface. Very messy code.
  */
 
 #ifndef JAK_KMEMCARD_H

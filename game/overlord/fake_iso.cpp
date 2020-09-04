@@ -73,6 +73,7 @@ void fake_iso_init_globals() {
 
 //! will hold prefix for the source folder.
 static const char* next_dir = nullptr;
+static const char* fake_iso_path = nullptr;
 
 /*!
  * Initialize the file system.
@@ -98,7 +99,7 @@ int FS_Init(u8* buffer) {
   rewind(fp);
   char* fakeiso = (char*)malloc(len);
   if (fread(fakeiso, len, 1, fp) != 1) {
-    assert(true);
+    assert(false);
   }
 
   // loop over lines
@@ -192,7 +193,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
 static const char* get_file_path(FileRecord* fr) {
   assert(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
-  strcpy(path_buffer, "C:\\Users\\Shalen\\Documents\\GitHub\\jak-project\\");
+  strcpy(path_buffer, next_dir);
   strcat(path_buffer, fake_iso_entries[fr->location].file_path);
   return path_buffer;
 }
@@ -344,7 +345,6 @@ uint32_t FS_LoadMusic(char* name, void* buffer) {
   (void)name;
   (void)buffer;
   assert(false);
-  return 0;
 }
 
 // TODO FS_LoadSoundBank
@@ -352,5 +352,4 @@ uint32_t FS_LoadSoundBank(char* name, void* buffer) {
   (void)name;
   (void)buffer;
   assert(false);
-  return 0;
 }

@@ -153,7 +153,7 @@ void InitCD() {
 
 /*!
  * Initialize the I/O Processor
- * Removed calls to exit(0) if loading modules fails. 
+ * Removed calls to exit(0) if loading modules fails.
  */
 void InitIOP() {
   // before doing anything with the I/O Processor, we need to set up SIF RPC
@@ -329,7 +329,10 @@ int InitMachine() {
   //  }
 
   if (MasterDebug) {  // connect to GOAL compiler
-//    InitGoalProto();
+		// TODO-WINDOWS
+		#ifdef __linux__
+		InitGoalProto();
+		#endif
   }
 
   printf("InitSound\n");
@@ -359,7 +362,10 @@ int ShutdownMachine() {
   StopIOP();
   CloseListener();
   ShutdownSound();
-//  ShutdownGoalProto();
+	// TODO-WINDOWS
+	#ifdef __linux__
+	ShutdownGoalProto();
+	#endif
   Msg(6, "kernel: machine shutdown");
   return 0;
 }

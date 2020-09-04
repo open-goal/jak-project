@@ -2,8 +2,14 @@
  * @file Deci2Server.cpp
  * Basic implementation of a DECI2 server.
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
- 
+ */
 
+// TODO-WINDOWS
+#ifdef __linux__
+
+#include <sys/socket.h>
+#include <netinet/tcp.h>
+#include <unistd.h>
 #include <cstdio>
 #include <Winsock2.h>
 #include <io.h>
@@ -42,7 +48,7 @@ Deci2Server::~Deci2Server() {
 
 /*!
  * Start waiting for the Listener to connect
- 
+ */
 bool Deci2Server::init() {
   server_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd < 0) {
@@ -51,7 +57,7 @@ bool Deci2Server::init() {
   }
 
   const char opt = 1;
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_BROADCAST, &opt, sizeof(opt))) {
+  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
     printf("[Deci2Server] Failed to setsockopt 1\n");
     close(server_fd);
     server_fd = -1;
@@ -59,7 +65,7 @@ bool Deci2Server::init() {
   }
 
   const char one = 1;
-  if (setsockopt(server_fd, SOL_SOCKET, TCP_NODELAY, &one, sizeof(one))) {
+  if (setsockopt(server_fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one))) {
     printf("[Deci2Server] Failed to setsockopt 2\n");
     close(server_fd);
     server_fd = -1;
@@ -104,7 +110,7 @@ bool Deci2Server::init() {
 
 /*!
  * Return true if the listener is connected.
- 
+ */
 bool Deci2Server::check_for_listener() {
   if (server_connected) {
     if (accept_thread_running) {
@@ -119,7 +125,7 @@ bool Deci2Server::check_for_listener() {
 
 /*!
  * Send data from buffer. User must provide appropriate headers.
- 
+ */
 void Deci2Server::send_data(void* buf, u16 len) {
   lock();
   if (!server_connected) {
@@ -140,14 +146,14 @@ void Deci2Server::send_data(void* buf, u16 len) {
 
 /*!
  * Lock the DECI mutex. Should be done before modifying protocols.
- 
+ */
 void Deci2Server::lock() {
   deci_mutex.lock();
 }
 
 /*!
  * Unlock the DECI mutex. Should be done after modifying protocols.
- 
+ */
 void Deci2Server::unlock() {
   deci_mutex.unlock();
 }
@@ -155,7 +161,7 @@ void Deci2Server::unlock() {
 /*!
  * Wait for protocols to become ready.
  * This avoids the case where we receive messages before protocol handlers are set up.
- 
+ */
 void Deci2Server::wait_for_protos_ready() {
   if (protocols_ready)
     return;
@@ -168,7 +174,7 @@ void Deci2Server::wait_for_protos_ready() {
  * Will unblock wait_for_protos_ready and incoming messages will be dispatched to these
  * protocols.  You can change the protocol handlers, but you should lock the mutex before
  * doing so.
- 
+ */
 void Deci2Server::send_proto_ready(Deci2Driver* drivers, int* driver_count) {
   lock();
   d2_drivers = drivers;
@@ -250,18 +256,17 @@ void Deci2Server::run() {
 
 /*!
  * Background thread for waiting for the listener.
- 
+ */
 void Deci2Server::accept_thread_func() {
   socklen_t l = sizeof(addr);
   while (!kill_accept_thread) {
     new_sock = accept(server_fd, (sockaddr*)&addr, &l);
     if (new_sock >= 0) {
-      const char versions = {versions::GOAL_VERSION_MAJOR};
+      u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
       send(new_sock, &versions, 8, 0);  // todo, check result?
       server_connected = true;
       return;
     }
   }
 }
-
-*/
+#endif

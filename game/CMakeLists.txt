@@ -1,9 +1,8 @@
 # We define our own compilation flags here.
 set(CMAKE_CXX_STANDARD 11)
 
-set(CMAKE_CXX_FLAGS "-O3 -ggdb")
-
 # Set default compile flags for GCC
+# optimization level can be set here. Note that game/ overwrites this for building game C++ code.
 if(CMAKE_COMPILER_IS_GNUCXX)
     message(STATUS "GCC detected, adding compile flags")
     set(CMAKE_CXX_FLAGS 
@@ -19,10 +18,11 @@ if(CMAKE_COMPILER_IS_GNUCXX)
         -Wredundant-decls
         -Wshadow
         -Wsign-promo")
+else()
+		set(CMAKE_CXX_FLAGS "/EHsc")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 enable_language(ASM_NASM)
-#set(CMAKE_ASM_NASM_OBJECT_FORMAT elf64)
 set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)
 set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> <FLAGS> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")

@@ -1,6 +1,6 @@
 /*!
  * @file kmemcard.cpp
- * Memory card interfaces. Very messy code.
+ * Memory card interface. Very messy code.
  */
 
 //#include "ps2/SCE_MC.h"

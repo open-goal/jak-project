@@ -318,8 +318,6 @@ u64 make_string_from_c(const char* c_str) {
  * creates a function object on the global heap.
  *
  * The implementation is to create a simple trampoline function which jumps to the C function.
- *
- *
  */
 Ptr<Function> make_function_from_c(void* func) {
   // allocate a function object on the global heap
@@ -1804,7 +1802,7 @@ s32 InitHeapAndSymbol() {
   // setup deci2count for message counter.
   protoBlock.deci2count = intern_from_c("*deci-count*").cast<s32>();
 
-  // load stuff for the listener interfaces
+  // load stuff for the listener interface
   InitListener();
 
   // Do final initialization, including loading and initializing the engine.

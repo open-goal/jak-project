@@ -52,14 +52,17 @@ u32 ReceiveToBuffer(char* buff) {
   return msg_size;
 }
 
+// TODO-WINDOWS
+#ifdef __linux__
 /*!
  * Do a DECI2 send and block until it is complete.
  * The message type is OUTPUT
  * DONE, EXACT
  */
-//s32 SendFromBuffer(char* buff, s32 size) {
-//  return SendFromBufferD(u16(ListenerMessageKind::MSG_OUTPUT), 0, buff, size);
-
+s32 SendFromBuffer(char* buff, s32 size) {
+  return SendFromBufferD(u16(ListenerMessageKind::MSG_OUTPUT), 0, buff, size);
+}
+#endif
 
 /*!
  * Just prepare the Ack buffer, doesn't actually connect.

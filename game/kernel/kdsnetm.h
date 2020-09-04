@@ -51,17 +51,21 @@ extern GoalProtoBlock protoBlock;
  */
 void kdsnetm_init_globals();
 
+// TODO-WINDOWS
+#ifdef __linux__
 /*!
  * Register GOAL DECI2 Protocol Driver with DECI2 service
  * DONE, EXACT
  */
-//void InitGoalProto();
+void InitGoalProto();
 
 /*!
  * Close the DECI2 Protocol Driver
  * DONE, EXACT
  */
-//void ShutdownGoalProto();
+void ShutdownGoalProto();
+
+#endif
 
 /*!
  * Handle a DECI2 Protocol Event for the GOAL Proto.

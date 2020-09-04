@@ -12636,7 +12636,7 @@ template<typename CharType> struct output_adapter_protocol
     virtual ~output_adapter_protocol() = default;
 };
 
-/// a type to simplify interface
+/// a type to simplify interfaces
 template<typename CharType>
 using output_adapter_t = std::shared_ptr<output_adapter_protocol<CharType>>;
 

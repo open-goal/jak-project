@@ -20,7 +20,7 @@ class SystemThreadManager;
 
 /*!
  * Runs a function in a thread and provides a SystemThreadInterface to that function.
- * Once the thread is ready, it should tell the interfaces with intitialization_complete().
+ * Once the thread is ready, it should tell the interface with intitialization_complete().
  * Thread functions should try to return when get_want_exit() returns true.
  * Thread functions should also call report_perf_stats every now and then to update performance
  * statistics.
@@ -55,7 +55,7 @@ class SystemThread {
 };
 
 /*!
- * The interfaces used by a thread in the runtime.
+ * The interface used by a thread in the runtime.
  */
 class SystemThreadInterface {
  public:

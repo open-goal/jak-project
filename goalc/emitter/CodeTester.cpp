@@ -6,10 +6,13 @@
  * The CodeTester can't be used for tests requiring the full GOAL language/linking.
  */
 
-#include <third-party/mman/mman.h>
-#include <cstdio>
-
+#ifdef __linux__
 #include <sys/mman.h>
+#elif _WIN32
+#include <third-party/mman/mman.h>
+#endif
+
+#include <cstdio>
 #include "CodeTester.h"
 #include "IGen.h"
 

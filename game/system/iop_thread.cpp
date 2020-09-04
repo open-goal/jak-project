@@ -1,6 +1,10 @@
 #include "iop_thread.h"
 
+#ifdef __linux__
+#include <unistd.h>
+#elif _WIN32
 #include <io.h>
+#endif
 #include "SystemThread.h"
 //#include "shared_config.h"
 //#include "ps2/SCE_IOP.h"
@@ -117,7 +121,7 @@ IOP::~IOP() {
 //
 ////  SCE_IOP::PS2_RegisterIOP(&iop);
 ////  PS2_RegisterIOP_EE(&iop);
-//  interfaces.initialization_complete();
+//  interface.initialization_complete();
 //
 //  printf("[IOP] Wait for OVERLORD to be started...\n");
 //  iop.wait_for_overlord_start_cmd();
