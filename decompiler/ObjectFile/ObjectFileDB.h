@@ -31,6 +31,11 @@ struct ObjectFileData {
   std::vector<uint8_t> data;     // raw bytes
   LinkedObjectFile linked_data;  // data including linking annotations
   ObjectFileRecord record;       // name
+  std::vector<std::string> dgo_names;
+  int obj_version = -1;
+  bool has_multiple_versions = false;
+  std::string name_in_dgo;
+  std::string to_unique_name() const;
   uint32_t reference_count = 0;  // number of times its used.
 };
 
@@ -38,6 +43,7 @@ class ObjectFileDB {
  public:
   ObjectFileDB(const std::vector<std::string>& _dgos);
   std::string generate_dgo_listing();
+  std::string generate_obj_listing();
   void process_link_data();
   void process_labels();
   void find_code();
@@ -46,10 +52,12 @@ class ObjectFileDB {
   void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
   void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
   void analyze_functions();
+  ObjectFileData& lookup_record(ObjectFileRecord rec);
 
  private:
   void get_objs_from_dgo(const std::string& filename);
   void add_obj_from_dgo(const std::string& obj_name,
+                        const std::string& name_in_dgo,
                         uint8_t* obj_data,
                         uint32_t obj_size,
                         const std::string& dgo_name);
