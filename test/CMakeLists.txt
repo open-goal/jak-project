@@ -6,10 +6,10 @@ add_executable(goalc-test
         test_reader.cpp
         test_goos.cpp
         test_listener_deci2.cpp
-				all_jak1_symbols.cpp
-        test_kernel.cpp
-        test_CodeTester.cpp
-        test_type_system.cpp
+		all_jak1_symbols.cpp
+        #test_kernel.cpp
+        #test_CodeTester.cpp
+        #test_type_system.cpp
 )
 
 IF (WIN32)

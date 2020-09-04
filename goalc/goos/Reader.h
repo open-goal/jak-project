@@ -68,6 +68,7 @@ struct Token {
 class Reader {
  public:
   Reader();
+  ~Reader();
   Object read_from_string(const std::string& str);
   Object read_from_stdin(const std::string& prompt_name);
   Object read_from_file(const std::string& filename);

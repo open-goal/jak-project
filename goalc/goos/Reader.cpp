@@ -66,6 +66,10 @@ void TextStream::seek_past_whitespace_and_comments() {
   }
 }
 
+Reader::~Reader() {
+  printf("destroying reader\n");
+}
+
 Reader::Reader() {
   // third-party library used for a fancy line in
   linenoise::SetHistoryMaxLen(400);
@@ -76,27 +80,18 @@ Reader::Reader() {
   add_reader_macro(",", "unquote");
   add_reader_macro(",@", "unquote-splicing");
 
-  // setup table of which characters are valid for starting a symbol
-  for (auto& x : valid_symbols_chars) {
-    x = false;
-  }
-
-  for (char x = 'a'; x <= 'z'; x++) {
-    valid_symbols_chars[(int)x] = true;
-  }
-
-  for (char x = 'A'; x <= 'Z'; x++) {
-    valid_symbols_chars[(int)x] = true;
-  }
-
-  for (char x = '0'; x <= '9'; x++) {
-    valid_symbols_chars[(int)x] = true;
-  }
-
-  const char bonus[] = "!$%&*+-/\\.,@^_-;:<>?~=#";
-
-  for (const char* c = bonus; *c; c++) {
-    valid_symbols_chars[(int)*c] = true;
+  uint8_t valid[256] = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  for (int i = 0; i < 256; i++) {
+    valid_symbols_chars[i] = valid[i];
   }
 
   // find the source directory
@@ -639,6 +634,7 @@ bool Reader::try_token_as_hex(const Token& tok, Object& obj) {
  * 64-bit signed. Won't accept values between INT64_MAX and UINT64_MAX.
  */
 bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
+  printf("try token as integer %ld %s\n", tok.text.size(), tok.text.c_str());
   if (decimal_start(tok.text[0]) && !str_contains(tok.text, '.')) {
     // determine if we look like a number or not. If we look like a number, but stoll fails,
     // it means that the number is too big or too small, and we should error
@@ -653,12 +649,17 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
       }
     }
 
+    printf("going to try stoll...\n");
     uint64_t v = 0;
     try {
       std::size_t end = 0;
       v = std::stoll(tok.text, &end);
-      if (end != tok.text.size())
+      printf("stoll didn't throw, got %ld\n", v);
+      if (end != tok.text.size()) {
+        printf("didn't read whole thing\n");
         return false;
+      }
+      printf("returning object!\n");
       obj = Object::make_integer(v);
       return true;
     } catch (std::exception& e) {
@@ -666,6 +667,7 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
     }
   }
   return false;
+
 }
 
 bool Reader::try_token_as_char(const Token& tok, Object& obj) {
