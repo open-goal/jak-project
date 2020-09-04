@@ -310,14 +310,30 @@ std::string ObjectFileDB::generate_dgo_listing() {
   return result;
 }
 
+namespace {
+std::string pad_string(const std::string& in, size_t length) {
+  assert(in.length() < length);
+  return in + std::string(length - in.length(), ' ');
+}
+}  // namespace
+
 std::string ObjectFileDB::generate_obj_listing() {
   std::string result;
   std::set<std::string> all_unique_names;
   int unique_count = 0;
   for (auto& obj_file : obj_file_order) {
     for (auto& x : obj_files_by_name.at(obj_file)) {
-      result +=
-          x.to_unique_name() + +", " + x.name_in_dgo + ", " + std::to_string(x.obj_version) + "\n";
+      std::string dgos = "[";
+      for (auto& y : x.dgo_names) {
+        assert(y.length() >= 5);
+        dgos += "\"" + y.substr(0, y.length() - 4) + "\", ";
+      }
+      dgos.pop_back();
+      dgos.pop_back();
+      dgos += "]";
+      result += "[\"" + pad_string(x.to_unique_name() + "\", ", 40) + "\"" +
+                pad_string(x.name_in_dgo + "\", ", 30) + std::to_string(x.obj_version) + ", " +
+                dgos + ", \"\"],\n";
       unique_count++;
       all_unique_names.insert(x.to_unique_name());
     }
