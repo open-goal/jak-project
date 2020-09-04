@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "common/goal_constants.h"
 #include "common/common_types.h"
 #include "kprint.h"
 #include "kmachine.h"
@@ -880,7 +881,7 @@ s32 format_impl(uint64_t* args) {
             if (sym.offset) {
               Ptr<Type> type = *sym.cast<Ptr<Type>>();
               if (type.offset) {
-                call_method_of_type(in, type, GOAL_PRINT_FUNC);
+                call_method_of_type(in, type, GOAL_PRINT_METHOD);
               }
             } else {
               throw std::runtime_error("failed to find symbol in format!");
@@ -901,7 +902,7 @@ s32 format_impl(uint64_t* args) {
             if (sym.offset) {
               Ptr<Type> type = *sym.cast<Ptr<Type>>();
               if (type.offset) {
-                call_method_of_type(in, type, GOAL_INSPECT_FUNC);
+                call_method_of_type(in, type, GOAL_INSPECT_METHOD);
               }
             } else {
               throw std::runtime_error("failed to find symbol in format!");

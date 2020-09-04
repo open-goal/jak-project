@@ -90,7 +90,7 @@ Function& LinkedObjectFile::get_function_at_label(int label_id) {
   }
 
   assert(false);
-  return functions_by_seg.front().front(); // to avoid error
+  return functions_by_seg.front().front();  // to avoid error
 }
 
 /*!
@@ -520,7 +520,7 @@ std::string LinkedObjectFile::print_disassembly() {
       result += "; .function " + func.guessed_name.to_string() + "\n";
       result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
       result += func.prologue.to_string(2) + "\n";
-      if(!func.warnings.empty()) {
+      if (!func.warnings.empty()) {
         result += "Warnings: " + func.warnings + "\n";
       }
 
@@ -581,11 +581,11 @@ std::string LinkedObjectFile::print_disassembly() {
       //      }
 
       // hack
-      if(func.cfg && !func.cfg->is_fully_resolved()) {
+      if (func.cfg && !func.cfg->is_fully_resolved()) {
         result += func.cfg->to_dot();
         result += "\n";
       }
-      if(func.cfg) {
+      if (func.cfg) {
         result += func.cfg->to_form_string() + "\n";
 
         // To debug block stuff.
@@ -614,7 +614,6 @@ std::string LinkedObjectFile::print_disassembly() {
          */
       }
 
-
       result += "\n\n\n";
     }
 
@@ -636,7 +635,6 @@ std::string LinkedObjectFile::print_disassembly() {
 
       if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "string") {
         result += "; " + get_goal_string(seg, i) + "\n";
-
       }
     }
   }

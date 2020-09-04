@@ -6,14 +6,10 @@
 class GoalType {
  public:
   GoalType() = default;
-  GoalType(std::string name) : m_name(std::move(name)) { }
-  bool has_info() const {
-    return m_has_info;
-  }
+  GoalType(std::string name) : m_name(std::move(name)) {}
+  bool has_info() const { return m_has_info; }
 
-  bool has_method_count() const {
-    return m_method_count_set;
-  }
+  bool has_method_count() const { return m_method_count_set; }
 
   void set_methods(int n);
 

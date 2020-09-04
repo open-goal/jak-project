@@ -11,4 +11,4 @@
 
 LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data, const std::string& name);
 
-#endif //NEXT_LINKEDOBJECTFILECREATION_H
+#endif  // NEXT_LINKEDOBJECTFILECREATION_H

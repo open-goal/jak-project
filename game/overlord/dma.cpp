@@ -76,7 +76,7 @@ void DMA_SendToEE(void* data, u32 size, void* dest) {
 
   if (dmaid == 0) {
     do {
-      printf("Got a bad DMA ID!\n"); // added
+      printf("Got a bad DMA ID!\n");  // added
     } while (true);
   }
 }

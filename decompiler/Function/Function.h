@@ -9,18 +9,18 @@
 
 struct FunctionName {
   enum class FunctionKind {
-    UNIDENTIFIED, // hasn't been identified yet.
-    GLOBAL, // global named function
+    UNIDENTIFIED,  // hasn't been identified yet.
+    GLOBAL,        // global named function
     METHOD,
     TOP_LEVEL_INIT,
   } kind = FunctionKind::UNIDENTIFIED;
 
-  std::string function_name; // only applicable for GLOBAL
-  std::string type_name;     // only applicable for METHOD
-  int method_id = -1;        // only applicable for METHOD
+  std::string function_name;  // only applicable for GLOBAL
+  std::string type_name;      // only applicable for METHOD
+  int method_id = -1;         // only applicable for METHOD
 
   std::string to_string() const {
-    switch(kind) {
+    switch (kind) {
       case FunctionKind::GLOBAL:
         return function_name;
       case FunctionKind::METHOD:
@@ -34,13 +34,9 @@ struct FunctionName {
     }
   }
 
-  bool empty() const {
-    return kind == FunctionKind::UNIDENTIFIED;
-  }
+  bool empty() const { return kind == FunctionKind::UNIDENTIFIED; }
 
-  void set_as_top_level() {
-    kind = FunctionKind::TOP_LEVEL_INIT;
-  }
+  void set_as_top_level() { kind = FunctionKind::TOP_LEVEL_INIT; }
 
   void set_as_global(std::string name) {
     kind = FunctionKind::GLOBAL;

@@ -13,4 +13,4 @@ namespace util {
 bool is_printable_char(char c) {
   return c >= ' ' && c <= '~';
 }
-}
+}  // namespace util

@@ -2,13 +2,16 @@
  * @file test_CodeTester.cpp
  * Tests for the CodeTester, a tool for testing the emitter by emitting code and running it
  * from within the test application.
+ *
+ * These tests should just make sure the basic functionality of CodeTester works, and that it
+ * can generate prologues/epilogues, and execute them without crashing.
  */
 
 #include "gtest/gtest.h"
 #include "goalc/emitter/CodeTester.h"
 #include "goalc/emitter/IGen.h"
 
-using namespace goal;
+using namespace emitter;
 
 TEST(CodeTester, prologue) {
   CodeTester tester;
@@ -47,121 +50,120 @@ TEST(CodeTester, execute_push_pop_gprs) {
   tester.execute();
 }
 
-TEST(CodeTester, load_constant_64_and_move_gpr_gpr_64) {
-  std::vector<u64> u64_constants = {0, UINT64_MAX, INT64_MAX, 7, 12};
-
-  // test we can load a 64-bit constant into all gprs, move it to any other gpr, and return it.
-  // rsp is skipping because that's the stack pointer and would prevent us from popping gprs after
-
+TEST(CodeTester, xmm_store_128) {
   CodeTester tester;
   tester.init_code_buffer(256);
+  //  movdqa [rbx], xmm3
+  //  movdqa [r14], xmm3
+  //  movdqa [rbx], xmm14
+  //  movdqa [r14], xmm13
+  tester.emit(IGen::store128_gpr64_xmm128(RBX, XMM3));
+  tester.emit(IGen::store128_gpr64_xmm128(R14, XMM3));
+  tester.emit(IGen::store128_gpr64_xmm128(RBX, XMM14));
+  tester.emit(IGen::store128_gpr64_xmm128(R14, XMM13));
+  EXPECT_EQ(tester.dump_to_hex_string(),
+            "66 0f 7f 1b 66 41 0f 7f 1e 66 44 0f 7f 33 66 45 0f 7f 2e");
 
-  for (auto constant : u64_constants) {
-    for (int r1 = 0; r1 < 16; r1++) {
-      if (r1 == RSP) {
-        continue;
-      }
+  tester.clear();
+  tester.emit(IGen::store128_gpr64_xmm128(RSP, XMM1));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 0f 7f 0c 24");  // requires SIB byte.
 
-      for (int r2 = 0; r2 < 16; r2++) {
-        if (r2 == RSP) {
-          continue;
-        }
-        tester.clear();
-        tester.emit_push_all_gprs(true);
-        tester.emit(IGen::mov_gpr64_u64(r1, constant));
-        tester.emit(IGen::mov_gpr64_gpr64(r2, r1));
-        tester.emit(IGen::mov_gpr64_gpr64(RAX, r2));
-        tester.emit_pop_all_gprs(true);
-        tester.emit_return();
-        EXPECT_EQ(tester.execute(), constant);
-      }
-    }
-  }
+  tester.clear();
+  tester.emit(IGen::store128_gpr64_xmm128(R12, XMM13));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 45 0f 7f 2c 24");  // requires SIB byte and REX byte
+
+  tester.clear();
+  tester.emit(IGen::store128_gpr64_xmm128(RBP, XMM1));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 0f 7f 4d 00");
+
+  tester.clear();
+  tester.emit(IGen::store128_gpr64_xmm128(RBP, XMM11));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 44 0f 7f 5d 00");
+
+  tester.clear();
+  tester.emit(IGen::store128_gpr64_xmm128(R13, XMM2));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 41 0f 7f 55 00");
+
+  tester.clear();
+  tester.emit(IGen::store128_gpr64_xmm128(R13, XMM12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 45 0f 7f 65 00");
 }
 
-TEST(CodeTester, load_constant_32_unsigned) {
-  std::vector<u64> u64_constants = {0, UINT32_MAX, INT32_MAX, 7, 12};
-
-  // test loading 32-bit constants, with all upper 32-bits zero.
-  // this uses a different opcode than 64-bit loads.
+TEST(CodeTester, sub_gpr64_imm8) {
   CodeTester tester;
   tester.init_code_buffer(256);
-
-  for (auto constant : u64_constants) {
-    for (int r1 = 0; r1 < 16; r1++) {
-      if (r1 == RSP) {
-        continue;
-      }
-
-      tester.clear();
-      tester.emit_push_all_gprs(true);
-      tester.emit(IGen::mov_gpr64_u32(r1, constant));
-      tester.emit(IGen::mov_gpr64_gpr64(RAX, r1));
-      tester.emit_pop_all_gprs(true);
-      tester.emit_return();
-      EXPECT_EQ(tester.execute(), constant);
-    }
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::sub_gpr64_imm8s(i, -1));
   }
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "4883E8FF4883E9FF4883EAFF4883EBFF4883ECFF4883EDFF4883EEFF4883EFFF4983E8FF4983E9FF4983EA"
+            "FF4983EBFF4983ECFF4983EDFF4983EEFF4983EFFF");
 }
 
-TEST(CodeTester, load_constant_32_signed) {
-  std::vector<s32> s32_constants = {0, 1, INT32_MAX, INT32_MIN, 12, -1};
-
-  // test loading signed 32-bit constants.  for values < 0 this will sign extend.
+TEST(CodeTester, add_gpr64_imm8) {
   CodeTester tester;
   tester.init_code_buffer(256);
-
-  for (auto constant : s32_constants) {
-    for (int r1 = 0; r1 < 16; r1++) {
-      if (r1 == RSP) {
-        continue;
-      }
-
-      tester.clear();
-      tester.emit_push_all_gprs(true);
-      tester.emit(IGen::mov_gpr64_s32(r1, constant));
-      tester.emit(IGen::mov_gpr64_gpr64(RAX, r1));
-      tester.emit_pop_all_gprs(true);
-      tester.emit_return();
-      EXPECT_EQ(tester.execute(), constant);
-    }
+  for (int i = 0; i < 16; i++) {
+    tester.emit(IGen::add_gpr64_imm8s(i, -1));
   }
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "4883C0FF4883C1FF4883C2FF4883C3FF4883C4FF4883C5FF4883C6FF4883C7FF4983C0FF4983C1FF4983C2"
+            "FF4983C3FF4983C4FF4983C5FF4983C6FF4983C7FF");
 }
 
-TEST(CodeTester, xmm_move) {
-  std::vector<u32> u32_constants = {0, INT32_MAX, UINT32_MAX, 17};
-
-  // test moving between xmms (32-bit) and gprs.
+TEST(CodeTester, xmm_load_128) {
   CodeTester tester;
   tester.init_code_buffer(256);
+  tester.emit(IGen::load128_xmm128_gpr64(XMM3, RBX));
+  tester.emit(IGen::load128_xmm128_gpr64(XMM3, R14));
+  tester.emit(IGen::load128_xmm128_gpr64(XMM14, RBX));
+  tester.emit(IGen::load128_xmm128_gpr64(XMM13, R14));
+  EXPECT_EQ(tester.dump_to_hex_string(),
+            "66 0f 6f 1b 66 41 0f 6f 1e 66 44 0f 6f 33 66 45 0f 6f 2e");
 
-  for(auto constant : u32_constants) {
-    for(int r1 = 0; r1 < 16; r1++) {
-      if(r1 == RSP) {
-        continue;
-      }
-      for(int r2 = 0; r2 < 16; r2++) {
-        if(r2 == RSP) {
-          continue;
-        }
-        for(int r3 = 0; r3 < 16; r3++) {
-          for(int r4 = 0; r4 < 16; r4++) {
-            tester.clear();
-            tester.emit_push_all_gprs(true);
-            // move constant to gpr
-            tester.emit(IGen::mov_gpr64_u32(r1, constant));
-            // move gpr to xmm
-            tester.emit(IGen::movd_xmm32_gpr32(get_nth_xmm(r3), r1));
-            // move xmm to xmm
-            tester.emit(IGen::mov_xmm32_xmm32(get_nth_xmm(r4), get_nth_xmm(r3)));
-            // move xmm to gpr
-            tester.emit(IGen::movd_gpr32_xmm32(r2, get_nth_xmm(r4)));
-            // return!
-            tester.emit(IGen::mov_gpr64_gpr64(RAX, r2));
-            tester.emit_return();
-          }
-        }
-      }
-    }
-  }
+  tester.clear();
+  tester.emit(IGen::load128_xmm128_gpr64(XMM1, RSP));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 0f 6f 0c 24");  // requires SIB byte.
+
+  tester.clear();
+  tester.emit(IGen::load128_xmm128_gpr64(XMM13, R12));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 45 0f 6f 2c 24");  // requires SIB byte and REX byte
+
+  tester.clear();
+  tester.emit(IGen::load128_xmm128_gpr64(XMM1, RBP));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 0f 6f 4d 00");
+
+  tester.clear();
+  tester.emit(IGen::load128_xmm128_gpr64(XMM11, RBP));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 44 0f 6f 5d 00");
+
+  tester.clear();
+  tester.emit(IGen::load128_xmm128_gpr64(XMM2, R13));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 41 0f 6f 55 00");
+
+  tester.clear();
+  tester.emit(IGen::load128_xmm128_gpr64(XMM12, R13));
+  EXPECT_EQ(tester.dump_to_hex_string(), "66 45 0f 6f 65 00");
+}
+
+TEST(CodeTester, push_pop_xmms) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+  tester.emit_push_all_xmms();
+  tester.emit_pop_all_xmms();
+  tester.emit_return();
+  tester.execute();
+}
+
+TEST(CodeTester, push_pop_all_the_things) {
+  CodeTester tester;
+  tester.init_code_buffer(512);
+  tester.emit_push_all_xmms();
+  tester.emit_push_all_gprs();
+
+  // ...
+  tester.emit_pop_all_gprs();
+  tester.emit_pop_all_xmms();
+  tester.emit_return();
+  tester.execute();
 }

@@ -6,8 +6,9 @@
 #include <stdexcept>
 
 TypeSystem::TypeSystem() {
-  // the "none" type is included by default.
-  add_type("none", std::make_unique<NoneType>());
+  // the "none" and "_type_" types are included by default.
+  add_type("none", std::make_unique<NullType>("none"));
+  add_type("_type_", std::make_unique<NullType>("_type_"));
 }
 
 /*!
@@ -40,7 +41,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     // newly defined!
 
     // none/object get to skip these checks because they are roots.
-    if (name != "object" && name != "none") {
+    if (name != "object" && name != "none" && name != "_type_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         fmt::print("[TypeSystem] Type {} has incompletely defined parent {}\n", type->get_name(),
                    type->get_parent());
@@ -84,11 +85,24 @@ std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
 DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
   DerefInfo info;
 
+  if (!ts.has_single_arg()) {
+    // not enough info.
+    info.can_deref = false;
+    return info;
+  }
+
   // default to GPR
   info.reg = RegKind::GPR_64;
   info.mem_deref = true;
 
   if (ts.base_type() == "inline-array") {
+    auto result_type = lookup_type(ts.get_single_arg());
+    auto result_structure_type = dynamic_cast<StructureType*>(result_type);
+    if (!result_structure_type || result_structure_type->is_dynamic()) {
+      info.can_deref = false;
+      return info;
+    }
+
     // it's an inline array of structures. We can "dereference". But really we don't do a memory
     // dereference, we just add stride*idx to the pointer.
     info.can_deref = true;                   // deref operators should work...
@@ -96,7 +110,6 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
     info.result_type = ts.get_single_arg();  // what we're an inline-array of
     info.sign_extend = false;                // not applicable anyway
 
-    auto result_type = lookup_type(info.result_type);
     if (result_type->is_reference()) {
       info.stride =
           align(result_type->get_size_in_memory(), result_type->get_inline_array_alignment());
@@ -112,11 +125,13 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
       // in memory, an array of pointers
       info.stride = POINTER_SIZE;
       info.sign_extend = false;
+      info.load_size = POINTER_SIZE;
     } else {
       // an array of values, which should be loaded in the correct way to the correct register
       info.stride = result_type->get_size_in_memory();
       info.sign_extend = result_type->get_load_signed();
       info.reg = result_type->get_preferred_reg_kind();
+      info.load_size = result_type->get_load_size();
       assert(result_type->get_size_in_memory() == result_type->get_load_size());
     }
   } else {
@@ -188,7 +203,7 @@ TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) {
  * possible, don't store a Type* and store a TypeSpec instead.  The TypeSpec can then be used with
  * lookup_type to find the most up-to-date type information.
  */
-Type* TypeSystem::lookup_type(const std::string& name) {
+Type* TypeSystem::lookup_type(const std::string& name) const {
   auto kv = m_types.find(name);
   if (kv != m_types.end()) {
     return kv->second.get();
@@ -209,7 +224,7 @@ Type* TypeSystem::lookup_type(const std::string& name) {
  * possible, don't store a Type* and store a TypeSpec instead.  The TypeSpec can then be used with
  * lookup_type to find the most up-to-date type information.
  */
-Type* TypeSystem::lookup_type(const TypeSpec& ts) {
+Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
   return lookup_type(ts.base_type());
 }
 
@@ -488,7 +503,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
  * Add types which are built-in to GOAL.
  */
 void TypeSystem::add_builtin_types() {
-  // some of the basic types having confusing circular dependencies, so this is done manually.
+  // some of the basic types have confusing circular dependencies, so this is done manually.
   // there are no inlined things so its ok to do some things out of order because the actual size
   // doesn't really matter.
 
@@ -506,48 +521,53 @@ void TypeSystem::add_builtin_types() {
   auto link_block_type = add_builtin_basic("basic", "link-block");
   auto kheap_type = add_builtin_structure("structure", "kheap");
   auto array_type = add_builtin_basic("basic", "array");
-  auto pair_type = add_builtin_structure("object", "pair");
+  auto pair_type = add_builtin_structure("object", "pair", true);
   auto process_tree_type = add_builtin_basic("basic", "process-tree");
   auto process_type = add_builtin_basic("process-tree", "process");
   auto thread_type = add_builtin_basic("basic", "thread");
   auto connectable_type = add_builtin_structure("structure", "connectable");
   auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
-  auto pointer_type = add_builtin_value_type("object", "pointer", 4);
-  auto number_type = add_builtin_value_type("object", "number", 8);  // sign extend?
-  auto float_type = add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
-  auto integer_type = add_builtin_value_type("number", "integer", 8, false, false);  // sign extend?
-  auto binteger_type =
-      add_builtin_value_type("integer", "binteger", 8, true, false);  // sign extend?
-  auto sinteger_type = add_builtin_value_type("integer", "sinteger", 8, false, true);
-  auto int8_type = add_builtin_value_type("sinteger", "int8", 1, false, true);
-  auto int16_type = add_builtin_value_type("sinteger", "int16", 2, false, true);
-  auto int32_type = add_builtin_value_type("sinteger", "int32", 4, false, true);
-  auto int64_type = add_builtin_value_type("sinteger", "int64", 8, false, true);
-  auto int128_type =
-      add_builtin_value_type("sinteger", "int128", 16, false, true, RegKind::INT_128);
-  auto uinteger_type = add_builtin_value_type("integer", "uinteger", 8);
-  auto uint8_type = add_builtin_value_type("uinteger", "uint8", 1);
-  auto uint16_type = add_builtin_value_type("uinteger", "uint16", 2);
-  auto uint32_type = add_builtin_value_type("uinteger", "uint32", 4);
-  auto uint64_type = add_builtin_value_type("uinteger", "uint64", 81);
-  auto uint128_type =
-      add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
+  add_builtin_value_type("object", "pointer", 4);
+  auto inline_array_type = add_builtin_value_type("object", "inline-array", 4);
+  inline_array_type->set_runtime_type("pointer");
+
+  add_builtin_value_type("object", "number", 8);  // sign extend?
+  add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
+  add_builtin_value_type("number", "integer", 8, false, false);   // sign extend?
+  add_builtin_value_type("integer", "binteger", 8, true, false);  // sign extend?
+  add_builtin_value_type("integer", "sinteger", 8, false, true);
+  add_builtin_value_type("sinteger", "int8", 1, false, true);
+  add_builtin_value_type("sinteger", "int16", 2, false, true);
+  add_builtin_value_type("sinteger", "int32", 4, false, true);
+  add_builtin_value_type("sinteger", "int64", 8, false, true);
+  add_builtin_value_type("sinteger", "int128", 16, false, true, RegKind::INT_128);
+  add_builtin_value_type("integer", "uinteger", 8);
+  add_builtin_value_type("uinteger", "uint8", 1);
+  add_builtin_value_type("uinteger", "uint16", 2);
+  add_builtin_value_type("uinteger", "uint32", 4);
+  add_builtin_value_type("uinteger", "uint64", 81);
+  add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
+
+  auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
+  int_type->disallow_in_runtime();
+  auto uint_type = add_builtin_value_type("uinteger", "uint", 8, false, false);
+  uint_type->disallow_in_runtime();
 
   // Methods and Fields
 
   // OBJECT
-  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int32"}, "object"));
-  add_method(obj_type, "delete", make_function_typespec({"object"}, "none"));
-  add_method(obj_type, "print", make_function_typespec({"object"}, "object"));
-  add_method(obj_type, "inspect", make_function_typespec({"object"}, "object"));
+  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int32"}, "_type_"));
+  add_method(obj_type, "delete", make_function_typespec({"_type_"}, "none"));
+  add_method(obj_type, "print", make_function_typespec({"_type_"}, "_type_"));
+  add_method(obj_type, "inspect", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "length",
-             make_function_typespec({"object"}, "int32"));  // todo - this integer type?
-  add_method(obj_type, "asize-of", make_function_typespec({"object"}, "int32"));
-  add_method(obj_type, "copy", make_function_typespec({"object", "symbol"}, "object"));
-  add_method(obj_type, "relocate", make_function_typespec({"object", "int32"}, "object"));
+             make_function_typespec({"_type_"}, "int32"));  // todo - this integer type?
+  add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int32"));
+  add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
+  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int32"}, "_type_"));
   add_method(obj_type, "mem-usage",
-             make_function_typespec({"object"}, "int32"));  // todo - this is a guess.
+             make_function_typespec({"_type_"}, "int32"));  // todo - this is a guess.
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
@@ -591,6 +611,38 @@ void TypeSystem::add_builtin_types() {
 
   // VU FUNCTION
   // don't inherit
+  add_field_to_type(vu_function_type, "length", make_typespec("int32"));    // todo integer type
+  add_field_to_type(vu_function_type, "origin", make_typespec("pointer"));  // todo sign extend?
+  add_field_to_type(vu_function_type, "qlength", make_typespec("int32"));   // todo integer type
+
+  // link block
+  builtin_structure_inherit(link_block_type);
+  add_field_to_type(link_block_type, "allocated-length",
+                    make_typespec("int32"));                              // todo integer type
+  add_field_to_type(link_block_type, "version", make_typespec("int32"));  // todo integer type
+  // there's probably some dynamically sized stuff after this...
+
+  // kheap
+  add_field_to_type(kheap_type, "base", make_typespec("pointer"));
+  add_field_to_type(kheap_type, "top", make_typespec("pointer"));
+  add_field_to_type(kheap_type, "current", make_typespec("pointer"));
+  add_field_to_type(kheap_type, "top-base", make_typespec("pointer"));
+
+  // todo
+  (void)array_type;
+
+  // pair
+  pair_type->override_offset(2);
+  add_field_to_type(pair_type, "car", make_typespec("object"));
+  add_field_to_type(pair_type, "cdr", make_typespec("object"));
+
+  // todo, with kernel
+  (void)process_tree_type;
+  (void)process_type;
+  (void)thread_type;
+  (void)connectable_type;
+  (void)stack_frame_type;
+  (void)file_stream_type;
 }
 
 /*!
@@ -623,23 +675,6 @@ int TypeSystem::get_next_method_id(Type* type) {
       return 1;
     }
   }
-}
-
-/*!
- * For debugging, todo remove.
- */
-int TypeSystem::manual_add_field_to_type(StructureType* type,
-                                         const std::string& field_name,
-                                         const TypeSpec& field_type,
-                                         int offset,
-                                         int size,
-                                         int alignment) {
-  Field field(field_name, field_type);
-  field.set_alignment(alignment);
-  field.set_offset(offset);
-  int new_size = type->get_size_in_memory() + size;
-  type->add_field(field, new_size);
-  return offset;
 }
 
 /*!
@@ -725,8 +760,9 @@ int TypeSystem::get_size_in_type(const Field& field) {
  * things in the wrong order.
  */
 StructureType* TypeSystem::add_builtin_structure(const std::string& parent,
-                                                 const std::string& type_name) {
-  add_type(type_name, std::make_unique<StructureType>(parent, type_name));
+                                                 const std::string& type_name,
+                                                 bool boxed) {
+  add_type(type_name, std::make_unique<StructureType>(parent, type_name, boxed));
   return get_type_of_type<StructureType>(type_name);
 }
 
@@ -759,4 +795,172 @@ ValueType* TypeSystem::add_builtin_value_type(const std::string& parent,
  */
 void TypeSystem::builtin_structure_inherit(StructureType* st) {
   st->inherit(get_type_of_type<StructureType>(st->get_parent()));
+}
+
+/*!
+ * Main compile-time type check!
+ * @param expected - the expected type
+ * @param actual - the actual type (can be more specific)
+ * @param error_source_name - optional, can provide a name for where the error comes from
+ * @param print_on_error - print a message explaining the type error, if there is one
+ * @param throw_on_error - throw a std::runtime_error on failure if set.
+ * @return if the type check passes
+ */
+bool TypeSystem::typecheck(const TypeSpec& expected,
+                           const TypeSpec& actual,
+                           const std::string& error_source_name,
+                           bool print_on_error,
+                           bool throw_on_error) const {
+  bool success = true;
+  // first, typecheck the base types:
+  if (!typecheck_base_types(expected.base_type(), actual.base_type())) {
+    success = false;
+  }
+
+  // next argument checks:
+  if (expected.m_arguments.size() == actual.m_arguments.size()) {
+    for (size_t i = 0; i < expected.m_arguments.size(); i++) {
+      // don't print/throw because the error would be confusing. Better to fail only the
+      // outer most check and print a single error message.
+      if (!typecheck(expected.m_arguments[i], actual.m_arguments[i], "", false, false)) {
+        success = false;
+        break;
+      }
+    }
+  } else {
+    // different sizes of arguments.
+    if (expected.m_arguments.empty()) {
+      // we expect zero arguments, but got some. The actual type is more specific, so this is fine.
+    } else {
+      // different sizes, and we expected arguments. No good!
+      success = false;
+    }
+  }
+
+  if (!success) {
+    if (print_on_error) {
+      if (error_source_name.empty()) {
+        fmt::print("[TypeSystem] Got type \"{}\" when expecting \"{}\"\n", actual.print(),
+                   expected.print());
+      } else {
+        fmt::print("[TypeSystem] For {}, got type \"{}\" when expecting \"{}\"\n",
+                   error_source_name, actual.print(), expected.print());
+      }
+    }
+
+    if (throw_on_error) {
+      throw std::runtime_error("typecheck failed");
+    }
+  }
+
+  return success;
+}
+
+/*!
+ * Is actual of type expected? For base types.
+ */
+bool TypeSystem::typecheck_base_types(const std::string& expected,
+                                      const std::string& actual) const {
+  // just to make sure it exists. (note - could there be a case when it just has to be forward
+  // declared, but not defined?)
+  lookup_type(expected);
+
+  if (expected == actual) {
+    lookup_type(actual);  // make sure it exists
+    return true;
+  }
+
+  std::string actual_name = actual;
+  auto actual_type = lookup_type(actual_name);
+  while (actual_type->has_parent()) {
+    actual_name = actual_type->get_parent();
+    actual_type = lookup_type(actual_name);
+
+    if (expected == actual_name) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/*!
+ * Get a path from type to object.
+ */
+std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) {
+  auto parent = lookup_type(type)->get_parent();
+  std::vector<std::string> path = {type};
+  path.push_back(parent);
+  auto parent_type = lookup_type(parent);
+
+  while (parent_type->has_parent()) {
+    parent = parent_type->get_parent();
+    parent_type = lookup_type(parent);
+    path.push_back(parent);
+  }
+
+  return path;
+}
+
+/*!
+ * Lowest common ancestor of two base types.
+ */
+std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
+  if (a == b) {
+    return a;
+  }
+
+  auto a_up = get_path_up_tree(a);
+  auto b_up = get_path_up_tree(b);
+
+  int ai = a_up.size() - 1;
+  int bi = b_up.size() - 1;
+
+  std::string* result = nullptr;
+  while (ai >= 0 && bi >= 0) {
+    if (a_up.at(ai) == b_up.at(bi)) {
+      result = &a_up.at(ai);
+    } else {
+      break;
+    }
+    ai--;
+    bi--;
+  }
+
+  assert(result);
+  return *result;
+}
+
+/*!
+ * Lowest common ancestor of two typespecs.  Will recursively apply to arguments, if compatible.
+ * Otherwise arguments are stripped off.
+ * In a situation like lca("(a b)", "(c d)"), the result will be
+ * (lca(a, b) lca(b, d)).
+ */
+TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) {
+  auto result = make_typespec(lca_base(a.base_type(), b.base_type()));
+  if (!a.m_arguments.empty() && !b.m_arguments.empty() &&
+      a.m_arguments.size() == b.m_arguments.size()) {
+    // recursively add arguments
+    for (size_t i = 0; i < a.m_arguments.size(); i++) {
+      result.add_arg(lowest_common_ancestor(a.m_arguments.at(i), b.m_arguments.at(i)));
+    }
+  }
+  return result;
+}
+
+/*!
+ * Lowest common ancestor of multiple (or at least one) type.
+ */
+TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) {
+  assert(!types.empty());
+  if (types.size() == 1) {
+    return types.front();
+  }
+
+  auto result = lowest_common_ancestor(types.at(0), types.at(1));
+  for (size_t i = 2; i < types.size(); i++) {
+    result = lowest_common_ancestor(result, types.at(i));
+  }
+  return result;
 }

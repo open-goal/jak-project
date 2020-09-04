@@ -15,7 +15,6 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/util/LispPrint.h"
 
-
 /*!
  * A label to a location in this object file.
  * Doesn't have to be word aligned.
@@ -23,14 +22,14 @@
 struct Label {
   std::string name;
   int target_segment;
-  int offset; // in bytes
+  int offset;  // in bytes
 };
 
 /*!
  * An object file's data with linking information included.
  */
 class LinkedObjectFile {
-public:
+ public:
   LinkedObjectFile() = default;
   void set_segment_count(int n_segs);
   void push_back_word_to_segment(uint32_t word, int segment);
@@ -38,8 +37,15 @@ public:
   int get_label_at(int seg, int offset) const;
   bool label_points_to_code(int label_id) const;
   bool pointer_link_word(int source_segment, int source_offset, int dest_segment, int dest_offset);
-  void pointer_link_split_word(int source_segment, int source_hi_offset, int source_lo_offset, int dest_segment, int dest_offset);
-  void symbol_link_word(int source_segment, int source_offset, const char* name, LinkedWord::Kind kind);
+  void pointer_link_split_word(int source_segment,
+                               int source_hi_offset,
+                               int source_lo_offset,
+                               int dest_segment,
+                               int dest_offset);
+  void symbol_link_word(int source_segment,
+                        int source_offset,
+                        const char* name,
+                        LinkedWord::Kind kind);
   void symbol_link_offset(int source_segment, int source_offset, const char* name);
   Function& get_function_at_label(int label_id);
   std::string get_label_name(int label_id) const;
@@ -83,7 +89,6 @@ public:
     uint32_t n_fp_reg_use = 0;
     uint32_t n_fp_reg_use_resolved = 0;
 
-
     void add(const Stats& other) {
       total_code_bytes += other.total_code_bytes;
       total_v2_code_bytes += other.total_v2_code_bytes;
@@ -116,9 +121,9 @@ public:
   std::vector<std::vector<Function>> functions_by_seg;
   std::vector<Label> labels;
 
-private:
+ private:
   std::shared_ptr<Form> to_form_script(int seg, int word_idx, std::vector<bool>& seen);
-  std::shared_ptr<Form> to_form_script_object(int seg, int byte_idx, std::vector<bool> &seen);
+  std::shared_ptr<Form> to_form_script_object(int seg, int byte_idx, std::vector<bool>& seen);
   bool is_empty_list(int seg, int byte_idx);
   bool is_string(int seg, int byte_idx);
   std::string get_goal_string(int seg, int word_idx);
@@ -126,6 +131,4 @@ private:
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
 
-
-
-#endif //NEXT_LINKEDOBJECTFILE_H
+#endif  // NEXT_LINKEDOBJECTFILE_H

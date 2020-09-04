@@ -3,4 +3,4 @@
 
 void InitBanks();
 
-#endif //JAK_V2_SBANK_H
+#endif  // JAK_V2_SBANK_H

@@ -8,10 +8,11 @@ ELSE()
 ENDIF()
 add_subdirectory(emitter)
 
-add_executable(goalc main.cpp)
+add_executable(goalc main.cpp
+        compiler/Compiler.cpp)
 
 IF (WIN32)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 ENDIF()
 
-target_link_libraries(goalc util goos)
+target_link_libraries(goalc util goos type_system)

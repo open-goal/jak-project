@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 #include "goalc/listener/Listener.h"
-#include "goalc/listener/Deci2Server.h"
+#include "game/system/Deci2Server.h"
 
 using namespace listener;
 
@@ -10,7 +10,7 @@ namespace {
 bool always_false() {
   return false;
 }
-}
+}  // namespace
 
 TEST(Listener, ListenerCreation) {
   listener::Listener l;
@@ -25,7 +25,7 @@ TEST(Listener, DeciInit) {
   EXPECT_TRUE(s.init());
 }
 
-//TEST(Listener, TwoDeciServers) {
+// TEST(Listener, TwoDeciServers) {
 //  Deci2Server s1, s2;
 //  EXPECT_TRUE(s1.init());
 //  EXPECT_TRUE(s2.init());
@@ -36,6 +36,11 @@ TEST(Listener, DeciInit) {
  */
 TEST(Listener, ListenToNothing) {
   Listener l;
+  if (l.connect_to_target()) {
+    printf(
+        "~~~~~~ Test connected to a runtime when there shouldn't be anything running! Check that "
+        "you don't have gk running in the background!\n");
+  }
   EXPECT_FALSE(l.connect_to_target());
   l.disconnect();
 }
@@ -49,7 +54,7 @@ TEST(Listener, DeciCheckNoListener) {
 }
 
 TEST(Listener, DeciThenListener) {
-  for(int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
@@ -60,8 +65,8 @@ TEST(Listener, DeciThenListener) {
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
     // kind of a hack.
-    while(!s.check_for_listener()) {
-      printf("...\n");
+    while (!s.check_for_listener()) {
+      // printf("...\n");
     }
 
     EXPECT_TRUE(s.check_for_listener());
@@ -69,7 +74,7 @@ TEST(Listener, DeciThenListener) {
 }
 
 TEST(Listener, DeciThenListener2) {
-  for(int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
@@ -83,15 +88,15 @@ TEST(Listener, DeciThenListener2) {
 }
 
 TEST(Listener, ListenerThenDeci) {
-  for(int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     Listener l;
     EXPECT_FALSE(l.connect_to_target());
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
-    while(!s.check_for_listener()) {
-      printf("...\n");
+    while (!s.check_for_listener()) {
+      //      printf("...\n");
     }
   }
 }
@@ -104,8 +109,8 @@ TEST(Listener, ListenerMultipleDecis) {
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
-    while(!s.check_for_listener()) {
-      printf("...\n");
+    while (!s.check_for_listener()) {
+      // printf("...\n");
     }
     l.disconnect();
   }
@@ -115,8 +120,8 @@ TEST(Listener, ListenerMultipleDecis) {
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
-    while(!s.check_for_listener()) {
-      printf("...\n");
+    while (!s.check_for_listener()) {
+      // printf("...\n");
     }
     l.disconnect();
   }

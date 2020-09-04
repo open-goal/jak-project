@@ -25,12 +25,11 @@ class Listener {
   bool is_connected() const;
   void disconnect();
 
-
  private:
-  char* m_buffer = nullptr; //! buffer for incoming messages
-  bool m_connected = false; //! do we think we are connected?
-  bool receive_thread_running = false; //! is the receive thread unjoined?
-  int socket_fd = -1; //! socket
+  char* m_buffer = nullptr;             //! buffer for incoming messages
+  bool m_connected = false;             //! do we think we are connected?
+  bool receive_thread_running = false;  //! is the receive thread unjoined?
+  int socket_fd = -1;                   //! socket
   bool got_ack = false;
   bool waiting_for_ack = false;
 
@@ -41,7 +40,6 @@ class Listener {
   std::vector<std::string> message_record;
   char ack_recv_buff[512];
 };
-}
-
+}  // namespace listener
 
 #endif  // JAK1_LISTENER_H

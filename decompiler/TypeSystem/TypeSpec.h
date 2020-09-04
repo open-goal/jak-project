@@ -8,8 +8,9 @@
 class TypeSpec {
  public:
   TypeSpec() = default;
-  explicit TypeSpec(std::string base_type) : m_base_type(std::move(base_type)) { }
-  TypeSpec(std::string base_type, std::vector<TypeSpec> args) : m_base_type(std::move(base_type)), m_args(std::move(args)) { }
+  explicit TypeSpec(std::string base_type) : m_base_type(std::move(base_type)) {}
+  TypeSpec(std::string base_type, std::vector<TypeSpec> args)
+      : m_base_type(std::move(base_type)), m_args(std::move(args)) {}
 
   std::string to_string() const;
   std::shared_ptr<Form> to_form() const;

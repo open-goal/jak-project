@@ -23,6 +23,7 @@ struct DerefInfo {
   bool sign_extend = false;
   RegKind reg = RegKind::INVALID;
   int stride = -1;
+  int load_size = -1;
   TypeSpec result_type;
 };
 
@@ -45,8 +46,8 @@ class TypeSystem {
   TypeSpec make_inline_array_typespec(const std::string& type);
   TypeSpec make_inline_array_typespec(const TypeSpec& type);
 
-  Type* lookup_type(const TypeSpec& ts);
-  Type* lookup_type(const std::string& name);
+  Type* lookup_type(const TypeSpec& ts) const;
+  Type* lookup_type(const std::string& name) const;
 
   MethodInfo add_method(Type* type, const std::string& method_name, const TypeSpec& ts);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
@@ -67,6 +68,12 @@ class TypeSystem {
   void add_builtin_types();
 
   std::string print_all_type_information() const;
+  bool typecheck(const TypeSpec& expected,
+                 const TypeSpec& actual,
+                 const std::string& error_source_name = "",
+                 bool print_on_error = true,
+                 bool throw_on_error = true) const;
+  std::vector<std::string> get_path_up_tree(const std::string& type);
 
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
@@ -81,19 +88,19 @@ class TypeSystem {
     return result;
   }
 
+  TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b);
+  TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types);
+
  private:
+  std::string lca_base(const std::string& a, const std::string& b);
+  bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_size_in_type(const Field& field);
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name);
   int get_next_method_id(Type* type);
-  int manual_add_field_to_type(StructureType* type,
-                               const std::string& field_name,
-                               const TypeSpec& field_type,
-                               int offset,
-                               int size,
-                               int alignment);
-
-  StructureType* add_builtin_structure(const std::string& parent, const std::string& type_name);
+  StructureType* add_builtin_structure(const std::string& parent,
+                                       const std::string& type_name,
+                                       bool boxed = false);
   BasicType* add_builtin_basic(const std::string& parent, const std::string& type_name);
   ValueType* add_builtin_value_type(const std::string& parent,
                                     const std::string& type_name,
@@ -104,7 +111,6 @@ class TypeSystem {
   void builtin_structure_inherit(StructureType* st);
 
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
-  std::unordered_map<std::string, Type*> m_global_types;
   std::unordered_set<std::string> m_forward_declared_types;
   std::vector<std::unique_ptr<Type>> m_old_types;
 

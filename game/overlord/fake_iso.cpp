@@ -79,20 +79,16 @@ static const char* next_dir = nullptr;
  */
 int FS_Init(u8* buffer) {
   (void)buffer;
-  // get path to next/. Will be set in the gk.sh launch script. This is for Linux only
-
-  /*
-   next_dir = std::getenv("NEXT_DIR"); // todo windows?
-
+  // get path to next/. Will be set in the gk.sh launch script.
+  next_dir = std::getenv("NEXT_DIR");
   assert(next_dir);
 
   // get path to next/data/fake_iso.txt, the map file.
   char fakeiso_path[512];
   strcpy(fakeiso_path, next_dir);
-  strcat(fakeiso_path, "/game/fake_iso.txt"); // todo windows paths?
-  */
-  char fakeiso_path[] = "C:\\Users\\Shalen\\Documents\\GitHub\\jak-project-windows-proj\\game\\fake_iso.txt";
-  char NEXT_DIR[] = "C:\\Users\\Shalen\\Documents\\GitHub\\jak-project-windows-proj";
+  fake_iso_path = std::getenv("FAKE_ISO_PATH");  
+  assert(fake_iso_path);
+  strcat(fakeiso_path, fake_iso_path);
 
   // open the map.
   FILE* fp = fopen(fakeiso_path, "r");
@@ -330,7 +326,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
  */
 uint32_t FS_SyncRead() {
   // FS_BeginRead is blocking, so this is useless.
-  if(read_in_progress) {
+  if (read_in_progress) {
     read_in_progress = false;
     return CMD_STATUS_IN_PROGRESS;
   } else {
