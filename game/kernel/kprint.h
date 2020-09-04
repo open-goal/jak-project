@@ -62,28 +62,59 @@ void output_unload(const char* name);
  */
 void output_segment_load(const char* name, Ptr<u8> link_block, u32 flags);
 
+#ifdef __linux__
+/*!
+ * Print to the GOAL print buffer from C
+ */
+void cprintf(const char* format, ...) __attribute__((format(printf, 1, 2)));
+#elif _WIN32
 /*!
  * Print to the GOAL print buffer from C
  */
 void cprintf(const char* format, ...);
+#endif
 
+#ifdef __linux__
+/*!
+ * Print directly to the C stdout
+ * The "k" parameter is ignored, so this is just like printf
+ */
+void Msg(s32 k, const char* format, ...) __attribute__((format(printf, 2, 3)));
+#elif _WIN32
 /*!
  * Print directly to the C stdout
  * The "k" parameter is ignored, so this is just like printf
  */
 void Msg(s32 k, const char* format, ...);
+#endif
 
+#ifdef __linux__
+/*!
+ * Print directly to the C stdout
+ * This is identical to Msg.
+ */
+void MsgWarn(const char* format, ...) __attribute__((format(printf, 1, 2)));
+#elif _WIN32
 /*!
  * Print directly to the C stdout
  * This is identical to Msg.
  */
 void MsgWarn(const char* format, ...);
+#endif
 
+#ifdef __linux__
+/*!
+ * Print directly to the C stdout
+ * This is identical to Msg.
+ */
+void MsgErr(const char* format, ...) __attribute__((format(printf, 1, 2)));
+#elif _WIN32
 /*!
  * Print directly to the C stdout
  * This is identical to Msg.
  */
 void MsgErr(const char* format, ...);
+#endif
 
 /*!
  * Reverse string in place.

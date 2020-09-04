@@ -43,6 +43,10 @@ bool Listener::is_connected() const {
   return m_connected;
 }
 
+/*!
+ * Attempt to connect to the target. If the target isn't running, this should fail quickly.
+ * Returns true if successfully connected.
+ */
 bool Listener::connect_to_target(const std::string& ip, int port) {
   if (m_connected) {
     throw std::runtime_error("attempted a Listener::connect_to_target when already connected!");

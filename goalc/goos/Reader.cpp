@@ -66,8 +66,6 @@ void TextStream::seek_past_whitespace_and_comments() {
   }
 }
 
-Reader::~Reader() {}
-
 Reader::Reader() {
   // third-party library used for a fancy line in
   linenoise::SetHistoryMaxLen(400);
@@ -78,18 +76,27 @@ Reader::Reader() {
   add_reader_macro(",", "unquote");
   add_reader_macro(",@", "unquote-splicing");
 
-  uint8_t valid[256] = {
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  for (int i = 0; i < 256; i++) {
-    valid_symbols_chars[i] = valid[i];
+  // setup table of which characters are valid for starting a symbol
+  for (auto& x : valid_symbols_chars) {
+    x = false;
+  }
+
+  for (char x = 'a'; x <= 'z'; x++) {
+    valid_symbols_chars[(int)x] = true;
+  }
+
+  for (char x = 'A'; x <= 'Z'; x++) {
+    valid_symbols_chars[(int)x] = true;
+  }
+
+  for (char x = '0'; x <= '9'; x++) {
+    valid_symbols_chars[(int)x] = true;
+  }
+
+  const char bonus[] = "!$%&*+-/\\.,@^_-;:<>?~=#";
+
+  for (const char* c = bonus; *c; c++) {
+    valid_symbols_chars[(int)*c] = true;
   }
 
   // find the source directory

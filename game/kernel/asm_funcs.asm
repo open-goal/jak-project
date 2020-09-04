@@ -57,6 +57,45 @@ _format:
 ;; run this wrapper to call the real format_impl
 
 
+;; The _call_goal_asm function is used to call a GOAL function from C.
+;; It supports up to 3 arguments and a return value.
+;; This should be called with the arguments:
+;; - first goal arg
+;; - second goal arg
+;; - third goal arg
+;; - address of function to call
+;; - address of the symbol table
+;; - GOAL memory space offset
+
+global _call_goal_asm_linux
+
+_call_goal_asm_linux:
+  ;; x86 saved registers we need to modify for GOAL should be saved
+  push r13
+  push r14
+  push r15
+
+  ;; RDI - first arg
+  ;; RSI - second arg
+  ;; RDX - third arg
+  ;; RCX - function pointer (goes in r13)
+  ;; R8  - st (goes in r14)
+  ;; R9  - off (goes in r15)
+
+  ;; set GOAL function pointer
+  mov r13, rcx
+  ;; offset
+  mov r15, r8
+  ;; symbol table
+  mov r14, r9
+  ;; call GOAL by function pointer
+  call r13
+
+  ;; retore x86 registers.
+  pop r15
+  pop r14
+  pop r13
+  ret
 
 
 ;; The _call_goal_asm function is used to call a GOAL function from C.
@@ -69,9 +108,9 @@ _format:
 ;; - address of the symbol table
 ;; - GOAL memory space offset
 
-global _call_goal_asm
+global _call_goal_asm_win32
 
-_call_goal_asm:
+_call_goal_asm_win32:
   push rdx    ; 8
   push rbx    ; 16
   push rbp    ; 24

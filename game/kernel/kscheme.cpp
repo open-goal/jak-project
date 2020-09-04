@@ -320,6 +320,45 @@ u64 make_string_from_c(const char* c_str) {
  * The implementation is to create a simple trampoline function which jumps to the C function.
  */
 Ptr<Function> make_function_from_c(void* func) {
+#ifdef __linux__
+  return make_function_from_c_linux(func);
+#elif _WIN32
+  return make_function_from_c_win32(func);
+#endif
+}
+
+Ptr<Function> make_function_from_c_linux(void* func) {
+  // allocate a function object on the global heap
+  auto mem = Ptr<u8>(
+      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40));
+  auto f = (uint64_t)func;
+  auto fp = (u8*)&f;
+
+  // we will put the function address in RAX with a movabs rax, imm8
+  mem.c()[0] = 0x48;
+  mem.c()[1] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[2 + i] = fp[i];
+  }
+
+  // jmp rax
+  mem.c()[10] = 0xff;
+  mem.c()[11] = 0xe0;
+
+  // the C function's ret will return to the caller of this trampoline.
+
+  // CacheFlush(mem, 0x34);
+
+  return mem.cast<Function>();
+}
+
+/*!
+ * Create a GOAL function from a C function. This doesn't export it as a global function, it just
+ * creates a function object on the global heap.
+ *
+ * The implementation is to create a simple trampoline function which jumps to the C function.
+ */
+Ptr<Function> make_function_from_c_win32(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(
       alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
@@ -353,10 +392,6 @@ Ptr<Function> make_function_from_c(void* func) {
                  0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0xC3}) {
     mem.c()[i++] = x;
   }
-
-  // jmp rax
-  //  mem.c()[10] = 0xff;
-  //  mem.c()[11] = 0xe0;
 
   // the C function's ret will return to the caller of this trampoline.
 
@@ -911,8 +946,12 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
 }
 
 extern "C" {
-// defined in asm_funcs.nasm
-uint64_t _call_goal_asm(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
+// defined in asm_funcs.asm
+#ifdef __linux__
+uint64_t _call_goal_asm_linux(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
+#elif _WIN32
+uint64_t _call_goal_asm_win32(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
+#endif
 }
 
 /*!
@@ -921,7 +960,11 @@ uint64_t _call_goal_asm(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* 
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
   auto st_ptr = (void*)((uint8_t*)(offset) + st);
   void* fptr = f.c();
-  return _call_goal_asm(a, b, c, fptr, st_ptr, offset);
+#ifdef __linux__
+  return _call_goal_asm_linux(a, b, c, fptr, st_ptr, offset);
+#elif _WIN32
+  return _call_goal_asm_win32(a, b, c, fptr, st_ptr, offset);
+#endif
 }
 
 /*!
