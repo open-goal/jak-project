@@ -74,13 +74,16 @@ void ShutdownGoalProto();
  */
 void GoalProtoHandler(int event, int param, void* data);
 
+// TODO-WINDOWS
+#ifdef __linux__
 /*!
  * Low level DECI2 send
  * Will block until send is complete.
  * DONE, original version used an uncached address and had a FlushCache call, which were both
  * removed
  */
-//s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
+s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
+#endif
 
 /*!
  * Print GOAL Protocol status

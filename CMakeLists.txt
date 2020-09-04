@@ -9,17 +9,18 @@ set(CMAKE_CXX_STANDARD 14)
 if(CMAKE_COMPILER_IS_GNUCXX)
     message(STATUS "GCC detected, adding compile flags")
     set(CMAKE_CXX_FLAGS 
-        "${CMAKE_CXX_FLAGS} 
-        -Wall-Winit-self 
-        -Wextra
-        -Wcast-align
-        -Wcast-qual
-        -Wdisabled-optimization
-        -Wformat=2
-        -Wmissing-include-dirs
-        -Woverloaded-virtual
-        -Wredundant-decls
-        -Wshadow
+        "${CMAKE_CXX_FLAGS} \
+        -Wall \
+				-Winit-self \
+        -Wextra \
+        -Wcast-align \
+        -Wcast-qual \
+        -Wdisabled-optimization \
+        -Wformat=2 \
+        -Wmissing-include-dirs \
+        -Woverloaded-virtual \
+        -Wredundant-decls \
+        -Wshadow \
         -Wsign-promo")
 else()
 		set(CMAKE_CXX_FLAGS "/EHsc")
