@@ -313,20 +313,6 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
-/*!
- * Create a GOAL function from a C function. This doesn't export it as a global function, it just
- * creates a function object on the global heap.
- *
- * The implementation is to create a simple trampoline function which jumps to the C function.
- */
-Ptr<Function> make_function_from_c(void* func) {
-#ifdef __linux__
-  return make_function_from_c_linux(func);
-#elif _WIN32
-  return make_function_from_c_win32(func);
-#endif
-}
-
 Ptr<Function> make_function_from_c_linux(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(
@@ -398,6 +384,20 @@ Ptr<Function> make_function_from_c_win32(void* func) {
   // CacheFlush(mem, 0x34);
 
   return mem.cast<Function>();
+}
+
+/*!
+ * Create a GOAL function from a C function. This doesn't export it as a global function, it just
+ * creates a function object on the global heap.
+ *
+ * The implementation is to create a simple trampoline function which jumps to the C function.
+ */
+Ptr<Function> make_function_from_c(void* func) {
+#ifdef __linux__
+  return make_function_from_c_linux(func);
+#elif _WIN32
+  return make_function_from_c_win32(func);
+#endif
 }
 
 /*!
