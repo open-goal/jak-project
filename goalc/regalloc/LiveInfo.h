@@ -6,6 +6,7 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include "Assignment.h"
 
 // with this on, gaps in usage of registers allow other variables to steal registers.
