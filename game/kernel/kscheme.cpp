@@ -1517,7 +1517,11 @@ s32 test_function(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 
 extern "C" {
 // defined in asm_funcs. It calls format_impl and sets up arguments correctly.
-void _format();
+#ifdef __linux__
+void _format_linux();
+#elif _WIN32
+void _format_win32();
+#endif
 }
 
 /*!
@@ -1769,8 +1773,11 @@ s32 InitHeapAndSymbol() {
   make_function_symbol_from_c("load", (void*)load);
   make_function_symbol_from_c("loado", (void*)loado);
   make_function_symbol_from_c("unload", (void*)unload);
-
-  make_function_symbol_from_c("_format", (void*)_format);
+#ifdef __linux__
+  make_function_symbol_from_c("_format", (void*)_format_linux);
+#elif _WIN32
+  make_function_symbol_from_c("_format", (void*)_format_win32);
+#endif
 
   // allocations
   make_function_symbol_from_c("malloc", (void*)alloc_heap_memory);

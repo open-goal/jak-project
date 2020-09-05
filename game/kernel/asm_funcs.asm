@@ -14,8 +14,8 @@ SECTION .TEXT
 ;; a pointer to this array of GOAL arguments as the argument. The reason for this is that GOAL and
 ;; the standard System V ABI used in Linux are different for 8 argument function calls.
 
-global _format
-_format:
+global _format_win32
+_format_win32:
   ; GOAL will call with regs  RDI, RSI, RDX, RCX, R8, R9, R10, R11
 
   ; to make sure the stack frame is aligned
@@ -38,6 +38,42 @@ _format:
   ; call C function to do format, result will go in RAX
   call format_impl
   add rsp, 32
+
+  ; restore
+  ; (note - this could probably just be add rsp 72, we don't care about the value of these register)
+  pop rdi
+  pop rsi
+  pop rdx
+  pop rcx
+  pop r8
+  pop r9
+  pop r10
+  pop r11
+  add rsp, 8
+  ret
+
+global _format_linux
+_format_linux:
+  ; GOAL will call with regs  RDI, RSI, RDX, RCX, R8, R9, R10, R11
+
+  ; to make sure the stack frame is aligned
+  sub rsp, 8
+
+  ; push all registers and create the register array on the stack
+  push r11
+  push r10
+  push r9
+  push r8
+  push rcx
+  push rdx
+  push rsi
+  push rdi
+
+  ; set the first argument register to the stack argument array
+  mov rdi, rsp
+
+  ; call C function to do format, result will go in RAX
+  call format_impl
 
   ; restore
   ; (note - this could probably just be add rsp 72, we don't care about the value of these register)
