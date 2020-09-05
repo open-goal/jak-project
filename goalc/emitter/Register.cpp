@@ -27,7 +27,40 @@ RegisterInfo RegisterInfo::make_register_info() {
   info.m_saved_xmms =
       std::array<Register, N_SAVED_XMMS>({XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15});
 
+  for (size_t i = 0; i < N_SAVED_GPRS; i++) {
+    info.m_saved_all[i] = info.m_saved_gprs[i];
+  }
+  for (size_t i = 0; i < N_SAVED_XMMS; i++) {
+    info.m_saved_all[i + N_SAVED_GPRS] = info.m_saved_xmms[i];
+  }
+
+  // todo - experiment with better orders for allocation.
+  info.m_gpr_alloc_order = {RAX, RCX, RDX, RBX, RBP, RSI, RDI, R8, R9, R10, R11};  // arbitrary
+  info.m_xmm_alloc_order = {XMM0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6, XMM7,
+                            XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14};
+
+  info.m_gpr_spill_temp_alloc_order = {RAX, RCX, RDX, RBX, RBP, RSI,
+                                       RDI, R8,  R9,  R10, R11, R12};  // arbitrary
+  info.m_xmm_spill_temp_alloc_order = {XMM0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6,  XMM7,
+                                       XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15};
   return info;
+}
+
+RegisterInfo gRegInfo = RegisterInfo::make_register_info();
+
+std::string to_string(RegKind kind) {
+  switch (kind) {
+    case RegKind::GPR:
+      return "gpr";
+    case RegKind::XMM:
+      return "xmm";
+    default:
+      assert(false);
+  }
+}
+
+std::string Register::print() const {
+  return gRegInfo.get_info(*this).name;
 }
 
 }  // namespace emitter

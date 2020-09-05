@@ -87,13 +87,13 @@ The main RAM is mapped at `0x0` on the PS2, with the first 1 MB reserved for the
 
 In the C Kernel code, the `r15` pointer doesn't exist. Instead, `g_ee_main_memory` is a global which points to the beginning of GOAL main memory.  The `Ptr<T>` template class takes care of converting GOAL and C++ pointers in a convenient way, and catches null pointer access.
 
-The GOAL stack pointer should likely be a real pointer, for performance reasons.  This makes pushing/popping/calling/returning/accessing stack variables much faster, with the only cost being getting a GOAL stack pointer requiring some extra work. The stack pointer's value is read/written extremely rarely, so this seems like a good tradeoff.
+The GOAL stack pointer should likely be a real pointer, for performance reasons.  This makes pushing/popping/calling/returning/accessing stack variables much faster (can use actual `push`, `pop`), with the only cost being getting a GOAL stack pointer requiring some extra work. The stack pointer's value is read/written extremely rarely (only in kernel code that will be rewritten anyway), so this seems like a good tradeoff.
 
 The other registers are less clear.  The process pointer can probably be a real pointer.  But the symbol table could go a few ways:
 1. Make it a real pointer.  Symbol value access is fast, but comparison against false requires two extra operations.
-2. Make it a GOAL pointer. Symbol value access requires more complicated addressing modes, but comparison against false is fast.
+2. Make it a GOAL pointer. Symbol value access requires more complicated addressing modes to be one instruction, but comparison against false is fast.
 
-Right now I'm leaning toward 1, but making it a configurable option in case I'm wrong. It should only be a change in a few places (emitter + where it's set up in the runtime).
+Right now I'm leaning toward 2, but it shouldn't be a huge amount of work to change if I'm wrong.
 
 ### Plan for Function Call and Arguments
 In GOAL for MIPS, function calls are weird.  Functions are always called by register using `t9`. There seems to be a different register allocator for function pointers, as nested function calls have really wacky register allocation.  In GOAL-x86-64, this restriction will be removed, and a function can be called from any register. (see next section for why we can do this)
@@ -101,11 +101,23 @@ In GOAL for MIPS, function calls are weird.  Functions are always called by regi
 Unfortunately, GOAL's 128-bit function arguments present a big challenge.  When calling a function, we can't know if the function we're calling is expecting an integer, float, or 128-bit integer. In fact, the caller may not even know if it has an integer, float, or 128-bit integer. The easy and foolproof way to get this right is to use 128-bit `xmm` registers for all arguments and return values, but this will cause a massive performance hit and increase code size, as we'll have to move values between register types constantly. The current plan is this:
 
 - Floats go in GPRs for arguments/return values. GOAL does this too, and takes the hit of converting between registers as well. Probably the impact on a modern CPU is even worse, but we can live with it.
-- We'll compromise 
-
+- We'll compromise for 128-bit function calls. When the compiler can figure out that the function being called expects or returns a 128-bit value, it will use the 128-bit calling convention.  In all other cases, it will use 64-bit. There aren't many places where 128-bit integer are used outside of inline assembly, so I suspect this will just work. If there are more complicated instances (call a function pointer and get either a 64 or 128-bit result), we will need to special case them.
 
 ### Plan for Static Data
+The original GOAL implementation always called functions by using the `t9` register. So, on entry to a function, the `t9` register contains the address of the function. If the function needs to access static data, it will move this `fp`, then do `fp` relative addressing to load data. Example:
+```
+function-start:
+    daddiu sp, sp, -16  ;; allocate space on stack
+    sd fp, 8(sp)        ;; back up old fp on stack
+    or fp, t9, r0       ;; set fp to address of function
+    lwc1 f0, L345(fp)   ;; load relative to function start
+```
+
+To copy this exactly on x86 would require reserving two registers equivalent to `t9` and `gp`.  A better approach for x86-64 is to use "RIP relative addressing". This can be used to load memory relative to the current instruction pointer.  This addressing mode can be used with "load effective address" (`lea`) to create pointers to static data as well.
 
 ### Plan for Memory
+Access memory by GOAL pointer in `rx` with constant offset (optionally zero):
+```
+mov rdest, [roff + rx + offset]
+```
 
-### Other details

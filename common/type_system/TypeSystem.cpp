@@ -145,7 +145,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
  * Create a simple typespec.  The type must be defined or forward declared for this to work.
  * If you really need a TypeSpec which refers to a non-existent type, just construct your own.
  */
-TypeSpec TypeSystem::make_typespec(const std::string& name) {
+TypeSpec TypeSystem::make_typespec(const std::string& name) const {
   if (m_types.find(name) != m_types.end() ||
       m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
     return TypeSpec(name);

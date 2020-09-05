@@ -37,7 +37,7 @@ class TypeSystem {
 
   DerefInfo get_deref_info(const TypeSpec& ts);
 
-  TypeSpec make_typespec(const std::string& name);
+  TypeSpec make_typespec(const std::string& name) const;
   TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
                                   const std::string& return_type);
 
