@@ -3,8 +3,15 @@
  * Setup and launcher for the runtime.
  */
 
+#ifdef __linux__
 #include <unistd.h>
 #include <sys/mman.h>
+#elif _WIN32
+#include <io.h>
+#include <third-party/mman/mman.h>
+#include <Windows.h>
+#endif
+
 #include <cstring>
 
 #include "runtime.h"
@@ -38,21 +45,29 @@
 
 u8* g_ee_main_mem = nullptr;
 
+/*!
+ * TODO-WINDOWS
+ * runtime.cpp - Deci2Listener has been disabled for now, pending rewriting for Windows.
+ */
+
 namespace {
 
 /*!
  * SystemThread function for running the DECI2 communication with the GOAL compiler.
  */
-void deci2_runner(SystemThreadInterface& interface) {
+
+void deci2_runner(SystemThreadInterface& iface) {
+// TODO-WINDOWS
+#ifdef __linux__
   // callback function so the server knows when to give up and shutdown
-  std::function<bool()> shutdown_callback = [&]() { return interface.get_want_exit(); };
+  std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
   Deci2Server server(shutdown_callback);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
-  interface.initialization_complete();
+  iface.initialization_complete();
 
   // in our own thread, wait for the EE to register the first protocol driver
   printf("[DECI2] waiting for EE to register protos\n");
@@ -64,7 +79,7 @@ void deci2_runner(SystemThreadInterface& interface) {
 
   printf("[DECI2] waiting for listener...\n");
   bool saw_listener = false;
-  while (!interface.get_want_exit()) {
+  while (!iface.get_want_exit()) {
     if (server.check_for_listener()) {
       if (!saw_listener) {
         printf("[DECI2] Connected!\n");
@@ -77,6 +92,7 @@ void deci2_runner(SystemThreadInterface& interface) {
       usleep(50000);
     }
   }
+#endif
 }
 
 // EE System
@@ -95,7 +111,7 @@ constexpr int GOAL_ARGC = 4;
 /*!
  * SystemThread Function for the EE (PS2 Main CPU)
  */
-void ee_runner(SystemThreadInterface& interface) {
+void ee_runner(SystemThreadInterface& iface) {
   // Allocate Main RAM. Must have execute enabled.
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =
@@ -109,7 +125,7 @@ void ee_runner(SystemThreadInterface& interface) {
 
   if (g_ee_main_mem == (u8*)(-1)) {
     printf("  Failed to initialize main memory! %s\n", strerror(errno));
-    interface.initialization_complete();
+    iface.initialization_complete();
     return;
   }
 
@@ -118,7 +134,7 @@ void ee_runner(SystemThreadInterface& interface) {
          (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
   printf("[EE] Initialization complete!\n");
-  interface.initialization_complete();
+  iface.initialization_complete();
 
   printf("[EE] Run!\n");
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
@@ -145,13 +161,13 @@ void ee_runner(SystemThreadInterface& interface) {
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
 
   // after main returns, trigger a shutdown.
-  interface.trigger_shutdown();
+  iface.trigger_shutdown();
 }
 
 /*!
  * SystemThread function for running the IOP (separate I/O Processor)
  */
-void iop_runner(SystemThreadInterface& interface) {
+void iop_runner(SystemThreadInterface& iface) {
   IOP iop;
   printf("\n\n\n[IOP] Restart!\n");
   iop.reset_allocator();
@@ -174,7 +190,7 @@ void iop_runner(SystemThreadInterface& interface) {
   // ssound
   // stream
 
-  interface.initialization_complete();
+  iface.initialization_complete();
 
   printf("[IOP] Wait for OVERLORD to be started...\n");
   iop.wait_for_overlord_start_cmd();
@@ -195,7 +211,7 @@ void iop_runner(SystemThreadInterface& interface) {
   iop.signal_overlord_init_finish();
 
   // IOP Kernel loop
-  while (!interface.get_want_exit() && !iop.want_exit) {
+  while (!iface.get_want_exit() && !iop.want_exit) {
     // the IOP kernel just runs at full blast, so we only run the IOP when the EE is waiting on the
     // IOP. Each time the EE is waiting on the IOP, it will run an iteration of the IOP kernel.
     iop.wait_run_iop();
@@ -220,7 +236,10 @@ void exec_runtime(int argc, char** argv) {
   // step 1: sce library prep
   iop::LIBRARY_INIT();
   ee::LIBRARY_INIT_sceCd();
+// TODO-WINDOWS
+#ifdef __linux__
   ee::LIBRARY_INIT_sceDeci2();
+#endif
   ee::LIBRARY_INIT_sceSif();
 
   // step 2: system prep

@@ -51,6 +51,8 @@ extern GoalProtoBlock protoBlock;
  */
 void kdsnetm_init_globals();
 
+// TODO-WINDOWS
+#ifdef __linux__
 /*!
  * Register GOAL DECI2 Protocol Driver with DECI2 service
  * DONE, EXACT
@@ -63,6 +65,8 @@ void InitGoalProto();
  */
 void ShutdownGoalProto();
 
+#endif
+
 /*!
  * Handle a DECI2 Protocol Event for the GOAL Proto.
  * Called by the DECI2 Protocol driver
@@ -70,6 +74,8 @@ void ShutdownGoalProto();
  */
 void GoalProtoHandler(int event, int param, void* data);
 
+// TODO-WINDOWS
+#ifdef __linux__
 /*!
  * Low level DECI2 send
  * Will block until send is complete.
@@ -77,6 +83,7 @@ void GoalProtoHandler(int event, int param, void* data);
  * removed
  */
 s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
+#endif
 
 /*!
  * Print GOAL Protocol status

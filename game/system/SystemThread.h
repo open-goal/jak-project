@@ -8,10 +8,11 @@
 
 #include <string>
 #include <functional>
-#include <pthread.h>
 #include <array>
 #include <mutex>
+#include <thread>
 #include <condition_variable>
+
 #include "Timer.h"
 
 constexpr int MAX_SYSTEM_THREADS = 16;
@@ -39,7 +40,7 @@ class SystemThread {
   friend void* bootstrap_thread_func(void* thd);
 
   std::string name = "invalid";
-  pthread_t thread;
+  std::thread thread;
   SystemThreadManager* manager;
   std::function<void(SystemThreadInterface&)> function;
   bool initialization_complete = false;

@@ -1,6 +1,7 @@
 #ifndef JAK_DECIM_COMMON_H
 #define JAK_DECIM_COMMON_H
 #include "common/common_types.h"
+
 struct Deci2Driver {
   u16 protocol = 0;
   void* opt = nullptr;

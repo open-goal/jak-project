@@ -4,6 +4,9 @@
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
  */
 
+// TODO-WINDOWS
+#ifdef __linux__
+
 #include <cstdio>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
@@ -262,3 +265,4 @@ void Deci2Server::accept_thread_func() {
     }
   }
 }
+#endif

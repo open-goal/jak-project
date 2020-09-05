@@ -1,6 +1,10 @@
 #include "iop_thread.h"
 
+#ifdef __linux__
 #include <unistd.h>
+#elif _WIN32
+#include <io.h>
+#endif
 #include "SystemThread.h"
 //#include "shared_config.h"
 //#include "ps2/SCE_IOP.h"

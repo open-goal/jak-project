@@ -1,11 +1,33 @@
 # We define our own compilation flags here.
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS "-O0 -ggdb -Wall \
--Wextra -Wcast-align -Wcast-qual -Wdisabled-optimization -Wformat=2 \
--Winit-self -Wmissing-include-dirs -Woverloaded-virtual \
--Wredundant-decls -Wshadow -Wsign-promo ")
+
+# Set default compile flags for GCC
+# optimization level can be set here. Note that game/ overwrites this for building game C++ code.
+if(CMAKE_COMPILER_IS_GNUCXX)
+    message(STATUS "GCC detected, adding compile flags")
+    set(CMAKE_CXX_FLAGS 
+        "${CMAKE_CXX_FLAGS} \
+        -ggdb \
+        -Wall \
+				-Winit-self \
+        -Wextra \
+        -Wcast-align \
+        -Wcast-qual \
+        -Wdisabled-optimization \
+        -Wformat=2 \
+        -Wmissing-include-dirs \
+        -Woverloaded-virtual \
+        -Wredundant-decls \
+        -Wshadow \
+        -Wsign-promo")
+else()
+		set(CMAKE_CXX_FLAGS "/EHsc")
+endif(CMAKE_COMPILER_IS_GNUCXX)
 
 enable_language(ASM_NASM)
+set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)
+set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> <FLAGS> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
+set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
         system/SystemThread.cpp
@@ -18,7 +40,7 @@ set(RUNTIME_SOURCE
         sce/sif_ee.cpp
         sce/iop.cpp
         sce/stubs.cpp
-        kernel/asm_funcs.nasm
+        kernel/asm_funcs.asm
         kernel/fileio.cpp
         kernel/kboot.cpp
         kernel/kdgo.cpp
@@ -54,4 +76,11 @@ add_executable(gk ${RUNTIME_SOURCE} main.cpp)
 # can be used to test other things.
 add_library(runtime ${RUNTIME_SOURCE})
 
-target_link_libraries(gk pthread)
+
+IF (WIN32)
+  # set stuff for windows
+  target_link_libraries(gk mman)
+ELSE()
+  # set stuff for other systems
+  target_link_libraries(gk pthread)
+ENDIF()

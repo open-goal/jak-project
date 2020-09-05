@@ -83,7 +83,7 @@ void* bootstrap_thread_func(void* x) {
 void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
   printf("# Initialize %s...\n", name.c_str());
   function = f;
-  pthread_create(&thread, nullptr, bootstrap_thread_func, this);
+  thread = std::thread(bootstrap_thread_func, this);
   running = true;
 
   // and wait for initialization
@@ -99,8 +99,7 @@ void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
  * Join a system thread
  */
 void SystemThread::join() {
-  void* x;
-  pthread_join(thread, &x);
+  thread.join();
   running = false;
 }
 
@@ -136,6 +135,8 @@ void SystemThreadInterface::trigger_shutdown() {
   thread.manager->shutdown();
 }
 
+// TODO-Windows
+#ifdef __linux__
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -165,3 +166,4 @@ void SystemThreadInterface::report_perf_stats() {
     thread.last_collection_nanoseconds = current_ns;
   }
 }
+#endif

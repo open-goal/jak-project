@@ -4,7 +4,6 @@
  * DONE!
  */
 
-#include <unistd.h>
 #include <cstring>
 #include "common/common_types.h"
 #include "game/sce/libscf.h"
@@ -13,6 +12,13 @@
 #include "kscheme.h"
 #include "ksocket.h"
 #include "klisten.h"
+
+#ifdef _WIN32
+#include "Windows.h"
+#include <io.h>
+#elif __linux__
+#include <unistd.h>
+#endif
 
 using namespace ee;
 
@@ -128,14 +134,21 @@ void KernelCheckAndDispatch() {
     // dispatch the kernel
     //(**kernel_dispatcher)();
     call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+    // TODO-WINDOWS
+#ifdef __linux__
     ClearPending();
+#endif
 
     // if the listener function changed, it means the kernel ran it, so we should notify compiler.
     if (MasterDebug && ListenerFunction->value != old_listener) {
       SendAck();
     }
 
-    usleep(1000);  // todo - remove this
+#ifdef _WIN32
+    Sleep(1000);  // todo - remove this
+#elif __linux__
+    usleep(1000);
+#endif
   }
 }
 
