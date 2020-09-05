@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "Logger.h"
 
 void Logger::close() {
