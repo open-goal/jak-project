@@ -36,13 +36,11 @@ struct Assignment {
     return result;
   }
 
-  bool occupies_same_reg(const Assignment& other) const {
-    return other.reg == reg && (reg != -1);
-  }
+  bool occupies_same_reg(const Assignment& other) const { return other.reg == reg && (reg != -1); }
 
-  bool is_assigned() const {
-    return kind != Kind::UNASSIGNED;
-  }
+  bool occupies_reg(emitter::Register other_reg) const { return reg == other_reg && (reg != -1); }
+
+  bool is_assigned() const { return kind != Kind::UNASSIGNED; }
 };
 
 #endif  // JAK_ASSIGNMENT_H

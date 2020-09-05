@@ -8,6 +8,7 @@ class Compiler {
   Compiler();
   ~Compiler();
   void execute_repl();
+
  private:
   void init_logger();
 

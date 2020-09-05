@@ -6,9 +6,7 @@ Compiler::Compiler() {
   m_ts.add_builtin_types();
 }
 
-void Compiler::execute_repl() {
-
-}
+void Compiler::execute_repl() {}
 
 Compiler::~Compiler() {
   gLogger.close();

@@ -1,6 +1,7 @@
 /*!
  * @file StackOp.h
- * An operation that's added to an Instruction so that it loads/stores things from the stack
+ * An operation that's added to an Instruction so that it loads/stores things from the stack if
+ * needed for spilling.
  */
 
 #ifndef JAK_STACKOP_H
@@ -20,7 +21,7 @@ struct StackOp {
 
   std::vector<Op> ops;
 
-  std::string print() {
+  std::string print() const {
     std::string result;
     bool added = false;
     for (const auto& op : ops) {

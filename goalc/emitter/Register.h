@@ -9,15 +9,12 @@
 #include <cassert>
 #include <functional>
 #include <array>
+#include <vector>
 #include "common/common_types.h"
 
 namespace emitter {
 
-enum class RegKind : u8 {
-  GPR,
-  XMM,
-  INVALID
-};
+enum class RegKind : u8 { GPR, XMM, INVALID };
 
 std::string to_string(RegKind kind);
 
@@ -131,12 +128,27 @@ class RegisterInfo {
 
   Register get_ret_reg() const { return RAX; }
 
+  const std::vector<Register>& get_gpr_alloc_order() { return m_gpr_alloc_order; }
+
+  const std::vector<Register>& get_xmm_alloc_order() { return m_xmm_alloc_order; }
+
+  const std::vector<Register>& get_gpr_spill_alloc_order() { return m_gpr_spill_temp_alloc_order; }
+
+  const std::vector<Register>& get_xmm_spill_alloc_order() { return m_xmm_spill_temp_alloc_order; }
+
+  const std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS>& get_all_saved() { return m_saved_all; }
+
  private:
   RegisterInfo() = default;
   std::array<Info, N_REGS> m_info;
   std::array<Register, N_ARGS> m_arg_regs;
   std::array<Register, N_SAVED_GPRS> m_saved_gprs;
   std::array<Register, N_SAVED_XMMS> m_saved_xmms;
+  std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS> m_saved_all;
+  std::vector<Register> m_gpr_alloc_order;
+  std::vector<Register> m_xmm_alloc_order;
+  std::vector<Register> m_gpr_spill_temp_alloc_order;
+  std::vector<Register> m_xmm_spill_temp_alloc_order;
 };
 
 extern RegisterInfo gRegInfo;

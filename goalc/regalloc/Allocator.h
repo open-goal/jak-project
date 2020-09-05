@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <set>
+#include <unordered_map>
 #include "IRegister.h"
 #include "allocate.h"
 #include "LiveInfo.h"
@@ -35,9 +36,15 @@ struct RegAllocCache {
   std::vector<bool> was_colored;
   std::vector<IRegister> iregs;
   std::vector<StackOp> stack_ops;
+  std::unordered_map<int, int> var_to_stack_slot;
+  int current_stack_slot = 0;
+  bool used_stack = false;
 };
 
 void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in);
 void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in);
+void do_constrained_alloc(RegAllocCache* cache, const AllocationInput& in, bool trace_debug);
+bool check_constrained_alloc(RegAllocCache* cache, const AllocationInput& in);
+bool run_allocator(RegAllocCache* cache, const AllocationInput& in, int debug_trace);
 
 #endif  // JAK_ALLOCATOR_H
