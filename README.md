@@ -1,5 +1,5 @@
 # Jak Project
-![Linux Workflow](https://github.com/water111/jak-project/workflows/Linux%20Workflow/badge.svg?branch=master)
+![Build](https://github.com/water111/jak-project/workflows/Build/badge.svg)
 
 ## Table of Contents
 

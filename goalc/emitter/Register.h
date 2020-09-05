@@ -9,6 +9,8 @@
 #include <cassert>
 #include <functional>
 #include <array>
+#include <string>
+
 #include "common/common_types.h"
 
 namespace emitter {
