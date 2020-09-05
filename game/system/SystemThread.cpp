@@ -71,8 +71,8 @@ void SystemThreadManager::join() {
  */
 void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
-  SystemThreadInterface interface(thd);
-  thd->function(interface);
+  SystemThreadInterface iface(thd);
+  thd->function(iface);
   printf("[SYSTEM] Thread %s is returning\n", thd->name.c_str());
   return nullptr;
 }
