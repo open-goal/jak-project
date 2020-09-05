@@ -16,5 +16,4 @@ class Env {};
 // symbolmacro
 // get parent env of type.
 
-
 #endif  // JAK_ENV_H

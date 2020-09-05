@@ -20,4 +20,3 @@ RegVal* None::to_reg(FunctionEnv* fe) const {
   (void)fe;
   throw std::runtime_error("Cannot put None into a register.");
 }
-

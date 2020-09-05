@@ -12,7 +12,6 @@
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
 
-
 class RegVal;
 class FunctionEnv;
 
@@ -66,7 +65,6 @@ class RegVal : public Val {
  protected:
   IRegister m_ireg;
 };
-
 
 // Symbol
 // Lambda
