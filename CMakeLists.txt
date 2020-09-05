@@ -1,5 +1,5 @@
 # Top Level CMakeLists.txt
-cmake_minimum_required(VERSION 3.0) # todo - this was picked randomly
+cmake_minimum_required(VERSION 3.16)
 project(jak)
 
 set(CMAKE_CXX_STANDARD 14)
