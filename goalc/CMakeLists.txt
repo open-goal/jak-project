@@ -18,6 +18,8 @@ add_library(compiler
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
+        compiler/IR.cpp
+        compiler/CodeGenerator.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp

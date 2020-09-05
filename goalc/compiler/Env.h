@@ -5,4 +5,16 @@
 
 class Env {};
 
+// global
+// noemit
+// objectfile
+// configuration
+// function
+// block
+// lexical
+// label
+// symbolmacro
+// get parent env of type.
+
+
 #endif  // JAK_ENV_H
