@@ -30,9 +30,9 @@ class Val {
   }
 
   virtual std::string print() const = 0;
-  virtual RegVal to_reg(FunctionEnv* fe) const = 0;
-  virtual RegVal to_gpr(FunctionEnv* fe) const;
-  virtual RegVal to_xmm(FunctionEnv* fe) const;
+  virtual RegVal* to_reg(FunctionEnv* fe) const = 0;
+  virtual RegVal* to_gpr(FunctionEnv* fe) const;
+  virtual RegVal* to_xmm(FunctionEnv* fe) const;
 
   const TypeSpec& type() const { return m_ts; }
 
@@ -47,7 +47,7 @@ class None : public Val {
   explicit None(TypeSpec _ts) : Val(std::move(_ts)) {}
   explicit None(const TypeSystem& _ts) : Val(_ts.make_typespec("none")) {}
   std::string print() const override { return "none"; }
-  RegVal to_reg(FunctionEnv* fe) const override;
+  RegVal* to_reg(FunctionEnv* fe) const override;
 };
 
 /*!
@@ -59,6 +59,9 @@ class RegVal : public Val {
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
   std::string print() const override { return m_ireg.to_string(); };
+  RegVal* to_reg(FunctionEnv* fe) const override;
+  RegVal* to_gpr(FunctionEnv* fe) const override;
+  RegVal* to_xmm(FunctionEnv* fe) const override;
 
  protected:
   IRegister m_ireg;
