@@ -27,6 +27,8 @@ void kdsnetm_init_globals() {
   protoBlock.reset();
 }
 
+// TODO-WINDOWS
+#ifdef __linux__
 /*!
  * Register GOAL DECI2 Protocol Driver with DECI2 service
  * DONE, EXACT
@@ -220,3 +222,4 @@ void GoalProtoStatus() {
   Msg(6, "gproto: got %d %d\n", protoBlock.most_recent_event, protoBlock.most_recent_param);
   Msg(6, "gproto: %d %d\n", protoBlock.last_receive_size, protoBlock.send_remaining);
 }
+#endif

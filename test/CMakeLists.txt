@@ -1,3 +1,5 @@
+enable_testing()
+
 add_executable(goalc-test
         test_main.cpp
         test_test.cpp
@@ -14,4 +16,11 @@ add_executable(goalc-test
         test_emitter_integer_math.cpp
         )
 
-target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)
+IF (WIN32)
+	set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  # TODO - implement windows listener
+  message("Windows Listener Not Implemented!")
+  target_link_libraries(goalc-test mman goos util runtime emitter type_system gtest)
+ELSE()
+  target_link_libraries(goalc-test goos util listener runtime emitter type_system gtest)
+ENDIF()

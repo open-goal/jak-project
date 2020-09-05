@@ -3,6 +3,9 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
+// TODO-Windows
+#ifdef __linux__
+
 #include <stdexcept>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -239,3 +242,4 @@ void Listener::receive_func() {
 }
 
 }  // namespace listener
+#endif

@@ -652,13 +652,13 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
         return false;
       }
     }
-
     uint64_t v = 0;
     try {
       std::size_t end = 0;
       v = std::stoll(tok.text, &end);
-      if (end != tok.text.size())
+      if (end != tok.text.size()) {
         return false;
+      }
       obj = Object::make_integer(v);
       return true;
     } catch (std::exception& e) {

@@ -1,3 +1,5 @@
+#ifdef __linux__
+
 #include "gtest/gtest.h"
 #include "goalc/listener/Listener.h"
 #include "game/system/Deci2Server.h"
@@ -124,3 +126,5 @@ TEST(Listener, ListenerMultipleDecis) {
     l.disconnect();
   }
 }
+
+#endif

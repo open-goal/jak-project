@@ -329,7 +329,10 @@ int InitMachine() {
   //  }
 
   if (MasterDebug) {  // connect to GOAL compiler
+// TODO-WINDOWS
+#ifdef __linux__
     InitGoalProto();
+#endif
   }
 
   printf("InitSound\n");
@@ -359,7 +362,10 @@ int ShutdownMachine() {
   StopIOP();
   CloseListener();
   ShutdownSound();
+// TODO-WINDOWS
+#ifdef __linux__
   ShutdownGoalProto();
+#endif
   Msg(6, "kernel: machine shutdown");
   return 0;
 }
