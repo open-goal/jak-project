@@ -8,6 +8,7 @@
 
 #include <utility>
 #include <string>
+#include <stdexcept>
 #include "third-party/fmt/core.h"
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
