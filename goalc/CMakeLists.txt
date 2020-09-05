@@ -1,6 +1,5 @@
 add_subdirectory(util)
 add_subdirectory(goos)
-add_subdirectory(logger)
 
 IF (WIN32)
   # TODO - implement windows listener
@@ -20,6 +19,7 @@ add_library(compiler
         compiler/Val.cpp
         compiler/IR.cpp
         compiler/CodeGenerator.cpp
+        logger/Logger.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
@@ -31,7 +31,7 @@ add_executable(goalc main.cpp
 
 IF (WIN32)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(compiler util goos type_system logger mman)
+  target_link_libraries(compiler util goos type_system mman)
 ENDIF()
 
-target_link_libraries(goalc util goos type_system compiler logger)
+target_link_libraries(goalc util goos compiler type_system)

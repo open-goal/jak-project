@@ -1,4 +1,5 @@
 add_library(type_system
+        SHARED
         TypeSystem.cpp
         Type.cpp
         TypeSpec.cpp)
