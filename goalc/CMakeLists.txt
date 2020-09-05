@@ -31,6 +31,7 @@ add_executable(goalc main.cpp
 
 IF (WIN32)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  target_link_libraries(compiler util goos type_system logger mman)
 ENDIF()
 
-target_link_libraries(goalc util goos type_system compiler type_system logger)
+target_link_libraries(goalc util goos type_system compiler logger)
