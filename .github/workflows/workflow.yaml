@@ -1,0 +1,82 @@
+name: Build
+on: [push, pull_request]
+
+jobs:
+  common:
+    # TODO - Start using clang-tidy - requires a bit more setup though - http://clang.llvm.org/docs/HowToSetupToolingForLLVM.html
+    name: Linting & Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Get Package Dependencies
+        run: sudo apt install clang-format clang-tidy
+      - name: Check Clang-Formatting
+        run: |
+          chmod +x ./third-party/run-clang-format/run-clang-format.py
+          ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test --color always
+  build-linux:
+    name: (Linux) Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+      - name: Get Package Dependencies
+        run: sudo apt install build-essential cmake gcc g++ make nasm
+      - name: CMake Generation
+        run: |
+          cmake --version
+          cmake -B build
+      - name: Build Project
+        run: |
+          cd build
+          make -j2
+      - name: Run Tests
+        timeout-minutes: 5
+        run: ./test.sh
+  build-windows:
+    # Very good resource - https://cristianadam.eu/20191222/using-github-actions-with-c-plus-plus-and-cmake/
+    name: (Windows) Build & Test
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+        working-directory: ./
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+      # https://github.com/ilammy/setup-nasm
+      - uses: ilammy/setup-nasm@v1
+      # TODO - we need to make a release configuration! (i think linux needs one too)
+      - name: CMake Generation
+        shell: cmd # ideally id like everything to be powershell but running this bat file is finicky
+        run: |
+          call "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+          cmake --version
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -G "NMake Makefiles" .
+      - name: Build Project
+        working-directory: ./build
+        shell: cmd
+        run: |
+          call "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+          nmake
+      - name: Run Tests
+        timeout-minutes: 5
+        run: |
+          ls
+          ls ./build
+          ls ./out
+          ls ./test
+          $env:NEXT_DIR = $pwd
+          $env:FAKE_ISO_PATH = "/game/fake_iso.txt"
+          & './build/bin/goalc-test.exe'
