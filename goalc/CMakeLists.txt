@@ -19,6 +19,8 @@ add_library(compiler
         compiler/Env.cpp
         compiler/Val.cpp
         regalloc/IRegister.cpp
+        regalloc/Allocator.cpp
+        regalloc/allocate.cpp
         compiler/Compiler.cpp
         )
 
@@ -29,4 +31,4 @@ IF (WIN32)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 ENDIF()
 
-target_link_libraries(goalc util goos type_system compiler logger type_system)
+target_link_libraries(goalc util goos type_system compiler type_system logger)

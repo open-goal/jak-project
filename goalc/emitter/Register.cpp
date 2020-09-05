@@ -30,4 +30,21 @@ RegisterInfo RegisterInfo::make_register_info() {
   return info;
 }
 
+RegisterInfo gRegInfo = RegisterInfo::make_register_info();
+
+std::string to_string(RegKind kind){
+  switch(kind) {
+    case RegKind::GPR:
+      return "gpr";
+    case RegKind::XMM:
+      return "xmm";
+    default:
+      assert(false);
+  }
+}
+
+std::string Register::print() const {
+  return gRegInfo.get_info(*this).name;
+}
+
 }  // namespace emitter
