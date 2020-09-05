@@ -31,6 +31,8 @@ struct StaticRecord {
   int static_id = -1;
 };
 
+struct ObjectDebugInfo {};
+
 class ObjectGenerator {
  public:
   ObjectGenerator() = default;
@@ -43,18 +45,32 @@ class ObjectGenerator {
   InstructionRecord add_instr(Instruction inst, IR_Record ir);
   StaticRecord add_static_to_seg(int seg, int min_align = 16);
   void link_instruction_jump(InstructionRecord jump_instr, IR_Record destination);
-  void link_instruction_symbol();
-  void link_instruction_static();
-  void link_instruction_to_function();
   void link_static_type_ptr(StaticRecord rec, int offset, const std::string& type_name);
-  void link_static_sym();
 
-  void link_type_pointer(const std::string& type_name, const StaticRecord& rec, int offset);
+  void link_instruction_symbol_mem(const InstructionRecord& rec, const std::string& name);
+  void link_instruction_symbol_ptr(const InstructionRecord& rec, const std::string& name);
+  void link_static_symbol_ptr(StaticRecord rec, int offset, const std::string& name);
+
+  void link_instruction_static(const InstructionRecord& instr,
+                               const StaticRecord& target_static,
+                               int offset);
+  void link_instruction_to_function(const InstructionRecord& instr,
+                                    const FunctionRecord& target_func);
+
+  ObjectDebugInfo create_debug_info();
 
  private:
   void handle_temp_static_type_links(int seg);
   void handle_temp_jump_links(int seg);
-  void emit_link_tables();
+  void handle_temp_instr_sym_links(int seg);
+  void handle_temp_static_sym_links(int seg);
+  void handle_temp_rip_data_links(int seg);
+  void handle_temp_rip_func_links(int seg);
+
+  void emit_link_table(int seg);
+  void emit_link_type_pointer(int seg);
+  void emit_link_symbol(int seg);
+  void emit_link_rip(int seg);
   std::vector<u8> generate_header_v3();
 
   template <typename T>
@@ -72,10 +88,6 @@ class ObjectGenerator {
     assert(offset + sizeof(T) <= data.size());
     memcpy(data.data() + offset, &x, sizeof(T));
   }
-  // jumps, patched before (JumpLink)
-  // ptrs/access to statics (RipLink)
-  // type pointers
-  // symbol links
 
   struct FunctionData {
     std::vector<Instruction> instructions;
@@ -95,36 +107,64 @@ class ObjectGenerator {
     int offset = -1;
   };
 
-  //  struct SymbolLink {
-  //
-  //  };
-  //
-  //  struct RipLink {
-  //
-  //  };
-  //
+  struct StaticSymbolLink {
+    StaticRecord rec;
+    int offset = -1;
+  };
+
+  struct SymbolInstrLink {
+    InstructionRecord rec;
+    bool is_mem_access = false;
+  };
+
+  struct RipFuncLink {
+    InstructionRecord instr;
+    FunctionRecord target;
+  };
+
+  struct RipDataLink {
+    InstructionRecord instr;
+    StaticRecord data;
+    int offset = -1;
+  };
+
+  struct RipLink {
+    InstructionRecord instr;
+    int target_segment = -1;
+    int offset_in_segment = -1;
+  };
+
   struct JumpLink {
     InstructionRecord jump_instr;
     IR_Record dest;
   };
 
+  template <typename T>
+  using seg_vector = std::array<std::vector<T>, N_SEG>;
+
+  template <typename T>
+  using seg_map = std::array<std::map<std::string, std::vector<T>>, N_SEG>;
+
   // final data
-  std::array<std::vector<u8>, N_SEG> m_data_by_seg;
-  std::array<std::vector<u8>, N_SEG> m_link_by_seg;
+  seg_vector<u8> m_data_by_seg;
+  seg_vector<u8> m_link_by_seg;
 
   // temp data
-  std::array<std::vector<FunctionData>, N_SEG> m_function_data_by_seg;
-  std::array<std::vector<StaticData>, N_SEG> m_static_data_by_seg;
+  seg_vector<FunctionData> m_function_data_by_seg;
+  seg_vector<StaticData> m_static_data_by_seg;
 
   // temp link stuff
-  std::array<std::map<std::string, std::vector<StaticTypeLink>>, N_SEG>
-      m_static_type_temp_links_by_seg;
-  std::array<std::vector<JumpLink>, N_SEG> m_jump_temp_links_by_seg;
+  seg_map<StaticTypeLink> m_static_type_temp_links_by_seg;
+  seg_vector<JumpLink> m_jump_temp_links_by_seg;
+  seg_map<SymbolInstrLink> m_symbol_instr_temp_links_by_seg;
+  seg_map<StaticSymbolLink> m_static_sym_temp_links_by_seg;
+  seg_vector<RipFuncLink> m_rip_func_temp_links_by_seg;
+  seg_vector<RipDataLink> m_rip_data_temp_links_by_seg;
 
   // final link stuff
-  std::array<std::map<std::string, std::vector<int>>, N_SEG> m_type_ptr_links_by_seg;
-  //  std::array<std::map<std::string, SymbolLink>, N_SEG> m_sym_links_by_seg;
-  //  std::array<std::vector<RipLink>, N_SEG> m_rip_links_by_seg;
+  seg_map<int> m_type_ptr_links_by_seg;
+  seg_map<int> m_sym_links_by_seg;
+  seg_vector<RipLink> m_rip_links_by_seg;
 };
 }  // namespace emitter
 

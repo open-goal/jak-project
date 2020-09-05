@@ -5,7 +5,12 @@
 
 class Compiler {
  public:
+  Compiler();
+  ~Compiler();
+  void execute_repl();
  private:
+  void init_logger();
+
   TypeSystem m_ts;
 };
 

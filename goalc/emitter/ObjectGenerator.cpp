@@ -19,6 +19,9 @@
 
 namespace emitter {
 
+/*!
+ * Build an object file with the v3 format.
+ */
 ObjectFileData ObjectGenerator::generate_data_v3() {
   ObjectFileData out;
 
@@ -70,17 +73,20 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
 
   // step 3, cleaning up things now that we know the memory layout
   for (int seg = N_SEG; seg-- > 0;) {
-    // jumps?
     handle_temp_static_type_links(seg);
     handle_temp_jump_links(seg);
+    handle_temp_instr_sym_links(seg);
+    handle_temp_rip_func_links(seg);
+    handle_temp_rip_data_links(seg);
   }
 
   // actual linking?
   for (int seg = N_SEG; seg-- > 0;) {
+    emit_link_table(seg);
   }
 
   // emit header
-  emit_link_tables();
+
   out.header = generate_header_v3();
   out.segment_data = std::move(m_data_by_seg);
   out.link_tables = std::move(m_link_by_seg);
@@ -114,6 +120,19 @@ IR_Record ObjectGenerator::add_ir(const FunctionRecord& func) {
   auto& func_data = m_function_data_by_seg.at(rec.seg).at(rec.func_id);
   rec.ir_id = int(func_data.ir_to_instruction.size());
   func_data.ir_to_instruction.push_back(int(func_data.instructions.size()));
+  return rec;
+}
+
+/*!
+ * Get an IR Record that points to an IR that hasn't been added yet. This can be used to create
+ * jumps forward to things we haven't seen yet.
+ */
+IR_Record ObjectGenerator::get_future_ir_record(const FunctionRecord& func, int ir_id) {
+  assert(func.func_id == int(m_function_data_by_seg.at(func.seg).size()) - 1);
+  IR_Record rec;
+  rec.seg = func.seg;
+  rec.func_id = func.func_id;
+  rec.ir_id = ir_id;
   return rec;
 }
 
@@ -176,7 +195,49 @@ void ObjectGenerator::link_instruction_jump(InstructionRecord jump_instr, IR_Rec
 }
 
 /*!
+ * Patch a load/store instruction to refer to a symbol. This patching will happen at runtime
+ * linking.  The instruction must use 32-bit immediate displacement addressing, relative to the
+ * symbol table.
+ */
+void ObjectGenerator::link_instruction_symbol_mem(const InstructionRecord& rec,
+                                                  const std::string& name) {
+  m_symbol_instr_temp_links_by_seg.at(rec.seg)[name].push_back({rec, true});
+}
+
+/*!
+ * Patch an add instruction to generate a pointer to a symbol. This patching will happen during
+ * runtime linking. The instruction should be an "add st, imm32".
+ */
+void ObjectGenerator::link_instruction_symbol_ptr(const InstructionRecord& rec,
+                                                  const std::string& name) {
+  m_symbol_instr_temp_links_by_seg.at(rec.seg)[name].push_back({rec, false});
+}
+
+/*!
+ * Insert a GOAL pointer to a symbol inside of static data. This patching will happen during runtime
+ * linking.
+ */
+void ObjectGenerator::link_static_symbol_ptr(StaticRecord rec,
+                                             int offset,
+                                             const std::string& name) {
+  m_static_sym_temp_links_by_seg.at(rec.seg)[name].push_back({rec, offset});
+}
+
+void ObjectGenerator::link_instruction_static(const InstructionRecord& instr,
+                                              const StaticRecord& target_static,
+                                              int offset) {
+  m_rip_data_temp_links_by_seg.at(instr.seg).push_back({instr, target_static, offset});
+}
+
+void ObjectGenerator::link_instruction_to_function(const InstructionRecord& instr,
+                                                   const FunctionRecord& target_func) {
+  m_rip_func_temp_links_by_seg.at(instr.seg).push_back({instr, target_func});
+}
+
+/*!
+ * Convert:
  * m_static_type_temp_links_by_seg -> m_type_ptr_links_by_seg
+ * after memory layout is done and before link tables are generated
  */
 void ObjectGenerator::handle_temp_static_type_links(int seg) {
   for (const auto& type_links : m_static_type_temp_links_by_seg.at(seg)) {
@@ -191,7 +252,24 @@ void ObjectGenerator::handle_temp_static_type_links(int seg) {
 }
 
 /*!
- * m_jump_temp_links_by_seg patching
+ * Convert:
+ * m_static_sym_temp_links_by_seg -> m_sym_links_by_seg
+ * after memory layout is done and before link tables are generated
+ */
+void ObjectGenerator::handle_temp_static_sym_links(int seg) {
+  for (const auto& sym_links : m_static_sym_temp_links_by_seg.at(seg)) {
+    const auto& sym_name = sym_links.first;
+    for (const auto& link : sym_links.second) {
+      assert(seg == link.rec.seg);
+      const auto& static_object = m_static_data_by_seg.at(seg).at(link.rec.static_id);
+      int total_offset = static_object.location + link.offset;
+      m_sym_links_by_seg.at(seg)[sym_name].push_back(total_offset);
+    }
+  }
+}
+
+/*!
+ * m_jump_temp_links_by_seg patching after memory layout is done
  */
 void ObjectGenerator::handle_temp_jump_links(int seg) {
   for (const auto& link : m_jump_temp_links_by_seg.at(seg)) {
@@ -221,8 +299,51 @@ void ObjectGenerator::handle_temp_jump_links(int seg) {
   }
 }
 
-void ObjectGenerator::emit_link_tables() {
-  // todo!
+/*!
+ * Convert:
+ * m_symbol_instr_temp_links_by_seg -> m_sym_links_by_seg
+ * after memory layout is done and before link tables are generated
+ */
+void ObjectGenerator::handle_temp_instr_sym_links(int seg) {
+  for (const auto& links : m_symbol_instr_temp_links_by_seg.at(seg)) {
+    const auto& sym_name = links.first;
+    for (const auto& link : links.second) {
+      assert(seg == link.rec.seg);
+      const auto& function = m_function_data_by_seg.at(seg).at(link.rec.func_id);
+      const auto& instruction = function.instructions.at(link.rec.instr_id);
+      int offset_of_instruction = function.instruction_to_byte_in_data.at(link.rec.instr_id);
+      int offset_in_instruction =
+          link.is_mem_access ? instruction.offset_of_disp() : instruction.offset_of_imm();
+      if (link.is_mem_access) {
+        assert(instruction.get_disp_size() == 4);
+      } else {
+        assert(instruction.get_imm_size() == 4);
+      }
+      m_sym_links_by_seg.at(seg)[sym_name].push_back(offset_of_instruction + offset_in_instruction);
+    }
+  }
+}
+
+void ObjectGenerator::handle_temp_rip_func_links(int seg) {
+  for (const auto& link : m_rip_func_temp_links_by_seg.at(seg)) {
+    RipLink result;
+    result.instr = link.instr;
+    result.target_segment = link.target.seg;
+    const auto& target_func = m_function_data_by_seg.at(link.target.seg).at(link.target.func_id);
+    result.offset_in_segment = target_func.instruction_to_byte_in_data.at(0);
+    m_rip_links_by_seg.at(seg).push_back(result);
+  }
+}
+
+void ObjectGenerator::handle_temp_rip_data_links(int seg) {
+  for (const auto& link : m_rip_data_temp_links_by_seg.at(seg)) {
+    RipLink result;
+    result.instr = link.instr;
+    result.target_segment = link.data.seg;
+    const auto& target = m_static_data_by_seg.at(link.data.seg).at(link.data.static_id);
+    result.offset_in_segment = target.location + link.offset;
+    m_rip_links_by_seg.at(seg).push_back(result);
+  }
 }
 
 namespace {
@@ -234,6 +355,88 @@ uint32_t push_data(const T& data, std::vector<u8>& v) {
   return sizeof(T);
 }
 }  // namespace
+
+void ObjectGenerator::emit_link_type_pointer(int seg) {
+  auto& out = m_link_by_seg.at(seg);
+  for (auto& rec : m_type_ptr_links_by_seg.at(seg)) {
+    u32 size = rec.second.size();
+    if (!size) {
+      continue;
+    }
+
+    // start
+    out.push_back(LINK_TYPE_PTR);
+
+    // name
+    for (char c : rec.first) {
+      out.push_back(c);
+    }
+    out.push_back(0);
+
+    // method count
+    out.push_back(0);  // todo!
+
+    // number of links
+    push_data<u32>(size, out);
+
+    for (auto& r : rec.second) {
+      push_data<s32>(r, out);
+    }
+  }
+}
+
+void ObjectGenerator::emit_link_symbol(int seg) {
+  auto& out = m_link_by_seg.at(seg);
+  for (auto& rec : m_sym_links_by_seg.at(seg)) {
+    out.push_back(LINK_SYMBOL_OFFSET);
+    for (char c : rec.first) {
+      out.push_back(c);
+    }
+    out.push_back(0);
+
+    // number of links
+    push_data<u32>(rec.second.size(), out);
+
+    for (auto& r : rec.second) {
+      push_data<s32>(r, out);
+    }
+  }
+}
+
+void ObjectGenerator::emit_link_rip(int seg) {
+  auto& out = m_link_by_seg.at(seg);
+  for (auto& rec : m_rip_links_by_seg.at(seg)) {
+    // kind (u8)
+    // target segment (u8)
+    // offset in current (u32)
+    // offset into target (u32)
+    // patch loc (u32) (todo, make this a s8 offset from offset into current?)
+
+    // kind
+    out.push_back(LINK_DISTANCE_TO_OTHER_SEG_32);
+    // target segment
+    out.push_back(rec.target_segment);
+    // offset into current
+    const auto& src_func = m_function_data_by_seg.at(rec.instr.seg).at(rec.instr.func_id);
+    push_data<u32>(src_func.instruction_to_byte_in_data.at(rec.instr.instr_id + 1), out);
+    // offset into target
+    assert(rec.offset_in_segment >= 0);
+    push_data<u32>(rec.offset_in_segment, out);
+    // patch location
+    const auto& src_instr = src_func.instructions.at(rec.instr.instr_id);
+    assert(src_instr.get_disp_size() == 4);
+    push_data<u32>(
+        src_func.instruction_to_byte_in_data.at(rec.instr.instr_id) + src_instr.offset_of_disp(),
+        out);
+  }
+}
+
+void ObjectGenerator::emit_link_table(int seg) {
+  emit_link_symbol(seg);
+  emit_link_type_pointer(seg);
+  emit_link_rip(seg);
+  m_link_by_seg.at(seg).push_back(LINK_TABLE_END);
+}
 
 /*!
  * Generate linker header.
