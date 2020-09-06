@@ -23,9 +23,18 @@ class Listener {
   void record_messages(ListenerMessageKind kind);
   void stop_recording_messages();
   bool is_connected() const;
+  void send_reset();
   void disconnect();
+  void send_code(std::vector<uint8_t> &code);
+  bool most_recent_send_was_acked() {
+    return got_ack;
+  }
 
  private:
+  void send_buffer(int sz);
+  bool wait_for_ack();
+
+
   char* m_buffer = nullptr;             //! buffer for incoming messages
   bool m_connected = false;             //! do we think we are connected?
   bool receive_thread_running = false;  //! is the receive thread unjoined?

@@ -33,7 +33,7 @@ enum class ListenerMessageKind : u16 {
 /*!
  * Type of message sent from compiler
  */
-enum ListenerToTargetMsgKind {
+enum ListenerToTargetMsgKind : u16 {
   LTT_MSG_POKE = 1,           //! "Poke" the game and have it flush buffers
   LTT_MSG_INSEPCT = 5,        //! Inspect an object
   LTT_MSG_PRINT = 6,          //! Print an object
@@ -47,11 +47,15 @@ enum ListenerToTargetMsgKind {
  * TODO - there are other copies of this somewhere
  */
 struct ListenerMessageHeader {
-  Deci2Header deci2_header;      //! The header used for DECI2 communication
-  ListenerMessageKind msg_kind;  //! GOAL Listener message kind
-  u16 u6;                        //! Unknown
-  u32 msg_size;                  //! Size of data after this header
-  u64 u8;                        //! Unknown
+  Deci2Header deci2_header;  //! The header used for DECI2 communication
+  union {
+    ListenerMessageKind msg_kind;  //! GOAL Listener message kind
+    ListenerToTargetMsgKind ltt_msg_kind;
+  };
+
+  u16 u6;        //! Unknown
+  u32 msg_size;  //! Size of data after this header
+  u64 u8;        //! Unknown
 };
 
 constexpr int DECI2_PORT = 8112;  // TODO - is this a good choise?

@@ -32,12 +32,14 @@ class Val {
 
   virtual std::string print() const = 0;
   virtual const RegVal* to_reg(FunctionEnv* fe) const {
+    (void)fe;
     throw std::runtime_error("to_reg called on invalid Val: " + print());
   }
   virtual const RegVal* to_gpr(FunctionEnv* fe) const;
   virtual const RegVal* to_xmm(FunctionEnv* fe) const;
 
   const TypeSpec& type() const { return m_ts; }
+  void set_type(TypeSpec ts) { m_ts = std::move(ts); }
 
  protected:
   TypeSpec m_ts;
@@ -47,6 +49,7 @@ class Val {
  * Special None Val used for the value of anything returning (none).
  */
 class None : public Val {
+ public:
   explicit None(TypeSpec _ts) : Val(std::move(_ts)) {}
   explicit None(const TypeSystem& _ts) : Val(_ts.make_typespec("none")) {}
   std::string print() const override { return "none"; }
@@ -103,6 +106,16 @@ class LambdaVal : public Val {
 // MemDeref
 // PairEntry
 // Alias
+
+class IntegerConstantVal : public Val {
+ public:
+  IntegerConstantVal(TypeSpec ts, s64 value) : Val(ts), m_value(value) {}
+  std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
+  const RegVal* to_reg(FunctionEnv* fe) const override;
+
+ protected:
+  s64 m_value = -1;
+};
 // IntegerConstant
 // FloatConstant
 // Bitfield
