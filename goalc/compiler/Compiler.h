@@ -5,6 +5,7 @@
 #include "Env.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/goos/Interpreter.h"
+#include "goalc/compiler/IR.h"
 
 class Compiler {
  public:
@@ -21,14 +22,19 @@ class Compiler {
   void ice(const std::string& err);
   None* get_none() { return m_none.get(); }
 
+  std::vector<std::string> run_test(const std::string& source_code);
+  void shutdown_target();
+
  private:
   void init_logger();
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
   Val* compile_integer(s64 value, Env* env);
+  void color_object_file(FileEnv* env);
+  std::vector<u8> codegen_object_file(FileEnv* env);
 
-  void for_each_in_list(const goos::Object& list, const std::function<void (const goos::Object&)>& f);
-
+  void for_each_in_list(const goos::Object& list,
+                        const std::function<void(const goos::Object&)>& f);
 
   goos::Arguments get_va(const goos::Object& form, const goos::Object& rest);
   void va_check(

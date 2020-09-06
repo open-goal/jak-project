@@ -229,7 +229,7 @@ void iop_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * Arguments are currently ignored.
  */
-void exec_runtime(int argc, char** argv) {
+u32 exec_runtime(int argc, char** argv) {
   (void)argc;
   (void)argv;
 
@@ -262,5 +262,6 @@ void exec_runtime(int argc, char** argv) {
 
   // join and exit
   tm.join();
-  printf("GOAL Runtime Shutdown\n");
+  printf("GOAL Runtime Shutdown (code %d)\n", MasterExit);
+  return MasterExit;
 }

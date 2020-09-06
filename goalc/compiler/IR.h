@@ -5,12 +5,15 @@
 #include "CodeGenerator.h"
 #include "goalc/regalloc/allocate.h"
 #include "Val.h"
+#include "goalc/emitter/ObjectGenerator.h"
 
 class IR {
  public:
   virtual std::string print() = 0;
   virtual RegAllocInstr to_rai() = 0;
-//  virtual void do_codegen(CodeGenerator* gen) = 0;
+  virtual void do_codegen(emitter::ObjectGenerator* gen,
+                          const AllocationResult& allocs,
+                          emitter::IR_Record irec) = 0;
   virtual void add_constraints(std::vector<IRegConstraint>* constraints, int my_id) {
     (void)constraints;
     (void)my_id;
@@ -29,7 +32,9 @@ class IR_Return : public IR {
   std::string print() override;
   RegAllocInstr to_rai() override;
   void add_constraints(std::vector<IRegConstraint>* constraints, int my_id) override;
-//  void do_codegen(CodeGenerator* gen) override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
   const RegVal* value() { return m_value; }
 
  protected:
@@ -42,7 +47,9 @@ class IR_LoadConstant64 : public IR {
   IR_LoadConstant64(const RegVal* dest, u64 value);
   std::string print() override;
   RegAllocInstr to_rai() override;
-//  void do_codegen(CodeGenerator* gen) override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
 
  protected:
   const RegVal* m_dest = nullptr;

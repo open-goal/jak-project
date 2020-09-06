@@ -156,6 +156,11 @@ InstructionRecord ObjectGenerator::add_instr(Instruction inst, IR_Record ir) {
   return rec;
 }
 
+void ObjectGenerator::add_instr_no_ir(FunctionRecord func, Instruction inst) {
+  assert(func.func_id == int(m_function_data_by_seg.at(func.seg).size()) - 1);
+  m_function_data_by_seg.at(func.seg).at(func.func_id).instructions.push_back(inst);
+}
+
 /*!
  * Create a new static object in the given segment.
  */
@@ -461,7 +466,7 @@ std::vector<u8> ObjectGenerator::generate_header_v3() {
   offset += push_data<u32>(N_SEG, result);
 
   offset += sizeof(u32) * N_SEG * 4;  // 4 u32's per segment
-
+  offset += 4;
   struct SizeOffset {
     uint32_t offset, size;
   };

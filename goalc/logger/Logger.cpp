@@ -4,6 +4,7 @@
 void Logger::close() {
   if (fp) {
     fclose(fp);
+    fp = nullptr;
   }
 }
 

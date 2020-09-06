@@ -16,7 +16,7 @@ class BinaryWriter {
  public:
   BinaryWriter() = default;
 
-  template<typename T>
+  template <typename T>
   BinaryWriterRef add(const T& obj) {
     auto orig_size = data.size();
     data.resize(orig_size + sizeof(T));
@@ -24,26 +24,24 @@ class BinaryWriter {
     return {orig_size, sizeof(T)};
   }
 
-  template<typename T>
+  template <typename T>
   void add_at_ref(const T& obj, const BinaryWriterRef& ref) {
     assert(ref.write_size == sizeof(T));
     assert(ref.offset + ref.write_size < get_size());
     memcpy(data.data() + ref.offset, &obj, sizeof(T));
   }
 
-  void add_str_len(const std::string& str, size_t len) {
-    add_cstr_len(str.c_str(), len);
-  }
+  void add_str_len(const std::string& str, size_t len) { add_cstr_len(str.c_str(), len); }
 
   void add_cstr_len(const char* str, size_t len) {
     size_t i = 0;
-    while(*str) {
+    while (*str) {
       data.push_back(*str);
       str++;
       i++;
     }
 
-    while(i < len) {
+    while (i < len) {
       data.push_back(0);
       i++;
     }
@@ -56,18 +54,16 @@ class BinaryWriter {
     return {orig_size, len};
   }
 
-  size_t get_size() {
-    return data.size();
-  }
+  size_t get_size() { return data.size(); }
 
-  void* get_data() {
-    return data.data();
-  }
+  void* get_data() { return data.data(); }
 
   void write_to_file(const std::string& filename) {
     auto fp = fopen(filename.c_str(), "wb");
-    if(!fp) throw std::runtime_error("failed to open " + filename);
-    if(fwrite(get_data(), get_size(), 1, fp) != 1) throw std::runtime_error("failed to write " + filename);
+    if (!fp)
+      throw std::runtime_error("failed to open " + filename);
+    if (fwrite(get_data(), get_size(), 1, fp) != 1)
+      throw std::runtime_error("failed to write " + filename);
     fclose(fp);
   }
 

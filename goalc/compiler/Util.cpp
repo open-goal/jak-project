@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "goalc/compiler/IR.h"
 
 goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& rest) {
   goos::Arguments args;
@@ -82,15 +83,16 @@ void Compiler::va_check(
   }
 }
 
-void Compiler::for_each_in_list(const goos::Object& list, const std::function<void(const goos::Object&)>& f) {
+void Compiler::for_each_in_list(const goos::Object& list,
+                                const std::function<void(const goos::Object&)>& f) {
   const goos::Object* iter = &list;
-  while(iter->is_pair()) {
+  while (iter->is_pair()) {
     auto lap = iter->as_pair();
     f(lap->car);
     iter = &lap->cdr;
   }
 
-  if(!iter->is_empty_list()) {
+  if (!iter->is_empty_list()) {
     throw_compile_error(list, "invalid list in for_each_in_list");
   }
 }

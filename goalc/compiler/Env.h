@@ -11,13 +11,15 @@
 #include <memory>
 #include <vector>
 #include "common/type_system/TypeSpec.h"
+#include "goalc/regalloc/allocate.h"
 #include "goalc/goos/Object.h"
-#include "IR.h"
+//#include "IR.h"
 #include "Label.h"
 #include "Val.h"
 
 class FileEnv;
 class BlockEnv;
+class IR;
 
 /*!
  * Parent class for Env's
@@ -84,6 +86,7 @@ class FileEnv : public Env {
   void add_top_level_function(std::unique_ptr<FunctionEnv> fe);
   NoEmitEnv* add_no_emit_env();
   void debug_print_tl();
+  const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
 
   // todo - is_empty
   ~FileEnv() = default;
@@ -118,11 +121,18 @@ class FunctionEnv : public DeclareEnv {
  public:
   FunctionEnv(Env* parent, std::string name);
   std::string print() override;
-  void set_segment(int seg) { m_segment = seg; }
+  void set_segment(int seg) { segment = seg; }
   void emit(std::unique_ptr<IR> ir) override;
   void finish();
   RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind) override;
   const std::vector<std::unique_ptr<IR>>& code() { return m_code; }
+  int max_vars() const { return m_iregs.size(); }
+  const std::vector<IRegConstraint>& constraints() { return m_constraints; }
+  void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
+
+  const AllocationResult& alloc_result() { return m_regalloc_result; }
+
+  bool needs_aligned_stack() const { return m_aligned_stack_required; }
 
   template <typename T, class... Args>
   T* alloc_val(Args&&... args) {
@@ -130,7 +140,7 @@ class FunctionEnv : public DeclareEnv {
     m_vals.push_back(std::move(new_obj));
     return (T*)m_vals.back().get();
   }
-
+  int segment = -1;
 
  protected:
   std::string m_name;
@@ -144,7 +154,6 @@ class FunctionEnv : public DeclareEnv {
 
   std::string m_method_of_type_name = "#f";
   bool m_aligned_stack_required = false;
-  int m_segment = -1;
 
   std::unordered_map<std::string, Env*> m_params;
 };
@@ -154,6 +163,7 @@ class BlockEnv : public Env {
   BlockEnv(Env* parent, std::string name);
   std::string print() override;
   BlockEnv* find_block(const std::string& name) override;
+
  protected:
   std::string m_name;
   Label* m_end_label = nullptr;
@@ -173,20 +183,17 @@ class LabelEnv : public Env {
   std::unordered_map<std::string, Label> m_labels;
 };
 
-class WithInlineEnv : public Env {
+class WithInlineEnv : public Env {};
 
-};
+class SymbolMacroEnv : public Env {};
 
-class SymbolMacroEnv : public Env {
-
-};
-
-template<typename T>
+template <typename T>
 T* get_parent_env_of_type(Env* in) {
-  for(;;) {
+  for (;;) {
     auto attempt = dynamic_cast<T*>(in);
-    if(attempt) return attempt;
-    if(dynamic_cast<GlobalEnv*>(in)) {
+    if (attempt)
+      return attempt;
+    if (dynamic_cast<GlobalEnv*>(in)) {
       return nullptr;
     }
     in = in->parent();

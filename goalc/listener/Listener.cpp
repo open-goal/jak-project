@@ -18,7 +18,7 @@
 #include "common/versions.h"
 
 using namespace versions;
-constexpr bool debug_listener = true;
+constexpr bool debug_listener = false;
 
 namespace listener {
 Listener::Listener() {
@@ -245,10 +245,24 @@ void Listener::receive_func() {
   }
 }
 
-void Listener::send_code(std::vector<uint8_t> &code) {
+void Listener::record_messages(ListenerMessageKind kind) {
+  if (filter != ListenerMessageKind::MSG_INVALID) {
+    printf("[Listener] Already recording!\n");
+  }
+  filter = kind;
+}
+
+std::vector<std::string> Listener::stop_recording_messages() {
+  filter = ListenerMessageKind::MSG_INVALID;
+  auto result = message_record;
+  message_record.clear();
+  return result;
+}
+
+void Listener::send_code(std::vector<uint8_t>& code) {
   got_ack = false;
   int total_size = code.size() + sizeof(ListenerMessageHeader);
-  if(total_size > BUFFER_SIZE) {
+  if (total_size > BUFFER_SIZE) {
     printf("[ERROR] Listener send_code got too big of a message\n");
     return;
   }
@@ -257,7 +271,7 @@ void Listener::send_code(std::vector<uint8_t> &code) {
   auto* buffer_data = (char*)(header + 1);
   header->deci2_header.rsvd = 0;
   header->deci2_header.len = total_size;
-  header->deci2_header.proto = 0xe042; // todo don't hardcode
+  header->deci2_header.proto = 0xe042;  // todo don't hardcode
   header->deci2_header.src = 'H';
   header->deci2_header.dst = 'E';
   header->msg_size = code.size();
@@ -268,21 +282,21 @@ void Listener::send_code(std::vector<uint8_t> &code) {
   send_buffer(total_size);
 }
 
-void Listener::send_reset() {
-  if(!m_connected) {
+void Listener::send_reset(bool shutdown) {
+  if (!m_connected) {
     printf("Not connected, so cannot reset target.\n");
     return;
   }
   auto* header = (ListenerMessageHeader*)m_buffer;
   header->deci2_header.rsvd = 0;
   header->deci2_header.len = sizeof(ListenerMessageHeader);
-  header->deci2_header.proto = 0xe042; // todo don't hardcode
+  header->deci2_header.proto = 0xe042;  // todo don't hardcode
   header->deci2_header.src = 'H';
   header->deci2_header.dst = 'E';
   header->msg_size = 0;
   header->ltt_msg_kind = LTT_MSG_RESET;
   header->u6 = 0;
-  header->u8 = 0;
+  header->u8 = shutdown ? UINT64_MAX : 0;
   send_buffer(sizeof(ListenerMessageHeader));
   disconnect();
   close(socket_fd);
@@ -292,25 +306,24 @@ void Listener::send_reset() {
 void Listener::send_buffer(int sz) {
   int wrote = 0;
 
-  if(debug_listener) {
+  if (debug_listener) {
     printf("[L -> T] sending %d bytes...\n", sz);
   }
 
   got_ack = false;
   waiting_for_ack = true;
-  while(wrote < sz) {
+  while (wrote < sz) {
     auto to_send = std::min(512, sz - wrote);
     auto x = write(socket_fd, m_buffer + wrote, to_send);
     wrote += x;
   }
 
-  if(debug_listener) {
+  if (debug_listener) {
     printf("  waiting for ack...\n");
   }
 
-
-  if(wait_for_ack()) {
-    if(debug_listener) {
+  if (wait_for_ack()) {
+    if (debug_listener) {
       printf("ack buff:\n");
       printf("%s\n", ack_recv_buff);
       printf("  OK\n");
@@ -321,13 +334,14 @@ void Listener::send_buffer(int sz) {
 }
 
 bool Listener::wait_for_ack() {
-  if(!m_connected) {
+  if (!m_connected) {
     printf("wait_for_ack called when not connected!\n");
     return false;
   }
 
-  for(int i = 0; i < 2000; i++) {
-    if(got_ack) return true;
+  for (int i = 0; i < 2000; i++) {
+    if (got_ack)
+      return true;
     usleep(1000);
   }
 

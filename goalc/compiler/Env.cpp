@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include "Env.h"
+#include "IR.h"
 
 ///////////////////
 // Env
@@ -93,12 +94,12 @@ Val* GlobalEnv::lexical_lookup(goos::Object sym) {
   return nullptr;
 }
 
-BlockEnv * GlobalEnv::find_block(const std::string& name) {
+BlockEnv* GlobalEnv::find_block(const std::string& name) {
   (void)name;
   return nullptr;
 }
 
-FileEnv * GlobalEnv::add_file(std::string name) {
+FileEnv* GlobalEnv::add_file(std::string name) {
   m_files.push_back(std::make_unique<FileEnv>(this, std::move(name)));
   return m_files.back().get();
 }
@@ -142,15 +143,15 @@ void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
   m_top_level_func = m_functions.back().get();
 }
 
-NoEmitEnv * FileEnv::add_no_emit_env() {
+NoEmitEnv* FileEnv::add_no_emit_env() {
   assert(!m_no_emit_env);
   m_no_emit_env = std::make_unique<NoEmitEnv>(this);
   return m_no_emit_env.get();
 }
 
 void FileEnv::debug_print_tl() {
-  if(m_top_level_func) {
-    for(auto& code : m_top_level_func->code()) {
+  if (m_top_level_func) {
+    for (auto& code : m_top_level_func->code()) {
       fmt::print("{}\n", code->print());
     }
   } else {
@@ -162,7 +163,8 @@ void FileEnv::debug_print_tl() {
 // FunctionEnv
 ///////////////////
 
-FunctionEnv::FunctionEnv(Env* parent, std::string name) : DeclareEnv(parent), m_name(std::move(name)){}
+FunctionEnv::FunctionEnv(Env* parent, std::string name)
+    : DeclareEnv(parent), m_name(std::move(name)) {}
 
 std::string FunctionEnv::print() {
   return "function-" + m_name;
@@ -176,7 +178,7 @@ void FunctionEnv::finish() {
   // todo resolve gotos
 }
 
-RegVal * FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
+RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
   IRegister ireg;
   ireg.kind = kind;
   ireg.id = m_iregs.size();

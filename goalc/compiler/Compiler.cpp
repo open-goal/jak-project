@@ -1,6 +1,9 @@
 #include "Compiler.h"
 #include "goalc/logger/Logger.h"
 #include "common/link_types.h"
+#include "IR.h"
+#include "goalc/regalloc/allocate.h"
+#include "unistd.h"
 
 using namespace goos;
 
@@ -14,6 +17,7 @@ Compiler::Compiler() {
 }
 
 void Compiler::execute_repl() {
+  m_listener.connect_to_target();
   while (!m_want_exit) {
     try {
       // 1). get a line from the user (READ)
@@ -29,19 +33,19 @@ void Compiler::execute_repl() {
       auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
       obj_file->debug_print_tl();
 
-      //        // 3). color
-      //        color_object_file(obj_file);
-      //
-      //        // 4). codegen
-      //        auto data = codegen_object_file(obj_file);
-      //
-      //        // 4). send!
-      //        if(m_listener.is_connected()) {
-      //          m_listener.send_code(data);
-      //          if(!m_listener.most_recent_send_was_acked()) {
-      //            gLogger.log(MSG_ERR, "Runtime is not responding. Did it crash?\n");
-      //          }
-      //        }
+      // 3). color
+      color_object_file(obj_file);
+
+      // 4). codegen
+      auto data = codegen_object_file(obj_file);
+
+      // 4). send!
+      if (m_listener.is_connected()) {
+        m_listener.send_code(data);
+        if (!m_listener.most_recent_send_was_acked()) {
+          gLogger.log(MSG_ERR, "Runtime is not responding. Did it crash?\n");
+        }
+      }
 
     } catch (std::exception& e) {
       gLogger.log(MSG_WARN, "REPL Error: %s\n", e.what());
@@ -125,4 +129,60 @@ void Compiler::throw_compile_error(const goos::Object& o, const std::string& err
 void Compiler::ice(const std::string& error) {
   gLogger.log(MSG_ICE, "[ICE] %s\n", error.c_str());
   throw std::runtime_error("ICE");
+}
+
+void Compiler::color_object_file(FileEnv* env) {
+  for (auto& f : env->functions()) {
+    AllocationInput input;
+    for (auto& i : f->code()) {
+      input.instructions.push_back(i->to_rai());
+      input.debug_instruction_names.push_back(i->print());
+    }
+    input.max_vars = f->max_vars();
+    input.constraints = f->constraints();
+
+    // for now...
+    input.debug_settings.print_input = true;
+    input.debug_settings.print_result = true;
+    input.debug_settings.print_analysis = true;
+
+    f->set_allocations(allocate_registers(input));
+  }
+}
+
+std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
+  CodeGenerator gen(env);
+  return gen.run();
+}
+
+std::vector<std::string> Compiler::run_test(const std::string& source_code) {
+  if (!m_listener.is_connected()) {
+    for (int i = 0; i < 1000; i++) {
+      m_listener.connect_to_target();
+      usleep(10000);
+      if (m_listener.is_connected()) {
+        break;
+      }
+    }
+    if (!m_listener.is_connected()) {
+      throw std::runtime_error("Compiler::run_test couldn't connect!");
+    }
+  }
+
+  auto code = m_goos.reader.read_from_file(source_code);
+  auto compiled = compile_object_file("test-code", code, true);
+  color_object_file(compiled);
+  auto data = codegen_object_file(compiled);
+  m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+  m_listener.send_code(data);
+  if (!m_listener.most_recent_send_was_acked()) {
+    gLogger.log(MSG_ERR, "Runtime is not responding after sending test code. Did it crash?\n");
+  }
+  return m_listener.stop_recording_messages();
+}
+
+void Compiler::shutdown_target() {
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(true);
+  }
 }
