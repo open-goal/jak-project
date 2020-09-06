@@ -23,6 +23,15 @@ class Interpreter {
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
   void disable_printfs();
+  Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
+  Arguments get_args(const Object& form, const Object& rest, const ArgumentSpec& spec);
+  void set_args_in_env(const Object& form,
+                       const Arguments& args,
+                       const ArgumentSpec& arg_spec,
+                       const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_list_return_last(const Object& form,
+                               Object rest,
+                               const std::shared_ptr<EnvironmentObject>& env);
 
   Reader reader;
   Object global_environment;
@@ -47,14 +56,9 @@ class Interpreter {
       const std::unordered_map<std::string, std::pair<bool, util::MatchParam<ObjectType>>>& named);
 
   Object eval_pair(const Object& o, const std::shared_ptr<EnvironmentObject>& env);
-  Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
-  Arguments get_args(const Object& form, const Object& rest, const ArgumentSpec& spec);
   void eval_args(Arguments* args, const std::shared_ptr<EnvironmentObject>& env);
   ArgumentSpec parse_arg_spec(const Object& form, Object& rest);
 
-  Object eval_list_return_last(const Object& form,
-                               Object rest,
-                               const std::shared_ptr<EnvironmentObject>& env);
   Object quasiquote_helper(const Object& form, const std::shared_ptr<EnvironmentObject>& env);
 
   IntType number_to_integer(const Object& obj);
@@ -205,11 +209,6 @@ class Interpreter {
   Object eval_while(const Object& form,
                     const Object& rest,
                     const std::shared_ptr<EnvironmentObject>& env);
-
-  void set_args_in_env(const Object& form,
-                       const Arguments& args,
-                       const ArgumentSpec& arg_spec,
-                       const std::shared_ptr<EnvironmentObject>& env);
 
   bool want_exit = false;
   bool disable_printing = false;

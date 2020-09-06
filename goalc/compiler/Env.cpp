@@ -159,6 +159,10 @@ void FileEnv::debug_print_tl() {
   }
 }
 
+bool FileEnv::is_empty() {
+  return m_functions.size() == 1 && m_functions.front().get() == m_top_level_func &&
+         m_top_level_func->code().empty();
+}
 ///////////////////
 // FunctionEnv
 ///////////////////

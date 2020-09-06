@@ -14,10 +14,12 @@ Compiler::Compiler() {
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
   // todo - compile library
+  Object library_code = m_goos.reader.read_from_file("goal_src/goal-lib.gc");
+  compile_object_file("goal-lib", library_code, false);
 }
 
 void Compiler::execute_repl() {
-  m_listener.connect_to_target();
+  m_listener.connect_to_target();  // todo, remove
   while (!m_want_exit) {
     try {
       // 1). get a line from the user (READ)
@@ -33,17 +35,19 @@ void Compiler::execute_repl() {
       auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
       obj_file->debug_print_tl();
 
-      // 3). color
-      color_object_file(obj_file);
+      if (!obj_file->is_empty()) {
+        // 3). color
+        color_object_file(obj_file);
 
-      // 4). codegen
-      auto data = codegen_object_file(obj_file);
+        // 4). codegen
+        auto data = codegen_object_file(obj_file);
 
-      // 4). send!
-      if (m_listener.is_connected()) {
-        m_listener.send_code(data);
-        if (!m_listener.most_recent_send_was_acked()) {
-          gLogger.log(MSG_ERR, "Runtime is not responding. Did it crash?\n");
+        // 4). send!
+        if (m_listener.is_connected()) {
+          m_listener.send_code(data);
+          if (!m_listener.most_recent_send_was_acked()) {
+            gLogger.log(MSG_ERR, "Runtime is not responding. Did it crash?\n");
+          }
         }
       }
 

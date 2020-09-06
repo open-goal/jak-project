@@ -89,6 +89,7 @@ class FileEnv : public Env {
   const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
 
   // todo - is_empty
+  bool is_empty();
   ~FileEnv() = default;
 
  protected:
@@ -141,6 +142,7 @@ class FunctionEnv : public DeclareEnv {
     return (T*)m_vals.back().get();
   }
   int segment = -1;
+  std::string method_of_type_name = "#f";
 
  protected:
   std::string m_name;
@@ -152,7 +154,6 @@ class FunctionEnv : public DeclareEnv {
   AllocationResult m_regalloc_result;
   bool m_is_asm_func = false;
 
-  std::string m_method_of_type_name = "#f";
   bool m_aligned_stack_required = false;
 
   std::unordered_map<std::string, Env*> m_params;

@@ -27,6 +27,11 @@ class Compiler {
 
  private:
   void init_logger();
+  bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
+  Val* compile_goos_macro(const goos::Object& o,
+                          const goos::Object& macro_obj,
+                          const goos::Object& rest,
+                          Env* env);
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
   Val* compile_integer(s64 value, Env* env);
@@ -55,6 +60,7 @@ class Compiler {
   Val* compile_exit(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_top_level(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_begin(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_seval(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

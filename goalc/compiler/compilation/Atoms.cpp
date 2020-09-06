@@ -26,7 +26,7 @@ static const std::unordered_map<
         //
         //        // COMPILER CONTROL
         //        {"gs", &Compiler::compile_gs},
-        {":exit", &Compiler::compile_exit}
+        {":exit", &Compiler::compile_exit},
         //        {"asm-file", &Compiler::compile_asm_file},
         //        {"test", &Compiler::compile_test},
         //        {"in-package", &Compiler::compile_in_package},
@@ -34,7 +34,7 @@ static const std::unordered_map<
         //        // CONDITIONAL COMPILATION
         //        {"#cond", &Compiler::compile_gscond},
         //        {"defglobalconstant", &Compiler::compile_defglobalconstant},
-        //        {"seval", &Compiler::compile_seval},
+        {"seval", &Compiler::compile_seval},
         //
         //        // CONTROL FLOW
         //        {"cond", &Compiler::compile_cond},
@@ -159,7 +159,11 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
       return ((*this).*(kv_gfs->second))(code, rest, env);
     }
 
-    // todo macro
+    goos::Object macro_obj;
+    if (try_getting_macro_from_goos(head, &macro_obj)) {
+      return compile_goos_macro(code, macro_obj, rest, env);
+    }
+
     // todo enum
   }
 

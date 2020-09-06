@@ -22,6 +22,7 @@ add_library(compiler
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
         compiler/compilation/Block.cpp
+        compiler/compilation/Macro.cpp
         compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp
