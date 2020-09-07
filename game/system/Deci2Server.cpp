@@ -4,15 +4,22 @@
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
  */
 
-// TODO-WINDOWS
-#ifdef __linux__
 
 #include <cstdio>
+#include <cassert>
+#include <utility>
+
+// TODO - i think im not including the dependency right..?
+#include "common/cross_sockets/xsocket.h"
+
+#ifdef __linux
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
-#include <cassert>
-#include <utility>
+#elif _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <WS2tcpip.h>
+#endif
 
 #include "common/listener_common.h"
 #include "common/versions.h"
@@ -33,38 +40,39 @@ Deci2Server::~Deci2Server() {
 
   delete[] buffer;
 
-  if (server_fd >= 0) {
-    close(server_fd);
-  }
-
-  if (new_sock >= 0) {
-    close(new_sock);
-  }
+  close_server_socket();
+  close_socket(new_sock);
 }
 
 /*!
  * Start waiting for the Listener to connect
  */
 bool Deci2Server::init() {
-  server_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (server_fd < 0) {
-    server_fd = -1;
+  server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  if (server_socket < 0) {
+    server_socket = -1;
     return false;
   }
 
+#ifdef __linux
+  int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
+  int server_socket_tcp_level = SOL_TCP;
+#elif _WIN32
+  int server_socket_opt = SO_REUSEADDR | SO_BROADCAST;
+  int server_socket_tcp_level = IPPROTO_IP;
+#endif
+
   int opt = 1;
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+  if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, opt, sizeof(opt))) {
     printf("[Deci2Server] Failed to setsockopt 1\n");
-    close(server_fd);
-    server_fd = -1;
+    close_server_socket();
     return false;
   }
 
   int one = 1;
-  if (setsockopt(server_fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one))) {
+  if (set_socket_option(server_socket, server_socket_tcp_level, TCP_NODELAY, one, sizeof(one))) {
     printf("[Deci2Server] Failed to setsockopt 2\n");
-    close(server_fd);
-    server_fd = -1;
+    close_server_socket();
     return false;
   }
 
@@ -72,10 +80,9 @@ bool Deci2Server::init() {
   timeout.tv_sec = 0;
   timeout.tv_usec = 100000;
 
-  if (setsockopt(server_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
+  if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
     printf("[Deci2Server] Failed to setsockopt 3\n");
-    close(server_fd);
-    server_fd = -1;
+    close_server_socket();
     return false;
   }
 
@@ -83,17 +90,15 @@ bool Deci2Server::init() {
   addr.sin_addr.s_addr = INADDR_ANY;
   addr.sin_port = htons(DECI2_PORT);
 
-  if (bind(server_fd, (sockaddr*)&addr, sizeof(addr)) < 0) {
+  if (bind(server_socket, (sockaddr*)&addr, sizeof(addr)) < 0) {
     printf("[Deci2Server] Failed to bind\n");
-    close(server_fd);
-    server_fd = -1;
+    close_server_socket();
     return false;
   }
 
-  if (listen(server_fd, 0) < 0) {
+  if (listen(server_socket, 0) < 0) {
     printf("[Deci2Server] Failed to listen\n");
-    close(server_fd);
-    server_fd = -1;
+    close_server_socket();
     return false;
   }
 
@@ -102,6 +107,11 @@ bool Deci2Server::init() {
   kill_accept_thread = false;
   accept_thread = std::thread(&Deci2Server::accept_thread_func, this);
   return true;
+}
+
+void Deci2Server::close_server_socket() {
+  close_socket(server_socket);
+  server_socket = -1;
 }
 
 /*!
@@ -129,7 +139,7 @@ void Deci2Server::send_data(void* buf, u16 len) {
   } else {
     uint16_t prog = 0;
     while (prog < len) {
-      auto wrote = write(new_sock, (char*)(buf) + prog, len - prog);
+      int wrote = write_to_socket(new_sock, (char*)(buf) + prog, len - prog);
       prog += wrote;
       if (!server_connected || want_exit()) {
         unlock();
@@ -186,7 +196,7 @@ void Deci2Server::run() {
 
   while (got < desired_size) {
     assert(got + desired_size < BUFFER_SIZE);
-    auto x = read(new_sock, buffer + got, desired_size - got);
+    auto x = read_from_socket(new_sock, buffer + got, desired_size - got);
     if (want_exit()) {
       return;
     }
@@ -237,7 +247,7 @@ void Deci2Server::run() {
 
     // receive from network
     if (hdr->rsvd < hdr->len) {
-      auto x = read(new_sock, buffer + hdr->rsvd, hdr->len - hdr->rsvd);
+      auto x = read_from_socket(new_sock, buffer + hdr->rsvd, hdr->len - hdr->rsvd);
       if (want_exit()) {
         return;
       }
@@ -256,13 +266,12 @@ void Deci2Server::run() {
 void Deci2Server::accept_thread_func() {
   socklen_t l = sizeof(addr);
   while (!kill_accept_thread) {
-    new_sock = accept(server_fd, (sockaddr*)&addr, &l);
+    new_sock = accept(server_socket, (sockaddr*)&addr, &l);
     if (new_sock >= 0) {
       u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
-      send(new_sock, &versions, 8, 0);  // todo, check result?
+      write_to_socket(new_sock, (char*)&versions, 8);  // todo, check result?
       server_connected = true;
       return;
     }
   }
 }
-#endif

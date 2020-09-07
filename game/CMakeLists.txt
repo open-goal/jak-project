@@ -76,11 +76,10 @@ add_executable(gk ${RUNTIME_SOURCE} main.cpp)
 # can be used to test other things.
 add_library(runtime ${RUNTIME_SOURCE})
 
-
 IF (WIN32)
   # set stuff for windows
-  target_link_libraries(gk mman)
+  target_link_libraries(gk cross_sockets mman)
 ELSE()
   # set stuff for other systems
-  target_link_libraries(gk pthread)
+  target_link_libraries(gk cross_sockets)
 ENDIF()

@@ -3,13 +3,20 @@
  * The Listener can connect to a Deci2Server for debugging.
  */
 
-// TODO-Windows
-#ifdef __linux__
-
-#include <stdexcept>
+#ifdef __linux
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#elif _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+
+// TODO - i think im not including the dependency right..?
+#include "common/cross_sockets/xsocket.h"
+
+#include <stdexcept>
 #include <cassert>
 #include "Listener.h"
 #include "common/versions.h"
@@ -27,7 +34,7 @@ Listener::~Listener() {
 
   delete[] m_buffer;
   if (socket_fd >= 0) {
-    close(socket_fd);
+    close_socket(socket_fd);
   }
 }
 
@@ -53,7 +60,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
 
   if (socket_fd >= 0) {
-    close(socket_fd);
+    close_socket(socket_fd);
   }
 
   // construct socket
@@ -70,16 +77,16 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   timeout.tv_usec = 100000;
   if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
     printf("[Listener] setsockopt failed\n");
-    close(socket_fd);
+    close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
 
   // set nodelay, which makes small rapid messages faster, but large messages slower
   int one = 1;
-  if (setsockopt(socket_fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one))) {
+  if (set_socket_option(socket_fd, TCP_SOCKET_LEVEL, TCP_NODELAY, one, sizeof(one))) {
     printf("[Listener] failed to TCP_NODELAY\n");
-    close(socket_fd);
+    close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
@@ -90,7 +97,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   server_address.sin_port = htons(port);
   if (inet_pton(AF_INET, ip.c_str(), &server_address.sin_addr) <= 0) {
     printf("[Listener] Invalid IP address.\n");
-    close(socket_fd);
+    close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
@@ -99,7 +106,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   int rv = connect(socket_fd, (sockaddr*)&server_address, sizeof(server_address));
   if (rv < 0) {
     printf("[Listener] Failed to connect\n");
-    close(socket_fd);
+    close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
@@ -110,7 +117,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   int prog = 0;
   bool ok = true;
   while (prog < 8) {
-    auto r = read(socket_fd, version_buffer + prog, 8 - prog);
+    auto r = read_from_socket(socket_fd, (char*)version_buffer + prog, 8 - prog);
     if (r < 0) {
       ok = false;
       break;
@@ -124,7 +131,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
   if (!ok) {
     printf("[Listener] Failed to get version number\n");
-    close(socket_fd);
+    close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
@@ -138,7 +145,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
     return true;
   } else {
     printf(", expected %d.%d. Cannot connect.\n", GOAL_VERSION_MAJOR, GOAL_VERSION_MINOR);
-    close(socket_fd);
+    close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
@@ -155,7 +162,7 @@ void Listener::receive_func() {
     int rcvd_desired = sizeof(ListenerMessageHeader);
     char buff[sizeof(ListenerMessageHeader)];
     while (rcvd < rcvd_desired) {
-      auto got = read(socket_fd, buff + rcvd, rcvd_desired - rcvd);
+      auto got = read_from_socket(socket_fd, buff + rcvd, rcvd_desired - rcvd);
       rcvd += got > 0 ? got : 0;
 
       // kick us out if we got a bogus read result
@@ -188,7 +195,7 @@ void Listener::receive_func() {
           while (rcvd < hdr->deci2_header.len) {
             if (!m_connected)
               return;
-            int got = read(socket_fd, ack_recv_buff + ack_recv_prog, hdr->deci2_header.len - rcvd);
+            int got = read_from_socket(socket_fd, ack_recv_buff + ack_recv_prog, hdr->deci2_header.len - rcvd);
             got = got > 0 ? got : 0;
             rcvd += got;
             ack_recv_prog += got;
@@ -210,7 +217,7 @@ void Listener::receive_func() {
             return;
           }
 
-          int got = read(socket_fd, str_buff + msg_prog, hdr->deci2_header.len - rcvd);
+          int got = read_from_socket(socket_fd, str_buff + msg_prog, hdr->deci2_header.len - rcvd);
           got = got > 0 ? got : 0;
           rcvd += got;
           msg_prog += got;
@@ -242,4 +249,3 @@ void Listener::receive_func() {
 }
 
 }  // namespace listener
-#endif
