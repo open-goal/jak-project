@@ -51,9 +51,10 @@ bool Listener::is_connected() const {
  * Attempt to connect to the target. If the target isn't running, this should fail quickly.
  * Returns true if successfully connected.
  */
-bool Listener::connect_to_target(const std::string& ip, int port) {
+bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
   if (m_connected) {
-    throw std::runtime_error("attempted a Listener::connect_to_target when already connected!");
+    printf("already connected!\n");
+    return true;
   }
 
   if (socket_fd >= 0) {
@@ -100,12 +101,21 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
 
   // connect!
-  int rv = connect(socket_fd, (sockaddr*)&server_address, sizeof(server_address));
+  int rv, i;
+  for (i = 0; i < n_tries; i++) {
+    rv = connect(socket_fd, (sockaddr*)&server_address, sizeof(server_address));
+    if (rv >= 0) {
+      break;
+    }
+    usleep(100000);
+  }
   if (rv < 0) {
     printf("[Listener] Failed to connect\n");
     close(socket_fd);
     socket_fd = -1;
     return false;
+  } else {
+    printf("[Listener] Socket connected established! (took %d tries)\n", i);
   }
 
   // get the GOAL version number, to make sure we connected to the right thing
@@ -301,6 +311,24 @@ void Listener::send_reset(bool shutdown) {
   disconnect();
   close(socket_fd);
   printf("closed connection to target\n");
+}
+
+void Listener::send_poke() {
+  if (!m_connected) {
+    printf("Not connected, so cannot poke target.\n");
+    return;
+  }
+  auto* header = (ListenerMessageHeader*)m_buffer;
+  header->deci2_header.rsvd = 0;
+  header->deci2_header.len = sizeof(ListenerMessageHeader);
+  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.src = 'H';
+  header->deci2_header.dst = 'E';
+  header->msg_size = 0;
+  header->ltt_msg_kind = LTT_MSG_POKE;
+  header->u6 = 0;
+  header->u8 = 0;
+  send_buffer(sizeof(ListenerMessageHeader));
 }
 
 void Listener::send_buffer(int sz) {

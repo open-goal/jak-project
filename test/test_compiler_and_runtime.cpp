@@ -69,10 +69,10 @@ struct CompilerTestRunner {
     int passed = 0;
     for (auto& test : tests) {
       if (test.expected == test.actual) {
-        fmt::print("[{:30}] PASS!\n", test.test_name);
+        fmt::print("[{:40}] PASS!\n", test.test_name);
         passed++;
       } else {
-        fmt::print("[{:30}] FAIL!\n", test.test_name);
+        fmt::print("[{:40}] FAIL!\n", test.test_name);
         fmt::print("expected:\n");
         for (auto& x : test.expected) {
           fmt::print(" \"{}\"\n", escaped_string(x));
@@ -102,6 +102,15 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-return-integer-5.gc", {"-2147483649\n"});
   runner.run_test("test-return-integer-6.gc", {"0\n"});
   runner.run_test("test-return-integer-7.gc", {"-123\n"});
+  runner.run_test("test-conditional-compilation-1.gc", {"3\n"});
+  // todo, test-conditional-compilation-2.gc
+  // these numbers match the game's memory layout for where the symbol table lives.
+  // it's probably not 100% needed to get this exactly, but it's a good sign that the global
+  // heap lives in the right spot because there should be no divergence in memory layout when its
+  // built.  This also checks that #t, #f get "hashed" to the correct spot.
+  runner.run_test("test-get-symbol-1.gc", {"1342756\n"});  // 0x147d24 in hex
+  runner.run_test("test-get-symbol-2.gc", {"1342764\n"});  // 0x147d2c in hex
+  runner.run_test("test-define-1.gc", {"17\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

@@ -23,6 +23,7 @@ add_library(compiler
         compiler/compilation/CompilerControl.cpp
         compiler/compilation/Block.cpp
         compiler/compilation/Macro.cpp
+        compiler/compilation/Define.cpp
         compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp

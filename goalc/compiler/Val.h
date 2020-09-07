@@ -15,6 +15,7 @@
 #include "Lambda.h"
 
 class RegVal;
+class Env;
 class FunctionEnv;
 
 /*!
@@ -31,12 +32,12 @@ class Val {
   }
 
   virtual std::string print() const = 0;
-  virtual const RegVal* to_reg(FunctionEnv* fe) const {
+  virtual RegVal* to_reg(Env* fe) {
     (void)fe;
     throw std::runtime_error("to_reg called on invalid Val: " + print());
   }
-  virtual const RegVal* to_gpr(FunctionEnv* fe) const;
-  virtual const RegVal* to_xmm(FunctionEnv* fe) const;
+  virtual RegVal* to_gpr(Env* fe);
+  virtual RegVal* to_xmm(Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
@@ -64,9 +65,9 @@ class RegVal : public Val {
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
   std::string print() const override { return m_ireg.to_string(); };
-  const RegVal* to_reg(FunctionEnv* fe) const override;
-  const RegVal* to_gpr(FunctionEnv* fe) const override;
-  const RegVal* to_xmm(FunctionEnv* fe) const override;
+  RegVal* to_reg(Env* fe) override;
+  RegVal* to_gpr(Env* fe) override;
+  RegVal* to_xmm(Env* fe) override;
 
  protected:
   IRegister m_ireg;
@@ -79,11 +80,25 @@ class RegVal : public Val {
 class SymbolVal : public Val {
  public:
   SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {}
-  const std::string& name() { return m_name; }
+  const std::string& name() const { return m_name; }
   std::string print() const override { return "<" + m_name + ">"; }
+  RegVal* to_reg(Env* fe) override;
 
  protected:
   std::string m_name;
+};
+
+class SymbolValueVal : public Val {
+ public:
+  SymbolValueVal(const SymbolVal* sym, TypeSpec ts, bool sext)
+      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {}
+  const std::string& name() const { return m_sym->name(); }
+  std::string print() const override { return "[<" + name() + ">]"; }
+  RegVal* to_reg(Env* fe) override;
+
+ protected:
+  const SymbolVal* m_sym = nullptr;
+  bool m_sext = false;
 };
 
 /*!
@@ -94,10 +109,10 @@ class LambdaVal : public Val {
  public:
   LambdaVal(TypeSpec ts, Lambda lam) : Val(ts), m_lam(lam) {}
   std::string print() const override { return "lambda-" + m_lam.debug_name; }
+  FunctionEnv* func = nullptr;
 
  protected:
   Lambda m_lam;
-  FunctionEnv* fe = nullptr;
 };
 
 // Static
@@ -111,7 +126,7 @@ class IntegerConstantVal : public Val {
  public:
   IntegerConstantVal(TypeSpec ts, s64 value) : Val(ts), m_value(value) {}
   std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
-  const RegVal* to_reg(FunctionEnv* fe) const override;
+  RegVal* to_reg(Env* fe) override;
 
  protected:
   s64 m_value = -1;

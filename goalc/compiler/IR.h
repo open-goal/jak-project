@@ -56,4 +56,47 @@ class IR_LoadConstant64 : public IR {
   u64 m_value = 0;
 };
 
+class IR_LoadSymbolPointer : public IR {
+ public:
+  IR_LoadSymbolPointer(const RegVal* dest, std::string name);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  std::string m_name;
+};
+
+class IR_SetSymbolValue : public IR {
+ public:
+  IR_SetSymbolValue(const SymbolVal* dest, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const SymbolVal* m_dest = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_GetSymbolValue : public IR {
+ public:
+  IR_GetSymbolValue(const RegVal* dest, const SymbolVal* src, bool sext);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  const SymbolVal* m_src = nullptr;
+  bool m_sext = false;
+};
+
 #endif  // JAK_IR_H

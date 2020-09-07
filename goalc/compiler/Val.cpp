@@ -5,7 +5,7 @@
 /*!
  * Fallback to_gpr if a more optimized one is not provided.
  */
-const RegVal* Val::to_gpr(FunctionEnv* fe) const {
+RegVal* Val::to_gpr(Env* fe) {
   auto rv = to_reg(fe);
   if (rv->ireg().kind == emitter::RegKind::GPR) {
     return rv;
@@ -17,17 +17,17 @@ const RegVal* Val::to_gpr(FunctionEnv* fe) const {
 /*!
  * Fallback to_xmm if a more optimized one is not provided.
  */
-const RegVal* Val::to_xmm(FunctionEnv* fe) const {
+RegVal* Val::to_xmm(Env* fe) {
   (void)fe;
   throw std::runtime_error("Val::to_xmm NYI");  // todo
 }
 
-const RegVal* RegVal::to_reg(FunctionEnv* fe) const {
+RegVal* RegVal::to_reg(Env* fe) {
   (void)fe;
   return this;
 }
 
-const RegVal* RegVal::to_gpr(FunctionEnv* fe) const {
+RegVal* RegVal::to_gpr(Env* fe) {
   (void)fe;
   if (m_ireg.kind == emitter::RegKind::GPR) {
     return this;
@@ -36,7 +36,7 @@ const RegVal* RegVal::to_gpr(FunctionEnv* fe) const {
   }
 }
 
-const RegVal* RegVal::to_xmm(FunctionEnv* fe) const {
+RegVal* RegVal::to_xmm(Env* fe) {
   (void)fe;
   if (m_ireg.kind == emitter::RegKind::XMM) {
     return this;
@@ -45,8 +45,20 @@ const RegVal* RegVal::to_xmm(FunctionEnv* fe) const {
   }
 }
 
-const RegVal* IntegerConstantVal::to_reg(FunctionEnv* fe) const {
+RegVal* IntegerConstantVal::to_reg(Env* fe) {
   auto rv = fe->make_gpr(m_ts);
   fe->emit(std::make_unique<IR_LoadConstant64>(rv, m_value));
   return rv;
+}
+
+RegVal* SymbolVal::to_reg(Env* fe) {
+  auto re = fe->make_gpr(m_ts);
+  fe->emit(std::make_unique<IR_LoadSymbolPointer>(re, m_name));
+  return re;
+}
+
+RegVal* SymbolValueVal::to_reg(Env* fe) {
+  auto re = fe->make_gpr(m_ts);
+  fe->emit(std::make_unique<IR_GetSymbolValue>(re, m_sym, m_sext));
+  return re;
 }

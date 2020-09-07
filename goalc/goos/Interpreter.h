@@ -32,6 +32,7 @@ class Interpreter {
   Object eval_list_return_last(const Object& form,
                                Object rest,
                                const std::shared_ptr<EnvironmentObject>& env);
+  bool truthy(const Object& o);
 
   Reader reader;
   Object global_environment;

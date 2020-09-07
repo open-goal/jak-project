@@ -29,4 +29,17 @@ std::string combine_path(std::vector<std::string> path) {
   return result;
 }
 
+void write_binary_file(const std::string& name, void* data, size_t size) {
+  FILE* fp = fopen(name.c_str(), "wb");
+  if (!fp) {
+    throw std::runtime_error("couldn't open file " + name);
+  }
+
+  if (fwrite(data, size, 1, fp) != 1) {
+    throw std::runtime_error("couldn't write file " + name);
+  }
+
+  fclose(fp);
+}
+
 }  // namespace util

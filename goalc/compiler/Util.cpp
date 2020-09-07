@@ -96,3 +96,11 @@ void Compiler::for_each_in_list(const goos::Object& list,
     throw_compile_error(list, "invalid list in for_each_in_list");
   }
 }
+
+std::string Compiler::as_string(const goos::Object& o) {
+  return o.as_string()->data;
+}
+
+std::string Compiler::symbol_string(const goos::Object& o) {
+  return o.as_symbol()->name;
+}

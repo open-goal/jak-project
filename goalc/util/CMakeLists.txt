@@ -1,1 +1,1 @@
-add_library(util SHARED text_util.cpp file_io.cpp)
+add_library(util SHARED text_util.cpp file_io.cpp Timer.cpp)

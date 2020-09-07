@@ -88,7 +88,6 @@ class FileEnv : public Env {
   void debug_print_tl();
   const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
 
-  // todo - is_empty
   bool is_empty();
   ~FileEnv() = default;
 
@@ -115,7 +114,7 @@ class DeclareEnv : public Env {
     bool inline_by_default = false;  // if a function, inline when possible?
     bool save_code = true;           // if a function, should we save the code?
     bool allow_inline = false;       // should we allow the user to use this an inline function
-  } m_settings;
+  } settings;
 };
 
 class FunctionEnv : public DeclareEnv {

@@ -27,12 +27,15 @@ static const std::unordered_map<
         //        // COMPILER CONTROL
         //        {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
-        //        {"asm-file", &Compiler::compile_asm_file},
+        {"asm-file", &Compiler::compile_asm_file},
+        {"listen-to-target", &Compiler::compile_listen_to_target},
+        {"reset-target", &Compiler::compile_reset_target},
+        {":status", &Compiler::compile_poke},
         //        {"test", &Compiler::compile_test},
         //        {"in-package", &Compiler::compile_in_package},
         //
         //        // CONDITIONAL COMPILATION
-        //        {"#cond", &Compiler::compile_gscond},
+        {"#cond", &Compiler::compile_gscond},
         //        {"defglobalconstant", &Compiler::compile_defglobalconstant},
         {"seval", &Compiler::compile_seval},
         //
@@ -41,7 +44,7 @@ static const std::unordered_map<
         //        {"when-goto", &Compiler::compile_when_goto},
         //
         //        // DEFINITION
-        //        {"define", &Compiler::compile_define},
+        {"define", &Compiler::compile_define},
         //        {"define-extern", &Compiler::compile_define_extern},
         //        {"set!", &Compiler::compile_set},
         //        {"defun-extern", &Compiler::compile_defun_extern},
@@ -70,7 +73,7 @@ static const std::unordered_map<
         //
         //        // MACRO
         //        {"print-type", &Compiler::compile_print_type},
-        //        {"quote", &Compiler::compile_quote},
+        {"quote", &Compiler::compile_quote},
         //        {"defconstant", &Compiler::compile_defconstant},
         //
         //        {"declare", &Compiler::compile_declare},
@@ -126,9 +129,7 @@ static const std::unordered_map<
         //
         //
         //
-        //        {"listen-to-target", &Compiler::compile_listen_to_target},
-        //        {"reset-target", &Compiler::compile_reset_target},
-        //        {":status", &Compiler::compile_poke},
+
         //
         //        // temporary testing hacks...
         //        {"send-test", &Compiler::compile_send_test_data},
@@ -140,6 +141,8 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
       return compile_pair(code, env);
     case goos::ObjectType::INTEGER:
       return compile_integer(code, env);
+    case goos::ObjectType::SYMBOL:
+      return compile_symbol(code, env);
     default:
       ice("Don't know how to compile " + code.print());
   }
@@ -179,4 +182,37 @@ Val* Compiler::compile_integer(const goos::Object& code, Env* env) {
 Val* Compiler::compile_integer(s64 value, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), value);
+}
+
+SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
+}
+
+Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
+  auto name = symbol_string(form);
+
+  if (name == "none") {
+    return get_none();
+  }
+
+  // todo mlet
+  // todo lexical
+  // todo global constant
+
+  return compile_get_symbol_value(name, env);
+}
+
+Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
+  auto existing_symbol = m_symbol_types.find(name);
+  if (existing_symbol == m_symbol_types.end()) {
+    throw std::runtime_error("The symbol " + name + " was not defined");
+  }
+
+  auto ts = existing_symbol->second;
+  auto sext = m_ts.lookup_type(ts)->get_load_signed();
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
+  auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);
+  return re;
 }
