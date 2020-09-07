@@ -33,6 +33,7 @@ class Env {
   virtual void constrain_reg(IRegConstraint constraint);
   virtual Val* lexical_lookup(goos::Object sym);
   virtual BlockEnv* find_block(const std::string& name);
+  virtual std::unordered_map<std::string, Label>& get_label_map();
   RegVal* make_gpr(TypeSpec ts);
   RegVal* make_xmm(TypeSpec ts);
   virtual ~Env() = default;
@@ -117,10 +118,18 @@ class DeclareEnv : public Env {
   } settings;
 };
 
+class IR_GotoLabel;
+
+struct UnresolvedGoto {
+  IR_GotoLabel* ir;
+  std::string label;
+};
+
 class FunctionEnv : public DeclareEnv {
  public:
   FunctionEnv(Env* parent, std::string name);
   std::string print() override;
+  std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
   void emit(std::unique_ptr<IR> ir) override;
   void finish();
@@ -140,14 +149,26 @@ class FunctionEnv : public DeclareEnv {
     m_vals.push_back(std::move(new_obj));
     return (T*)m_vals.back().get();
   }
+
+  template <typename T, class... Args>
+  T* alloc_env(Args&&... args) {
+    std::unique_ptr<T> new_obj = std::make_unique<T>(std::forward<Args>(args)...);
+    m_envs.push_back(std::move(new_obj));
+    return (T*)m_envs.back().get();
+  }
+
   int segment = -1;
   std::string method_of_type_name = "#f";
 
+  std::vector<UnresolvedGoto> unresolved_gotos;
+
  protected:
+  void resolve_gotos();
   std::string m_name;
   std::vector<std::unique_ptr<IR>> m_code;
   std::vector<std::unique_ptr<RegVal>> m_iregs;
   std::vector<std::unique_ptr<Val>> m_vals;
+  std::vector<std::unique_ptr<Env>> m_envs;
   std::vector<IRegConstraint> m_constraints;
   // todo, unresolved gotos
   AllocationResult m_regalloc_result;
@@ -156,6 +177,7 @@ class FunctionEnv : public DeclareEnv {
   bool m_aligned_stack_required = false;
 
   std::unordered_map<std::string, Env*> m_params;
+  std::unordered_map<std::string, Label> m_labels;
 };
 
 class BlockEnv : public Env {
@@ -164,11 +186,10 @@ class BlockEnv : public Env {
   std::string print() override;
   BlockEnv* find_block(const std::string& name) override;
 
- protected:
-  std::string m_name;
-  Label* m_end_label = nullptr;
-  Val* m_return_value = nullptr;
-  std::vector<TypeSpec> m_return_types;
+  std::string name;
+  Label end_label = nullptr;
+  RegVal* return_value = nullptr;
+  std::vector<TypeSpec> return_types;
 };
 
 class LexicalEnv : public Env {
@@ -179,6 +200,8 @@ class LexicalEnv : public Env {
 
 class LabelEnv : public Env {
  public:
+  std::unordered_map<std::string, Label>& get_label_map() override;
+
  protected:
   std::unordered_map<std::string, Label> m_labels;
 };

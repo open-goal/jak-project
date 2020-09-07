@@ -169,3 +169,74 @@ void IR_GetSymbolValue::do_codegen(emitter::ObjectGenerator* gen,
     gen->link_instruction_symbol_mem(instr, m_src->name());
   }
 }
+
+/////////////////////
+// RegSet
+/////////////////////
+
+IR_RegSet::IR_RegSet(const RegVal* dest, const RegVal* src) : m_dest(dest), m_src(src) {}
+
+RegAllocInstr IR_RegSet::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  rai.read.push_back(m_src->ireg());
+  if (m_dest->ireg().kind == m_src->ireg().kind) {
+    rai.is_move = true;  // only true if we aren't moving from register kind to register kind
+  }
+  return rai;
+}
+
+void IR_RegSet::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  auto val_reg = get_reg(m_src, allocs, irec);
+  auto dest_reg = get_reg(m_dest, allocs, irec);
+
+  if (val_reg == dest_reg) {
+    gen->add_instr(IGen::null(), irec);
+  } else {
+    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
+  }
+}
+
+std::string IR_RegSet::print() {
+  return fmt::format("mov {}, {}", m_dest->print(), m_src->print());
+}
+
+/////////////////////
+// GotoLabel
+/////////////////////
+
+IR_GotoLabel::IR_GotoLabel(const Label* dest) : m_dest(dest) {
+  m_resolved = true;
+}
+
+IR_GotoLabel::IR_GotoLabel() {
+  m_resolved = false;
+}
+
+std::string IR_GotoLabel::print() {
+  return fmt::format("goto {}", m_dest->print());
+}
+
+RegAllocInstr IR_GotoLabel::to_rai() {
+  assert(m_resolved);
+  RegAllocInstr rai;
+  rai.jumps.push_back(m_dest->idx);
+  rai.fallthrough = false;
+  return rai;
+}
+
+void IR_GotoLabel::do_codegen(emitter::ObjectGenerator* gen,
+                              const AllocationResult& allocs,
+                              emitter::IR_Record irec) {
+  (void)allocs;
+  auto instr = gen->add_instr(IGen::jmp_32(), irec);
+  gen->link_instruction_jump(instr, gen->get_future_ir_record_in_same_func(irec, m_dest->idx));
+}
+
+void IR_GotoLabel::resolve(const Label* dest) {
+  assert(!m_resolved);
+  m_dest = dest;
+  m_resolved = true;
+}

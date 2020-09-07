@@ -28,6 +28,7 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
   Arguments args = m_goos.get_args(o, rest, macro->args);
   auto mac_env_obj = EnvironmentObject::make_new();
   auto mac_env = mac_env_obj.as_env();
+  mac_env->parent_env = m_goos.global_environment.as_env();
   m_goos.set_args_in_env(o, args, macro->args, mac_env);
   m_goos.goal_to_goos.enclosing_method_type =
       get_parent_env_of_type<FunctionEnv>(env)->method_of_type_name;
@@ -85,5 +86,32 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
     default:
       throw_compile_error(form, "Can't quote this");
   }
+  return get_none();
+}
+
+Val* Compiler::compile_defglobalconstant(const goos::Object& form,
+                                         const goos::Object& _rest,
+                                         Env* env) {
+  auto rest = &_rest;
+  (void)env;
+  if (!rest->is_pair()) {
+    throw_compile_error(form, "invalid defglobalconstant");
+  }
+
+  auto sym = pair_car(*rest).as_symbol();
+  rest = &pair_cdr(*rest);
+  auto value = pair_car(*rest);
+
+  rest = &rest->as_pair()->cdr;
+  if (!rest->is_empty_list()) {
+    throw_compile_error(form, "invalid defglobalconstant");
+  }
+
+  // GOAL constant
+  m_global_constants[sym] = value;
+
+  // GOOS constant
+  m_goos.global_environment.as_env()->vars[sym] = value;
+
   return get_none();
 }

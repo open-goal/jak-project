@@ -19,10 +19,10 @@ static const std::unordered_map<
         //        // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
         {"begin", &Compiler::compile_begin},
-        //        {"block", &Compiler::compile_block},
-        //        {"return-from", &Compiler::compile_return_from},
-        //        {"label", &Compiler::compile_label},
-        //        {"goto", &Compiler::compile_goto},
+        {"block", &Compiler::compile_block},
+        {"return-from", &Compiler::compile_return_from},
+        {"label", &Compiler::compile_label},
+        {"goto", &Compiler::compile_goto},
         //
         //        // COMPILER CONTROL
         //        {"gs", &Compiler::compile_gs},
@@ -36,7 +36,7 @@ static const std::unordered_map<
         //
         //        // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
-        //        {"defglobalconstant", &Compiler::compile_defglobalconstant},
+        {"defglobalconstant", &Compiler::compile_defglobalconstant},
         {"seval", &Compiler::compile_seval},
         //
         //        // CONTROL FLOW
@@ -199,6 +199,21 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   // todo mlet
   // todo lexical
   // todo global constant
+
+  auto global_constant = m_global_constants.find(form.as_symbol());
+  auto existing_symbol = m_symbol_types.find(form.as_symbol()->name);
+
+  if (global_constant != m_global_constants.end()) {
+    // check there is no symbol with the same name
+    if (existing_symbol != m_symbol_types.end()) {
+      throw_compile_error(form,
+                          "symbol is both a runtime symbol and a global constant.  Something is "
+                          "likely very wrong.");
+    }
+
+    // got a global constant
+    return compile_error_guard(global_constant->second, env);
+  }
 
   return compile_get_symbol_value(name, env);
 }

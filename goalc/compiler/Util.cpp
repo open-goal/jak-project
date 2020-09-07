@@ -104,3 +104,17 @@ std::string Compiler::as_string(const goos::Object& o) {
 std::string Compiler::symbol_string(const goos::Object& o) {
   return o.as_symbol()->name;
 }
+
+const goos::Object& Compiler::pair_car(const goos::Object& o) {
+  return o.as_pair()->car;
+}
+
+const goos::Object& Compiler::pair_cdr(const goos::Object& o) {
+  return o.as_pair()->cdr;
+}
+
+void Compiler::expect_empty_list(const goos::Object& o) {
+  if (!o.is_empty_list()) {
+    throw_compile_error(o, "expected to be an empty list");
+  }
+}

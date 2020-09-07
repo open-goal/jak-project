@@ -203,5 +203,6 @@ void Compiler::typecheck(const goos::Object& form,
                          const TypeSpec& expected,
                          const TypeSpec& actual,
                          const std::string& error_message) {
+  (void)form;
   m_ts.typecheck(expected, actual, error_message, true, true);
 }

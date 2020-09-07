@@ -111,6 +111,12 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-get-symbol-1.gc", {"1342756\n"});  // 0x147d24 in hex
   runner.run_test("test-get-symbol-2.gc", {"1342764\n"});  // 0x147d2c in hex
   runner.run_test("test-define-1.gc", {"17\n"});
+  runner.run_test("test-nested-blocks-1.gc", {"7\n"});
+  runner.run_test("test-nested-blocks-2.gc", {"8\n"});
+  runner.run_test("test-nested-blocks-3.gc", {"7\n"});
+  runner.run_test("test-goto-1.gc", {"3\n"});
+  runner.run_test("test-defglobalconstant-1.gc", {"17\n"});
+  runner.run_test("test-defglobalconstant-2.gc", {"18\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

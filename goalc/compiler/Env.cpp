@@ -47,6 +47,10 @@ RegVal* Env::make_xmm(TypeSpec ts) {
   return make_ireg(std::move(ts), emitter::RegKind::XMM);
 }
 
+std::unordered_map<std::string, Label>& Env::get_label_map() {
+  return parent()->get_label_map();
+}
+
 ///////////////////
 // GlobalEnv
 ///////////////////
@@ -124,6 +128,24 @@ void NoEmitEnv::emit(std::unique_ptr<IR> ir) {
 }
 
 ///////////////////
+// BlockEnv
+///////////////////
+
+BlockEnv::BlockEnv(Env* parent, std::string _name) : Env(parent), name(std::move(_name)) {}
+
+std::string BlockEnv::print() {
+  return "block-" + name;
+}
+
+BlockEnv* BlockEnv::find_block(const std::string& block) {
+  if (name == block) {
+    return this;
+  } else {
+    return parent()->find_block(block);
+  }
+}
+
+///////////////////
 // FileEnv
 ///////////////////
 
@@ -179,7 +201,17 @@ void FunctionEnv::emit(std::unique_ptr<IR> ir) {
   m_code.push_back(std::move(ir));
 }
 void FunctionEnv::finish() {
-  // todo resolve gotos
+  resolve_gotos();
+}
+
+void FunctionEnv::resolve_gotos() {
+  for (auto& gt : unresolved_gotos) {
+    auto kv_label = m_labels.find(gt.label);
+    if (kv_label == m_labels.end()) {
+      throw std::runtime_error("Invalid goto " + gt.label);
+    }
+    gt.ir->resolve(&kv_label->second);
+  }
 }
 
 RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
@@ -189,4 +221,12 @@ RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
   auto rv = std::make_unique<RegVal>(ireg, ts);
   m_iregs.push_back(std::move(rv));
   return m_iregs.back().get();
+}
+
+std::unordered_map<std::string, Label>& FunctionEnv::get_label_map() {
+  return m_labels;
+}
+
+std::unordered_map<std::string, Label>& LabelEnv::get_label_map() {
+  return m_labels;
 }

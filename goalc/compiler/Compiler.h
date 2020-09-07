@@ -53,6 +53,9 @@ class Compiler {
           named);
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
+  const goos::Object& pair_car(const goos::Object& o);
+  const goos::Object& pair_cdr(const goos::Object& o);
+  void expect_empty_list(const goos::Object& o);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
@@ -75,6 +78,10 @@ class Compiler {
   // Block
   Val* compile_begin(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_top_level(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_block(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_return_from(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_label(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_goto(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // CompilerControl
   Val* compile_seval(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -90,6 +97,7 @@ class Compiler {
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

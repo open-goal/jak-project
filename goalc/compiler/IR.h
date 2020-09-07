@@ -99,4 +99,34 @@ class IR_GetSymbolValue : public IR {
   bool m_sext = false;
 };
 
+class IR_RegSet : public IR {
+ public:
+  IR_RegSet(const RegVal* dest, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_GotoLabel : public IR {
+ public:
+  IR_GotoLabel();
+  void resolve(const Label* dest);
+  explicit IR_GotoLabel(const Label* dest);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const Label* m_dest = nullptr;
+  bool m_resolved = false;
+};
+
 #endif  // JAK_IR_H
