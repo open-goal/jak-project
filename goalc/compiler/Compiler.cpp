@@ -3,7 +3,8 @@
 #include "common/link_types.h"
 #include "IR.h"
 #include "goalc/regalloc/allocate.h"
-#include "unistd.h"
+#include <chrono>
+#include <thread>
 
 using namespace goos;
 
@@ -167,7 +168,7 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
     if (!m_listener.is_connected()) {
       for (int i = 0; i < 1000; i++) {
         m_listener.connect_to_target();
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
         if (m_listener.is_connected()) {
           break;
         }
