@@ -64,27 +64,38 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
 
   // construct socket
-  socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+  socket_fd = open_socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
     printf("[Listener] Failed to create socket.\n");
     socket_fd = -1;
     return false;
   }
 
-  // set timeout for receive
-  timeval timeout = {};
+	// TODO - put in library
+#ifdef __linux
+	timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = 100000;
-  if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
-    printf("[Listener] setsockopt failed\n");
+  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
+      0) {
     close_socket(socket_fd);
-    socket_fd = -1;
+		socket_fd = -1;
     return false;
   }
+#elif _WIN32
+  unsigned long timeout = 100;  // ms
+  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
+      0) {
+		printf("[Listener] setsockopt failed\n");
+    close_socket(socket_fd);
+		socket_fd = -1;
+    return false;
+  }
+#endif
 
   // set nodelay, which makes small rapid messages faster, but large messages slower
-  int one = 1;
-  if (set_socket_option(socket_fd, TCP_SOCKET_LEVEL, TCP_NODELAY, one, sizeof(one))) {
+  char one = 1;
+  if (set_socket_option(socket_fd, TCP_SOCKET_LEVEL, TCP_NODELAY, &one, sizeof(one))) {
     printf("[Listener] failed to TCP_NODELAY\n");
     close_socket(socket_fd);
     socket_fd = -1;

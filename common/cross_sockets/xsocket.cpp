@@ -8,6 +8,24 @@
 #include <WS2tcpip.h>
 #endif
 
+#include <stdio.h>
+
+int open_socket(int af, int type, int protocol) {
+#ifdef __linux
+  return socket(af, type, protocol);
+#elif _WIN32
+  WSADATA wsaData = {0};
+  int iResult = 0;
+  // Initialize Winsock
+  iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0) {
+    printf("WSAStartup failed: %d\n", iResult);
+    return 1;
+  }
+	return socket(af, type, protocol);
+#endif
+}
+
 void close_socket(int sock) {
   if (sock < 0) {
     return;
@@ -16,15 +34,20 @@ void close_socket(int sock) {
   close(sock);
 #elif _WIN32
   closesocket(sock);
+  WSACleanup();
 #endif
 }
 
-int set_socket_option(int socket, int level, int optname, int optval, int optlen) {
+int set_socket_option(int socket, int level, int optname, const char* optval, int optlen) {
 #ifdef __linux
-  return setsockopt(socket, level, optname, &optval, optlen);
+  return setsockopt(socket, level, optname, optval, optlen);
 #elif _WIN32
-  const char optVal = optval;
-  return setsockopt(socket, level, optname, &optVal, optlen);
+	int ret = setsockopt(socket, level, optname, optval, optlen);
+  if (ret < 0) {
+		int err = WSAGetLastError();
+		printf("Failed to setsockopt - Err: %d\n", err);
+	}
+  return ret;
 #endif
 }
 

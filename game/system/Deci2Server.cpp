@@ -4,7 +4,6 @@
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
  */
 
-
 #include <cstdio>
 #include <cassert>
 #include <utility>
@@ -17,7 +16,8 @@
 #include <netinet/tcp.h>
 #include <unistd.h>
 #elif _WIN32
-#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
 
@@ -48,7 +48,7 @@ Deci2Server::~Deci2Server() {
  * Start waiting for the Listener to connect
  */
 bool Deci2Server::init() {
-  server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  server_socket = open_socket(AF_INET, SOCK_STREAM, 0);
   if (server_socket < 0) {
     server_socket = -1;
     return false;
@@ -58,33 +58,41 @@ bool Deci2Server::init() {
   int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
   int server_socket_tcp_level = SOL_TCP;
 #elif _WIN32
-  int server_socket_opt = SO_REUSEADDR | SO_BROADCAST;
-  int server_socket_tcp_level = IPPROTO_IP;
+  int server_socket_opt = SO_EXCLUSIVEADDRUSE;
+  int server_socket_tcp_level = IPPROTO_TCP;
 #endif
 
-  int opt = 1;
-  if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, opt, sizeof(opt))) {
-    printf("[Deci2Server] Failed to setsockopt 1\n");
+  char opt = 1;
+  if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, &opt, sizeof(opt)) <
+      0) {
     close_server_socket();
     return false;
   }
 
-  int one = 1;
-  if (set_socket_option(server_socket, server_socket_tcp_level, TCP_NODELAY, one, sizeof(one))) {
-    printf("[Deci2Server] Failed to setsockopt 2\n");
+  if (set_socket_option(server_socket, server_socket_tcp_level, TCP_NODELAY, &opt,
+                        sizeof(opt)) < 0) {
     close_server_socket();
     return false;
   }
 
-  timeval timeout = {};
+// TODO - put in library
+#ifdef __linux
+	timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = 100000;
-
-  if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
-    printf("[Deci2Server] Failed to setsockopt 3\n");
+  if (set_socket_option(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
+      0) {
     close_server_socket();
     return false;
   }
+#elif _WIN32
+  unsigned long timeout = 100;  // ms
+  if (set_socket_option(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
+      0) {
+    close_server_socket();
+    return false;
+  }
+#endif
 
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;
@@ -266,6 +274,7 @@ void Deci2Server::run() {
 void Deci2Server::accept_thread_func() {
   socklen_t l = sizeof(addr);
   while (!kill_accept_thread) {
+		// TODO - might want to do a WSAStartUp call here as well, else it won't be balanced on the close
     new_sock = accept(server_socket, (sockaddr*)&addr, &l);
     if (new_sock >= 0) {
       u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
