@@ -71,25 +71,12 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
     return false;
   }
 
-  // TODO - put in library
-#ifdef __linux
-  timeval timeout = {};
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 100000;
-  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
-    close_socket(socket_fd);
-    socket_fd = -1;
-    return false;
-  }
-#elif _WIN32
-  unsigned long timeout = 100;  // ms
-  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
+  if (set_socket_timeout(socket_fd, 100000) < 0) {
     printf("[Listener] setsockopt failed\n");
     close_socket(socket_fd);
     socket_fd = -1;
     return false;
   }
-#endif
 
   // set nodelay, which makes small rapid messages faster, but large messages slower
   char one = 1;

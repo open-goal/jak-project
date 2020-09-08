@@ -15,5 +15,6 @@ const int TCP_SOCKET_LEVEL = IPPROTO_TCP;
 int open_socket(int af, int type, int protocol);
 void close_socket(int sock);
 int set_socket_option(int socket, int level, int optname, const char* optval, int optlen);
+int set_socket_timeout(int socket, int microSeconds);
 int write_to_socket(int socket, const char* buf, int len);
 int read_from_socket(int socket, char* buf, int len);

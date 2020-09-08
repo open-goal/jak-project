@@ -74,24 +74,10 @@ bool Deci2Server::init() {
     return false;
   }
 
-// TODO - put in library
-#ifdef __linux
-  timeval timeout = {};
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 100000;
-  if (set_socket_option(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
-      0) {
+  if (set_socket_timeout(server_socket, 100000) < 0) {
     close_server_socket();
     return false;
   }
-#elif _WIN32
-  unsigned long timeout = 100;  // ms
-  if (set_socket_option(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
-      0) {
-    close_server_socket();
-    return false;
-  }
-#endif
 
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;

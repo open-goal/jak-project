@@ -51,6 +51,17 @@ int set_socket_option(int socket, int level, int optname, const char* optval, in
 #endif
 }
 
+int set_socket_timeout(int socket, int microSeconds) {
+#ifdef __linux
+  timeval timeout = {};
+  timeout.tv_sec = 0;
+  timeout.tv_usec = microSeconds;
+#elif _WIN32
+  unsigned long timeout = microSeconds / 1000;  // milliseconds
+#endif
+  return set_socket_option(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+}
+
 int write_to_socket(int socket, const char* buf, int len) {
 #ifdef __linux
   return write(socket, buf, len);
