@@ -33,40 +33,8 @@ IF (WIN32)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 ENDIF()
 
-# includes relative to top level jak-project folder
-include_directories(./)
 
-# build asset packer/unpacker
-add_subdirectory(asset_tool)
+add_library(util SHARED FileIO.cpp)
 
-# build type_system library for compiler/decompiler
-add_subdirectory(common/type_system)
-
-# build decompiler
-add_subdirectory(decompiler)
-
-# build the game code in C++
-add_subdirectory(game)
-
-# build the compiler
-add_subdirectory(goalc)
-
-# build the gtest libraries
-add_subdirectory(third-party/googletest)
-
-# build tests
-add_subdirectory(test)
-
-# build minilzo library
-add_subdirectory(third-party/minilzo)
-
-# build format library
-add_subdirectory(third-party/fmt)
-
-# build utility library
-add_subdirectory(common/util)
-
-# windows memory management lib
-IF (WIN32)
-  add_subdirectory(third-party/mman)
-ENDIF()
+include_directories(/.)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../A ${CMAKE_CURRENT_BINARY_DIR}/A)

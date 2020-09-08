@@ -14,7 +14,7 @@
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
 #include "decompiler/util/BinaryReader.h"
-#include "decompiler/util/FileIO.h"
+#include "common/util/FileIO.h"
 #include "decompiler/util/Timer.h"
 #include "decompiler/Function/BasicBlocks.h"
 

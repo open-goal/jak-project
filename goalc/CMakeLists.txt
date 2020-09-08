@@ -26,12 +26,12 @@ add_library(compiler
         compiler/Compiler.cpp
         )
 
-add_executable(goalc main.cpp
+add_executable(goalc util main.cpp
         )
 
 IF (WIN32)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(compiler util goos type_system mman)
+  target_link_libraries(compiler compiler_util goos type_system mman)
 ENDIF()
 
-target_link_libraries(goalc util goos compiler type_system)
+target_link_libraries(goalc compiler_util goos compiler type_system)
