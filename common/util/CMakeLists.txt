@@ -37,4 +37,4 @@ ENDIF()
 add_library(util SHARED FileIO.cpp)
 
 include_directories(/.)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../A ${CMAKE_CURRENT_BINARY_DIR}/A)
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../A ${CMAKE_CURRENT_BINARY_DIR}/A)
