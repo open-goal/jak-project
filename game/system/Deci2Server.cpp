@@ -56,28 +56,28 @@ bool Deci2Server::init() {
 
 #ifdef __linux
   int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
-  int server_socket_tcp_level = SOL_TCP;
 #elif _WIN32
   int server_socket_opt = SO_EXCLUSIVEADDRUSE;
-  int server_socket_tcp_level = IPPROTO_TCP;
 #endif
 
-  char opt = 1;
+  int opt = 1;
   if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, &opt, sizeof(opt)) < 0) {
     close_server_socket();
     return false;
   }
+  printf("[Deci2Server] Created Socket Options\n");
 
-  if (set_socket_option(server_socket, server_socket_tcp_level, TCP_NODELAY, &opt, sizeof(opt)) <
-      0) {
+  if (set_socket_option(server_socket, TCP_SOCKET_LEVEL, TCP_NODELAY, &opt, sizeof(opt)) < 0) {
     close_server_socket();
     return false;
   }
+  printf("[Deci2Server] Created TCP Socket Options\n");
 
   if (set_socket_timeout(server_socket, 100000) < 0) {
     close_server_socket();
     return false;
   }
+  printf("[Deci2Server] Created Socket Timeout\n");
 
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;

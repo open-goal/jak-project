@@ -7,8 +7,9 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
-
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 int open_socket(int af, int type, int protocol) {
 #ifdef __linux
@@ -38,28 +39,36 @@ void close_socket(int sock) {
 #endif
 }
 
-int set_socket_option(int socket, int level, int optname, const char* optval, int optlen) {
-#ifdef __linux
-  return setsockopt(socket, level, optname, optval, optlen);
-#elif _WIN32
-  int ret = setsockopt(socket, level, optname, optval, optlen);
+int set_socket_option(int socket, int level, int optname, const void* optval, int optlen) {
+  int ret = setsockopt(socket, level, optname, (char*)&optval, optlen);
+  if (ret < 0) {
+    printf("Failed to setsockopt(%d, %d, %d, _, _) - Error: %s\n", socket, level, optname,
+           strerror(errno));
+  }
+#ifdef _WIN32
   if (ret < 0) {
     int err = WSAGetLastError();
-    printf("Failed to setsockopt - Err: %d\n", err);
+    printf("WSAGetLastError: %d\n", err);
   }
-  return ret;
 #endif
+  return ret;
 }
 
-int set_socket_timeout(int socket, int microSeconds) {
+int set_socket_timeout(int socket, long microSeconds) {
 #ifdef __linux
-  timeval timeout = {};
+  struct timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = microSeconds;
+  int ret = setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&timeout, sizeof(timeout));
+  if (ret < 0) {
+    printf("Failed to setsockopt(%d, %d, %d, _, _) - Error: %s\n", socket, SOL_SOCKET, SO_RCVTIMEO,
+           strerror(errno));
+  }
+  return ret;
 #elif _WIN32
   unsigned long timeout = microSeconds / 1000;  // milliseconds
+  return set_socket_option(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 #endif
-  return set_socket_option(socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
 }
 
 int write_to_socket(int socket, const char* buf, int len) {

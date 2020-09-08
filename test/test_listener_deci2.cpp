@@ -55,9 +55,10 @@ TEST(Listener, DeciThenListener) {
     Listener l;
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
+    bool connected = l.connect_to_target();
+    EXPECT_TRUE(connected);
     // TODO - some sort of backoff and retry would be better
-    while (!s.check_for_listener()) {
+    while (connected && !s.check_for_listener()) {
     }
 
     EXPECT_TRUE(s.check_for_listener());
@@ -85,9 +86,10 @@ TEST(Listener, ListenerThenDeci) {
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
+    bool connected = l.connect_to_target();
+    EXPECT_TRUE(connected);
     // TODO - some sort of backoff and retry would be better
-    while (!s.check_for_listener()) {
+    while (connected && !s.check_for_listener()) {
     }
   }
 }
