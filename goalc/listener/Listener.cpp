@@ -14,6 +14,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+
+// remove the evil windows min/max macros!
+#undef min
+#undef max
 #endif
 
 // TODO - i think im not including the dependency right..?
