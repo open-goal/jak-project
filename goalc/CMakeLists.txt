@@ -17,13 +17,14 @@ add_library(compiler
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
-        compiler/Compiler.cpp
-        )
+        compiler/Compiler.cpp)
 
 add_executable(goalc main.cpp)
 
 IF (WIN32)
-  target_link_libraries(compiler cross_sockets util goos type_system mman)
-ELSE()
-	target_link_libraries(compiler cross_sockets util goos goalc type_system)
+	target_link_libraries(compiler fmt mman type_system)
+ELSE ()
+	target_link_libraries(compiler fmt type_system)
 ENDIF()
+
+target_link_libraries(goalc util goos compiler)
