@@ -1,4 +1,4 @@
-add_subdirectory(util)
+add_subdirectory(compiler_util)
 add_subdirectory(goos)
 
 IF (WIN32)
@@ -26,7 +26,7 @@ add_library(compiler
         compiler/Compiler.cpp
         )
 
-add_executable(goalc util main.cpp
+add_executable(goalc compiler_util main.cpp
         )
 
 IF (WIN32)

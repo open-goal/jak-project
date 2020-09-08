@@ -11,8 +11,8 @@
 
 #include "Reader.h"
 #include "third-party/linenoise.h"
-#include "goalc/util/file_io.h"
-#include "goalc/util/text_util.h"
+#include "goalc/compiler_util/file_io.h"
+#include "goalc/compiler_util/text_util.h"
 
 namespace goos {
 

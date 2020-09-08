@@ -9,7 +9,7 @@
 #include <memory>
 #include "Object.h"
 #include "Reader.h"
-#include "goalc/util/MatchParam.h"
+#include "goalc/compiler_util/MatchParam.h"
 
 namespace goos {
 class Interpreter {

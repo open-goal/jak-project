@@ -8,7 +8,7 @@
 
 int main(int argc, char** argv) {
   printf("Jak Disassembler\n");
-  init_crc();
+  init_crc2();
   init_opcode_info();
 
   if (argc != 4) {

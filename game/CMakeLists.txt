@@ -80,6 +80,7 @@ add_library(runtime ${RUNTIME_SOURCE})
 IF (WIN32)
   # set stuff for windows
   target_link_libraries(gk mman)
+  target_link_libraries(gk util)
 ELSE()
   # set stuff for other systems
   target_link_libraries(gk pthread)
