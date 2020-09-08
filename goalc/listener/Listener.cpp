@@ -376,7 +376,7 @@ bool Listener::wait_for_ack() {
   for (int i = 0; i < 2000; i++) {
     if (got_ack)
       return true;
-    usleep(1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 
   waiting_for_ack = false;
