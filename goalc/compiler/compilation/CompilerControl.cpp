@@ -63,7 +63,13 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   timing.emplace_back("read", reader_timer.getMs());
 
   Timer compile_timer;
-  std::string obj_file_name = basename(filename.c_str());
+  std::string obj_file_name = filename;
+  for (int idx = int(filename.size()) - 1; idx-- > 0;) {
+    if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
+      obj_file_name = filename.substr(idx + 1);
+    }
+  }
+
   obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
   auto obj_file = compile_object_file(obj_file_name, code, !no_code);
   timing.emplace_back("compile", compile_timer.getMs());
