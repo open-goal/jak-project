@@ -84,7 +84,7 @@ void deci2_runner(SystemThreadInterface& iface) {
       server.run();
     } else {
       // no connection yet.  Do a sleep so we don't spam checking the listener.
-			std::this_thread::sleep_for(std::chrono::microseconds(50000));
+      std::this_thread::sleep_for(std::chrono::microseconds(50000));
     }
   }
 }

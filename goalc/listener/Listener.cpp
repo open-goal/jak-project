@@ -71,24 +71,22 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
     return false;
   }
 
-	// TODO - put in library
+  // TODO - put in library
 #ifdef __linux
-	timeval timeout = {};
+  timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = 100000;
-  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
-      0) {
+  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
     close_socket(socket_fd);
-		socket_fd = -1;
+    socket_fd = -1;
     return false;
   }
 #elif _WIN32
   unsigned long timeout = 100;  // ms
-  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
-      0) {
-		printf("[Listener] setsockopt failed\n");
+  if (set_socket_option(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
+    printf("[Listener] setsockopt failed\n");
     close_socket(socket_fd);
-		socket_fd = -1;
+    socket_fd = -1;
     return false;
   }
 #endif
@@ -206,7 +204,8 @@ void Listener::receive_func() {
           while (rcvd < hdr->deci2_header.len) {
             if (!m_connected)
               return;
-            int got = read_from_socket(socket_fd, ack_recv_buff + ack_recv_prog, hdr->deci2_header.len - rcvd);
+            int got = read_from_socket(socket_fd, ack_recv_buff + ack_recv_prog,
+                                       hdr->deci2_header.len - rcvd);
             got = got > 0 ? got : 0;
             rcvd += got;
             ack_recv_prog += got;

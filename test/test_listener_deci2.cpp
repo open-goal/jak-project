@@ -23,12 +23,6 @@ TEST(Listener, DeciInit) {
   EXPECT_TRUE(s.init());
 }
 
-// TEST(Listener, TwoDeciServers) {
-//  Deci2Server s1, s2;
-//  EXPECT_TRUE(s1.init());
-//  EXPECT_TRUE(s2.init());
-//}
-
 /*!
  * Try to connect when no Deci2Server is running
  */
@@ -62,9 +56,8 @@ TEST(Listener, DeciThenListener) {
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
-    // kind of a hack.
+    // TODO - some sort of backoff and retry would be better
     while (!s.check_for_listener()) {
-      // printf("...\n");
     }
 
     EXPECT_TRUE(s.check_for_listener());
@@ -93,34 +86,8 @@ TEST(Listener, ListenerThenDeci) {
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_TRUE(l.connect_to_target());
+    // TODO - some sort of backoff and retry would be better
     while (!s.check_for_listener()) {
-      //      printf("...\n");
     }
-  }
-}
-
-TEST(Listener, ListenerMultipleDecis) {
-  Listener l;
-  EXPECT_FALSE(l.connect_to_target());
-  {
-    Deci2Server s(always_false);
-    EXPECT_TRUE(s.init());
-    EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
-    while (!s.check_for_listener()) {
-      // printf("...\n");
-    }
-    l.disconnect();
-  }
-
-  {
-    Deci2Server s(always_false);
-    EXPECT_TRUE(s.init());
-    EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
-    while (!s.check_for_listener()) {
-      // printf("...\n");
-    }
-    l.disconnect();
   }
 }

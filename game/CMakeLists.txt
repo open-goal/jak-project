@@ -81,5 +81,5 @@ IF (WIN32)
   target_link_libraries(gk cross_sockets mman)
 ELSE()
   # set stuff for other systems
-  target_link_libraries(gk cross_sockets)
+  target_link_libraries(gk cross_sockets pthread)
 ENDIF()

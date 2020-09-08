@@ -63,21 +63,20 @@ bool Deci2Server::init() {
 #endif
 
   char opt = 1;
-  if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, &opt, sizeof(opt)) <
-      0) {
+  if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, &opt, sizeof(opt)) < 0) {
     close_server_socket();
     return false;
   }
 
-  if (set_socket_option(server_socket, server_socket_tcp_level, TCP_NODELAY, &opt,
-                        sizeof(opt)) < 0) {
+  if (set_socket_option(server_socket, server_socket_tcp_level, TCP_NODELAY, &opt, sizeof(opt)) <
+      0) {
     close_server_socket();
     return false;
   }
 
 // TODO - put in library
 #ifdef __linux
-	timeval timeout = {};
+  timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = 100000;
   if (set_socket_option(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) <
@@ -274,7 +273,8 @@ void Deci2Server::run() {
 void Deci2Server::accept_thread_func() {
   socklen_t l = sizeof(addr);
   while (!kill_accept_thread) {
-		// TODO - might want to do a WSAStartUp call here as well, else it won't be balanced on the close
+    // TODO - might want to do a WSAStartUp call here as well, else it won't be balanced on the
+    // close
     new_sock = accept(server_socket, (sockaddr*)&addr, &l);
     if (new_sock >= 0) {
       u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};

@@ -22,7 +22,7 @@ int open_socket(int af, int type, int protocol) {
     printf("WSAStartup failed: %d\n", iResult);
     return 1;
   }
-	return socket(af, type, protocol);
+  return socket(af, type, protocol);
 #endif
 }
 
@@ -42,11 +42,11 @@ int set_socket_option(int socket, int level, int optname, const char* optval, in
 #ifdef __linux
   return setsockopt(socket, level, optname, optval, optlen);
 #elif _WIN32
-	int ret = setsockopt(socket, level, optname, optval, optlen);
+  int ret = setsockopt(socket, level, optname, optval, optlen);
   if (ret < 0) {
-		int err = WSAGetLastError();
-		printf("Failed to setsockopt - Err: %d\n", err);
-	}
+    int err = WSAGetLastError();
+    printf("Failed to setsockopt - Err: %d\n", err);
+  }
   return ret;
 #endif
 }
