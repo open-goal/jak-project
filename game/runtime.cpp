@@ -12,7 +12,9 @@
 #include <Windows.h>
 #endif
 
+#include <chrono>
 #include <cstring>
+#include <thread>
 
 #include "runtime.h"
 #include "system/SystemThread.h"
@@ -45,11 +47,6 @@
 
 u8* g_ee_main_mem = nullptr;
 
-/*!
- * TODO-WINDOWS
- * runtime.cpp - Deci2Listener has been disabled for now, pending rewriting for Windows.
- */
-
 namespace {
 
 /*!
@@ -57,8 +54,6 @@ namespace {
  */
 
 void deci2_runner(SystemThreadInterface& iface) {
-// TODO-WINDOWS
-#ifdef __linux__
   // callback function so the server knows when to give up and shutdown
   std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
@@ -89,10 +84,9 @@ void deci2_runner(SystemThreadInterface& iface) {
       server.run();
     } else {
       // no connection yet.  Do a sleep so we don't spam checking the listener.
-      usleep(50000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50000));
     }
   }
-#endif
 }
 
 // EE System
@@ -236,10 +230,7 @@ u32 exec_runtime(int argc, char** argv) {
   // step 1: sce library prep
   iop::LIBRARY_INIT();
   ee::LIBRARY_INIT_sceCd();
-// TODO-WINDOWS
-#ifdef __linux__
   ee::LIBRARY_INIT_sceDeci2();
-#endif
   ee::LIBRARY_INIT_sceSif();
 
   // step 2: system prep

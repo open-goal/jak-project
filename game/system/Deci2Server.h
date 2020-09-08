@@ -4,11 +4,14 @@
  * Works with deci2.cpp (sceDeci2) to implement the networking on target
  */
 
-#ifdef __linux__
 #ifndef JAK1_DECI2SERVER_H
 #define JAK1_DECI2SERVER_H
 
+#ifdef __linux
 #include <netinet/in.h>
+#elif _WIN32
+#include <Windows.h>
+#endif
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -32,11 +35,12 @@ class Deci2Server {
   void run();
 
  private:
+  void close_server_socket();
   void accept_thread_func();
   bool kill_accept_thread = false;
   char* buffer = nullptr;
-  int server_fd = -1;
-  sockaddr_in addr;
+  int server_socket = -1;
+  struct sockaddr_in addr = {};
   int new_sock = -1;
   bool server_initialized = false;
   bool accept_thread_running = false;
@@ -52,4 +56,3 @@ class Deci2Server {
 };
 
 #endif  // JAK1_DECI2SERVER_H
-#endif

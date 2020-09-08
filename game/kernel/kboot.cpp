@@ -5,6 +5,9 @@
  */
 
 #include <cstring>
+#include <chrono>
+#include <thread>
+
 #include "common/common_types.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
@@ -152,21 +155,14 @@ void KernelCheckAndDispatch() {
       }
     }
 
-    // TODO-WINDOWS
-#ifdef __linux__
     ClearPending();
-#endif
 
     // if the listener function changed, it means the kernel ran it, so we should notify compiler.
     if (MasterDebug && ListenerFunction->value != old_listener) {
       SendAck();
     }
 
-#ifdef _WIN32
-    Sleep(1000);  // todo - remove this
-#elif __linux__
-    usleep(1000);
-#endif
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 }
 

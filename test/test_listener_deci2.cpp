@@ -1,5 +1,3 @@
-#ifdef __linux__
-
 #include "gtest/gtest.h"
 #include "goalc/listener/Listener.h"
 #include "game/system/Deci2Server.h"
@@ -24,12 +22,6 @@ TEST(Listener, DeciInit) {
   Deci2Server s(always_false);
   EXPECT_TRUE(s.init());
 }
-
-// TEST(Listener, TwoDeciServers) {
-//  Deci2Server s1, s2;
-//  EXPECT_TRUE(s1.init());
-//  EXPECT_TRUE(s2.init());
-//}
 
 /*!
  * Try to connect when no Deci2Server is running
@@ -63,10 +55,10 @@ TEST(Listener, DeciThenListener) {
     Listener l;
     EXPECT_FALSE(s.check_for_listener());
     EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
-    // kind of a hack.
-    while (!s.check_for_listener()) {
-      // printf("...\n");
+    bool connected = l.connect_to_target();
+    EXPECT_TRUE(connected);
+    // TODO - some sort of backoff and retry would be better
+    while (connected && !s.check_for_listener()) {
     }
 
     EXPECT_TRUE(s.check_for_listener());
@@ -94,37 +86,10 @@ TEST(Listener, ListenerThenDeci) {
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
-    while (!s.check_for_listener()) {
-      //      printf("...\n");
+    bool connected = l.connect_to_target();
+    EXPECT_TRUE(connected);
+    // TODO - some sort of backoff and retry would be better
+    while (connected && !s.check_for_listener()) {
     }
   }
 }
-
-TEST(Listener, ListenerMultipleDecis) {
-  Listener l;
-  EXPECT_FALSE(l.connect_to_target());
-  {
-    Deci2Server s(always_false);
-    EXPECT_TRUE(s.init());
-    EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
-    while (!s.check_for_listener()) {
-      // printf("...\n");
-    }
-    l.disconnect();
-  }
-
-  {
-    Deci2Server s(always_false);
-    EXPECT_TRUE(s.init());
-    EXPECT_FALSE(s.check_for_listener());
-    EXPECT_TRUE(l.connect_to_target());
-    while (!s.check_for_listener()) {
-      // printf("...\n");
-    }
-    l.disconnect();
-  }
-}
-
-#endif

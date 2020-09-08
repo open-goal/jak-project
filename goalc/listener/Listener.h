@@ -38,7 +38,7 @@ class Listener {
   char* m_buffer = nullptr;             //! buffer for incoming messages
   bool m_connected = false;             //! do we think we are connected?
   bool receive_thread_running = false;  //! is the receive thread unjoined?
-  int socket_fd = -1;                   //! socket
+  int listen_socket = -1;               //! socket
   bool got_ack = false;
   bool waiting_for_ack = false;
 
