@@ -25,7 +25,7 @@ ELSE()
   target_link_libraries(goalc-test goos util listener runtime compiler type_system gtest)
 ENDIF()
 
-if(CMAKE_COMPILER_IS_GNUCXX)
+if(CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   setup_target_for_coverage_lcov(NAME goalc-test_coverage
