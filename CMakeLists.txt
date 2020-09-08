@@ -33,6 +33,8 @@ IF (WIN32)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 ENDIF()
 
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+
 # includes relative to top level jak-project folder
 include_directories(./)
 

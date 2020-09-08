@@ -1,5 +1,3 @@
-enable_testing()
-
 add_executable(goalc-test
         test_main.cpp
         test_test.cpp
@@ -16,6 +14,8 @@ add_executable(goalc-test
         test_emitter_integer_math.cpp
         )
 
+enable_testing()
+
 IF (WIN32)
 	set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   # TODO - implement windows listener
@@ -24,3 +24,12 @@ IF (WIN32)
 ELSE()
   target_link_libraries(goalc-test goos util listener runtime compiler type_system gtest)
 ENDIF()
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
+  setup_target_for_coverage_lcov(NAME goalc-test_coverage
+                                 EXECUTABLE goalc-test --gtest_color=yes
+                                 DEPENDENCIES goalc-test
+                                 EXCLUDE "test/*" "third-party/*" "/usr/include/*")
+endif()
