@@ -7,5 +7,3 @@ export NEXT_DIR=$DIR
 export FAKE_ISO_PATH=/game/fake_iso.txt
 cd $DIR/build/
 make goalc-test_coverage
-ls
-ls ..
