@@ -35,6 +35,11 @@ ENDIF()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
+endif()
+
 # includes relative to top level jak-project folder
 include_directories(./)
 
