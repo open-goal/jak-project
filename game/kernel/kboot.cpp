@@ -153,7 +153,7 @@ void KernelCheckAndDispatch() {
 #ifdef __linux__
         cprintf("%ld\n", result);
 #else
-        cprintf("%lld\n", result)
+        cprintf("%lld\n", result);
 #endif
         ListenerFunction->value = s7.offset;
       }
