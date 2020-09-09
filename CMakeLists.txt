@@ -6,12 +6,13 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Set default compile flags for GCC
 # optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-if(CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_COMPILER_IS_GNUCXX)
     message(STATUS "GCC detected, adding compile flags")
-    set(CMAKE_CXX_FLAGS 
-        "${CMAKE_CXX_FLAGS} \
+    set(CMAKE_CXX_FLAGS
+            "${CMAKE_CXX_FLAGS} \
         -Wall \
 				-Winit-self \
+				-ggdb \
         -Wextra \
         -Wcast-align \
         -Wcast-qual \
@@ -22,16 +23,16 @@ if(CMAKE_COMPILER_IS_GNUCXX)
         -Wredundant-decls \
         -Wshadow \
         -Wsign-promo")
-else()
-		set(CMAKE_CXX_FLAGS "/EHsc")
-endif(CMAKE_COMPILER_IS_GNUCXX)
+else ()
+    set(CMAKE_CXX_FLAGS "/EHsc")
+endif (CMAKE_COMPILER_IS_GNUCXX)
 
 IF (WIN32)
-  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-ENDIF()
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+ENDIF ()
 
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
@@ -79,5 +80,5 @@ add_subdirectory(third-party/fmt)
 
 # windows memory management lib
 IF (WIN32)
-  add_subdirectory(third-party/mman)
-ENDIF()
+    add_subdirectory(third-party/mman)
+ENDIF ()

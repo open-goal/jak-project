@@ -805,11 +805,9 @@ Object Interpreter::eval_quasiquote(const Object& form,
   return quasiquote_helper(rest.as_pair()->car, env);
 }
 
-namespace {
-bool truthy(const Object& o) {
+bool Interpreter::truthy(const Object& o) {
   return !(o.is_symbol() && o.as_symbol()->name == "#f");
 }
-}  // namespace
 
 /*!
  * Scheme "cond" statement - tested by integrated tests only.

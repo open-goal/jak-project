@@ -9,6 +9,6 @@
 #include "common/common_types.h"
 
 extern u8* g_ee_main_mem;
-void exec_runtime(int argc, char** argv);
+u32 exec_runtime(int argc, char** argv);
 
 #endif  // JAK1_RUNTIME_H

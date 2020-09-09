@@ -12,6 +12,7 @@ add_executable(goalc-test
         test_emitter_loads_and_store.cpp
         test_emitter_xmm32.cpp
         test_emitter_integer_math.cpp
+        test_compiler_and_runtime.cpp
         )
 
 enable_testing()

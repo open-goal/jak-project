@@ -138,8 +138,8 @@ u32 InitRPC() {
  */
 void StopIOP() {
   x[2] = 0x14;  // todo - this type and message
-  RpcSync(PLAYER_RPC_CHANNEL);
-  RpcCall(PLAYER_RPC_CHANNEL, 0, false, x, 0x50, nullptr, 0);
+                //  RpcSync(PLAYER_RPC_CHANNEL);
+                //  RpcCall(PLAYER_RPC_CHANNEL, 0, false, x, 0x50, nullptr, 0);
   printf("IOP shut down\n");
   //  sceDmaSync(0x10009000, 0, 0);
   printf("DMA shut down\n");

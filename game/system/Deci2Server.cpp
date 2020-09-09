@@ -263,6 +263,7 @@ void Deci2Server::accept_thread_func() {
     // close
     new_sock = accept(server_socket, (sockaddr*)&addr, &l);
     if (new_sock >= 0) {
+      set_socket_timeout(new_sock, 100000);
       u32 versions[2] = {versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR};
       write_to_socket(new_sock, (char*)&versions, 8);  // todo, check result?
       server_connected = true;
