@@ -2,12 +2,12 @@
 ![Build](https://github.com/water111/jak-project/workflows/Build/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
 
-## Table of Contents
+## Table of Contentss
 
 <!-- toc -->
 
 - [Jak Project](#jak-project)
-  - [Table of Contents](#table-of-contents)
+  - [Table of Contentss](#table-of-contentss)
   - [Requirements](#requirements)
   - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
   - [Getting Started - Windows](#getting-started---windows)
