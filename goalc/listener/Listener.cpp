@@ -83,7 +83,7 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
     return false;
   }
 
-  if (set_socket_timeout(listen_socket, 100000) < 0) {
+  if (set_socket_timeout(listen_socket, 500000) < 0) {
     close_socket(listen_socket);
     listen_socket = -1;
     return false;

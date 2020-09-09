@@ -46,7 +46,7 @@ TEST(Listener, DeciCheckNoListener) {
 }
 
 TEST(Listener, DeciThenListener) {
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3; i++) {
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
@@ -66,7 +66,7 @@ TEST(Listener, DeciThenListener) {
 }
 
 TEST(Listener, DeciThenListener2) {
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3; i++) {
     Deci2Server s(always_false);
     EXPECT_TRUE(s.init());
     EXPECT_FALSE(s.check_for_listener());
@@ -80,7 +80,7 @@ TEST(Listener, DeciThenListener2) {
 }
 
 TEST(Listener, ListenerThenDeci) {
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 3; i++) {
     Listener l;
     EXPECT_FALSE(l.connect_to_target());
     Deci2Server s(always_false);
