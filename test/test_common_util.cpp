@@ -1,11 +1,13 @@
 #include "common/util/FileUtil.h"
-#include <iostream>
 #include "gtest/gtest.h"
+#include <string>
+#include <vector>
 
-TEST(test, test) {
+TEST(FileUtil, valid_path) {
   
-  std::string test[] = {"cabbage", "banana", "apple"};
-  std::cout << FileUtil::get_file_path(test) << std::endl;
+  std::vector<std::string> test = {"cabbage", "banana", "apple"};
+  std::string sampleString = FileUtil::get_file_path(test);
+  // std::cout << sampleString << std::endl;
 
   EXPECT_TRUE(true);
 }

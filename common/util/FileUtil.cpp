@@ -1,26 +1,36 @@
 #include "FileUtil.h"
 #include <iostream>
-#include <filesystem>
+#include <stdio.h>  /* defines FILENAME_MAX */
 
-std::string FileUtil::get_file_path(std::string input[]) {
-    int arrSize = std::sizeof(input);
-    std::string currentPath = std::filesystem::current_path();
-    char dirSeparator;
+#ifdef _WIN32
+  #include <direct.h>
+  #define GetCurrentDir _getcwd
+#else
+  #include <unistd.h>
+  #define GetCurrentDir getcwd
+#endif
 
-    #ifdef _WIN32
-        dirSeparator = '\';
-    #else
-        dirSeparator = '/';
-    #endif
+std::string FileUtil::GetCurrentWorkingDir() {
+  char buff[FILENAME_MAX];
+  GetCurrentDir(buff, FILENAME_MAX);
+  std::string current_working_dir(buff);
+  return current_working_dir;
+}
 
-    std::string filePath = currentPath;
-    for (int i = 0; i < arrSize; i++) {
-        if (arrSize = i+1) {
-            filePath = filePath << input[i];
-        } else {
-            filePath = filePath << input[i] << dirSeparator;
-        }
+std::string FileUtil::get_file_path(std::vector<std::string> input) {
+  std::string currentPath = FileUtil::GetCurrentWorkingDir();  // std::filesystem::current_path();
+  char dirSeparator;
+
+  #ifdef _WIN32
+    dirSeparator = '\\';
+  #else
+    dirSeparator = '/';
+  #endif
+
+  std::string filePath = currentPath;
+    for (int i = 0; i < input.size(); i++) {
+        filePath = filePath + dirSeparator + input[i];
     }
 
-    return filePath;
+  return filePath;
 }
