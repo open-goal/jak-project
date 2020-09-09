@@ -1,5 +1,6 @@
 # Jak Project
 ![Build](https://github.com/water111/jak-project/workflows/Build/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
 
 ## Table of Contents
 
