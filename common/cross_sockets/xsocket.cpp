@@ -66,7 +66,8 @@ int set_socket_timeout(int socket, long microSeconds) {
   }
   return ret;
 #elif _WIN32
-  unsigned long timeout = microSeconds / 1000;  // milliseconds
+  DWORD timeout = microSeconds / 1000;  // milliseconds
+  printf("setting timeout to %d ms\n", timeout);
   return set_socket_option(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 #endif
 }
