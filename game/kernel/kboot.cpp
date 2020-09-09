@@ -150,7 +150,11 @@ void KernelCheckAndDispatch() {
         printf("\n");
         auto result =
             call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+#ifdef __linux__
         cprintf("%ld\n", result);
+#else
+        cprintf("%lld\n", result)
+#endif
         ListenerFunction->value = s7.offset;
       }
     }

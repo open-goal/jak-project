@@ -186,13 +186,10 @@ void Deci2Server::send_proto_ready(Deci2Driver* drivers, int* driver_count) {
 void Deci2Server::run() {
   int desired_size = (int)sizeof(Deci2Header);
   int got = 0;
-  printf("Deci2Server::run\n");
 
   while (got < desired_size) {
     assert(got + desired_size < BUFFER_SIZE);
-    printf("r1\n");
     auto x = read_from_socket(new_sock, buffer + got, desired_size - got);
-    printf("r1 done\n");
     if (want_exit()) {
       return;
     }
@@ -243,9 +240,7 @@ void Deci2Server::run() {
 
     // receive from network
     if (hdr->rsvd < hdr->len) {
-      printf("r2\n");
       auto x = read_from_socket(new_sock, buffer + hdr->rsvd, hdr->len - hdr->rsvd);
-      printf("r2 done\n");
       if (want_exit()) {
         return;
       }
@@ -256,7 +251,6 @@ void Deci2Server::run() {
 
   (driver.handler)(DECI2_READDONE, 0, driver.opt);
   unlock();
-  printf("run done\n");
 }
 
 /*!
