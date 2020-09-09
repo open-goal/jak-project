@@ -80,6 +80,7 @@ std::string combine_path(const std::string& parent, const std::string& child);
 std::vector<uint8_t> read_binary_file(const std::string& filename);
 std::string base_name(const std::string& filename);
 void write_text_file(const std::string& file_name, const std::string& text);
+void write_binary_file(const std::string& name, void* data, size_t size);
 
 void init_crc2();
 uint32_t crc32a(const uint8_t* data, size_t size);

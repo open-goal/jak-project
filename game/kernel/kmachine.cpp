@@ -25,6 +25,7 @@
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/stubs.h"
 #include "common/symbols.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 using namespace ee;
 
@@ -345,6 +346,7 @@ int InitMachine() {
   }
 
   printf("InitListenerConnect\n");
+  spdlog::info("Welcome to spdlog!");
   InitListenerConnect();
   printf("InitCheckListener\n");
   InitCheckListener();

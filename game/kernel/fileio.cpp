@@ -101,7 +101,17 @@ char* DecodeFileName(const char* name) {
 }
 
 
+void kstrcpy(char* dst, const char* src) {
+  char* dst_ptr = dst;
+  const char* src_ptr = src;
 
+  while (*src_ptr != 0) {
+    *dst_ptr = *src_ptr;
+    src_ptr++;
+    dst_ptr++;
+  }
+  *dst_ptr = 0;
+}
 
 using namespace ee;
 

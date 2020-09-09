@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdio>
 #include "game/sce/stubs.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 void FileCopy(const char* a, const char* b) {
   (void)a;
@@ -20,12 +21,11 @@ std::string read_text_file(const std::string& path) {
   return ss.str();
 }
 
-
-
 void write_text_file(const std::string& file_name, const std::string& text) {
   FILE* fp = fopen(file_name.c_str(), "w");
   if (!fp) {
     printf("Failed to fopen %s\n", file_name.c_str());
+
     throw std::runtime_error("Failed to open file");
   }
   fprintf(fp, "%s\n", text.c_str());
@@ -65,6 +65,19 @@ std::string base_name(const std::string& filename) {
   }
 
   return filename.substr(pos);
+}
+
+void write_binary_file(const std::string& name, void* data, size_t size) {
+  FILE* fp = fopen(name.c_str(), "wb");
+  if (!fp) {
+    throw std::runtime_error("couldn't open file " + name);
+  }
+
+  if (fwrite(data, size, 1, fp) != 1) {
+    throw std::runtime_error("couldn't write file " + name);
+  }
+
+  fclose(fp);
 }
 
 void kstrcpy(char* dst, const char* src) {

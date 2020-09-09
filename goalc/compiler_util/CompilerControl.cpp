@@ -1,7 +1,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
-#include "goalc/util/Timer.h"
-#include "goalc/util/file_io.h"
+#include "goalc/compiler_util/Timer.h"
+#include "goalc/compiler_util/file_io.h"
 
 Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;

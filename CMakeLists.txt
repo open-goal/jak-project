@@ -69,6 +69,9 @@ add_subdirectory(goalc)
 # build the gtest libraries
 add_subdirectory(third-party/googletest)
 
+# build spdlog
+add_subdirectory(third-party/spdlog)
+
 # build tests
 add_subdirectory(test)
 
