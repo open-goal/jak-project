@@ -19,7 +19,7 @@ enable_testing()
 
 IF (WIN32)
 	set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-	# TODO - split out these declarations for platform specific includes
+	# TODO - split out these declarations for platform specific includes 
   target_link_libraries(goalc-test cross_sockets listener mman goos util runtime compiler type_system gtest)
 ELSE()
   target_link_libraries(goalc-test cross_sockets goos util listener runtime compiler type_system gtest)
