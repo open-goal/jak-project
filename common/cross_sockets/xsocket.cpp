@@ -40,7 +40,7 @@ void close_socket(int sock) {
 }
 
 int set_socket_option(int socket, int level, int optname, const void* optval, int optlen) {
-  int ret = setsockopt(socket, level, optname, (char*)&optval, optlen);
+  int ret = setsockopt(socket, level, optname, (const char*)optval, optlen);
   if (ret < 0) {
     printf("Failed to setsockopt(%d, %d, %d, _, _) - Error: %s\n", socket, level, optname,
            strerror(errno));
