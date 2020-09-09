@@ -198,9 +198,7 @@ static const char* get_file_path(FileRecord* fr) {
   assert(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
   strcpy(path_buffer, next_dir);
-#ifdef __linux__
   strcat(path_buffer, "/");
-#endif
   strcat(path_buffer, fake_iso_entries[fr->location].file_path);
   return path_buffer;
 }
