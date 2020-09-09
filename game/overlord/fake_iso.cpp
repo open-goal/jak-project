@@ -97,10 +97,13 @@ int FS_Init(u8* buffer) {
   fseek(fp, 0, SEEK_END);
   size_t len = ftell(fp);
   rewind(fp);
-  char* fakeiso = (char*)malloc(len);
+  char* fakeiso = (char*)malloc(len + 1);
   if (fread(fakeiso, len, 1, fp) != 1) {
+#ifdef __linux__
     assert(false);
+#endif
   }
+  fakeiso[len] = '\0';
 
   // loop over lines
   char* ptr = fakeiso;
@@ -137,6 +140,7 @@ int FS_Init(u8* buffer) {
       ptr++;
       i++;
     }
+    e->file_path[i] = 0;
     fake_iso_entry_count++;
   }
 
