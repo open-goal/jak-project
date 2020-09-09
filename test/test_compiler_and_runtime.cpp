@@ -1,4 +1,5 @@
 #include <thread>
+#include <chrono>
 
 #include "gtest/gtest.h"
 #include "game/runtime.h"
@@ -15,7 +16,7 @@ TEST(CompilerAndRuntime, StartRuntime) {
   listener::Listener listener;
   while (!listener.is_connected()) {
     listener.connect_to_target();
-    usleep(1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 
   listener.send_reset(true);
