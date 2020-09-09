@@ -42,6 +42,9 @@ add_subdirectory(asset_tool)
 # build type_system library for compiler/decompiler
 add_subdirectory(common/type_system)
 
+# build common_util library
+add_subdirectory(common/util)
+
 # build decompiler
 add_subdirectory(decompiler)
 
