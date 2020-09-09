@@ -59,18 +59,6 @@ void kscheme_init_globals() {
   FastLink = 0;
 }
 
-/*!
- * Initialize CRC Table.
- */
-void init_crc() {
-  for (u32 i = 0; i < 0x100; i++) {
-    u32 n = i << 24;
-    for (u32 j = 0; j < 8; j++) {
-      n = n & 0x80000000 ? (n << 1) ^ CRC_POLY : (n << 1);
-    }
-    crc_table[i] = n;
-  }
-}
 
 /*!
  * Take the CRC32 hash of some data
@@ -447,6 +435,19 @@ u32 make_raw_function_symbol_from_c(const char* name, u32 value) {
   intern_from_c(name)->value = value;
   return value;
 }
+
+static bool sInitCrc = false;
+
+void init_crc() {
+  for (uint32_t i = 0; i < 0x100; i++) {
+    uint32_t n = i << 24u;
+    for (uint32_t j = 0; j < 8; j++)
+      n = n & 0x80000000 ? (n << 1u) ^ 0x04c11db7u : (n << 1u);
+    crc_table[i] = n;
+  }
+  sInitCrc = true;
+}
+
 
 /*!
  * Configure a "fixed" symbol to have a given name and value.  The "fixed" symbols are symbols

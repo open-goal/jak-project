@@ -1,5 +1,5 @@
 #include "Object.h"
-#include "goalc/util/text_util.h"
+#include "goalc/compiler_util/text_util.h"
 
 namespace goos {
 

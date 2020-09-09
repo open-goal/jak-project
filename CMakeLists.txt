@@ -78,6 +78,9 @@ add_subdirectory(third-party/minilzo)
 # build format library
 add_subdirectory(third-party/fmt)
 
+# build utility library
+add_subdirectory(common/util)
+
 # windows memory management lib
 IF (WIN32)
     add_subdirectory(third-party/mman)

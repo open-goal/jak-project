@@ -11,7 +11,7 @@
 #include "kmachine.h"
 #include "kboot.h"
 #include "kprint.h"
-#include "fileio.h"
+#include "common/util/FileIO.h"
 #include "kmalloc.h"
 #include "kdsnetm.h"
 #include "ksocket.h"

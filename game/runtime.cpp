@@ -24,7 +24,7 @@
 #include "sce/iop.h"
 #include "game/system/Deci2Server.h"
 
-#include "game/kernel/fileio.h"
+#include "common/util/FileIO.h"
 #include "game/kernel/kboot.h"
 #include "game/kernel/klink.h"
 #include "game/kernel/kscheme.h"

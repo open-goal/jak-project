@@ -3,12 +3,12 @@
 #include <vector>
 #include "ObjectFile/ObjectFileDB.h"
 #include "config.h"
-#include "util/FileIO.h"
+#include "common/util/FileIO.h"
 #include "TypeSystem/TypeInfo.h"
 
 int main(int argc, char** argv) {
   printf("Jak Disassembler\n");
-  init_crc();
+  init_crc2();
   init_opcode_info();
 
   if (argc != 4) {

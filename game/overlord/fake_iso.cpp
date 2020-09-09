@@ -98,10 +98,9 @@ int FS_Init(u8* buffer) {
   size_t len = ftell(fp);
   rewind(fp);
   char* fakeiso = (char*)malloc(len + 1);
+  fakeiso[len] = 0;
   if (fread(fakeiso, len, 1, fp) != 1) {
-#ifdef __linux__
-    assert(false);
-#endif
+    //assert(false);
   }
   fakeiso[len] = '\0';
 
@@ -198,6 +197,7 @@ static const char* get_file_path(FileRecord* fr) {
   assert(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
   strcpy(path_buffer, next_dir);
+
   strcat(path_buffer, "/");
   strcat(path_buffer, fake_iso_entries[fr->location].file_path);
   return path_buffer;

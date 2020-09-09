@@ -22,16 +22,6 @@ void fileio_init_globals() {
 
 using namespace ee;
 
-/*!
- * Return pointer to null terminator of string.
- * const is for losers.
- * DONE, EXACT
- */
-char* strend(char* str) {
-  while (*str)
-    str++;
-  return str;
-}
 
 /*!
  * An implementation of Huffman decoding.
@@ -74,21 +64,66 @@ u32 ReadHufWord(u8** loc_ptr) {
 }
 
 /*!
+ * Turn file name into file's path.
+ * DONE, EXACT
+ */
+char* DecodeFileName(const char* name) {
+  char* result;
+  // names starting with $ are special:
+  if (name[0] == '$') {
+    if (!strncmp(name, "$TEXTURE/", 9)) {
+      result = MakeFileName(TX_PAGE_FILE_TYPE, name + 9, 0);
+    } else if (!strncmp(name, "$ART_GROUP/", 0xb)) {
+      result = MakeFileName(ART_GROUP_FILE_TYPE, name + 0xb, 0);
+    } else if (!strncmp(name, "$LEVEL/", 7)) {
+      int len = (int)strlen(name);
+      if (name[len - 4] == '.') {
+        result = MakeFileName(LEVEL_WITH_EXTENSION_FILE_TYPE, name + 7, 0);
+      } else {
+        // level files can omit a file type if desired
+        result = MakeFileName(LEVEL_FILE_TYPE, name + 7, 0);
+      }
+    } else if (!strncmp(name, "$DATA/", 6)) {
+      result = MakeFileName(DATA_FILE_TYPE, name + 6, 0);
+    } else if (!strncmp(name, "$CODE/", 6)) {
+      result = MakeFileName(CODE_FILE_TYPE, name + 6, 0);
+    } else if (!strncmp(name, "$RES/", 5)) {
+      result = MakeFileName(RES_FILE_TYPE, name + 5, 0);
+    } else {
+      printf("[ERROR] DecodeFileName: UNKNOWN FILE NAME %s\n", name);
+      result = nullptr;
+    }
+  } else {
+    // if no special prefix is given, assume $CODE
+    result = MakeFileName(CODE_FILE_TYPE, name, 0);
+  }
+  return result;
+}
+
+
+
+
+using namespace ee;
+
+/*!
+ * Return pointer to null terminator of string.
+ * const is for losers.
+ * DONE, EXACT
+ */
+char* strend(char* str) {
+  while (*str)
+    str++;
+  return str;
+}
+
+
+
+/*!
  * Copy a string from src to dst. The null terminator is copied too.
  * This is identical to normal strcpy.
  * DONE, EXACT
  */
-void kstrcpy(char* dst, const char* src) {
-  char* dst_ptr = dst;
-  const char* src_ptr = src;
 
-  while (*src_ptr != 0) {
-    *dst_ptr = *src_ptr;
-    src_ptr++;
-    dst_ptr++;
-  }
-  *dst_ptr = 0;
-}
 
 /*!
  * Copy a string from src to dst, making all letters upper case.
@@ -228,42 +263,6 @@ char* basename_goal(char* s) {
   }
 }
 
-/*!
- * Turn file name into file's path.
- * DONE, EXACT
- */
-char* DecodeFileName(const char* name) {
-  char* result;
-  // names starting with $ are special:
-  if (name[0] == '$') {
-    if (!strncmp(name, "$TEXTURE/", 9)) {
-      result = MakeFileName(TX_PAGE_FILE_TYPE, name + 9, 0);
-    } else if (!strncmp(name, "$ART_GROUP/", 0xb)) {
-      result = MakeFileName(ART_GROUP_FILE_TYPE, name + 0xb, 0);
-    } else if (!strncmp(name, "$LEVEL/", 7)) {
-      int len = (int)strlen(name);
-      if (name[len - 4] == '.') {
-        result = MakeFileName(LEVEL_WITH_EXTENSION_FILE_TYPE, name + 7, 0);
-      } else {
-        // level files can omit a file type if desired
-        result = MakeFileName(LEVEL_FILE_TYPE, name + 7, 0);
-      }
-    } else if (!strncmp(name, "$DATA/", 6)) {
-      result = MakeFileName(DATA_FILE_TYPE, name + 6, 0);
-    } else if (!strncmp(name, "$CODE/", 6)) {
-      result = MakeFileName(CODE_FILE_TYPE, name + 6, 0);
-    } else if (!strncmp(name, "$RES/", 5)) {
-      result = MakeFileName(RES_FILE_TYPE, name + 5, 0);
-    } else {
-      printf("[ERROR] DecodeFileName: UNKNOWN FILE NAME %s\n", name);
-      result = nullptr;
-    }
-  } else {
-    // if no special prefix is given, assume $CODE
-    result = MakeFileName(CODE_FILE_TYPE, name, 0);
-  }
-  return result;
-}
 
 /*!
  * Build a file name based on type.

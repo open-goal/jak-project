@@ -11,8 +11,7 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include "goalc/util/file_io.h"
-
+#include "goalc/compiler_util/file_io.h"
 #include "TextDB.h"
 
 namespace goos {

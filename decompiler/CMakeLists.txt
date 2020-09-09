@@ -9,7 +9,6 @@ add_executable(decompiler
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/LinkedObjectFile.cpp
         Function/Function.cpp
-        util/FileIO.cpp
         config.cpp
         util/LispPrint.cpp
         util/Timer.cpp
@@ -21,5 +20,5 @@ add_executable(decompiler
         TypeSystem/TypeInfo.cpp
         TypeSystem/TypeSpec.cpp Function/CfgVtx.cpp Function/CfgVtx.h)
 
-target_link_libraries(decompiler
+target_link_libraries(decompiler util
         minilzo)

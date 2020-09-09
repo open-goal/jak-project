@@ -1,4 +1,4 @@
-add_subdirectory(util)
+add_subdirectory(compiler_util)
 add_subdirectory(goos)
 add_subdirectory(listener)
 

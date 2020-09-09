@@ -1,13 +1,35 @@
+/* Basic File IO Utility */
+
 #include "FileIO.h"
 #include <fstream>
 #include <sstream>
 #include <cassert>
+#include <cstring>
+#include <cstdio>
+#include "game/sce/stubs.h"
+
+void FileCopy(const char* a, const char* b) {
+  (void)a;
+  (void)b;
+}
 
 std::string read_text_file(const std::string& path) {
   std::ifstream file(path);
   std::stringstream ss;
   ss << file.rdbuf();
   return ss.str();
+}
+
+
+
+void write_text_file(const std::string& file_name, const std::string& text) {
+  FILE* fp = fopen(file_name.c_str(), "w");
+  if (!fp) {
+    printf("Failed to fopen %s\n", file_name.c_str());
+    throw std::runtime_error("Failed to open file");
+  }
+  fprintf(fp, "%s\n", text.c_str());
+  fclose(fp);
 }
 
 std::string combine_path(const std::string& parent, const std::string& child) {
@@ -45,10 +67,21 @@ std::string base_name(const std::string& filename) {
   return filename.substr(pos);
 }
 
-static bool sInitCrc = false;
-static uint32_t crc_table[0x100];
+void kstrcpy(char* dst, const char* src) {
+  char* dst_ptr = dst;
+  const char* src_ptr = src;
 
-void init_crc() {
+  while (*src_ptr != 0) {
+    *dst_ptr = *src_ptr;
+    src_ptr++;
+    dst_ptr++;
+  }
+  *dst_ptr = 0;
+}
+
+u32 crc_table[0x100];
+static bool sInitCrc = false;
+void init_crc2() {
   for (uint32_t i = 0; i < 0x100; i++) {
     uint32_t n = i << 24u;
     for (uint32_t j = 0; j < 8; j++)
@@ -58,7 +91,7 @@ void init_crc() {
   sInitCrc = true;
 }
 
-uint32_t crc32(const uint8_t* data, size_t size) {
+uint32_t crc32a(const uint8_t* data, size_t size) {
   assert(sInitCrc);
   uint32_t crc = 0;
   for (size_t i = size; i != 0; i--, data++) {
@@ -66,17 +99,28 @@ uint32_t crc32(const uint8_t* data, size_t size) {
   }
   return ~crc;
 }
-
-uint32_t crc32(const std::vector<uint8_t>& data) {
-  return crc32(data.data(), data.size());
+/*!
+ * Does the file exist?  No.  It doesn't.
+ * @return 0 always, even if the file exists.
+ * DONE, EXACT, UNUSED
+ */
+u32 FileExists(const char* name) {
+  (void)name;
+  return 0;
 }
 
-void write_text_file(const std::string& file_name, const std::string& text) {
-  FILE* fp = fopen(file_name.c_str(), "w");
-  if (!fp) {
-    printf("Failed to fopen %s\n", file_name.c_str());
-    throw std::runtime_error("Failed to open file");
-  }
-  fprintf(fp, "%s\n", text.c_str());
-  fclose(fp);
+/*!
+ * Does nothing. Likely is supposed to delete a file.
+ * @param name
+ * DONE, EXACT, UNUSED
+ */
+void FileDelete(const char* name) {
+  (void)name;
 }
+
+/*!
+ * Does nothing. Likely is supposed to copy a file.
+ * @param a
+ * @param b
+ * DONE, EXACT, UNUSED
+ */
