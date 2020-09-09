@@ -34,6 +34,17 @@ IF (WIN32)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 ENDIF ()
 
+option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+
+if(CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
+  message("Code Coverage build is enabled!")
+else()
+  message("Code Coverage build is disabled!")
+endif()
+
 # includes relative to top level jak-project folder
 include_directories(./)
 
