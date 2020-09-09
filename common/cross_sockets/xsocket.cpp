@@ -88,11 +88,11 @@ int read_from_socket(int socket, char* buf, int len) {
 }
 
 bool socket_timed_out() {
-  //#ifdef __linux
+#ifdef __linux
   return errno == EAGAIN;
-  //#elif _WIN32
-  //  auto err = WSAGetLastError();
-  //  printf("windows error %d\n", err);
-  //  return err == WSAETIMEDOUT;
-  //#endif
+#elif _WIN32
+  auto err = WSAGetLastError();
+  printf("windows error %d\n", err);
+  return err == WSAETIMEDOUT;
+#endif
 }
