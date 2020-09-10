@@ -958,7 +958,9 @@ uint64_t _call_goal_asm_win32(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, 
  * Wrapper around _call_goal_asm for calling a GOAL function from C.
  */
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
-  auto st_ptr = (void*)((uint8_t*)(offset) + st);
+  // auto st_ptr = (void*)((uint8_t*)(offset) + st); updated for the new compiler!
+  void* st_ptr = (void*)st;
+
   void* fptr = f.c();
 #ifdef __linux__
   return _call_goal_asm_linux(a, b, c, fptr, st_ptr, offset);
@@ -1828,25 +1830,28 @@ s32 InitHeapAndSymbol() {
   intern_from_c("*boot-video-mode*")->value = 0;
 
   // load the kernel!
-  method_set_symbol->value++;
-  load_and_link_dgo_from_c("kernel", kglobalheap,
-                           LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                           0x400000);
-  method_set_symbol->value--;
+  // todo, remove MasterUseKernel
+  if (MasterUseKernel) {
+    method_set_symbol->value++;
+    load_and_link_dgo_from_c("kernel", kglobalheap,
+                             LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+                             0x400000);
+    method_set_symbol->value--;
 
-  // check the kernel version!
-  auto kernel_version = intern_from_c("*kernel-version*")->value;
-  if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
-    MsgErr("\n");
-    MsgErr(
-        "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
-        "goal> prompt (:mch) then mkee your kernel in linux.\n",
-        KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
-        (kernel_version >> 3) & 0xffff);
-    return -1;
-  } else {
-    printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
-           (kernel_version >> 3) & 0xffff);
+    // check the kernel version!
+    auto kernel_version = intern_from_c("*kernel-version*")->value;
+    if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
+      MsgErr("\n");
+      MsgErr(
+          "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
+          "goal> prompt (:mch) then mkee your kernel in linux.\n",
+          KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
+          (kernel_version >> 3) & 0xffff);
+      return -1;
+    } else {
+      printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
+             (kernel_version >> 3) & 0xffff);
+    }
   }
 
   // setup deci2count for message counter.

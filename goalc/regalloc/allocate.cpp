@@ -12,10 +12,12 @@ namespace {
  * Print out the input data for debugging.
  */
 void print_allocate_input(const AllocationInput& in) {
-  fmt::print("[RegAlloc] Debug Input:\n");
+  fmt::print("[RegAlloc] Debug Input Program:\n");
   if (in.instructions.size() == in.debug_instruction_names.size()) {
     for (size_t i = 0; i < in.instructions.size(); i++) {
-      fmt::print(" [{:3d}] {:30} -> {:30}\n", in.debug_instruction_names.at(i),
+      //      fmt::print(" [{}] {} -> {}\n", in.debug_instruction_names.at(i),
+      //                 in.instructions.at(i).print());
+      fmt::print(" [{:3d}] {:30} -> {:30}\n", i, in.debug_instruction_names.at(i),
                  in.instructions.at(i).print());
     }
   } else {
@@ -23,6 +25,7 @@ void print_allocate_input(const AllocationInput& in) {
       fmt::print(" [{:3d}] {}\n", instruction.print());
     }
   }
+  fmt::print("[RegAlloc] Debug Input Constraints:\n");
   for (const auto& c : in.constraints) {
     fmt::print(" {}\n", c.to_string());
   }

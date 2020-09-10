@@ -12,8 +12,10 @@
 #include "third-party/fmt/core.h"
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
+#include "Lambda.h"
 
 class RegVal;
+class Env;
 class FunctionEnv;
 
 /*!
@@ -30,11 +32,15 @@ class Val {
   }
 
   virtual std::string print() const = 0;
-  virtual RegVal* to_reg(FunctionEnv* fe) const = 0;
-  virtual RegVal* to_gpr(FunctionEnv* fe) const;
-  virtual RegVal* to_xmm(FunctionEnv* fe) const;
+  virtual RegVal* to_reg(Env* fe) {
+    (void)fe;
+    throw std::runtime_error("to_reg called on invalid Val: " + print());
+  }
+  virtual RegVal* to_gpr(Env* fe);
+  virtual RegVal* to_xmm(Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
+  void set_type(TypeSpec ts) { m_ts = std::move(ts); }
 
  protected:
   TypeSpec m_ts;
@@ -44,10 +50,10 @@ class Val {
  * Special None Val used for the value of anything returning (none).
  */
 class None : public Val {
+ public:
   explicit None(TypeSpec _ts) : Val(std::move(_ts)) {}
   explicit None(const TypeSystem& _ts) : Val(_ts.make_typespec("none")) {}
   std::string print() const override { return "none"; }
-  RegVal* to_reg(FunctionEnv* fe) const override;
 };
 
 /*!
@@ -59,22 +65,72 @@ class RegVal : public Val {
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
   std::string print() const override { return m_ireg.to_string(); };
-  RegVal* to_reg(FunctionEnv* fe) const override;
-  RegVal* to_gpr(FunctionEnv* fe) const override;
-  RegVal* to_xmm(FunctionEnv* fe) const override;
+  RegVal* to_reg(Env* fe) override;
+  RegVal* to_gpr(Env* fe) override;
+  RegVal* to_xmm(Env* fe) override;
 
  protected:
   IRegister m_ireg;
 };
 
-// Symbol
-// Lambda
+/*!
+ * A Val representing a symbol. This is confusing but it's not actually the value of the symbol,
+ * but instead the symbol itself.
+ */
+class SymbolVal : public Val {
+ public:
+  SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {}
+  const std::string& name() const { return m_name; }
+  std::string print() const override { return "<" + m_name + ">"; }
+  RegVal* to_reg(Env* fe) override;
+
+ protected:
+  std::string m_name;
+};
+
+class SymbolValueVal : public Val {
+ public:
+  SymbolValueVal(const SymbolVal* sym, TypeSpec ts, bool sext)
+      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {}
+  const std::string& name() const { return m_sym->name(); }
+  std::string print() const override { return "[<" + name() + ">]"; }
+  RegVal* to_reg(Env* fe) override;
+
+ protected:
+  const SymbolVal* m_sym = nullptr;
+  bool m_sext = false;
+};
+
+/*!
+ * A Val representing a GOAL lambda. It can be a "real" x86-64 function, in which case the
+ * FunctionEnv is set. Otherwise, just contains a Lambda.
+ */
+class LambdaVal : public Val {
+ public:
+  LambdaVal(TypeSpec ts, Lambda lam) : Val(ts), m_lam(lam) {}
+  std::string print() const override { return "lambda-" + m_lam.debug_name; }
+  FunctionEnv* func = nullptr;
+
+ protected:
+  Lambda m_lam;
+};
+
 // Static
 // MemOffConstant
 // MemOffVar
 // MemDeref
 // PairEntry
 // Alias
+
+class IntegerConstantVal : public Val {
+ public:
+  IntegerConstantVal(TypeSpec ts, s64 value) : Val(ts), m_value(value) {}
+  std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
+  RegVal* to_reg(Env* fe) override;
+
+ protected:
+  s64 m_value = -1;
+};
 // IntegerConstant
 // FloatConstant
 // Bitfield

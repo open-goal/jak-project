@@ -1,5 +1,6 @@
 # Jak Project
 ![Build](https://github.com/water111/jak-project/workflows/Build/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
 
 ## Table of Contents
 
@@ -154,13 +155,9 @@ where the `~~ HACK ~~` message is from code in `KERNEL.CGO`.
 ## TODOs
 
 - Build on Windows!
-  - Networking
   - File paths
   - Timer
-  - CMake?
-  - Assembly
   - Windows calling convention for assembly stuff
-  - pthreads (can probably replace with `std::thread`, I don't remember why I used `pthread`s)
   - performance stats for `SystemThread` (probably just get rid of these performance stats completely)
   - `mmap`ing executable memory
   - line input library (appears windows compatible?)

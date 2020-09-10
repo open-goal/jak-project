@@ -43,7 +43,9 @@ class ObjectGenerator {
                                      int min_align = 16);  // should align and insert function tag
   IR_Record add_ir(const FunctionRecord& func);
   IR_Record get_future_ir_record(const FunctionRecord& func, int ir_id);
+  IR_Record get_future_ir_record_in_same_func(const IR_Record& irec, int ir_id);
   InstructionRecord add_instr(Instruction inst, IR_Record ir);
+  void add_instr_no_ir(FunctionRecord func, Instruction inst);
   StaticRecord add_static_to_seg(int seg, int min_align = 16);
   void link_instruction_jump(InstructionRecord jump_instr, IR_Record destination);
   void link_static_type_ptr(StaticRecord rec, int offset, const std::string& type_name);

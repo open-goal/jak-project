@@ -1,12 +1,6 @@
 add_subdirectory(util)
 add_subdirectory(goos)
-
-IF (WIN32)
-  # TODO - implement windows listener
-  message("Windows Listener Not Implemented!")
-ELSE()
-  add_subdirectory(listener)
-ENDIF()
+add_subdirectory(listener)
 
 add_library(compiler
         SHARED
@@ -19,19 +13,25 @@ add_library(compiler
         compiler/Val.cpp
         compiler/IR.cpp
         compiler/CodeGenerator.cpp
+        compiler/compilation/Atoms.cpp
+        compiler/compilation/CompilerControl.cpp
+        compiler/compilation/Block.cpp
+        compiler/compilation/Macro.cpp
+        compiler/compilation/Define.cpp
+        compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
-        compiler/Compiler.cpp
-        )
+        compiler/Compiler.cpp)
 
-add_executable(goalc main.cpp
-        )
+add_executable(goalc main.cpp)
 
 IF (WIN32)
-  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(compiler util goos type_system mman)
-ENDIF()
+    target_link_libraries(compiler util goos type_system listener mman)
+
+ELSE ()
+    target_link_libraries(compiler util goos type_system listener)
+ENDIF ()
 
 target_link_libraries(goalc util goos compiler type_system)
