@@ -1,4 +1,3 @@
-add_subdirectory(util)
 add_subdirectory(goos)
 add_subdirectory(listener)
 
@@ -28,10 +27,10 @@ add_library(compiler
 add_executable(goalc main.cpp)
 
 IF (WIN32)
-    target_link_libraries(compiler util goos type_system listener mman)
+    target_link_libraries(compiler goos type_system listener mman common_util)
 
 ELSE ()
-    target_link_libraries(compiler util goos type_system listener)
+    target_link_libraries(compiler goos type_system listener common_util)
 ENDIF ()
 
-target_link_libraries(goalc util goos compiler type_system)
+target_link_libraries(goalc goos compiler type_system)

@@ -1,7 +1,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
-#include "goalc/util/Timer.h"
-#include "goalc/util/file_io.h"
+#include "common/util/Timer.h"
+#include "common/util/FileUtil.h"
 
 Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
@@ -59,7 +59,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   });
 
   Timer reader_timer;
-  auto code = m_goos.reader.read_from_file(filename);
+  auto code = m_goos.reader.read_from_file({filename});
   timing.emplace_back("read", reader_timer.getMs());
 
   Timer compile_timer;
@@ -95,7 +95,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       //      auto output_dir = as_string(get_constant_or_error(form, "*compiler-output-path*"));
       // todo, change extension based on v3/v4
       auto output_name = m_goos.reader.get_source_dir() + "/out/" + obj_file_name + ".o";
-      util::write_binary_file(output_name, (void*)data.data(), data.size());
+      file_util::write_binary_file(output_name, (void*)data.data(), data.size());
     }
   } else {
     if (load) {

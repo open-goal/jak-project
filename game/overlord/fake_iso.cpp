@@ -15,6 +15,7 @@
 #include "game/sce/iop.h"
 #include "isocommon.h"
 #include "overlord.h"
+#include "common/util/FileUtil.h"
 
 using namespace iop;
 
@@ -71,25 +72,15 @@ void fake_iso_init_globals() {
   read_in_progress = false;
 }
 
-//! will hold prefix for the source folder.
-static const char* next_dir = nullptr;
-static const char* fake_iso_path = nullptr;
-
 /*!
  * Initialize the file system.
  */
 int FS_Init(u8* buffer) {
   (void)buffer;
-  // get path to next/. Will be set in the gk.sh launch script.
-  next_dir = std::getenv("NEXT_DIR");
-  assert(next_dir);
 
   // get path to next/data/fake_iso.txt, the map file.
   char fakeiso_path[512];
-  strcpy(fakeiso_path, next_dir);
-  fake_iso_path = std::getenv("FAKE_ISO_PATH");
-  assert(fake_iso_path);
-  strcat(fakeiso_path, fake_iso_path);
+  strcpy(fakeiso_path, file_util::get_file_path({"game", "fake_iso.txt"}).c_str());
 
   // open the map.
   FILE* fp = fopen(fakeiso_path, "r");
@@ -197,7 +188,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
 static const char* get_file_path(FileRecord* fr) {
   assert(fr->location < fake_iso_entry_count);
   static char path_buffer[1024];
-  strcpy(path_buffer, next_dir);
+  strcpy(path_buffer, file_util::get_project_path().c_str());
   strcat(path_buffer, "/");
   strcat(path_buffer, fake_iso_entries[fr->location].file_path);
   return path_buffer;

@@ -5,6 +5,7 @@
 #include "config.h"
 #include "util/FileIO.h"
 #include "TypeSystem/TypeInfo.h"
+#include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
   printf("Jak Disassembler\n");
@@ -26,8 +27,8 @@ int main(int argc, char** argv) {
   }
 
   ObjectFileDB db(dgos);
-  write_text_file(combine_path(out_folder, "dgo.txt"), db.generate_dgo_listing());
-  write_text_file(combine_path(out_folder, "obj.txt"), db.generate_obj_listing());
+  file_util::write_text_file(combine_path(out_folder, "dgo.txt"), db.generate_dgo_listing());
+  file_util::write_text_file(combine_path(out_folder, "obj.txt"), db.generate_obj_listing());
 
   db.process_link_data();
   db.find_code();

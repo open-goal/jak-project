@@ -13,9 +13,10 @@
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
-#include "decompiler/util/BinaryReader.h"
+#include "common/util/BinaryReader.h"
 #include "decompiler/util/FileIO.h"
-#include "decompiler/util/Timer.h"
+#include "common/util/Timer.h"
+#include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
 
 /*!
@@ -142,7 +143,7 @@ constexpr int MAX_CHUNK_SIZE = 0x8000;
  * Load the objects stored in the given DGO into the ObjectFileDB
  */
 void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
-  auto dgo_data = read_binary_file(filename);
+  auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
   const char jak2_header[] = "oZlB";
@@ -415,7 +416,7 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
       auto file_text = obj.linked_data.print_words();
       auto file_name = combine_path(output_dir, obj.record.to_unique_name() + ".txt");
       total_bytes += file_text.size();
-      write_text_file(file_name, file_text);
+      file_util::write_text_file(file_name, file_text);
       total_files++;
     }
   });
@@ -442,7 +443,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
       auto file_text = obj.linked_data.print_disassembly();
       auto file_name = combine_path(output_dir, obj.record.to_unique_name() + ".func");
       total_bytes += file_text.size();
-      write_text_file(file_name, file_text);
+      file_util::write_text_file(file_name, file_text);
       total_files++;
     }
   });
@@ -517,7 +518,7 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   });
 
   auto file_name = combine_path(output_dir, "all_scripts.lisp");
-  write_text_file(file_name, all_scripts);
+  file_util::write_text_file(file_name, all_scripts);
 
   printf("Found scripts:\n");
   printf(" total %.3f ms\n", timer.getMs());

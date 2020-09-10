@@ -1,5 +1,5 @@
 #include "Object.h"
-#include "goalc/util/text_util.h"
+#include "common/util/FileUtil.h"
 
 namespace goos {
 
@@ -53,7 +53,7 @@ std::string fixed_to_string(FloatType x) {
 template <>
 std::string fixed_to_string(char x) {
   char buff[256];
-  if (util::is_printable_char(x) && x != ' ') {
+  if (file_util::is_printable_char(x) && x != ' ') {
     // can print directly
     sprintf(buff, "#\\%c", x);
     return {buff};

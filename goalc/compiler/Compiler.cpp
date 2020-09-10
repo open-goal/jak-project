@@ -15,7 +15,7 @@ Compiler::Compiler() {
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
   // todo - compile library
-  Object library_code = m_goos.reader.read_from_file("goal_src/goal-lib.gc");
+  Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 }
 
@@ -178,7 +178,7 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
       }
     }
 
-    auto code = m_goos.reader.read_from_file(source_code);
+    auto code = m_goos.reader.read_from_file({source_code});
     auto compiled = compile_object_file("test-code", code, true);
     color_object_file(compiled);
     auto data = codegen_object_file(compiled);

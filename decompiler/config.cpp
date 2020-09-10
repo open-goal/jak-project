@@ -1,6 +1,7 @@
 #include "config.h"
 #include "third-party/json.hpp"
 #include "util/FileIO.h"
+#include "common/util/FileUtil.h"
 
 Config gConfig;
 
@@ -9,7 +10,7 @@ Config& get_config() {
 }
 
 void set_config(const std::string& path_to_config_file) {
-  auto config_str = read_text_file(path_to_config_file);
+  auto config_str = file_util::read_text_file(path_to_config_file);
   // to ignore comments in json, which may be useful
   auto cfg = nlohmann::json::parse(config_str, nullptr, true, true);
 

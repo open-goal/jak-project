@@ -3,33 +3,8 @@
 #include <sstream>
 #include <cassert>
 
-std::string read_text_file(const std::string& path) {
-  std::ifstream file(path);
-  std::stringstream ss;
-  ss << file.rdbuf();
-  return ss.str();
-}
-
 std::string combine_path(const std::string& parent, const std::string& child) {
   return parent + "/" + child;
-}
-
-std::vector<uint8_t> read_binary_file(const std::string& filename) {
-  auto fp = fopen(filename.c_str(), "rb");
-  if (!fp)
-    throw std::runtime_error("File " + filename + " cannot be opened");
-  fseek(fp, 0, SEEK_END);
-  auto len = ftell(fp);
-  rewind(fp);
-
-  std::vector<uint8_t> data;
-  data.resize(len);
-
-  if (fread(data.data(), len, 1, fp) != 1) {
-    throw std::runtime_error("File " + filename + " cannot be read");
-  }
-
-  return data;
 }
 
 std::string base_name(const std::string& filename) {
@@ -69,14 +44,4 @@ uint32_t crc32(const uint8_t* data, size_t size) {
 
 uint32_t crc32(const std::vector<uint8_t>& data) {
   return crc32(data.data(), data.size());
-}
-
-void write_text_file(const std::string& file_name, const std::string& text) {
-  FILE* fp = fopen(file_name.c_str(), "w");
-  if (!fp) {
-    printf("Failed to fopen %s\n", file_name.c_str());
-    throw std::runtime_error("Failed to open file");
-  }
-  fprintf(fp, "%s\n", text.c_str());
-  fclose(fp);
 }
