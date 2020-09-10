@@ -16,7 +16,7 @@ std::string FileUtil::GetProjectPath() {
       "\\jak-project\\");  // Strip file path down to \jak-project\ directory
   return std::string(buffer).substr(
       0, pos + 12);  // + 12 to include "\jak-project" in the returned filepath
-#else  // do Linux stuff
+#else                // do Linux stuff
   char buffer[FILENAME_MAX];
   readlink("/proc/self/exe", buffer,
            FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing information about
