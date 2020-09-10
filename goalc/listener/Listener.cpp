@@ -123,7 +123,7 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
     listen_socket = -1;
     return false;
   } else {
-    printf("[Listener] Socket connected established! (took %d tries)\n", i);
+    printf("[Listener] Socket connected established! (took %d tries). Waiting for version...\n", i);
   }
 
   // get the GOAL version number, to make sure we connected to the right thing
@@ -133,11 +133,8 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
   bool ok = true;
   while (prog < 8) {
     auto r = read_from_socket(listen_socket, (char*)version_buffer + prog, 8 - prog);
-    if (r < 0) {
-      ok = false;
-      break;
-    }
-    prog += r;
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    prog += r > 0 ? r : 0;
     read_tries++;
     if (read_tries > 50) {
       ok = false;
@@ -181,7 +178,7 @@ void Listener::receive_func() {
       rcvd += got > 0 ? got : 0;
 
       // kick us out if we got a bogus read result
-      if (got == 0 || (got == -1 && errno != EAGAIN)) {
+      if (got == 0 || (got == -1 && !socket_timed_out())) {
         m_connected = false;
       }
 
@@ -238,7 +235,7 @@ void Listener::receive_func() {
           got = got > 0 ? got : 0;
           rcvd += got;
           msg_prog += got;
-          if (got == 0 || (got == -1 && errno != EAGAIN)) {
+          if (got == 0 || (got == -1 && !socket_timed_out())) {
             m_connected = false;
           }
         }

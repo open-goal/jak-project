@@ -45,6 +45,24 @@ TEST(Listener, DeciCheckNoListener) {
   EXPECT_FALSE(s.check_for_listener());
 }
 
+TEST(Listener, CheckConnectionStaysAlive) {
+  Deci2Server s(always_false);
+  EXPECT_TRUE(s.init());
+  EXPECT_FALSE(s.check_for_listener());
+  Listener l;
+  EXPECT_FALSE(s.check_for_listener());
+  bool connected = l.connect_to_target();
+  EXPECT_TRUE(connected);
+  // TODO - some sort of backoff and retry would be better
+  while (connected && !s.check_for_listener()) {
+  }
+
+  EXPECT_TRUE(s.check_for_listener());
+  std::this_thread::sleep_for(std::chrono::seconds(2));  // sorry for making tests slow.
+  EXPECT_TRUE(s.check_for_listener());
+  EXPECT_TRUE(l.is_connected());
+}
+
 TEST(Listener, DeciThenListener) {
   for (int i = 0; i < 3; i++) {
     Deci2Server s(always_false);
