@@ -92,7 +92,6 @@ bool socket_timed_out() {
   return errno == EAGAIN;
 #elif _WIN32
   auto err = WSAGetLastError();
-  printf("windows error %d\n", err);
   return err == WSAETIMEDOUT;
 #endif
 }

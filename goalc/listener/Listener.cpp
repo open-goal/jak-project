@@ -184,7 +184,6 @@ void Listener::receive_func() {
 
       // kick us out if we got a bogus read result
       if (got == 0 || (got == -1 && !socket_timed_out())) {
-        printf("receive disconnect 1\n");
         m_connected = false;
       }
 
@@ -242,7 +241,6 @@ void Listener::receive_func() {
           rcvd += got;
           msg_prog += got;
           if (got == 0 || (got == -1 && !socket_timed_out())) {
-            printf("receive disconnect 2\n");
             m_connected = false;
           }
         }
