@@ -86,3 +86,12 @@ int read_from_socket(int socket, char* buf, int len) {
   return recv(socket, buf, len, 0);
 #endif
 }
+
+bool socket_timed_out() {
+#ifdef __linux
+  return errno == EAGAIN;
+#elif _WIN32
+  auto err = WSAGetLastError();
+  return err == WSAETIMEDOUT;
+#endif
+}
