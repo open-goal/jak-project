@@ -189,9 +189,8 @@ void Listener::receive_func() {
     }
 
     ListenerMessageHeader* hdr = (ListenerMessageHeader*)buff;
-    //    if(debug_listener) {
-    //      printf("[T -> L] received %d bytes, kind %d\n",
-    //             hdr->deci2_hdr.len, hdr->msg_kind);
+    //    if (debug_listener) {
+    printf("[T -> L] received %d bytes, kind %d\n", hdr->deci2_header.len, hdr->msg_kind);
     //    }
 
     switch (hdr->msg_kind) {
