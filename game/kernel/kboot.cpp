@@ -5,6 +5,9 @@
  */
 
 #include <cstring>
+#include <chrono>
+#include <thread>
+
 #include "common/common_types.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
@@ -12,6 +15,7 @@
 #include "kscheme.h"
 #include "ksocket.h"
 #include "klisten.h"
+#include "kprint.h"
 
 #ifdef _WIN32
 #include "Windows.h"
@@ -133,22 +137,36 @@ void KernelCheckAndDispatch() {
     auto old_listener = ListenerFunction->value;
     // dispatch the kernel
     //(**kernel_dispatcher)();
-    call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-    // TODO-WINDOWS
+
+    // todo remove. this is added while KERNEL.CGO is broken.
+    if (MasterUseKernel) {
+      call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+    } else {
+      if (ListenerFunction->value != s7.offset) {
+        auto cptr = Ptr<u8>(ListenerFunction->value).c();
+        for (int i = 0; i < 40; i++) {
+          printf("%x ", cptr[i]);
+        }
+        printf("\n");
+        auto result =
+            call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
 #ifdef __linux__
-    ClearPending();
+        cprintf("%ld\n", result);
+#else
+        cprintf("%lld\n", result);
 #endif
+        ListenerFunction->value = s7.offset;
+      }
+    }
+
+    ClearPending();
 
     // if the listener function changed, it means the kernel ran it, so we should notify compiler.
     if (MasterDebug && ListenerFunction->value != old_listener) {
       SendAck();
     }
 
-#ifdef _WIN32
-    Sleep(1000);  // todo - remove this
-#elif __linux__
-    usleep(1000);
-#endif
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 }
 

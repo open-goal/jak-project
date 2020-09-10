@@ -12,14 +12,11 @@
 namespace ee {
 
 namespace {
-// TODO-WINDOWS
-#ifdef __linux__
 constexpr int MAX_DECI2_PROTOCOLS = 4;
 Deci2Driver protocols[MAX_DECI2_PROTOCOLS];  // info for each deci2 protocol registered
 int protocol_count;                          // number of registered protocols
 Deci2Driver* sending_driver;                 // currently sending protocol driver
 ::Deci2Server* server;                       // the server to send data to
-#endif
 
 }  // namespace
 
@@ -27,8 +24,6 @@ Deci2Driver* sending_driver;                 // currently sending protocol drive
  * Initialize the library.
  */
 void LIBRARY_INIT_sceDeci2() {
-// TODO-WINDOWS
-#ifdef __linux__
   // reset protocols
   for (auto& p : protocols) {
     p = Deci2Driver();
@@ -36,15 +31,12 @@ void LIBRARY_INIT_sceDeci2() {
   protocol_count = 0;
   server = nullptr;
   sending_driver = nullptr;
-#endif
 }
 
 /*!
  * Run any pending requested sends.
  */
 void LIBRARY_sceDeci2_run_sends() {
-// TODO-WINDOWS
-#ifdef __linux__
   for (auto& prot : protocols) {
     if (prot.active && prot.pending_send == 'H') {
       sending_driver = &prot;
@@ -54,17 +46,13 @@ void LIBRARY_sceDeci2_run_sends() {
       (prot.handler)(DECI2_WRITEDONE, 0, prot.opt);
     }
   }
-#endif
 }
 
 /*!
  * Register a Deci2Server with this library.
  */
 void LIBRARY_sceDeci2_register(::Deci2Server* s) {
-// TODO-WINDOWS
-#ifdef __linux__
   server = s;
-#endif
 }
 
 /*!
@@ -73,8 +61,6 @@ void LIBRARY_sceDeci2_register(::Deci2Server* s) {
  * I don't know why it's like this.
  */
 s32 sceDeci2Open(u16 protocol, void* opt, void (*handler)(s32 event, s32 param, void* opt)) {
-// TODO-WINDOWS
-#ifdef __linux__
   server->lock();
   Deci2Driver drv;
   drv.protocol = protocol;
@@ -93,20 +79,14 @@ s32 sceDeci2Open(u16 protocol, void* opt, void (*handler)(s32 event, s32 param, 
   }
 
   return drv.id;
-#elif _WIN32
-  return 0;
-#endif
 }
 
 /*!
  * Deactivate a DECI2 protocol by socket descriptor.
  */
 s32 sceDeci2Close(s32 s) {
-// TODO-WINDOWS
-#ifdef __linux__
   assert(s - 1 < protocol_count);
   protocols[s - 1].active = false;
-#endif
   return 1;
 }
 
@@ -114,12 +94,9 @@ s32 sceDeci2Close(s32 s) {
  * Start a send.
  */
 s32 sceDeci2ReqSend(s32 s, char dest) {
-// TODO-WINDOWS
-#ifdef __linux__
   assert(s - 1 < protocol_count);
   auto& proto = protocols[s - 1];
   proto.pending_send = dest;
-#endif
   return 0;
 }
 
@@ -128,8 +105,6 @@ s32 sceDeci2ReqSend(s32 s, char dest) {
  * Returns after data is copied.
  */
 s32 sceDeci2ExRecv(s32 s, void* buf, u16 len) {
-// TODO-WINDOWS
-#ifdef __linux__
   assert(s - 1 < protocol_count);
   protocols[s - 1].recv_size = len;
   auto avail = protocols[s - 1].available_to_receive;
@@ -140,17 +115,12 @@ s32 sceDeci2ExRecv(s32 s, void* buf, u16 len) {
     printf("[DECI2] Error: ExRecv %d, only %d available!\n", len, avail);
     return -1;
   }
-#elif _WIN32
-  return 0;
-#endif
 }
 
 /*!
  * Do a send.
  */
 s32 sceDeci2ExSend(s32 s, void* buf, u16 len) {
-// TODO-WINDOWS
-#ifdef __linux__
   assert(s - 1 < protocol_count);
   if (!sending_driver) {
     printf("sceDeci2ExSend called at illegal time!\n");
@@ -162,8 +132,5 @@ s32 sceDeci2ExSend(s32 s, void* buf, u16 len) {
 
   server->send_data(buf, len);
   return len;
-#elif _WIN32
-  return 0;
-#endif
 }
 }  // namespace ee

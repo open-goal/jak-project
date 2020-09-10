@@ -329,10 +329,7 @@ int InitMachine() {
   //  }
 
   if (MasterDebug) {  // connect to GOAL compiler
-// TODO-WINDOWS
-#ifdef __linux__
     InitGoalProto();
-#endif
   }
 
   printf("InitSound\n");
@@ -362,10 +359,7 @@ int ShutdownMachine() {
   StopIOP();
   CloseListener();
   ShutdownSound();
-// TODO-WINDOWS
-#ifdef __linux__
   ShutdownGoalProto();
-#endif
   Msg(6, "kernel: machine shutdown");
   return 0;
 }
@@ -601,7 +595,8 @@ void InitMachineScheme() {
     intern_from_c("*kernel-boot-level*")->value = intern_from_c(DebugBootLevel).offset;
   }
 
-  if (DiskBoot) {
+  // todo remove MasterUseKernel
+  if (DiskBoot && MasterUseKernel) {
     *EnableMethodSet = (*EnableMethodSet) + 1;
     load_and_link_dgo_from_c("game", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,

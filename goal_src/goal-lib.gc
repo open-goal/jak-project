@@ -1,0 +1,53 @@
+;; compile, color, and save a file
+(defmacro m (file)
+  `(asm-file ,file :color :write)
+  )
+
+;; compile, color, load and save a file
+(defmacro ml (file)
+  `(asm-file ,file :color :load :write)
+  )
+
+(defmacro e ()
+  `(:exit)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CONDITIONAL COMPILATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro #when (clause &rest body)
+  `(#cond (,clause ,@body))
+  )
+
+(defmacro #unless (clause &rest body)
+  `(#cond ((not ,clause) ,@body))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TARGET CONTROL
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro lt (&rest args)
+  ;; shortcut for listen-to-target. also sends a :status command to make sure
+  ;; all buffers on the target are flushed.
+  `(begin
+     (listen-to-target ,@args)
+     (:status)
+     )
+  )
+
+(defmacro r (&rest args)
+  ;; shortcut to completely reset the target and connect, regardless of current state
+  `(begin
+     ;; connect, so we can send reset.  if we're already connected, does nothing
+     (listen-to-target ,@args)
+     ;; send a reset message, disconnecting us
+     (reset-target)
+     ;; establish connection again
+     (listen-to-target ,@args)
+     ;; flush buffers
+     (:status)
+     )
+  )

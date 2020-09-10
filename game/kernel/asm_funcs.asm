@@ -121,9 +121,9 @@ _call_goal_asm_linux:
   ;; set GOAL function pointer
   mov r13, rcx
   ;; offset
-  mov r15, r8
+  mov r14, r8
   ;; symbol table
-  mov r14, r9
+  mov r15, r9
   ;; call GOAL by function pointer
   call r13
 
@@ -165,8 +165,8 @@ _call_goal_asm_win32:
   mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
   mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
   mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
-  mov r15, [rsp + 144] ;; symbol table
-  mov r14, [rsp + 152] ;; offset
+  mov r14, [rsp + 144] ;; symbol table
+  mov r15, [rsp + 152] ;; offset
   
   call r13
   
