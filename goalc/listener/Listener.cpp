@@ -134,11 +134,6 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
   while (prog < 8) {
     auto r = read_from_socket(listen_socket, (char*)version_buffer + prog, 8 - prog);
     std::this_thread::sleep_for(std::chrono::microseconds(100000));
-
-    //    if (r < 0) {
-    //      ok = false;
-    //      break;
-    //    }
     prog += r > 0 ? r : 0;
     read_tries++;
     if (read_tries > 50) {
