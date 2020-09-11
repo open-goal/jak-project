@@ -8,7 +8,7 @@
 #include "kdgo.h"
 #include "kprint.h"
 #include "kmalloc.h"
-#include "common/util/FileIO.h"
+#include "common/util/file_io.h"
 #include "klink.h"
 #include "game/sce/sif_ee.h"
 #include "game/common/dgo_rpc_types.h"

@@ -8,7 +8,7 @@
 #include <cstring>
 #include <cstdio>
 #include "game/sce/stubs.h"
-#include "fileio.h"
+#include "file_io.h"
 #include "kprint.h"
 
 namespace {
@@ -21,7 +21,6 @@ void fileio_init_globals() {
 }
 
 using namespace ee;
-
 
 /*!
  * An implementation of Huffman decoding.
@@ -100,7 +99,6 @@ char* DecodeFileName(const char* name) {
   return result;
 }
 
-
 void kstrcpy(char* dst, const char* src) {
   char* dst_ptr = dst;
   const char* src_ptr = src;
@@ -126,14 +124,11 @@ char* strend(char* str) {
   return str;
 }
 
-
-
 /*!
  * Copy a string from src to dst. The null terminator is copied too.
  * This is identical to normal strcpy.
  * DONE, EXACT
  */
-
 
 /*!
  * Copy a string from src to dst, making all letters upper case.
@@ -272,7 +267,6 @@ char* basename_goal(char* s) {
     }
   }
 }
-
 
 /*!
  * Build a file name based on type.

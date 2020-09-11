@@ -15,7 +15,7 @@
 #include "kboot.h"
 #include "kmalloc.h"
 #include "kdsnetm.h"
-#include "FileIO.h"
+#include "file_io.h"
 #include "kscheme.h"
 #include "klisten.h"
 #include "klink.h"

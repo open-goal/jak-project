@@ -3,7 +3,7 @@
 #include <vector>
 #include "ObjectFile/ObjectFileDB.h"
 #include "config.h"
-#include "util/FileIO.h"
+#include "util/file_io.h"
 #include "TypeSystem/TypeInfo.h"
 #include "common/util/file_util.h"
 

@@ -8,7 +8,7 @@
 #include "kdsnetm.h"
 #include "kprint.h"
 #include "kboot.h"
-#include "FileIO.h"
+#include "file_io.h"
 #include "klisten.h"
 
 /*!

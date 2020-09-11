@@ -9,7 +9,7 @@
 #include <cstring>
 #include <cassert>
 #include "klink.h"
-#include "common/util/FileIO.h"
+#include "common/util/file_io.h"
 #include "kscheme.h"
 #include "kboot.h"
 #include "kprint.h"

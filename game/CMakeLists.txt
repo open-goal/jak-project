@@ -41,7 +41,7 @@ set(RUNTIME_SOURCE
         sce/iop.cpp
         sce/stubs.cpp
         kernel/asm_funcs.asm
-        kernel/fileio.cpp
+        "kernel/file_io.cpp"
         kernel/kboot.cpp
         kernel/kdgo.cpp
         kernel/kdsnetm.cpp

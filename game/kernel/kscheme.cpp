@@ -11,7 +11,7 @@
 #include "klisten.h"
 #include "kmalloc.h"
 #include "kprint.h"
-#include "fileio.h"
+#include "file_io.h"
 #include "kboot.h"
 #include "kdsnetm.h"
 #include "kdgo.h"
@@ -58,7 +58,6 @@ void kscheme_init_globals() {
   EnableMethodSet.offset = 0;
   FastLink = 0;
 }
-
 
 /*!
  * Take the CRC32 hash of some data
@@ -447,7 +446,6 @@ void init_crc() {
   }
   sInitCrc = true;
 }
-
 
 /*!
  * Configure a "fixed" symbol to have a given name and value.  The "fixed" symbols are symbols

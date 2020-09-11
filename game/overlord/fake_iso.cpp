@@ -91,7 +91,7 @@ int FS_Init(u8* buffer) {
   char* fakeiso = (char*)malloc(len + 1);
   fakeiso[len] = 0;
   if (fread(fakeiso, len, 1, fp) != 1) {
-    //assert(false);
+    assert(false);
   }
   fakeiso[len] = '\0';
 
