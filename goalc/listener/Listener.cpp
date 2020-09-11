@@ -151,8 +151,8 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
   printf("Got version %d.%d", version_buffer[0], version_buffer[1]);
   if (version_buffer[0] == GOAL_VERSION_MAJOR && version_buffer[1] == GOAL_VERSION_MINOR) {
     printf(" OK!\n");
-    rcv_thread = std::thread(&Listener::receive_func, this);
     m_connected = true;
+    rcv_thread = std::thread(&Listener::receive_func, this);
     receive_thread_running = true;
     return true;
   } else {
@@ -189,10 +189,9 @@ void Listener::receive_func() {
     }
 
     ListenerMessageHeader* hdr = (ListenerMessageHeader*)buff;
-    //    if(debug_listener) {
-    //      printf("[T -> L] received %d bytes, kind %d\n",
-    //             hdr->deci2_hdr.len, hdr->msg_kind);
-    //    }
+    if (debug_listener) {
+      printf("[T -> L] received %d bytes, kind %d\n", hdr->deci2_header.len, int(hdr->msg_kind));
+    }
 
     switch (hdr->msg_kind) {
       case ListenerMessageKind::MSG_ACK:

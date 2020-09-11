@@ -37,9 +37,8 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
 void Compiler::va_check(
     const goos::Object& form,
     const goos::Arguments& args,
-    const std::vector<util::MatchParam<goos::ObjectType>>& unnamed,
-    const std::unordered_map<std::string, std::pair<bool, util::MatchParam<goos::ObjectType>>>&
-        named) {
+    const std::vector<MatchParam<goos::ObjectType>>& unnamed,
+    const std::unordered_map<std::string, std::pair<bool, MatchParam<goos::ObjectType>>>& named) {
   assert(args.rest.empty());
   if (unnamed.size() != args.unnamed.size()) {
     throw_compile_error(form, "Got " + std::to_string(args.unnamed.size()) +

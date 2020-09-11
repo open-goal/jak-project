@@ -11,7 +11,6 @@ add_executable(decompiler
         Function/Function.cpp
         config.cpp
         util/LispPrint.cpp
-        util/Timer.cpp
         Function/BasicBlocks.cpp
         Disasm/InstructionMatching.cpp
         TypeSystem/GoalType.cpp
@@ -20,5 +19,6 @@ add_executable(decompiler
         TypeSystem/TypeInfo.cpp
         TypeSystem/TypeSpec.cpp Function/CfgVtx.cpp Function/CfgVtx.h)
 
-target_link_libraries(decompiler util
-        minilzo)
+target_link_libraries(decompiler
+        minilzo
+        common_util)

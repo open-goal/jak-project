@@ -1,11 +1,4 @@
-add_library(util
+add_library(common_util
         SHARED
-        "FileIO.cpp")
-# if you need link libraries? add this
-IF (WIN32)
-  # set stuff for windows
-  target_link_libraries(util)
-ELSE()
-  # set stuff for other systems
-  target_link_libraries(util)
-ENDIF()
+        FileUtil.cpp
+        Timer.cpp)

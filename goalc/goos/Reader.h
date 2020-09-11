@@ -70,7 +70,7 @@ class Reader {
   Reader();
   Object read_from_string(const std::string& str);
   Object read_from_stdin(const std::string& prompt_name);
-  Object read_from_file(const std::string& filename);
+  Object read_from_file(const std::vector<std::string>& file_path);
 
   std::string get_source_dir();
 
@@ -97,7 +97,6 @@ class Reader {
 
   char valid_symbols_chars[256];
 
-  std::string source_dir;
   std::unordered_map<std::string, std::string> reader_macros;
 };
 }  // namespace goos
