@@ -11,7 +11,7 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include "goalc/util/file_io.h"
+#include "common/util/FileUtil.h"
 
 #include "TextDB.h"
 
@@ -79,7 +79,7 @@ std::pair<int, int> SourceText::get_containing_line(int offset) {
  * Read text from a file.
  */
 FileText::FileText(std::string filename_) : filename(std::move(filename_)) {
-  text = util::read_text_file(filename);
+  text = file_util::read_text_file(filename);
   build_offsets();
 }
 

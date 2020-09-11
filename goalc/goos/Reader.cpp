@@ -11,8 +11,7 @@
 
 #include "Reader.h"
 #include "third-party/linenoise.h"
-#include "goalc/util/file_io.h"
-#include "goalc/util/text_util.h"
+#include "common/util/FileUtil.h"
 
 namespace goos {
 
@@ -98,15 +97,6 @@ Reader::Reader() {
   for (const char* c = bonus; *c; c++) {
     valid_symbols_chars[(int)*c] = true;
   }
-
-  // find the source directory
-  auto result = std::getenv("NEXT_DIR");
-  if (!result) {
-    throw std::runtime_error(
-        "Environment variable NEXT_DIR is not set.  Please set this to point to next/");
-  }
-
-  source_dir = result;
 }
 
 /*!
@@ -147,8 +137,8 @@ Object Reader::read_from_string(const std::string& str) {
 /*!
  * Read a file
  */
-Object Reader::read_from_file(const std::string& filename) {
-  auto textFrag = std::make_shared<FileText>(util::combine_path(get_source_dir(), filename));
+Object Reader::read_from_file(const std::vector<std::string>& file_path) {
+  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path));
   db.insert(textFrag);
 
   auto result = internal_read(textFrag);
@@ -670,7 +660,7 @@ bool Reader::try_token_as_integer(const Token& tok, Object& obj) {
 
 bool Reader::try_token_as_char(const Token& tok, Object& obj) {
   if (tok.text.size() >= 3 && tok.text[0] == '#' && tok.text[1] == '\\') {
-    if (tok.text.size() == 3 && util::is_printable_char(tok.text[2]) && tok.text[2] != ' ') {
+    if (tok.text.size() == 3 && file_util::is_printable_char(tok.text[2]) && tok.text[2] != ' ') {
       obj = Object::make_char(tok.text[2]);
       return true;
     }
@@ -705,6 +695,6 @@ void Reader::throw_reader_error(TextStream& here, const std::string& err, int se
  * Get the source directory of the current project.
  */
 std::string Reader::get_source_dir() {
-  return source_dir;
+  return file_util::get_project_path();
 }
 }  // namespace goos

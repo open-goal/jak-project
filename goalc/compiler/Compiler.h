@@ -48,9 +48,8 @@ class Compiler {
   void va_check(
       const goos::Object& form,
       const goos::Arguments& args,
-      const std::vector<util::MatchParam<goos::ObjectType>>& unnamed,
-      const std::unordered_map<std::string, std::pair<bool, util::MatchParam<goos::ObjectType>>>&
-          named);
+      const std::vector<MatchParam<goos::ObjectType>>& unnamed,
+      const std::unordered_map<std::string, std::pair<bool, MatchParam<goos::ObjectType>>>& named);
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
   const goos::Object& pair_car(const goos::Object& o);

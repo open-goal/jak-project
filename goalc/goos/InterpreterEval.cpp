@@ -66,7 +66,7 @@ Object Interpreter::eval_read_file(const Object& form,
   vararg_check(form, args, {ObjectType::STRING}, {});
 
   try {
-    return reader.read_from_file(args.unnamed.at(0).as_string()->data);
+    return reader.read_from_file({args.unnamed.at(0).as_string()->data});
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("reader error inside of read-file:\n") + e.what());
   }
@@ -84,7 +84,7 @@ Object Interpreter::eval_load_file(const Object& form,
 
   Object o;
   try {
-    o = reader.read_from_file(args.unnamed.at(0).as_string()->data);
+    o = reader.read_from_file({args.unnamed.at(0).as_string()->data});
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("reader error inside of load-file:\n") + e.what());
   }

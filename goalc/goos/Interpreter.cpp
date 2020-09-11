@@ -379,8 +379,8 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
 void Interpreter::vararg_check(
     const Object& form,
     const Arguments& args,
-    const std::vector<util::MatchParam<ObjectType>>& unnamed,
-    const std::unordered_map<std::string, std::pair<bool, util::MatchParam<ObjectType>>>& named) {
+    const std::vector<MatchParam<ObjectType>>& unnamed,
+    const std::unordered_map<std::string, std::pair<bool, MatchParam<ObjectType>>>& named) {
   assert(args.rest.empty());
   if (unnamed.size() != args.unnamed.size()) {
     throw_eval_error(form, "Got " + std::to_string(args.unnamed.size()) +
