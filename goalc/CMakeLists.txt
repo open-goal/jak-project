@@ -13,7 +13,7 @@ add_library(compiler
         compiler/IR.cpp
         compiler/CodeGenerator.cpp
         compiler/compilation/Atoms.cpp
-        "compiler_util/CompilerControl.cpp"
+        compiler/compilation/CompilerControl.cpp
         compiler/compilation/Block.cpp
         compiler/compilation/Macro.cpp
         compiler/compilation/Define.cpp

@@ -19,7 +19,6 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
 
-
 /*!
  * Get a unique name for this object file.
  */
@@ -232,7 +231,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   stats.total_obj_files++;
   assert(obj_size > 128);
   uint16_t version = *(uint16_t*)(obj_data + 8);
-  auto hash = crc32a(obj_data, obj_size);
+  auto hash = crc32(obj_data, obj_size);
 
   bool duplicated = false;
   // first, check to see if we already got it...

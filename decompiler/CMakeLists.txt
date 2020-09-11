@@ -9,6 +9,7 @@ add_executable(decompiler
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/LinkedObjectFile.cpp
         Function/Function.cpp
+        util/FileIO.cpp
         config.cpp
         util/LispPrint.cpp
         Function/BasicBlocks.cpp
