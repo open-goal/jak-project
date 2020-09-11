@@ -15,7 +15,7 @@
 #include "game/sce/iop.h"
 #include "isocommon.h"
 #include "overlord.h"
-#include "common/util/FileUtil.h"
+#include "common/util/file_util.h"
 
 using namespace iop;
 

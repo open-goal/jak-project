@@ -11,7 +11,7 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#include "common/util/FileUtil.h"
+#include "common/util/file_util.h"
 
 #include "TextDB.h"
 

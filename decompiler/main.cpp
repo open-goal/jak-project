@@ -5,7 +5,7 @@
 #include "config.h"
 #include "util/FileIO.h"
 #include "TypeSystem/TypeInfo.h"
-#include "common/util/FileUtil.h"
+#include "common/util/file_util.h"
 
 int main(int argc, char** argv) {
   printf("Jak Disassembler\n");

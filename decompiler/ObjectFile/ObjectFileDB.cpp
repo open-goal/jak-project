@@ -16,7 +16,7 @@
 #include "common/util/BinaryReader.h"
 #include "decompiler/util/FileIO.h"
 #include "common/util/Timer.h"
-#include "common/util/FileUtil.h"
+#include "common/util/file_util.h"
 #include "decompiler/Function/BasicBlocks.h"
 
 /*!

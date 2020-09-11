@@ -6,7 +6,7 @@
 
 #include "gtest/gtest.h"
 #include "goalc/goos/Reader.h"
-#include "common/util/FileUtil.h"
+#include "common/util/file_util.h"
 
 using namespace goos;
 
