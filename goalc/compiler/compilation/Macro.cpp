@@ -62,7 +62,7 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
         result = get_none();
 
         for_each_in_list(current_case.as_pair()->cdr,
-                         [&](Object o) { result = compile_error_guard(o, env); });
+                         [&](const Object& o) { result = compile_error_guard(o, env); });
         return result;
       } else {
         // no match, continue.
@@ -83,6 +83,7 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
   switch (thing.type) {
     case goos::ObjectType::SYMBOL:
       return compile_get_sym_obj(thing.as_symbol()->name, env);
+      // todo...
     default:
       throw_compile_error(form, "Can't quote this");
   }

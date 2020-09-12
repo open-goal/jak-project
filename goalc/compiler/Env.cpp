@@ -156,7 +156,13 @@ std::string FileEnv::print() {
 }
 
 void FileEnv::add_function(std::unique_ptr<FunctionEnv> fe) {
+  assert(fe->idx_in_file == -1);
+  fe->idx_in_file = m_functions.size();
   m_functions.push_back(std::move(fe));
+}
+
+void FileEnv::add_static(std::unique_ptr<StaticObject> s) {
+  m_statics.push_back(std::move(s));
 }
 
 void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
@@ -220,6 +226,7 @@ RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
   ireg.id = m_iregs.size();
   auto rv = std::make_unique<RegVal>(ireg, ts);
   m_iregs.push_back(std::move(rv));
+  assert(kind != emitter::RegKind::INVALID);
   return m_iregs.back().get();
 }
 
@@ -229,4 +236,38 @@ std::unordered_map<std::string, Label>& FunctionEnv::get_label_map() {
 
 std::unordered_map<std::string, Label>& LabelEnv::get_label_map() {
   return m_labels;
+}
+
+Val* FunctionEnv::lexical_lookup(goos::Object sym) {
+  if (!sym.is_symbol()) {
+    throw std::runtime_error("invalid symbol in lexical_lookup");
+  }
+
+  auto kv = params.find(sym.as_symbol()->name);
+  if (kv == params.end()) {
+    return parent()->lexical_lookup(sym);
+  }
+
+  return kv->second;
+}
+
+///////////////////
+// LexicalEnv
+///////////////////
+
+std::string LexicalEnv::print() {
+  return "lexical";
+}
+
+Val* LexicalEnv::lexical_lookup(goos::Object sym) {
+  if (!sym.is_symbol()) {
+    throw std::runtime_error("invalid symbol in lexical_lookup");
+  }
+
+  auto kv = vars.find(sym.as_symbol()->name);
+  if (kv == vars.end()) {
+    return parent()->lexical_lookup(sym);
+  }
+
+  return kv->second;
 }

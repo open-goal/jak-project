@@ -240,3 +240,114 @@ void IR_GotoLabel::resolve(const Label* dest) {
   m_dest = dest;
   m_resolved = true;
 }
+
+/////////////////////
+// FunctionCall
+/////////////////////
+
+IR_FunctionCall::IR_FunctionCall(const RegVal* func, const RegVal* ret, std::vector<RegVal*> args)
+    : m_func(func), m_ret(ret), m_args(std::move(args)) {}
+
+std::string IR_FunctionCall::print() {
+  std::string result = fmt::format("call {} (ret {}) (args ", m_func->print(), m_ret->print());
+  for (const auto& x : m_args) {
+    result += fmt::format("{} ", x->print());
+  }
+  result.pop_back();
+  return result;
+}
+
+RegAllocInstr IR_FunctionCall::to_rai() {
+  RegAllocInstr rai;
+  rai.read.push_back(m_func->ireg());
+  rai.write.push_back(m_ret->ireg());
+  for (auto& arg : m_args) {
+    rai.read.push_back(arg->ireg());
+  }
+
+  for (int i = 0; i < emitter::RegisterInfo::N_REGS; i++) {
+    auto info = emitter::gRegInfo.get_info(i);
+    if (info.temp()) {
+      rai.clobber.emplace_back(i);
+    }
+  }
+
+  // todo, clobber call reg?
+
+  return rai;
+}
+
+void IR_FunctionCall::add_constraints(std::vector<IRegConstraint>* constraints, int my_id) {
+  for (size_t i = 0; i < m_args.size(); i++) {
+    IRegConstraint c;
+    c.ireg = m_args.at(i)->ireg();
+    c.instr_idx = my_id;
+    c.desired_register = emitter::gRegInfo.get_arg_reg(i);
+    constraints->push_back(c);
+  }
+
+  IRegConstraint c;
+  c.ireg = m_ret->ireg();
+  c.desired_register = emitter::gRegInfo.get_ret_reg();
+  c.instr_idx = my_id;
+  constraints->push_back(c);
+}
+
+void IR_FunctionCall::do_codegen(emitter::ObjectGenerator* gen,
+                                 const AllocationResult& allocs,
+                                 emitter::IR_Record irec) {
+  auto freg = get_reg(m_func, allocs, irec);
+  gen->add_instr(IGen::add_gpr64_gpr64(freg, emitter::gRegInfo.get_offset_reg()), irec);
+  gen->add_instr(IGen::call_r64(freg), irec);
+}
+
+/////////////////////
+// StaticVarAddr
+/////////////////////
+
+IR_StaticVarAddr::IR_StaticVarAddr(const RegVal* dest, const StaticObject* src)
+    : m_dest(dest), m_src(src) {}
+
+std::string IR_StaticVarAddr::print() {
+  return fmt::format("mov-sva {}, {}", m_dest->print(), m_src->print());
+}
+
+RegAllocInstr IR_StaticVarAddr::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  return rai;
+}
+
+void IR_StaticVarAddr::do_codegen(emitter::ObjectGenerator* gen,
+                                  const AllocationResult& allocs,
+                                  emitter::IR_Record irec) {
+  auto dr = get_reg(m_dest, allocs, irec);
+  auto instr = gen->add_instr(IGen::static_addr(dr, 0), irec);
+  gen->link_instruction_static(instr, m_src->rec, m_src->get_addr_offset());
+  gen->add_instr(IGen::sub_gpr64_gpr64(dr, emitter::gRegInfo.get_offset_reg()), irec);
+}
+
+/////////////////////
+// FunctionAddr
+///////////////////
+
+IR_FunctionAddr::IR_FunctionAddr(const RegVal* dest, FunctionEnv* src) : m_dest(dest), m_src(src) {}
+
+std::string IR_FunctionAddr::print() {
+  return fmt::format("mov-fa {}, {}", m_dest->print(), m_src->print());
+}
+
+RegAllocInstr IR_FunctionAddr::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  return rai;
+}
+
+void IR_FunctionAddr::do_codegen(emitter::ObjectGenerator* gen,
+                                 const AllocationResult& allocs,
+                                 emitter::IR_Record irec) {
+  auto dr = get_reg(m_dest, allocs, irec);
+  auto instr = gen->add_instr(IGen::static_addr(dr, 0), irec);
+  gen->link_instruction_to_function(instr, gen->get_existing_function_record(m_src->idx_in_file));
+  gen->add_instr(IGen::sub_gpr64_gpr64(dr, emitter::gRegInfo.get_offset_reg()), irec);
+}

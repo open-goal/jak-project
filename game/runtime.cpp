@@ -163,7 +163,7 @@ void ee_runner(SystemThreadInterface& iface) {
  */
 void iop_runner(SystemThreadInterface& iface) {
   IOP iop;
-  printf("\n\n\n[IOP] Restart!\n");
+  printf("[IOP] Restart!\n");
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);

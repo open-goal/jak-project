@@ -9,17 +9,29 @@ constexpr int XMM_SIZE = 16;
 CodeGenerator::CodeGenerator(FileEnv* env) : m_fe(env) {}
 
 std::vector<u8> CodeGenerator::run() {
-  // todo, static objects
-
   for (auto& f : m_fe->functions()) {
-    do_function(f.get());
+    m_gen.add_function_to_seg(f->segment);
   }
+
+  // todo, static objects
+  for (auto& static_obj : m_fe->statics()) {
+    static_obj->generate(&m_gen);
+  }
+
+  for (size_t i = 0; i < m_fe->functions().size(); i++) {
+    do_function(m_fe->functions().at(i).get(), i);
+  }
+  //  for (auto& f : m_fe->functions()) {
+  //    do_function(f.get());
+  //  }
 
   return m_gen.generate_data_v3().to_vector();
 }
 
-void CodeGenerator::do_function(FunctionEnv* env) {
-  auto f_rec = m_gen.add_function_to_seg(env->segment);  // todo, extra alignment settings
+void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
+  auto f_rec = m_gen.get_existing_function_record(f_idx);
+  // auto f_rec = m_gen.add_function_to_seg(env->segment);  // todo, extra alignment settings
+
   auto& ri = emitter::gRegInfo;
   const auto& allocs = env->alloc_result();
 

@@ -121,7 +121,7 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
                                         Env* env) {
   (void)env;
   std::string ip = "127.0.0.1";
-  int port = 8112;
+  int port = 8112;  // todo, get from some constant somewhere
   bool got_port = false, got_ip = false;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
@@ -165,5 +165,21 @@ Val* Compiler::compile_poke(const goos::Object& form, const goos::Object& rest, 
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
   m_listener.send_poke();
+  return get_none();
+}
+
+Val* Compiler::compile_gs(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  m_goos.execute_repl();
+  return get_none();
+}
+
+Val* Compiler::compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, {}}, {});
+  m_settings.set(symbol_string(args.unnamed.at(0)), args.unnamed.at(1));
   return get_none();
 }

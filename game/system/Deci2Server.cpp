@@ -64,20 +64,17 @@ bool Deci2Server::init() {
   if (set_socket_option(server_socket, SOL_SOCKET, server_socket_opt, &opt, sizeof(opt)) < 0) {
     close_server_socket();
     return false;
-  }
-  printf("[Deci2Server] Created Socket Options\n");
+  };
 
   if (set_socket_option(server_socket, TCP_SOCKET_LEVEL, TCP_NODELAY, &opt, sizeof(opt)) < 0) {
     close_server_socket();
     return false;
   }
-  printf("[Deci2Server] Created TCP Socket Options\n");
 
   if (set_socket_timeout(server_socket, 100000) < 0) {
     close_server_socket();
     return false;
   }
-  printf("[Deci2Server] Created Socket Timeout\n");
 
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = INADDR_ANY;
@@ -197,8 +194,8 @@ void Deci2Server::run() {
   }
 
   auto* hdr = (Deci2Header*)(buffer);
-  printf("[DECI2] Got message:\n");
-  printf(" %d %d 0x%x %c -> %c\n", hdr->len, hdr->rsvd, hdr->proto, hdr->src, hdr->dst);
+  fprintf(stderr, "[DECI2] Got message:\n");
+  fprintf(stderr, " %d %d 0x%x %c -> %c\n", hdr->len, hdr->rsvd, hdr->proto, hdr->src, hdr->dst);
 
   hdr->rsvd = got;
 

@@ -617,8 +617,8 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
 
 const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, RegAllocCache* cache) {
   auto& info = cache->iregs.at(v);
-  assert(info.kind != emitter::RegKind::INVALID);
-  if (info.kind == emitter::RegKind::GPR) {
+  //  assert(info.kind != emitter::RegKind::INVALID);
+  if (info.kind == emitter::RegKind::GPR || info.kind == emitter::RegKind::INVALID) {
     return emitter::gRegInfo.get_gpr_alloc_order();
   } else if (info.kind == emitter::RegKind::XMM) {
     return emitter::gRegInfo.get_xmm_alloc_order();

@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "goalc/logger/Logger.h"
 
 Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
@@ -38,4 +39,25 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
 
   fe->emit(std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
+}
+
+Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, {}}, {});
+  auto& sym = args.unnamed.at(0);
+  auto& typespec = args.unnamed.at(1);
+
+  auto new_type = parse_typespec(typespec);
+
+  auto existing_type = m_symbol_types.find(symbol_string(sym));
+  if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {
+    gLogger.log(
+        MSG_WARN,
+        "[Warning] define-extern has redefined the type of symbol %s\npreviously: %s\nnow: %s\n",
+        symbol_string(sym).c_str(), existing_type->second.print().c_str(),
+        new_type.print().c_str());
+  }
+  m_symbol_types[symbol_string(sym)] = new_type;
+  return get_none();
 }

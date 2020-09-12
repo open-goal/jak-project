@@ -51,3 +51,36 @@
      (:status)
      )
   )
+
+
+;;;;;;;;;;;;;;;;;;;
+;; GOAL Syntax
+;;;;;;;;;;;;;;;;;;;
+;; Bind vars in body
+(defmacro let (bindings &rest body)
+  `((lambda :inline-only #t ,(apply first bindings) ,@body)
+    ,@(apply second bindings)))
+
+;; Let, but recursive, allowing you to define variables in terms of others.
+(defmacro let* (bindings &rest body)
+  (if (null? bindings)
+    `(begin ,@body)
+    `((lambda :inline-only #t (,(caar bindings))
+        (let* ,(cdr bindings) ,@body))
+      ,(car (cdar bindings))
+      )
+    )
+  )
+
+;; Define a new function
+(defmacro defun (name bindings &rest body)
+  (if (and
+        (> (length body) 1)      ;; more than one thing in function
+        (string? (first body))   ;; first thing is a string
+        )
+    ;; then it's a docstring and we ignore it.
+    `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
+    ;; otherwise don't ignore it.
+    `(define ,name (lambda :name ,name ,bindings ,@body))
+    )
+  )

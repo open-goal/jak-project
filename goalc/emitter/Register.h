@@ -101,6 +101,8 @@ class RegisterInfo {
   static constexpr int N_REGS = 32;
   static constexpr int N_SAVED_GPRS = 5;
   static constexpr int N_SAVED_XMMS = 8;
+  static constexpr int N_TEMP_GPRS = 5;
+  static constexpr int N_TEMP_XMMS = 8;
 
   static_assert(N_REGS - 1 == XMM15, "bad register count");
 
@@ -111,6 +113,8 @@ class RegisterInfo {
     bool saved = false;    // does the callee save it?
     bool special = false;  // is it a special GOAL register?
     std::string name;
+
+    bool temp() const { return !saved && !special; }
   };
 
   const Info& get_info(Register r) const { return m_info.at(r.id()); }

@@ -118,7 +118,7 @@ void SystemThreadInterface::initialization_complete() {
   std::unique_lock<std::mutex> mlk(thread.initialization_mutex);
   thread.initialization_complete = true;
   thread.initialization_cv.notify_all();
-  printf("  OK\n");
+  printf("# %s initialized\n", thread.name.c_str());
 }
 
 /*!

@@ -129,4 +129,48 @@ class IR_GotoLabel : public IR {
   bool m_resolved = false;
 };
 
+class IR_FunctionCall : public IR {
+ public:
+  IR_FunctionCall(const RegVal* func, const RegVal* ret, std::vector<RegVal*> args);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+  void add_constraints(std::vector<IRegConstraint>* constraints, int my_id) override;
+
+ protected:
+  const RegVal* m_func = nullptr;
+  const RegVal* m_ret = nullptr;
+  std::vector<RegVal*> m_args;
+};
+
+class IR_StaticVarAddr : public IR {
+ public:
+  IR_StaticVarAddr(const RegVal* dest, const StaticObject* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  const StaticObject* m_src = nullptr;
+};
+
+class IR_FunctionAddr : public IR {
+ public:
+  IR_FunctionAddr(const RegVal* dest, FunctionEnv* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  FunctionEnv* m_src = nullptr;
+};
+
 #endif  // JAK_IR_H
