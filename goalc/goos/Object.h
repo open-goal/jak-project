@@ -45,6 +45,7 @@
 #include <cassert>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include <stdexcept>
@@ -299,6 +300,7 @@ class Object {
   }
 
   bool is_empty_list() const { return type == ObjectType::EMPTY_LIST; }
+  bool is_list() const { return type == ObjectType::EMPTY_LIST || type == ObjectType::PAIR; }
   bool is_int() const { return type == ObjectType::INTEGER; }
   bool is_float() const { return type == ObjectType::FLOAT; }
   bool is_char() const { return type == ObjectType::CHAR; }
@@ -527,6 +529,7 @@ struct Arguments {
   Object get_named(const std::string& name, const Object& default_value);
   Object get_named(const std::string& name);
   bool has_named(const std::string& name);
+  bool only_contains_named(const std::unordered_set<std::string>& names);
 };
 
 class LambdaObject : public HeapObject {

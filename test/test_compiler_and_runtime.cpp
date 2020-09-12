@@ -118,6 +118,10 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-goto-1.gc", {"3\n"});
   runner.run_test("test-defglobalconstant-1.gc", {"17\n"});
   runner.run_test("test-defglobalconstant-2.gc", {"18\n"});
+  runner.run_test("test-simple-function-call.gc", {"30\n"});
+  runner.run_test("test-application-lambda-1.gc", {"2\n"});
+  runner.run_test("test-let-1.gc", {"30\n"});
+  runner.run_test("test-let-star-1.gc", {"30\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

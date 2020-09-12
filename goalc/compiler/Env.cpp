@@ -230,3 +230,24 @@ std::unordered_map<std::string, Label>& FunctionEnv::get_label_map() {
 std::unordered_map<std::string, Label>& LabelEnv::get_label_map() {
   return m_labels;
 }
+
+///////////////////
+// LexicalEnv
+///////////////////
+
+std::string LexicalEnv::print() {
+  return "lexical";
+}
+
+Val* LexicalEnv::lexical_lookup(goos::Object sym) {
+  if (!sym.is_symbol()) {
+    throw std::runtime_error("invalid symbol in lexical_lookup");
+  }
+
+  auto kv = vars.find(sym.as_symbol()->name);
+  if (kv == vars.end()) {
+    return parent()->lexical_lookup(sym);
+  }
+
+  return kv->second;
+}

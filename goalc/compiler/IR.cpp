@@ -240,3 +240,63 @@ void IR_GotoLabel::resolve(const Label* dest) {
   m_dest = dest;
   m_resolved = true;
 }
+
+/////////////////////
+// FunctionCall
+/////////////////////
+
+IR_FunctionCall::IR_FunctionCall(const RegVal* func, const RegVal* ret, std::vector<RegVal*> args)
+    : m_func(func), m_ret(ret), m_args(std::move(args)) {}
+
+std::string IR_FunctionCall::print() {
+  std::string result = fmt::format("call {} (ret {}) (args ", m_func->print(), m_ret->print());
+  for (const auto& x : m_args) {
+    result += fmt::format("{} ", x->print());
+  }
+  result.pop_back();
+  return result;
+}
+
+RegAllocInstr IR_FunctionCall::to_rai() {
+  RegAllocInstr rai;
+  rai.read.push_back(m_func->ireg());
+  rai.write.push_back(m_ret->ireg());
+  for (auto& arg : m_args) {
+    rai.read.push_back(arg->ireg());
+  }
+
+  for (int i = 0; i < emitter::RegisterInfo::N_REGS; i++) {
+    auto info = emitter::gRegInfo.get_info(i);
+    if (info.temp()) {
+      rai.clobber.emplace_back(i);
+    }
+  }
+
+  // todo, clobber call reg?
+
+  return rai;
+}
+
+void IR_FunctionCall::add_constraints(std::vector<IRegConstraint>* constraints, int my_id) {
+  for (size_t i = 0; i < m_args.size(); i++) {
+    IRegConstraint c;
+    c.ireg = m_args.at(i)->ireg();
+    c.instr_idx = my_id;
+    c.desired_register = emitter::gRegInfo.get_arg_reg(i);
+    constraints->push_back(c);
+  }
+
+  IRegConstraint c;
+  c.ireg = m_ret->ireg();
+  c.desired_register = emitter::gRegInfo.get_ret_reg();
+  c.instr_idx = my_id;
+  constraints->push_back(c);
+}
+
+void IR_FunctionCall::do_codegen(emitter::ObjectGenerator* gen,
+                                 const AllocationResult& allocs,
+                                 emitter::IR_Record irec) {
+  auto freg = get_reg(m_func, allocs, irec);
+  gen->add_instr(IGen::add_gpr64_gpr64(freg, emitter::gRegInfo.get_offset_reg()), irec);
+  gen->add_instr(IGen::call_r64(freg), irec);
+}

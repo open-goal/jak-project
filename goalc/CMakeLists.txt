@@ -11,12 +11,14 @@ add_library(compiler
         compiler/Env.cpp
         compiler/Val.cpp
         compiler/IR.cpp
+        compiler/CompilerSettings.cpp
         compiler/CodeGenerator.cpp
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
         compiler/compilation/Block.cpp
         compiler/compilation/Macro.cpp
         compiler/compilation/Define.cpp
+        compiler/compilation/Function.cpp
         compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp

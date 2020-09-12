@@ -1225,6 +1225,7 @@ class IGen {
    * Instruction to pop 64 bit gpr from the stack
    */
   static Instruction pop_gpr64(Register reg) {
+    assert(reg.is_gpr());
     if (reg.hw_id() >= 8) {
       auto i = Instruction(0x58 + reg.hw_id() - 8);
       i.set(REX(false, false, false, true));
@@ -1236,7 +1237,9 @@ class IGen {
   /*!
    * Call a function stored in a 64-bit gpr
    */
-  static Instruction call_r64(uint8_t reg) {
+  static Instruction call_r64(Register reg_) {
+    assert(reg_.is_gpr());
+    auto reg = reg_.hw_id();
     Instruction instr(0xff);
     if (reg >= 8) {
       instr.set(REX(false, false, false, true));

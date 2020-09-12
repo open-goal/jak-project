@@ -1,3 +1,8 @@
+/*!
+ * @file Atoms.cpp
+ * Compiler implementation for atoms - things which aren't compound forms.
+ */
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 
@@ -25,7 +30,7 @@ static const std::unordered_map<
         {"goto", &Compiler::compile_goto},
         //
         //        // COMPILER CONTROL
-        //        {"gs", &Compiler::compile_gs},
+        {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
         {"asm-file", &Compiler::compile_asm_file},
         {"listen-to-target", &Compiler::compile_listen_to_target},
@@ -45,7 +50,7 @@ static const std::unordered_map<
         //
         //        // DEFINITION
         {"define", &Compiler::compile_define},
-        //        {"define-extern", &Compiler::compile_define_extern},
+        {"define-extern", &Compiler::compile_define_extern},
         //        {"set!", &Compiler::compile_set},
         //        {"defun-extern", &Compiler::compile_defun_extern},
         //        {"declare-method", &Compiler::compile_declare_method},
@@ -62,7 +67,7 @@ static const std::unordered_map<
         //
         //
         //        // LAMBDA
-        //        {"lambda", &Compiler::compile_lambda},
+        {"lambda", &Compiler::compile_lambda},
         //        {"inline", &Compiler::compile_inline},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"rlet", &Compiler::compile_rlet},
@@ -121,20 +126,20 @@ static const std::unordered_map<
         //        {"<", &Compiler::compile_condition_as_bool},
         //        {">", &Compiler::compile_condition_as_bool},
         //
-        //        // BUILDER
+        //        // BUILDER (build-dgo/build-cgo?)
         //        {"builder", &Compiler::compile_builder},
         //
         //        // UTIL
-        //        {"set-config!", &Compiler::compile_set_config},
-        //
-        //
-        //
+        {"set-config!", &Compiler::compile_set_config},
 
         //
         //        // temporary testing hacks...
         //        {"send-test", &Compiler::compile_send_test_data},
 };
 
+/*!
+ * Highest level compile function
+ */
 Val* Compiler::compile(const goos::Object& code, Env* env) {
   switch (code.type) {
     case goos::ObjectType::PAIR:
@@ -171,8 +176,9 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
   }
 
   // todo function or method call
-  ice("unhandled compile_pair on " + code.print());
-  return nullptr;
+  return compile_function_or_method_call(code, env);
+  //  throw_compile_error(code, "Unrecognized symbol at head of form");
+  //  return nullptr;
 }
 
 Val* Compiler::compile_integer(const goos::Object& code, Env* env) {
@@ -197,8 +203,11 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   }
 
   // todo mlet
-  // todo lexical
-  // todo global constant
+
+  auto lexical = env->lexical_lookup(form);
+  if (lexical) {
+    return lexical;
+  }
 
   auto global_constant = m_global_constants.find(form.as_symbol());
   auto existing_symbol = m_symbol_types.find(form.as_symbol()->name);
@@ -221,6 +230,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
 Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
   auto existing_symbol = m_symbol_types.find(name);
   if (existing_symbol == m_symbol_types.end()) {
+    //    assert(false);
     throw std::runtime_error("The symbol " + name + " was not defined");
   }
 

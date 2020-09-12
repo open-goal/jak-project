@@ -10,6 +10,7 @@ using namespace goos;
 
 Compiler::Compiler() {
   init_logger();
+  init_settings();
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
@@ -33,7 +34,9 @@ void Compiler::execute_repl() {
 
       // 2). compile
       auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
-      obj_file->debug_print_tl();
+      if (m_settings.debug_print_ir) {
+        obj_file->debug_print_tl();
+      }
 
       if (!obj_file->is_empty()) {
         // 3). color
@@ -73,6 +76,8 @@ void Compiler::init_logger() {
   gLogger.config[MSG_ICE].color = COLOR_RED;
   gLogger.config[MSG_ERR].color = COLOR_RED;
 }
+
+void Compiler::init_settings() {}
 
 FileEnv* Compiler::compile_object_file(const std::string& name,
                                        goos::Object code,
@@ -149,10 +154,11 @@ void Compiler::color_object_file(FileEnv* env) {
     input.max_vars = f->max_vars();
     input.constraints = f->constraints();
 
-    // for now...
-    input.debug_settings.print_input = true;
-    input.debug_settings.print_result = true;
-    input.debug_settings.print_analysis = true;
+    if (m_settings.debug_print_regalloc) {
+      input.debug_settings.print_input = true;
+      input.debug_settings.print_result = true;
+      input.debug_settings.print_analysis = true;
+    }
 
     f->set_allocations(allocate_registers(input));
   }
