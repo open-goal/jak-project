@@ -1,5 +1,5 @@
 #include "BinaryWriter.h"
-#include "FileUtil.h"
+#include "file_util.h"
 #include "DgoWriter.h"
 
 void build_dgo(const DgoDescription& description) {

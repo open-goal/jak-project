@@ -1,5 +1,5 @@
 add_library(common_util
         SHARED
-        FileUtil.cpp
+        file_util.cpp
         DgoWriter.cpp
         Timer.cpp)
