@@ -63,6 +63,7 @@ struct CompilerTestRunner {
   void run_test(const std::string& test_file,
                 const std::vector<std::string>& expected,
                 MatchParam<int> truncate = {}) {
+    fprintf(stderr, "testing %s\n", test_file.c_str());
     auto result = c->run_test("goal_src/test/" + test_file);
     if (!truncate.is_wildcard) {
       for (auto& x : result) {
