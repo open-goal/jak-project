@@ -41,6 +41,7 @@ class ObjectGenerator {
 
   FunctionRecord add_function_to_seg(int seg,
                                      int min_align = 16);  // should align and insert function tag
+  FunctionRecord get_existing_function_record(int f_idx);
   IR_Record add_ir(const FunctionRecord& func);
   IR_Record get_future_ir_record(const FunctionRecord& func, int ir_id);
   IR_Record get_future_ir_record_in_same_func(const IR_Record& irec, int ir_id);
@@ -169,6 +170,8 @@ class ObjectGenerator {
   seg_map<int> m_type_ptr_links_by_seg;
   seg_map<int> m_sym_links_by_seg;
   seg_vector<RipLink> m_rip_links_by_seg;
+
+  std::vector<FunctionRecord> m_all_function_records;
 };
 }  // namespace emitter
 

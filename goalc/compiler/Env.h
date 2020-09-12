@@ -142,11 +142,14 @@ class FunctionEnv : public DeclareEnv {
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
   void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
+  Val* lexical_lookup(goos::Object sym) override;
 
   const AllocationResult& alloc_result() { return m_regalloc_result; }
 
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
   void require_aligned_stack() { m_aligned_stack_required = true; }
+
+  int idx_in_file = -1;
 
   template <typename T, class... Args>
   T* alloc_val(Args&&... args) {

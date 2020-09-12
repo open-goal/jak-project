@@ -326,3 +326,27 @@ void IR_StaticVarAddr::do_codegen(emitter::ObjectGenerator* gen,
   gen->link_instruction_static(instr, m_src->rec, m_src->get_addr_offset());
   gen->add_instr(IGen::sub_gpr64_gpr64(dr, emitter::gRegInfo.get_offset_reg()), irec);
 }
+
+/////////////////////
+// FunctionAddr
+///////////////////
+
+IR_FunctionAddr::IR_FunctionAddr(const RegVal* dest, FunctionEnv* src) : m_dest(dest), m_src(src) {}
+
+std::string IR_FunctionAddr::print() {
+  return fmt::format("mov-fa {}, {}", m_dest->print(), m_src->print());
+}
+
+RegAllocInstr IR_FunctionAddr::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  return rai;
+}
+
+void IR_FunctionAddr::do_codegen(emitter::ObjectGenerator* gen,
+                                 const AllocationResult& allocs,
+                                 emitter::IR_Record irec) {
+  auto dr = get_reg(m_dest, allocs, irec);
+  auto instr = gen->add_instr(IGen::static_addr(dr, 0), irec);
+  gen->link_instruction_to_function(instr, gen->get_existing_function_record(m_src->idx_in_file));
+}

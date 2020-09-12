@@ -12,7 +12,7 @@ class CodeGenerator {
   std::vector<u8> run();
 
  private:
-  void do_function(FunctionEnv* env);
+  void do_function(FunctionEnv* env, int f_idx);
   emitter::ObjectGenerator m_gen;
   FileEnv* m_fe;
 };

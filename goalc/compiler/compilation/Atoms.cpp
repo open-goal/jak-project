@@ -232,7 +232,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
 Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
   auto existing_symbol = m_symbol_types.find(name);
   if (existing_symbol == m_symbol_types.end()) {
-    //    assert(false);
+    // assert(false);
     throw std::runtime_error("The symbol " + name + " was not defined");
   }
 

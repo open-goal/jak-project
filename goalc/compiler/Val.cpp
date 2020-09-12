@@ -68,3 +68,10 @@ RegVal* StaticVal::to_reg(Env* fe) {
   fe->emit(std::make_unique<IR_StaticVarAddr>(re, obj));
   return re;
 }
+
+RegVal* LambdaVal::to_reg(Env* fe) {
+  auto re = fe->make_gpr(m_ts);
+  assert(func);
+  fe->emit(std::make_unique<IR_FunctionAddr>(re, func));
+  return re;
+}

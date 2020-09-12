@@ -112,6 +112,7 @@ class LambdaVal : public Val {
   std::string print() const override { return "lambda-" + lambda.debug_name; }
   FunctionEnv* func = nullptr;
   Lambda lambda;
+  RegVal* to_reg(Env* fe) override;
 };
 
 class StaticVal : public Val {
