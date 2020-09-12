@@ -349,4 +349,5 @@ void IR_FunctionAddr::do_codegen(emitter::ObjectGenerator* gen,
   auto dr = get_reg(m_dest, allocs, irec);
   auto instr = gen->add_instr(IGen::static_addr(dr, 0), irec);
   gen->link_instruction_to_function(instr, gen->get_existing_function_record(m_src->idx_in_file));
+  gen->add_instr(IGen::sub_gpr64_gpr64(dr, emitter::gRegInfo.get_offset_reg()), irec);
 }

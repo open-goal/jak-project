@@ -150,10 +150,10 @@ TEST(CompilerAndRuntime, CompilerTests) {
   std::string expected = "\"test string!\"";
   runner.run_test("test-string-constant-2.gc", {expected}, expected.size());
 
-  //  runner.run_test("test-defun-return-constant.gc", {"12\n"});
-  //  runner.run_test("test-defun-return-symbol.gc", {"42\n"});
-  //  runner.run_test("test-function-return-arg.gc", {"23\n"});
-  //  runner.run_test("test-nested-function-call.gc", {"2\n"});
+    runner.run_test("test-defun-return-constant.gc", {"12\n"});
+    runner.run_test("test-defun-return-symbol.gc", {"42\n"});
+    runner.run_test("test-function-return-arg.gc", {"23\n"});
+    runner.run_test("test-nested-function-call.gc", {"2\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();
