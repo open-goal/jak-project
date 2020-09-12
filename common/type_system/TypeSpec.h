@@ -43,6 +43,14 @@ class TypeSpec {
 
   TypeSpec substitute_for_method_call(const std::string& method_type) const;
 
+  size_t arg_count() const { return m_arguments.size(); }
+
+  const TypeSpec& get_arg(int idx) const { return m_arguments.at(idx); }
+  const TypeSpec& last_arg() const {
+    assert(!m_arguments.empty());
+    return m_arguments.back();
+  }
+
  private:
   friend class TypeSystem;
   std::string m_type;

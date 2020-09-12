@@ -1,7 +1,8 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "common/util/Timer.h"
-#include "common/util/file_util.h"
+#include "common/util/DgoWriter.h"
+#include "common/util/FileUtil.h"
 
 Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
@@ -38,6 +39,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   std::vector<std::pair<std::string, float>> timing;
   Timer total_timer;
 
+  fprintf(stderr, "Compile Asm File: %s\n", form.print().c_str());
+
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (i == 0) {
       filename = as_string(o);
@@ -67,6 +70,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   for (int idx = int(filename.size()) - 1; idx-- > 0;) {
     if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
       obj_file_name = filename.substr(idx + 1);
+      break;
     }
   }
 
@@ -94,7 +98,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     if (write) {
       //      auto output_dir = as_string(get_constant_or_error(form, "*compiler-output-path*"));
       // todo, change extension based on v3/v4
-      auto output_name = m_goos.reader.get_source_dir() + "/out/" + obj_file_name + ".o";
+      auto output_name = m_goos.reader.get_source_dir() + "/data/" + obj_file_name + ".o";
       file_util::write_binary_file(output_name, (void*)data.data(), data.size());
     }
   } else {
@@ -108,10 +112,14 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   }
 
   //  if(truthy(get_config("print-asm-file-time"))) {
+  printf("F: %36s ", obj_file_name.c_str());
   for (auto& e : timing) {
-    printf(" %12s %4.2f\n", e.first.c_str(), e.second);
+    printf(" %12s %4.2f", e.first.c_str(), e.second);
   }
+  printf("\n");
   //  }
+
+  fprintf(stderr, "ASM file done!\n");
 
   return get_none();
 }
@@ -121,7 +129,7 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
                                         Env* env) {
   (void)env;
   std::string ip = "127.0.0.1";
-  int port = 8112;
+  int port = 8112;  // todo, get from some constant somewhere
   bool got_port = false, got_ip = false;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
@@ -165,5 +173,60 @@ Val* Compiler::compile_poke(const goos::Object& form, const goos::Object& rest, 
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
   m_listener.send_poke();
+  return get_none();
+}
+
+Val* Compiler::compile_gs(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  m_goos.execute_repl();
+  return get_none();
+}
+
+Val* Compiler::compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, {}}, {});
+  m_settings.set(symbol_string(args.unnamed.at(0)), args.unnamed.at(1));
+  return get_none();
+}
+
+Val* Compiler::compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)form;
+  (void)rest;
+  (void)env;
+  return get_none();
+}
+
+Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  fprintf(stderr, "Cpmpile build dgo!\n");
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+  auto dgo_desc = pair_cdr(m_goos.reader.read_from_file({args.unnamed.at(0).as_string()->data}));
+
+  for_each_in_list(dgo_desc, [&](const goos::Object& dgo) {
+    DgoDescription desc;
+    auto first = pair_car(dgo);
+    desc.dgo_name = as_string(first);
+    auto dgo_rest = pair_cdr(dgo);
+
+    for_each_in_list(dgo_rest, [&](const goos::Object& entry) {
+      auto e_arg = get_va(dgo, entry);
+      va_check(dgo, e_arg, {goos::ObjectType::STRING, goos::ObjectType::STRING}, {});
+      DgoDescription::DgoEntry o;
+      o.file_name = as_string(e_arg.unnamed.at(0));
+      o.name_in_dgo = as_string(e_arg.unnamed.at(1));
+      if (o.file_name.substr(o.file_name.length() - 3) != ".go") {  // kill v2's for now.
+        desc.entries.push_back(o);
+      }
+    });
+
+    build_dgo(desc);
+  });
+
+  fprintf(stderr, "DGO build done!\n");
+
   return get_none();
 }

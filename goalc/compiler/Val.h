@@ -13,6 +13,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
+#include "StaticObject.h"
 
 class RegVal;
 class Env;
@@ -107,15 +108,21 @@ class SymbolValueVal : public Val {
  */
 class LambdaVal : public Val {
  public:
-  LambdaVal(TypeSpec ts, Lambda lam) : Val(ts), m_lam(lam) {}
-  std::string print() const override { return "lambda-" + m_lam.debug_name; }
+  explicit LambdaVal(TypeSpec ts) : Val(std::move(ts)) {}
+  std::string print() const override { return "lambda-" + lambda.debug_name; }
   FunctionEnv* func = nullptr;
-
- protected:
-  Lambda m_lam;
+  Lambda lambda;
+  RegVal* to_reg(Env* fe) override;
 };
 
-// Static
+class StaticVal : public Val {
+ public:
+  StaticVal(StaticObject* _obj, TypeSpec _ts) : Val(std::move(_ts)), obj(_obj) {}
+  StaticObject* obj = nullptr;
+  std::string print() const override { return "[" + obj->print() + "]"; }
+  RegVal* to_reg(Env* fe) override;
+};
+
 // MemOffConstant
 // MemOffVar
 // MemDeref
@@ -124,12 +131,22 @@ class LambdaVal : public Val {
 
 class IntegerConstantVal : public Val {
  public:
-  IntegerConstantVal(TypeSpec ts, s64 value) : Val(ts), m_value(value) {}
+  IntegerConstantVal(TypeSpec ts, s64 value) : Val(std::move(ts)), m_value(value) {}
   std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
   RegVal* to_reg(Env* fe) override;
 
  protected:
   s64 m_value = -1;
+};
+
+class FloatConstantVal : public Val {
+ public:
+  FloatConstantVal(TypeSpec ts, float value) : Val(std::move(ts)), m_value(value) {}
+  std::string print() const override { return "float-constant-" + std::to_string(m_value); }
+  RegVal* to_reg(Env* fe) override;
+
+ protected:
+  float m_value = -1.f;
 };
 // IntegerConstant
 // FloatConstant

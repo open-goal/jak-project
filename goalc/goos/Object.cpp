@@ -233,4 +233,13 @@ ArgumentSpec make_varargs() {
   return as;
 }
 
+bool Arguments::only_contains_named(const std::unordered_set<std::string>& names) {
+  for (auto& kv : named) {
+    if (names.find(kv.first) == names.end()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace goos

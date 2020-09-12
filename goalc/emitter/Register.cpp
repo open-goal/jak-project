@@ -4,10 +4,10 @@ namespace emitter {
 RegisterInfo RegisterInfo::make_register_info() {
   RegisterInfo info;
 
-  info.m_info[RAX] = {-1, false, false, "rax"};
-  info.m_info[RCX] = {3, false, false, "rcx"};
-  info.m_info[RDX] = {2, false, false, "rdx"};
-  info.m_info[RBX] = {-1, true, false, "rbx"};
+  info.m_info[RAX] = {-1, false, false, "rax"};  // temp
+  info.m_info[RCX] = {3, false, false, "rcx"};   // temp
+  info.m_info[RDX] = {2, false, false, "rdx"};   // temp
+  info.m_info[RBX] = {-1, true, false, "rbx"};   //
   info.m_info[RSP] = {-1, false, true, "rsp"};
   info.m_info[RBP] = {-1, true, false, "rbp"};
   info.m_info[RSI] = {1, false, false, "rsi"};

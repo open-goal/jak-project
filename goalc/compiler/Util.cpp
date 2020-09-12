@@ -117,3 +117,54 @@ void Compiler::expect_empty_list(const goos::Object& o) {
     throw_compile_error(o, "expected to be an empty list");
   }
 }
+
+TypeSpec Compiler::parse_typespec(const goos::Object& src) {
+  if (src.is_symbol()) {
+    return m_ts.make_typespec(symbol_string(src));
+  } else if (src.is_pair()) {
+    TypeSpec ts = m_ts.make_typespec(symbol_string(pair_car(src)));
+    const auto& rest = pair_cdr(src);
+
+    for_each_in_list(rest, [&](const goos::Object& o) { ts.add_arg(parse_typespec(o)); });
+
+    return ts;
+  } else {
+    throw_compile_error(src, "invalid typespec");
+  }
+  assert(false);
+  return {};
+}
+
+bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
+  // check in the symbol macro env.
+  auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);
+  while (mlet_env) {
+    if (mlet_env->macros.find(obj.as_symbol()) != mlet_env->macros.end()) {
+      return true;
+    }
+    mlet_env = get_parent_env_of_type<SymbolMacroEnv>(mlet_env->parent());
+  }
+
+  // check lexical
+  if (env->lexical_lookup(obj)) {
+    return true;
+  }
+
+  // check global constants
+  if (m_global_constants.find(obj.as_symbol()) != m_global_constants.end()) {
+    return true;
+  }
+
+  return false;
+}
+
+emitter::RegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
+  switch (m_ts.lookup_type(ts)->get_preferred_reg_kind()) {
+    case RegKind::GPR_64:
+      return emitter::RegKind::GPR;
+    case RegKind::FLOAT:
+      return emitter::RegKind::XMM;
+    default:
+      assert(false);
+  }
+}
