@@ -182,6 +182,10 @@ StaticRecord ObjectGenerator::add_static_to_seg(int seg, int min_align) {
   return rec;
 }
 
+std::vector<u8>& ObjectGenerator::get_static_data(const StaticRecord& rec) {
+  return m_static_data_by_seg.at(rec.seg).at(rec.static_id).data;
+}
+
 /*!
  * Add linking data to add a type pointer in rec at offset.
  * This will add an entry to the linking data, which will get patched at runtime, during linking.

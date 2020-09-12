@@ -309,6 +309,8 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
                                           RegVal* function,
                                           const std::vector<RegVal*>& args,
                                           Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  fe->require_aligned_stack();
   TypeSpec return_ts;
   if (function->type().arg_count() == 0) {
     // if the type system doesn't know what the function will return, just make it object.

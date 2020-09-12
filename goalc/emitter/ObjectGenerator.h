@@ -47,6 +47,7 @@ class ObjectGenerator {
   InstructionRecord add_instr(Instruction inst, IR_Record ir);
   void add_instr_no_ir(FunctionRecord func, Instruction inst);
   StaticRecord add_static_to_seg(int seg, int min_align = 16);
+  std::vector<u8>& get_static_data(const StaticRecord& rec);
   void link_instruction_jump(InstructionRecord jump_instr, IR_Record destination);
   void link_static_type_ptr(StaticRecord rec, int offset, const std::string& type_name);
 

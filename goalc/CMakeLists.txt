@@ -13,6 +13,7 @@ add_library(compiler
         compiler/IR.cpp
         compiler/CompilerSettings.cpp
         compiler/CodeGenerator.cpp
+        compiler/StaticObject.cpp
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
         compiler/compilation/Block.cpp

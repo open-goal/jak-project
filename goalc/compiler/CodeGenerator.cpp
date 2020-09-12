@@ -10,6 +10,9 @@ CodeGenerator::CodeGenerator(FileEnv* env) : m_fe(env) {}
 
 std::vector<u8> CodeGenerator::run() {
   // todo, static objects
+  for (auto& static_obj : m_fe->statics()) {
+    static_obj->generate(&m_gen);
+  }
 
   for (auto& f : m_fe->functions()) {
     do_function(f.get());

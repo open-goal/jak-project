@@ -145,4 +145,18 @@ class IR_FunctionCall : public IR {
   std::vector<RegVal*> m_args;
 };
 
+class IR_StaticVarAddr : public IR {
+ public:
+  IR_StaticVarAddr(const RegVal* dest, const StaticObject* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  const StaticObject* m_src = nullptr;
+};
+
 #endif  // JAK_IR_H

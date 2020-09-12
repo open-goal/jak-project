@@ -38,6 +38,8 @@ class Compiler {
   Val* compile_integer(const goos::Object& code, Env* env);
   Val* compile_integer(s64 value, Env* env);
   Val* compile_symbol(const goos::Object& form, Env* env);
+  Val* compile_string(const goos::Object& form, Env* env);
+  Val* compile_string(const std::string& str, Env* env, int seg = MAIN_SEGMENT);
   Val* compile_get_symbol_value(const std::string& name, Env* env);
   Val* compile_function_or_method_call(const goos::Object& form, Env* env);
   SymbolVal* compile_get_sym_obj(const std::string& name, Env* env);

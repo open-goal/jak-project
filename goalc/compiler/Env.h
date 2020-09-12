@@ -13,7 +13,7 @@
 #include "common/type_system/TypeSpec.h"
 #include "goalc/regalloc/allocate.h"
 #include "goalc/goos/Object.h"
-//#include "IR.h"
+#include "StaticObject.h"
 #include "Label.h"
 #include "Val.h"
 
@@ -85,9 +85,11 @@ class FileEnv : public Env {
   std::string print() override;
   void add_function(std::unique_ptr<FunctionEnv> fe);
   void add_top_level_function(std::unique_ptr<FunctionEnv> fe);
+  void add_static(std::unique_ptr<StaticObject> s);
   NoEmitEnv* add_no_emit_env();
   void debug_print_tl();
   const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
+  const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
 
   bool is_empty();
   ~FileEnv() = default;
@@ -95,6 +97,7 @@ class FileEnv : public Env {
  protected:
   std::string m_name;
   std::vector<std::unique_ptr<FunctionEnv>> m_functions;
+  std::vector<std::unique_ptr<StaticObject>> m_statics;
   std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
 
   // statics
@@ -143,6 +146,7 @@ class FunctionEnv : public DeclareEnv {
   const AllocationResult& alloc_result() { return m_regalloc_result; }
 
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
+  void require_aligned_stack() { m_aligned_stack_required = true; }
 
   template <typename T, class... Args>
   T* alloc_val(Args&&... args) {

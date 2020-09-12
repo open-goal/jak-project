@@ -159,6 +159,10 @@ void FileEnv::add_function(std::unique_ptr<FunctionEnv> fe) {
   m_functions.push_back(std::move(fe));
 }
 
+void FileEnv::add_static(std::unique_ptr<StaticObject> s) {
+  m_statics.push_back(std::move(s));
+}
+
 void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
   // todo, set FE as top level segment
   m_functions.push_back(std::move(fe));

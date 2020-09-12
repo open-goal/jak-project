@@ -148,6 +148,8 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
       return compile_integer(code, env);
     case goos::ObjectType::SYMBOL:
       return compile_symbol(code, env);
+    case goos::ObjectType::STRING:
+      return compile_string(code, env);
     default:
       ice("Don't know how to compile " + code.print());
   }
@@ -240,4 +242,17 @@ Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
   auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
   auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);
   return re;
+}
+
+Val* Compiler::compile_string(const goos::Object& form, Env* env) {
+  return compile_string(form.as_string()->data, env, MAIN_SEGMENT);
+}
+
+Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
+  auto obj = std::make_unique<StaticString>(str, seg);
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto result = fe->alloc_val<StaticVal>(obj.get(), m_ts.make_typespec("string"));
+  auto fie = get_parent_env_of_type<FileEnv>(env);
+  fie->add_static(std::move(obj));
+  return result;
 }
