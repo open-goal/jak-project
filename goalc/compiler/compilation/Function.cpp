@@ -48,7 +48,6 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
 Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   auto args = get_va(form, rest);
-  printf("lambda args: %s\n", args.print().c_str());
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
       !args.only_contains_named({"name", "inline-only"})) {
     throw_compile_error(form, "Invalid lambda form");
@@ -85,7 +84,6 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   }
 
   lambda.body = get_lambda_body(rest);  // first is the argument list, rest is body
-  printf("got body: %s\n", lambda.body.print().c_str());
   place->func = nullptr;
 
   bool inline_only =
@@ -254,9 +252,6 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
         typecheck(form, head->type().get_arg(i), eval_args.at(i)->type(),
                   "function (inline) argument");
       }
-    } else {
-      printf(
-          "[WARNING] Function call with incomplete type\n");  // eventually this should be an error.
     }
 
     // copy args...

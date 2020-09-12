@@ -103,7 +103,6 @@ void InitBuffers() {
 IsoBufferHeader* AllocateBuffer(uint32_t size) {
   IsoBufferHeader* buffer = TryAllocateBuffer(size);
   if (buffer) {
-    printf("--------------- allocated buffer size %d\n", size);
     return buffer;
   } else {
     while (true) {
@@ -148,7 +147,6 @@ IsoBufferHeader* TryAllocateBuffer(uint32_t size) {
  */
 void FreeBuffer(IsoBufferHeader* buffer) {
   IsoBufferHeader* b = (IsoBufferHeader*)buffer;
-  printf("--------------- free buffer size %d\n", b->buffer_size);
   if (b->buffer_size == BUFFER_PAGE_SIZE) {
     b->next = sFreeBuffer;
     sFreeBuffer = (IsoBuffer*)b;
@@ -287,7 +285,6 @@ void ProcessMessageData() {
         // if we're done with the buffer, free it and load the next one (if there is one)
         if (callback_buffer->data_size == 0) {
           popped_command->callback_buffer = (IsoBufferHeader*)callback_buffer->next;
-          printf("free 1\n");
           FreeBuffer(callback_buffer);
         }
       }
@@ -324,7 +321,6 @@ void ReleaseMessage(IsoMessage* cmd) {
   while (cmd->callback_buffer) {
     auto old_head = cmd->callback_buffer;
     cmd->callback_buffer = (IsoBufferHeader*)old_head->next;
-    printf("free 2\n");
     FreeBuffer(old_head);
   }
 

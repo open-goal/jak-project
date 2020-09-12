@@ -63,7 +63,7 @@ struct CompilerTestRunner {
   void run_test(const std::string& test_file,
                 const std::vector<std::string>& expected,
                 MatchParam<int> truncate = {}) {
-    fprintf(stderr, "testing %s\n", test_file.c_str());
+    fprintf(stderr, "Testing %s\n", test_file.c_str());
     auto result = c->run_test("goal_src/test/" + test_file);
     if (!truncate.is_wildcard) {
       for (auto& x : result) {
@@ -119,41 +119,41 @@ TEST(CompilerAndRuntime, CompilerTests) {
   CompilerTestRunner runner;
   runner.c = &compiler;
 
-//  runner.run_test("test-return-integer-1.gc", {"4886718345\n"});
-//  runner.run_test("test-return-integer-2.gc", {"23\n"});
-//  runner.run_test("test-return-integer-3.gc", {"-17\n"});
-//  runner.run_test("test-return-integer-4.gc", {"-2147483648\n"});
-//  runner.run_test("test-return-integer-5.gc", {"-2147483649\n"});
-//  runner.run_test("test-return-integer-6.gc", {"0\n"});
-//  runner.run_test("test-return-integer-7.gc", {"-123\n"});
-//  runner.run_test("test-conditional-compilation-1.gc", {"3\n"});
-//  // todo, test-conditional-compilation-2.gc
-//  // these numbers match the game's memory layout for where the symbol table lives.
-//  // it's probably not 100% needed to get this exactly, but it's a good sign that the global
-//  // heap lives in the right spot because there should be no divergence in memory layout when its
-//  // built.  This also checks that #t, #f get "hashed" to the correct spot.
-//  runner.run_test("test-get-symbol-1.gc", {"1342756\n"});  // 0x147d24 in hex
-//  runner.run_test("test-get-symbol-2.gc", {"1342764\n"});  // 0x147d2c in hex
-//  runner.run_test("test-define-1.gc", {"17\n"});
-//  runner.run_test("test-nested-blocks-1.gc", {"7\n"});
-//  runner.run_test("test-nested-blocks-2.gc", {"8\n"});
-//  runner.run_test("test-nested-blocks-3.gc", {"7\n"});
-//  runner.run_test("test-goto-1.gc", {"3\n"});
-//  runner.run_test("test-defglobalconstant-1.gc", {"17\n"});
-//  runner.run_test("test-defglobalconstant-2.gc", {"18\n"});
-//  runner.run_test("test-simple-function-call.gc", {"30\n"});
-//  runner.run_test("test-application-lambda-1.gc", {"2\n"});
-//  runner.run_test("test-let-1.gc", {"30\n"});
-//  runner.run_test("test-let-star-1.gc", {"30\n"});
-//  runner.run_always_pass("test-string-constant-1.gc");
-//
-//  std::string expected = "\"test string!\"";
-//  runner.run_test("test-string-constant-2.gc", {expected}, expected.size());
+  runner.run_test("test-return-integer-1.gc", {"4886718345\n"});
+  runner.run_test("test-return-integer-2.gc", {"23\n"});
+  runner.run_test("test-return-integer-3.gc", {"-17\n"});
+  runner.run_test("test-return-integer-4.gc", {"-2147483648\n"});
+  runner.run_test("test-return-integer-5.gc", {"-2147483649\n"});
+  runner.run_test("test-return-integer-6.gc", {"0\n"});
+  runner.run_test("test-return-integer-7.gc", {"-123\n"});
+  runner.run_test("test-conditional-compilation-1.gc", {"3\n"});
+  // todo, test-conditional-compilation-2.gc
+  // these numbers match the game's memory layout for where the symbol table lives.
+  // it's probably not 100% needed to get this exactly, but it's a good sign that the global
+  // heap lives in the right spot because there should be no divergence in memory layout when its
+  // built.  This also checks that #t, #f get "hashed" to the correct spot.
+  runner.run_test("test-get-symbol-1.gc", {"1342756\n"});  // 0x147d24 in hex
+  runner.run_test("test-get-symbol-2.gc", {"1342764\n"});  // 0x147d2c in hex
+  runner.run_test("test-define-1.gc", {"17\n"});
+  runner.run_test("test-nested-blocks-1.gc", {"7\n"});
+  runner.run_test("test-nested-blocks-2.gc", {"8\n"});
+  runner.run_test("test-nested-blocks-3.gc", {"7\n"});
+  runner.run_test("test-goto-1.gc", {"3\n"});
+  runner.run_test("test-defglobalconstant-1.gc", {"17\n"});
+  runner.run_test("test-defglobalconstant-2.gc", {"18\n"});
+  runner.run_test("test-simple-function-call.gc", {"30\n"});
+  runner.run_test("test-application-lambda-1.gc", {"2\n"});
+  runner.run_test("test-let-1.gc", {"30\n"});
+  runner.run_test("test-let-star-1.gc", {"30\n"});
+  runner.run_always_pass("test-string-constant-1.gc");
+
+  std::string expected = "\"test string!\"";
+  runner.run_test("test-string-constant-2.gc", {expected}, expected.size());
 
   runner.run_test("test-defun-return-constant.gc", {"12\n"});
-//  runner.run_test("test-defun-return-symbol.gc", {"42\n"});
-//  runner.run_test("test-function-return-arg.gc", {"23\n"});
-//  runner.run_test("test-nested-function-call.gc", {"2\n"});
+  runner.run_test("test-defun-return-symbol.gc", {"42\n"});
+  runner.run_test("test-function-return-arg.gc", {"23\n"});
+  runner.run_test("test-nested-function-call.gc", {"2\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();
