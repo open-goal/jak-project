@@ -90,93 +90,6 @@ TODO
 - running tests
 - etc
 
-## Project Layout
-
-- `goalc` is the GOAL compiler
-  - `gs` contains GOOS code for parts of GOOS implemented in GOOS
-  - `gc` contains GOAL code for parts of GOAL implemented in GOAL (must generate no machine code, just defining macros)
-- `decompiler` is the decompiler
-- `decompiler_out` is the decompiler output
-- `data` will contain big assets and the output of the GOAL compiler (not checked in to git)
-- `out` will contain the finished game (not checked into git)
-- `resources` will contain data which is checked into git
-- `game` will contain the game source code
-- `common` will contain all data/type shared between different applications.
-- `doc` will contain documentation (markdown format?)
-- `iso_data` is where the files from the DVD go
-- `third-party` will contain code we didn't write. Google Test is a git submodule in this folder.
-- `tests` will contain all tests
-- `asset_tool` will contain the asset packer/unpacker
-
-## Design
-
-(if anybody has better ideas, feel free to suggest improvements! This is just a rough plan for now)
-
-- All C++ code should build from the top-level `cmake`.
-- All C++ applications (GOAL compiler, asset extractor, asset packer, runtime, test) should have a script in the top level which launches them.
-- All file paths should be relative to the `jak` folder.
-- The planned workflow for building a game:
-  - `git submodule update --init --recursive` : check out gtest
-  - `mkdir build; cd build` : create build folder for C++
-  - `cmake ..; make -j` : build C++ code
-  - `cd ..`
-  - `./test.sh` : run gtests
-  - `./asset_extractor.sh ./iso_data` : extract assets from game
-  - `./build_engine.sh` : run GOAL compiler to build all game code
-  - `./build_game.sh` : run the asset packer to build the game
-  - `./run_game.sh` : run the game
-- Workflow for development:
-  - `./gc.sh` : run the compiler in interactive mode
-  - `./gs.sh` : run a goos interpreter in interactive mode
-  - `./decomp.sh : run the decompiler
-
-## Current State
-
-- GOAL compiler just implements the GOOS Scheme Macro Language. Running `./gc.sh` just loads the GOOS library (`goalc/gs/goos-lib.gs`) and then goes into an interactive mode. Use `(exit)` to exit.
-- `./test.sh` runs tests for some game C++ code, for GOOS, for the reader, for the listener connection, and for some early emitter stuff.
-- The runtime boots in `fakeiso` mode which will load some dummy files. Then the C Kernel (`game/kernel`) will load the `KERNEL.CGO` and `GAME.CGO` files, which are from the "proof of concept" GOAL compiler. If you run `./gk.sh`, you should see it load stuff, then print:
-
-```
-calling play!
-~~ HACK ~~ : fake play has been called
-InitListenerConnect
-InitCheckListener
-kernel: machine started
-
-```
-
-where the `~~ HACK ~~` message is from code in `KERNEL.CGO`.
-
-## Coding Guidelines
-
-- Avoid warnings
-- Use asserts over throwing exceptions in game code (throwing exceptions from C code called by GOAL code is sketchy)
-
-## TODOs
-
-- Build on Windows!
-  - File paths
-  - Timer
-  - Windows calling convention for assembly stuff
-  - performance stats for `SystemThread` (probably just get rid of these performance stats completely)
-  - `mmap`ing executable memory
-  - line input library (appears windows compatible?)
-- Clean up possible duplicate code in compiler/decompiler `util` folder, consider a common utility library
-- Clean up header guard names (or just use `#pragma once`?)
-- Investigate a better config format
-  - The current JSON library seems to have issues with comments, which I really like
-- Clean up use of namespaces
-- Clean up the print message when `gk` starts.
-- Finish commenting runtime stuff
-- Runtime document
-- GOOS document
-- Listener protocol document
-- GOAL Compiler IR
-- GOAL Compiler Skeleton
-- Gtest setup for checking decompiler results against hand-decompiled stuff
-- Clean up decompiler print spam, finish up the CFG stuff
-- Decompiler document
-
 ## Project Description
 
 This project is to port Jak 1 (NTSC, "black label" version) to PC. The strategy is to:
@@ -210,6 +123,67 @@ Some statistics:
 - 5451 functions with no control flow (no branching, loops, if/else, short-circuiting boolean operators, gotos, etc)
 
 The rough timeline is to finish sometime in 2022. If it looks like this is impossible, the project will be abandoned. But I have already spent about 4 months preparing to start this and seems doable. I also have some background in compilers, and familiarity with PS2 (worked on DobieStation PS2 emulator) / MIPS in general (wrote a PS1 emulator). I think the trick will be making good automated tools - the approach taken for SM64 and other N64 decompilations is way too labor-intensive to work.
+
+## Project Layout
+
+- `goalc` is the GOAL compiler
+- `decompiler` is the decompiler
+- `decompiler_out` is the decompiler output
+- `data` will contain big assets and the output of the GOAL compiler (not checked in to git)
+- `out` will contain the finished game (not checked into git)
+- `resources` will contain data which is checked into git
+- `game` will contain the game source code (C/C++)
+- `goal_src` will contain GOAL source code for the game
+- `common` will contain all data/type shared between different applications.
+- `doc` will contain documentation
+- `iso_data` is where the files from the DVD go
+- `third-party` will contain code we didn't write. Google Test is a git submodule in this folder.
+- `tests` will contain all tests
+- `asset_tool` will contain the asset packer/unpacker
+
+## Design
+
+(if anybody has better ideas, feel free to suggest improvements! This is just a rough plan for now)
+
+- All C++ code should build from the top-level `cmake`.
+- All C++ applications (GOAL compiler, asset extractor, asset packer, runtime, test) should have a script in the top level which launches them.
+- All file paths should be relative to the `jak` folder.
+- The planned workflow for building a game:
+  - `git submodule update --init --recursive` : check out gtest
+  - `mkdir build; cd build` : create build folder for C++
+  - `cmake ..; make -j` : build C++ code
+  - `cd ..`
+  - `./test.sh` : run gtests
+  - `./asset_extractor.sh ./iso_data` : extract assets from game
+  - `./build_engine.sh` : run GOAL compiler to build all game code
+  - `./build_game.sh` : run the asset packer to build the game
+  - `./run_game.sh` : run the game
+- Workflow for development:
+  - `./gc.sh` : run the compiler in interactive mode
+  - `./gs.sh` : run a goos interpreter in interactive mode
+  - `./decomp.sh : run the decompiler
+
+
+## Coding Guidelines
+
+- Avoid warnings
+- Use asserts over throwing exceptions in game code (throwing exceptions from C code called by GOAL code is sketchy)
+
+## TODOs
+
+- Clean up header guard names (or just use `#pragma once`?)
+- Investigate a better config format
+  - The current JSON library seems to have issues with comments, which I really like
+- Clean up use of namespaces
+- Clean up the print message when `gk` starts.
+- Finish commenting runtime stuff
+- Runtime document
+- GOOS document
+- Listener protocol document
+- Gtest setup for checking decompiler results against hand-decompiled stuff
+- Clean up decompiler print spam, finish up the CFG stuff
+- Decompiler document
+
 
 ### GOAL Decompiler
 
@@ -271,80 +245,6 @@ The GOAL compiler will target x86-64. At first just Linux. There is a macro lang
 The compiler will reuse a significant amount of code from my existing LISP compiler for x86-64. I have a very bad WIP combination which is capable of building a modified `gkernel.gc` for x86 as a proof of concept. It can create and run functions in threads.
 
 An important part of the compiler is the test suite. Without tests the compiler will be full of bugs. So every feature should have a good set of tests.
-
-The major components are
-
-- [ ] GOAL-IR, a typed linear intermediate representation for GOAL code
-
-  - [ ] "Environment"
-  - [ ] "Ref"
-  - [ ] Constant propagation of integers/floats
-  - [ ] Constant propagation of memory locations (this is required to make sure bitfields updates know where to write their result)
-  - [ ] Ref `in_gpr`
-
-- [ ] The type system
-
-  - [ ] Type inheritance
-  - [ ] Integer/float/pointer types (value semantics)
-  - [ ] Reference types
-  - [ ] Bitfield types
-  - [ ] 128-bit integer types (EE GPRs are 128-bit when used with MMI instructions, these will become `xmm`'s)
-  - [ ] Floating point vector types
-  - [ ] Structure types
-  - [ ] Inline structures as fields
-  - [ ] Array access / alignment rules
-  - [ ] Pointer dereferencing
-  - [ ] Methods (dynamic and static dispatch)
-  - [ ] Function arguments/returns
-  - [ ] Global symbols
-  - [ ] Type checking
-  - [ ] Lowest common ancestor
-  - [ ] Built-in types in the GOAL runtime/C Kernel
-
-- [x] The GOOS Macro Language
-
-  - [x] S-expression parser (the "Reader")
-  - [x] Reader text db (for error messages that point to a specific line)
-  - [x] Scheme interpreter
-
-- [ ] Front-end (convert s-expressions (a tree structure) to GOAL-IR (a linear representation))
-- [ ] Parsing helpers
-- [ ] Macro expansion
-- [ ] Control flow/block forms
-- [ ] Type definitions
-- [ ] Inline assembly forms
-- [ ] Function/method call
-- [ ] Math forms
-- [ ] Lexical scoping (immediate application of `lambda`)
-- [ ] Function inlining (slightly different scoping rules of immediate `lambda`)
-- [ ] Function/macro definition
-- [ ] Static Objects
-
-- [ ] Regsiter allocation
-- [ ] Analysis
-- [ ] Allocation
-- [ ] Stack spilling
-- [ ] `xmm` and `gpr` promotion/demotions for EE 128-bit register usage
-
-- [ ] Codegen / Emitter (convert GOAL-IR + register allocations to x86 object file format)
-- [ ] Emitter (convert GOAL-IR to instructions)
-- [ ] x86-64 instruction generation (actually generate the machine code)
-- [ ] Linking data
-- [ ] 64-bit GPR
-- [ ] 32-bit float
-- [ ] 128-bit GPR
-- [ ] 32-bit float x4 vector register
-- [ ] function prologue/epilogue
-- [ ] stack spilling
-- [ ] static object and static object links
-
-- [ ] Listener/REPL
-  - [ ] Network connection
-  - [ ] Tracking loaded files
-  - [ ] Sending code from REPL
-  - [ ] GOOS REPL option
-  - [ ] Expand single macro debugging feature
-  - [ ] Interface for running gtests
 
 ### Asset Extraction Tool
 
