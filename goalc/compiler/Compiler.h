@@ -99,6 +99,7 @@ class Compiler {
   Val* number_to_float(Val* in, Env* env);
   Val* number_to_binteger(Val* in, Env* env);
   Val* to_math_type(Val* in, MathMode mode, Env* env);
+  bool is_none(Val* in);
 
  public:
   // Atoms
@@ -123,19 +124,28 @@ class Compiler {
   Val* compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
 
+  // ControlFlow
+  Condition compile_condition(const goos::Object& condition, Env* env, bool invert);
+  Val* compile_condition_as_bool(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_when_goto(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cond(const goos::Object& form, const goos::Object& rest, Env* env);
+
   // Define
   Val* compile_define(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_define_extern(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_set(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Math
   Val* compile_add(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_sub(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_div(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);

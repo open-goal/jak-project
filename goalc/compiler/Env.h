@@ -31,7 +31,7 @@ class Env {
   virtual void emit(std::unique_ptr<IR> ir);
   virtual RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
-  virtual Val* lexical_lookup(goos::Object sym);
+  virtual RegVal* lexical_lookup(goos::Object sym);
   virtual BlockEnv* find_block(const std::string& name);
   virtual std::unordered_map<std::string, Label>& get_label_map();
   RegVal* make_gpr(TypeSpec ts);
@@ -54,7 +54,7 @@ class GlobalEnv : public Env {
   void emit(std::unique_ptr<IR> ir) override;
   RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind) override;
   void constrain_reg(IRegConstraint constraint) override;
-  Val* lexical_lookup(goos::Object sym) override;
+  RegVal* lexical_lookup(goos::Object sym) override;
   BlockEnv* find_block(const std::string& name) override;
   ~GlobalEnv() = default;
 
@@ -128,7 +128,14 @@ class DeclareEnv : public Env {
 class IR_GotoLabel;
 
 struct UnresolvedGoto {
-  IR_GotoLabel* ir;
+  IR_GotoLabel* ir = nullptr;
+  std::string label;
+};
+
+class IR_ConditionalBranch;
+
+struct UnresolvedConditionalGoto {
+  IR_ConditionalBranch* ir = nullptr;
   std::string label;
 };
 
@@ -146,12 +153,17 @@ class FunctionEnv : public DeclareEnv {
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
   void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
-  Val* lexical_lookup(goos::Object sym) override;
+  RegVal* lexical_lookup(goos::Object sym) override;
 
   const AllocationResult& alloc_result() { return m_regalloc_result; }
 
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
   void require_aligned_stack() { m_aligned_stack_required = true; }
+
+  Label* alloc_unnamed_label() {
+    m_unnamed_labels.emplace_back(std::make_unique<Label>());
+    return m_unnamed_labels.back().get();
+  }
 
   int idx_in_file = -1;
 
@@ -173,7 +185,8 @@ class FunctionEnv : public DeclareEnv {
   std::string method_of_type_name = "#f";
   bool is_asm_func = false;
   std::vector<UnresolvedGoto> unresolved_gotos;
-  std::unordered_map<std::string, Val*> params;
+  std::vector<UnresolvedConditionalGoto> unresolved_cond_gotos;
+  std::unordered_map<std::string, RegVal*> params;
 
  protected:
   void resolve_gotos();
@@ -189,6 +202,7 @@ class FunctionEnv : public DeclareEnv {
   bool m_aligned_stack_required = false;
 
   std::unordered_map<std::string, Label> m_labels;
+  std::vector<std::unique_ptr<Label>> m_unnamed_labels;
 };
 
 class BlockEnv : public Env {
@@ -206,9 +220,9 @@ class BlockEnv : public Env {
 class LexicalEnv : public DeclareEnv {
  public:
   explicit LexicalEnv(Env* parent) : DeclareEnv(parent) {}
-  Val* lexical_lookup(goos::Object sym) override;
+  RegVal* lexical_lookup(goos::Object sym) override;
   std::string print() override;
-  std::unordered_map<std::string, Val*> vars;
+  std::unordered_map<std::string, RegVal*> vars;
 };
 
 class LabelEnv : public Env {
@@ -232,6 +246,7 @@ class SymbolMacroEnv : public Env {
  public:
   explicit SymbolMacroEnv(Env* parent) : Env(parent) {}
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> macros;
+  std::string print() override { return "symbol-macro-env"; }
 };
 
 template <typename T>

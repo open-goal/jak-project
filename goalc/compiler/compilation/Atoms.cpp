@@ -45,13 +45,13 @@ static const std::unordered_map<
         {"seval", &Compiler::compile_seval},
         //
         //        // CONTROL FLOW
-        //        {"cond", &Compiler::compile_cond},
-        //        {"when-goto", &Compiler::compile_when_goto},
+        {"cond", &Compiler::compile_cond},
+        {"when-goto", &Compiler::compile_when_goto},
         //
         //        // DEFINITION
         {"define", &Compiler::compile_define},
         {"define-extern", &Compiler::compile_define_extern},
-        //        {"set!", &Compiler::compile_set},
+        {"set!", &Compiler::compile_set},
         //        {"defun-extern", &Compiler::compile_defun_extern},
         //        {"declare-method", &Compiler::compile_declare_method},
         //
@@ -72,7 +72,7 @@ static const std::unordered_map<
         {"inline", &Compiler::compile_inline},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"rlet", &Compiler::compile_rlet},
-        //        {"mlet", &Compiler::compile_mlet},
+
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
         //
         //
@@ -80,6 +80,7 @@ static const std::unordered_map<
         //        // MACRO
         //        {"print-type", &Compiler::compile_print_type},
         {"quote", &Compiler::compile_quote},
+        {"mlet", &Compiler::compile_mlet},
         //        {"defconstant", &Compiler::compile_defconstant},
         //
         //        // OBJECT
@@ -101,7 +102,7 @@ static const std::unordered_map<
         {"+", &Compiler::compile_add},
         {"-", &Compiler::compile_sub},
         {"*", &Compiler::compile_mul},
-        //        {"/", &Compiler::compile_divide},
+        {"/", &Compiler::compile_div},
         //        {"shlv", &Compiler::compile_shlv},
         //        {"shrv", &Compiler::compile_shrv},
         //        {"sarv", &Compiler::compile_sarv},
@@ -113,14 +114,14 @@ static const std::unordered_map<
         //        {"logxor", &Compiler::compile_logxor},
         //        {"logand", &Compiler::compile_logand},
         //        {"lognot", &Compiler::compile_lognot},
-        //        {"=", &Compiler::compile_condition_as_bool},
-        //        {"!=", &Compiler::compile_condition_as_bool},
-        //        {"eq?", &Compiler::compile_condition_as_bool},
-        //        {"not", &Compiler::compile_condition_as_bool},
-        //        {"<=", &Compiler::compile_condition_as_bool},
-        //        {">=", &Compiler::compile_condition_as_bool},
-        //        {"<", &Compiler::compile_condition_as_bool},
-        //        {">", &Compiler::compile_condition_as_bool},
+        {"=", &Compiler::compile_condition_as_bool},
+        {"!=", &Compiler::compile_condition_as_bool},
+        {"eq?", &Compiler::compile_condition_as_bool},
+        {"not", &Compiler::compile_condition_as_bool},
+        {"<=", &Compiler::compile_condition_as_bool},
+        {">=", &Compiler::compile_condition_as_bool},
+        {"<", &Compiler::compile_condition_as_bool},
+        {">", &Compiler::compile_condition_as_bool},
         //
         //        // BUILDER (build-dgo/build-cgo?)
         {"build-dgos", &Compiler::compile_build_dgo},
@@ -202,7 +203,14 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
     return get_none();
   }
 
-  // todo mlet
+  auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);
+  while (mlet_env) {
+    auto mlkv = mlet_env->macros.find(form.as_symbol());
+    if (mlkv != mlet_env->macros.end()) {
+      return compile_error_guard(mlkv->second, env);
+    }
+    mlet_env = get_parent_env_of_type<SymbolMacroEnv>(mlet_env->parent());
+  }
 
   auto lexical = env->lexical_lookup(form);
   if (lexical) {

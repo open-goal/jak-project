@@ -31,7 +31,7 @@ void Env::constrain_reg(IRegConstraint constraint) {
 /*!
  * Lookup the given symbol object as a lexical variable.
  */
-Val* Env::lexical_lookup(goos::Object sym) {
+RegVal* Env::lexical_lookup(goos::Object sym) {
   return m_parent->lexical_lookup(std::move(sym));
 }
 
@@ -93,7 +93,7 @@ void GlobalEnv::constrain_reg(IRegConstraint constraint) {
 /*!
  * Lookup the given symbol object as a lexical variable.
  */
-Val* GlobalEnv::lexical_lookup(goos::Object sym) {
+RegVal* GlobalEnv::lexical_lookup(goos::Object sym) {
   (void)sym;
   return nullptr;
 }
@@ -218,6 +218,15 @@ void FunctionEnv::resolve_gotos() {
     }
     gt.ir->resolve(&kv_label->second);
   }
+
+  for (auto& gt : unresolved_cond_gotos) {
+    auto kv_label = m_labels.find(gt.label);
+    if (kv_label == m_labels.end()) {
+      throw std::runtime_error("invalid when-goto destination " + gt.label);
+    }
+    gt.ir->label = kv_label->second;
+    gt.ir->mark_as_resolved();
+  }
 }
 
 RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
@@ -238,7 +247,7 @@ std::unordered_map<std::string, Label>& LabelEnv::get_label_map() {
   return m_labels;
 }
 
-Val* FunctionEnv::lexical_lookup(goos::Object sym) {
+RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
   if (!sym.is_symbol()) {
     throw std::runtime_error("invalid symbol in lexical_lookup");
   }
@@ -259,7 +268,7 @@ std::string LexicalEnv::print() {
   return "lexical";
 }
 
-Val* LexicalEnv::lexical_lookup(goos::Object sym) {
+RegVal* LexicalEnv::lexical_lookup(goos::Object sym) {
   if (!sym.is_symbol()) {
     throw std::runtime_error("invalid symbol in lexical_lookup");
   }

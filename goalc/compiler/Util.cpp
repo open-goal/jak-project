@@ -168,3 +168,7 @@ emitter::RegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
       assert(false);
   }
 }
+
+bool Compiler::is_none(Val* in) {
+  return dynamic_cast<None*>(in);
+}

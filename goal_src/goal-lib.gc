@@ -33,6 +33,14 @@
      )
   )
 
+(defmacro blg ()
+  `(begin
+     (build-game)
+     (dgo-load "kernel" global #xf #x200000)
+     (dgo-load "game" global #xf #x200000)
+     )
+  )
+
 (defmacro e ()
   `(:exit)
   )
@@ -108,5 +116,55 @@
     `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
     ;; otherwise don't ignore it.
     `(define ,name (lambda :name ,name ,bindings ,@body))
+    )
+  )
+
+(defmacro while (test &rest body)
+  (with-gensyms (reloop test-exit)
+    `(begin
+       (goto ,test-exit)
+       (label ,reloop)
+       ,@body
+       (label ,test-exit)
+       (when-goto ,test ,reloop)
+       #f
+       )
+    )
+  )
+
+;; Backup some values, and restore after executing body.
+;; Non-dynamic (nonlocal jumps out of body will skip restore)
+(defmacro protect (defs &rest body)
+  (if (null? defs)
+    ;; nothing to backup, just insert body (base case)
+    `(begin ,@body)
+
+    ;; a unique name for the thing we are backing up
+    (with-gensyms (backup)
+                  ;; store the original value of the first def in backup
+                  `(let ((,backup ,(first defs)))
+                     ;; backup any other things which need backing up
+                     (protect ,(cdr defs)
+                              ;; execute the body
+                              ,@body
+                              )
+                     ;; restore the first thing
+                     (set! ,(first defs) ,backup)
+                     )
+                  )
+    )
+  )
+
+(defmacro +! (place amount)
+  `(set! ,place (+ ,place ,amount))
+  )
+
+;; todo, handle too many arguments correct
+(defmacro if (condition true-case &rest others)
+  (if (null? others)
+    `(cond (,condition ,true-case))
+    `(cond (,condition ,true-case)
+           (else ,(first others))
+           )
     )
   )

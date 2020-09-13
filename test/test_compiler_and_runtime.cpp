@@ -225,6 +225,11 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-sub-1.gc", {"4\n"});
   runner.run_test("test-sub-2.gc", {"4\n"});
   runner.run_test("test-mul-1.gc", {"-12\n"});
+  runner.run_test("test-three-reg-add.gc", {"7\n"});
+  runner.run_test("test-three-reg-sub.gc", {"3\n"});
+  runner.run_test("test-three-reg-mult.gc", {"3\n"});
+  runner.run_test("test-div-1.gc", {"6\n"});
+  runner.run_test("test-div-2.gc", {"7\n"});
 
   expected = "test-string";
   runner.run_test("test-string-symbol.gc", {expected}, expected.size());
@@ -233,6 +238,15 @@ TEST(CompilerAndRuntime, CompilerTests) {
 
   // float
   runner.run_test("test-floating-point-1.gc", {"1067316150\n"});
+
+  runner.run_test("test-mlet.gc", {"10\n"});
+  runner.run_test("test-set-symbol.gc", {"22\n"});
+  runner.run_test("test-defsmacro-defgmacro.gc", {"20\n"});
+  runner.run_test("test-desfun.gc", {"4\n"});
+
+  runner.run_test("test-factorial-recursive.gc", {"3628800\n"});
+  runner.run_test("test-factorial-loop.gc", {"3628800\n"});
+  runner.run_test("test-protect.gc", {"33\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

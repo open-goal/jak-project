@@ -221,4 +221,51 @@ class IR_IntegerMath : public IR {
   RegVal* m_arg;
 };
 
+enum class FloatMathKind { DIV_SS };
+
+class IR_FloatMath : public IR {
+ public:
+  IR_FloatMath(FloatMathKind kind, RegVal* dest, RegVal* arg);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+  FloatMathKind get_kind() const { return m_kind; }
+
+ protected:
+  FloatMathKind m_kind;
+  RegVal* m_dest;
+  RegVal* m_arg;
+};
+
+enum class ConditionKind { NOT_EQUAL, EQUAL, LEQ, LT, GT, GEQ, INVALID_CONDITION };
+
+struct Condition {
+  ConditionKind kind = ConditionKind::INVALID_CONDITION;
+  RegVal* a = nullptr;
+  RegVal* b = nullptr;
+  bool is_signed = false;
+  bool is_float = false;
+  RegAllocInstr to_rai();
+  std::string print() const;
+};
+
+class IR_ConditionalBranch : public IR {
+ public:
+  IR_ConditionalBranch(const Condition& condition, Label _label);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+  void mark_as_resolved() { m_resolved = true; }
+
+  Condition condition;
+  Label label;
+
+ private:
+  bool m_resolved = false;
+};
+
 #endif  // JAK_IR_H
