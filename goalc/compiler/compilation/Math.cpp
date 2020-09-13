@@ -204,3 +204,32 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
   assert(false);
   return get_none();
 }
+
+Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  if (!args.named.empty() || args.unnamed.size() != 2) {
+    throw_compile_error(form, "Invalid / form");
+  }
+
+  auto first_val = compile_error_guard(args.unnamed.at(0), env);
+  auto first_type = first_val->type();
+  auto math_type = get_math_mode(first_type);
+  switch (math_type) {
+    case MATH_FLOAT:
+
+    {
+      auto result = env->make_xmm(first_type);
+      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+      env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::DIV_SS, result, to_math_type(compile_error_guard(args.unnamed.at(1), env), math_type, env)->to_xmm(env))));
+    }
+
+    case MATH_INVALID:
+      throw_compile_error(
+          form, "Cannot determine the math mode for object of type " + first_type.print());
+      break;
+    default:
+      assert(false);
+  }
+  assert(false);
+  return get_none();
+}

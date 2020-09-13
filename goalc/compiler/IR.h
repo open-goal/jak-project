@@ -221,4 +221,22 @@ class IR_IntegerMath : public IR {
   RegVal* m_arg;
 };
 
+enum class FloatMathKind { DIV_SS };
+
+class IR_FloatMath : public IR {
+ public:
+  IR_FloatMath(FloatMathKind kind, RegVal* dest, RegVal* arg);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+  FloatMathKind get_kind() const { return m_kind; }
+
+ protected:
+  FloatMathKind m_kind;
+  RegVal* m_dest;
+  RegVal* m_arg;
+};
+
 #endif  // JAK_IR_H
