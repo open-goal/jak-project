@@ -9,26 +9,29 @@
 #include <Windows.h>
 #else
 #include <unistd.h>
+#include <cstring>
 #endif
 
 std::string file_util::get_project_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
   GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  std::string::size_type pos = std::string(buffer).rfind(
-      "\\jak-project\\");  // Strip file path down to \jak-project\ directory
+  printf("using path %s\n", buffer);
+  std::string::size_type pos =
+      std::string(buffer).rfind("jak-project");  // Strip file path down to \jak-project\ directory
+  printf("rfind returned %lld\n", pos);
   return std::string(buffer).substr(
-      0, pos + 12);  // + 12 to include "\jak-project" in the returned filepath
+      0, pos + 11);  // + 12 to include "\jak-project" in the returned filepath
 #else
   // do Linux stuff
   char buffer[FILENAME_MAX];
   readlink("/proc/self/exe", buffer,
            FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing information about
                            // the current process
-  std::string::size_type pos = std::string(buffer).rfind(
-      "/jak-project/");  // Strip file path down to /jak-project/ directory
+  std::string::size_type pos =
+      std::string(buffer).rfind("jak-project");  // Strip file path down to /jak-project/ directory
   return std::string(buffer).substr(
-      0, pos + 12);  // + 12 to include "/jak-project" in the returned filepath
+      0, pos + 11);  // + 12 to include "/jak-project" in the returned filepath
 #endif
 }
 
@@ -76,7 +79,8 @@ void file_util::write_text_file(const std::string& file_name, const std::string&
 std::vector<uint8_t> file_util::read_binary_file(const std::string& filename) {
   auto fp = fopen(filename.c_str(), "rb");
   if (!fp)
-    throw std::runtime_error("File " + filename + " cannot be opened");
+    throw std::runtime_error("File " + filename +
+                             " cannot be opened: " + std::string(strerror(errno)));
   fseek(fp, 0, SEEK_END);
   auto len = ftell(fp);
   rewind(fp);
@@ -87,6 +91,7 @@ std::vector<uint8_t> file_util::read_binary_file(const std::string& filename) {
   if (fread(data.data(), len, 1, fp) != 1) {
     throw std::runtime_error("File " + filename + " cannot be read");
   }
+  fclose(fp);
 
   return data;
 }

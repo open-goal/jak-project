@@ -37,7 +37,7 @@ static const std::unordered_map<
         {"reset-target", &Compiler::compile_reset_target},
         {":status", &Compiler::compile_poke},
         //        {"test", &Compiler::compile_test},
-        //        {"in-package", &Compiler::compile_in_package},
+        {"in-package", &Compiler::compile_in_package},
         //
         //        // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
@@ -102,9 +102,9 @@ static const std::unordered_map<
         //        {"cdr", &Compiler::compile_cdr},
         //
         //        // IT IS MATH
-        //        {"+", &Compiler::compile_add},
-        //        {"-", &Compiler::compile_sub},
-        //        {"*", &Compiler::compile_mult},
+        {"+", &Compiler::compile_add},
+        {"-", &Compiler::compile_sub},
+        {"*", &Compiler::compile_mul},
         //        {"/", &Compiler::compile_divide},
         //        {"shlv", &Compiler::compile_shlv},
         //        {"shrv", &Compiler::compile_shrv},
@@ -127,7 +127,7 @@ static const std::unordered_map<
         //        {">", &Compiler::compile_condition_as_bool},
         //
         //        // BUILDER (build-dgo/build-cgo?)
-        //        {"builder", &Compiler::compile_builder},
+        {"build-dgos", &Compiler::compile_build_dgo},
         //
         //        // UTIL
         {"set-config!", &Compiler::compile_set_config},

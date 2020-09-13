@@ -158,6 +158,7 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_settings.print_input = true;
       input.debug_settings.print_result = true;
       input.debug_settings.print_analysis = true;
+      input.debug_settings.allocate_log_level = 2;
     }
 
     f->set_allocations(allocate_registers(input));
@@ -186,6 +187,9 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
 
     auto code = m_goos.reader.read_from_file({source_code});
     auto compiled = compile_object_file("test-code", code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
     color_object_file(compiled);
     auto data = codegen_object_file(compiled);
     m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
@@ -198,6 +202,12 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
     fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
     return {};
   }
+}
+
+std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
+  auto code = m_goos.reader.read_from_file({source_code});
+  auto compiled = compile_object_file("test-code", code, true);
+  return {};
 }
 
 void Compiler::shutdown_target() {

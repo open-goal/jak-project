@@ -113,6 +113,26 @@ struct CompilerTestRunner {
 
 }  // namespace
 
+TEST(CompilerAndRuntime, BuildGame) {
+  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
+  Compiler compiler;
+
+  fprintf(stderr, "about to run test\n");
+
+  try {
+    compiler.run_test("goal_src/test/test-build-game.gc");
+  } catch (std::exception& e) {
+    fprintf(stderr, "caught exception %s\n", e.what());
+    EXPECT_TRUE(false);
+  }
+  fprintf(stderr, "DONE!\n");
+
+  // todo, tests after loading the game.
+
+  compiler.shutdown_target();
+  runtime_thread.join();
+}
+
 TEST(CompilerAndRuntime, CompilerTests) {
   std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
   Compiler compiler;
@@ -153,6 +173,17 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-defun-return-symbol.gc", {"42\n"});
   runner.run_test("test-function-return-arg.gc", {"23\n"});
   runner.run_test("test-nested-function-call.gc", {"2\n"});
+
+  // math
+  runner.run_test("test-add-int-constants.gc", {"13\n"});
+  runner.run_test("test-add-int-vars.gc", {"7\n"});
+  runner.run_test("test-add-int-multiple.gc", {"15\n"});
+  runner.run_test("test-add-int-multiple-2.gc", {"15\n"});
+  runner.run_test("test-add-function-returns.gc", {"21\n"});
+  runner.run_test("test-sub-1.gc", {"4\n"});
+  runner.run_test("test-sub-2.gc", {"4\n"});
+  runner.run_test("test-mul-1.gc", {"-12\n"});
+
   compiler.shutdown_target();
   runtime_thread.join();
   runner.print_summary();

@@ -8,6 +8,8 @@
 #include "goalc/compiler/IR.h"
 #include "CompilerSettings.h"
 
+enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
+
 class Compiler {
  public:
   Compiler();
@@ -24,6 +26,7 @@ class Compiler {
   None* get_none() { return m_none.get(); }
 
   std::vector<std::string> run_test(const std::string& source_code);
+  std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
 
  private:
@@ -83,6 +86,16 @@ class Compiler {
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
+  MathMode get_math_mode(const TypeSpec& ts);
+  bool is_number(const TypeSpec& ts);
+  bool is_float(const TypeSpec& ts);
+  bool is_integer(const TypeSpec& ts);
+  bool is_binteger(const TypeSpec& ts);
+  bool is_singed_integer_or_binteger(const TypeSpec& ts);
+  Val* number_to_integer(Val* in, Env* env);
+  Val* number_to_float(Val* in, Env* env);
+  Val* number_to_binteger(Val* in, Env* env);
+  Val* to_math_type(Val* in, MathMode mode, Env* env);
 
  public:
   // Atoms
@@ -104,6 +117,8 @@ class Compiler {
   Val* compile_poke(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_gs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Define
   Val* compile_define(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -113,6 +128,11 @@ class Compiler {
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  // Math
+  Val* compile_add(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_sub(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);
