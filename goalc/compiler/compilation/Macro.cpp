@@ -116,3 +116,21 @@ Val* Compiler::compile_defglobalconstant(const goos::Object& form,
 
   return get_none();
 }
+
+Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto defs = pair_car(rest);
+  auto body = pair_cdr(rest);
+
+  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto menv = fenv->alloc_env<SymbolMacroEnv>(env);
+
+  for_each_in_list(defs, [&](const goos::Object& o) {
+    auto def_args = get_va(form, o);
+    va_check(form, def_args, {goos::ObjectType::SYMBOL, {}}, {});
+    menv->macros[def_args.unnamed.at(0).as_symbol()] = def_args.unnamed.at(1);
+  });
+
+  Val* result = get_none();
+  for_each_in_list(body, [&](const goos::Object& o) { result = compile_error_guard(o, menv); });
+  return result;
+}

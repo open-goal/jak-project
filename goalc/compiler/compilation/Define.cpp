@@ -61,3 +61,42 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   m_symbol_types[symbol_string(sym)] = new_type;
   return get_none();
 }
+
+Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+
+  auto& destination = args.unnamed.at(0);
+  auto source = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+
+  if (destination.is_symbol()) {
+    // destination is just a symbol, so it's either a lexical variable or a global.
+
+    // first, attempt a lexical set:
+    auto lex_place = env->lexical_lookup(destination);
+    if (lex_place) {
+      // typecheck and set!
+      typecheck(form, lex_place->type(), source->type(), "set! lexical variable");
+      env->emit(std::make_unique<IR_RegSet>(lex_place, source));
+      return source;
+    } else {
+      // try to set symbol
+      auto existing = m_symbol_types.find(destination.as_symbol()->name);
+      if (existing == m_symbol_types.end()) {
+        throw_compile_error(
+            form, "could not find something called " + symbol_string(destination) + " to set!");
+      } else {
+        typecheck(form, existing->second, source->type(), "set! global symbol");
+        auto fe = get_parent_env_of_type<FunctionEnv>(env);
+        auto sym_val =
+            fe->alloc_val<SymbolVal>(symbol_string(destination), m_ts.make_typespec("symbol"));
+        auto result_in_gpr = source->to_gpr(env);
+        env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, result_in_gpr));
+        return result_in_gpr;
+      }
+    }
+  } else {
+    throw_compile_error(form, "Set not implemented for this yet");
+  }
+  assert(false);
+}

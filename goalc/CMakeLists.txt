@@ -21,6 +21,7 @@ add_library(compiler
         compiler/compilation/Math.cpp
         compiler/compilation/Define.cpp
         compiler/compilation/Function.cpp
+        compiler/compilation/ControlFlow.cpp
         compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp

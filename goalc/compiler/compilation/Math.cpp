@@ -48,7 +48,7 @@ Val* Compiler::number_to_integer(Val* in, Env* env) {
   } else if (is_integer(ts)) {
     return in;
   } else {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " to an integer.");
   }
 }
 
@@ -215,12 +215,31 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
   auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
-    case MATH_FLOAT:
+    case MATH_INT: {
+      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto first_thing = first_val->to_gpr(env);
+      auto result = env->make_ireg(first_type, emitter::RegKind::GPR);
+      env->emit(std::make_unique<IR_RegSet>(result, first_thing));
 
-    {
+      IRegConstraint result_rax_constraint;
+      result_rax_constraint.instr_idx = fe->code().size() - 1;
+      result_rax_constraint.ireg = result->ireg();
+      result_rax_constraint.desired_register = emitter::RAX;
+      fe->constrain(result_rax_constraint);
+
+      env->emit(std::make_unique<IR_IntegerMath>(
+          IntegerMathKind::IDIV_32, result,
+          to_math_type(compile_error_guard(args.unnamed.at(1), env), math_type, env)->to_gpr(env)));
+      return result;
+    }
+
+    case MATH_FLOAT: {
       auto result = env->make_xmm(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
-      env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::DIV_SS, result, to_math_type(compile_error_guard(args.unnamed.at(1), env), math_type, env)->to_xmm(env))));
+      env->emit(std::make_unique<IR_FloatMath>(
+          FloatMathKind::DIV_SS, result,
+          to_math_type(compile_error_guard(args.unnamed.at(1), env), math_type, env)->to_xmm(env)));
+      return result;
     }
 
     case MATH_INVALID:

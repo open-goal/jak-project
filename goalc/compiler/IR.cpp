@@ -77,7 +77,26 @@ void IR_LoadConstant64::do_codegen(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
   auto dest_reg = get_reg(m_dest, allocs, irec);
-  gen->add_instr(IGen::mov_gpr64_u64(dest_reg, m_value), irec);
+
+  s64 svalue = m_value;
+
+  if (svalue == 0) {
+    gen->add_instr(IGen::xor_gpr64_gpr64(dest_reg, dest_reg), irec);
+  } else if (svalue > 0) {
+    if (svalue < UINT32_MAX) {
+      gen->add_instr(IGen::mov_gpr64_u32(dest_reg, m_value), irec);
+    } else {
+      // need a real 64 bit load
+      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, m_value), irec);
+    }
+  } else {
+    if (svalue >= INT32_MIN) {
+      gen->add_instr(IGen::mov_gpr64_s32(dest_reg, svalue), irec);
+    } else {
+      // need a real 64 bit load
+      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, m_value), irec);
+    }
+  }
 }
 
 /////////////////////
@@ -198,6 +217,8 @@ void IR_RegSet::do_codegen(emitter::ObjectGenerator* gen,
     gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
   } else if (val_reg.is_xmm() && dest_reg.is_gpr()) {
     gen->add_instr(IGen::movd_gpr32_xmm32(dest_reg, val_reg), irec);
+  } else if (val_reg.is_gpr() && dest_reg.is_xmm()) {
+    gen->add_instr(IGen::movd_xmm32_gpr32(dest_reg, val_reg), irec);
   } else {
     assert(false);
   }
@@ -371,6 +392,8 @@ std::string IR_IntegerMath::print() {
       return fmt::format("subi {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::IMUL_32:
       return fmt::format("imul {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::IDIV_32:
+      return fmt::format("idiv {}, {}", m_dest->print(), m_arg->print());
     default:
       assert(false);
   }
@@ -381,6 +404,10 @@ RegAllocInstr IR_IntegerMath::to_rai() {
   rai.write.push_back(m_dest->ireg());
   rai.read.push_back(m_dest->ireg());
   rai.read.push_back(m_arg->ireg());
+
+  if (m_kind == IntegerMathKind::IDIV_32) {
+    rai.exclude.emplace_back(emitter::RDX);
+  }
   return rai;
 }
 
@@ -400,9 +427,50 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       auto dr = get_reg(m_dest, allocs, irec);
       gen->add_instr(IGen::imul_gpr32_gpr32(dr, get_reg(m_arg, allocs, irec)), irec);
       gen->add_instr(IGen::movsx_r64_r32(dr, dr), irec);
-    }
+    } break;
 
-    break;
+    case IntegerMathKind::IDIV_32: {
+      gen->add_instr(IGen::cdq(), irec);
+      gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
+    } break;
+    default:
+      assert(false);
+  }
+}
+
+/////////////////////
+// FloatMath
+/////////////////////
+
+IR_FloatMath::IR_FloatMath(FloatMathKind kind, RegVal* dest, RegVal* arg)
+    : m_kind(kind), m_dest(dest), m_arg(arg) {}
+
+std::string IR_FloatMath::print() {
+  switch (m_kind) {
+    case FloatMathKind::DIV_SS:
+      return fmt::format("divss {}, {}", m_dest->print(), m_arg->print());
+    default:
+      assert(false);
+  }
+}
+
+RegAllocInstr IR_FloatMath::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  rai.read.push_back(m_dest->ireg());
+  rai.read.push_back(m_arg->ireg());
+  return rai;
+}
+
+void IR_FloatMath::do_codegen(emitter::ObjectGenerator* gen,
+                              const AllocationResult& allocs,
+                              emitter::IR_Record irec) {
+  switch (m_kind) {
+    case FloatMathKind::DIV_SS:
+      gen->add_instr(
+          IGen::divss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
     default:
       assert(false);
   }
@@ -441,4 +509,106 @@ void IR_StaticVarLoad::do_codegen(emitter::ObjectGenerator* gen,
   } else {
     assert(false);
   }
+}
+
+/////////////////////
+// ConditionalBranch
+/////////////////////
+
+std::string Condition::print() const {
+  switch (kind) {
+    case ConditionKind::NOT_EQUAL:
+      return a->print() + " != " + b->print();
+    case ConditionKind::EQUAL:
+      return a->print() + " == " + b->print();
+    case ConditionKind::LEQ:
+      return a->print() + " <= " + b->print();
+    case ConditionKind::GEQ:
+      return a->print() + " >= " + b->print();
+    case ConditionKind::LT:
+      return a->print() + " < " + b->print();
+    case ConditionKind::GT:
+      return a->print() + " > " + b->print();
+    default:
+      throw std::runtime_error("unknown condition type in GoalCondition::print()");
+  }
+}
+
+RegAllocInstr Condition::to_rai() {
+  RegAllocInstr rai;
+  rai.read.push_back(a->ireg());
+  rai.read.push_back(b->ireg());
+  return rai;
+}
+
+IR_ConditionalBranch::IR_ConditionalBranch(const Condition& _condition, Label _label)
+    : condition(_condition), label(_label) {}
+
+std::string IR_ConditionalBranch::print() {
+  // todo, float/signed info?
+  return fmt::format("j({}) {}", condition.print(), label.print());
+}
+
+RegAllocInstr IR_ConditionalBranch::to_rai() {
+  auto rai = condition.to_rai();
+  assert(m_resolved);
+  rai.jumps.push_back(label.idx);
+  return rai;
+}
+
+void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
+                                      const AllocationResult& allocs,
+                                      emitter::IR_Record irec) {
+  Instruction jump_instr(0);
+  assert(m_resolved);
+  switch (condition.kind) {
+    case ConditionKind::EQUAL:
+      jump_instr = IGen::je_32();
+      break;
+    case ConditionKind::NOT_EQUAL:
+      jump_instr = IGen::jne_32();
+      break;
+    case ConditionKind::LEQ:
+      if (condition.is_signed) {
+        jump_instr = IGen::jle_32();
+      } else {
+        jump_instr = IGen::jbe_32();
+      }
+      break;
+    case ConditionKind::GEQ:
+      if (condition.is_signed) {
+        jump_instr = IGen::jge_32();
+      } else {
+        jump_instr = IGen::jae_32();
+      }
+      break;
+
+    case ConditionKind::LT:
+      if (condition.is_signed) {
+        jump_instr = IGen::jl_32();
+      } else {
+        jump_instr = IGen::jb_32();
+      }
+      break;
+    case ConditionKind::GT:
+      if (condition.is_signed) {
+        jump_instr = IGen::jg_32();
+      } else {
+        jump_instr = IGen::ja_32();
+      }
+      break;
+    default:
+      assert(false);
+  }
+
+  if (condition.is_float) {
+    assert(false);  // for now
+  } else {
+    gen->add_instr(IGen::cmp_gpr64_gpr64(get_reg(condition.a, allocs, irec),
+                                         get_reg(condition.b, allocs, irec)),
+                   irec);
+  }
+
+  auto jump_rec = gen->add_instr(jump_instr, irec);
+  gen->link_instruction_jump(jump_rec, gen->get_future_ir_record_in_same_func(irec, label.idx));
 }

@@ -21,8 +21,12 @@ RegVal* Val::to_gpr(Env* fe) {
  * Fallback to_xmm if a more optimized one is not provided.
  */
 RegVal* Val::to_xmm(Env* fe) {
-  (void)fe;
-  throw std::runtime_error("Val::to_xmm NYI");  // todo
+  auto rv = to_reg(fe);
+  if (rv->ireg().kind == emitter::RegKind::XMM) {
+    return rv;
+  } else {
+    assert(false);
+  }
 }
 
 RegVal* RegVal::to_reg(Env* fe) {
@@ -35,7 +39,9 @@ RegVal* RegVal::to_gpr(Env* fe) {
   if (m_ireg.kind == emitter::RegKind::GPR) {
     return this;
   } else {
-    throw std::runtime_error("RegVal::to_gpr NYI");  // todo
+    auto re = fe->make_gpr(m_ts);
+    fe->emit(std::make_unique<IR_RegSet>(re, this));
+    return re;
   }
 }
 
@@ -44,7 +50,9 @@ RegVal* RegVal::to_xmm(Env* fe) {
   if (m_ireg.kind == emitter::RegKind::XMM) {
     return this;
   } else {
-    throw std::runtime_error("RegVal::to_xmm NYI");  // todo
+    auto re = fe->make_xmm(m_ts);
+    fe->emit(std::make_unique<IR_RegSet>(re, this));
+    return re;
   }
 }
 

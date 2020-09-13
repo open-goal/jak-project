@@ -18,7 +18,77 @@
   ;; there is an optional "docstring" that can go at the beginning of a function
   "Function which returns its input. The first function of the game!"
   
-  ;; the last thing in the function body is the return value.
+  ;; the last thing in the function body is the return value. This is like "return x;" in C
+  ;; the return type of the function is figured out automatically by the compiler
+  ;; you don't have to specify it manually.
   x
+  )
+
+
+(defun 1/ ((x float))
+  "Reciprocal floating point"
+  
+  ;; this function computes 1.0 / x.  GOAL allows strange function names like "1/".
+  
+  ;; Declaring this an inline function is like a C inline function, however code is
+  ;; still generated so it can be used a function object. GOAL inline functions have type
+  ;; checking, so they are preferable to macros when possible, to get better error messages.
+  (declare (inline))
+  
+  ;; the division form will pick the math type (float, int) based on the type of the first
+  ;; argument.  In this case, "1." is a floating point constant, so this becomes a floating point division.
+  (/ 1. x)
+  )
+
+(defun + ((x int) (y int))
+  "Compute the sum of two integers"
+  
+  ;; this wraps the compiler's built-in handling of "add two integers" in a GOAL function.
+  ;; now "+" can be used as a function object, but is limited to adding two integers when used like this.
+  ;; The compiler is smart enough to not use this function unless "+" is being used as a function object.
+  ;; ex: (+ a b c), (+ a b) ; won't use this function, uses built-in addition
+  ;; (set-combination-function! my-thing +) ; + becomes a function pointer in this case
+  (+ x y)
+  )
+
+(defun - ((x int) (y int))
+  "Compute the difference of two integers"
+  (- x y)
+  )
+
+(defun * ((x int) (y int))
+  "Compute the product of two integers"
+  ;; TODO - verify that this matches the PS2 exactly.
+  ;; Uses mult (three operand form) in MIPS
+  (* x y)
+  )
+
+(defun / ((x int) (y int))
+  "Compute the quotient of two integers"
+  ;; TODO - verify this matches the PS2 exactly
+  (/ x y)
+  )
+
+;; todo ash
+;; todo mod
+;; todo rem
+
+(defun abs ((a int))
+  "Take the absolute value of an integer"
+  
+  ;; short function, good candidate for inlining
+  (declare (inline))
+  
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)     ;; move input to output unchanged, for positive case
+  ;;  (bltzl v0 end)    ;; if negative, execute the branch delay slot below...
+  ;;  (dsubu v0 r0 v0)  ;; negate
+  ;;  (label end)
+ 
+  
+  (if (> a 0) ;; condition is "a > 0"
+      a       ;; true case, return a
+      (- a)   ;; false case, return -a. (- a) is like (- 0 a)
+      )
   )
 
