@@ -92,3 +92,50 @@
       )
   )
 
+(defun min ((a integer) (b integer))
+  "Compute minimum."
+
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)    ;; move first arg to output (case of second arg being min)
+  ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
+  ;;  (slt a0 v0 v1)   ;; compare args
+  ;;  (movz v0 v1 a0)  ;; conditional move the second arg to v0 if it's the minimum
+
+  (declare (inline))
+  (if (> a b) b a)
+  )
+
+(defun max ((a integer) (b integer))
+  "Compute maximum."
+  (declare (inline))
+  (if (> a b) a b)
+  )
+
+;; todo logior
+;; todo lognor
+;; todo logxor
+;; todo lognot
+
+(defun false-func ()
+  "Return false"
+  ;; In GOAL, #f is false.  It's a symbol. Each symbol exists as an object, and each symbol has a value
+  ;; The value of the false symbol #f is the false symbol #f.
+  
+  ;; To get the symbol, instead of its value, we use quote.  Writing 'x is equivalent to (quote x)
+  '#f
+  )
+
+(defun true-func ()
+  "Return true"
+  ;; GOAL consideres anything that's not #f to be true. But there's also an explicit true symbol.
+  '#t
+  )
+
+;; The C Kernel implements the format function and creates a trampoline function in the GOAL heap which jumps to
+;; format.  (In OpenGOAL, there's actually two trampoline functions, to make the 8 arguments all work.)
+;; For some reason, the C Kernel names this trampoline function _format. We need to set the value of format
+;; _format in order for format to work.
+(define format _format)
+
+;; todo bfloat
+;; todo pinrt bfloat

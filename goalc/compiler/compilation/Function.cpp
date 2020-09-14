@@ -203,13 +203,6 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     typecheck(form, m_ts.make_typespec("function"), head->type(), "Function call head");
   }
 
-  // compile arguments
-  std::vector<RegVal*> eval_args;
-  for (uint32_t i = 1; i < args.unnamed.size(); i++) {
-    auto intermediate = compile_error_guard(args.unnamed.at(i), env);
-    eval_args.push_back(intermediate->to_reg(env));
-  }
-
   // see if its an "immediate" application. This happens in three cases:
   // 1). the user directly puts a (lambda ...) form in the head (like with a (let) macro)
   // 2). the user used a (inline my-func) to grab the LambdaPlace of the function.
@@ -222,6 +215,19 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   if (!is_method_call) {
     head_as_lambda = dynamic_cast<LambdaVal*>(head);
   }
+
+  if(!head_as_lambda) {
+    head = head->to_gpr(env);
+  }
+
+  // compile arguments
+  std::vector<RegVal*> eval_args;
+  for (uint32_t i = 1; i < args.unnamed.size(); i++) {
+    auto intermediate = compile_error_guard(args.unnamed.at(i), env);
+    eval_args.push_back(intermediate->to_reg(env));
+  }
+
+
 
   if (head_as_lambda) {
     // inline the function!
