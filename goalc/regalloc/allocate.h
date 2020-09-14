@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file allocate.h
  * Interface for the register allocator.

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file OpcodeInfo.h
  * Decoding info for each opcode.

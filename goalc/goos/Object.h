@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Object.h
  * An "Object" represents a scheme object.

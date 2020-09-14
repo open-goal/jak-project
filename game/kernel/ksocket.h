@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file ksocket.h
  * GOAL Socket connection to listener using DECI2/DSNET

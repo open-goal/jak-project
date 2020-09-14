@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK1_SIF_EE_H
 #define JAK1_SIF_EE_H
 

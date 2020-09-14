@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kmachine.h
  * GOAL Machine.  Contains low-level hardware interfaces for GOAL.

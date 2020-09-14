@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_OBJECTGENERATOR_H
 #define JAK_OBJECTGENERATOR_H
 

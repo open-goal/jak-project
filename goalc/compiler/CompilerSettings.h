@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_COMPILERSETTINGS_H
 #define JAK_COMPILERSETTINGS_H
 

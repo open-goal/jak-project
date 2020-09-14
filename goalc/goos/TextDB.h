@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file TextDB.h
  * The Text Database for storing source code text.

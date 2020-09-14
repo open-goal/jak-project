@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file listener_common.h
  * Common types shared between the compiler and the runtime for the listener connection.

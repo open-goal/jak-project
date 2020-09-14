@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_V2_SOUNDCOMMON_H
 #define JAK_V2_SOUNDCOMMON_H
 

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_ASSIGNMENT_H
 #define JAK_ASSIGNMENT_H
 

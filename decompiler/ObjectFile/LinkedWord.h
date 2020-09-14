@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file LinkedWord.h
  * A word (4 bytes), possibly with some linking info.

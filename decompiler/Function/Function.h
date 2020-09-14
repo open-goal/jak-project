@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef NEXT_FUNCTION_H
 #define NEXT_FUNCTION_H
 

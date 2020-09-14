@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file versions.h
  * Version numbers for GOAL Language, Kernel, etc...

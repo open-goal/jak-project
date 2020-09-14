@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file SystemThread.h
  * Threads for the runtime.

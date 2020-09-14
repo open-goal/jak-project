@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef RUNTIME_TIMER_H
 #define RUNTIME_TIMER_H
 

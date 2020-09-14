@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file LinkedObjectFileCreation.h
  * Create a LinkedObjectFile from raw object file data.

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file link_types.h
  * Types used in the linking data, shared between the object file generator and the kernel's linker.

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_COMPILER_H
 #define JAK_COMPILER_H
 

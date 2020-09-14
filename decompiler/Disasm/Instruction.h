@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Instruction.h
  * An EE instruction, represented as an operation, plus a list of source/destination atoms.

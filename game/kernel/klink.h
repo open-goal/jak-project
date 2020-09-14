@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file klink.cpp
  * GOAL Linker for x86-64

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kdgo.h
  * Loading DGO Files.  Also has some general SIF RPC stuff used for RPCs other than DGO loading.

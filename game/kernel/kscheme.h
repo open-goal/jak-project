@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kscheme.h
  * Implementation of GOAL runtime.

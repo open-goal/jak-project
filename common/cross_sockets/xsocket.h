@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef __linux
 #include <sys/socket.h>
 #include <netinet/tcp.h>

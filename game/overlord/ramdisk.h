@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file ramdisk.cpp
  * A RAMDISK RPC for storing files in the extra RAM left over on the IOP.
