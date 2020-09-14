@@ -216,7 +216,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     head_as_lambda = dynamic_cast<LambdaVal*>(head);
   }
 
-  if(!head_as_lambda) {
+  if (!head_as_lambda) {
     head = head->to_gpr(env);
   }
 
@@ -226,8 +226,6 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     auto intermediate = compile_error_guard(args.unnamed.at(i), env);
     eval_args.push_back(intermediate->to_reg(env));
   }
-
-
 
   if (head_as_lambda) {
     // inline the function!

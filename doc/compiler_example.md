@@ -277,7 +277,7 @@ Then, for each of the remaining arguments, we do:
 ```
 which emits an IR to add the value to the sum.  The `to_math_type` will emit any code needed to convert this to the correct numeric type (returns either a numeric constant or a `RegVal` containing the value).
 
-A second important detail is that we create a new register which will hold the result. This may seem inefficient in cases, but a later compile pass will try to make this new register be the same register as `first_val` if possible, and will eliminate the `IR_RegSet`.
+An important detail is that we create a new register which will hold the result. This may seem inefficient in cases, but a later compile pass will try to make this new register be the same register as `first_val` if possible, and will eliminate the `IR_RegSet`.
 
 # Register Allocation
 
