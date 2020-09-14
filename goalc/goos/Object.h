@@ -129,7 +129,7 @@ class FixedObject {
       return object_type_to_string(ObjectType::INTEGER);
     if (std::is_same<T, char>())
       return object_type_to_string(ObjectType::CHAR);
-    assert(false);
+    throw std::runtime_error("Unsupported FixedObject type");
   }
 };
 

@@ -13,6 +13,7 @@
 #include "common/common_types.h"
 #include "Register.h"
 #include "Instruction.h"
+#include <stdexcept>
 
 namespace emitter {
 class CodeTester {
@@ -67,7 +68,7 @@ class CodeTester {
       case 3:
         return R9;
       default:
-        assert(false);
+        throw std::runtime_error("Invalid arg register index");
     }
 #else
     switch (i) {
@@ -80,7 +81,7 @@ class CodeTester {
       case 3:
         return RCX;
       default:
-        assert(false);
+        throw std::runtime_error("Invaid arg register index");
     }
 #endif
   }

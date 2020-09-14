@@ -1,4 +1,5 @@
 #include "Register.h"
+#include <stdexcept>
 
 namespace emitter {
 RegisterInfo RegisterInfo::make_register_info() {
@@ -55,7 +56,7 @@ std::string to_string(RegKind kind) {
     case RegKind::XMM:
       return "xmm";
     default:
-      assert(false);
+      throw std::runtime_error("Unsupported RegKind");
   }
 }
 

@@ -151,7 +151,7 @@ void KernelCheckAndDispatch() {
         fprintf(stderr, "\n");
         auto result =
             call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-        fprintf(stderr, "result of listener function: %ld\n", result);
+        fprintf(stderr, "result of listener function: %lld\n", result);
 #ifdef __linux__
         cprintf("%ld\n", result);
 #else

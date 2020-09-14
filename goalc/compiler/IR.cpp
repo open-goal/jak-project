@@ -395,7 +395,7 @@ std::string IR_IntegerMath::print() {
     case IntegerMathKind::IDIV_32:
       return fmt::format("idiv {}, {}", m_dest->print(), m_arg->print());
     default:
-      assert(false);
+      throw std::runtime_error("Unsupported IntegerMathKind");
   }
 }
 
@@ -451,7 +451,7 @@ std::string IR_FloatMath::print() {
     case FloatMathKind::DIV_SS:
       return fmt::format("divss {}, {}", m_dest->print(), m_arg->print());
     default:
-      assert(false);
+      throw std::runtime_error("Unsupported FloatMathKind");
   }
 }
 

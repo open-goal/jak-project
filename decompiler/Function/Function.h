@@ -30,7 +30,7 @@ struct FunctionName {
       case FunctionKind::UNIDENTIFIED:
         return "(?)";
       default:
-        assert(false);
+        throw std::runtime_error("Unsupported FunctionKind");
     }
   }
 
