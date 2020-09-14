@@ -134,36 +134,3 @@ bool SystemThreadInterface::get_want_exit() const {
 void SystemThreadInterface::trigger_shutdown() {
   thread.manager->shutdown();
 }
-
-// TODO-Windows
-#ifdef __linux__
-#include <sys/time.h>
-#include <sys/resource.h>
-
-/*!
- * Get thread performance statistics and report them.
- */
-void SystemThreadInterface::report_perf_stats() {
-  if (thread.stat_diff_timer.getMs() > 16.f) {
-    thread.stat_diff_timer.start();
-
-    uint64_t current_ns = thread.stats_timer.getNs();
-    rusage stats;
-    getrusage(RUSAGE_THREAD, &stats);
-
-    uint64_t current_kernel = stats.ru_stime.tv_usec + (1000000 * stats.ru_stime.tv_sec);
-    uint64_t current_user = stats.ru_utime.tv_usec + (1000000 * stats.ru_utime.tv_sec);
-
-    uint64_t ns_dt = current_ns - thread.last_collection_nanoseconds;
-    uint64_t dt_kernel = current_kernel - thread.last_cpu_kernel;
-    uint64_t dt_user = current_user - thread.last_cpu_user;
-
-    thread.cpu_kernel = dt_kernel * 1000. / (double)ns_dt;
-    thread.cpu_user = dt_user * 1000. / (double)ns_dt;
-
-    thread.last_cpu_kernel = current_kernel;
-    thread.last_cpu_user = current_user;
-    thread.last_collection_nanoseconds = current_ns;
-  }
-}
-#endif
