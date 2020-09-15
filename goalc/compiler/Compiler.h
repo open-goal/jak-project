@@ -103,6 +103,8 @@ class Compiler {
   Val* to_math_type(Val* in, MathMode mode, Env* env);
   bool is_none(Val* in);
 
+  Val* compile_variable_shift(const RegVal* in, const RegVal* sa, Env* env, IntegerMathKind kind);
+
  public:
   // Atoms
 
@@ -148,6 +150,14 @@ class Compiler {
   Val* compile_sub(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_div(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_mod(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_logxor(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_lognot(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_logand(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_logior(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);

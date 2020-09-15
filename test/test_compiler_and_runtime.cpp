@@ -113,11 +113,9 @@ struct CompilerTestRunner {
 
 }  // namespace
 
-TEST(CompilerAndRuntime, BuildGame) {
+TEST(CompilerAndRuntime, BuildGameAndTest) {
   std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
   Compiler compiler;
-
-  fprintf(stderr, "about to run test\n");
 
   try {
     compiler.run_test("goal_src/test/test-build-game.gc");
@@ -125,7 +123,6 @@ TEST(CompilerAndRuntime, BuildGame) {
     fprintf(stderr, "caught exception %s\n", e.what());
     EXPECT_TRUE(false);
   }
-  fprintf(stderr, "DONE!\n");
 
   // todo, tests after loading the game.
 
@@ -230,6 +227,14 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-three-reg-mult.gc", {"3\n"});
   runner.run_test("test-div-1.gc", {"6\n"});
   runner.run_test("test-div-2.gc", {"7\n"});
+  runner.run_test("test-shiftvs.gc", {"11\n"});
+  runner.run_test("test-ash.gc", {"18\n"});
+  runner.run_test("test-negative-integer-symbol.gc", {"-123\n"});
+  runner.run_test("test-mod.gc", {"7\n"});
+  runner.run_test("test-nested-function-call-2.gc", {"10\n"});
+  runner.run_test("test-logand.gc", {"4\n"});
+  runner.run_test("test-logior.gc", {"60\n"});
+  runner.run_test("test-logxor.gc", {"56\n"});
 
   expected = "test-string";
   runner.run_test("test-string-symbol.gc", {expected}, expected.size());
@@ -247,6 +252,21 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-factorial-recursive.gc", {"3628800\n"});
   runner.run_test("test-factorial-loop.gc", {"3628800\n"});
   runner.run_test("test-protect.gc", {"33\n"});
+
+  //  expected =
+  //      "test newline\nnewline\ntest tilde ~ \ntest A print boxed-string: \"boxed string!\"\ntest
+  //      A " "print symbol: a-symbol\ntest A make boxed object longer:             \"srt\"!\ntest A
+  //      " "non-default pad: zzzzzzpad-me\ntest A shorten(4): a23~\ntest A don'tchange(4):
+  //      a234\ntest A " "shorten with pad(4): sho~\ntest A a few things \"one thing\" a-second
+  //      integer #<compiled " "function @ #x161544>\n";
+  //
+  //  expected += "test S a string a-symbol another string!\n";
+  //  expected += "test C ) ]\n";
+  //  expected += "test P (no type) #<compiled function @ #x161544>\n";
+  //  expected += "test P (with type) 1447236\n";
+  //
+  //  // todo, finish format testing.
+  //  runner.run_test("test-format.gc", {expected}, expected.size());
 
   compiler.shutdown_target();
   runtime_thread.join();

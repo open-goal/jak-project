@@ -140,7 +140,6 @@ IR_Record ObjectGenerator::get_future_ir_record(const FunctionRecord& func, int 
 }
 
 IR_Record ObjectGenerator::get_future_ir_record_in_same_func(const IR_Record& irec, int ir_id) {
-  assert(irec.func_id == int(m_function_data_by_seg.at(irec.seg).size()) - 1);
   IR_Record rec;
   rec.seg = irec.seg;
   rec.func_id = irec.func_id;

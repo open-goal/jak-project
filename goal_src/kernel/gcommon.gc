@@ -69,9 +69,51 @@
   (/ x y)
   )
 
-;; todo ash
-;; todo mod
-;; todo rem
+(defun ash ((value integer) (shift-amount integer))
+  "Arithmetic shift value by shift-amount.  
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+  
+  ;; currently the compiler does not support "ash", so this function is also used to implement "ash".
+  ;; in the future, the compiler should be able to use constant propagation to turn constant shifts
+  ;; into x86 constant shifts when possible (which are faster). The GOAL compiler seems to do this.
+  
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v1 a0 r0)      ;; likely inserted by register coloring, not entirely needed
+  ;;  (bgezl a1 end)     ;; branch to function end if positive shift (left)...
+  ;;  (dsllv v0 v1 a1)   ;; do left shift in delay slot
+  ;;  
+  ;;  (dsubu a0 r0 a1)   ;; negative shift amount for right shift
+  ;;  (dsrav v0 v1 a0)   ;; do right shift
+  ;;  (label end)
+  
+  (declare (inline))
+  (if (> shift-amount 0)
+      ;; these correspond to x86-64 variable shift instructions.
+      ;; the exact behavior of GOAL shifts (signed/unsigned) are unknown so for now shifts must
+      ;; be manually specified.
+      (shlv value shift-amount)
+      (sarv value (- shift-amount))
+      )
+  )
+
+(defun mod ((a integer) (b integer))
+  "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
+  This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
+
+  ;; The original implementation is div, mfhi
+  ;; todo - verify this is exactly the same as the PS2.
+  (mod a b)
+  )
+
+
+(defun rem ((a integer) (b integer))
+  "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
+
+  ;; The original implementation is div, mfhi
+  ;; todo - verify this is exactly the same as the PS2.
+  (mod a b)
+  )
 
 (defun abs ((a int))
   "Take the absolute value of an integer"
@@ -84,7 +126,7 @@
   ;;  (bltzl v0 end)    ;; if negative, execute the branch delay slot below...
   ;;  (dsubu v0 r0 v0)  ;; negate
   ;;  (label end)
- 
+  
   
   (if (> a 0) ;; condition is "a > 0"
       a       ;; true case, return a
@@ -92,3 +134,77 @@
       )
   )
 
+(defun min ((a integer) (b integer))
+  "Compute minimum."
+  
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)    ;; move first arg to output (case of second arg being min)
+  ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
+  ;;  (slt a0 v0 v1)   ;; compare args
+  ;;  (movz v0 v1 a0)  ;; conditional move the second arg to v0 if it's the minimum
+  
+  (declare (inline))
+  (if (> a b) b a)
+  )
+
+(defun max ((a integer) (b integer))
+  "Compute maximum."
+  (declare (inline))
+  (if (> a b) a b)
+  )
+
+(defun logior ((a integer) (b integer))
+  "Compute the bitwise inclusive-or"
+  (logior a b)
+  )
+
+(defun logand ((a integer) (b integer))
+  "Compute the bitwise and"
+  (logand a b)
+  )
+
+(defun lognor ((a integer) (b integer))
+  "Compute not or."
+  ;; Note - MIPS has a 'nor' instruction, but x86 doesn't.
+  ;; the GOAL x86 compiler therefore doesn't have a nor operation,
+  ;; so lognor is implemented by this inline function instead.
+  (declare (inline))
+  (lognot (logior a b))
+  )
+
+(defun logxor ((a integer) (b integer))
+  "Compute the logical exclusive-or"
+  (logxor a b)
+  )
+
+(defun lognot ((a integer))
+  "Compute the bitwise not"
+  (lognot a)
+  )
+
+(defun false-func ()
+  "Return false"
+  ;; In GOAL, #f is false.  It's a symbol. Each symbol exists as an object, and each symbol has a value
+  ;; The value of the false symbol #f is the false symbol #f.
+  
+  ;; To get the symbol, instead of its value, we use quote.  Writing 'x is equivalent to (quote x)
+  '#f
+  )
+
+(defun true-func ()
+  "Return true"
+  ;; GOAL consideres anything that's not #f to be true. But there's also an explicit true symbol.
+  '#t
+  )
+
+;; The C Kernel implements the format function and creates a trampoline function in the GOAL heap which jumps to
+;; format.  (In OpenGOAL, there's actually two trampoline functions, to make the 8 arguments all work.)
+;; For some reason, the C Kernel names this trampoline function _format. We need to set the value of format
+;; _format in order for format to work.
+
+;; I suspect this was to let us define (yet another) function here which set up C-style var args (supported from C Kernel)
+;; or 128-bit arguments (unimplemented in C Kernel), but both of these were never finished.
+(define format _format)
+
+;; todo bfloat
+;; todo pinrt bfloat
