@@ -26,7 +26,7 @@ std::string InstructionAtom::to_string(const LinkedObjectFile& file) const {
     case IMM_SYM:
       return sym;
     default:
-      assert(false);
+      throw std::runtime_error("Unsupported InstructionAtom");
   }
 }
 

@@ -25,7 +25,7 @@ RegVal* Val::to_xmm(Env* fe) {
   if (rv->ireg().kind == emitter::RegKind::XMM) {
     return rv;
   } else {
-    assert(false);
+    throw std::runtime_error("Register is not an XMM[0-15] register.");
   }
 }
 

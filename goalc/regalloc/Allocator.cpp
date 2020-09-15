@@ -60,7 +60,7 @@ void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in) {
       }
     }
     if (!found) {
-      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %ld\n", instr,
+      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %lld\n", instr,
              in.instructions.size());
     }
     assert(found);
@@ -612,7 +612,7 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
   } else if (info.kind == emitter::RegKind::XMM) {
     return emitter::gRegInfo.get_xmm_spill_alloc_order();
   } else {
-    assert(false);
+    throw std::runtime_error("Unsupported RegKind");
   }
 }
 
@@ -624,7 +624,7 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, Reg
   } else if (info.kind == emitter::RegKind::XMM) {
     return emitter::gRegInfo.get_xmm_alloc_order();
   } else {
-    assert(false);
+    throw std::runtime_error("Unsupported RegKind");
   }
 }
 

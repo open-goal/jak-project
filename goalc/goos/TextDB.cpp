@@ -60,7 +60,8 @@ int SourceText::get_line_idx(int offset) {
       return line;
     }
   }
-  assert(false);
+  throw std::runtime_error("Unable to get line index for character at position " +
+                           std::to_string(offset));
 }
 
 /*!

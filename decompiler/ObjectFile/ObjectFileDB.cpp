@@ -71,7 +71,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   }
 
   printf("ObjectFileDB Initialized:\n");
-  printf(" total dgos: %ld\n", _dgos.size());
+  printf(" total dgos: %lld\n", _dgos.size());
   printf(" total data: %d bytes\n", stats.total_dgo_bytes);
   printf(" total objs: %d\n", stats.total_obj_files);
   printf(" unique objs: %d\n", stats.unique_obj_files);
