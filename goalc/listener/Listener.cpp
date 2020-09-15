@@ -349,6 +349,9 @@ void Listener::send_buffer(int sz) {
   while (wrote < sz) {
     auto to_send = std::min(512, sz - wrote);
     auto x = write_to_socket(listen_socket, m_buffer + wrote, to_send);
+    if (x == -1) {
+      continue;
+    }
     wrote += x;
   }
 
