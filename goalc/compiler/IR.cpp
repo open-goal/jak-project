@@ -394,6 +394,22 @@ std::string IR_IntegerMath::print() {
       return fmt::format("imul {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::IDIV_32:
       return fmt::format("idiv {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::IMOD_32:
+      return fmt::format("imod {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::SARV_64:
+      return fmt::format("sarv {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::SHLV_64:
+      return fmt::format("shlv {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::SHRV_64:
+      return fmt::format("shrv {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::AND_64:
+      return fmt::format("and {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::OR_64:
+      return fmt::format("or {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::XOR_64:
+      return fmt::format("xor {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::NOT_64:
+      return fmt::format("not {}", m_dest->print());
     default:
       assert(false);
   }
@@ -403,9 +419,12 @@ RegAllocInstr IR_IntegerMath::to_rai() {
   RegAllocInstr rai;
   rai.write.push_back(m_dest->ireg());
   rai.read.push_back(m_dest->ireg());
-  rai.read.push_back(m_arg->ireg());
 
-  if (m_kind == IntegerMathKind::IDIV_32) {
+  if (m_kind != IntegerMathKind::NOT_64) {
+    rai.read.push_back(m_arg->ireg());
+  }
+
+  if (m_kind == IntegerMathKind::IDIV_32 || m_kind == IntegerMathKind::IMOD_32) {
     rai.exclude.emplace_back(emitter::RDX);
   }
   return rai;
@@ -423,6 +442,34 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(
           IGen::sub_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
       break;
+    case IntegerMathKind::AND_64:
+      gen->add_instr(
+          IGen::and_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case IntegerMathKind::OR_64:
+      gen->add_instr(
+          IGen::or_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case IntegerMathKind::XOR_64:
+      gen->add_instr(
+          IGen::xor_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case IntegerMathKind::NOT_64:
+      gen->add_instr(IGen::not_gpr64(get_reg(m_dest, allocs, irec)), irec);
+      assert(!m_arg);
+      break;
+    case IntegerMathKind::SHLV_64:
+      gen->add_instr(IGen::shl_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
+      assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      break;
+    case IntegerMathKind::SHRV_64:
+      gen->add_instr(IGen::shr_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
+      assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      break;
+    case IntegerMathKind::SARV_64:
+      gen->add_instr(IGen::sar_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
+      assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      break;
     case IntegerMathKind::IMUL_32: {
       auto dr = get_reg(m_dest, allocs, irec);
       gen->add_instr(IGen::imul_gpr32_gpr32(dr, get_reg(m_arg, allocs, irec)), irec);
@@ -434,6 +481,13 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
       gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
     } break;
+
+    case IntegerMathKind::IMOD_32: {
+      gen->add_instr(IGen::cdq(), irec);
+      gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RDX), irec);
+    } break;
+
     default:
       assert(false);
   }

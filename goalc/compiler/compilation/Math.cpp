@@ -222,7 +222,7 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
       env->emit(std::make_unique<IR_RegSet>(result, first_thing));
 
       IRegConstraint result_rax_constraint;
-      result_rax_constraint.instr_idx = fe->code().size() - 1;
+      result_rax_constraint.instr_idx = fe->code().size();
       result_rax_constraint.ireg = result->ireg();
       result_rax_constraint.desired_register = emitter::RAX;
       fe->constrain(result_rax_constraint);
@@ -251,4 +251,145 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
   }
   assert(false);
   return get_none();
+}
+
+Val* Compiler::compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  return compile_variable_shift(first, second, env, IntegerMathKind::SHLV_64);
+}
+
+Val* Compiler::compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  return compile_variable_shift(first, second, env, IntegerMathKind::SARV_64);
+}
+
+Val* Compiler::compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  return compile_variable_shift(first, second, env, IntegerMathKind::SHRV_64);
+}
+
+Val* Compiler::compile_variable_shift(const RegVal* in,
+                                      const RegVal* sa,
+                                      Env* env,
+                                      IntegerMathKind kind) {
+  auto result = env->make_gpr(in->type());
+  auto sa_in = env->make_gpr(sa->type());
+
+  env->emit(std::make_unique<IR_RegSet>(result, in));
+  env->emit(std::make_unique<IR_RegSet>(sa_in, sa));
+  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+
+  IRegConstraint sa_con;
+  sa_con.ireg = sa_in->ireg();
+  sa_con.instr_idx = fenv->code().size();
+  sa_con.desired_register = emitter::RCX;
+
+  if (get_math_mode(in->type()) != MathMode::MATH_INT ||
+      get_math_mode(sa->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't shift a " + in->type().print() + " by a " + sa->type().print());
+  }
+
+  fenv->constrain(sa_con);
+  env->emit(std::make_unique<IR_IntegerMath>(kind, result, sa_in));
+  return result;
+}
+
+Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+
+  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
+      get_math_mode(second->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't mod a " + first->type().print() + " by a " +
+                             second->type().print());
+  }
+
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+
+  IRegConstraint con;
+  con.ireg = result->ireg();
+  con.instr_idx = fenv->code().size();
+  con.desired_register = emitter::RAX;
+
+  fenv->constrain(con);
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMOD_32, result, second));
+  return result;
+}
+
+Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
+      get_math_mode(second->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't logand a " + first->type().print() + " by a " +
+                             second->type().print());
+  }
+
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, result, second));
+  return result;
+}
+
+Val* Compiler::compile_logior(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
+      get_math_mode(second->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't logior a " + first->type().print() + " by a " +
+                             second->type().print());
+  }
+
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, result, second));
+  return result;
+}
+
+Val* Compiler::compile_logxor(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
+      get_math_mode(second->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't logxor a " + first->type().print() + " by a " +
+                             second->type().print());
+  }
+
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::XOR_64, result, second));
+  return result;
+}
+
+Val* Compiler::compile_lognot(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (get_math_mode(first->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't lognot a " + first->type().print());
+  }
+
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::NOT_64, result, nullptr));
+  return result;
 }

@@ -1477,27 +1477,30 @@ class IGen {
   /*!
    * Shift 64-bit gpr left by CL register
    */
-  static Instruction shl_gpr64_cl(uint8_t reg) {
+  static Instruction shl_gpr64_cl(Register reg) {
+    assert(reg.is_gpr());
     Instruction instr(0xd3);
-    instr.set_modrm_and_rex(4, reg, 3, true);
+    instr.set_modrm_and_rex(4, reg.hw_id(), 3, true);
     return instr;
   }
 
   /*!
    * Shift 64-bit gpr right (logical) by CL register
    */
-  static Instruction shr_gpr64_cl(uint8_t reg) {
+  static Instruction shr_gpr64_cl(Register reg) {
+    assert(reg.is_gpr());
     Instruction instr(0xd3);
-    instr.set_modrm_and_rex(5, reg, 3, true);
+    instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
     return instr;
   }
 
   /*!
    * Shift 64-bit gpr right (arithmetic) by CL register
    */
-  static Instruction sar_gpr64_cl(uint8_t reg) {
+  static Instruction sar_gpr64_cl(Register reg) {
+    assert(reg.is_gpr());
     Instruction instr(0xd3);
-    instr.set_modrm_and_rex(7, reg, 3, true);
+    instr.set_modrm_and_rex(7, reg.hw_id(), 3, true);
     return instr;
   }
 
