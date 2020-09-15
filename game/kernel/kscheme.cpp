@@ -386,6 +386,28 @@ Ptr<Function> make_function_from_c_win32(void* func) {
   return mem.cast<Function>();
 }
 
+Ptr<Function> make_function_for_format_from_c_win32(void* func) {
+  // allocate a function object on the global heap
+  auto mem = Ptr<u8>(
+      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
+  auto f = (uint64_t)func;
+  auto fp = (u8*)&f;
+
+  int i = 0;
+  // we will put the function address in RAX with a movabs rax, imm8
+  mem.c()[i++] = 0x48;
+  mem.c()[i++] = 0xb8;
+  for (int j = 0; j < 8; j++) {
+    mem.c()[i++] = fp[j];
+  }
+
+  for (auto x : {0x48, 0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0xC3}) {
+    mem.c()[i++] = x;
+  }
+
+  return mem.cast<Function>();
+}
+
 /*!
  * Create a GOAL function from a C function. This doesn't export it as a global function, it just
  * creates a function object on the global heap.
@@ -1778,7 +1800,7 @@ s32 InitHeapAndSymbol() {
 #ifdef __linux__
   make_function_symbol_from_c("_format", (void*)_format_linux);
 #elif _WIN32
-  make_function_symbol_from_c("_format", (void*)_format_win32);
+  make_function_for_format_from_c_win32("_format", (void*)_format_win32);
 #endif
 
   // allocations
