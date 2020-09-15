@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file symbols.h
  * The location of fixed symbols in the GOAL symbol table.

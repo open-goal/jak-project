@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_LABEL_H
 #define JAK_LABEL_H
 

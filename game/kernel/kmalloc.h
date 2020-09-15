@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kmalloc.h
  * GOAL Kernel memory allocator.

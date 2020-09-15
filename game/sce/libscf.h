@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK1_LIBSCF_H
 #define JAK1_LIBSCF_H
 

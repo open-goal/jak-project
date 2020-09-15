@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file loader_rpc_types.h
  * Types used for the Loader Remote Procedure Call between the EE and the IOP

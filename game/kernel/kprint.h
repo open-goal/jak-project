@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kprint.h
  * GOAL Print.  Contains GOAL I/O, Print, Format...

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file klisten.h
  * Implementation of the Listener protocol

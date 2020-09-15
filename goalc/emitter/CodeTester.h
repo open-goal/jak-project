@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file CodeTester.h
  * The CodeTester is a utility to run the output of the compiler as part of a unit test.

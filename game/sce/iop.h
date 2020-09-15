@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK1_IOP_H
 #define JAK1_IOP_H
 

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file player_rpc_types.h
  * Types used for the player Remote Procedure Call between the EE and the IOP.

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Env.h
  * The Env tree. The stores all of the nested scopes/contexts during compilation and also

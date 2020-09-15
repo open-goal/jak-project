@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_IGEN_H
 #define JAK_IGEN_H
 

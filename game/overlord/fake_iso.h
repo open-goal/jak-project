@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file fake_iso.h
  * This provides an implementation of IsoFs for reading a "fake iso".

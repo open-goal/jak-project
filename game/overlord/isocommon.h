@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file isocommon.h
  * Common ISO utilities.

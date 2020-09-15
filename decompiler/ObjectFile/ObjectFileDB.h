@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file ObjectFileDB.h
  * A "database" of object files found in DGO files.

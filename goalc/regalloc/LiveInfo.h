@@ -1,4 +1,4 @@
-
+#pragma once
 
 #ifndef JAK_LIVEINFO_H
 #define JAK_LIVEINFO_H

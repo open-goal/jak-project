@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK1_MATCHPARAM_H
 #define JAK1_MATCHPARAM_H
 

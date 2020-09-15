@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file fileio.h
  * GOAL Low-Level File I/O and String Utilities

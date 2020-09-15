@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kmemcard.h
  * Memory card interface. Very messy code.

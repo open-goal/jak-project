@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * IRegister is the Register for the Intermediate Representation.
  */

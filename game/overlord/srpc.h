@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_V2_SRPC_H
 #define JAK_V2_SRPC_H
 

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kdsnetm.h
  * Low-level DECI2 wrapper for ksocket
