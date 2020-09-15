@@ -32,7 +32,7 @@
 #include "common/versions.h"
 
 using namespace versions;
-constexpr bool debug_listener = true;
+constexpr bool debug_listener = false;
 
 namespace listener {
 Listener::Listener() {
@@ -350,7 +350,6 @@ void Listener::send_buffer(int sz) {
     auto to_send = std::min(512, sz - wrote);
     auto x = write_to_socket(listen_socket, m_buffer + wrote, to_send);
     wrote += x > 0 ? x : 0;
-    fprintf(stderr, "wrote %d\n", wrote);
   }
 
   if (debug_listener) {
