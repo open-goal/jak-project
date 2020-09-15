@@ -224,6 +224,7 @@ void Deci2Server::run() {
 
   int sent_to_program = 0;
   while (!want_exit() && (hdr->rsvd < hdr->len || sent_to_program < hdr->rsvd)) {
+    printf("recv loop: user %d, rsvd %d, len %d\n", sent_to_program, hdr->rsvd, hdr->len);
     // send what we have to the program
     if (sent_to_program < hdr->rsvd) {
       //      driver.next_recv_size = 0;
