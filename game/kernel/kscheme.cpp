@@ -342,7 +342,8 @@ Ptr<Function> make_function_from_c_linux(void* func) {
  * Create a GOAL function from a C function. This doesn't export it as a global function, it just
  * creates a function object on the global heap.
  *
- * The implementation is to create a simple trampoline function which jumps to the C function.
+ * This creates a simple trampoline function which jumps to the C function and reorders the
+ * arguments to be correct for Windows.
  */
 Ptr<Function> make_function_from_c_win32(void* func) {
   // allocate a function object on the global heap
@@ -382,6 +383,38 @@ Ptr<Function> make_function_from_c_win32(void* func) {
   // the C function's ret will return to the caller of this trampoline.
 
   // CacheFlush(mem, 0x34);
+
+  return mem.cast<Function>();
+}
+
+/*!
+ * Create a GOAL function from a C function.  This calls a windows function, but doesn't scramble
+ * the argument order.  It's supposed to be used with _format_win32 which assumes GOAL order.
+ */
+Ptr<Function> make_function_for_format_from_c_win32(void* func) {
+  // allocate a function object on the global heap
+  auto mem = Ptr<u8>(
+      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
+  auto f = (uint64_t)func;
+  auto fp = (u8*)&f;
+
+  int i = 0;
+  // we will put the function address in RAX with a movabs rax, imm8
+  mem.c()[i++] = 0x48;
+  mem.c()[i++] = 0xb8;
+  for (int j = 0; j < 8; j++) {
+    mem.c()[i++] = fp[j];
+  }
+
+  /*
+   * sub rsp, 40
+   * call rax
+   * add rsp, 40
+   * ret
+   */
+  for (auto x : {0x48, 0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0xC3}) {
+    mem.c()[i++] = x;
+  }
 
   return mem.cast<Function>();
 }
@@ -436,6 +469,17 @@ Ptr<Function> make_zero_func() {
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f) {
   auto sym = intern_from_c(name);
   auto func = make_function_from_c(f);
+  sym->value = func.offset;
+  return func;
+}
+
+/*!
+ * Given a C function and a name, create a GOAL function and store it in the symbol with the given
+ * name. This is designed for _format_win32, which is special because it takes 8 arguments.
+ */
+Ptr<Function> make_format_function_symbol_from_c_win32(const char* name, void* f) {
+  auto sym = intern_from_c(name);
+  auto func = make_function_for_format_from_c_win32(f);
   sym->value = func.offset;
   return func;
 }
@@ -1778,7 +1822,7 @@ s32 InitHeapAndSymbol() {
 #ifdef __linux__
   make_function_symbol_from_c("_format", (void*)_format_linux);
 #elif _WIN32
-  make_function_symbol_from_c("_format", (void*)_format_win32);
+  make_format_function_symbol_from_c_win32("_format", (void*)_format_win32);
 #endif
 
   // allocations

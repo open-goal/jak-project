@@ -253,6 +253,8 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-factorial-loop.gc", {"3628800\n"});
   runner.run_test("test-protect.gc", {"33\n"});
 
+  runner.run_test("test-format-reg-order.gc", {"test 1 2 3 4 5 6\n0\n"});
+
   //  expected =
   //      "test newline\nnewline\ntest tilde ~ \ntest A print boxed-string: \"boxed string!\"\ntest
   //      A " "print symbol: a-symbol\ntest A make boxed object longer:             \"srt\"!\ntest A
