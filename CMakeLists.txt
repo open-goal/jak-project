@@ -9,10 +9,10 @@ set(CMAKE_CXX_STANDARD 14)
 if (CMAKE_COMPILER_IS_GNUCXX)
     message(STATUS "GCC detected, adding compile flags")
     set(CMAKE_CXX_FLAGS
-            "${CMAKE_CXX_FLAGS} \
+        "${CMAKE_CXX_FLAGS} \
         -Wall \
-		-Winit-self \
-		-ggdb \
+        -Winit-self \
+        -ggdb \
         -Wextra \
         -Wcast-align \
         -Wcast-qual \

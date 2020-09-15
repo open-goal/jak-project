@@ -5,6 +5,7 @@
 
 #include "Register.h"
 #include <cassert>
+#include <stdexcept>
 
 ////////////////////////////
 // Register Name Constants
@@ -126,7 +127,7 @@ const char* Register::to_charp() const {
     case Reg::PCR:
       return pcr_to_charp(get_pcr());
     default:
-      assert(false);
+      throw std::runtime_error("Unsupported Register");
   }
 }
 

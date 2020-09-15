@@ -4,6 +4,7 @@
 #include <cassert>
 #include "Register.h"
 #include "Instruction.h"
+#include <stdexcept>
 
 namespace emitter {
 class IGen {
@@ -1336,7 +1337,8 @@ class IGen {
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
       return add_gpr64_imm32s(reg, imm);
     } else {
-      assert(false);
+      throw std::runtime_error("Invalid `add` with reg[" + reg.print() + "]/imm[" +
+                               std::to_string(imm) + "]");
     }
   }
 
@@ -1346,7 +1348,8 @@ class IGen {
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
       return sub_gpr64_imm32s(reg, imm);
     } else {
-      assert(false);
+      throw std::runtime_error("Invalid `sub` with reg[" + reg.print() + "]/imm[" +
+                               std::to_string(imm) + "]");
     }
   }
 

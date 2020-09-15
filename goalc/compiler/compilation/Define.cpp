@@ -98,5 +98,5 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   } else {
     throw_compile_error(form, "Set not implemented for this yet");
   }
-  assert(false);
+  throw std::runtime_error("Unexpected error in Set");
 }

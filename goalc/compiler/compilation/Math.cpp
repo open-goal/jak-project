@@ -42,14 +42,13 @@ Val* Compiler::number_to_integer(Val* in, Env* env) {
   (void)env;
   auto ts = in->type();
   if (is_binteger(ts)) {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " (a binteger) to an integer.");
   } else if (is_float(ts)) {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " (a float) to an integer.");
   } else if (is_integer(ts)) {
     return in;
-  } else {
-    throw std::runtime_error("Can't convert " + in->print() + " to an integer.");
   }
+  throw std::runtime_error("Can't convert " + in->print() + " to an integer.");
 }
 
 Val* Compiler::number_to_binteger(Val* in, Env* env) {
@@ -58,25 +57,24 @@ Val* Compiler::number_to_binteger(Val* in, Env* env) {
   if (is_binteger(ts)) {
     return in;
   } else if (is_float(ts)) {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " (a float) to a binteger.");
   } else if (is_integer(ts)) {
-    assert(false);
-  } else {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " (an integer) to a binteger.");
   }
+  throw std::runtime_error("Can't convert " + in->print() + " to a binteger.");
 }
 
 Val* Compiler::number_to_float(Val* in, Env* env) {
   (void)env;
   auto ts = in->type();
   if (is_binteger(ts)) {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " (a binteger) to a float.");
   } else if (is_float(ts)) {
     return in;
   } else if (is_integer(ts)) {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " (an integer) to a float.");
   } else {
-    assert(false);
+    throw std::runtime_error("Can't convert " + in->print() + " a float.");
   }
 }
 
@@ -89,7 +87,7 @@ Val* Compiler::to_math_type(Val* in, MathMode mode, Env* env) {
     case MATH_FLOAT:
       return number_to_float(in, env);
     default:
-      assert(false);
+      throw std::runtime_error("Unknown math type: " + in->print());
   }
 }
 

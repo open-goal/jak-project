@@ -165,7 +165,7 @@ emitter::RegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
     case RegKind::FLOAT:
       return emitter::RegKind::XMM;
     default:
-      assert(false);
+      throw std::runtime_error("Unknown preferred register kind");
   }
 }
 
