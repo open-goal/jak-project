@@ -341,7 +341,7 @@ void Listener::send_buffer(int sz) {
   int wrote = 0;
 
   if (debug_listener) {
-    printf("[L -> T] sending %d bytes...\n", sz);
+    fprintf(stderr, "[L -> T] sending %d bytes...\n", sz);
   }
 
   got_ack = false;
@@ -349,7 +349,7 @@ void Listener::send_buffer(int sz) {
   while (wrote < sz) {
     auto to_send = std::min(512, sz - wrote);
     auto x = write_to_socket(listen_socket, m_buffer + wrote, to_send);
-    wrote += x;
+    wrote += x > 0 ? x : 0;
   }
 
   if (debug_listener) {

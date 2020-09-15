@@ -242,7 +242,7 @@ void Deci2Server::run() {
         return;
       }
       got += x > 0 ? x : 0;
-      hdr->rsvd += got;
+      hdr->rsvd = got;
     }
   }
 

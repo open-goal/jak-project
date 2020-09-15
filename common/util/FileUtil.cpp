@@ -16,10 +16,8 @@ std::string file_util::get_project_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
   GetModuleFileNameA(NULL, buffer, FILENAME_MAX);
-  printf("using path %s\n", buffer);
   std::string::size_type pos =
       std::string(buffer).rfind("jak-project");  // Strip file path down to \jak-project\ directory
-  printf("rfind returned %lld\n", pos);
   return std::string(buffer).substr(
       0, pos + 11);  // + 12 to include "\jak-project" in the returned filepath
 #else
