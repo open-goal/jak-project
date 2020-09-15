@@ -244,7 +244,7 @@ void Deci2Server::run() {
       }
       got += x > 0 ? x : 0;
       fprintf(stderr, "wanted %d, got %d\n", hdr->len - hdr->rsvd, got);
-      hdr->rsvd += got;
+      hdr->rsvd = got;
     }
     fprintf(stderr, "recv loop bot: user %d, rsvd %d, len %d\n", sent_to_program, hdr->rsvd, hdr->len);
   }
