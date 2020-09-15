@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_DGOWRITER_H
 #define JAK_DGOWRITER_H
 

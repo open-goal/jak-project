@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_BINARYWRITER_H
 #define JAK_BINARYWRITER_H
 

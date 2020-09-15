@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Deci2Server.h
  * Basic implementation of a DECI2 server.

@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file dma.h
  * DMA Related functions for Overlord.

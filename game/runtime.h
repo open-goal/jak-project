@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file runtime.h
  * Setup and launcher for the runtime.

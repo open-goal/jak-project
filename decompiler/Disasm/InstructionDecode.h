@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file InstructionDecode.h
  * The Instruction Decoder - converts a LinkedWord into a Instruction.

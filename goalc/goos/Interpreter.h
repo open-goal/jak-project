@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Interpreter.h
  * The GOOS Interpreter

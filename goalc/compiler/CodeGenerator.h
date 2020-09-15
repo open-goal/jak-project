@@ -1,4 +1,4 @@
-
+#pragma once
 
 #ifndef JAK_CODEGENERATOR_H
 #define JAK_CODEGENERATOR_H

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_LOGGER_H
 #define JAK_LOGGER_H
 

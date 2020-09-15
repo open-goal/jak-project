@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file common_types.h
  * Common Integer Types.

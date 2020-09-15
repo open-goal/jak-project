@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file libcdvd_ee.h
  * Stub implementation of the EE CD/DVD library

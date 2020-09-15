@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_LAMBDA_H
 #define JAK_LAMBDA_H
 

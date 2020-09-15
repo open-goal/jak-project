@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kboot.h
  * GOAL Boot.  Contains the "main" function to launch GOAL runtime.

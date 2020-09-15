@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Val.h
  * The GOAL Value. A value represents a place (where the value is stored) and a type.

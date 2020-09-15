@@ -1,4 +1,4 @@
-
+#pragma once
 
 #ifndef JAK_ALLOCATOR_H
 #define JAK_ALLOCATOR_H

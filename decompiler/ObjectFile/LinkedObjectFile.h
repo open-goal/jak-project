@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file LinkedObjectFile.h
  * An object file's data with linking information included.

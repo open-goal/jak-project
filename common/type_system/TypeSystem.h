@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_TYPESYSTEM_H
 #define JAK_TYPESYSTEM_H
 

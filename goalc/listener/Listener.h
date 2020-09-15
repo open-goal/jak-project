@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Listener.h
  * The Listener can connect to a Deci2Server for debugging.

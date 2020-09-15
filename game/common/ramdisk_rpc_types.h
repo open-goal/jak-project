@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file ramdisk_rpc_types.h
  * Types used for the RamDisk Remote Procedure Call between the EE and the IOP

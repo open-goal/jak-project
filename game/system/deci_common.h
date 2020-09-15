@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_DECIM_COMMON_H
 #define JAK_DECIM_COMMON_H
 #include "common/common_types.h"

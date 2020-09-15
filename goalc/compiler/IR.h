@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_IR_H
 #define JAK_IR_H
 

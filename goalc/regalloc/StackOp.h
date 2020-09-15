@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file StackOp.h
  * An operation that's added to an Instruction so that it loads/stores things from the stack if

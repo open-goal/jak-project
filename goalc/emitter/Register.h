@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Register.h
  * Representation of an x86-64 Register.

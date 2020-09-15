@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_STATICOBJECT_H
 #define JAK_STATICOBJECT_H
 
