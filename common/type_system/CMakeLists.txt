@@ -5,4 +5,4 @@ add_library(type_system
         TypeSpec.cpp
         deftype.cpp)
 
-target_link_libraries(type_system fmt)
+target_link_libraries(type_system fmt goos)
