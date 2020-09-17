@@ -6,7 +6,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "Env.h"
 #include "goalc/listener/Listener.h"
-#include "goalc/goos/Interpreter.h"
+#include "common/goos/Interpreter.h"
 #include "goalc/compiler/IR.h"
 #include "CompilerSettings.h"
 
@@ -163,6 +163,9 @@ class Compiler {
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_inline(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  // Type
+  Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

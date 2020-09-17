@@ -215,7 +215,7 @@ class StructureType : public ReferenceType {
                 bool pack = false);
   std::string print() const override;
   void inherit(StructureType* parent);
-  const std::vector<Field>& fields() { return m_fields; }
+  const std::vector<Field>& fields() const { return m_fields; }
   bool operator==(const Type& other) const override;
   int get_size_in_memory() const override;
   int get_offset() const override;

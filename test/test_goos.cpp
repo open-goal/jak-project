@@ -4,7 +4,7 @@
  */
 
 #include "gtest/gtest.h"
-#include "goalc/goos/Interpreter.h"
+#include "common/goos/Interpreter.h"
 
 using namespace goos;
 

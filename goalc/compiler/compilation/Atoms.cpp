@@ -55,13 +55,9 @@ static const std::unordered_map<
         //        {"defun-extern", &Compiler::compile_defun_extern},
         //        {"declare-method", &Compiler::compile_declare_method},
         //
-        //        // DEFTYPE
-        //        {"deftype", &Compiler::compile_deftype},
-        //
-        //        // ENUM
+        // TYPE
+        {"deftype", &Compiler::compile_deftype},
         //        {"defenum", &Compiler::compile_defenum},
-        //
-        //        // Field Access
         //        {"->", &Compiler::compile_deref},
         //        {"&", &Compiler::compile_addr_of},
         //
@@ -72,7 +68,6 @@ static const std::unordered_map<
         {"inline", &Compiler::compile_inline},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"rlet", &Compiler::compile_rlet},
-
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
         //
         //

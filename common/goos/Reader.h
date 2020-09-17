@@ -19,8 +19,8 @@
 #include <utility>
 #include <unordered_map>
 
-#include "goalc/goos/Object.h"
-#include "goalc/goos/TextDB.h"
+#include "common/goos/Object.h"
+#include "common/goos/TextDB.h"
 
 namespace goos {
 
