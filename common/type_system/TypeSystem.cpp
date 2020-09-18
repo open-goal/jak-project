@@ -591,6 +591,7 @@ void TypeSystem::add_builtin_types() {
 
   // TYPE
   builtin_structure_inherit(type_type);
+  add_method(type_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
   add_field_to_type(type_type, "symbol", make_typespec("symbol"));
   add_field_to_type(type_type, "parent", make_typespec("type"));
   add_field_to_type(type_type, "allocated-size", make_typespec("uint16"));  // todo, u16 or s16?

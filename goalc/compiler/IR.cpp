@@ -666,3 +666,37 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
   auto jump_rec = gen->add_instr(jump_instr, irec);
   gen->link_instruction_jump(jump_rec, gen->get_future_ir_record_in_same_func(irec, label.idx));
 }
+
+/////////////////////
+// LoadConstantOffset
+/////////////////////
+
+IR_LoadConstOffset::IR_LoadConstOffset(const RegVal* dest,
+                                       int offset,
+                                       const RegVal* base,
+                                       MemLoadInfo info)
+    : m_dest(dest), m_offset(offset), m_base(base), m_info(info) {}
+
+std::string IR_LoadConstOffset::print() {
+  return fmt::format("mov {}, [{} + {}]\n", m_dest->print(), m_base->print(), m_offset);
+}
+
+RegAllocInstr IR_LoadConstOffset::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  rai.read.push_back(m_base->ireg());
+  return rai;
+}
+
+void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
+                                    const AllocationResult& allocs,
+                                    emitter::IR_Record irec) {
+  if (m_dest->ireg().kind == emitter::RegKind::GPR) {
+    gen->add_instr(IGen::load_goal_gpr(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
+                                       emitter::gRegInfo.get_offset_reg(), m_offset, m_info.size,
+                                       m_info.sign_extend),
+                   irec);
+  } else {
+    throw std::runtime_error("IR_LoadConstOffset::do_codegen xmm not supported");
+  }
+}

@@ -341,7 +341,8 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
       printf("got type %s\n", function->type().print().c_str());
       throw_compile_error(form, "invalid number of arguments to function call: got " +
                                     std::to_string(args.size()) + " and expected " +
-                                    std::to_string(function->type().arg_count() - 1));
+                                    std::to_string(function->type().arg_count() - 1) + " for " +
+                                    function->type().print());
     }
     for (uint32_t i = 0; i < args.size(); i++) {
       typecheck(form, function->type().get_arg(i), args.at(i)->type(), "function argument");

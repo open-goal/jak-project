@@ -76,6 +76,7 @@ class TypeSystem {
                  bool print_on_error = true,
                  bool throw_on_error = true) const;
   std::vector<std::string> get_path_up_tree(const std::string& type);
+  int get_next_method_id(Type* type);
 
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
@@ -99,7 +100,6 @@ class TypeSystem {
   int get_size_in_type(const Field& field);
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name);
-  int get_next_method_id(Type* type);
   StructureType* add_builtin_structure(const std::string& parent,
                                        const std::string& type_name,
                                        bool boxed = false);

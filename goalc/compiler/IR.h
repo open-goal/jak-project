@@ -270,4 +270,20 @@ class IR_ConditionalBranch : public IR {
   bool m_resolved = false;
 };
 
+class IR_LoadConstOffset : public IR {
+ public:
+  IR_LoadConstOffset(const RegVal* dest, int offset, const RegVal* base, MemLoadInfo info);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  MemLoadInfo m_info;
+};
+
 #endif  // JAK_IR_H

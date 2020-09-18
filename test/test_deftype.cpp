@@ -13,7 +13,7 @@ TEST(Deftype, deftype) {
   auto in = reader.read_from_string(input).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
   auto result = parse_deftype(in, &ts);
 
-  auto& f = dynamic_cast<StructureType*>(ts.lookup_type(result))->fields();
+  auto& f = dynamic_cast<StructureType*>(ts.lookup_type(result.type))->fields();
   EXPECT_EQ(f.size(), 5);
 
   auto& tf = f.at(0);

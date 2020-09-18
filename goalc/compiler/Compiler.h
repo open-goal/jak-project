@@ -105,6 +105,10 @@ class Compiler {
 
   Val* compile_variable_shift(const RegVal* in, const RegVal* sa, Env* env, IntegerMathKind kind);
 
+  RegVal* compile_get_method_of_type(const TypeSpec& type,
+                                     const std::string& method_name,
+                                     Env* env);
+
  public:
   // Atoms
 
