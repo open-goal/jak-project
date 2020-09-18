@@ -24,8 +24,8 @@ std::string file_util::get_project_path() {
   // do Linux stuff
   char buffer[FILENAME_MAX + 1];
   auto len = readlink("/proc/self/exe", buffer,
-           FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing information about
-                           // the current process
+                      FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing
+                                      // information about the current process
   buffer[len] = '\0';
   std::string::size_type pos =
       std::string(buffer).rfind("jak-project");  // Strip file path down to /jak-project/ directory
