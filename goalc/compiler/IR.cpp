@@ -219,6 +219,8 @@ void IR_RegSet::do_codegen(emitter::ObjectGenerator* gen,
     gen->add_instr(IGen::movd_gpr32_xmm32(dest_reg, val_reg), irec);
   } else if (val_reg.is_gpr() && dest_reg.is_xmm()) {
     gen->add_instr(IGen::movd_xmm32_gpr32(dest_reg, val_reg), irec);
+  } else if (val_reg.is_xmm() && dest_reg.is_xmm()) {
+    gen->add_instr(IGen::mov_xmm32_xmm32(dest_reg, val_reg), irec);
   } else {
     assert(false);
   }

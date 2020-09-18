@@ -151,6 +151,13 @@ void Compiler::color_object_file(FileEnv* env) {
       input.instructions.push_back(i->to_rai());
       input.debug_instruction_names.push_back(i->print());
     }
+
+    // temp hack
+    {
+      for (auto& arg : f->params) {
+        input.instructions.front().write.push_back(arg.second->ireg());
+      }
+    }
     input.max_vars = f->max_vars();
     input.constraints = f->constraints();
 

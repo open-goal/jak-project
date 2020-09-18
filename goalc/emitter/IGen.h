@@ -115,6 +115,7 @@ class IGen {
     instr.set_op2(0x0f);
     instr.set_op3(0x10);
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
     return instr;
   }
 
@@ -996,7 +997,8 @@ class IGen {
   static Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
     assert(gpr_addr.is_gpr());
     assert(xmm_value.is_xmm());
-    Instruction instr(0x66);
+    // Instruction instr(0x66);
+    Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x7f);
     instr.set_modrm_and_rex_for_reg_addr(xmm_value.hw_id(), gpr_addr.hw_id(), false);
@@ -1007,7 +1009,8 @@ class IGen {
   static Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
     assert(gpr_addr.is_gpr());
     assert(xmm_dest.is_xmm());
-    Instruction instr(0x66);
+    // Instruction instr(0x66);
+    Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x6f);
     instr.set_modrm_and_rex_for_reg_addr(xmm_dest.hw_id(), gpr_addr.hw_id(), false);
