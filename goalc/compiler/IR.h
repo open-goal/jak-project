@@ -223,7 +223,7 @@ class IR_IntegerMath : public IR {
   RegVal* m_arg;
 };
 
-enum class FloatMathKind { DIV_SS };
+enum class FloatMathKind { DIV_SS, MUL_SS };
 
 class IR_FloatMath : public IR {
  public:
