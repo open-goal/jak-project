@@ -3,7 +3,7 @@
 #ifndef JAK_LAMBDA_H
 #define JAK_LAMBDA_H
 
-#include "goalc/goos/Object.h"
+#include "common/goos/Object.h"
 
 // note - we cannot easily reuse the GOOS argument system because GOAL's is slightly different.
 // there's no rest or keyword support.

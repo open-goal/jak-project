@@ -92,3 +92,9 @@ RegVal* FloatConstantVal::to_reg(Env* fe) {
   fe->emit(std::make_unique<IR_StaticVarLoad>(re, m_value));
   return re;
 }
+
+RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
+  auto re = fe->make_gpr(deref_type);
+  fe->emit(std::make_unique<IR_LoadConstOffset>(re, offset, base, info));
+  return re;
+}

@@ -125,6 +125,33 @@ class StaticVal : public Val {
   RegVal* to_reg(Env* fe) override;
 };
 
+struct MemLoadInfo {
+  bool sign_extend = false;
+  int size = -1;
+};
+
+class MemoryOffsetConstantVal : public Val {
+ public:
+  MemoryOffsetConstantVal(TypeSpec ts,
+                          RegVal* _base,
+                          int _offset,
+                          MemLoadInfo _info,
+                          TypeSpec _deref_type)
+      : Val(std::move(ts)),
+        base(_base),
+        offset(_offset),
+        info(_info),
+        deref_type(std::move(_deref_type)) {}
+  std::string print() const override {
+    return "(" + base->print() + " + " + std::to_string(offset) + ")";
+  }
+  RegVal* to_reg(Env* fe) override;
+  RegVal* base = nullptr;
+  int offset = 0;
+  MemLoadInfo info;
+  TypeSpec deref_type;
+};
+
 // MemOffConstant
 // MemOffVar
 // MemDeref

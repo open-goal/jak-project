@@ -22,7 +22,7 @@
 #include <unordered_map>
 #include <memory>
 
-#include "goalc/goos/Object.h"
+#include "common/goos/Object.h"
 
 namespace goos {
 /*!

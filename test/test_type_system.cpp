@@ -315,4 +315,5 @@ TEST(TypeSystem, lca) {
                 .print(),
             "(pointer object)");
 }
+
 // TODO - a big test to make sure all the builtin types are what we expect.

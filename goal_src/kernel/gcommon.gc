@@ -100,7 +100,7 @@
 (defun mod ((a integer) (b integer))
   "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
   This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
-
+  
   ;; The original implementation is div, mfhi
   ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
@@ -109,7 +109,7 @@
 
 (defun rem ((a integer) (b integer))
   "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
-
+  
   ;; The original implementation is div, mfhi
   ;; todo - verify this is exactly the same as the PS2.
   (mod a b)
@@ -206,5 +206,43 @@
 ;; or 128-bit arguments (unimplemented in C Kernel), but both of these were never finished.
 (define format _format)
 
-;; todo bfloat
-;; todo pinrt bfloat
+;; TODO - vec4s
+
+;; The "boxed float" type bfloat is just a float wrapped in a basic (structure type that has runtime type information)
+
+;; define a type called "bfloat" which is a child of "basic".
+;; "basic" is just a type with structures and runtime type information
+(deftype bfloat (basic)
+  ;; the field list.
+  ;; there is a single field named data, of type float.
+  ;; the :offset-assert makes sure that OpenGOAL's type layout places the field at the given offset.
+  ;; if not, it creates a compiler error. This is used to make sure we exactly copy the game's memory layout,
+  ;; as we can get the exact offset of fields from the disassembly
+  ((data float :offset-assert 4))
+  
+  ;; declare methods. If you are overriding a parent method, you don't have to declare it, but you can if you want
+  ;; The number after the return type is the method ID, that can be checked against the disassembly to make sure
+  ;; the type and method hierarchy is correct. If OpenGOAL's method table layout doesn't match, it will create
+  ;; compiler error. 
+
+  (:methods (print (_type_) _type_ 2)    ;; we will override print later on
+            (inspect (_type_) _type_ 3)  ;; this is a parent method we won't override. It's fine to put it here anyway.
+            )
+  
+    
+  ;; Note that the special type "_type_" can be used in methods to indicate "the type of the object method is called on".
+  ;; this is used for 2 things:
+  ;;  1. Child who overrides it can use their own type as an argument, rather than a less specific parent type.
+  ;;  2. Caller who calls an overriden method and knows it at compile time can know a return type more specifically.
+            
+  
+  ;; make sure the size of the type is correct (this is stored in the type structure, so we can check it)
+  :size-assert 8
+  ;; make sure method count is correct (again, stored in the type structure)
+  :method-count-assert 9
+  ;; flags passed to the new_type function in the runtime.
+  :flag-assert #x900000008
+  )
+
+
+;; todo print bfloat

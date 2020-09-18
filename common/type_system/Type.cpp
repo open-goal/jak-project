@@ -467,7 +467,7 @@ void StructureType::inherit(StructureType* parent) {
 }
 
 bool StructureType::operator==(const Type& other) const {
-  if (typeid(StructureType) != typeid(other)) {
+  if (typeid(*this) != typeid(other)) {
     return false;
   }
 

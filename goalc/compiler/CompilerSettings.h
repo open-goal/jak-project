@@ -5,7 +5,7 @@
 
 #include <unordered_map>
 #include <string>
-#include "goalc/goos/Object.h"
+#include "common/goos/Object.h"
 
 class CompilerSettings {
  public:

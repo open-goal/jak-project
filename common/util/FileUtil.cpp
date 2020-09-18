@@ -22,10 +22,11 @@ std::string file_util::get_project_path() {
       0, pos + 11);  // + 12 to include "\jak-project" in the returned filepath
 #else
   // do Linux stuff
-  char buffer[FILENAME_MAX];
-  readlink("/proc/self/exe", buffer,
-           FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing information about
-                           // the current process
+  char buffer[FILENAME_MAX + 1];
+  auto len = readlink("/proc/self/exe", buffer,
+                      FILENAME_MAX);  // /proc/self acts like a "virtual folder" containing
+                                      // information about the current process
+  buffer[len] = '\0';
   std::string::size_type pos =
       std::string(buffer).rfind("jak-project");  // Strip file path down to /jak-project/ directory
   return std::string(buffer).substr(

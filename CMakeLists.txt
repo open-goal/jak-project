@@ -52,6 +52,9 @@ include_directories(./)
 # build asset packer/unpacker
 add_subdirectory(asset_tool)
 
+# build goos
+add_subdirectory(common/goos)
+
 # build type_system library for compiler/decompiler
 add_subdirectory(common/type_system)
 

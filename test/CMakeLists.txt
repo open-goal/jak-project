@@ -14,6 +14,7 @@ add_executable(goalc-test
         test_emitter_integer_math.cpp
         test_common_util.cpp
         test_compiler_and_runtime.cpp
+        test_deftype.cpp
         )
 
 enable_testing()

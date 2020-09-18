@@ -14,7 +14,7 @@
 #include <vector>
 #include "common/type_system/TypeSpec.h"
 #include "goalc/regalloc/allocate.h"
-#include "goalc/goos/Object.h"
+#include "common/goos/Object.h"
 #include "StaticObject.h"
 #include "Label.h"
 #include "Val.h"

@@ -200,7 +200,7 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
     fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
-    return {};
+    throw e;
   }
 }
 
