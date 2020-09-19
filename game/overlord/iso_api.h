@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_V2_ISO_API_H
 #define JAK_V2_ISO_API_H
 #include "isocommon.h"

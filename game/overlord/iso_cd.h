@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file iso_cd.cpp
  * IsoFs API for accessing the CD/DVD drive.

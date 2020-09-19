@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK2_DISASSEMBLER_LISPPRINT_H
 #define JAK2_DISASSEMBLER_LISPPRINT_H
 

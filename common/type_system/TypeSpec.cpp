@@ -44,3 +44,20 @@ TypeSpec TypeSpec::substitute_for_method_call(const std::string& method_type) co
   }
   return result;
 }
+
+bool TypeSpec::is_compatible_child_method(const TypeSpec& implementation,
+                                          const std::string& child_type) const {
+  bool ok = implementation.m_type == m_type ||
+            (m_type == "_type_" && implementation.m_type == child_type);
+  if (!ok || implementation.m_arguments.size() != m_arguments.size()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < m_arguments.size(); i++) {
+    if (!m_arguments[i].is_compatible_child_method(implementation.m_arguments[i], child_type)) {
+      return false;
+    }
+  }
+
+  return true;
+}

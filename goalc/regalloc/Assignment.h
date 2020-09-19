@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_ASSIGNMENT_H
 #define JAK_ASSIGNMENT_H
 
@@ -21,7 +23,7 @@ struct Assignment {
     }
     switch (kind) {
       case Kind::STACK:
-        result += fmt::format("stack[{:2d}]", stack_slot);
+        result += fmt::format("s[{:2d}]", stack_slot);
         break;
       case Kind::REGISTER:
         result += emitter::gRegInfo.get_info(reg).name;

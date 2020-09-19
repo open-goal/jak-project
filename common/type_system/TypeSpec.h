@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file TypeSpec.h
  */
@@ -28,6 +30,8 @@ class TypeSpec {
 
   bool operator!=(const TypeSpec& other) const;
   bool operator==(const TypeSpec& other) const;
+  bool is_compatible_child_method(const TypeSpec& implementation,
+                                  const std::string& child_type) const;
   std::string print() const;
 
   void add_arg(const TypeSpec& ts) { m_arguments.push_back(ts); }
@@ -42,6 +46,14 @@ class TypeSpec {
   }
 
   TypeSpec substitute_for_method_call(const std::string& method_type) const;
+
+  size_t arg_count() const { return m_arguments.size(); }
+
+  const TypeSpec& get_arg(int idx) const { return m_arguments.at(idx); }
+  const TypeSpec& last_arg() const {
+    assert(!m_arguments.empty());
+    return m_arguments.back();
+  }
 
  private:
   friend class TypeSystem;

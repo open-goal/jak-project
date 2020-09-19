@@ -60,7 +60,7 @@ void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in) {
       }
     }
     if (!found) {
-      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %ld\n", instr,
+      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %lld\n", instr,
              in.instructions.size());
     }
     assert(found);
@@ -485,7 +485,8 @@ bool can_var_be_assigned(int var,
     if (lr.has_constraint && lr.assignment.at(instr - lr.min).is_assigned()) {
       if (!(ass.occupies_same_reg(lr.assignment.at(instr - lr.min)))) {
         if (debug_trace >= 2) {
-          printf("at idx %d self bad\n", instr);
+          printf("at idx %d self bad (%s) (%s)\n", instr,
+                 lr.assignment.at(instr - lr.min).to_string().c_str(), ass.to_string().c_str());
         }
 
         return false;
@@ -611,19 +612,19 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
   } else if (info.kind == emitter::RegKind::XMM) {
     return emitter::gRegInfo.get_xmm_spill_alloc_order();
   } else {
-    assert(false);
+    throw std::runtime_error("Unsupported RegKind");
   }
 }
 
 const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, RegAllocCache* cache) {
   auto& info = cache->iregs.at(v);
-  assert(info.kind != emitter::RegKind::INVALID);
-  if (info.kind == emitter::RegKind::GPR) {
+  //  assert(info.kind != emitter::RegKind::INVALID);
+  if (info.kind == emitter::RegKind::GPR || info.kind == emitter::RegKind::INVALID) {
     return emitter::gRegInfo.get_gpr_alloc_order();
   } else if (info.kind == emitter::RegKind::XMM) {
     return emitter::gRegInfo.get_xmm_alloc_order();
   } else {
-    assert(false);
+    throw std::runtime_error("Unsupported RegKind");
   }
 }
 

@@ -133,6 +133,9 @@ void ProcessListenerMessage(Ptr<char> msg) {
       break;
     case LTT_MSG_RESET:
       MasterExit = 1;
+      if (protoBlock.msg_id == UINT64_MAX) {
+        MasterExit = 2;
+      }
       break;
     case LTT_MSG_CODE: {
       auto buffer = kmalloc(kdebugheap, MessCount, 0, "listener-link-block");
@@ -146,6 +149,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // this setup allows listener function execution to clean up after itself.
       ListenerFunction->value =
           link_and_exec(buffer, "*listener*", 0, kdebugheap, LINK_FLAG_FORCE_DEBUG).offset;
+      fprintf(stderr, "ListenerFunction is now 0x%x\n", ListenerFunction->value);
       return;  // don't ack yet, this will happen after the function runs.
     } break;
     default:

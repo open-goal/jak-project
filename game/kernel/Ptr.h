@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file Ptr.h
  * Representation of a GOAL pointer which can be converted to/from a C pointer.

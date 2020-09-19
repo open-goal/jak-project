@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_OBJECTGENERATOR_H
 #define JAK_OBJECTGENERATOR_H
 
@@ -41,10 +43,14 @@ class ObjectGenerator {
 
   FunctionRecord add_function_to_seg(int seg,
                                      int min_align = 16);  // should align and insert function tag
+  FunctionRecord get_existing_function_record(int f_idx);
   IR_Record add_ir(const FunctionRecord& func);
   IR_Record get_future_ir_record(const FunctionRecord& func, int ir_id);
+  IR_Record get_future_ir_record_in_same_func(const IR_Record& irec, int ir_id);
   InstructionRecord add_instr(Instruction inst, IR_Record ir);
+  void add_instr_no_ir(FunctionRecord func, Instruction inst);
   StaticRecord add_static_to_seg(int seg, int min_align = 16);
+  std::vector<u8>& get_static_data(const StaticRecord& rec);
   void link_instruction_jump(InstructionRecord jump_instr, IR_Record destination);
   void link_static_type_ptr(StaticRecord rec, int offset, const std::string& type_name);
 
@@ -166,6 +172,8 @@ class ObjectGenerator {
   seg_map<int> m_type_ptr_links_by_seg;
   seg_map<int> m_sym_links_by_seg;
   seg_vector<RipLink> m_rip_links_by_seg;
+
+  std::vector<FunctionRecord> m_all_function_records;
 };
 }  // namespace emitter
 

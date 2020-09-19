@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file kboot.h
  * GOAL Boot.  Contains the "main" function to launch GOAL runtime.
@@ -72,5 +74,7 @@ void KernelCheckAndDispatch();
  * Stop running the GOAL Kernel.
  */
 void KernelShutdown();
+
+constexpr bool MasterUseKernel = false;
 
 #endif  // RUNTIME_KBOOT_H

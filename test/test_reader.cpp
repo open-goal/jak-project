@@ -5,8 +5,8 @@
  */
 
 #include "gtest/gtest.h"
-#include "goalc/goos/Reader.h"
-#include "goalc/util/file_io.h"
+#include "common/goos/Reader.h"
+#include "common/util/FileUtil.h"
 
 using namespace goos;
 
@@ -316,16 +316,16 @@ TEST(GoosReader, TopLevel) {
 
 TEST(GoosReader, FromFile) {
   Reader reader;
-  auto result = reader.read_from_file(util::combine_path({"test", "test_reader_file0.gc"})).print();
+  auto result = reader.read_from_file({"test", "test_reader_file0.gc"}).print();
   EXPECT_TRUE(result == "(top-level (1 2 3 4))");
 }
 
 TEST(GoosReader, TextDb) {
   // very specific to this particular test file, but whatever.
   Reader reader;
-  auto file_path = util::combine_path({"test", "test_reader_file0.gc"});
-  auto result = reader.read_from_file(file_path).as_pair()->cdr.as_pair()->car;
-  std::string expected = "text from " + util::combine_path(reader.get_source_dir(), file_path) +
+  auto result =
+      reader.read_from_file({"test", "test_reader_file0.gc"}).as_pair()->cdr.as_pair()->car;
+  std::string expected = "text from " + file_util::get_file_path({"test", "test_reader_file0.gc"}) +
                          ", line: 5\n(1 2 3 4)\n";
   EXPECT_EQ(expected, reader.db.get_info_for(result));
 }

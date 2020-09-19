@@ -1,9 +1,12 @@
+#pragma once
+
 #ifndef JAK_IGEN_H
 #define JAK_IGEN_H
 
 #include <cassert>
 #include "Register.h"
 #include "Instruction.h"
+#include <stdexcept>
 
 namespace emitter {
 class IGen {
@@ -112,6 +115,7 @@ class IGen {
     instr.set_op2(0x0f);
     instr.set_op3(0x10);
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
     return instr;
   }
 
@@ -993,7 +997,8 @@ class IGen {
   static Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
     assert(gpr_addr.is_gpr());
     assert(xmm_value.is_xmm());
-    Instruction instr(0x66);
+    // Instruction instr(0x66);
+    Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x7f);
     instr.set_modrm_and_rex_for_reg_addr(xmm_value.hw_id(), gpr_addr.hw_id(), false);
@@ -1004,7 +1009,8 @@ class IGen {
   static Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
     assert(gpr_addr.is_gpr());
     assert(xmm_dest.is_xmm());
-    Instruction instr(0x66);
+    // Instruction instr(0x66);
+    Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x6f);
     instr.set_modrm_and_rex_for_reg_addr(xmm_dest.hw_id(), gpr_addr.hw_id(), false);
@@ -1199,6 +1205,26 @@ class IGen {
   // TODO, special load/stores of 128 bit values.
 
   // TODO, consider specialized stack loads and stores?
+  static Instruction load64_gpr64_plus_s32(Register dst_reg, int32_t offset, Register src_reg) {
+    assert(dst_reg.is_gpr());
+    assert(src_reg.is_gpr());
+    Instruction instr(0x8b);
+    instr.set_modrm_rex_sib_for_reg_reg_disp32(dst_reg.hw_id(), 2, src_reg.hw_id(), true);
+    instr.set_disp(Imm(4, offset));
+    return instr;
+  }
+
+  /*!
+   * Store 64-bits from gpr into memory located at 64-bit reg + 32-bit signed offset.
+   */
+  static Instruction store64_gpr64_plus_s32(Register addr, int32_t offset, Register value) {
+    assert(addr.is_gpr());
+    assert(value.is_gpr());
+    Instruction instr(0x89);
+    instr.set_modrm_rex_sib_for_reg_reg_disp32(value.hw_id(), 2, addr.hw_id(), true);
+    instr.set_disp(Imm(4, offset));
+    return instr;
+  }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   FUNCTION STUFF
@@ -1225,6 +1251,7 @@ class IGen {
    * Instruction to pop 64 bit gpr from the stack
    */
   static Instruction pop_gpr64(Register reg) {
+    assert(reg.is_gpr());
     if (reg.hw_id() >= 8) {
       auto i = Instruction(0x58 + reg.hw_id() - 8);
       i.set(REX(false, false, false, true));
@@ -1236,7 +1263,9 @@ class IGen {
   /*!
    * Call a function stored in a 64-bit gpr
    */
-  static Instruction call_r64(uint8_t reg) {
+  static Instruction call_r64(Register reg_) {
+    assert(reg_.is_gpr());
+    auto reg = reg_.hw_id();
     Instruction instr(0xff);
     if (reg >= 8) {
       instr.set(REX(false, false, false, true));
@@ -1313,7 +1342,8 @@ class IGen {
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
       return add_gpr64_imm32s(reg, imm);
     } else {
-      assert(false);
+      throw std::runtime_error("Invalid `add` with reg[" + reg.print() + "]/imm[" +
+                               std::to_string(imm) + "]");
     }
   }
 
@@ -1323,7 +1353,8 @@ class IGen {
     } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
       return sub_gpr64_imm32s(reg, imm);
     } else {
-      assert(false);
+      throw std::runtime_error("Invalid `sub` with reg[" + reg.print() + "]/imm[" +
+                               std::to_string(imm) + "]");
     }
   }
 
@@ -1454,27 +1485,30 @@ class IGen {
   /*!
    * Shift 64-bit gpr left by CL register
    */
-  static Instruction shl_gpr64_cl(uint8_t reg) {
+  static Instruction shl_gpr64_cl(Register reg) {
+    assert(reg.is_gpr());
     Instruction instr(0xd3);
-    instr.set_modrm_and_rex(4, reg, 3, true);
+    instr.set_modrm_and_rex(4, reg.hw_id(), 3, true);
     return instr;
   }
 
   /*!
    * Shift 64-bit gpr right (logical) by CL register
    */
-  static Instruction shr_gpr64_cl(uint8_t reg) {
+  static Instruction shr_gpr64_cl(Register reg) {
+    assert(reg.is_gpr());
     Instruction instr(0xd3);
-    instr.set_modrm_and_rex(5, reg, 3, true);
+    instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
     return instr;
   }
 
   /*!
    * Shift 64-bit gpr right (arithmetic) by CL register
    */
-  static Instruction sar_gpr64_cl(uint8_t reg) {
+  static Instruction sar_gpr64_cl(Register reg) {
+    assert(reg.is_gpr());
     Instruction instr(0xd3);
-    instr.set_modrm_and_rex(7, reg, 3, true);
+    instr.set_modrm_and_rex(7, reg.hw_id(), 3, true);
     return instr;
   }
 

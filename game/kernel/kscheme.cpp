@@ -342,7 +342,8 @@ Ptr<Function> make_function_from_c_linux(void* func) {
  * Create a GOAL function from a C function. This doesn't export it as a global function, it just
  * creates a function object on the global heap.
  *
- * The implementation is to create a simple trampoline function which jumps to the C function.
+ * This creates a simple trampoline function which jumps to the C function and reorders the
+ * arguments to be correct for Windows.
  */
 Ptr<Function> make_function_from_c_win32(void* func) {
   // allocate a function object on the global heap
@@ -382,6 +383,38 @@ Ptr<Function> make_function_from_c_win32(void* func) {
   // the C function's ret will return to the caller of this trampoline.
 
   // CacheFlush(mem, 0x34);
+
+  return mem.cast<Function>();
+}
+
+/*!
+ * Create a GOAL function from a C function.  This calls a windows function, but doesn't scramble
+ * the argument order.  It's supposed to be used with _format_win32 which assumes GOAL order.
+ */
+Ptr<Function> make_function_for_format_from_c_win32(void* func) {
+  // allocate a function object on the global heap
+  auto mem = Ptr<u8>(
+      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
+  auto f = (uint64_t)func;
+  auto fp = (u8*)&f;
+
+  int i = 0;
+  // we will put the function address in RAX with a movabs rax, imm8
+  mem.c()[i++] = 0x48;
+  mem.c()[i++] = 0xb8;
+  for (int j = 0; j < 8; j++) {
+    mem.c()[i++] = fp[j];
+  }
+
+  /*
+   * sub rsp, 40
+   * call rax
+   * add rsp, 40
+   * ret
+   */
+  for (auto x : {0x48, 0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0xC3}) {
+    mem.c()[i++] = x;
+  }
 
   return mem.cast<Function>();
 }
@@ -436,6 +469,17 @@ Ptr<Function> make_zero_func() {
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f) {
   auto sym = intern_from_c(name);
   auto func = make_function_from_c(f);
+  sym->value = func.offset;
+  return func;
+}
+
+/*!
+ * Given a C function and a name, create a GOAL function and store it in the symbol with the given
+ * name. This is designed for _format_win32, which is special because it takes 8 arguments.
+ */
+Ptr<Function> make_format_function_symbol_from_c_win32(const char* name, void* f) {
+  auto sym = intern_from_c(name);
+  auto func = make_function_for_format_from_c_win32(f);
   sym->value = func.offset;
   return func;
 }
@@ -958,7 +1002,9 @@ uint64_t _call_goal_asm_win32(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, 
  * Wrapper around _call_goal_asm for calling a GOAL function from C.
  */
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
-  auto st_ptr = (void*)((uint8_t*)(offset) + st);
+  // auto st_ptr = (void*)((uint8_t*)(offset) + st); updated for the new compiler!
+  void* st_ptr = (void*)st;
+
   void* fptr = f.c();
 #ifdef __linux__
   return _call_goal_asm_linux(a, b, c, fptr, st_ptr, offset);
@@ -1776,7 +1822,7 @@ s32 InitHeapAndSymbol() {
 #ifdef __linux__
   make_function_symbol_from_c("_format", (void*)_format_linux);
 #elif _WIN32
-  make_function_symbol_from_c("_format", (void*)_format_win32);
+  make_format_function_symbol_from_c_win32("_format", (void*)_format_win32);
 #endif
 
   // allocations
@@ -1828,25 +1874,28 @@ s32 InitHeapAndSymbol() {
   intern_from_c("*boot-video-mode*")->value = 0;
 
   // load the kernel!
-  method_set_symbol->value++;
-  load_and_link_dgo_from_c("kernel", kglobalheap,
-                           LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
-                           0x400000);
-  method_set_symbol->value--;
+  // todo, remove MasterUseKernel
+  if (MasterUseKernel) {
+    method_set_symbol->value++;
+    load_and_link_dgo_from_c("kernel", kglobalheap,
+                             LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
+                             0x400000);
+    method_set_symbol->value--;
 
-  // check the kernel version!
-  auto kernel_version = intern_from_c("*kernel-version*")->value;
-  if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
-    MsgErr("\n");
-    MsgErr(
-        "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
-        "goal> prompt (:mch) then mkee your kernel in linux.\n",
-        KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
-        (kernel_version >> 3) & 0xffff);
-    return -1;
-  } else {
-    printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
-           (kernel_version >> 3) & 0xffff);
+    // check the kernel version!
+    auto kernel_version = intern_from_c("*kernel-version*")->value;
+    if (!kernel_version || ((kernel_version >> 0x13) != KERNEL_VERSION_MAJOR)) {
+      MsgErr("\n");
+      MsgErr(
+          "dkernel: compiled C kernel version is %d.%d but the goal kernel is %d.%d\n\tfrom the "
+          "goal> prompt (:mch) then mkee your kernel in linux.\n",
+          KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
+          (kernel_version >> 3) & 0xffff);
+      return -1;
+    } else {
+      printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
+             (kernel_version >> 3) & 0xffff);
+    }
   }
 
   // setup deci2count for message counter.

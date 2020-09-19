@@ -597,8 +597,9 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
 
         // once we're done, send the header to the EE, and start reading object data
         if (cmd->bytes_processed == sizeof(ObjectHeader)) {
-          printf("[Overlord DGO] Got object header for %s, object size 0x%x bytes (sent to 0x%p)\n",
-                 cmd->objHeader.name, cmd->objHeader.size, cmd->ee_destination_buffer);
+          //          printf("[Overlord DGO] Got object header for %s, object size 0x%x bytes (sent
+          //          to 0x%p)\n",
+          //                 cmd->objHeader.name, cmd->objHeader.size, cmd->ee_destination_buffer);
           DMA_SendToEE(&cmd->objHeader, sizeof(ObjectHeader), cmd->ee_destination_buffer);
           DMA_Sync();
           cmd->ee_destination_buffer += sizeof(ObjectHeader);

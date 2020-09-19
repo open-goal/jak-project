@@ -5,3 +5,262 @@
 ;; name in dgo: gcommon
 ;; dgos: KERNEL
 
+;; gcommon is the first file compiled and loaded.
+;; it's expected that this function will mostly be hand-decompiled
+
+
+
+;; The "identity" returns its input unchanged.  It uses the special GOAL "object"
+;; type, which can basically be anything, so this will work on integers, floats,
+;; strings, structures, arrays, etc.  The only things which doesn't work with "object"
+;; is a 128-bit integer. The upper 64-bits of the integer will usually be lost.
+(defun identity ((x object))
+  ;; there is an optional "docstring" that can go at the beginning of a function
+  "Function which returns its input. The first function of the game!"
+  
+  ;; the last thing in the function body is the return value. This is like "return x;" in C
+  ;; the return type of the function is figured out automatically by the compiler
+  ;; you don't have to specify it manually.
+  x
+  )
+
+
+(defun 1/ ((x float))
+  "Reciprocal floating point"
+  
+  ;; this function computes 1.0 / x.  GOAL allows strange function names like "1/".
+  
+  ;; Declaring this an inline function is like a C inline function, however code is
+  ;; still generated so it can be used a function object. GOAL inline functions have type
+  ;; checking, so they are preferable to macros when possible, to get better error messages.
+  (declare (inline))
+  
+  ;; the division form will pick the math type (float, int) based on the type of the first
+  ;; argument.  In this case, "1." is a floating point constant, so this becomes a floating point division.
+  (/ 1. x)
+  )
+
+(defun + ((x int) (y int))
+  "Compute the sum of two integers"
+  
+  ;; this wraps the compiler's built-in handling of "add two integers" in a GOAL function.
+  ;; now "+" can be used as a function object, but is limited to adding two integers when used like this.
+  ;; The compiler is smart enough to not use this function unless "+" is being used as a function object.
+  ;; ex: (+ a b c), (+ a b) ; won't use this function, uses built-in addition
+  ;; (set-combination-function! my-thing +) ; + becomes a function pointer in this case
+  (+ x y)
+  )
+
+(defun - ((x int) (y int))
+  "Compute the difference of two integers"
+  (- x y)
+  )
+
+(defun * ((x int) (y int))
+  "Compute the product of two integers"
+  ;; TODO - verify that this matches the PS2 exactly.
+  ;; Uses mult (three operand form) in MIPS
+  (* x y)
+  )
+
+(defun / ((x int) (y int))
+  "Compute the quotient of two integers"
+  ;; TODO - verify this matches the PS2 exactly
+  (/ x y)
+  )
+
+(defun ash ((value integer) (shift-amount integer))
+  "Arithmetic shift value by shift-amount.  
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+  
+  ;; currently the compiler does not support "ash", so this function is also used to implement "ash".
+  ;; in the future, the compiler should be able to use constant propagation to turn constant shifts
+  ;; into x86 constant shifts when possible (which are faster). The GOAL compiler seems to do this.
+  
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v1 a0 r0)      ;; likely inserted by register coloring, not entirely needed
+  ;;  (bgezl a1 end)     ;; branch to function end if positive shift (left)...
+  ;;  (dsllv v0 v1 a1)   ;; do left shift in delay slot
+  ;;  
+  ;;  (dsubu a0 r0 a1)   ;; negative shift amount for right shift
+  ;;  (dsrav v0 v1 a0)   ;; do right shift
+  ;;  (label end)
+  
+  (declare (inline))
+  (if (> shift-amount 0)
+      ;; these correspond to x86-64 variable shift instructions.
+      ;; the exact behavior of GOAL shifts (signed/unsigned) are unknown so for now shifts must
+      ;; be manually specified.
+      (shlv value shift-amount)
+      (sarv value (- shift-amount))
+      )
+  )
+
+(defun mod ((a integer) (b integer))
+  "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
+  This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
+  
+  ;; The original implementation is div, mfhi
+  ;; todo - verify this is exactly the same as the PS2.
+  (mod a b)
+  )
+
+
+(defun rem ((a integer) (b integer))
+  "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
+  
+  ;; The original implementation is div, mfhi
+  ;; todo - verify this is exactly the same as the PS2.
+  (mod a b)
+  )
+
+(defun abs ((a int))
+  "Take the absolute value of an integer"
+  
+  ;; short function, good candidate for inlining
+  (declare (inline))
+  
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)     ;; move input to output unchanged, for positive case
+  ;;  (bltzl v0 end)    ;; if negative, execute the branch delay slot below...
+  ;;  (dsubu v0 r0 v0)  ;; negate
+  ;;  (label end)
+  
+  
+  (if (> a 0) ;; condition is "a > 0"
+      a       ;; true case, return a
+      (- a)   ;; false case, return -a. (- a) is like (- 0 a)
+      )
+  )
+
+(defun min ((a integer) (b integer))
+  "Compute minimum."
+  
+  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
+  ;;  (or v0 a0 r0)    ;; move first arg to output (case of second arg being min)
+  ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
+  ;;  (slt a0 v0 v1)   ;; compare args
+  ;;  (movz v0 v1 a0)  ;; conditional move the second arg to v0 if it's the minimum
+  
+  (declare (inline))
+  (if (> a b) b a)
+  )
+
+(defun max ((a integer) (b integer))
+  "Compute maximum."
+  (declare (inline))
+  (if (> a b) a b)
+  )
+
+(defun logior ((a integer) (b integer))
+  "Compute the bitwise inclusive-or"
+  (logior a b)
+  )
+
+(defun logand ((a integer) (b integer))
+  "Compute the bitwise and"
+  (logand a b)
+  )
+
+(defun lognor ((a integer) (b integer))
+  "Compute not or."
+  ;; Note - MIPS has a 'nor' instruction, but x86 doesn't.
+  ;; the GOAL x86 compiler therefore doesn't have a nor operation,
+  ;; so lognor is implemented by this inline function instead.
+  (declare (inline))
+  (lognot (logior a b))
+  )
+
+(defun logxor ((a integer) (b integer))
+  "Compute the logical exclusive-or"
+  (logxor a b)
+  )
+
+(defun lognot ((a integer))
+  "Compute the bitwise not"
+  (lognot a)
+  )
+
+(defun false-func ()
+  "Return false"
+  ;; In GOAL, #f is false.  It's a symbol. Each symbol exists as an object, and each symbol has a value
+  ;; The value of the false symbol #f is the false symbol #f.
+  
+  ;; To get the symbol, instead of its value, we use quote.  Writing 'x is equivalent to (quote x)
+  '#f
+  )
+
+(defun true-func ()
+  "Return true"
+  ;; GOAL consideres anything that's not #f to be true. But there's also an explicit true symbol.
+  '#t
+  )
+
+;; The C Kernel implements the format function and creates a trampoline function in the GOAL heap which jumps to
+;; format.  (In OpenGOAL, there's actually two trampoline functions, to make the 8 arguments all work.)
+;; For some reason, the C Kernel names this trampoline function _format. We need to set the value of format
+;; _format in order for format to work.
+
+;; I suspect this was to let us define (yet another) function here which set up C-style var args (supported from C Kernel)
+;; or 128-bit arguments (unimplemented in C Kernel), but both of these were never finished.
+(define format _format)
+
+;; TODO - vec4s
+
+;; The "boxed float" type "bfloat" is just a float wrapped in a basic (structure type that has runtime type information)
+;; it's a way to have a floating point number that knows its a floating point number and can print/inspect itself
+;; Compared to a normal float, it's much less efficient, so this is used extremely rarely.
+
+;; a GOAL deftype contains the following:
+;;  - type name
+;;  - parent type name
+;;  - field list
+;;  - method declarations
+;;  - additional options
+;; It has "asserts" that can be used to make sure that the type is laid out in memory in the same way as the game.
+;; You provide the actual offsets/sizes/method ids, and if there is a mismatch, it throws a compiler error.
+;; The decompile will generate these automatically in the future.
+
+;; Type Name: should be a unique name. Can't be the name of a function or global variable. In this case, it's bfloat
+;; Parent Type: Should be the name of the parent type ("basic" in this case). Will inherit fields and methods from the parent.
+;;   children of "basic" are structure types with runtime type information.
+;; Field List: each field of the type, listed as (name type-name [options])
+;;   use the :offset-assert X to do a check at comile-time that the OpenGOAL compiler places the field at the given offset.
+;;   if the compiler came up with a different offset, it will create an error. This used to make sure the memory layout matches
+;;   the original game.
+;; Method Declarations: Any methods which are defined in this type but not the parent must be declared here. 
+;;   you may optionally declare methods defined only in the parent, or defined in both the parent and child (overridden methods)
+;;   the method declarations is (method-name (arg-list) return-type [optional-id-assert])
+;;   the optional id assert is used to check that the compiler places the method in the given slot of the method table.
+;;   like the offset-assert, it's used to make sure the type hierarchy matches the game.
+;;   Note that the special type "_type_" can be used in methods args/returns to indicate "the type of the object method is called on".
+;;    this is used for 2 things:
+;;      1. Child who overrides it can use their own type as an argument, rather than a less specific parent type.
+;;      2. Caller who calls an overriden method and knows it at compile time can know a return type more specifically.
+
+
+(deftype bfloat (basic)
+  ;; fields
+  ((data float :offset-assert 4)) ;; field "data" is a float.
+  ;; methods
+  (:methods (print (_type_) _type_ 2)    ;; we will override print later on. This is optional to include
+            (inspect (_type_) _type_ 3)  ;; this is a parent method we won't override. This is also optional to inlcude
+            )
+  
+  ;; options
+  
+  ;; make sure the size of the type is correct (compare to value from game)
+  :size-assert 8
+  ;; make sure method count is correct (again, compare to value from game)
+  :method-count-assert 9
+  ;; flags passed to the new_type function in the runtime, compare from game
+  :flag-assert #x900000008
+  )
+
+
+(defmethod print bfloat ((obj bfloat))
+  "Override the default print method to print a bfloat like a normal float"
+  (format #t "~f" (-> obj data))
+  obj
+  )

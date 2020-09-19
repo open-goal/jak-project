@@ -1,9 +1,12 @@
 /*!
  * @file Listener.cpp
  * The Listener can connect to a Deci2Server for debugging.
+ *
+ * TODO - msg ID?
  */
 
-#ifdef __linux
+#ifdef __linux__
+#include <stdexcept>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -11,6 +14,10 @@
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+
+// remove the evil windows min/max macros!
+#undef min
+#undef max
 #endif
 
 // TODO - i think im not including the dependency right..?
@@ -18,10 +25,14 @@
 
 #include <stdexcept>
 #include <cassert>
+#include <cstring>
+#include <chrono>
+#include <thread>
 #include "Listener.h"
 #include "common/versions.h"
 
 using namespace versions;
+constexpr bool debug_listener = false;
 
 namespace listener {
 Listener::Listener() {
@@ -54,9 +65,10 @@ bool Listener::is_connected() const {
  * Attempt to connect to the target. If the target isn't running, this should fail quickly.
  * Returns true if successfully connected.
  */
-bool Listener::connect_to_target(const std::string& ip, int port) {
+bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
   if (m_connected) {
-    throw std::runtime_error("attempted a Listener::connect_to_target when already connected!");
+    printf("already connected!\n");
+    return true;
   }
 
   if (listen_socket >= 0) {
@@ -71,7 +83,7 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
     return false;
   }
 
-  if (set_socket_timeout(listen_socket, 100000) < 0) {
+  if (set_socket_timeout(listen_socket, 500000) < 0) {
     close_socket(listen_socket);
     listen_socket = -1;
     return false;
@@ -97,12 +109,21 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   }
 
   // connect!
-  int rv = connect(listen_socket, (sockaddr*)&server_address, sizeof(server_address));
+  int rv, i;
+  for (i = 0; i < n_tries; i++) {
+    rv = connect(listen_socket, (sockaddr*)&server_address, sizeof(server_address));
+    if (rv >= 0) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+  }
   if (rv < 0) {
     printf("[Listener] Failed to connect\n");
     close_socket(listen_socket);
     listen_socket = -1;
     return false;
+  } else {
+    printf("[Listener] Socket connected established! (took %d tries). Waiting for version...\n", i);
   }
 
   // get the GOAL version number, to make sure we connected to the right thing
@@ -112,11 +133,8 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   bool ok = true;
   while (prog < 8) {
     auto r = read_from_socket(listen_socket, (char*)version_buffer + prog, 8 - prog);
-    if (r < 0) {
-      ok = false;
-      break;
-    }
-    prog += r;
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
+    prog += r > 0 ? r : 0;
     read_tries++;
     if (read_tries > 50) {
       ok = false;
@@ -133,8 +151,8 @@ bool Listener::connect_to_target(const std::string& ip, int port) {
   printf("Got version %d.%d", version_buffer[0], version_buffer[1]);
   if (version_buffer[0] == GOAL_VERSION_MAJOR && version_buffer[1] == GOAL_VERSION_MINOR) {
     printf(" OK!\n");
-    rcv_thread = std::thread(&Listener::receive_func, this);
     m_connected = true;
+    rcv_thread = std::thread(&Listener::receive_func, this);
     receive_thread_running = true;
     return true;
   } else {
@@ -160,7 +178,7 @@ void Listener::receive_func() {
       rcvd += got > 0 ? got : 0;
 
       // kick us out if we got a bogus read result
-      if (got == 0 || (got == -1 && errno != EAGAIN)) {
+      if (got == 0 || (got == -1 && !socket_timed_out())) {
         m_connected = false;
       }
 
@@ -171,10 +189,9 @@ void Listener::receive_func() {
     }
 
     ListenerMessageHeader* hdr = (ListenerMessageHeader*)buff;
-    //    if(debug_listener) {
-    //      printf("[T -> L] received %d bytes, kind %d\n",
-    //             hdr->deci2_hdr.len, hdr->msg_kind);
-    //    }
+    if (debug_listener) {
+      printf("[T -> L] received %d bytes, kind %d\n", hdr->deci2_header.len, int(hdr->msg_kind));
+    }
 
     switch (hdr->msg_kind) {
       case ListenerMessageKind::MSG_ACK:
@@ -217,7 +234,7 @@ void Listener::receive_func() {
           got = got > 0 ? got : 0;
           rcvd += got;
           msg_prog += got;
-          if (got == 0 || (got == -1 && errno != EAGAIN)) {
+          if (got == 0 || (got == -1 && !socket_timed_out())) {
             m_connected = false;
           }
         }
@@ -242,6 +259,128 @@ void Listener::receive_func() {
         break;
     }
   }
+}
+
+void Listener::record_messages(ListenerMessageKind kind) {
+  if (filter != ListenerMessageKind::MSG_INVALID) {
+    printf("[Listener] Already recording!\n");
+  }
+  filter = kind;
+}
+
+std::vector<std::string> Listener::stop_recording_messages() {
+  filter = ListenerMessageKind::MSG_INVALID;
+  auto result = message_record;
+  message_record.clear();
+  return result;
+}
+
+void Listener::send_code(std::vector<uint8_t>& code) {
+  got_ack = false;
+  int total_size = code.size() + sizeof(ListenerMessageHeader);
+  if (total_size > BUFFER_SIZE) {
+    printf("[ERROR] Listener send_code got too big of a message\n");
+    return;
+  }
+
+  auto* header = (ListenerMessageHeader*)m_buffer;
+  auto* buffer_data = (char*)(header + 1);
+  header->deci2_header.rsvd = 0;
+  header->deci2_header.len = total_size;
+  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.src = 'H';
+  header->deci2_header.dst = 'E';
+  header->msg_size = code.size();
+  header->ltt_msg_kind = LTT_MSG_CODE;
+  header->u6 = 0;
+  header->u8 = 0;
+  memcpy(buffer_data, code.data(), code.size());
+  send_buffer(total_size);
+}
+
+void Listener::send_reset(bool shutdown) {
+  if (!m_connected) {
+    printf("Not connected, so cannot reset target.\n");
+    return;
+  }
+  auto* header = (ListenerMessageHeader*)m_buffer;
+  header->deci2_header.rsvd = 0;
+  header->deci2_header.len = sizeof(ListenerMessageHeader);
+  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.src = 'H';
+  header->deci2_header.dst = 'E';
+  header->msg_size = 0;
+  header->ltt_msg_kind = LTT_MSG_RESET;
+  header->u6 = 0;
+  header->u8 = shutdown ? UINT64_MAX : 0;
+  send_buffer(sizeof(ListenerMessageHeader));
+  disconnect();
+  close_socket(listen_socket);
+  printf("closed connection to target\n");
+}
+
+void Listener::send_poke() {
+  if (!m_connected) {
+    printf("Not connected, so cannot poke target.\n");
+    return;
+  }
+  auto* header = (ListenerMessageHeader*)m_buffer;
+  header->deci2_header.rsvd = 0;
+  header->deci2_header.len = sizeof(ListenerMessageHeader);
+  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.src = 'H';
+  header->deci2_header.dst = 'E';
+  header->msg_size = 0;
+  header->ltt_msg_kind = LTT_MSG_POKE;
+  header->u6 = 0;
+  header->u8 = 0;
+  send_buffer(sizeof(ListenerMessageHeader));
+}
+
+void Listener::send_buffer(int sz) {
+  int wrote = 0;
+
+  if (debug_listener) {
+    fprintf(stderr, "[L -> T] sending %d bytes...\n", sz);
+  }
+
+  got_ack = false;
+  waiting_for_ack = true;
+  while (wrote < sz) {
+    auto to_send = std::min(512, sz - wrote);
+    auto x = write_to_socket(listen_socket, m_buffer + wrote, to_send);
+    wrote += x > 0 ? x : 0;
+  }
+
+  if (debug_listener) {
+    printf("  waiting for ack...\n");
+  }
+
+  if (wait_for_ack()) {
+    if (debug_listener) {
+      printf("ack buff:\n");
+      printf("%s\n", ack_recv_buff);
+      printf("  OK\n");
+    }
+  } else {
+    printf("  NG - target has timed out.  If it has died, disconnect with (disconnect-target)\n");
+  }
+}
+
+bool Listener::wait_for_ack() {
+  if (!m_connected) {
+    printf("wait_for_ack called when not connected!\n");
+    return false;
+  }
+
+  for (int i = 0; i < 2000; i++) {
+    if (got_ack)
+      return true;
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+  }
+
+  waiting_for_ack = false;
+  return false;
 }
 
 }  // namespace listener

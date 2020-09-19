@@ -884,6 +884,8 @@ s32 format_impl(uint64_t* args) {
                 call_method_of_type(in, type, GOAL_PRINT_METHOD);
               }
             } else {
+              // TODO - if we can't throw exceptions, what is the option?
+              // log, break and continue?
               throw std::runtime_error("failed to find symbol in format!");
             }
           }

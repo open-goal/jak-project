@@ -1,13 +1,13 @@
 #include <cstdio>
-#include "goalc/goos/Interpreter.h"
+#include "goalc/compiler/Compiler.h"
 
 int main(int argc, char** argv) {
   (void)argc;
   (void)argv;
-  printf("goal compiler\n");
+  printf("GOAL Compiler\n");
 
-  goos::Interpreter interp;
-  interp.execute_repl();
+  Compiler compiler;
+  compiler.execute_repl();
 
   return 0;
 }

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_GOAL_CONSTANTS_H
 #define JAK_GOAL_CONSTANTS_H
 

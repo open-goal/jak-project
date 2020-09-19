@@ -1,1 +1,0 @@
-add_library(util SHARED text_util.cpp file_io.cpp)

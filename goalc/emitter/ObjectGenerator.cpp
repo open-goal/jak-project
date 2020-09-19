@@ -103,7 +103,12 @@ FunctionRecord ObjectGenerator::add_function_to_seg(int seg, int min_align) {
   rec.func_id = int(m_function_data_by_seg.at(seg).size());
   m_function_data_by_seg.at(seg).emplace_back();
   m_function_data_by_seg.at(seg).back().min_align = min_align;
+  m_all_function_records.push_back(rec);
   return rec;
+}
+
+FunctionRecord ObjectGenerator::get_existing_function_record(int f_idx) {
+  return m_all_function_records.at(f_idx);
 }
 
 /*!
@@ -112,8 +117,6 @@ FunctionRecord ObjectGenerator::add_function_to_seg(int seg, int min_align) {
  * can be used as a label for jump targets.
  */
 IR_Record ObjectGenerator::add_ir(const FunctionRecord& func) {
-  // verify we aren't adding to an old function. not technically an error, but doesn't make sense
-  assert(func.func_id == int(m_function_data_by_seg.at(func.seg).size()) - 1);
   IR_Record rec;
   rec.seg = func.seg;
   rec.func_id = func.func_id;
@@ -136,12 +139,18 @@ IR_Record ObjectGenerator::get_future_ir_record(const FunctionRecord& func, int 
   return rec;
 }
 
+IR_Record ObjectGenerator::get_future_ir_record_in_same_func(const IR_Record& irec, int ir_id) {
+  IR_Record rec;
+  rec.seg = irec.seg;
+  rec.func_id = irec.func_id;
+  rec.ir_id = ir_id;
+  return rec;
+}
+
 /*!
  * Add a new Instruction for the given IR instruction.
  */
 InstructionRecord ObjectGenerator::add_instr(Instruction inst, IR_Record ir) {
-  // verify we aren't adding to an old instruction or function
-  assert(ir.func_id == int(m_function_data_by_seg.at(ir.seg).size()) - 1);
   // only this second condition is an actual error.
   assert(ir.ir_id ==
          int(m_function_data_by_seg.at(ir.seg).at(ir.func_id).ir_to_instruction.size()) - 1);
@@ -156,6 +165,10 @@ InstructionRecord ObjectGenerator::add_instr(Instruction inst, IR_Record ir) {
   return rec;
 }
 
+void ObjectGenerator::add_instr_no_ir(FunctionRecord func, Instruction inst) {
+  m_function_data_by_seg.at(func.seg).at(func.func_id).instructions.push_back(inst);
+}
+
 /*!
  * Create a new static object in the given segment.
  */
@@ -166,6 +179,10 @@ StaticRecord ObjectGenerator::add_static_to_seg(int seg, int min_align) {
   m_static_data_by_seg.at(seg).emplace_back();
   m_static_data_by_seg.at(seg).back().min_align = min_align;
   return rec;
+}
+
+std::vector<u8>& ObjectGenerator::get_static_data(const StaticRecord& rec) {
+  return m_static_data_by_seg.at(rec.seg).at(rec.static_id).data;
 }
 
 /*!
@@ -461,7 +478,7 @@ std::vector<u8> ObjectGenerator::generate_header_v3() {
   offset += push_data<u32>(N_SEG, result);
 
   offset += sizeof(u32) * N_SEG * 4;  // 4 u32's per segment
-
+  offset += 4;
   struct SizeOffset {
     uint32_t offset, size;
   };

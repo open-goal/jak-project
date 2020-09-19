@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK1_STUBS_H
 #define JAK1_STUBS_H
 

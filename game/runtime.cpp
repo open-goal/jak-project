@@ -123,7 +123,7 @@ void ee_runner(SystemThreadInterface& iface) {
     return;
   }
 
-  printf("  Main memory mapped at 0x%016lx\n", (u64)(g_ee_main_mem));
+  printf("  Main memory mapped at 0x%016llx\n", (u64)(g_ee_main_mem));
   printf("  Main memory size 0x%x bytes (%.3f MB)\n", EE_MAIN_MEM_SIZE,
          (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
@@ -163,7 +163,7 @@ void ee_runner(SystemThreadInterface& iface) {
  */
 void iop_runner(SystemThreadInterface& iface) {
   IOP iop;
-  printf("\n\n\n[IOP] Restart!\n");
+  printf("[IOP] Restart!\n");
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
@@ -223,7 +223,7 @@ void iop_runner(SystemThreadInterface& iface) {
  * Main function to launch the runtime.
  * Arguments are currently ignored.
  */
-void exec_runtime(int argc, char** argv) {
+u32 exec_runtime(int argc, char** argv) {
   (void)argc;
   (void)argv;
 
@@ -253,5 +253,6 @@ void exec_runtime(int argc, char** argv) {
 
   // join and exit
   tm.join();
-  printf("GOAL Runtime Shutdown\n");
+  printf("GOAL Runtime Shutdown (code %d)\n", MasterExit);
+  return MasterExit;
 }

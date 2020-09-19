@@ -1,5 +1,3 @@
-add_subdirectory(util)
-add_subdirectory(goos)
 add_subdirectory(listener)
 
 add_library(compiler
@@ -12,7 +10,19 @@ add_library(compiler
         compiler/Env.cpp
         compiler/Val.cpp
         compiler/IR.cpp
+        compiler/CompilerSettings.cpp
         compiler/CodeGenerator.cpp
+        compiler/StaticObject.cpp
+        compiler/compilation/Atoms.cpp
+        compiler/compilation/CompilerControl.cpp
+        compiler/compilation/Block.cpp
+        compiler/compilation/Macro.cpp
+        compiler/compilation/Math.cpp
+        compiler/compilation/Define.cpp
+        compiler/compilation/Function.cpp
+        compiler/compilation/ControlFlow.cpp
+        compiler/compilation/Type.cpp
+        compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
@@ -22,9 +32,10 @@ add_library(compiler
 add_executable(goalc main.cpp)
 
 IF (WIN32)
-	target_link_libraries(compiler fmt mman type_system)
-ELSE ()
-	target_link_libraries(compiler fmt type_system)
-ENDIF()
+    target_link_libraries(compiler goos type_system listener mman common_util)
 
-target_link_libraries(goalc util goos compiler)
+ELSE ()
+    target_link_libraries(compiler goos type_system listener common_util)
+ENDIF ()
+
+target_link_libraries(goalc goos compiler type_system)

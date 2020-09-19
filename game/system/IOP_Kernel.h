@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_IOP_KERNEL_H
 #define JAK_IOP_KERNEL_H
 

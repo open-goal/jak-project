@@ -15,6 +15,7 @@
 #include "kscheme.h"
 #include "ksocket.h"
 #include "klisten.h"
+#include "kprint.h"
 
 #ifdef _WIN32
 #include "Windows.h"
@@ -136,7 +137,30 @@ void KernelCheckAndDispatch() {
     auto old_listener = ListenerFunction->value;
     // dispatch the kernel
     //(**kernel_dispatcher)();
-    call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+
+    // todo remove. this is added while KERNEL.CGO is broken.
+    if (MasterUseKernel) {
+      call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+    } else {
+      if (ListenerFunction->value != s7.offset) {
+        fprintf(stderr, "Running Listener Function:\n");
+        auto cptr = Ptr<u8>(ListenerFunction->value).c();
+        for (int i = 0; i < 40; i++) {
+          fprintf(stderr, "%x ", cptr[i]);
+        }
+        fprintf(stderr, "\n");
+        auto result =
+            call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+        fprintf(stderr, "result of listener function: %lld\n", result);
+#ifdef __linux__
+        cprintf("%ld\n", result);
+#else
+        cprintf("%lld\n", result);
+#endif
+        ListenerFunction->value = s7.offset;
+      }
+    }
+
     ClearPending();
 
     // if the listener function changed, it means the kernel ran it, so we should notify compiler.

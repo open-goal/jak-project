@@ -40,7 +40,7 @@ void close_socket(int sock) {
 }
 
 int set_socket_option(int socket, int level, int optname, const void* optval, int optlen) {
-  int ret = setsockopt(socket, level, optname, (char*)&optval, optlen);
+  int ret = setsockopt(socket, level, optname, (const char*)optval, optlen);
   if (ret < 0) {
     printf("Failed to setsockopt(%d, %d, %d, _, _) - Error: %s\n", socket, level, optname,
            strerror(errno));
@@ -66,7 +66,7 @@ int set_socket_timeout(int socket, long microSeconds) {
   }
   return ret;
 #elif _WIN32
-  unsigned long timeout = microSeconds / 1000;  // milliseconds
+  DWORD timeout = microSeconds / 1000;  // milliseconds
   return set_socket_option(socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 #endif
 }
@@ -84,5 +84,14 @@ int read_from_socket(int socket, char* buf, int len) {
   return read(socket, buf, len);
 #elif _WIN32
   return recv(socket, buf, len, 0);
+#endif
+}
+
+bool socket_timed_out() {
+#ifdef __linux
+  return errno == EAGAIN;
+#elif _WIN32
+  auto err = WSAGetLastError();
+  return err == WSAETIMEDOUT;
 #endif
 }

@@ -1,0 +1,204 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; OTHER STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; get list of all goal files
+(asm-file "goal_src/build/all_files.gc")
+
+;; tell compiler about stuff defined/implemented in the runtime.
+(asm-file "goal_src/kernel-defs.gc")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; BUILD SYSTEM
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; compile, color, and save a file
+(defmacro m (file)
+  `(asm-file ,file :color :write)
+  )
+
+;; compile, color, load and save a file
+(defmacro ml (file)
+  `(asm-file ,file :color :load :write)
+  )
+
+(desfun make-build-command (file)
+  `(asm-file ,file :color :write)
+  )
+
+(defmacro build-game ()
+  `(begin
+     ,@(apply make-build-command all-goal-files)
+     (build-dgos "goal_src/build/dgos.txt")
+     )
+  )
+
+(defmacro blg ()
+  `(begin
+     (build-game)
+     (dgo-load "kernel" global #xf #x200000)
+     (dgo-load "game" global #xf #x200000)
+     )
+  )
+
+(defmacro e ()
+  `(:exit)
+  )
+
+(defmacro db ()
+  `(begin
+    (set-config! print-ir #t)
+    (set-config! print-regalloc #t)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CONDITIONAL COMPILATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro #when (clause &rest body)
+  `(#cond (,clause ,@body))
+  )
+
+(defmacro #unless (clause &rest body)
+  `(#cond ((not ,clause) ,@body))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TARGET CONTROL
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro lt (&rest args)
+  ;; shortcut for listen-to-target. also sends a :status command to make sure
+  ;; all buffers on the target are flushed.
+  `(begin
+     (listen-to-target ,@args)
+     (:status)
+     )
+  )
+
+(defmacro r (&rest args)
+  ;; shortcut to completely reset the target and connect, regardless of current state
+  `(begin
+     ;; connect, so we can send reset.  if we're already connected, does nothing
+     (listen-to-target ,@args)
+     ;; send a reset message, disconnecting us
+     (reset-target)
+     ;; establish connection again
+     (listen-to-target ,@args)
+     ;; flush buffers
+     (:status)
+     )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;
+;; GOAL Syntax
+;;;;;;;;;;;;;;;;;;;
+;; Bind vars in body
+(defmacro let (bindings &rest body)
+  `((lambda :inline-only #t ,(apply first bindings) ,@body)
+    ,@(apply second bindings)))
+
+;; Let, but recursive, allowing you to define variables in terms of others.
+(defmacro let* (bindings &rest body)
+  (if (null? bindings)
+    `(begin ,@body)
+    `((lambda :inline-only #t (,(caar bindings))
+        (let* ,(cdr bindings) ,@body))
+      ,(car (cdar bindings))
+      )
+    )
+  )
+
+;; Define a new function
+(defmacro defun (name bindings &rest body)
+  (if (and
+        (> (length body) 1)      ;; more than one thing in function
+        (string? (first body))   ;; first thing is a string
+        )
+    ;; then it's a docstring and we ignore it.
+    `(define ,name (lambda :name ,name ,bindings ,@(cdr body)))
+    ;; otherwise don't ignore it.
+    `(define ,name (lambda :name ,name ,bindings ,@body))
+    )
+  )
+
+(defmacro while (test &rest body)
+  (with-gensyms (reloop test-exit)
+    `(begin
+       (goto ,test-exit)
+       (label ,reloop)
+       ,@body
+       (label ,test-exit)
+       (when-goto ,test ,reloop)
+       #f
+       )
+    )
+  )
+
+;; Backup some values, and restore after executing body.
+;; Non-dynamic (nonlocal jumps out of body will skip restore)
+(defmacro protect (defs &rest body)
+  (if (null? defs)
+    ;; nothing to backup, just insert body (base case)
+    `(begin ,@body)
+
+    ;; a unique name for the thing we are backing up
+    (with-gensyms (backup)
+                  ;; store the original value of the first def in backup
+                  `(let ((,backup ,(first defs)))
+                     ;; backup any other things which need backing up
+                     (protect ,(cdr defs)
+                              ;; execute the body
+                              ,@body
+                              )
+                     ;; restore the first thing
+                     (set! ,(first defs) ,backup)
+                     )
+                  )
+    )
+  )
+
+(defmacro +! (place amount)
+  `(set! ,place (+ ,place ,amount))
+  )
+
+;; todo, handle too many arguments correct
+(defmacro if (condition true-case &rest others)
+  (if (null? others)
+    `(cond (,condition ,true-case))
+    `(cond (,condition ,true-case)
+           (else ,(first others))
+           )
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; Math Macros
+;;;;;;;;;;;;;;;;;;;
+
+(defmacro +1 (var)
+  `(+ ,var 1)
+  )
+
+(defmacro +! (place amount)
+  `(set! ,place (+ ,place ,amount))
+  )
+
+(defmacro +1! (place)
+  `(set! ,place (+ 1 ,place))
+  )
+
+(defmacro -! (place amount)
+  `(set! ,place (- ,place ,amount))
+  )
+
+(defmacro *! (place amount)
+  `(set! ,place (* ,place ,amount))
+  )
+
+(defmacro 1- (var)
+  `(- ,var 1)
+  )

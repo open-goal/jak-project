@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef NEXT_FUNCTION_H
 #define NEXT_FUNCTION_H
 
@@ -30,7 +32,7 @@ struct FunctionName {
       case FunctionKind::UNIDENTIFIED:
         return "(?)";
       default:
-        assert(false);
+        throw std::runtime_error("Unsupported FunctionKind");
     }
   }
 

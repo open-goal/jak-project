@@ -1,24 +1,10 @@
+#pragma once
+
 #ifndef JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
 #define JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
 
 #include "Instruction.h"
-
-template <typename T>
-struct MatchParam {
-  MatchParam() { is_wildcard = true; }
-
-  // intentionally not explicit so you don't have to put MatchParam<whatever>(blah) everywhere
-  MatchParam(T x) {
-    value = x;
-    is_wildcard = false;
-  }
-
-  T value;
-  bool is_wildcard = true;
-
-  bool operator==(const T& other) { return is_wildcard || (value == other); }
-  bool operator!=(const T& other) { return !(*this == other); }
-};
+#include "common/util/MatchParam.h"
 
 bool is_no_link_gpr_store(const Instruction& instr,
                           MatchParam<int> size,

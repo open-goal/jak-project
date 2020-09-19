@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_DISASSEMBLER_GOALTYPE_H
 #define JAK_DISASSEMBLER_GOALTYPE_H
 

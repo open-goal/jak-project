@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef JAK_OBJECTFILEDATA_H
 #define JAK_OBJECTFILEDATA_H
 

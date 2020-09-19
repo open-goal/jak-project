@@ -16,7 +16,7 @@ std::string reg_kind_to_string(RegKind kind) {
     case RegKind::FLOAT_4X:
       return "float-4x";
     default:
-      assert(false);
+      throw std::runtime_error("Unsupported RegKind");
   }
 }
 
@@ -467,7 +467,7 @@ void StructureType::inherit(StructureType* parent) {
 }
 
 bool StructureType::operator==(const Type& other) const {
-  if (typeid(StructureType) != typeid(other)) {
+  if (typeid(*this) != typeid(other)) {
     return false;
   }
 

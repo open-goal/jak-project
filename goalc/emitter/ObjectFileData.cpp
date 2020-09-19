@@ -14,6 +14,11 @@ std::vector<u8> ObjectFileData::to_vector() const {
   // data (code + static objects, by segment)
   for (int seg = N_SEG; seg-- > 0;) {
     result.insert(result.end(), segment_data[seg].begin(), segment_data[seg].end());
+    //        printf("seg %d data\n", seg);
+    //        for (auto x : segment_data[seg]) {
+    //          printf("%02x ", x);
+    //        }
+    //        printf("\n");
   }
   return result;
 }

@@ -595,7 +595,8 @@ void InitMachineScheme() {
     intern_from_c("*kernel-boot-level*")->value = intern_from_c(DebugBootLevel).offset;
   }
 
-  if (DiskBoot) {
+  // todo remove MasterUseKernel
+  if (DiskBoot && MasterUseKernel) {
     *EnableMethodSet = (*EnableMethodSet) + 1;
     load_and_link_dgo_from_c("game", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,

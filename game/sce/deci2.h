@@ -1,3 +1,5 @@
+#pragma once
+
 /*!
  * @file deci2.h
  * Implementation of SCE DECI2 library.
