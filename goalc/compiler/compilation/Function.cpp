@@ -91,9 +91,8 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
 
   if (!inline_only) {
     // compile a function! First create env
-    // auto new_func_env = fe->alloc_env<FunctionEnv>(env, lambda.debug_name);
     auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
-    new_func_env->set_segment(MAIN_SEGMENT);
+    new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
 
     // set up arguments
     assert(lambda.params.size() < 8);  // todo graceful error
