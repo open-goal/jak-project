@@ -1134,28 +1134,39 @@ u64 print_basic(u32 obj) {
  * Can print improper lists
  */
 u64 print_pair(u32 obj) {
+  fprintf(stderr, "Call to print pair 0x%x\n", obj);
   if (obj == s7.offset + FIX_SYM_EMPTY_PAIR) {
+    fprintf(stderr, "was empty\n");
     cprintf("()");
   } else {
     cprintf("(");
     auto toPrint = obj;
+    fprintf(stderr, "starting loop...\n");
     for (;;) {
+      fprintf(stderr, "iteration with toPrint = 0x%x\n", toPrint);
       if ((toPrint & OFFSET_MASK) == PAIR_OFFSET) {
         // print CAR
+        fprintf(stderr, "got pair, printing CAR\n");
         print_object(*Ptr<u32>(toPrint - 2));
+        fprintf(stderr, "done printing car\n");
 
         // load up CDR
         auto cdr = *Ptr<u32>(toPrint + 2);
         toPrint = cdr;
+        fprintf(stderr, "set toPrint to 0x%x\n", toPrint);
         if (cdr == s7.offset + FIX_SYM_EMPTY_PAIR) {  // end of proper list
+          fprintf(stderr, "end!\n");
           cprintf(")");
           return obj;
         } else {  // continue list
+          fprintf(stderr, "continue list!\n");
           cprintf(" ");
         }
       } else {  // improper list
         cprintf(". ");
+        fprintf(stderr, "improper list, printint last\n");
         print_object(toPrint);
+        fprintf(stderr, "done printing last\n");
         cprintf(")");
         return obj;
       }
