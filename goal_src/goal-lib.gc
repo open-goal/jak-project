@@ -138,6 +138,16 @@
     )
   )
 
+(defmacro until (test &rest body)
+  (with-gensyms (reloop)
+    `(begin
+       (label ,reloop)
+       ,@body
+       (when-goto (not ,test) ,reloop)
+       )
+    )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 (defmacro protect (defs &rest body)
@@ -201,4 +211,11 @@
 
 (defmacro 1- (var)
   `(- ,var 1)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bit Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro align16 (value)
+  `(logand #xfffffff0 (+ (the-as integer ,value) 15))
   )

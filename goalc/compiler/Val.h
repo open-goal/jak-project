@@ -166,7 +166,14 @@ class MemoryDerefVal : public Val {
 };
 
 // PairEntry
-// Alias
+
+class AliasVal : public Val {
+ public:
+  AliasVal(TypeSpec ts, Val* _base) : Val(std::move(ts)), base(_base) {}
+  std::string print() const override { return "alias-of-" + base->print(); }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+};
 
 class IntegerConstantVal : public Val {
  public:

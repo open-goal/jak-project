@@ -103,6 +103,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   // set up arguments
   assert(lambda.params.size() < 8);  // todo graceful error
+  std::vector<RegVal*> args_for_coloring;
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
@@ -111,6 +112,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
     new_func_env->params[lambda.params.at(i).name] = ireg;
     new_func_env->constrain(constr);
+    args_for_coloring.push_back(ireg);
   }
 
   place->func = new_func_env.get();
@@ -120,6 +122,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());
+  func_block_env->emit(std::make_unique<IR_FunctionStart>(args_for_coloring));
 
   // compile the function!
   Val* result = nullptr;
@@ -135,13 +138,13 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   if (result) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-    // new_func_env->emit(std::make_unique<IR_Null>())???
-    new_func_env->finish();
     lambda_ts.add_arg(final_result->type());
   } else {
     lambda_ts.add_arg(m_ts.make_typespec("none"));
   }
   func_block_env->end_label.idx = new_func_env->code().size();
+  new_func_env->emit(std::make_unique<IR_Null>());
+  new_func_env->finish();
 
   auto obj_env = get_parent_env_of_type<FileEnv>(new_func_env.get());
   assert(obj_env);
@@ -221,4 +224,12 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     assert(false);
   }
   return result;
+}
+
+Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto desired_ts = parse_typespec(args.unnamed.at(0));
+  auto base = compile_error_guard(args.unnamed.at(1), env);
+  return get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
 }

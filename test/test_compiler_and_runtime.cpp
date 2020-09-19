@@ -129,6 +129,9 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.c = &compiler;
 
   runner.run_test("test-min-max.gc", {"10\n"});
+  runner.run_test("test-bfloat.gc", {"data 1.2330 print 1.2330 type bfloat\n0\n"});
+  runner.run_test("test-basic-type-check.gc", {"#f#t#t#f#t#f#t#t\n0\n"});
+  runner.run_test("test-condition-boolean.gc", {"4\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();
@@ -283,6 +286,12 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-nested-float-functions.gc",
                   {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
   runner.run_test("test-deref-simple.gc", {"structure\n0\n"});
+  runner.run_test("test-align16-1.gc", {"80\n"});
+  runner.run_test("test-align16-2.gc", {"64\n"});
+  runner.run_test("test-return-from-f.gc", {"77\n"});
+  runner.run_test("test-return-from-f-tricky-color.gc", {"77\n"});
+  runner.run_test("test-signed-int-compare.gc", {"12\n"});
+  runner.run_test("test-return-value-of-if.gc", {"123\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

@@ -61,6 +61,7 @@ static const std::unordered_map<
         //        {"defenum", &Compiler::compile_defenum},
         {"->", &Compiler::compile_deref},
         //        {"&", &Compiler::compile_addr_of},
+        {"the-as", &Compiler::compile_the_as},
         //
         //
         //        // LAMBDA
@@ -82,9 +83,6 @@ static const std::unordered_map<
         //        // OBJECT
         //
         //        {"the", &Compiler::compile_the},
-        //        {"the-as", &Compiler::compile_the_as},
-        //
-        //
         //
         //        {"current-method-type", &Compiler::compile_current_method_type},
         //        {"new", &Compiler::compile_new},

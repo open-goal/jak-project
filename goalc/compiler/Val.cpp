@@ -111,3 +111,7 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
     throw std::runtime_error("MemoryDerefVal::to_reg not yet implemented for this case");
   }
 }
+
+RegVal* AliasVal::to_reg(Env* fe) {
+  return base->to_reg(fe);
+}
