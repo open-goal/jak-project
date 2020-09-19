@@ -282,6 +282,7 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-float-pow-function.gc", {"256\n0\n"});
   runner.run_test("test-nested-float-functions.gc",
                   {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
+  runner.run_test("test-deref-simple.gc", {"structure\n0\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

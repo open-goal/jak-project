@@ -96,15 +96,18 @@ RegVal* FloatConstantVal::to_reg(Env* fe) {
 RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
   (void)fe;
   assert(false);
+  throw std::runtime_error("MemoryOffsetConstantVal::to_reg not yet implemented");
 }
 
 RegVal* MemoryDerefVal::to_reg(Env* fe) {
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
   if (base_as_co) {
     auto re = fe->make_gpr(m_ts);
-    fe->emit(std::make_unique<IR_LoadConstOffset>(re, base_as_co->offset, base_as_co->base, info));
+    fe->emit(std::make_unique<IR_LoadConstOffset>(re, base_as_co->offset,
+                                                  base_as_co->base->to_gpr(fe), info));
     return re;
   } else {
     assert(false);
+    throw std::runtime_error("MemoryDerefVal::to_reg not yet implemented for this case");
   }
 }

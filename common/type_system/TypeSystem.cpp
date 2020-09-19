@@ -269,7 +269,7 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
 
   if (got_existing) {
     // make sure we aren't changing anything.
-    if (ts != existing_info.type) {
+    if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
       fmt::print(
           "[TypeSystem] The method {} of type {} was originally defined as {}, but has been "
           "redefined as {}\n",

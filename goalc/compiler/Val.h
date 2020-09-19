@@ -142,13 +142,13 @@ struct MemLoadInfo {
 
 class MemoryOffsetConstantVal : public Val {
  public:
-  MemoryOffsetConstantVal(TypeSpec ts, RegVal* _base, int _offset)
+  MemoryOffsetConstantVal(TypeSpec ts, Val* _base, int _offset)
       : Val(std::move(ts)), base(_base), offset(_offset) {}
   std::string print() const override {
     return "(" + base->print() + " + " + std::to_string(offset) + ")";
   }
   RegVal* to_reg(Env* fe) override;
-  RegVal* base = nullptr;
+  Val* base = nullptr;
   int offset = 0;
 };
 

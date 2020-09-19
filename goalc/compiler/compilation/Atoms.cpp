@@ -59,7 +59,7 @@ static const std::unordered_map<
         {"deftype", &Compiler::compile_deftype},
         {"defmethod", &Compiler::compile_defmethod},
         //        {"defenum", &Compiler::compile_defenum},
-        //        {"->", &Compiler::compile_deref},
+        {"->", &Compiler::compile_deref},
         //        {"&", &Compiler::compile_addr_of},
         //
         //

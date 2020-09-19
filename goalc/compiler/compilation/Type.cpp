@@ -81,9 +81,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
       parm.type = parse_typespec(param_args.unnamed.at(1));
-
-      lambda.params.push_back(parm);
       lambda_ts.add_arg(parm.type);
+      parm.type = parm.type.substitute_for_method_call(symbol_string(type_name));
+      lambda.params.push_back(parm);
     }
   });
   assert(lambda.params.size() == lambda_ts.arg_count());
@@ -156,4 +156,69 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto method_val = place->to_gpr(env);
   auto method_set_val = compile_get_symbol_value("method-set!", env)->to_gpr(env);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
+}
+
+Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest, Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  if (_rest.is_empty_list()) {
+    throw_compile_error(form, "-> must get at least one argument");
+  }
+
+  auto& first_arg = pair_car(_rest);
+  auto rest = &pair_cdr(_rest);
+
+  // eval the first thing
+  auto result = compile_error_guard(first_arg, env);
+
+  if (rest->is_empty_list()) {
+    // one argument, do a pointer deref
+    auto deref_info = m_ts.get_deref_info(result->type());
+    if (!deref_info.can_deref) {
+      throw_compile_error(form, "Cannot dereference a " + result->type().print());
+    }
+
+    if (deref_info.mem_deref) {
+      result =
+          fe->alloc_val<MemoryDerefVal>(deref_info.result_type, result, MemLoadInfo(deref_info));
+    } else {
+      assert(false);
+    }
+    return result;
+  }
+
+  // compound, is field access/nested access
+  while (!rest->is_empty_list()) {
+    auto field_obj = pair_car(*rest);
+    rest = &pair_cdr(*rest);
+    auto type_info = m_ts.lookup_type(result->type());
+
+    // attempt to treat it as a field. May not succeed if we're actually an array.
+    if (field_obj.is_symbol()) {
+      auto field_name = symbol_string(field_obj);
+      auto struct_type = dynamic_cast<StructureType*>(type_info);
+
+      if (struct_type) {
+        int offset = -struct_type->get_offset();
+        auto field = m_ts.lookup_field_info(type_info->get_name(), field_name);
+        if (field.needs_deref) {
+          TypeSpec loc_type = m_ts.make_pointer_typespec(field.type);
+          auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, result,
+                                                            field.field.offset() + offset);
+          auto di = m_ts.get_deref_info(loc_type);
+          assert(di.can_deref);
+          assert(di.mem_deref);
+          result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+        } else {
+          assert(false);
+        }
+        continue;
+      }
+
+      // todo try bitfield
+    }
+
+    // todo array or other
+    assert(false);
+  }
+  return result;
 }
