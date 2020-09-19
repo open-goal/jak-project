@@ -125,6 +125,10 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   }
 
   // todo, tests after loading the game.
+  CompilerTestRunner runner;
+  runner.c = &compiler;
+
+  runner.run_test("test-min-max.gc", {"10\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();
@@ -254,6 +258,7 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-protect.gc", {"33\n"});
 
   runner.run_test("test-format-reg-order.gc", {"test 1 2 3 4 5 6\n0\n"});
+  runner.run_test("test-quote-symbol.gc", {"banana\n0\n"});
 
   //  expected =
   //      "test newline\nnewline\ntest tilde ~ \ntest A print boxed-string: \"boxed string!\"\ntest
@@ -269,6 +274,15 @@ TEST(CompilerAndRuntime, CompilerTests) {
   //
   //  // todo, finish format testing.
   //  runner.run_test("test-format.gc", {expected}, expected.size());
+
+  runner.run_test("test-float-product.gc", {"120.0000\n0\n"});
+  runner.run_test("test-float-in-symbol.gc", {"2345.6000\n0\n"});
+  runner.run_test("test-function-return-constant-float.gc", {"3.14149\n0\n"});
+  runner.run_test("test-float-function.gc", {"10.152\n0\n"});
+  runner.run_test("test-float-pow-function.gc", {"256\n0\n"});
+  runner.run_test("test-nested-float-functions.gc",
+                  {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
+  runner.run_test("test-deref-simple.gc", {"structure\n0\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

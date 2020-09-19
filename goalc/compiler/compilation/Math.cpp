@@ -148,6 +148,18 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
       }
       return result;
     }
+    case MATH_FLOAT: {
+      auto result = env->make_xmm(first_type);
+      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+
+      for (size_t i = 1; i < args.unnamed.size(); i++) {
+        env->emit(std::make_unique<IR_FloatMath>(
+            FloatMathKind::MUL_SS, result,
+            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+                ->to_xmm(env)));
+      }
+      return result;
+    }
     case MATH_INVALID:
       throw_compile_error(
           form, "Cannot determine the math mode for object of type " + first_type.print());

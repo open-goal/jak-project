@@ -208,41 +208,59 @@
 
 ;; TODO - vec4s
 
-;; The "boxed float" type bfloat is just a float wrapped in a basic (structure type that has runtime type information)
+;; The "boxed float" type "bfloat" is just a float wrapped in a basic (structure type that has runtime type information)
+;; it's a way to have a floating point number that knows its a floating point number and can print/inspect itself
+;; Compared to a normal float, it's much less efficient, so this is used extremely rarely.
 
-;; define a type called "bfloat" which is a child of "basic".
-;; "basic" is just a type with structures and runtime type information
+;; a GOAL deftype contains the following:
+;;  - type name
+;;  - parent type name
+;;  - field list
+;;  - method declarations
+;;  - additional options
+;; It has "asserts" that can be used to make sure that the type is laid out in memory in the same way as the game.
+;; You provide the actual offsets/sizes/method ids, and if there is a mismatch, it throws a compiler error.
+;; The decompile will generate these automatically in the future.
+
+;; Type Name: should be a unique name. Can't be the name of a function or global variable. In this case, it's bfloat
+;; Parent Type: Should be the name of the parent type ("basic" in this case). Will inherit fields and methods from the parent.
+;;   children of "basic" are structure types with runtime type information.
+;; Field List: each field of the type, listed as (name type-name [options])
+;;   use the :offset-assert X to do a check at comile-time that the OpenGOAL compiler places the field at the given offset.
+;;   if the compiler came up with a different offset, it will create an error. This used to make sure the memory layout matches
+;;   the original game.
+;; Method Declarations: Any methods which are defined in this type but not the parent must be declared here. 
+;;   you may optionally declare methods defined only in the parent, or defined in both the parent and child (overridden methods)
+;;   the method declarations is (method-name (arg-list) return-type [optional-id-assert])
+;;   the optional id assert is used to check that the compiler places the method in the given slot of the method table.
+;;   like the offset-assert, it's used to make sure the type hierarchy matches the game.
+;;   Note that the special type "_type_" can be used in methods args/returns to indicate "the type of the object method is called on".
+;;    this is used for 2 things:
+;;      1. Child who overrides it can use their own type as an argument, rather than a less specific parent type.
+;;      2. Caller who calls an overriden method and knows it at compile time can know a return type more specifically.
+
+
 (deftype bfloat (basic)
-  ;; the field list.
-  ;; there is a single field named data, of type float.
-  ;; the :offset-assert makes sure that OpenGOAL's type layout places the field at the given offset.
-  ;; if not, it creates a compiler error. This is used to make sure we exactly copy the game's memory layout,
-  ;; as we can get the exact offset of fields from the disassembly
-  ((data float :offset-assert 4))
-  
-  ;; declare methods. If you are overriding a parent method, you don't have to declare it, but you can if you want
-  ;; The number after the return type is the method ID, that can be checked against the disassembly to make sure
-  ;; the type and method hierarchy is correct. If OpenGOAL's method table layout doesn't match, it will create
-  ;; compiler error. 
-
-  (:methods (print (_type_) _type_ 2)    ;; we will override print later on
-            (inspect (_type_) _type_ 3)  ;; this is a parent method we won't override. It's fine to put it here anyway.
+  ;; fields
+  ((data float :offset-assert 4)) ;; field "data" is a float.
+  ;; methods
+  (:methods (print (_type_) _type_ 2)    ;; we will override print later on. This is optional to include
+            (inspect (_type_) _type_ 3)  ;; this is a parent method we won't override. This is also optional to inlcude
             )
   
-    
-  ;; Note that the special type "_type_" can be used in methods to indicate "the type of the object method is called on".
-  ;; this is used for 2 things:
-  ;;  1. Child who overrides it can use their own type as an argument, rather than a less specific parent type.
-  ;;  2. Caller who calls an overriden method and knows it at compile time can know a return type more specifically.
-            
+  ;; options
   
-  ;; make sure the size of the type is correct (this is stored in the type structure, so we can check it)
+  ;; make sure the size of the type is correct (compare to value from game)
   :size-assert 8
-  ;; make sure method count is correct (again, stored in the type structure)
+  ;; make sure method count is correct (again, compare to value from game)
   :method-count-assert 9
-  ;; flags passed to the new_type function in the runtime.
+  ;; flags passed to the new_type function in the runtime, compare from game
   :flag-assert #x900000008
   )
 
 
-;; todo print bfloat
+(defmethod print bfloat ((obj bfloat))
+  "Override the default print method to print a bfloat like a normal float"
+  (format #t "~f" (-> obj data))
+  obj
+  )

@@ -91,9 +91,8 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
 
   if (!inline_only) {
     // compile a function! First create env
-    // auto new_func_env = fe->alloc_env<FunctionEnv>(env, lambda.debug_name);
     auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
-    new_func_env->set_segment(MAIN_SEGMENT);
+    new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
 
     // set up arguments
     assert(lambda.params.size() < 8);  // todo graceful error
@@ -216,7 +215,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     head_as_lambda = dynamic_cast<LambdaVal*>(head);
   }
 
-  if (!head_as_lambda) {
+  if (!head_as_lambda && !is_method_call) {
     head = head->to_gpr(env);
   }
 
@@ -282,12 +281,13 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   } else {
     // not an inline call
     if (is_method_call) {
-      // determine the method to call by looking at the type of first argument
-      if (eval_args.empty()) {
-        throw_compile_error(form, "0 argument method call is impossible to figure out");
-      }
-      printf("BAD %s\n", uneval_head.print().c_str());
-      assert(false);  // nyi
+      throw_compile_error(form, "Unrecognized symbol " + uneval_head.print() + " as head of form");
+      //      // determine the method to call by looking at the type of first argument
+      //      if (eval_args.empty()) {
+      //
+      //      }
+      //      printf("BAD %s\n", uneval_head.print().c_str());
+      //      assert(false);  // nyi
       // head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
     }
 

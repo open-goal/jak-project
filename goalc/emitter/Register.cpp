@@ -23,6 +23,23 @@ RegisterInfo RegisterInfo::make_register_info() {
   info.m_info[R14] = {-1, false, true, "r14"};  // st?
   info.m_info[R15] = {-1, false, true, "r15"};  // offset.
 
+  info.m_info[XMM0] = {-1, false, false, "xmm0"};
+  info.m_info[XMM1] = {-1, false, false, "xmm1"};
+  info.m_info[XMM2] = {-1, false, false, "xmm2"};
+  info.m_info[XMM3] = {-1, false, false, "xmm3"};
+  info.m_info[XMM4] = {-1, false, false, "xmm4"};
+  info.m_info[XMM5] = {-1, false, false, "xmm5"};
+  info.m_info[XMM6] = {-1, false, false, "xmm6"};
+  info.m_info[XMM7] = {-1, false, false, "xmm7"};
+  info.m_info[XMM8] = {-1, true, false, "xmm8"};
+  info.m_info[XMM9] = {-1, true, false, "xmm9"};
+  info.m_info[XMM10] = {-1, true, false, "xmm10"};
+  info.m_info[XMM11] = {-1, true, false, "xmm11"};
+  info.m_info[XMM12] = {-1, true, false, "xmm12"};
+  info.m_info[XMM13] = {-1, true, false, "xmm13"};
+  info.m_info[XMM14] = {-1, true, false, "xmm14"};
+  info.m_info[XMM15] = {-1, true, false, "xmm15"};
+
   info.m_arg_regs = std::array<Register, N_ARGS>({RDI, RSI, RDX, RCX, R8, R9, R10, R11});
   info.m_saved_gprs = std::array<Register, N_SAVED_GPRS>({RBX, RBP, R10, R11, R12});
   info.m_saved_xmms =

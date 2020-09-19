@@ -57,8 +57,9 @@ static const std::unordered_map<
         //
         // TYPE
         {"deftype", &Compiler::compile_deftype},
+        {"defmethod", &Compiler::compile_defmethod},
         //        {"defenum", &Compiler::compile_defenum},
-        //        {"->", &Compiler::compile_deref},
+        {"->", &Compiler::compile_deref},
         //        {"&", &Compiler::compile_addr_of},
         //
         //
@@ -83,7 +84,7 @@ static const std::unordered_map<
         //        {"the", &Compiler::compile_the},
         //        {"the-as", &Compiler::compile_the_as},
         //
-        //        {"defmethod", &Compiler::compile_defmethod},
+        //
         //
         //        {"current-method-type", &Compiler::compile_current_method_type},
         //        {"new", &Compiler::compile_new},

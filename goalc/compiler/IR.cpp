@@ -219,6 +219,8 @@ void IR_RegSet::do_codegen(emitter::ObjectGenerator* gen,
     gen->add_instr(IGen::movd_gpr32_xmm32(dest_reg, val_reg), irec);
   } else if (val_reg.is_gpr() && dest_reg.is_xmm()) {
     gen->add_instr(IGen::movd_xmm32_gpr32(dest_reg, val_reg), irec);
+  } else if (val_reg.is_xmm() && dest_reg.is_xmm()) {
+    gen->add_instr(IGen::mov_xmm32_xmm32(dest_reg, val_reg), irec);
   } else {
     assert(false);
   }
@@ -504,6 +506,8 @@ std::string IR_FloatMath::print() {
   switch (m_kind) {
     case FloatMathKind::DIV_SS:
       return fmt::format("divss {}, {}", m_dest->print(), m_arg->print());
+    case FloatMathKind::MUL_SS:
+      return fmt::format("mulss {}, {}", m_dest->print(), m_arg->print());
     default:
       throw std::runtime_error("Unsupported FloatMathKind");
   }
@@ -524,6 +528,10 @@ void IR_FloatMath::do_codegen(emitter::ObjectGenerator* gen,
     case FloatMathKind::DIV_SS:
       gen->add_instr(
           IGen::divss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case FloatMathKind::MUL_SS:
+      gen->add_instr(
+          IGen::mulss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
       break;
     default:
       assert(false);

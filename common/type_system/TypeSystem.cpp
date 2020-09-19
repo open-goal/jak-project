@@ -228,6 +228,12 @@ Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
   return lookup_type(ts.base_type());
 }
 
+MethodInfo TypeSystem::add_method(const std::string& type_name,
+                                  const std::string& method_name,
+                                  const TypeSpec& ts) {
+  return add_method(lookup_type(make_typespec(type_name)), method_name, ts);
+}
+
 /*!
  * Add a method, if it doesn't exist. If the method already exists (possibly in a parent), checks to
  * see if this is an identical definition.  If not, it's an error, and if so, nothing happens.
@@ -263,7 +269,7 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
 
   if (got_existing) {
     // make sure we aren't changing anything.
-    if (ts != existing_info.type) {
+    if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
       fmt::print(
           "[TypeSystem] The method {} of type {} was originally defined as {}, but has been "
           "redefined as {}\n",

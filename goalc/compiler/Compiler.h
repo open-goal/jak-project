@@ -170,6 +170,8 @@ class Compiler {
 
   // Type
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_defmethod(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_deref(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

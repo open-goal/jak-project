@@ -126,35 +126,45 @@ class StaticVal : public Val {
 };
 
 struct MemLoadInfo {
+  MemLoadInfo() = default;
+  explicit MemLoadInfo(const DerefInfo& di) {
+    assert(di.can_deref);
+    assert(di.mem_deref);
+    sign_extend = di.sign_extend;
+    size = di.load_size;
+    reg = di.reg;
+  }
+
+  RegKind reg = RegKind::INVALID;
   bool sign_extend = false;
   int size = -1;
 };
 
 class MemoryOffsetConstantVal : public Val {
  public:
-  MemoryOffsetConstantVal(TypeSpec ts,
-                          RegVal* _base,
-                          int _offset,
-                          MemLoadInfo _info,
-                          TypeSpec _deref_type)
-      : Val(std::move(ts)),
-        base(_base),
-        offset(_offset),
-        info(_info),
-        deref_type(std::move(_deref_type)) {}
+  MemoryOffsetConstantVal(TypeSpec ts, Val* _base, int _offset)
+      : Val(std::move(ts)), base(_base), offset(_offset) {}
   std::string print() const override {
     return "(" + base->print() + " + " + std::to_string(offset) + ")";
   }
   RegVal* to_reg(Env* fe) override;
-  RegVal* base = nullptr;
+  Val* base = nullptr;
   int offset = 0;
-  MemLoadInfo info;
-  TypeSpec deref_type;
 };
 
 // MemOffConstant
 // MemOffVar
-// MemDeref
+
+class MemoryDerefVal : public Val {
+ public:
+  MemoryDerefVal(TypeSpec ts, Val* _base, MemLoadInfo _info)
+      : Val(std::move(ts)), base(_base), info(_info) {}
+  std::string print() const override { return "[" + base->print() + "]"; }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  MemLoadInfo info;
+};
+
 // PairEntry
 // Alias
 
