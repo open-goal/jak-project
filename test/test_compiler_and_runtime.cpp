@@ -129,6 +129,15 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.c = &compiler;
 
   runner.run_test("test-min-max.gc", {"10\n"});
+  runner.run_test("test-bfloat.gc", {"data 1.2330 print 1.2330 type bfloat\n0\n"});
+  runner.run_test("test-basic-type-check.gc", {"#f#t#t#f#t#f#t#t\n0\n"});
+  runner.run_test("test-condition-boolean.gc", {"4\n"});
+  runner.run_test("test-type-type.gc", {"#t#f\n0\n"});
+  runner.run_test("test-access-inline-array.gc", {"1.2345\n0\n"});
+  runner.run_test("test-find-parent-method.gc", {"\"test pass!\"\n0\n"});
+  runner.run_test("test-ref.gc", {"83\n"});
+
+  runner.print_summary();
 
   compiler.shutdown_target();
   runtime_thread.join();
@@ -283,6 +292,21 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-nested-float-functions.gc",
                   {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
   runner.run_test("test-deref-simple.gc", {"structure\n0\n"});
+  runner.run_test("test-align16-1.gc", {"80\n"});
+  runner.run_test("test-align16-2.gc", {"64\n"});
+  runner.run_test("test-return-from-f.gc", {"77\n"});
+  runner.run_test("test-return-from-f-tricky-color.gc", {"77\n"});
+  runner.run_test("test-signed-int-compare.gc", {"12\n"});
+  runner.run_test("test-return-value-of-if.gc", {"123\n"});
+  runner.run_test("test-inline-array-field.gc", {"16\n"});
+  runner.run_test("test-empty-pair.gc", {"()\n0\n"});
+  runner.run_test("test-pair-check.gc", {"#t#f\n0\n"});
+  runner.run_test("test-cons.gc", {"(a . b)\n0\n"});
+  runner.run_test("test-list.gc", {"(a b c d)\n0\n"});
+  runner.run_test("test-car-cdr-get.gc", {"ab\n0\n"});
+  runner.run_test("test-car-cdr-set.gc", {"(c . d)\n0\n"});
+  runner.run_test("test-nested-car-cdr-set.gc", {"efgh\n((e . g) f . h)\n0\n"});
+  runner.run_test("test-dotimes.gc", {"4950\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

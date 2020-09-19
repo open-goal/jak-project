@@ -138,6 +138,26 @@
     )
   )
 
+(defmacro until (test &rest body)
+  (with-gensyms (reloop)
+    `(begin
+       (label ,reloop)
+       ,@body
+       (when-goto (not ,test) ,reloop)
+       )
+    )
+  )
+
+(defmacro dotimes (var &rest body)
+  `(let (( ,(first var) 0))
+     (while (< ,(first var) ,(second var))
+            ,@body
+            (+1! ,(first var))
+            )
+     ,@(cddr var)
+     )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 (defmacro protect (defs &rest body)
@@ -175,6 +195,50 @@
     )
   )
 
+;; TODO - these work but aren't very efficient.
+
+(defmacro and (&rest args)
+  (with-gensyms (result end)
+    `(begin
+       (let ((,result (the object #f)))
+         ,@(apply (lambda (x)
+                    `(begin
+                      (set! ,result ,x)
+                      (if (eq? ,result #f)
+                        (goto ,end)
+                        )
+                      )
+                    )
+                  args
+                  )
+         (label ,end)
+         ,result
+         )
+       )
+    )
+  )
+
+(defmacro or (&rest args)
+  (with-gensyms (result end)
+    `(begin
+       (let ((,result (the object #f)))
+         ,@(apply (lambda (x)
+                    `(begin
+                       (set! ,result ,x)
+                       (if (not (eq? ,result #f))
+                         (goto ,end)
+                         )
+                       )
+                    )
+                  args
+                  )
+         (label ,end)
+         ,result
+         )
+       )
+    )
+  )
+
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
 ;;;;;;;;;;;;;;;;;;;
@@ -201,4 +265,56 @@
 
 (defmacro 1- (var)
   `(- ,var 1)
+  )
+
+(defmacro zero? (thing)
+  `(eq? ,thing 0)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bit Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro align16 (value)
+  `(logand #xfffffff0 (+ (the-as integer ,value) 15))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TYPE STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro basic? (obj)
+  ;; todo, make this more efficient
+  `(= 4 (logand (the integer ,obj) #b111))
+  )
+
+(defmacro pair? (obj)
+  ;; todo, make this more efficient
+  `(= 2 (logand (the integer ,obj) #b111))
+  )
+
+(defmacro binteger? (obj)
+  `(zero? (logand (the integer ,obj) #b111))
+  )
+
+(defmacro rtype-of (obj)
+  `(cond ((binteger? ,obj) binteger)
+         ((pair? ,obj) pair)
+         (else (-> (the basic ,obj) type))
+         )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PAIR STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro cons (a b)
+  `(new 'global 'pair ,a ,b)
+  )
+
+(defmacro list (&rest args)
+  (if (null? args)
+    (quote '())
+    `(cons ,(car args) (list ,@(cdr args)))
+    )
   )

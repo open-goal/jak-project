@@ -65,6 +65,7 @@ class Compiler {
       const std::unordered_map<std::string, std::pair<bool, MatchParam<goos::ObjectType>>>& named);
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
+  std::string quoted_sym_as_string(const goos::Object& o);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -172,6 +173,12 @@ class Compiler {
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defmethod(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_deref(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_the(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_new(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

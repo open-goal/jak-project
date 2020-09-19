@@ -67,6 +67,7 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   va_check(form, args, {{}, {}}, {});
 
   auto& destination = args.unnamed.at(0);
+  // todo, I don't know if this is the correct order or not.
   auto source = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
 
   if (destination.is_symbol()) {
@@ -96,7 +97,27 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
       }
     }
   } else {
-    throw_compile_error(form, "Set not implemented for this yet");
+    auto dest = compile_error_guard(destination, env);
+    auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
+    auto as_pair = dynamic_cast<PairEntryVal*>(dest);
+    if (as_mem_deref) {
+      auto base = as_mem_deref->base;
+      auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
+      if (base_as_mco) {
+        auto ti = m_ts.lookup_type(base->type());
+        env->emit(std::make_unique<IR_StoreConstOffset>(
+            source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
+        return source;
+      } else {
+        throw_compile_error(form, "Set not implemented for this (non-mco) yet");
+      }
+    } else if (as_pair) {
+      env->emit(std::make_unique<IR_StoreConstOffset>(source, as_pair->is_car ? -2 : 2,
+                                                      as_pair->base->to_gpr(env), 4));
+      return source;
+    } else {
+      throw_compile_error(form, "Set not implemented for this yet");
+    }
   }
   throw std::runtime_error("Unexpected error in Set");
 }

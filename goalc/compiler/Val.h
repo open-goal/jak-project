@@ -152,6 +152,16 @@ class MemoryOffsetConstantVal : public Val {
   int offset = 0;
 };
 
+class MemoryOffsetVal : public Val {
+ public:
+  MemoryOffsetVal(TypeSpec ts, Val* _base, Val* _offset)
+      : Val(std::move(ts)), base(_base), offset(_offset) {}
+  std::string print() const override { return "(" + base->print() + " + " + offset->print() + ")"; }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  Val* offset = nullptr;
+};
+
 // MemOffConstant
 // MemOffVar
 
@@ -165,8 +175,23 @@ class MemoryDerefVal : public Val {
   MemLoadInfo info;
 };
 
-// PairEntry
-// Alias
+class PairEntryVal : public Val {
+ public:
+  PairEntryVal(TypeSpec ts, Val* _base, bool _is_car)
+      : Val(std::move(ts)), base(_base), is_car(_is_car) {}
+  std::string print() const override;
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  bool is_car = false;
+};
+
+class AliasVal : public Val {
+ public:
+  AliasVal(TypeSpec ts, Val* _base) : Val(std::move(ts)), base(_base) {}
+  std::string print() const override { return "alias-of-" + base->print(); }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+};
 
 class IntegerConstantVal : public Val {
  public:

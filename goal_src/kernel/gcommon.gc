@@ -259,8 +259,102 @@
   )
 
 
+;; The "print" method of a type should print out a single line representation of the object.
+;; The default print method for a basic will be something like #<my-type @ #xbeef>
+;; This is used when printing an object with format, using the "~A" format specification.
+;; And of course in functions like print, printl.
 (defmethod print bfloat ((obj bfloat))
   "Override the default print method to print a bfloat like a normal float"
   (format #t "~f" (-> obj data))
   obj
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Type System
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; The asize-of method should return the total size in memory used by an object.
+; It's used for traversing heaps of basics and copying basics.
+; Most basic/structure types are "fixed size", and their default asize-of method will simply
+; return the "size" field of their type, so you don't have to worry about it.
+; However, some types are dynamic (like a string) and require that you provide your own method.
+; A common approach is to have an "allocated-length" field, then have the asize-of method return
+;  (+ (-> obj type size) (* elem-size (-> obj allocated-length)))
+; asize-of returns the actual size, including the type field, and can have any alignment.
+
+;; A "type" object contains some basic information about a type as well as the list of methods.
+;; Some types have more methods than others, so the method table makes "type" a dynamic type.
+;; As a result, we should define an "asize-of" method for type. It's possibly unused because it's wrong.
+
+(defmethod asize-of type ((obj type))
+  "Get the size in memory of a type"
+  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always, 
+  ;; but this matches what the runtime does as well. There's no reason that I can see for this,
+  ;; as other basics don't require 16-byte aligned sizes.
+  (align16 (+ 28 (* 4 (-> type allocated-length))))
+  )
+
+(defun basic-type? ((obj basic) (input-type type))
+  "Is obj an object of type input-type, or of child type of input-type?
+  Note: checking if a basic is of type object will return #f."
+  (let ((basics-type (-> obj type))
+        (object-type object))
+    (until (eq? (set! basics-type (-> basics-type parent)) object-type)
+           (if (eq? basics-type input-type)
+             ;; return-from #f will return from the function with the value of #t
+             (return-from #f #t)
+             )
+           )
+    )
+  #f ;; didn't find it, return false
+  )
+
+(defun type-type? ((a type) (b type))
+  "is a a type (or child type) of type b?"
+  (until (eq? a object)
+         ;; it's not clear why a might be zero?
+         ;; perhaps if the type system is not yet initialized fully for the type?
+         (if (or (eq? a b) (zero? a))
+           (return-from #f #t)
+           )
+         (set! a (-> a parent))
+         )
+  #f
+  )
+
+(defun find-parent-method ((the-type type) (method-id int))
+  "Find the nearest parent which has a different method, and get that method.
+  Use with extreme caution - if a checked parent has fewer methods than the child, it will
+  access out-of-bounds memory. Returns the nothing function if it gets to the top and
+  the parent has the same type, or if any parent has 0 as a method."
+  (let* ((child-method (-> the-type method-table method-id))
+         (parent-method child-method)
+         )
+
+    ;; keep looking until we find a different parent method
+    (until (not (eq? parent-method child-method))
+           ;; at the top of the type tree.
+           (if (eq? the-type object)
+             (return-from #f nothing)
+             )
+
+           (set! the-type (-> the-type parent))
+           (set! parent-method (-> the-type method-table method-id))
+           (if (eq? 0 (the int parent-method))
+             (return-from #f nothing)
+             )
+           )
+    parent-method
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; pair and list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ref ((obj object) (idx int))
+  "Get the nth item from a list.  No type checking or range checking is done, so be careful!"
+  (dotimes (i idx (car obj))
+    (set! obj (cdr obj))
+    )
   )

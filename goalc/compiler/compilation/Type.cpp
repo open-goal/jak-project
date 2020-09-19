@@ -103,6 +103,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   // set up arguments
   assert(lambda.params.size() < 8);  // todo graceful error
+  std::vector<RegVal*> args_for_coloring;
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
@@ -111,6 +112,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
     new_func_env->params[lambda.params.at(i).name] = ireg;
     new_func_env->constrain(constr);
+    args_for_coloring.push_back(ireg);
   }
 
   place->func = new_func_env.get();
@@ -120,6 +122,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());
+  func_block_env->emit(std::make_unique<IR_FunctionStart>(args_for_coloring));
 
   // compile the function!
   Val* result = nullptr;
@@ -135,13 +138,13 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   if (result) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-    // new_func_env->emit(std::make_unique<IR_Null>())???
-    new_func_env->finish();
     lambda_ts.add_arg(final_result->type());
   } else {
     lambda_ts.add_arg(m_ts.make_typespec("none"));
   }
   func_block_env->end_label.idx = new_func_env->code().size();
+  new_func_env->emit(std::make_unique<IR_Null>());
+  new_func_env->finish();
 
   auto obj_env = get_parent_env_of_type<FileEnv>(new_func_env.get());
   assert(obj_env);
@@ -209,7 +212,9 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           assert(di.mem_deref);
           result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
         } else {
-          assert(false);
+          result = fe->alloc_val<MemoryOffsetConstantVal>(field.type, result,
+                                                          field.field.offset() + offset);
+          // assert(false);
         }
         continue;
       }
@@ -217,8 +222,118 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       // todo try bitfield
     }
 
-    // todo array or other
-    assert(false);
+    auto index_value = compile_error_guard(field_obj, env)->to_gpr(env);
+    if (!is_integer(index_value->type())) {
+      throw_compile_error(form, "cannot use -> with " + field_obj.print());
+    }
+
+    if (result->type().base_type() == "inline-array") {
+      assert(false);
+    } else if (result->type().base_type() == "pointer") {
+      auto di = m_ts.get_deref_info(result->type());
+      auto base_type = di.result_type;
+      assert(di.mem_deref);
+      assert(di.can_deref);
+      auto offset = compile_integer(di.stride, env)->to_gpr(env);
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
+      auto loc = fe->alloc_val<MemoryOffsetVal>(result->type(), result, offset);
+      result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+    } else {
+      throw_compile_error(form, "can't access array of type " + result->type().print());
+    }
   }
   return result;
+}
+
+Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto desired_ts = parse_typespec(args.unnamed.at(0));
+  auto base = compile_error_guard(args.unnamed.at(1), env);
+  return get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+}
+
+Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto desired_ts = parse_typespec(args.unnamed.at(0));
+  auto base = compile_error_guard(args.unnamed.at(1), env);
+
+  if (is_number(base->type())) {
+    if (m_ts.typecheck(m_ts.make_typespec("binteger"), desired_ts, "", false, false)) {
+      throw std::runtime_error("the convert to binteger not yet supported");
+    }
+
+    if (m_ts.typecheck(m_ts.make_typespec("integer"), desired_ts, "", false, false)) {
+      throw std::runtime_error("the convert to integer not yet supported");
+    }
+
+    if (m_ts.typecheck(m_ts.make_typespec("float"), desired_ts, "", false, false)) {
+      throw std::runtime_error("the convert to float not yet supported");
+    }
+  }
+
+  return get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+}
+
+Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  fmt::print("[TYPE] {}\n", compile(args.unnamed.at(0), env)->type().print());
+  return get_none();
+}
+
+Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, Env* env) {
+  auto allocation = quoted_sym_as_string(pair_car(_rest));
+  auto rest = &pair_cdr(_rest);
+
+  // auto type_of_obj = get_base_typespec(quoted_sym_as_string(pair_car(rest)));
+  auto type_as_string = quoted_sym_as_string(pair_car(*rest));
+  rest = &pair_cdr(*rest);
+
+  if (allocation == "global" || allocation == "debug") {
+    if (type_as_string == "inline-array") {
+      assert(false);
+    } else if (type_as_string == "array") {
+      assert(false);
+    } else {
+      auto type_of_obj = m_ts.make_typespec(type_as_string);
+      std::vector<RegVal*> args;
+      // allocation
+      args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
+      // type
+      args.push_back(compile_get_symbol_value(type_of_obj.base_type(), env)->to_reg(env));
+      // the other arguments
+      for_each_in_list(*rest, [&](const goos::Object& o) {
+        args.push_back(compile_error_guard(o, env)->to_reg(env));
+      });
+
+      auto new_method = compile_get_method_of_type(type_of_obj, "new", env);
+
+      auto new_obj = compile_real_function_call(form, new_method, args, env);
+      new_obj->set_type(type_of_obj);
+      return new_obj;
+    }
+  } else if (allocation == "static") {
+    assert(false);
+  }
+
+  throw_compile_error(form, "unsupported new form");
+  return get_none();
+}
+
+Val* Compiler::compile_car(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
+                                     compile_error_guard(args.unnamed.at(0), env), true);
+}
+
+Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
+                                     compile_error_guard(args.unnamed.at(0), env), false);
 }

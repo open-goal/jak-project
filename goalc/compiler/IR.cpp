@@ -686,7 +686,7 @@ IR_LoadConstOffset::IR_LoadConstOffset(const RegVal* dest,
     : m_dest(dest), m_offset(offset), m_base(base), m_info(info) {}
 
 std::string IR_LoadConstOffset::print() {
-  return fmt::format("mov {}, [{} + {}]\n", m_dest->print(), m_base->print(), m_offset);
+  return fmt::format("mov {}, [{} + {}]", m_dest->print(), m_base->print(), m_offset);
 }
 
 RegAllocInstr IR_LoadConstOffset::to_rai() {
@@ -707,4 +707,86 @@ void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
   } else {
     throw std::runtime_error("IR_LoadConstOffset::do_codegen xmm not supported");
   }
+}
+
+///////////////////////
+// StoreConstantOffset
+///////////////////////
+IR_StoreConstOffset::IR_StoreConstOffset(const RegVal* value,
+                                         int offset,
+                                         const RegVal* base,
+                                         int size)
+    : m_value(value), m_offset(offset), m_base(base), m_size(size) {}
+
+std::string IR_StoreConstOffset::print() {
+  return fmt::format("move [{} + {}], {}", m_base->print(), m_offset, m_value->print());
+}
+
+RegAllocInstr IR_StoreConstOffset::to_rai() {
+  RegAllocInstr rai;
+  rai.read.push_back(m_value->ireg());
+  rai.read.push_back(m_base->ireg());
+  return rai;
+}
+
+void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
+                                     const AllocationResult& allocs,
+                                     emitter::IR_Record irec) {
+  if (m_value->ireg().kind == emitter::RegKind::GPR) {
+    gen->add_instr(
+        IGen::store_goal_gpr(get_reg(m_base, allocs, irec), get_reg(m_value, allocs, irec),
+                             emitter::gRegInfo.get_offset_reg(), m_offset, m_size),
+        irec);
+  } else if (m_value->ireg().kind == emitter::RegKind::XMM && m_size == 4) {
+    gen->add_instr(
+        IGen::store_goal_xmm32(get_reg(m_base, allocs, irec), get_reg(m_value, allocs, irec),
+                               emitter::gRegInfo.get_offset_reg(), m_offset),
+        irec);
+  } else {
+    throw std::runtime_error("IR_StoreConstOffset::do_codegen can't handle this");
+  }
+}
+
+///////////////////////
+// Null
+///////////////////////
+std::string IR_Null::print() {
+  return "null";
+}
+
+RegAllocInstr IR_Null::to_rai() {
+  return {};
+}
+
+void IR_Null::do_codegen(emitter::ObjectGenerator* gen,
+                         const AllocationResult& allocs,
+                         emitter::IR_Record irec) {
+  (void)gen;
+  (void)allocs;
+  (void)irec;
+}
+
+///////////////////////
+// FunctionStart
+///////////////////////
+IR_FunctionStart::IR_FunctionStart(std::vector<RegVal*> args) : m_args(std::move(args)) {}
+
+std::string IR_FunctionStart::print() {
+  return "function-start";
+}
+
+RegAllocInstr IR_FunctionStart::to_rai() {
+  RegAllocInstr rai;
+  for (auto& x : m_args) {
+    rai.write.push_back(x->ireg());
+  }
+  return rai;
+}
+
+void IR_FunctionStart::do_codegen(emitter::ObjectGenerator* gen,
+                                  const AllocationResult& allocs,
+                                  emitter::IR_Record irec) {
+  (void)gen;
+  (void)allocs;
+  (void)irec;
 }

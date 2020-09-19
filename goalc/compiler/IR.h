@@ -286,4 +286,43 @@ class IR_LoadConstOffset : public IR {
   MemLoadInfo m_info;
 };
 
+class IR_StoreConstOffset : public IR {
+ public:
+  IR_StoreConstOffset(const RegVal* value, int offset, const RegVal* base, int size);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_value = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  int m_size = 0;
+};
+
+class IR_Null : public IR {
+ public:
+  IR_Null() = default;
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
+class IR_FunctionStart : public IR {
+ public:
+  IR_FunctionStart(std::vector<RegVal*> args);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  std::vector<RegVal*> m_args;
+};
+
 #endif  // JAK_IR_H

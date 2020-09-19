@@ -94,9 +94,17 @@ RegVal* FloatConstantVal::to_reg(Env* fe) {
 }
 
 RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
-  (void)fe;
-  assert(false);
-  throw std::runtime_error("MemoryOffsetConstantVal::to_reg not yet implemented");
+  auto re = fe->make_gpr(m_ts);
+  fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
+  fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+  return re;
+}
+
+RegVal* MemoryOffsetVal::to_reg(Env* fe) {
+  auto re = fe->make_gpr(m_ts);
+  fe->emit(std::make_unique<IR_RegSet>(re, offset->to_gpr(fe)));
+  fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+  return re;
 }
 
 RegVal* MemoryDerefVal::to_reg(Env* fe) {
@@ -107,7 +115,34 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
                                                   base_as_co->base->to_gpr(fe), info));
     return re;
   } else {
-    assert(false);
-    throw std::runtime_error("MemoryDerefVal::to_reg not yet implemented for this case");
+    auto re = fe->make_gpr(m_ts);
+    auto addr = base->to_gpr(fe);
+    fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));
+    return re;
   }
+}
+
+RegVal* AliasVal::to_reg(Env* fe) {
+  auto result = base->to_reg(fe);
+  result->set_type(m_ts);
+  return result;
+}
+
+std::string PairEntryVal::print() const {
+  if (is_car) {
+    return fmt::format("[car of {}]", base->print());
+  } else {
+    return fmt::format("[cdr of {}]", base->print());
+  }
+}
+
+RegVal* PairEntryVal::to_reg(Env* fe) {
+  int offset = is_car ? -2 : 2;
+  auto re = fe->make_gpr(m_ts);
+  MemLoadInfo info;
+  info.reg = RegKind::GPR_64;
+  info.sign_extend = true;
+  info.size = 4;
+  fe->emit(std::make_unique<IR_LoadConstOffset>(re, offset, base->to_gpr(fe), info));
+  return re;
 }
