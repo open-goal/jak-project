@@ -132,6 +132,11 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-bfloat.gc", {"data 1.2330 print 1.2330 type bfloat\n0\n"});
   runner.run_test("test-basic-type-check.gc", {"#f#t#t#f#t#f#t#t\n0\n"});
   runner.run_test("test-condition-boolean.gc", {"4\n"});
+  runner.run_test("test-type-type.gc", {"#t#f\n0\n"});
+  runner.run_test("test-access-inline-array.gc", {"1.2345\n0\n"});
+  runner.run_test("test-find-parent-method.gc", {"\"test pass!\"\n0\n"});
+
+  runner.print_summary();
 
   compiler.shutdown_target();
   runtime_thread.join();
@@ -292,6 +297,10 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-return-from-f-tricky-color.gc", {"77\n"});
   runner.run_test("test-signed-int-compare.gc", {"12\n"});
   runner.run_test("test-return-value-of-if.gc", {"123\n"});
+  runner.run_test("test-inline-array-field.gc", {"16\n"});
+  runner.run_test("test-empty-pair.gc", {"()\n0\n"});
+  runner.run_test("test-pair-check.gc", {"#t#f\n0\n"});
+  runner.run_test("test-cons.gc", {"(a b)\n0\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

@@ -605,7 +605,7 @@ void TypeSystem::add_builtin_types() {
                     make_typespec("uint16"));  // todo, u16 or s16. what really is this?
   add_field_to_type(type_type, "heap-base", make_typespec("uint16"));         // todo
   add_field_to_type(type_type, "allocated-length", make_typespec("uint16"));  // todo
-  add_field_to_type(type_type, "vtable", make_typespec("function"), false, true);
+  add_field_to_type(type_type, "method-table", make_typespec("function"), false, true);
 
   // STRING
   builtin_structure_inherit(string_type);
@@ -640,6 +640,8 @@ void TypeSystem::add_builtin_types() {
 
   // pair
   pair_type->override_offset(2);
+  add_method(pair_type, "new",
+             make_function_typespec({"symbol", "type", "object", "object"}, "_type_"));
   add_field_to_type(pair_type, "car", make_typespec("object"));
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 

@@ -152,6 +152,16 @@ class MemoryOffsetConstantVal : public Val {
   int offset = 0;
 };
 
+class MemoryOffsetVal : public Val {
+ public:
+  MemoryOffsetVal(TypeSpec ts, Val* _base, Val* _offset)
+      : Val(std::move(ts)), base(_base), offset(_offset) {}
+  std::string print() const override { return "(" + base->print() + " + " + offset->print() + ")"; }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  Val* offset = nullptr;
+};
+
 // MemOffConstant
 // MemOffVar
 

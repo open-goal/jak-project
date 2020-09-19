@@ -308,3 +308,42 @@
     )
   #f ;; didn't find it, return false
   )
+
+(defun type-type? ((a type) (b type))
+  "is a a type (or child type) of type b?"
+  (until (eq? a object)
+         ;; it's not clear why a might be zero?
+         ;; perhaps if the type system is not yet initialized fully for the type?
+         (if (or (eq? a b) (zero? a))
+           (return-from #f #t)
+           )
+         (set! a (-> a parent))
+         )
+  #f
+  )
+
+(defun find-parent-method ((the-type type) (method-id integer))
+  "Find the nearest parent which has a different method, and get that method.
+  Use with extreme caution - if a checked parent has fewer methods than the child, it will
+  access out-of-bounds memory. Returns the nothing function if it gets to the top and
+  the parent has the same type, or if any parent has 0 as a method."
+  (let* ((child-method (-> the-type method-table method-id))
+         (parent-method child-method)
+         )
+
+    ;; keep looking until we find a different parent method
+    (until (not (eq? parent-method child-method))
+           ;; at the top of the type tree.
+           (if (eq? the-type object)
+             (return-from #f nothing)
+             )
+
+           (set! the-type (-> the-type parent))
+           (set! parent-method (-> the-type method-table method-id))
+           (if (eq? 0 (the integer parent-method))
+             (return-from #f nothing)
+             )
+           )
+    parent-method
+    )
+  )

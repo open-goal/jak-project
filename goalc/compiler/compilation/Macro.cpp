@@ -83,6 +83,11 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
   switch (thing.type) {
     case goos::ObjectType::SYMBOL:
       return compile_get_sym_obj(thing.as_symbol()->name, env);
+    case goos::ObjectType::EMPTY_LIST: {
+      auto empty_pair = compile_get_sym_obj("_empty_", env);
+      empty_pair->set_type(m_ts.make_typespec("pair"));
+      return empty_pair;
+    }
       // todo...
     default:
       throw_compile_error(form, "Can't quote this");

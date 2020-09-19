@@ -62,6 +62,9 @@ static const std::unordered_map<
         {"->", &Compiler::compile_deref},
         //        {"&", &Compiler::compile_addr_of},
         {"the-as", &Compiler::compile_the_as},
+        {"the", &Compiler::compile_the},
+        {"print-type", &Compiler::compile_print_type},
+        {"new", &Compiler::compile_new},
         //
         //
         //        // LAMBDA
@@ -75,17 +78,14 @@ static const std::unordered_map<
         //
         //
         //        // MACRO
-        //        {"print-type", &Compiler::compile_print_type},
+        //
         {"quote", &Compiler::compile_quote},
         {"mlet", &Compiler::compile_mlet},
         //        {"defconstant", &Compiler::compile_defconstant},
         //
         //        // OBJECT
-        //
-        //        {"the", &Compiler::compile_the},
-        //
         //        {"current-method-type", &Compiler::compile_current_method_type},
-        //        {"new", &Compiler::compile_new},
+        //
         //        {"method", &Compiler::compile_method},
         //
         //        // PAIR
