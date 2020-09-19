@@ -177,6 +177,8 @@ class Compiler {
   Val* compile_the(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_new(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

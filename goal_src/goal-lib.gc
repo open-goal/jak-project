@@ -148,6 +148,16 @@
     )
   )
 
+(defmacro dotimes (var &rest body)
+  `(let (( ,(first var) 0))
+     (while (< ,(first var) ,(second var))
+            ,@body
+            (+1! ,(first var))
+            )
+     ,@(cddr var)
+     )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 (defmacro protect (defs &rest body)
@@ -300,4 +310,11 @@
 
 (defmacro cons (a b)
   `(new 'global 'pair ,a ,b)
+  )
+
+(defmacro list (&rest args)
+  (if (null? args)
+    (quote '())
+    `(cons ,(car args) (list ,@(cdr args)))
+    )
   )

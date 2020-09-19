@@ -65,6 +65,8 @@ static const std::unordered_map<
         {"the", &Compiler::compile_the},
         {"print-type", &Compiler::compile_print_type},
         {"new", &Compiler::compile_new},
+        {"car", &Compiler::compile_car},
+        {"cdr", &Compiler::compile_cdr},
         //
         //
         //        // LAMBDA
@@ -87,11 +89,7 @@ static const std::unordered_map<
         //        {"current-method-type", &Compiler::compile_current_method_type},
         //
         //        {"method", &Compiler::compile_method},
-        //
-        //        // PAIR
-        //        {"car", &Compiler::compile_car},
-        //        {"cdr", &Compiler::compile_cdr},
-        //
+
         //        // IT IS MATH
         {"+", &Compiler::compile_add},
         {"-", &Compiler::compile_sub},

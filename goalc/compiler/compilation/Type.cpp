@@ -321,3 +321,19 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   throw_compile_error(form, "unsupported new form");
   return get_none();
 }
+
+Val* Compiler::compile_car(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
+                                     compile_error_guard(args.unnamed.at(0), env), true);
+}
+
+Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
+                                     compile_error_guard(args.unnamed.at(0), env), false);
+}

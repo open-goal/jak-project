@@ -135,6 +135,7 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-type-type.gc", {"#t#f\n0\n"});
   runner.run_test("test-access-inline-array.gc", {"1.2345\n0\n"});
   runner.run_test("test-find-parent-method.gc", {"\"test pass!\"\n0\n"});
+  runner.run_test("test-ref.gc", {"83\n"});
 
   runner.print_summary();
 
@@ -300,7 +301,12 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-inline-array-field.gc", {"16\n"});
   runner.run_test("test-empty-pair.gc", {"()\n0\n"});
   runner.run_test("test-pair-check.gc", {"#t#f\n0\n"});
-  runner.run_test("test-cons.gc", {"(a b)\n0\n"});
+  runner.run_test("test-cons.gc", {"(a . b)\n0\n"});
+  runner.run_test("test-list.gc", {"(a b c d)\n0\n"});
+  runner.run_test("test-car-cdr-get.gc", {"ab\n0\n"});
+  runner.run_test("test-car-cdr-set.gc", {"(c . d)\n0\n"});
+  runner.run_test("test-nested-car-cdr-set.gc", {"efgh\n((e . g) f . h)\n0\n"});
+  runner.run_test("test-dotimes.gc", {"4950\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

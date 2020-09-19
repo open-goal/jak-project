@@ -175,7 +175,15 @@ class MemoryDerefVal : public Val {
   MemLoadInfo info;
 };
 
-// PairEntry
+class PairEntryVal : public Val {
+ public:
+  PairEntryVal(TypeSpec ts, Val* _base, bool _is_car)
+      : Val(std::move(ts)), base(_base), is_car(_is_car) {}
+  std::string print() const override;
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  bool is_car = false;
+};
 
 class AliasVal : public Val {
  public:
