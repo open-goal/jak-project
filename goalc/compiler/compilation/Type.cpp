@@ -1,11 +1,19 @@
 #include "goalc/compiler/Compiler.h"
 #include "common/type_system/deftype.h"
 
+namespace {
+int get_offset_of_method(int id) {
+  // todo - something that looks at the type system?
+  // this will need changing if the layout of type ever changes.
+  return 16 + 4 * id;
+}
+}  // namespace
+
 RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
                                              const std::string& method_name,
                                              Env* env) {
   auto info = m_ts.lookup_method(type.base_type(), method_name);
-  auto offset_of_method = 16 + 4 * info.id;  // todo, something more flexible?
+  auto offset_of_method = get_offset_of_method(info.id);
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   auto typ = compile_get_symbol_value(type.base_type(), env)->to_gpr(env);
@@ -15,6 +23,43 @@ RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
 
   auto loc_type = m_ts.make_pointer_typespec(info.type);
   auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, typ, offset_of_method);
+  auto di = m_ts.get_deref_info(loc_type);
+  assert(di.can_deref);
+  assert(di.mem_deref);
+  assert(di.sign_extend == false);
+  assert(di.load_size == 4);
+
+  auto deref = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+  return deref->to_reg(env);
+}
+
+RegVal* Compiler::compile_get_method_of_object(RegVal* object,
+                                               const std::string& method_name,
+                                               Env* env) {
+  auto& compile_time_type = object->type();
+  auto method_info = m_ts.lookup_method(compile_time_type.base_type(), method_name);
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+
+  RegVal* runtime_type = nullptr;
+  if (is_basic(compile_time_type)) {
+    runtime_type = fe->make_gpr(m_ts.make_typespec("type"));
+    MemLoadInfo info;
+    info.size = 4;
+    info.sign_extend = false;
+    info.reg = RegKind::GPR_64;
+    env->emit(std::make_unique<IR_LoadConstOffset>(runtime_type, -4, object, info));
+  } else {
+    // can't look up at runtime
+    runtime_type = compile_get_symbol_value(compile_time_type.base_type(), env)->to_gpr(env);
+  }
+
+  auto offset_of_method = get_offset_of_method(method_info.id);
+  MemLoadInfo load_info;
+  load_info.sign_extend = false;
+  load_info.size = POINTER_SIZE;
+
+  auto loc_type = m_ts.make_pointer_typespec(method_info.type);
+  auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, runtime_type, offset_of_method);
   auto di = m_ts.get_deref_info(loc_type);
   assert(di.can_deref);
   assert(di.mem_deref);
@@ -100,6 +145,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
   new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
+  new_func_env->method_of_type_name = symbol_string(type_name);
 
   // set up arguments
   assert(lambda.params.size() < 8);  // todo graceful error
@@ -138,6 +184,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   if (result) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
+    printf("return type is %s from %s from %s\n", final_result->type().print().c_str(),
+           final_result->print().c_str(), result->print().c_str());
     lambda_ts.add_arg(final_result->type());
   } else {
     lambda_ts.add_arg(m_ts.make_typespec("none"));
@@ -336,4 +384,22 @@ Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, E
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
                                      compile_error_guard(args.unnamed.at(0), env), false);
+}
+
+// todo, consider splitting into method-of-object and method-of-type?
+Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {goos::ObjectType::SYMBOL}}, {});
+
+  auto arg = args.unnamed.at(0);
+  auto method_name = symbol_string(args.unnamed.at(1));
+
+  if (arg.is_symbol()) {
+    if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
+      return compile_get_method_of_type(m_ts.make_typespec(symbol_string(arg)), method_name, env);
+    }
+  }
+
+  auto obj = compile_error_guard(arg, env)->to_gpr(env);
+  return compile_get_method_of_object(obj, method_name, env);
 }

@@ -195,6 +195,18 @@
     )
   )
 
+(defmacro when (condition &rest body)
+  `(if ,condition
+       (begin ,@body)
+       )
+  )
+
+(defmacro unless (condition &rest body)
+  `(if (not ,condition)
+     (begin ,@body)
+     )
+  )
+
 ;; TODO - these work but aren't very efficient.
 
 (defmacro and (&rest args)
@@ -278,6 +290,22 @@
   `(logand #xfffffff0 (+ (the-as integer ,value) 15))
   )
 
+(defmacro &+ (v1 &rest args)
+  (if (null? args)
+      `(the pointer ,v1)
+      `(&+ (+ (the-as int ,v1) (the-as int ,(first args))) ,@(cdr args))
+      )
+  )
+
+(defmacro &- (v1 v2)
+  `(the pointer (- (the-as int ,v1) (the-as int ,v2)))
+  )
+
+(defmacro &+! (v1 v2)
+  `(set! ,v1 (&+ ,v1 ,v2))
+  )
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TYPE STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -316,5 +344,25 @@
   (if (null? args)
     (quote '())
     `(cons ,(car args) (list ,@(cdr args)))
+    )
+  )
+
+(defmacro null? (arg)
+  ;; todo, make this better
+  `(eq? ,arg '())
+  )
+(defmacro caar (arg)
+  `(car (car ,arg))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; METHOD STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro object-new (&rest sz)
+  (if (null? sz)
+    `(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make (-> type-to-make asize)))
+    `(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make ,@sz))
     )
   )

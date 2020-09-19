@@ -109,6 +109,10 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
             source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
         return source;
       } else {
+        auto ti = m_ts.lookup_type(base->type());
+        env->emit(std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env),
+                                                        ti->get_load_size()));
+        return source;
         throw_compile_error(form, "Set not implemented for this (non-mco) yet");
       }
     } else if (as_pair) {

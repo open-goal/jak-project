@@ -64,7 +64,7 @@ class None : public Val {
  */
 class RegVal : public Val {
  public:
-  RegVal(IRegister ireg, TypeSpec ts) : Val(std::move(ts)), m_ireg(ireg) {}
+  RegVal(IRegister ireg, const TypeSpec& ts) : Val(coerce_to_reg_type(ts)), m_ireg(ireg) {}
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
   std::string print() const override { return m_ireg.to_string(); };

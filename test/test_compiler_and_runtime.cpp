@@ -136,6 +136,27 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-access-inline-array.gc", {"1.2345\n0\n"});
   runner.run_test("test-find-parent-method.gc", {"\"test pass!\"\n0\n"});
   runner.run_test("test-ref.gc", {"83\n"});
+  runner.run_test("test-pair-asize.gc", {"8\n"});
+  runner.run_test("test-last.gc", {"d\n0\n"});
+  runner.run_test("test-sort.gc",
+                  {"(24 16 32 56 72 1234 -34 25 654)\n(1234 654 72 56 32 25 24 16 -34)\n0\n"});
+  runner.run_test("test-sort-2.gc",
+                  {"(24 16 32 56 72 1234 -34 25 654)\n(-34 16 24 25 32 56 72 654 1234)\n0\n"});
+  runner.run_test("test-sort-3.gc",
+                  {"(24 16 32 56 72 1234 -34 25 654)\n(-34 16 24 25 32 56 72 654 1234)\n0\n"});
+  runner.run_test("test-pair-length.gc", {"6\n"});
+  runner.run_test("test-member-1.gc", {"(c d)\n0\n"});
+  runner.run_test("test-member-2.gc", {"#f\n0\n"});
+  runner.run_test("test-assoc-1.gc", {"w\n0\n"});
+  runner.run_test("test-assoc-2.gc", {"#f\n0\n"});
+  runner.run_test("test-assoce-1.gc", {"x\n0\n"});
+  runner.run_test("test-assoce-2.gc", {"x\n0\n"});
+  runner.run_test("test-append.gc", {"(a b c d e)\n0\n"});
+  runner.run_test("test-delete-list.gc", {"(a b d e)\n0\n"});
+  runner.run_test("test-delete-car.gc", {"((a . b) (e . f))\n#f\n0\n"});
+  runner.run_test("test-insert-cons.gc", {"((c . w) (a . b) (e . f))\n0\n"});
+  runner.run_test("test-new-inline-array-class.gc", {"2820\n"});
+  runner.run_test("test-memcpy.gc", {"13\n"});
 
   runner.print_summary();
 
@@ -307,6 +328,8 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-car-cdr-set.gc", {"(c . d)\n0\n"});
   runner.run_test("test-nested-car-cdr-set.gc", {"efgh\n((e . g) f . h)\n0\n"});
   runner.run_test("test-dotimes.gc", {"4950\n"});
+  runner.run_test("test-methods.gc", {"#t#t\n0\n"});
+  runner.run_test("test-pointers-1.gc", {"13\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

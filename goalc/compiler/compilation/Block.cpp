@@ -53,7 +53,7 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   auto& return_types = block_env->return_types;
   return_types.push_back(result->type());
   auto return_type = m_ts.lowest_common_ancestor(return_types);
-  block_env->return_value->set_type(return_type);
+  block_env->return_value->set_type(coerce_to_reg_type(return_type));
 
   // an IR to move the result of the block into the block's return register (if no return-from's are
   // taken)

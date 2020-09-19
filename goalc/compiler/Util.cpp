@@ -181,3 +181,7 @@ emitter::RegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
 bool Compiler::is_none(Val* in) {
   return dynamic_cast<None*>(in);
 }
+
+bool Compiler::is_basic(const TypeSpec& ts) {
+  return m_ts.typecheck(m_ts.make_typespec("basic"), ts, "", false, false);
+}

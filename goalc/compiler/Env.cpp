@@ -39,12 +39,12 @@ BlockEnv* Env::find_block(const std::string& name) {
   return m_parent->find_block(name);
 }
 
-RegVal* Env::make_gpr(TypeSpec ts) {
-  return make_ireg(std::move(ts), emitter::RegKind::GPR);
+RegVal* Env::make_gpr(const TypeSpec& ts) {
+  return make_ireg(coerce_to_reg_type(ts), emitter::RegKind::GPR);
 }
 
-RegVal* Env::make_xmm(TypeSpec ts) {
-  return make_ireg(std::move(ts), emitter::RegKind::XMM);
+RegVal* Env::make_xmm(const TypeSpec& ts) {
+  return make_ireg(coerce_to_reg_type(ts), emitter::RegKind::XMM);
 }
 
 std::unordered_map<std::string, Label>& Env::get_label_map() {
@@ -233,7 +233,7 @@ RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
   IRegister ireg;
   ireg.kind = kind;
   ireg.id = m_iregs.size();
-  auto rv = std::make_unique<RegVal>(ireg, ts);
+  auto rv = std::make_unique<RegVal>(ireg, coerce_to_reg_type(ts));
   m_iregs.push_back(std::move(rv));
   assert(kind != emitter::RegKind::INVALID);
   return m_iregs.back().get();

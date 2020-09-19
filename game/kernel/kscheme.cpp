@@ -1093,7 +1093,7 @@ u64 sprint(u32 obj) {
  */
 u64 print_object(u32 obj) {
   if ((obj & OFFSET_MASK) == BINTEGER_OFFSET) {
-    return print_binteger(obj);
+    return print_binteger(s64(s32(obj)));
   } else {
     if ((obj < SymbolTable2.offset || 0x7ffffff < obj) &&  // not in normal memory
         (obj < 0x84000 || 0x100000 <= obj)) {              // not in kernel memory
