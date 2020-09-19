@@ -123,8 +123,9 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
 }
 
 RegVal* AliasVal::to_reg(Env* fe) {
-  auto result = base->to_reg(fe);
-  result->set_type(m_ts);  // hmmmm... coerce or not?
+  auto as_old_type = base->to_reg(fe);
+  auto result = fe->make_ireg(m_ts, as_old_type->ireg().kind);
+  fe->emit(std::make_unique<IR_RegSet>(result, as_old_type));
   return result;
 }
 

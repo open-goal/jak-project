@@ -559,3 +559,72 @@
   lst
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; inline array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; a parent class for boxed "inline arrays" classes, 
+;; An inline-array is an array with a bunch of objects back-to-back, as opposed to a bunch of
+;; references back to back.
+;; Most inline-arrays are unboxed and are just data - this is a somewhat rarely used container parent
+;; class for a class that wraps an unboxed inline-array.
+;; the "heap-base" field of the type is used to store the indexing scale.
+
+(deftype inline-array-class (basic)
+  ((length int32 :offset-assert 4)
+   (allocated-length int32 :offset-assert 8)
+   (data uint8 :dynamic)
+   ;; ??
+   )
+  )
+
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (cnt integer))
+  "Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
+  of the type-to-make to determine the element size"
+  (let* ((sz (+ (-> type-to-make size) (* (-> type-to-make heap-base) cnt)))
+         (new-object (object-new sz)))
+    ;;(format 0 "create sz ~d at #x~X~%" sz new-object)
+    (unless (zero? new-object)
+      (set! (-> new-object length) cnt)
+      (set! (-> new-object allocated-length) cnt)
+      )
+    new-object
+    )
+  )
+
+(defmethod length inline-array-class ((obj inline-array-class))
+  ;"Get the length of an inline-array"
+  (-> obj length)
+  )
+
+(defmethod asize-of inline-array-class ((obj inline-array-class))
+  ;"Get the size in memory of an inline-array-class"
+  (+ (the-as int (-> obj type size))
+     (* (-> obj allocated-length) (-> obj type heap-base))
+     )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; array (todo)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; memcpy and similar
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun mem-copy! ((dst pointer) (src pointer) (size integer))
+  "Copy memory from src to dst.  Size is in bytes.  This is not an efficient implementation,
+  however, there are _no restrictions_ on size, alignment etc. Increasing address copy."
+  (let ((i 0)
+        (d (the pointer dst))
+        (s (the pointer src))
+        )
+    
+    (while (< i size)
+           (set! (-> (the (pointer uint8) d) 0) (-> (the (pointer uint8) s) 0))
+           (&+! d 1)
+           (&+! s 1)
+           (+1! i)
+           )
+    )
+  dst
+  )

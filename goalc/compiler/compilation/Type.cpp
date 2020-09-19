@@ -145,6 +145,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
   new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
+  new_func_env->method_of_type_name = symbol_string(type_name);
 
   // set up arguments
   assert(lambda.params.size() < 8);  // todo graceful error

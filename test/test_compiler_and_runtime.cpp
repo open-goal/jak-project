@@ -155,6 +155,8 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-delete-list.gc", {"(a b d e)\n0\n"});
   runner.run_test("test-delete-car.gc", {"((a . b) (e . f))\n#f\n0\n"});
   runner.run_test("test-insert-cons.gc", {"((c . w) (a . b) (e . f))\n0\n"});
+  runner.run_test("test-new-inline-array-class.gc", {"2820\n"});
+  runner.run_test("test-memcpy.gc", {"13\n"});
 
   runner.print_summary();
 
@@ -327,6 +329,7 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-nested-car-cdr-set.gc", {"efgh\n((e . g) f . h)\n0\n"});
   runner.run_test("test-dotimes.gc", {"4950\n"});
   runner.run_test("test-methods.gc", {"#t#t\n0\n"});
+  runner.run_test("test-pointers-1.gc", {"13\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();
