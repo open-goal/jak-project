@@ -67,6 +67,7 @@ static const std::unordered_map<
         {"new", &Compiler::compile_new},
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
+        {"method", &Compiler::compile_method},
         //
         //
         //        // LAMBDA
@@ -88,7 +89,7 @@ static const std::unordered_map<
         //        // OBJECT
         //        {"current-method-type", &Compiler::compile_current_method_type},
         //
-        //        {"method", &Compiler::compile_method},
+        //
 
         //        // IT IS MATH
         {"+", &Compiler::compile_add},

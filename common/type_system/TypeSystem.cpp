@@ -155,6 +155,10 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) const {
   }
 }
 
+bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
+  return m_types.find(name) != m_types.end();
+}
+
 /*!
  * Create a typespec for a function.  If the function doesn't return anything, use "none" as the
  * return type.
@@ -568,7 +572,7 @@ void TypeSystem::add_builtin_types() {
   add_method(obj_type, "print", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "inspect", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "length",
-             make_function_typespec({"_type_"}, "int32"));  // todo - this integer type?
+             make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
   add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
   add_method(obj_type, "relocate", make_function_typespec({"_type_", "int32"}, "_type_"));
@@ -972,4 +976,20 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
     result = lowest_common_ancestor(result, types.at(i));
   }
   return result;
+}
+
+TypeSpec coerce_to_reg_type(const TypeSpec& in) {
+  if (in.arg_count() == 0) {
+    if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||
+        in.base_type() == "int16") {
+      return TypeSpec("int");
+    }
+
+    if (in.base_type() == "uint8" || in.base_type() == "uint16" || in.base_type() == "uint32" ||
+        in.base_type() == "uint16") {
+      return TypeSpec("uint");
+    }
+  }
+
+  return in;
 }

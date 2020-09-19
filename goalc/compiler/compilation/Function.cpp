@@ -284,21 +284,23 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   } else {
     // not an inline call
     if (is_method_call) {
-      throw_compile_error(form, "Unrecognized symbol " + uneval_head.print() + " as head of form");
-      //      // determine the method to call by looking at the type of first argument
-      //      if (eval_args.empty()) {
-      //
-      //      }
-      //      printf("BAD %s\n", uneval_head.print().c_str());
-      //      assert(false);  // nyi
-      // head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
+      if (eval_args.empty()) {
+        throw_compile_error(form,
+                            "Unrecognized symbol " + uneval_head.print() + " as head of form");
+      }
+      head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
     }
 
     // convert the head to a GPR
-    auto head_as_gpr =
-        head->to_gpr(env);  // std::dynamic_pointer_cast<GprPlace>(resolve_to_gpr(head, env));
+    auto head_as_gpr = head->to_gpr(env);
     if (head_as_gpr) {
-      return compile_real_function_call(form, head_as_gpr, eval_args, env);
+      if (is_method_call) {
+        return compile_real_function_call(form, head_as_gpr, eval_args, env,
+                                          eval_args.front()->type().base_type());
+      } else {
+        return compile_real_function_call(form, head_as_gpr, eval_args, env);
+      }
+
     } else {
       throw_compile_error(form, "can't figure out this function call!");
     }
@@ -311,7 +313,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
 Val* Compiler::compile_real_function_call(const goos::Object& form,
                                           RegVal* function,
                                           const std::vector<RegVal*>& args,
-                                          Env* env) {
+                                          Env* env,
+                                          std::string method_type_name) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   fe->require_aligned_stack();
   TypeSpec return_ts;
@@ -341,14 +344,18 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   // check arg count:
   if (function->type().arg_count()) {
     if (function->type().arg_count() - 1 != args.size()) {
-      printf("got type %s\n", function->type().print().c_str());
       throw_compile_error(form, "invalid number of arguments to function call: got " +
                                     std::to_string(args.size()) + " and expected " +
                                     std::to_string(function->type().arg_count() - 1) + " for " +
                                     function->type().print());
     }
     for (uint32_t i = 0; i < args.size(); i++) {
-      typecheck(form, function->type().get_arg(i), args.at(i)->type(), "function argument");
+      if (method_type_name.empty()) {
+        typecheck(form, function->type().get_arg(i), args.at(i)->type(), "function argument");
+      } else {
+        typecheck(form, function->type().get_arg(i).substitute_for_method_call(method_type_name),
+                  args.at(i)->type(), "function argument");
+      }
     }
   }
 

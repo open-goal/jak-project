@@ -36,8 +36,8 @@ class Env {
   virtual RegVal* lexical_lookup(goos::Object sym);
   virtual BlockEnv* find_block(const std::string& name);
   virtual std::unordered_map<std::string, Label>& get_label_map();
-  RegVal* make_gpr(TypeSpec ts);
-  RegVal* make_xmm(TypeSpec ts);
+  RegVal* make_gpr(const TypeSpec& ts);
+  RegVal* make_xmm(const TypeSpec& ts);
   virtual ~Env() = default;
 
   Env* parent() { return m_parent; }
