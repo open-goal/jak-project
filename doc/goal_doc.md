@@ -21,17 +21,17 @@ When talking about ordering things, GOAL code fragments can be `compile`d and `f
 
 ### `begin`
 A `begin` form is just a list of other forms which are executed in order. A `begin` form evaluates to the value of the last form.
-```
+```lisp
 (begin form...)
 ```
 
 Example:
-```
+```lisp
 (begin
-	(print "hello ")
-	(print "world!")
-	7
-	)
+  (print "hello ")
+  (print "world!")
+  7
+  )
 ```
 will print `hello world!` and the value of the entire form is `7`.
 
@@ -42,18 +42,18 @@ The `begin` form is used a lot in macros, but not that much in code. It's genera
 
 ### `block`
 A `block` form is pretty similar to a begin, except the `block` has a name. You can then "return" from the block early with `return-from`.
-```
+```lisp
 (block block-name form...)
 ```
 
 Example:
-```
+```lisp
 (block my-block
-	(print "hello ")
-	(return-from my-block 7)
-	(print "world")
-	"test"
-	)
+  (print "hello ")
+  (return-from my-block 7)
+  (print "world")
+  "test"
+  )
 ```
 will print `hello ` only and the value of the entire `block` form is `7`.  The type of the `block` is the most specific type that describes all of the possible return values from any `return-from` or from reaching the end (even if its technically not possible to reach the end). In the case above, the possible return types are `int` and `string`, so the return type of the whole block is `object`, the lowest common ancestor type of `int` and `string`.
 
@@ -61,14 +61,14 @@ Block is used rarely, and possibly almost never?
 
 ### `return-from`
 Used to exit a `block` or function early. 
-```
+```lisp
 (return-from block-name value)
 ```
 
 Looks up the block and exits from it with the value. You can exit out nested blocks. If you are enclosed in multiple blocks with the same name, exits from the inner-most one with a matching name. Everything in a function is wrapped in a block named `#f`, so you can use `(return-from #f x)` to return early from a function with `x`.  Unlike returning from a block, using `return-from` to exit a function currently does _not_ modify the return type of your function and does _not_ check the type of what you return. 
 
 Example
-```
+```lisp
 (if (is-a-match? x)
   (return-from #f x)
   )
@@ -79,7 +79,7 @@ The `return-from` form is very rarely used to return from a block, but sometimes
 
 ### `label`
 Create a named label for `goto` or `goto-when`. See `goto` for an example.
-```
+```lisp
 (label label-name)
 ```
 The label spaces are per-function and not nested. You can't jump from function to function. You can't jump in or out of functions which end up getting inlined. You can't jump in or out of an anonymous lambda function. You can jump in and out of `let`s.
@@ -88,16 +88,16 @@ Labels are used extremely rarely. Usually only in inline assembly and part of ma
 
 ### `goto`
 Jump to a label.
-```
+```lisp
 (goto label-name)
 ```
 The label must be in the current label space. You can jump forward or backward.
 
 Example:
-```
+```lisp
 (if skip-code?
-	(goto end)
-	)
+  (goto end)
+  )
 
 ;; code here runs only if skip-code is false.
 
