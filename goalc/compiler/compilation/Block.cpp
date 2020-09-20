@@ -22,7 +22,12 @@ Val* Compiler::compile_top_level(const goos::Object& form, const goos::Object& r
 Val* Compiler::compile_begin(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)form;
   Val* result = get_none();
-  for_each_in_list(rest, [&](const Object& o) { result = compile_error_guard(o, env); });
+  for_each_in_list(rest, [&](const Object& o) {
+    result = compile_error_guard(o, env);
+    if (!dynamic_cast<None*>(result)) {
+      result = result->to_reg(env);
+    }
+  });
   return result;
 }
 
@@ -56,9 +61,13 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   block_env->end_label = Label(fe);
 
   // compile everything in the body
-  // TODO - to_reg / to_gpr behavior here
   Val* result = get_none();
-  for_each_in_list(*rest, [&](const Object& o) { result = compile_error_guard(o, block_env); });
+  for_each_in_list(*rest, [&](const Object& o) {
+    result = compile_error_guard(o, block_env);
+    if (!dynamic_cast<None*>(result)) {
+      result = result->to_reg(env);
+    }
+  });
 
   // if no return-from's were used, we can ignore the return_value register, and basically turn this
   // into a begin. this allows a block which returns a floating point value to return the value in

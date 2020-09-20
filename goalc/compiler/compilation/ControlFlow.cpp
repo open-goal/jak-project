@@ -193,8 +193,10 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       // just set the output to this.
       Val* case_result = get_none();
       for_each_in_list(clauses, [&](const goos::Object& clause) {
-        // todo to gpr?
         case_result = compile_error_guard(clause, env);
+        if (!dynamic_cast<None*>(case_result)) {
+          case_result = case_result->to_reg(env);
+        }
       });
 
       case_result_types.push_back(case_result->type());
@@ -218,8 +220,10 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       // CODE
       Val* case_result = get_none();
       for_each_in_list(clauses, [&](const goos::Object& clause) {
-        // todo to gpr?
         case_result = compile_error_guard(clause, env);
+        if (!dynamic_cast<None*>(case_result)) {
+          case_result = case_result->to_reg(env);
+        }
       });
 
       case_result_types.push_back(case_result->type());

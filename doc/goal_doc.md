@@ -17,13 +17,14 @@ The syntax description uses these rules:
 When talking about ordering things, GOAL code fragments can be `compile`d and `flush`ed as two separate things. For the most part, everything is done during compilation, like calling functions. But consider `(set! (-> my-object value) x)`. We don't actually want the value of `(-> my-object value)`, we want to set its value. The `compile` stage gets us description of how to read/write a thing (if possible), and the `flush` stage gets us an actual value in a register.  This can basically be ignored outside of the decompiler. 
 
 
-# Compiler Forms
+# Compiler Forms - Block Related
 
-### `begin`
-A `begin` form is just a list of other forms which are executed in order. A `begin` form evaluates to the value of the last form.
+## `begin`
+Execute forms in order.
 ```lisp
 (begin form...)
 ```
+A `begin` form is just a list of other forms which are executed in order. A `begin` form evaluates to the value of the last form.
 
 Example:
 ```lisp
@@ -40,8 +41,8 @@ In `begin` and similar "do everything in the list" forms, each form is `compile`
 The `begin` form is used a lot in macros, but not that much in code. It's generally used when you want to execute multiple things, but fit it into a single form.
 
 
-### `block`
-A `block` form is pretty similar to a begin, except the `block` has a name. You can then "return" from the block early with `return-from`.
+## `block`
+A `block` form is pretty similar to a `begin`, except the `block` has a name. You can then "return" from the block early with `return-from`.
 ```lisp
 (block block-name form...)
 ```
@@ -59,8 +60,8 @@ will print `hello ` only and the value of the entire `block` form is `7`.  The t
 
 Block is used rarely, and possibly almost never?
 
-### `return-from`
-Used to exit a `block` or function early. 
+## `return-from`
+Exit a `block` or function early. 
 ```lisp
 (return-from block-name value)
 ```
@@ -77,16 +78,18 @@ if `x` is a match, returns `x` from the function (not shown) immediately.
 
 The `return-from` form is very rarely used to return from a block, but sometimes used to return from a function.
 
-### `label`
-Create a named label for `goto` or `goto-when`. See `goto` for an example.
+## `label`
+Create a named label for `goto` or `goto-when`.
 ```lisp
 (label label-name)
 ```
 The label spaces are per-function and not nested. You can't jump from function to function. You can't jump in or out of functions which end up getting inlined. You can't jump in or out of an anonymous lambda function. You can jump in and out of `let`s.
 
+See `goto` for an example.
+
 Labels are used extremely rarely. Usually only in inline assembly and part of macros for `while` loops and similar.
 
-### `goto`
+## `goto`
 Jump to a label.
 ```lisp
 (goto label-name)
@@ -106,18 +109,354 @@ Example:
 
 The `goto` form used very rarely outside of macros and inline assembly. Try to avoid using `goto`.
 
-# Important Syntax Macros
+# Compiler Forms - Compiler Control
+These forms are used to control the GOAL compiler, and are usually entered at the GOAL REPL, or as part of a macro that's executed at the GOAL REPL. These shouldn't really be used in GOAL source code.
+
+## `:exit`
+This causes the compiler to exit after the current REPL command is over. 
+```lisp
+(:exit)
+```
+If the listener is connected, it sends a reset command to reboot the target so it is ready for the next compiler connection.
+
+There's a useful macro `(e)` to exit with less typing.  Obviously this shouldn't be used in game code.
+
+## `seval`
+Execute GOOS code.
+```lisp
+(seval form...)
+```
+Evaluates the forms in the GOOS macro language. The result is not returned in any way, so it's only useful for getting side effects.  It's not really used other than to bootstrap some GOAL macros for creating macros.
+
+## `asm-file`
+Compile a file.
+```lisp
+(asm-file "file-name" [:color] [:write] [:load] [:no-code])
+```
+This runs the compiler on a given file. The file path is relative to the `jak-project` folder. These are the options:
+- `:color`: run register allocation and code generation. Can be omitted if you don't want actually generate code. Usually you want this option.
+- `:write`: write the object file to the `data` folder. You must also have `:color` on. You must do this to include this file in a DGO.
+- `:load`: send the object file to the target with the listener. Requires `:color` but not `:write`. There may be issues with `:load`ing very large object files.
+
+To reduce typing, there are some useful macros:
+- `(m "filename")` is "make" and does a `:color` and `:write`.
+- `(ml "filename")` is "make and load" and does a `:color` and `:write` and `:load`. This effectively replaces the previous version of file in the currently running game with the one you just compiled, and is a super useful tool for quick debugging/iterating.
+- `(build-game)` does `m` on all game files and rebuilds DGOs
+- `(blg)` (build and load game) does `build-game` then sends commands to load KERNEL and GAME CGOs. The load is done through DGO loading, not `:load`ing individual object files.
+
+## `lt`
+Listen to target.
+```lisp
+(lt ["ip address"] [port-number])
+```
+This causes the compiler to connect to the target/runtime. Usually it's just run as `(lt)`, as the default IP is `127.0.0.1` and the default port is the right one.  If it works, you should see something like this:
+```
+[Listener] Socket connected established! (took 0 tries). Waiting for version...
+Got version 2.6 OK!
+[OUTPUT] reset #x147d24
+```
+The `OUTPUT` message is a pending message from the runtime saying that it has reset and the location of the symbol table.
+
+Note: `lt` is actually a macro. Use these target control macros over the direct compiler forms (currently undocumented) whenever possible, as running the compiler forms in the wrong order can leave the target/compiler in a strange state.
+
+## `r`
+Reset the target.
+```lisp
+(r)
+```
+Regardless of the current state, attempt to reset the target and reconnect. 
+
+Note: `r` is actually a macro. Use it over the (currently undocumented) compiler forms.
+
+## `shutdown-target`
+If the target is connected, shut it down.
+```lisp
+(shutdown-target)
+```
+The target will print
+```
+GOAL Runtime Shutdown (code 2)
+```
+when it shuts down.
+
+## `:status`
+Ping the target.
+```lisp
+(:status)
+```
+Send a ping-like message to the target. Requires the target to be connected. If successful, prints nothing.  Will time-out if the GOAL kernel or code dispatched by the kernel is stuck in an infinite loop.  Unlikely to be used often.
+
+## `gs`
+Enter a GOOS REPL.
+```lisp
+(gs)
+```
+Example:
+```
+g> (gs)
+goos> (+ 1 2 3)
+6
+goos> (exit)
+()
+```
+mainly useful for debugging/trying things out in GOOS. The GOOS REPL shares its environment with the GOOS interpreter used by the compiler, so you can inspect/modify things for debugging with this. Likely not used much outside of initial debugging.
+
+## `set-config!`
+```lisp
+(set-config! config-name config-value)
+```
+Used to set compiler configuration. This is mainly for debugging the compiler and enabling print statements. There is a `(db)` macro which sets all the configuration options for the compiler to print as much debugging info as possible. Not used often.
+
+## `in-package`
+```lisp
+(in-package stuff...)
+```
+The compiler ignores this. GOAL files evidently start with this for some reason related to emacs.
+
+## `build-dgos`
+```lisp
+(build-dgos "path to dgos description file")
+```
+Builds all the DGO files described in the DGO description file. See `goal_src/builds/dgos.txt` for an example. This just packs existing things into DGOs - you must have already built all the dependencies.
+
+# Compiler Forms - Control Flow
+
+## GOAL "Two Element" Conditions
+These are `!=`, `eq?`, `neq?`, `=`, `>`, `<`, `>=`, `<=`.  The default is to compare the two objects as unsigned 64-bit integers, unless a special case is hit. The special case is determined by the type of the __first__ argument:
+- Floating point: if second argument is a number, convert to floating point. Use floating point comparisons
+- Binteger: convert first argument to integer. If second argument is a number, convert to integer. Use signed integer comparisons
+- Integer: If second argument is a number, convert to integer. Use signed integer comparison
+- Unsigned Integer: If second argument is a number, convert to integer. Use unsigned integer comparison
+
+Note that comparing structures just checks if they refer to the same memory, not if the contents are the same.
+
+Currently there is absolutely no type checking done on comparisons, which makes it quite easy to get things wrong.
+
+When a two-element condition is used as a condition for an `if`, `cond`, `while`, `goto-when`, or any other branching condition, there is an optimization that avoids computing a GOAL boolean, then checking that GOAL boolean as a branch condition. Instead the comparison operation directly sets the x86-64 flags for a jump. Original GOAL has a similar optimization.
+
+There are a lot of unknown details
+- What order are things evaluated / converted?
+- How does the order work when there's a `not`?
+- Type Checking is probably needed.
+- Currently `=` and `eq?` are exactly the same. Likely `=` should only work on numbers and `eq?` should work on references?
+
+## `not`
+```lisp
+(not value)
+```
+If value is `#f`, return `#t`. Otherwise return `#f`.
+
+Using `not` on a "two element condition" will be optimized to modifying that condition.
+
+## `when-goto`
+```lisp
+(when-goto value-or-condition destination)
+```
+Examples:
+```lisp
+(when-goto (> x y) some-label)
+(when-goto (is-player-dead?) some-label)
+```
+Jump to `destination` if the condition is truthy (not `#f`).  This ends up generating much better code than `(if condition (goto x))`. 
+
+Like normal `goto`, this isn't used much outside of macros.
+
+## `cond`
+A normal Lisp/Scheme `cond`.
+```lisp
+(cond (test clause...)...)
+```
+Evaluates `test`s until one is truthy. Then evaluates all `clause`s in that case and returns the value of the last one.  Optionally there can be a case with `else` as the test which runs if no other cases match. This must be the last case.
+
+If there is no `else`, and no cases match, return `#f`. (is it always `#f`?)
+
+The return type is the lowest common ancestor type of all cases.  Note that for a `cond` without `else`, the possible return value of `#f` is __not__ considered when determining the return type. So:
+```lisp
+(print-type
+  (cond (test1 "hi") (test2 "bye"))
+  )
+```
+will print `[TYPE] string`, even though `cond` may return `#f`.
+
+This behavior seems correct if the return value is a `basic`, but less clear if the return value is supposed to be a number.
+
+Note that GOAL will load `#f` into a register for an else case even if the value of the `cond` is never used. Also, even if the value of the `cond` is never used, all cases will store their result into a common `cond` return-register. This is incredibly helpful for the decompiler!
+
+## `if`
+A normal Lisp/Scheme `if`.
+```lisp
+(if test true-case [false-case])
+```
+The value of the entire statement is the value of the taken case. The false case can be left out. If the condition evaluates to false and the false case is left out, `#f` is returned.  The return type follows the same logic as `cond`, as `if` is a macro using `cond`.
+
+## `when`
+A normal Lisp/Scheme `when`.
+```lisp
+(when test forms...)
+```
+If `test` is truthy, evaluate all forms and return the value of the last one. If `test` isn't true, return `#f`.
+
+## `unless`
+A normal Lisp/Scheme `unless`.
+```lisp
+(unless test forms...)
+```
+If `test` is false, evaluate all forms and return the value of the last one. If `test` isn't false, return `#f`.
+
+# Compiler Forms - Functions
+
+## `defun`
+Define a new named global function!
+```lisp
+(defun name arg-list ["doc-string"] body...)
+arg-list = (arg...)
+arg = (arg-name arg-type)|arg-name
+```
+Example:
+```
+(defun 1/ ((x float))
+  "Compute 1.0 / x"
+  (/ 1.0 x)
+  )
+```
+Define a new function with the given name. Note that until the `defun` itself executes, the function __cannot be used!__. So don't call functions before the `defun`.  This is unlike C, where you can forward declare a function and use it before the actual definition.
+
+There is an optional docstring. Currently the docstring is just thrown away but in the future we could save them and and generate documentation or something.
+
+## `defmethod`
+Define a method!
+```lisp
+(defmethod method-name type-name arg-list ["doc-string"] body...)
+```
+In many ways is similar to `defun`. See section on methods for more details.
+
+You can only `defmethod` if one of these two is true:
+- You are overriding a parent method
+- You have declared this method in the type's `deftype`
+
+Like `defun`, the method only exists after the `defmethod` executes. Before that the method may be undefined or the parent's method.
+
+## `inline`
+Make this function call inlined.
+```
+(inline function-name)
+```
+Example: inline call `my-function`
+```
+((inline my-funciton) my-arg)
+```
+Attempts to make the function call inline. If it is not possible, it will throw an error. You can't save the value of `(inline my-function)`, only use it immediately in a function call. You must provide a name of a global function as the function, not a function pointer.
+
+Methods cannot be inlined. (Maybe new methods can be in original GOAL?)
+
+## `lambda`
+Create a GOAL Lambda.
+```lisp
+(lambda [:name name] [:inline-only #f|#t] [:segment main|debug] arg-list body-form..)
+arg-list = (arg...)
+arg = (arg-name arg-type)|arg-name
+```
+
+The `:name` option is only used for debugging the compiler - it cannot be accessed or referenced outside of internal compiler debugging features. It should be ignored unless you are debugging the compiler.
+
+The `:inline-only` flag defaults to `#f`, but can be set to `#t` to force the compiler to not generate x86-64 code for the function. In this case, the lambda cannot be used as a function pointer/GOAL `function` object.  This is used in the `let` macro and not really useful for general programming.  If the flag is `#f` (default value), it will generate and store an x86-64 function, regardless of if the function is ever called.
+
+The `:segment` option defaults to `main`, unless the `lambda` is defined in a function in the `debug` segment, in which case it defaults to `debug`. It can be overridden by this flag.  This picks the segment of the object file where the function will be stored.
+
+The arguments default to type of `object` if no type is provided.  In the case where a lambda is used immediately (a `let`) the compiler will propagate more specific types. This is why you don't have to give types when using `let`.
+
+A GOAL lambda has three purposes:
+1. Generate a function as a "real" x86-64 function.
+2. Save the code so the function can later be inlined
+3. Immediately use the lambda in the head of a list as part of a `let` or `let*` macro
+
+__Example of 1:__
+```
+(sort my-list (lambda ((x int) (y int) (< x y))))
+```
+We create a real x86-64 function to pass to the `sort` function.  In this case you should specify types - the default of `object` is not suitable.
+
+The other two cases are handled by `let` and `defun` macros, and shouldn't show up in other places, so they are left out.
+
+## `declare`
+Set options for a function or method
+```lisp
+(declare [(inline)] [(allow-inline)] [(disallow-inline)] [(asm-func)])
+```
+If used, this should be the first thing inside of a `defun`/`defmethod`. Don't use it anywhere else.
+Example:
+```lisp
+(defun my-function ()
+  (declare (inline))
+  ...
+  )
+```
+
+- `inline` means "inline whenever possible". See function inlining section for why inlining may be impossible in some cases.
+- `allow-inline` or `disallow-inline`. You can control if inlining is allowed, though it is not clear why I thought this would be useful. Currently the default is to allow always.
+- `asm-func` currently does nothing. Eventually should disable generating prologues/epilogues. Use if you want an entirely asm function. Used very rarely and probably only in the GOAL kernel.
+
+This form will probably get more options in the future.
+
+# Compiler Forms - Macro Forms
+
+## `#cond`
+This is like an `#ifdef`, but the language for the conditions is GOOS and it's like a `cond`.
+```lisp
+(#cond (test clause...)...)
+```
+The `#cond` is executed at compile time. The cases which don't match aren't compiled. There are `#when` and `#unless` macros that work like you would expect.
+
+Example:
+```lisp
+(#when PRINT_DEBUG_INFO
+  (format #t "debug info~%")
+  )
+```
+
+## `quote` / `'`
+The reader will expand `'thing` to `(quote thing)`
+
+```lisp
+(quote thing)
+```
+Currently `quote` supports:
+- `'a-symbol` - will return the symbol `a-symbol`
+- `'()` - will return the empty list.
+
+In the future, it should support quoted lists of static data.
+
+## `defglobalconstant`
+Define a GOOS and GOAL constant.
+```lisp
+(defconstant name value)
+```
+
+The constant is available in both GOOS and GOAL. You can use it in `#cond` expressions (GOOS) and in GOAL code. The constant inserts the `value` as an s-expression in the code. This means it's a "code" constant, and doesn't have a type.
+
+There are a few restrictions:
+- Currently constants do not work in `deftype`. (this should be fixed eventually)
+- Constants may not work in places where the compiler is expecting a symbol which isn't actually compiled. So `(+ MY_CONSTANT 2)` is fine, but `(defun MY_CONSANT () ...)` isn't.  Don't use constants for type names, function names, or symbol names. It is fine to have a constant with a value of a symbol, but don't `(define MY_CONSTANT)` or `(set! MY_CONSTANT)` or `(new MY_CONSTANT)` or things like that.
+- Don't use constants with `method` form.
+- You can modify constants created with `defglobalconstant` in GOOS (effect won't be seen in GOAL) with `(set!)`
+- There is no warning if one `defglobalconstant` changes the value of an exisiting `defglobalconstant`
+
+In general constants should have `UPPERCASE` names otherwise things get very confusing when there are name conflicts.
+
+## `mlet`
+Scoped constants in GOAL. Syntax is like a `let`. This feature has all the restrictions of `defglobalconstant`.
+Avoid using `mlet` becuase it's confusing and not useful.
 
 # Compiler Features
 
-### Compiling a list
+## Compiling a list
 When the compiler encounters a list like `(a b c)` it attempts to parse in multiple ways in this order:
 1. A compiler form
 2. A GOOS macro
 3. An enum (not yet implemented)
 4. A function or method call
 
-### Compiling an integer
+## Compiling an integer
 Integers can be specified as
 - decimal: `1` or `-1234` (range of `INT64_MIN` to `INT64_MAX`)
 - hex: `#x123`, `#xbeef` (range of `0` to `UINT64_MAX`)
@@ -126,7 +465,7 @@ Integers can be specified as
 All integers are converted to the signed "integer in variable" type called `int`, regardless of how they are specified.
 Integer "constant"s are not stored in memory but instead are generated by code, so there's no way to modify them.
 
-### Compiling a string
+## Compiling a string
 A string constant can be specified by just putting it in quotes. Like `"this is a string constant"`.
 There is an escape code `\` for string:
 - `\n` newline
@@ -142,47 +481,110 @@ In GOAL, string constants are pooled per object file (or perhaps per segment)- i
 For now I will assume that string constants are never modified.
 
 
-### Compiling a float
+## Compiling a float
 A floating point constant is distinguished from an integer by a decimal point. Leading/trailing zeros are optional. Examples of floats: `1.0, 1., .1, -.1, -0.2`.  Floats are stored in memory, so it may be possible to modify a float constant. For now I will assume that float constants are never modified. It is unknown if they are pooled like strings.
 
 Trivia: Jak 2 realized that it's faster to store floats inline in the code.
 
-### Compiling a symbol
+## Compiling a symbol
+A `symbol` appearing in code is compiled by trying each of these in the following order
+1. Is it `none`? (see section on `none`)
+2. Try `mlet` symbols
+3. Try "lexical" variables (defined in `let`)
+4. Try global constants
+5. Try global variables (includes named functions and all types)
+
+## The Special `none` type
+Anything which doesn't return anything has a return type of `none`, indicating the return value can't be used.  This is similar to C's `void`.
+
+## GOAL Structs vs. C Structs
+There is one significant difference between C and GOAL when it comes to structs/classes - GOAL variables can only be references to structs.
+
+As an example, consider a GOAL type `my-type` and a C type `my_type`.  In C/C++, a variable of type `my_type` represents an entire copy of a `my_type` object, and a `my_type*` is like a reference to an existing `my_type` object.  In GOAL, an object of `my-type` is a reference to an existing `my-type` object, like a C `my_type*`.  There is no equivalent to a C/C++ `my_type`.
+
+As a result you cannot pass or return a structure by value.
+
+Another way to explain this is that GOAL structures (including `pair`) always have reference semantics.  All other GOAL types have value semantics.
+
+## Pointers
+GOAL pointers work a lot like C/C++ pointers, but have some slight differences:
+- A C `int32_t*` is a GOAL `(pointer int32)`
+- A C `void*` is a GOAL `pointer`
+- In C, if `x` is a `int32_t*`, `x + 1` is equivalent to `uintptr_t(x) + sizeof(int32_t)`.  In GOAL, all pointer math is done in units of bytes.
+- In C, you can't do pointer math on a `void*`. In GOAL you can, and all math is done in units of bytes.
+
+In both C and GOAL, there is a connection between arrays and pointers.  A GOAL array field will have a pointer-to-element type, and a pointer can be accessed as an array.
+
+One confusing thing is that a `(pointer int32)` is a C `int32_t*`, but a `(pointer my-structure-type)` is a C `my_structure_type**`, becuase a GOAL `my-structure-type` is like a C `my_structure_type*`.  
+
+## Inline Arrays
+One limitation of the system above is that an array of `my_structure_type` is actually an array of references to structures (C `object*[]`).  It would be more efficient if instead we had an array of structures, laid out together in memory (C `object[]`).  
+
+GOAL has a "inline array" to represent this.  A GOAL `(inline-array thing)` is like a C `thing[]`. The inline-array can only be used on structure types, as these are the only reference types.
+
+
+## Fields in Structs
+For a field with a reference type (structure/basic)
+- `(data thing)` is like C `Thing* data;`
+- `(data thing :inline #t)` is like C `Thing data;`
+- `(data thing 12)` is like C `Thing* data[12];`. The field has `(pointer thing)` type.
+- `(data thing 12 :inline #t)` is like `Thing data[12];`. The field has `(inline-array thing)` type
+
+For a field with a value type (integer, etc)
+- `(data int32)` is like C `int32_t data;`
+- `(data int32 12)` is like `int32_t data[12];`. The field has `(array int32)` type.
+
+Using the `:inline #t` option on a value type is not allowed.
+
+## Dynamic Structs
+GOAL structure can be dynamically sized, which means their size isn't determined at compile time. Instead the user should implement `asize-of` to return the actual size. 
+
+This works by having the structure end in an array of unknown size at compile time. In a dynamic structure definition, the last field of the struct should be an array with an unspecified size. To create this, add a `:dynamic #t` option to the field and do not specify an array size.  This can be an array of value types, an array of reference types, or an inline-array of reference types.
+
+### Unknown
+Is the `size` of a dynamic struct:
+- size assuming the dynamic array has 0 elements (I think it's this)
+- size assuming the dynamic array doesn't 
+
+These can differ by padding for alignment.
+
+
+## Methods
+
+## New - How To Create GOAL Objects
+
+## Integer Type
+GOAL has some weird behavior when it comes to integers. It may seem complicated to describe, but it really makes the implementation simpler - the integer types are designed around the available MIPS instructions.
+
+Integers that are used as local variables (defined with `let`), function arguments, function return values, and intermediate values when combining these are called "register integers", as the values will be stored in CPU registers. 
+
+Integers that are stored in memory as a field of a `structure`/`basic`, an element in an array, or accessed through a `pointer` are "memory integers", as the values will need to be loaded/stored from memory to access them.
+
+The "register integer" types are `int` and `uint`. They are 64-bit and mostly work exactly like you'd expect. Multiplication, division, and mod, are a little weird and are documented separately.
+
+The "memory integer" types are `int8`, `int16`, `int32`, `int64`, `uint8`, `uint16`, `uint32`, and `uint64`.
+
+Conversions between these types are completely automatic - as soon as you access a "memory integer", it will be converted to a "register integer", and trying to store a "register integer" will automatically convert it to the appropriate "memory integer". It (should be) impossible to accidentally get this wrong.
+
+### Side Note
+- It's not clear what types `(new 'static 'integer)` or `(new 'stack 'integer)` are, though I would assume both are memory.
+
+- If there aren't enough hardware registers, "register integers" can be spilled to stack, but keep their "register integer" types. This process should be impossible to notice, so you don't have to worry about it.
+
+## Array Spacing
+In general, all GOAL objects are 16-byte aligned and the boxing system requires this.  All heap memory allocations are 16-byte aligned too, so this is usually not an issue.  
+
+## Truth
+Everything is true except for `#f`. This means `0` is true, and `'()` is true.
+The value of `#f` can be used like `nullptr`, at least for any `basic` object.  It's unclear if `#f` can/should be used as a null for other types, including `structure`s or numbers or pointers.
+
+Technical note: the hex number `0x147d24` is considered false in Jak 1 NTSC due to where the symbol table happened to be allocated.  However, checking numbers for true/false shouldn't be done, you should use `(zero? x)` instead.
 
 # Built-in Types
 
-# GOAL MIPS Examples for ordering
-Example in `vector` with flushing:
-```
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; .function vector3s+!
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-L8:
-    daddiu sp, sp, -16
-    sd fp, 8(sp)
-    or fp, t9, r0
-    daddiu v1, fp, L109 ;; string: "Add 2 vectors3."
-    lwc1 f0, 0(a1)
-    lwc1 f1, 0(a2)
-    add.s f0, f0, f1
-    swc1 f0, 0(a0)
-    lwc1 f0, 4(a1)
-    lwc1 f1, 4(a2)
-    add.s f0, f0, f1
-    swc1 f0, 4(a0)
-    lwc1 f0, 8(a1)
-    lwc1 f1, 8(a2)
-    add.s f0, f0, f1
-    swc1 f0, 8(a0)
-    or v0, a0, r0
-    ld fp, 8(sp)
-    jr ra
-    daddiu sp, sp, 16
-```
-The `daddiu v1, fp, L109` loads a `string` into the `v1` register which is never used, immediately after the prologue. This will only happen if the value is flushed. This is very likely a documentation comment that accidentally got included as a string constant. It's unused, so there was likely no consumer of the string that did the `flush` - it was done by the top level evaluation.
-```
-(defun vector3s+! (stuff)
-  "Add 2 vectors3." ;; oops, a string constant instead of a comment.
-  ... ; rest of the function
-)
-```
+## `structure`
+A structure is the parent type of all types with fields.
+
+## `basic`
+A basic is a structure with runtime type information. The first field is named `type` and contains the `type` of the basic.
+
