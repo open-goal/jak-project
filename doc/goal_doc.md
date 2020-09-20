@@ -6,15 +6,15 @@ This is the main documentation for the OpenGOAL language. It explains the syntax
 3. Compiler features, which are things that are built-in to the compiler but don't have explicit names. Like calling functions or the rules for how names are scoped.
 4. Built-in types
 
-Each "feature" of the compile will explain its syntax, a guess at how often it's used, an example or two in OpenGOAL, and an example or two in MIPS GOAL. There will also be details on the order of evaluation.
+Each feature will have a description, explanation of the syntax, a guess at how often it's used, an example or two in OpenGOAL, and an example or two in MIPS GOAL. There will also be details on the order of evaluation that is useful for the decompiler but can mostly be ignored for normal programming in OpenGAL.
 
 The syntax description uses these rules:
 - Something `[in-brackets]` is optional and can be left out.
-- Something like `[:type type-name]` means there is an optional named argument. To use it, you must put `:type type-name`, replacing `type-name` with what you want.
+- Something like `[:type type-name]` means there is an optional named argument. It can be used like `:type type-name`, replacing `type-name` with what you want, or left out entirely.
 - When there are multiple choices, they are separated by `|`. Example: `#t|#f` is either `#t` or `#f`.
 - A `...` means more of the thing before can be included. Example `(f arg...)` can have multiple arguments.
 
-When talking about ordering things, GOAL code fragments can be `compile`d and `flush`ed as two separate things. For the most part, everything is done during compilation, like calling functions. But consider `(set! (-> my-object value) x)`. We don't actually want the value of `(-> my-object value)`, we want to set its value. The `compile` stage gets us a settable thing (if possible), and the `flush` stage gets us a value we can actually use.
+When talking about ordering things, GOAL code fragments can be `compile`d and `flush`ed as two separate things. For the most part, everything is done during compilation, like calling functions. But consider `(set! (-> my-object value) x)`. We don't actually want the value of `(-> my-object value)`, we want to set its value. The `compile` stage gets us description of how to read/write a thing (if possible), and the `flush` stage gets us an actual value in a register.  This can basically be ignored outside of the decompiler. 
 
 
 # Compiler Forms
@@ -35,7 +35,7 @@ Example:
 ```
 will print `hello world!` and the value of the entire form is `7`.
 
-I believe in `begin` and similar "do everything in the list" forms, each form is `compile`d then `flush`ed. 
+In `begin` and similar "do everything in the list" forms, each form is `compile`d then `flush`ed. 
 
 The `begin` form is used a lot in macros, but not that much in code. It's generally used when you want to execute multiple things, but fit it into a single form.
 
@@ -52,10 +52,10 @@ Example:
 	(print "hello ")
 	(return-from my-block 7)
 	(print "world")
-	8
+	"test"
 	)
 ```
-will print `hello ` only and the value of the entire `block` form is `7`.  The type of the `block` is the most specific type that describes all of the possible return values from any `return-from` or from reaching the end (even if its technically not possible to reach the end).
+will print `hello ` only and the value of the entire `block` form is `7`.  The type of the `block` is the most specific type that describes all of the possible return values from any `return-from` or from reaching the end (even if its technically not possible to reach the end). In the case above, the possible return types are `int` and `string`, so the return type of the whole block is `object`, the lowest common ancestor type of `int` and `string`.
 
 Block is used rarely, and possibly almost never?
 
@@ -78,7 +78,7 @@ if `x` is a match, returns `x` from the function (not shown) immediately.
 The `return-from` form is very rarely used to return from a block, but sometimes used to return from a function.
 
 ### `label`
-Create a named label for `goto` or `goto-when`.
+Create a named label for `goto` or `goto-when`. See `goto` for an example.
 ```
 (label label-name)
 ```
@@ -91,7 +91,7 @@ Jump to a label.
 ```
 (goto label-name)
 ```
-The label must be in the current label space.
+The label must be in the current label space. You can jump forward or backward.
 
 Example:
 ```
@@ -104,7 +104,7 @@ Example:
 (label end)
 ```
 
-Like label, used very rarely outside of macros and inline assembly. Try to avoid using `goto`.
+The `goto` form used very rarely outside of macros and inline assembly. Try to avoid using `goto`.
 
 # Important Syntax Macros
 
@@ -122,6 +122,7 @@ Integers can be specified as
 - decimal: `1` or `-1234` (range of `INT64_MIN` to `INT64_MAX`)
 - hex: `#x123`, `#xbeef` (range of `0` to `UINT64_MAX`)
 - binary: `#b101010` (range of `0` to `UINT64_MAX`)
+
 All integers are converted to the signed "integer in variable" type called `int`, regardless of how they are specified.
 Integer "constant"s are not stored in memory but instead are generated by code, so there's no way to modify them.
 
@@ -150,7 +151,7 @@ Trivia: Jak 2 realized that it's faster to store floats inline in the code.
 
 # Built-in Types
 
-# GOAL MIPS Examples
+# GOAL MIPS Examples for ordering
 Example in `vector` with flushing:
 ```
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
