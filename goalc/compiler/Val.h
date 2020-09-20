@@ -44,9 +44,12 @@ class Val {
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
+  bool settable() const { return m_is_settable; }
+  void mark_as_settable() { m_is_settable = true; }
 
  protected:
   TypeSpec m_ts;
+  bool m_is_settable = false;
 };
 
 /*!
@@ -114,6 +117,14 @@ class LambdaVal : public Val {
   std::string print() const override { return "lambda-" + lambda.debug_name; }
   FunctionEnv* func = nullptr;
   Lambda lambda;
+  RegVal* to_reg(Env* fe) override;
+};
+
+class InlinedLambdaVal : public Val {
+ public:
+  explicit InlinedLambdaVal(TypeSpec ts, LambdaVal* _lv) : Val(std::move(ts)), lv(_lv) {}
+  std::string print() const override { return "inline-lambda-" + lv->lambda.debug_name; }
+  LambdaVal* lv = nullptr;
   RegVal* to_reg(Env* fe) override;
 };
 

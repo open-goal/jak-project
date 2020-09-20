@@ -87,6 +87,11 @@ RegVal* LambdaVal::to_reg(Env* fe) {
   return re;
 }
 
+RegVal* InlinedLambdaVal::to_reg(Env* fe) {
+  throw std::runtime_error("Cannot put InlinedLambdaVal in a register.");
+  return lv->to_reg(fe);
+}
+
 RegVal* FloatConstantVal::to_reg(Env* fe) {
   auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
   fe->emit(std::make_unique<IR_StaticVarLoad>(re, m_value));
