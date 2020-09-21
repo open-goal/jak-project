@@ -443,9 +443,35 @@ There are a few restrictions:
 
 In general constants should have `UPPERCASE` names otherwise things get very confusing when there are name conflicts.
 
+The recommendation is to use constants for things like numbers or expressions like `(* NUM_THINGS SIZE_OF_EACH_THING)`.
+
 ## `mlet`
 Scoped constants in GOAL. Syntax is like a `let`. This feature has all the restrictions of `defglobalconstant`.
 Avoid using `mlet` becuase it's confusing and not useful.
+```lisp
+(mlet ((constant-name constant-value)...)
+  body...
+  )
+```
+
+Example:
+```lisp
+(mlet ((NUM-THINGS 12)
+       (THING-NAME "test"))
+  ; in here, NUM-THING and THING-NAME are constants
+  )
+```
+
+# Compiler Forms - Math Forms
+
+Math forms will look at the type of the first argument to determine the "mode".  So if you have `(+ 1 1.2)`, it will convert the `1.2` to an integer, do the add, and return an integer.
+
+## `+`
+Addition. Can take 1 or more arguments. `(+ 1)` will give you `1`, like you'd expect.
+```lisp
+(+ things...)
+```
+Works on integers and floats. 
 
 # Compiler Features
 
@@ -551,7 +577,11 @@ These can differ by padding for alignment.
 
 ## Methods
 
+## Method `_type_` type
+
 ## New - How To Create GOAL Objects
+
+## Defining a `new` Method
 
 ## Integer Type
 GOAL has some weird behavior when it comes to integers. It may seem complicated to describe, but it really makes the implementation simpler - the integer types are designed around the available MIPS instructions.

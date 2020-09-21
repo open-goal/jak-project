@@ -44,7 +44,10 @@ Val* Compiler::number_to_integer(Val* in, Env* env) {
   if (is_binteger(ts)) {
     throw std::runtime_error("Can't convert " + in->print() + " (a binteger) to an integer.");
   } else if (is_float(ts)) {
-    throw std::runtime_error("Can't convert " + in->print() + " (a float) to an integer.");
+    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto result = fe->make_gpr(m_ts.make_typespec("int"));
+    env->emit(std::make_unique<IR_FloatToInt>(result, in->to_xmm(env)));
+    return result;
   } else if (is_integer(ts)) {
     return in;
   }
@@ -59,7 +62,11 @@ Val* Compiler::number_to_binteger(Val* in, Env* env) {
   } else if (is_float(ts)) {
     throw std::runtime_error("Can't convert " + in->print() + " (a float) to a binteger.");
   } else if (is_integer(ts)) {
-    throw std::runtime_error("Can't convert " + in->print() + " (an integer) to a binteger.");
+    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    RegVal* input = in->to_reg(env);
+    auto sa = fe->make_gpr(m_ts.make_typespec("int"));
+    env->emit(std::make_unique<IR_LoadConstant64>(sa, 3));
+    return compile_variable_shift(input, sa, env, IntegerMathKind::SHLV_64);
   }
   throw std::runtime_error("Can't convert " + in->print() + " to a binteger.");
 }
@@ -72,7 +79,10 @@ Val* Compiler::number_to_float(Val* in, Env* env) {
   } else if (is_float(ts)) {
     return in;
   } else if (is_integer(ts)) {
-    throw std::runtime_error("Can't convert " + in->print() + " (an integer) to a float.");
+    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto result = fe->make_xmm(m_ts.make_typespec("float"));
+    env->emit(std::make_unique<IR_IntToFloat>(result, in->to_gpr(env)));
+    return result;
   } else {
     throw std::runtime_error("Can't convert " + in->print() + " a float.");
   }
@@ -111,6 +121,19 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
             IntegerMathKind::ADD_64, result,
             to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
                 ->to_gpr(env)));
+      }
+      return result;
+    }
+
+    case MATH_FLOAT: {
+      auto result = env->make_xmm(first_type);
+      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+
+      for (size_t i = 1; i < args.unnamed.size(); i++) {
+        env->emit(std::make_unique<IR_FloatMath>(
+            FloatMathKind::ADD_SS, result,
+            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+                ->to_xmm(env)));
       }
       return result;
     }
@@ -200,6 +223,30 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
               IntegerMathKind::SUB_64, result,
               to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
                   ->to_gpr(env)));
+        }
+        return result;
+      }
+
+    case MATH_FLOAT:
+      if (args.unnamed.size() == 1) {
+        auto result =
+            compile_float(0, env, get_parent_env_of_type<FunctionEnv>(env)->segment)->to_xmm(env);
+        env->emit(std::make_unique<IR_FloatMath>(
+            FloatMathKind::SUB_SS, result,
+            to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
+                ->to_xmm(env)));
+        return result;
+      } else {
+        auto result = env->make_xmm(first_type);
+        env->emit(std::make_unique<IR_RegSet>(
+            result, to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
+                        ->to_xmm(env)));
+
+        for (size_t i = 1; i < args.unnamed.size(); i++) {
+          env->emit(std::make_unique<IR_FloatMath>(
+              FloatMathKind::SUB_SS, result,
+              to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+                  ->to_xmm(env)));
         }
         return result;
       }

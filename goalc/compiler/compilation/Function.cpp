@@ -86,7 +86,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       lambda_ts.add_arg(m_ts.make_typespec("object"));
     } else {
       auto param_args = get_va(o, o);
-      va_check(o, param_args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+      va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
@@ -164,8 +164,10 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     Val* result = nullptr;
     bool first_thing = true;
     for_each_in_list(lambda.body, [&](const goos::Object& o) {
-      // todo - to_reg?
       result = compile_error_guard(o, func_block_env);
+      if (!dynamic_cast<None*>(result)) {
+        result = result->to_reg(func_block_env);
+      }
       if (first_thing) {
         first_thing = false;
         // you could cheat and do a (begin (blorp) (declare ...)) to get around this.
@@ -347,8 +349,10 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     bool first_thing = true;
     Val* result = get_none();
     for_each_in_list(head_as_lambda->lambda.body, [&](const goos::Object& o) {
-      // todo - to_gpr these?
       result = compile_error_guard(o, compile_env);
+      if (!dynamic_cast<None*>(result)) {
+        result = result->to_reg(compile_env);
+      }
       if (first_thing) {
         first_thing = false;
         lexical_env->settings.is_set = true;
@@ -369,6 +373,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       }
       // get the method function pointer
       head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
+      fmt::format("method of object {} {}\n", head->print(), head->type().print());
     }
 
     // convert the head to a GPR (if function, this is already done)
@@ -391,11 +396,23 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   return get_none();
 }
 
+namespace {
+/*!
+ * Is the given typespec for a varargs function? Assumes typespec is a function to begin with.
+ */
+bool is_varargs_function(const TypeSpec& ts) {
+  return ts.arg_count() >= 2 && ts.get_arg(0).print() == "_varargs_";
+}
+}  // namespace
+
+/*!
+ * Do a real x86-64 function call.
+ */
 Val* Compiler::compile_real_function_call(const goos::Object& form,
                                           RegVal* function,
                                           const std::vector<RegVal*>& args,
                                           Env* env,
-                                          std::string method_type_name) {
+                                          const std::string& method_type_name) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   fe->require_aligned_stack();
   TypeSpec return_ts;
@@ -403,27 +420,17 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     // if the type system doesn't know what the function will return, just make it object.
     // the user is responsible for getting this right.
     return_ts = m_ts.make_typespec("object");
-    gLogger.log(MSG_WARN, "[Warning] Function call could not determine return type: %s\n",
-                form.print().c_str());
-    // todo, should this be a warning?  not a great thing if we don't know what a function will
-    // return?
+    gLogger.log(MSG_WARN, "[Warning] Function call could not determine return type: %s, %s, %s\n",
+                form.print().c_str(), function->print().c_str(), function->type().print().c_str());
+    // todo, consider making this an error once object-new works better.
   } else {
     return_ts = function->type().last_arg();
   }
 
   auto return_reg = env->make_ireg(return_ts, emitter::RegKind::GPR);
 
-  // TODO - VERY IMPORTANT
-  // CREATE A TEMP COPY OF FUNCTION! WILL BE DESTROYED.
-
-  // nope! not anymore.
-  //  for(auto& arg : args) {
-  //    // note: this has to be done in here, because we might want to const prop across lexical
-  //    envs. arg = resolve_to_gpr(arg, env);
-  //  }
-
   // check arg count:
-  if (function->type().arg_count()) {
+  if (function->type().arg_count() && !is_varargs_function(function->type())) {
     if (function->type().arg_count() - 1 != args.size()) {
       throw_compile_error(form, "invalid number of arguments to function call: got " +
                                     std::to_string(args.size()) + " and expected " +
@@ -447,7 +454,10 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     env->emit(std::make_unique<IR_RegSet>(arg_outs.back(), arg));
   }
 
-  env->emit(std::make_unique<IR_FunctionCall>(function, return_reg, arg_outs));
+  // todo, there's probably a more efficient way to do this.
+  auto temp_function = fe->make_gpr(function->type());
+  env->emit(std::make_unique<IR_RegSet>(temp_function, function));
+  env->emit(std::make_unique<IR_FunctionCall>(temp_function, return_reg, arg_outs));
 
   if (m_settings.emit_move_after_return) {
     auto result_reg = env->make_gpr(return_reg->type());
@@ -458,6 +468,10 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   }
 }
 
+/*!
+ * A (declare ...) form can be used to configure settings inside a function.
+ * Currently there aren't many useful settings, but more may be added in the future.
+ */
 Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto& settings = get_parent_env_of_type<DeclareEnv>(env)->settings;
 

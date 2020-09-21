@@ -143,15 +143,15 @@ void KernelCheckAndDispatch() {
       call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
     } else {
       if (ListenerFunction->value != s7.offset) {
-        fprintf(stderr, "Running Listener Function:\n");
-        auto cptr = Ptr<u8>(ListenerFunction->value).c();
-        for (int i = 0; i < 40; i++) {
-          fprintf(stderr, "%x ", cptr[i]);
-        }
-        fprintf(stderr, "\n");
+        //        fprintf(stderr, "Running Listener Function:\n");
+        //        auto cptr = Ptr<u8>(ListenerFunction->value).c();
+        //        for (int i = 0; i < 40; i++) {
+        //          fprintf(stderr, "%x ", cptr[i]);
+        //        }
+        //        fprintf(stderr, "\n");
         auto result =
             call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-        fprintf(stderr, "result of listener function: %lld\n", result);
+//        fprintf(stderr, "result of listener function: %lld\n", result);
 #ifdef __linux__
         cprintf("%ld\n", result);
 #else

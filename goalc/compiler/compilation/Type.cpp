@@ -184,8 +184,6 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   if (result) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-    printf("return type is %s from %s from %s\n", final_result->type().print().c_str(),
-           final_result->print().c_str(), result->print().c_str());
     lambda_ts.add_arg(final_result->type());
   } else {
     lambda_ts.add_arg(m_ts.make_typespec("none"));
@@ -309,15 +307,17 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
 
   if (is_number(base->type())) {
     if (m_ts.typecheck(m_ts.make_typespec("binteger"), desired_ts, "", false, false)) {
-      throw std::runtime_error("the convert to binteger not yet supported");
+      return number_to_binteger(base, env);
     }
 
     if (m_ts.typecheck(m_ts.make_typespec("integer"), desired_ts, "", false, false)) {
-      throw std::runtime_error("the convert to integer not yet supported");
+      auto result = number_to_integer(base, env);
+      result->set_type(desired_ts);
+      return result;
     }
 
     if (m_ts.typecheck(m_ts.make_typespec("float"), desired_ts, "", false, false)) {
-      throw std::runtime_error("the convert to float not yet supported");
+      return number_to_float(base, env);
     }
   }
 

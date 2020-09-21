@@ -887,8 +887,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
   if (method_id > 127)
     printf("[METHOD SET ERROR] tried to set method %d\n", method_id);
 
-  //  printf("METHOD SET id %d to 0x%x type 0x%x!\n", method_id, method, type_);
-
   auto existing_method = type->get_method(method_id).offset;
 
   if (method == 1) {

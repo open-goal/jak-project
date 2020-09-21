@@ -58,6 +58,7 @@ void Logger::log(LoggerMessageKind kind, const char* format, ...) {
 
   if (settings.color != COLOR_NORMAL) {
     printf("\033[0m");
+    fflush(stdout);
   }
 
   // todo, does this make things slow?

@@ -9,6 +9,7 @@ TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.
   add_type("none", std::make_unique<NullType>("none"));
   add_type("_type_", std::make_unique<NullType>("_type_"));
+  add_type("_varargs_", std::make_unique<NullType>("_varargs_"));
 }
 
 /*!
@@ -41,7 +42,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     // newly defined!
 
     // none/object get to skip these checks because they are roots.
-    if (name != "object" && name != "none" && name != "_type_") {
+    if (name != "object" && name != "none" && name != "_type_" && name != "_varargs_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         fmt::print("[TypeSystem] Type {} has incompletely defined parent {}\n", type->get_name(),
                    type->get_parent());
@@ -299,7 +300,7 @@ MethodInfo TypeSystem::add_new_method(Type* type, const TypeSpec& ts) {
   MethodInfo existing;
   if (type->get_my_new_method(&existing)) {
     // it exists!
-    if (existing.type != ts) {
+    if (!existing.type.is_compatible_child_method(ts, type->get_name())) {
       fmt::print(
           "[TypeSystem] The new method of {} was originally defined as {}, but has been redefined "
           "as {}\n",
@@ -487,7 +488,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
     // we need to compute the offset ourself!
     offset = align(type->get_size_in_memory(), field_alignment);
   } else {
-    int aligned_offset = align(type->get_size_in_memory(), field_alignment);
+    int aligned_offset = align(offset, field_alignment);
     if (offset != aligned_offset) {
       fmt::print(
           "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
@@ -584,7 +585,7 @@ void TypeSystem::add_builtin_types() {
   // the type.  Dynamic structures use new-dynamic-structure, which is used exactly once ever.
   add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "structure"));
   // structure_type is a field-less StructureType, so we have to do this to match the runtime.
-  structure_type->override_size_in_memory(4);
+  //  structure_type->override_size_in_memory(4);
 
   // BASIC
   // we intentionally don't inherit from structure because structure's size is weird.

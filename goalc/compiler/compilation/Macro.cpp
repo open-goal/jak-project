@@ -2,6 +2,9 @@
 
 using namespace goos;
 
+/*!
+ * Try to find a macro with the given name in the GOOS "goal_env". Return if it succeeded.
+ */
 bool Compiler::try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest) {
   Object macro_obj;
   bool got_macro = false;
@@ -20,6 +23,9 @@ bool Compiler::try_getting_macro_from_goos(const goos::Object& macro_name, goos:
   return got_macro;
 }
 
+/*!
+ * Expand a macro, then compile the result.
+ */
 Val* Compiler::compile_goos_macro(const goos::Object& o,
                                   const goos::Object& macro_obj,
                                   const goos::Object& rest,
@@ -37,6 +43,9 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
   return compile_error_guard(goos_result, env);
 }
 
+/*!
+ * Compile the #cond form, which is a compile-time conditional statement.
+ */
 Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env) {
   if (!rest.is_pair()) {
     throw_compile_error(form, "#cond must have at least one clause, which must be a form");
@@ -61,8 +70,12 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
         // got a match!
         result = get_none();
 
-        for_each_in_list(current_case.as_pair()->cdr,
-                         [&](const Object& o) { result = compile_error_guard(o, env); });
+        for_each_in_list(current_case.as_pair()->cdr, [&](const Object& o) {
+          result = compile_error_guard(o, env);
+          if (!dynamic_cast<None*>(result)) {
+            result = result->to_reg(env);
+          }
+        });
         return result;
       } else {
         // no match, continue.
@@ -76,6 +89,10 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
   }
 }
 
+/*!
+ * Compile (quote x) or 'x forms.
+ * Current only supports 'thing or '(). Static lists/pairs should be added at some point.
+ */
 Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
@@ -95,6 +112,9 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
   return get_none();
 }
 
+/*!
+ * Compile defglobalconstant forms, which define a constant in both GOOS and GOAL.
+ */
 Val* Compiler::compile_defglobalconstant(const goos::Object& form,
                                          const goos::Object& _rest,
                                          Env* env) {
@@ -122,6 +142,9 @@ Val* Compiler::compile_defglobalconstant(const goos::Object& form,
   return get_none();
 }
 
+/*!
+ * Compile an "mlet" scoped constant/symbol macro form
+ */
 Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto defs = pair_car(rest);
   auto body = pair_cdr(rest);
@@ -136,6 +159,11 @@ Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, 
   });
 
   Val* result = get_none();
-  for_each_in_list(body, [&](const goos::Object& o) { result = compile_error_guard(o, menv); });
+  for_each_in_list(body, [&](const goos::Object& o) {
+    result = compile_error_guard(o, menv);
+    if (!dynamic_cast<None*>(result)) {
+      result = result->to_reg(menv);
+    }
+  });
   return result;
 }
