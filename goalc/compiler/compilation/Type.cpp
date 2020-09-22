@@ -199,7 +199,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   }
   place->set_type(lambda_ts);
 
-  auto info = m_ts.add_method(symbol_string(type_name), symbol_string(method_name), lambda_ts);
+  auto info =
+      m_ts.add_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, false);
   auto type_obj = compile_get_symbol_value(symbol_string(type_name), env)->to_gpr(env);
   auto id_val = compile_integer(info.id, env)->to_gpr(env);
   auto method_val = place->to_gpr(env);
@@ -374,16 +375,22 @@ Val* Compiler::compile_car(const goos::Object& form, const goos::Object& rest, E
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
-                                     compile_error_guard(args.unnamed.at(0), env), true);
+  auto pair = compile_error_guard(args.unnamed.at(0), env);
+  if (pair->type() != m_ts.make_typespec("object")) {
+    typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to car");
+  }
+  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, true);
 }
 
 Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"),
-                                     compile_error_guard(args.unnamed.at(0), env), false);
+  auto pair = compile_error_guard(args.unnamed.at(0), env);
+  if (pair->type() != m_ts.make_typespec("object")) {
+    typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to cdr");
+  }
+  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, false);
 }
 
 // todo, consider splitting into method-of-object and method-of-type?

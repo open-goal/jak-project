@@ -235,8 +235,9 @@ Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
 
 MethodInfo TypeSystem::add_method(const std::string& type_name,
                                   const std::string& method_name,
-                                  const TypeSpec& ts) {
-  return add_method(lookup_type(make_typespec(type_name)), method_name, ts);
+                                  const TypeSpec& ts,
+                                  bool allow_new_method) {
+  return add_method(lookup_type(make_typespec(type_name)), method_name, ts, allow_new_method);
 }
 
 /*!
@@ -248,7 +249,10 @@ MethodInfo TypeSystem::add_method(const std::string& type_name,
  * is overriding the "new" method - the TypeSystem will track that because overridden new methods
  * may have different arguments.
  */
-MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, const TypeSpec& ts) {
+MethodInfo TypeSystem::add_method(Type* type,
+                                  const std::string& method_name,
+                                  const TypeSpec& ts,
+                                  bool allow_new_method) {
   if (method_name == "new") {
     return add_new_method(type, ts);
   }
@@ -286,6 +290,11 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
 
     return existing_info;
   } else {
+    if (!allow_new_method) {
+      fmt::print("[TypeSystem] Attempted to add method {} to type {} but it was not declared.\n",
+                 method_name, type->get_name());
+      throw std::runtime_error("illegal method definition");
+    }
     // add a new method!
     return type->add_method({get_next_method_id(type), method_name, ts, type->get_name()});
   }

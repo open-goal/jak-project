@@ -303,6 +303,39 @@ A normal Lisp/Scheme `unless`.
 ```
 If `test` is false, evaluate all forms and return the value of the last one. If `test` isn't false, return `#f`.
 
+# Compiler Forms - Defintion
+
+
+
+## `set!`
+Set a value!
+```lisp
+(set! place value)
+```
+
+Sets `place` to `value`. The `place` can be once of:
+- A lexical variable defined by `let`, or an argument of a function
+- A global symbol
+- A `car` or `cdr` of a pair
+- A field of an object
+- A dereferenced pointer
+- An element in an array
+- A bitfield within any of the above (not yet implemented)
+
+## `define`
+Define a global symbol
+```lisp
+(define symbol-name value)
+```
+Kind of like `set!`, but works exclusively on global symbols. Also sets the type of the global symbol. If the global symbol already has a type, and the `define` tries to change it, there will be an error or warning. (to be determined)
+
+## `define-extern`
+Inform the compiler about the type of a global symbol
+```lisp
+(define-extern symbol-name type)
+```
+Useful to forward declare functions or to let the compiler know about things in the C Kernel. See `goal-externs.gc` for where all the C Kernel stuff is declared.
+
 # Compiler Forms - Functions
 
 ## `defun`
@@ -469,9 +502,221 @@ Math forms will look at the type of the first argument to determine the "mode". 
 ## `+`
 Addition. Can take 1 or more arguments. `(+ 1)` will give you `1`, like you'd expect.
 ```lisp
-(+ things...)
+(+ form...)
 ```
-Works on integers and floats. 
+Works on integers and floats. Integer add is 64-bit and wrapping.
+
+## `-`
+Subtraction or negative. Can take 1 or more arguments. 
+```lisp
+(- form...)
+```
+`(- 1)` gives you `-1`, but `(- 1 3)` gives you `-2`, which may be slightly confusing at first. Works on integers and floats. Integer subtract is 64-bit and wrapping.
+
+## `*`
+Multiplication. Can take 1 or more arguments.
+```lisp
+(* form...)
+```
+`(* 7)` will become `7`, as you'd expect. Works on integers and floats. The exact behavior for integers needs to be explored more because the EE is weird. GOAL generates different code for multiplication of signed vs. unsigned integers.
+
+## `/`
+Division. Takes exactly two arguments
+```lisp
+(/ dividend divisor)
+```
+Works on floats and integers. The exact behavior for integers needs to be explored more because the EE is weird. GOAL generates different code for division of signed vs. unsigned integers.
+
+## `mod`
+Modulo operation. Takes exactly two arguments.
+```lisp
+(/ dividend divisor)
+```
+Works on integers only. The exact behavior needs to be explored because the EE is weird. It is unknown if the same code is generate for signed/unsigned mod.
+
+## `slhv`, `sarv`, `shrv`
+```lisp
+(shlv value shift-amount)
+```
+The exact behavior of GOAL shifts isn't fully understood, so these are temporary wrappers around x86-64 variable shift instructions.
+- `shlv` shift left variable
+- `sarv` shift arithmetic right variable
+- `shrv` shift logical right variable
+64-bit operation.
+
+## `logand`
+Bitwise And
+```lisp
+(logand a b)
+```
+64-bit operation.
+
+## `logior`
+Bitwise Inclusive Or (normal Or)
+```lisp
+(logior a b)
+```
+64-bit operation.
+
+## `logxor`
+Bitwise Exclusive Or (Xor
+```lisp
+(logxor a b)
+```
+64-bit operation.
+
+## `lognot`
+Bitwise Not
+```lisp
+(lognot a)
+```
+64-bit operation.
+
+# Compiler Forms - Type Forms
+
+## `defmethod`
+
+## `deftype`
+
+
+## `method`
+Get a method of a type or an object.
+__Warning - I will probably change this in the future.__
+```
+(method type method-name)
+(method object method-name)
+```
+
+The first form of this takes a type name and method name and returns a GOAL `function` for this method. For example:
+```
+(method string inspect)
+```
+will return the `inspect` method of `string`.
+
+The second form of this takes an object and gets the method from it. If the object has runtime type information, will consult the method table to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
+
+## `car` and `cdr`
+Get element from pair
+```lisp
+(car some-pair)
+(cdr some-pair)
+```
+
+The type of the result is always `object`, as pairs can hold any `object`. The type-check for `car` and `cdr` is relaxed - it allows it to be applied to any `pair` or `object`.  The reason for allowing `object` is so you can write `(car (car x))` instead of `(car (the pair (car x)))`. However, if the argument to `car` is not a `pair`, you will get garbage or a crash.
+
+## `new`
+See section on creating new GOAL objects
+
+## `print-type`
+Print the type of some GOAL expression at compile time.
+```lisp
+(print-type form)
+```
+This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is actually executed at runtime. Example:
+```lisp
+(print-type "apples")        ;; [TYPE] string
+(print-type (+ 12 1.2))      ;; [TYPE] int
+(print-type (the float 12))  ;; [TYPE] float
+```
+
+## `the`
+Convert between types, doing the expected thing for number conversions.
+```lisp
+(the type thing)
+```
+
+If the `type` and the `thing` are both numbers, it will automatically convert between the different numeric types as needed. In all other cases, it does a dangerous `reinterpret_cast`.  cppreference.com explains this idea clearly with "Converts between types by reinterpreting the underlying bit pattern."
+
+If the `thing` is a number:
+- If `type` is `binteger`, convert the number to a `binteger`
+- If `type` is `int` or `uint` (or some user-defined child type of these), convert the number to an integer.
+- If `type` is `float`, conver the number to a `float`
+
+In all other cases, directly use the 64-bit value in the reigster as the value of the desired `type`.
+
+
+Example of number conversions:
+```
+(the binteger 12) ;; boxed integer for 12
+(the float 1)     ;; floating point 1.0
+(the int 1.234)   ;; signed integer 1
+```
+
+Examples of common casts:
+```
+(the uint 1)             ;; unsigned integer, doesn't do any modification if input is already an int.
+(the (pointer uint8) x)  ;; like C (uint8_t*)x
+(the string (car x))     ;; if you know (car x) is a string, do this.
+```
+
+Examples of dangerous things you can do but probably shouldn't:
+```
+(the string 1.234) ;; take the binary representation of 1.234 and treat it as a GOAL memory address to string data.
+(the float 'bean)  ;; take the GOAL memory address of the "bean" symbol and treat it as the binary representation of a float.
+```
+
+There are some weird edge cases with `the` that are worth mentioning, if you try to set the value of something you've used `the` on. In the future the compiler should block you from doing something bad, but this is not yet implemented.
+
+```
+(set! (-> (the (pointer uint8) x)) 1)      ;; OK, not casting the actual value
+(set! (the int (-> obj x)) 1)              ;; NOT OK. Int is a value type
+;; Will actually work if x is already an int/uint, and with non-numeric values types like pointer.  Avoid just to be safe.
+(set! (the string (-> obj x)) "test")      ;; OK, string is a basic, which is a reference type.
+```
+
+This becomes more clear if we look at the C equivalent:
+```
+*(uint8_t*)(a->x) = 1; // makes sense
+
+(int)(a->x) = 1; // doesn't make sense
+
+*(thing*)(a->x) = thing(); // makes sense
+```
+
+
+## `the-as`
+Convert between types always using `reinterpret_cast`
+```lisp
+(the-as type thing)
+```
+cppreference.com explains this idea clearly with "Converts between types by reinterpreting the underlying bit pattern."
+
+The recommendation is to prefer `the` in almost all cases, unless you want to set an exact bit pattern of a `float`, or want to examine the bits in a `float`.
+
+Example:
+```
+(the-as int 1.234) ;; result happens to be 1067316150
+```
+
+None of the edge cases of `the` apply to `the-as`.
+
+
+## Pointer Math
+Not implemented well yet.
+
+# Compiler Forms - Unsorted
+
+## `let`
+
+## `let*`
+
+## Things related to enums
+Not yet implemented
+
+## `defmacro`
+
+## Loop forms
+
+## `&`
+
+## `->`
+
+## Type
+
+## Compile-Time Size stuff
+
+## `object-new`
+
 
 # Compiler Features
 
@@ -579,6 +824,10 @@ These can differ by padding for alignment.
 
 ## Method `_type_` type
 
+## Calling Methods
+
+## Built-in Methods
+
 ## New - How To Create GOAL Objects
 
 ## Defining a `new` Method
@@ -610,6 +859,8 @@ The value of `#f` can be used like `nullptr`, at least for any `basic` object.  
 
 Technical note: the hex number `0x147d24` is considered false in Jak 1 NTSC due to where the symbol table happened to be allocated.  However, checking numbers for true/false shouldn't be done, you should use `(zero? x)` instead.
 
+## Empty Pair
+
 # Built-in Types
 
 ## `structure`
@@ -618,3 +869,12 @@ A structure is the parent type of all types with fields.
 ## `basic`
 A basic is a structure with runtime type information. The first field is named `type` and contains the `type` of the basic.
 
+# Implemented in Runtime Language Functions
+
+## `string->symbol`
+
+## `symbol->string`
+
+## `format`
+
+## Load Stuff
