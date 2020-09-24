@@ -697,8 +697,41 @@ Not implemented well yet.
 # Compiler Forms - Unsorted
 
 ## `let`
+```lisp
+(let ((var-name value)...) body...)
+```
+Define local variables. The variables are automatically assigned a type, like C++ `auto`.
+
+Example:
+```lisp
+(let ((count-1 (+ a b))   ;; count_1 = a + b
+      (count-2 (+ c d)))  ;; count_2 = c + d
+  (if (count > 10)
+    ;; print a message if count > 10.
+    (format #t "count = ~D, ~D~%" count-1 count-2)
+    )    
+  )
+```
+
+Note, if you define multiple variables in a `let`, you cannot refer to variables defined previously in the same `let`.  In the example above, `count-2`'s value couldn't be defined in terms of `count-1` for example.  See `let*`.
 
 ## `let*`
+```lisp
+(let ((var-name value)...) body...)
+```
+
+Define local variables. If you define multiple in a single `let*`, you can refer to previous variables.
+
+Example:
+```lisp
+(let* ((count-1 (+ a b))
+       (count-2 (+ count-1 d)))  ;; okay because we used let*
+  (if (count > 10)
+    ;; print a message if count > 10.
+    (format #t "count = ~D, ~D~%" count-1 count-2)
+    )    
+  )
+```
 
 ## Things related to enums
 Not yet implemented
@@ -876,5 +909,93 @@ A basic is a structure with runtime type information. The first field is named `
 ## `symbol->string`
 
 ## `format`
+GOAL's `printf`.
+```lisp
+(format destination format-string args...)
+```
+
+The following destinations are currently supported:
+- `#t` - print to the listener. After the current game frame is over, this will be sent to the compiler and you can see it at the GOAL prompt.
+- `0` - print to `stdout` in the runtime immediately. This won't be visible from within the compiler - you must look at the runtime to see it.  This is useful for debugging if the runtime crashes before flushing the normal print buffer.
+- `#f` - print to a new string allocated on the global heap.
+- a GOAL `string` object - append to an existing string
+- a GOAL `file-stream` object - currently unsupported but eventually may allow printing into a file somewhere
+
+The global variable `*print-column*` can be used to automatically print at a certain indentation.  The very first thing printed during a frame will not have the indentation applied.
+
+The format string excape sequences all start with `~`, then have arguments (possibly none), then have a single character code.  The arguments look like:
+- `~A`, the `A` code with no arguments
+- `~12A`, the `A` code with an integer argument of `12`
+- `~'zA`, the `A` code with a character argument of `z`
+- ``` ~`hello`A```, the `A` code with a string argument of `"hello"`
+- `~12,'bA`, the `A` code with two arguments, integer `12` and character `b`
+
+
+The escape codes are
+
+### `~%`
+Replace with a newline character.
+
+### `~~`
+Replace with a `~` character
+
+### `~G` or `~g`
+Replace with a C-style string given in `args`. Note that this will not work on a GOAL string.
+
+### `~A` or `~a`
+Print a boxed object given in `args`. Uses the `print` method. Can take optional arguments for length and padding character. If the `print` method gives something shorter than the length argument, it will be padded on the left with the padding character (default is space).  If the `print` method gives something too long, it will be truncated on the right. The last character printed will be changed to `~` to indicate it was truncated here.
+
+There is an option to left justify instead but I don't think there's a way to turn it on.
+
+### `~S` or `~s`
+Very similar to `~A`, but a GOAL string will be printed without quotes around it.
+
+### `~C` or `~c`
+Print a single character (GOAL `uint8` or `int8` type)
+
+### `~P` or `~p`
+Print an object, similar to `~A`, but does not have optional arguments for length or padding. Instead, there is an optional argument to give a type name, then use that types `print` method.  This is useful for printing non-boxed objects. If no type name is given, behaves like `~A`.
+
+### `~I` or `~i`
+Like `~P`, but uses the inspect method instead.
+
+### `~Q` or `~q`
+Likely was supposed to be for printing 128-bit integers stored in registers, but will always prints `0`.  The `format` function is written in C using varargs, which doesn't support 128-bit register values.
+
+### `~B` or `~b`
+Print integer as binary. Optional arguments for pad-length and pad-character (default is 0). Won't truncate.
+
+### `~D` or `~d`
+Print integer as decimal (signed). Optional arguments for pad-length and pad-character (default is space). Won't truncate.
+
+### `~X` or `~x`
+Print integer as hex. Optional arguments for pad-length and pad-character (default is 0). Won't truncate.
+
+### `~F`
+Print floating point. Will print 4 digits after the decimal and pad with space to a width of 12 and does not accept any options.
+
+### `~f`
+Print floating point.  Takes optional arguments for pad-length (default don't pad), pad-character (default space), and precision (default 4).
+
+## `~R` or `~r`
+Like `~f` but scales in-game rotation units to degrees.  The float `65536.0` is 360 degrees.
+
+### `~M` or `~m`
+Like `~f` but scales in-game distance units to meters.  The float `4096.0` is 1 meter.
+
+### `~E` or `~e`
+Like `~f` for argument, but takes an integer time-code as an input and scales time-code units to seconds.  There are 300 ticks / second, which is the smallest number which has an integer number of ticks per NTSC and PAL frame.  Something very weird happens when the input is negative?
+
+### `~T` or `~t`
+Insert a tab character.
+
+### Pass Through Codes
+Some codes will be passed through automatically, along with any arguments.  This will also pass through arguments of `+` or `-`.  I believe that these options could later be interpreted by the code for printing on-screen characters.
+
+The pass through codes are `H,J,K,L,N,V,W,Y,Z,h,j,k,l,n,v,w,y,z`.
+
+Any other codes will result in an error message being printed.
+
+
 
 ## Load Stuff

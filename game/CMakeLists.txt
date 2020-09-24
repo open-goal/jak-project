@@ -70,16 +70,24 @@ set(RUNTIME_SOURCE
         overlord/stream.cpp)
 
 # the runtime should be built without any static/dynamic libraries.
-add_executable(gk ${RUNTIME_SOURCE} main.cpp)
+#add_executable(gk ${RUNTIME_SOURCE} main.cpp)
+
 
 # we also build a runtime library for testing. This version is likely unable to call GOAL code correctly, but
 # can be used to test other things.
 add_library(runtime ${RUNTIME_SOURCE})
 
+add_executable(gk main.cpp)
+
 IF (WIN32)
   # set stuff for windows
-  target_link_libraries(gk cross_sockets mman common_util)
+  target_link_libraries(runtime mman cross_sockets common_util)
+  target_link_libraries(gk cross_sockets mman common_util runtime)
 ELSE()
   # set stuff for other systems
-  target_link_libraries(gk cross_sockets pthread common_util)
+  target_link_libraries(runtime pthread cross_sockets common_util)
+  target_link_libraries(gk cross_sockets pthread common_util runtime)
+
 ENDIF()
+
+
