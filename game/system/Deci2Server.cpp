@@ -194,8 +194,8 @@ void Deci2Server::run() {
   }
 
   auto* hdr = (Deci2Header*)(buffer);
-  fprintf(stderr, "[DECI2] Got message:\n");
-  fprintf(stderr, " %d %d 0x%x %c -> %c\n", hdr->len, hdr->rsvd, hdr->proto, hdr->src, hdr->dst);
+  fprintf(stderr, "[DECI2] Got message: %d %d 0x%x %c -> %c\n", hdr->len, hdr->rsvd, hdr->proto,
+          hdr->src, hdr->dst);
 
   hdr->rsvd = got;
 

@@ -287,6 +287,7 @@ std::string IR_FunctionCall::print() {
 RegAllocInstr IR_FunctionCall::to_rai() {
   RegAllocInstr rai;
   rai.read.push_back(m_func->ireg());
+  rai.write.push_back(m_func->ireg());  // todo, can we avoid this?
   rai.write.push_back(m_ret->ireg());
   for (auto& arg : m_args) {
     rai.read.push_back(arg->ireg());
@@ -298,8 +299,6 @@ RegAllocInstr IR_FunctionCall::to_rai() {
       rai.clobber.emplace_back(i);
     }
   }
-
-  // todo, clobber call reg?
 
   return rai;
 }
@@ -326,6 +325,7 @@ void IR_FunctionCall::do_codegen(emitter::ObjectGenerator* gen,
   auto freg = get_reg(m_func, allocs, irec);
   gen->add_instr(IGen::add_gpr64_gpr64(freg, emitter::gRegInfo.get_offset_reg()), irec);
   gen->add_instr(IGen::call_r64(freg), irec);
+  // todo, can we do a sub to undo the modification to the register? does that actually work?
 }
 
 /////////////////////
@@ -508,6 +508,10 @@ std::string IR_FloatMath::print() {
       return fmt::format("divss {}, {}", m_dest->print(), m_arg->print());
     case FloatMathKind::MUL_SS:
       return fmt::format("mulss {}, {}", m_dest->print(), m_arg->print());
+    case FloatMathKind::ADD_SS:
+      return fmt::format("addss {}, {}", m_dest->print(), m_arg->print());
+    case FloatMathKind::SUB_SS:
+      return fmt::format("subss {}, {}", m_dest->print(), m_arg->print());
     default:
       throw std::runtime_error("Unsupported FloatMathKind");
   }
@@ -532,6 +536,14 @@ void IR_FloatMath::do_codegen(emitter::ObjectGenerator* gen,
     case FloatMathKind::MUL_SS:
       gen->add_instr(
           IGen::mulss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case FloatMathKind::ADD_SS:
+      gen->add_instr(
+          IGen::addss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case FloatMathKind::SUB_SS:
+      gen->add_instr(
+          IGen::subss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
       break;
     default:
       assert(false);
@@ -664,7 +676,9 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
   }
 
   if (condition.is_float) {
-    assert(false);  // for now
+    gen->add_instr(
+        IGen::cmp_flt_flt(get_reg(condition.a, allocs, irec), get_reg(condition.b, allocs, irec)),
+        irec);
   } else {
     gen->add_instr(IGen::cmp_gpr64_gpr64(get_reg(condition.a, allocs, irec),
                                          get_reg(condition.b, allocs, irec)),
@@ -789,4 +803,52 @@ void IR_FunctionStart::do_codegen(emitter::ObjectGenerator* gen,
   (void)gen;
   (void)allocs;
   (void)irec;
+}
+
+///////////////////////
+// FloatToInt
+///////////////////////
+
+IR_FloatToInt::IR_FloatToInt(const RegVal* dest, const RegVal* src) : m_dest(dest), m_src(src) {}
+
+std::string IR_FloatToInt::print() {
+  return fmt::format("f2i {}, {}", m_dest->print(), m_src->print());
+}
+
+RegAllocInstr IR_FloatToInt::to_rai() {
+  RegAllocInstr rai;
+  rai.read.push_back(m_src->ireg());
+  rai.write.push_back(m_dest->ireg());
+  return rai;
+}
+
+void IR_FloatToInt::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
+  gen->add_instr(IGen::float_to_int32(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
+                 irec);
+}
+
+///////////////////////
+// IntToFloat
+///////////////////////
+
+IR_IntToFloat::IR_IntToFloat(const RegVal* dest, const RegVal* src) : m_dest(dest), m_src(src) {}
+
+std::string IR_IntToFloat::print() {
+  return fmt::format("i2f {}, {}", m_dest->print(), m_src->print());
+}
+
+RegAllocInstr IR_IntToFloat::to_rai() {
+  RegAllocInstr rai;
+  rai.read.push_back(m_src->ireg());
+  rai.write.push_back(m_dest->ireg());
+  return rai;
+}
+
+void IR_IntToFloat::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
+  gen->add_instr(IGen::int32_to_float(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
+                 irec);
 }

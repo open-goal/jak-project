@@ -301,9 +301,9 @@
         (object-type object))
     (until (eq? (set! basics-type (-> basics-type parent)) object-type)
            (if (eq? basics-type input-type)
-             ;; return-from #f will return from the function with the value of #t
-             (return-from #f #t)
-             )
+               ;; return-from #f will return from the function with the value of #t
+               (return-from #f #t)
+               )
            )
     )
   #f ;; didn't find it, return false
@@ -315,8 +315,8 @@
          ;; it's not clear why a might be zero?
          ;; perhaps if the type system is not yet initialized fully for the type?
          (if (or (eq? a b) (zero? a))
-           (return-from #f #t)
-           )
+             (return-from #f #t)
+             )
          (set! a (-> a parent))
          )
   #f
@@ -330,19 +330,19 @@
   (let* ((child-method (-> the-type method-table method-id))
          (parent-method child-method)
          )
-
+    
     ;; keep looking until we find a different parent method
     (until (not (eq? parent-method child-method))
            ;; at the top of the type tree.
            (if (eq? the-type object)
-             (return-from #f nothing)
-             )
-
+               (return-from #f nothing)
+               )
+           
            (set! the-type (-> the-type parent))
            (set! parent-method (-> the-type method-table method-id))
            (if (eq? 0 (the int parent-method))
-             (return-from #f nothing)
-             )
+               (return-from #f nothing)
+               )
            )
     parent-method
     )
@@ -362,17 +362,17 @@
 (defmethod length pair ((obj pair))
   "Get the number of elements in a proper list"
   (if (eq? obj '())
-    (return-from #f 0)
-    )
-
+      (return-from #f 0)
+      )
+  
   (let ((lst (cdr obj))
         (len 1))
     (while (and (not (eq? lst '()))
                 (pair? lst)
                 )
-           (+1! len)
-           (set! lst (cdr lst))
-           )
+      (+1! len)
+      (set! lst (cdr lst))
+      )
     len)
   )
 
@@ -386,8 +386,8 @@
 (defun last ((obj object))
   "Get the last pair in a list."
   (while (not (eq? (cdr obj) '()))
-         (set! obj (cdr obj))
-         )
+    (set! obj (cdr obj))
+    )
   obj
   )
 
@@ -396,42 +396,42 @@
   if not, return #f."
   (while (and (not (eq? lst '()))
               (not (eq? (car lst) obj)))
-         (set! lst (cdr lst))
-         )
-
-  (if (eq? lst '())
-    #f
-    lst
+    (set! lst (cdr lst))
     )
+  
+  (if (eq? lst '())
+      #f
+      lst
+      )
   )
 
 (define-extern name= (function basic basic symbol))
 
 (defun nmember ((obj basic) (lst object))
   "If obj is a member of the list, return the pair containing obj as its car.
-   If not, return #f.  Use name= (see gstring.gc) to check equality."
-   (while (and (not (eq? lst '()))
-               (not (name= (the basic (car lst)) obj))
-               )
-     (set! lst (cdr lst))
-     )
-   
-   (if (eq? lst '())
-       #f
-       lst
-       )
+  If not, return #f.  Use name= (see gstring.gc) to check equality."
+  (while (and (not (eq? lst '()))
+              (not (name= (the basic (car lst)) obj))
+              )
+    (set! lst (cdr lst))
+    )
+  
+  (if (eq? lst '())
+      #f
+      lst
+      )
   )
 
 (defun assoc ((item object) (alst object))
   "Get a pair with car of item from the association list (list of pairs) alst."
   (while (and (not (null? alst))
               (not (eq? (caar alst) item)))
-         (set! alst (cdr alst))
-         )
-  (if (not (null? alst))
-    (car alst)
-    #f
+    (set! alst (cdr alst))
     )
+  (if (not (null? alst))
+      (car alst)
+      #f
+      )
   )
 
 (defun assoce ((item object) (alst object))
@@ -440,12 +440,12 @@
               (not (eq? (caar alst) item))
               (not (eq? (caar alst) 'else))
               )
-         (set! alst (cdr alst))
-         )
-  (if (not (null? alst))
-    (car alst)
-    #f
+    (set! alst (cdr alst))
     )
+  (if (not (null? alst))
+      (car alst)
+      #f
+      )
   )
 
 ;; todo
@@ -455,20 +455,20 @@
 (defun append! ((front object) (back object))
   "Append back to front."
   (if (null? front)
-    (return-from #f back)
-    )
-
+      (return-from #f back)
+      )
+  
   (let ((lst front))
     ;; seek to the end of front
     (while (not (null? (cdr lst)))
-           (set! lst (cdr lst))
-           )
-
+      (set! lst (cdr lst))
+      )
+    
     ;; this check seems not needed
     (if (not (null? lst))
-      (set! (cdr lst) back)
-      )
-
+        (set! (cdr lst) back)
+        )
+    
     front
     )
   )
@@ -477,21 +477,21 @@
   "Delete the first occurance of item from a list and return the list.
   Does nothing if the item isn't in the list."
   (if (eq? (car lst) item)
-    (return-from #f (cdr lst))
-    )
-
+      (return-from #f (cdr lst))
+      )
+  
   (let ((iter (cdr lst))
         (rep lst))
-
+    
     (while (and (not (null? iter))
                 (not (eq? (car iter) item)))
-           (set! rep iter)
-           (set! iter (cdr iter))
-           )
-
-    (if (not (null? iter))
-      (set! (cdr rep) (cdr iter))
+      (set! rep iter)
+      (set! iter (cdr iter))
       )
+    
+    (if (not (null? iter))
+        (set! (cdr rep) (cdr iter))
+        )
     )
   (the pair lst)
   )
@@ -500,20 +500,20 @@
   "Like delete, but will delete if (car item-from-list) is equal to item.  Useful for deleting from association list by key."
   ;(format #t "call to delete car: ~A ~A~%" item lst)
   (if (eq? (caar lst) item)
-    (return-from #f (cdr lst))
-    )
-
+      (return-from #f (cdr lst))
+      )
+  
   (let ((rep lst)
         (iter (cdr lst)))
     (while (and (not (null? iter))
                 (not (eq? (caar iter) item)))
-           (set! rep iter)
-           (set! iter (cdr iter))
-           )
-
-    (if (not (null? iter))
-      (set! (cdr rep) (cdr iter))
+      (set! rep iter)
+      (set! iter (cdr iter))
       )
+    
+    (if (not (null? iter))
+        (set! (cdr rep) (cdr iter))
+        )
     )
   lst
   )
@@ -523,7 +523,7 @@
   (cons kv (delete-car! (car kv) alst))
   )
 
-(defun sort ((lst object) (compare function))
+(defun sort ((lst object) (compare (function object object object)))
   "Sort the given list in place.  Uses the given comparison function. The comparison function can 
   either return #t/#f or an integer, in which case the sign of the integer determines lt/gt."
   ;; in each iteration, we count how many changes we make. Once we make no changes, the list is sorted.
@@ -573,11 +573,12 @@
   ((length int32 :offset-assert 4)
    (allocated-length int32 :offset-assert 8)
    (data uint8 :dynamic)
-   ;; ??
    )
+  (:methods (new (symbol type int) _type_ 0)    ;; we will override print later on. This is optional to include
+            )
   )
 
-(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (cnt integer))
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (cnt int))
   "Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
   of the type-to-make to determine the element size"
   (let* ((sz (+ (-> type-to-make size) (* (-> type-to-make heap-base) cnt)))
@@ -620,11 +621,24 @@
         )
     
     (while (< i size)
-           (set! (-> (the (pointer uint8) d) 0) (-> (the (pointer uint8) s) 0))
-           (&+! d 1)
-           (&+! s 1)
-           (+1! i)
-           )
+      (set! (-> (the (pointer uint8) d) 0) (-> (the (pointer uint8) s) 0))
+      (&+! d 1)
+      (&+! s 1)
+      (+1! i)
+      )
+    )
+  dst
+  )
+
+(defun mem-set32! ((dst pointer) (value int) (n int))
+  "Memset a 32-bit value n times.  Total memory filled is 4 * n bytes."
+  (let ((p (the pointer dst))
+        (i 0))
+    (while (< i n)
+      (set! (-> (the (pointer int32) p) 0) value)
+      (&+! p 4)
+      (+1! i)
+      )
     )
   dst
   )

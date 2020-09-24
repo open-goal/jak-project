@@ -54,8 +54,12 @@ class TypeSystem {
 
   MethodInfo add_method(const std::string& type_name,
                         const std::string& method_name,
-                        const TypeSpec& ts);
-  MethodInfo add_method(Type* type, const std::string& method_name, const TypeSpec& ts);
+                        const TypeSpec& ts,
+                        bool allow_new_method = true);
+  MethodInfo add_method(Type* type,
+                        const std::string& method_name,
+                        const TypeSpec& ts,
+                        bool allow_new_method = true);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
   MethodInfo lookup_method(const std::string& type_name, const std::string& method_name);
   MethodInfo lookup_new_method(const std::string& type_name);

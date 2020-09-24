@@ -9,6 +9,8 @@ CompilerSettings::CompilerSettings() {
 
   m_settings["disable-math-const-prop"].kind = SettingKind::BOOL;
   m_settings["disable-math-const-prop"].boolp = &disable_math_const_prop;
+
+  link(print_timing, "print-timing");
 }
 
 void CompilerSettings::set(const std::string& name, const goos::Object& value) {
@@ -21,4 +23,9 @@ void CompilerSettings::set(const std::string& name, const goos::Object& value) {
   if (kv->second.boolp) {
     *kv->second.boolp = !(value.is_symbol() && value.as_symbol()->name == "#f");
   }
+}
+
+void CompilerSettings::link(bool& val, const std::string& name) {
+  m_settings[name].kind = SettingKind::BOOL;
+  m_settings[name].boolp = &val;
 }

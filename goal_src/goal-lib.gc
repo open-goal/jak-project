@@ -92,6 +92,12 @@
      )
   )
 
+(defmacro shutdown-target ()
+  `(begin
+    (reset-target :shutdown)
+    )
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;
 ;; GOAL Syntax
@@ -365,4 +371,35 @@
     `(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make (-> type-to-make asize)))
     `(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make ,@sz))
     )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TEST STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro expect-eq (a b &key (name "unknown"))
+  `(if (!= ,a ,b)
+       (format #t "Test Failed On Test ~D: ~A~%" *test-count* ,name)
+       (+! *test-count* 1)
+       )
+  )
+
+(defmacro expect-true (a)
+  `(expect-eq ,a #t)
+  )
+
+(defmacro expect-false (a)
+  `(expect-eq ,a #f)
+  )
+
+(defmacro start-test (test-name)
+  `(begin
+     (define *test-name* ,test-name)
+     (define *test-count* 0)
+     )
+  )
+
+(defmacro finish-test ()
+  `(format #t "Test ~A: ~D Passes~%" *test-name* *test-count*)
   )

@@ -1,10 +1,18 @@
+/*!
+ * @file ControlFlow.cpp
+ * Compiler forms related to conditional branching and control flow.
+ */
+
 #include "goalc/compiler/Compiler.h"
 
 /*!
- * Convert a condition expression into a GoalCondition for use in a conditional branch.
+ * Convert an expression into a GoalCondition for use in a conditional branch.
+ *
  * The reason for this design is to allow an optimization for
  * (if (< a b) ...) to be compiled without actually computing a true/false value for the (< a b)
  * expression. Instead, it will generate a cmp + jle sequence of instructions, which is much faster.
+ * In particular, getting GOAL "true" requires a few instructions, so it's to avoid this when
+ * possible.
  *
  * This can be applied to _any_ GOAL form, and will return a GoalCondition which can be used with a
  * Branch IR to branch if the condition is true/false.  When possible it applies the optimization
@@ -95,7 +103,7 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
     }
   }
 
-  // not something we can process more.  Just check if we get false.
+  // not something we can process more.  Just evaluate as normal and check if we get false.
   // todo - it's possible to optimize a false comparison because the false offset is zero
   gc.kind = invert ? ConditionKind::EQUAL : ConditionKind::NOT_EQUAL;
   gc.a = compile_error_guard(condition, env)->to_gpr(env);
@@ -104,6 +112,12 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
   return gc;
 }
 
+/*!
+ * Compile a comparison when we explicitly want a boolean result. This is used whenever a condition
+ * _isn't_ used as a branch condition. Like (set! x (< 1 2))
+ *
+ * TODO, this could be optimized quite a bit.
+ */
 Val* Compiler::compile_condition_as_bool(const goos::Object& form,
                                          const goos::Object& rest,
                                          Env* env) {
@@ -124,6 +138,10 @@ Val* Compiler::compile_condition_as_bool(const goos::Object& form,
   return result;
 }
 
+/*!
+ * The when-goto form is a better version of (if condition (goto x))
+ * It compiles into a single conditional branch.
+ */
 Val* Compiler::compile_when_goto(const goos::Object& form, const goos::Object& _rest, Env* env) {
   (void)form;
   auto* rest = &_rest;
@@ -141,6 +159,12 @@ Val* Compiler::compile_when_goto(const goos::Object& form, const goos::Object& _
   return get_none();
 }
 
+/*!
+ * The Scheme/Lisp "cond" form.
+ * Works like you expect. Return type is the lowest common ancestor of all possible return values.
+ * If no cases match and there's no else, returns #f.
+ * TODO - how should the return type work if #f can possibly be returned?
+ */
 Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto result = env->make_gpr(m_ts.make_typespec("object"));
 
@@ -170,12 +194,16 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       Val* case_result = get_none();
       for_each_in_list(clauses, [&](const goos::Object& clause) {
         case_result = compile_error_guard(clause, env);
+        if (!dynamic_cast<None*>(case_result)) {
+          case_result = case_result->to_reg(env);
+        }
       });
 
       case_result_types.push_back(case_result->type());
 
       // optimization - if we get junk, don't bother moving it, just leave junk in return.
       if (!is_none(case_result)) {
+        // todo, what does GOAL do here? does it matter?
         env->emit(std::make_unique<IR_RegSet>(result, case_result->to_gpr(env)));
       }
 
@@ -193,10 +221,14 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       Val* case_result = get_none();
       for_each_in_list(clauses, [&](const goos::Object& clause) {
         case_result = compile_error_guard(clause, env);
+        if (!dynamic_cast<None*>(case_result)) {
+          case_result = case_result->to_reg(env);
+        }
       });
 
       case_result_types.push_back(case_result->type());
       if (!is_none(case_result)) {
+        // todo, what does GOAL do here?
         env->emit(std::make_unique<IR_RegSet>(result, case_result->to_gpr(env)));
       }
 
@@ -210,8 +242,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
   });
 
   if (!got_else) {
-    // if no else, clause, return #f.  But don't retype.  I don't know how I feel about this typing
-    // setup.
+    // if no else, clause, return #f.  But don't retype. todo what does goal do here?
     auto get_false = std::make_unique<IR_LoadSymbolPointer>(result, "#f");
     env->emit(std::move(get_false));
   }

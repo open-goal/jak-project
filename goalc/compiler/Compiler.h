@@ -82,7 +82,7 @@ class Compiler {
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,
                                   Env* env,
-                                  std::string method_type_name = "");
+                                  const std::string& method_type_name = "");
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;

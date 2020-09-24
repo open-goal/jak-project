@@ -1,6 +1,15 @@
+/*!
+ * @file Define.cpp
+ * Forms which define or set things.
+ */
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/logger/Logger.h"
 
+/*!
+ * Define or set a global value. Has some special magic to store data for functions which may be
+ * inlined.
+ */
 Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL, {}}, {});
@@ -41,6 +50,9 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   return in_gpr;
 }
 
+/*!
+ * Inform the compiler of the type of a global. Will warn on changing type.
+ */
 Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
@@ -52,6 +64,7 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 
   auto existing_type = m_symbol_types.find(symbol_string(sym));
   if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {
+    // todo spdlog
     gLogger.log(
         MSG_WARN,
         "[Warning] define-extern has redefined the type of symbol %s\npreviously: %s\nnow: %s\n",
@@ -62,12 +75,18 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   return get_none();
 }
 
+/*!
+ * Set something to something.
+ * Lots of special cases.
+ */
 Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});
 
   auto& destination = args.unnamed.at(0);
-  // todo, I don't know if this is the correct order or not.
+  // todo, I don't know if this is the correct order or not. Right now the value is computed
+  // and to_reg'd first, then the destination is computed, if the destination requires math to
+  // compute.
   auto source = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
 
   if (destination.is_symbol()) {
@@ -97,25 +116,29 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
       }
     }
   } else {
+    // destination is some complex expression, so compile it and hopefully get something settable.
     auto dest = compile_error_guard(destination, env);
     auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
     auto as_pair = dynamic_cast<PairEntryVal*>(dest);
     if (as_mem_deref) {
+      // setting somewhere in memory
       auto base = as_mem_deref->base;
       auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
       if (base_as_mco) {
+        // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
         auto ti = m_ts.lookup_type(base->type());
         env->emit(std::make_unique<IR_StoreConstOffset>(
             source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
         return source;
       } else {
+        // nope, the pointer to dereference is some compliated thing.
         auto ti = m_ts.lookup_type(base->type());
         env->emit(std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env),
                                                         ti->get_load_size()));
         return source;
-        throw_compile_error(form, "Set not implemented for this (non-mco) yet");
       }
     } else if (as_pair) {
+      // this could probably be part of MemoryDerefVal and not a special case here.
       env->emit(std::make_unique<IR_StoreConstOffset>(source, as_pair->is_car ? -2 : 2,
                                                       as_pair->base->to_gpr(env), 4));
       return source;

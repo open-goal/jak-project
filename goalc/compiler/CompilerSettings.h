@@ -14,10 +14,12 @@ class CompilerSettings {
   bool debug_print_regalloc = false;
   bool disable_math_const_prop = false;
   bool emit_move_after_return = true;
+  bool print_timing = false;
 
   void set(const std::string& name, const goos::Object& value);
 
  private:
+  void link(bool& val, const std::string& name);
   enum class SettingKind { BOOL, INVALID };
 
   struct SettingsEntry {

@@ -111,6 +111,10 @@ struct CompilerTestRunner {
   }
 };
 
+std::vector<std::string> get_test_pass_string(const std::string& name, int n_tests) {
+  return {fmt::format("Test \"{}\": {} Passes\n0\n", name, n_tests)};
+}
+
 }  // namespace
 
 TEST(CompilerAndRuntime, BuildGameAndTest) {
@@ -157,6 +161,14 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-insert-cons.gc", {"((c . w) (a . b) (e . f))\n0\n"});
   runner.run_test("test-new-inline-array-class.gc", {"2820\n"});
   runner.run_test("test-memcpy.gc", {"13\n"});
+  runner.run_test("test-memset.gc", {"11\n"});
+  runner.run_test("test-binteger-print.gc", {"-17\n0\n"});
+  runner.run_test("test-tests.gc", {"Test Failed On Test 0: \"unknown\"\nTest Failed On Test 0: "
+                                    "\"test\"\nTest \"test-of-test\": 1 Passes\n0\n"});
+  runner.run_test("test-type-arrays.gc", {"Test \"test-type-arrays\": 3 Passes\n0\n"});
+  runner.run_test("test-number-comparison.gc", {"Test \"number-comparison\": 14 Passes\n0\n"});
+  runner.run_test("test-approx-pi.gc", get_test_pass_string("approx-pi", 4));
+  runner.run_test("test-dynamic-type.gc", get_test_pass_string("dynamic-type", 4));
 
   runner.print_summary();
 
