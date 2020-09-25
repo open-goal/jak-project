@@ -1,6 +1,7 @@
 # Language Changes
 
 ## V0.1
+- The GOAL language version has been set to 0.1
 - Calling a function with unknown argument/return types is now an error instead of a warning
 - Getting a method of an object or type with `method` returns the correct type for methods using the `_type_` feature
 - The `object-new` macro will now type check arguments
@@ -13,3 +14,4 @@
 - The runtime now accepts command line boot arguments
 - The runtime now defaults to loading `KERNEL.CGO` and using its `kernel-dispatcher` function.
 - The runtime now accepts a `-nokernel` parameter for running without `KERNEL.CGO`.
+- The runtime will now refuse to load object files from another major GOAL version

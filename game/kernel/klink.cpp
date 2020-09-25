@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <cassert>
+#include <common/versions.h>
 #include "klink.h"
 #include "fileio.h"
 #include "kscheme.h"
@@ -67,6 +68,14 @@ void link_control::begin(Ptr<uint8_t> object_file,
   m_segment_process = 0;
 
   ObjectFileHeader* ofh = m_link_block_ptr.cast<ObjectFileHeader>().c();
+  if (ofh->goal_version_major != versions::GOAL_VERSION_MAJOR) {
+    fprintf(
+        stderr,
+        "VERSION ERROR: C Kernel built from GOAL %d.%d, but object file %s is from GOAL %d.%d\n",
+        versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR, name, ofh->goal_version_major,
+        ofh->goal_version_minor);
+    exit(0);
+  }
   if (link_debug_printfs) {
     printf("Object file header:\n");
     printf(" GOAL ver %d.%d obj %d len %d\n", ofh->goal_version_major, ofh->goal_version_minor,
