@@ -91,6 +91,9 @@ void IOP::kill_from_ee() {
 void IOP::signal_run_iop() {
   std::unique_lock<std::mutex> lk(iters_mutex);
   iop_iters_des += 100;  // todo, tune this
+  if (iop_iters_des - iop_iters_act > 500) {
+    iop_iters_des = iop_iters_act + 500;
+  }
   iop_run_cv.notify_all();
 }
 
