@@ -46,6 +46,10 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     typecheck(form, existing_type->second, in_gpr->type(), "define on existing symbol");
   }
 
+  if (!sym_val->settable()) {
+    throw_compile_error(
+        form, "Tried to use define on something that wasn't settable: " + sym_val->print());
+  }
   fe->emit(std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
 }
@@ -111,6 +115,10 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
         auto sym_val =
             fe->alloc_val<SymbolVal>(symbol_string(destination), m_ts.make_typespec("symbol"));
         auto result_in_gpr = source->to_gpr(env);
+        if (!sym_val->settable()) {
+          throw_compile_error(
+              form, "Tried to use set! on something that wasn't settable: " + sym_val->print());
+        }
         env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, result_in_gpr));
         return result_in_gpr;
       }
@@ -118,6 +126,10 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   } else {
     // destination is some complex expression, so compile it and hopefully get something settable.
     auto dest = compile_error_guard(destination, env);
+    if (!dest->settable()) {
+      throw_compile_error(form,
+                          "Tried to use set! on something that wasn't settable: " + dest->print());
+    }
     auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
     auto as_pair = dynamic_cast<PairEntryVal*>(dest);
     if (as_mem_deref) {

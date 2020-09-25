@@ -191,8 +191,11 @@
   `(set! ,place (+ ,place ,amount))
   )
 
-;; todo, handle too many arguments correct
 (defmacro if (condition true-case &rest others)
+  (if (> (length others) 1)
+      (error "got too many arguments to if")
+      #f
+      )
   (if (null? others)
     `(cond (,condition ,true-case))
     `(cond (,condition ,true-case)
@@ -368,8 +371,10 @@
 
 (defmacro object-new (&rest sz)
   (if (null? sz)
-    `(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make (-> type-to-make asize)))
-    `(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make ,@sz))
+    ;`(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make (-> type-to-make asize)))
+    ;`(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make ,@sz))
+    `(the ,(current-method-type) ((method object new) allocation type-to-make (-> type-to-make size)))
+    `(the ,(current-method-type)((method object new) allocation type-to-make ,@sz))
     )
   )
 

@@ -577,7 +577,7 @@ void TypeSystem::add_builtin_types() {
   // Methods and Fields
 
   // OBJECT
-  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int32"}, "_type_"));
+  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
   add_method(obj_type, "delete", make_function_typespec({"_type_"}, "none"));
   add_method(obj_type, "print", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "inspect", make_function_typespec({"_type_"}, "_type_"));

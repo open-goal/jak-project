@@ -417,12 +417,9 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   fe->require_aligned_stack();
   TypeSpec return_ts;
   if (function->type().arg_count() == 0) {
-    // if the type system doesn't know what the function will return, just make it object.
-    // the user is responsible for getting this right.
-    return_ts = m_ts.make_typespec("object");
-    gLogger.log(MSG_WARN, "[Warning] Function call could not determine return type: %s, %s, %s\n",
-                form.print().c_str(), function->print().c_str(), function->type().print().c_str());
-    // todo, consider making this an error once object-new works better.
+    // if the type system doesn't know what the function will return, don't allow it to be called
+    throw_compile_error(
+        form, "This function call has unknown argument and return types and cannot be called");
   } else {
     return_ts = function->type().last_arg();
   }

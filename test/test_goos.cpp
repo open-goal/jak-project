@@ -1290,3 +1290,13 @@ TEST(GoosSpecialForms, And) {
     EXPECT_ANY_THROW(e(i, x));
   }
 }
+
+TEST(GoosBuiltins, Format) {
+  Interpreter i;
+  EXPECT_EQ(e(i, "(fmt #f \"{}, {}, {}\" 3 'bean \"str\")"), "\"3, bean, str\"");
+}
+
+TEST(GoosBuiltins, Error) {
+  Interpreter i;
+  EXPECT_ANY_THROW(e(i, "(error \"hi\")"));
+}
