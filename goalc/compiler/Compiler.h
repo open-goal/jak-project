@@ -166,6 +166,7 @@ class Compiler {
   Val* compile_lognot(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logand(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logior(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -183,6 +184,7 @@ class Compiler {
   Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

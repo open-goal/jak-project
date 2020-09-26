@@ -120,6 +120,9 @@ s32 goal_main(int argc, const char* const* argv) {
   if (InitMachine() >= 0) {    // init kernel
     KernelCheckAndDispatch();  // run kernel
     ShutdownMachine();         // kernel died, we should too.
+  } else {
+    fprintf(stderr, "InitMachine failed\n");
+    exit(1);
   }
 
   return 0;

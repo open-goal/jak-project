@@ -287,6 +287,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       assert(di.mem_deref);
       assert(di.can_deref);
       auto offset = compile_integer(di.stride, env)->to_gpr(env);
+      // todo, check for integer and avoid runtime multiply
       env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
       auto loc = fe->alloc_val<MemoryOffsetVal>(result->type(), result, offset);
       result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
@@ -296,6 +297,17 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     }
   }
   return result;
+}
+
+Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto loc = compile_error_guard(args.unnamed.at(0), env);
+  auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
+  if(!as_mem_deref) {
+    throw_compile_error(form, "Cannot take the address of this");
+  }
+  return as_mem_deref->base;
 }
 
 Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env) {

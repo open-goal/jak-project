@@ -138,13 +138,13 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
       auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
       if (base_as_mco) {
         // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
-        auto ti = m_ts.lookup_type(base->type());
+        auto ti = m_ts.lookup_type(as_mem_deref->type());
         env->emit(std::make_unique<IR_StoreConstOffset>(
             source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
         return source;
       } else {
         // nope, the pointer to dereference is some compliated thing.
-        auto ti = m_ts.lookup_type(base->type());
+        auto ti = m_ts.lookup_type(as_mem_deref->type());
         env->emit(std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env),
                                                         ti->get_load_size()));
         return source;

@@ -292,26 +292,23 @@
   `(eq? ,thing 0)
   )
 
+(defmacro &+! (val amount)
+  `(set! ,val (&+ ,val ,amount))
+  )
+
+(defmacro &- (a b)
+  `(- (the-as uint ,a) (the-as uint ,b))
+  )
+
+(defmacro &-> (&rest args)
+  `(& (-> ,@args))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bit Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro align16 (value)
   `(logand #xfffffff0 (+ (the-as integer ,value) 15))
-  )
-
-(defmacro &+ (v1 &rest args)
-  (if (null? args)
-      `(the pointer ,v1)
-      `(&+ (+ (the-as int ,v1) (the-as int ,(first args))) ,@(cdr args))
-      )
-  )
-
-(defmacro &- (v1 v2)
-  `(the pointer (- (the-as int ,v1) (the-as int ,v2)))
-  )
-
-(defmacro &+! (v1 v2)
-  `(set! ,v1 (&+ ,v1 ,v2))
   )
 
 
@@ -371,9 +368,7 @@
 
 (defmacro object-new (&rest sz)
   (if (null? sz)
-    ;`(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make (-> type-to-make asize)))
-    ;`(the ,(current-method-type) ((-> object method-table 0) allocation type-to-make ,@sz))
-    `(the ,(current-method-type) ((method object new) allocation type-to-make (-> type-to-make size)))
+    `(the ,(current-method-type) ((method object new) allocation type-to-make (the int (-> type-to-make size))))
     `(the ,(current-method-type)((method object new) allocation type-to-make ,@sz))
     )
   )

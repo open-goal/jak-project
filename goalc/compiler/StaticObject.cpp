@@ -40,7 +40,7 @@ void StaticString::generate(emitter::ObjectGenerator* gen) {
   }
 
   // add allocated size
-  push_data_to_byte_vector<u32>(text.size() + 1, d);
+  push_data_to_byte_vector<u32>(text.size(), d);
 
   // add chars
   for (auto c : text) {

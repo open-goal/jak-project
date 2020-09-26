@@ -15,3 +15,5 @@
 - The runtime now defaults to loading `KERNEL.CGO` and using its `kernel-dispatcher` function.
 - The runtime now accepts a `-nokernel` parameter for running without `KERNEL.CGO`.
 - The runtime will now refuse to load object files from another major GOAL version
+- Using `&+` and `&+!` now produces a pointer with the same type as the original.
+- There is a `&-` which returns a `uint` and works with basically an input types

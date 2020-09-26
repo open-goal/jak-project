@@ -179,6 +179,10 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-number-comparison.gc", {"Test \"number-comparison\": 14 Passes\n0\n"});
   runner.run_test("test-approx-pi.gc", get_test_pass_string("approx-pi", 4));
   runner.run_test("test-dynamic-type.gc", get_test_pass_string("dynamic-type", 4));
+  runner.run_test("test-string-type.gc", get_test_pass_string("string-type", 4));
+  runner.run_test("test-new-string.gc", get_test_pass_string("new-string", 5));
+  runner.run_test("test-addr-of.gc", get_test_pass_string("addr-of", 2));
+  runner.run_test("test-set-self.gc", {"#t\n0\n"});
 
   runner.print_summary();
 

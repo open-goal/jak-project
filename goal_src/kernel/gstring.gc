@@ -5,3 +5,56 @@
 ;; name in dgo: gstring
 ;; dgos: KERNEL
 
+;; Note on strings:
+;;  the allocated length does not include an extra byte on the end for the null terminator!
+
+(defmethod length string ((obj string))
+  ; Get the length of a string. Like strlen
+  (let ((str-ptr (-> obj data)))
+    (while (!= 0 (-> str-ptr 0))
+      (set! str-ptr (the (pointer uint8) (&+ str-ptr 1)))
+      )
+    (- (the int str-ptr) (the int (-> obj data)))
+    )
+  )
+
+(defmethod asize-of string ((obj string))
+  ;; get the size in bytes of a string.
+  ;; BUG - string should probably be (-> obj type), not that it matters, I don't think
+  ;;  anybody makes a subclass of string.
+  (+ (-> obj allocated-length) 1 (-> string size))
+  )
+
+(defun copy-string<-string ((dst string) (src string))
+  "Copy data from one string to another, like strcpy"
+  (let ((dst-ptr (-> dst data))
+        (src-ptr (-> src data))
+        )
+    (while (!= 0 (-> src-ptr))
+      (set! (-> dst-ptr) (-> src-ptr))
+      (&+! dst-ptr 1)
+      (&+! src-ptr 1)
+      )
+    )
+  )
+
+(defmethod new string ((allocation symbol) (type-to-make type) (size int) (other string))
+  "Create a new string of the given size. If other is not #f, copy data from it."
+  (cond
+    (other
+      (let* ((desired-size (max (length other) size))
+             (new-obj (object-new (+ desired-size 1 (-> type-to-make size))))
+             )
+        (set! (-> new-obj allocated-length) size)
+        (copy-string<-string new-obj other)
+        new-obj
+        )
+      )
+    (else
+      (let ((new-obj (object-new (+ 1 size (-> type-to-make size)))))
+        (set! (-> new-obj allocated-length) size)
+        new-obj
+        )
+      )
+    )
+  )
