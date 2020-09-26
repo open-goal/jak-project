@@ -304,7 +304,7 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   va_check(form, args, {{}}, {});
   auto loc = compile_error_guard(args.unnamed.at(0), env);
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
-  if(!as_mem_deref) {
+  if (!as_mem_deref) {
     throw_compile_error(form, "Cannot take the address of this");
   }
   return as_mem_deref->base;
