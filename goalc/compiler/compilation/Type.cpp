@@ -13,6 +13,7 @@ RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
                                              const std::string& method_name,
                                              Env* env) {
   auto info = m_ts.lookup_method(type.base_type(), method_name);
+  info.type = info.type.substitute_for_method_call(type.base_type());
   auto offset_of_method = get_offset_of_method(info.id);
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
@@ -38,6 +39,7 @@ RegVal* Compiler::compile_get_method_of_object(RegVal* object,
                                                Env* env) {
   auto& compile_time_type = object->type();
   auto method_info = m_ts.lookup_method(compile_time_type.base_type(), method_name);
+  method_info.type = method_info.type.substitute_for_method_call(compile_time_type.base_type());
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   RegVal* runtime_type = nullptr;
@@ -230,6 +232,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     if (deref_info.mem_deref) {
       result =
           fe->alloc_val<MemoryDerefVal>(deref_info.result_type, result, MemLoadInfo(deref_info));
+      result->mark_as_settable();
     } else {
       assert(false);
     }
@@ -258,9 +261,11 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           assert(di.can_deref);
           assert(di.mem_deref);
           result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+          result->mark_as_settable();
         } else {
           result = fe->alloc_val<MemoryOffsetConstantVal>(field.type, result,
                                                           field.field.offset() + offset);
+          result->mark_as_settable();
           // assert(false);
         }
         continue;
@@ -282,9 +287,11 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       assert(di.mem_deref);
       assert(di.can_deref);
       auto offset = compile_integer(di.stride, env)->to_gpr(env);
+      // todo, check for integer and avoid runtime multiply
       env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
       auto loc = fe->alloc_val<MemoryOffsetVal>(result->type(), result, offset);
       result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+      result->mark_as_settable();
     } else {
       throw_compile_error(form, "can't access array of type " + result->type().print());
     }
@@ -292,12 +299,27 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
   return result;
 }
 
+Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+  auto loc = compile_error_guard(args.unnamed.at(0), env);
+  auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
+  if (!as_mem_deref) {
+    throw_compile_error(form, "Cannot take the address of this");
+  }
+  return as_mem_deref->base;
+}
+
 Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});
   auto desired_ts = parse_typespec(args.unnamed.at(0));
   auto base = compile_error_guard(args.unnamed.at(1), env);
-  return get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+  auto result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+  if (base->settable()) {
+    result->mark_as_settable();
+  }
+  return result;
 }
 
 Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -322,7 +344,11 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
     }
   }
 
-  return get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+  auto result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+  if (base->settable()) {
+    result->mark_as_settable();
+  }
+  return result;
 }
 
 Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -379,7 +405,9 @@ Val* Compiler::compile_car(const goos::Object& form, const goos::Object& rest, E
   if (pair->type() != m_ts.make_typespec("object")) {
     typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to car");
   }
-  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, true);
+  auto result = fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, true);
+  result->mark_as_settable();
+  return result;
 }
 
 Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -390,7 +418,9 @@ Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, E
   if (pair->type() != m_ts.make_typespec("object")) {
     typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to cdr");
   }
-  return fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, false);
+  auto result = fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, false);
+  result->mark_as_settable();
+  return result;
 }
 
 // todo, consider splitting into method-of-object and method-of-type?

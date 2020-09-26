@@ -12,8 +12,8 @@
 
 namespace versions {
 // language version
-constexpr s32 GOAL_VERSION_MAJOR = 2;
-constexpr s32 GOAL_VERSION_MINOR = 6;
+constexpr s32 GOAL_VERSION_MAJOR = 0;
+constexpr s32 GOAL_VERSION_MINOR = 1;
 }  // namespace versions
 
 // GOAL kernel version

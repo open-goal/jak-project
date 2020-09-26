@@ -10,27 +10,6 @@ TEST(CompilerAndRuntime, ConstructCompiler) {
   Compiler compiler;
 }
 
-TEST(CompilerAndRuntime, StartRuntime) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
-
-  listener::Listener listener;
-  while (!listener.is_connected()) {
-    listener.connect_to_target();
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
-  }
-
-  listener.send_reset(true);
-  runtime_thread.join();
-}
-
-TEST(CompilerAndRuntime, SendProgram) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
-  Compiler compiler;
-  compiler.run_test("goal_src/test/test-return-integer-1.gc");
-  compiler.shutdown_target();
-  runtime_thread.join();
-}
-
 namespace {
 std::string escaped_string(const std::string& in) {
   std::string result;
@@ -115,14 +94,45 @@ std::vector<std::string> get_test_pass_string(const std::string& name, int n_tes
   return {fmt::format("Test \"{}\": {} Passes\n0\n", name, n_tests)};
 }
 
+void runtime_no_kernel() {
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
+
+void runtime_with_kernel() {
+  constexpr int argc = 3;
+  const char* argv[argc] = {"", "-fakeiso", "-debug"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
 }  // namespace
 
+TEST(CompilerAndRuntime, StartRuntime) {
+  std::thread runtime_thread(runtime_no_kernel);
+
+  listener::Listener listener;
+  while (!listener.is_connected()) {
+    listener.connect_to_target();
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+  }
+
+  listener.send_reset(true);
+  runtime_thread.join();
+}
+
+TEST(CompilerAndRuntime, SendProgram) {
+  std::thread runtime_thread(runtime_no_kernel);
+  Compiler compiler;
+  compiler.run_test("goal_src/test/test-return-integer-1.gc");
+  compiler.shutdown_target();
+  runtime_thread.join();
+}
+
 TEST(CompilerAndRuntime, BuildGameAndTest) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
   Compiler compiler;
 
   try {
-    compiler.run_test("goal_src/test/test-build-game.gc");
+    compiler.run_test_no_load("goal_src/test/test-build-game.gc");
   } catch (std::exception& e) {
     fprintf(stderr, "caught exception %s\n", e.what());
     EXPECT_TRUE(false);
@@ -131,7 +141,7 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   // todo, tests after loading the game.
   CompilerTestRunner runner;
   runner.c = &compiler;
-
+  std::thread runtime_thread(runtime_with_kernel);
   runner.run_test("test-min-max.gc", {"10\n"});
   runner.run_test("test-bfloat.gc", {"data 1.2330 print 1.2330 type bfloat\n0\n"});
   runner.run_test("test-basic-type-check.gc", {"#f#t#t#f#t#f#t#t\n0\n"});
@@ -169,6 +179,10 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   runner.run_test("test-number-comparison.gc", {"Test \"number-comparison\": 14 Passes\n0\n"});
   runner.run_test("test-approx-pi.gc", get_test_pass_string("approx-pi", 4));
   runner.run_test("test-dynamic-type.gc", get_test_pass_string("dynamic-type", 4));
+  runner.run_test("test-string-type.gc", get_test_pass_string("string-type", 4));
+  runner.run_test("test-new-string.gc", get_test_pass_string("new-string", 5));
+  runner.run_test("test-addr-of.gc", get_test_pass_string("addr-of", 2));
+  runner.run_test("test-set-self.gc", {"#t\n0\n"});
 
   runner.print_summary();
 
@@ -219,7 +233,7 @@ TEST(CompilerAndRuntime, AllowInline) {
 }
 
 TEST(CompilerAndRuntime, CompilerTests) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
+  std::thread runtime_thread(runtime_no_kernel);
   Compiler compiler;
   CompilerTestRunner runner;
   runner.c = &compiler;

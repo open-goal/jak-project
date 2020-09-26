@@ -46,6 +46,10 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     typecheck(form, existing_type->second, in_gpr->type(), "define on existing symbol");
   }
 
+  if (!sym_val->settable()) {
+    throw_compile_error(
+        form, "Tried to use define on something that wasn't settable: " + sym_val->print());
+  }
   fe->emit(std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
 }
@@ -111,6 +115,10 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
         auto sym_val =
             fe->alloc_val<SymbolVal>(symbol_string(destination), m_ts.make_typespec("symbol"));
         auto result_in_gpr = source->to_gpr(env);
+        if (!sym_val->settable()) {
+          throw_compile_error(
+              form, "Tried to use set! on something that wasn't settable: " + sym_val->print());
+        }
         env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, result_in_gpr));
         return result_in_gpr;
       }
@@ -118,6 +126,10 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   } else {
     // destination is some complex expression, so compile it and hopefully get something settable.
     auto dest = compile_error_guard(destination, env);
+    if (!dest->settable()) {
+      throw_compile_error(form,
+                          "Tried to use set! on something that wasn't settable: " + dest->print());
+    }
     auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
     auto as_pair = dynamic_cast<PairEntryVal*>(dest);
     if (as_mem_deref) {
@@ -126,13 +138,13 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
       auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
       if (base_as_mco) {
         // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
-        auto ti = m_ts.lookup_type(base->type());
+        auto ti = m_ts.lookup_type(as_mem_deref->type());
         env->emit(std::make_unique<IR_StoreConstOffset>(
             source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
         return source;
       } else {
         // nope, the pointer to dereference is some compliated thing.
-        auto ti = m_ts.lookup_type(base->type());
+        auto ti = m_ts.lookup_type(as_mem_deref->type());
         env->emit(std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env),
                                                         ti->get_load_size()));
         return source;

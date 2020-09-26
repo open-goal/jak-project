@@ -180,6 +180,12 @@ class Interpreter {
   Object eval_current_method_type(const Object& form,
                                   Arguments& args,
                                   const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_format(const Object& form,
+                     Arguments& args,
+                     const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_error(const Object& form,
+                    Arguments& args,
+                    const std::shared_ptr<EnvironmentObject>& env);
 
   // specials
   Object eval_define(const Object& form,

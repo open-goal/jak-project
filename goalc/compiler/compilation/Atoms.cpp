@@ -57,7 +57,7 @@ static const std::unordered_map<
         {"defmethod", &Compiler::compile_defmethod},
         //        {"defenum", &Compiler::compile_defenum},
         {"->", &Compiler::compile_deref},
-        //        {"&", &Compiler::compile_addr_of},
+        {"&", &Compiler::compile_addr_of},
         {"the-as", &Compiler::compile_the_as},
         {"the", &Compiler::compile_the},
         {"print-type", &Compiler::compile_print_type},
@@ -106,6 +106,7 @@ static const std::unordered_map<
         {">=", &Compiler::compile_condition_as_bool},
         {"<", &Compiler::compile_condition_as_bool},
         {">", &Compiler::compile_condition_as_bool},
+        {"&+", &Compiler::compile_pointer_add},
 
         // BUILDER (build-dgo/build-cgo?)
         {"build-dgos", &Compiler::compile_build_dgo},
@@ -305,5 +306,18 @@ Val* Compiler::compile_float(float value, Env* env, int seg) {
   auto result = fe->alloc_val<FloatConstantVal>(m_ts.make_typespec("float"), obj.get());
   auto fie = get_parent_env_of_type<FileEnv>(env);
   fie->add_static(std::move(obj));
+  return result;
+}
+
+Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  typecheck(form, m_ts.make_typespec("pointer"), first->type(), "&+ first argument");
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
   return result;
 }

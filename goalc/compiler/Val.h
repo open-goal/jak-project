@@ -85,7 +85,9 @@ class RegVal : public Val {
  */
 class SymbolVal : public Val {
  public:
-  SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {}
+  SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {
+    mark_as_settable();
+  }
   const std::string& name() const { return m_name; }
   std::string print() const override { return "<" + m_name + ">"; }
   RegVal* to_reg(Env* fe) override;
