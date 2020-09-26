@@ -4,7 +4,7 @@
 #include "ObjectFile/ObjectFileDB.h"
 #include "config.h"
 #include "util/FileIO.h"
-#include "TypeSystem/TypeInfo.h"
+
 #include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
@@ -48,8 +48,9 @@ int main(int argc, char** argv) {
     db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions);
   }
 
-  printf("%s\n", get_type_info().get_summary().c_str());
-  //  printf("%d\n", InstructionKind::EE_OP_MAX);
-  //  printf("%s\n", get_type_info().get_all_symbols_debug().c_str());
+  // todo print type summary
+  // printf("%s\n", get_type_info().get_summary().c_str());
+
+  file_util::write_text_file(combine_path(out_folder, "all-syms.gc"), db.dts.dump_symbol_types());
   return 0;
 }

@@ -554,6 +554,12 @@ std::string LinkedObjectFile::print_disassembly() {
           auto& word = words_by_seg[seg].at(func.start_word + i);
           append_word_to_string(result, word);
         } else {
+          if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
+            if (line.length() < 40) {
+              line.append(40 - line.length(), ' ');
+            }
+            line += ";; " + func.get_basic_op_at_instr(i)->print();
+          }
           result += line + "\n";
         }
 

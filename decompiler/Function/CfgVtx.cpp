@@ -1637,7 +1637,6 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
  * Build and resolve a Control Flow Graph as much as possible.
  */
 std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int seg, Function& func) {
-  printf("build cfg : %s\n", func.guessed_name.to_string().c_str());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());
@@ -1716,13 +1715,6 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
 
   cfg->flag_early_exit(func.basic_blocks);
 
-  //  if(func.guessed_name.to_string() == "(method 9 thread)")
-  //    cfg->find_cond_w_else();
-
-  //  if (func.guessed_name.to_string() != "looping-code") {
-  //    return cfg;
-  //  }
-
   bool changed = true;
   while (changed) {
     changed = false;
@@ -1730,11 +1722,9 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
     //    printf("%s\n", cfg->to_dot().c_str());
     //    printf("%s\n", cfg->to_form()->toStringPretty().c_str());
 
-    changed = changed | cfg->find_cond_w_else();
-    changed = changed | cfg->find_cond_n_else();
+    changed = changed || cfg->find_cond_w_else();
+    changed = changed || cfg->find_cond_n_else();
     changed = changed || cfg->find_while_loop_top_level();
-    //    ////    printf("while loops? %d\n", changed);
-    ////    changed = changed || cfg->find_if_else_top_level();
     changed = changed || cfg->find_seq_top_level();
     changed = changed || cfg->find_short_circuits();
 
