@@ -514,3 +514,14 @@ std::shared_ptr<Form> buildList(std::vector<std::shared_ptr<Form>>& forms) {
   }
   return buildList(forms.data(), forms.size());
 }
+
+std::shared_ptr<Form> buildList(std::vector<std::string>& forms) {
+  if (forms.empty()) {
+    return gSymbolTable.getEmptyPair();
+  }
+  std::vector<std::shared_ptr<Form>> f;
+  for (auto& x : forms) {
+    f.push_back(toForm(x));
+  }
+  return buildList(f.data(), f.size());
+}

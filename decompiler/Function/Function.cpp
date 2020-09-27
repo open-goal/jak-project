@@ -552,7 +552,8 @@ void Function::find_method_defs(LinkedObjectFile& file) {
   }
 }
 
-void Function::add_basic_op(std::shared_ptr<BasicOp> op, int start_instr, int end_instr) {
+void Function::add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr) {
+  op->is_basic_op = true;
   assert(end_instr > start_instr);
 
   for (int i = start_instr; i < end_instr; i++) {
@@ -571,7 +572,7 @@ bool Function::instr_starts_basic_op(int idx) {
   return false;
 }
 
-BasicOp* Function::get_basic_op_at_instr(int idx) {
+IR* Function::get_basic_op_at_instr(int idx) {
   return basic_ops.at(instruction_to_basic_op.at(idx)).get();
 }
 
@@ -582,7 +583,7 @@ int Function::get_basic_op_count() {
 int Function::get_failed_basic_op_count() {
   int count = 0;
   for (auto& x : basic_ops) {
-    if (!x->conversion_succeeded()) {
+    if (dynamic_cast<IR_Failed*>(x.get())) {
       count++;
     }
   }

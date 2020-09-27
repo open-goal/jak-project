@@ -44,6 +44,9 @@ struct InstructionAtom {
   std::string to_string(const LinkedObjectFile& file) const;
 
   bool is_link_or_label() const;
+  bool is_reg() const { return kind == REGISTER; }
+
+  bool is_reg(Register r) const { return kind == REGISTER && reg == r; }
 
  private:
   int32_t imm;

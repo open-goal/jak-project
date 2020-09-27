@@ -122,6 +122,7 @@ std::shared_ptr<Form> buildList(const std::string& str);
 std::shared_ptr<Form> buildList(std::shared_ptr<Form> form);
 std::shared_ptr<Form> buildList(std::vector<std::shared_ptr<Form>>& forms);
 std::shared_ptr<Form> buildList(std::shared_ptr<Form>* forms, int count);
+std::shared_ptr<Form> buildList(std::vector<std::string>& forms);
 
 template <typename... Args>
 std::shared_ptr<Form> buildList(const std::string& str, Args... rest) {

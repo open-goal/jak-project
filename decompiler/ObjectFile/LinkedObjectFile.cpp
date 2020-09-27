@@ -558,7 +558,7 @@ std::string LinkedObjectFile::print_disassembly() {
             if (line.length() < 40) {
               line.append(40 - line.length(), ' ');
             }
-            line += ";; " + func.get_basic_op_at_instr(i)->print();
+            line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
           }
           result += line + "\n";
         }

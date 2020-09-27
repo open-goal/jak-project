@@ -16,8 +16,8 @@ add_executable(decompiler
         Function/BasicBlocks.cpp
         Disasm/InstructionMatching.cpp
         Function/CfgVtx.cpp Function/CfgVtx.h
-        IR/BasicOp.cpp
-        IR/BasicOpBuilder.cpp)
+        IR/BasicOpBuilder.cpp
+        IR/IR.cpp)
 
 target_link_libraries(decompiler
         minilzo
