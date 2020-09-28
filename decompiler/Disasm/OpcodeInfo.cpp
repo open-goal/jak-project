@@ -1,3 +1,8 @@
+/*!
+ * @file OpcodeInfo.cpp
+ * Decoding info for each opcode.
+ */
+
 #include "OpcodeInfo.h"
 #include <cassert>
 

@@ -46,6 +46,8 @@ struct InstructionAtom {
   bool is_link_or_label() const;
   bool is_reg() const { return kind == REGISTER; }
   bool is_imm() const { return kind == IMM; }
+  bool is_label() const { return kind == LABEL; }
+  bool is_sym() const { return kind == IMM_SYM; }
 
   bool is_reg(Register r) const { return kind == REGISTER && reg == r; }
 

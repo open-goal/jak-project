@@ -1,5 +1,10 @@
 #pragma once
 
+/*!
+ * @file InstructionMatching.h
+ * Utilities for checking if an instruction matches some criteria.
+ */
+
 #ifndef JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
 #define JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
 

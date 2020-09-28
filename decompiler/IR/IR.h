@@ -31,11 +31,31 @@ class IR_Register : public IR {
 
 class IR_Set : public IR {
  public:
-  enum Kind { REG_64, LOAD, SYM_LOAD, FPR_TO_GPR64, GPR_TO_FPR, REG_FLT, REG_I128 } kind;
+  enum Kind {
+    REG_64,
+    LOAD,
+    STORE,
+    SYM_LOAD,
+    SYM_STORE,
+    FPR_TO_GPR64,
+    GPR_TO_FPR,
+    REG_FLT,
+    REG_I128
+  } kind;
   IR_Set(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src)
       : kind(_kind), dst(std::move(_dst)), src(std::move(_src)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   std::shared_ptr<IR> dst, src;
+  std::shared_ptr<IR> clobber = nullptr;
+};
+
+class IR_Store : public IR_Set {
+ public:
+  enum Kind { INTEGER, FLOAT } kind;
+  IR_Store(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src, int _size)
+      : IR_Set(IR_Set::LOAD, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
+  int size;
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
 };
 
 class IR_Symbol : public IR {
@@ -79,9 +99,31 @@ class IR_FloatMath2 : public IR {
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
 };
 
+class IR_FloatMath1 : public IR {
+ public:
+  enum Kind { FLOAT_TO_INT, INT_TO_FLOAT, ABS, MIN, MAX } kind;
+  IR_FloatMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
+  std::shared_ptr<IR> arg;
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+};
+
 class IR_IntMath2 : public IR {
  public:
-  enum Kind { ADD, SUB, MUL_SIGNED, DIV_SIGNED, MOD_SIGNED, OR, AND, NOR, XOR, LEFT_SHIFT } kind;
+  enum Kind {
+    ADD,
+    SUB,
+    MUL_SIGNED,
+    DIV_SIGNED,
+    MOD_SIGNED,
+    OR,
+    AND,
+    NOR,
+    XOR,
+    LEFT_SHIFT,
+    RIGHT_SHIFT_ARITH,
+    RIGHT_SHIFT_LOGIC,
+    MUL_UNSIGNED
+  } kind;
   IR_IntMath2(Kind _kind, std::shared_ptr<IR> _arg0, std::shared_ptr<IR> _arg1)
       : kind(_kind), arg0(std::move(_arg0)), arg1(std::move(_arg1)) {}
   std::shared_ptr<IR> arg0, arg1;
@@ -110,7 +152,7 @@ class IR_IntegerConstant : public IR {
 };
 
 struct BranchDelay {
-  enum Kind { NOP, SET_REG_FALSE, SET_REG_REG, UNKNOWN } kind;
+  enum Kind { NOP, SET_REG_FALSE, SET_REG_TRUE, SET_REG_REG, UNKNOWN } kind;
   std::shared_ptr<IR> destination = nullptr, source = nullptr;
   BranchDelay(Kind _kind) : kind(_kind) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
@@ -132,7 +174,10 @@ struct Condition {
     NONZERO,
     FALSE,
     TRUTHY,
-    ALWAYS
+    ALWAYS,
+    FLOAT_EQUAL,
+    FLOAT_LESS_THAN,
+    FLOAT_GEQ
   } kind;
 
   Condition(Kind _kind,
