@@ -1,6 +1,7 @@
 #ifndef JAK_IR_H
 #define JAK_IR_H
 
+#include <cassert>
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/LispPrint.h"
 
@@ -109,65 +110,79 @@ class IR_IntegerConstant : public IR {
 };
 
 struct BranchDelay {
-  enum Kind { NOP, SET_REG_FALSE, UNKNOWN } kind;
-  std::shared_ptr<IR> destination = nullptr;
-  BranchDelay(Kind _kind)
-      : kind(_kind) {}
+  enum Kind { NOP, SET_REG_FALSE, SET_REG_REG, UNKNOWN } kind;
+  std::shared_ptr<IR> destination = nullptr, source = nullptr;
+  BranchDelay(Kind _kind) : kind(_kind) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
 };
 
-class IR_Branch2 : public IR {
- public:
-  enum Kind { NOT_EQUAL, EQUAL } kind;
-  IR_Branch2(Kind _kind,
-             int _dest_label_idx,
-             std::shared_ptr<IR> _src0,
-             std::shared_ptr<IR> _src1,
-             BranchDelay _branch_delay)
-      : kind(_kind),
-        dest_label_idx(_dest_label_idx),
-        src0(std::move(_src0)),
-        src1(std::move(_src1)),
-        branch_delay(std::move(_branch_delay)) {}
+struct Condition {
+  enum Kind {
+    NOT_EQUAL,
+    EQUAL,
+    LESS_THAN_SIGNED,
+    GREATER_THAN_SIGNED,
+    LEQ_SIGNED,
+    GEQ_SIGNED,
+    LESS_THAN_UNSIGNED,
+    GREATER_THAN_UNSIGNED,
+    LEQ_UNSIGNED,
+    GEQ_UNSIGNED,
+    ZERO,
+    NONZERO,
+    FALSE,
+    TRUTHY,
+    ALWAYS
+  } kind;
 
+  Condition(Kind _kind,
+            std::shared_ptr<IR> _src0,
+            std::shared_ptr<IR> _src1,
+            std::shared_ptr<IR> _clobber)
+      : kind(_kind), src0(std::move(_src0)), src1(std::move(_src1)), clobber(std::move(_clobber)) {
+    int nargs = num_args();
+    if (nargs == 2) {
+      assert(src0 && src1);
+    } else if (nargs == 1) {
+      assert(src0 && !src1);
+    } else if (nargs == 0) {
+      assert(!src0 && !src1);
+    }
+  }
+
+  int num_args() const;
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
+  std::shared_ptr<IR> src0, src1, clobber;
+};
+
+class IR_Branch : public IR {
+ public:
+  IR_Branch(Condition _condition, int _dest_label_idx, BranchDelay _branch_delay, bool _likely)
+      : condition(std::move(_condition)),
+        dest_label_idx(_dest_label_idx),
+        branch_delay(std::move(_branch_delay)),
+        likely(_likely) {}
+
+  Condition condition;
   int dest_label_idx;
-  std::shared_ptr<IR> src0, src1;
   BranchDelay branch_delay;
+  bool likely;
 
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
 };
 
-//class IR_Branch1 : public IR {
-// public:
-//  enum Kind { NOT_EQUAL, EQUAL } kind;
-//  IR_Branch2(Kind _kind,
-//             int _dest_label_idx,
-//             std::shared_ptr<IR> _src0,
-//             std::shared_ptr<IR> _src1,
-//             BranchDelay _branch_delay)
-//      : kind(_kind),
-//        dest_label_idx(_dest_label_idx),
-//        src0(std::move(_src0)),
-//        src1(std::move(_src1)),
-//        branch_delay(std::move(_branch_delay)) {}
-//
-//  int dest_label_idx;
-//  std::shared_ptr<IR> src0, src1;
-//  BranchDelay branch_delay;
-//
-//  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
-//};
-
-class IR_BranchAlways : public IR {
+class IR_Compare : public IR {
  public:
-  IR_BranchAlways(int _dest_label_idx,
-             BranchDelay _branch_delay)
-      :
-        dest_label_idx(_dest_label_idx),
-        branch_delay(std::move(_branch_delay)) {}
-  int dest_label_idx;
-  BranchDelay branch_delay;
+  explicit IR_Compare(Condition _condition) : condition(std::move(_condition)) {}
 
+  Condition condition;
+
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+};
+
+class IR_Nop : public IR {
+ public:
+  IR_Nop() = default;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
 };
 

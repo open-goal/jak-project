@@ -155,6 +155,16 @@ std::shared_ptr<IR> try_dsll(Instruction& instr, int idx) {
   return nullptr;
 }
 
+std::shared_ptr<IR> try_dsll32(Instruction& instr, int idx) {
+  if (is_gpr_2_imm_int(instr, InstructionKind::DSLL32, {}, {}, {})) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_IntMath2>(IR_IntMath2::LEFT_SHIFT,
+                                                  make_reg(instr.get_src(0).get_reg(), idx),
+                                                  make_int(32 + instr.get_src(1).get_imm())));
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_float_math_2(Instruction& instr,
                                      int idx,
                                      InstructionKind instr_kind,
@@ -191,6 +201,25 @@ std::shared_ptr<IR> try_lw(Instruction& instr, int idx) {
       instr.get_src(0).kind == InstructionAtom::IMM_SYM) {
     return make_set(IR_Set::SYM_LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
                     make_sym_value(instr.get_src(0).get_sym()));
+  } else if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg() &&
+             instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
+    return make_set(
+        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::SIGNED, 4, std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
+  } else if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg() &&
+             instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
+    return make_set(
+        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(IR_Load::SIGNED, 4, make_reg(instr.get_src(1).get_reg(), idx)));
+  } else if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg() &&
+             instr.get_src(0).is_imm()) {
+    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_Load>(
+                        IR_Load::SIGNED, 4,
+                        std::make_shared<IR_IntMath2>(
+                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
@@ -267,6 +296,22 @@ std::shared_ptr<IR> try_xor(Instruction& instr, int idx) {
   return nullptr;
 }
 
+std::shared_ptr<IR> try_addiu(Instruction& instr, int idx) {
+  if (instr.kind == InstructionKind::ADDIU && instr.get_src(0).is_reg(make_gpr(Reg::R0))) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    make_int(instr.get_src(1).get_imm()));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_sll(Instruction& instr, int idx) {
+  (void)idx;
+  if (is_nop(instr)) {
+    return std::make_shared<IR_Nop>();
+  }
+  return nullptr;
+}
+
 // TWO Instructions
 std::shared_ptr<IR> try_div(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::DIV && instr.get_src(0).is_reg() &&
@@ -304,17 +349,58 @@ BranchDelay get_branch_delay(Instruction& i, int idx) {
     BranchDelay b(BranchDelay::SET_REG_FALSE);
     b.destination = make_reg(i.get_dst(0).get_reg(), idx);
     return b;
+  } else if (is_gpr_3(i, InstructionKind::OR, {}, {}, make_gpr(Reg::R0))) {
+    BranchDelay b(BranchDelay::SET_REG_REG);
+    b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+    b.source = make_reg(i.get_src(0).get_reg(), idx);
+    return b;
   }
   BranchDelay b(BranchDelay::UNKNOWN);
   return b;
 }
 
 std::shared_ptr<IR> try_bne(Instruction& instr, Instruction& next_instr, int idx) {
-  if (instr.kind == InstructionKind::BNE) {
-    return std::make_shared<IR_Branch2>(IR_Branch2::NOT_EQUAL, instr.get_src(2).get_label(),
-                                        make_reg(instr.get_src(0).get_reg(), idx),
-                                        make_reg(instr.get_src(1).get_reg(), idx),
-                                        get_branch_delay(next_instr, idx));
+  if (instr.kind == InstructionKind::BNE && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::NONZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
+  } else if (instr.kind == InstructionKind::BNE && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::TRUTHY, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
+  } else if (instr.kind == InstructionKind::BNE) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::NOT_EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
+                  make_reg(instr.get_src(1).get_reg(), idx), nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_bnel(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BNEL && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::TRUTHY, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
+  } else if (instr.kind == InstructionKind::BNEL) {
+    //    return std::make_shared<IR_Branch2>(IR_Branch2::NOT_EQUAL, instr.get_src(2).get_label(),
+    //                                        make_reg(instr.get_src(0).get_reg(), idx),
+    //                                        make_reg(instr.get_src(1).get_reg(), idx),
+    //                                        get_branch_delay(next_instr, idx), true);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_beql(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BEQL && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::FALSE, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
+  } else if (instr.kind == InstructionKind::BEQL) {
+    //    return std::make_shared<IR_Branch>(
+    //        Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
+    //                  make_reg(instr.get_src(1).get_reg(), idx), nullptr),
+    //        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
   }
   return nullptr;
 }
@@ -322,15 +408,112 @@ std::shared_ptr<IR> try_bne(Instruction& instr, Instruction& next_instr, int idx
 std::shared_ptr<IR> try_beq(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BEQ && instr.get_src(0).is_reg(make_gpr(Reg::R0)) &&
       instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
-    return std::make_shared<IR_BranchAlways>(instr.get_src(2).get_label(),
-                                             get_branch_delay(next_instr, idx));
+    return std::make_shared<IR_Branch>(Condition(Condition::ALWAYS, nullptr, nullptr, nullptr),
+                                       instr.get_src(2).get_label(),
+                                       get_branch_delay(next_instr, idx), false);
+  } else if (instr.kind == InstructionKind::BEQ && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::FALSE, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
+  } else if (instr.kind == InstructionKind::BEQ) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
+                  make_reg(instr.get_src(1).get_reg(), idx), nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
   }
-  //  if (instr.kind == InstructionKind::BEQ) {
-  //    return std::make_shared<IR_Branch2>(IR_Branch2::EQUAL, instr.get_src(2).get_label(),
-  //                                        make_reg(instr.get_src(0).get_reg(), idx),
-  //                                        make_reg(instr.get_src(1).get_reg(), idx),
-  //                                        get_branch_delay(next_instr, idx));
-  //  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_daddiu(Instruction& i0, Instruction& i1, int idx) {
+  if (i0.kind == InstructionKind::DADDIU && i1.kind == InstructionKind::MOVN) {
+    auto dst_reg = i0.get_dst(0).get_reg();
+    auto src_reg = i1.get_src(1).get_reg();
+    assert(i0.get_src(0).get_reg() == make_gpr(Reg::S7));
+    assert(i0.get_src(1).get_imm() == 8);
+    assert(i1.get_dst(0).get_reg() == dst_reg);
+    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
+                    std::make_shared<IR_Compare>(
+                        Condition(Condition::ZERO, make_reg(src_reg, idx), nullptr, nullptr)));
+  }
+  return nullptr;
+}
+
+// THREE OP
+std::shared_ptr<IR> try_dsubu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+  if (i0.kind == InstructionKind::DSUBU && i1.kind == InstructionKind::DADDIU &&
+      i2.kind == InstructionKind::MOVN) {
+    // check for equality
+    auto clobber_reg = i0.get_dst(0).get_reg();
+    auto src0_reg = i0.get_src(0).get_reg();
+    auto src1_reg = i0.get_src(1).get_reg();
+    auto dst_reg = i1.get_dst(0).get_reg();
+    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    assert(i1.get_src(1).get_imm() == 8);
+    assert(i2.get_dst(0).get_reg() == dst_reg);
+    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    assert(i2.get_src(1).get_reg() == clobber_reg);
+    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
+                    std::make_shared<IR_Compare>(
+                        Condition(Condition::EQUAL, make_reg(src0_reg, idx),
+                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+  } else if (i0.kind == InstructionKind::DSUBU && i1.kind == InstructionKind::DADDIU &&
+             i2.kind == InstructionKind::MOVZ) {
+    // check for equality
+    auto clobber_reg = i0.get_dst(0).get_reg();
+    auto src0_reg = i0.get_src(0).get_reg();
+    auto src1_reg = i0.get_src(1).get_reg();
+    auto dst_reg = i1.get_dst(0).get_reg();
+    assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
+    assert(i1.get_src(1).get_imm() == 8);
+    assert(i2.get_dst(0).get_reg() == dst_reg);
+    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    assert(i2.get_src(1).get_reg() == clobber_reg);
+    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
+                    std::make_shared<IR_Compare>(
+                        Condition(Condition::NOT_EQUAL, make_reg(src0_reg, idx),
+                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+  if (i0.kind == InstructionKind::SLT && i1.kind == InstructionKind::BNE) {
+    auto clobber_reg = i0.get_dst(0).get_reg();
+    auto src0_reg = i0.get_src(0).get_reg();
+    auto src1_reg = i0.get_src(1).get_reg();
+    assert(i1.get_src(0).get_reg() == clobber_reg);
+    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
+                  make_reg(clobber_reg, idx)),
+        i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
+  } else if (i0.kind == InstructionKind::SLT && i1.kind == InstructionKind::DADDIU &&
+             i2.kind == InstructionKind::MOVZ) {
+    auto clobber_reg = i0.get_dst(0).get_reg();
+    auto src0_reg = i0.get_src(0).get_reg();
+    auto src1_reg = i0.get_src(1).get_reg();
+    auto dst_reg = i1.get_dst(0).get_reg();
+    assert(i1.get_src(0).is_reg(make_gpr(Reg::S7)));
+    assert(i1.get_src(1).get_imm() == 8);
+    assert(i2.get_dst(0).get_reg() == dst_reg);
+    assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
+    assert(i2.get_src(1).get_reg() == clobber_reg);
+    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
+                    std::make_shared<IR_Compare>(
+                        Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx),
+                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+  } else if (i0.kind == InstructionKind::SLT && i1.kind == InstructionKind::BEQ) {
+    auto clobber_reg = i0.get_dst(0).get_reg();
+    auto src0_reg = i0.get_src(0).get_reg();
+    auto src1_reg = i0.get_src(1).get_reg();
+    assert(i1.get_src(0).get_reg() == clobber_reg);
+    assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
+                  make_reg(clobber_reg, idx)),
+        i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
+  }
   return nullptr;
 }
 
@@ -345,67 +528,23 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     int length = 0;
 
     std::shared_ptr<IR> result = nullptr;
-    switch (i.kind) {
-      case InstructionKind::OR:
-        result = try_or(i, instr);
-        break;
-      case InstructionKind::DADDIU:
-        result = try_daddiu(i, instr);
-        break;
-      case InstructionKind::AND:
-        result = try_and(i, instr);
-        break;
-      case InstructionKind::NOR:
-        result = try_nor(i, instr);
-        break;
-      case InstructionKind::XOR:
-        result = try_xor(i, instr);
-        break;
-      case InstructionKind::LWC1:
-        result = try_lwc1(i, instr);
-        break;
-      case InstructionKind::MTC1:
-        result = try_mtc1(i, instr);
-        break;
-      case InstructionKind::DIVS:
-        result = try_float_math_2(i, instr, InstructionKind::DIVS, IR_FloatMath2::DIV);
-        break;
-      case InstructionKind::MFC1:
-        result = try_mfc1(i, instr);
-        break;
-      case InstructionKind::DADDU:
-        result = try_daddu(i, instr);
-        break;
-      case InstructionKind::DSUBU:
-        result = try_dsubu(i, instr);
-        break;
-      case InstructionKind::MULT3:
-        result = try_mult3(i, instr);
-        break;
-      case InstructionKind::POR:
-        result = try_por(i, instr);
-        break;
-      case InstructionKind::LHU:
-        result = try_lhu(i, instr);
-        break;
-      case InstructionKind::LW:
-        result = try_lw(i, instr);
-        break;
-      case InstructionKind::LD:
-        result = try_ld(i, instr);
-        break;
-      case InstructionKind::DSLL:
-        result = try_dsll(i, instr);
-        break;
-      case InstructionKind::LWU:
-        result = try_lwu(i, instr);
-        break;
-      default:
-        result = nullptr;
-    }
+    if (instr + 2 < block.end_word) {
+      auto& next = func->instructions.at(instr + 1);
+      auto& next_next = func->instructions.at(instr + 2);
+      switch (i.kind) {
+        case InstructionKind::DSUBU:
+          result = try_dsubu(i, next, next_next, instr);
+          break;
+        case InstructionKind::SLT:
+          result = try_slt(i, next, next_next, instr);
+          break;
+        default:
+          result = nullptr;
+      }
 
-    if (result) {
-      length = 1;
+      if (result) {
+        length = 3;
+      }
     }
 
     if (!result && instr + 1 < block.end_word) {
@@ -421,8 +560,17 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::BNE:
           result = try_bne(i, next, instr);
           break;
+        case InstructionKind::BNEL:
+          result = try_bnel(i, next, instr);
+          break;
         case InstructionKind::BEQ:
           result = try_beq(i, next, instr);
+          break;
+        case InstructionKind::BEQL:
+          result = try_beql(i, next, instr);
+          break;
+        case InstructionKind::DADDIU:
+          result = try_daddiu(i, next, instr);
           break;
         default:
           result = nullptr;
@@ -430,6 +578,80 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
 
       if (result) {
         length = 2;
+      }
+    }
+
+    if (!result) {
+      switch (i.kind) {
+        case InstructionKind::OR:
+          result = try_or(i, instr);
+          break;
+        case InstructionKind::DADDIU:
+          result = try_daddiu(i, instr);
+          break;
+        case InstructionKind::AND:
+          result = try_and(i, instr);
+          break;
+        case InstructionKind::NOR:
+          result = try_nor(i, instr);
+          break;
+        case InstructionKind::XOR:
+          result = try_xor(i, instr);
+          break;
+        case InstructionKind::LWC1:
+          result = try_lwc1(i, instr);
+          break;
+        case InstructionKind::MTC1:
+          result = try_mtc1(i, instr);
+          break;
+        case InstructionKind::DIVS:
+          result = try_float_math_2(i, instr, InstructionKind::DIVS, IR_FloatMath2::DIV);
+          break;
+        case InstructionKind::MFC1:
+          result = try_mfc1(i, instr);
+          break;
+        case InstructionKind::DADDU:
+          result = try_daddu(i, instr);
+          break;
+        case InstructionKind::DSUBU:
+          result = try_dsubu(i, instr);
+          break;
+        case InstructionKind::MULT3:
+          result = try_mult3(i, instr);
+          break;
+        case InstructionKind::POR:
+          result = try_por(i, instr);
+          break;
+        case InstructionKind::LHU:
+          result = try_lhu(i, instr);
+          break;
+        case InstructionKind::LW:
+          result = try_lw(i, instr);
+          break;
+        case InstructionKind::LD:
+          result = try_ld(i, instr);
+          break;
+        case InstructionKind::DSLL:
+          result = try_dsll(i, instr);
+          break;
+        case InstructionKind::DSLL32:
+          result = try_dsll32(i, instr);
+          break;
+        case InstructionKind::LWU:
+          result = try_lwu(i, instr);
+          break;
+        case InstructionKind::ADDIU:
+          result = try_addiu(i, instr);
+          break;
+        case InstructionKind::SLL:
+          result = try_sll(i, instr);
+          break;
+        default:
+          result = nullptr;
+      }
+
+      if (result) {
+        length = 1;
       }
     }
 
