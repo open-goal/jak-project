@@ -483,6 +483,8 @@ void LinkedObjectFile::process_fp_relative_links() {
                 if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
                   assert(pprev_instr->get_dst(0).get_reg() == offset_reg);
                   additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
+                  pprev_instr->get_imm_src().set_label(
+                      get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
                 }
                 atom.set_label(
                     get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));

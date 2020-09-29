@@ -131,6 +131,12 @@ std::shared_ptr<Form> IR_FloatMath2::to_form(const LinkedObjectFile& file) const
     case SUB:
       math_operator = "-.f";
       break;
+    case MIN:
+      math_operator = "min.f";
+      break;
+    case MAX:
+      math_operator = "max.f";
+      break;
     default:
       assert(false);
   }
@@ -158,6 +164,12 @@ std::shared_ptr<Form> IR_IntMath2::to_form(const LinkedObjectFile& file) const {
       break;
     case MOD_SIGNED:
       math_operator = "mod.si";
+      break;
+    case DIV_UNSIGNED:
+      math_operator = "/.ui";
+      break;
+    case MOD_UNSIGNED:
+      math_operator = "mod.ui";
       break;
     case OR:
       math_operator = "logior";
@@ -210,11 +222,11 @@ std::shared_ptr<Form> IR_FloatMath1::to_form(const LinkedObjectFile& file) const
     case ABS:
       math_operator = "abs.f";
       break;
-    case MIN:
-      math_operator = "min.f";
+    case NEG:
+      math_operator = "neg.f";
       break;
-    case MAX:
-      math_operator = "max.f";
+    case SQRT:
+      math_operator = "sqrt.f";
       break;
     default:
       assert(false);
@@ -268,6 +280,7 @@ int Condition::num_args() const {
     case LEQ_UNSIGNED:
     case GEQ_UNSIGNED:
     case FLOAT_EQUAL:
+    case FLOAT_NOT_EQUAL:
     case FLOAT_LESS_THAN:
     case FLOAT_GEQ:
       return 2;
@@ -335,6 +348,9 @@ std::shared_ptr<Form> Condition::to_form(const LinkedObjectFile& file) const {
     case FLOAT_EQUAL:
       condtion_operator = "=.f";
       break;
+    case FLOAT_NOT_EQUAL:
+      condtion_operator = "!=.f";
+      break;
     case FLOAT_LESS_THAN:
       condtion_operator = "<.f";
       break;
@@ -367,4 +383,9 @@ std::shared_ptr<Form> IR_Branch::to_form(const LinkedObjectFile& file) const {
 
 std::shared_ptr<Form> IR_Compare::to_form(const LinkedObjectFile& file) const {
   return condition.to_form(file);
+}
+
+std::shared_ptr<Form> IR_Suspend::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return buildList("suspend!");
 }

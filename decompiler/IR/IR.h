@@ -92,7 +92,7 @@ class IR_Load : public IR {
 
 class IR_FloatMath2 : public IR {
  public:
-  enum Kind { DIV, MUL, ADD, SUB } kind;
+  enum Kind { DIV, MUL, ADD, SUB, MIN, MAX } kind;
   IR_FloatMath2(Kind _kind, std::shared_ptr<IR> _arg0, std::shared_ptr<IR> _arg1)
       : kind(_kind), arg0(std::move(_arg0)), arg1(std::move(_arg1)) {}
   std::shared_ptr<IR> arg0, arg1;
@@ -101,7 +101,7 @@ class IR_FloatMath2 : public IR {
 
 class IR_FloatMath1 : public IR {
  public:
-  enum Kind { FLOAT_TO_INT, INT_TO_FLOAT, ABS, MIN, MAX } kind;
+  enum Kind { FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT } kind;
   IR_FloatMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   std::shared_ptr<IR> arg;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
@@ -115,6 +115,8 @@ class IR_IntMath2 : public IR {
     MUL_SIGNED,
     DIV_SIGNED,
     MOD_SIGNED,
+    DIV_UNSIGNED,
+    MOD_UNSIGNED,
     OR,
     AND,
     NOR,
@@ -176,6 +178,7 @@ struct Condition {
     TRUTHY,
     ALWAYS,
     FLOAT_EQUAL,
+    FLOAT_NOT_EQUAL,
     FLOAT_LESS_THAN,
     FLOAT_GEQ
   } kind;
@@ -228,6 +231,12 @@ class IR_Compare : public IR {
 class IR_Nop : public IR {
  public:
   IR_Nop() = default;
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+};
+
+class IR_Suspend : public IR {
+ public:
+  IR_Suspend() = default;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
 };
 
