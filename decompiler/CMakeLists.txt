@@ -12,14 +12,15 @@ add_executable(decompiler
         util/FileIO.cpp
         config.cpp
         util/LispPrint.cpp
+        util/DecompilerTypeSystem.cpp
         Function/BasicBlocks.cpp
         Disasm/InstructionMatching.cpp
-        TypeSystem/GoalType.cpp
-        TypeSystem/GoalFunction.cpp
-        TypeSystem/GoalSymbol.cpp
-        TypeSystem/TypeInfo.cpp
-        TypeSystem/TypeSpec.cpp Function/CfgVtx.cpp Function/CfgVtx.h)
+        Function/CfgVtx.cpp Function/CfgVtx.h
+        IR/BasicOpBuilder.cpp
+        IR/IR.cpp)
 
 target_link_libraries(decompiler
         minilzo
-        common_util)
+        common_util
+        type_system
+        fmt)

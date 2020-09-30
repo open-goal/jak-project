@@ -8,7 +8,7 @@
 #include <cstring>
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
-#include "decompiler/TypeSystem/TypeInfo.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 // There are three link versions:
 // V2 - not really in use anymore, but V4 will resue logic from it (and the game didn't rename the
@@ -86,8 +86,9 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
                            uint32_t link_ptr_offset,
                            SymbolLinkKind kind,
                            const char* name,
-                           int seg_id) {
-  get_type_info().inform_symbol_with_no_type_info(name);
+                           int seg_id,
+                           DecompilerTypeSystem& dts) {
+  dts.add_symbol(name);
   auto initial_offset = code_ptr_offset;
   do {
     auto table_value = data.at(link_ptr_offset);
@@ -130,7 +131,7 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
           word_kind = LinkedWord::EMPTY_PTR;
           break;
         case SymbolLinkKind::TYPE:
-          get_type_info().inform_type(name);
+          dts.add_symbol(name, "type");
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:
@@ -162,8 +163,9 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
                            uint32_t link_ptr,
                            SymbolLinkKind kind,
                            const char* name,
-                           int seg) {
-  get_type_info().inform_symbol_with_no_type_info(name);
+                           int seg,
+                           DecompilerTypeSystem& dts) {
+  dts.add_symbol(name);
   auto initial_offset = code_ptr;
   do {
     // seek, with a variable length encoding that sucks.
@@ -187,7 +189,7 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
           word_kind = LinkedWord::EMPTY_PTR;
           break;
         case SymbolLinkKind::TYPE:
-          get_type_info().inform_type(name);
+          dts.add_symbol(name, "type");
           word_kind = LinkedWord::TYPE_PTR;
           break;
         default:
@@ -223,7 +225,8 @@ static uint32_t align16(uint32_t in) {
  */
 static void link_v4(LinkedObjectFile& f,
                     const std::vector<uint8_t>& data,
-                    const std::string& name) {
+                    const std::string& name,
+                    DecompilerTypeSystem& dts) {
   // read the V4 header to find where the link data really is
   const auto* header = (const LinkHeaderV4*)&data.at(0);
   uint32_t link_data_offset = header->code_size + sizeof(LinkHeaderV4);  // no basic offset
@@ -358,7 +361,7 @@ static void link_v4(LinkedObjectFile& f,
 
       link_ptr_offset += strlen(s_name) + 1;
       f.stats.total_v2_symbol_count++;
-      link_ptr_offset = c_symlink2(f, data, code_offset, link_ptr_offset, kind, s_name, 0);
+      link_ptr_offset = c_symlink2(f, data, code_offset, link_ptr_offset, kind, s_name, 0, dts);
       if (data.at(link_ptr_offset) == 0)
         break;
     }
@@ -384,7 +387,8 @@ static void assert_string_empty_after(const char* str, int size) {
 
 static void link_v5(LinkedObjectFile& f,
                     const std::vector<uint8_t>& data,
-                    const std::string& name) {
+                    const std::string& name,
+                    DecompilerTypeSystem& dts) {
   auto header = (const LinkHeaderV5*)(&data.at(0));
   if (header->n_segments == 1) {
     printf("abandon %s!\n", name.c_str());
@@ -539,10 +543,10 @@ static void link_v5(LinkedObjectFile& f,
 
           if (std::string("_empty_") == sname) {
             link_ptr = c_symlink2(f, data, segment_data_offsets[seg_id], link_ptr,
-                                  SymbolLinkKind::EMPTY_LIST, sname, seg_id);
+                                  SymbolLinkKind::EMPTY_LIST, sname, seg_id, dts);
           } else {
             link_ptr = c_symlink2(f, data, segment_data_offsets[seg_id], link_ptr,
-                                  SymbolLinkKind::SYMBOL, sname, seg_id);
+                                  SymbolLinkKind::SYMBOL, sname, seg_id, dts);
           }
         } else if ((reloc & 0x3f) == 0x3f) {
           assert(false);  // todo, does this ever get hit?
@@ -556,7 +560,7 @@ static void link_v5(LinkedObjectFile& f,
           const char* sname = (const char*)(&data.at(link_ptr));
           link_ptr += strlen(sname) + 1;
           link_ptr = c_symlink2(f, data, segment_data_offsets[seg_id], link_ptr,
-                                SymbolLinkKind::TYPE, sname, seg_id);
+                                SymbolLinkKind::TYPE, sname, seg_id, dts);
         }
 
         sub_link_ptr = link_ptr;
@@ -586,7 +590,8 @@ static void link_v5(LinkedObjectFile& f,
 
 static void link_v3(LinkedObjectFile& f,
                     const std::vector<uint8_t>& data,
-                    const std::string& name) {
+                    const std::string& name,
+                    DecompilerTypeSystem& dts) {
   auto header = (const LinkHeaderV3*)(&data.at(0));
   assert(name == header->name);
   assert(header->segments == 3);
@@ -739,7 +744,7 @@ static void link_v3(LinkedObjectFile& f,
         // methods todo
 
         s_name = (const char*)(&data.at(link_ptr));
-        get_type_info().inform_type_method_count(s_name, reloc & 0x7f);
+        // get_type_info().inform_type_method_count(s_name, reloc & 0x7f); todo
         kind = SymbolLinkKind::TYPE;
       }
 
@@ -750,7 +755,7 @@ static void link_v3(LinkedObjectFile& f,
 
       link_ptr += strlen(s_name) + 1;
       f.stats.v3_symbol_count++;
-      link_ptr = c_symlink3(f, data, base_ptr, link_ptr, kind, s_name, seg_id);
+      link_ptr = c_symlink3(f, data, base_ptr, link_ptr, kind, s_name, seg_id, dts);
     }
     segment_link_ends[seg_id] = link_ptr;
   }
@@ -775,19 +780,21 @@ static void link_v3(LinkedObjectFile& f,
 /*!
  * Main function to generate LinkedObjectFiles from raw object data.
  */
-LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data, const std::string& name) {
+LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
+                                       const std::string& name,
+                                       DecompilerTypeSystem& dts) {
   LinkedObjectFile result;
   const auto* header = (const LinkHeaderCommon*)&data.at(0);
 
   // use appropriate linker
   if (header->version == 3) {
     assert(header->type_tag == 0);
-    link_v3(result, data, name);
+    link_v3(result, data, name, dts);
   } else if (header->version == 4) {
     assert(header->type_tag == 0xffffffff);
-    link_v4(result, data, name);
+    link_v4(result, data, name, dts);
   } else if (header->version == 5) {
-    link_v5(result, data, name);
+    link_v5(result, data, name, dts);
   } else {
     assert(false);
   }
