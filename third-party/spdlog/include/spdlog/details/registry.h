@@ -19,7 +19,7 @@
 #ifdef _WIN32
 #include "third-party/spdlog/include/spdlog/sinks/wincolor_sink.h"
 #else
-#include "spdlog/sinks/ansicolor_sink.h"
+#include "third-party/spdlog/include/spdlog/sinks/ansicolor_sink.h"
 #endif
 #endif // SPDLOG_DISABLE_DEFAULT_LOGGER
 
