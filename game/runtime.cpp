@@ -127,10 +127,12 @@ void ee_runner(SystemThreadInterface& iface) {
     return;
   }
 
-  printf("  Main memory mapped at 0x%016llx\n", (u64)(g_ee_main_mem));
-  // spdlog::debug("Main memory mapped at 0x00000") --- todo: printf conversion specification
-  printf("  Main memory size 0x%x bytes (%.3f MB)\n", EE_MAIN_MEM_SIZE,
-         (double)EE_MAIN_MEM_SIZE / (1 << 20));
+  // printf("  Main memory mapped at 0x%016llx\n", (u64)(g_ee_main_mem));
+  spdlog::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
+  // printf("  Main memory size 0x%x bytes (%.3f MB)\n", EE_MAIN_MEM_SIZE,
+  //       (double)EE_MAIN_MEM_SIZE / (1 << 20));
+  spdlog::debug("Main memory size 0x{} bytes ({} MB)", EE_MAIN_MEM_SIZE,
+                (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
   // printf("[EE] Initialization complete!\n");
   spdlog::debug("[EE] Initialization complete!");
