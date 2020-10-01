@@ -14,6 +14,7 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 #include "Timer.h"
 
