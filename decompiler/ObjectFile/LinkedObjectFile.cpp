@@ -483,6 +483,8 @@ void LinkedObjectFile::process_fp_relative_links() {
                 if (pprev_instr && pprev_instr->kind == InstructionKind::LUI) {
                   assert(pprev_instr->get_dst(0).get_reg() == offset_reg);
                   additional_offset = (1 << 16) * pprev_instr->get_imm_src().get_imm();
+                  pprev_instr->get_imm_src().set_label(
+                      get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
                 }
                 atom.set_label(
                     get_label_id_for(seg, current_fp + atom.get_imm() + additional_offset));
@@ -554,6 +556,12 @@ std::string LinkedObjectFile::print_disassembly() {
           auto& word = words_by_seg[seg].at(func.start_word + i);
           append_word_to_string(result, word);
         } else {
+          if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
+            if (line.length() < 40) {
+              line.append(40 - line.length(), ' ');
+            }
+            line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
+          }
           result += line + "\n";
         }
 

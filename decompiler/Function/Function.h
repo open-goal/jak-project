@@ -8,6 +8,9 @@
 #include "decompiler/Disasm/Instruction.h"
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
+#include "decompiler/IR/IR.h"
+
+class DecompilerTypeSystem;
 
 struct FunctionName {
   enum class FunctionKind {
@@ -60,8 +63,14 @@ class Function {
  public:
   Function(int _start_word, int _end_word);
   void analyze_prologue(const LinkedObjectFile& file);
-  void find_global_function_defs(LinkedObjectFile& file);
+  void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void find_method_defs(LinkedObjectFile& file);
+  void add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr);
+  bool has_basic_ops() { return !basic_ops.empty(); }
+  bool instr_starts_basic_op(int idx);
+  IR* get_basic_op_at_instr(int idx);
+  int get_basic_op_count();
+  int get_failed_basic_op_count();
 
   int segment = -1;
   int start_word = -1;
@@ -115,6 +124,9 @@ class Function {
 
  private:
   void check_epilogue(const LinkedObjectFile& file);
+  std::vector<std::shared_ptr<IR>> basic_ops;
+  std::unordered_map<int, int> instruction_to_basic_op;
+  std::unordered_map<int, int> basic_op_to_instruction;
 };
 
 #endif  // NEXT_FUNCTION_H

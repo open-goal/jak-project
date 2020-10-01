@@ -49,6 +49,9 @@ u8* g_ee_main_mem = nullptr;
 
 namespace {
 
+int g_argc = 0;
+char** g_argv = nullptr;
+
 /*!
  * SystemThread function for running the DECI2 communication with the GOAL compiler.
  */
@@ -98,10 +101,6 @@ constexpr u64 EE_MAIN_MEM_MAP = 0x2000000000;      // intentionally > 32-bit to 
 // so this should be used only for debugging.
 constexpr bool EE_MEM_LOW_MAP = false;
 
-// GOAL Boot arguments
-constexpr const char* GOAL_ARGV[] = {"", "-fakeiso", "-boot", "-debug"};
-constexpr int GOAL_ARGC = 4;
-
 /*!
  * SystemThread Function for the EE (PS2 Main CPU)
  */
@@ -132,6 +131,11 @@ void ee_runner(SystemThreadInterface& iface) {
 
   printf("[EE] Run!\n");
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
+
+  // prevent access to the first 1 MB of memory.
+  // On the PS2 this is the kernel and can't be accessed either.
+  // this may not work well on systems with a page size > 1 MB.
+  mprotect((void*)g_ee_main_mem, 1024 * 1024, PROT_NONE);
   fileio_init_globals();
   kboot_init_globals();
   kdgo_init_globals();
@@ -146,7 +150,7 @@ void ee_runner(SystemThreadInterface& iface) {
   kmemcard_init_globals();
   kprint_init_globals();
 
-  goal_main(GOAL_ARGC, GOAL_ARGV);
+  goal_main(g_argc, g_argv);
   printf("[EE] Done!\n");
 
   //  // kill the IOP todo
@@ -224,8 +228,8 @@ void iop_runner(SystemThreadInterface& iface) {
  * Arguments are currently ignored.
  */
 u32 exec_runtime(int argc, char** argv) {
-  (void)argc;
-  (void)argv;
+  g_argc = argc;
+  g_argv = argv;
 
   // step 1: sce library prep
   iop::LIBRARY_INIT();

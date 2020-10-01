@@ -39,6 +39,7 @@ class TypeSystem {
 
   DerefInfo get_deref_info(const TypeSpec& ts);
 
+  bool fully_defined_type_exists(const std::string& name) const;
   TypeSpec make_typespec(const std::string& name) const;
   TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
                                   const std::string& return_type);
@@ -53,8 +54,12 @@ class TypeSystem {
 
   MethodInfo add_method(const std::string& type_name,
                         const std::string& method_name,
-                        const TypeSpec& ts);
-  MethodInfo add_method(Type* type, const std::string& method_name, const TypeSpec& ts);
+                        const TypeSpec& ts,
+                        bool allow_new_method = true);
+  MethodInfo add_method(Type* type,
+                        const std::string& method_name,
+                        const TypeSpec& ts,
+                        bool allow_new_method = true);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
   MethodInfo lookup_method(const std::string& type_name, const std::string& method_name);
   MethodInfo lookup_new_method(const std::string& type_name);
@@ -121,5 +126,7 @@ class TypeSystem {
 
   bool m_allow_redefinition = false;
 };
+
+TypeSpec coerce_to_reg_type(const TypeSpec& in);
 
 #endif  // JAK_TYPESYSTEM_H

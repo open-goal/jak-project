@@ -1,0 +1,17 @@
+(deftype self-test-type (basic)
+  ((self basic))
+  )
+
+(defmethod new self-test-type ((allocation symbol) (type-to-make type))
+  (let ((obj (object-new)))
+    ;; here the register of obj is used both as a "real" pointer and a GOAL pointer in the same instruction.
+    ;; this was a tricky thing to get right in the old compiler, so its worth testing.
+    (set! (-> obj self) obj)
+    obj
+    )
+  )
+
+(let ((temp (new 'global 'self-test-type)))
+  (format #t "~A~%" (eq? temp (-> temp self)))
+  )
+0

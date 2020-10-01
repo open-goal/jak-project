@@ -9,6 +9,7 @@ TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.
   add_type("none", std::make_unique<NullType>("none"));
   add_type("_type_", std::make_unique<NullType>("_type_"));
+  add_type("_varargs_", std::make_unique<NullType>("_varargs_"));
 }
 
 /*!
@@ -41,7 +42,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     // newly defined!
 
     // none/object get to skip these checks because they are roots.
-    if (name != "object" && name != "none" && name != "_type_") {
+    if (name != "object" && name != "none" && name != "_type_" && name != "_varargs_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
         fmt::print("[TypeSystem] Type {} has incompletely defined parent {}\n", type->get_name(),
                    type->get_parent());
@@ -155,6 +156,10 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) const {
   }
 }
 
+bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
+  return m_types.find(name) != m_types.end();
+}
+
 /*!
  * Create a typespec for a function.  If the function doesn't return anything, use "none" as the
  * return type.
@@ -230,8 +235,9 @@ Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
 
 MethodInfo TypeSystem::add_method(const std::string& type_name,
                                   const std::string& method_name,
-                                  const TypeSpec& ts) {
-  return add_method(lookup_type(make_typespec(type_name)), method_name, ts);
+                                  const TypeSpec& ts,
+                                  bool allow_new_method) {
+  return add_method(lookup_type(make_typespec(type_name)), method_name, ts, allow_new_method);
 }
 
 /*!
@@ -243,7 +249,10 @@ MethodInfo TypeSystem::add_method(const std::string& type_name,
  * is overriding the "new" method - the TypeSystem will track that because overridden new methods
  * may have different arguments.
  */
-MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, const TypeSpec& ts) {
+MethodInfo TypeSystem::add_method(Type* type,
+                                  const std::string& method_name,
+                                  const TypeSpec& ts,
+                                  bool allow_new_method) {
   if (method_name == "new") {
     return add_new_method(type, ts);
   }
@@ -281,6 +290,11 @@ MethodInfo TypeSystem::add_method(Type* type, const std::string& method_name, co
 
     return existing_info;
   } else {
+    if (!allow_new_method) {
+      fmt::print("[TypeSystem] Attempted to add method {} to type {} but it was not declared.\n",
+                 method_name, type->get_name());
+      throw std::runtime_error("illegal method definition");
+    }
     // add a new method!
     return type->add_method({get_next_method_id(type), method_name, ts, type->get_name()});
   }
@@ -295,7 +309,7 @@ MethodInfo TypeSystem::add_new_method(Type* type, const TypeSpec& ts) {
   MethodInfo existing;
   if (type->get_my_new_method(&existing)) {
     // it exists!
-    if (existing.type != ts) {
+    if (!existing.type.is_compatible_child_method(ts, type->get_name())) {
       fmt::print(
           "[TypeSystem] The new method of {} was originally defined as {}, but has been redefined "
           "as {}\n",
@@ -483,7 +497,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
     // we need to compute the offset ourself!
     offset = align(type->get_size_in_memory(), field_alignment);
   } else {
-    int aligned_offset = align(type->get_size_in_memory(), field_alignment);
+    int aligned_offset = align(offset, field_alignment);
     if (offset != aligned_offset) {
       fmt::print(
           "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
@@ -563,13 +577,13 @@ void TypeSystem::add_builtin_types() {
   // Methods and Fields
 
   // OBJECT
-  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int32"}, "_type_"));
+  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
   add_method(obj_type, "delete", make_function_typespec({"_type_"}, "none"));
   add_method(obj_type, "print", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "inspect", make_function_typespec({"_type_"}, "_type_"));
   add_method(obj_type, "length",
-             make_function_typespec({"_type_"}, "int32"));  // todo - this integer type?
-  add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int32"));
+             make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
+  add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
   add_method(obj_type, "relocate", make_function_typespec({"_type_", "int32"}, "_type_"));
   add_method(obj_type, "mem-usage",
@@ -580,7 +594,7 @@ void TypeSystem::add_builtin_types() {
   // the type.  Dynamic structures use new-dynamic-structure, which is used exactly once ever.
   add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "structure"));
   // structure_type is a field-less StructureType, so we have to do this to match the runtime.
-  structure_type->override_size_in_memory(4);
+  //  structure_type->override_size_in_memory(4);
 
   // BASIC
   // we intentionally don't inherit from structure because structure's size is weird.
@@ -600,12 +614,12 @@ void TypeSystem::add_builtin_types() {
   add_method(type_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
   add_field_to_type(type_type, "symbol", make_typespec("symbol"));
   add_field_to_type(type_type, "parent", make_typespec("type"));
-  add_field_to_type(type_type, "allocated-size", make_typespec("uint16"));  // todo, u16 or s16?
+  add_field_to_type(type_type, "size", make_typespec("uint16"));  // actually u16
   add_field_to_type(type_type, "psize",
                     make_typespec("uint16"));  // todo, u16 or s16. what really is this?
-  add_field_to_type(type_type, "heap-base", make_typespec("uint16"));     // todo
-  add_field_to_type(type_type, "method-count", make_typespec("uint16"));  // todo
-  add_field_to_type(type_type, "vtable", make_typespec("function"), false, true);
+  add_field_to_type(type_type, "heap-base", make_typespec("uint16"));         // todo
+  add_field_to_type(type_type, "allocated-length", make_typespec("uint16"));  // todo
+  add_field_to_type(type_type, "method-table", make_typespec("function"), false, true);
 
   // STRING
   builtin_structure_inherit(string_type);
@@ -640,6 +654,8 @@ void TypeSystem::add_builtin_types() {
 
   // pair
   pair_type->override_offset(2);
+  add_method(pair_type, "new",
+             make_function_typespec({"symbol", "type", "object", "object"}, "_type_"));
   add_field_to_type(pair_type, "car", make_typespec("object"));
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 
@@ -970,4 +986,20 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
     result = lowest_common_ancestor(result, types.at(i));
   }
   return result;
+}
+
+TypeSpec coerce_to_reg_type(const TypeSpec& in) {
+  if (in.arg_count() == 0) {
+    if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||
+        in.base_type() == "int16") {
+      return TypeSpec("int");
+    }
+
+    if (in.base_type() == "uint8" || in.base_type() == "uint16" || in.base_type() == "uint32" ||
+        in.base_type() == "uint16") {
+      return TypeSpec("uint");
+    }
+  }
+
+  return in;
 }

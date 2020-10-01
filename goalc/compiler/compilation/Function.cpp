@@ -1,7 +1,15 @@
+/*!
+ * @file Function.cpp
+ * Calling and defining functions, lambdas, and inlining.
+ */
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/logger/Logger.h"
 
 namespace {
+/*!
+ * Get the preference to inline of the given environment.
+ */
 bool get_inline_preference(Env* env) {
   auto ile = get_parent_env_of_type<WithInlineEnv>(env);
   if (ile) {
@@ -11,6 +19,9 @@ bool get_inline_preference(Env* env) {
   }
 }
 
+/*!
+ * Hacky function to seek past arguments to get a goos::Object containing the body of a lambda.
+ */
 const goos::Object& get_lambda_body(const goos::Object& def) {
   auto* iter = &def;
   while (true) {
@@ -26,6 +37,14 @@ const goos::Object& get_lambda_body(const goos::Object& def) {
 }
 }  // namespace
 
+/*!
+ * The (inline my-func) form is like my-func, except my-func will be inlined instead of called,
+ * when used in a function call. This only works for immediaate function calls, you can't "save"
+ * an (inline my-func) into a function pointer.
+ *
+ * If inlining is not possible (function disallows inlining or didn't save its code), throw an
+ * error.
+ */
 Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
@@ -39,17 +58,19 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
   if (kv->second->func && !kv->second->func->settings.allow_inline) {
     throw_compile_error(form, "Found function to inline, but it isn't allowed.");
   }
-
-  // todo, this should return a "view" of the lambda which indicates its inlined
-  // so the correct label namespace behavior can be used.
-  return kv->second;
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
 }
 
+/*!
+ * Compile a lambda. This is used for real lambdas, lets, and defuns. So there are a million
+ * confusing special cases...
+ */
 Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
-      !args.only_contains_named({"name", "inline-only"})) {
+      !args.only_contains_named({"name", "inline-only", "segment"})) {
     throw_compile_error(form, "Invalid lambda form");
   }
 
@@ -65,7 +86,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       lambda_ts.add_arg(m_ts.make_typespec("object"));
     } else {
       auto param_args = get_va(o, o);
-      va_check(o, param_args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+      va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
@@ -77,9 +98,8 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   });
   assert(lambda.params.size() == lambda_ts.arg_count());
 
-  // optional name for debugging
+  // optional name for debugging (defun sets this)
   if (args.has_named("name")) {
-    // todo, this probably prints a nasty error if name isn't a string.
     lambda.debug_name = symbol_string(args.get_named("name"));
   }
 
@@ -89,13 +109,37 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   bool inline_only =
       args.has_named("inline-only") && symbol_string(args.get_named("inline-only")) != "#f";
 
+  // pick default segment to store function in.
+  int segment = MAIN_SEGMENT;
+  if (fe->segment == DEBUG_SEGMENT) {
+    // make anonymous lambdas in debug functions also go to debug
+    segment = DEBUG_SEGMENT;
+  }
+
+  // override default segment.
+  if (args.has_named("segment")) {
+    auto segment_name = symbol_string(args.get_named("segment"));
+    if (segment_name == "main") {
+      segment = MAIN_SEGMENT;
+    } else if (segment_name == "debug") {
+      segment = DEBUG_SEGMENT;
+    } else {
+      throw_compile_error(form, "invalid segment override in lambda");
+    }
+  }
+
   if (!inline_only) {
     // compile a function! First create env
     auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
-    new_func_env->set_segment(MAIN_SEGMENT);  // todo, how do we set debug?
+    new_func_env->set_segment(segment);
 
     // set up arguments
-    assert(lambda.params.size() < 8);  // todo graceful error
+    if (lambda.params.size() >= 8) {
+      throw_compile_error(form, "lambda generating code has too many parameters!");
+    }
+
+    // set up argument register constraints.
+    std::vector<RegVal*> args_for_coloring;
     for (u32 i = 0; i < lambda.params.size(); i++) {
       IRegConstraint constr;
       constr.instr_idx = 0;  // constraint at function start
@@ -104,6 +148,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
       new_func_env->params[lambda.params.at(i).name] = ireg;
       new_func_env->constrain(constr);
+      args_for_coloring.push_back(ireg);
     }
 
     place->func = new_func_env.get();
@@ -113,29 +158,39 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
     func_block_env->return_value = return_reg;
     func_block_env->end_label = Label(new_func_env.get());
+    func_block_env->emit(std::make_unique<IR_FunctionStart>(args_for_coloring));
 
-    // compile the function!
+    // compile the function, iterating through the body.
     Val* result = nullptr;
     bool first_thing = true;
     for_each_in_list(lambda.body, [&](const goos::Object& o) {
       result = compile_error_guard(o, func_block_env);
+      if (!dynamic_cast<None*>(result)) {
+        result = result->to_reg(func_block_env);
+      }
       if (first_thing) {
         first_thing = false;
-        // you could probably cheat and do a (begin (blorp) (declare ...)) to get around this.
+        // you could cheat and do a (begin (blorp) (declare ...)) to get around this.
+        // but I see no strong reason why "declare"s need to go at the beginning, so no reason
+        // to make this better.
         new_func_env->settings.is_set = true;
       }
     });
     if (result) {
+      // got a result, so to_gpr it and return it.
       auto final_result = result->to_gpr(new_func_env.get());
       new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-      // new_func_env->emit(std::make_unique<IR_Null>())???
-      new_func_env->finish();
       lambda_ts.add_arg(final_result->type());
     } else {
+      // empty body, return none
       lambda_ts.add_arg(m_ts.make_typespec("none"));
     }
+    // put null instruction at the end so jumps to the end have somewhere to go.
     func_block_env->end_label.idx = new_func_env->code().size();
+    new_func_env->emit(std::make_unique<IR_Null>());
+    new_func_env->finish();
 
+    // save our code for possible inlining
     auto obj_env = get_parent_env_of_type<FileEnv>(new_func_env.get());
     assert(obj_env);
     if (new_func_env->settings.save_code) {
@@ -147,12 +202,16 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   return place;
 }
 
+/*!
+ * Compile a form which should be either a function call (possibly inline) or method call.
+ * Note - calling method "new" isn't handled by this.
+ * Again, there are way too many special cases here.
+ */
 Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* env) {
   goos::Object f = form;
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   auto args = get_va(form, form);
-
   auto uneval_head = args.unnamed.at(0);
   Val* head = get_none();
 
@@ -160,7 +219,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   // this logic will not trigger for a manually inlined call [using the (inline func) form]
   bool auto_inline = false;
   if (uneval_head.is_symbol()) {
-    // we can only auto-inline the function if its name is explicit.
+    // we can only auto-inline the function if its name is explicitly given.
     // look it up:
     auto kv = m_inlineable_functions.find(uneval_head.as_symbol());
     if (kv != m_inlineable_functions.end()) {
@@ -211,10 +270,24 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   // LambdaPlace! so this cast will only succeed if the auto-inliner succeeded, or the user has
   // passed use explicitly a lambda either with the lambda form, or with the (inline ...) form.
   LambdaVal* head_as_lambda = nullptr;
+  bool got_inlined_lambda = false;
   if (!is_method_call) {
+    // try directly as a lambda
     head_as_lambda = dynamic_cast<LambdaVal*>(head);
+
+    if (!head_as_lambda) {
+      // nope, so try as an (inline x)
+      auto head_as_inlined_lambda = dynamic_cast<InlinedLambdaVal*>(head);
+      if (head_as_inlined_lambda) {
+        // yes, remember the lambda that contains and flag that we're inlining.
+        head_as_lambda = head_as_inlined_lambda->lv;
+        got_inlined_lambda = true;
+      }
+    }
   }
 
+  // no lambda (not inlining or immediate), and not a method call, so we should actually get
+  // the function pointer.
   if (!head_as_lambda && !is_method_call) {
     head = head->to_gpr(env);
   }
@@ -223,11 +296,12 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   std::vector<RegVal*> eval_args;
   for (uint32_t i = 1; i < args.unnamed.size(); i++) {
     auto intermediate = compile_error_guard(args.unnamed.at(i), env);
+    // todo, are the eval/to_reg'd in batches?
     eval_args.push_back(intermediate->to_reg(env));
   }
 
   if (head_as_lambda) {
-    // inline the function!
+    // inline/immediate the function!
 
     // check args are ok
     if (head_as_lambda->lambda.params.size() != eval_args.size()) {
@@ -239,26 +313,32 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
 
     Env* compile_env = lexical_env;
 
-    // if needed create a label env.
-    // we don't want a separate label env with lets, but we do in other cases.
-    if (auto_inline) {
-      // TODO - this misses the case of (inline func)!
+    // if need to, create a label env.
+    // we don't want a separate label env with lets, but we do for inlined functions.
+    // either inlined through the auto-inliner, or through an explicit (inline x) form.
+    if (auto_inline || got_inlined_lambda) {
       compile_env = fe->alloc_env<LabelEnv>(lexical_env);
     }
 
     // check arg types
     if (!head->type().arg_count()) {
       if (head->type().arg_count() - 1 != eval_args.size()) {
-        throw_compile_error(form, "invalid number of arguments to function call (inline)");
+        throw_compile_error(form,
+                            "invalid number of arguments to function call (inline or immediate "
+                            "lambda application)");
       }
+      // immediate lambdas (lets) will have all types as the most general object by default
+      // inlined functions will have real types that are checked...
       for (uint32_t i = 0; i < eval_args.size(); i++) {
         typecheck(form, head->type().get_arg(i), eval_args.at(i)->type(),
-                  "function (inline) argument");
+                  "function/lambda (inline/immediate) argument");
       }
     }
 
     // copy args...
     for (uint32_t i = 0; i < eval_args.size(); i++) {
+      // note, inlined functions will get a more specific type if possible
+      // todo, is this right?
       auto type = eval_args.at(i)->type();
       auto copy = env->make_ireg(type, get_preferred_reg_kind(type));
       env->emit(std::make_unique<IR_RegSet>(copy, eval_args.at(i)));
@@ -270,32 +350,43 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     Val* result = get_none();
     for_each_in_list(head_as_lambda->lambda.body, [&](const goos::Object& o) {
       result = compile_error_guard(o, compile_env);
+      if (!dynamic_cast<None*>(result)) {
+        result = result->to_reg(compile_env);
+      }
       if (first_thing) {
         first_thing = false;
         lexical_env->settings.is_set = true;
       }
     });
 
-    // this doesn't require a return type.
+    // ignore the user specified return type and return the most specific type.
+    // todo - does this make sense for an inline function? Should we check the return type?
     return result;
   } else {
-    // not an inline call
+    // not an inlined/immediate, it's a real function call.
+    // todo, this order is extremely likely to be wrong, we should get the method way earlier.
     if (is_method_call) {
-      throw_compile_error(form, "Unrecognized symbol " + uneval_head.print() + " as head of form");
-      //      // determine the method to call by looking at the type of first argument
-      //      if (eval_args.empty()) {
-      //
-      //      }
-      //      printf("BAD %s\n", uneval_head.print().c_str());
-      //      assert(false);  // nyi
-      // head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
+      // method needs at least one argument to tell what we're calling the method on.
+      if (eval_args.empty()) {
+        throw_compile_error(form,
+                            "Unrecognized symbol " + uneval_head.print() + " as head of form");
+      }
+      // get the method function pointer
+      head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
+      fmt::format("method of object {} {}\n", head->print(), head->type().print());
     }
 
-    // convert the head to a GPR
-    auto head_as_gpr =
-        head->to_gpr(env);  // std::dynamic_pointer_cast<GprPlace>(resolve_to_gpr(head, env));
+    // convert the head to a GPR (if function, this is already done)
+    auto head_as_gpr = head->to_gpr(env);
     if (head_as_gpr) {
-      return compile_real_function_call(form, head_as_gpr, eval_args, env);
+      // method calls have special rules for typing _type_ arguments.
+      if (is_method_call) {
+        return compile_real_function_call(form, head_as_gpr, eval_args, env,
+                                          eval_args.front()->type().base_type());
+      } else {
+        return compile_real_function_call(form, head_as_gpr, eval_args, env);
+      }
+
     } else {
       throw_compile_error(form, "can't figure out this function call!");
     }
@@ -305,47 +396,51 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   return get_none();
 }
 
+namespace {
+/*!
+ * Is the given typespec for a varargs function? Assumes typespec is a function to begin with.
+ */
+bool is_varargs_function(const TypeSpec& ts) {
+  return ts.arg_count() >= 2 && ts.get_arg(0).print() == "_varargs_";
+}
+}  // namespace
+
+/*!
+ * Do a real x86-64 function call.
+ */
 Val* Compiler::compile_real_function_call(const goos::Object& form,
                                           RegVal* function,
                                           const std::vector<RegVal*>& args,
-                                          Env* env) {
+                                          Env* env,
+                                          const std::string& method_type_name) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   fe->require_aligned_stack();
   TypeSpec return_ts;
   if (function->type().arg_count() == 0) {
-    // if the type system doesn't know what the function will return, just make it object.
-    // the user is responsible for getting this right.
-    return_ts = m_ts.make_typespec("object");
-    gLogger.log(MSG_WARN, "[Warning] Function call could not determine return type: %s\n",
-                form.print().c_str());
-    // todo, should this be a warning?  not a great thing if we don't know what a function will
-    // return?
+    // if the type system doesn't know what the function will return, don't allow it to be called
+    throw_compile_error(
+        form, "This function call has unknown argument and return types and cannot be called");
   } else {
     return_ts = function->type().last_arg();
   }
 
   auto return_reg = env->make_ireg(return_ts, emitter::RegKind::GPR);
 
-  // TODO - VERY IMPORTANT
-  // CREATE A TEMP COPY OF FUNCTION! WILL BE DESTROYED.
-
-  // nope! not anymore.
-  //  for(auto& arg : args) {
-  //    // note: this has to be done in here, because we might want to const prop across lexical
-  //    envs. arg = resolve_to_gpr(arg, env);
-  //  }
-
   // check arg count:
-  if (function->type().arg_count()) {
+  if (function->type().arg_count() && !is_varargs_function(function->type())) {
     if (function->type().arg_count() - 1 != args.size()) {
-      printf("got type %s\n", function->type().print().c_str());
       throw_compile_error(form, "invalid number of arguments to function call: got " +
                                     std::to_string(args.size()) + " and expected " +
                                     std::to_string(function->type().arg_count() - 1) + " for " +
                                     function->type().print());
     }
     for (uint32_t i = 0; i < args.size(); i++) {
-      typecheck(form, function->type().get_arg(i), args.at(i)->type(), "function argument");
+      if (method_type_name.empty()) {
+        typecheck(form, function->type().get_arg(i), args.at(i)->type(), "function argument");
+      } else {
+        typecheck(form, function->type().get_arg(i).substitute_for_method_call(method_type_name),
+                  args.at(i)->type(), "function argument");
+      }
     }
   }
 
@@ -356,7 +451,10 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     env->emit(std::make_unique<IR_RegSet>(arg_outs.back(), arg));
   }
 
-  env->emit(std::make_unique<IR_FunctionCall>(function, return_reg, arg_outs));
+  // todo, there's probably a more efficient way to do this.
+  auto temp_function = fe->make_gpr(function->type());
+  env->emit(std::make_unique<IR_RegSet>(temp_function, function));
+  env->emit(std::make_unique<IR_FunctionCall>(temp_function, return_reg, arg_outs));
 
   if (m_settings.emit_move_after_return) {
     auto result_reg = env->make_gpr(return_reg->type());
@@ -367,6 +465,10 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   }
 }
 
+/*!
+ * A (declare ...) form can be used to configure settings inside a function.
+ * Currently there aren't many useful settings, but more may be added in the future.
+ */
 Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto& settings = get_parent_env_of_type<DeclareEnv>(env)->settings;
 

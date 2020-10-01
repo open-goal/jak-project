@@ -1,9 +1,18 @@
+/*!
+ * @file CompilerControl.cpp
+ * Compiler implementation for forms which actually control the compiler.
+ */
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "common/util/Timer.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 
+/*!
+ * Exit the compiler. Disconnects the listener and tells the target to reset itself.
+ * Will actually exit the next time the REPL runs.
+ */
 Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
@@ -11,10 +20,15 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   if (m_listener.is_connected()) {
     m_listener.send_reset(false);
   }
+  // flag for the REPL.
   m_want_exit = true;
   return get_none();
 }
 
+/*!
+ * Evaluate GOOS code. It's not possible to get the result, so this is really only useful to get
+ * a side effect. Used to bootstrap the GOAL/GOOS macro system.
+ */
 Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   try {
@@ -27,6 +41,10 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
   return get_none();
 }
 
+/*!
+ * Compile a file, and optionally color, save, or load.
+ * This should only be used for v3 "code object" files.
+ */
 Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   int i = 0;
@@ -39,6 +57,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   std::vector<std::pair<std::string, float>> timing;
   Timer total_timer;
 
+  // parse arguments
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (i == 0) {
       filename = as_string(o);
@@ -59,43 +78,49 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     i++;
   });
 
+  // READ
   Timer reader_timer;
   auto code = m_goos.reader.read_from_file({filename});
   timing.emplace_back("read", reader_timer.getMs());
 
   Timer compile_timer;
   std::string obj_file_name = filename;
+
+  // Extract object name from file name.
   for (int idx = int(filename.size()) - 1; idx-- > 0;) {
     if (filename.at(idx) == '\\' || filename.at(idx) == '/') {
       obj_file_name = filename.substr(idx + 1);
       break;
     }
   }
-
   obj_file_name = obj_file_name.substr(0, obj_file_name.find_last_of('.'));
+
+  // COMPILE
   auto obj_file = compile_object_file(obj_file_name, code, !no_code);
   timing.emplace_back("compile", compile_timer.getMs());
 
   if (color) {
+    // register allocation
     Timer color_timer;
     color_object_file(obj_file);
     timing.emplace_back("color", color_timer.getMs());
 
+    // code/object file generation
     Timer codegen_timer;
     auto data = codegen_object_file(obj_file);
     timing.emplace_back("codegen", codegen_timer.getMs());
 
+    // send to target
     if (load) {
       if (m_listener.is_connected()) {
         m_listener.send_code(data);
       } else {
-        printf("WARNING - couldn't load because listener isn't connected\n");
+        printf("WARNING - couldn't load because listener isn't connected\n");  // todo spdlog warn
       }
     }
 
+    // save file
     if (write) {
-      //      auto output_dir = as_string(get_constant_or_error(form, "*compiler-output-path*"));
-      // todo, change extension based on v3/v4
       auto output_name = m_goos.reader.get_source_dir() + "/data/" + obj_file_name + ".o";
       file_util::write_binary_file(output_name, (void*)data.data(), data.size());
     }
@@ -109,23 +134,29 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     }
   }
 
-  //  if(truthy(get_config("print-asm-file-time"))) {
-  printf("F: %36s ", obj_file_name.c_str());
-  for (auto& e : timing) {
-    printf(" %12s %4.2f", e.first.c_str(), e.second);
+  if (m_settings.print_timing) {
+    printf("F: %36s ", obj_file_name.c_str());
+    timing.emplace_back("total", total_timer.getMs());
+    for (auto& e : timing) {
+      printf(" %12s %4.2f", e.first.c_str(), e.second / 1000.f);
+    }
+    printf("\n");
   }
-  printf("\n");
-  //  }
 
   return get_none();
 }
 
+/*!
+ * Connect the compiler to a target. Takes an optional IP address / port, defaults to
+ * 127.0.0.1 and 8112, which is the local computer and the default port for the DECI2 over IP
+ * implementation.
+ */
 Val* Compiler::compile_listen_to_target(const goos::Object& form,
                                         const goos::Object& rest,
                                         Env* env) {
   (void)env;
   std::string ip = "127.0.0.1";
-  int port = 8112;  // todo, get from some constant somewhere
+  int port = DECI2_PORT;
   bool got_port = false, got_ip = false;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
@@ -150,6 +181,11 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
   return get_none();
 }
 
+/*!
+ * Send the target a command to reset, which totally resets the state of the target.
+ * Optionally takes a :shutdown command which causes the exec_runtime function of the target
+ * to return after MachineShutdown.
+ */
 Val* Compiler::compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   bool shutdown = false;
@@ -164,6 +200,11 @@ Val* Compiler::compile_reset_target(const goos::Object& form, const goos::Object
   return get_none();
 }
 
+/*!
+ * Send a "poke" message to the target. This can be used to check if the target is still alive and
+ * acknowledges commands, and also tells that target that somebody is connected so it will flush
+ * its outgoing buffers that have been storing data from startup.
+ */
 Val* Compiler::compile_poke(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
@@ -172,6 +213,9 @@ Val* Compiler::compile_poke(const goos::Object& form, const goos::Object& rest, 
   return get_none();
 }
 
+/*!
+ * Enter a goos REPL.
+ */
 Val* Compiler::compile_gs(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
@@ -180,6 +224,9 @@ Val* Compiler::compile_gs(const goos::Object& form, const goos::Object& rest, En
   return get_none();
 }
 
+/*!
+ * Set a compiler setting by name.
+ */
 Val* Compiler::compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
@@ -188,6 +235,9 @@ Val* Compiler::compile_set_config(const goos::Object& form, const goos::Object& 
   return get_none();
 }
 
+/*!
+ * Ignore the "in-package" statement and anything it contains at the top of GOAL files.
+ */
 Val* Compiler::compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)form;
   (void)rest;
@@ -195,6 +245,10 @@ Val* Compiler::compile_in_package(const goos::Object& form, const goos::Object& 
   return get_none();
 }
 
+/*!
+ * Build dgo files. Takes a string argument pointing to the DGO description file, which is read
+ * and parsed here.
+ */
 Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);

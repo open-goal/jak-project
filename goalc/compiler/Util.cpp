@@ -104,6 +104,15 @@ std::string Compiler::symbol_string(const goos::Object& o) {
   return o.as_symbol()->name;
 }
 
+std::string Compiler::quoted_sym_as_string(const goos::Object& o) {
+  auto args = get_va(o, o);
+  va_check(o, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}}, {});
+  if (symbol_string(args.unnamed.at(0)) != "quote") {
+    throw_compile_error(o, "invalid quoted symbol " + o.print());
+  }
+  return symbol_string(args.unnamed.at(1));
+}
+
 const goos::Object& Compiler::pair_car(const goos::Object& o) {
   return o.as_pair()->car;
 }
@@ -171,4 +180,8 @@ emitter::RegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
 
 bool Compiler::is_none(Val* in) {
   return dynamic_cast<None*>(in);
+}
+
+bool Compiler::is_basic(const TypeSpec& ts) {
+  return m_ts.typecheck(m_ts.make_typespec("basic"), ts, "", false, false);
 }

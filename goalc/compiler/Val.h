@@ -44,9 +44,12 @@ class Val {
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
+  bool settable() const { return m_is_settable; }
+  void mark_as_settable() { m_is_settable = true; }
 
  protected:
   TypeSpec m_ts;
+  bool m_is_settable = false;
 };
 
 /*!
@@ -64,7 +67,7 @@ class None : public Val {
  */
 class RegVal : public Val {
  public:
-  RegVal(IRegister ireg, TypeSpec ts) : Val(std::move(ts)), m_ireg(ireg) {}
+  RegVal(IRegister ireg, const TypeSpec& ts) : Val(coerce_to_reg_type(ts)), m_ireg(ireg) {}
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
   std::string print() const override { return m_ireg.to_string(); };
@@ -82,7 +85,9 @@ class RegVal : public Val {
  */
 class SymbolVal : public Val {
  public:
-  SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {}
+  SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {
+    mark_as_settable();
+  }
   const std::string& name() const { return m_name; }
   std::string print() const override { return "<" + m_name + ">"; }
   RegVal* to_reg(Env* fe) override;
@@ -114,6 +119,14 @@ class LambdaVal : public Val {
   std::string print() const override { return "lambda-" + lambda.debug_name; }
   FunctionEnv* func = nullptr;
   Lambda lambda;
+  RegVal* to_reg(Env* fe) override;
+};
+
+class InlinedLambdaVal : public Val {
+ public:
+  explicit InlinedLambdaVal(TypeSpec ts, LambdaVal* _lv) : Val(std::move(ts)), lv(_lv) {}
+  std::string print() const override { return "inline-lambda-" + lv->lambda.debug_name; }
+  LambdaVal* lv = nullptr;
   RegVal* to_reg(Env* fe) override;
 };
 
@@ -152,6 +165,16 @@ class MemoryOffsetConstantVal : public Val {
   int offset = 0;
 };
 
+class MemoryOffsetVal : public Val {
+ public:
+  MemoryOffsetVal(TypeSpec ts, Val* _base, Val* _offset)
+      : Val(std::move(ts)), base(_base), offset(_offset) {}
+  std::string print() const override { return "(" + base->print() + " + " + offset->print() + ")"; }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  Val* offset = nullptr;
+};
+
 // MemOffConstant
 // MemOffVar
 
@@ -165,8 +188,23 @@ class MemoryDerefVal : public Val {
   MemLoadInfo info;
 };
 
-// PairEntry
-// Alias
+class PairEntryVal : public Val {
+ public:
+  PairEntryVal(TypeSpec ts, Val* _base, bool _is_car)
+      : Val(std::move(ts)), base(_base), is_car(_is_car) {}
+  std::string print() const override;
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+  bool is_car = false;
+};
+
+class AliasVal : public Val {
+ public:
+  AliasVal(TypeSpec ts, Val* _base) : Val(std::move(ts)), base(_base) {}
+  std::string print() const override { return "alias-of-" + base->print(); }
+  RegVal* to_reg(Env* fe) override;
+  Val* base = nullptr;
+};
 
 class IntegerConstantVal : public Val {
  public:

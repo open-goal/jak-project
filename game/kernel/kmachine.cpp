@@ -94,6 +94,12 @@ void InitParms(int argc, const char* const* argv) {
       reboot = 0;
     }
 
+    // an added mode to allow booting without a KERNEL.CGO for testing
+    if (arg == "-nokernel") {
+      Msg(6, "dkernel: no kernel mode\n");
+      MasterUseKernel = false;
+    }
+
     // GOAL Settings
     // ----------------------------
 

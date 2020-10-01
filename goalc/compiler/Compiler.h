@@ -65,6 +65,8 @@ class Compiler {
       const std::unordered_map<std::string, std::pair<bool, MatchParam<goos::ObjectType>>>& named);
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
+  std::string quoted_sym_as_string(const goos::Object& o);
+  bool is_basic(const TypeSpec& ts);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -79,7 +81,8 @@ class Compiler {
   Val* compile_real_function_call(const goos::Object& form,
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,
-                                  Env* env);
+                                  Env* env,
+                                  const std::string& method_type_name = "");
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
@@ -108,6 +111,7 @@ class Compiler {
   RegVal* compile_get_method_of_type(const TypeSpec& type,
                                      const std::string& method_name,
                                      Env* env);
+  RegVal* compile_get_method_of_object(RegVal* object, const std::string& method_name, Env* env);
 
  public:
   // Atoms
@@ -162,6 +166,7 @@ class Compiler {
   Val* compile_lognot(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logand(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logior(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -172,6 +177,14 @@ class Compiler {
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defmethod(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_deref(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_the(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_new(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_method(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

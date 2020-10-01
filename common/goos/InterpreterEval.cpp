@@ -3,6 +3,7 @@
  * Implementation of built-in GOOS functions.
  */
 
+#include <third-party/fmt/format.h>
 #include "Interpreter.h"
 
 namespace goos {
@@ -585,5 +586,55 @@ Object Interpreter::eval_current_method_type(const Object& form,
   (void)env;
   vararg_check(form, args, {}, {});
   return SymbolObject::make_new(reader.symbolTable, goal_to_goos.enclosing_method_type);
+}
+
+Object Interpreter::eval_format(const Object& form,
+                                Arguments& args,
+                                const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  if (args.unnamed.size() < 2) {
+    throw_eval_error(form, "format must get at least two arguments");
+  }
+
+  auto dest = args.unnamed.at(0);
+  auto format_str = args.unnamed.at(1);
+  if (!format_str.is_string()) {
+    throw_eval_error(form, "format string must be a string");
+  }
+
+  // Note: this might be relying on internal implementation details of libfmt to work properly
+  // and isn't a great solution.
+  std::vector<fmt::basic_format_arg<fmt::format_context>> args2;
+  std::vector<std::string> strings;
+  for (size_t i = 2; i < args.unnamed.size(); i++) {
+    if (args.unnamed.at(i).is_string()) {
+      strings.push_back(args.unnamed.at(i).as_string()->data);
+    } else {
+      strings.push_back(args.unnamed.at(i).print());
+    }
+  }
+
+  for (auto& x : strings) {
+    args2.push_back(fmt::detail::make_arg<fmt::format_context>(x));
+  }
+
+  auto formatted =
+      fmt::vformat(format_str.as_string()->data,
+                   fmt::format_args(args2.data(), static_cast<unsigned>(args2.size())));
+
+  if (truthy(dest)) {
+    printf("%s", formatted.c_str());
+  }
+
+  return StringObject::make_new(formatted);
+}
+
+Object Interpreter::eval_error(const Object& form,
+                               Arguments& args,
+                               const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+  throw_eval_error(form, "Error: " + args.unnamed.at(0).as_string()->data);
+  return EmptyListObject::make_new();
 }
 }  // namespace goos

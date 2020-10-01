@@ -10,27 +10,6 @@ TEST(CompilerAndRuntime, ConstructCompiler) {
   Compiler compiler;
 }
 
-TEST(CompilerAndRuntime, StartRuntime) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
-
-  listener::Listener listener;
-  while (!listener.is_connected()) {
-    listener.connect_to_target();
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
-  }
-
-  listener.send_reset(true);
-  runtime_thread.join();
-}
-
-TEST(CompilerAndRuntime, SendProgram) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
-  Compiler compiler;
-  compiler.run_test("goal_src/test/test-return-integer-1.gc");
-  compiler.shutdown_target();
-  runtime_thread.join();
-}
-
 namespace {
 std::string escaped_string(const std::string& in) {
   std::string result;
@@ -111,14 +90,49 @@ struct CompilerTestRunner {
   }
 };
 
+std::vector<std::string> get_test_pass_string(const std::string& name, int n_tests) {
+  return {fmt::format("Test \"{}\": {} Passes\n0\n", name, n_tests)};
+}
+
+void runtime_no_kernel() {
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
+
+void runtime_with_kernel() {
+  constexpr int argc = 3;
+  const char* argv[argc] = {"", "-fakeiso", "-debug"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
 }  // namespace
 
+TEST(CompilerAndRuntime, StartRuntime) {
+  std::thread runtime_thread(runtime_no_kernel);
+
+  listener::Listener listener;
+  while (!listener.is_connected()) {
+    listener.connect_to_target();
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+  }
+
+  listener.send_reset(true);
+  runtime_thread.join();
+}
+
+TEST(CompilerAndRuntime, SendProgram) {
+  std::thread runtime_thread(runtime_no_kernel);
+  Compiler compiler;
+  compiler.run_test("goal_src/test/test-return-integer-1.gc");
+  compiler.shutdown_target();
+  runtime_thread.join();
+}
+
 TEST(CompilerAndRuntime, BuildGameAndTest) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
   Compiler compiler;
 
   try {
-    compiler.run_test("goal_src/test/test-build-game.gc");
+    compiler.run_test_no_load("goal_src/test/test-build-game.gc");
   } catch (std::exception& e) {
     fprintf(stderr, "caught exception %s\n", e.what());
     EXPECT_TRUE(false);
@@ -127,8 +141,50 @@ TEST(CompilerAndRuntime, BuildGameAndTest) {
   // todo, tests after loading the game.
   CompilerTestRunner runner;
   runner.c = &compiler;
-
+  std::thread runtime_thread(runtime_with_kernel);
   runner.run_test("test-min-max.gc", {"10\n"});
+  runner.run_test("test-bfloat.gc", {"data 1.2330 print 1.2330 type bfloat\n0\n"});
+  runner.run_test("test-basic-type-check.gc", {"#f#t#t#f#t#f#t#t\n0\n"});
+  runner.run_test("test-condition-boolean.gc", {"4\n"});
+  runner.run_test("test-type-type.gc", {"#t#f\n0\n"});
+  runner.run_test("test-access-inline-array.gc", {"1.2345\n0\n"});
+  runner.run_test("test-find-parent-method.gc", {"\"test pass!\"\n0\n"});
+  runner.run_test("test-ref.gc", {"83\n"});
+  runner.run_test("test-pair-asize.gc", {"8\n"});
+  runner.run_test("test-last.gc", {"d\n0\n"});
+  runner.run_test("test-sort.gc",
+                  {"(24 16 32 56 72 1234 -34 25 654)\n(1234 654 72 56 32 25 24 16 -34)\n0\n"});
+  runner.run_test("test-sort-2.gc",
+                  {"(24 16 32 56 72 1234 -34 25 654)\n(-34 16 24 25 32 56 72 654 1234)\n0\n"});
+  runner.run_test("test-sort-3.gc",
+                  {"(24 16 32 56 72 1234 -34 25 654)\n(-34 16 24 25 32 56 72 654 1234)\n0\n"});
+  runner.run_test("test-pair-length.gc", {"6\n"});
+  runner.run_test("test-member-1.gc", {"(c d)\n0\n"});
+  runner.run_test("test-member-2.gc", {"#f\n0\n"});
+  runner.run_test("test-assoc-1.gc", {"w\n0\n"});
+  runner.run_test("test-assoc-2.gc", {"#f\n0\n"});
+  runner.run_test("test-assoce-1.gc", {"x\n0\n"});
+  runner.run_test("test-assoce-2.gc", {"x\n0\n"});
+  runner.run_test("test-append.gc", {"(a b c d e)\n0\n"});
+  runner.run_test("test-delete-list.gc", {"(a b d e)\n0\n"});
+  runner.run_test("test-delete-car.gc", {"((a . b) (e . f))\n#f\n0\n"});
+  runner.run_test("test-insert-cons.gc", {"((c . w) (a . b) (e . f))\n0\n"});
+  runner.run_test("test-new-inline-array-class.gc", {"2820\n"});
+  runner.run_test("test-memcpy.gc", {"13\n"});
+  runner.run_test("test-memset.gc", {"11\n"});
+  runner.run_test("test-binteger-print.gc", {"-17\n0\n"});
+  runner.run_test("test-tests.gc", {"Test Failed On Test 0: \"unknown\"\nTest Failed On Test 0: "
+                                    "\"test\"\nTest \"test-of-test\": 1 Passes\n0\n"});
+  runner.run_test("test-type-arrays.gc", {"Test \"test-type-arrays\": 3 Passes\n0\n"});
+  runner.run_test("test-number-comparison.gc", {"Test \"number-comparison\": 14 Passes\n0\n"});
+  runner.run_test("test-approx-pi.gc", get_test_pass_string("approx-pi", 4));
+  runner.run_test("test-dynamic-type.gc", get_test_pass_string("dynamic-type", 4));
+  runner.run_test("test-string-type.gc", get_test_pass_string("string-type", 4));
+  runner.run_test("test-new-string.gc", get_test_pass_string("new-string", 5));
+  runner.run_test("test-addr-of.gc", get_test_pass_string("addr-of", 2));
+  runner.run_test("test-set-self.gc", {"#t\n0\n"});
+
+  runner.print_summary();
 
   compiler.shutdown_target();
   runtime_thread.join();
@@ -177,7 +233,7 @@ TEST(CompilerAndRuntime, AllowInline) {
 }
 
 TEST(CompilerAndRuntime, CompilerTests) {
-  std::thread runtime_thread([]() { exec_runtime(0, nullptr); });
+  std::thread runtime_thread(runtime_no_kernel);
   Compiler compiler;
   CompilerTestRunner runner;
   runner.c = &compiler;
@@ -283,6 +339,23 @@ TEST(CompilerAndRuntime, CompilerTests) {
   runner.run_test("test-nested-float-functions.gc",
                   {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
   runner.run_test("test-deref-simple.gc", {"structure\n0\n"});
+  runner.run_test("test-align16-1.gc", {"80\n"});
+  runner.run_test("test-align16-2.gc", {"64\n"});
+  runner.run_test("test-return-from-f.gc", {"77\n"});
+  runner.run_test("test-return-from-f-tricky-color.gc", {"77\n"});
+  runner.run_test("test-signed-int-compare.gc", {"12\n"});
+  runner.run_test("test-return-value-of-if.gc", {"123\n"});
+  runner.run_test("test-inline-array-field.gc", {"16\n"});
+  runner.run_test("test-empty-pair.gc", {"()\n0\n"});
+  runner.run_test("test-pair-check.gc", {"#t#f\n0\n"});
+  runner.run_test("test-cons.gc", {"(a . b)\n0\n"});
+  runner.run_test("test-list.gc", {"(a b c d)\n0\n"});
+  runner.run_test("test-car-cdr-get.gc", {"ab\n0\n"});
+  runner.run_test("test-car-cdr-set.gc", {"(c . d)\n0\n"});
+  runner.run_test("test-nested-car-cdr-set.gc", {"efgh\n((e . g) f . h)\n0\n"});
+  runner.run_test("test-dotimes.gc", {"4950\n"});
+  runner.run_test("test-methods.gc", {"#t#t\n0\n"});
+  runner.run_test("test-pointers-1.gc", {"13\n"});
 
   compiler.shutdown_target();
   runtime_thread.join();

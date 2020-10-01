@@ -47,12 +47,15 @@ u32 DebugSegment;
 // Set to 1 to load game engine after boot automatically
 u32 DiskBoot;
 
+u32 MasterUseKernel;
+
 void kboot_init_globals() {
   strcpy(DebugBootLevel, "#f");      // no specified level
   strcpy(DebugBootMessage, "play");  // play mode, the default retail mode
 
   MasterExit = 0;
   MasterDebug = 1;
+  MasterUseKernel = 1;
   DebugSegment = 1;
   DiskBoot = 0;
   memset(&masterConfig, 0, sizeof(MasterConfig));
@@ -117,6 +120,9 @@ s32 goal_main(int argc, const char* const* argv) {
   if (InitMachine() >= 0) {    // init kernel
     KernelCheckAndDispatch();  // run kernel
     ShutdownMachine();         // kernel died, we should too.
+  } else {
+    fprintf(stderr, "InitMachine failed\n");
+    exit(1);
   }
 
   return 0;
@@ -143,15 +149,15 @@ void KernelCheckAndDispatch() {
       call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
     } else {
       if (ListenerFunction->value != s7.offset) {
-        fprintf(stderr, "Running Listener Function:\n");
-        auto cptr = Ptr<u8>(ListenerFunction->value).c();
-        for (int i = 0; i < 40; i++) {
-          fprintf(stderr, "%x ", cptr[i]);
-        }
-        fprintf(stderr, "\n");
+        //        fprintf(stderr, "Running Listener Function:\n");
+        //        auto cptr = Ptr<u8>(ListenerFunction->value).c();
+        //        for (int i = 0; i < 40; i++) {
+        //          fprintf(stderr, "%x ", cptr[i]);
+        //        }
+        //        fprintf(stderr, "\n");
         auto result =
             call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-        fprintf(stderr, "result of listener function: %lld\n", result);
+//        fprintf(stderr, "result of listener function: %lld\n", result);
 #ifdef __linux__
         cprintf("%ld\n", result);
 #else

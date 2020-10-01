@@ -75,6 +75,6 @@ void KernelCheckAndDispatch();
  */
 void KernelShutdown();
 
-constexpr bool MasterUseKernel = false;
+extern u32 MasterUseKernel;
 
 #endif  // RUNTIME_KBOOT_H

@@ -122,6 +122,10 @@
 (defsmacro string? (x)
            `(type? 'string ,x))
 
+(defsmacro ferror (&rest args)
+  `(error (fmt #f ,@args))
+  )
+
 
 ;; Bootstrap GOAL macro system
 

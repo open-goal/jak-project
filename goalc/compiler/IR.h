@@ -223,7 +223,7 @@ class IR_IntegerMath : public IR {
   RegVal* m_arg;
 };
 
-enum class FloatMathKind { DIV_SS, MUL_SS };
+enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS };
 
 class IR_FloatMath : public IR {
  public:
@@ -284,6 +284,73 @@ class IR_LoadConstOffset : public IR {
   int m_offset = 0;
   const RegVal* m_base = nullptr;
   MemLoadInfo m_info;
+};
+
+class IR_StoreConstOffset : public IR {
+ public:
+  IR_StoreConstOffset(const RegVal* value, int offset, const RegVal* base, int size);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_value = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  int m_size = 0;
+};
+
+class IR_Null : public IR {
+ public:
+  IR_Null() = default;
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
+class IR_FunctionStart : public IR {
+ public:
+  IR_FunctionStart(std::vector<RegVal*> args);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  std::vector<RegVal*> m_args;
+};
+
+class IR_FloatToInt : public IR {
+ public:
+  IR_FloatToInt(const RegVal* dest, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_IntToFloat : public IR {
+ public:
+  IR_IntToFloat(const RegVal* dest, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  const RegVal* m_src = nullptr;
 };
 
 #endif  // JAK_IR_H

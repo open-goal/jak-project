@@ -361,22 +361,26 @@ Ptr<Function> make_function_from_c_win32(void* func) {
   }
 
   /*
-   * push rdi
-   * push rsi
-   * push rdx
-   * push rcx
-   * pop r9
-   * pop r8
-   * pop rdx
-   * pop rcx
-   *
-   * sub rsp, 40
-   * call rax
-   * add rsp, 40
-   * ret
+push rdi
+push rsi
+push rdx
+push rcx
+pop r9
+pop r8
+pop rdx
+pop rcx
+push r10
+push r11
+sub rsp, 40
+call rax
+add rsp, 40
+pop r11
+pop r10
+ret
    */
-  for (auto x : {0x57, 0x56, 0x52, 0x51, 0x41, 0x59, 0x41, 0x58, 0x5A, 0x59, 0x48,
-                 0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0xC3}) {
+  for (auto x :
+       {0x57, 0x56, 0x52, 0x51, 0x41, 0x59, 0x41, 0x58, 0x5A, 0x59, 0x41, 0x52, 0x41, 0x53, 0x48,
+        0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
     mem.c()[i++] = x;
   }
 
@@ -883,8 +887,6 @@ u64 method_set(u32 type_, u32 method_id, u32 method) {
   if (method_id > 127)
     printf("[METHOD SET ERROR] tried to set method %d\n", method_id);
 
-  //  printf("METHOD SET id %d to 0x%x type 0x%x!\n", method_id, method, type_);
-
   auto existing_method = type->get_method(method_id).offset;
 
   if (method == 1) {
@@ -1089,7 +1091,7 @@ u64 sprint(u32 obj) {
  */
 u64 print_object(u32 obj) {
   if ((obj & OFFSET_MASK) == BINTEGER_OFFSET) {
-    return print_binteger(obj);
+    return print_binteger(s64(s32(obj)));
   } else {
     if ((obj < SymbolTable2.offset || 0x7ffffff < obj) &&  // not in normal memory
         (obj < 0x84000 || 0x100000 <= obj)) {              // not in kernel memory

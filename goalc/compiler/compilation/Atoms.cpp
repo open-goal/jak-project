@@ -1,6 +1,6 @@
 /*!
  * @file Atoms.cpp
- * Compiler implementation for atoms - things which aren't compound forms.
+ * Top-level compilation forms for each of the GOOS object types.
  */
 
 #include "goalc/compiler/Compiler.h"
@@ -20,81 +20,69 @@ static const std::unordered_map<
         //        {".jmp", &Compiler::compile_asm},
         //        {".sub", &Compiler::compile_asm},
         //        {".ret-reg", &Compiler::compile_asm},
-        //
-        //        // BLOCK FORMS
+
+        // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
         {"begin", &Compiler::compile_begin},
         {"block", &Compiler::compile_block},
         {"return-from", &Compiler::compile_return_from},
         {"label", &Compiler::compile_label},
         {"goto", &Compiler::compile_goto},
-        //
-        //        // COMPILER CONTROL
+
+        // COMPILER CONTROL
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
         {"asm-file", &Compiler::compile_asm_file},
         {"listen-to-target", &Compiler::compile_listen_to_target},
         {"reset-target", &Compiler::compile_reset_target},
         {":status", &Compiler::compile_poke},
-        //        {"test", &Compiler::compile_test},
         {"in-package", &Compiler::compile_in_package},
-        //
-        //        // CONDITIONAL COMPILATION
+
+        // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
         {"defglobalconstant", &Compiler::compile_defglobalconstant},
         {"seval", &Compiler::compile_seval},
-        //
-        //        // CONTROL FLOW
+
+        // CONTROL FLOW
         {"cond", &Compiler::compile_cond},
         {"when-goto", &Compiler::compile_when_goto},
-        //
-        //        // DEFINITION
+
+        // DEFINITION
         {"define", &Compiler::compile_define},
         {"define-extern", &Compiler::compile_define_extern},
         {"set!", &Compiler::compile_set},
-        //        {"defun-extern", &Compiler::compile_defun_extern},
-        //        {"declare-method", &Compiler::compile_declare_method},
-        //
+
         // TYPE
         {"deftype", &Compiler::compile_deftype},
         {"defmethod", &Compiler::compile_defmethod},
         //        {"defenum", &Compiler::compile_defenum},
         {"->", &Compiler::compile_deref},
-        //        {"&", &Compiler::compile_addr_of},
-        //
-        //
-        //        // LAMBDA
+        {"&", &Compiler::compile_addr_of},
+        {"the-as", &Compiler::compile_the_as},
+        {"the", &Compiler::compile_the},
+        {"print-type", &Compiler::compile_print_type},
+        {"new", &Compiler::compile_new},
+        {"car", &Compiler::compile_car},
+        {"cdr", &Compiler::compile_cdr},
+        {"method", &Compiler::compile_method},
+
+        // LAMBDA
         {"lambda", &Compiler::compile_lambda},
         {"declare", &Compiler::compile_declare},
         {"inline", &Compiler::compile_inline},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"rlet", &Compiler::compile_rlet},
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
-        //
-        //
-        //
-        //        // MACRO
-        //        {"print-type", &Compiler::compile_print_type},
+
+        // MACRO
         {"quote", &Compiler::compile_quote},
         {"mlet", &Compiler::compile_mlet},
         //        {"defconstant", &Compiler::compile_defconstant},
-        //
-        //        // OBJECT
-        //
-        //        {"the", &Compiler::compile_the},
-        //        {"the-as", &Compiler::compile_the_as},
-        //
-        //
-        //
+
+        // OBJECT
         //        {"current-method-type", &Compiler::compile_current_method_type},
-        //        {"new", &Compiler::compile_new},
-        //        {"method", &Compiler::compile_method},
-        //
-        //        // PAIR
-        //        {"car", &Compiler::compile_car},
-        //        {"cdr", &Compiler::compile_cdr},
-        //
-        //        // IT IS MATH
+
+        // MATH
         {"+", &Compiler::compile_add},
         {"-", &Compiler::compile_sub},
         {"*", &Compiler::compile_mul},
@@ -118,16 +106,13 @@ static const std::unordered_map<
         {">=", &Compiler::compile_condition_as_bool},
         {"<", &Compiler::compile_condition_as_bool},
         {">", &Compiler::compile_condition_as_bool},
-        //
-        //        // BUILDER (build-dgo/build-cgo?)
-        {"build-dgos", &Compiler::compile_build_dgo},
-        //
-        //        // UTIL
-        {"set-config!", &Compiler::compile_set_config},
+        {"&+", &Compiler::compile_pointer_add},
 
-        //
-        //        // temporary testing hacks...
-        //        {"send-test", &Compiler::compile_send_test_data},
+        // BUILDER (build-dgo/build-cgo?)
+        {"build-dgos", &Compiler::compile_build_dgo},
+
+        // UTIL
+        {"set-config!", &Compiler::compile_set_config},
 };
 
 /*!
@@ -151,6 +136,12 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
   return get_none();
 }
 
+/*!
+ * Compile a pair/list.
+ * Can be a compiler form, function call (possibly inlined), method call, immediate application of a
+ * lambda, or a goos macro.
+ * TODO - enums.
+ */
 Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
   auto pair = code.as_pair();
   auto head = pair->car;
@@ -164,41 +155,80 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
       return ((*this).*(kv_gfs->second))(code, rest, env);
     }
 
+    // next try as a macro
     goos::Object macro_obj;
     if (try_getting_macro_from_goos(head, &macro_obj)) {
       return compile_goos_macro(code, macro_obj, rest, env);
     }
 
-    // todo enum
+    // try as an enum (not yet implemented)
   }
 
-  // todo function or method call
+  // if none of the above cases worked, then treat it like a function/method call.
   return compile_function_or_method_call(code, env);
-  //  throw_compile_error(code, "Unrecognized symbol at head of form");
-  //  return nullptr;
 }
 
+/*!
+ * Compile an integer constant. Returns an IntegerConstantVal and emits no code.
+ * These integer constants do not generate static data and are stored directly in the code
+ * which is generated with to_gpr.
+ * The type is always int.
+ */
 Val* Compiler::compile_integer(const goos::Object& code, Env* env) {
+  assert(code.is_int());
   return compile_integer(code.integer_obj.value, env);
 }
 
+/*!
+ * Compile an integer constant. Returns an IntegerConstantVal and emits no code.
+ * These integer constants do not generate static data and are stored directly in the code
+ * which is generated with to_gpr.
+ * The type is always int.
+ */
 Val* Compiler::compile_integer(s64 value, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), value);
 }
 
+/*!
+ * Get a SymbolVal representing a GOAL symbol object.
+ */
 SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   return fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
 }
 
+/*!
+ * Get a SymbolValueVal representing the value of a GOAL symbol.
+ * Will throw a compilation error if the symbol wasn't previously defined.
+ * TODO - determine sign extension behavior when loading symbol values.
+ */
+Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
+  auto existing_symbol = m_symbol_types.find(name);
+  if (existing_symbol == m_symbol_types.end()) {
+    throw std::runtime_error("The symbol " + name + " was not defined");
+  }
+
+  auto ts = existing_symbol->second;
+  auto sext = m_ts.lookup_type(ts)->get_load_signed();
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
+  auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);
+  return re;
+}
+
+/*!
+ * Compile a symbol. Can get mlet macro symbols, local variables, constants, or symbols.
+ */
 Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   auto name = symbol_string(form);
 
+  // special case to get "nothing", used as a return value when nothing should be returned.
   if (name == "none") {
     return get_none();
   }
 
+  // see if the symbol is defined in any enclosing symbol macro envs (mlet's).
   auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);
   while (mlet_env) {
     auto mlkv = mlet_env->macros.find(form.as_symbol());
@@ -208,6 +238,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
     mlet_env = get_parent_env_of_type<SymbolMacroEnv>(mlet_env->parent());
   }
 
+  // see if it's a local variable
   auto lexical = env->lexical_lookup(form);
   if (lexical) {
     return lexical;
@@ -216,6 +247,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   auto global_constant = m_global_constants.find(form.as_symbol());
   auto existing_symbol = m_symbol_types.find(form.as_symbol()->name);
 
+  // see if it's a constant
   if (global_constant != m_global_constants.end()) {
     // check there is no symbol with the same name
     if (existing_symbol != m_symbol_types.end()) {
@@ -228,28 +260,21 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
     return compile_error_guard(global_constant->second, env);
   }
 
+  // none of those, so get a global symbol.
   return compile_get_symbol_value(name, env);
 }
 
-Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
-  auto existing_symbol = m_symbol_types.find(name);
-  if (existing_symbol == m_symbol_types.end()) {
-    // assert(false);
-    throw std::runtime_error("The symbol " + name + " was not defined");
-  }
-
-  auto ts = existing_symbol->second;
-  auto sext = m_ts.lookup_type(ts)->get_load_signed();
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
-  auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);
-  return re;
-}
-
+/*!
+ * Compile a string constant. The constant is placed in the same segment as the parent function.
+ */
 Val* Compiler::compile_string(const goos::Object& form, Env* env) {
-  return compile_string(form.as_string()->data, env, MAIN_SEGMENT);
+  return compile_string(form.as_string()->data, env,
+                        get_parent_env_of_type<FunctionEnv>(env)->segment);
 }
 
+/*!
+ * Compile a string constant and place it in the given segment.
+ */
 Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
   auto obj = std::make_unique<StaticString>(str, seg);
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
@@ -259,16 +284,40 @@ Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
   return result;
 }
 
+/*!
+ * Compile a floating point constant and place it in the same segment as the containing function.
+ * Unlike integers, all floating point constants are stored separately as static data outside
+ * of the code, at least in Jak 1.
+ */
 Val* Compiler::compile_float(const goos::Object& code, Env* env) {
   assert(code.is_float());
-  return compile_float(code.float_obj.value, env, MAIN_SEGMENT);
+  return compile_float(code.float_obj.value, env,
+                       get_parent_env_of_type<FunctionEnv>(env)->segment);
 }
 
+/*!
+ * Compile a floating point constant and place it in given segment.
+ * Unlike integers, all floating point constants are stored separately as static data outside
+ * of the code, at least in Jak 1.
+ */
 Val* Compiler::compile_float(float value, Env* env, int seg) {
   auto obj = std::make_unique<StaticFloat>(value, seg);
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   auto result = fe->alloc_val<FloatConstantVal>(m_ts.make_typespec("float"), obj.get());
   auto fie = get_parent_env_of_type<FileEnv>(env);
   fie->add_static(std::move(obj));
+  return result;
+}
+
+Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  typecheck(form, m_ts.make_typespec("pointer"), first->type(), "&+ first argument");
+  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
+  auto result = env->make_gpr(first->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
   return result;
 }

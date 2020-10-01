@@ -259,8 +259,386 @@
   )
 
 
+;; The "print" method of a type should print out a single line representation of the object.
+;; The default print method for a basic will be something like #<my-type @ #xbeef>
+;; This is used when printing an object with format, using the "~A" format specification.
+;; And of course in functions like print, printl.
 (defmethod print bfloat ((obj bfloat))
   "Override the default print method to print a bfloat like a normal float"
   (format #t "~f" (-> obj data))
   obj
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Type System
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; The asize-of method should return the total size in memory used by an object.
+; It's used for traversing heaps of basics and copying basics.
+; Most basic/structure types are "fixed size", and their default asize-of method will simply
+; return the "size" field of their type, so you don't have to worry about it.
+; However, some types are dynamic (like a string) and require that you provide your own method.
+; A common approach is to have an "allocated-length" field, then have the asize-of method return
+;  (+ (-> obj type size) (* elem-size (-> obj allocated-length)))
+; asize-of returns the actual size, including the type field, and can have any alignment.
+
+;; A "type" object contains some basic information about a type as well as the list of methods.
+;; Some types have more methods than others, so the method table makes "type" a dynamic type.
+;; As a result, we should define an "asize-of" method for type. It's possibly unused because it's wrong.
+
+(defmethod asize-of type ((obj type))
+  "Get the size in memory of a type"
+  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always, 
+  ;; but this matches what the runtime does as well. There's no reason that I can see for this,
+  ;; as other basics don't require 16-byte aligned sizes.
+  (align16 (+ 28 (* 4 (-> type allocated-length))))
+  )
+
+(defun basic-type? ((obj basic) (input-type type))
+  "Is obj an object of type input-type, or of child type of input-type?
+  Note: checking if a basic is of type object will return #f."
+  (let ((basics-type (-> obj type))
+        (object-type object))
+    (until (eq? (set! basics-type (-> basics-type parent)) object-type)
+           (if (eq? basics-type input-type)
+               ;; return-from #f will return from the function with the value of #t
+               (return-from #f #t)
+               )
+           )
+    )
+  #f ;; didn't find it, return false
+  )
+
+(defun type-type? ((a type) (b type))
+  "is a a type (or child type) of type b?"
+  (until (eq? a object)
+         ;; it's not clear why a might be zero?
+         ;; perhaps if the type system is not yet initialized fully for the type?
+         (if (or (eq? a b) (zero? a))
+             (return-from #f #t)
+             )
+         (set! a (-> a parent))
+         )
+  #f
+  )
+
+(defun find-parent-method ((the-type type) (method-id int))
+  "Find the nearest parent which has a different method, and get that method.
+  Use with extreme caution - if a checked parent has fewer methods than the child, it will
+  access out-of-bounds memory. Returns the nothing function if it gets to the top and
+  the parent has the same type, or if any parent has 0 as a method."
+  (let* ((child-method (-> the-type method-table method-id))
+         (parent-method child-method)
+         )
+    
+    ;; keep looking until we find a different parent method
+    (until (not (eq? parent-method child-method))
+           ;; at the top of the type tree.
+           (if (eq? the-type object)
+               (return-from #f nothing)
+               )
+           
+           (set! the-type (-> the-type parent))
+           (set! parent-method (-> the-type method-table method-id))
+           (if (eq? 0 (the int parent-method))
+               (return-from #f nothing)
+               )
+           )
+    parent-method
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; pair and list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun ref ((obj object) (idx int))
+  "Get the nth item from a list.  No type checking or range checking is done, so be careful!"
+  (dotimes (i idx (car obj))
+    (set! obj (cdr obj))
+    )
+  )
+
+(defmethod length pair ((obj pair))
+  "Get the number of elements in a proper list"
+  (if (eq? obj '())
+      (return-from #f 0)
+      )
+  
+  (let ((lst (cdr obj))
+        (len 1))
+    (while (and (not (eq? lst '()))
+                (pair? lst)
+                )
+      (+1! len)
+      (set! lst (cdr lst))
+      )
+    len)
+  )
+
+
+
+(defmethod asize-of pair ((obj pair))
+  "Get the asize of a pair"
+  (the-as int (-> pair size))
+  )
+
+(defun last ((obj object))
+  "Get the last pair in a list."
+  (while (not (eq? (cdr obj) '()))
+    (set! obj (cdr obj))
+    )
+  obj
+  )
+
+(defun member ((obj object) (lst object))
+  "if obj is a member of the list, return the pair containing obj as its car.
+  if not, return #f."
+  (while (and (not (eq? lst '()))
+              (not (eq? (car lst) obj)))
+    (set! lst (cdr lst))
+    )
+  
+  (if (eq? lst '())
+      #f
+      lst
+      )
+  )
+
+(define-extern name= (function basic basic symbol))
+
+(defun nmember ((obj basic) (lst object))
+  "If obj is a member of the list, return the pair containing obj as its car.
+  If not, return #f.  Use name= (see gstring.gc) to check equality."
+  (while (and (not (eq? lst '()))
+              (not (name= (the basic (car lst)) obj))
+              )
+    (set! lst (cdr lst))
+    )
+  
+  (if (eq? lst '())
+      #f
+      lst
+      )
+  )
+
+(defun assoc ((item object) (alst object))
+  "Get a pair with car of item from the association list (list of pairs) alst."
+  (while (and (not (null? alst))
+              (not (eq? (caar alst) item)))
+    (set! alst (cdr alst))
+    )
+  (if (not (null? alst))
+      (car alst)
+      #f
+      )
+  )
+
+(defun assoce ((item object) (alst object))
+  "Like assoc, but a pair with car of 'else will match anything"
+  (while (and (not (null? alst))
+              (not (eq? (caar alst) item))
+              (not (eq? (caar alst) 'else))
+              )
+    (set! alst (cdr alst))
+    )
+  (if (not (null? alst))
+      (car alst)
+      #f
+      )
+  )
+
+;; todo
+;; nassoc
+;; nassce
+
+(defun append! ((front object) (back object))
+  "Append back to front."
+  (if (null? front)
+      (return-from #f back)
+      )
+  
+  (let ((lst front))
+    ;; seek to the end of front
+    (while (not (null? (cdr lst)))
+      (set! lst (cdr lst))
+      )
+    
+    ;; this check seems not needed
+    (if (not (null? lst))
+        (set! (cdr lst) back)
+        )
+    
+    front
+    )
+  )
+
+(defun delete! ((item object) (lst object))
+  "Delete the first occurance of item from a list and return the list.
+  Does nothing if the item isn't in the list."
+  (if (eq? (car lst) item)
+      (return-from #f (cdr lst))
+      )
+  
+  (let ((iter (cdr lst))
+        (rep lst))
+    
+    (while (and (not (null? iter))
+                (not (eq? (car iter) item)))
+      (set! rep iter)
+      (set! iter (cdr iter))
+      )
+    
+    (if (not (null? iter))
+        (set! (cdr rep) (cdr iter))
+        )
+    )
+  (the pair lst)
+  )
+
+(defun delete-car! ((item object) (lst object))
+  "Like delete, but will delete if (car item-from-list) is equal to item.  Useful for deleting from association list by key."
+  ;(format #t "call to delete car: ~A ~A~%" item lst)
+  (if (eq? (caar lst) item)
+      (return-from #f (cdr lst))
+      )
+  
+  (let ((rep lst)
+        (iter (cdr lst)))
+    (while (and (not (null? iter))
+                (not (eq? (caar iter) item)))
+      (set! rep iter)
+      (set! iter (cdr iter))
+      )
+    
+    (if (not (null? iter))
+        (set! (cdr rep) (cdr iter))
+        )
+    )
+  lst
+  )
+
+(defun insert-cons! ((kv object) (alst object))
+  "Insert key-value pair into an association list.  Also removes the old one if it was there."
+  (cons kv (delete-car! (car kv) alst))
+  )
+
+(defun sort ((lst object) (compare (function object object object)))
+  "Sort the given list in place.  Uses the given comparison function. The comparison function can 
+  either return #t/#f or an integer, in which case the sign of the integer determines lt/gt."
+  ;; in each iteration, we count how many changes we make. Once we make no changes, the list is sorted.
+  (let ((changes -1)) 
+    
+    (while (not (zero? changes)) ;; outer loop
+      (set! changes 0)      ;; reset changes for this iteration
+      (let ((iter lst))     ;; iterate through list
+        (while (and (not (null? (cdr iter)))
+                    (pair? (cdr iter)))
+          ;; L221
+          (let* ((val1 (car iter))        ;; value at iterator
+                 (val2 (car (cdr iter)))  ;; value after iterator
+                 (c-result (compare val1 val2))) ;; run comparison function
+            ;; check if val1 and val2 are in order. The compare function may either return #t
+            ;; or it may return val1 - val2.  There is an issue if val1 - val2 happens to equal #t or #f.
+            (unless (or
+                      (and c-result (<= (the integer c-result) 0)) ;; not #f, and negative, we're sorted!
+                      (eq? c-result #t) ;; explictly return #t, we're sorted!
+                      )
+              ;; these two aren't sorted! so we swap them and increment changes.
+              (+1! changes)
+              (set! (car iter) val2)
+              (set! (car (cdr iter)) val1)
+              )
+            ;; move on to the next thing in the list.
+            (set! iter (cdr iter))
+            )
+          )
+        )
+      )
+    )
+  lst
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; inline array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; a parent class for boxed "inline arrays" classes, 
+;; An inline-array is an array with a bunch of objects back-to-back, as opposed to a bunch of
+;; references back to back.
+;; Most inline-arrays are unboxed and are just data - this is a somewhat rarely used container parent
+;; class for a class that wraps an unboxed inline-array.
+;; the "heap-base" field of the type is used to store the indexing scale.
+
+(deftype inline-array-class (basic)
+  ((length int32 :offset-assert 4)
+   (allocated-length int32 :offset-assert 8)
+   (data uint8 :dynamic)
+   )
+  (:methods (new (symbol type int) _type_ 0)    ;; we will override print later on. This is optional to include
+            )
+  )
+
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (cnt int))
+  "Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
+  of the type-to-make to determine the element size"
+  (let* ((sz (+ (-> type-to-make size) (* (-> type-to-make heap-base) cnt)))
+         (new-object (object-new (the int sz))))
+    ;;(format 0 "create sz ~d at #x~X~%" sz new-object)
+    (unless (zero? new-object)
+      (set! (-> new-object length) cnt)
+      (set! (-> new-object allocated-length) cnt)
+      )
+    new-object
+    )
+  )
+
+(defmethod length inline-array-class ((obj inline-array-class))
+  ;"Get the length of an inline-array"
+  (-> obj length)
+  )
+
+(defmethod asize-of inline-array-class ((obj inline-array-class))
+  ;"Get the size in memory of an inline-array-class"
+  (+ (the-as int (-> obj type size))
+     (* (-> obj allocated-length) (-> obj type heap-base))
+     )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; array (todo)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; memcpy and similar
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun mem-copy! ((dst pointer) (src pointer) (size integer))
+  "Copy memory from src to dst.  Size is in bytes.  This is not an efficient implementation,
+  however, there are _no restrictions_ on size, alignment etc. Increasing address copy."
+  (let ((i 0)
+        (d (the pointer dst))
+        (s (the pointer src))
+        )
+    
+    (while (< i size)
+      (set! (-> (the (pointer uint8) d) 0) (-> (the (pointer uint8) s) 0))
+      (&+! d 1)
+      (&+! s 1)
+      (+1! i)
+      )
+    )
+  dst
+  )
+
+(defun mem-set32! ((dst pointer) (value int) (n int))
+  "Memset a 32-bit value n times.  Total memory filled is 4 * n bytes."
+  (let ((p (the pointer dst))
+        (i 0))
+    (while (< i n)
+      (set! (-> (the (pointer int32) p) 0) value)
+      (&+! p 4)
+      (+1! i)
+      )
+    )
+  dst
   )

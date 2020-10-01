@@ -5,3 +5,23 @@
 ;; name in dgo: gkernel
 ;; dgos: KERNEL
 
+(define *kernel-version* (the binteger (logior (ash *kernel-major-version* 16) *kernel-minor-version*)))
+
+(defun kernel-dispatcher ()
+  "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"
+  
+  ;; check if we have a new listener function to run
+  (when *listener-function*
+    ;; we do! enable method-set for debug purposes
+    (+! *enable-method-set* 1)
+    
+    ;; execute and print result
+    (let ((result (*listener-function*)))
+      (format #t "~D~%" result)
+      )
+    (+! *enable-method-set* -1)
+    
+    ;; clear the pending function.
+    (set! *listener-function* (the (function object) #f))
+    )
+  )

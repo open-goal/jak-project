@@ -34,5 +34,5 @@ if(CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   setup_target_for_coverage_lcov(NAME goalc-test_coverage
                                  EXECUTABLE goalc-test --gtest_color=yes
                                  DEPENDENCIES goalc-test
-                                 EXCLUDE "third-party/*" "/usr/include/*")
+                                 EXCLUDE "third-party/*" "/usr/include/*" "decompiler/*")
 endif()

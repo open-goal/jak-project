@@ -92,6 +92,12 @@
      )
   )
 
+(defmacro shutdown-target ()
+  `(begin
+    (reset-target :shutdown)
+    )
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;
 ;; GOAL Syntax
@@ -138,6 +144,26 @@
     )
   )
 
+(defmacro until (test &rest body)
+  (with-gensyms (reloop)
+    `(begin
+       (label ,reloop)
+       ,@body
+       (when-goto (not ,test) ,reloop)
+       )
+    )
+  )
+
+(defmacro dotimes (var &rest body)
+  `(let (( ,(first var) 0))
+     (while (< ,(first var) ,(second var))
+            ,@body
+            (+1! ,(first var))
+            )
+     ,@(cddr var)
+     )
+  )
+
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
 (defmacro protect (defs &rest body)
@@ -165,13 +191,72 @@
   `(set! ,place (+ ,place ,amount))
   )
 
-;; todo, handle too many arguments correct
 (defmacro if (condition true-case &rest others)
+  (if (> (length others) 1)
+      (error "got too many arguments to if")
+      #f
+      )
   (if (null? others)
     `(cond (,condition ,true-case))
     `(cond (,condition ,true-case)
            (else ,(first others))
            )
+    )
+  )
+
+(defmacro when (condition &rest body)
+  `(if ,condition
+       (begin ,@body)
+       )
+  )
+
+(defmacro unless (condition &rest body)
+  `(if (not ,condition)
+     (begin ,@body)
+     )
+  )
+
+;; TODO - these work but aren't very efficient.
+
+(defmacro and (&rest args)
+  (with-gensyms (result end)
+    `(begin
+       (let ((,result (the object #f)))
+         ,@(apply (lambda (x)
+                    `(begin
+                      (set! ,result ,x)
+                      (if (eq? ,result #f)
+                        (goto ,end)
+                        )
+                      )
+                    )
+                  args
+                  )
+         (label ,end)
+         ,result
+         )
+       )
+    )
+  )
+
+(defmacro or (&rest args)
+  (with-gensyms (result end)
+    `(begin
+       (let ((,result (the object #f)))
+         ,@(apply (lambda (x)
+                    `(begin
+                       (set! ,result ,x)
+                       (if (not (eq? ,result #f))
+                         (goto ,end)
+                         )
+                       )
+                    )
+                  args
+                  )
+         (label ,end)
+         ,result
+         )
+       )
     )
   )
 
@@ -201,4 +286,120 @@
 
 (defmacro 1- (var)
   `(- ,var 1)
+  )
+
+(defmacro zero? (thing)
+  `(eq? ,thing 0)
+  )
+
+(defmacro &+! (val amount)
+  `(set! ,val (&+ ,val ,amount))
+  )
+
+(defmacro &- (a b)
+  `(- (the-as uint ,a) (the-as uint ,b))
+  )
+
+(defmacro &-> (&rest args)
+  `(& (-> ,@args))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bit Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro align16 (value)
+  `(logand #xfffffff0 (+ (the-as integer ,value) 15))
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TYPE STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro basic? (obj)
+  ;; todo, make this more efficient
+  `(= 4 (logand (the integer ,obj) #b111))
+  )
+
+(defmacro pair? (obj)
+  ;; todo, make this more efficient
+  `(= 2 (logand (the integer ,obj) #b111))
+  )
+
+(defmacro binteger? (obj)
+  `(zero? (logand (the integer ,obj) #b111))
+  )
+
+(defmacro rtype-of (obj)
+  `(cond ((binteger? ,obj) binteger)
+         ((pair? ,obj) pair)
+         (else (-> (the basic ,obj) type))
+         )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PAIR STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro cons (a b)
+  `(new 'global 'pair ,a ,b)
+  )
+
+(defmacro list (&rest args)
+  (if (null? args)
+    (quote '())
+    `(cons ,(car args) (list ,@(cdr args)))
+    )
+  )
+
+(defmacro null? (arg)
+  ;; todo, make this better
+  `(eq? ,arg '())
+  )
+(defmacro caar (arg)
+  `(car (car ,arg))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; METHOD STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro object-new (&rest sz)
+  (if (null? sz)
+    `(the ,(current-method-type) ((method object new) allocation type-to-make (the int (-> type-to-make size))))
+    `(the ,(current-method-type)((method object new) allocation type-to-make ,@sz))
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TEST STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro expect-eq (a b &key (name "unknown"))
+  `(if (!= ,a ,b)
+       (format #t "Test Failed On Test ~D: ~A~%" *test-count* ,name)
+       (+! *test-count* 1)
+       )
+  )
+
+(defmacro expect-true (a)
+  `(expect-eq ,a #t)
+  )
+
+(defmacro expect-false (a)
+  `(expect-eq ,a #f)
+  )
+
+(defmacro start-test (test-name)
+  `(begin
+     (define *test-name* ,test-name)
+     (define *test-count* 0)
+     )
+  )
+
+(defmacro finish-test ()
+  `(format #t "Test ~A: ~D Passes~%" *test-name* *test-count*)
   )
