@@ -2,6 +2,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(jak)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
+endif()
+
 set(CMAKE_CXX_STANDARD 14)
 
 # Set default compile flags for GCC
