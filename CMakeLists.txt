@@ -85,6 +85,9 @@ add_subdirectory(third-party/minilzo)
 # build format library
 add_subdirectory(third-party/fmt)
 
+# build spdlog library
+add_subdirectory(third-party/spdlog)
+
 # windows memory management lib
 IF (WIN32)
     add_subdirectory(third-party/mman)

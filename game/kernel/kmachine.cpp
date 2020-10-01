@@ -25,7 +25,6 @@
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/stubs.h"
 #include "common/symbols.h"
-
 using namespace ee;
 
 /*!
