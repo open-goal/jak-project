@@ -6,13 +6,13 @@
 #pragma once
 
 #ifndef SPDLOG_H
-#include "spdlog/spdlog.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 #endif
 
-#include "spdlog/details/console_globals.h"
-#include "spdlog/details/null_mutex.h"
-#include "spdlog/details/os.h"
-#include "spdlog/sinks/sink.h"
+#include "third-party/spdlog/include/spdlog/details/console_globals.h"
+#include "third-party/spdlog/include/spdlog/details/null_mutex.h"
+#include "third-party/spdlog/include/spdlog/details/os.h"
+#include "third-party/spdlog/include/spdlog/sinks/sink.h"
 
 #include <memory>
 #include <mutex>
