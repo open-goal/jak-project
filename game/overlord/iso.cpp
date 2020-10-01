@@ -18,7 +18,6 @@
 #include "fake_iso.h"
 #include "game/common/dgo_rpc_types.h"
 
-
 using namespace iop;
 
 u32 ISOThread();
@@ -494,9 +493,9 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
 
         // if we are done with header
         if (cmd->bytes_processed == sizeof(DgoHeader)) {
-          //printf("[Overlord DGO] Got DGO file header for %s with %d objects\n",
-                 //cmd->dgo_header.name,
-                 //cmd->dgo_header.object_count);  // added
+          // printf("[Overlord DGO] Got DGO file header for %s with %d objects\n",
+          // cmd->dgo_header.name,
+          // cmd->dgo_header.object_count);  // added
           spdlog::info("[Overlord DGO] Got DGO file header for {} with {} objects",
                        cmd->dgo_header.name, cmd->dgo_header.object_count);
           cmd->bytes_processed = 0;

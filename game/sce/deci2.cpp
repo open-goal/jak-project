@@ -69,7 +69,7 @@ s32 sceDeci2Open(u16 protocol, void* opt, void (*handler)(s32 event, s32 param, 
   drv.id = protocol_count + 1;
   drv.active = true;
   protocols[protocol_count++] = drv;
-  //printf("[DECI2] Add new protocol driver %d for 0x%x\n", drv.id, drv.protocol);
+  // printf("[DECI2] Add new protocol driver %d for 0x%x\n", drv.id, drv.protocol);
   spdlog::info("[DECI2] Add new protocol driver {} for 0x{}", drv.id, drv.protocol);
   server->unlock();
 

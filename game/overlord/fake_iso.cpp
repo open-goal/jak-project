@@ -216,7 +216,7 @@ uint32_t FS_GetLength(FileRecord* fr) {
  * This is an ISO FS API Function
  */
 LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
-  //printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
+  // printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
   spdlog::info("[OVERLORD] FS Open {}", fr->name);
   LoadStackEntry* selected = nullptr;
   // find first unused spot on load stack.
@@ -231,7 +231,7 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
       return selected;
     }
   }
-  //printf("[OVERLORD ISO CD] Failed to FS_Open %s\n", fr->name);
+  // printf("[OVERLORD ISO CD] Failed to FS_Open %s\n", fr->name);
   spdlog::warn("[OVERLORD] Failed to FS Open {}", fr->name);
   ExitIOP();
   return nullptr;
@@ -243,7 +243,7 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
-  //printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
+  // printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
   spdlog::info("[OVERLORD] FS_OpenWad {}", fr->name);
   LoadStackEntry* selected = nullptr;
   for (uint32_t i = 0; i < MAX_OPEN_FILES; i++) {
@@ -254,7 +254,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
       return selected;
     }
   }
-  //printf("[OVERLORD ISO CD] Failed to FS_OpenWad %s\n", fr->name);
+  // printf("[OVERLORD ISO CD] Failed to FS_OpenWad %s\n", fr->name);
   spdlog::warn("[OVERLORD] Failed to FS_OpenWad {}", fr->name);
   ExitIOP();
   return nullptr;
@@ -265,7 +265,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 void FS_Close(LoadStackEntry* fd) {
-  //printf("[OVERLORD] FS Close %s\n", fd->fr->name);
+  // printf("[OVERLORD] FS Close %s\n", fd->fr->name);
   spdlog::info("[OVERLORD] FS_Close {}", fd->fr->name);
 
   // close the FD
@@ -285,7 +285,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   int32_t real_size = len;
   if (len < 0) {
     // not sure what this is about...
-    //printf("[OVERLORD ISO CD] negative length warning!\n");
+    // printf("[OVERLORD ISO CD] negative length warning!\n");
     spdlog::warn("[OVERLORD ISO CD] Negative length warning!");
     real_size = len + 0x7ff;
   }

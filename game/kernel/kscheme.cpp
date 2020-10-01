@@ -1898,7 +1898,7 @@ s32 InitHeapAndSymbol() {
     } else {
       spdlog::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
                    (kernel_version >> 3) & 0xffff);
-      //printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
+      // printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
       //       (kernel_version >> 3) & 0xffff);
     }
   }
