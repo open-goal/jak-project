@@ -9,9 +9,9 @@
 // implementers..
 //
 
-#include <spdlog/common.h>
-#include <spdlog/details/log_msg.h>
-#include <spdlog/sinks/sink.h>
+#include <third-party/spdlog/include/spdlog/common.h>
+#include <third-party/spdlog/include/spdlog/details/log_msg.h>
+#include <third-party/spdlog/include/spdlog/sinks/sink.h>
 
 namespace spdlog {
 namespace sinks {

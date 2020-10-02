@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <spdlog/fmt/fmt.h>
-#include <spdlog/details/log_msg.h>
+#include <third-party/spdlog/include/spdlog/fmt/fmt.h>
+#include <third-party/spdlog/include/spdlog/details/log_msg.h>
 
 namespace spdlog {
 

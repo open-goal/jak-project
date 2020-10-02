@@ -4,10 +4,10 @@
 #pragma once
 
 #ifndef SPDLOG_HEADER_ONLY
-#include <spdlog/details/os.h>
+#include <third-party/spdlog/include/spdlog/details/os.h>
 #endif
 
-#include <spdlog/common.h>
+#include <third-party/spdlog/include/spdlog/common.h>
 
 #include <algorithm>
 #include <chrono>
@@ -25,7 +25,7 @@
 
 #include <io.h>      // _get_osfhandle and _isatty support
 #include <process.h> //  _get_pid support
-#include <spdlog/details/windows_include.h>
+#include <third-party/spdlog/include/spdlog/details/windows_include.h>
 
 #ifdef __MINGW32__
 #include <share.h>
