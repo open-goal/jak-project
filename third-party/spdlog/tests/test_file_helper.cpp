@@ -4,13 +4,10 @@
 #include "includes.h"
 
 using spdlog::details::file_helper;
-using spdlog::details::log_msg;
-
-static const std::string target_filename = "logs/file_helper_test.txt";
 
 static void write_with_helper(file_helper &helper, size_t howmany)
 {
-    fmt::memory_buffer formatted;
+    spdlog::memory_buf_t formatted;
     fmt::format_to(formatted, "{}", std::string(howmany, '1'));
     helper.write(formatted);
     helper.flush();
@@ -21,6 +18,7 @@ TEST_CASE("file_helper_filename", "[file_helper::filename()]]")
     prepare_logdir();
 
     file_helper helper;
+    std::string target_filename = "test_logs/file_helper_test.txt";
     helper.open(target_filename);
     REQUIRE(helper.filename() == target_filename);
 }
@@ -28,6 +26,7 @@ TEST_CASE("file_helper_filename", "[file_helper::filename()]]")
 TEST_CASE("file_helper_size", "[file_helper::size()]]")
 {
     prepare_logdir();
+    std::string target_filename = "test_logs/file_helper_test.txt";
     size_t expected_size = 123;
     {
         file_helper helper;
@@ -38,18 +37,10 @@ TEST_CASE("file_helper_size", "[file_helper::size()]]")
     REQUIRE(get_filesize(target_filename) == expected_size);
 }
 
-TEST_CASE("file_helper_exists", "[file_helper::file_exists()]]")
-{
-    prepare_logdir();
-    REQUIRE(!file_helper::file_exists(target_filename));
-    file_helper helper;
-    helper.open(target_filename);
-    REQUIRE(file_helper::file_exists(target_filename));
-}
-
 TEST_CASE("file_helper_reopen", "[file_helper::reopen()]]")
 {
     prepare_logdir();
+    std::string target_filename = "test_logs/file_helper_test.txt";
     file_helper helper;
     helper.open(target_filename);
     write_with_helper(helper, 12);
@@ -61,6 +52,7 @@ TEST_CASE("file_helper_reopen", "[file_helper::reopen()]]")
 TEST_CASE("file_helper_reopen2", "[file_helper::reopen(false)]]")
 {
     prepare_logdir();
+    std::string target_filename = "test_logs/file_helper_test.txt";
     size_t expected_size = 14;
     file_helper helper;
     helper.open(target_filename);
@@ -80,7 +72,8 @@ static void test_split_ext(const char *fname, const char *expect_base, const cha
     std::replace(filename.begin(), filename.end(), '/', '\\');
     std::replace(expected_base.begin(), expected_base.end(), '/', '\\');
 #endif
-    spdlog::filename_t basename, ext;
+    spdlog::filename_t basename;
+    spdlog::filename_t ext;
     std::tie(basename, ext) = file_helper::split_by_extension(filename);
     REQUIRE(basename == expected_base);
     REQUIRE(ext == expected_ext);

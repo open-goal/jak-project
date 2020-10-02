@@ -1,5 +1,6 @@
 #include "includes.h"
 #include "test_sink.h"
+#include "spdlog/fmt/bin_to_hex.h"
 
 template<class T>
 std::string log_info(const T &what, spdlog::level::level_enum logger_level = spdlog::level::info)
@@ -20,11 +21,11 @@ TEST_CASE("basic_logging ", "[basic_logging]")
 {
     // const char
     REQUIRE(log_info("Hello") == "Hello");
-    REQUIRE(log_info("") == "");
+    REQUIRE(log_info("").empty());
 
     // std::string
     REQUIRE(log_info(std::string("Hello")) == "Hello");
-    REQUIRE(log_info(std::string()) == std::string());
+    REQUIRE(log_info(std::string()).empty());
 
     // Numbers
     REQUIRE(log_info(5) == "5");
@@ -36,8 +37,8 @@ TEST_CASE("basic_logging ", "[basic_logging]")
 
 TEST_CASE("log_levels", "[log_levels]")
 {
-    REQUIRE(log_info("Hello", spdlog::level::err) == "");
-    REQUIRE(log_info("Hello", spdlog::level::critical) == "");
+    REQUIRE(log_info("Hello", spdlog::level::err).empty());
+    REQUIRE(log_info("Hello", spdlog::level::critical).empty());
     REQUIRE(log_info("Hello", spdlog::level::info) == "Hello");
     REQUIRE(log_info("Hello", spdlog::level::debug) == "Hello");
     REQUIRE(log_info("Hello", spdlog::level::trace) == "Hello");
@@ -71,6 +72,7 @@ TEST_CASE("to_level_enum", "[convert_to_level_enum]")
     REQUIRE(spdlog::level::from_str("debug") == spdlog::level::debug);
     REQUIRE(spdlog::level::from_str("info") == spdlog::level::info);
     REQUIRE(spdlog::level::from_str("warning") == spdlog::level::warn);
+    REQUIRE(spdlog::level::from_str("warn") == spdlog::level::warn);
     REQUIRE(spdlog::level::from_str("error") == spdlog::level::err);
     REQUIRE(spdlog::level::from_str("critical") == spdlog::level::critical);
     REQUIRE(spdlog::level::from_str("off") == spdlog::level::off);
@@ -79,11 +81,9 @@ TEST_CASE("to_level_enum", "[convert_to_level_enum]")
 
 TEST_CASE("periodic flush", "[periodic_flush]")
 {
-    using namespace spdlog;
-
-    auto logger = spdlog::create<sinks::test_sink_mt>("periodic_flush");
-
-    auto test_sink = std::static_pointer_cast<sinks::test_sink_mt>(logger->sinks()[0]);
+    using spdlog::sinks::test_sink_mt;
+    auto logger = spdlog::create<test_sink_mt>("periodic_flush");
+    auto test_sink = std::static_pointer_cast<test_sink_mt>(logger->sinks()[0]);
 
     spdlog::flush_every(std::chrono::seconds(1));
     std::this_thread::sleep_for(std::chrono::milliseconds(1250));
@@ -94,9 +94,10 @@ TEST_CASE("periodic flush", "[periodic_flush]")
 
 TEST_CASE("clone-logger", "[clone]")
 {
-    using namespace spdlog;
-
-    auto logger = spdlog::create<sinks::test_sink_mt>("orig");
+    using spdlog::sinks::test_sink_mt;
+    auto test_sink = std::make_shared<test_sink_mt>();
+    auto logger = std::make_shared<spdlog::logger>("orig", test_sink);
+    logger->set_pattern("%v");
     auto cloned = logger->clone("clone");
 
     REQUIRE(cloned->name() == "clone");
@@ -106,17 +107,20 @@ TEST_CASE("clone-logger", "[clone]")
     logger->info("Some message 1");
     cloned->info("Some message 2");
 
-    auto test_sink = std::static_pointer_cast<sinks::test_sink_mt>(cloned->sinks()[0]);
-    REQUIRE(test_sink->msg_counter() == 2);
+    REQUIRE(test_sink->lines().size() == 2);
+    REQUIRE(test_sink->lines()[0] == "Some message 1");
+    REQUIRE(test_sink->lines()[1] == "Some message 2");
 
     spdlog::drop_all();
 }
 
 TEST_CASE("clone async", "[clone]")
 {
-    using namespace spdlog;
-
-    auto logger = spdlog::create_async<sinks::test_sink_mt>("orig");
+    using spdlog::sinks::test_sink_st;
+    spdlog::init_thread_pool(4, 1);
+    auto test_sink = std::make_shared<test_sink_st>();
+    auto logger = std::make_shared<spdlog::async_logger>("orig", test_sink, spdlog::thread_pool());
+    logger->set_pattern("%v");
     auto cloned = logger->clone("clone");
 
     REQUIRE(cloned->name() == "clone");
@@ -129,13 +133,12 @@ TEST_CASE("clone async", "[clone]")
 
     spdlog::details::os::sleep_for_millis(10);
 
-    auto test_sink = std::static_pointer_cast<sinks::test_sink_mt>(cloned->sinks()[0]);
-    REQUIRE(test_sink->msg_counter() == 2);
+    REQUIRE(test_sink->lines().size() == 2);
+    REQUIRE(test_sink->lines()[0] == "Some message 1");
+    REQUIRE(test_sink->lines()[1] == "Some message 2");
 
     spdlog::drop_all();
 }
-
-#include "spdlog/fmt/bin_to_hex.h"
 
 TEST_CASE("to_hex", "[to_hex]")
 {
@@ -176,20 +179,55 @@ TEST_CASE("to_hex_no_delimiter", "[to_hex]")
     REQUIRE(ends_with(output, "0000: 090A0B0CFFFF" + std::string(spdlog::details::os::default_eol)));
 }
 
-TEST_CASE("message_counter", "[message_counter]")
+TEST_CASE("to_hex_show_ascii", "[to_hex]")
 {
     std::ostringstream oss;
     auto oss_sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(oss);
     spdlog::logger oss_logger("oss", oss_sink);
-    oss_logger.set_pattern("%i %v");
 
-    oss_logger.info("Hello");
-    REQUIRE(oss.str() == "000001 Hello" + std::string(spdlog::details::os::default_eol));
+    std::vector<unsigned char> v{9, 0xa, 0xb, 0x41, 0xc, 0x4b, 0xff, 0xff};
+    oss_logger.info("{:Xsa}", spdlog::to_hex(v, 8));
 
-    oss.str("");
-    oss_logger.info("Hello again");
+    REQUIRE(ends_with(oss.str(), "0000: 090A0B410C4BFFFF  ...A.K.." + std::string(spdlog::details::os::default_eol)));
+}
 
-    REQUIRE(oss.str() == "000002 Hello again" + std::string(spdlog::details::os::default_eol));
+TEST_CASE("to_hex_different_size_per_line", "[to_hex]")
+{
+    std::ostringstream oss;
+    auto oss_sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(oss);
+    spdlog::logger oss_logger("oss", oss_sink);
+
+    std::vector<unsigned char> v{9, 0xa, 0xb, 0x41, 0xc, 0x4b, 0xff, 0xff};
+
+    oss_logger.info("{:Xsa}", spdlog::to_hex(v, 10));
+    REQUIRE(ends_with(oss.str(), "0000: 090A0B410C4BFFFF  ...A.K.." + std::string(spdlog::details::os::default_eol)));
+
+    oss_logger.info("{:Xs}", spdlog::to_hex(v, 10));
+    REQUIRE(ends_with(oss.str(), "0000: 090A0B410C4BFFFF" + std::string(spdlog::details::os::default_eol)));
+
+    oss_logger.info("{:Xsa}", spdlog::to_hex(v, 6));
+    REQUIRE(ends_with(oss.str(), "0000: 090A0B410C4B  ...A.K" + std::string(spdlog::details::os::default_eol) + "0006: FFFF          .." +
+                                     std::string(spdlog::details::os::default_eol)));
+
+    oss_logger.info("{:Xs}", spdlog::to_hex(v, 6));
+    REQUIRE(ends_with(oss.str(), "0000: 090A0B410C4B" + std::string(spdlog::details::os::default_eol) + "0006: FFFF" +
+                                     std::string(spdlog::details::os::default_eol)));
+}
+
+TEST_CASE("to_hex_no_ascii", "[to_hex]")
+{
+    std::ostringstream oss;
+    auto oss_sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(oss);
+    spdlog::logger oss_logger("oss", oss_sink);
+
+    std::vector<unsigned char> v{9, 0xa, 0xb, 0x41, 0xc, 0x4b, 0xff, 0xff};
+    oss_logger.info("{:Xs}", spdlog::to_hex(v, 8));
+
+    REQUIRE(ends_with(oss.str(), "0000: 090A0B410C4BFFFF" + std::string(spdlog::details::os::default_eol)));
+
+    oss_logger.info("{:Xsna}", spdlog::to_hex(v, 8));
+
+    REQUIRE(ends_with(oss.str(), "090A0B410C4BFFFF" + std::string(spdlog::details::os::default_eol)));
 }
 
 TEST_CASE("default logger API", "[default logger]")
