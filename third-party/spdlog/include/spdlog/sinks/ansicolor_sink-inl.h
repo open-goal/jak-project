@@ -4,11 +4,11 @@
 #pragma once
 
 #ifndef SPDLOG_HEADER_ONLY
-#include <spdlog/sinks/ansicolor_sink.h>
+#include <third-party/spdlog/include/spdlog/sinks/ansicolor_sink.h>
 #endif
 
-#include <spdlog/pattern_formatter.h>
-#include <spdlog/details/os.h>
+#include <third-party/spdlog/include/spdlog/pattern_formatter.h>
+#include <third-party/spdlog/include/spdlog/details/os.h>
 
 namespace spdlog {
 namespace sinks {
