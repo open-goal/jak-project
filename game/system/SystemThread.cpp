@@ -3,6 +3,7 @@
 #endif
 
 #include "SystemThread.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 //////////////////////
 // Thread Manager   //
@@ -50,7 +51,6 @@ void SystemThreadManager::print_stats() {
  */
 void SystemThreadManager::shutdown() {
   for (int i = 0; i < thread_count; i++) {
-    // printf("# Stop %s\n", threads[i].name.c_str());
     spdlog::debug("# Stop {}", threads[i].name.c_str());
     threads[i].stop();
   }
@@ -61,7 +61,6 @@ void SystemThreadManager::shutdown() {
  */
 void SystemThreadManager::join() {
   for (int i = 0; i < thread_count; i++) {
-    // printf("# Join %s\n", threads[i].name.c_str());
     spdlog::debug(" # Join {}", threads[i].name.c_str());
     if (threads[i].running) {
       threads[i].join();
@@ -76,7 +75,6 @@ void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
   SystemThreadInterface iface(thd);
   thd->function(iface);
-  // printf("[SYSTEM] Thread %s is returning\n", thd->name.c_str());
   spdlog::debug("[SYSTEM] Thread {} is returning", thd->name.c_str());
   return nullptr;
 }
@@ -85,7 +83,6 @@ void* bootstrap_thread_func(void* x) {
  * Start a thread and wait for its initialization
  */
 void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
-  // printf("# Initialize %s...\n", name.c_str());
   spdlog::debug("# Initialize {}...", name.c_str());
 
   function = f;
@@ -124,7 +121,6 @@ void SystemThreadInterface::initialization_complete() {
   std::unique_lock<std::mutex> mlk(thread.initialization_mutex);
   thread.initialization_complete = true;
   thread.initialization_cv.notify_all();
-  // printf("# %s initialized\n", thread.name.c_str());
   spdlog::debug("# {} initialized", thread.name.c_str());
 }
 

@@ -217,7 +217,7 @@ uint32_t FS_GetLength(FileRecord* fr) {
  */
 LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
   // printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
-  spdlog::info("[OVERLORD] FS Open {}", fr->name);
+  spdlog::debug("[OVERLORD] FS Open {}", fr->name);
   LoadStackEntry* selected = nullptr;
   // find first unused spot on load stack.
   for (uint32_t i = 0; i < MAX_OPEN_FILES; i++) {
@@ -244,7 +244,7 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
  */
 LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
   // printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
-  spdlog::info("[OVERLORD] FS_OpenWad {}", fr->name);
+  spdlog::debug("[OVERLORD] FS_OpenWad {}", fr->name);
   LoadStackEntry* selected = nullptr;
   for (uint32_t i = 0; i < MAX_OPEN_FILES; i++) {
     if (!sLoadStack[i].fr) {
@@ -266,7 +266,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
  */
 void FS_Close(LoadStackEntry* fd) {
   // printf("[OVERLORD] FS Close %s\n", fd->fr->name);
-  spdlog::info("[OVERLORD] FS_Close {}", fd->fr->name);
+  spdlog::debug("[OVERLORD] FS_Close {}", fd->fr->name);
 
   // close the FD
   fd->fr = nullptr;

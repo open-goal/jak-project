@@ -9,7 +9,7 @@ using namespace iop;
  */
 void LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
   // printf("[OVERLORD] LoadISOFileToIOP %s, %d/%d bytes\n", file->name, length, file->size);
-  spdlog::info("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, file->size);
+  spdlog::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_IOP_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -30,7 +30,7 @@ void LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
  */
 void LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
   // printf("[OVERLORD] LoadISOFileToEE %s, %d/%d bytes\n", file->name, length, file->size);
-  spdlog::info("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, file->size);
+  spdlog::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_CMD_ID;
   cmd.messagebox_to_reply = 0;
