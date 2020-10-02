@@ -1402,7 +1402,7 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     if (!result) {
       state.reset();
       // temp hack for debug:
-      printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
+      // printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
       func->add_basic_op(std::make_shared<IR_Failed>(), instr, instr + 1);
     } else {
       func->add_basic_op(result, instr, instr + length);

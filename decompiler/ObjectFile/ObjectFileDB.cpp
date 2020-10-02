@@ -19,6 +19,7 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/IR/BasicOpBuilder.h"
+#include "decompiler/IR/CfgBuilder.h"
 
 /*!
  * Get a unique name for this object file.
@@ -602,6 +603,7 @@ void ObjectFileDB::analyze_functions() {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
+      // printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
@@ -617,6 +619,8 @@ void ObjectFileDB::analyze_functions() {
         }
         total_basic_ops += func.get_basic_op_count();
         total_failed_basic_ops += func.get_failed_basic_op_count();
+
+        func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
 
         if (func.cfg->is_fully_resolved()) {
           resolved_cfg_functions++;

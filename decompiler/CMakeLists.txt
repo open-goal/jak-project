@@ -17,6 +17,7 @@ add_executable(decompiler
         Disasm/InstructionMatching.cpp
         Function/CfgVtx.cpp Function/CfgVtx.h
         IR/BasicOpBuilder.cpp
+        IR/CfgBuilder.cpp
         IR/IR.cpp)
 
 target_link_libraries(decompiler

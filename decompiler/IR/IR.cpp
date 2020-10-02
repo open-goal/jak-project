@@ -5,13 +5,33 @@ std::string IR::print(const LinkedObjectFile& file) const {
   return to_form(file)->toStringPretty();
 }
 
+std::shared_ptr<Form> IR_Failed::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return buildList("INVALID-OPERATION");
+}
+
+void IR_Failed::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
 std::shared_ptr<Form> IR_Register::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return toForm(reg.to_charp());
 }
 
+void IR_Register::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
 std::shared_ptr<Form> IR_Set::to_form(const LinkedObjectFile& file) const {
   return buildList(toForm("set!"), dst->to_form(file), src->to_form(file));
+}
+
+void IR_Set::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  // note that we are not returning clobber here because it shouldn't contain anything that
+  // the IR simplification code should touch.
+  output->push_back(dst);
+  output->push_back(src);
 }
 
 std::shared_ptr<Form> IR_Store::to_form(const LinkedObjectFile& file) const {
@@ -48,14 +68,13 @@ std::shared_ptr<Form> IR_Store::to_form(const LinkedObjectFile& file) const {
   return buildList(toForm(store_operator), dst->to_form(file), src->to_form(file));
 }
 
-std::shared_ptr<Form> IR_Failed::to_form(const LinkedObjectFile& file) const {
-  (void)file;
-  return buildList("INVALID-OPERATION");
-}
-
 std::shared_ptr<Form> IR_Symbol::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return toForm("'" + name);
+}
+
+void IR_Symbol::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
 }
 
 std::shared_ptr<Form> IR_SymbolValue::to_form(const LinkedObjectFile& file) const {
@@ -63,9 +82,17 @@ std::shared_ptr<Form> IR_SymbolValue::to_form(const LinkedObjectFile& file) cons
   return toForm(name);
 }
 
+void IR_SymbolValue::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
 std::shared_ptr<Form> IR_StaticAddress::to_form(const LinkedObjectFile& file) const {
   // return buildList(toForm("&"), file.get_label_name(label_id));
   return toForm(file.get_label_name(label_id));
+}
+
+void IR_StaticAddress::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
 }
 
 std::shared_ptr<Form> IR_Load::to_form(const LinkedObjectFile& file) const {
@@ -116,6 +143,10 @@ std::shared_ptr<Form> IR_Load::to_form(const LinkedObjectFile& file) const {
   return buildList(toForm(load_operator), location->to_form(file));
 }
 
+void IR_Load::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(location);
+}
+
 std::shared_ptr<Form> IR_FloatMath2::to_form(const LinkedObjectFile& file) const {
   std::string math_operator;
   switch (kind) {
@@ -142,6 +173,15 @@ std::shared_ptr<Form> IR_FloatMath2::to_form(const LinkedObjectFile& file) const
   }
 
   return buildList(toForm(math_operator), arg0->to_form(file), arg1->to_form(file));
+}
+
+void IR_FloatMath2::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg0);
+  output->push_back(arg1);
+}
+
+void IR_FloatMath1::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg);
 }
 
 std::shared_ptr<Form> IR_IntMath2::to_form(const LinkedObjectFile& file) const {
@@ -198,6 +238,11 @@ std::shared_ptr<Form> IR_IntMath2::to_form(const LinkedObjectFile& file) const {
   return buildList(toForm(math_operator), arg0->to_form(file), arg1->to_form(file));
 }
 
+void IR_IntMath2::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg0);
+  output->push_back(arg1);
+}
+
 std::shared_ptr<Form> IR_IntMath1::to_form(const LinkedObjectFile& file) const {
   std::string math_operator;
   switch (kind) {
@@ -208,6 +253,10 @@ std::shared_ptr<Form> IR_IntMath1::to_form(const LinkedObjectFile& file) const {
       assert(false);
   }
   return buildList(toForm(math_operator), arg->to_form(file));
+}
+
+void IR_IntMath1::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg);
 }
 
 std::shared_ptr<Form> IR_FloatMath1::to_form(const LinkedObjectFile& file) const {
@@ -239,9 +288,17 @@ std::shared_ptr<Form> IR_Call::to_form(const LinkedObjectFile& file) const {
   return buildList("call!");
 }
 
+void IR_Call::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
 std::shared_ptr<Form> IR_IntegerConstant::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return toForm(std::to_string(value));
+}
+
+void IR_IntegerConstant::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
 }
 
 std::shared_ptr<Form> BranchDelay::to_form(const LinkedObjectFile& file) const {
@@ -259,6 +316,16 @@ std::shared_ptr<Form> BranchDelay::to_form(const LinkedObjectFile& file) const {
       return buildList("unknown-branch-delay");
     default:
       assert(false);
+  }
+}
+
+void BranchDelay::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  if (destination) {
+    output->push_back(destination);
+  }
+
+  if (source) {
+    output->push_back(source);
   }
 }
 
@@ -293,6 +360,16 @@ int Condition::num_args() const {
       return 0;
     default:
       assert(false);
+  }
+}
+
+void Condition::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  if (src0) {
+    output->push_back(src0);
+  }
+
+  if (src1) {
+    output->push_back(src1);
   }
 }
 
@@ -381,11 +458,71 @@ std::shared_ptr<Form> IR_Branch::to_form(const LinkedObjectFile& file) const {
                    toForm(file.get_label_name(dest_label_idx)), branch_delay.to_form(file));
 }
 
+void IR_Branch::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  condition.get_children(output);
+  branch_delay.get_children(output);
+}
+
 std::shared_ptr<Form> IR_Compare::to_form(const LinkedObjectFile& file) const {
   return condition.to_form(file);
+}
+
+void IR_Compare::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  condition.get_children(output);
 }
 
 std::shared_ptr<Form> IR_Suspend::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return buildList("suspend!");
+}
+
+void IR_Nop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+void IR_Suspend::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+std::shared_ptr<Form> IR_Begin::to_form(const LinkedObjectFile& file) const {
+  std::vector<std::shared_ptr<Form>> list;
+  list.push_back(toForm("begin"));
+  for (auto& x : forms) {
+    list.push_back(x->to_form(file));
+  }
+  return buildList(list);
+}
+
+void IR_Begin::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& x : forms) {
+    output->push_back(x);
+  }
+}
+
+namespace {
+void print_inlining_begin(std::vector<std::shared_ptr<Form>>* output,
+                          IR* ir,
+                          const LinkedObjectFile& file) {
+  auto as_begin = dynamic_cast<IR_Begin*>(ir);
+  if (as_begin) {
+    for (auto& x : as_begin->forms) {
+      output->push_back(x->to_form(file));
+    }
+  } else {
+    output->push_back(ir->to_form(file));
+  }
+}
+}  // namespace
+
+std::shared_ptr<Form> IR_WhileLoop::to_form(const LinkedObjectFile& file) const {
+  std::vector<std::shared_ptr<Form>> list;
+  list.push_back(toForm("while"));
+  list.push_back(condition->to_form(file));
+  print_inlining_begin(&list, body.get(), file);
+  return buildList(list);
+}
+
+void IR_WhileLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(condition);
+  output->push_back(body);
 }

@@ -622,6 +622,11 @@ std::string LinkedObjectFile::print_disassembly() {
          */
       }
 
+      if (func.ir) {
+        result += ";; ir\n";
+        result += func.ir->print(*this);
+      }
+
       result += "\n\n\n";
     }
 

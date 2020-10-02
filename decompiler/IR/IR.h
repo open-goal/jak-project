@@ -2,6 +2,7 @@
 #define JAK_IR_H
 
 #include <cassert>
+#include <utility>
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/LispPrint.h"
 
@@ -10,7 +11,9 @@ class LinkedObjectFile;
 class IR {
  public:
   virtual std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const = 0;
+  std::vector<std::shared_ptr<IR>> get_all_ir(LinkedObjectFile& file) const;
   std::string print(const LinkedObjectFile& file) const;
+  virtual void get_children(std::vector<std::shared_ptr<IR>>* output) const = 0;
 
   bool is_basic_op = false;
 };
@@ -19,12 +22,14 @@ class IR_Failed : public IR {
  public:
   IR_Failed() = default;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_Register : public IR {
  public:
   IR_Register(Register _reg, int _instr_idx) : reg(_reg), instr_idx(_instr_idx) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   Register reg;
   int instr_idx = -1;
 };
@@ -45,6 +50,7 @@ class IR_Set : public IR {
   IR_Set(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src)
       : kind(_kind), dst(std::move(_dst)), src(std::move(_src)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::shared_ptr<IR> dst, src;
   std::shared_ptr<IR> clobber = nullptr;
 };
@@ -60,34 +66,38 @@ class IR_Store : public IR_Set {
 
 class IR_Symbol : public IR {
  public:
-  IR_Symbol(std::string _name) : name(std::move(_name)) {}
+  explicit IR_Symbol(std::string _name) : name(std::move(_name)) {}
   std::string name;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_SymbolValue : public IR {
  public:
-  IR_SymbolValue(std::string _name) : name(std::move(_name)) {}
+  explicit IR_SymbolValue(std::string _name) : name(std::move(_name)) {}
   std::string name;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_StaticAddress : public IR {
  public:
-  IR_StaticAddress(int _label_id) : label_id(_label_id) {}
+  explicit IR_StaticAddress(int _label_id) : label_id(_label_id) {}
   int label_id = -1;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_Load : public IR {
  public:
   enum Kind { UNSIGNED, SIGNED, FLOAT } kind;
 
-  IR_Load(Kind _kind, int _size, const std::shared_ptr<IR>& _location)
-      : kind(_kind), size(_size), location(_location) {}
+  IR_Load(Kind _kind, int _size, std::shared_ptr<IR> _location)
+      : kind(_kind), size(_size), location(std::move(_location)) {}
   int size;
   std::shared_ptr<IR> location;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_FloatMath2 : public IR {
@@ -97,6 +107,7 @@ class IR_FloatMath2 : public IR {
       : kind(_kind), arg0(std::move(_arg0)), arg1(std::move(_arg1)) {}
   std::shared_ptr<IR> arg0, arg1;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_FloatMath1 : public IR {
@@ -105,6 +116,7 @@ class IR_FloatMath1 : public IR {
   IR_FloatMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   std::shared_ptr<IR> arg;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_IntMath2 : public IR {
@@ -130,6 +142,7 @@ class IR_IntMath2 : public IR {
       : kind(_kind), arg0(std::move(_arg0)), arg1(std::move(_arg1)) {}
   std::shared_ptr<IR> arg0, arg1;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_IntMath1 : public IR {
@@ -138,12 +151,14 @@ class IR_IntMath1 : public IR {
   IR_IntMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   std::shared_ptr<IR> arg;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_Call : public IR {
  public:
   IR_Call() = default;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_IntegerConstant : public IR {
@@ -151,13 +166,15 @@ class IR_IntegerConstant : public IR {
   int64_t value;
   explicit IR_IntegerConstant(int64_t _value) : value(_value) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 struct BranchDelay {
   enum Kind { NOP, SET_REG_FALSE, SET_REG_TRUE, SET_REG_REG, UNKNOWN } kind;
   std::shared_ptr<IR> destination = nullptr, source = nullptr;
-  BranchDelay(Kind _kind) : kind(_kind) {}
+  explicit BranchDelay(Kind _kind) : kind(_kind) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const;
 };
 
 struct Condition {
@@ -201,6 +218,7 @@ struct Condition {
   int num_args() const;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
   std::shared_ptr<IR> src0, src1, clobber;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const;
 };
 
 class IR_Branch : public IR {
@@ -217,6 +235,7 @@ class IR_Branch : public IR {
   bool likely;
 
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_Compare : public IR {
@@ -226,18 +245,38 @@ class IR_Compare : public IR {
   Condition condition;
 
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_Nop : public IR {
  public:
   IR_Nop() = default;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
 class IR_Suspend : public IR {
  public:
   IR_Suspend() = default;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Begin : public IR {
+ public:
+  IR_Begin(const std::vector<std::shared_ptr<IR>>& _forms) : forms(std::move(_forms)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  std::vector<std::shared_ptr<IR>> forms;
+};
+
+class IR_WhileLoop : public IR {
+ public:
+  IR_WhileLoop(std::shared_ptr<IR> _condition, std::shared_ptr<IR> _body)
+      : condition(std::move(_condition)), body(std::move(_body)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  std::shared_ptr<IR> condition, body;
 };
 
 #endif  // JAK_IR_H

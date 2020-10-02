@@ -68,9 +68,11 @@ class Function {
   void add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr);
   bool has_basic_ops() { return !basic_ops.empty(); }
   bool instr_starts_basic_op(int idx);
-  IR* get_basic_op_at_instr(int idx);
+  std::shared_ptr<IR> get_basic_op_at_instr(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
+
+  std::shared_ptr<IR> ir = nullptr;
 
   int segment = -1;
   int start_word = -1;
