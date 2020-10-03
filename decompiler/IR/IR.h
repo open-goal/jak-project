@@ -295,12 +295,35 @@ class IR_CondWithElse : public IR {
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
+// this one doesn't have an else statement. Will return false if none of the cases are taken.
+class IR_Cond : public IR {
+ public:
+  struct Entry {
+    std::shared_ptr<IR> condition = nullptr;
+    std::shared_ptr<IR> body = nullptr;
+    std::shared_ptr<IR> false_destination = nullptr;
+  };
+  std::vector<Entry> entries;
+  IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
 // this will work on pairs, bintegers, or basics
 class IR_GetRuntimeType : public IR {
  public:
   std::shared_ptr<IR> object, clobber;
-  explicit IR_GetRuntimeType(std::shared_ptr<IR> _object, std::shared_ptr<IR> _clobber)
+  IR_GetRuntimeType(std::shared_ptr<IR> _object, std::shared_ptr<IR> _clobber)
       : object(std::move(_object)), clobber(std::move(_clobber)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_PartialNot : public IR {
+ public:
+  std::shared_ptr<IR> dst, src;
+  IR_PartialNot(std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src)
+      : dst(std::move(_dst)), src(std::move(_src)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

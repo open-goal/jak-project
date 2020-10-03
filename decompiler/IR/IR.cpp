@@ -1,6 +1,33 @@
 #include "IR.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
+std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
+  (void)file;
+  std::vector<std::shared_ptr<IR>> result;
+  get_children(&result);
+  size_t last_checked = 0;
+  size_t last_last_checked = -1;
+
+  while (last_checked != last_last_checked) {
+    last_last_checked = last_checked;
+    auto end_of_check = result.size();
+    for (size_t i = last_checked; i < end_of_check; i++) {
+      auto it = result.at(i).get();
+      assert(it);
+      it->get_children(&result);
+    }
+    last_checked = end_of_check;
+  }
+
+  // Todo, remove this check which is just for debugging.
+  std::unordered_set<std::shared_ptr<IR>> unique_ir;
+  for (auto& x : result) {
+    unique_ir.insert(x);
+  }
+  assert(unique_ir.size() == result.size());
+  return result;
+}
+
 std::string IR::print(const LinkedObjectFile& file) const {
   return to_form(file)->toStringPretty();
 }
@@ -582,4 +609,50 @@ std::shared_ptr<Form> IR_GetRuntimeType::to_form(const LinkedObjectFile& file) c
 
 void IR_GetRuntimeType::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(object);
+}
+
+std::shared_ptr<Form> IR_Cond::to_form(const LinkedObjectFile& file) const {
+  if (entries.size() == 1 && is_single_expression(entries.front().body.get())) {
+    // print as an if statement if we can put the body in a single form.
+    std::vector<std::shared_ptr<Form>> list;
+    list.push_back(toForm("if"));
+    list.push_back(entries.front().condition->to_form(file));
+    list.push_back(entries.front().body->to_form(file));
+    return buildList(list);
+  } else if (entries.size() == 1) {
+    // turn into a when if the body requires multiple forms
+    std::vector<std::shared_ptr<Form>> list;
+    list.push_back(toForm("when"));
+    list.push_back(entries.front().condition->to_form(file));
+    print_inlining_begin(&list, entries.front().body.get(), file);
+    return buildList(list);
+  } else {
+    std::vector<std::shared_ptr<Form>> list;
+    list.push_back(toForm("cond"));
+    for (auto& e : entries) {
+      std::vector<std::shared_ptr<Form>> entry;
+      entry.push_back(e.condition->to_form(file));
+      print_inlining_begin(&entry, e.body.get(), file);
+      list.push_back(buildList(entry));
+    }
+    return buildList(list);
+  }
+}
+
+void IR_Cond::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& e : entries) {
+    output->push_back(e.condition);
+    output->push_back(e.body);
+  }
+}
+
+std::shared_ptr<Form> IR_PartialNot::to_form(const LinkedObjectFile& file) const {
+  return buildList("INCOMPLETE-NOT", dst->to_form(file), src->to_form(file));
+}
+
+void IR_PartialNot::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  // probably we could get away with not returning anything here because these should
+  // always be registers?
+  output->push_back(dst);
+  output->push_back(src);
 }

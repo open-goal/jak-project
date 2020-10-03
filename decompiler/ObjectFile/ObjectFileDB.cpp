@@ -598,12 +598,15 @@ void ObjectFileDB::analyze_functions() {
   int total_basic_ops = 0;
   int total_failed_basic_ops = 0;
 
+  int attempted_cfg_irs = 0;
+  int successful_cfg_irs = 0;
+
   std::map<int, std::vector<std::string>> unresolved_by_length;
   if (get_config().find_basic_blocks) {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-      // printf("in %s\n", func.guessed_name.to_string().c_str());
+      printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
@@ -621,6 +624,10 @@ void ObjectFileDB::analyze_functions() {
         total_failed_basic_ops += func.get_failed_basic_op_count();
 
         func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
+        attempted_cfg_irs++;
+        if (func.ir) {
+          successful_cfg_irs++;
+        }
 
         if (func.cfg->is_fully_resolved()) {
           resolved_cfg_functions++;
@@ -644,6 +651,10 @@ void ObjectFileDB::analyze_functions() {
       if (!func.guessed_name.empty()) {
         total_named_functions++;
       }
+
+      //      if (func.guessed_name.to_string() == "inspect") {
+      //        assert(false);
+      //      }
     });
 
     printf("Found %d functions (%d with nontrivial cfgs)\n", total_functions,
@@ -656,10 +667,11 @@ void ObjectFileDB::analyze_functions() {
     printf(" %d/%d nontrivial cfg's resolved (%.2f%%)\n", total_resolved_nontrivial_functions,
            total_nontrivial_functions,
            100.f * float(total_resolved_nontrivial_functions) / float(total_nontrivial_functions));
-
     int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
     printf(" %d/%d basic ops converted successfully (%.2f%%)\n", successful_basic_ops,
            total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+    printf(" %d/%d cfgs converted to ir (%.2f%%)\n", successful_cfg_irs, attempted_cfg_irs,
+           100.f * float(successful_cfg_irs) / float(attempted_cfg_irs));
 
     //    for (auto& kv : unresolved_by_length) {
     //      printf("LEN %d\n", kv.first);
