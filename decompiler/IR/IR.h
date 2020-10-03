@@ -170,7 +170,7 @@ class IR_IntegerConstant : public IR {
 };
 
 struct BranchDelay {
-  enum Kind { NOP, SET_REG_FALSE, SET_REG_TRUE, SET_REG_REG, UNKNOWN } kind;
+  enum Kind { NOP, SET_REG_FALSE, SET_REG_TRUE, SET_REG_REG, SET_BINTEGER, SET_PAIR, UNKNOWN } kind;
   std::shared_ptr<IR> destination = nullptr, source = nullptr;
   explicit BranchDelay(Kind _kind) : kind(_kind) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
@@ -185,6 +185,7 @@ struct Condition {
     GREATER_THAN_SIGNED,
     LEQ_SIGNED,
     GEQ_SIGNED,
+    GREATER_THAN_ZERO_SIGNED,
     LESS_THAN_UNSIGNED,
     GREATER_THAN_UNSIGNED,
     LEQ_UNSIGNED,
@@ -264,7 +265,8 @@ class IR_Suspend : public IR {
 
 class IR_Begin : public IR {
  public:
-  IR_Begin(const std::vector<std::shared_ptr<IR>>& _forms) : forms(std::move(_forms)) {}
+  IR_Begin() = default;
+  explicit IR_Begin(const std::vector<std::shared_ptr<IR>>& _forms) : forms(std::move(_forms)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::vector<std::shared_ptr<IR>> forms;
@@ -289,6 +291,16 @@ class IR_CondWithElse : public IR {
   std::shared_ptr<IR> else_ir;
   IR_CondWithElse(std::vector<Entry> _entries, std::shared_ptr<IR> _else_ir)
       : entries(std::move(_entries)), else_ir(std::move(_else_ir)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+// this will work on pairs, bintegers, or basics
+class IR_GetRuntimeType : public IR {
+ public:
+  std::shared_ptr<IR> object, clobber;
+  explicit IR_GetRuntimeType(std::shared_ptr<IR> _object, std::shared_ptr<IR> _clobber)
+      : object(std::move(_object)), clobber(std::move(_clobber)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

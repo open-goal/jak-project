@@ -312,6 +312,10 @@ std::shared_ptr<Form> BranchDelay::to_form(const LinkedObjectFile& file) const {
       return buildList(toForm("set!"), destination->to_form(file), "'#t");
     case SET_REG_REG:
       return buildList(toForm("set!"), destination->to_form(file), source->to_form(file));
+    case SET_BINTEGER:
+      return buildList(toForm("set!"), destination->to_form(file), "binteger");
+    case SET_PAIR:
+      return buildList(toForm("set!"), destination->to_form(file), "pair");
     case UNKNOWN:
       return buildList("unknown-branch-delay");
     default:
@@ -355,6 +359,7 @@ int Condition::num_args() const {
     case NONZERO:
     case FALSE:
     case TRUTHY:
+    case GREATER_THAN_ZERO_SIGNED:
       return 1;
     case ALWAYS:
       return 0;
@@ -434,6 +439,9 @@ std::shared_ptr<Form> Condition::to_form(const LinkedObjectFile& file) const {
     case FLOAT_GEQ:
       condtion_operator = ">=.f";
       break;
+    case GREATER_THAN_ZERO_SIGNED:
+      condtion_operator = ">0.s";
+      break;
     default:
       assert(false);
   }
@@ -493,7 +501,6 @@ std::shared_ptr<Form> IR_Begin::to_form(const LinkedObjectFile& file) const {
   return buildList(list);
 }
 
-
 void IR_Begin::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   for (auto& x : forms) {
     output->push_back(x);
@@ -513,6 +520,10 @@ void print_inlining_begin(std::vector<std::shared_ptr<Form>>* output,
     output->push_back(ir->to_form(file));
   }
 }
+
+bool is_single_expression(IR* in) {
+  return !dynamic_cast<IR_Begin*>(in);
+}
 }  // namespace
 
 std::shared_ptr<Form> IR_WhileLoop::to_form(const LinkedObjectFile& file) const {
@@ -529,26 +540,46 @@ void IR_WhileLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const 
 }
 
 std::shared_ptr<Form> IR_CondWithElse::to_form(const LinkedObjectFile& file) const {
-  // todo - special case to print as if with else
-  std::vector<std::shared_ptr<Form>> list;
-  list.push_back(toForm("cond"));
-  for(auto& e : entries) {
-    std::vector<std::shared_ptr<Form>> entry;
-    entry.push_back(e.condition->to_form(file));
-    print_inlining_begin(&entry, e.body.get(), file);
-    list.push_back(buildList(entry));
+  // for now we only turn it into an if statement if both cases won't require a begin at the top
+  // level. I think it is more common to write these as a two-case cond instead of an if with begin.
+  if (entries.size() == 1 && is_single_expression(entries.front().body.get()) &&
+      is_single_expression(else_ir.get())) {
+    std::vector<std::shared_ptr<Form>> list;
+    list.push_back(toForm("if"));
+    list.push_back(entries.front().condition->to_form(file));
+    list.push_back(entries.front().body->to_form(file));
+    list.push_back(else_ir->to_form(file));
+    return buildList(list);
+  } else {
+    std::vector<std::shared_ptr<Form>> list;
+    list.push_back(toForm("cond"));
+    for (auto& e : entries) {
+      std::vector<std::shared_ptr<Form>> entry;
+      entry.push_back(e.condition->to_form(file));
+      print_inlining_begin(&entry, e.body.get(), file);
+      list.push_back(buildList(entry));
+    }
+    std::vector<std::shared_ptr<Form>> else_form;
+    else_form.push_back(toForm("else"));
+    print_inlining_begin(&else_form, else_ir.get(), file);
+    list.push_back(buildList(else_form));
+    return buildList(list);
   }
-  std::vector<std::shared_ptr<Form>> else_form;
-  else_form.push_back(toForm("else"));
-  print_inlining_begin(&else_form, else_ir.get(), file);
-  list.push_back(buildList(else_form));
-  return buildList(list);
 }
 
 void IR_CondWithElse::get_children(std::vector<std::shared_ptr<IR>>* output) const {
-  for(auto& e : entries) {
+  for (auto& e : entries) {
     output->push_back(e.condition);
     output->push_back(e.body);
   }
   output->push_back(else_ir);
+}
+
+std::shared_ptr<Form> IR_GetRuntimeType::to_form(const LinkedObjectFile& file) const {
+  std::vector<std::shared_ptr<Form>> list = {toForm("type-of"), object->to_form(file)};
+  return buildList(list);
+}
+
+void IR_GetRuntimeType::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(object);
 }
