@@ -19,6 +19,7 @@
 #include <condition_variable>
 #include <functional>
 #include "game/system/deci_common.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 class Deci2Server {
  public:

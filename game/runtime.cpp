@@ -68,7 +68,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
 
   // in our own thread, wait for the EE to register the first protocol driver
-  printf("[DECI2] waiting for EE to register protos\n");
+  spdlog::debug("[DECI2] Waiting for EE to register protos");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
   if (!server.init()) {
@@ -76,11 +76,13 @@ void deci2_runner(SystemThreadInterface& iface) {
   }
 
   printf("[DECI2] waiting for listener...\n");
+  // spdlog::debug("[DECI2] Waiting for listener..."); --> disabled temporarily, some weird race
+  // condition?
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
     if (server.check_for_listener()) {
       if (!saw_listener) {
-        printf("[DECI2] Connected!\n");
+        spdlog::debug("[DECI2] Connected!");
       }
       saw_listener = true;
       // we have a listener, run!
@@ -117,19 +119,19 @@ void ee_runner(SystemThreadInterface& iface) {
   }
 
   if (g_ee_main_mem == (u8*)(-1)) {
-    printf("  Failed to initialize main memory! %s\n", strerror(errno));
+    spdlog::debug("Failed to initialize main memory! {}", strerror(errno));
     iface.initialization_complete();
     return;
   }
 
-  printf("  Main memory mapped at 0x%016llx\n", (u64)(g_ee_main_mem));
-  printf("  Main memory size 0x%x bytes (%.3f MB)\n", EE_MAIN_MEM_SIZE,
-         (double)EE_MAIN_MEM_SIZE / (1 << 20));
+  spdlog::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
+  spdlog::debug("Main memory size 0x{} bytes ({} MB)", EE_MAIN_MEM_SIZE,
+                (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
-  printf("[EE] Initialization complete!\n");
+  spdlog::debug("[EE] Initialization complete!");
   iface.initialization_complete();
 
-  printf("[EE] Run!\n");
+  spdlog::debug("[EE] Run!");
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
 
   // prevent access to the first 1 MB of memory.
@@ -151,7 +153,7 @@ void ee_runner(SystemThreadInterface& iface) {
   kprint_init_globals();
 
   goal_main(g_argc, g_argv);
-  printf("[EE] Done!\n");
+  spdlog::debug("[EE] Done!");
 
   //  // kill the IOP todo
   iop::LIBRARY_kill();
@@ -167,7 +169,7 @@ void ee_runner(SystemThreadInterface& iface) {
  */
 void iop_runner(SystemThreadInterface& iface) {
   IOP iop;
-  printf("[IOP] Restart!\n");
+  spdlog::debug("[IOP] Restart!");
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
@@ -190,12 +192,12 @@ void iop_runner(SystemThreadInterface& iface) {
 
   iface.initialization_complete();
 
-  printf("[IOP] Wait for OVERLORD to be started...\n");
+  spdlog::debug("[IOP] Wait for OVERLORD to start...");
   iop.wait_for_overlord_start_cmd();
   if (iop.status == IOP_OVERLORD_INIT) {
-    printf("[IOP] Run!\n");
+    spdlog::debug("[IOP] Run!");
   } else {
-    printf("[IOP] shutdown!\n");
+    spdlog::debug("[IOP] Shutdown!");
     return;
   }
 
@@ -257,6 +259,7 @@ u32 exec_runtime(int argc, char** argv) {
 
   // join and exit
   tm.join();
-  printf("GOAL Runtime Shutdown (code %d)\n", MasterExit);
+  // printf("GOAL Runtime Shutdown (code %d)\n", MasterExit);
+  spdlog::info("GOAL Runtime Shutdown (code {})", MasterExit);
   return MasterExit;
 }
