@@ -25,7 +25,6 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
-        -Wshadow \
         -Wsign-promo")
 else ()
     set(CMAKE_CXX_FLAGS "/EHsc")
@@ -52,6 +51,7 @@ endif()
 
 # includes relative to top level jak-project folder
 include_directories(./)
+include_directories(third-party/spdlog/include)
 
 # build asset packer/unpacker
 add_subdirectory(asset_tool)
