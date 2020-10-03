@@ -64,6 +64,58 @@ void insert_cfg_into_list(Function& f,
   }
 }
 
+std::pair<IR_Branch*, std::vector<std::shared_ptr<IR>>*> get_condition_branch_as_vector(IR* in) {
+  auto as_seq = dynamic_cast<IR_Begin*>(in);
+  if (as_seq) {
+    auto irb = dynamic_cast<IR_Branch*>(as_seq->forms.back().get());
+    auto loc = &as_seq->forms;
+    assert(irb);
+    return std::make_pair(irb, loc);
+  }
+  return std::make_pair(nullptr, nullptr);
+}
+
+std::pair<IR_Branch*, std::shared_ptr<IR>*> get_condition_branch(std::shared_ptr<IR>* in) {
+  IR_Branch* condition_branch = dynamic_cast<IR_Branch*>(in->get());
+  std::shared_ptr<IR>* condition_branch_location = in;
+  if (!condition_branch) {
+    // not 100% sure this will always work
+    auto as_seq = dynamic_cast<IR_Begin*>(in->get());
+    if (as_seq) {
+      condition_branch = dynamic_cast<IR_Branch*>(as_seq->forms.back().get());
+      condition_branch_location = &as_seq->forms.back();
+    }
+  }
+  return std::make_pair(condition_branch, condition_branch_location);
+}
+
+void clean_up_cond_with_else(IR_CondWithElse* cwe, LinkedObjectFile& file) {
+  for (auto& e : cwe->entries) {
+    auto jump_to_next = get_condition_branch(&e.condition);
+    assert(jump_to_next.first);
+    assert(jump_to_next.first->branch_delay.kind == BranchDelay::NOP);
+    printf("got cond condition %s\n", jump_to_next.first->print(file).c_str());
+    auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
+    *(jump_to_next.second) = replacement;
+
+    auto jump_to_end = get_condition_branch(&e.body);
+    assert(jump_to_end.first);
+    assert(jump_to_end.first->branch_delay.kind == BranchDelay::NOP);
+    assert(jump_to_end.first->condition.kind == Condition::ALWAYS);
+    auto as_end_of_sequence = get_condition_branch_as_vector(e.body.get());
+    if (as_end_of_sequence.first) {
+      assert(as_end_of_sequence.second->size() > 1);
+      as_end_of_sequence.second->pop_back();
+    } else {
+      // this means the case is empty, which is a little bit weird but does actually appear to
+      // happen in a few places. so we just replace the jump with a nop.  In the future we could
+      // consider having a more explicit "this case is empty" operator so this doesn't get confused
+      // with an actual MIPS nop.
+      *(jump_to_end.second) = std::make_shared<IR_Nop>();
+    }
+  }
+}
+
 std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) {
   if (dynamic_cast<BlockVtx*>(vtx)) {
     auto* bv = dynamic_cast<BlockVtx*>(vtx);
@@ -97,6 +149,19 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     auto result = std::make_shared<IR_WhileLoop>(cfg_to_ir(f, file, wvtx->condition),
                                                  cfg_to_ir(f, file, wvtx->body));
     return result;
+  } else if (dynamic_cast<CondWithElse*>(vtx)) {
+    auto* cvtx = dynamic_cast<CondWithElse*>(vtx);
+    std::vector<IR_CondWithElse::Entry> entries;
+    for (auto& x : cvtx->entries) {
+      IR_CondWithElse::Entry e;
+      e.condition = cfg_to_ir(f, file, x.condition);
+      e.body = cfg_to_ir(f, file, x.body);
+      entries.push_back(std::move(e));
+    }
+    auto else_ir = cfg_to_ir(f, file, cvtx->else_vtx);
+    auto result = std::make_shared<IR_CondWithElse>(entries, else_ir);
+    clean_up_cond_with_else(result.get(), file);
+    return result;
   }
 
   else {
@@ -121,22 +186,14 @@ void clean_up_while_loops(IR_Begin* sequence, LinkedObjectFile& file) {
       to_remove.push_back(i - 1);
 
       // now we should try to find the condition branch:
-      IR_Branch* condition_branch = dynamic_cast<IR_Branch*>(form_as_while->condition.get());
-      std::shared_ptr<IR>* condition_branch_location = &form_as_while->condition;
-      if (!condition_branch) {
-        // not 100% sure this will always work
-        auto as_seq = dynamic_cast<IR_Begin*>(form_as_while->condition.get());
-        if (as_seq) {
-          condition_branch = dynamic_cast<IR_Branch*>(as_seq->forms.back().get());
-          condition_branch_location = &as_seq->forms.back();
-        }
-      }
 
-      assert(condition_branch);
-      assert(condition_branch->branch_delay.kind == BranchDelay::NOP);
-      printf("got while condition branch %s\n", condition_branch->print(file).c_str());
-      auto replacement = std::make_shared<IR_Compare>(condition_branch->condition);
-      *condition_branch_location = replacement;
+      auto condition_branch = get_condition_branch(&form_as_while->condition);
+
+      assert(condition_branch.first);
+      assert(condition_branch.first->branch_delay.kind == BranchDelay::NOP);
+      printf("got while condition branch %s\n", condition_branch.first->print(file).c_str());
+      auto replacement = std::make_shared<IR_Compare>(condition_branch.first->condition);
+      *(condition_branch.second) = replacement;
     }
   }
 

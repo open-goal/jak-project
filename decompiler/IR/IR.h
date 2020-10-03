@@ -279,4 +279,18 @@ class IR_WhileLoop : public IR {
   std::shared_ptr<IR> condition, body;
 };
 
+class IR_CondWithElse : public IR {
+ public:
+  struct Entry {
+    std::shared_ptr<IR> condition = nullptr;
+    std::shared_ptr<IR> body = nullptr;
+  };
+  std::vector<Entry> entries;
+  std::shared_ptr<IR> else_ir;
+  IR_CondWithElse(std::vector<Entry> _entries, std::shared_ptr<IR> _else_ir)
+      : entries(std::move(_entries)), else_ir(std::move(_else_ir)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
 #endif  // JAK_IR_H

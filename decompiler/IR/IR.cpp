@@ -493,6 +493,7 @@ std::shared_ptr<Form> IR_Begin::to_form(const LinkedObjectFile& file) const {
   return buildList(list);
 }
 
+
 void IR_Begin::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   for (auto& x : forms) {
     output->push_back(x);
@@ -525,4 +526,29 @@ std::shared_ptr<Form> IR_WhileLoop::to_form(const LinkedObjectFile& file) const 
 void IR_WhileLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(condition);
   output->push_back(body);
+}
+
+std::shared_ptr<Form> IR_CondWithElse::to_form(const LinkedObjectFile& file) const {
+  // todo - special case to print as if with else
+  std::vector<std::shared_ptr<Form>> list;
+  list.push_back(toForm("cond"));
+  for(auto& e : entries) {
+    std::vector<std::shared_ptr<Form>> entry;
+    entry.push_back(e.condition->to_form(file));
+    print_inlining_begin(&entry, e.body.get(), file);
+    list.push_back(buildList(entry));
+  }
+  std::vector<std::shared_ptr<Form>> else_form;
+  else_form.push_back(toForm("else"));
+  print_inlining_begin(&else_form, else_ir.get(), file);
+  list.push_back(buildList(else_form));
+  return buildList(list);
+}
+
+void IR_CondWithElse::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for(auto& e : entries) {
+    output->push_back(e.condition);
+    output->push_back(e.body);
+  }
+  output->push_back(else_ir);
 }
