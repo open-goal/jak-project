@@ -14,7 +14,7 @@ add_executable(goalc-test
         #test_emitter_integer_math.cpp
         #test_common_util.cpp
         #test_compiler_and_runtime.cpp
-				"goalc/test_compiler.cpp"
+				"goalc/test_compiler_integer.cpp"
 				"goalc/framework/test_runner.cpp"
           "goalc/framework/test_runner.h")
 

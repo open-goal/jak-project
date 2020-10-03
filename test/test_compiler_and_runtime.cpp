@@ -120,14 +120,6 @@ TEST(CompilerAndRuntime, StartRuntime) {
   runtime_thread.join();
 }
 
-TEST(CompilerAndRuntime, SendProgram) {
-  std::thread runtime_thread(runtime_no_kernel);
-  Compiler compiler;
-  compiler.run_test("goal_src/test/test-return-integer-1.gc");
-  compiler.shutdown_target();
-  runtime_thread.join();
-}
-
 TEST(CompilerAndRuntime, BuildGameAndTest) {
   Compiler compiler;
 

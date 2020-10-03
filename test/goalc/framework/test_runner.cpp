@@ -47,12 +47,24 @@ void CompilerTestRunner::run_test(const std::string& test_file,
 
   if (testing::Test::HasFailure()) {
     std::string testFile = file_util::get_file_path({"test/goalc/source_generated/" + test_file});
-    // TODO - put the index and such there incase there are multiple failures
-    std::string failedFile = file_util::get_file_path({"test/goalc/source_generated/" + test_file + ".failed"});
+    // TODO - put the expected and unexpected values as comments in the file as well
+    std::string failedFile =
+        file_util::get_file_path({"test/goalc/source_generated/failed/" + test_file});
 
     std::ifstream src(testFile, std::ios::binary);
     std::ofstream dst(failedFile, std::ios::binary);
-		dst << src.rdbuf();
+
+    std::string testOutput = "\n\n;------TEST OUTPUT------\n;-------Expected-------\n";
+
+    for (auto& x : expected) {
+      testOutput += fmt::format("; \"{}\"\n", escaped_string(x));
+    }
+    testOutput += "\n;--------Actual--------\n";
+    for (auto& x : result) {
+      testOutput += fmt::format("; \"{}\"\n", escaped_string(x));
+    }
+
+    dst << src.rdbuf() << testOutput;
   }
 
   tests.push_back({expected, result, test_file, false});
