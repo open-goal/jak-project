@@ -2,6 +2,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(jak)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug")
+endif()
+
 set(CMAKE_CXX_STANDARD 14)
 
 # Set default compile flags for GCC
@@ -49,6 +53,14 @@ endif()
 # includes relative to top level jak-project folder
 include_directories(./)
 
+# build spdlog as a shared library to improve compile times
+# adding this as a SYSTEM include suppresses all the terrible warnings in spdlog
+include_directories(SYSTEM third-party/spdlog/include)
+# this makes spdlog generate a shared library that we can link against
+set(SPDLOG_BUILD_SHARED ON)
+# this makes the spdlog includes not use the header only version, making compiling faster
+add_definitions(-DSPDLOG_COMPILED_LIB)
+
 # build asset packer/unpacker
 add_subdirectory(asset_tool)
 
@@ -84,6 +96,9 @@ add_subdirectory(third-party/minilzo)
 
 # build format library
 add_subdirectory(third-party/fmt)
+
+# build spdlog library
+add_subdirectory(third-party/spdlog)
 
 # windows memory management lib
 IF (WIN32)
