@@ -18,6 +18,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
+        -Wshadow \
         -Wsign-promo")
 else()
 		set(CMAKE_CXX_FLAGS "/EHsc")

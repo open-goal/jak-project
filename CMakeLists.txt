@@ -25,6 +25,7 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
+        -Wshadow \
         -Wsign-promo")
 else ()
     set(CMAKE_CXX_FLAGS "/EHsc")
@@ -52,9 +53,12 @@ endif()
 # includes relative to top level jak-project folder
 include_directories(./)
 
-# build spdlog as a shared library
-include_directories(third-party/spdlog/include)
+# build spdlog as a shared library to improve compile times
+# adding this as a SYSTEM include suppresses all the terrible warnings in spdlog
+include_directories(SYSTEM third-party/spdlog/include)
+# this makes spdlog generate a shared library that we can link against
 set(SPDLOG_BUILD_SHARED ON)
+# this makes the spdlog includes not use the header only version, making compiling faster
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
 # build asset packer/unpacker
