@@ -51,7 +51,11 @@ endif()
 
 # includes relative to top level jak-project folder
 include_directories(./)
+
+# build spdlog as a shared library
 include_directories(third-party/spdlog/include)
+set(SPDLOG_BUILD_SHARED ON)
+add_definitions(-DSPDLOG_COMPILED_LIB)
 
 # build asset packer/unpacker
 add_subdirectory(asset_tool)
