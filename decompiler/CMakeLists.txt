@@ -1,5 +1,4 @@
 add_executable(decompiler
-        util/LispPrint.cpp
         main.cpp
         ObjectFile/ObjectFileDB.cpp
         Disasm/Instruction.cpp
@@ -11,7 +10,6 @@ add_executable(decompiler
         Function/Function.cpp
         util/FileIO.cpp
         config.cpp
-        util/LispPrint.cpp
         util/DecompilerTypeSystem.cpp
         Function/BasicBlocks.cpp
         Disasm/InstructionMatching.cpp
