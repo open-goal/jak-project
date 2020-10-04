@@ -44,6 +44,6 @@ goos::Object build_list(const goos::Object& car, Args... rest) {
   return goos::PairObject::make_new(car, build_list(rest...));
 }
 
-extern goos::Reader pretty_printer_reader;
+goos::Reader& get_pretty_printer_reader();
 
 }  // namespace pretty_print

@@ -1,15 +1,12 @@
 #include "Object.h"
 #include "common/util/FileUtil.h"
 
-#ifdef _WIN32
-#define EXPORT __declspec(dllexport)
-#else
-#define EXPORT
-#endif
-
 namespace goos {
 
-std::shared_ptr<EmptyListObject> EXPORT gEmptyList = nullptr;
+std::shared_ptr<EmptyListObject> gEmptyList = nullptr;
+std::shared_ptr<EmptyListObject>& get_empty_list() {
+  return gEmptyList;
+}
 
 /*!
  * Convert type to string (name in brackets)

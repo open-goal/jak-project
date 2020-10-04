@@ -7,7 +7,7 @@ using namespace goos;
 
 namespace {
 Object read(const std::string& str) {
-  auto body = pretty_print::pretty_printer_reader.read_from_string(str).as_pair()->cdr;
+  auto body = pretty_print::get_pretty_printer_reader().read_from_string(str).as_pair()->cdr;
   EXPECT_TRUE(body.as_pair()->cdr.is_empty_list());
   return body.as_pair()->car;
 }
@@ -32,11 +32,12 @@ TEST(PrettyPrinter, Basics) {
 
 TEST(PrettyPrinter, ReadAgain) {
   // first read the gcommon file
-  auto gcommon_code =
-      pretty_print::pretty_printer_reader.read_from_file({"goal_src", "kernel", "gcommon.gc"});
+  auto gcommon_code = pretty_print::get_pretty_printer_reader().read_from_file(
+      {"goal_src", "kernel", "gcommon.gc"});
   // pretty print it
   auto printed_gcommon = pretty_print::to_string(gcommon_code);
-  auto gcommon_code2 = pretty_print::pretty_printer_reader.read_from_string(printed_gcommon)
+  auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
+                           .read_from_string(printed_gcommon)
                            .as_pair()
                            ->cdr.as_pair()
                            ->car;
@@ -46,12 +47,13 @@ TEST(PrettyPrinter, ReadAgain) {
 
 TEST(PrettyPrinter, ReadAgainVeryShortLines) {
   // first read the gcommon file
-  auto gcommon_code =
-      pretty_print::pretty_printer_reader.read_from_file({"goal_src", "kernel", "gcommon.gc"});
+  auto gcommon_code = pretty_print::get_pretty_printer_reader().read_from_file(
+      {"goal_src", "kernel", "gcommon.gc"});
   // pretty print it but with a very short line length. This looks terrible but will hopefully
   // hit many of the cases for line breaking.
   auto printed_gcommon = pretty_print::to_string(gcommon_code, 5);
-  auto gcommon_code2 = pretty_print::pretty_printer_reader.read_from_string(printed_gcommon)
+  auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
+                           .read_from_string(printed_gcommon)
                            .as_pair()
                            ->cdr.as_pair()
                            ->car;
