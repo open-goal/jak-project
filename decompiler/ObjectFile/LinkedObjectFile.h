@@ -15,7 +15,7 @@
 #include <unordered_set>
 #include "LinkedWord.h"
 #include "decompiler/Function/Function.h"
-#include "decompiler/util/LispPrint.h"
+#include "common/goos/PrettyPrinter.h"
 
 /*!
  * A label to a location in this object file.
@@ -124,8 +124,8 @@ class LinkedObjectFile {
   std::vector<Label> labels;
 
  private:
-  std::shared_ptr<Form> to_form_script(int seg, int word_idx, std::vector<bool>& seen);
-  std::shared_ptr<Form> to_form_script_object(int seg, int byte_idx, std::vector<bool>& seen);
+  goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);
+  goos::Object to_form_script_object(int seg, int byte_idx, std::vector<bool>& seen);
   bool is_empty_list(int seg, int byte_idx);
   bool is_string(int seg, int byte_idx);
   std::string get_goal_string(int seg, int word_idx);

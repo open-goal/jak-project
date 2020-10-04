@@ -60,8 +60,8 @@ void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in) {
       }
     }
     if (!found) {
-      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %lld\n", instr,
-             in.instructions.size());
+      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %d\n", instr,
+             int(in.instructions.size()));
     }
     assert(found);
     return result;

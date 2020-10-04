@@ -5,10 +5,6 @@
 
 namespace {
 
-struct ConvertState {
-  void reset() {}
-};
-
 std::shared_ptr<IR_Set> make_set(IR_Set::Kind kind,
                                  const std::shared_ptr<IR>& dst,
                                  const std::shared_ptr<IR>& src) {
@@ -1122,6 +1118,7 @@ std::shared_ptr<IR> try_lwu(Instruction& i0,
                             Instruction& i3,
                             Instruction& i4,
                             int idx) {
+  (void)idx;
   auto s6 = make_gpr(Reg::S6);
   if (i0.kind == InstructionKind::LWU && i0.get_dst(0).is_reg(s6) &&
       i0.get_src(0).get_imm() == 44 && i0.get_src(1).is_reg(s6) &&
@@ -1138,8 +1135,6 @@ std::shared_ptr<IR> try_lwu(Instruction& i0,
 }  // namespace
 
 void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjectFile* file) {
-  ConvertState state;
-
   for (int instr = block.start_word; instr < block.end_word; instr++) {
     auto& i = func->instructions.at(instr);
 
@@ -1400,7 +1395,6 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
 
     // everything failed
     if (!result) {
-      state.reset();
       // temp hack for debug:
       printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
       func->add_basic_op(std::make_shared<IR_Failed>(), instr, instr + 1);
