@@ -719,7 +719,9 @@ std::string LinkedObjectFile::print_scripts() {
       if (label_id != -1) {
         auto& label = labels.at(label_id);
         if ((label.offset & 7) == 2) {
-          result += to_form_script(seg, word_idx, already_printed)->toStringPretty(0, 100) + "\n";
+          // result += to_form_script(seg, word_idx, already_printed)->toStringPretty(0, 100) +
+          // "\n";
+          result += pretty_print::to_string(to_form_script(seg, word_idx, already_printed)) + "\n";
         }
       }
     }
@@ -741,16 +743,14 @@ bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
  * Note : this takes the address of the car of the pair. which is perhaps a bit confusing
  * (in GOAL, this would be (&-> obj car))
  */
-std::shared_ptr<Form> LinkedObjectFile::to_form_script(int seg,
-                                                       int word_idx,
-                                                       std::vector<bool>& seen) {
+goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector<bool>& seen) {
   // the object to currently print. to start off, create pair from the car address we've been given.
   int goal_print_obj = word_idx * 4 + 2;
 
   // resulting form. we can't have a totally empty list (as an empty list looks like a symbol,
   // so it wouldn't be flagged), so it's safe to make this a pair.
-  auto result = std::make_shared<Form>();
-  result->kind = FormKind::PAIR;
+  auto result = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
+                                           goos::EmptyListObject::make_new());
 
   // the current pair to fill out.
   auto fill = result;
@@ -760,14 +760,14 @@ std::shared_ptr<Form> LinkedObjectFile::to_form_script(int seg,
     // check the thing to print is a a pair.
     if ((goal_print_obj & 7) == 2) {
       // first convert the car (again, with (&-> obj car))
-      fill->pair[0] = to_form_script_object(seg, goal_print_obj - 2, seen);
+      fill.as_pair()->car = to_form_script_object(seg, goal_print_obj - 2, seen);
       seen.at(goal_print_obj / 4) = true;
 
       auto cdr_addr = goal_print_obj + 2;
 
       if (is_empty_list(seg, cdr_addr)) {
         // the list has ended!
-        fill->pair[1] = gSymbolTable.getEmptyPair();
+        fill.as_pair()->cdr = goos::EmptyListObject::make_new();
         return result;
       } else {
         // cdr object should be aligned.
@@ -777,12 +777,12 @@ std::shared_ptr<Form> LinkedObjectFile::to_form_script(int seg,
         if (cdr_word.kind == LinkedWord::PTR && (labels.at(cdr_word.label_id).offset & 7) == 2) {
           // yes, proper list. add another pair and link it in to the list.
           goal_print_obj = labels.at(cdr_word.label_id).offset;
-          fill->pair[1] = std::make_shared<Form>();
-          fill->pair[1]->kind = FormKind::PAIR;
-          fill = fill->pair[1];
+          fill.as_pair()->cdr = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
+                                                           goos::EmptyListObject::make_new());
+          fill = fill.as_pair()->cdr;
         } else {
           // improper list, put the last thing in and end
-          fill->pair[1] = to_form_script_object(seg, cdr_addr, seen);
+          fill.as_pair()->cdr = to_form_script_object(seg, cdr_addr, seen);
           return result;
         }
       }
@@ -814,10 +814,10 @@ bool LinkedObjectFile::is_string(int seg, int byte_idx) {
 /*!
  * Convert a (pointer object) to some nice representation.
  */
-std::shared_ptr<Form> LinkedObjectFile::to_form_script_object(int seg,
-                                                              int byte_idx,
-                                                              std::vector<bool>& seen) {
-  std::shared_ptr<Form> result;
+goos::Object LinkedObjectFile::to_form_script_object(int seg,
+                                                     int byte_idx,
+                                                     std::vector<bool>& seen) {
+  goos::Object result;
 
   switch (byte_idx & 7) {
     case 0:
@@ -825,10 +825,10 @@ std::shared_ptr<Form> LinkedObjectFile::to_form_script_object(int seg,
       auto& word = words_by_seg.at(seg).at(byte_idx / 4);
       if (word.kind == LinkedWord::SYM_PTR) {
         // .symbol xxxx
-        result = toForm(word.symbol_name);
+        result = pretty_print::to_symbol(word.symbol_name);
       } else if (word.kind == LinkedWord::PLAIN_DATA) {
         // .word xxxxx
-        result = toForm(std::to_string(word.data));
+        result = pretty_print::to_symbol(std::to_string(word.data));
       } else if (word.kind == LinkedWord::PTR) {
         // might be a sub-list, or some other random pointer
         auto offset = labels.at(word.label_id).offset;
@@ -837,14 +837,14 @@ std::shared_ptr<Form> LinkedObjectFile::to_form_script_object(int seg,
           result = to_form_script(seg, offset / 4, seen);
         } else {
           if (is_string(seg, offset)) {
-            result = toForm(get_goal_string(seg, offset / 4 - 1));
+            result = pretty_print::to_symbol(get_goal_string(seg, offset / 4 - 1));
           } else {
             // some random pointer, just print the label.
-            result = toForm(labels.at(word.label_id).name);
+            result = pretty_print::to_symbol(labels.at(word.label_id).name);
           }
         }
       } else if (word.kind == LinkedWord::EMPTY_PTR) {
-        result = gSymbolTable.getEmptyPair();
+        result = goos::EmptyListObject::make_new();
       } else {
         std::string debug;
         append_word_to_string(debug, word);

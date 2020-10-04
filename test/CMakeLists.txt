@@ -15,6 +15,7 @@ add_executable(goalc-test
         test_common_util.cpp
         test_compiler_and_runtime.cpp
         test_deftype.cpp
+        test_pretty_print.cpp
         )
 
 enable_testing()
