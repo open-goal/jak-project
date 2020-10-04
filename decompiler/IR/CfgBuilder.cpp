@@ -133,25 +133,6 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
   }
 }
 
-bool try_clean_up_sc_as_and(const std::shared_ptr<IR_ShortCircuit>& ir) {
-  for (size_t i = 0; i < ir->entries.size(); i++) {
-    auto& e = ir->entries.at(i);
-    if (i < ir->entries.size() - 1) {
-      // check we load the delay slot with false
-      auto branch = get_condition_branch(&e.condition);
-      assert(branch.first);
-    }
-  }
-  //  ir->kind = IR_ShortCircuit::AND;
-  //  return true;
-  return false;
-}
-
-void clean_up_sc(std::shared_ptr<IR_ShortCircuit> ir) {
-  assert(ir->entries.size() > 1);
-  // try_clean_up_sc_as_and(ir);
-}
-
 /*!
  * A GOAL comparison which produces a boolean is recognized as a cond-no-else by the CFG analysis.
  * But it should not be decompiled as a branching statement.
@@ -251,6 +232,9 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
   }
 }
 
+/*!
+ * Match for a (set! reg (math reg reg)) form
+ */
 bool is_int_math_3(IR* ir,
                    MatchParam<IR_IntMath2::Kind> kind,
                    MatchParam<Register> dst,
@@ -298,6 +282,62 @@ bool is_int_math_3(IR* ir,
   return true;
 }
 
+bool is_same_reg(IR* a, IR* b) {
+  auto ar = dynamic_cast<IR_Register*>(a);
+  auto br = dynamic_cast<IR_Register*>(b);
+  return ar && br && ar->reg == br->reg;
+}
+
+std::shared_ptr<IR> try_sc_as_abs(Function& f, LinkedObjectFile& file, ShortCircuit* vtx) {
+  if (vtx->entries.size() != 1) {
+    return nullptr;
+  }
+
+  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
+  if (!b0) {
+    return nullptr;
+  }
+
+  // todo, seems possible to be a single op instead of a begin here.
+  auto b0_ptr = cfg_to_ir(f, file, b0);
+  auto b0_ir = dynamic_cast<IR_Begin*>(b0_ptr.get());
+
+  auto branch = dynamic_cast<IR_Branch*>(b0_ir->forms.back().get());
+  if (!branch) {
+    return nullptr;
+  }
+
+  // check the branch instruction
+  if (!branch->likely || branch->condition.kind != Condition::LESS_THAN_ZERO ||
+      branch->branch_delay.kind != BranchDelay::NEGATE) {
+    return nullptr;
+  }
+
+  auto input = branch->condition.src0;
+  auto output = branch->branch_delay.destination;
+
+  assert(is_same_reg(input.get(), branch->branch_delay.source.get()));
+
+  if (b0_ir->forms.size() == 1) {
+    // this is probably fine but happens to not occur in anything we try yet.
+    assert(false);
+  } else {
+    // remove the branch
+    b0_ir->forms.pop_back();
+    // add the ash
+    b0_ir->forms.push_back(std::make_shared<IR_Set>(
+        IR_Set::REG_64, output, std::make_shared<IR_IntMath1>(IR_IntMath1::ABS, input)));
+    return b0_ptr;
+  }
+
+  return nullptr;
+}
+
+/*!
+ * Attempt to convert a short circuit expression into an arithmetic shift.
+ * GOAL's shift function accepts positive/negative numbers to determine the direction
+ * of the shift.
+ */
 std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCircuit* vtx) {
   if (vtx->entries.size() != 2) {
     return nullptr;
@@ -310,6 +350,7 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
     return nullptr;
   }
 
+  // todo, seems possible to be a single op instead of a begin...
   auto b0_ptr = cfg_to_ir(f, file, b0);
   auto b0_ir = dynamic_cast<IR_Begin*>(b0_ptr.get());
 
@@ -644,8 +685,12 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     if (as_ash) {
       return as_ash;
     }
-    // now try as a normal and/or
 
+    auto as_abs = try_sc_as_abs(f, file, svtx);
+    if (as_abs) {
+      return as_abs;
+    }
+    // now try as a normal and/or
     std::vector<IR_ShortCircuit::Entry> entries;
     for (auto& x : svtx->entries) {
       IR_ShortCircuit::Entry e;
@@ -653,7 +698,7 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
       entries.push_back(e);
     }
     auto result = std::make_shared<IR_ShortCircuit>(entries);
-    // clean_up_sc(result);
+    // todo clean these into real and/or.
     return result;
   } else if (dynamic_cast<CondNoElse*>(vtx)) {
     auto* cvtx = dynamic_cast<CondNoElse*>(vtx);

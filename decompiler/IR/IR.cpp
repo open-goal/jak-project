@@ -270,6 +270,9 @@ std::shared_ptr<Form> IR_IntMath1::to_form(const LinkedObjectFile& file) const {
     case NOT:
       math_operator = "lognot";
       break;
+    case ABS:
+      math_operator = "abs.si";
+      break;
     default:
       assert(false);
   }
@@ -340,6 +343,9 @@ std::shared_ptr<Form> BranchDelay::to_form(const LinkedObjectFile& file) const {
     case DSLLV:
       return buildList(toForm("set!"), destination->to_form(file),
                        buildList("shl", source->to_form(file), source2->to_form(file)));
+    case NEGATE:
+      return buildList(toForm("set!"), destination->to_form(file),
+                       buildList("-", source->to_form(file)));
     case UNKNOWN:
       return buildList("unknown-branch-delay");
     default:
@@ -389,6 +395,7 @@ int Condition::num_args() const {
     case TRUTHY:
     case GREATER_THAN_ZERO_SIGNED:
     case GEQ_ZERO_SIGNED:
+    case LESS_THAN_ZERO:
       return 1;
     case ALWAYS:
       return 0;
@@ -473,6 +480,9 @@ std::shared_ptr<Form> Condition::to_form(const LinkedObjectFile& file) const {
       break;
     case GEQ_ZERO_SIGNED:
       condtion_operator = ">=0.si";
+      break;
+    case LESS_THAN_ZERO:
+      condtion_operator = "<0.si";
       break;
     default:
       assert(false);

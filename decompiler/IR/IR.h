@@ -147,7 +147,7 @@ class IR_IntMath2 : public IR {
 
 class IR_IntMath1 : public IR {
  public:
-  enum Kind { NOT } kind;
+  enum Kind { NOT, ABS } kind;
   IR_IntMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   std::shared_ptr<IR> arg;
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
@@ -178,6 +178,7 @@ struct BranchDelay {
     SET_BINTEGER,
     SET_PAIR,
     DSLLV,
+    NEGATE,
     UNKNOWN
   } kind;
   std::shared_ptr<IR> destination = nullptr, source = nullptr, source2 = nullptr;
@@ -195,6 +196,7 @@ struct Condition {
     LEQ_SIGNED,
     GEQ_SIGNED,
     GREATER_THAN_ZERO_SIGNED,
+    LESS_THAN_ZERO,
     GEQ_ZERO_SIGNED,
     LESS_THAN_UNSIGNED,
     GREATER_THAN_UNSIGNED,

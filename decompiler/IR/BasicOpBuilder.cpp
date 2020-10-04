@@ -723,6 +723,11 @@ BranchDelay get_branch_delay(Instruction& i, int idx) {
     b.source = make_reg(i.get_src(0).get_reg(), idx);
     b.source2 = make_reg(i.get_src(1).get_reg(), idx);
     return b;
+  } else if (is_gpr_3(i, InstructionKind::DSUBU, {}, make_gpr(Reg::R0), {})) {
+    BranchDelay b(BranchDelay::NEGATE);
+    b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+    b.source = make_reg(i.get_src(1).get_reg(), idx);
+    return b;
   }
   BranchDelay b(BranchDelay::UNKNOWN);
   return b;
@@ -813,6 +818,16 @@ std::shared_ptr<IR> try_bgezl(Instruction& instr, Instruction& next_instr, int i
   if (instr.kind == InstructionKind::BGEZL) {
     return std::make_shared<IR_Branch>(
         Condition(Condition::GEQ_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
+                  nullptr),
+        instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_bltzl(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BLTZL) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::LESS_THAN_ZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
                   nullptr),
         instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
   }
@@ -1278,6 +1293,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::BGEZL:
           result = try_bgezl(i, next, instr);
+          break;
+        case InstructionKind::BLTZL:
+          result = try_bltzl(i, next, instr);
           break;
         case InstructionKind::BEQL:
           result = try_beql(i, next, instr);
