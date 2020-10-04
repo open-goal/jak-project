@@ -739,55 +739,56 @@ bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
  * (in GOAL, this would be (&-> obj car))
  */
 goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector<bool>& seen) {
-  // the object to currently print. to start off, create pair from the car address we've been given.
-  int goal_print_obj = word_idx * 4 + 2;
-
-  // resulting form. we can't have a totally empty list (as an empty list looks like a symbol,
-  // so it wouldn't be flagged), so it's safe to make this a pair.
-  auto result = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
-                                           goos::EmptyListObject::make_new());
-
-  // the current pair to fill out.
-  auto fill = result;
-
-  // loop until we run out of things to add
-  for (;;) {
-    // check the thing to print is a a pair.
-    if ((goal_print_obj & 7) == 2) {
-      // first convert the car (again, with (&-> obj car))
-      fill.as_pair()->car = to_form_script_object(seg, goal_print_obj - 2, seen);
-      seen.at(goal_print_obj / 4) = true;
-
-      auto cdr_addr = goal_print_obj + 2;
-
-      if (is_empty_list(seg, cdr_addr)) {
-        // the list has ended!
-        fill.as_pair()->cdr = goos::EmptyListObject::make_new();
-        return result;
-      } else {
-        // cdr object should be aligned.
-        assert((cdr_addr % 4) == 0);
-        auto& cdr_word = words_by_seg.at(seg).at(cdr_addr / 4);
-        // check for proper list
-        if (cdr_word.kind == LinkedWord::PTR && (labels.at(cdr_word.label_id).offset & 7) == 2) {
-          // yes, proper list. add another pair and link it in to the list.
-          goal_print_obj = labels.at(cdr_word.label_id).offset;
-          fill.as_pair()->cdr = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
-                                                           goos::EmptyListObject::make_new());
-          fill = fill.as_pair()->cdr;
-        } else {
-          // improper list, put the last thing in and end
-          fill.as_pair()->cdr = to_form_script_object(seg, cdr_addr, seen);
-          return result;
-        }
-      }
-    } else {
-      // improper list, should be impossible to get here because of earlier checks
-      assert(false);
-    }
-  }
-
-  return result;
+//  // the object to currently print. to start off, create pair from the car address we've been given.
+//  int goal_print_obj = word_idx * 4 + 2;
+//
+//  // resulting form. we can't have a totally empty list (as an empty list looks like a symbol,
+//  // so it wouldn't be flagged), so it's safe to make this a pair.
+//  auto result = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
+//                                           goos::EmptyListObject::make_new());
+//
+//  // the current pair to fill out.
+//  auto fill = result;
+//
+//  // loop until we run out of things to add
+//  for (;;) {
+//    // check the thing to print is a a pair.
+//    if ((goal_print_obj & 7) == 2) {
+//      // first convert the car (again, with (&-> obj car))
+//      fill.as_pair()->car = to_form_script_object(seg, goal_print_obj - 2, seen);
+//      seen.at(goal_print_obj / 4) = true;
+//
+//      auto cdr_addr = goal_print_obj + 2;
+//
+//      if (is_empty_list(seg, cdr_addr)) {
+//        // the list has ended!
+//        fill.as_pair()->cdr = goos::EmptyListObject::make_new();
+//        return result;
+//      } else {
+//        // cdr object should be aligned.
+//        assert((cdr_addr % 4) == 0);
+//        auto& cdr_word = words_by_seg.at(seg).at(cdr_addr / 4);
+//        // check for proper list
+//        if (cdr_word.kind == LinkedWord::PTR && (labels.at(cdr_word.label_id).offset & 7) == 2) {
+//          // yes, proper list. add another pair and link it in to the list.
+//          goal_print_obj = labels.at(cdr_word.label_id).offset;
+//          fill.as_pair()->cdr = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
+//                                                           goos::EmptyListObject::make_new());
+//          fill = fill.as_pair()->cdr;
+//        } else {
+//          // improper list, put the last thing in and end
+//          fill.as_pair()->cdr = to_form_script_object(seg, cdr_addr, seen);
+//          return result;
+//        }
+//      }
+//    } else {
+//      // improper list, should be impossible to get here because of earlier checks
+//      assert(false);
+//    }
+//  }
+//
+//  return result;
+return {};
 }
 
 /*!
@@ -814,46 +815,46 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
                                                      std::vector<bool>& seen) {
   goos::Object result;
 
-  switch (byte_idx & 7) {
-    case 0:
-    case 4: {
-      auto& word = words_by_seg.at(seg).at(byte_idx / 4);
-      if (word.kind == LinkedWord::SYM_PTR) {
-        // .symbol xxxx
-        result = pretty_print::to_symbol(word.symbol_name);
-      } else if (word.kind == LinkedWord::PLAIN_DATA) {
-        // .word xxxxx
-        result = pretty_print::to_symbol(std::to_string(word.data));
-      } else if (word.kind == LinkedWord::PTR) {
-        // might be a sub-list, or some other random pointer
-        auto offset = labels.at(word.label_id).offset;
-        if ((offset & 7) == 2) {
-          // list!
-          result = to_form_script(seg, offset / 4, seen);
-        } else {
-          if (is_string(seg, offset)) {
-            result = pretty_print::to_symbol(get_goal_string(seg, offset / 4 - 1));
-          } else {
-            // some random pointer, just print the label.
-            result = pretty_print::to_symbol(labels.at(word.label_id).name);
-          }
-        }
-      } else if (word.kind == LinkedWord::EMPTY_PTR) {
-        result = goos::EmptyListObject::make_new();
-      } else {
-        std::string debug;
-        append_word_to_string(debug, word);
-        printf("don't know how to print %s\n", debug.c_str());
-        assert(false);
-      }
-    } break;
-
-    case 2:  // bad, a pair snuck through.
-    default:
-      // pointers should be aligned!
-      printf("align %d\n", byte_idx & 7);
-      assert(false);
-  }
+//  switch (byte_idx & 7) {
+//    case 0:
+//    case 4: {
+//      auto& word = words_by_seg.at(seg).at(byte_idx / 4);
+//      if (word.kind == LinkedWord::SYM_PTR) {
+//        // .symbol xxxx
+//        result = pretty_print::to_symbol(word.symbol_name);
+//      } else if (word.kind == LinkedWord::PLAIN_DATA) {
+//        // .word xxxxx
+//        result = pretty_print::to_symbol(std::to_string(word.data));
+//      } else if (word.kind == LinkedWord::PTR) {
+//        // might be a sub-list, or some other random pointer
+//        auto offset = labels.at(word.label_id).offset;
+//        if ((offset & 7) == 2) {
+//          // list!
+//          result = to_form_script(seg, offset / 4, seen);
+//        } else {
+//          if (is_string(seg, offset)) {
+//            result = pretty_print::to_symbol(get_goal_string(seg, offset / 4 - 1));
+//          } else {
+//            // some random pointer, just print the label.
+//            result = pretty_print::to_symbol(labels.at(word.label_id).name);
+//          }
+//        }
+//      } else if (word.kind == LinkedWord::EMPTY_PTR) {
+//        result = goos::EmptyListObject::make_new();
+//      } else {
+//        std::string debug;
+//        append_word_to_string(debug, word);
+//        printf("don't know how to print %s\n", debug.c_str());
+//        assert(false);
+//      }
+//    } break;
+//
+//    case 2:  // bad, a pair snuck through.
+//    default:
+//      // pointers should be aligned!
+//      printf("align %d\n", byte_idx & 7);
+//      assert(false);
+//  }
 
   return result;
 }
