@@ -714,7 +714,8 @@ std::string LinkedObjectFile::print_scripts() {
       if (label_id != -1) {
         auto& label = labels.at(label_id);
         if ((label.offset & 7) == 2) {
-          //result += to_form_script(seg, word_idx, already_printed)->toStringPretty(0, 100) + "\n";
+          // result += to_form_script(seg, word_idx, already_printed)->toStringPretty(0, 100) +
+          // "\n";
           result += pretty_print::to_string(to_form_script(seg, word_idx, already_printed)) + "\n";
         }
       }
@@ -737,9 +738,7 @@ bool LinkedObjectFile::is_empty_list(int seg, int byte_idx) {
  * Note : this takes the address of the car of the pair. which is perhaps a bit confusing
  * (in GOAL, this would be (&-> obj car))
  */
-goos::Object LinkedObjectFile::to_form_script(int seg,
-                                                       int word_idx,
-                                                       std::vector<bool>& seen) {
+goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector<bool>& seen) {
   // the object to currently print. to start off, create pair from the car address we've been given.
   int goal_print_obj = word_idx * 4 + 2;
 
@@ -811,8 +810,8 @@ bool LinkedObjectFile::is_string(int seg, int byte_idx) {
  * Convert a (pointer object) to some nice representation.
  */
 goos::Object LinkedObjectFile::to_form_script_object(int seg,
-                                                              int byte_idx,
-                                                              std::vector<bool>& seen) {
+                                                     int byte_idx,
+                                                     std::vector<bool>& seen) {
   goos::Object result;
 
   switch (byte_idx & 7) {

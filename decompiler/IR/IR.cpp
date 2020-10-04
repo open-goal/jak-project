@@ -2,8 +2,8 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 std::string IR::print(const LinkedObjectFile& file) const {
-//  return to_form(file)->toStringPretty();
-    return pretty_print::to_string(to_form(file));
+  //  return to_form(file)->toStringPretty();
+  return pretty_print::to_string(to_form(file));
 }
 
 goos::Object IR_Register::to_form(const LinkedObjectFile& file) const {
@@ -12,7 +12,8 @@ goos::Object IR_Register::to_form(const LinkedObjectFile& file) const {
 }
 
 goos::Object IR_Set::to_form(const LinkedObjectFile& file) const {
-  return pretty_print::build_list(pretty_print::to_symbol("set!"), dst->to_form(file), src->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol("set!"), dst->to_form(file),
+                                  src->to_form(file));
 }
 
 goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
@@ -46,7 +47,8 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
       assert(false);
   }
 
-  return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file), src->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
+                                  src->to_form(file));
 }
 
 goos::Object IR_Failed::to_form(const LinkedObjectFile& file) const {
@@ -142,7 +144,8 @@ goos::Object IR_FloatMath2::to_form(const LinkedObjectFile& file) const {
       assert(false);
   }
 
-  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file), arg1->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file),
+                                  arg1->to_form(file));
 }
 
 goos::Object IR_IntMath2::to_form(const LinkedObjectFile& file) const {
@@ -196,7 +199,8 @@ goos::Object IR_IntMath2::to_form(const LinkedObjectFile& file) const {
     default:
       assert(false);
   }
-  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file), arg1->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file),
+                                  arg1->to_form(file));
 }
 
 goos::Object IR_IntMath1::to_form(const LinkedObjectFile& file) const {
@@ -251,11 +255,14 @@ goos::Object BranchDelay::to_form(const LinkedObjectFile& file) const {
     case NOP:
       return pretty_print::build_list("nop");
     case SET_REG_FALSE:
-      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file), "'#f");
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      "'#f");
     case SET_REG_TRUE:
-      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file), "'#t");
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      "'#t");
     case SET_REG_REG:
-      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file), source->to_form(file));
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      source->to_form(file));
     case UNKNOWN:
       return pretty_print::build_list("unknown-branch-delay");
     default:
@@ -363,12 +370,14 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
   }
 
   if (nargs == 2) {
-    return pretty_print::build_list(pretty_print::to_symbol(condtion_operator), src0->to_form(file), src1->to_form(file));
+    return pretty_print::build_list(pretty_print::to_symbol(condtion_operator), src0->to_form(file),
+                                    src1->to_form(file));
   } else if (nargs == 1) {
     if (condtion_operator.empty()) {
       return src0->to_form(file);
     } else {
-      return pretty_print::build_list(pretty_print::to_symbol(condtion_operator), src0->to_form(file));
+      return pretty_print::build_list(pretty_print::to_symbol(condtion_operator),
+                                      src0->to_form(file));
     }
   } else if (nargs == 0) {
     return pretty_print::to_symbol(condtion_operator);
@@ -378,8 +387,9 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
 }
 
 goos::Object IR_Branch::to_form(const LinkedObjectFile& file) const {
-  return pretty_print::build_list(pretty_print::to_symbol(likely ? "bl!" : "b!"), condition.to_form(file),
-                   pretty_print::to_symbol(file.get_label_name(dest_label_idx)), branch_delay.to_form(file));
+  return pretty_print::build_list(
+      pretty_print::to_symbol(likely ? "bl!" : "b!"), condition.to_form(file),
+      pretty_print::to_symbol(file.get_label_name(dest_label_idx)), branch_delay.to_form(file));
 }
 
 goos::Object IR_Compare::to_form(const LinkedObjectFile& file) const {

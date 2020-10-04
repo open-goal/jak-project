@@ -61,8 +61,8 @@ void replace_exactly_one_in(std::vector<T>& v, T old, T replace) {
  */
 class CfgVtx {
  public:
-  virtual std::string to_string() = 0;          // convert to a single line string for debugging
-  virtual goos::Object to_form() = 0;  // recursive print as LISP form.
+  virtual std::string to_string() = 0;  // convert to a single line string for debugging
+  virtual goos::Object to_form() = 0;   // recursive print as LISP form.
   virtual ~CfgVtx() = default;
 
   CfgVtx* parent = nullptr;       // parent structure, or nullptr if top level
