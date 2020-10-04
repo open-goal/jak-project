@@ -18,8 +18,8 @@ add_executable(decompiler
         IR/IR.cpp)
 
 target_link_libraries(decompiler
+        goos
         minilzo
         common_util
         type_system
-        goos
         fmt)
