@@ -286,6 +286,7 @@ class IR_CondWithElse : public IR {
   struct Entry {
     std::shared_ptr<IR> condition = nullptr;
     std::shared_ptr<IR> body = nullptr;
+    bool cleaned = false;
   };
   std::vector<Entry> entries;
   std::shared_ptr<IR> else_ir;
@@ -302,6 +303,7 @@ class IR_Cond : public IR {
     std::shared_ptr<IR> condition = nullptr;
     std::shared_ptr<IR> body = nullptr;
     std::shared_ptr<IR> false_destination = nullptr;
+    bool cleaned = false;
   };
   std::vector<Entry> entries;
   IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}

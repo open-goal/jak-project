@@ -96,6 +96,9 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
   auto cwe = dynamic_cast<IR_CondWithElse*>(ir->get());
   assert(cwe);
   for (auto& e : cwe->entries) {
+    if (e.cleaned) {
+      continue;
+    }
     auto jump_to_next = get_condition_branch(&e.condition);
     assert(jump_to_next.first);
     assert(jump_to_next.first->branch_delay.kind == BranchDelay::NOP);
@@ -123,6 +126,7 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
       // this doesn't get confused with an actual MIPS nop.
       *(jump_to_end.second) = std::make_shared<IR_Nop>();
     }
+    e.cleaned = true;
   }
 }
 
@@ -166,50 +170,58 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
 }
 
 /*!
- * not yet finished
  * Replace internal branches inside a CondNoElse IR.
  * If possible will simplify the entire expression into a comparison operation if possible.
- * @param ir
- * @param file
+ * Will record which registers are set to false in branch delay slots.
+ * The exact behavior here isn't really clear to me. It's possible that these delay set false
+ * were disabled in cases where the result of the cond was none, or was a number or something.
+ * But it generally seems inconsistent.  The expression propagation step will have to deal with
+ * this.
  */
 void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
   auto cne = dynamic_cast<IR_Cond*>(ir->get());
   assert(cne);
-  //  for (auto& e : cne->entries) {
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
     auto& e = cne->entries.at(idx);
+    if (e.cleaned) {
+      continue;
+    }
+
     auto jump_to_next = get_condition_branch(&e.condition);
     assert(jump_to_next.first);
-    //
-    printf("got cond condition %s\n", jump_to_next.first->print(file).c_str());
+
     if (jump_to_next.first->branch_delay.kind == BranchDelay::SET_REG_TRUE &&
         cne->entries.size() == 1) {
       convert_cond_no_else_to_compare(ir);
     } else {
       assert(jump_to_next.first->branch_delay.kind == BranchDelay::SET_REG_FALSE ||
              jump_to_next.first->branch_delay.kind == BranchDelay::NOP);
-    }
+      assert(jump_to_next.first->condition.kind != Condition::ALWAYS);
 
-    //    auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
-    //    *(jump_to_next.second) = replacement;
-    //
-    //    auto jump_to_end = get_condition_branch(&e.body);
-    //    assert(jump_to_end.first);
-    //    assert(jump_to_end.first->branch_delay.kind == BranchDelay::NOP);
-    //    assert(jump_to_end.first->condition.kind == Condition::ALWAYS);
-    //    auto as_end_of_sequence = get_condition_branch_as_vector(e.body.get());
-    //    if (as_end_of_sequence.first) {
-    //      assert(as_end_of_sequence.second->size() > 1);
-    //      as_end_of_sequence.second->pop_back();
-    //    } else {
-    //      // this means the case is empty, which is a little bit weird but does actually appear to
-    //      // happen in a few places. so we just replace the jump with a nop.  In the future we
-    //      could
-    //      // consider having a more explicit "this case is empty" operator so this doesn't get
-    //      confused
-    //      // with an actual MIPS nop.
-    //      *(jump_to_end.second) = std::make_shared<IR_Nop>();
-    //    }
+      if (jump_to_next.first->branch_delay.kind == BranchDelay::SET_REG_FALSE) {
+        assert(!e.false_destination);
+        e.false_destination = jump_to_next.first->branch_delay.destination;
+        assert(e.false_destination);
+      }
+
+      auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
+      *(jump_to_next.second) = replacement;
+      e.cleaned = true;
+
+      if (idx != cne->entries.size() - 1) {
+        auto jump_to_end = get_condition_branch(&e.body);
+        assert(jump_to_end.first);
+        assert(jump_to_end.first->branch_delay.kind == BranchDelay::NOP);
+        assert(jump_to_end.first->condition.kind == Condition::ALWAYS);
+        auto as_end_of_sequence = get_condition_branch_as_vector(e.body.get());
+        if (as_end_of_sequence.first) {
+          assert(as_end_of_sequence.second->size() > 1);
+          as_end_of_sequence.second->pop_back();
+        } else {
+          *(jump_to_end.second) = std::make_shared<IR_Nop>();
+        }
+      }
+    }
   }
 }
 
@@ -256,8 +268,6 @@ std::shared_ptr<IR> try_sc_as_type_of(Function& f, LinkedObjectFile& file, Short
   if (!b0_ir || !b1_ir || !b2_ir) {
     return nullptr;
   }
-
-  // todo determine temp and source reg from dsll32 instruction.
 
   auto set_shift = dynamic_cast<IR_Set*>(b0_ir->forms.at(b0_ir->forms.size() - 2).get());
   if (!set_shift) {
