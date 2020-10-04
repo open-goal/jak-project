@@ -306,7 +306,7 @@ class IR_Cond : public IR {
     bool cleaned = false;
   };
   std::vector<Entry> entries;
-  IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  explicit IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
@@ -321,11 +321,18 @@ class IR_GetRuntimeType : public IR {
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
 
-class IR_PartialNot : public IR {
+class IR_ShortCircuit : public IR {
  public:
-  std::shared_ptr<IR> dst, src;
-  IR_PartialNot(std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src)
-      : dst(std::move(_dst)), src(std::move(_src)) {}
+  struct Entry {
+    std::shared_ptr<IR> condition = nullptr;
+    std::shared_ptr<IR> output = nullptr;  // where the delay slot writes to.
+    bool cleaned = false;
+  };
+
+  enum Kind { UNKNOWN, AND, OR } kind = UNKNOWN;
+
+  std::vector<Entry> entries;
+  explicit IR_ShortCircuit(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

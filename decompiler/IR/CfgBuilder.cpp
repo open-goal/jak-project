@@ -130,6 +130,29 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
   }
 }
 
+/*
+ * before we do this we'll have to to recognize ash...
+
+bool try_clean_up_sc_as_and(const std::shared_ptr<IR_ShortCircuit>& ir) {
+  for(size_t i = 0; i < ir->entries.size(); i++) {
+    auto& e = ir->entries.at(i);
+    if (i < ir->entries.size() - 1) {
+      // check we load the delay slot with false
+      auto branch = get_condition_branch(&e.condition);
+      assert(branch.first);
+    }
+  }
+//  ir->kind = IR_ShortCircuit::AND;
+//  return true;
+  return false;
+}
+
+void clean_up_sc(std::shared_ptr<IR_ShortCircuit> ir) {
+  assert(ir->entries.size() > 1);
+  //try_clean_up_sc_as_and(ir);
+}
+ */
+
 /*!
  * A GOAL comparison which produces a boolean is recognized as a cond-no-else by the CFG analysis.
  * But it should not be decompiled as a branching statement.
@@ -153,7 +176,11 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
     // as far as I can tell this is totally valid but just happens to not appear?
     // if this case is ever hit in the future it's fine and we just need to implement this.
     // but leaving empty for now so there's fewer things to test.
-    assert(false);
+    //    assert(false);
+
+    auto replacement = std::make_shared<IR_Set>(
+        IR_Set::REG_64, dst, std::make_shared<IR_Compare>(condition.first->condition));
+    *ir = replacement;
   } else {
     auto condition_as_seq = dynamic_cast<IR_Begin*>(cne->entries.front().condition.get());
     assert(condition_as_seq);
@@ -354,6 +381,43 @@ std::shared_ptr<IR> try_sc_as_type_of(Function& f, LinkedObjectFile& file, Short
   }
 }
 
+std::shared_ptr<IR> merge_cond_else_with_sc_cond(CondWithElse* cwe,
+                                                 const std::shared_ptr<IR>& else_ir,
+                                                 Function& f,
+                                                 LinkedObjectFile& file) {
+  auto as_seq = dynamic_cast<IR_Begin*>(else_ir.get());
+  if (!as_seq || as_seq->forms.size() != 2) {
+    return nullptr;
+  }
+
+  auto first = dynamic_cast<IR_ShortCircuit*>(as_seq->forms.at(0).get());
+  auto second = dynamic_cast<IR_Cond*>(as_seq->forms.at(1).get());
+  if (!first || !second) {
+    return nullptr;
+  }
+
+  std::vector<IR_Cond::Entry> entries;
+  for (auto& x : cwe->entries) {
+    IR_Cond::Entry e;
+    e.condition = cfg_to_ir(f, file, x.condition);
+    e.body = cfg_to_ir(f, file, x.body);
+    entries.push_back(std::move(e));
+  }
+
+  auto first_condition = std::make_shared<IR_Begin>();
+  first_condition->forms.push_back(as_seq->forms.at(0));
+  first_condition->forms.push_back(second->entries.front().condition);
+
+  second->entries.front().condition = first_condition;
+
+  for (auto& x : second->entries) {
+    entries.push_back(x);
+  }
+  std::shared_ptr<IR> result = std::make_shared<IR_Cond>(entries);
+  clean_up_cond_no_else(&result, file);
+  return result;
+}
+
 /*!
  * Main CFG vertex to IR conversion.  Will pull basic IR ops from the provided function as needed.
  */
@@ -400,6 +464,10 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     // I don't know if this is sufficient to catch all cases.  it may even recognize the wrong
     // thing in some cases... maybe we should check the delay slot instead?
     auto else_ir = cfg_to_ir(f, file, cvtx->else_vtx);
+    auto fancy_compact_result = merge_cond_else_with_sc_cond(cvtx, else_ir, f, file);
+    if (fancy_compact_result) {
+      return fancy_compact_result;
+    }
 
     if (dynamic_cast<IR_Cond*>(else_ir.get())) {
       auto extra_cond = dynamic_cast<IR_Cond*>(else_ir.get());
@@ -430,10 +498,21 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     }
   } else if (dynamic_cast<ShortCircuit*>(vtx)) {
     auto* svtx = dynamic_cast<ShortCircuit*>(vtx);
+    // try as a type of expression first
     auto as_type_of = try_sc_as_type_of(f, file, svtx);
     if (as_type_of) {
       return as_type_of;
     }
+    // now try as a normal and/or
+    std::vector<IR_ShortCircuit::Entry> entries;
+    for (auto& x : svtx->entries) {
+      IR_ShortCircuit::Entry e;
+      e.condition = cfg_to_ir(f, file, x);
+      entries.push_back(e);
+    }
+    auto result = std::make_shared<IR_ShortCircuit>(entries);
+    clean_up_sc(result);
+    return result;
   } else if (dynamic_cast<CondNoElse*>(vtx)) {
     auto* cvtx = dynamic_cast<CondNoElse*>(vtx);
     std::vector<IR_Cond::Entry> entries;

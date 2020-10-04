@@ -646,13 +646,32 @@ void IR_Cond::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   }
 }
 
-std::shared_ptr<Form> IR_PartialNot::to_form(const LinkedObjectFile& file) const {
-  return buildList("INCOMPLETE-NOT", dst->to_form(file), src->to_form(file));
+std::shared_ptr<Form> IR_ShortCircuit::to_form(const LinkedObjectFile& file) const {
+  std::vector<std::shared_ptr<Form>> forms;
+  switch (kind) {
+    case UNKNOWN:
+      forms.push_back(toForm("unknown-sc"));
+      break;
+    case AND:
+      forms.push_back(toForm("and"));
+      break;
+    case OR:
+      forms.push_back(toForm("or"));
+      break;
+    default:
+      assert(false);
+  }
+  for (auto& x : entries) {
+    forms.push_back(x.condition->to_form(file));
+  }
+  return buildList(forms);
 }
 
-void IR_PartialNot::get_children(std::vector<std::shared_ptr<IR>>* output) const {
-  // probably we could get away with not returning anything here because these should
-  // always be registers?
-  output->push_back(dst);
-  output->push_back(src);
+void IR_ShortCircuit::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& x : entries) {
+    output->push_back(x.condition);
+    if (x.output) {
+      output->push_back(x.output);
+    }
+  }
 }
