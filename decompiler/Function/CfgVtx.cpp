@@ -213,7 +213,7 @@ std::string WhileLoop::to_string() {
 
 goos::Object WhileLoop::to_form() {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("while"), condition->to_form(),
-                                              body->to_form()};
+                                     body->to_form()};
   return pretty_print::build_list(forms);
 }
 
@@ -223,7 +223,7 @@ std::string UntilLoop::to_string() {
 
 goos::Object UntilLoop::to_form() {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("until"), condition->to_form(),
-                                              body->to_form()};
+                                     body->to_form()};
   return pretty_print::build_list(forms);
 }
 
@@ -275,8 +275,8 @@ std::string GotoEnd::to_string() {
 }
 
 goos::Object GotoEnd::to_form() {
-  std::vector<goos::Object> forms = {pretty_print::to_symbol("return-from-function"), body->to_form(),
-                                              unreachable_block->to_form()};
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("return-from-function"),
+                                     body->to_form(), unreachable_block->to_form()};
   return pretty_print::build_list(forms);
 }
 
@@ -380,8 +380,6 @@ goos::Object ControlFlowGraph::to_form() {
  * ungrouped stuff into an "(ungrouped ...)" form and prints that.
  */
 std::string ControlFlowGraph::to_form_string() {
-//  // todo - fix bug in pretty printing and reduce this to 80!
-//  return to_form()->toStringPretty(0, 140);
   return pretty_print::to_string(to_form());
 }
 
