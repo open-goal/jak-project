@@ -4,6 +4,12 @@
 #include "PrettyPrinter.h"
 #include "Reader.h"
 
+#ifdef _WIN32
+#define EXPORT __declspec(dllexport)
+#else
+#define EXPORT
+#endif
+
 namespace pretty_print {
 
 /*!
@@ -513,7 +519,7 @@ std::string to_string(const goos::Object& obj, int line_length) {
   return pretty;
 }
 
-goos::Reader pretty_printer_reader;
+goos::Reader EXPORT pretty_printer_reader;
 
 goos::Object to_symbol(const std::string& str) {
   return goos::SymbolObject::make_new(pretty_printer_reader.symbolTable, str);
