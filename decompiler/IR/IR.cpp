@@ -19,12 +19,6 @@ std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
     last_checked = end_of_check;
   }
 
-  // Todo, remove this check which is just for debugging.
-  std::unordered_set<std::shared_ptr<IR>> unique_ir;
-  for (auto& x : result) {
-    unique_ir.insert(x);
-  }
-  assert(unique_ir.size() == result.size());
   return result;
 }
 
@@ -343,6 +337,9 @@ std::shared_ptr<Form> BranchDelay::to_form(const LinkedObjectFile& file) const {
       return buildList(toForm("set!"), destination->to_form(file), "binteger");
     case SET_PAIR:
       return buildList(toForm("set!"), destination->to_form(file), "pair");
+    case DSLLV:
+      return buildList(toForm("set!"), destination->to_form(file),
+                       buildList("shl", source->to_form(file), source2->to_form(file)));
     case UNKNOWN:
       return buildList("unknown-branch-delay");
     default:
@@ -357,6 +354,10 @@ void BranchDelay::get_children(std::vector<std::shared_ptr<IR>>* output) const {
 
   if (source) {
     output->push_back(source);
+  }
+
+  if (source2) {
+    output->push_back(source2);
   }
 }
 
@@ -387,6 +388,7 @@ int Condition::num_args() const {
     case FALSE:
     case TRUTHY:
     case GREATER_THAN_ZERO_SIGNED:
+    case GEQ_ZERO_SIGNED:
       return 1;
     case ALWAYS:
       return 0;
@@ -467,7 +469,10 @@ std::shared_ptr<Form> Condition::to_form(const LinkedObjectFile& file) const {
       condtion_operator = ">=.f";
       break;
     case GREATER_THAN_ZERO_SIGNED:
-      condtion_operator = ">0.s";
+      condtion_operator = ">0.si";
+      break;
+    case GEQ_ZERO_SIGNED:
+      condtion_operator = ">=0.si";
       break;
     default:
       assert(false);
@@ -674,4 +679,13 @@ void IR_ShortCircuit::get_children(std::vector<std::shared_ptr<IR>>* output) con
       output->push_back(x.output);
     }
   }
+}
+
+std::shared_ptr<Form> IR_Ash::to_form(const LinkedObjectFile& file) const {
+  return buildList("ash", value->to_form(file), shift_amount->to_form(file));
+}
+
+void IR_Ash::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(value);
+  output->push_back(shift_amount);
 }

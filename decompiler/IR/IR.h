@@ -170,8 +170,17 @@ class IR_IntegerConstant : public IR {
 };
 
 struct BranchDelay {
-  enum Kind { NOP, SET_REG_FALSE, SET_REG_TRUE, SET_REG_REG, SET_BINTEGER, SET_PAIR, UNKNOWN } kind;
-  std::shared_ptr<IR> destination = nullptr, source = nullptr;
+  enum Kind {
+    NOP,
+    SET_REG_FALSE,
+    SET_REG_TRUE,
+    SET_REG_REG,
+    SET_BINTEGER,
+    SET_PAIR,
+    DSLLV,
+    UNKNOWN
+  } kind;
+  std::shared_ptr<IR> destination = nullptr, source = nullptr, source2 = nullptr;
   explicit BranchDelay(Kind _kind) : kind(_kind) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const;
@@ -186,6 +195,7 @@ struct Condition {
     LEQ_SIGNED,
     GEQ_SIGNED,
     GREATER_THAN_ZERO_SIGNED,
+    GEQ_ZERO_SIGNED,
     LESS_THAN_UNSIGNED,
     GREATER_THAN_UNSIGNED,
     LEQ_UNSIGNED,
@@ -333,6 +343,19 @@ class IR_ShortCircuit : public IR {
 
   std::vector<Entry> entries;
   explicit IR_ShortCircuit(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Ash : public IR {
+ public:
+  std::shared_ptr<IR> shift_amount, value, clobber;
+  IR_Ash(std::shared_ptr<IR> _shift_amount,
+         std::shared_ptr<IR> _value,
+         std::shared_ptr<IR> _clobber)
+      : shift_amount(std::move(_shift_amount)),
+        value(std::move(_value)),
+        clobber(std::move(_clobber)) {}
   std::shared_ptr<Form> to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

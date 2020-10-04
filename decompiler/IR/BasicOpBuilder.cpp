@@ -515,6 +515,17 @@ std::shared_ptr<IR> try_sll(Instruction& instr, int idx) {
   return nullptr;
 }
 
+std::shared_ptr<IR> try_dsrav(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::DSRAV, {}, {}, {}) &&
+      !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
+                                                  make_reg(instr.get_src(0).get_reg(), idx),
+                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_sw(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SW && instr.get_src(1).is_sym() &&
       instr.get_src(2).is_reg(make_gpr(Reg::S7))) {
@@ -706,6 +717,12 @@ BranchDelay get_branch_delay(Instruction& i, int idx) {
       b.destination = make_reg(i.get_dst(0).get_reg(), idx);
       return b;
     }
+  } else if (i.kind == InstructionKind::DSLLV) {
+    BranchDelay b(BranchDelay::DSLLV);
+    b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+    b.source = make_reg(i.get_src(0).get_reg(), idx);
+    b.source2 = make_reg(i.get_src(1).get_reg(), idx);
+    return b;
   }
   BranchDelay b(BranchDelay::UNKNOWN);
   return b;
@@ -787,6 +804,16 @@ std::shared_ptr<IR> try_bgtzl(Instruction& instr, Instruction& next_instr, int i
     return std::make_shared<IR_Branch>(
         Condition(Condition::GREATER_THAN_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx),
                   nullptr, nullptr),
+        instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_bgezl(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BGEZL) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::GEQ_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
+                  nullptr),
         instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
   }
   return nullptr;
@@ -1249,6 +1276,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::BGTZL:
           result = try_bgtzl(i, next, instr);
           break;
+        case InstructionKind::BGEZL:
+          result = try_bgezl(i, next, instr);
+          break;
         case InstructionKind::BEQL:
           result = try_beql(i, next, instr);
           break;
@@ -1418,6 +1448,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::CVTSW:
           result = try_cvtsw(i, instr);
+          break;
+        case InstructionKind::DSRAV:
+          result = try_dsrav(i, instr);
           break;
         default:
           result = nullptr;

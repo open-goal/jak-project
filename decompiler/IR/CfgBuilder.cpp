@@ -1,7 +1,10 @@
+#include "third-party/fmt/format.h"
 #include <unordered_set>
+#include "common/util/MatchParam.h"
 #include "CfgBuilder.h"
 #include "decompiler/Function/CfgVtx.h"
 #include "decompiler/Function/Function.h"
+#include "decompiler/Disasm/InstructionMatching.h"
 
 namespace {
 
@@ -130,11 +133,8 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
   }
 }
 
-/*
- * before we do this we'll have to to recognize ash...
-
 bool try_clean_up_sc_as_and(const std::shared_ptr<IR_ShortCircuit>& ir) {
-  for(size_t i = 0; i < ir->entries.size(); i++) {
+  for (size_t i = 0; i < ir->entries.size(); i++) {
     auto& e = ir->entries.at(i);
     if (i < ir->entries.size() - 1) {
       // check we load the delay slot with false
@@ -142,16 +142,15 @@ bool try_clean_up_sc_as_and(const std::shared_ptr<IR_ShortCircuit>& ir) {
       assert(branch.first);
     }
   }
-//  ir->kind = IR_ShortCircuit::AND;
-//  return true;
+  //  ir->kind = IR_ShortCircuit::AND;
+  //  return true;
   return false;
 }
 
 void clean_up_sc(std::shared_ptr<IR_ShortCircuit> ir) {
   assert(ir->entries.size() > 1);
-  //try_clean_up_sc_as_and(ir);
+  // try_clean_up_sc_as_and(ir);
 }
- */
 
 /*!
  * A GOAL comparison which produces a boolean is recognized as a cond-no-else by the CFG analysis.
@@ -250,6 +249,143 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
       }
     }
   }
+}
+
+bool is_int_math_3(IR* ir,
+                   MatchParam<IR_IntMath2::Kind> kind,
+                   MatchParam<Register> dst,
+                   MatchParam<Register> src0,
+                   MatchParam<Register> src1,
+                   Register* dst_out = nullptr,
+                   Register* src0_out = nullptr,
+                   Register* src1_out = nullptr) {
+  // should be a set reg to int math 2 ir
+  auto set = dynamic_cast<IR_Set*>(ir);
+  if (!set) {
+    return false;
+  }
+
+  // destination should be a register
+  auto dest = dynamic_cast<IR_Register*>(set->dst.get());
+  if (!dest || dst != dest->reg) {
+    return false;
+  }
+
+  auto math = dynamic_cast<IR_IntMath2*>(set->src.get());
+  if (!math || kind != math->kind) {
+    return false;
+  }
+
+  auto arg0 = dynamic_cast<IR_Register*>(math->arg0.get());
+  auto arg1 = dynamic_cast<IR_Register*>(math->arg1.get());
+
+  if (!arg0 || src0 != arg0->reg || !arg1 || src1 != arg1->reg) {
+    return false;
+  }
+
+  // it's a match!
+  if (dst_out) {
+    *dst_out = dest->reg;
+  }
+
+  if (src0_out) {
+    *src0_out = arg0->reg;
+  }
+
+  if (src1_out) {
+    *src1_out = arg1->reg;
+  }
+  return true;
+}
+
+std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCircuit* vtx) {
+  if (vtx->entries.size() != 2) {
+    return nullptr;
+  }
+
+  // todo, I think b0 could possibly be something more complicated, depending on how we order.
+  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
+  auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
+  if (!b0 || !b1) {
+    return nullptr;
+  }
+
+  auto b0_ptr = cfg_to_ir(f, file, b0);
+  auto b0_ir = dynamic_cast<IR_Begin*>(b0_ptr.get());
+
+  auto b1_ptr = cfg_to_ir(f, file, b1);
+  auto b1_ir = dynamic_cast<IR_Begin*>(b1_ptr.get());
+
+  if (!b0_ir || !b1_ir) {
+    return nullptr;
+  }
+
+  auto branch = dynamic_cast<IR_Branch*>(b0_ir->forms.back().get());
+  if (!branch || b1_ir->forms.size() != 2) {
+    return nullptr;
+  }
+
+  // check the branch instruction
+  if (!branch->likely || branch->condition.kind != Condition::GEQ_ZERO_SIGNED ||
+      branch->branch_delay.kind != BranchDelay::DSLLV) {
+    return nullptr;
+  }
+
+  /*
+   *  bgezl s5, L109    ; s5 is the shift amount
+      dsllv a0, a0, s5  ; a0 is both input and output here
+
+      dsubu a1, r0, s5  ; a1 is a temp here
+      dsrav a0, a0, a1  ; a0 is both input and output here
+   */
+
+  auto sa_in = dynamic_cast<IR_Register*>(branch->condition.src0.get());
+  assert(sa_in);
+  auto result = dynamic_cast<IR_Register*>(branch->branch_delay.destination.get());
+  auto value_in = dynamic_cast<IR_Register*>(branch->branch_delay.source.get());
+  auto sa_in2 = dynamic_cast<IR_Register*>(branch->branch_delay.source2.get());
+  assert(result && value_in && sa_in2);
+  assert(sa_in->reg == sa_in2->reg);
+
+  auto dsubu_candidate = b1_ir->forms.at(0);
+  auto dsrav_candidate = b1_ir->forms.at(1);
+
+  Register clobber;
+  if (!is_int_math_3(dsubu_candidate.get(), IR_IntMath2::SUB, {}, make_gpr(Reg::R0), sa_in->reg,
+                     &clobber)) {
+    return nullptr;
+  }
+
+  assert(result);
+  assert(value_in);
+  if (!is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_ARITH, result->reg,
+                     value_in->reg, clobber)) {
+    return nullptr;
+  }
+
+  std::shared_ptr<IR> clobber_ir = nullptr;
+  auto dsubu_set = dynamic_cast<IR_Set*>(dsubu_candidate.get());
+  auto dsrav_set = dynamic_cast<IR_Set*>(dsrav_candidate.get());
+  if (clobber != result->reg) {
+    clobber_ir = dsubu_set->dst;
+  }
+
+  std::shared_ptr<IR> dest_ir = branch->branch_delay.destination;
+  std::shared_ptr<IR> shift_ir = branch->condition.src0;
+  std::shared_ptr<IR> value_ir = dynamic_cast<IR_IntMath2*>(dsrav_set->src.get())->arg0;
+  if (b0_ir->forms.size() == 1) {
+    // this is probably fine but happens to not occur in anything we try yet.
+    assert(false);
+  } else {
+    // remove the branch
+    b0_ir->forms.pop_back();
+    // add the ash
+    b0_ir->forms.push_back(std::make_shared<IR_Set>(
+        IR_Set::REG_64, dest_ir, std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir)));
+    return b0_ptr;
+  }
+
+  return nullptr;
 }
 
 /*!
@@ -363,7 +499,7 @@ std::shared_ptr<IR> try_sc_as_type_of(Function& f, LinkedObjectFile& file, Short
   assert(offset->value == -4);
 
   std::shared_ptr<IR> clobber = nullptr;
-  if (temp_reg->reg != src_reg->reg && temp_reg->reg != dst_reg->reg) {
+  if (temp_reg->reg != dst_reg->reg) {
     clobber = first_branch->condition.src0;
   }
   if (b0_ir->forms.size() == 2) {
@@ -503,7 +639,13 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     if (as_type_of) {
       return as_type_of;
     }
+
+    auto as_ash = try_sc_as_ash(f, file, svtx);
+    if (as_ash) {
+      return as_ash;
+    }
     // now try as a normal and/or
+
     std::vector<IR_ShortCircuit::Entry> entries;
     for (auto& x : svtx->entries) {
       IR_ShortCircuit::Entry e;
@@ -511,7 +653,7 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
       entries.push_back(e);
     }
     auto result = std::make_shared<IR_ShortCircuit>(entries);
-    clean_up_sc(result);
+    // clean_up_sc(result);
     return result;
   } else if (dynamic_cast<CondNoElse*>(vtx)) {
     auto* cvtx = dynamic_cast<CondNoElse*>(vtx);
