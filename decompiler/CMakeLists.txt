@@ -21,4 +21,5 @@ target_link_libraries(decompiler
         minilzo
         common_util
         type_system
+        goos
         fmt)
