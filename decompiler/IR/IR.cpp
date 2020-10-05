@@ -1,20 +1,62 @@
 #include "IR.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
-std::string IR::print(const LinkedObjectFile& file) const {
-  return to_form(file)->toStringPretty();
-}
-
-std::shared_ptr<Form> IR_Register::to_form(const LinkedObjectFile& file) const {
+std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
   (void)file;
-  return toForm(reg.to_charp());
+  std::vector<std::shared_ptr<IR>> result;
+  get_children(&result);
+  size_t last_checked = 0;
+  size_t last_last_checked = -1;
+
+  while (last_checked != last_last_checked) {
+    last_last_checked = last_checked;
+    auto end_of_check = result.size();
+    for (size_t i = last_checked; i < end_of_check; i++) {
+      auto it = result.at(i).get();
+      assert(it);
+      it->get_children(&result);
+    }
+    last_checked = end_of_check;
+  }
+
+  return result;
 }
 
-std::shared_ptr<Form> IR_Set::to_form(const LinkedObjectFile& file) const {
-  return buildList(toForm("set!"), dst->to_form(file), src->to_form(file));
+std::string IR::print(const LinkedObjectFile& file) const {
+  return pretty_print::to_string(to_form(file));
 }
 
-std::shared_ptr<Form> IR_Store::to_form(const LinkedObjectFile& file) const {
+goos::Object IR_Failed::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::build_list("INVALID-OPERATION");
+}
+
+void IR_Failed::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_Register::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::to_symbol(reg.to_charp());
+}
+
+void IR_Register::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_Set::to_form(const LinkedObjectFile& file) const {
+  return pretty_print::build_list(pretty_print::to_symbol("set!"), dst->to_form(file),
+                                  src->to_form(file));
+}
+
+void IR_Set::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  // note that we are not returning clobber here because it shouldn't contain anything that
+  // the IR simplification code should touch.
+  output->push_back(dst);
+  output->push_back(src);
+}
+
+goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
   std::string store_operator;
   switch (kind) {
     case FLOAT:
@@ -45,30 +87,38 @@ std::shared_ptr<Form> IR_Store::to_form(const LinkedObjectFile& file) const {
       assert(false);
   }
 
-  return buildList(toForm(store_operator), dst->to_form(file), src->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
+                                  src->to_form(file));
 }
 
-std::shared_ptr<Form> IR_Failed::to_form(const LinkedObjectFile& file) const {
+goos::Object IR_Symbol::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return buildList("INVALID-OPERATION");
+  return pretty_print::to_symbol("'" + name);
 }
 
-std::shared_ptr<Form> IR_Symbol::to_form(const LinkedObjectFile& file) const {
+void IR_Symbol::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_SymbolValue::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return toForm("'" + name);
+  return pretty_print::to_symbol(name);
 }
 
-std::shared_ptr<Form> IR_SymbolValue::to_form(const LinkedObjectFile& file) const {
-  (void)file;
-  return toForm(name);
+void IR_SymbolValue::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
 }
 
-std::shared_ptr<Form> IR_StaticAddress::to_form(const LinkedObjectFile& file) const {
-  // return buildList(toForm("&"), file.get_label_name(label_id));
-  return toForm(file.get_label_name(label_id));
+goos::Object IR_StaticAddress::to_form(const LinkedObjectFile& file) const {
+  // return pretty_print::build_list(pretty_print::to_symbol("&"), file.get_label_name(label_id));
+  return pretty_print::to_symbol(file.get_label_name(label_id));
 }
 
-std::shared_ptr<Form> IR_Load::to_form(const LinkedObjectFile& file) const {
+void IR_StaticAddress::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_Load::to_form(const LinkedObjectFile& file) const {
   std::string load_operator;
   switch (kind) {
     case FLOAT:
@@ -113,10 +163,14 @@ std::shared_ptr<Form> IR_Load::to_form(const LinkedObjectFile& file) const {
     default:
       assert(false);
   }
-  return buildList(toForm(load_operator), location->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(load_operator), location->to_form(file));
 }
 
-std::shared_ptr<Form> IR_FloatMath2::to_form(const LinkedObjectFile& file) const {
+void IR_Load::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(location);
+}
+
+goos::Object IR_FloatMath2::to_form(const LinkedObjectFile& file) const {
   std::string math_operator;
   switch (kind) {
     case DIV:
@@ -141,10 +195,20 @@ std::shared_ptr<Form> IR_FloatMath2::to_form(const LinkedObjectFile& file) const
       assert(false);
   }
 
-  return buildList(toForm(math_operator), arg0->to_form(file), arg1->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file),
+                                  arg1->to_form(file));
 }
 
-std::shared_ptr<Form> IR_IntMath2::to_form(const LinkedObjectFile& file) const {
+void IR_FloatMath2::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg0);
+  output->push_back(arg1);
+}
+
+void IR_FloatMath1::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg);
+}
+
+goos::Object IR_IntMath2::to_form(const LinkedObjectFile& file) const {
   std::string math_operator;
   switch (kind) {
     case ADD:
@@ -195,22 +259,35 @@ std::shared_ptr<Form> IR_IntMath2::to_form(const LinkedObjectFile& file) const {
     default:
       assert(false);
   }
-  return buildList(toForm(math_operator), arg0->to_form(file), arg1->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg0->to_form(file),
+                                  arg1->to_form(file));
 }
 
-std::shared_ptr<Form> IR_IntMath1::to_form(const LinkedObjectFile& file) const {
+void IR_IntMath2::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg0);
+  output->push_back(arg1);
+}
+
+goos::Object IR_IntMath1::to_form(const LinkedObjectFile& file) const {
   std::string math_operator;
   switch (kind) {
     case NOT:
       math_operator = "lognot";
       break;
+    case ABS:
+      math_operator = "abs.si";
+      break;
     default:
       assert(false);
   }
-  return buildList(toForm(math_operator), arg->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg->to_form(file));
 }
 
-std::shared_ptr<Form> IR_FloatMath1::to_form(const LinkedObjectFile& file) const {
+void IR_IntMath1::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(arg);
+}
+
+goos::Object IR_FloatMath1::to_form(const LinkedObjectFile& file) const {
   std::string math_operator;
   switch (kind) {
     case FLOAT_TO_INT:
@@ -231,40 +308,79 @@ std::shared_ptr<Form> IR_FloatMath1::to_form(const LinkedObjectFile& file) const
     default:
       assert(false);
   }
-  return buildList(toForm(math_operator), arg->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(math_operator), arg->to_form(file));
 }
 
-std::shared_ptr<Form> IR_Call::to_form(const LinkedObjectFile& file) const {
+goos::Object IR_Call::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return buildList("call!");
+  return pretty_print::build_list("call!");
 }
 
-std::shared_ptr<Form> IR_IntegerConstant::to_form(const LinkedObjectFile& file) const {
+void IR_Call::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_IntegerConstant::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return toForm(std::to_string(value));
+  return pretty_print::to_symbol(std::to_string(value));
 }
 
-std::shared_ptr<Form> BranchDelay::to_form(const LinkedObjectFile& file) const {
+void IR_IntegerConstant::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object BranchDelay::to_form(const LinkedObjectFile& file) const {
   (void)file;
   switch (kind) {
     case NOP:
-      return buildList("nop");
+      return pretty_print::build_list("nop");
     case SET_REG_FALSE:
-      return buildList(toForm("set!"), destination->to_form(file), "'#f");
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      "'#f");
     case SET_REG_TRUE:
-      return buildList(toForm("set!"), destination->to_form(file), "'#t");
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      "'#t");
     case SET_REG_REG:
-      return buildList(toForm("set!"), destination->to_form(file), source->to_form(file));
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      source->to_form(file));
+    case SET_BINTEGER:
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      "binteger");
+    case SET_PAIR:
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      "pair");
+    case DSLLV:
+      return pretty_print::build_list(
+          pretty_print::to_symbol("set!"), destination->to_form(file),
+          pretty_print::build_list(pretty_print::to_symbol("shl"), source->to_form(file),
+                                   source2->to_form(file)));
+    case NEGATE:
+      return pretty_print::build_list(pretty_print::to_symbol("set!"), destination->to_form(file),
+                                      pretty_print::build_list("-", source->to_form(file)));
     case UNKNOWN:
-      return buildList("unknown-branch-delay");
+      return pretty_print::build_list("unknown-branch-delay");
     default:
       assert(false);
   }
 }
 
-std::shared_ptr<Form> IR_Nop::to_form(const LinkedObjectFile& file) const {
+void BranchDelay::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  if (destination) {
+    output->push_back(destination);
+  }
+
+  if (source) {
+    output->push_back(source);
+  }
+
+  if (source2) {
+    output->push_back(source2);
+  }
+}
+
+goos::Object IR_Nop::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return buildList("nop!");
+  return pretty_print::build_list("nop!");
 }
 
 int Condition::num_args() const {
@@ -288,6 +404,9 @@ int Condition::num_args() const {
     case NONZERO:
     case FALSE:
     case TRUTHY:
+    case GREATER_THAN_ZERO_SIGNED:
+    case GEQ_ZERO_SIGNED:
+    case LESS_THAN_ZERO:
       return 1;
     case ALWAYS:
       return 0;
@@ -296,7 +415,17 @@ int Condition::num_args() const {
   }
 }
 
-std::shared_ptr<Form> Condition::to_form(const LinkedObjectFile& file) const {
+void Condition::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  if (src0) {
+    output->push_back(src0);
+  }
+
+  if (src1) {
+    output->push_back(src1);
+  }
+}
+
+goos::Object Condition::to_form(const LinkedObjectFile& file) const {
   int nargs = num_args();
   std::string condtion_operator;
   switch (kind) {
@@ -357,35 +486,229 @@ std::shared_ptr<Form> Condition::to_form(const LinkedObjectFile& file) const {
     case FLOAT_GEQ:
       condtion_operator = ">=.f";
       break;
+    case GREATER_THAN_ZERO_SIGNED:
+      condtion_operator = ">0.si";
+      break;
+    case GEQ_ZERO_SIGNED:
+      condtion_operator = ">=0.si";
+      break;
+    case LESS_THAN_ZERO:
+      condtion_operator = "<0.si";
+      break;
     default:
       assert(false);
   }
 
   if (nargs == 2) {
-    return buildList(toForm(condtion_operator), src0->to_form(file), src1->to_form(file));
+    return pretty_print::build_list(pretty_print::to_symbol(condtion_operator), src0->to_form(file),
+                                    src1->to_form(file));
   } else if (nargs == 1) {
     if (condtion_operator.empty()) {
       return src0->to_form(file);
     } else {
-      return buildList(toForm(condtion_operator), src0->to_form(file));
+      return pretty_print::build_list(pretty_print::to_symbol(condtion_operator),
+                                      src0->to_form(file));
     }
   } else if (nargs == 0) {
-    return toForm(condtion_operator);
+    return pretty_print::to_symbol(condtion_operator);
   } else {
     assert(false);
   }
 }
 
-std::shared_ptr<Form> IR_Branch::to_form(const LinkedObjectFile& file) const {
-  return buildList(toForm(likely ? "bl!" : "b!"), condition.to_form(file),
-                   toForm(file.get_label_name(dest_label_idx)), branch_delay.to_form(file));
+goos::Object IR_Branch::to_form(const LinkedObjectFile& file) const {
+  return pretty_print::build_list(
+      pretty_print::to_symbol(likely ? "bl!" : "b!"), condition.to_form(file),
+      pretty_print::to_symbol(file.get_label_name(dest_label_idx)), branch_delay.to_form(file));
 }
 
-std::shared_ptr<Form> IR_Compare::to_form(const LinkedObjectFile& file) const {
+void IR_Branch::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  condition.get_children(output);
+  branch_delay.get_children(output);
+}
+
+goos::Object IR_Compare::to_form(const LinkedObjectFile& file) const {
   return condition.to_form(file);
 }
 
-std::shared_ptr<Form> IR_Suspend::to_form(const LinkedObjectFile& file) const {
+void IR_Compare::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  condition.get_children(output);
+}
+
+goos::Object IR_Suspend::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return buildList("suspend!");
+  return pretty_print::build_list("suspend!");
+}
+
+void IR_Nop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+void IR_Suspend::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_Begin::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("begin"));
+  for (auto& x : forms) {
+    list.push_back(x->to_form(file));
+  }
+  return pretty_print::build_list(list);
+}
+
+void IR_Begin::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& x : forms) {
+    output->push_back(x);
+  }
+}
+
+namespace {
+void print_inlining_begin(std::vector<goos::Object>* output, IR* ir, const LinkedObjectFile& file) {
+  auto as_begin = dynamic_cast<IR_Begin*>(ir);
+  if (as_begin) {
+    for (auto& x : as_begin->forms) {
+      output->push_back(x->to_form(file));
+    }
+  } else {
+    output->push_back(ir->to_form(file));
+  }
+}
+
+bool is_single_expression(IR* in) {
+  return !dynamic_cast<IR_Begin*>(in);
+}
+}  // namespace
+
+goos::Object IR_WhileLoop::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("while"));
+  list.push_back(condition->to_form(file));
+  print_inlining_begin(&list, body.get(), file);
+  return pretty_print::build_list(list);
+}
+
+void IR_WhileLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(condition);
+  output->push_back(body);
+}
+
+goos::Object IR_CondWithElse::to_form(const LinkedObjectFile& file) const {
+  // for now we only turn it into an if statement if both cases won't require a begin at the top
+  // level. I think it is more common to write these as a two-case cond instead of an if with begin.
+  if (entries.size() == 1 && is_single_expression(entries.front().body.get()) &&
+      is_single_expression(else_ir.get())) {
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("if"));
+    list.push_back(entries.front().condition->to_form(file));
+    list.push_back(entries.front().body->to_form(file));
+    list.push_back(else_ir->to_form(file));
+    return pretty_print::build_list(list);
+  } else {
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("cond"));
+    for (auto& e : entries) {
+      std::vector<goos::Object> entry;
+      entry.push_back(e.condition->to_form(file));
+      print_inlining_begin(&entry, e.body.get(), file);
+      list.push_back(pretty_print::build_list(entry));
+    }
+    std::vector<goos::Object> else_form;
+    else_form.push_back(pretty_print::to_symbol("else"));
+    print_inlining_begin(&else_form, else_ir.get(), file);
+    list.push_back(pretty_print::build_list(else_form));
+    return pretty_print::build_list(list);
+  }
+}
+
+void IR_CondWithElse::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& e : entries) {
+    output->push_back(e.condition);
+    output->push_back(e.body);
+  }
+  output->push_back(else_ir);
+}
+
+goos::Object IR_GetRuntimeType::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> list = {pretty_print::to_symbol("type-of"), object->to_form(file)};
+  return pretty_print::build_list(list);
+}
+
+void IR_GetRuntimeType::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(object);
+}
+
+goos::Object IR_Cond::to_form(const LinkedObjectFile& file) const {
+  if (entries.size() == 1 && is_single_expression(entries.front().body.get())) {
+    // print as an if statement if we can put the body in a single form.
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("if"));
+    list.push_back(entries.front().condition->to_form(file));
+    list.push_back(entries.front().body->to_form(file));
+    return pretty_print::build_list(list);
+  } else if (entries.size() == 1) {
+    // turn into a when if the body requires multiple forms
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("when"));
+    list.push_back(entries.front().condition->to_form(file));
+    print_inlining_begin(&list, entries.front().body.get(), file);
+    return pretty_print::build_list(list);
+  } else {
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("cond"));
+    for (auto& e : entries) {
+      std::vector<goos::Object> entry;
+      entry.push_back(e.condition->to_form(file));
+      print_inlining_begin(&entry, e.body.get(), file);
+      list.push_back(pretty_print::build_list(entry));
+    }
+    return pretty_print::build_list(list);
+  }
+}
+
+void IR_Cond::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& e : entries) {
+    output->push_back(e.condition);
+    output->push_back(e.body);
+  }
+}
+
+goos::Object IR_ShortCircuit::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  switch (kind) {
+    case UNKNOWN:
+      forms.push_back(pretty_print::to_symbol("unknown-sc"));
+      break;
+    case AND:
+      forms.push_back(pretty_print::to_symbol("and"));
+      break;
+    case OR:
+      forms.push_back(pretty_print::to_symbol("or"));
+      break;
+    default:
+      assert(false);
+  }
+  for (auto& x : entries) {
+    forms.push_back(x.condition->to_form(file));
+  }
+  return pretty_print::build_list(forms);
+}
+
+void IR_ShortCircuit::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& x : entries) {
+    output->push_back(x.condition);
+    if (x.output) {
+      output->push_back(x.output);
+    }
+  }
+}
+
+goos::Object IR_Ash::to_form(const LinkedObjectFile& file) const {
+  return pretty_print::build_list(pretty_print::to_symbol("ash"), value->to_form(file),
+                                  shift_amount->to_form(file));
+}
+
+void IR_Ash::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(value);
+  output->push_back(shift_amount);
 }

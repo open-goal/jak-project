@@ -4,6 +4,9 @@
 namespace goos {
 
 std::shared_ptr<EmptyListObject> gEmptyList = nullptr;
+std::shared_ptr<EmptyListObject>& get_empty_list() {
+  return gEmptyList;
+}
 
 /*!
  * Convert type to string (name in brackets)

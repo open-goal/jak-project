@@ -5,10 +5,6 @@
 
 namespace {
 
-struct ConvertState {
-  void reset() {}
-};
-
 std::shared_ptr<IR_Set> make_set(IR_Set::Kind kind,
                                  const std::shared_ptr<IR>& dst,
                                  const std::shared_ptr<IR>& src) {
@@ -515,6 +511,17 @@ std::shared_ptr<IR> try_sll(Instruction& instr, int idx) {
   return nullptr;
 }
 
+std::shared_ptr<IR> try_dsrav(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::DSRAV, {}, {}, {}) &&
+      !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
+                                                  make_reg(instr.get_src(0).get_reg(), idx),
+                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_sw(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SW && instr.get_src(1).is_sym() &&
       instr.get_src(2).is_reg(make_gpr(Reg::S7))) {
@@ -695,6 +702,28 @@ BranchDelay get_branch_delay(Instruction& i, int idx) {
     BranchDelay b(BranchDelay::SET_REG_TRUE);
     b.destination = make_reg(i.get_dst(0).get_reg(), idx);
     return b;
+  } else if (i.kind == InstructionKind::LW && i.get_src(1).is_reg(make_gpr(Reg::S7)) &&
+             i.get_src(0).is_sym()) {
+    if (i.get_src(0).get_sym() == "binteger") {
+      BranchDelay b(BranchDelay::SET_BINTEGER);
+      b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+      return b;
+    } else if (i.get_src(0).get_sym() == "pair") {
+      BranchDelay b(BranchDelay::SET_PAIR);
+      b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+      return b;
+    }
+  } else if (i.kind == InstructionKind::DSLLV) {
+    BranchDelay b(BranchDelay::DSLLV);
+    b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+    b.source = make_reg(i.get_src(0).get_reg(), idx);
+    b.source2 = make_reg(i.get_src(1).get_reg(), idx);
+    return b;
+  } else if (is_gpr_3(i, InstructionKind::DSUBU, {}, make_gpr(Reg::R0), {})) {
+    BranchDelay b(BranchDelay::NEGATE);
+    b.destination = make_reg(i.get_dst(0).get_reg(), idx);
+    b.source = make_reg(i.get_src(1).get_reg(), idx);
+    return b;
   }
   BranchDelay b(BranchDelay::UNKNOWN);
   return b;
@@ -737,7 +766,13 @@ std::shared_ptr<IR> try_beql(Instruction& instr, Instruction& next_instr, int id
     return std::make_shared<IR_Branch>(
         Condition(Condition::FALSE, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
-  } else if (instr.kind == InstructionKind::BEQL) {
+  } else if (instr.kind == InstructionKind::BEQL && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::ZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
+  }
+
+  else if (instr.kind == InstructionKind::BEQL) {
     return std::make_shared<IR_Branch>(
         Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
                   make_reg(instr.get_src(1).get_reg(), idx), nullptr),
@@ -761,6 +796,36 @@ std::shared_ptr<IR> try_beq(Instruction& instr, Instruction& next_instr, int idx
         Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
                   make_reg(instr.get_src(1).get_reg(), idx), nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_bgtzl(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BGTZL) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::GREATER_THAN_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                  nullptr, nullptr),
+        instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_bgezl(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BGEZL) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::GEQ_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
+                  nullptr),
+        instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_bltzl(Instruction& instr, Instruction& next_instr, int idx) {
+  if (instr.kind == InstructionKind::BLTZL) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::LESS_THAN_ZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
+                  nullptr),
+        instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
   }
   return nullptr;
 }
@@ -1122,6 +1187,7 @@ std::shared_ptr<IR> try_lwu(Instruction& i0,
                             Instruction& i3,
                             Instruction& i4,
                             int idx) {
+  (void)idx;
   auto s6 = make_gpr(Reg::S6);
   if (i0.kind == InstructionKind::LWU && i0.get_dst(0).is_reg(s6) &&
       i0.get_src(0).get_imm() == 44 && i0.get_src(1).is_reg(s6) &&
@@ -1138,8 +1204,6 @@ std::shared_ptr<IR> try_lwu(Instruction& i0,
 }  // namespace
 
 void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjectFile* file) {
-  ConvertState state;
-
   for (int instr = block.start_word; instr < block.end_word; instr++) {
     auto& i = func->instructions.at(instr);
 
@@ -1218,6 +1282,15 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::BEQ:
           result = try_beq(i, next, instr);
+          break;
+        case InstructionKind::BGTZL:
+          result = try_bgtzl(i, next, instr);
+          break;
+        case InstructionKind::BGEZL:
+          result = try_bgezl(i, next, instr);
+          break;
+        case InstructionKind::BLTZL:
+          result = try_bltzl(i, next, instr);
           break;
         case InstructionKind::BEQL:
           result = try_beql(i, next, instr);
@@ -1389,6 +1462,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::CVTSW:
           result = try_cvtsw(i, instr);
           break;
+        case InstructionKind::DSRAV:
+          result = try_dsrav(i, instr);
+          break;
         default:
           result = nullptr;
       }
@@ -1400,9 +1476,8 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
 
     // everything failed
     if (!result) {
-      state.reset();
       // temp hack for debug:
-      printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
+      // printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
       func->add_basic_op(std::make_shared<IR_Failed>(), instr, instr + 1);
     } else {
       func->add_basic_op(result, instr, instr + length);
