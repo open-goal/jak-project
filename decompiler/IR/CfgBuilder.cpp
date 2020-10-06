@@ -182,6 +182,7 @@ bool delay_slot_sets_truthy(IR_Branch* branch) {
  * Try to convert a short circuit to an and.
  */
 bool try_clean_up_sc_as_and(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  (void)file;
   Register destination;
   std::shared_ptr<IR> ir_dest = nullptr;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
@@ -222,6 +223,7 @@ bool try_clean_up_sc_as_and(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFi
  * Note - this will convert an and to a very strange or, so always use the try as and first.
  */
 bool try_clean_up_sc_as_or(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  (void)file;
   Register destination;
   std::shared_ptr<IR> ir_dest = nullptr;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
@@ -382,6 +384,7 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
  * this.
  */
 void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
+  (void)file;
   auto cne = dynamic_cast<IR_Cond*>(ir->get());
   assert(cne);
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
