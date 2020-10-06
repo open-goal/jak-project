@@ -6,17 +6,6 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 
-/*!
- * TODO
- * - fix "right aligned" nested and/or or or/ands
- *   - can either fix in here, or maybe in cfgvertex? not sure...
- * - check for missing inverts
- * - finish cleaning up and/or. There may be some extra work to invert the final condition.
- *   if it turns out this is needed. Or just wrap it in a giant "not" and figure it out later on?
- * - store the destination of things when possible (cond else, short circuits)
- * - revisit weird destinations in conds.
- */
-
 namespace {
 
 std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx);
@@ -234,16 +223,17 @@ bool try_clean_up_sc_as_and(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFi
  */
 bool try_clean_up_sc_as_or(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
   Register destination;
+  std::shared_ptr<IR> ir_dest = nullptr;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(&ir->entries.at(i).condition);
     assert(branch.first);
     if (!delay_slot_sets_truthy(branch.first)) {
-      printf("reject %s\n", branch.first->print(file).c_str());
       return false;
     }
     assert(dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get()));
 
     if (i == 0) {
+      ir_dest = branch.first->branch_delay.destination;
       destination = dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get())->reg;
     } else {
       if (destination !=
@@ -254,17 +244,92 @@ bool try_clean_up_sc_as_or(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFil
   }
 
   ir->kind = IR_ShortCircuit::OR;
+  ir->final_result = ir_dest;
 
-  // todo write the destination somewhere...
+  for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    auto replacement = std::make_shared<IR_Compare>(branch.first->condition);
+    *(branch.second) = replacement;
+  }
+
   return true;
 }
 
+void clean_up_sc(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file);
+
+/*!
+ * A form like (and x (or y z)) will be recognized as a single SC Vertex by the CFG pass.
+ * In the case where we fail to clean it up as an AND or an OR, we should attempt splitting.
+ * Part of the complexity here is that we want to clean up the split recursively so things like
+ * (and x (or y (and a b)))
+ * or
+ * (and x (or y (and a b)) c d (or z))
+ * will work correctly.  This may require doing more splitting on both sections!
+ */
+bool try_splitting_nested_sc(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  auto first_branch = get_condition_branch(&ir->entries.front().condition);
+  assert(first_branch.first);
+  bool first_is_and = delay_slot_sets_false(first_branch.first);
+  bool first_is_or = delay_slot_sets_truthy(first_branch.first);
+  assert(first_is_and != first_is_or);  // one or the other but not both!
+
+  int first_different = -1;  // the index of the first one that's different.
+
+  for (int i = 1; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    bool is_and = delay_slot_sets_false(branch.first);
+    bool is_or = delay_slot_sets_truthy(branch.first);
+    assert(is_and != is_or);
+
+    if (first_different == -1) {
+      // haven't seen a change yet.
+      if (first_is_and != is_and) {
+        // change!
+        first_different = i;
+        break;
+      }
+    }
+  }
+
+  assert(first_different != -1);
+
+  std::vector<IR_ShortCircuit::Entry> nested_ir;
+  for (int i = first_different; i < int(ir->entries.size()); i++) {
+    nested_ir.push_back(ir->entries.at(i));
+  }
+
+  auto s = int(ir->entries.size());
+  for (int i = first_different; i < s; i++) {
+    ir->entries.pop_back();
+  }
+
+  auto nested_sc = std::make_shared<IR_ShortCircuit>(nested_ir);
+  clean_up_sc(nested_sc, file);
+
+  // the real trick
+  IR_ShortCircuit::Entry nested_entry;
+  nested_entry.condition = nested_sc;
+  ir->entries.push_back(nested_entry);
+
+  clean_up_sc(ir, file);
+
+  return true;
+}
+
+/*!
+ * Try to clean up a single short circuit IR. It may get split up into nested IR_ShortCircuits
+ * if there is a case like (and a (or b c))
+ */
 void clean_up_sc(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
   (void)file;
   assert(ir->entries.size() > 1);
   if (!try_clean_up_sc_as_and(ir, file)) {
     if (!try_clean_up_sc_as_or(ir, file)) {
-      assert(false);
+      if (!try_splitting_nested_sc(ir, file)) {
+        assert(false);
+      }
     }
   }
 }
@@ -483,7 +548,7 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
   }
 
   // todo, I think b0 could possibly be something more complicated, depending on how we order.
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
+  auto b0 = dynamic_cast<CfgVtx*>(vtx->entries.at(0));
   auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
   if (!b0 || !b1) {
     return nullptr;
@@ -538,8 +603,13 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
 
   assert(result);
   assert(value_in);
-  if (!is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_ARITH, result->reg,
-                     value_in->reg, clobber)) {
+
+  bool is_arith = is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_ARITH, result->reg,
+                                value_in->reg, clobber);
+  bool is_logical = is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                  result->reg, value_in->reg, clobber);
+
+  if (!is_arith && !is_logical) {
     return nullptr;
   }
 
@@ -561,7 +631,8 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
     b0_ir->forms.pop_back();
     // add the ash
     b0_ir->forms.push_back(std::make_shared<IR_Set>(
-        IR_Set::REG_64, dest_ir, std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir)));
+        IR_Set::REG_64, dest_ir,
+        std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir, is_arith)));
     return b0_ptr;
   }
 
@@ -592,7 +663,7 @@ std::shared_ptr<IR> try_sc_as_type_of(Function& f, LinkedObjectFile& file, Short
     return nullptr;
   }
 
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
+  auto b0 = dynamic_cast<CfgVtx*>(vtx->entries.at(0));
   auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
   auto b2 = dynamic_cast<BlockVtx*>(vtx->entries.at(2));
 

@@ -793,8 +793,8 @@ void IR_ShortCircuit::get_children(std::vector<std::shared_ptr<IR>>* output) con
 }
 
 goos::Object IR_Ash::to_form(const LinkedObjectFile& file) const {
-  return pretty_print::build_list(pretty_print::to_symbol("ash"), value->to_form(file),
-                                  shift_amount->to_form(file));
+  return pretty_print::build_list(pretty_print::to_symbol(is_signed ? "ash.si" : "ash.ui"),
+                                  value->to_form(file), shift_amount->to_form(file));
 }
 
 void IR_Ash::get_children(std::vector<std::shared_ptr<IR>>* output) const {

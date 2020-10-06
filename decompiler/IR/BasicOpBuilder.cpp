@@ -522,6 +522,17 @@ std::shared_ptr<IR> try_dsrav(Instruction& instr, int idx) {
   return nullptr;
 }
 
+std::shared_ptr<IR> try_dsrlv(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::DSRLV, {}, {}, {}) &&
+      !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                                  make_reg(instr.get_src(0).get_reg(), idx),
+                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_sw(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SW && instr.get_src(1).is_sym() &&
       instr.get_src(2).is_reg(make_gpr(Reg::S7))) {
@@ -1468,6 +1479,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::DSRAV:
           result = try_dsrav(i, instr);
+          break;
+        case InstructionKind::DSRLV:
+          result = try_dsrlv(i, instr);
           break;
         default:
           result = nullptr;
