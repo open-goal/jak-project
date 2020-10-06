@@ -752,6 +752,10 @@ std::shared_ptr<IR> try_bnel(Instruction& instr, Instruction& next_instr, int id
     return std::make_shared<IR_Branch>(
         Condition(Condition::TRUTHY, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
+  } else if (instr.kind == InstructionKind::BNEL && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::NONZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
   } else if (instr.kind == InstructionKind::BNEL) {
     //    return std::make_shared<IR_Branch2>(IR_Branch2::NOT_EQUAL, instr.get_src(2).get_label(),
     //                                        make_reg(instr.get_src(0).get_reg(), idx),
