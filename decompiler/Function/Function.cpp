@@ -572,8 +572,8 @@ bool Function::instr_starts_basic_op(int idx) {
   return false;
 }
 
-IR* Function::get_basic_op_at_instr(int idx) {
-  return basic_ops.at(instruction_to_basic_op.at(idx)).get();
+std::shared_ptr<IR> Function::get_basic_op_at_instr(int idx) {
+  return basic_ops.at(instruction_to_basic_op.at(idx));
 }
 
 int Function::get_basic_op_count() {

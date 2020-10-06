@@ -19,6 +19,7 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/IR/BasicOpBuilder.h"
+#include "decompiler/IR/CfgBuilder.h"
 
 /*!
  * Get a unique name for this object file.
@@ -591,17 +592,21 @@ void ObjectFileDB::analyze_functions() {
     //    }
   }
 
-  int total_nontrivial_functions = 0;
-  int total_resolved_nontrivial_functions = 0;
+  int total_trivial_cfg_functions = 0;
   int total_named_functions = 0;
   int total_basic_ops = 0;
   int total_failed_basic_ops = 0;
+
+  int asm_funcs = 0;
+  int non_asm_funcs = 0;
+  int successful_cfg_irs = 0;
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
   if (get_config().find_basic_blocks) {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
+      // printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
@@ -618,17 +623,21 @@ void ObjectFileDB::analyze_functions() {
         total_basic_ops += func.get_basic_op_count();
         total_failed_basic_ops += func.get_failed_basic_op_count();
 
+        func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
+        non_asm_funcs++;
+        if (func.ir) {
+          successful_cfg_irs++;
+        }
+
         if (func.cfg->is_fully_resolved()) {
           resolved_cfg_functions++;
         }
       } else {
-        resolved_cfg_functions++;
+        asm_funcs++;
       }
 
       if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
-        total_nontrivial_functions++;
         if (func.cfg->is_fully_resolved()) {
-          total_resolved_nontrivial_functions++;
         } else {
           if (!func.guessed_name.empty()) {
             unresolved_by_length[func.end_word - func.start_word].push_back(
@@ -637,25 +646,32 @@ void ObjectFileDB::analyze_functions() {
         }
       }
 
+      if (!func.suspected_asm && func.basic_blocks.size() <= 1) {
+        total_trivial_cfg_functions++;
+      }
+
       if (!func.guessed_name.empty()) {
         total_named_functions++;
       }
+
+      //      if (func.guessed_name.to_string() == "inspect") {
+      //        assert(false);
+      //      }
     });
 
-    printf("Found %d functions (%d with nontrivial cfgs)\n", total_functions,
-           total_nontrivial_functions);
+    printf("Found %d functions (%d with no control flow)\n", total_functions,
+           total_trivial_cfg_functions);
     printf("Named %d/%d functions (%.2f%%)\n", total_named_functions, total_functions,
            100.f * float(total_named_functions) / float(total_functions));
+    printf("Excluding %d asm functions\n", asm_funcs);
     printf("Found %d basic blocks in %.3f ms\n", total_basic_blocks, timer.getMs());
     printf(" %d/%d functions passed cfg analysis stage (%.2f%%)\n", resolved_cfg_functions,
-           total_functions, 100.f * float(resolved_cfg_functions) / float(total_functions));
-    printf(" %d/%d nontrivial cfg's resolved (%.2f%%)\n", total_resolved_nontrivial_functions,
-           total_nontrivial_functions,
-           100.f * float(total_resolved_nontrivial_functions) / float(total_nontrivial_functions));
-
+           non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
     int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
     printf(" %d/%d basic ops converted successfully (%.2f%%)\n", successful_basic_ops,
            total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+    printf(" %d/%d cfgs converted to ir (%.2f%%)\n", successful_cfg_irs, non_asm_funcs,
+           100.f * float(successful_cfg_irs) / float(non_asm_funcs));
 
     //    for (auto& kv : unresolved_by_length) {
     //      printf("LEN %d\n", kv.first);

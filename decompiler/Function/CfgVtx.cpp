@@ -1721,8 +1721,9 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
     //    printf("%s\n", cfg->to_dot().c_str());
     //    printf("%s\n", cfg->to_form()->toStringPretty().c_str());
 
-    changed = changed || cfg->find_cond_w_else();
     changed = changed || cfg->find_cond_n_else();
+    changed = changed || cfg->find_cond_w_else();
+
     changed = changed || cfg->find_while_loop_top_level();
     changed = changed || cfg->find_seq_top_level();
     changed = changed || cfg->find_short_circuits();
