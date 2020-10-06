@@ -55,11 +55,11 @@ include_directories(./)
 
 # build spdlog as a shared library to improve compile times
 # adding this as a SYSTEM include suppresses all the terrible warnings in spdlog
+IF (WIN32)
+include_directories(third-party/spdlog/include)
+ELSE()
 include_directories(SYSTEM third-party/spdlog/include)
-# this makes spdlog generate a shared library that we can link against
-set(SPDLOG_BUILD_SHARED ON)
-# this makes the spdlog includes not use the header only version, making compiling faster
-add_definitions(-DSPDLOG_COMPILED_LIB)
+ENDIF()
 
 # build asset packer/unpacker
 add_subdirectory(asset_tool)

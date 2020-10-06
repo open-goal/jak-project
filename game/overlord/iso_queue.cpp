@@ -179,11 +179,11 @@ u32 QueueMessage(IsoMessage* cmd, int32_t priority, const char* name) {
     gPriStack[priority].cmds[gPriStack[priority].n] = cmd;
     gPriStack[priority].names[gPriStack[priority].n] = name;
     gPriStack[priority].n++;
-    printf("[OVERLORD] Queue %d (%d/%d), %s\n", priority, gPriStack[priority].n, PRI_STACK_LENGTH,
-           gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
+    spdlog::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n,
+                  PRI_STACK_LENGTH, gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
     DisplayQueue();
   } else {
-    printf("[OVERLORD ISO QUEUE] Failed to queue!\n");
+    spdlog::debug("[OVERLORD ISO QUEUE] Failed to queue!");
     cmd->status = CMD_STATUS_FAILED_TO_QUEUE;
     ReturnMessage(cmd);
   }
