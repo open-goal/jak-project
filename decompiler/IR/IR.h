@@ -196,6 +196,7 @@ struct Condition {
     LEQ_SIGNED,
     GEQ_SIGNED,
     GREATER_THAN_ZERO_SIGNED,
+    LEQ_ZERO_SIGNED,
     LESS_THAN_ZERO,
     GEQ_ZERO_SIGNED,
     LESS_THAN_UNSIGNED,
@@ -207,6 +208,7 @@ struct Condition {
     FALSE,
     TRUTHY,
     ALWAYS,
+    NEVER,
     FLOAT_EQUAL,
     FLOAT_NOT_EQUAL,
     FLOAT_LESS_THAN,
@@ -232,6 +234,7 @@ struct Condition {
   goos::Object to_form(const LinkedObjectFile& file) const;
   std::shared_ptr<IR> src0, src1, clobber;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const;
+  void invert();
 };
 
 class IR_Branch : public IR {
@@ -342,6 +345,8 @@ class IR_ShortCircuit : public IR {
   };
 
   enum Kind { UNKNOWN, AND, OR } kind = UNKNOWN;
+
+  std::shared_ptr<IR> final_result = nullptr;  // the register that the final result goes in.
 
   std::vector<Entry> entries;
   explicit IR_ShortCircuit(std::vector<Entry> _entries) : entries(std::move(_entries)) {}

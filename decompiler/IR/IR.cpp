@@ -407,8 +407,10 @@ int Condition::num_args() const {
     case GREATER_THAN_ZERO_SIGNED:
     case GEQ_ZERO_SIGNED:
     case LESS_THAN_ZERO:
+    case LEQ_ZERO_SIGNED:
       return 1;
     case ALWAYS:
+    case NEVER:
       return 0;
     default:
       assert(false);
@@ -422,6 +424,85 @@ void Condition::get_children(std::vector<std::shared_ptr<IR>>* output) const {
 
   if (src1) {
     output->push_back(src1);
+  }
+}
+
+void Condition::invert() {
+  switch (kind) {
+    case NOT_EQUAL:
+      kind = EQUAL;
+      break;
+    case EQUAL:
+      kind = NOT_EQUAL;
+      break;
+    case LESS_THAN_SIGNED:
+      kind = GEQ_SIGNED;
+      break;
+    case GREATER_THAN_SIGNED:
+      kind = LEQ_SIGNED;
+      break;
+    case LEQ_SIGNED:
+      kind = GREATER_THAN_SIGNED;
+      break;
+    case GEQ_SIGNED:
+      kind = LESS_THAN_SIGNED;
+      break;
+    case GREATER_THAN_ZERO_SIGNED:
+      kind = LEQ_ZERO_SIGNED;
+      break;
+    case LEQ_ZERO_SIGNED:
+      kind = GREATER_THAN_ZERO_SIGNED;
+      break;
+    case LESS_THAN_ZERO:
+      kind = GEQ_ZERO_SIGNED;
+      break;
+    case GEQ_ZERO_SIGNED:
+      kind = LESS_THAN_ZERO;
+      break;
+    case LESS_THAN_UNSIGNED:
+      kind = GEQ_UNSIGNED;
+      break;
+    case GREATER_THAN_UNSIGNED:
+      kind = LEQ_UNSIGNED;
+      break;
+    case LEQ_UNSIGNED:
+      kind = GREATER_THAN_UNSIGNED;
+      break;
+    case GEQ_UNSIGNED:
+      kind = LESS_THAN_UNSIGNED;
+      break;
+    case ZERO:
+      kind = NONZERO;
+      break;
+    case NONZERO:
+      kind = ZERO;
+      break;
+    case FALSE:
+      kind = TRUTHY;
+      break;
+    case TRUTHY:
+      kind = FALSE;
+      break;
+    case ALWAYS:
+      kind = NEVER;
+      break;
+    case NEVER:
+      kind = ALWAYS;
+      break;
+    case FLOAT_EQUAL:
+      kind = FLOAT_NOT_EQUAL;
+      break;
+    case FLOAT_NOT_EQUAL:
+      kind = FLOAT_EQUAL;
+      break;
+    case FLOAT_LESS_THAN:
+      kind = FLOAT_GEQ;
+      break;
+    case FLOAT_GEQ:
+      kind = FLOAT_LESS_THAN;
+      break;
+    default:
+      assert(false);
   }
 }
 
@@ -474,6 +555,9 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
     case ALWAYS:
       condtion_operator = "'#t";
       break;
+    case NEVER:
+      condtion_operator = "'#f";
+      break;
     case FLOAT_EQUAL:
       condtion_operator = "=.f";
       break;
@@ -494,6 +578,9 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
       break;
     case LESS_THAN_ZERO:
       condtion_operator = "<0.si";
+      break;
+    case LEQ_ZERO_SIGNED:
+      condtion_operator = "<=0.si";
       break;
     default:
       assert(false);
@@ -648,6 +735,8 @@ goos::Object IR_Cond::to_form(const LinkedObjectFile& file) const {
     return pretty_print::build_list(list);
   } else if (entries.size() == 1) {
     // turn into a when if the body requires multiple forms
+    // todo check to see if the condition starts with a NOT and this can be simplified to an
+    // unless.
     std::vector<goos::Object> list;
     list.push_back(pretty_print::to_symbol("when"));
     list.push_back(entries.front().condition->to_form(file));
