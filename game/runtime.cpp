@@ -259,7 +259,6 @@ u32 exec_runtime(int argc, char** argv) {
 
   // join and exit
   tm.join();
-  // printf("GOAL Runtime Shutdown (code %d)\n", MasterExit);
   spdlog::info("GOAL Runtime Shutdown (code {})", MasterExit);
   return MasterExit;
 }
