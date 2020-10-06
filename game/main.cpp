@@ -11,6 +11,7 @@
 int main(int argc, char** argv) {
   while (true) {
     spdlog::set_level(spdlog::level::debug);
+    auto my_logger = spdlog::basic_logger_mt("file_logger", "logs/basic-log.txt");
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     spdlog::info("gk {}.{} OK!\n", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
