@@ -399,6 +399,8 @@ int Condition::num_args() const {
     case FLOAT_NOT_EQUAL:
     case FLOAT_LESS_THAN:
     case FLOAT_GEQ:
+    case FLOAT_GREATER_THAN:
+    case FLOAT_LEQ:
       return 2;
     case ZERO:
     case NONZERO:
@@ -501,6 +503,12 @@ void Condition::invert() {
     case FLOAT_GEQ:
       kind = FLOAT_LESS_THAN;
       break;
+    case FLOAT_GREATER_THAN:
+      kind = FLOAT_LEQ;
+      break;
+    case FLOAT_LEQ:
+      kind = FLOAT_GREATER_THAN;
+      break;
     default:
       assert(false);
   }
@@ -569,6 +577,12 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
       break;
     case FLOAT_GEQ:
       condtion_operator = ">=.f";
+      break;
+    case FLOAT_GREATER_THAN:
+      condtion_operator = ">.f";
+      break;
+    case FLOAT_LEQ:
+      condtion_operator = "<=.f";
       break;
     case GREATER_THAN_ZERO_SIGNED:
       condtion_operator = ">0.si";

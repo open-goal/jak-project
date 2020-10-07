@@ -23,6 +23,7 @@ struct FunctionName {
   std::string function_name;  // only applicable for GLOBAL
   std::string type_name;      // only applicable for METHOD
   int method_id = -1;         // only applicable for METHOD
+  int unique_id = -1;
 
   std::string to_string() const {
     switch (kind) {
@@ -33,7 +34,7 @@ struct FunctionName {
       case FunctionKind::TOP_LEVEL_INIT:
         return "(top-level-login)";
       case FunctionKind::UNIDENTIFIED:
-        return "(?)";
+        return "(anon-function " + std::to_string(unique_id) + ")";
       default:
         throw std::runtime_error("Unsupported FunctionKind");
     }

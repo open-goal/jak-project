@@ -1136,6 +1136,21 @@ std::shared_ptr<IR> try_clts(Instruction& i0, Instruction& i1, Instruction& i2, 
   return nullptr;
 }
 
+std::shared_ptr<IR> try_cles(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+  if (i0.kind == InstructionKind::CLES && i1.kind == InstructionKind::BC1T) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::FLOAT_LEQ, make_reg(i0.get_src(0).get_reg(), idx),
+                  make_reg(i0.get_src(1).get_reg(), idx), nullptr),
+        i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
+  } else if (i0.kind == InstructionKind::CLES && i1.kind == InstructionKind::BC1F) {
+    return std::make_shared<IR_Branch>(
+        Condition(Condition::FLOAT_GREATER_THAN, make_reg(i0.get_src(0).get_reg(), idx),
+                  make_reg(i0.get_src(1).get_reg(), idx), nullptr),
+        i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_sltu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::SLTU && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
@@ -1267,6 +1282,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::CLTS:
           result = try_clts(i, next, next_next, instr);
+          break;
+        case InstructionKind::CLES:
+          result = try_cles(i, next, next_next, instr);
           break;
         default:
           result = nullptr;

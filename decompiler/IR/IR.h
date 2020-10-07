@@ -212,7 +212,9 @@ struct Condition {
     FLOAT_EQUAL,
     FLOAT_NOT_EQUAL,
     FLOAT_LESS_THAN,
-    FLOAT_GEQ
+    FLOAT_GEQ,
+    FLOAT_LEQ,
+    FLOAT_GREATER_THAN,
   } kind;
 
   Condition(Kind _kind,
