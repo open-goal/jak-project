@@ -12,6 +12,7 @@
 #include "goalc/compiler/Compiler.h"
 
 #include "common\util\FileUtil.h"
+#include <filesystem>
 
 namespace GoalTest {
 
@@ -32,24 +33,35 @@ std::string escaped_string(const std::string& in) {
   return result;
 }
 
-void CompilerTestRunner::run_test(const std::string& test_file,
+void CompilerTestRunner::run_static_test(inja::Environment& env,
+                                         std::string& testCategory,
+                                         const std::string& test_file,
+                                         const std::vector<std::string>& expected,
+																				 MatchParam<int> truncate) {
+  env.write(test_file, {}, test_file);
+  run_test(testCategory, test_file, expected, truncate);
+}
+
+void CompilerTestRunner::run_test(const std::string& test_category,
+                                  const std::string& test_file,
                                   const std::vector<std::string>& expected,
                                   MatchParam<int> truncate) {
   fprintf(stderr, "Testing %s\n", test_file.c_str());
-  auto result = c->run_test("test/goalc/source_generated/" + test_file);
+  auto result = c->run_test("test/goalc/source_generated/" + test_category + "/" + test_file);
   if (!truncate.is_wildcard) {
     for (auto& x : result) {
       x = x.substr(0, truncate.value);
     }
   }
 
-  EXPECT_EQ(result, expected);
+	bool assertionFailed = false;
+	EXPECT_EQ(result, expected) << (assertionFailed = true);
 
-  if (testing::Test::HasFailure()) {
-    std::string testFile = file_util::get_file_path({"test/goalc/source_generated/" + test_file});
-    // TODO - put the expected and unexpected values as comments in the file as well
-    std::string failedFile =
-        file_util::get_file_path({"test/goalc/source_generated/failed/" + test_file});
+  if (assertionFailed) {
+    std::string testFile = GoalTest::getGeneratedDir(test_category) + test_file;
+    std::string failedFile = GoalTest::getFailedDir(test_category) + test_file;
+
+		GoalTest::createDirIfAbsent(GoalTest::getFailedDir(test_category));
 
     std::ifstream src(testFile, std::ios::binary);
     std::ofstream dst(failedFile, std::ios::binary);
@@ -70,44 +82,10 @@ void CompilerTestRunner::run_test(const std::string& test_file,
   tests.push_back({expected, result, test_file, false});
 }
 
-void CompilerTestRunner::run_always_pass(const std::string& test_file) {
-  c->run_test("test/goalc/source_generated/" + test_file);
+void CompilerTestRunner::run_always_pass(const std::string& test_category,
+                                         const std::string& test_file) {
+  c->run_test("test/goalc/source_generated/" + test_category + "/" + test_file);
   tests.push_back({{}, {}, test_file, true});
-}
-
-// TODO - This might not be necessary with the switch to parameterized tests
-void CompilerTestRunner::print_summary() {
-  fmt::print("~~ Compiler Test Summary for {} tests... ~~\n", tests.size());
-  int passed = 0;
-  int passable = 0;
-  int auto_pass = 0;
-  for (auto& test : tests) {
-    if (test.auto_pass) {
-      auto_pass++;
-      fmt::print("[{:40}] AUTO-PASS!\n", test.test_name);
-    } else {
-      passable++;
-      if (test.expected == test.actual) {
-        fmt::print("[{:40}] PASS!\n", test.test_name);
-        passed++;
-      } else {
-        fmt::print("[{:40}] FAIL!\n", test.test_name);
-        fmt::print("expected:\n");
-        for (auto& x : test.expected) {
-          fmt::print(" \"{}\"\n", escaped_string(x));
-        }
-        fmt::print("result:\n");
-        for (auto& x : test.actual) {
-          fmt::print(" \"{}\"\n", escaped_string(x));
-        }
-      }
-    }
-  }
-  fmt::print("Total: passed {}/{} passable tests, {} auto-passed\n", passed, passable, auto_pass);
-}
-
-std::vector<std::string> get_test_pass_string(const std::string& name, int n_tests) {
-  return {fmt::format("Test \"{}\": {} Passes\n0\n", name, n_tests)};
 }
 
 void runtime_no_kernel() {
@@ -120,5 +98,20 @@ void runtime_with_kernel() {
   constexpr int argc = 3;
   const char* argv[argc] = {"", "-fakeiso", "-debug"};
   exec_runtime(argc, const_cast<char**>(argv));
+}
+
+void createDirIfAbsent(const std::string& path) {
+  if (!std::filesystem::is_directory(path) || !std::filesystem::exists(path)) {
+    std::filesystem::create_directory(path);
+  }
+}
+std::string getTemplateDir(const std::string& category) {
+  return file_util::get_file_path({"test/goalc/source_templates", category + "/"});
+}
+std::string getGeneratedDir(const std::string& category) {
+  return file_util::get_file_path({"test/goalc/source_generated", category + "/"});
+}
+std::string getFailedDir(const std::string& category) {
+  return file_util::get_file_path({"test/goalc/source_generated/failed", category + "/"});
 }
 }  // namespace GoalTest

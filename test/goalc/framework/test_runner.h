@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "third-party/inja.hpp"
 #include "goalc/compiler/Compiler.h"
 #include "common\util\FileUtil.h"
 
@@ -22,18 +23,28 @@ struct CompilerTestRunner {
 
   std::vector<Test> tests;
 
-  void run_test(const std::string& test_file,
+  void run_static_test(inja::Environment& env,
+                       std::string& testCategory,
+                       const std::string& test_file,
+                       const std::vector<std::string>& expected,
+											 MatchParam<int> truncate = {});
+
+  void run_test(const std::string& test_category,
+                const std::string& test_file,
                 const std::vector<std::string>& expected,
                 MatchParam<int> truncate = {});
 
-  void run_always_pass(const std::string& test_file);
+  void run_always_pass(const std::string& test_category, const std::string& test_file);
 
   void print_summary();
 };
 
-std::vector<std::string> get_test_pass_string(const std::string& name, int n_tests);
-
 void runtime_no_kernel();
-
 void runtime_with_kernel();
+
+void createDirIfAbsent(const std::string& path);
+std::string getTemplateDir(const std::string& category);
+std::string getGeneratedDir(const std::string& category);
+std::string getFailedDir(const std::string& category);
+
 }  // namespace GoalTest

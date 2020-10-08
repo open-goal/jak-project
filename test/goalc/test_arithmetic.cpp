@@ -112,7 +112,7 @@ std::vector<IntegerParam> genIntegerTests(int numTests,
 
 // In the interest of speed, we want to share the same thread/compiler across
 // all the tests in this suite, so we have to over-ride this.
-class IntegerTests : public testing::TestWithParam<IntegerParam> {
+class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
  public:
   // Per-test-suite set-up.
   // Called before the first test in this test suite.
@@ -129,49 +129,104 @@ class IntegerTests : public testing::TestWithParam<IntegerParam> {
   }
 
   // You can define per-test set-up logic as usual.
-  virtual void SetUp() {}
+  void SetUp() {
+    GoalTest::createDirIfAbsent(GoalTest::getTemplateDir(testCategory));
+    GoalTest::createDirIfAbsent(GoalTest::getGeneratedDir(testCategory));
+  }
 
   // You can define per-test tear-down logic as usual.
-  virtual void TearDown() {}
+  void TearDown() {}
 
   // Common Resources Across all Tests in the Suite
   static std::thread runtime_thread;
   static Compiler compiler;
   static GoalTest::CompilerTestRunner runner;
+
+	// Just to promote better test organization, supports nesting the test files 1 directory deep
+	std::string testCategory = "arithmetic";
+  inja::Environment env{GoalTest::getTemplateDir(testCategory), GoalTest::getGeneratedDir(testCategory)};
 };
 
 // You must initialize the static variables outside of the declaration, or you'll run into unresolved external errors
-std::thread IntegerTests::runtime_thread;
-Compiler IntegerTests::compiler;
-GoalTest::CompilerTestRunner IntegerTests::runner;
+std::thread ArithmeticTests::runtime_thread;
+Compiler ArithmeticTests::compiler;
+GoalTest::CompilerTestRunner ArithmeticTests::runner;
 
 
 // Finally, we define our generic test, given our custom class that represents our test inputs
 // we can generate the lisp file, and pass along the path to the test runner
 // If the test fails, the test runner will save the template file, with the expected/actual results into the `failed/` directory
-TEST_P(IntegerTests, IntegerTests) {
-  // With separate input and output path
-  std::string templateDir = file_util::get_file_path({"test/goalc/source_templates/"});
-  std::string generatedDir = file_util::get_file_path({"test/goalc/source_generated/"});
-  inja::Environment env{templateDir, generatedDir};
-
+TEST_P(ArithmeticTests, EvalIntegers) {
   IntegerParam param = GetParam();
-
   nlohmann::json data;
   data["integer"] = param.toLisp();
 
-  std::string testFile = "integer-test-" + std::to_string(param.index) + ".generated.gc";
-  env.write("integer-test.template.gc", data, testFile);
-
-  runner.run_test(testFile, {param.eval()});
+  std::string testFile = "eval-integer-" + std::to_string(param.index) + ".generated.gc";
+  env.write("eval-integer.template.gc", data, testFile);
+  runner.run_test(testCategory, testFile, {param.eval()});
 }
 
 // ValuesIn, is not the only way to use a parameterized test, but the most applicable for this example
 // You can actually get googletest to compute the permutations for you, which may be useful.  Consult their docs.
-INSTANTIATE_TEST_SUITE_P(InstantiationName,
-                         IntegerTests,
+// - https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
+INSTANTIATE_TEST_SUITE_P(EvalIntegers,
+                         ArithmeticTests,
                          testing::ValuesIn(genIntegerTests(4,
                                                            true,
                                                            true,
                                                            {IntegerParam(-2147483648),
                                                             IntegerParam(0), IntegerParam(-0)})));
+
+TEST_F(ArithmeticTests, Addition) {
+  runner.run_static_test(env, testCategory, "add-int-literals.static.gc", {"13\n"});
+	runner.run_static_test(env, testCategory, "add-let.static.gc", {"7\n"});
+}
+
+TEST_F(ArithmeticTests, AddIntegerFunction) {
+  runner.run_static_test(env, testCategory, "add-function.static.gc", {"21\n"});
+}
+
+TEST_F(ArithmeticTests, AddIntegerMultiple) {
+  runner.run_static_test(env, testCategory, "add-int-multiple.static.gc", {"15\n"});
+	runner.run_static_test(env, testCategory, "add-int-multiple-2.static.gc", {"15\n"});
+}
+
+TEST_F(ArithmeticTests, AddIntegerVariables) {
+  runner.run_static_test(env, testCategory, "add-int-vars.static.gc", {"7\n"});
+}
+
+TEST_F(ArithmeticTests, AshFunction) {
+  runner.run_static_test(env, testCategory, "ash.static.gc", {"18\n"});
+}
+
+TEST_F(ArithmeticTests, Division) {
+  runner.run_static_test(env, testCategory, "divide-1.static.gc", {"6\n"});
+	runner.run_static_test(env, testCategory, "divide-2.static.gc", {"7\n"});
+}
+
+TEST_F(ArithmeticTests, IntegerSymbol) {
+  runner.run_static_test(env, testCategory, "negative-int-symbol.static.gc", {"-123\n"});
+}
+
+TEST_F(ArithmeticTests, Modulus) {
+  runner.run_static_test(env, testCategory, "mod.static.gc", {"7\n"});
+}
+
+TEST_F(ArithmeticTests, Multiplication) {
+  runner.run_static_test(env, testCategory, "multiply.static.gc", {"-12\n"});
+	runner.run_static_test(env, testCategory, "multiply-let.static.gc", {"3\n"});
+}
+
+TEST_F(ArithmeticTests, NestedFunctionCall) {
+  runner.run_static_test(env, testCategory, "nested-function.static.gc", {"10\n"});
+}
+
+TEST_F(ArithmeticTests, ShiftOperations) {
+  runner.run_static_test(env, testCategory, "shiftvs.static.gc", {"11\n"});
+}
+
+TEST_F(ArithmeticTests, Subtraction) {
+  runner.run_static_test(env, testCategory, "subtract-1.static.gc", {"4\n"});
+	runner.run_static_test(env, testCategory, "subtract-2.static.gc", {"4\n"});
+	runner.run_static_test(env, testCategory, "subtract-let.static.gc", {"3\n"});
+}
