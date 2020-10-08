@@ -94,6 +94,7 @@ class Function {
   int epilogue_end = -1;
 
   std::string warnings;
+  bool contains_asm_ops = false;
 
   struct Prologue {
     bool decoded = false;  // have we removed the prologue from basic blocks?

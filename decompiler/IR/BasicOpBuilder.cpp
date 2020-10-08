@@ -27,6 +27,34 @@ std::shared_ptr<IR_IntegerConstant> make_int(int64_t x) {
   return std::make_shared<IR_IntegerConstant>(x);
 }
 
+std::shared_ptr<IR> to_asm_reg_reg_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp>(str);
+  result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
+  result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
+  result->src1 = make_reg(instr.get_src(1).get_reg(), idx);
+  return result;
+}
+
+std::shared_ptr<IR> to_asm_src_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp>(str);
+  result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
+  return result;
+}
+
+std::shared_ptr<IR> try_subu(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::SUBU, {}, {}, make_gpr(Reg::S7))) {
+    return to_asm_reg_reg_reg("subu", instr, idx);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_sllv(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::SLLV, {}, {}, make_gpr(Reg::R0))) {
+    return to_asm_reg_reg_reg("sllv", instr, idx);
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_or(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::OR, {}, make_gpr(Reg::S7), make_gpr(Reg::R0))) {
     return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx), make_sym("#f"));
@@ -402,7 +430,7 @@ std::shared_ptr<IR> try_daddu(Instruction& instr, int idx) {
         std::make_shared<IR_IntMath2>(IR_IntMath2::ADD, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
-  return nullptr;
+  return to_asm_reg_reg_reg("daddu", instr, idx);
 }
 
 std::shared_ptr<IR> try_dsubu(Instruction& instr, int idx) {
@@ -643,6 +671,22 @@ std::shared_ptr<IR> try_movs(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::MOVS) {
     return make_set(IR_Set::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
                     make_reg(instr.get_src(0).get_reg(), idx));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_movn(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::MOVN, {}, make_gpr(Reg::S7), {})) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_CMoveF>(make_reg(instr.get_src(1).get_reg(), idx), false));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_movz(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::MOVZ, {}, make_gpr(Reg::S7), {})) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_CMoveF>(make_reg(instr.get_src(1).get_reg(), idx), true));
   }
   return nullptr;
 }
@@ -893,6 +937,34 @@ std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, int idx) {
       op->clobber = make_reg(i0.get_dst(0).get_reg(), idx);
     }
     return op;
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, int idx) {
+  if (is_gpr_3(i0, InstructionKind::SLT, {}, {}, {})) {
+    auto temp = i0.get_dst(0).get_reg();
+    auto left = i0.get_src(0).get_reg();
+    auto right = i0.get_src(1).get_reg();
+    if (is_gpr_3(i1, InstructionKind::MOVZ, left, right, temp)) {
+      // success!
+      auto result =
+          make_set(IR_Set::REG_64, make_reg(left, idx),
+                   std::make_shared<IR_IntMath2>(IR_IntMath2::MIN_SIGNED, make_reg(left, idx),
+                                                 make_reg(right, idx)));
+      result->clobber = make_reg(temp, idx);
+      return result;
+    }
+
+    if (is_gpr_3(i1, InstructionKind::MOVN, left, right, temp)) {
+      // success!
+      auto result =
+          make_set(IR_Set::REG_64, make_reg(left, idx),
+                   std::make_shared<IR_IntMath2>(IR_IntMath2::MAX_SIGNED, make_reg(left, idx),
+                                                 make_reg(right, idx)));
+      result->clobber = make_reg(temp, idx);
+      return result;
+    }
   }
   return nullptr;
 }
@@ -1335,6 +1407,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::LUI:
           result = try_lui(i, next, instr);
           break;
+        case InstructionKind::SLT:
+          result = try_slt(i, next, instr);
+          break;
         default:
           result = nullptr;
       }
@@ -1502,6 +1577,22 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::DSRLV:
           result = try_dsrlv(i, instr);
           break;
+        case InstructionKind::SUBU:
+          result = try_subu(i, instr);
+          break;
+        case InstructionKind::SLLV:
+          result = try_sllv(i, instr);
+          break;
+        case InstructionKind::MOVN:
+          result = try_movn(i, instr);
+          break;
+        case InstructionKind::MOVZ:
+          result = try_movz(i, instr);
+          break;
+
+        case InstructionKind::JR:
+          result = to_asm_src_reg("jr", i, instr);
+          break;
         default:
           result = nullptr;
       }
@@ -1514,9 +1605,13 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     // everything failed
     if (!result) {
       // temp hack for debug:
-      // printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
+      printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
       func->add_basic_op(std::make_shared<IR_Failed>(), instr, instr + 1);
     } else {
+      if (!func->contains_asm_ops && dynamic_cast<IR_AsmOp*>(result.get())) {
+        func->warnings += "Function contains asm op";
+        func->contains_asm_ops = true;
+      }
       func->add_basic_op(result, instr, instr + length);
       instr += (length - 1);
     }

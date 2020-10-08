@@ -136,7 +136,9 @@ class IR_IntMath2 : public IR {
     LEFT_SHIFT,
     RIGHT_SHIFT_ARITH,
     RIGHT_SHIFT_LOGIC,
-    MUL_UNSIGNED
+    MUL_UNSIGNED,
+    MIN_SIGNED,
+    MAX_SIGNED
   } kind;
   IR_IntMath2(Kind _kind, std::shared_ptr<IR> _arg0, std::shared_ptr<IR> _arg1)
       : kind(_kind), arg0(std::move(_arg0)), arg1(std::move(_arg1)) {}
@@ -368,6 +370,27 @@ class IR_Ash : public IR {
         value(std::move(_value)),
         clobber(std::move(_clobber)),
         is_signed(_is_signed) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_AsmOp : public IR {
+ public:
+  std::shared_ptr<IR> dst = nullptr;
+  std::shared_ptr<IR> src0 = nullptr;
+  std::shared_ptr<IR> src1 = nullptr;
+  std::string name;
+  IR_AsmOp(std::string _name) : name(std::move(_name)) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_CMoveF : public IR {
+ public:
+  std::shared_ptr<IR> src = nullptr;
+  bool on_zero = false;
+  explicit IR_CMoveF(std::shared_ptr<IR> _src, bool _on_zero)
+      : src(std::move(_src)), on_zero(_on_zero) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

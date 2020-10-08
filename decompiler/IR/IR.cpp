@@ -256,6 +256,12 @@ goos::Object IR_IntMath2::to_form(const LinkedObjectFile& file) const {
     case RIGHT_SHIFT_LOGIC:
       math_operator = "shr";
       break;
+    case MIN_SIGNED:
+      math_operator = "min.si";
+      break;
+    case MAX_SIGNED:
+      math_operator = "max.si";
+      break;
     default:
       assert(false);
   }
@@ -814,4 +820,33 @@ goos::Object IR_Ash::to_form(const LinkedObjectFile& file) const {
 void IR_Ash::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(value);
   output->push_back(shift_amount);
+}
+
+goos::Object IR_AsmOp::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol(name));
+  for (auto& x : {dst, src0, src1}) {
+    if (x) {
+      forms.push_back(x->to_form(file));
+    }
+  }
+  return pretty_print::build_list(forms);
+}
+
+void IR_AsmOp::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& x : {dst, src0, src1}) {
+    if (x) {
+      output->push_back(x);
+    }
+  }
+}
+
+goos::Object IR_CMoveF::to_form(const LinkedObjectFile& file) const {
+  return pretty_print::build_list(
+      pretty_print::to_symbol(on_zero ? "cmove-false-on-zero" : "cmove-false-on-nonzero"),
+      src->to_form(file));
+}
+
+void IR_CMoveF::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(src);
 }
