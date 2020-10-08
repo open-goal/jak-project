@@ -107,6 +107,7 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
     assert(jump_to_next.first->branch_delay.kind == BranchDelay::NOP);
     // patch the jump to next with a condition.
     auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
+    replacement->condition.invert();
     *(jump_to_next.second) = replacement;
 
     // patch the jump at the end of a block.
@@ -134,6 +135,208 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
 }
 
 /*!
+ * Does the instruction in the delay slot set a register to false?
+ * Note. a beql s7, x followed by a or y, x, r0 will count as this. I don't know why but
+ * GOAL does this on comparisons to false.
+ */
+bool delay_slot_sets_false(IR_Branch* branch) {
+  if (branch->branch_delay.kind == BranchDelay::SET_REG_FALSE) {
+    return true;
+  }
+
+  if (branch->condition.kind == Condition::FALSE &&
+      branch->branch_delay.kind == BranchDelay::SET_REG_REG) {
+    auto reg_check = dynamic_cast<IR_Register*>(branch->condition.src0.get());
+    assert(reg_check);
+    auto reg_read = dynamic_cast<IR_Register*>(branch->branch_delay.source.get());
+    assert(reg_read);
+    return reg_check->reg == reg_read->reg;
+  }
+
+  return false;
+}
+
+/*!
+ * Does the instruction in the delay slot set a register to a truthy value, like in a GOAL
+ * or form branch?  Either it explicitly sets #t, or it tests the value for being not false,
+ * then uses that
+ */
+bool delay_slot_sets_truthy(IR_Branch* branch) {
+  if (branch->branch_delay.kind == BranchDelay::SET_REG_TRUE) {
+    return true;
+  }
+
+  if (branch->condition.kind == Condition::TRUTHY &&
+      branch->branch_delay.kind == BranchDelay::SET_REG_REG) {
+    auto reg_check = dynamic_cast<IR_Register*>(branch->condition.src0.get());
+    assert(reg_check);
+    auto reg_read = dynamic_cast<IR_Register*>(branch->branch_delay.source.get());
+    assert(reg_read);
+    return reg_check->reg == reg_read->reg;
+  }
+
+  return false;
+}
+
+/*!
+ * Try to convert a short circuit to an and.
+ */
+bool try_clean_up_sc_as_and(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  (void)file;
+  Register destination;
+  std::shared_ptr<IR> ir_dest = nullptr;
+  for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    if (!delay_slot_sets_false(branch.first)) {
+      return false;
+    }
+
+    if (i == 0) {
+      ir_dest = branch.first->branch_delay.destination;
+      destination = dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get())->reg;
+    } else {
+      if (destination !=
+          dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get())->reg) {
+        return false;
+      }
+    }
+  }
+
+  ir->kind = IR_ShortCircuit::AND;
+  ir->final_result = ir_dest;
+
+  // now get rid of the branches
+  for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    auto replacement = std::make_shared<IR_Compare>(branch.first->condition);
+    replacement->condition.invert();
+    *(branch.second) = replacement;
+  }
+
+  return true;
+}
+
+/*!
+ * Try to convert a short circuit to an or.
+ * Note - this will convert an and to a very strange or, so always use the try as and first.
+ */
+bool try_clean_up_sc_as_or(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  (void)file;
+  Register destination;
+  std::shared_ptr<IR> ir_dest = nullptr;
+  for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    if (!delay_slot_sets_truthy(branch.first)) {
+      return false;
+    }
+    assert(dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get()));
+
+    if (i == 0) {
+      ir_dest = branch.first->branch_delay.destination;
+      destination = dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get())->reg;
+    } else {
+      if (destination !=
+          dynamic_cast<IR_Register*>(branch.first->branch_delay.destination.get())->reg) {
+        return false;
+      }
+    }
+  }
+
+  ir->kind = IR_ShortCircuit::OR;
+  ir->final_result = ir_dest;
+
+  for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    auto replacement = std::make_shared<IR_Compare>(branch.first->condition);
+    *(branch.second) = replacement;
+  }
+
+  return true;
+}
+
+void clean_up_sc(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file);
+
+/*!
+ * A form like (and x (or y z)) will be recognized as a single SC Vertex by the CFG pass.
+ * In the case where we fail to clean it up as an AND or an OR, we should attempt splitting.
+ * Part of the complexity here is that we want to clean up the split recursively so things like
+ * (and x (or y (and a b)))
+ * or
+ * (and x (or y (and a b)) c d (or z))
+ * will work correctly.  This may require doing more splitting on both sections!
+ */
+bool try_splitting_nested_sc(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  auto first_branch = get_condition_branch(&ir->entries.front().condition);
+  assert(first_branch.first);
+  bool first_is_and = delay_slot_sets_false(first_branch.first);
+  bool first_is_or = delay_slot_sets_truthy(first_branch.first);
+  assert(first_is_and != first_is_or);  // one or the other but not both!
+
+  int first_different = -1;  // the index of the first one that's different.
+
+  for (int i = 1; i < int(ir->entries.size()) - 1; i++) {
+    auto branch = get_condition_branch(&ir->entries.at(i).condition);
+    assert(branch.first);
+    bool is_and = delay_slot_sets_false(branch.first);
+    bool is_or = delay_slot_sets_truthy(branch.first);
+    assert(is_and != is_or);
+
+    if (first_different == -1) {
+      // haven't seen a change yet.
+      if (first_is_and != is_and) {
+        // change!
+        first_different = i;
+        break;
+      }
+    }
+  }
+
+  assert(first_different != -1);
+
+  std::vector<IR_ShortCircuit::Entry> nested_ir;
+  for (int i = first_different; i < int(ir->entries.size()); i++) {
+    nested_ir.push_back(ir->entries.at(i));
+  }
+
+  auto s = int(ir->entries.size());
+  for (int i = first_different; i < s; i++) {
+    ir->entries.pop_back();
+  }
+
+  auto nested_sc = std::make_shared<IR_ShortCircuit>(nested_ir);
+  clean_up_sc(nested_sc, file);
+
+  // the real trick
+  IR_ShortCircuit::Entry nested_entry;
+  nested_entry.condition = nested_sc;
+  ir->entries.push_back(nested_entry);
+
+  clean_up_sc(ir, file);
+
+  return true;
+}
+
+/*!
+ * Try to clean up a single short circuit IR. It may get split up into nested IR_ShortCircuits
+ * if there is a case like (and a (or b c))
+ */
+void clean_up_sc(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFile& file) {
+  (void)file;
+  assert(ir->entries.size() > 1);
+  if (!try_clean_up_sc_as_and(ir, file)) {
+    if (!try_clean_up_sc_as_or(ir, file)) {
+      if (!try_splitting_nested_sc(ir, file)) {
+        assert(false);
+      }
+    }
+  }
+}
+
+/*!
  * A GOAL comparison which produces a boolean is recognized as a cond-no-else by the CFG analysis.
  * But it should not be decompiled as a branching statement.
  * This either succeeds or asserts and must be called with with something that can be converted
@@ -153,11 +356,6 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
 
   auto condition_as_single = dynamic_cast<IR_Branch*>(cne->entries.front().condition.get());
   if (condition_as_single) {
-    // as far as I can tell this is totally valid but just happens to not appear?
-    // if this case is ever hit in the future it's fine and we just need to implement this.
-    // but leaving empty for now so there's fewer things to test.
-    //    assert(false);
-
     auto replacement = std::make_shared<IR_Set>(
         IR_Set::REG_64, dst, std::make_shared<IR_Compare>(condition.first->condition));
     *ir = replacement;
@@ -186,6 +384,7 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
  * this.
  */
 void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
+  (void)file;
   auto cne = dynamic_cast<IR_Cond*>(ir->get());
   assert(cne);
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
@@ -212,6 +411,7 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
       }
 
       auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
+      replacement->condition.invert();
       *(jump_to_next.second) = replacement;
       e.cleaned = true;
 
@@ -282,12 +482,19 @@ bool is_int_math_3(IR* ir,
   return true;
 }
 
+/*!
+ * Are these IR's both the same register? False if either is not a register.
+ */
 bool is_same_reg(IR* a, IR* b) {
   auto ar = dynamic_cast<IR_Register*>(a);
   auto br = dynamic_cast<IR_Register*>(b);
   return ar && br && ar->reg == br->reg;
 }
 
+/*!
+ * Try to convert this SC Vertex into an abs (integer).
+ * Will return a converted abs IR if successful, or nullptr if its not possible
+ */
 std::shared_ptr<IR> try_sc_as_abs(Function& f, LinkedObjectFile& file, ShortCircuit* vtx) {
   if (vtx->entries.size() != 1) {
     return nullptr;
@@ -344,7 +551,7 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
   }
 
   // todo, I think b0 could possibly be something more complicated, depending on how we order.
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
+  auto b0 = dynamic_cast<CfgVtx*>(vtx->entries.at(0));
   auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
   if (!b0 || !b1) {
     return nullptr;
@@ -399,8 +606,13 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
 
   assert(result);
   assert(value_in);
-  if (!is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_ARITH, result->reg,
-                     value_in->reg, clobber)) {
+
+  bool is_arith = is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_ARITH, result->reg,
+                                value_in->reg, clobber);
+  bool is_logical = is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                  result->reg, value_in->reg, clobber);
+
+  if (!is_arith && !is_logical) {
     return nullptr;
   }
 
@@ -422,7 +634,8 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
     b0_ir->forms.pop_back();
     // add the ash
     b0_ir->forms.push_back(std::make_shared<IR_Set>(
-        IR_Set::REG_64, dest_ir, std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir)));
+        IR_Set::REG_64, dest_ir,
+        std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir, is_arith)));
     return b0_ptr;
   }
 
@@ -453,7 +666,7 @@ std::shared_ptr<IR> try_sc_as_type_of(Function& f, LinkedObjectFile& file, Short
     return nullptr;
   }
 
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
+  auto b0 = dynamic_cast<CfgVtx*>(vtx->entries.at(0));
   auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
   auto b2 = dynamic_cast<BlockVtx*>(vtx->entries.at(2));
 
@@ -698,6 +911,7 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
       entries.push_back(e);
     }
     auto result = std::make_shared<IR_ShortCircuit>(entries);
+    clean_up_sc(result, file);
     // todo clean these into real and/or.
     return result;
   } else if (dynamic_cast<CondNoElse*>(vtx)) {
