@@ -1208,6 +1208,7 @@ std::shared_ptr<IR> try_lwu(Instruction& i0,
 }  // namespace
 
 void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjectFile* file) {
+  (void)file;
   for (int instr = block.start_word; instr < block.end_word; instr++) {
     auto& i = func->instructions.at(instr);
 

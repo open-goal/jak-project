@@ -357,12 +357,6 @@ class IR_ShortCircuit : public IR {
 class IR_Ash : public IR {
  public:
   std::shared_ptr<IR> shift_amount, value, clobber;
-  IR_Ash(std::shared_ptr<IR> _shift_amount,
-         std::shared_ptr<IR> _value,
-         std::shared_ptr<IR> _clobber)
-      : shift_amount(std::move(_shift_amount)),
-        value(std::move(_value)),
-        clobber(std::move(_clobber)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

@@ -106,7 +106,7 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
     assert(jump_to_next.first);
     assert(jump_to_next.first->branch_delay.kind == BranchDelay::NOP);
     // patch the jump to next with a condition.
-    auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
+    auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition)
     *(jump_to_next.second) = replacement;
 
     // patch the jump at the end of a block.
@@ -153,10 +153,6 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
 
   auto condition_as_single = dynamic_cast<IR_Branch*>(cne->entries.front().condition.get());
   if (condition_as_single) {
-    // as far as I can tell this is totally valid but just happens to not appear?
-    // if this case is ever hit in the future it's fine and we just need to implement this.
-    // but leaving empty for now so there's fewer things to test.
-    //    assert(false);
 
     auto replacement = std::make_shared<IR_Set>(
         IR_Set::REG_64, dst, std::make_shared<IR_Compare>(condition.first->condition));
@@ -186,6 +182,7 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
  * this.
  */
 void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
+
   auto cne = dynamic_cast<IR_Cond*>(ir->get());
   assert(cne);
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
@@ -212,6 +209,7 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
       }
 
       auto replacement = std::make_shared<IR_Compare>(jump_to_next.first->condition);
+
       *(jump_to_next.second) = replacement;
       e.cleaned = true;
 
@@ -344,7 +342,6 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
   }
 
   // todo, I think b0 could possibly be something more complicated, depending on how we order.
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
   auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
   if (!b0 || !b1) {
     return nullptr;
@@ -399,8 +396,7 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
 
   assert(result);
   assert(value_in);
-  if (!is_int_math_3(dsrav_candidate.get(), IR_IntMath2::RIGHT_SHIFT_ARITH, result->reg,
-                     value_in->reg, clobber)) {
+
     return nullptr;
   }
 
@@ -422,7 +418,6 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
     b0_ir->forms.pop_back();
     // add the ash
     b0_ir->forms.push_back(std::make_shared<IR_Set>(
-        IR_Set::REG_64, dest_ir, std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir)));
     return b0_ptr;
   }
 
@@ -453,7 +448,6 @@ std::shared_ptr<IR> try_sc_as_type_of(Function& f, LinkedObjectFile& file, Short
     return nullptr;
   }
 
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
   auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
   auto b2 = dynamic_cast<BlockVtx*>(vtx->entries.at(2));
 
@@ -698,6 +692,7 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
       entries.push_back(e);
     }
     auto result = std::make_shared<IR_ShortCircuit>(entries);
+
     // todo clean these into real and/or.
     return result;
   } else if (dynamic_cast<CondNoElse*>(vtx)) {
