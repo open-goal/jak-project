@@ -57,9 +57,9 @@ Compiler StringTests::compiler;
 GoalTest::CompilerTestRunner StringTests::runner;
 
 TEST_F(StringTests, Constants) {
-  std::string expected = "\"test string!\"";
-  runner.run_static_test(env, testCategory, "string-constant-1.static.gc", {expected}, expected.size());
-  // TODO - runner.run_static_test(env, testCategory, "string-constant-2.static.gc", {});
+  // TODO - runner.run_static_test(env, testCategory, "string-constant-1.static.gc");
+	std::string expected = "\"test string!\"";
+  runner.run_static_test(env, testCategory, "string-constant-2.static.gc", {expected}, expected.size());
 }
 
 TEST_F(StringTests, Symbols) {

@@ -27,7 +27,7 @@ struct WithGameParam {
 class WithGameTests : public testing::TestWithParam<WithGameParam> {
  public:
   static void SetUpTestSuite() {
-    runtime_thread = std::thread((GoalTest::runtime_no_kernel));
+    runtime_thread = std::thread((GoalTest::runtime_with_kernel));
     runner.c = &compiler;
   }
 
