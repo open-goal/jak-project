@@ -66,5 +66,5 @@ TEST_F(LibraryTests, Protect) {
 
 TEST_F(LibraryTests, Align) {
   runner.run_static_test(env, testCategory, "align16-1.static.gc", {"80\n"});
-	runner.run_static_test(env, testCategory, "align16-2.static.gc", {"64\n"});
+  runner.run_static_test(env, testCategory, "align16-2.static.gc", {"64\n"});
 }

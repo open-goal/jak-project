@@ -51,4 +51,3 @@ TEST(CompilerAndRuntime, AllowInline) {
   EXPECT_EQ(got_mult, 1);
   EXPECT_EQ(got_call, 1);
 }
-

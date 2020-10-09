@@ -58,11 +58,10 @@ GoalTest::CompilerTestRunner LogicTests::runner;
 
 TEST_F(LogicTests, LogicalOperators) {
   runner.run_static_test(env, testCategory, "logand.static.gc", {"4\n"});
-	runner.run_static_test(env, testCategory, "logior.static.gc", {"60\n"});
-	runner.run_static_test(env, testCategory, "logxor.static.gc", {"56\n"});
+  runner.run_static_test(env, testCategory, "logior.static.gc", {"60\n"});
+  runner.run_static_test(env, testCategory, "logxor.static.gc", {"56\n"});
 }
 
 TEST_F(LogicTests, Comparison) {
   runner.run_static_test(env, testCategory, "signed-int-compare.static.gc", {"12\n"});
 }
-	

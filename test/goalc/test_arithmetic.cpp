@@ -29,23 +29,26 @@
 
 // We are using Google Test's paramaterized test feature
 // This allows us to define a single generic test, and pass in a whole bunch of values
-// See - https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
+// See -
+// https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
 struct IntegerParam {
-	// An index is needed to be explicitly set because I couldn't find a way to pull the test-index number from google's API
-	// TODO - if you can find a way, please improve!
-	// But this is needed so we can uniquely save the template files, especially if they error out
-	// Why? - since you may choose to generate random values, it's nice for them to be stored after the tests complete.  Some tests may be complex as well
+  // An index is needed to be explicitly set because I couldn't find a way to pull the test-index
+  // number from google's API
+  // TODO - if you can find a way, please improve!
+  // But this is needed so we can uniquely save the template files, especially if they error out
+  // Why? - since you may choose to generate random values, it's nice for them to be stored after
+  // the tests complete.  Some tests may be complex as well
   int index;
-	// Each integer test has a signed value, and can be represented as hex or an integral
+  // Each integer test has a signed value, and can be represented as hex or an integral
   s64 val;
   bool hex;
 
   IntegerParam(s64 val, bool hex = false, int index = 0) : val(val), hex(hex), index(index) {}
 
-	// This is used to generate the value that is passed into the template engine
-	// and injected into the file of lisp code.
-	// In most cases this will probably be a string but look into inja's capabilities
-	// - https://github.com/pantor/inja
+  // This is used to generate the value that is passed into the template engine
+  // and injected into the file of lisp code.
+  // In most cases this will probably be a string but look into inja's capabilities
+  // - https://github.com/pantor/inja
   std::string toLisp() {
     // Append hex reader macro '#x'
     if (hex) {
@@ -54,9 +57,9 @@ struct IntegerParam {
     return std::to_string(val);
   }
 
-	// This is used by the test runner code to know what the expected value is
-	// For a simple example like this, a single eval is all that's required, but for
-	// more complex tests, this may not be the case.
+  // This is used by the test runner code to know what the expected value is
+  // For a simple example like this, a single eval is all that's required, but for
+  // more complex tests, this may not be the case.
   std::string eval() {
     if (hex) {
       int64_t hexVal;
@@ -142,20 +145,22 @@ class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
   static Compiler compiler;
   static GoalTest::CompilerTestRunner runner;
 
-	// Just to promote better test organization, supports nesting the test files 1 directory deep
-	std::string testCategory = "arithmetic";
-  inja::Environment env{GoalTest::getTemplateDir(testCategory), GoalTest::getGeneratedDir(testCategory)};
+  // Just to promote better test organization, supports nesting the test files 1 directory deep
+  std::string testCategory = "arithmetic";
+  inja::Environment env{GoalTest::getTemplateDir(testCategory),
+                        GoalTest::getGeneratedDir(testCategory)};
 };
 
-// You must initialize the static variables outside of the declaration, or you'll run into unresolved external errors
+// You must initialize the static variables outside of the declaration, or you'll run into
+// unresolved external errors
 std::thread ArithmeticTests::runtime_thread;
 Compiler ArithmeticTests::compiler;
 GoalTest::CompilerTestRunner ArithmeticTests::runner;
 
-
 // Finally, we define our generic test, given our custom class that represents our test inputs
 // we can generate the lisp file, and pass along the path to the test runner
-// If the test fails, the test runner will save the template file, with the expected/actual results into the `failed/` directory
+// If the test fails, the test runner will save the template file, with the expected/actual results
+// into the `failed/` directory
 TEST_P(ArithmeticTests, EvalIntegers) {
   IntegerParam param = GetParam();
   nlohmann::json data;
@@ -166,9 +171,11 @@ TEST_P(ArithmeticTests, EvalIntegers) {
   runner.run_test(testCategory, testFile, {param.eval()});
 }
 
-// ValuesIn, is not the only way to use a parameterized test, but the most applicable for this example
-// You can actually get googletest to compute the permutations for you, which may be useful.  Consult their docs.
-// - https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
+// ValuesIn, is not the only way to use a parameterized test, but the most applicable for this
+// example You can actually get googletest to compute the permutations for you, which may be useful.
+// Consult their docs.
+// -
+// https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
 INSTANTIATE_TEST_SUITE_P(EvalIntegers,
                          ArithmeticTests,
                          testing::ValuesIn(genIntegerTests(4,
@@ -179,7 +186,7 @@ INSTANTIATE_TEST_SUITE_P(EvalIntegers,
 
 TEST_F(ArithmeticTests, Addition) {
   runner.run_static_test(env, testCategory, "add-int-literals.static.gc", {"13\n"});
-	runner.run_static_test(env, testCategory, "add-let.static.gc", {"7\n"});
+  runner.run_static_test(env, testCategory, "add-let.static.gc", {"7\n"});
 }
 
 TEST_F(ArithmeticTests, AddIntegerFunction) {
@@ -188,7 +195,7 @@ TEST_F(ArithmeticTests, AddIntegerFunction) {
 
 TEST_F(ArithmeticTests, AddIntegerMultiple) {
   runner.run_static_test(env, testCategory, "add-int-multiple.static.gc", {"15\n"});
-	runner.run_static_test(env, testCategory, "add-int-multiple-2.static.gc", {"15\n"});
+  runner.run_static_test(env, testCategory, "add-int-multiple-2.static.gc", {"15\n"});
 }
 
 TEST_F(ArithmeticTests, AddIntegerVariables) {
@@ -201,7 +208,7 @@ TEST_F(ArithmeticTests, AshFunction) {
 
 TEST_F(ArithmeticTests, Division) {
   runner.run_static_test(env, testCategory, "divide-1.static.gc", {"6\n"});
-	runner.run_static_test(env, testCategory, "divide-2.static.gc", {"7\n"});
+  runner.run_static_test(env, testCategory, "divide-2.static.gc", {"7\n"});
 }
 
 TEST_F(ArithmeticTests, IntegerSymbol) {
@@ -214,7 +221,7 @@ TEST_F(ArithmeticTests, Modulus) {
 
 TEST_F(ArithmeticTests, Multiplication) {
   runner.run_static_test(env, testCategory, "multiply.static.gc", {"-12\n"});
-	runner.run_static_test(env, testCategory, "multiply-let.static.gc", {"3\n"});
+  runner.run_static_test(env, testCategory, "multiply-let.static.gc", {"3\n"});
 }
 
 TEST_F(ArithmeticTests, NestedFunctionCall) {
@@ -227,6 +234,6 @@ TEST_F(ArithmeticTests, ShiftOperations) {
 
 TEST_F(ArithmeticTests, Subtraction) {
   runner.run_static_test(env, testCategory, "subtract-1.static.gc", {"4\n"});
-	runner.run_static_test(env, testCategory, "subtract-2.static.gc", {"4\n"});
-	runner.run_static_test(env, testCategory, "subtract-let.static.gc", {"3\n"});
+  runner.run_static_test(env, testCategory, "subtract-2.static.gc", {"4\n"});
+  runner.run_static_test(env, testCategory, "subtract-let.static.gc", {"3\n"});
 }

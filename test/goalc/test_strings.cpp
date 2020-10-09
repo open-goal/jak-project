@@ -58,18 +58,20 @@ GoalTest::CompilerTestRunner StringTests::runner;
 
 TEST_F(StringTests, Constants) {
   // TODO - runner.run_static_test(env, testCategory, "string-constant-1.static.gc");
-	std::string expected = "\"test string!\"";
-  runner.run_static_test(env, testCategory, "string-constant-2.static.gc", {expected}, expected.size());
+  std::string expected = "\"test string!\"";
+  runner.run_static_test(env, testCategory, "string-constant-2.static.gc", {expected},
+                         expected.size());
 }
 
 TEST_F(StringTests, Symbols) {
   runner.run_static_test(env, testCategory, "quote-symbol.static.gc", {"banana\n0\n"});
-	std::string expected = "test-string";
-	runner.run_static_test(env, testCategory, "string-symbol.static.gc", {expected}, expected.size());
+  std::string expected = "test-string";
+  runner.run_static_test(env, testCategory, "string-symbol.static.gc", {expected}, expected.size());
 }
 
 TEST_F(StringTests, Formatting) {
-  runner.run_static_test(env, testCategory, "format-reg-order.static.gc", {"test 1 2 3 4 5 6\n0\n"});
+  runner.run_static_test(env, testCategory, "format-reg-order.static.gc",
+                         {"test 1 2 3 4 5 6\n0\n"});
 }
 
 //  expected =

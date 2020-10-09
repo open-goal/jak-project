@@ -58,7 +58,7 @@ GoalTest::CompilerTestRunner VariableTests::runner;
 
 TEST_F(VariableTests, Globals) {
   runner.run_static_test(env, testCategory, "defglobalconstant-1.static.gc", {"17\n"});
-	runner.run_static_test(env, testCategory, "defglobalconstant-2.static.gc", {"18\n"});
+  runner.run_static_test(env, testCategory, "defglobalconstant-2.static.gc", {"18\n"});
 }
 
 TEST_F(VariableTests, Definitions) {
@@ -67,6 +67,6 @@ TEST_F(VariableTests, Definitions) {
 
 TEST_F(VariableTests, Let) {
   runner.run_static_test(env, testCategory, "let.static.gc", {"30\n"});
-	runner.run_static_test(env, testCategory, "let-star.static.gc", {"30\n"});
-	runner.run_static_test(env, testCategory, "mlet.static.gc", {"10\n"});
+  runner.run_static_test(env, testCategory, "let-star.static.gc", {"30\n"});
+  runner.run_static_test(env, testCategory, "mlet.static.gc", {"10\n"});
 }

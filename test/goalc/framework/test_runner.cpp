@@ -37,7 +37,7 @@ void CompilerTestRunner::run_static_test(inja::Environment& env,
                                          std::string& testCategory,
                                          const std::string& test_file,
                                          const std::vector<std::string>& expected,
-																				 MatchParam<int> truncate) {
+                                         MatchParam<int> truncate) {
   env.write(test_file, {}, test_file);
   run_test(testCategory, test_file, expected, truncate);
 }
@@ -54,14 +54,14 @@ void CompilerTestRunner::run_test(const std::string& test_category,
     }
   }
 
-	bool assertionFailed = false;
-	EXPECT_EQ(result, expected) << (assertionFailed = true);
+  bool assertionFailed = false;
+  EXPECT_EQ(result, expected) << (assertionFailed = true);
 
   if (assertionFailed) {
     std::string testFile = GoalTest::getGeneratedDir(test_category) + test_file;
     std::string failedFile = GoalTest::getFailedDir(test_category) + test_file;
 
-		GoalTest::createDirIfAbsent(GoalTest::getFailedDir(test_category));
+    GoalTest::createDirIfAbsent(GoalTest::getFailedDir(test_category));
 
     std::ifstream src(testFile, std::ios::binary);
     std::ofstream dst(failedFile, std::ios::binary);

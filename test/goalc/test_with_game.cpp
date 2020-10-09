@@ -111,6 +111,7 @@ TEST_F(WithGameTests, All) {
                          get_test_pass_string("string-type", 4));
   runner.run_static_test(env, testCategory, "test-new-string.gc",
                          get_test_pass_string("new-string", 5));*/
-  //runner.run_static_test(env, testCategory, "test-addr-of.gc", get_test_pass_string("addr-of", 2));
+  // runner.run_static_test(env, testCategory, "test-addr-of.gc", get_test_pass_string("addr-of",
+  // 2));
   runner.run_static_test(env, testCategory, "test-set-self.gc", {"#t\n0\n"});
 }

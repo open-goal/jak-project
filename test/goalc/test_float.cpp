@@ -58,12 +58,13 @@ GoalTest::CompilerTestRunner FloatTests::runner;
 
 TEST_F(FloatTests, Constants) {
   runner.run_static_test(env, testCategory, "float.static.gc", {"1067316150\n"});
-	runner.run_static_test(env, testCategory, "function-return-float-constant.static.gc", {"3.14149\n0\n"});
+  runner.run_static_test(env, testCategory, "function-return-float-constant.static.gc",
+                         {"3.14149\n0\n"});
 }
 
 TEST_F(FloatTests, Operations) {
   runner.run_static_test(env, testCategory, "float-pow.static.gc", {"256\n0\n"});
-	runner.run_static_test(env, testCategory, "float-product.static.gc", {"120.0000\n0\n"});
+  runner.run_static_test(env, testCategory, "float-product.static.gc", {"120.0000\n0\n"});
 }
 
 TEST_F(FloatTests, Symbols) {
@@ -72,5 +73,7 @@ TEST_F(FloatTests, Symbols) {
 
 TEST_F(FloatTests, Functions) {
   runner.run_static_test(env, testCategory, "float-function.static.gc", {"10.152\n0\n"});
-	runner.run_static_test(env, testCategory, "nested-float-functions.static.gc", {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
+  runner.run_static_test(
+      env, testCategory, "nested-float-functions.static.gc",
+      {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
 }

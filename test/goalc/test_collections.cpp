@@ -58,7 +58,7 @@ GoalTest::CompilerTestRunner CollectionTests::runner;
 
 TEST_F(CollectionTests, Pairs) {
   runner.run_static_test(env, testCategory, "empty-pair.static.gc", {"()\n0\n"});
-	runner.run_static_test(env, testCategory, "pair-check.static.gc", {"#t#f\n0\n"});
+  runner.run_static_test(env, testCategory, "pair-check.static.gc", {"#t#f\n0\n"});
 }
 
 TEST_F(CollectionTests, Lists) {
@@ -71,7 +71,8 @@ TEST_F(CollectionTests, InlineArray) {
 
 TEST_F(CollectionTests, Operations) {
   runner.run_static_test(env, testCategory, "cons.static.gc", {"(a . b)\n0\n"});
-	runner.run_static_test(env, testCategory, "car-cdr-get.static.gc", {"ab\n0\n"});
-	runner.run_static_test(env, testCategory, "car-cdr-set.static.gc", {"(c . d)\n0\n"});
-	runner.run_static_test(env, testCategory, "nested-car-cdr-set.static.gc", {"efgh\n((e . g) f . h)\n0\n"});
+  runner.run_static_test(env, testCategory, "car-cdr-get.static.gc", {"ab\n0\n"});
+  runner.run_static_test(env, testCategory, "car-cdr-set.static.gc", {"(c . d)\n0\n"});
+  runner.run_static_test(env, testCategory, "nested-car-cdr-set.static.gc",
+                         {"efgh\n((e . g) f . h)\n0\n"});
 }

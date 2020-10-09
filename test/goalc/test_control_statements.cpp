@@ -67,8 +67,8 @@ TEST_F(ControlStatementTests, ConditionalCompilation) {
 
 TEST_F(ControlStatementTests, Blocks) {
   runner.run_static_test(env, testCategory, "nested-blocks-1.static.gc", {"7\n"});
-	runner.run_static_test(env, testCategory, "nested-blocks-2.static.gc", {"8\n"});
-	runner.run_static_test(env, testCategory, "nested-blocks-3.static.gc", {"7\n"});
+  runner.run_static_test(env, testCategory, "nested-blocks-2.static.gc", {"8\n"});
+  runner.run_static_test(env, testCategory, "nested-blocks-3.static.gc", {"7\n"});
 }
 
 TEST_F(ControlStatementTests, GoTo) {

@@ -27,7 +27,7 @@ struct CompilerTestRunner {
                        std::string& testCategory,
                        const std::string& test_file,
                        const std::vector<std::string>& expected,
-											 MatchParam<int> truncate = {});
+                       MatchParam<int> truncate = {});
 
   void run_test(const std::string& test_category,
                 const std::string& test_file,

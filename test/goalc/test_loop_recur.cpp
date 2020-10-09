@@ -62,5 +62,5 @@ TEST_F(LoopRecurTests, DoTimes) {
 
 TEST_F(LoopRecurTests, Factorial) {
   runner.run_static_test(env, testCategory, "factorial-recursive.static.gc", {"3628800\n"});
-	runner.run_static_test(env, testCategory, "factorial-iterative.static.gc", {"3628800\n"});
+  runner.run_static_test(env, testCategory, "factorial-iterative.static.gc", {"3628800\n"});
 }

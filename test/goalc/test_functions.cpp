@@ -58,22 +58,22 @@ GoalTest::CompilerTestRunner FunctionTests::runner;
 
 TEST_F(FunctionTests, Definitions) {
   runner.run_static_test(env, testCategory, "defun-return-constant.static.gc", {"12\n"});
-	runner.run_static_test(env, testCategory, "defun-return-symbol.static.gc", {"42\n"});
+  runner.run_static_test(env, testCategory, "defun-return-symbol.static.gc", {"42\n"});
 }
 
 TEST_F(FunctionTests, ReturnValue) {
-	runner.run_static_test(env, testCategory, "return.static.gc", {"77\n"});
+  runner.run_static_test(env, testCategory, "return.static.gc", {"77\n"});
   runner.run_static_test(env, testCategory, "return-arg.static.gc", {"23\n"});
-	runner.run_static_test(env, testCategory, "return-colors.static.gc", {"77\n"});
+  runner.run_static_test(env, testCategory, "return-colors.static.gc", {"77\n"});
 }
 
 TEST_F(FunctionTests, Calling) {
-	runner.run_static_test(env, testCategory, "nested-call.static.gc", {"2\n"});
+  runner.run_static_test(env, testCategory, "nested-call.static.gc", {"2\n"});
   runner.run_static_test(env, testCategory, "inline-call.static.gc", {"44\n"});
-	runner.run_static_test(env, testCategory, "simple-call.static.gc", {"30\n"});
+  runner.run_static_test(env, testCategory, "simple-call.static.gc", {"30\n"});
 }
 
 TEST_F(FunctionTests, Anonymous) {
-	runner.run_static_test(env, testCategory, "declare-inline.static.gc", {"32\n"});
+  runner.run_static_test(env, testCategory, "declare-inline.static.gc", {"32\n"});
   runner.run_static_test(env, testCategory, "lambda-1.static.gc", {"2\n"});
 }
