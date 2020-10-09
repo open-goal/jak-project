@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 
-#include <common\util\FileUtil.h>
+#include "common/util/FileUtil.h"
+
 #include <filesystem>
 
 int main(int argc, char** argv) {

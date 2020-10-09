@@ -27,6 +27,13 @@ struct WithGameParam {
 class WithGameTests : public testing::TestWithParam<WithGameParam> {
  public:
   static void SetUpTestSuite() {
+    try {
+      compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
+    } catch (std::exception& e) {
+      fprintf(stderr, "caught exception %s\n", e.what());
+      EXPECT_TRUE(false);
+    }
+
     runtime_thread = std::thread((GoalTest::runtime_with_kernel));
     runner.c = &compiler;
   }

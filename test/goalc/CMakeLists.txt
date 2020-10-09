@@ -2,6 +2,7 @@
 
 set(GOALC_TEST_CASES
 		"goalc/test_arithmetic.cpp"
+		"goalc/test_compiler.cpp"
     "goalc/test_control_statements.cpp"
 		"goalc/test_collections.cpp"
 		"goalc/test_float.cpp"
@@ -15,7 +16,7 @@ set(GOALC_TEST_CASES
 		"goalc/test_strings.cpp"
 		"goalc/test_symbols.cpp"
 		"goalc/test_variables.cpp"
-		# TODO - Failing! "goalc/test_with_game.cpp"
+		"goalc/test_with_game.cpp"
 )
 
 set(GOALC_TEST_FRAMEWORK_SOURCES
