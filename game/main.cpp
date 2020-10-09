@@ -16,7 +16,8 @@ int main(int argc, char** argv) {
     spdlog::flush_on(spdlog::level::info);
 
     // run the runtime in a loop so we can reset the game and have it restart cleanly
-    spdlog::info("gk {}.{} OK!", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
+    spdlog::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR,
+                 versions::GOAL_VERSION_MINOR);
 
     if (exec_runtime(argc, argv) == 2) {
       return 0;

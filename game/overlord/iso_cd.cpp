@@ -567,7 +567,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
     }
 
     // we didn't get 1 GB of files, you're a pirate.
-    spdlog::info("Pirated!");
+    spdlog::warn("Pirated!");
   }
 }
 

@@ -183,7 +183,7 @@ u32 QueueMessage(IsoMessage* cmd, int32_t priority, const char* name) {
                   PRI_STACK_LENGTH, gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
     DisplayQueue();
   } else {
-    spdlog::debug("[OVERLORD ISO QUEUE] Failed to queue!");
+    spdlog::warn("[OVERLORD ISO QUEUE] Failed to queue!");
     cmd->status = CMD_STATUS_FAILED_TO_QUEUE;
     ReturnMessage(cmd);
   }
@@ -209,7 +209,7 @@ void UnqueueMessage(IsoMessage* cmd) {
       }
     }
   }
-  printf("[OVERLORD ISO QUEUE] Failed to unqueue!\n");
+  spdlog::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
 
 found:
   assert(gPriStack[pri].cmds[idx] == cmd);
