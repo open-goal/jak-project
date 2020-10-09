@@ -11,7 +11,7 @@
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
 
-#include "common\util\FileUtil.h"
+#include "common/util/FileUtil.h"
 #include <filesystem>
 
 namespace GoalTest {

@@ -5,7 +5,6 @@
 
 #include "third-party/inja.hpp"
 #include "goalc/compiler/Compiler.h"
-#include "common\util\FileUtil.h"
 
 namespace GoalTest {
 

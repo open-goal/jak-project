@@ -1,3 +1,5 @@
+set(CMAKE_CXX_STANDARD 17)
+
 include("goalc/CMakeLists.txt")
 
 add_executable(goalc-test
