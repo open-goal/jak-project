@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
-#include "decompiler/util/LispPrint.h"
+#include "common/goos/PrettyPrinter.h"
 
 /*!
  * In v, find an item equal to old, and replace it with replace.
@@ -61,8 +61,8 @@ void replace_exactly_one_in(std::vector<T>& v, T old, T replace) {
  */
 class CfgVtx {
  public:
-  virtual std::string to_string() = 0;          // convert to a single line string for debugging
-  virtual std::shared_ptr<Form> to_form() = 0;  // recursive print as LISP form.
+  virtual std::string to_string() = 0;  // convert to a single line string for debugging
+  virtual goos::Object to_form() = 0;   // recursive print as LISP form.
   virtual ~CfgVtx() = default;
 
   CfgVtx* parent = nullptr;       // parent structure, or nullptr if top level
@@ -125,7 +125,7 @@ class CfgVtx {
 class EntryVtx : public CfgVtx {
  public:
   EntryVtx() = default;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
   std::string to_string() override;
 };
 
@@ -135,7 +135,7 @@ class EntryVtx : public CfgVtx {
 class ExitVtx : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
 };
 
 /*!
@@ -145,7 +145,7 @@ class BlockVtx : public CfgVtx {
  public:
   explicit BlockVtx(int id) : block_id(id) {}
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
   int block_id = -1;                 // which block are we?
   bool is_early_exit_block = false;  // are we an empty block at the end for early exits to jump to?
 };
@@ -157,7 +157,7 @@ class BlockVtx : public CfgVtx {
 class SequenceVtx : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
   std::vector<CfgVtx*> seq;
 };
 
@@ -169,7 +169,7 @@ class SequenceVtx : public CfgVtx {
 class CondWithElse : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
 
   struct Entry {
     Entry() = default;
@@ -190,7 +190,7 @@ class CondWithElse : public CfgVtx {
 class CondNoElse : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
 
   struct Entry {
     Entry() = default;
@@ -205,7 +205,7 @@ class CondNoElse : public CfgVtx {
 class WhileLoop : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
 
   CfgVtx* condition = nullptr;
   CfgVtx* body = nullptr;
@@ -214,7 +214,7 @@ class WhileLoop : public CfgVtx {
 class UntilLoop : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
 
   CfgVtx* condition = nullptr;
   CfgVtx* body = nullptr;
@@ -223,7 +223,7 @@ class UntilLoop : public CfgVtx {
 class UntilLoop_single : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
 
   CfgVtx* block = nullptr;
 };
@@ -231,21 +231,21 @@ class UntilLoop_single : public CfgVtx {
 class ShortCircuit : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
   std::vector<CfgVtx*> entries;
 };
 
 class InfiniteLoopBlock : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
   CfgVtx* block;
 };
 
 class GotoEnd : public CfgVtx {
  public:
   std::string to_string() override;
-  std::shared_ptr<Form> to_form() override;
+  goos::Object to_form() override;
   CfgVtx* body = nullptr;
   CfgVtx* unreachable_block = nullptr;
 };
@@ -260,7 +260,7 @@ class ControlFlowGraph {
   ControlFlowGraph();
   ~ControlFlowGraph();
 
-  std::shared_ptr<Form> to_form();
+  goos::Object to_form();
   std::string to_form_string();
   std::string to_dot();
   int get_top_level_vertices_count();

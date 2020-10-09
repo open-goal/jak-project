@@ -78,24 +78,6 @@ int64_t get_int(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an integer, but isn't");
 }
 
-TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src) {
-  if (src.is_symbol()) {
-    return type_system->make_typespec(symbol_string(src));
-  } else if (src.is_pair()) {
-    TypeSpec ts = type_system->make_typespec(symbol_string(car(&src)));
-    const auto& rest = *cdr(&src);
-
-    for_each_in_list(rest,
-                     [&](const goos::Object& o) { ts.add_arg(parse_typespec(type_system, o)); });
-
-    return ts;
-  } else {
-    throw std::runtime_error("invalid typespec: " + src.print());
-  }
-  assert(false);
-  return {};
-}
-
 void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def) {
   auto rest = &def;
 
@@ -277,6 +259,24 @@ TypeFlags parse_structure_def(StructureType* type,
 }
 
 }  // namespace
+
+TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src) {
+  if (src.is_symbol()) {
+    return type_system->make_typespec(symbol_string(src));
+  } else if (src.is_pair()) {
+    TypeSpec ts = type_system->make_typespec(symbol_string(car(&src)));
+    const auto& rest = *cdr(&src);
+
+    for_each_in_list(rest,
+                     [&](const goos::Object& o) { ts.add_arg(parse_typespec(type_system, o)); });
+
+    return ts;
+  } else {
+    throw std::runtime_error("invalid typespec: " + src.print());
+  }
+  assert(false);
+  return {};
+}
 
 DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   auto iter = &deftype;

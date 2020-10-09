@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <vector>
 #include "LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 /*!
  * A "record" which can be used to identify an object file.
@@ -55,6 +56,7 @@ class ObjectFileDB {
   void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
   void analyze_functions();
   ObjectFileData& lookup_record(ObjectFileRecord rec);
+  DecompilerTypeSystem dts;
 
  private:
   void get_objs_from_dgo(const std::string& filename);

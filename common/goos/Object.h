@@ -319,7 +319,7 @@ class Object {
 
 // There is a single heap allocated EmptyListObject.
 class EmptyListObject;
-extern std::shared_ptr<EmptyListObject> gEmptyList;
+std::shared_ptr<EmptyListObject>& get_empty_list();
 
 class EmptyListObject : public HeapObject {
  public:
@@ -327,10 +327,10 @@ class EmptyListObject : public HeapObject {
   static Object make_new() {
     Object obj;
     obj.type = ObjectType::EMPTY_LIST;
-    if (!gEmptyList) {
-      gEmptyList = std::make_shared<EmptyListObject>();
+    if (!get_empty_list()) {
+      get_empty_list() = std::make_shared<EmptyListObject>();
     }
-    obj.heap_obj = gEmptyList;
+    obj.heap_obj = get_empty_list();
     return obj;
   }
 

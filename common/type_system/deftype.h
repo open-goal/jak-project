@@ -22,3 +22,4 @@ struct DeftypeResult {
 };
 
 DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts);
+TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src);

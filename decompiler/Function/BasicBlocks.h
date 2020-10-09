@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_DISASSEMBLER_BASICBLOCKS_H
-#define JAK_DISASSEMBLER_BASICBLOCKS_H
-
 #include <vector>
 #include <memory>
 
@@ -21,5 +18,3 @@ struct BasicBlock {
 std::vector<BasicBlock> find_blocks_in_function(const LinkedObjectFile& file,
                                                 int seg,
                                                 const Function& func);
-
-#endif  // JAK_DISASSEMBLER_BASICBLOCKS_H

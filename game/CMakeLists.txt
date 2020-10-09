@@ -26,7 +26,7 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 enable_language(ASM_NASM)
 set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)
-set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> <FLAGS> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
+set(CMAKE_ASM_NASM_COMPILE_OBJECT "<CMAKE_ASM_NASM_COMPILER> <INCLUDES> -f ${CMAKE_ASM_NASM_OBJECT_FORMAT} -o <OBJECT> <SOURCE>")
 set_source_files_properties(kernel/asm_funcs.asm PROPERTIES COMPILE_FLAGS "-g")
 set(RUNTIME_SOURCE
         runtime.cpp
@@ -81,12 +81,12 @@ add_executable(gk main.cpp)
 
 IF (WIN32)
   # set stuff for windows
-  target_link_libraries(runtime mman cross_sockets common_util)
-  target_link_libraries(gk cross_sockets mman common_util runtime)
+  target_link_libraries(runtime mman cross_sockets common_util spdlog)
+  target_link_libraries(gk cross_sockets mman common_util runtime spdlog)
 ELSE()
   # set stuff for other systems
-  target_link_libraries(runtime pthread cross_sockets common_util)
-  target_link_libraries(gk cross_sockets pthread common_util runtime)
+  target_link_libraries(runtime pthread cross_sockets common_util spdlog)
+  target_link_libraries(gk cross_sockets pthread common_util runtime spdlog)
 
 ENDIF()
 

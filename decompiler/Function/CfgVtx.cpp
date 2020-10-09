@@ -140,8 +140,8 @@ std::string BlockVtx::to_string() {
   }
 }
 
-std::shared_ptr<Form> BlockVtx::to_form() {
-  return toForm("b" + std::to_string(block_id));
+goos::Object BlockVtx::to_form() {
+  return pretty_print::to_symbol("b" + std::to_string(block_id));
 }
 
 std::string SequenceVtx::to_string() {
@@ -152,117 +152,117 @@ std::string SequenceVtx::to_string() {
   return result;
 }
 
-std::shared_ptr<Form> SequenceVtx::to_form() {
-  std::vector<std::shared_ptr<Form>> forms;
-  forms.push_back(toForm("seq"));
+goos::Object SequenceVtx::to_form() {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("seq"));
   for (auto* x : seq) {
     forms.push_back(x->to_form());
   }
-  return buildList(forms);
+  return pretty_print::build_list(forms);
 }
 
 std::string EntryVtx::to_string() {
   return "ENTRY";
 }
 
-std::shared_ptr<Form> EntryVtx::to_form() {
-  return toForm("entry");
+goos::Object EntryVtx::to_form() {
+  return pretty_print::to_symbol("entry");
 }
 
 std::string ExitVtx::to_string() {
   return "EXIT";
 }
 
-std::shared_ptr<Form> ExitVtx::to_form() {
-  return toForm("exit");
+goos::Object ExitVtx::to_form() {
+  return pretty_print::to_symbol("exit");
 }
 
 std::string CondWithElse::to_string() {
   return "CONDWE" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> CondWithElse::to_form() {
-  std::vector<std::shared_ptr<Form>> forms;
-  forms.push_back(toForm("cond"));
+goos::Object CondWithElse::to_form() {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("cond"));
   for (const auto& x : entries) {
-    std::vector<std::shared_ptr<Form>> e = {x.condition->to_form(), x.body->to_form()};
-    forms.push_back(buildList(e));
+    std::vector<goos::Object> e = {x.condition->to_form(), x.body->to_form()};
+    forms.push_back(pretty_print::build_list(e));
   }
-  std::vector<std::shared_ptr<Form>> e = {toForm("else"), else_vtx->to_form()};
-  forms.push_back(buildList(e));
-  return buildList(forms);
+  std::vector<goos::Object> e = {pretty_print::to_symbol("else"), else_vtx->to_form()};
+  forms.push_back(pretty_print::build_list(e));
+  return pretty_print::build_list(forms);
 }
 
 std::string CondNoElse::to_string() {
   return "CONDNE" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> CondNoElse::to_form() {
-  std::vector<std::shared_ptr<Form>> forms;
-  forms.push_back(toForm("cond"));
+goos::Object CondNoElse::to_form() {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("cond"));
   for (const auto& x : entries) {
-    std::vector<std::shared_ptr<Form>> e = {x.condition->to_form(), x.body->to_form()};
-    forms.push_back(buildList(e));
+    std::vector<goos::Object> e = {x.condition->to_form(), x.body->to_form()};
+    forms.push_back(pretty_print::build_list(e));
   }
-  return buildList(forms);
+  return pretty_print::build_list(forms);
 }
 
 std::string WhileLoop::to_string() {
   return "WHL" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> WhileLoop::to_form() {
-  std::vector<std::shared_ptr<Form>> forms = {toForm("while"), condition->to_form(),
-                                              body->to_form()};
-  return buildList(forms);
+goos::Object WhileLoop::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("while"), condition->to_form(),
+                                     body->to_form()};
+  return pretty_print::build_list(forms);
 }
 
 std::string UntilLoop::to_string() {
   return "UNTL" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> UntilLoop::to_form() {
-  std::vector<std::shared_ptr<Form>> forms = {toForm("until"), condition->to_form(),
-                                              body->to_form()};
-  return buildList(forms);
+goos::Object UntilLoop::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("until"), condition->to_form(),
+                                     body->to_form()};
+  return pretty_print::build_list(forms);
 }
 
 std::string UntilLoop_single::to_string() {
   return "UNTLS" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> UntilLoop_single::to_form() {
-  std::vector<std::shared_ptr<Form>> forms = {toForm("until1"), block->to_form()};
-  return buildList(forms);
+goos::Object UntilLoop_single::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("until1"), block->to_form()};
+  return pretty_print::build_list(forms);
 }
 
 std::string InfiniteLoopBlock::to_string() {
   return "INFL" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> InfiniteLoopBlock::to_form() {
-  std::vector<std::shared_ptr<Form>> forms = {toForm("inf-loop"), block->to_form()};
-  return buildList(forms);
+goos::Object InfiniteLoopBlock::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("inf-loop"), block->to_form()};
+  return pretty_print::build_list(forms);
 }
 
 std::string ShortCircuit::to_string() {
   return "SC" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> ShortCircuit::to_form() {
-  std::vector<std::shared_ptr<Form>> forms;
-  forms.push_back(toForm("sc"));
+goos::Object ShortCircuit::to_form() {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("sc"));
   for (const auto& x : entries) {
     forms.push_back(x->to_form());
   }
-  return buildList(forms);
+  return pretty_print::build_list(forms);
 }
 
 /*
-std::shared_ptr<Form> IfElseVtx::to_form() {
-  std::vector<std::shared_ptr<Form>> forms = {toForm("if"), condition->to_form(),
+goos::Object IfElseVtx::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("if"), condition->to_form(),
                                               true_case->to_form(), false_case->to_form()};
-  return buildList(forms);
+  return pretty_print::build_list(forms);
 }
 
 std::string IfElseVtx::to_string() {
@@ -274,10 +274,10 @@ std::string GotoEnd::to_string() {
   return "goto_end" + std::to_string(uid);
 }
 
-std::shared_ptr<Form> GotoEnd::to_form() {
-  std::vector<std::shared_ptr<Form>> forms = {toForm("return-from-function"), body->to_form(),
-                                              unreachable_block->to_form()};
-  return buildList(forms);
+goos::Object GotoEnd::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("return-from-function"),
+                                     body->to_form(), unreachable_block->to_form()};
+  return pretty_print::build_list(forms);
 }
 
 ControlFlowGraph::ControlFlowGraph() {
@@ -361,17 +361,17 @@ CfgVtx* ControlFlowGraph::get_single_top_level() {
  * Turn into a form. If fully resolved, prints the nested control flow. Otherwise puts all the
  * ungrouped stuff into an "(ungrouped ...)" form and prints that.
  */
-std::shared_ptr<Form> ControlFlowGraph::to_form() {
+goos::Object ControlFlowGraph::to_form() {
   if (get_top_level_vertices_count() == 1) {
     return get_single_top_level()->to_form();
   } else {
-    std::vector<std::shared_ptr<Form>> forms = {toForm("ungrouped")};
+    std::vector<goos::Object> forms = {pretty_print::to_symbol("ungrouped")};
     for (auto* x : m_node_pool) {
       if (!x->parent && x != entry() && x != exit()) {
         forms.push_back(x->to_form());
       }
     }
-    return buildList(forms);
+    return pretty_print::build_list(forms);
   }
 }
 
@@ -380,8 +380,7 @@ std::shared_ptr<Form> ControlFlowGraph::to_form() {
  * ungrouped stuff into an "(ungrouped ...)" form and prints that.
  */
 std::string ControlFlowGraph::to_form_string() {
-  // todo - fix bug in pretty printing and reduce this to 80!
-  return to_form()->toStringPretty(0, 140);
+  return pretty_print::to_string(to_form());
 }
 
 // bool ControlFlowGraph::compact_top_level() {
@@ -1637,7 +1636,6 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
  * Build and resolve a Control Flow Graph as much as possible.
  */
 std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int seg, Function& func) {
-  printf("build cfg : %s\n", func.guessed_name.to_string().c_str());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());
@@ -1716,13 +1714,6 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
 
   cfg->flag_early_exit(func.basic_blocks);
 
-  //  if(func.guessed_name.to_string() == "(method 9 thread)")
-  //    cfg->find_cond_w_else();
-
-  //  if (func.guessed_name.to_string() != "looping-code") {
-  //    return cfg;
-  //  }
-
   bool changed = true;
   while (changed) {
     changed = false;
@@ -1730,11 +1721,10 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
     //    printf("%s\n", cfg->to_dot().c_str());
     //    printf("%s\n", cfg->to_form()->toStringPretty().c_str());
 
-    changed = changed | cfg->find_cond_w_else();
-    changed = changed | cfg->find_cond_n_else();
+    changed = changed || cfg->find_cond_n_else();
+    changed = changed || cfg->find_cond_w_else();
+
     changed = changed || cfg->find_while_loop_top_level();
-    //    ////    printf("while loops? %d\n", changed);
-    ////    changed = changed || cfg->find_if_else_top_level();
     changed = changed || cfg->find_seq_top_level();
     changed = changed || cfg->find_short_circuits();
 

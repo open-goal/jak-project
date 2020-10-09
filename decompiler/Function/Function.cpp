@@ -3,7 +3,7 @@
 #include "Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "decompiler/TypeSystem/TypeInfo.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace {
 std::vector<Register> gpr_backups = {make_gpr(Reg::GP), make_gpr(Reg::S5), make_gpr(Reg::S4),
@@ -418,7 +418,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
  *
  * Updates the guessed_name of the function and updates type_info
  */
-void Function::find_global_function_defs(LinkedObjectFile& file) {
+void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts) {
   int state = 0;
   int label_id = -1;
   Register reg;
@@ -457,7 +457,8 @@ void Function::find_global_function_defs(LinkedObjectFile& file) {
           auto& func = file.get_function_at_label(label_id);
           assert(func.guessed_name.empty());
           func.guessed_name.set_as_global(name);
-          get_type_info().inform_symbol(name, TypeSpec("function"));
+          dts.add_symbol(name, "function");
+          ;
           // todo - inform function.
         }
 
@@ -549,4 +550,42 @@ void Function::find_method_defs(LinkedObjectFile& file) {
       }
     }
   }
+}
+
+void Function::add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr) {
+  op->is_basic_op = true;
+  assert(end_instr > start_instr);
+
+  for (int i = start_instr; i < end_instr; i++) {
+    instruction_to_basic_op[i] = basic_ops.size();
+  }
+  basic_op_to_instruction[basic_ops.size()] = start_instr;
+  basic_ops.push_back(op);
+}
+
+bool Function::instr_starts_basic_op(int idx) {
+  auto op = instruction_to_basic_op.find(idx);
+  if (op != instruction_to_basic_op.end()) {
+    auto start_instr = basic_op_to_instruction.at(op->second);
+    return start_instr == idx;
+  }
+  return false;
+}
+
+std::shared_ptr<IR> Function::get_basic_op_at_instr(int idx) {
+  return basic_ops.at(instruction_to_basic_op.at(idx));
+}
+
+int Function::get_basic_op_count() {
+  return basic_ops.size();
+}
+
+int Function::get_failed_basic_op_count() {
+  int count = 0;
+  for (auto& x : basic_ops) {
+    if (dynamic_cast<IR_Failed*>(x.get())) {
+      count++;
+    }
+  }
+  return count;
 }

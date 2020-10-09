@@ -18,6 +18,8 @@
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
+#include "decompiler/IR/BasicOpBuilder.h"
+#include "decompiler/IR/CfgBuilder.h"
 
 /*!
  * Get a unique name for this object file.
@@ -64,6 +66,8 @@ ObjectFileData& ObjectFileDB::lookup_record(ObjectFileRecord rec) {
  */
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   Timer timer;
+  printf("- Loading Types...\n");
+  dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
   printf("- Initializing ObjectFileDB...\n");
   for (auto& dgo : _dgos) {
@@ -71,7 +75,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   }
 
   printf("ObjectFileDB Initialized:\n");
-  printf(" total dgos: %lld\n", _dgos.size());
+  printf(" total dgos: %d\n", int(_dgos.size()));
   printf(" total data: %d bytes\n", stats.total_dgo_bytes);
   printf(" total objs: %d\n", stats.total_obj_files);
   printf(" unique objs: %d\n", stats.unique_obj_files);
@@ -356,7 +360,7 @@ void ObjectFileDB::process_link_data() {
   LinkedObjectFile::Stats combined_stats;
 
   for_each_obj([&](ObjectFileData& obj) {
-    obj.linked_data = to_linked_object_file(obj.data, obj.record.name);
+    obj.linked_data = to_linked_object_file(obj.data, obj.record.name, dts);
     combined_stats.add(obj.linked_data.stats);
   });
 
@@ -543,7 +547,7 @@ void ObjectFileDB::analyze_functions() {
         auto& func = data.linked_data.functions_by_seg.at(2).front();
         assert(func.guessed_name.empty());
         func.guessed_name.set_as_top_level();
-        func.find_global_function_defs(data.linked_data);
+        func.find_global_function_defs(data.linked_data, dts);
         func.find_method_defs(data.linked_data);
       }
     });
@@ -588,34 +592,52 @@ void ObjectFileDB::analyze_functions() {
     //    }
   }
 
-  int total_nontrivial_functions = 0;
-  int total_resolved_nontrivial_functions = 0;
+  int total_trivial_cfg_functions = 0;
   int total_named_functions = 0;
+  int total_basic_ops = 0;
+  int total_failed_basic_ops = 0;
+
+  int asm_funcs = 0;
+  int non_asm_funcs = 0;
+  int successful_cfg_irs = 0;
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
   if (get_config().find_basic_blocks) {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
+      // printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
 
+      total_functions++;
       if (!func.suspected_asm) {
         func.analyze_prologue(data.linked_data);
         func.cfg = build_cfg(data.linked_data, segment_id, func);
-        total_functions++;
+        for (auto& block : func.basic_blocks) {
+          if (block.end_word > block.start_word) {
+            add_basic_ops_to_block(&func, block, &data.linked_data);
+          }
+        }
+        total_basic_ops += func.get_basic_op_count();
+        total_failed_basic_ops += func.get_failed_basic_op_count();
+
+        func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
+        non_asm_funcs++;
+        if (func.ir) {
+          successful_cfg_irs++;
+        }
+
         if (func.cfg->is_fully_resolved()) {
           resolved_cfg_functions++;
         }
       } else {
-        resolved_cfg_functions++;
+        asm_funcs++;
       }
 
       if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
-        total_nontrivial_functions++;
         if (func.cfg->is_fully_resolved()) {
-          total_resolved_nontrivial_functions++;
         } else {
           if (!func.guessed_name.empty()) {
             unresolved_by_length[func.end_word - func.start_word].push_back(
@@ -624,27 +646,38 @@ void ObjectFileDB::analyze_functions() {
         }
       }
 
+      if (!func.suspected_asm && func.basic_blocks.size() <= 1) {
+        total_trivial_cfg_functions++;
+      }
+
       if (!func.guessed_name.empty()) {
         total_named_functions++;
       }
+
+      //      if (func.guessed_name.to_string() == "inspect") {
+      //        assert(false);
+      //      }
     });
 
-    printf("Found %d functions (%d with nontrivial cfgs)\n", total_functions,
-           total_nontrivial_functions);
+    printf("Found %d functions (%d with no control flow)\n", total_functions,
+           total_trivial_cfg_functions);
     printf("Named %d/%d functions (%.2f%%)\n", total_named_functions, total_functions,
            100.f * float(total_named_functions) / float(total_functions));
+    printf("Excluding %d asm functions\n", asm_funcs);
     printf("Found %d basic blocks in %.3f ms\n", total_basic_blocks, timer.getMs());
     printf(" %d/%d functions passed cfg analysis stage (%.2f%%)\n", resolved_cfg_functions,
-           total_functions, 100.f * float(resolved_cfg_functions) / float(total_functions));
-    printf(" %d/%d nontrivial cfg's resolved (%.2f%%)\n", total_resolved_nontrivial_functions,
-           total_nontrivial_functions,
-           100.f * float(total_resolved_nontrivial_functions) / float(total_nontrivial_functions));
+           non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
+    int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
+    printf(" %d/%d basic ops converted successfully (%.2f%%)\n", successful_basic_ops,
+           total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+    printf(" %d/%d cfgs converted to ir (%.2f%%)\n", successful_cfg_irs, non_asm_funcs,
+           100.f * float(successful_cfg_irs) / float(non_asm_funcs));
 
-    for (auto& kv : unresolved_by_length) {
-      printf("LEN %d\n", kv.first);
-      for (auto& x : kv.second) {
-        printf("  %s\n", x.c_str());
-      }
-    }
+    //    for (auto& kv : unresolved_by_length) {
+    //      printf("LEN %d\n", kv.first);
+    //      for (auto& x : kv.second) {
+    //        printf("  %s\n", x.c_str());
+    //      }
+    //    }
   }
 }
