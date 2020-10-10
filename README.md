@@ -1,27 +1,27 @@
 # Jak Project
-![Build](https://github.com/water111/jak-project/workflows/Build/badge.svg)
+
+![Linux](https://github.com/water111/jak-project/workflows/Linux/badge.svg)
+![Windows](https://github.com/water111/jak-project/workflows/Windows/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
 
 ## Table of Contents
 
 <!-- toc -->
 
-- [Jak Project](#jak-project)
-  - [Table of Contents](#table-of-contents)
-  - [Requirements](#requirements)
-  - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
-  - [Getting Started - Windows](#getting-started---windows)
-  - [Project Layout](#project-layout)
-  - [Design](#design)
-  - [Current State](#current-state)
-  - [Coding Guidelines](#coding-guidelines)
-  - [TODOs](#todos)
-  - [Project Description](#project-description)
-    - [GOAL Decompiler](#goal-decompiler)
-    - [GOAL Runtime](#goal-runtime)
-    - [GOAL Compiler](#goal-compiler)
-    - [Asset Extraction Tool](#asset-extraction-tool)
-    - [Asset Packing Tool](#asset-packing-tool)
+- [Table of Contents](#table-of-contents)
+- [Requirements](#requirements)
+- [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
+- [Getting Started - Windows](#getting-started---windows)
+- [Project Description](#project-description)
+- [Project Layout](#project-layout)
+- [Design](#design)
+- [Coding Guidelines](#coding-guidelines)
+- [TODOs](#todos)
+  - [GOAL Decompiler](#goal-decompiler)
+  - [GOAL Runtime](#goal-runtime)
+  - [GOAL Compiler](#goal-compiler)
+  - [Asset Extraction Tool](#asset-extraction-tool)
+  - [Asset Packing Tool](#asset-packing-tool)
 
 <!-- tocstop -->
 
@@ -163,7 +163,6 @@ The rough timeline is to finish sometime in 2022. If it looks like this is impos
   - `./gs.sh` : run a goos interpreter in interactive mode
   - `./decomp.sh : run the decompiler
 
-
 ## Coding Guidelines
 
 - Avoid warnings
@@ -183,7 +182,6 @@ The rough timeline is to finish sometime in 2022. If it looks like this is impos
 - Gtest setup for checking decompiler results against hand-decompiled stuff
 - Clean up decompiler print spam, finish up the CFG stuff
 - Decompiler document
-
 
 ### GOAL Decompiler
 
