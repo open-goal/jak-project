@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "third-party/inja.hpp"
+#include "inja.hpp"
 #include "goalc/compiler/Compiler.h"
 
 namespace GoalTest {

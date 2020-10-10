@@ -6,7 +6,7 @@
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
 
-#include "third-party/inja.hpp"
+#include "inja.hpp"
 #include "third-party/json.hpp"
 #include "common/util/FileUtil.h"
 #include <test/goalc/framework/test_runner.h>

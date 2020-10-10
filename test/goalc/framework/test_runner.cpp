@@ -4,7 +4,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "third-party/inja.hpp"
+#include "inja.hpp"
 #include "third-party/json.hpp"
 
 #include "game/runtime.h"
