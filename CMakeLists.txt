@@ -24,8 +24,7 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
-        -Wshadow \
-        -Wsign-promo")
+        -Wsign-promo") # TODO - add back -Wshadow once fixed inside inja, lots of compiler warnings
 else ()
     set(CMAKE_CXX_FLAGS "/EHsc")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
