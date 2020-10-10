@@ -24,7 +24,8 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
-        -Wsign-promo") # TODO - add back -Wshadow once fixed inside inja, lots of compiler warnings
+        -Wshadow \
+        -Wsign-promo")
 else ()
     set(CMAKE_CXX_FLAGS "/EHsc")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
@@ -50,6 +51,8 @@ endif()
 
 # includes relative to top level jak-project folder
 include_directories(./)
+
+include_directories(SYSTEM third-party/inja)
 
 # build spdlog as a shared library to improve compile times
 # adding this as a SYSTEM include suppresses all the terrible warnings in spdlog

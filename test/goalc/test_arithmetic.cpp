@@ -8,7 +8,7 @@
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
 
-#include "third-party/inja.hpp"
+#include "inja.hpp"
 #include "third-party/json.hpp"
 
 #include <test/goalc/framework/test_runner.h>
@@ -31,6 +31,10 @@
 // See -
 // https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
 struct IntegerParam {
+  // Each integer test has a signed value, and can be represented as hex or an integral
+  s64 val;
+  bool hex;
+
   // An index is needed to be explicitly set because I couldn't find a way to pull the test-index
   // number from google's API
   // TODO - if you can find a way, please improve!
@@ -38,11 +42,8 @@ struct IntegerParam {
   // Why? - since you may choose to generate random values, it's nice for them to be stored after
   // the tests complete.  Some tests may be complex as well
   int index;
-  // Each integer test has a signed value, and can be represented as hex or an integral
-  s64 val;
-  bool hex;
 
-  IntegerParam(s64 val, bool hex = false, int index = 0) : val(val), hex(hex), index(index) {}
+  IntegerParam(s64 _val, bool _hex = false, int _index = 0) : val(_val), hex(_hex), index(_index) {}
 
   // This is used to generate the value that is passed into the template engine
   // and injected into the file of lisp code.
@@ -81,24 +82,33 @@ std::vector<IntegerParam> genIntegerTests(int numTests,
   std::mt19937 rng(dev());
   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, UINT32_MAX);
   int testCases = 3;
-  for (int i = 0; i < numTests; i++) {
-    switch (i % testCases) {
+  int test_index = 0;
+  for (; test_index < numTests; test_index++) {
+    switch (test_index % testCases) {
       case 0:
-        tests.push_back(IntegerParam(dist6(rng), false, i));
+        tests.push_back(IntegerParam(dist6(rng), false, test_index));
         break;
       case 1:
-        tests.push_back(IntegerParam((s64)dist6(rng) * -1, false, i));
+        tests.push_back(IntegerParam((s64)dist6(rng) * -1, false, test_index));
         break;
       case 2:
-        tests.push_back(IntegerParam(dist6(rng), true, i));
+        tests.push_back(IntegerParam(dist6(rng), true, test_index));
         break;
     }
   }
 
-  for (int i = 0; i < additionalTests.size(); i++) {
+  for (int i = 0; i < int(additionalTests.size()); i++) {
     IntegerParam test = additionalTests.at(i);
     test.index = i + numTests - 1;
     tests.push_back(test);
+  }
+
+  for (auto x :
+       {s64(UINT32_MAX), s64(INT32_MIN), s64(INT32_MAX), s64(0), s64(INT64_MAX), s64(INT64_MIN)}) {
+    for (auto y : {-1, 0, 1}) {
+      s64 value = x + s64(y);
+      tests.emplace_back(value, false, test_index++);
+    }
   }
 
   return tests;

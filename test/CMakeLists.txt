@@ -18,6 +18,7 @@ add_executable(goalc-test
         test_emitter_integer_math.cpp
         test_common_util.cpp
         test_deftype.cpp
+        test_pretty_print.cpp
 				${GOALC_TEST_FRAMEWORK_SOURCES}
 				${GOALC_TEST_CASES})
 
