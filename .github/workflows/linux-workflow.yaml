@@ -70,38 +70,39 @@ jobs:
       - name: Get Package Dependencies
         run: sudo apt install build-essential cmake ccache gcc g++ lcov make nasm
 
-      # -- SETUP CCACHE - https://cristianadam.eu/20200113/speeding-up-c-plus-plus-github-actions-using-ccache/
-      - name: Prepare ccache timestamp
-        id: ccache_cache_timestamp
-        shell: cmake -P {0}
-        run: |
-          string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-          message("::set-output name=timestamp::${current_date}")
+      # # -- SETUP CCACHE - https://cristianadam.eu/20200113/speeding-up-c-plus-plus-github-actions-using-ccache/
+      # - name: Prepare ccache timestamp
+      #   id: ccache_cache_timestamp
+      #   shell: cmake -P {0}
+      #   run: |
+      #     string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+      #     message("::set-output name=timestamp::${current_date}")
 
-      - name: ccache cache files
-        uses: actions/cache@v2
-        with:
-          path: .ccache
-          key: ${{ matrix.config }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-          restore-keys: |
-            ${{ matrix.config }}-ccache-
+      # - name: ccache cache files
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: .ccache
+      #     key: ${{ matrix.config }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+      #     restore-keys: |
+      #       ${{ matrix.config }}-ccache-
 
       - name: CMake Generation
-        run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
+        # run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
+        run: cmake -B build -DCODE_COVERAGE=ON
 
       - name: Build Project
         working-directory: ./build
-        env:
-          CCACHE_BASEDIR: ${GITHUB_WORKSPACE}
-          CCACHE_DIR: ${GITHUB_WORKSPACE}/.ccache
-          CCACHE_COMPRESS: "true"
-          CCACHE_COMPRESSLEVEL: "6"
-          CCACHE_MAXSIZE: "400M"
-        run: |
-          ccache -p
-          ccache -z
-          make -j4
-          ccache -s
+        # env:
+        #   CCACHE_BASEDIR: ${GITHUB_WORKSPACE}
+        #   CCACHE_DIR: ${GITHUB_WORKSPACE}/.ccache
+        #   CCACHE_COMPRESS: "true"
+        #   CCACHE_COMPRESSLEVEL: "6"
+        #   CCACHE_MAXSIZE: "400M"
+        #   ccache -p
+        #   ccache -z
+        #   make -j4
+        #   ccache -s
+        run: make -j4
 
       - name: Run Tests
         run: ./test_code_coverage.sh
