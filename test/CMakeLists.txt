@@ -19,15 +19,15 @@ add_executable(goalc-test
         test_common_util.cpp
         test_deftype.cpp
         test_pretty_print.cpp
-				${GOALC_TEST_FRAMEWORK_SOURCES}
-				${GOALC_TEST_CASES})
+        ${GOALC_TEST_FRAMEWORK_SOURCES}
+        ${GOALC_TEST_CASES})
 
 enable_testing()
 
 IF (WIN32)
-	set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-	# TODO - split out these declarations for platform specific includes
+  # TODO - split out these declarations for platform specific includes
   target_link_libraries(goalc-test cross_sockets goos common_util listener runtime compiler type_system gtest mman)
 ELSE()
   target_link_libraries(goalc-test cross_sockets goos common_util listener runtime compiler type_system gtest)
