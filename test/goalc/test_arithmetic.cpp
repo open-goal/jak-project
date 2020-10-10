@@ -87,7 +87,7 @@ std::vector<IntegerParam> genIntegerTests(int numTests,
         tests.push_back(IntegerParam(dist6(rng), false, i));
         break;
       case 1:
-        tests.push_back(IntegerParam(dist6(rng) * -1, false, i));
+        tests.push_back(IntegerParam((s64)dist6(rng) * -1, false, i));
         break;
       case 2:
         tests.push_back(IntegerParam(dist6(rng), true, i));
