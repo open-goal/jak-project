@@ -1,7 +1,6 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 project(jak)
-
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
@@ -25,8 +24,7 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
-        -Wshadow \
-        -Wsign-promo")
+        -Wsign-promo") # TODO - add back -Wshadow once fixed inside inja, lots of compiler warnings
 else ()
     set(CMAKE_CXX_FLAGS "/EHsc")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")

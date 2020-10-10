@@ -1,0 +1,66 @@
+(define format _format)
+
+(start-test "dynamic-type")
+
+(deftype test-dynamic-type (basic)
+  (
+   (pad0 int16 :offset 4)
+   (allocated-length int32 :offset 8)
+   (data int32 :dynamic :offset 12)
+   (over1 int32 :offset 12)
+   (over2 int32 :offset 16)
+   )
+  )
+
+
+(defmethod new test-dynamic-type ((allocation symbol) (type-to-make type) (cnt integer))
+  ;"Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
+  ;of the type-to-make to determine the element size"
+  (let* ((sz (+ (-> type-to-make size) (* 4 cnt)))
+         (new-object (object-new (the int sz))))
+    ;;(format 0 "create sz ~d at #x~X~%" sz new-object)
+    (unless (zero? new-object)
+      (set! (-> new-object allocated-length) cnt)
+      )
+    
+    new-object
+    )
+  )
+
+(defmethod length test-dynamic-type ((obj test-dynamic-type))
+  ;"Get the length of it"
+  (-> obj allocated-length)
+  )
+
+(defmethod asize-of test-dynamic-type ((obj test-dynamic-type))
+
+  ;"Get the size in memory of it"
+  (the int (+ (-> obj type size) 
+     (* (-> obj allocated-length) 4)
+     ))
+  )
+
+(define test-dynamic-obj
+        (the test-dynamic-type (new 'global 'test-dynamic-type 40)))
+
+
+; ;(define test-dynamic-obj (new 'global 'test-dynamic-type 40))
+
+; ;(inspect test-dynamic-obj)
+
+(set! (-> test-dynamic-obj data 0) 12)
+(set! (-> test-dynamic-obj data 1) 20)
+; ;(inspect test-dynamic-obj)
+
+; ; (format #t "should be same (~d ~d) (~d ~d)~%" (-> test-dynamic-obj data 0) (-> test-dynamic-obj over1)
+; ;         (-> test-dynamic-obj data 1) (-> test-dynamic-obj over2))
+
+(expect-true (= (-> test-dynamic-obj data 0) (-> test-dynamic-obj over1)))
+(expect-true (= (-> test-dynamic-obj data 1) (-> test-dynamic-obj over2)))
+
+(set! (-> test-dynamic-obj pad0) 0)
+(expect-true (= (-> test-dynamic-obj type) test-dynamic-type))
+
+(expect-true (= (asize-of test-dynamic-obj) 180))
+
+(finish-test)
