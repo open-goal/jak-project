@@ -75,17 +75,12 @@ struct IntegerParam {
 // once again, very over-engineered for just testing engineers, but you might imagine
 // a more complex test template that has several conditionals / loops / etc
 std::vector<IntegerParam> genIntegerTests(int numTests,
-                                          bool includeHex,
-                                          bool includeNegative,
                                           std::vector<IntegerParam> additionalTests = {}) {
   std::vector<IntegerParam> tests;
   std::random_device dev;
   std::mt19937 rng(dev());
   std::uniform_int_distribution<std::mt19937::result_type> dist6(0, UINT32_MAX);
-  int testCases = includeNegative ? 2 : 1;
-  if (includeHex) {
-    testCases *= 2;
-  }
+  int testCases = 3;
   for (int i = 0; i < numTests; i++) {
     switch (i % testCases) {
       case 0:
@@ -96,9 +91,6 @@ std::vector<IntegerParam> genIntegerTests(int numTests,
         break;
       case 2:
         tests.push_back(IntegerParam(dist6(rng), true, i));
-        break;
-      case 3:
-        tests.push_back(IntegerParam(dist6(rng) * -1, true, i));
         break;
     }
   }
@@ -177,9 +169,7 @@ TEST_P(ArithmeticTests, EvalIntegers) {
 // https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
 INSTANTIATE_TEST_SUITE_P(EvalIntegers,
                          ArithmeticTests,
-                         testing::ValuesIn(genIntegerTests(4,
-                                                           true,
-                                                           true,
+                         testing::ValuesIn(genIntegerTests(3,
                                                            {IntegerParam(-2147483648),
                                                             IntegerParam(0), IntegerParam(-0)})));
 
