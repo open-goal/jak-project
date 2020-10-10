@@ -1,3 +1,12 @@
+/*!
+ * @file BasicOpBuilder.cpp
+ * Convert a basic block into a sequence of IR operations.
+ * Build up basic set instructions from GOAL code
+ * Recognize common GOAL compiler idioms
+ * Recognize branch delay slot use
+ * Recognize assembly ops and pass them through as IR_Asm
+ */
+
 #include "BasicOpBuilder.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/Function/BasicBlocks.h"
@@ -5,28 +14,47 @@
 
 namespace {
 
+/*!
+ * Create a GOAL "set!" form.
+ * These will later be compacted into more complicated nested expressions.
+ */
 std::shared_ptr<IR_Set> make_set(IR_Set::Kind kind,
                                  const std::shared_ptr<IR>& dst,
                                  const std::shared_ptr<IR>& src) {
   return std::make_shared<IR_Set>(kind, dst, src);
 }
 
+/*!
+ * Create an IR representing a register at a certain point.  Idx is the instruction index.
+ */
 std::shared_ptr<IR_Register> make_reg(Register reg, int idx) {
   return std::make_shared<IR_Register>(reg, idx);
 }
 
+/*!
+ * Create an IR representing a symbol. The symbol itself ('thing), not the value.
+ */
 std::shared_ptr<IR_Symbol> make_sym(const std::string& name) {
   return std::make_shared<IR_Symbol>(name);
 }
 
+/*!
+ * Create an IR representing the value of a symbol. Can be read/written.
+ */
 std::shared_ptr<IR_SymbolValue> make_sym_value(const std::string& name) {
   return std::make_shared<IR_SymbolValue>(name);
 }
 
+/*!
+ * Create an integer constant.
+ */
 std::shared_ptr<IR_IntegerConstant> make_int(int64_t x) {
   return std::make_shared<IR_IntegerConstant>(x);
 }
 
+/*!
+ * Create an assembly passthrough in the form op dst, src, src
+ */
 std::shared_ptr<IR> to_asm_reg_reg_reg(const std::string& str, Instruction& instr, int idx) {
   auto result = std::make_shared<IR_AsmOp>(str);
   result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
@@ -35,14 +63,88 @@ std::shared_ptr<IR> to_asm_reg_reg_reg(const std::string& str, Instruction& inst
   return result;
 }
 
+/*!
+ * Create an assembly passthrough for op dst
+ */
+std::shared_ptr<IR> to_asm_dst_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp>(str);
+  result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
+  return result;
+}
+
+/*!
+ * Create an assembly passthrough for op src
+ */
 std::shared_ptr<IR> to_asm_src_reg(const std::string& str, Instruction& instr, int idx) {
   auto result = std::make_shared<IR_AsmOp>(str);
   result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
   return result;
 }
 
+/*!
+ * Create an assembly passthrough for op dst src
+ */
+std::shared_ptr<IR> to_asm_dst_reg_src_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp>(str);
+  result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
+  result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
+  return result;
+}
+
+/*!
+ * Create an assembly passthrough for op Q src
+ */
+std::shared_ptr<IR> to_asm_dst_Q_src_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp>(str);
+  assert(instr.get_dst(0).kind == InstructionAtom::VU_Q);
+  result->dst = std::make_shared<IR_AsmReg>(IR_AsmReg::VU_Q);
+  result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
+  return result;
+}
+
+/*!
+ * Convert an instruction atom to IR.
+ */
+std::shared_ptr<IR> instr_atom_to_ir(const InstructionAtom& ia, int idx) {
+  switch (ia.kind) {
+    case InstructionAtom::REGISTER:
+      return make_reg(ia.get_reg(), idx);
+    case InstructionAtom::VU_Q:
+      return std::make_shared<IR_AsmReg>(IR_AsmReg::VU_Q);
+    case InstructionAtom::VU_ACC:
+      return std::make_shared<IR_AsmReg>(IR_AsmReg::VU_ACC);
+    case InstructionAtom::IMM:
+      return make_int(ia.get_imm());
+    default:
+      assert(false);
+  }
+}
+
+std::shared_ptr<IR> to_asm_automatic(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp>(str);
+  assert(instr.n_dst < 2);
+  assert(instr.n_src < 4);
+  if (instr.n_dst >= 1) {
+    result->dst = instr_atom_to_ir(instr.get_dst(0), idx);
+  }
+
+  if (instr.n_src >= 1) {
+    result->src0 = instr_atom_to_ir(instr.get_src(0), idx);
+  }
+
+  if (instr.n_src >= 2) {
+    result->src1 = instr_atom_to_ir(instr.get_src(1), idx);
+  }
+
+  if (instr.n_src >= 3) {
+    result->src1 = instr_atom_to_ir(instr.get_src(2), idx);
+  }
+
+  return result;
+}
+
 std::shared_ptr<IR> try_subu(Instruction& instr, int idx) {
-  if (is_gpr_3(instr, InstructionKind::SUBU, {}, {}, make_gpr(Reg::S7))) {
+  if (is_gpr_3(instr, InstructionKind::SUBU, {}, {}, {})) {
     return to_asm_reg_reg_reg("subu", instr, idx);
   }
   return nullptr;
@@ -487,6 +589,16 @@ std::shared_ptr<IR> try_andi(Instruction& instr, int idx) {
   return nullptr;
 }
 
+std::shared_ptr<IR> try_xori(Instruction& instr, int idx) {
+  if (instr.kind == InstructionKind::XORI) {
+    return make_set(
+        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath2>(IR_IntMath2::XOR, make_reg(instr.get_src(0).get_reg(), idx),
+                                      make_int(instr.get_src(1).get_imm())));
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_nor(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::NOR, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
@@ -555,6 +667,17 @@ std::shared_ptr<IR> try_dsrlv(Instruction& instr, int idx) {
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
     return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
                     std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                                  make_reg(instr.get_src(0).get_reg(), idx),
+                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<IR> try_dsllv(Instruction& instr, int idx) {
+  if (is_gpr_3(instr, InstructionKind::DSLLV, {}, {}, {}) &&
+      !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
+    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                    std::make_shared<IR_IntMath2>(IR_IntMath2::LEFT_SHIFT,
                                                   make_reg(instr.get_src(0).get_reg(), idx),
                                                   make_reg(instr.get_src(1).get_reg(), idx)));
   }
@@ -970,6 +1093,24 @@ std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, int idx) {
 }
 
 // THREE OP
+std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+  if (i0.kind == InstructionKind::LUI && i1.kind == InstructionKind::ORI &&
+      i0.get_src(0).is_label() && i1.get_src(1).is_label() &&
+      is_gpr_3(i2, InstructionKind::ADDU, {}, make_gpr(Reg::FP), {})) {
+    assert(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());
+    assert(i0.get_src(0).get_label() == i1.get_src(1).get_label());
+    assert(i2.get_dst(0).get_reg() == i2.get_src(1).get_reg());
+    assert(i2.get_dst(0).get_reg() == i1.get_dst(0).get_reg());
+    auto op = make_set(IR_Set::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
+                       std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
+    if (i0.get_dst(0).get_reg() != i1.get_dst(0).get_reg()) {
+      op->clobber = make_reg(i0.get_dst(0).get_reg(), idx);
+    }
+    return op;
+  }
+  return nullptr;
+}
+
 std::shared_ptr<IR> try_dsubu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::DSUBU && i1.kind == InstructionKind::DADDIU &&
       i2.kind == InstructionKind::MOVN) {
@@ -1358,6 +1499,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::CLES:
           result = try_cles(i, next, next_next, instr);
           break;
+        case InstructionKind::LUI:
+          result = try_lui(i, next, next_next, instr);
+          break;
         default:
           result = nullptr;
       }
@@ -1436,6 +1580,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::ANDI:
           result = try_andi(i, instr);
           break;
+        case InstructionKind::XORI:
+          result = try_xori(i, instr);
+          break;
         case InstructionKind::NOR:
           result = try_nor(i, instr);
           break;
@@ -1486,6 +1633,10 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::DSUBU:
           result = try_dsubu(i, instr);
+          if (!result) {
+            // fails if it uses s7 register.
+            result = to_asm_automatic(i.op_name_to_string(), i, instr);
+          }
           break;
         case InstructionKind::MULT3:
           result = try_mult3(i, instr);
@@ -1495,6 +1646,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::POR:
           result = try_por(i, instr);
+          if (!result) {
+            result = to_asm_automatic(i.op_name_to_string(), i, instr);
+          }
           break;
         case InstructionKind::LBU:
           result = try_lbu(i, instr);
@@ -1540,12 +1694,18 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::ADDIU:
           result = try_addiu(i, instr);
+          if (!result) {
+            result = to_asm_automatic(i.op_name_to_string(), i, instr);
+          }
           break;
         case InstructionKind::LUI:
           result = try_lui(i, instr);
           break;
         case InstructionKind::SLL:
           result = try_sll(i, instr);
+          if (!result) {
+            result = to_asm_automatic(i.op_name_to_string(), i, instr);
+          }
           break;
         case InstructionKind::SB:
           result = try_sb(i, instr);
@@ -1577,6 +1737,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::DSRLV:
           result = try_dsrlv(i, instr);
           break;
+        case InstructionKind::DSLLV:
+          result = try_dsllv(i, instr);
+          break;
         case InstructionKind::SUBU:
           result = try_subu(i, instr);
           break;
@@ -1585,13 +1748,156 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
           break;
         case InstructionKind::MOVN:
           result = try_movn(i, instr);
+          if (!result) {
+            result = to_asm_automatic(i.op_name_to_string(), i, instr);
+          }
           break;
         case InstructionKind::MOVZ:
           result = try_movz(i, instr);
+          if (!result) {
+            result = to_asm_automatic(i.op_name_to_string(), i, instr);
+          }
           break;
 
+          // Everything below here is an "asm passthrough".
         case InstructionKind::JR:
           result = to_asm_src_reg("jr", i, instr);
+          break;
+
+        // reg reg
+        case InstructionKind::QMFC2:
+          result = to_asm_dst_reg_src_reg(i.op_name_to_string(), i, instr);
+          break;
+
+        // VU/COP2
+        case InstructionKind::VMOVE:
+        case InstructionKind::VFTOI0:
+        case InstructionKind::VFTOI4:
+        case InstructionKind::VFTOI12:
+        case InstructionKind::VITOF0:
+        case InstructionKind::VITOF12:
+        case InstructionKind::VITOF15:
+        case InstructionKind::VABS:
+        case InstructionKind::VADD:
+        case InstructionKind::VSUB:
+        case InstructionKind::VMUL:
+        case InstructionKind::VMINI:
+        case InstructionKind::VMAX:
+        case InstructionKind::VOPMSUB:
+        case InstructionKind::VMADD:
+        case InstructionKind::VMSUB:
+        case InstructionKind::VADD_BC:
+        case InstructionKind::VSUB_BC:
+        case InstructionKind::VMUL_BC:
+        case InstructionKind::VMULA_BC:
+        case InstructionKind::VMADD_BC:
+        case InstructionKind::VADDA_BC:
+        case InstructionKind::VMADDA_BC:
+        case InstructionKind::VMSUBA_BC:
+        case InstructionKind::VMSUB_BC:
+        case InstructionKind::VMINI_BC:
+        case InstructionKind::VMAX_BC:
+        case InstructionKind::VADDQ:
+        case InstructionKind::VSUBQ:
+        case InstructionKind::VMULQ:
+        case InstructionKind::VMSUBQ:
+        case InstructionKind::VMULA:
+        case InstructionKind::VADDA:
+        case InstructionKind::VMADDA:
+        case InstructionKind::VOPMULA:
+        case InstructionKind::VDIV:
+        case InstructionKind::VCLIP:
+        case InstructionKind::VMULAQ:
+        case InstructionKind::VMTIR:
+        case InstructionKind::VIAND:
+        case InstructionKind::VLQI:
+        case InstructionKind::VIADDI:
+        case InstructionKind::VSQI:
+        case InstructionKind::VRGET:
+        case InstructionKind::VSQRT:
+        case InstructionKind::VRSQRT:
+        case InstructionKind::VRXOR:
+        case InstructionKind::VRNEXT:
+        case InstructionKind::VNOP:
+        case InstructionKind::VWAITQ:
+        case InstructionKind::VCALLMS:
+
+        // FPU/COP1
+        case InstructionKind::MULAS:
+        case InstructionKind::MADDAS:
+        case InstructionKind::MADDS:
+        case InstructionKind::ADDAS:
+
+        // Moves / Loads / Stores
+        case InstructionKind::CTC2:
+        case InstructionKind::CFC2:
+        case InstructionKind::SQC2:
+        case InstructionKind::LQC2:
+        case InstructionKind::LDR:
+        case InstructionKind::LDL:
+        case InstructionKind::QMTC2:
+        case InstructionKind::MFC0:
+        case InstructionKind::MTC0:
+        case InstructionKind::SYNCL:
+        case InstructionKind::SYNCP:
+        case InstructionKind::SYSCALL:
+        case InstructionKind::CACHE_DXWBIN:
+        case InstructionKind::MTPC:
+        case InstructionKind::MFPC:
+
+        // random math
+        case InstructionKind::ADDU:
+        case InstructionKind::SRL:  // maybe bitfield ops use this?
+        case InstructionKind::SRA:
+        case InstructionKind::SLT:
+        case InstructionKind::SLTI:
+
+        // MMI
+        case InstructionKind::PSLLW:
+        case InstructionKind::PSRAW:
+        case InstructionKind::PSRAH:
+        case InstructionKind::PLZCW:
+        case InstructionKind::PMFHL_UW:
+        case InstructionKind::PMFHL_LW:
+        case InstructionKind::PMFHL_LH:
+        case InstructionKind::PSLLH:
+        case InstructionKind::PSRLH:
+        case InstructionKind::PEXTLW:
+        case InstructionKind::PPACH:
+        case InstructionKind::PSUBW:
+        case InstructionKind::PCGTW:
+        case InstructionKind::PEXTLH:
+        case InstructionKind::PEXTLB:
+        case InstructionKind::PMAXH:
+        case InstructionKind::PPACB:
+        case InstructionKind::PADDW:
+        case InstructionKind::PADDH:
+        case InstructionKind::PMAXW:
+        case InstructionKind::PPACW:
+        case InstructionKind::PCEQW:
+        case InstructionKind::PEXTUW:
+        case InstructionKind::PMINH:
+        case InstructionKind::PEXTUH:
+        case InstructionKind::PEXTUB:
+        case InstructionKind::PCEQB:
+        case InstructionKind::PMINW:
+        case InstructionKind::PABSW:
+        case InstructionKind::PCPYLD:
+        case InstructionKind::PROT3W:
+        case InstructionKind::PAND:
+        case InstructionKind::PMADDH:
+        case InstructionKind::PMULTH:
+        case InstructionKind::PEXEW:
+        case InstructionKind::PCPYUD:
+        case InstructionKind::PNOR:
+        case InstructionKind::PCPYH:
+        case InstructionKind::PINTEH:
+
+          // 128 bit integer
+          //        case InstructionKind::LQ:
+          //        case InstructionKind::SQ:
+
+          result = to_asm_automatic(i.op_name_to_string(), i, instr);
           break;
         default:
           result = nullptr;

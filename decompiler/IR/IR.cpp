@@ -825,7 +825,7 @@ void IR_Ash::get_children(std::vector<std::shared_ptr<IR>>* output) const {
 goos::Object IR_AsmOp::to_form(const LinkedObjectFile& file) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(name));
-  for (auto& x : {dst, src0, src1}) {
+  for (auto& x : {dst, src0, src1, src2}) {
     if (x) {
       forms.push_back(x->to_form(file));
     }
@@ -849,4 +849,20 @@ goos::Object IR_CMoveF::to_form(const LinkedObjectFile& file) const {
 
 void IR_CMoveF::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(src);
+}
+
+goos::Object IR_AsmReg::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  switch (kind) {
+    case VU_Q:
+      return pretty_print::to_symbol("Q");
+    case VU_ACC:
+      return pretty_print::to_symbol("ACC");
+    default:
+      assert(false);
+  }
+}
+
+void IR_AsmReg::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
 }

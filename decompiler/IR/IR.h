@@ -379,6 +379,7 @@ class IR_AsmOp : public IR {
   std::shared_ptr<IR> dst = nullptr;
   std::shared_ptr<IR> src0 = nullptr;
   std::shared_ptr<IR> src1 = nullptr;
+  std::shared_ptr<IR> src2 = nullptr;
   std::string name;
   IR_AsmOp(std::string _name) : name(std::move(_name)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
@@ -391,6 +392,14 @@ class IR_CMoveF : public IR {
   bool on_zero = false;
   explicit IR_CMoveF(std::shared_ptr<IR> _src, bool _on_zero)
       : src(std::move(_src)), on_zero(_on_zero) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_AsmReg : public IR {
+ public:
+  enum Kind { VU_Q, VU_ACC } kind;
+  explicit IR_AsmReg(Kind _kind) : kind(_kind) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
