@@ -22,8 +22,7 @@ void setup_logging(bool verbose) {
     auto game_logger = spdlog::basic_logger_mt("GOAL Runtime", "logs/runtime.log");
     spdlog::set_default_logger(game_logger);
     spdlog::flush_on(spdlog::level::debug);
-    printf("OpenGOAL Runtime %d.%d\n", versions::GOAL_VERSION_MAJOR,
-           versions::GOAL_VERSION_MINOR);
+    printf("OpenGOAL Runtime %d.%d\n", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   }
 }
 
