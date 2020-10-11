@@ -148,11 +148,11 @@ void InitParms(int argc, const char* const* argv) {
  * DONE, EXACT
  */
 void InitCD() {
-  spdlog::info("Initializing CD drive\nThis may take a while...\n");
+  spdlog::info("Initializing CD drive. This may take a while...");
   sceCdInit(SCECdINIT);
   sceCdMmode(SCECdDVD);
   while (sceCdDiskReady(0) == SCECdNotReady) {
-    spdlog::debug("Drive not ready... insert a disk!\n");
+    spdlog::debug("Drive not ready... insert a disk!");
   }
   spdlog::debug("Disk type {}\n", sceCdGetDiskType());
 }

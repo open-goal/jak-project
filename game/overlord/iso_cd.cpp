@@ -231,7 +231,7 @@ u32 ReadDirectory(uint32_t sector, uint32_t size, uint32_t secBufID) {
     while (lsize > 0) {
       // ISO low-level read
       if (!ReadSectorsNow(lsector, 1, buffer)) {
-        printf("[OVERLORD ISO CD] Failed to read sector in ReadDirectory\n");
+        spdlog::info("[OVERLORD ISO CD] Failed to read sector in ReadDirectory!");
         return 0;
       }
       u8* lbuffer = buffer;
@@ -264,7 +264,7 @@ u32 ReadDirectory(uint32_t sector, uint32_t size, uint32_t secBufID) {
             }
           } else {
             if (sNumFiles == MAX_ISO_FILES) {
-              printf("[OVERLORD ISO CD] There are too many files on the disc!\n");
+              spdlog::info("[OVERLORD ISO CD] There are too many files on the disc!");
               return 0;
             }
 
@@ -283,7 +283,7 @@ u32 ReadDirectory(uint32_t sector, uint32_t size, uint32_t secBufID) {
       lsize -= 0x800;
     }
   } else {
-    printf("[OVERLORD ISO CD] ReadDirectory ran out of sector buffers!\n");
+    spdlog::info("[OVERLORD ISO CD] ReadDirectory ran out of sector buffers!");
   }
   return 1;
 }
@@ -354,7 +354,7 @@ void LoadMusicTweaks(u8* buffer) {
   FileRecord* fr = FS_FindIN(iso_name);
   if (!fr || !ReadSectorsNow(fr->location, 1, buffer)) {
     *(s32*)gMusicTweakInfo = 0;
-    printf("[OVERLORD ISO CD] Failed to load music tweaks!\n");
+    spdlog::warn("[OVERLORD ISO CD] Failed to load music tweaks!");
   } else {
     memcpy(gMusicTweakInfo, buffer, MUSIC_TWEAK_SIZE);
   }
@@ -373,8 +373,8 @@ void LoadDiscID() {
   MakeISOName(iso_name, "DISK_ID.DIZ");
   FileRecord* fr = FS_FindIN(iso_name);
   if (!fr) {
-    printf(
-        "[OVERLORD ISO CD] LoadDiscID failed to find DISK_ID.DIZ, using sector 0x400 instead!\n");
+    spdlog::warn(
+        "[OVERLORD ISO CD] LoadDiscID failed to find DISK_ID.DIZ, using sector 0x400 instead!");
     CD_ID_SectorNum = 0x400;
   } else {
     CD_ID_SectorNum = fr->location;
@@ -385,7 +385,7 @@ void LoadDiscID() {
   for (uint32_t i = 0; i < SECTOR_SIZE / 4; i++) {
     CD_ID_SectorSum += CD_ID_Sector[i];
   }
-  printf("[OVERLORD] DISK_ID.DIZ OK 0x%x\n", CD_ID_SectorSum);
+  spdlog::info("[OVERLORD] DISK_ID.DIZ OK 0x{}\n", CD_ID_SectorSum);
 }
 
 /*!
@@ -416,13 +416,13 @@ void SetRealSector() {
   } else {
     // it's a duplicated file, and duplicate read is enabled, so get the area 2 sector.
     _real_sector = _sector + sAreaDiff;
-    printf("[OVERLORD] Warning, adjusting real sector in SetRealSector\n");
+    spdlog::warn("[OVERLORD] Warning, adjusting real sector in SetRealSector");
   }
 
   // we suspect the game is pirated, load the wrong sector.
   if (pirated) {
     _real_sector += 3;
-    printf("pirated!\n");  // added, so I don't trip this by accident!
+    spdlog::warn("Pirated!");
   }
 }
 
@@ -466,13 +466,13 @@ int FS_Init(u8* buffer) {
 
     // read primary volume descriptor into buffer
     if (!ReadSectorsNow(0x10, 1, sSecBuffer[0])) {
-      printf("[OVERLORD ISO CD] Failed to read primary volume descriptor\n");
+      spdlog::warn("[OVERLORD ISO CD] Failed to read primary volume descriptor");
       return 1;
     }
 
     // check volume descriptor identifier
     if (memcmp(sSecBuffer[0] + 1, "CD001", 5)) {
-      printf("[OVERLORD ISO CD] Got the wrong volume descriptor identifier\n");
+      spdlog::warn("[OVERLORD ISO CD] Got the wrong volume descriptor identifier");
       char* cptr = (char*)sSecBuffer[0] + 1;
       printf("%c%c%c%c%c\n", cptr[0], cptr[1], cptr[2], cptr[3], cptr[4]);
       return 1;
@@ -482,7 +482,7 @@ int FS_Init(u8* buffer) {
     uint32_t path_table_sector = ReadU32(sSecBuffer[0] + 0x8c);
 
     if (!ReadSectorsNow(path_table_sector, 1, sSecBuffer[0])) {
-      printf("[OVERLORD ISO CD] Failed to read path table\n");
+      spdlog::warn("[OVERLORD ISO CD] Failed to read path");
       return 1;
     }
 
@@ -490,14 +490,14 @@ int FS_Init(u8* buffer) {
     uint32_t path_table_extent = ReadU32(sSecBuffer[0] + 2);
 
     if (!ReadSectorsNow(path_table_extent, 1, sSecBuffer[0])) {
-      printf("[OVERLORD ISO CD] Failed to read path table extent\n");
+      spdlog::warn("[OVERLORD ISO CD] Failed to read path table extent");
     }
 
     // read root directory
     add_files = true;
     uint32_t dir_size = ReadU32(sSecBuffer[0] + 10);
     if (!ReadDirectory(path_table_extent, dir_size, 0)) {
-      printf("[OVERLORD ISO CD] Failed to ReadDirectory\n");
+      spdlog::warn("[OVERLORD ISO CD] Failed to ReadDirectory");
       return 1;
     }
 
@@ -520,7 +520,7 @@ int FS_Init(u8* buffer) {
     }
     return 0;
   } else {
-    printf("[OVERLORD ISO CD] Bad Media Type\n");
+    spdlog::warn("[OVERLORD ISO CD] Bad Media Type!");
     return 1;
   }
 }
@@ -567,7 +567,7 @@ FileRecord* FS_FindIN(const char* iso_name) {
     }
 
     // we didn't get 1 GB of files, you're a pirate.
-    printf("pirated!\n");  // i added this so i know if it hangs here
+    spdlog::warn("Pirated!");
   }
 }
 
@@ -585,7 +585,7 @@ uint32_t FS_GetLength(FileRecord* fr) {
  * This is an ISO FS API Function
  */
 LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
-  printf("[OVERLORD] FS Open %s\n", fr->name);  // Added
+  spdlog::info("[OVERLORD] FS Open {}", fr->name);
   LoadStackEntry* selected = nullptr;
   // find first unused spot on load stack.
   for (uint32_t i = 0; i < MAX_OPEN_FILES; i++) {
@@ -599,7 +599,7 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
       return selected;
     }
   }
-  printf("[OVERLORD ISO CD] Failed to FS_Open %s\n", fr->name);
+  spdlog::warn("[OVERLORD ISO CD] Failed to FS_Open {}", fr->name);
   ExitIOP();
   return nullptr;
 }
@@ -620,7 +620,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
       return selected;
     }
   }
-  printf("[OVERLORD ISO CD] Failed to FS_OpenWad %s\n", fr->name);
+  spdlog::warn("[OVERLORD ISO CD] Failed to use FS_OpenWad {}", fr->name);
   ExitIOP();
   return nullptr;
 }
@@ -630,7 +630,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 void FS_Close(LoadStackEntry* fd) {
-  printf("[OVERLORD] FS Close %s\n", fd->fr->name);
+  spdlog::info("[OVERLORD] FS Close {}", fd->fr->name);
   if (fd == sReadInfo) {
     // the file is currently being read, so lets try to finish out the read, if possible.
     int count = 0;
@@ -663,7 +663,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   int32_t real_size = len;
   if (len < 0) {
     // not sure what this is about...
-    printf("[OVERLORD ISO CD] negative length warning!\n");
+    spdlog::warn("[OVERLORD ISO CD] Negative length warning!");
     real_size = len + 0x7ff;
   }
   _sectors = real_size >> 11;
