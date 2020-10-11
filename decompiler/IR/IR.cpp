@@ -700,6 +700,19 @@ void IR_WhileLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const 
   output->push_back(body);
 }
 
+goos::Object IR_UntilLoop::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("until"));
+  list.push_back(condition->to_form(file));
+  print_inlining_begin(&list, body.get(), file);
+  return pretty_print::build_list(list);
+}
+
+void IR_UntilLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(condition);
+  output->push_back(body);
+}
+
 goos::Object IR_CondWithElse::to_form(const LinkedObjectFile& file) const {
   // for now we only turn it into an if statement if both cases won't require a begin at the top
   // level. I think it is more common to write these as a two-case cond instead of an if with begin.
@@ -865,4 +878,30 @@ goos::Object IR_AsmReg::to_form(const LinkedObjectFile& file) const {
 
 void IR_AsmReg::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
+}
+
+goos::Object IR_Return::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("return"));
+  forms.push_back(pretty_print::build_list(return_code->to_form(file)));
+  forms.push_back(pretty_print::build_list(dead_code->to_form(file)));
+  return pretty_print::build_list(forms);
+}
+
+void IR_Return::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(return_code);
+  output->push_back(dead_code);
+}
+
+goos::Object IR_Break::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("break"));  // todo break destination...
+  forms.push_back(pretty_print::build_list(return_code->to_form(file)));
+  forms.push_back(pretty_print::build_list(dead_code->to_form(file)));
+  return pretty_print::build_list(forms);
+}
+
+void IR_Break::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(return_code);
+  output->push_back(dead_code);
 }

@@ -298,6 +298,16 @@ class IR_WhileLoop : public IR {
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::shared_ptr<IR> condition, body;
+  bool cleaned = false;
+};
+
+class IR_UntilLoop : public IR {
+ public:
+  IR_UntilLoop(std::shared_ptr<IR> _condition, std::shared_ptr<IR> _body)
+  : condition(std::move(_condition)), body(std::move(_body)) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  std::shared_ptr<IR> condition, body;
 };
 
 class IR_CondWithElse : public IR {
@@ -400,6 +410,26 @@ class IR_AsmReg : public IR {
  public:
   enum Kind { VU_Q, VU_ACC } kind;
   explicit IR_AsmReg(Kind _kind) : kind(_kind) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Return : public IR {
+ public:
+  std::shared_ptr<IR> return_code;
+  std::shared_ptr<IR> dead_code;
+  IR_Return(std::shared_ptr<IR> _return_code, std::shared_ptr<IR> _dead_code) :
+  return_code(std::move(_return_code)), dead_code(std::move(_dead_code)) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Break : public IR {
+ public :
+  std::shared_ptr<IR> return_code;
+  std::shared_ptr<IR> dead_code;
+  IR_Break(std::shared_ptr<IR> _return_code, std::shared_ptr<IR> _dead_code) :
+  return_code(std::move(_return_code)), dead_code(std::move(_dead_code)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };

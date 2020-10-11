@@ -86,6 +86,20 @@ std::pair<IR_Branch*, std::shared_ptr<IR>*> get_condition_branch(std::shared_ptr
       condition_branch_location = &as_seq->forms.back();
     }
   }
+
+  if (!condition_branch) {
+    auto as_return = dynamic_cast<IR_Return*>(in->get());
+    if (as_return) {
+      return get_condition_branch(&as_return->dead_code);
+    }
+  }
+
+  if (!condition_branch) {
+    auto as_break = dynamic_cast<IR_Break*>(in->get());
+    if (as_break) {
+      return get_condition_branch(&as_break->dead_code);
+    }
+  }
   return std::make_pair(condition_branch, condition_branch_location);
 }
 
@@ -131,6 +145,63 @@ void clean_up_cond_with_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
       *(jump_to_end.second) = std::make_shared<IR_Nop>();
     }
     e.cleaned = true;
+  }
+}
+
+void clean_up_until_loop(IR_UntilLoop* ir) {
+  auto condition_branch = get_condition_branch(&ir->condition);
+  assert(condition_branch.first);
+  assert(condition_branch.first->branch_delay.kind == BranchDelay::NOP);
+  auto replacement = std::make_shared<IR_Compare>(condition_branch.first->condition);
+  *(condition_branch.second) = replacement;
+}
+
+void clean_up_infinite_while_loop(IR_WhileLoop* ir) {
+  auto jump = get_condition_branch(&ir->body);
+  assert(jump.first);
+  assert(jump.first->branch_delay.kind == BranchDelay::NOP);
+  assert(jump.first->condition.kind == Condition::ALWAYS);
+  auto as_end_of_sequence = get_condition_branch_as_vector(ir->body.get());
+  if (as_end_of_sequence.first) {
+    assert(as_end_of_sequence.second->size() > 1);
+    as_end_of_sequence.second->pop_back();
+  } else {
+    // In the future we could consider having a more explicit "this case is empty" operator so
+    // this doesn't get confused with an actual MIPS nop.
+    *(jump.second) = std::make_shared<IR_Nop>();
+  }
+  ir->cleaned = true;  // so we don't try this later...
+}
+
+void clean_up_return(IR_Return* ir) {
+  auto jump_to_end = get_condition_branch(&ir->return_code);
+  assert(jump_to_end.first);
+  assert(jump_to_end.first->branch_delay.kind == BranchDelay::NOP);
+  assert(jump_to_end.first->condition.kind == Condition::ALWAYS);
+  auto as_end_of_sequence = get_condition_branch_as_vector(ir->return_code.get());
+  if (as_end_of_sequence.first) {
+    assert(as_end_of_sequence.second->size() > 1);
+    as_end_of_sequence.second->pop_back();
+  } else {
+    // In the future we could consider having a more explicit "this case is empty" operator so
+    // this doesn't get confused with an actual MIPS nop.
+    *(jump_to_end.second) = std::make_shared<IR_Nop>();
+  }
+}
+
+void clean_up_break(IR_Break* ir) {
+  auto jump_to_end = get_condition_branch(&ir->return_code);
+  assert(jump_to_end.first);
+  assert(jump_to_end.first->branch_delay.kind == BranchDelay::NOP);
+  assert(jump_to_end.first->condition.kind == Condition::ALWAYS);
+  auto as_end_of_sequence = get_condition_branch_as_vector(ir->return_code.get());
+  if (as_end_of_sequence.first) {
+    assert(as_end_of_sequence.second->size() > 1);
+    as_end_of_sequence.second->pop_back();
+  } else {
+    // In the future we could consider having a more explicit "this case is empty" operator so
+    // this doesn't get confused with an actual MIPS nop.
+    *(jump_to_end.second) = std::make_shared<IR_Nop>();
   }
 }
 
@@ -844,6 +915,25 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     auto result = std::make_shared<IR_WhileLoop>(cfg_to_ir(f, file, wvtx->condition),
                                                  cfg_to_ir(f, file, wvtx->body));
     return result;
+  } else if (dynamic_cast<UntilLoop*>(vtx)) {
+    auto wvtx = dynamic_cast<UntilLoop*>(vtx);
+    auto result = std::make_shared<IR_UntilLoop>(cfg_to_ir(f, file, wvtx->condition),
+                                                 cfg_to_ir(f, file, wvtx->body));
+    clean_up_until_loop(result.get());
+    return result;
+  } else if (dynamic_cast<UntilLoop_single*>(vtx)) {
+    auto wvtx = dynamic_cast<UntilLoop_single*>(vtx);
+    auto result =
+        std::make_shared<IR_UntilLoop>(cfg_to_ir(f, file, wvtx->block), std::make_shared<IR_Nop>());
+    clean_up_until_loop(result.get());
+    return result;
+  } else if (dynamic_cast<InfiniteLoopBlock*>(vtx)) {
+    auto wvtx = dynamic_cast<InfiniteLoopBlock*>(vtx);
+    auto result = std::make_shared<IR_WhileLoop>(
+        std::make_shared<IR_Compare>(Condition(Condition::ALWAYS, nullptr, nullptr, nullptr)),
+        cfg_to_ir(f, file, wvtx->block));
+    clean_up_infinite_while_loop(result.get());
+    return result;
   } else if (dynamic_cast<CondWithElse*>(vtx)) {
     auto* cvtx = dynamic_cast<CondWithElse*>(vtx);
 
@@ -912,7 +1002,6 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     }
     auto result = std::make_shared<IR_ShortCircuit>(entries);
     clean_up_sc(result, file);
-    // todo clean these into real and/or.
     return result;
   } else if (dynamic_cast<CondNoElse*>(vtx)) {
     auto* cvtx = dynamic_cast<CondNoElse*>(vtx);
@@ -925,6 +1014,18 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     }
     std::shared_ptr<IR> result = std::make_shared<IR_Cond>(entries);
     clean_up_cond_no_else(&result, file);
+    return result;
+  } else if (dynamic_cast<GotoEnd*>(vtx)) {
+    auto* cvtx = dynamic_cast<GotoEnd*>(vtx);
+    auto result = std::make_shared<IR_Return>(cfg_to_ir(f, file, cvtx->body),
+                                              cfg_to_ir(f, file, cvtx->unreachable_block));
+    clean_up_return(result.get());
+    return result;
+  } else if (dynamic_cast<Break*>(vtx)) {
+    auto* cvtx = dynamic_cast<Break*>(vtx);
+    auto result = std::make_shared<IR_Break>(cfg_to_ir(f, file, cvtx->body),
+                                             cfg_to_ir(f, file, cvtx->unreachable_block));
+    clean_up_break(result.get());
     return result;
   }
 
@@ -942,7 +1043,7 @@ void clean_up_while_loops(IR_Begin* sequence, LinkedObjectFile& file) {
   std::vector<size_t> to_remove;  // the list of branches to remove by index in this sequence
   for (size_t i = 0; i < sequence->forms.size(); i++) {
     auto* form_as_while = dynamic_cast<IR_WhileLoop*>(sequence->forms.at(i).get());
-    if (form_as_while) {
+    if (form_as_while && !form_as_while->cleaned) {
       assert(i != 0);
       auto prev_as_branch = dynamic_cast<IR_Branch*>(sequence->forms.at(i - 1).get());
       assert(prev_as_branch);
@@ -989,7 +1090,6 @@ std::shared_ptr<IR> build_cfg_ir(Function& function,
 
   try {
     auto top_level = cfg.get_single_top_level();
-    // todo, we should apply transformations for fixing up branch instructions for each IR.
     // and possibly annotate the IR control flow structure so that we can determine if its and/or
     // or whatever. This may require rejecting a huge number of inline assembly functions, and
     // possibly resolving the min/max/ash issue.
