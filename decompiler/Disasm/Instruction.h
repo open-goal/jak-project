@@ -65,6 +65,7 @@ class Instruction {
  public:
   InstructionKind kind = InstructionKind::UNKNOWN;
 
+  std::string op_name_to_string() const;
   std::string to_string(const LinkedObjectFile& file) const;
   bool is_valid() const;
 

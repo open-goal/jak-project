@@ -250,6 +250,15 @@ class GotoEnd : public CfgVtx {
   CfgVtx* unreachable_block = nullptr;
 };
 
+class Break : public CfgVtx {
+ public:
+  std::string to_string() override;
+  goos::Object to_form() override;
+  int dest_block = -1;
+  CfgVtx* body = nullptr;
+  CfgVtx* unreachable_block = nullptr;
+};
+
 struct BasicBlock;
 
 /*!
@@ -283,6 +292,7 @@ class ControlFlowGraph {
   bool find_short_circuits();
   bool find_goto_end();
   bool find_infinite_loop();
+  bool find_goto_not_end();
 
   /*!
    * Apply a function f to each top-level vertex.
@@ -324,6 +334,7 @@ class ControlFlowGraph {
   bool is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2);
   bool is_until_loop(CfgVtx* b1, CfgVtx* b2);
   bool is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1);
+  bool is_goto_not_end_and_unreachable(CfgVtx* b0, CfgVtx* b1);
   std::vector<BlockVtx*> m_blocks;   // all block nodes, in order.
   std::vector<CfgVtx*> m_node_pool;  // all nodes allocated
   EntryVtx* m_entry;                 // the entry vertex

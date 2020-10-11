@@ -116,9 +116,10 @@ bool InstructionAtom::is_link_or_label() const {
 }
 
 /*!
- * Convert entire instruction to a string.
+ * Convert just the name of the opcode to a string, omitting src/dst, but including
+ * suffixes (interlock, broadcasts and destination)
  */
-std::string Instruction::to_string(const LinkedObjectFile& file) const {
+std::string Instruction::op_name_to_string() const {
   auto& info = gOpcodeInfo[(int)kind];
 
   // the name
@@ -162,6 +163,15 @@ std::string Instruction::to_string(const LinkedObjectFile& file) const {
     if (cop2_dest & 1)
       result.push_back('w');
   }
+  return result;
+}
+
+/*!
+ * Convert entire instruction to a string.
+ */
+std::string Instruction::to_string(const LinkedObjectFile& file) const {
+  auto& info = gOpcodeInfo[(int)kind];
+  auto result = op_name_to_string();
 
   // relative store and load instructions have a special syntax in MIPS
   if (info.is_store) {
