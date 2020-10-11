@@ -75,7 +75,7 @@ void deci2_runner(SystemThreadInterface& iface) {
     throw std::runtime_error("DECI2 server init failed");
   }
 
-  printf("[DECI2] waiting for listener...\n");
+  spdlog::debug("[DECI2] Waiting for listener...");
   // spdlog::debug("[DECI2] Waiting for listener..."); --> disabled temporarily, some weird race
   // condition?
   bool saw_listener = false;
@@ -259,7 +259,6 @@ u32 exec_runtime(int argc, char** argv) {
 
   // join and exit
   tm.join();
-  // printf("GOAL Runtime Shutdown (code %d)\n", MasterExit);
   spdlog::info("GOAL Runtime Shutdown (code {})", MasterExit);
   return MasterExit;
 }
