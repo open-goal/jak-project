@@ -64,15 +64,6 @@ std::shared_ptr<IR> to_asm_reg_reg_reg(const std::string& str, Instruction& inst
 }
 
 /*!
- * Create an assembly passthrough for op dst
- */
-std::shared_ptr<IR> to_asm_dst_reg(const std::string& str, Instruction& instr, int idx) {
-  auto result = std::make_shared<IR_AsmOp>(str);
-  result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
-  return result;
-}
-
-/*!
  * Create an assembly passthrough for op src
  */
 std::shared_ptr<IR> to_asm_src_reg(const std::string& str, Instruction& instr, int idx) {
@@ -87,17 +78,6 @@ std::shared_ptr<IR> to_asm_src_reg(const std::string& str, Instruction& instr, i
 std::shared_ptr<IR> to_asm_dst_reg_src_reg(const std::string& str, Instruction& instr, int idx) {
   auto result = std::make_shared<IR_AsmOp>(str);
   result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
-  result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
-  return result;
-}
-
-/*!
- * Create an assembly passthrough for op Q src
- */
-std::shared_ptr<IR> to_asm_dst_Q_src_reg(const std::string& str, Instruction& instr, int idx) {
-  auto result = std::make_shared<IR_AsmOp>(str);
-  assert(instr.get_dst(0).kind == InstructionAtom::VU_Q);
-  result->dst = std::make_shared<IR_AsmReg>(IR_AsmReg::VU_Q);
   result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
   return result;
 }
