@@ -1123,7 +1123,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     if (kv != m_inlineable_functions.end()) {
       // it's inlinable.  However, we do not always inline an inlinable function by default
       if (kv->second->func ==
-          nullptr ||  // only-inline, we must inline it as there is no code generated for it
+              nullptr ||  // only-inline, we must inline it as there is no code generated for it
           kv->second->func->settings
               .inline_by_default ||  // inline when possible, so we should inline
           (kv->second->func->settings.allow_inline &&
@@ -1328,9 +1328,9 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   if (function->type().arg_count() && !is_varargs_function(function->type())) {
     if (function->type().arg_count() - 1 != args.size()) {
       throw_compile_error(form, "invalid number of arguments to function call: got " +
-                                std::to_string(args.size()) + " and expected " +
-                                std::to_string(function->type().arg_count() - 1) + " for " +
-                                function->type().print());
+                                    std::to_string(args.size()) + " and expected " +
+                                    std::to_string(function->type().arg_count() - 1) + " for " +
+                                    function->type().print());
     }
     for (uint32_t i = 0; i < args.size(); i++) {
       if (method_type_name.empty()) {
@@ -1471,8 +1471,8 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
       }
 
       // check condition:
-      Object condition_result =
-          m_goos->eval_with_rewind(current_case.as_pair()->car, m_goos->global_environment.as_env());
+      Object condition_result = m_goos->eval_with_rewind(current_case.as_pair()->car,
+                                                         m_goos->global_environment.as_env());
       if (m_goos->truthy(condition_result)) {
         if (current_case.as_pair()->cdr.is_empty_list()) {
           return get_none();
@@ -1794,7 +1794,7 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
         auto result = env->make_gpr(first_type);
         env->emit(std::make_unique<IR_RegSet>(
             result, to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_gpr(env)));
+                        ->to_gpr(env)));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit(std::make_unique<IR_IntegerMath>(
@@ -1818,7 +1818,7 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
         auto result = env->make_xmm(first_type);
         env->emit(std::make_unique<IR_RegSet>(
             result, to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_xmm(env)));
+                        ->to_xmm(env)));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit(std::make_unique<IR_FloatMath>(

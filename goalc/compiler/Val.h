@@ -135,7 +135,6 @@ class StaticVal : public Val {
   RegVal* to_reg(Env* fe) override;
 };
 
-
 class MemoryOffsetConstantVal : public Val {
  public:
   MemoryOffsetConstantVal(TypeSpec ts, Val* _base, int _offset)

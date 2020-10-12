@@ -32,7 +32,7 @@ class Val;
 namespace goos {
 class Object;
 class SymbolObject;
-}
+}  // namespace goos
 
 namespace emitter {
 enum class RegKind : u8;

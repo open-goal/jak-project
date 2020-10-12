@@ -23,5 +23,4 @@ namespace emitter {
 enum class RegKind : u8 { GPR, XMM, INVALID };
 }
 
-
 #endif  // JAK_COMMON_H

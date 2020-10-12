@@ -20,7 +20,7 @@ class StaticObject;
 namespace emitter {
 class ObjectGenerator;
 class IR_Record;
-}
+}  // namespace emitter
 
 class IR {
  public:

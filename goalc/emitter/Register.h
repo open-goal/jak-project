@@ -18,8 +18,6 @@
 
 namespace emitter {
 
-
-
 std::string to_string(RegKind kind);
 
 // registers by name

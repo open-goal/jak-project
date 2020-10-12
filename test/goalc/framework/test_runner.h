@@ -6,7 +6,7 @@
 #include "goalc/compiler/Compiler.h"
 
 namespace inja {
- class Environment;
+class Environment;
 }
 
 namespace GoalTest {

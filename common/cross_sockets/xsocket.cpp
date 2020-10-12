@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <string.h>
 
-
 int get_socket_level() {
 #ifdef __linux
   return SOL_TCP;
