@@ -1,0 +1,69 @@
+(start-test "test-type-arrays")
+
+(deftype basic-type (basic)
+  (
+   (flt float)
+   (dec int32)
+   )
+  )
+
+(deftype struct-type (structure)
+  (
+   (flt float :offset-assert 0)
+   (dec int32 :offset-assert 4)
+   (flt-overlay float :offset 4)
+   (dec-overlay int32 :offset 4)
+   )
+  )
+
+(let ((obj-test (new 'global 'struct-type)))
+  ;(inspect obj-test)
+  (set! (-> obj-test dec) #x00f0f0f0)
+  (set! (-> obj-test flt) 123.456)
+  (expect-eq (-> obj-test dec-overlay) #x00f0f0f0)
+ 
+  ;((-> struct-type methods 3) obj-test)
+  )
+
+
+;;;;;; TEST 000
+;; create a new typ000 (no value, no array, no inline)
+(deftype type000 (basic)
+  (
+   (pad int32)
+   (x basic-type)
+   )
+  )
+
+
+(let ((obj000 (new 'global 'type000))
+      (bo (new 'global 'basic-type))
+      )
+  (set! (-> obj000 x) bo)
+  (expect-eq (-> obj000 x type) basic-type)
+  )
+
+
+;;;;;; TEST 001
+;; create a new type001 (no value, no array, yes inline)
+(deftype type001 (basic)
+  ((pad int32)
+   (x struct-type)
+   )
+  )
+
+
+(let ((obj001 (new 'global 'type001))
+      (sub-obj (new 'global 'struct-type)))
+  ;;(inspect obj001)
+  (set! (-> obj001 x) sub-obj)
+  (set! (-> obj001 x dec) 12)
+  (expect-eq 12 (-> sub-obj dec))
+  ;(inspect obj001)
+  ;((-> struct-type methods 3) (-> obj001 x))
+  )
+
+;; todo - test the other 6 (or maybe 4?) types?
+
+
+(finish-test)
