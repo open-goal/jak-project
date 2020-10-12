@@ -9,7 +9,7 @@
 
 int main(int argc, char** argv) {
   spdlog::info("Jak Disassembler");
-  
+
   init_crc();
   init_opcode_info();
 
