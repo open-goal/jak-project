@@ -1,0 +1,115 @@
+name: Linux
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    strategy:
+      # Prevent one build from failing everything (although maybe those should be included as experimental builds instead)
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04]
+        config: [Debug] # TODO - Eventually we need to make a Release Config
+        experimental: [false]
+
+    name: ${{ matrix.config }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
+    timeout-minutes: 10
+
+    steps:
+      # NOTE - useful for debugging
+      # - name: Dump GitHub context
+      #   env:
+      #     GITHUB_CONTEXT: ${{ toJson(github) }}
+      #   run: |
+      #     echo "$GITHUB_CONTEXT"
+
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Cache Submodules
+        id: cache-submodules
+        uses: actions/cache@v2
+        with:
+          key: submodules-${{ hashFiles('./.gitmodules') }}
+          path: |
+            ./third-party/googletest
+            ./third-party/spdlog
+            ./.git/modules/
+
+      - name: Checkout Submodules
+        if: steps.cache-submodules.outputs.cache-hit != 'true'
+        run: git submodule update --init --recursive --jobs 2
+
+      - name: Prepare Artifact Git Info
+        shell: bash
+        run: |
+          echo "##[set-output name=branch;]${GITHUB_REF#refs/heads/}"
+          ARTIFACT_NAME="commit-$(git rev-parse --short "$GITHUB_SHA")"
+          if [ ${{ github.event_name == 'pull_request' }} ]; then
+            echo "##[set-output name=short-sha;]$(git rev-parse --short "${{ github.event.pull_request.head.sha }}")"
+            if [ ! -z "${{ github.event.pull_request.number }}" ]; then
+              ARTIFACT_NAME="pr-${{ github.event.pull_request.number }}-commit-$(git rev-parse --short "${{ github.event.pull_request.head.sha }}")"
+            fi
+          else
+            echo "##[set-output name=short-sha;]$(git rev-parse --short "$GITHUB_SHA")"
+          fi
+          echo "##[set-output name=artifact-metadata;]${ARTIFACT_NAME}"
+        id: git-vars
+
+      - name: Get Package Dependencies
+        run: sudo apt install build-essential cmake ccache gcc g++ lcov make nasm
+
+      # # -- SETUP CCACHE - https://cristianadam.eu/20200113/speeding-up-c-plus-plus-github-actions-using-ccache/
+      # - name: Prepare ccache timestamp
+      #   id: ccache_cache_timestamp
+      #   shell: cmake -P {0}
+      #   run: |
+      #     string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+      #     message("::set-output name=timestamp::${current_date}")
+
+      # - name: ccache cache files
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: .ccache
+      #     key: ${{ matrix.config }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+      #     restore-keys: |
+      #       ${{ matrix.config }}-ccache-
+
+      - name: CMake Generation
+        # run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
+        run: cmake -B build -DCODE_COVERAGE=ON
+
+      - name: Build Project
+        working-directory: ./build
+        # env:
+        #   CCACHE_BASEDIR: ${GITHUB_WORKSPACE}
+        #   CCACHE_DIR: ${GITHUB_WORKSPACE}/.ccache
+        #   CCACHE_COMPRESS: "true"
+        #   CCACHE_COMPRESSLEVEL: "6"
+        #   CCACHE_MAXSIZE: "400M"
+        #   ccache -p
+        #   ccache -z
+        #   make -j4
+        #   ccache -s
+        run: make -j4
+
+      - name: Run Tests
+        run: ./test_code_coverage.sh
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        continue-on-error: true # Sometimes Coveralls has intermittent problems, and codecoverage isn't critical to our success
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ./build/goalc-test_coverage.info

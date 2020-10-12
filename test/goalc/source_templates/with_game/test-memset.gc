@@ -1,0 +1,20 @@
+(define format _format)
+
+(let* ((base-addr #x6000000)
+       (word-cnt 23)
+       (base (the (pointer int32) base-addr))
+       (foo (mem-set32! base #x0 (+ 1 word-cnt)))
+       (last-byte (the (pointer uint8) (+ base-addr 3 (* 4 (- word-cnt 1)))))
+       (dst (mem-set32! base #x0badbeef word-cnt))
+       )
+  
+  (if (!= dst base)
+      (format #t "test failed, bad base returned!~%")
+      )
+  
+  (if (!= 0 (-> last-byte 1))
+      (format #t "set too many bytes!~%")
+      )
+  
+  (-> last-byte 0)
+  )
