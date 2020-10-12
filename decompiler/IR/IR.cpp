@@ -256,6 +256,12 @@ goos::Object IR_IntMath2::to_form(const LinkedObjectFile& file) const {
     case RIGHT_SHIFT_LOGIC:
       math_operator = "shr";
       break;
+    case MIN_SIGNED:
+      math_operator = "min.si";
+      break;
+    case MAX_SIGNED:
+      math_operator = "max.si";
+      break;
     default:
       assert(false);
   }
@@ -399,6 +405,8 @@ int Condition::num_args() const {
     case FLOAT_NOT_EQUAL:
     case FLOAT_LESS_THAN:
     case FLOAT_GEQ:
+    case FLOAT_GREATER_THAN:
+    case FLOAT_LEQ:
       return 2;
     case ZERO:
     case NONZERO:
@@ -501,6 +509,12 @@ void Condition::invert() {
     case FLOAT_GEQ:
       kind = FLOAT_LESS_THAN;
       break;
+    case FLOAT_GREATER_THAN:
+      kind = FLOAT_LEQ;
+      break;
+    case FLOAT_LEQ:
+      kind = FLOAT_GREATER_THAN;
+      break;
     default:
       assert(false);
   }
@@ -569,6 +583,12 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
       break;
     case FLOAT_GEQ:
       condtion_operator = ">=.f";
+      break;
+    case FLOAT_GREATER_THAN:
+      condtion_operator = ">.f";
+      break;
+    case FLOAT_LEQ:
+      condtion_operator = "<=.f";
       break;
     case GREATER_THAN_ZERO_SIGNED:
       condtion_operator = ">0.si";
@@ -676,6 +696,19 @@ goos::Object IR_WhileLoop::to_form(const LinkedObjectFile& file) const {
 }
 
 void IR_WhileLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(condition);
+  output->push_back(body);
+}
+
+goos::Object IR_UntilLoop::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("until"));
+  list.push_back(condition->to_form(file));
+  print_inlining_begin(&list, body.get(), file);
+  return pretty_print::build_list(list);
+}
+
+void IR_UntilLoop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(condition);
   output->push_back(body);
 }
@@ -800,4 +833,75 @@ goos::Object IR_Ash::to_form(const LinkedObjectFile& file) const {
 void IR_Ash::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(value);
   output->push_back(shift_amount);
+}
+
+goos::Object IR_AsmOp::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol(name));
+  for (auto& x : {dst, src0, src1, src2}) {
+    if (x) {
+      forms.push_back(x->to_form(file));
+    }
+  }
+  return pretty_print::build_list(forms);
+}
+
+void IR_AsmOp::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  for (auto& x : {dst, src0, src1}) {
+    if (x) {
+      output->push_back(x);
+    }
+  }
+}
+
+goos::Object IR_CMoveF::to_form(const LinkedObjectFile& file) const {
+  return pretty_print::build_list(
+      pretty_print::to_symbol(on_zero ? "cmove-false-on-zero" : "cmove-false-on-nonzero"),
+      src->to_form(file));
+}
+
+void IR_CMoveF::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(src);
+}
+
+goos::Object IR_AsmReg::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  switch (kind) {
+    case VU_Q:
+      return pretty_print::to_symbol("Q");
+    case VU_ACC:
+      return pretty_print::to_symbol("ACC");
+    default:
+      assert(false);
+  }
+}
+
+void IR_AsmReg::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_Return::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("return"));
+  forms.push_back(pretty_print::build_list(return_code->to_form(file)));
+  forms.push_back(pretty_print::build_list(dead_code->to_form(file)));
+  return pretty_print::build_list(forms);
+}
+
+void IR_Return::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(return_code);
+  output->push_back(dead_code);
+}
+
+goos::Object IR_Break::to_form(const LinkedObjectFile& file) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("break"));  // todo break destination...
+  forms.push_back(pretty_print::build_list(return_code->to_form(file)));
+  forms.push_back(pretty_print::build_list(dead_code->to_form(file)));
+  return pretty_print::build_list(forms);
+}
+
+void IR_Break::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  output->push_back(return_code);
+  output->push_back(dead_code);
 }

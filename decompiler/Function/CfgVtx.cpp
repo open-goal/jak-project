@@ -280,6 +280,17 @@ goos::Object GotoEnd::to_form() {
   return pretty_print::build_list(forms);
 }
 
+std::string Break::to_string() {
+  return "goto" + std::to_string(uid);
+}
+
+goos::Object Break::to_form() {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("break"),
+                                     pretty_print::to_symbol(std::to_string(dest_block)),
+                                     body->to_form(), unreachable_block->to_form()};
+  return pretty_print::build_list(forms);
+}
+
 ControlFlowGraph::ControlFlowGraph() {
   // allocate the entry and exit vertices.
   m_entry = alloc<EntryVtx>();
@@ -576,6 +587,31 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
   return true;
 }
 
+bool ControlFlowGraph::is_goto_not_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
+  if (!b0 || !b1) {
+    return false;
+  }
+
+  // b0 should be an always branch, not likely.
+  if (!b0->end_branch.has_branch || !b0->end_branch.branch_always || b0->end_branch.branch_likely) {
+    return false;
+  }
+
+  // b0 should be next to b1
+  if (b0->next != b1) {
+    return false;
+  }
+
+  assert(b1->prev == b0);
+
+  // b1 should have no preds and be unreachable.
+  if (!b1->pred.empty()) {
+    return false;
+  }
+
+  return true;  // match!
+}
+
 bool ControlFlowGraph::is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
   if (!b0 || !b1) {
     return false;
@@ -870,6 +906,68 @@ bool ControlFlowGraph::find_goto_end() {
       auto* new_goto = alloc<GotoEnd>();
       new_goto->body = b0;
       new_goto->unreachable_block = b1;
+
+      for (auto* new_pred : b0->pred) {
+        //        printf("fix up pred %s of %s\n", new_pred->to_string().c_str(),
+        //        b0->to_string().c_str());
+        new_pred->replace_succ_and_check(b0, new_goto);
+      }
+      new_goto->pred = b0->pred;
+
+      for (auto* new_succ : b1->succs()) {
+        //        new_succ->replace_preds_with_and_check({b1}, nullptr);
+        new_succ->replace_pred_and_check(b1, new_goto);
+      }
+      // this is a lie, but ok
+
+      new_goto->succ_ft = b1->succ_ft;
+      new_goto->succ_branch = b1->succ_branch;
+      new_goto->end_branch = b1->end_branch;
+
+      //      if(b1->next) {
+      //        b1->next->pred.push_back(new_goto);
+      //      }
+      //      new_goto->succ_branch = b1->succ_branch;
+      //      new_goto->end_branch = b1->end_branch;
+
+      new_goto->prev = b0->prev;
+      if (new_goto->prev) {
+        new_goto->prev->next = new_goto;
+      }
+
+      new_goto->next = b1->next;
+      if (new_goto->next) {
+        new_goto->next->prev = new_goto;
+      }
+
+      b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+
+      b0->parent_claim(new_goto);
+      b1->parent_claim(new_goto);
+
+      return false;
+    }
+
+    // keep looking
+    return true;
+  });
+
+  return replaced;
+}
+
+bool ControlFlowGraph::find_goto_not_end() {
+  bool replaced = false;
+
+  for_each_top_level_vtx([&](CfgVtx* vtx) {
+    auto* b0 = vtx;
+    auto* b1 = vtx->next;
+    if (is_goto_not_end_and_unreachable(b0, b1)) {
+      replaced = true;
+
+      auto* new_goto = alloc<Break>();
+      new_goto->body = b0;
+      new_goto->unreachable_block = b1;
+      // todo set block number
 
       for (auto* new_pred : b0->pred) {
         //        printf("fix up pred %s of %s\n", new_pred->to_string().c_str(),
@@ -1734,6 +1832,10 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
       changed = changed || cfg->find_until1_loop();
       changed = changed || cfg->find_infinite_loop();
     };
+
+    if (!changed) {
+      changed = changed || cfg->find_goto_not_end();
+    }
   }
 
   if (!cfg->is_fully_resolved()) {

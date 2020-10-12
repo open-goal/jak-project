@@ -1,0 +1,29 @@
+name: Linter
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  lint:
+    name: Linting & Formatting
+    runs-on: ubuntu-20.04
+    # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Get Package Dependencies
+        run: sudo apt install clang-format clang-tidy
+
+      - name: Check Clang-Formatting
+        run: |
+          chmod +x ./third-party/run-clang-format/run-clang-format.py
+          ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test --color always
