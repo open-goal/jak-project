@@ -29,6 +29,21 @@ struct DerefInfo {
   TypeSpec result_type;
 };
 
+struct MemLoadInfo {
+  MemLoadInfo() = default;
+  explicit MemLoadInfo(const DerefInfo& di) {
+    assert(di.can_deref);
+    assert(di.mem_deref);
+    sign_extend = di.sign_extend;
+    size = di.load_size;
+    reg = di.reg;
+  }
+
+  RegKind reg = RegKind::INVALID;
+  bool sign_extend = false;
+  int size = -1;
+};
+
 class TypeSystem {
  public:
   TypeSystem();

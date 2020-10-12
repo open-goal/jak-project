@@ -12,7 +12,6 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include "LinkedWord.h"
 #include "decompiler/Function/Function.h"
 #include "common/goos/PrettyPrinter.h"

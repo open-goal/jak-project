@@ -3,8 +3,11 @@
 #include <string>
 #include <vector>
 
-#include "inja.hpp"
 #include "goalc/compiler/Compiler.h"
+
+namespace inja {
+ class Environment;
+}
 
 namespace GoalTest {
 

@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <cassert>
+#include <stdexcept>
 #include <common/versions.h>
 #include "klink.h"
 #include "fileio.h"

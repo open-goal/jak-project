@@ -8,6 +8,7 @@
 #include <cstring>
 #include "deci2.h"
 #include "game/system/Deci2Server.h"
+#include "spdlog/spdlog.h"
 
 namespace ee {
 

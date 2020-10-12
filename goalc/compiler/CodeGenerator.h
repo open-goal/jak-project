@@ -3,8 +3,10 @@
 #ifndef JAK_CODEGENERATOR_H
 #define JAK_CODEGENERATOR_H
 
-#include "Env.h"
 #include "goalc/emitter/ObjectGenerator.h"
+
+class FileEnv;
+class FunctionEnv;
 
 class CodeGenerator {
  public:

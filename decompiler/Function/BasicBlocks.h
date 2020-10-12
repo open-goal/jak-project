@@ -1,8 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <memory>
-
 #include "CfgVtx.h"
 
 class LinkedObjectFile;

@@ -13,6 +13,7 @@
 #endif
 
 #include <cstdio>
+#include <stdexcept>
 #include "CodeTester.h"
 #include "IGen.h"
 
@@ -145,5 +146,35 @@ CodeTester::~CodeTester() {
   if (code_buffer_capacity) {
     munmap(code_buffer, code_buffer_capacity);
   }
+}
+
+Register CodeTester::get_c_abi_arg_reg(int i) {
+#ifdef _WIN32
+  switch (i) {
+    case 0:
+      return RCX;
+    case 1:
+      return RDX;
+    case 2:
+      return R8;
+    case 3:
+      return R9;
+    default:
+      throw std::runtime_error("Invalid arg register index");
+  }
+#else
+  switch (i) {
+    case 0:
+      return RDI;
+    case 1:
+      return RSI;
+    case 2:
+      return RDX;
+    case 3:
+      return RCX;
+    default:
+      throw std::runtime_error("Invaid arg register index");
+  }
+#endif
 }
 }  // namespace emitter

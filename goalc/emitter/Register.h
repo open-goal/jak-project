@@ -14,10 +14,11 @@
 #include <vector>
 #include <string>
 #include "common/common_types.h"
+#include "goalc/common.h"
 
 namespace emitter {
 
-enum class RegKind : u8 { GPR, XMM, INVALID };
+
 
 std::string to_string(RegKind kind);
 

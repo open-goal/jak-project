@@ -2,7 +2,13 @@
 #include "goalc/logger/Logger.h"
 #include "common/link_types.h"
 #include "IR.h"
+#include "Val.h"
+#include "Env.h"
+#include "common/goos/Interpreter.h"
 #include "goalc/regalloc/allocate.h"
+#include "goalc/listener/Listener.h"
+#include "CodeGenerator.h"
+#include "third-party/fmt/format.h"
 #include <chrono>
 #include <thread>
 
@@ -16,7 +22,9 @@ Compiler::Compiler() {
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
   // todo - compile library
-  Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
+  m_goos = std::make_unique<goos::Interpreter>();
+  m_listener = std::make_unique<listener::Listener>();
+  Object library_code = m_goos->reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 }
 
@@ -25,15 +33,15 @@ void Compiler::execute_repl() {
     try {
       // 1). get a line from the user (READ)
       std::string prompt;
-      if (m_listener.is_connected()) {
+      if (m_listener->is_connected()) {
         prompt = "gc";
       } else {
         prompt = "g";
       }
-      Object code = m_goos.reader.read_from_stdin(prompt);
+      Object code = m_goos->reader.read_from_stdin(prompt);
 
       // 2). compile
-      auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
+      auto obj_file = compile_object_file("repl", code, m_listener->is_connected());
       if (m_settings.debug_print_ir) {
         obj_file->debug_print_tl();
       }
@@ -46,9 +54,9 @@ void Compiler::execute_repl() {
         auto data = codegen_object_file(obj_file);
 
         // 4). send!
-        if (m_listener.is_connected()) {
-          m_listener.send_code(data);
-          if (!m_listener.most_recent_send_was_acked()) {
+        if (m_listener->is_connected()) {
+          m_listener->send_code(data);
+          if (!m_listener->most_recent_send_was_acked()) {
             gLogger.log(MSG_ERR, "Runtime is not responding. Did it crash?\n");
           }
         }
@@ -59,7 +67,7 @@ void Compiler::execute_repl() {
     }
   }
 
-  m_listener.disconnect();
+  m_listener->disconnect();
 }
 
 Compiler::~Compiler() {
@@ -128,7 +136,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       obj_print += "...";
     }
     printf("object: %s\nfrom  : %s\n", obj_print.c_str(),
-           m_goos.reader.db.get_info_for(code).c_str());
+           m_goos->reader.db.get_info_for(code).c_str());
     throw e;
   }
 }
@@ -173,32 +181,32 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
 
 std::vector<std::string> Compiler::run_test(const std::string& source_code) {
   try {
-    if (!m_listener.is_connected()) {
+    if (!m_listener->is_connected()) {
       for (int i = 0; i < 1000; i++) {
-        m_listener.connect_to_target();
+        m_listener->connect_to_target();
         std::this_thread::sleep_for(std::chrono::microseconds(10000));
-        if (m_listener.is_connected()) {
+        if (m_listener->is_connected()) {
           break;
         }
       }
-      if (!m_listener.is_connected()) {
+      if (!m_listener->is_connected()) {
         throw std::runtime_error("Compiler::run_test couldn't connect!");
       }
     }
 
-    auto code = m_goos.reader.read_from_file({source_code});
+    auto code = m_goos->reader.read_from_file({source_code});
     auto compiled = compile_object_file("test-code", code, true);
     if (compiled->is_empty()) {
       return {};
     }
     color_object_file(compiled);
     auto data = codegen_object_file(compiled);
-    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
-    m_listener.send_code(data);
-    if (!m_listener.most_recent_send_was_acked()) {
+    m_listener->record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener->send_code(data);
+    if (!m_listener->most_recent_send_was_acked()) {
       gLogger.log(MSG_ERR, "Runtime is not responding after sending test code. Did it crash?\n");
     }
-    return m_listener.stop_recording_messages();
+    return m_listener->stop_recording_messages();
   } catch (std::exception& e) {
     fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
     throw e;
@@ -206,14 +214,14 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
 }
 
 std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
-  auto code = m_goos.reader.read_from_file({source_code});
+  auto code = m_goos->reader.read_from_file({source_code});
   compile_object_file("test-code", code, true);
   return {};
 }
 
 void Compiler::shutdown_target() {
-  if (m_listener.is_connected()) {
-    m_listener.send_reset(true);
+  if (m_listener->is_connected()) {
+    m_listener->send_reset(true);
   }
 }
 

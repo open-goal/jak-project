@@ -1,6 +1,5 @@
 set(CMAKE_CXX_STANDARD 17)
 
-include("goalc/CMakeLists.txt")
 
 add_executable(goalc-test
         test_main.cpp
@@ -19,8 +18,8 @@ add_executable(goalc-test
         test_common_util.cpp
         test_deftype.cpp
         test_pretty_print.cpp
-        ${GOALC_TEST_FRAMEWORK_SOURCES}
-        ${GOALC_TEST_CASES})
+        goalc/goalc_test_list.cpp
+        goalc/framework/test_runner.cpp)
 
 enable_testing()
 

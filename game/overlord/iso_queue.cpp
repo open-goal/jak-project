@@ -4,6 +4,7 @@
 #include "game/sce/iop.h"
 #include "iso_queue.h"
 #include "isocommon.h"
+#include "spdlog/spdlog.h"
 
 using namespace iop;
 

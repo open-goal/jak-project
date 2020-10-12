@@ -5,6 +5,9 @@
 #include "game/runtime.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
+#include "goalc/compiler/IR.h"
+#include "goalc/compiler/Env.h"
+#include "common/goos/Interpreter.h"
 
 #include "inja.hpp"
 #include "third-party/json.hpp"

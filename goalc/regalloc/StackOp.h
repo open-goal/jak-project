@@ -10,7 +10,6 @@
 #define JAK_STACKOP_H
 
 #include <vector>
-#include "third-party/fmt/core.h"
 #include "goalc/emitter/Register.h"
 
 struct StackOp {
@@ -23,27 +22,7 @@ struct StackOp {
 
   std::vector<Op> ops;
 
-  std::string print() const {
-    std::string result;
-    bool added = false;
-    for (const auto& op : ops) {
-      if (op.load) {
-        result += fmt::format("{} <- [{:2d}], ", emitter::gRegInfo.get_info(op.reg).name, op.slot);
-        added = true;
-      }
-      if (op.store) {
-        result += fmt::format("{} -> [{:2d}], ", emitter::gRegInfo.get_info(op.reg).name, op.slot);
-        added = true;
-      }
-    }
-
-    if (added) {
-      result.pop_back();
-      result.pop_back();
-    }
-
-    return result;
-  }
+  std::string print() const;
 };
 
 #endif  // JAK_STACKOP_H

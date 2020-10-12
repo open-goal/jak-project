@@ -11,8 +11,8 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
+#include <stdexcept>
 #include "common/util/FileUtil.h"
-
 #include "TextDB.h"
 
 namespace goos {

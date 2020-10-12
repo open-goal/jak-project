@@ -8,12 +8,12 @@
 #include <cassert>
 #include <utility>
 
-// TODO - i think im not including the dependency right..?
 #include "common/cross_sockets/xsocket.h"
 
 #ifdef __linux
 #include <sys/socket.h>
 #include <netinet/tcp.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #elif _WIN32
 #include <Windows.h>
@@ -66,7 +66,7 @@ bool Deci2Server::init() {
     return false;
   };
 
-  if (set_socket_option(server_socket, TCP_SOCKET_LEVEL, TCP_NODELAY, &opt, sizeof(opt)) < 0) {
+  if (set_socket_option(server_socket, get_socket_level(), TCP_NODELAY, &opt, sizeof(opt)) < 0) {
     close_server_socket();
     return false;
   }

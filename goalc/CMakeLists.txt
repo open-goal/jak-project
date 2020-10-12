@@ -13,20 +13,14 @@ add_library(compiler
         compiler/CompilerSettings.cpp
         compiler/CodeGenerator.cpp
         compiler/StaticObject.cpp
-        compiler/compilation/Atoms.cpp
+        compiler/FrontEnd.cpp
         compiler/compilation/CompilerControl.cpp
-        compiler/compilation/Block.cpp
-        compiler/compilation/Macro.cpp
-        compiler/compilation/Math.cpp
-        compiler/compilation/Define.cpp
-        compiler/compilation/Function.cpp
-        compiler/compilation/ControlFlow.cpp
-        compiler/compilation/Type.cpp
         compiler/Util.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
+        regalloc/Assignment.cpp
         compiler/Compiler.cpp)
 
 add_executable(goalc main.cpp)

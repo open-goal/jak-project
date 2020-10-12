@@ -1,7 +1,12 @@
 #include "IR.h"
-
-#include <utility>
+#include "Val.h"
+#include "Env.h"
+#include "goalc/regalloc/Assignment.h"
+#include "goalc/regalloc/allocate.h"
 #include "goalc/emitter/IGen.h"
+#include "goalc/emitter/ObjectGenerator.h"
+#include "goalc/compiler/StaticObject.h"
+#include "third-party/fmt/format.h"
 
 using namespace emitter;
 

@@ -1,6 +1,11 @@
 #include <stdexcept>
 #include "Env.h"
 #include "IR.h"
+#include "Val.h"
+#include "third-party/fmt/format.h"
+#include "goalc/regalloc/IRegister.h"
+#include "goalc/regalloc/allocate.h"
+#include "goalc/compiler/StaticObject.h"
 
 ///////////////////
 // Env
@@ -59,6 +64,7 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
 // errors, or return that the items were not found.
 
 GlobalEnv::GlobalEnv() : Env(nullptr) {}
+GlobalEnv::~GlobalEnv() noexcept {}
 
 std::string GlobalEnv::print() {
   return "global-env";
@@ -198,6 +204,8 @@ bool FileEnv::is_empty() {
 FunctionEnv::FunctionEnv(Env* parent, std::string name)
     : DeclareEnv(parent), m_name(std::move(name)) {}
 
+FunctionEnv::~FunctionEnv() noexcept {}
+
 std::string FunctionEnv::print() {
   return "function-" + m_name;
 }
@@ -206,10 +214,18 @@ void FunctionEnv::emit(std::unique_ptr<IR> ir) {
   ir->add_constraints(&m_constraints, m_code.size());
   m_code.push_back(std::move(ir));
 }
+
+void FunctionEnv::set_allocations(std::unique_ptr<AllocationResult> result) {
+  m_regalloc_result = std::move(result);
+}
+
 void FunctionEnv::finish() {
   resolve_gotos();
 }
 
+void FunctionEnv::constrain(const IRegConstraint& c) {
+  m_constraints.push_back(c);
+}
 void FunctionEnv::resolve_gotos() {
   for (auto& gt : unresolved_gotos) {
     auto kv_label = m_labels.find(gt.label);

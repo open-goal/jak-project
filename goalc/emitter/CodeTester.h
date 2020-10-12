@@ -15,7 +15,6 @@
 #include "common/common_types.h"
 #include "Register.h"
 #include "Instruction.h"
-#include <stdexcept>
 
 namespace emitter {
 class CodeTester {
@@ -58,35 +57,7 @@ class CodeTester {
   /*!
    * Should allow emitter tests which run code to do the right thing on windows.
    */
-  Register get_c_abi_arg_reg(int i) {
-#ifdef _WIN32
-    switch (i) {
-      case 0:
-        return RCX;
-      case 1:
-        return RDX;
-      case 2:
-        return R8;
-      case 3:
-        return R9;
-      default:
-        throw std::runtime_error("Invalid arg register index");
-    }
-#else
-    switch (i) {
-      case 0:
-        return RDI;
-      case 1:
-        return RSI;
-      case 2:
-        return RDX;
-      case 3:
-        return RCX;
-      default:
-        throw std::runtime_error("Invaid arg register index");
-    }
-#endif
-  }
+  Register get_c_abi_arg_reg(int i);
 
   /*!
    * Get the name of the given register, for debugging.

@@ -9,19 +9,34 @@
 #ifndef JAK_ENV_H
 #define JAK_ENV_H
 
-#include <string>
 #include <memory>
+#include <unordered_map>
 #include <vector>
-#include "common/type_system/TypeSpec.h"
-#include "goalc/regalloc/allocate.h"
+#include <cassert>
+#include <memory>
+
 #include "common/goos/Object.h"
-#include "StaticObject.h"
 #include "Label.h"
-#include "Val.h"
 
 class FileEnv;
 class BlockEnv;
 class IR;
+class RegVal;
+class TypeSpec;
+class IRegConstraint;
+class FunctionEnv;
+class StaticObject;
+class AllocationResult;
+class Val;
+
+namespace goos {
+class Object;
+class SymbolObject;
+}
+
+namespace emitter {
+enum class RegKind : u8;
+}
 
 /*!
  * Parent class for Env's
@@ -58,7 +73,7 @@ class GlobalEnv : public Env {
   void constrain_reg(IRegConstraint constraint) override;
   RegVal* lexical_lookup(goos::Object sym) override;
   BlockEnv* find_block(const std::string& name) override;
-  ~GlobalEnv() = default;
+  ~GlobalEnv();
 
   FileEnv* add_file(std::string name);
 
@@ -144,6 +159,7 @@ struct UnresolvedConditionalGoto {
 class FunctionEnv : public DeclareEnv {
  public:
   FunctionEnv(Env* parent, std::string name);
+  ~FunctionEnv();
   std::string print() override;
   std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
@@ -153,11 +169,11 @@ class FunctionEnv : public DeclareEnv {
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
   int max_vars() const { return m_iregs.size(); }
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
-  void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
-  void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
+  void constrain(const IRegConstraint& c);
+  void set_allocations(std::unique_ptr<AllocationResult> result);
   RegVal* lexical_lookup(goos::Object sym) override;
 
-  const AllocationResult& alloc_result() { return m_regalloc_result; }
+  const AllocationResult& alloc_result() { return *m_regalloc_result; }
 
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
   void require_aligned_stack() { m_aligned_stack_required = true; }
@@ -199,7 +215,7 @@ class FunctionEnv : public DeclareEnv {
   std::vector<std::unique_ptr<Env>> m_envs;
   std::vector<IRegConstraint> m_constraints;
   // todo, unresolved gotos
-  AllocationResult m_regalloc_result;
+  std::unique_ptr<AllocationResult> m_regalloc_result;
 
   bool m_aligned_stack_required = false;
 

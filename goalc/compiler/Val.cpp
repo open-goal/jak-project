@@ -1,6 +1,19 @@
+#include <stdexcept>
 #include "Val.h"
 #include "Env.h"
 #include "IR.h"
+#include "goalc/regalloc/allocate.h"
+#include "StaticObject.h"
+#include "third-party/fmt/format.h"
+
+IRegister Val::ireg() const {
+  throw std::runtime_error("get_ireg called on invalid Val: " + print());
+}
+
+RegVal* Val::to_reg(Env* fe) {
+  (void)fe;
+  throw std::runtime_error("to_reg called on invalid Val: " + print());
+}
 
 /*!
  * Fallback to_gpr if a more optimized one is not provided.
@@ -98,6 +111,14 @@ RegVal* FloatConstantVal::to_reg(Env* fe) {
   return re;
 }
 
+std::string StaticVal::print() const {
+  return "[" + obj->print() + "]";
+}
+
+std::string FloatConstantVal::print() const {
+  return "float-constant-" + m_value->print();
+}
+
 RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
   fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
@@ -152,3 +173,7 @@ RegVal* PairEntryVal::to_reg(Env* fe) {
   fe->emit(std::make_unique<IR_LoadConstOffset>(re, offset, base->to_gpr(fe), info));
   return re;
 }
+
+Val::~Val() noexcept {}
+
+None::~None() noexcept {}

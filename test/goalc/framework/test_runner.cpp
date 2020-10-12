@@ -12,6 +12,7 @@
 #include "goalc/compiler/Compiler.h"
 
 #include "common/util/FileUtil.h"
+#include "third-party/fmt/format.h"
 #include <filesystem>
 
 namespace GoalTest {

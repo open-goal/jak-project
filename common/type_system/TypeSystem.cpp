@@ -1,9 +1,8 @@
 #include <cassert>
-#include <third-party/fmt/core.h>
+#include <stdexcept>
+#include "third-party/fmt/core.h"
 #include "TypeSystem.h"
 #include "type_util.h"
-#include <cassert>
-#include <stdexcept>
 
 TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.

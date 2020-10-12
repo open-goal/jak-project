@@ -6,7 +6,6 @@
 #include <cassert>
 #include <vector>
 #include <string>
-#include <stdexcept>
 #include "Assignment.h"
 
 // with this on, gaps in usage of registers allow other variables to steal registers.
@@ -160,7 +159,7 @@ struct LiveInfo {
     for (int i = min; i <= max; i++) {
       auto& a = assignment.at(i - min);
       if (a.is_assigned() && !(a.occupies_same_reg(ass))) {
-        throw std::runtime_error("assign_no_overwrite failed!");
+        assert(false);
       } else {
         a = ass;
       }
@@ -175,13 +174,7 @@ struct LiveInfo {
     return assignment.at(id - min);
   }
 
-  std::string print_assignment() {
-    std::string result = "Assignment for var " + std::to_string(var) + "\n";
-    for (uint32_t i = 0; i < assignment.size(); i++) {
-      result += fmt::format("i[{:3d}] {}\n", i + min, assignment.at(i).to_string());
-    }
-    return result;
-  }
+  std::string print_assignment();
 };
 
 #endif  // JAK_LIVEINFO_H

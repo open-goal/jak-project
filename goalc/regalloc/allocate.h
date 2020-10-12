@@ -13,6 +13,7 @@
 #define JAK_ALLOCATE_H
 
 #include <vector>
+#include <memory>
 #include "goalc/emitter/Register.h"
 #include "IRegister.h"
 #include "StackOp.h"
@@ -101,6 +102,6 @@ struct AllocationInput {
   }
 };
 
-AllocationResult allocate_registers(const AllocationInput& input);
+std::unique_ptr<AllocationResult> allocate_registers(const AllocationInput& input);
 
 #endif  // JAK_ALLOCATE_H

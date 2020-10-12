@@ -5,9 +5,12 @@
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
+#include "common/goos/Interpreter.h"
+#include "goalc/compiler/Val.h"
 #include "common/util/Timer.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
+#include "goalc/listener/Listener.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -17,8 +20,8 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
-  if (m_listener.is_connected()) {
-    m_listener.send_reset(false);
+  if (m_listener->is_connected()) {
+    m_listener->send_reset(false);
   }
   // flag for the REPL.
   m_want_exit = true;
@@ -33,7 +36,7 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
   (void)env;
   try {
     for_each_in_list(rest, [&](const goos::Object& o) {
-      m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
+      m_goos->eval_with_rewind(o, m_goos->global_environment.as_env());
     });
   } catch (std::runtime_error& e) {
     throw_compile_error(form, std::string("seval error: ") + e.what());
@@ -80,7 +83,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
   // READ
   Timer reader_timer;
-  auto code = m_goos.reader.read_from_file({filename});
+  auto code = m_goos->reader.read_from_file({filename});
   timing.emplace_back("read", reader_timer.getMs());
 
   Timer compile_timer;
@@ -112,8 +115,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // send to target
     if (load) {
-      if (m_listener.is_connected()) {
-        m_listener.send_code(data);
+      if (m_listener->is_connected()) {
+        m_listener->send_code(data);
       } else {
         printf("WARNING - couldn't load because listener isn't connected\n");  // todo spdlog warn
       }
@@ -121,7 +124,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // save file
     if (write) {
-      auto output_name = m_goos.reader.get_source_dir() + "/data/" + obj_file_name + ".o";
+      auto output_name = m_goos->reader.get_source_dir() + "/data/" + obj_file_name + ".o";
       file_util::write_binary_file(output_name, (void*)data.data(), data.size());
     }
   } else {
@@ -177,7 +180,7 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
     }
   });
 
-  m_listener.connect_to_target(30, ip, port);
+  m_listener->connect_to_target(30, ip, port);
   return get_none();
 }
 
@@ -196,7 +199,7 @@ Val* Compiler::compile_reset_target(const goos::Object& form, const goos::Object
       throw_compile_error(form, "invalid argument to reset-target");
     }
   });
-  m_listener.send_reset(shutdown);
+  m_listener->send_reset(shutdown);
   return get_none();
 }
 
@@ -209,7 +212,7 @@ Val* Compiler::compile_poke(const goos::Object& form, const goos::Object& rest, 
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
-  m_listener.send_poke();
+  m_listener->send_poke();
   return get_none();
 }
 
@@ -220,7 +223,7 @@ Val* Compiler::compile_gs(const goos::Object& form, const goos::Object& rest, En
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
-  m_goos.execute_repl();
+  m_goos->execute_repl();
   return get_none();
 }
 
@@ -253,7 +256,7 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::STRING}, {});
-  auto dgo_desc = pair_cdr(m_goos.reader.read_from_file({args.unnamed.at(0).as_string()->data}));
+  auto dgo_desc = pair_cdr(m_goos->reader.read_from_file({args.unnamed.at(0).as_string()->data}));
 
   for_each_in_list(dgo_desc, [&](const goos::Object& dgo) {
     DgoDescription desc;

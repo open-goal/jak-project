@@ -8,9 +8,9 @@
 #ifndef JAK_PTR_H
 #define JAK_PTR_H
 
-#include <stdexcept>
-#include "game/runtime.h"
-#include "common/common_types.h"
+#include <cstdio>
+#include <cstdlib>
+extern u8* g_ee_main_mem;
 
 /*!
  * GOAL pointer to a T.  Represented as a 32-bit unsigned offset from g_ee_main_mem.
@@ -42,7 +42,8 @@ struct Ptr {
     if (offset) {
       return (T*)(g_ee_main_mem + offset);
     } else {
-      throw std::runtime_error("Ptr null dereference!");
+      fprintf(stderr, "Ptr null dereference!");
+      exit(-1);
     }
   }
 
@@ -53,7 +54,8 @@ struct Ptr {
     if (offset) {
       return *(T*)(g_ee_main_mem + offset);
     } else {
-      throw std::runtime_error("Ptr null dereference!");
+      fprintf(stderr, "Ptr null dereference!");
+      exit(-1);
     }
   }
 

@@ -3,12 +3,31 @@
 #ifndef JAK_COMPILER_H
 #define JAK_COMPILER_H
 
+#include <functional>
 #include "common/type_system/TypeSystem.h"
-#include "Env.h"
-#include "goalc/listener/Listener.h"
-#include "common/goos/Interpreter.h"
-#include "goalc/compiler/IR.h"
 #include "CompilerSettings.h"
+#include "common/link_types.h"
+#include "goalc/common.h"
+#include "common/util/MatchParam.h"
+
+class FileEnv;
+class FunctionEnv;
+class None;
+class Val;
+class Env;
+class SymbolVal;
+class GlobalEnv;
+class RegVal;
+class LambdaVal;
+class Condition;
+
+namespace goos {
+class Interpreter;
+}
+
+namespace listener {
+class Listener;
+}
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -17,7 +36,7 @@ class Compiler {
   Compiler();
   ~Compiler();
   void execute_repl();
-  goos::Interpreter& get_goos() { return m_goos; }
+  goos::Interpreter& get_goos() { return *m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
                                                           const goos::Object& code,
@@ -85,11 +104,11 @@ class Compiler {
                                   const std::string& method_type_name = "");
 
   TypeSystem m_ts;
-  std::unique_ptr<GlobalEnv> m_global_env = nullptr;
-  std::unique_ptr<None> m_none = nullptr;
+  std::unique_ptr<GlobalEnv> m_global_env;
+  std::unique_ptr<None> m_none;
   bool m_want_exit = false;
-  listener::Listener m_listener;
-  goos::Interpreter m_goos;
+  std::unique_ptr<listener::Listener> m_listener;
+  std::unique_ptr<goos::Interpreter> m_goos;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;

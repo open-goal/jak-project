@@ -11,6 +11,15 @@
 #include <stdio.h>
 #include <string.h>
 
+
+int get_socket_level() {
+#ifdef __linux
+  return SOL_TCP;
+#elif _WIN32
+  return IPPROTO_TCP;
+#endif
+}
+
 int open_socket(int af, int type, int protocol) {
 #ifdef __linux
   return socket(af, type, protocol);

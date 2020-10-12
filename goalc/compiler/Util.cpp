@@ -1,5 +1,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
+#include "goalc/compiler/Val.h"
+#include "goalc/compiler/Env.h"
 
 goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& rest) {
   goos::Arguments args;

@@ -7,6 +7,7 @@
 #include <cmath>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdexcept>
 
 #include "common/goal_constants.h"
 #include "common/common_types.h"

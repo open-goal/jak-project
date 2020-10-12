@@ -4,6 +4,7 @@
  */
 
 #include <cstring>
+#include "spdlog/spdlog.h"
 #include "game/sce/iop.h"
 #include "game/sce/stubs.h"
 #include "iso_cd.h"

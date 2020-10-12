@@ -1,6 +1,9 @@
 #include "CodeGenerator.h"
 #include "goalc/emitter/IGen.h"
 #include "IR.h"
+#include "Env.h"
+#include "StaticObject.h"
+#include "goalc/regalloc/allocate.h"
 
 using namespace emitter;
 constexpr int GPR_SIZE = 8;

@@ -1,5 +1,4 @@
 #include "TypeSpec.h"
-#include "Type.h"
 
 TypeSpec::TypeSpec(std::string type) : m_type(std::move(type)) {}
 

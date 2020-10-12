@@ -1,22 +1,13 @@
 #include <thread>
-#include <chrono>
 
 #include "gtest/gtest.h"
-#include "game/runtime.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "inja.hpp"
-#include "third-party/json.hpp"
 #include <test/goalc/framework/test_runner.h>
 
-#include <iostream>
 #include <string>
-#include <cstdio>
-#include <sstream>
-#include <iostream>
-#include <random>
-#include <filesystem>
 
 struct SymbolParam {
   // TODO - Not Needed Yet

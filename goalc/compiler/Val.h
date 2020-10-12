@@ -8,18 +8,18 @@
 #ifndef JAK_VAL_H
 #define JAK_VAL_H
 
-#include <utility>
 #include <string>
-#include <stdexcept>
-#include "third-party/fmt/core.h"
+
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
-#include "StaticObject.h"
 
 class RegVal;
 class Env;
 class FunctionEnv;
+class TypeSystem;
+class StaticObject;
+class StaticFloat;
 
 /*!
  * Parent class for every Val.
@@ -30,15 +30,10 @@ class Val {
 
   virtual bool is_register() const { return false; }
 
-  virtual IRegister ireg() const {
-    throw std::runtime_error("get_ireg called on invalid Val: " + print());
-  }
+  virtual IRegister ireg() const;
 
   virtual std::string print() const = 0;
-  virtual RegVal* to_reg(Env* fe) {
-    (void)fe;
-    throw std::runtime_error("to_reg called on invalid Val: " + print());
-  }
+  virtual RegVal* to_reg(Env* fe);
   virtual RegVal* to_gpr(Env* fe);
   virtual RegVal* to_xmm(Env* fe);
 
@@ -46,6 +41,7 @@ class Val {
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
   bool settable() const { return m_is_settable; }
   void mark_as_settable() { m_is_settable = true; }
+  virtual ~Val();
 
  protected:
   TypeSpec m_ts;
@@ -60,6 +56,7 @@ class None : public Val {
   explicit None(TypeSpec _ts) : Val(std::move(_ts)) {}
   explicit None(const TypeSystem& _ts) : Val(_ts.make_typespec("none")) {}
   std::string print() const override { return "none"; }
+  ~None();
 };
 
 /*!
@@ -134,24 +131,10 @@ class StaticVal : public Val {
  public:
   StaticVal(StaticObject* _obj, TypeSpec _ts) : Val(std::move(_ts)), obj(_obj) {}
   StaticObject* obj = nullptr;
-  std::string print() const override { return "[" + obj->print() + "]"; }
+  std::string print() const override;
   RegVal* to_reg(Env* fe) override;
 };
 
-struct MemLoadInfo {
-  MemLoadInfo() = default;
-  explicit MemLoadInfo(const DerefInfo& di) {
-    assert(di.can_deref);
-    assert(di.mem_deref);
-    sign_extend = di.sign_extend;
-    size = di.load_size;
-    reg = di.reg;
-  }
-
-  RegKind reg = RegKind::INVALID;
-  bool sign_extend = false;
-  int size = -1;
-};
 
 class MemoryOffsetConstantVal : public Val {
  public:
@@ -219,7 +202,7 @@ class IntegerConstantVal : public Val {
 class FloatConstantVal : public Val {
  public:
   FloatConstantVal(TypeSpec ts, StaticFloat* value) : Val(std::move(ts)), m_value(value) {}
-  std::string print() const override { return "float-constant-" + m_value->print(); }
+  std::string print() const override;
   RegVal* to_reg(Env* fe) override;
 
  protected:

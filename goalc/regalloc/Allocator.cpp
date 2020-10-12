@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "Allocator.h"
 #include "LiveInfo.h"
+#include "third-party/fmt/format.h"
 
 /*!
  * Find basic blocks and add block link info.

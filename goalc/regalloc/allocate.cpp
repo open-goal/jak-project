@@ -123,8 +123,8 @@ void print_result(const AllocationInput& in, const AllocationResult& result) {
 /*!
  * The top-level register allocation algorithm!
  */
-AllocationResult allocate_registers(const AllocationInput& input) {
-  AllocationResult result;
+std::unique_ptr<AllocationResult> allocate_registers(const AllocationInput& input) {
+  auto result = std::make_unique<AllocationResult>();
   RegAllocCache cache;
 
   // if desired, print input for debugging.
@@ -145,27 +145,27 @@ AllocationResult allocate_registers(const AllocationInput& input) {
   // rather than having the register allocation mysteriously fail later on or silently ignore a
   // constraint.
   if (!check_constrained_alloc(&cache, input)) {
-    result.ok = false;
+    result->ok = false;
     fmt::print("[RegAlloc Error] Register allocation has failed due to bad constraints.\n");
     return result;
   }
 
   // do the allocations!
   if (!run_allocator(&cache, input, input.debug_settings.allocate_log_level)) {
-    result.ok = false;
+    result->ok = false;
     fmt::print("[RegAlloc Error] Register allocation has failed.\n");
     return result;
   }
 
   // prepare the result
-  result.ok = true;
-  result.needs_aligned_stack_for_spills = cache.used_stack;
-  result.stack_slots = cache.current_stack_slot;
+  result->ok = true;
+  result->needs_aligned_stack_for_spills = cache.used_stack;
+  result->stack_slots = cache.current_stack_slot;
 
   // copy over the assignment result
-  result.assignment.resize(cache.max_var);
-  for (size_t i = 0; i < result.assignment.size(); i++) {
-    auto& x = result.assignment[i];
+  result->assignment.resize(cache.max_var);
+  for (size_t i = 0; i < result->assignment.size(); i++) {
+    auto& x = result->assignment[i];
     x.resize(input.instructions.size());
     const auto& lr = cache.live_ranges.at(i);
     for (int j = lr.min; j <= lr.max; j++) {
@@ -188,15 +188,15 @@ AllocationResult allocate_registers(const AllocationInput& input) {
       }
     }
     if (uses_sr) {
-      result.used_saved_regs.push_back(sr);
+      result->used_saved_regs.push_back(sr);
     }
   }
-  result.ass_as_ranges = std::move(cache.live_ranges);
-  result.stack_ops = std::move(cache.stack_ops);
+  result->ass_as_ranges = std::move(cache.live_ranges);
+  result->stack_ops = std::move(cache.stack_ops);
 
   // final result print
   if (input.debug_settings.print_result) {
-    print_result(input, result);
+    print_result(input, *result);
   }
 
   return result;

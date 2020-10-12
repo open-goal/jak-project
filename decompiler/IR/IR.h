@@ -2,7 +2,6 @@
 #define JAK_IR_H
 
 #include <cassert>
-#include <utility>
 #include "decompiler/Disasm/Register.h"
 #include "common/goos/PrettyPrinter.h"
 

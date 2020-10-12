@@ -9,15 +9,11 @@
 #include "goalc/compiler/Compiler.h"
 
 #include "inja.hpp"
-#include "third-party/json.hpp"
 
 #include <test/goalc/framework/test_runner.h>
 
 #include <iostream>
 #include <string>
-#include <cstdio>
-#include <sstream>
-#include <iostream>
 #include <random>
 
 // --------

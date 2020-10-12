@@ -1,5 +1,6 @@
 #include "deftype.h"
 #include "third-party/fmt/core.h"
+#include "common/goos/Object.h"
 
 /*!
  * Missing Features

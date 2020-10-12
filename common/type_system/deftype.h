@@ -1,7 +1,9 @@
 #pragma once
 
 #include "TypeSystem.h"
-#include "common/goos/Object.h"
+namespace goos {
+class Object;
+}
 
 struct TypeFlags {
   union {

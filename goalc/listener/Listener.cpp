@@ -91,7 +91,7 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
 
   // set nodelay, which makes small rapid messages faster, but large messages slower
   int one = 1;
-  if (set_socket_option(listen_socket, TCP_SOCKET_LEVEL, TCP_NODELAY, &one, sizeof(one))) {
+  if (set_socket_option(listen_socket, get_socket_level(), TCP_NODELAY, &one, sizeof(one))) {
     close_socket(listen_socket);
     listen_socket = -1;
     return false;

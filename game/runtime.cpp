@@ -45,6 +45,8 @@
 #include "game/overlord/overlord.h"
 #include "game/overlord/srpc.h"
 
+#include "spdlog/spdlog.h"
+
 u8* g_ee_main_mem = nullptr;
 
 namespace {
