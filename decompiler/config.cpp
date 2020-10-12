@@ -2,6 +2,7 @@
 #include "third-party/json.hpp"
 #include "util/FileIO.h"
 #include "common/util/FileUtil.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 Config gConfig;
 

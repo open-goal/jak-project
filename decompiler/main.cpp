@@ -4,16 +4,17 @@
 #include "ObjectFile/ObjectFileDB.h"
 #include "config.h"
 #include "util/FileIO.h"
-
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 #include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
-  printf("Jak Disassembler\n");
+  spdlog::info("Jak Disassembler");
+
   init_crc();
   init_opcode_info();
 
   if (argc != 4) {
-    printf("usage: jak_disassembler <config_file> <in_folder> <out_folder>\n");
+    spdlog::info("Usage: jak_disassembler <config_file> <in_folder> <out_folder>");
     return 1;
   }
 
