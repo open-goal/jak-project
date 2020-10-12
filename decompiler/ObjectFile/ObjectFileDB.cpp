@@ -20,6 +20,7 @@
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/IR/BasicOpBuilder.h"
 #include "decompiler/IR/CfgBuilder.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 /*!
  * Get a unique name for this object file.
@@ -66,24 +67,25 @@ ObjectFileData& ObjectFileDB::lookup_record(ObjectFileRecord rec) {
  */
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   Timer timer;
-  printf("- Loading Types...\n");
+
+  spdlog::info("-Loading types...");
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
-  printf("- Initializing ObjectFileDB...\n");
+
+  spdlog::info("-Initializing ObjectFileDB...");
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
   }
 
-  printf("ObjectFileDB Initialized:\n");
-  printf(" total dgos: %d\n", int(_dgos.size()));
-  printf(" total data: %d bytes\n", stats.total_dgo_bytes);
-  printf(" total objs: %d\n", stats.total_obj_files);
-  printf(" unique objs: %d\n", stats.unique_obj_files);
-  printf(" unique data: %d bytes\n", stats.unique_obj_bytes);
-  printf(" total %.1f ms (%.3f MB/sec, %.3f obj/sec)\n", timer.getMs(),
-         stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
-         stats.total_obj_files / timer.getSeconds());
-  printf("\n");
+  spdlog::info("ObjectFileDB Initialized:");
+  spdlog::info("Total DGOs: {}"), int(_dgos.size());
+  spdlog::info("Total data: {} bytes", stats.total_dgo_bytes);
+  spdlog::info("Total objs: {}", stats.total_obj_files);
+  spdlog::info("Unique objs: {}", stats.unique_obj_files);
+  spdlog::info("Unique data: {} bytes", stats.unique_obj_bytes);
+  spdlog::info("Total {} ms ({} MB/sec, {} obj/sec", timer.getMs(),
+                stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
+                stats.total_obj_files / timer.getSeconds());
 }
 
 // Header for a DGO file
@@ -354,7 +356,7 @@ std::string ObjectFileDB::generate_obj_listing() {
  * Process all of the linking data of all objects.
  */
 void ObjectFileDB::process_link_data() {
-  printf("- Processing Link Data...\n");
+  spdlog::info("- Processing Link Data...");
   Timer process_link_timer;
 
   LinkedObjectFile::Stats combined_stats;
