@@ -285,6 +285,13 @@ class Object {
     return integer_obj.value;
   }
 
+  const IntType& as_int() const {
+    if (type != ObjectType::INTEGER) {
+      throw std::runtime_error("as_int called on a " + object_type_to_string(type) + " " + print());
+    }
+    return integer_obj.value;
+  }
+
   FloatType& as_float() {
     if (type != ObjectType::FLOAT) {
       throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +

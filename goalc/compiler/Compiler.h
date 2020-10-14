@@ -50,6 +50,12 @@ class Compiler {
   Val* compile_string(const std::string& str, Env* env, int seg = MAIN_SEGMENT);
   Val* compile_get_symbol_value(const std::string& name, Env* env);
   Val* compile_function_or_method_call(const goos::Object& form, Env* env);
+
+  Val* get_field_of_structure(const StructureType* type,
+                              Val* object,
+                              const std::string& field_name,
+                              Env* env);
+
   SymbolVal* compile_get_sym_obj(const std::string& name, Env* env);
   void color_object_file(FileEnv* env);
   std::vector<u8> codegen_object_file(FileEnv* env);
@@ -83,6 +89,8 @@ class Compiler {
                                   const std::vector<RegVal*>& args,
                                   Env* env,
                                   const std::string& method_type_name = "");
+
+  bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
