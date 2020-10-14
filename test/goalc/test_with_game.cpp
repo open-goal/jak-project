@@ -62,6 +62,12 @@ std::thread WithGameTests::runtime_thread;
 Compiler WithGameTests::compiler;
 GoalTest::CompilerTestRunner WithGameTests::runner;
 
+namespace {
+std::vector<std::string> get_test_pass_string(const std::string& name, int count) {
+  return {fmt::format("Test \"{}\": {} Passes\n0\n", name, count)};
+}
+}  // namespace
+
 // TODO - havn't done anything with these really yet
 TEST_F(WithGameTests, All) {
   runner.run_static_test(env, testCategory, "defun-return-constant.static.gc", {"12\n"});
@@ -109,15 +115,16 @@ TEST_F(WithGameTests, All) {
                          {"Test \"test-type-arrays\": 3 Passes\n0\n"});
   runner.run_static_test(env, testCategory, "test-number-comparison.gc",
                          {"Test \"number-comparison\": 14 Passes\n0\n"});
-  /*runner.run_static_test(env, testCategory, "test-approx-pi.gc",
+  runner.run_static_test(env, testCategory, "test-approx-pi.gc",
                          get_test_pass_string("approx-pi", 4));
   runner.run_static_test(env, testCategory, "test-dynamic-type.gc",
                          get_test_pass_string("dynamic-type", 4));
   runner.run_static_test(env, testCategory, "test-string-type.gc",
                          get_test_pass_string("string-type", 4));
   runner.run_static_test(env, testCategory, "test-new-string.gc",
-                         get_test_pass_string("new-string", 5));*/
-  // runner.run_static_test(env, testCategory, "test-addr-of.gc", get_test_pass_string("addr-of",
-  // 2));
+                         get_test_pass_string("new-string", 5));
+  runner.run_static_test(env, testCategory, "test-addr-of.gc", get_test_pass_string("addr-of", 2));
   runner.run_static_test(env, testCategory, "test-set-self.gc", {"#t\n0\n"});
+  runner.run_static_test(env, testCategory, "test-new-array.gc",
+                         get_test_pass_string("new-array", 8));
 }

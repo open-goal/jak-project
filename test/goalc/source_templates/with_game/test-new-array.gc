@@ -1,0 +1,37 @@
+(start-test "new-array")
+
+;; align the heap.
+(new 'global 'array 'uint8 16)
+
+;; get the current alignment
+(let ((current (-> global current)))
+  (expect-true (= current (new 'global 'array 'uint16 3))) ;; 6 bytes
+  (expect-true (= (&+ current 6) (-> global current)))
+  )
+
+;; align the heap.
+(new 'global 'array 'uint8 16)
+
+;; get the current alignment
+(let ((current (-> global current)))
+  (expect-true (= current (new 'global 'array 'bfloat 3))) ;; 3 * 4 = 12 bytes
+  (expect-true (= (&+ current 12) (-> global current)))
+  )
+
+;; align the heap.
+(new 'global 'array 'uint8 16)
+
+;; get the current alignment
+(let ((current (-> global current)))
+  (expect-true (= current (new 'global 'inline-array 'bfloat 3))) ;; 3*4 = 12 bytes
+  (expect-true (= (&+ current 48) (-> global current)))
+  )
+
+;; get the current alignment
+(let ((current (-> global current))
+      (three 3))
+  (expect-true (= current (new 'global 'inline-array 'bfloat (* three 4)))) ;; 12*16 = 36 bytes
+  (expect-true (= (&+ current 192) (-> global current)))
+  )
+
+(finish-test)

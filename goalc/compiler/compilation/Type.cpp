@@ -2,6 +2,10 @@
 #include "common/type_system/deftype.h"
 
 namespace {
+
+/*!
+ * Given a method id, get the offset in bytes from the GOAL type to the method pointer.
+ */
 int get_offset_of_method(int id) {
   // todo - something that looks at the type system?
   // this will need changing if the layout of type ever changes.
@@ -9,6 +13,10 @@ int get_offset_of_method(int id) {
 }
 }  // namespace
 
+/*!
+ * Given a type and method name (known at compile time), get the method.
+ * This can be used for method calls where the type is unknown at run time (non-virtual method call)
+ */
 RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
                                              const std::string& method_name,
                                              Env* env) {
@@ -34,6 +42,11 @@ RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
   return deref->to_reg(env);
 }
 
+/*!
+ * Given an object, get a method. If at compile time we know it's a basic, we use its runtime
+ * type to look up the method at runtime (virtual call).  If we don't know it's a basic, we get the
+ * method from the compile-time type. (fixed type non-virtual call)
+ */
 RegVal* Compiler::compile_get_method_of_object(RegVal* object,
                                                const std::string& method_name,
                                                Env* env) {
@@ -72,27 +85,41 @@ RegVal* Compiler::compile_get_method_of_object(RegVal* object,
   return deref->to_reg(env);
 }
 
+/*!
+ * Compile a (deftype ... form)
+ */
 Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)form;
   (void)env;
 
+  // parse the type definition and add to the type system
   auto result = parse_deftype(rest, &m_ts);
 
+  // look up the type name
   auto kv = m_symbol_types.find(result.type.base_type());
   if (kv != m_symbol_types.end() && kv->second.base_type() != "type") {
+    // we already have something that's not a type with the same name, this is bad.
     fmt::print("[Warning] deftype will redefined {} from {} to a type.\n", result.type.base_type(),
                kv->second.print());
   }
+  // remember that this is a type
   m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
 
+  // get the new method of type object. this is new_type in kscheme.cpp
   auto new_type_method = compile_get_method_of_type(m_ts.make_typespec("type"), "new", env);
+  // call (new 'type 'type-name parent-type flags)
   auto new_type_symbol = compile_get_sym_obj(result.type.base_type(), env)->to_gpr(env);
   auto parent_type = compile_get_symbol_value(result.type_info->get_parent(), env)->to_gpr(env);
   auto flags_int = compile_integer(result.flags.flag, env)->to_gpr(env);
-  return compile_real_function_call(form, new_type_method,
-                                    {new_type_symbol, parent_type, flags_int}, env);
+  compile_real_function_call(form, new_type_method, {new_type_symbol, parent_type, flags_int}, env);
+
+  // return none, making the value of (deftype..) unusable
+  return get_none();
 }
 
+/*!
+ * Compile a (defmethod ...) form
+ */
 Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _rest, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   auto* rest = &_rest;
@@ -115,20 +142,24 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto& lambda = place->lambda;
   auto lambda_ts = m_ts.make_typespec("function");
 
-  // parse the argument list.
+  // parse the argument list. todo, we could check the type of the first argument here?
   for_each_in_list(arg_list, [&](const goos::Object& o) {
     if (o.is_symbol()) {
       // if it has no type, assume object.
       lambda.params.push_back({symbol_string(o), m_ts.make_typespec("object")});
       lambda_ts.add_arg(m_ts.make_typespec("object"));
     } else {
+      // type of argument is specified
       auto param_args = get_va(o, o);
       va_check(o, param_args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
       parm.type = parse_typespec(param_args.unnamed.at(1));
+      // before substituting _type_
       lambda_ts.add_arg(parm.type);
+
+      // replace _type_ as needed for inside this function.
       parm.type = parm.type.substitute_for_method_call(symbol_string(type_name));
       lambda.params.push_back(parm);
     }
@@ -150,7 +181,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   new_func_env->method_of_type_name = symbol_string(type_name);
 
   // set up arguments
-  assert(lambda.params.size() < 8);  // todo graceful error
+  if (lambda.params.size() > 8) {
+    throw_compile_error(form, "Methods cannot have more than 8 arguments");
+  }
   std::vector<RegVal*> args_for_coloring;
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
@@ -210,6 +243,47 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
 }
 
+/*!
+ * Given a type, object, and field name, get the value of the field.
+ */
+Val* Compiler::get_field_of_structure(const StructureType* type,
+                                      Val* object,
+                                      const std::string& field_name,
+                                      Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  Val* result = nullptr;
+  int offset = -type->get_offset();
+  auto field = m_ts.lookup_field_info(type->get_name(), field_name);
+  if (field.needs_deref) {
+    TypeSpec loc_type = m_ts.make_pointer_typespec(field.type);
+    auto loc =
+        fe->alloc_val<MemoryOffsetConstantVal>(loc_type, object, field.field.offset() + offset);
+    auto di = m_ts.get_deref_info(loc_type);
+    assert(di.can_deref);
+    assert(di.mem_deref);
+    result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+    result->mark_as_settable();
+  } else {
+    result =
+        fe->alloc_val<MemoryOffsetConstantVal>(field.type, object, field.field.offset() + offset);
+    result->mark_as_settable();
+  }
+  return result;
+}
+
+/*!
+ * Compile the (-> ...) form.
+ * This is kind of a mess because of the huge number of things you can do with this form:
+ * - dereference a pointer
+ * - Access a field of a type
+ * - Access an element of an array or inline-array
+ * and they nest in confusing and ambiguous ways.
+ * The current behavior is that there is exactly one dereference performed per thing in the list.
+ * so if field x has type (pointer y), (-> obj x) gives a (pointer y), not a y.
+ *
+ * The result of this should give something that has enough information to read/write the original
+ * location. Otherwise set! or & won't work.
+ */
 Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   if (_rest.is_empty_list()) {
@@ -251,23 +325,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       auto struct_type = dynamic_cast<StructureType*>(type_info);
 
       if (struct_type) {
-        int offset = -struct_type->get_offset();
-        auto field = m_ts.lookup_field_info(type_info->get_name(), field_name);
-        if (field.needs_deref) {
-          TypeSpec loc_type = m_ts.make_pointer_typespec(field.type);
-          auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, result,
-                                                            field.field.offset() + offset);
-          auto di = m_ts.get_deref_info(loc_type);
-          assert(di.can_deref);
-          assert(di.mem_deref);
-          result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
-          result->mark_as_settable();
-        } else {
-          result = fe->alloc_val<MemoryOffsetConstantVal>(field.type, result,
-                                                          field.field.offset() + offset);
-          result->mark_as_settable();
-          // assert(false);
-        }
+        result = get_field_of_structure(struct_type, result, field_name, env);
         continue;
       }
 
@@ -299,6 +357,9 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
   return result;
 }
 
+/*!
+ * Compile the (& x) form.
+ */
 Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
@@ -310,6 +371,10 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   return as_mem_deref->base;
 }
 
+/*!
+ * Compile the (the-as x y) form. Like a reinterpret cast.
+ * Will always produce a alias (so setting the result of this affects the base).
+ */
 Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});
@@ -322,6 +387,11 @@ Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest
   return result;
 }
 
+/*!
+ * Compile the (the x y) form. Like reinterpret case, but numbers (int bint float) will be
+ * converted. In the case of numeric version it won't alias.  But all other cases alias, which is
+ * confusing.
+ */
 Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});
@@ -351,6 +421,9 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
   return result;
 }
 
+/*!
+ * Debug util (print-type x) to compile x then print the type name at compile time.
+ */
 Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
@@ -359,6 +432,8 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
 }
 
 Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, Env* env) {
+  // todo - support compound types.
+
   auto allocation = quoted_sym_as_string(pair_car(_rest));
   auto rest = &pair_cdr(_rest);
 
@@ -367,10 +442,50 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   rest = &pair_cdr(*rest);
 
   if (allocation == "global" || allocation == "debug") {
-    if (type_as_string == "inline-array") {
-      assert(false);
-    } else if (type_as_string == "array") {
-      assert(false);
+    // allocate on a named heap
+
+    if (type_as_string == "inline-array" || type_as_string == "array") {
+      bool is_inline = type_as_string == "inline-array";
+      auto elt_type = quoted_sym_as_string(pair_car(*rest));
+      rest = &pair_cdr(*rest);
+
+      auto count_obj = pair_car(*rest);
+      rest = &pair_cdr(*rest);
+      // try to get the size as a compile time constant.
+      int64_t constant_count = 0;
+      bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
+
+      if (!rest->is_empty_list()) {
+        // got extra arguments
+        throw_compile_error(form, "new array form got more arguments than expected");
+      }
+
+      auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
+                          : m_ts.make_pointer_typespec(elt_type);
+      auto info = m_ts.get_deref_info(ts);
+      if (!info.can_deref) {
+        throw_compile_error(form,
+                            fmt::format("Cannot make an {} of {}\n", type_as_string, ts.print()));
+      }
+
+      auto malloc_func = compile_get_symbol_value("malloc", env)->to_reg(env);
+      std::vector<RegVal*> args;
+      args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
+
+      if (is_constant_size) {
+        auto array_size = constant_count * info.stride;
+        args.push_back(compile_integer(array_size, env)->to_reg(env));
+      } else {
+        auto array_size = compile_integer(info.stride, env)->to_reg(env);
+        env->emit(
+            std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, array_size,
+                                             compile_error_guard(count_obj, env)->to_gpr(env)));
+        args.push_back(array_size);
+      }
+
+      auto array = compile_real_function_call(form, malloc_func, args, env);
+      array->set_type(ts);
+      return array;
     } else {
       auto type_of_obj = m_ts.make_typespec(type_as_string);
       std::vector<RegVal*> args;
