@@ -5,10 +5,16 @@
 #include "config.h"
 #include "util/FileIO.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "third-party/spdlog/include/spdlog/sinks/basic_file_sink.h"
 #include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
-  spdlog::info("Jak Disassembler");
+  spdlog::info("Beginning disassembly. This may take a few minutes...");
+
+  spdlog::set_level(spdlog::level::debug);
+  auto lu = spdlog::basic_logger_mt("GOAL Decompiler", "logs/decompiler.log");
+  spdlog::set_default_logger(lu);
+  spdlog::flush_on(spdlog::level::info);
 
   init_crc();
   init_opcode_info();
@@ -53,5 +59,6 @@ int main(int argc, char** argv) {
   // printf("%s\n", get_type_info().get_summary().c_str());
 
   file_util::write_text_file(combine_path(out_folder, "all-syms.gc"), db.dts.dump_symbol_types());
+
   return 0;
 }
