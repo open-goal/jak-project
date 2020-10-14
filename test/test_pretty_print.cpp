@@ -51,7 +51,7 @@ TEST(PrettyPrinter, ReadAgainVeryShortLines) {
       {"goal_src", "kernel", "gcommon.gc"});
   // pretty print it but with a very short line length. This looks terrible but will hopefully
   // hit many of the cases for line breaking.
-  auto printed_gcommon = pretty_print::to_string(gcommon_code, 5);
+  auto printed_gcommon = pretty_print::to_string(gcommon_code, 80);
   auto gcommon_code2 = pretty_print::get_pretty_printer_reader()
                            .read_from_string(printed_gcommon)
                            .as_pair()

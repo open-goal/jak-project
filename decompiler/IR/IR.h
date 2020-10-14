@@ -136,7 +136,9 @@ class IR_IntMath2 : public IR {
     LEFT_SHIFT,
     RIGHT_SHIFT_ARITH,
     RIGHT_SHIFT_LOGIC,
-    MUL_UNSIGNED
+    MUL_UNSIGNED,
+    MIN_SIGNED,
+    MAX_SIGNED
   } kind;
   IR_IntMath2(Kind _kind, std::shared_ptr<IR> _arg0, std::shared_ptr<IR> _arg1)
       : kind(_kind), arg0(std::move(_arg0)), arg1(std::move(_arg1)) {}
@@ -212,7 +214,9 @@ struct Condition {
     FLOAT_EQUAL,
     FLOAT_NOT_EQUAL,
     FLOAT_LESS_THAN,
-    FLOAT_GEQ
+    FLOAT_GEQ,
+    FLOAT_LEQ,
+    FLOAT_GREATER_THAN,
   } kind;
 
   Condition(Kind _kind,
@@ -294,6 +298,16 @@ class IR_WhileLoop : public IR {
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::shared_ptr<IR> condition, body;
+  bool cleaned = false;
+};
+
+class IR_UntilLoop : public IR {
+ public:
+  IR_UntilLoop(std::shared_ptr<IR> _condition, std::shared_ptr<IR> _body)
+      : condition(std::move(_condition)), body(std::move(_body)) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  std::shared_ptr<IR> condition, body;
 };
 
 class IR_CondWithElse : public IR {
@@ -366,6 +380,56 @@ class IR_Ash : public IR {
         value(std::move(_value)),
         clobber(std::move(_clobber)),
         is_signed(_is_signed) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_AsmOp : public IR {
+ public:
+  std::shared_ptr<IR> dst = nullptr;
+  std::shared_ptr<IR> src0 = nullptr;
+  std::shared_ptr<IR> src1 = nullptr;
+  std::shared_ptr<IR> src2 = nullptr;
+  std::string name;
+  IR_AsmOp(std::string _name) : name(std::move(_name)) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_CMoveF : public IR {
+ public:
+  std::shared_ptr<IR> src = nullptr;
+  bool on_zero = false;
+  explicit IR_CMoveF(std::shared_ptr<IR> _src, bool _on_zero)
+      : src(std::move(_src)), on_zero(_on_zero) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_AsmReg : public IR {
+ public:
+  enum Kind { VU_Q, VU_ACC } kind;
+  explicit IR_AsmReg(Kind _kind) : kind(_kind) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Return : public IR {
+ public:
+  std::shared_ptr<IR> return_code;
+  std::shared_ptr<IR> dead_code;
+  IR_Return(std::shared_ptr<IR> _return_code, std::shared_ptr<IR> _dead_code)
+      : return_code(std::move(_return_code)), dead_code(std::move(_dead_code)) {}
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Break : public IR {
+ public:
+  std::shared_ptr<IR> return_code;
+  std::shared_ptr<IR> dead_code;
+  IR_Break(std::shared_ptr<IR> _return_code, std::shared_ptr<IR> _dead_code)
+      : return_code(std::move(_return_code)), dead_code(std::move(_dead_code)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
