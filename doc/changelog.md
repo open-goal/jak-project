@@ -19,3 +19,6 @@
 - There is a `&-` which returns a `uint` and works with basically any input types
 - The `&` operator works on fields and elements in arrays
 - The `&->` operator has been added
+- The `new` operator can create arrays and inline arrays on heaps
+- The value of `deftype` is now `none`
+- Creating a method with more than 8 arguments is an error instead of a crash.
