@@ -77,12 +77,12 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   }
 
   spdlog::info("ObjectFileDB Initialized:");
-  spdlog::info("Total DGOs: {}"), int(_dgos.size());
+  spdlog::info("Total DGOs: {}", int(_dgos.size()));
   spdlog::info("Total data: {} bytes", stats.total_dgo_bytes);
   spdlog::info("Total objs: {}", stats.total_obj_files);
   spdlog::info("Unique objs: {}", stats.unique_obj_files);
   spdlog::info("Unique data: {} bytes", stats.unique_obj_bytes);
-  spdlog::info("Total {} ms ({} MB/sec, {} obj/sec", timer.getMs(),
+  spdlog::info("Total {} ms ({:3f} MB/sec, {} obj/sec", timer.getMs(),
                stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
                stats.total_obj_files / timer.getSeconds());
 }
@@ -493,11 +493,11 @@ void ObjectFileDB::find_code() {
   spdlog::info(" Code {} MB", combined_stats.code_bytes / (float)(1 << 20));
   spdlog::info(" Data {} MB", combined_stats.data_bytes / (float)(1 << 20));
   spdlog::info(" Functions: {}", combined_stats.function_count);
-  spdlog::info(" fp uses resolved: {} / {} ({} %%)", combined_stats.n_fp_reg_use_resolved,
+  spdlog::info(" fp uses resolved: {} / {} ({} %)", combined_stats.n_fp_reg_use_resolved,
                combined_stats.n_fp_reg_use,
                100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
   auto total_ops = combined_stats.code_bytes / 4;
-  spdlog::info(" Decoded {} / {} ({} %%)", combined_stats.decoded_ops, total_ops,
+  spdlog::info(" Decoded {} / {} ({} %)", combined_stats.decoded_ops, total_ops,
                100.f * (float)combined_stats.decoded_ops / total_ops);
   spdlog::info(" Total {} ms", timer.getMs());
   // printf("\n");
@@ -556,10 +556,8 @@ void ObjectFileDB::analyze_functions() {
     std::unordered_set<std::string> unique_names;
     std::unordered_map<std::string, std::unordered_set<std::string>> duplicated_functions;
 
-    int uid = 1;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
       (void)segment_id;
-      func.guessed_name.unique_id = uid++;
       auto name = func.guessed_name.to_string();
       if (func.guessed_name.expected_unique()) {
         if (unique_names.find(name) != unique_names.end()) {
@@ -608,13 +606,12 @@ void ObjectFileDB::analyze_functions() {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-      //      printf("in %s\n", func.guessed_name.to_string().c_str());
+      // printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
 
       total_functions++;
-
       if (!func.suspected_asm) {
         func.analyze_prologue(data.linked_data);
         func.cfg = build_cfg(data.linked_data, segment_id, func);
@@ -642,8 +639,10 @@ void ObjectFileDB::analyze_functions() {
       if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
         if (func.cfg->is_fully_resolved()) {
         } else {
-          unresolved_by_length[func.end_word - func.start_word].push_back(
-              func.guessed_name.to_string());
+          if (!func.guessed_name.empty()) {
+            unresolved_by_length[func.end_word - func.start_word].push_back(
+                func.guessed_name.to_string());
+          }
         }
       }
 
@@ -662,23 +661,23 @@ void ObjectFileDB::analyze_functions() {
 
     spdlog::info("Found {} functions ({} with no control flow)", total_functions,
                  total_trivial_cfg_functions);
-    spdlog::info("Named {}/{} functions ({}%%)", total_named_functions, total_functions,
+    spdlog::info("Named {}/{} functions ({}%)", total_named_functions, total_functions,
                  100.f * float(total_named_functions) / float(total_functions));
     spdlog::info("Excluding {} asm functions", asm_funcs);
     spdlog::info("Found {} basic blocks in {} ms", total_basic_blocks, timer.getMs());
-    spdlog::info(" {}/{} functions passed cfg analysis stage ({}%%)", resolved_cfg_functions,
+    spdlog::info(" {}/{} functions passed cfg analysis stage ({}%)", resolved_cfg_functions,
                  non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
     int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
-    spdlog::info(" {}/{} basic ops converted successfully ({}%%)", successful_basic_ops,
+    spdlog::info(" {}/{} basic ops converted successfully ({}%)", successful_basic_ops,
                  total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-    spdlog::info(" {}/{} cfgs converted to ir ({}%%)\n", successful_cfg_irs, non_asm_funcs,
+    spdlog::info(" {}/{} cfgs converted to ir ({}%)\n", successful_cfg_irs, non_asm_funcs,
                  100.f * float(successful_cfg_irs) / float(non_asm_funcs));
 
-    for (auto& kv : unresolved_by_length) {
-      printf("LEN %d\n", kv.first);
-      for (auto& x : kv.second) {
-        printf("  %s\n", x.c_str());
-      }
-    }
+    //    for (auto& kv : unresolved_by_length) {
+    //      printf("LEN %d\n", kv.first);
+    //      for (auto& x : kv.second) {
+    //        printf("  %s\n", x.c_str());
+    //      }
+    //    }
   }
 }

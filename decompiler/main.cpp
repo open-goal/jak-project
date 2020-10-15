@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
   init_opcode_info();
 
   if (argc != 4) {
-    spdlog::info("Usage: jak_disassembler <config_file> <in_folder> <out_folder>");
+    printf("Usage: jak_disassembler <config_file> <in_folder> <out_folder>\n");
     return 1;
   }
 
@@ -59,6 +59,6 @@ int main(int argc, char** argv) {
   // printf("%s\n", get_type_info().get_summary().c_str());
 
   file_util::write_text_file(combine_path(out_folder, "all-syms.gc"), db.dts.dump_symbol_types());
-
+  spdlog::info("Disassembly has completed successfully.");
   return 0;
 }
