@@ -5,5 +5,145 @@
 ;; name in dgo: gkernel-h
 ;; dgos: KERNEL
 
-(defglobalconstant *kernel-major-version* 2)
-(defglobalconstant *kernel-minor-version* 0)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CONSTANTS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; -hardware-
+
+;; the end of the 16 kB fast "scratchpad" memory of the PS2.
+;; this memory is mapped to 0x70000000 in the PS2.
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+
+;; -versions-
+
+;; the version of the kernel. This is checked in the C Kernel.
+;; This must match the version in common/versions.h when building gk
+(defconstant *kernel-major-version* 2)
+(defconstant *kernel-minor-version* 0)
+
+;; the version of the OVERLORD I/O driver.
+;; this may be unused.
+(defconstant *irx-major-version* 1)
+(defconstant *irx-minor-version* 2)
+
+;; -memory-
+
+;; the size of the execution stack (~14 kB) shared by all threads
+(defconstant DPROCESS_STACK_SIZE #x3800)
+
+;; another stack size used as a maximum for temporary threads
+(defconstant PROCESS_STACK_SIZE #x1c00)
+
+;; default size of stack to backup for a process
+(defconstant PROCESS_STACK_SAVE_SIZE 256)
+
+;; the size of the shared heap used by dynamically sized processes
+(defconstant PROCESS_HEAP_SIZE (* 984 1024))
+
+;; -system-
+
+;; tab size for printing.
+(defconstant *tab-size* (the binteger 8))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ENUMS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; todo, processs mask
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MACROS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; trigger an exception.
+(defmacro break ()
+  `(/ 0 0)
+  )
+
+;; todo, process check and set
+
+(defmacro msg-err (&rest args)
+  ;"Print a message to stdout immediately. This won't appear in the compiler."
+  `(format 0 ,@args)
+  )
+
+;; todo process pointer
+;; todo process memory usage
+;; with pp
+;; todo suspend
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TYPES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; todo methods of process-tree
+
+;; this stores the current state of the kernel.
+(deftype kernel-context (basic)
+  ((prevent-from-run    int32      :offset-assert 4)      ;; actually a process-mask
+   (require-for-run     int32      :offset-assert 8)      ;; actually a process-mask, unused?
+   (allow-to-run        int32      :offset-assert 12)      ;; actually a process-mask, unused?
+   (next-pid            int32      :offset-assert 16)     ;; next PID to give out
+   (fast-stack-top      pointer    :offset-assert 20)     ;; scratchpad stack (unused?)
+   (current-process     basic      :offset-assert 24)     ;; process?
+   (relocating-process  basic      :offset-assert 28)     ;; process?
+   (relocating-min      int32      :offset-assert 32)     ;; print hex
+   (relocating-max      int32      :offset-assert 36)     ;; print hex
+   (relocating-offset   int32      :offset-assert 40)     ;; ?
+   (low-memory-message  basic      :offset-assert 44)     ;; boolean?
+   )
+  
+  :size-assert #x30
+  :method-count-assert 9
+  :flag-assert #x900000030
+  )
+
+; A thread belongs to a process and has a reference to a stack.
+; they have an "actual stack", which is where the stack goes when the thread runs.
+; and also a "backup stack", which stores the stack when the thread doesn't run.
+; this means threads can't leak pointers to stack variables to other threads...
+; optionally, threads may know how to suspend/resume themselves.
+
+; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
+(deftype thread (basic)
+  ((name          basic    :offset-assert 4)   ;; name of the thread (usually a symbol?)
+   (process       process  :offset-assert 8)   ;; process that the thread belongs to
+   (previous      thread   :offset-assert 12)  ;; previous thread that was running in the process
+   (suspend-hook  basic    :offset-assert 16)  ;; function to suspend this thread
+   (resume-hook   basic    :offset-assert 20)  ;; function to resume this thread
+   (pc            pointer  :offset-assert 24)  ;; program counter of the thread
+   (sp            pointer  :offset-assert 28)  ;; stack pointer of the thread (actual stack)
+   (stack-top     pointer  :offset-assert 32)  ;; top of the thread's stack (actual stack)
+   (stack-size    int32    :offset-assert 36)  ;; size of the thread's stack (backup stack)
+   )
+  
+  (:methods
+    (stack-size-set! ((this thread) (stack-size integer)) none 9)
+    (thread-suspend ((this _type_)) none 10)       ;; only safe on a cpu-thread
+    (thread-resume  ((to-resume _type_)) none 11)  ;; only safe on a cpu-thread
+    )
+  
+  :size-assert #x28
+  :method-count-assert 12
+  :flag-assert #xc00000028
+  )
+
+;; A CPU thread is a thread which has some memory to save registers and a stack
+(deftype cpu-thread (thread)
+  ((rreg   uint64 8        :offset-assert 40)   ;; general purpose saved registers
+   (freg   float 6         :offset-assert 104)  ;; floating point registers
+   (stack  uint8 :dynamic  :offset-assert 128)  ;; stack memory (dynamic array)
+   )
+  
+  (:methods
+    (thread-suspend ((this _type_)) none 10)
+    (thread-resume  ((to-resume _type_)) none 11)
+    )
+  
+  :size-assert #x80
+  :method-count-assert 12
+  :flag-assert #xc00000080
+  )

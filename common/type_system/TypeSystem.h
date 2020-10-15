@@ -34,7 +34,9 @@ class TypeSystem {
   TypeSystem();
 
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
-  void forward_declare_type(std::string name);
+  void forward_declare_type(const std::string& name);
+  void forward_declare_type_as_basic(const std::string& name);
+  void forward_declare_type_as_structure(const std::string& name);
   std::string get_runtime_type(const TypeSpec& ts);
 
   DerefInfo get_deref_info(const TypeSpec& ts);
@@ -51,6 +53,9 @@ class TypeSystem {
 
   Type* lookup_type(const TypeSpec& ts) const;
   Type* lookup_type(const std::string& name) const;
+
+  Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
+  Type* lookup_type_allow_partial_def(const std::string& name) const;
 
   MethodInfo add_method(const std::string& type_name,
                         const std::string& method_name,
@@ -105,7 +110,7 @@ class TypeSystem {
  private:
   std::string lca_base(const std::string& a, const std::string& b);
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
-  int get_size_in_type(const Field& field);
+  int get_size_in_type(const Field& field) const;
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name);
   StructureType* add_builtin_structure(const std::string& parent,
@@ -120,8 +125,10 @@ class TypeSystem {
                                     RegKind reg = RegKind::GPR_64);
   void builtin_structure_inherit(StructureType* st);
 
+  enum ForwardDeclareKind { TYPE, STRUCTURE, BASIC };
+
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
-  std::unordered_set<std::string> m_forward_declared_types;
+  std::unordered_map<std::string, ForwardDeclareKind> m_forward_declared_types;
   std::vector<std::unique_ptr<Type>> m_old_types;
 
   bool m_allow_redefinition = false;

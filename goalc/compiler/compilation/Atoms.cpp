@@ -77,7 +77,7 @@ static const std::unordered_map<
         // MACRO
         {"quote", &Compiler::compile_quote},
         {"mlet", &Compiler::compile_mlet},
-        //        {"defconstant", &Compiler::compile_defconstant},
+        {"defconstant", &Compiler::compile_defconstant},
 
         // OBJECT
         //        {"current-method-type", &Compiler::compile_current_method_type},

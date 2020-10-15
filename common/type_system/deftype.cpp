@@ -303,6 +303,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
+    ts->forward_declare_type_as_basic(name);
     result.flags = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     ts->add_type(name, std::move(new_type));
   } else if (is_type("structure", parent_type, ts)) {
@@ -310,6 +311,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
+    ts->forward_declare_type_as_structure(name);
     result.flags = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {

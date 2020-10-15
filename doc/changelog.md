@@ -22,3 +22,8 @@
 - The `new` operator can create arrays and inline arrays on heaps
 - The value of `deftype` is now `none`
 - Creating a method with more than 8 arguments is an error instead of a crash.
+- The `defconstant` form for defining a constant in GOAL but not GOOS has been added
+- Both `defconstant` and `defglobalconstant` throw an error if you define a constant with the same name as a symbol.
+- The `uint64` type now uses 8 bytes instead of 81 in a type (this was a typo)
+- `deftype` allows basics/structures with a field that is the same type as the basic/structure.
+- Doing a `define-extern` with a type of `type` will forward declare the type.

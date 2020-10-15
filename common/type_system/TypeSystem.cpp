@@ -68,8 +68,32 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
  * This will allow the type system to generate TypeSpecs for this type, but not access detailed
  * information, or know the exact size.
  */
-void TypeSystem::forward_declare_type(std::string name) {
-  m_forward_declared_types.insert(std::move(name));
+void TypeSystem::forward_declare_type(const std::string& name) {
+  if (m_types.find(name) == m_types.end()) {
+    m_forward_declared_types[name] = TYPE;
+  }
+}
+
+/*!
+ * Inform the type system that there will eventually be a type named "name" and that it's a basic.
+ * This allows the type to be used in a few specific places. For instance a basic can have
+ * a field where an element is the same type.
+ */
+void TypeSystem::forward_declare_type_as_basic(const std::string& name) {
+  if (m_types.find(name) == m_types.end()) {
+    m_forward_declared_types[name] = BASIC;
+  }
+}
+
+/*!
+ * Inform the type system that there will eventually be a type named "name" and that it's a
+ * structure. This allows the type to be used in a few specific places. For instance a structure can
+ * have a field where an element is the same type.
+ */
+void TypeSystem::forward_declare_type_as_structure(const std::string& name) {
+  if (m_types.find(name) == m_types.end()) {
+    m_forward_declared_types[name] = STRUCTURE;
+  }
 }
 
 /*!
@@ -231,6 +255,42 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
  */
 Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
   return lookup_type(ts.base_type());
+}
+
+/*!
+ * Get type info. If the type is not fully defined (ie, we are parsing its deftype now) and its
+ * forward defined as a basic or structure, just get basic/structure.
+ */
+Type* TypeSystem::lookup_type_allow_partial_def(const TypeSpec& ts) const {
+  return lookup_type_allow_partial_def(ts.base_type());
+}
+
+/*!
+ * Get type info. If the type is not fully defined (ie, we are parsing its deftype now) and its
+ * forward defined as a basic or structure, just get basic/structure.
+ */
+Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
+  // look up fully defined types first:
+  auto kv = m_types.find(name);
+  if (kv != m_types.end()) {
+    return kv->second.get();
+  }
+
+  auto fwd_dec = m_forward_declared_types.find(name);
+  if (fwd_dec != m_forward_declared_types.end()) {
+    if (fwd_dec->second == STRUCTURE) {
+      return lookup_type("structure");
+    } else if (fwd_dec->second == BASIC) {
+      return lookup_type("basic");
+    } else {
+      fmt::print("[TypeSystem] The type {} is not fully define (allow partial).\n", name);
+    }
+
+  } else {
+    fmt::print("[TypeSystem] The type {} is not defined.\n", name);
+  }
+
+  throw std::runtime_error("lookup_type_allow_partial_def failed");
 }
 
 MethodInfo TypeSystem::add_method(const std::string& type_name,
@@ -544,7 +604,6 @@ void TypeSystem::add_builtin_types() {
   auto pair_type = add_builtin_structure("object", "pair", true);
   auto process_tree_type = add_builtin_basic("basic", "process-tree");
   auto process_type = add_builtin_basic("process-tree", "process");
-  auto thread_type = add_builtin_basic("basic", "thread");
   auto connectable_type = add_builtin_structure("structure", "connectable");
   auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
@@ -566,7 +625,7 @@ void TypeSystem::add_builtin_types() {
   add_builtin_value_type("uinteger", "uint8", 1);
   add_builtin_value_type("uinteger", "uint16", 2);
   add_builtin_value_type("uinteger", "uint32", 4);
-  add_builtin_value_type("uinteger", "uint64", 81);
+  add_builtin_value_type("uinteger", "uint64", 8);
   add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
 
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
@@ -662,7 +721,6 @@ void TypeSystem::add_builtin_types() {
   // todo, with kernel
   (void)process_tree_type;
   (void)process_type;
-  (void)thread_type;
   (void)connectable_type;
   (void)stack_frame_type;
   (void)file_stream_type;
@@ -717,7 +775,7 @@ Field TypeSystem::lookup_field(const std::string& type_name, const std::string& 
  * Get the minimum required aligment of a field.
  */
 int TypeSystem::get_alignment_in_type(const Field& field) {
-  auto field_type = lookup_type(field.type());
+  auto field_type = lookup_type_allow_partial_def(field.type());
 
   if (field.is_inline()) {
     if (field.is_array()) {
@@ -740,18 +798,31 @@ int TypeSystem::get_alignment_in_type(const Field& field) {
   return POINTER_SIZE;
 }
 
+namespace {
+bool allow_inline(const Type* type) {
+  auto name = type->get_name();
+  return name != "basic" && name != "structure";
+}
+}  // namespace
+
 /*!
  * Get the size of a field in a type.  The array sizes should be consistent with get_deref_info's
  * stride.
  */
-int TypeSystem::get_size_in_type(const Field& field) {
+int TypeSystem::get_size_in_type(const Field& field) const {
   if (field.is_dynamic()) {
     return 0;
   }
-  auto field_type = lookup_type(field.type());
+  auto field_type = lookup_type_allow_partial_def(field.type());
 
   if (field.is_array()) {
     if (field.is_inline()) {
+      if (!allow_inline(field_type)) {
+        fmt::print(
+            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            field_type->get_name());
+        throw std::runtime_error("bad get size in type");
+      }
       assert(field_type->is_reference());
       return field.array_size() *
              align(field_type->get_size_in_memory(), field_type->get_inline_array_alignment());
@@ -766,6 +837,12 @@ int TypeSystem::get_size_in_type(const Field& field) {
   } else {
     // not an array
     if (field.is_inline()) {
+      if (!allow_inline(field_type)) {
+        fmt::print(
+            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            field_type->get_name());
+        throw std::runtime_error("bad get size in type");
+      }
       assert(field_type->is_reference());
       return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
     } else {

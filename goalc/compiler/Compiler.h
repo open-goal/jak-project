@@ -120,6 +120,11 @@ class Compiler {
                                      const std::string& method_name,
                                      Env* env);
   RegVal* compile_get_method_of_object(RegVal* object, const std::string& method_name, Env* env);
+  Val* compile_define_constant(const goos::Object& form,
+                               const goos::Object& rest,
+                               Env* env,
+                               bool goos,
+                               bool goal);
 
  public:
   // Atoms
@@ -159,6 +164,7 @@ class Compiler {
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Math
