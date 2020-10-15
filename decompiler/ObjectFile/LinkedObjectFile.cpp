@@ -561,6 +561,14 @@ std::string LinkedObjectFile::print_disassembly() {
               line.append(40 - line.length(), ' ');
             }
             line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
+            for (int iidx = 0; iidx < instr.n_src; iidx++) {
+              if (instr.get_src(iidx).is_label()) {
+                auto lab = labels.at(instr.get_src(iidx).get_label());
+                if (is_string(lab.target_segment, lab.offset)) {
+                  line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
+                }
+              }
+            }
           }
           result += line + "\n";
         }
