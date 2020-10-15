@@ -65,6 +65,7 @@ static const std::unordered_map<
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
         {"method", &Compiler::compile_method},
+        {"declare-type", &Compiler::compile_declare_type},
 
         // LAMBDA
         {"lambda", &Compiler::compile_lambda},

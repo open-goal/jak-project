@@ -224,6 +224,7 @@ class StructureType : public ReferenceType {
   bool lookup_field(const std::string& name, Field* out);
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
+  void set_pack(bool pack) { m_pack = pack; }
 
  protected:
   friend class TypeSystem;

@@ -602,8 +602,6 @@ void TypeSystem::add_builtin_types() {
   auto kheap_type = add_builtin_structure("structure", "kheap");
   auto array_type = add_builtin_basic("basic", "array");
   auto pair_type = add_builtin_structure("object", "pair", true);
-  auto process_tree_type = add_builtin_basic("basic", "process-tree");
-  auto process_type = add_builtin_basic("process-tree", "process");
   auto connectable_type = add_builtin_structure("structure", "connectable");
   auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
@@ -719,8 +717,6 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 
   // todo, with kernel
-  (void)process_tree_type;
-  (void)process_type;
   (void)connectable_type;
   (void)stack_frame_type;
   (void)file_stream_type;
@@ -785,7 +781,7 @@ int TypeSystem::get_alignment_in_type(const Field& field) {
     } else {
       // it is an inlined field, so return the alignment in memory
       // TODO - for inline, but not inline array, do we use structure alignment always?
-      return field_type->get_in_memory_alignment();
+      return field_type->get_inline_array_alignment();
     }
   }
 
@@ -844,7 +840,9 @@ int TypeSystem::get_size_in_type(const Field& field) const {
         throw std::runtime_error("bad get size in type");
       }
       assert(field_type->is_reference());
-      return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
+      // return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
+      // looking at dead-pool-heap we tightly pack in this case
+      return field_type->get_size_in_memory();
     } else {
       if (field_type->is_reference()) {
         return POINTER_SIZE;

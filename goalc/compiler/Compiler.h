@@ -199,6 +199,7 @@ class Compiler {
   Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

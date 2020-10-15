@@ -105,13 +105,16 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   // remember that this is a type
   m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
 
-  // get the new method of type object. this is new_type in kscheme.cpp
-  auto new_type_method = compile_get_method_of_type(m_ts.make_typespec("type"), "new", env);
-  // call (new 'type 'type-name parent-type flags)
-  auto new_type_symbol = compile_get_sym_obj(result.type.base_type(), env)->to_gpr(env);
-  auto parent_type = compile_get_symbol_value(result.type_info->get_parent(), env)->to_gpr(env);
-  auto flags_int = compile_integer(result.flags.flag, env)->to_gpr(env);
-  compile_real_function_call(form, new_type_method, {new_type_symbol, parent_type, flags_int}, env);
+  if (result.create_runtime_type) {
+    // get the new method of type object. this is new_type in kscheme.cpp
+    auto new_type_method = compile_get_method_of_type(m_ts.make_typespec("type"), "new", env);
+    // call (new 'type 'type-name parent-type flags)
+    auto new_type_symbol = compile_get_sym_obj(result.type.base_type(), env)->to_gpr(env);
+    auto parent_type = compile_get_symbol_value(result.type_info->get_parent(), env)->to_gpr(env);
+    auto flags_int = compile_integer(result.flags.flag, env)->to_gpr(env);
+    compile_real_function_call(form, new_type_method, {new_type_symbol, parent_type, flags_int},
+                               env);
+  }
 
   // return none, making the value of (deftype..) unusable
   return get_none();
@@ -554,4 +557,23 @@ Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest
 
   auto obj = compile_error_guard(arg, env)->to_gpr(env);
   return compile_get_method_of_object(obj, method_name, env);
+}
+
+Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+
+  auto kind = symbol_string(args.unnamed.at(1));
+  auto type_name = symbol_string(args.unnamed.at(0));
+
+  if (kind == "basic") {
+    m_ts.forward_declare_type_as_basic(type_name);
+  } else if (kind == "structure") {
+    m_ts.forward_declare_type_as_structure(type_name);
+  } else {
+    throw_compile_error(form, "Invalid declare-type form");
+  }
+
+  return get_none();
 }

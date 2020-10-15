@@ -107,6 +107,8 @@
 ; this means threads can't leak pointers to stack variables to other threads...
 ; optionally, threads may know how to suspend/resume themselves.
 
+(declare-type process basic)
+
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
   ((name          basic    :offset-assert 4)   ;; name of the thread (usually a symbol?)
@@ -121,14 +123,16 @@
    )
   
   (:methods
+    ;; todo, triple check these method numbers.
     (stack-size-set! ((this thread) (stack-size integer)) none 9)
-    (thread-suspend ((this _type_)) none 10)       ;; only safe on a cpu-thread
-    (thread-resume  ((to-resume _type_)) none 11)  ;; only safe on a cpu-thread
+    (thread-suspend ((this _type_)) none 10)       ;; only safe on a cpu-thread, but slot exists for thread
+    (thread-resume  ((to-resume _type_)) none 11)  ;; only safe on a cpu-thread, but slot exists for thread
     )
   
   :size-assert #x28
   :method-count-assert 12
   :flag-assert #xc00000028
+  ;; is already defined in kscheme but we define it again.
   )
 
 ;; A CPU thread is a thread which has some memory to save registers and a stack
@@ -146,4 +150,98 @@
   :size-assert #x80
   :method-count-assert 12
   :flag-assert #xc00000080
+  )
+
+;; Parent type of all process tree nodes.
+;; A process-tree is a left-child right-sibling binary tree 
+;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
+(deftype process-tree (basic)
+  ((name basic :offset-assert 4)
+   (mask int32 :offset-assert 8)
+   (parent pointer :offset-assert 12)
+   (brother pointer :offset-assert 16)
+   (child pointer :offset-assert 20)
+   (ppointer pointer :offset-assert 24)
+   (self basic :offset-assert 28)
+   )
+  
+  (:methods
+    (activate ((obj process-tree) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
+    (deactivate  ((obj process-tree)) basic 10)
+    (dummy-method-11 () none 11)
+    (run-logic? ((obj process-tree)) symbol 12)
+    (dummy-method () none 13)
+    )  
+  
+  :size-assert #x20
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+;; A dead pool is simply a process-tree node which contains all dead processes.
+;; It supports getting and returning processes.
+(deftype dead-pool (process-tree)
+  (
+   ;; nothing new!
+   )
+  (:methods
+    (get-process ((pool dead-pool) (type-to-make type) (stack-size integer)) process 14)
+    (return-process ((pool dead-pool) (proc process)) process-tree 15)
+    )
+  :size-assert #x20
+  :method-count-assert 16
+  :flag-assert #x1000000020
+  )
+
+;; A dead-pool-heap-rec is a record for a process which lives on a dead-pool-heap.
+;; these processes can move around in memory, but the records can't.
+;; Therefore a pointer to these can be used as a handle for the process, so you can
+;; find it after it moves
+(deftype dead-pool-heap-rec (structure)
+  ((process process         :offset-assert 0) ;; the process of this record
+   (prev dead-pool-heap-rec :offset-assert 4) ;; next rec in the linked list
+   (next dead-pool-heap-rec :offset-assert 8) ;; prev. rec in the linked list
+   )
+  
+  :pack-me ; don't worry about aligning me to 16-bytes in arrays and types.
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+;; This is a pool of dead processes which can be dynamically sized and allocated from a common heap.
+;; Alive processess in a dead-pool-heap can be relocated and compacted to reduce heap fragmentation.
+(deftype dead-pool-heap (dead-pool)
+  ((allocated-length    int32                           :offset-assert #x20) ;; size of heap
+   (compact-time        uint32                          :offset-assert #x24) ;; ??
+   (compact-count-targ  uint32                          :offset-assert #x28) ;; ??
+   (compact-count       uint32                          :offset-assert #x2c) ;; ??
+   (fill-percent        float                           :offset-assert #x30) ;; ??
+   (first-gap           dead-pool-heap-rec              :offset-assert #x34) ;; ??
+   (first-shrink        dead-pool-heap-rec              :offset-assert #x38) ;; ??
+   (heap                kheap :inline                   :offset-assert 64)   ;; ??
+   (alive-list          dead-pool-heap-rec :inline      :offset-assert 80)   ;; ??
+   (last                dead-pool-heap-rec :offset #x54 :offset-assert #x54) ;; overlay of (-> alive-list prev)
+   ;; note - the placement of dead-list at 92 here is used to determine the packing behavior.
+   ;; see TypeSystem::get_size_in_type().
+   (dead-list           dead-pool-heap-rec :inline      :offset-assert 92)   ;; ??
+   (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+   )
+  (:methods
+    (compact ((this dead-pool-heap) (count integer)) none 16)
+    (shrink-heap ((this dead-pool-heap) (proc process)) dead-pool-heap 17)
+    (churn ((this dead-pool-heap) (count integer)) none 18)
+    (memory-used ((this dead-pool-heap)) integer 19)
+    (memory-total ((this dead-pool-heap)) integer 20)
+    (gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec)) integer 21)
+    (gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec)) pointer 22)
+    (find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec)) dead-pool-heap-rec 23)
+    (find-gap-by-size ((this dead-pool-heap) (size integer)) dead-pool-heap-rec 24)
+    (memory-free ((this dead-pool-heap)) integer 25)
+    (compact-time ((this dead-pool-heap)) integer 26)
+    )
+  
+  :size-assert #x68
+  :method-count-assert #x1b
+  :flag-assert #x1b00000068
   )

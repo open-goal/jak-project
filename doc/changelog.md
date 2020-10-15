@@ -27,3 +27,6 @@
 - The `uint64` type now uses 8 bytes instead of 81 in a type (this was a typo)
 - `deftype` allows basics/structures with a field that is the same type as the basic/structure.
 - Doing a `define-extern` with a type of `type` will forward declare the type.
+- `deftype` now has a `:no-runtime-type` flag to disable the creation of a runtime type.
+- There is a `declare-type` form for forward declaring types to allow circular dependencies.
+- Types that are `structure` but not `basic` can request that they be tightly packed when possible with `:pack-me`.
