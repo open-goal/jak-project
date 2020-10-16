@@ -60,6 +60,5 @@ int main(int argc, char** argv) {
 
   file_util::write_text_file(combine_path(out_folder, "all-syms.gc"), db.dts.dump_symbol_types());
   spdlog::info("Disassembly has completed successfully.");
-
   return 0;
 }

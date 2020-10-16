@@ -82,7 +82,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   spdlog::info("Total objs: {}", stats.total_obj_files);
   spdlog::info("Unique objs: {}", stats.unique_obj_files);
   spdlog::info("Unique data: {} bytes", stats.unique_obj_bytes);
-  spdlog::info("Total {} ms ({} MB/sec, {} obj/sec", timer.getMs(),
+  spdlog::info("Total {} ms ({:3f} MB/sec, {} obj/sec", timer.getMs(),
                stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
                stats.total_obj_files / timer.getSeconds());
 }
@@ -556,10 +556,8 @@ void ObjectFileDB::analyze_functions() {
     std::unordered_set<std::string> unique_names;
     std::unordered_map<std::string, std::unordered_set<std::string>> duplicated_functions;
 
-    int uid = 1;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
       (void)segment_id;
-      func.guessed_name.unique_id = uid++;
       auto name = func.guessed_name.to_string();
       if (func.guessed_name.expected_unique()) {
         if (unique_names.find(name) != unique_names.end()) {
@@ -608,13 +606,12 @@ void ObjectFileDB::analyze_functions() {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-      //      printf("in %s\n", func.guessed_name.to_string().c_str());
+      // printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
 
       total_functions++;
-
       if (!func.suspected_asm) {
         func.analyze_prologue(data.linked_data);
         func.cfg = build_cfg(data.linked_data, segment_id, func);
@@ -642,8 +639,10 @@ void ObjectFileDB::analyze_functions() {
       if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
         if (func.cfg->is_fully_resolved()) {
         } else {
-          unresolved_by_length[func.end_word - func.start_word].push_back(
-              func.guessed_name.to_string());
+          if (!func.guessed_name.empty()) {
+            unresolved_by_length[func.end_word - func.start_word].push_back(
+                func.guessed_name.to_string());
+          }
         }
       }
 
@@ -674,11 +673,11 @@ void ObjectFileDB::analyze_functions() {
     spdlog::info(" {}/{} cfgs converted to ir ({}%)\n", successful_cfg_irs, non_asm_funcs,
                  100.f * float(successful_cfg_irs) / float(non_asm_funcs));
 
-    for (auto& kv : unresolved_by_length) {
-      printf("LEN %d\n", kv.first);
-      for (auto& x : kv.second) {
-        printf("  %s\n", x.c_str());
-      }
-    }
+    //    for (auto& kv : unresolved_by_length) {
+    //      printf("LEN %d\n", kv.first);
+    //      for (auto& x : kv.second) {
+    //        printf("  %s\n", x.c_str());
+    //      }
+    //    }
   }
 }
