@@ -556,8 +556,10 @@ void ObjectFileDB::analyze_functions() {
     std::unordered_set<std::string> unique_names;
     std::unordered_map<std::string, std::unordered_set<std::string>> duplicated_functions;
 
+    int uid = 1;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
       (void)segment_id;
+      func.guessed_name.unique_id = uid++;
       auto name = func.guessed_name.to_string();
       if (func.guessed_name.expected_unique()) {
         if (unique_names.find(name) != unique_names.end()) {
@@ -639,10 +641,8 @@ void ObjectFileDB::analyze_functions() {
       if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
         if (func.cfg->is_fully_resolved()) {
         } else {
-          if (!func.guessed_name.empty()) {
-            unresolved_by_length[func.end_word - func.start_word].push_back(
-                func.guessed_name.to_string());
-          }
+          unresolved_by_length[func.end_word - func.start_word].push_back(
+              func.guessed_name.to_string());
         }
       }
 
