@@ -102,6 +102,7 @@ static const std::unordered_map<
         {"=", &Compiler::compile_condition_as_bool},
         {"!=", &Compiler::compile_condition_as_bool},
         {"eq?", &Compiler::compile_condition_as_bool},
+        {"neq?", &Compiler::compile_condition_as_bool},
         {"not", &Compiler::compile_condition_as_bool},
         {"<=", &Compiler::compile_condition_as_bool},
         {">=", &Compiler::compile_condition_as_bool},

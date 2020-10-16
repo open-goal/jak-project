@@ -33,3 +33,5 @@
 - Using `method` on a forward declared type is an error. The old behavior was to get a method of `type`, which is confusing.
 - Loading an `int64`/`uint64` gives a `int`/`uint`, like the other register integers.
 - Defining a type with `deftype` will auto-generate an inspect method.
+- The `new` operator can now create static structures and basics and set fields to integers or symbols.
+- The `neq?` operator now works when used outside of a branch condition (previously it generated a syntax error)

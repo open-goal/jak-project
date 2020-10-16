@@ -72,6 +72,7 @@ class Compiler {
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
+  bool is_quoted_sym(const goos::Object& o);
   bool is_basic(const TypeSpec& ts);
   bool is_structure(const TypeSpec& ts);
   const goos::Object& pair_car(const goos::Object& o);

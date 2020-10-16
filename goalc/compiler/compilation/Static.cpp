@@ -42,7 +42,7 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   std::unique_ptr<StaticStructure> obj;
   if (is_basic(type)) {
-    assert(false);  // for now...
+    obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, type.base_type());
   } else {
     // if we ever find this type of static data outside of MAIN_SEGMENT, we can create an option
     // in the new form to pick the segment.
@@ -104,7 +104,24 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
         // not sure how we can create 128-bit integer constants at this point...
         assert(false);
       }
-    } else {
+    } else if (is_basic(field_info.type)) {
+      if (is_quoted_sym(field_value)) {
+        obj->add_symbol_record(quoted_sym_as_string(field_value), field_offset);
+        assert(deref_info.mem_deref);
+        assert(deref_info.can_deref);
+        assert(deref_info.load_size == 4);
+
+        // the linker needs to see a -1 in order to know to insert a symbol pointer
+        // instead of just the symbol table offset.
+        u32 linker_val = 0xffffffff;
+        memcpy(obj->data.data() + field_offset, &linker_val, 4);
+      } else {
+        throw_compile_error(
+            form, "Setting a basic field to anything other than a symbol is currently unsupported");
+      }
+    }
+
+    else {
       assert(false);  // for now
     }
   }
