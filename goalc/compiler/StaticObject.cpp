@@ -81,3 +81,30 @@ int StaticFloat::get_addr_offset() const {
 std::string StaticFloat::print() const {
   return fmt::format("(sf {})", value);
 }
+
+///////////////////
+// StaticStructure
+///////////////////
+
+StaticStructure::StaticStructure(int _seg) : seg(_seg) {}
+
+std::string StaticStructure::print() const {
+  return "static-structure";
+}
+
+StaticObject::LoadInfo StaticStructure::get_load_info() const {
+  LoadInfo info;
+  info.requires_load = false;
+  info.prefer_xmm = false;
+  return info;
+}
+
+int StaticStructure::get_addr_offset() const {
+  return 0;
+}
+
+void StaticStructure::generate(emitter::ObjectGenerator* gen) {
+  rec = gen->add_static_to_seg(seg, 16);
+  auto& d = gen->get_static_data(rec);
+  d.insert(d.end(), data.begin(), data.end());
+}

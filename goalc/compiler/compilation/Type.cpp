@@ -626,13 +626,15 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
       });
 
       auto new_method = compile_get_method_of_type(type_of_obj, "new", env);
-
       auto new_obj = compile_real_function_call(form, new_method, args, env);
       new_obj->set_type(type_of_obj);
       return new_obj;
     }
   } else if (allocation == "static") {
-    assert(false);
+    auto type_of_object = m_ts.make_typespec(type_as_string);
+    if (is_structure(type_of_object)) {
+      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+    }
   }
 
   throw_compile_error(form, "unsupported new form");

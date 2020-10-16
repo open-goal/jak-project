@@ -186,6 +186,10 @@ bool Compiler::is_basic(const TypeSpec& ts) {
   return m_ts.typecheck(m_ts.make_typespec("basic"), ts, "", false, false);
 }
 
+bool Compiler::is_structure(const TypeSpec& ts) {
+  return m_ts.typecheck(m_ts.make_typespec("structure"), ts, "", false, false);
+}
+
 bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
   (void)env;
   if (in.is_int()) {
@@ -193,6 +197,6 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
     return true;
   }
 
-  // todo, try more things before giving up.
+  // todo, try more things like constants before giving up.
   return false;
 }

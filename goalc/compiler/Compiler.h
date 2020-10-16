@@ -73,6 +73,7 @@ class Compiler {
   std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
   bool is_basic(const TypeSpec& ts);
+  bool is_structure(const TypeSpec& ts);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -136,6 +137,11 @@ class Compiler {
                                Env* env,
                                bool goos,
                                bool goal);
+
+  Val* compile_new_static_structure_or_basic(const goos::Object& form,
+                                             const TypeSpec& type,
+                                             const goos::Object& field_defs,
+                                             Env* env);
 
  public:
   // Atoms
