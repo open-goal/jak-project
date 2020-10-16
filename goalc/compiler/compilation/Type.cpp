@@ -168,6 +168,8 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   constraint.ireg = input->ireg();  // constrain this register
   constraint.desired_register = emitter::gRegInfo.get_arg_reg(0);  // to the first argument
   method_env->constrain(constraint);
+  // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
+  method_env->emit(std::make_unique<IR_FunctionStart>(std::vector<RegVal*>{input}));
 
   std::string str_template = fmt::format("~T- type: ~T{}~%", type->get_name());
   std::vector<RegVal*> format_args = {};
@@ -183,7 +185,7 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   }
 
   compile_format_string(form, method_env.get(), str_template, format_args);
-	method_env->emit(std::make_unique<IR_Return>(method_env->make_gpr(input->type()), input));
+  method_env->emit(std::make_unique<IR_Return>(method_env->make_gpr(input->type()), input));
 
   // add this function to the object file
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
