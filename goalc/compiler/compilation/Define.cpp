@@ -75,6 +75,11 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
         symbol_string(sym).c_str(), existing_type->second.print().c_str(),
         new_type.print().c_str());
   }
+
+  if (new_type == m_ts.make_typespec("type")) {
+    m_ts.forward_declare_type(symbol_string(sym));
+  }
+
   m_symbol_types[symbol_string(sym)] = new_type;
   return get_none();
 }

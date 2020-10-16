@@ -4,6 +4,7 @@
 #define JAK_STATICOBJECT_H
 
 #include <string>
+#include <vector>
 #include "goalc/emitter/ObjectGenerator.h"
 
 class StaticObject {
@@ -44,6 +45,34 @@ class StaticFloat : public StaticObject {
   LoadInfo get_load_info() const override;
   void generate(emitter::ObjectGenerator* gen) override;
   int get_addr_offset() const override;
+};
+
+class StaticStructure : public StaticObject {
+ public:
+  StaticStructure(int _seg);
+  std::vector<u8> data;
+  int seg = -1;
+  std::string print() const override;
+  LoadInfo get_load_info() const override;
+  void generate_structure(emitter::ObjectGenerator* gen);
+  void generate(emitter::ObjectGenerator* gen) override;
+  int get_addr_offset() const override;
+
+  struct SymbolRecord {
+    int offset = -1;
+    std::string name;
+  };
+  std::vector<SymbolRecord> symbols;
+
+  void add_symbol_record(std::string name, int offset);
+};
+
+class StaticBasic : public StaticStructure {
+ public:
+  std::string type_name;
+  StaticBasic(int _seg, std::string _type_name);
+  int get_addr_offset() const override;
+  void generate(emitter::ObjectGenerator* gen) override;
 };
 
 #endif  // JAK_STATICOBJECT_H

@@ -72,7 +72,9 @@ class Compiler {
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
+  bool is_quoted_sym(const goos::Object& o);
   bool is_basic(const TypeSpec& ts);
+  bool is_structure(const TypeSpec& ts);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -118,20 +120,29 @@ class Compiler {
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
-                             std::string& fmt_template,
+                             const std::string& fmt_template,
                              std::vector<RegVal*> args,
                              const std::string& out_stream = "#t");
-  void generate_field_description(StructureType* type,
+  void generate_field_description(const goos::Object& form,
+                                  StructureType* type,
                                   Env* env,
                                   RegVal* reg,
-                                  Field f,
-                                  std::vector<RegVal*> format_args,
-                                  std::string& str_template);
+                                  const Field& f);
   Val* generate_inspector_for_type(const goos::Object& form, Env* env, Type* type);
   RegVal* compile_get_method_of_type(const TypeSpec& type,
                                      const std::string& method_name,
                                      Env* env);
   RegVal* compile_get_method_of_object(RegVal* object, const std::string& method_name, Env* env);
+  Val* compile_define_constant(const goos::Object& form,
+                               const goos::Object& rest,
+                               Env* env,
+                               bool goos,
+                               bool goal);
+
+  Val* compile_new_static_structure_or_basic(const goos::Object& form,
+                                             const TypeSpec& type,
+                                             const goos::Object& field_defs,
+                                             Env* env);
 
  public:
   // Atoms
@@ -171,6 +182,7 @@ class Compiler {
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_quote(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defglobalconstant(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mlet(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Math
@@ -205,6 +217,7 @@ class Compiler {
   Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_method(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H

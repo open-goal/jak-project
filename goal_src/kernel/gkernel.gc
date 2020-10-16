@@ -5,7 +5,98 @@
 ;; name in dgo: gkernel
 ;; dgos: KERNEL
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; System Globals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set version number symbols
 (define *kernel-version* (the binteger (logior (ash *kernel-major-version* 16) *kernel-minor-version*)))
+(define *irx-version* (the binteger (logior (ash *irx-major-version* 16) *irx-minor-version*)))
+
+;; Set default options. The C Kernel may modify these before loading the engine.
+
+;; Can be 'boot, 'listener, or 'debug-boot
+;; set to 'boot when DiskBooting.
+(define *kernel-boot-mode* 'listener) 
+
+;; DebugBootLevel in C Kernel
+(define *kernel-boot-level* (the symbol #f))
+
+;; The number of DECI messages received.
+;; The C Kernel increments this.
+(define *deci-count* 0)
+
+;; Some debug stats. Unused?
+(define *last-loado-length* 0)
+(define *last-loado-global-usage* 0)
+(define *last-loado-debug-usage* 0)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Relocate
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Objects on a dynamic process heap may be relocated.
+;; They should provide their own relocate method to do any fixups
+;; for any references.
+(defmethod relocate object ((this object) (offset int))
+  this
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Kernel Package System
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The kernel has a weird package system. It's not really used and doesn't do much.
+;; Both the C Kernel and GOAL Kernel update the kernel-packages list.
+;; The list is used to avoid loading the same package multiple times.
+
+(define *kernel-packages* '())
+
+(defun load-package ((package string) (allocation kheap))
+  "Load a Package from a CGO/DGO"
+  (unless (nmember package *kernel-packages*)
+    ;; #xf = OUTPUT_LOAD, OUTPUT_TRUE, EXECUTE, PRINT_LOGIN
+    (dgo-load package allocation #xf #x200000)
+    (set! *kernel-packages* (cons package *kernel-packages*))
+    )
+  )
+
+(defun unload-package ((package string))
+  "Mark a package as unloaded, if it was loaded previously"
+  (let ((pack (nmember package *kernel-packages*)))
+    (when pack
+      (set! *kernel-packages* (delete! (car pack) *kernel-packages*))
+      )
+    *kernel-packages*
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Kernel Globals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The kernel context is a global which stores the state of the kernel.
+(define *kernel-context* (new 'static 'kernel-context
+                              :prevent-from-run #x41 ;; todo, bitfield enum types
+                              :next-pid 2
+                              :current-process '#f
+                              :relocating-process '#f
+                              :low-memory-message '#t
+                              )
+        )
+
+;; the main stack for running GOAL code!
+(define *dram-stack* (new 'global 'array 'uint8 #x3800)) ;;DPROCESS_STACK_SIZE
+
+;; I don't think this stack is used, but I'm not sure.
+(set! (-> *kernel-context* fast-stack-top) *scratch-memory-top*)
+
+;; A context with all process masks set to 0. This can be used to iterate through a process tree
+;; without executing anything, to find a process for instance.
+(define *null-kernel-context* (new 'static 'kernel-context))
+
 
 (defun kernel-dispatcher ()
   "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"

@@ -5,5 +5,312 @@
 ;; name in dgo: gkernel-h
 ;; dgos: KERNEL
 
-(defglobalconstant *kernel-major-version* 2)
-(defglobalconstant *kernel-minor-version* 0)
+;; Type definitions for the GOAL Kernel.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CONSTANTS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; -hardware-
+
+;; the end of the 16 kB fast "scratchpad" memory of the PS2.
+;; this memory is mapped to 0x70000000 in the PS2.
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+
+;; -versions-
+
+;; the version of the kernel. This is checked in the C Kernel.
+;; This must match the version in common/versions.h when building gk
+(defconstant *kernel-major-version* 2)
+(defconstant *kernel-minor-version* 0)
+
+;; the version of the OVERLORD I/O driver.
+;; this may be unused.
+(defconstant *irx-major-version* 1)
+(defconstant *irx-minor-version* 2)
+
+;; -memory-
+
+;; the size of the execution stack (~14 kB) shared by all threads
+(defconstant DPROCESS_STACK_SIZE #x3800)
+
+;; another stack size used as a maximum for temporary threads
+(defconstant PROCESS_STACK_SIZE #x1c00)
+
+;; default size of stack to backup for a process
+(defconstant PROCESS_STACK_SAVE_SIZE 256)
+
+;; the size of the shared heap used by dynamically sized processes
+(defconstant PROCESS_HEAP_SIZE (* 984 1024))
+
+;; -system-
+
+;; tab size for printing.
+(defconstant *tab-size* (the binteger 8))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ENUMS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; todo, processs mask
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; MACROS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; trigger an exception. (GOAL used lw r0, 2(r0))
+(defmacro break ()
+  `(/ 0 0)
+  )
+
+;; todo, process check and set
+
+(defmacro msg-err (&rest args)
+  ;"Print a message to stdout immediately. This won't appear in the compiler."
+  `(format 0 ,@args)
+  )
+
+;; todo process pointer
+;; todo process memory usage
+;; with pp
+;; todo suspend
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; TYPES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this stores the current state of the kernel.
+(deftype kernel-context (basic)
+  ((prevent-from-run    int32      :offset-assert 4)      ;; actually a process-mask
+   (require-for-run     int32      :offset-assert 8)      ;; actually a process-mask, unused?
+   (allow-to-run        int32      :offset-assert 12)     ;; actually a process-mask, unused?
+   (next-pid            int32      :offset-assert 16)     ;; next PID to give out
+   (fast-stack-top      pointer    :offset-assert 20)     ;; scratchpad stack (unused?)
+   (current-process     basic      :offset-assert 24)     ;; process?
+   (relocating-process  basic      :offset-assert 28)     ;; process?
+   (relocating-min      int32      :offset-assert 32)     ;; print hex
+   (relocating-max      int32      :offset-assert 36)     ;; print hex
+   (relocating-offset   int32      :offset-assert 40)     ;; ?
+   (low-memory-message  basic      :offset-assert 44)     ;; boolean?
+   )
+  
+  :size-assert #x30
+  :method-count-assert 9
+  :flag-assert #x900000030
+  )
+
+; A thread belongs to a process and has a reference to a stack.
+; they have an "execution stack", which is where the stack goes when the thread runs.
+; and also a "backup stack", which stores the stack when the thread doesn't run.
+; this means threads can't leak pointers to stack variables to other threads...
+; optionally, threads may know how to suspend/resume themselves.
+
+(declare-type process basic)
+
+; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
+(deftype thread (basic)
+  ((name          basic    :offset-assert 4)   ;; name of the thread (usually a symbol?)
+   (process       process  :offset-assert 8)   ;; process that the thread belongs to
+   (previous      thread   :offset-assert 12)  ;; previous thread that was running in the process
+   (suspend-hook  basic    :offset-assert 16)  ;; function to suspend this thread
+   (resume-hook   basic    :offset-assert 20)  ;; function to resume this thread
+   (pc            pointer  :offset-assert 24)  ;; program counter of the thread
+   (sp            pointer  :offset-assert 28)  ;; stack pointer of the thread (actual stack)
+   (stack-top     pointer  :offset-assert 32)  ;; top of the thread's stack (actual stack)
+   (stack-size    int32    :offset-assert 36)  ;; size of the thread's stack (backup stack)
+   )
+  
+  (:methods
+    ;; todo, triple check these method numbers.
+    (stack-size-set! ((this thread) (stack-size integer)) none 9)
+    (thread-suspend ((this _type_)) none 10)       ;; only safe on a cpu-thread, but slot exists for thread
+    (thread-resume  ((to-resume _type_)) none 11)  ;; only safe on a cpu-thread, but slot exists for thread
+    )
+  
+  :size-assert #x28
+  :method-count-assert 12
+  :flag-assert #xc00000028
+  ;; is already defined in kscheme but we define it again.
+  )
+
+;; A CPU thread is a thread which has some memory to save registers and a stack
+(deftype cpu-thread (thread)
+  ((rreg   uint64 8        :offset-assert 40)   ;; general purpose saved registers
+   (freg   float 6         :offset-assert 104)  ;; floating point registers
+   (stack  uint8 :dynamic  :offset-assert 128)  ;; stack memory (dynamic array)
+   )
+  
+  (:methods
+    (thread-suspend ((this _type_)) none 10)
+    (thread-resume  ((to-resume _type_)) none 11)
+    )
+  
+  :size-assert #x80
+  :method-count-assert 12
+  :flag-assert #xc00000080
+  )
+
+;; Parent type of all process tree nodes.
+;; A process-tree is a left-child right-sibling binary tree 
+;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
+(deftype process-tree (basic)
+  ((name basic :offset-assert 4)
+   (mask int32 :offset-assert 8)
+   (parent pointer :offset-assert 12)
+   (brother pointer :offset-assert 16)
+   (child pointer :offset-assert 20)
+   (ppointer pointer :offset-assert 24)
+   (self basic :offset-assert 28)
+   )
+  
+  (:methods
+    (activate ((obj process-tree) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
+    (deactivate  ((obj process-tree)) basic 10)
+    (dummy-method-11 () none 11)
+    (run-logic? ((obj process-tree)) symbol 12)
+    (dummy-method () none 13)
+    )  
+  
+  :size-assert #x20
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+;; A dead pool is simply a process-tree node which contains all dead processes.
+;; It supports getting and returning processes.
+(deftype dead-pool (process-tree)
+  (
+   ;; nothing new!
+   )
+  (:methods
+    (get-process ((pool dead-pool) (type-to-make type) (stack-size integer)) process 14)
+    (return-process ((pool dead-pool) (proc process)) process-tree 15)
+    )
+  :size-assert #x20
+  :method-count-assert 16
+  :flag-assert #x1000000020
+  )
+
+;; A dead-pool-heap-rec is a record for a process which lives on a dead-pool-heap.
+;; these processes can move around in memory, but the records can't.
+;; Therefore a pointer to these can be used as a handle for the process, so you can
+;; find it after it moves
+(deftype dead-pool-heap-rec (structure)
+  ((process process         :offset-assert 0) ;; the process of this record
+   (prev dead-pool-heap-rec :offset-assert 4) ;; next rec in the linked list
+   (next dead-pool-heap-rec :offset-assert 8) ;; prev. rec in the linked list
+   )
+  
+  :pack-me ; don't worry about aligning me to 16-bytes in arrays and types.
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+;; This is a pool of dead processes which can be dynamically sized and allocated from a common heap.
+;; Alive processess in a dead-pool-heap can be relocated and compacted to reduce heap fragmentation.
+(deftype dead-pool-heap (dead-pool)
+  ((allocated-length    int32                           :offset-assert #x20) ;; size of heap
+   (compact-time        uint32                          :offset-assert #x24) ;; ??
+   (compact-count-targ  uint32                          :offset-assert #x28) ;; ??
+   (compact-count       uint32                          :offset-assert #x2c) ;; ??
+   (fill-percent        float                           :offset-assert #x30) ;; ??
+   (first-gap           dead-pool-heap-rec              :offset-assert #x34) ;; ??
+   (first-shrink        dead-pool-heap-rec              :offset-assert #x38) ;; ??
+   (heap                kheap :inline                   :offset-assert 64)   ;; ??
+   (alive-list          dead-pool-heap-rec :inline      :offset-assert 80)   ;; ??
+   (last                dead-pool-heap-rec :offset #x54 :offset-assert #x54) ;; overlay of (-> alive-list prev)
+   ;; note - the placement of dead-list at 92 here is used to determine the packing behavior.
+   ;; see TypeSystem::get_size_in_type().
+   (dead-list           dead-pool-heap-rec :inline      :offset-assert 92)   ;; ??
+   (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+   )
+  (:methods
+    (compact ((this dead-pool-heap) (count integer)) none 16)
+    (shrink-heap ((this dead-pool-heap) (proc process)) dead-pool-heap 17)
+    (churn ((this dead-pool-heap) (count integer)) none 18)
+    (memory-used ((this dead-pool-heap)) integer 19)
+    (memory-total ((this dead-pool-heap)) integer 20)
+    (gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec)) integer 21)
+    (gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec)) pointer 22)
+    (find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec)) dead-pool-heap-rec 23)
+    (find-gap-by-size ((this dead-pool-heap) (size integer)) dead-pool-heap-rec 24)
+    (memory-free ((this dead-pool-heap)) integer 25)
+    (compact-time ((this dead-pool-heap)) integer 26)
+    )
+  
+  :size-assert #x68
+  :method-count-assert #x1b
+  :flag-assert #x1b00000068
+  )
+
+
+;; GOAL can create a series of stack frames for unwinding/cleaning up.
+;; This is the parent type for any stack frame.
+(deftype stack-frame (basic)
+  ((name basic :offset 4)
+   (next stack-frame :offset 8) ;; which way does this point?
+   )
+  
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+
+;; A catch frame is a frame you can "throw" to, by name.
+;; You can "throw" out of a function and into another function.
+(deftype catch-frame (stack-frame)
+  ((sp pointer :offset 12)   ;; where to reset the stack when throwing.
+   (ra pointer :offset 16)   ;; where to jump when throwing
+   
+   ;; todo - rework for x86-64.
+   (freg float 6 :offset 20) ;; saved floating point registers from "catch" statement
+   (rreg uint128 8 :offset 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
+   )
+  :size-assert #xb0
+  :method-count-assert 9
+  :flag-assert #x9000000b0
+  )
+
+;; A protect frame is a frame which has a cleanup function called on exit.
+(deftype protect-frame (stack-frame)
+  ((exit function :offset-assert 12)) ;; function to call to clean up
+  
+  :size-assert 16
+  :method-count-assert 9
+  :flag-assert #x900000010
+  )
+
+;; handle (todo, need bitfield types)
+
+;; GOAL State.  A Process can be in a State.
+(deftype state (protect-frame)  ; state is a protect frame so we can "exit" it with cleanup
+  ((code function :offset-assert 16)  ;; main code to run in this state
+   (trans function :offset-assert 20) ;; ? run once and return ? when ?
+   (post function :offset-assert 24)  ;; ?
+   (enter function :offset-assert 28) ;; ?
+   (event basic :offset-assert 32)    ;; event handler function?
+   )
+  
+  :size-assert #x24
+  :method-count-assert 9
+  :flag-assert #x900000024
+  )
+
+
+;; Not sure what this is, but it's probably used in the event system.
+(deftype event-message-block (structure)
+  ((to basic :offset-assert 0)
+   (from basic :offset-assert 4)
+   (num-params int32 :offset-assert 8)
+   (message basic :offset-assert 12)
+   (param uint64 7 :offset-assert 16)
+   )
+  
+  :size-assert #x48
+  :method-count-assert 9
+  :flag-assert #x900000048
+  )

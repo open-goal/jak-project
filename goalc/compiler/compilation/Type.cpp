@@ -87,7 +87,7 @@ RegVal* Compiler::compile_get_method_of_object(RegVal* object,
 
 Val* Compiler::compile_format_string(const goos::Object& form,
                                      Env* env,
-                                     std::string& fmt_template,
+                                     const std::string& fmt_template,
                                      std::vector<RegVal*> args,
                                      const std::string& out_stream) {
   // Add first two format args
@@ -101,12 +101,13 @@ Val* Compiler::compile_format_string(const goos::Object& form,
   return compile_real_function_call(form, format_function, args, env);
 }
 
-void Compiler::generate_field_description(StructureType* type,
+void Compiler::generate_field_description(const goos::Object& form,
+                                          StructureType* type,
                                           Env* env,
                                           RegVal* reg,
-                                          Field f,
-                                          std::vector<RegVal*> format_args,
-                                          std::string& str_template) {
+                                          const Field& f) {
+  std::string str_template;
+  std::vector<RegVal*> format_args = {};
   if (m_ts.typecheck(m_ts.make_typespec("type"), f.type(), "", false, false)) {
     // type
     return;
@@ -114,36 +115,38 @@ void Compiler::generate_field_description(StructureType* type,
              m_ts.typecheck(m_ts.make_typespec("binteger"), f.type(), "", false, false) ||
              m_ts.typecheck(m_ts.make_typespec("pair"), f.type(), "", false, false)) {
     // basic, binteger, pair
-    str_template += fmt::format("~T- {}: ~T~A~%", f.name());
+    str_template += fmt::format("~T{}: ~A~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.typecheck(m_ts.make_typespec("integer"), f.type(), "", false, false)) {
     // Integer
-    str_template += fmt::format("~T- {}: ~T~D~%", f.name());
+    str_template += fmt::format("~T{}: ~D~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.typecheck(m_ts.make_typespec("float"), f.type(), "", false, false)) {
     // Float
-    str_template += fmt::format("~T- {}: ~T~f~%", f.name());
+    str_template += fmt::format("~T{}: ~f~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.typecheck(m_ts.make_typespec("pointer"), f.type(), "", false, false)) {
     // Pointers
-    str_template += fmt::format("~T- {}: ~T#x~X~%", f.name());
+    str_template += fmt::format("~T{}: #x~X~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (f.is_array()) {
+  } else if (f.is_array() && !f.is_dynamic()) {
     // Arrays
-    str_template += fmt::format("~T- {}[{}]: ~T@ #x~X~%", f.name(), f.array_size());
+    str_template += fmt::format("~T{}[{}] @ #x~X~%", f.name(), f.array_size());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (f.is_dynamic()) {
     // Dynamic Field
-    str_template += fmt::format("~T- {}[0]: ~T@ #x~X~%", f.name());
+    str_template += fmt::format("~T{}[0] @ #x~X~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (f.is_dynamic()) {
     // Structure
-    str_template += fmt::format("~T- {}: ~T#<{} @ #x~X>~%", f.name(), f.type().print());
+    str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else {
     // Otherwise, we havn't implemented it!
-    str_template += fmt::format("~T- {}: ~TUndefined!~%", f.name());
+    str_template += fmt::format("~T{}: Undefined!~%", f.name());
   }
+
+  compile_format_string(form, env, str_template, format_args);
 }
 
 Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, Type* type) {
@@ -171,20 +174,20 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
   method_env->emit(std::make_unique<IR_FunctionStart>(std::vector<RegVal*>{input}));
 
-  std::string str_template = fmt::format("~T- type: ~T{}~%", type->get_name());
-  std::vector<RegVal*> format_args = {};
-
-  // Check if there are no fields
-  if (structured_type->fields().empty()) {
-    str_template += "~T- No fields!~%";
+  RegVal* type_name = nullptr;
+  if (dynamic_cast<BasicType*>(structured_type)) {
+    type_name = get_field_of_structure(structured_type, input, "type", method_env.get())
+                    ->to_gpr(method_env.get());
   } else {
-    for (Field f : structured_type->fields()) {
-      generate_field_description(structured_type, method_env.get(), input, f, format_args,
-                                 str_template);
-    }
+    type_name = compile_get_sym_obj(structured_type->get_name(), method_env.get())
+                    ->to_gpr(method_env.get());
+  }
+  compile_format_string(form, method_env.get(), "[~8x] ~A~%", {input, type_name});
+
+  for (const Field& f : structured_type->fields()) {
+    generate_field_description(form, structured_type, method_env.get(), input, f);
   }
 
-  compile_format_string(form, method_env.get(), str_template, format_args);
   method_env->emit(std::make_unique<IR_Return>(method_env->make_gpr(input->type()), input));
 
   // add this function to the object file
@@ -223,13 +226,16 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   // remember that this is a type
   m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
 
-  // get the new method of type object. this is new_type in kscheme.cpp
-  auto new_type_method = compile_get_method_of_type(m_ts.make_typespec("type"), "new", env);
-  // call (new 'type 'type-name parent-type flags)
-  auto new_type_symbol = compile_get_sym_obj(result.type.base_type(), env)->to_gpr(env);
-  auto parent_type = compile_get_symbol_value(result.type_info->get_parent(), env)->to_gpr(env);
-  auto flags_int = compile_integer(result.flags.flag, env)->to_gpr(env);
-  compile_real_function_call(form, new_type_method, {new_type_symbol, parent_type, flags_int}, env);
+  if (result.create_runtime_type) {
+    // get the new method of type object. this is new_type in kscheme.cpp
+    auto new_type_method = compile_get_method_of_type(m_ts.make_typespec("type"), "new", env);
+    // call (new 'type 'type-name parent-type flags)
+    auto new_type_symbol = compile_get_sym_obj(result.type.base_type(), env)->to_gpr(env);
+    auto parent_type = compile_get_symbol_value(result.type_info->get_parent(), env)->to_gpr(env);
+    auto flags_int = compile_integer(result.flags.flag, env)->to_gpr(env);
+    compile_real_function_call(form, new_type_method, {new_type_symbol, parent_type, flags_int},
+                               env);
+  }
 
   // Auto-generate (inspect) method
   generate_inspector_for_type(form, env, result.type_info);
@@ -620,13 +626,15 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
       });
 
       auto new_method = compile_get_method_of_type(type_of_obj, "new", env);
-
       auto new_obj = compile_real_function_call(form, new_method, args, env);
       new_obj->set_type(type_of_obj);
       return new_obj;
     }
   } else if (allocation == "static") {
-    assert(false);
+    auto type_of_object = m_ts.make_typespec(type_as_string);
+    if (is_structure(type_of_object)) {
+      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+    }
   }
 
   throw_compile_error(form, "unsupported new form");
@@ -670,9 +678,31 @@ Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest
   if (arg.is_symbol()) {
     if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
       return compile_get_method_of_type(m_ts.make_typespec(symbol_string(arg)), method_name, env);
+    } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
+      throw_compile_error(form,
+                          "The method form is ambiguous when used on a forward declared type.");
     }
   }
 
   auto obj = compile_error_guard(arg, env)->to_gpr(env);
   return compile_get_method_of_object(obj, method_name, env);
+}
+
+Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+
+  auto kind = symbol_string(args.unnamed.at(1));
+  auto type_name = symbol_string(args.unnamed.at(0));
+
+  if (kind == "basic") {
+    m_ts.forward_declare_type_as_basic(type_name);
+  } else if (kind == "structure") {
+    m_ts.forward_declare_type_as_structure(type_name);
+  } else {
+    throw_compile_error(form, "Invalid declare-type form");
+  }
+
+  return get_none();
 }

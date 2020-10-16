@@ -65,6 +65,7 @@ static const std::unordered_map<
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
         {"method", &Compiler::compile_method},
+        {"declare-type", &Compiler::compile_declare_type},
 
         // LAMBDA
         {"lambda", &Compiler::compile_lambda},
@@ -77,7 +78,7 @@ static const std::unordered_map<
         // MACRO
         {"quote", &Compiler::compile_quote},
         {"mlet", &Compiler::compile_mlet},
-        //        {"defconstant", &Compiler::compile_defconstant},
+        {"defconstant", &Compiler::compile_defconstant},
 
         // OBJECT
         //        {"current-method-type", &Compiler::compile_current_method_type},
@@ -101,6 +102,7 @@ static const std::unordered_map<
         {"=", &Compiler::compile_condition_as_bool},
         {"!=", &Compiler::compile_condition_as_bool},
         {"eq?", &Compiler::compile_condition_as_bool},
+        {"neq?", &Compiler::compile_condition_as_bool},
         {"not", &Compiler::compile_condition_as_bool},
         {"<=", &Compiler::compile_condition_as_bool},
         {">=", &Compiler::compile_condition_as_bool},

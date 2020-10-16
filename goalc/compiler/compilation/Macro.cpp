@@ -112,16 +112,15 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
   return get_none();
 }
 
-/*!
- * Compile defglobalconstant forms, which define a constant in both GOOS and GOAL.
- */
-Val* Compiler::compile_defglobalconstant(const goos::Object& form,
-                                         const goos::Object& _rest,
-                                         Env* env) {
+Val* Compiler::compile_define_constant(const goos::Object& form,
+                                       const goos::Object& _rest,
+                                       Env* env,
+                                       bool goos,
+                                       bool goal) {
   auto rest = &_rest;
   (void)env;
   if (!rest->is_pair()) {
-    throw_compile_error(form, "invalid defglobalconstant");
+    throw_compile_error(form, "invalid constant definition");
   }
 
   auto sym = pair_car(*rest).as_symbol();
@@ -130,16 +129,41 @@ Val* Compiler::compile_defglobalconstant(const goos::Object& form,
 
   rest = &rest->as_pair()->cdr;
   if (!rest->is_empty_list()) {
-    throw_compile_error(form, "invalid defglobalconstant");
+    throw_compile_error(form, "invalid constant definition");
   }
 
   // GOAL constant
-  m_global_constants[sym] = value;
+  if (goal) {
+    if (m_symbol_types.find(sym->name) != m_symbol_types.end()) {
+      throw_compile_error(form, fmt::format("The name {} cannot be defined as a constant because "
+                                            "it is already the name of a symbol of type {}",
+                                            sym->name, m_symbol_types.at(sym->name).print()));
+    }
+    m_global_constants[sym] = value;
+  }
 
   // GOOS constant
-  m_goos.global_environment.as_env()->vars[sym] = value;
+  if (goos) {
+    m_goos.global_environment.as_env()->vars[sym] = value;
+  }
 
   return get_none();
+}
+
+/*!
+ * Compile defglobalconstant forms, which define a constant in both GOOS and GOAL.
+ */
+Val* Compiler::compile_defglobalconstant(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env) {
+  return compile_define_constant(form, rest, env, true, true);
+}
+
+/*!
+ * Compile a defconstant form, which defines a constant that is only in GOAL.
+ */
+Val* Compiler::compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_define_constant(form, rest, env, false, true);
 }
 
 /*!

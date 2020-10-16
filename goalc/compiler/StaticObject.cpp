@@ -81,3 +81,60 @@ int StaticFloat::get_addr_offset() const {
 std::string StaticFloat::print() const {
   return fmt::format("(sf {})", value);
 }
+
+///////////////////
+// StaticStructure
+///////////////////
+
+StaticStructure::StaticStructure(int _seg) : seg(_seg) {}
+
+std::string StaticStructure::print() const {
+  return "static-structure";
+}
+
+StaticObject::LoadInfo StaticStructure::get_load_info() const {
+  LoadInfo info;
+  info.requires_load = false;
+  info.prefer_xmm = false;
+  return info;
+}
+
+int StaticStructure::get_addr_offset() const {
+  return 0;
+}
+
+void StaticStructure::generate_structure(emitter::ObjectGenerator* gen) {
+  rec = gen->add_static_to_seg(seg, 16);
+  auto& d = gen->get_static_data(rec);
+  d.insert(d.end(), data.begin(), data.end());
+  for (auto& sym : symbols) {
+    gen->link_static_symbol_ptr(rec, sym.offset, sym.name);
+  }
+}
+
+void StaticStructure::generate(emitter::ObjectGenerator* gen) {
+  generate_structure(gen);
+}
+
+void StaticStructure::add_symbol_record(std::string name, int offset) {
+  SymbolRecord srec;
+  srec.name = std::move(name);
+  srec.offset = offset;
+  symbols.push_back(srec);
+}
+
+///////////////////
+// StaticBasic
+///////////////////
+
+StaticBasic::StaticBasic(int _seg, std::string _type_name)
+    : StaticStructure(_seg), type_name(std::move(_type_name)) {}
+
+int StaticBasic::get_addr_offset() const {
+  return BASIC_OFFSET;
+}
+
+void StaticBasic::generate(emitter::ObjectGenerator* gen) {
+  generate_structure(gen);
+  gen->link_static_type_ptr(rec, 0, type_name);
+}

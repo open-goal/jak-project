@@ -1,0 +1,23 @@
+(start-test "new-static-basic")
+
+(deftype static-test-basic-type (basic)
+  ((s8 int8)
+   (s16 int16)
+   (thing basic)
+   (u64 uint64))
+  )
+
+(define test-static-basic (new 'static 'static-test-basic-type :s8 -122 :s16 -23123 :u64 434343 :thing 'bean))
+
+(expect-true (< (the int test-static-basic) (-> debug current))) ;; should be in debug segment?
+(expect-true (> (the int test-static-basic) (-> debug base)))
+
+(expect-true (= (-> test-static-basic s8) -122))
+(expect-true (= (-> test-static-basic s16) -23123))
+(expect-true (= (-> test-static-basic u64) 434343))
+(expect-true (eq? (-> test-static-basic thing) 'bean))
+(expect-true (neq? (-> test-static-basic thing) 'not-bean))
+(expect-true (eq? (-> test-static-basic type symbol) 'static-test-basic-type))
+(expect-true (eq? (-> test-static-basic type) static-test-basic-type))
+
+(finish-test)

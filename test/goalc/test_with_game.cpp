@@ -127,4 +127,8 @@ TEST_F(WithGameTests, All) {
   runner.run_static_test(env, testCategory, "test-set-self.gc", {"#t\n0\n"});
   runner.run_static_test(env, testCategory, "test-new-array.gc",
                          get_test_pass_string("new-array", 8));
+  runner.run_static_test(env, testCategory, "test-new-static-structure-integers.gc",
+                         get_test_pass_string("new-static-structure-integers", 7));
+  runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
+                         get_test_pass_string("new-static-basic", 9));
 }

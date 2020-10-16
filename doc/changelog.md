@@ -22,3 +22,16 @@
 - The `new` operator can create arrays and inline arrays on heaps
 - The value of `deftype` is now `none`
 - Creating a method with more than 8 arguments is an error instead of a crash.
+- The `defconstant` form for defining a constant in GOAL but not GOOS has been added
+- Both `defconstant` and `defglobalconstant` throw an error if you define a constant with the same name as a symbol.
+- The `uint64` type now uses 8 bytes instead of 81 in a type (this was a typo)
+- `deftype` allows basics/structures with a field that is the same type as the basic/structure.
+- Doing a `define-extern` with a type of `type` will forward declare the type.
+- `deftype` now has a `:no-runtime-type` flag to disable the creation of a runtime type.
+- There is a `declare-type` form for forward declaring types to allow circular dependencies.
+- Types that are `structure` but not `basic` can request that they be tightly packed when possible with `:pack-me`.
+- Using `method` on a forward declared type is an error. The old behavior was to get a method of `type`, which is confusing.
+- Loading an `int64`/`uint64` gives a `int`/`uint`, like the other register integers.
+- Defining a type with `deftype` will auto-generate an inspect method.
+- The `new` operator can now create static structures and basics and set fields to integers or symbols.
+- The `neq?` operator now works when used outside of a branch condition (previously it generated a syntax error)
