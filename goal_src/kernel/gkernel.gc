@@ -7,7 +7,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Kernel Globals
+;; System Globals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Set version number symbols
@@ -74,8 +74,28 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Kernel Context
+;; Kernel Globals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The kernel context is a global which stores the state of the kernel.
+(define *kernel-context* (new 'static 'kernel-context
+                              :prevent-from-run #x41 ;; todo, bitfield enum types
+                              :next-pid 2
+                              :current-process '#f
+                              :relocating-process '#f
+                              :low-memory-message '#t
+                              )
+        )
+
+;; the main stack for running GOAL code!
+(define *dram-stack* (new 'global 'array 'uint8 #x3800)) ;;DPROCESS_STACK_SIZE
+
+;; I don't think this stack is used, but I'm not sure.
+(set! (-> *kernel-context* fast-stack-top) *scratch-memory-top*)
+
+;; A context with all process masks set to 0. This can be used to iterate through a process tree
+;; without executing anything, to find a process for instance.
+(define *null-kernel-context* (new 'static 'kernel-context))
 
 
 (defun kernel-dispatcher ()
