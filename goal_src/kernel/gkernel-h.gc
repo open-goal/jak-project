@@ -5,6 +5,8 @@
 ;; name in dgo: gkernel-h
 ;; dgos: KERNEL
 
+;; Type definitions for the GOAL Kernel.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; CONSTANTS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,7 +59,7 @@
 ;; MACROS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; trigger an exception.
+;; trigger an exception. (GOAL used lw r0, 2(r0))
 (defmacro break ()
   `(/ 0 0)
   )
@@ -79,13 +81,11 @@
 ;; TYPES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; todo methods of process-tree
-
 ;; this stores the current state of the kernel.
 (deftype kernel-context (basic)
   ((prevent-from-run    int32      :offset-assert 4)      ;; actually a process-mask
    (require-for-run     int32      :offset-assert 8)      ;; actually a process-mask, unused?
-   (allow-to-run        int32      :offset-assert 12)      ;; actually a process-mask, unused?
+   (allow-to-run        int32      :offset-assert 12)     ;; actually a process-mask, unused?
    (next-pid            int32      :offset-assert 16)     ;; next PID to give out
    (fast-stack-top      pointer    :offset-assert 20)     ;; scratchpad stack (unused?)
    (current-process     basic      :offset-assert 24)     ;; process?
@@ -102,7 +102,7 @@
   )
 
 ; A thread belongs to a process and has a reference to a stack.
-; they have an "actual stack", which is where the stack goes when the thread runs.
+; they have an "execution stack", which is where the stack goes when the thread runs.
 ; and also a "backup stack", which stores the stack when the thread doesn't run.
 ; this means threads can't leak pointers to stack variables to other threads...
 ; optionally, threads may know how to suspend/resume themselves.
@@ -273,4 +273,44 @@
   :size-assert #xb0
   :method-count-assert 9
   :flag-assert #x9000000b0
+  )
+
+;; A protect frame is a frame which has a cleanup function called on exit.
+(deftype protect-frame (stack-frame)
+  ((exit function :offset-assert 12)) ;; function to call to clean up
+  
+  :size-assert 16
+  :method-count-assert 9
+  :flag-assert #x900000010
+  )
+
+;; handle (todo, need bitfield types)
+
+;; GOAL State.  A Process can be in a State.
+(deftype state (protect-frame)  ; state is a protect frame so we can "exit" it with cleanup
+  ((code function :offset-assert 16)  ;; main code to run in this state
+   (trans function :offset-assert 20) ;; ? run once and return ? when ?
+   (post function :offset-assert 24)  ;; ?
+   (enter function :offset-assert 28) ;; ?
+   (event basic :offset-assert 32)    ;; event handler function?
+   )
+  
+  :size-assert #x24
+  :method-count-assert 9
+  :flag-assert #x900000024
+  )
+
+
+;; Not sure what this is, but it's probably used in the event system.
+(deftype event-message-block (structure)
+  ((to basic :offset-assert 0)
+   (from basic :offset-assert 4)
+   (num-params int32 :offset-assert 8)
+   (message basic :offset-assert 12)
+   (param uint64 7 :offset-assert 16)
+   )
+  
+  :size-assert #x48
+  :method-count-assert 9
+  :flag-assert #x900000048
   )

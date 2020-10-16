@@ -444,6 +444,10 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     }
   }
 
+  if (args.size() > 8) {
+    throw_compile_error(form, "Function call cannot use more than 8 parameters");
+  }
+
   // set args (introducing a move here makes coloring more likely to be possible)
   std::vector<RegVal*> arg_outs;
   for (auto& arg : args) {

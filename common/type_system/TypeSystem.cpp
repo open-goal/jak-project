@@ -145,7 +145,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
   } else if (ts.base_type() == "pointer") {
     info.can_deref = true;
     info.result_type = ts.get_single_arg();
-    auto result_type = lookup_type(info.result_type);
+    auto result_type = lookup_type_allow_partial_def(info.result_type);
     if (result_type->is_reference()) {
       // in memory, an array of pointers
       info.stride = POINTER_SIZE;
@@ -476,7 +476,7 @@ FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
     info.array_size = info.field.array_size();
   }
 
-  auto base_type = lookup_type(info.field.type());
+  auto base_type = lookup_type_allow_partial_def(info.field.type());
   if (base_type->is_reference()) {
     if (info.field.is_inline()) {
       if (info.field.is_array()) {
@@ -645,7 +645,7 @@ void TypeSystem::add_builtin_types() {
              make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
   add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
-  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int32"}, "_type_"));
+  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
   add_method(obj_type, "mem-usage",
              make_function_typespec({"_type_"}, "int32"));  // todo - this is a guess.
 
@@ -965,16 +965,16 @@ bool TypeSystem::typecheck_base_types(const std::string& expected,
   // declared, but not defined?)
   lookup_type(expected);
 
-  if (expected == actual) {
-    lookup_type(actual);  // make sure it exists
+  if (expected == actual || expected == lookup_type_allow_partial_def(actual)->get_name()) {
+    lookup_type_allow_partial_def(actual);  // make sure it exists
     return true;
   }
 
   std::string actual_name = actual;
-  auto actual_type = lookup_type(actual_name);
+  auto actual_type = lookup_type_allow_partial_def(actual_name);
   while (actual_type->has_parent()) {
     actual_name = actual_type->get_parent();
-    actual_type = lookup_type(actual_name);
+    actual_type = lookup_type_allow_partial_def(actual_name);
 
     if (expected == actual_name) {
       return true;
@@ -1068,12 +1068,12 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
 TypeSpec coerce_to_reg_type(const TypeSpec& in) {
   if (in.arg_count() == 0) {
     if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||
-        in.base_type() == "int16") {
+        in.base_type() == "int64") {
       return TypeSpec("int");
     }
 
     if (in.base_type() == "uint8" || in.base_type() == "uint16" || in.base_type() == "uint32" ||
-        in.base_type() == "uint16") {
+        in.base_type() == "uint64") {
       return TypeSpec("uint");
     }
   }

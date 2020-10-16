@@ -31,3 +31,5 @@
 - There is a `declare-type` form for forward declaring types to allow circular dependencies.
 - Types that are `structure` but not `basic` can request that they be tightly packed when possible with `:pack-me`.
 - Using `method` on a forward declared type is an error. The old behavior was to get a method of `type`, which is confusing.
+- Loading an `int64`/`uint64` gives a `int`/`uint`, like the other register integers.
+- Defining a type with `deftype` will auto-generate an inspect method.
