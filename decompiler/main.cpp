@@ -4,16 +4,23 @@
 #include "ObjectFile/ObjectFileDB.h"
 #include "config.h"
 #include "util/FileIO.h"
-
+#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "third-party/spdlog/include/spdlog/sinks/basic_file_sink.h"
 #include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
-  printf("Jak Disassembler\n");
+  spdlog::info("Beginning disassembly. This may take a few minutes...");
+
+  spdlog::set_level(spdlog::level::debug);
+  auto lu = spdlog::basic_logger_mt("GOAL Decompiler", "logs/decompiler.log");
+  spdlog::set_default_logger(lu);
+  spdlog::flush_on(spdlog::level::info);
+
   init_crc();
   init_opcode_info();
 
   if (argc != 4) {
-    printf("usage: jak_disassembler <config_file> <in_folder> <out_folder>\n");
+    printf("Usage: jak_disassembler <config_file> <in_folder> <out_folder>\n");
     return 1;
   }
 
@@ -52,5 +59,6 @@ int main(int argc, char** argv) {
   // printf("%s\n", get_type_info().get_summary().c_str());
 
   file_util::write_text_file(combine_path(out_folder, "all-syms.gc"), db.dts.dump_symbol_types());
+  spdlog::info("Disassembly has completed successfully.");
   return 0;
 }

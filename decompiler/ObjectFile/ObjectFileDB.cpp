@@ -20,6 +20,7 @@
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/IR/BasicOpBuilder.h"
 #include "decompiler/IR/CfgBuilder.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 /*!
  * Get a unique name for this object file.
@@ -66,24 +67,24 @@ ObjectFileData& ObjectFileDB::lookup_record(ObjectFileRecord rec) {
  */
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   Timer timer;
-  printf("- Loading Types...\n");
+
+  spdlog::info("-Loading types...");
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
-  printf("- Initializing ObjectFileDB...\n");
+  spdlog::info("-Initializing ObjectFileDB...");
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
   }
 
-  printf("ObjectFileDB Initialized:\n");
-  printf(" total dgos: %d\n", int(_dgos.size()));
-  printf(" total data: %d bytes\n", stats.total_dgo_bytes);
-  printf(" total objs: %d\n", stats.total_obj_files);
-  printf(" unique objs: %d\n", stats.unique_obj_files);
-  printf(" unique data: %d bytes\n", stats.unique_obj_bytes);
-  printf(" total %.1f ms (%.3f MB/sec, %.3f obj/sec)\n", timer.getMs(),
-         stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
-         stats.total_obj_files / timer.getSeconds());
-  printf("\n");
+  spdlog::info("ObjectFileDB Initialized:");
+  spdlog::info("Total DGOs: {}", int(_dgos.size()));
+  spdlog::info("Total data: {} bytes", stats.total_dgo_bytes);
+  spdlog::info("Total objs: {}", stats.total_obj_files);
+  spdlog::info("Unique objs: {}", stats.unique_obj_files);
+  spdlog::info("Unique data: {} bytes", stats.unique_obj_bytes);
+  spdlog::info("Total {} ms ({:3f} MB/sec, {} obj/sec", timer.getMs(),
+               stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
+               stats.total_obj_files / timer.getSeconds());
 }
 
 // Header for a DGO file
@@ -354,7 +355,7 @@ std::string ObjectFileDB::generate_obj_listing() {
  * Process all of the linking data of all objects.
  */
 void ObjectFileDB::process_link_data() {
-  printf("- Processing Link Data...\n");
+  spdlog::info("- Processing Link Data...");
   Timer process_link_timer;
 
   LinkedObjectFile::Stats combined_stats;
@@ -364,42 +365,42 @@ void ObjectFileDB::process_link_data() {
     combined_stats.add(obj.linked_data.stats);
   });
 
-  printf("Processed Link Data:\n");
-  printf(" code %d bytes\n", combined_stats.total_code_bytes);
-  printf(" v2 code %d bytes\n", combined_stats.total_v2_code_bytes);
-  printf(" v2 link data %d bytes\n", combined_stats.total_v2_link_bytes);
-  printf(" v2 pointers %d\n", combined_stats.total_v2_pointers);
-  printf(" v2 pointer seeks %d\n", combined_stats.total_v2_pointer_seeks);
-  printf(" v2 symbols %d\n", combined_stats.total_v2_symbol_count);
-  printf(" v2 symbol links %d\n", combined_stats.total_v2_symbol_links);
+  spdlog::info("Processed Link Data:");
+  spdlog::info(" Code {} bytes", combined_stats.total_code_bytes);
+  spdlog::info(" v2 Code {} bytes", combined_stats.total_v2_code_bytes);
+  spdlog::info(" v2 Link Data {} bytes", combined_stats.total_v2_link_bytes);
+  spdlog::info(" v2 Pointers {}", combined_stats.total_v2_pointers);
+  spdlog::info(" v2 Pointer Seeks {}", combined_stats.total_v2_pointer_seeks);
+  spdlog::info(" v2 Symbols {}", combined_stats.total_v2_symbol_count);
+  spdlog::info(" v2 Symbol Links {}", combined_stats.total_v2_symbol_links);
 
-  printf(" v3 code %d bytes\n", combined_stats.v3_code_bytes);
-  printf(" v3 link data %d bytes\n", combined_stats.v3_link_bytes);
-  printf(" v3 pointers %d\n", combined_stats.v3_pointers);
-  printf("   split %d\n", combined_stats.v3_split_pointers);
-  printf("   word  %d\n", combined_stats.v3_word_pointers);
-  printf(" v3 pointer seeks %d\n", combined_stats.v3_pointer_seeks);
-  printf(" v3 symbols %d\n", combined_stats.v3_symbol_count);
-  printf(" v3 offset symbol links %d\n", combined_stats.v3_symbol_link_offset);
-  printf(" v3 word symbol links %d\n", combined_stats.v3_symbol_link_word);
+  spdlog::info(" v3 Code {} bytes", combined_stats.v3_code_bytes);
+  spdlog::info(" v3 Link Data {} bytes", combined_stats.v3_link_bytes);
+  spdlog::info(" v3 Pointers {}", combined_stats.v3_pointers);
+  spdlog::info("   Split {}", combined_stats.v3_split_pointers);
+  spdlog::info("   Word  {}", combined_stats.v3_word_pointers);
+  spdlog::info(" v3 Pointer Seeks {}", combined_stats.v3_pointer_seeks);
+  spdlog::info(" v3 Symbols {}", combined_stats.v3_symbol_count);
+  spdlog::info(" v3 Offset Symbol Links {}", combined_stats.v3_symbol_link_offset);
+  spdlog::info(" v3 Word Symbol Links {}", combined_stats.v3_symbol_link_word);
 
-  printf(" total %.3f ms\n", process_link_timer.getMs());
-  printf("\n");
+  spdlog::info(" Total {} ms\n", process_link_timer.getMs());
+  // printf("\n");
 }
 
 /*!
  * Process all of the labels generated from linking and give them reasonable names.
  */
 void ObjectFileDB::process_labels() {
-  printf("- Processing Labels...\n");
+  spdlog::info("- Processing Labels...");
   Timer process_label_timer;
   uint32_t total = 0;
   for_each_obj([&](ObjectFileData& obj) { total += obj.linked_data.set_ordered_label_names(); });
 
-  printf("Processed Labels:\n");
-  printf(" total %d labels\n", total);
-  printf(" total %.3f ms\n", process_label_timer.getMs());
-  printf("\n");
+  spdlog::info("Processed Labels:");
+  spdlog::info(" Total {} labels", total);
+  spdlog::info(" Total {} ms", process_label_timer.getMs());
+  // printf("\n");
 }
 
 /*!
@@ -407,9 +408,9 @@ void ObjectFileDB::process_labels() {
  */
 void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool dump_v3_only) {
   if (dump_v3_only) {
-    printf("- Writing object file dumps (v3 only)...\n");
+    spdlog::info("- Writing object file dumps (v3 only)...");
   } else {
-    printf("- Writing object file dumps (all)...\n");
+    spdlog::info("- Writing object file dumps (all)...");
   }
 
   Timer timer;
@@ -425,12 +426,12 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
     }
   });
 
-  printf("Wrote object file dumps:\n");
-  printf(" total %d files\n", total_files);
-  printf(" total %.3f MB\n", total_bytes / ((float)(1u << 20u)));
-  printf(" total %.3f ms (%.3f MB/sec)\n", timer.getMs(),
-         total_bytes / ((1u << 20u) * timer.getSeconds()));
-  printf("\n");
+  spdlog::info("Wrote object file dumps:");
+  spdlog::info(" Total {} files", total_files);
+  spdlog::info(" Total {:3f} MB", total_bytes / ((float)(1u << 20u)));
+  spdlog::info(" Total {} ms ({:3f} MB/sec)", timer.getMs(),
+               total_bytes / ((1u << 20u) * timer.getSeconds()));
+  // printf("\n");
 }
 
 /*!
@@ -438,7 +439,7 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
                                      bool disassemble_objects_without_functions) {
-  printf("- Writing functions...\n");
+  spdlog::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
@@ -452,19 +453,19 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     }
   });
 
-  printf("Wrote functions dumps:\n");
-  printf(" total %d files\n", total_files);
-  printf(" total %.3f MB\n", total_bytes / ((float)(1u << 20u)));
-  printf(" total %.3f ms (%.3f MB/sec)\n", timer.getMs(),
-         total_bytes / ((1u << 20u) * timer.getSeconds()));
-  printf("\n");
+  spdlog::info("Wrote functions dumps:");
+  spdlog::info(" Total {} files", total_files);
+  spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
+  spdlog::info(" Total {} ms ({:3f} MB/sec)", timer.getMs(),
+               total_bytes / ((1u << 20u) * timer.getSeconds()));
+  // printf("\n");
 }
 
 /*!
  * Find code/data zones, identify functions, and disassemble
  */
 void ObjectFileDB::find_code() {
-  printf("- Finding code in object files...\n");
+  spdlog::info("- Finding code in object files...");
   LinkedObjectFile::Stats combined_stats;
   Timer timer;
 
@@ -477,29 +478,29 @@ void ObjectFileDB::find_code() {
     if (get_config().game_version == 1 || obj.record.to_unique_name() != "effect-control-v0") {
       obj.linked_data.process_fp_relative_links();
     } else {
-      printf("skipping process_fp_relative_links in %s\n", obj.record.to_unique_name().c_str());
+      spdlog::warn("Skipping process_fp_relative_links in {}", obj.record.to_unique_name().c_str());
     }
 
     auto& obj_stats = obj.linked_data.stats;
     if (obj_stats.code_bytes / 4 > obj_stats.decoded_ops) {
-      printf("Failed to decode all in %s (%d / %d)\n", obj.record.to_unique_name().c_str(),
-             obj_stats.decoded_ops, obj_stats.code_bytes / 4);
+      spdlog::warn("Failed to decode all in {} ({} / {})", obj.record.to_unique_name().c_str(),
+                   obj_stats.decoded_ops, obj_stats.code_bytes / 4);
     }
     combined_stats.add(obj.linked_data.stats);
   });
 
-  printf("Found code:\n");
-  printf(" code %.3f MB\n", combined_stats.code_bytes / (float)(1 << 20));
-  printf(" data %.3f MB\n", combined_stats.data_bytes / (float)(1 << 20));
-  printf(" functions: %d\n", combined_stats.function_count);
-  printf(" fp uses resolved: %d / %d (%.3f %%)\n", combined_stats.n_fp_reg_use_resolved,
-         combined_stats.n_fp_reg_use,
-         100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
+  spdlog::info("Found code:");
+  spdlog::info(" Code {} MB", combined_stats.code_bytes / (float)(1 << 20));
+  spdlog::info(" Data {} MB", combined_stats.data_bytes / (float)(1 << 20));
+  spdlog::info(" Functions: {}", combined_stats.function_count);
+  spdlog::info(" fp uses resolved: {} / {} ({} %)", combined_stats.n_fp_reg_use_resolved,
+               combined_stats.n_fp_reg_use,
+               100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
   auto total_ops = combined_stats.code_bytes / 4;
-  printf(" decoded %d / %d (%.3f %%)\n", combined_stats.decoded_ops, total_ops,
-         100.f * (float)combined_stats.decoded_ops / total_ops);
-  printf(" total %.3f ms\n", timer.getMs());
-  printf("\n");
+  spdlog::info(" Decoded {} / {} ({} %)", combined_stats.decoded_ops, total_ops,
+               100.f * (float)combined_stats.decoded_ops / total_ops);
+  spdlog::info(" Total {} ms", timer.getMs());
+  // printf("\n");
 }
 
 /*!
@@ -507,7 +508,7 @@ void ObjectFileDB::find_code() {
  * Doesn't change any state in ObjectFileDB.
  */
 void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
-  printf("- Finding scripts in object files...\n");
+  spdlog::info("- Finding scripts in object files...");
   Timer timer;
   std::string all_scripts;
 
@@ -524,13 +525,12 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   auto file_name = combine_path(output_dir, "all_scripts.lisp");
   file_util::write_text_file(file_name, all_scripts);
 
-  printf("Found scripts:\n");
-  printf(" total %.3f ms\n", timer.getMs());
-  printf("\n");
+  spdlog::info("Found scripts:");
+  spdlog::info(" Total {} ms\n", timer.getMs());
 }
 
 void ObjectFileDB::analyze_functions() {
-  printf("- Analyzing Functions...\n");
+  spdlog::info("- Analyzing Functions...");
   Timer timer;
 
   int total_functions = 0;
@@ -608,13 +608,12 @@ void ObjectFileDB::analyze_functions() {
     timer.start();
     int total_basic_blocks = 0;
     for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-      //      printf("in %s\n", func.guessed_name.to_string().c_str());
+      // printf("in %s\n", func.guessed_name.to_string().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
       total_basic_blocks += blocks.size();
       func.basic_blocks = blocks;
 
       total_functions++;
-
       if (!func.suspected_asm) {
         func.analyze_prologue(data.linked_data);
         func.cfg = build_cfg(data.linked_data, segment_id, func);
@@ -660,25 +659,25 @@ void ObjectFileDB::analyze_functions() {
       //      }
     });
 
-    printf("Found %d functions (%d with no control flow)\n", total_functions,
-           total_trivial_cfg_functions);
-    printf("Named %d/%d functions (%.2f%%)\n", total_named_functions, total_functions,
-           100.f * float(total_named_functions) / float(total_functions));
-    printf("Excluding %d asm functions\n", asm_funcs);
-    printf("Found %d basic blocks in %.3f ms\n", total_basic_blocks, timer.getMs());
-    printf(" %d/%d functions passed cfg analysis stage (%.2f%%)\n", resolved_cfg_functions,
-           non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
+    spdlog::info("Found {} functions ({} with no control flow)", total_functions,
+                 total_trivial_cfg_functions);
+    spdlog::info("Named {}/{} functions ({}%)", total_named_functions, total_functions,
+                 100.f * float(total_named_functions) / float(total_functions));
+    spdlog::info("Excluding {} asm functions", asm_funcs);
+    spdlog::info("Found {} basic blocks in {} ms", total_basic_blocks, timer.getMs());
+    spdlog::info(" {}/{} functions passed cfg analysis stage ({}%)", resolved_cfg_functions,
+                 non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
     int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
-    printf(" %d/%d basic ops converted successfully (%.2f%%)\n", successful_basic_ops,
-           total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-    printf(" %d/%d cfgs converted to ir (%.2f%%)\n", successful_cfg_irs, non_asm_funcs,
-           100.f * float(successful_cfg_irs) / float(non_asm_funcs));
+    spdlog::info(" {}/{} basic ops converted successfully ({}%)", successful_basic_ops,
+                 total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+    spdlog::info(" {}/{} cfgs converted to ir ({}%)\n", successful_cfg_irs, non_asm_funcs,
+                 100.f * float(successful_cfg_irs) / float(non_asm_funcs));
 
-    for (auto& kv : unresolved_by_length) {
-      printf("LEN %d\n", kv.first);
-      for (auto& x : kv.second) {
-        printf("  %s\n", x.c_str());
-      }
-    }
+    //    for (auto& kv : unresolved_by_length) {
+    //      printf("LEN %d\n", kv.first);
+    //      for (auto& x : kv.second) {
+    //        printf("  %s\n", x.c_str());
+    //      }
+    //    }
   }
 }
