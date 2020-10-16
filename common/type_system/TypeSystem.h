@@ -42,6 +42,7 @@ class TypeSystem {
   DerefInfo get_deref_info(const TypeSpec& ts);
 
   bool fully_defined_type_exists(const std::string& name) const;
+  bool partially_defined_type_exists(const std::string& name) const;
   TypeSpec make_typespec(const std::string& name) const;
   TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
                                   const std::string& return_type);

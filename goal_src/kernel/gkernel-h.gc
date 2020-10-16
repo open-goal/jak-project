@@ -245,3 +245,32 @@
   :method-count-assert #x1b
   :flag-assert #x1b00000068
   )
+
+
+;; GOAL can create a series of stack frames for unwinding/cleaning up.
+;; This is the parent type for any stack frame.
+(deftype stack-frame (basic)
+  ((name basic :offset 4)
+   (next stack-frame :offset 8) ;; which way does this point?
+   )
+  
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+
+;; A catch frame is a frame you can "throw" to, by name.
+;; You can "throw" out of a function and into another function.
+(deftype catch-frame (stack-frame)
+  ((sp pointer :offset 12)   ;; where to reset the stack when throwing.
+   (ra pointer :offset 16)   ;; where to jump when throwing
+   
+   ;; todo - rework for x86-64.
+   (freg float 6 :offset 20) ;; saved floating point registers from "catch" statement
+   (rreg uint128 8 :offset 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
+   )
+  :size-assert #xb0
+  :method-count-assert 9
+  :flag-assert #x9000000b0
+  )

@@ -30,3 +30,4 @@
 - `deftype` now has a `:no-runtime-type` flag to disable the creation of a runtime type.
 - There is a `declare-type` form for forward declaring types to allow circular dependencies.
 - Types that are `structure` but not `basic` can request that they be tightly packed when possible with `:pack-me`.
+- Using `method` on a forward declared type is an error. The old behavior was to get a method of `type`, which is confusing.

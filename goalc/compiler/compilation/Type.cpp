@@ -552,6 +552,9 @@ Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest
   if (arg.is_symbol()) {
     if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
       return compile_get_method_of_type(m_ts.make_typespec(symbol_string(arg)), method_name, env);
+    } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
+      throw_compile_error(form,
+                          "The method form is ambiguous when used on a forward declared type.");
     }
   }
 

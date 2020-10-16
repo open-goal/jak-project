@@ -184,6 +184,10 @@ bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
   return m_types.find(name) != m_types.end();
 }
 
+bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
+  return m_forward_declared_types.find(name) != m_forward_declared_types.end();
+}
+
 /*!
  * Create a typespec for a function.  If the function doesn't return anything, use "none" as the
  * return type.
@@ -603,7 +607,6 @@ void TypeSystem::add_builtin_types() {
   auto array_type = add_builtin_basic("basic", "array");
   auto pair_type = add_builtin_structure("object", "pair", true);
   auto connectable_type = add_builtin_structure("structure", "connectable");
-  auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
   add_builtin_value_type("object", "pointer", 4);
   auto inline_array_type = add_builtin_value_type("object", "inline-array", 4);
@@ -718,7 +721,6 @@ void TypeSystem::add_builtin_types() {
 
   // todo, with kernel
   (void)connectable_type;
-  (void)stack_frame_type;
   (void)file_stream_type;
 }
 
