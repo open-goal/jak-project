@@ -77,7 +77,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos) {
   }
 
   spdlog::info("ObjectFileDB Initialized:");
-  spdlog::info("Total DGOs: {}"), int(_dgos.size());
+  spdlog::info("Total DGOs: {}", int(_dgos.size()));
   spdlog::info("Total data: {} bytes", stats.total_dgo_bytes);
   spdlog::info("Total objs: {}", stats.total_obj_files);
   spdlog::info("Unique objs: {}", stats.unique_obj_files);
@@ -428,8 +428,8 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
 
   spdlog::info("Wrote object file dumps:");
   spdlog::info(" Total {} files", total_files);
-  spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
-  spdlog::info(" Total {} ms ({} MB/sec)", timer.getMs(),
+  spdlog::info(" Total {:3f} MB", total_bytes / ((float)(1u << 20u)));
+  spdlog::info(" Total {} ms ({:3f} MB/sec)", timer.getMs(),
                total_bytes / ((1u << 20u) * timer.getSeconds()));
   // printf("\n");
 }
@@ -456,7 +456,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   spdlog::info("Wrote functions dumps:");
   spdlog::info(" Total {} files", total_files);
   spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
-  spdlog::info(" Total {} ms ({} MB/sec)", timer.getMs(),
+  spdlog::info(" Total {} ms ({:3f} MB/sec)", timer.getMs(),
                total_bytes / ((1u << 20u) * timer.getSeconds()));
   // printf("\n");
 }
@@ -493,11 +493,11 @@ void ObjectFileDB::find_code() {
   spdlog::info(" Code {} MB", combined_stats.code_bytes / (float)(1 << 20));
   spdlog::info(" Data {} MB", combined_stats.data_bytes / (float)(1 << 20));
   spdlog::info(" Functions: {}", combined_stats.function_count);
-  spdlog::info(" fp uses resolved: {} / {} ({} %%)", combined_stats.n_fp_reg_use_resolved,
+  spdlog::info(" fp uses resolved: {} / {} ({} %)", combined_stats.n_fp_reg_use_resolved,
                combined_stats.n_fp_reg_use,
                100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
   auto total_ops = combined_stats.code_bytes / 4;
-  spdlog::info(" Decoded {} / {} ({} %%)", combined_stats.decoded_ops, total_ops,
+  spdlog::info(" Decoded {} / {} ({} %)", combined_stats.decoded_ops, total_ops,
                100.f * (float)combined_stats.decoded_ops / total_ops);
   spdlog::info(" Total {} ms", timer.getMs());
   // printf("\n");
@@ -662,16 +662,16 @@ void ObjectFileDB::analyze_functions() {
 
     spdlog::info("Found {} functions ({} with no control flow)", total_functions,
                  total_trivial_cfg_functions);
-    spdlog::info("Named {}/{} functions ({}%%)", total_named_functions, total_functions,
+    spdlog::info("Named {}/{} functions ({}%)", total_named_functions, total_functions,
                  100.f * float(total_named_functions) / float(total_functions));
     spdlog::info("Excluding {} asm functions", asm_funcs);
     spdlog::info("Found {} basic blocks in {} ms", total_basic_blocks, timer.getMs());
-    spdlog::info(" {}/{} functions passed cfg analysis stage ({}%%)", resolved_cfg_functions,
+    spdlog::info(" {}/{} functions passed cfg analysis stage ({}%)", resolved_cfg_functions,
                  non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
     int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
-    spdlog::info(" {}/{} basic ops converted successfully ({}%%)", successful_basic_ops,
+    spdlog::info(" {}/{} basic ops converted successfully ({}%)", successful_basic_ops,
                  total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-    spdlog::info(" {}/{} cfgs converted to ir ({}%%)\n", successful_cfg_irs, non_asm_funcs,
+    spdlog::info(" {}/{} cfgs converted to ir ({}%)\n", successful_cfg_irs, non_asm_funcs,
                  100.f * float(successful_cfg_irs) / float(non_asm_funcs));
 
     for (auto& kv : unresolved_by_length) {
