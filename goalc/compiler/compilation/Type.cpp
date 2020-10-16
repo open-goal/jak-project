@@ -91,12 +91,59 @@ Val* Compiler::compile_format_string(const goos::Object& form,
                                      std::vector<RegVal*> args,
                                      const std::string& out_stream) {
   // Add first two format args
-  args.insert(args.begin(), compile_string(fmt_template, env, DEBUG_SEGMENT)->to_reg(env));
-  args.insert(args.begin(), compile_get_sym_obj(out_stream, env)->to_reg(env));
+  args.insert(args.begin(),
+              compile_string(fmt_template, env, get_parent_env_of_type<FunctionEnv>(env)->segment)
+                  ->to_gpr(env));
+  args.insert(args.begin(), compile_get_sym_obj(out_stream, env)->to_gpr(env));
 
   // generate code in the method_env
   auto format_function = compile_get_symbol_value("_format", env)->to_gpr(env);
   return compile_real_function_call(form, format_function, args, env);
+}
+
+void Compiler::generate_field_description(StructureType* type,
+                                          Env* env,
+                                          RegVal* reg,
+                                          Field f,
+                                          std::vector<RegVal*> format_args,
+                                          std::string& str_template) {
+  if (m_ts.typecheck(m_ts.make_typespec("type"), f.type(), "", false, false)) {
+    // type
+    return;
+  } else if (m_ts.typecheck(m_ts.make_typespec("basic"), f.type(), "", false, false) ||
+             m_ts.typecheck(m_ts.make_typespec("binteger"), f.type(), "", false, false) ||
+             m_ts.typecheck(m_ts.make_typespec("pair"), f.type(), "", false, false)) {
+    // basic, binteger, pair
+    str_template += fmt::format("~T- {}: ~T~A~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("integer"), f.type(), "", false, false)) {
+    // Integer
+    str_template += fmt::format("~T- {}: ~T~D~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("float"), f.type(), "", false, false)) {
+    // Float
+    str_template += fmt::format("~T- {}: ~T~f~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("pointer"), f.type(), "", false, false)) {
+    // Pointers
+    str_template += fmt::format("~T- {}: ~T#x~X~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.is_array()) {
+    // Arrays
+    str_template += fmt::format("~T- {}[{}]: ~T@ #x~X~%", f.name(), f.array_size());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.is_dynamic()) {
+    // Dynamic Field
+    str_template += fmt::format("~T- {}[0]: ~T@ #x~X~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.is_dynamic()) {
+    // Structure
+    str_template += fmt::format("~T- {}: ~T#<{} @ #x~X>~%", f.name(), f.type().print());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else {
+    // Otherwise, we havn't implemented it!
+    str_template += fmt::format("~T- {}: ~TUndefined!~%", f.name());
+  }
 }
 
 Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, Type* type) {
@@ -122,21 +169,21 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   constraint.desired_register = emitter::gRegInfo.get_arg_reg(0);  // to the first argument
   method_env->constrain(constraint);
 
-  std::string str_template = "";
-  std::vector<RegVal*> formatArgs = {};
+  std::string str_template = fmt::format("~T- type: ~T{}~%", type->get_name());
+  std::vector<RegVal*> format_args = {};
 
   // Check if there are no fields
   if (structured_type->fields().empty()) {
-    str_template = "Type has no fields!~%";
+    str_template += "~T- No fields!~%";
   } else {
     for (Field f : structured_type->fields()) {
-      str_template += "~A~%";
-      formatArgs.push_back(
-          compile_string(f.print(), method_env.get(), DEBUG_SEGMENT)->to_reg(method_env.get()));
+      generate_field_description(structured_type, method_env.get(), input, f, format_args,
+                                 str_template);
     }
   }
 
-  compile_format_string(form, method_env.get(), str_template, formatArgs);
+  compile_format_string(form, method_env.get(), str_template, format_args);
+	method_env->emit(std::make_unique<IR_Return>(method_env->make_gpr(input->type()), input));
 
   // add this function to the object file
   auto fe = get_parent_env_of_type<FunctionEnv>(env);

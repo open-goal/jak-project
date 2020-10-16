@@ -121,6 +121,12 @@ class Compiler {
                              std::string& fmt_template,
                              std::vector<RegVal*> args,
                              const std::string& out_stream = "#t");
+  void generate_field_description(StructureType* type,
+                                  Env* env,
+                                  RegVal* reg,
+                                  Field f,
+                                  std::vector<RegVal*> format_args,
+                                  std::string& str_template);
   Val* generate_inspector_for_type(const goos::Object& form, Env* env, Type* type);
   RegVal* compile_get_method_of_type(const TypeSpec& type,
                                      const std::string& method_name,
