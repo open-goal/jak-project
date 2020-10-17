@@ -9,6 +9,7 @@
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
 #include "decompiler/IR/IR.h"
+#include "common/type_system/TypeSpec.h"
 
 class DecompilerTypeSystem;
 
@@ -60,6 +61,11 @@ struct FunctionName {
   }
 };
 
+class BasicOpTypeInfo {
+ public:
+  std::unordered_map<Register, TypeSpec> all_reg_types;
+};
+
 class Function {
  public:
   Function(int _start_word, int _end_word);
@@ -68,10 +74,15 @@ class Function {
   void find_method_defs(LinkedObjectFile& file);
   void add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr);
   bool has_basic_ops() { return !basic_ops.empty(); }
+  bool has_typemaps() { return !basic_op_typemaps.empty(); }
   bool instr_starts_basic_op(int idx);
   std::shared_ptr<IR> get_basic_op_at_instr(int idx);
+  const TypeMap& get_typemap_by_instr_idx(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
+  void run_type_analysis(const TypeSpec& my_type,
+                         DecompilerTypeSystem& dts,
+                         LinkedObjectFile& file);
 
   std::shared_ptr<IR> ir = nullptr;
 
@@ -129,6 +140,7 @@ class Function {
  private:
   void check_epilogue(const LinkedObjectFile& file);
   std::vector<std::shared_ptr<IR>> basic_ops;
+  std::vector<TypeMap> basic_op_typemaps;
   std::unordered_map<int, int> instruction_to_basic_op;
   std::unordered_map<int, int> basic_op_to_instruction;
 };

@@ -8,12 +8,13 @@ add_executable(decompiler
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/LinkedObjectFile.cpp
         Function/Function.cpp
+		Function/TypeAnalysis.cpp
         util/FileIO.cpp
         config.cpp
         util/DecompilerTypeSystem.cpp
         Function/BasicBlocks.cpp
         Disasm/InstructionMatching.cpp
-        Function/CfgVtx.cpp Function/CfgVtx.h
+        Function/CfgVtx.cpp
         IR/BasicOpBuilder.cpp
         IR/CfgBuilder.cpp
         IR/IR.cpp)

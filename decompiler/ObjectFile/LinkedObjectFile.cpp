@@ -2,11 +2,13 @@
  * @file LinkedObjectFile.cpp
  * An object file's data with linking information included.
  */
-#include "LinkedObjectFile.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <numeric>
+#include "third-party/fmt/format.h"
+#include "LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
 
@@ -556,6 +558,7 @@ std::string LinkedObjectFile::print_disassembly() {
           auto& word = words_by_seg[seg].at(func.start_word + i);
           append_word_to_string(result, word);
         } else {
+          // print basic op stuff
           if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
             if (line.length() < 40) {
               line.append(40 - line.length(), ' ');
@@ -567,6 +570,27 @@ std::string LinkedObjectFile::print_disassembly() {
                 if (is_string(lab.target_segment, lab.offset)) {
                   line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
                 }
+              }
+            }
+
+            // print type map
+            if (func.has_typemaps()) {
+              line += " tm: ";
+              auto& tm = func.get_typemap_by_instr_idx(i);
+              bool added = false;
+              for (auto reg_kind : {Reg::RegisterKind::GPR, Reg::RegisterKind::FPR}) {
+                for (int reg_idx = 0; reg_idx < 32; reg_idx++) {
+                  auto gpr = Register(reg_kind, reg_idx);
+                  auto kv = tm.find(gpr);
+                  if (kv != tm.end()) {
+                    added = true;
+                    line += fmt::format("{}: {}, ", gpr.to_charp(), kv->second.print());
+                  }
+                }
+              }
+
+              if (added) {
+                line.pop_back();
               }
             }
           }

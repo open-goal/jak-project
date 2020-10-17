@@ -5,8 +5,13 @@
 #include <utility>
 #include "decompiler/Disasm/Register.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/type_system/TypeSpec.h"
 
 class LinkedObjectFile;
+class DecompilerTypeSystem;
+
+// Map of what type is in each register.
+using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
 
 class IR {
  public:
@@ -14,6 +19,9 @@ class IR {
   std::vector<std::shared_ptr<IR>> get_all_ir(LinkedObjectFile& file) const;
   std::string print(const LinkedObjectFile& file) const;
   virtual void get_children(std::vector<std::shared_ptr<IR>>* output) const = 0;
+  virtual bool update_types(TypeMap& reg_types,
+                            DecompilerTypeSystem& dts,
+                            LinkedObjectFile& file) const;
 
   bool is_basic_op = false;
 };
@@ -51,6 +59,9 @@ class IR_Set : public IR {
       : kind(_kind), dst(std::move(_dst)), src(std::move(_src)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool update_types(TypeMap& reg_types,
+                    DecompilerTypeSystem& dts,
+                    LinkedObjectFile& file) const override;
   std::shared_ptr<IR> dst, src;
   std::shared_ptr<IR> clobber = nullptr;
 };

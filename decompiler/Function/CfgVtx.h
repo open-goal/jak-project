@@ -279,8 +279,8 @@ class ControlFlowGraph {
   void flag_early_exit(const std::vector<BasicBlock>& blocks);
 
   const std::vector<BlockVtx*>& create_blocks(int count);
-  void link_fall_through(BlockVtx* first, BlockVtx* second);
-  void link_branch(BlockVtx* first, BlockVtx* second);
+  void link_fall_through(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
+  void link_branch(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   bool find_cond_w_else();
   bool find_cond_n_else();
 

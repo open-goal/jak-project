@@ -26,6 +26,13 @@ std::string IR::print(const LinkedObjectFile& file) const {
   return pretty_print::to_string(to_form(file));
 }
 
+bool IR::update_types(TypeMap& reg_types, DecompilerTypeSystem& dts, LinkedObjectFile& file) const {
+  (void)reg_types;
+  (void)dts;
+  (void)file;
+  return false;
+}
+
 goos::Object IR_Failed::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::build_list("INVALID-OPERATION");
@@ -89,6 +96,21 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
 
   return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
                                   src->to_form(file));
+}
+
+bool IR_Set::update_types(TypeMap& reg_types,
+                          DecompilerTypeSystem& dts,
+                          LinkedObjectFile& file) const {
+  auto dest_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dest_as_reg) {
+    auto src_as_reg = dynamic_cast<IR_Register*>(src.get());
+    if (src_as_reg) {
+      reg_types[dest_as_reg->reg] = reg_types[src_as_reg->reg];
+      return true;
+    }
+  }
+
+  return false;
 }
 
 goos::Object IR_Symbol::to_form(const LinkedObjectFile& file) const {

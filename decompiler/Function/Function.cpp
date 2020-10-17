@@ -576,6 +576,10 @@ std::shared_ptr<IR> Function::get_basic_op_at_instr(int idx) {
   return basic_ops.at(instruction_to_basic_op.at(idx));
 }
 
+const TypeMap& Function::get_typemap_by_instr_idx(int idx) {
+  return basic_op_typemaps.at(instruction_to_basic_op.at(idx));
+}
+
 int Function::get_basic_op_count() {
   return basic_ops.size();
 }
