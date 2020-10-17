@@ -1015,7 +1015,7 @@ std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
     return a;
   }
 
-  if(a == "none" || b == "none") {
+  if (a == "none" || b == "none") {
     return "none";
   }
 
