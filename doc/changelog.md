@@ -35,3 +35,8 @@
 - Defining a type with `deftype` will auto-generate an inspect method.
 - The `new` operator can now create static structures and basics and set fields to integers or symbols.
 - The `neq?` operator now works when used outside of a branch condition (previously it generated a syntax error)
+- Methods which do not return a value no longer cause the compiler to abort
+- The `&+` form now accepts more than two arguments.
+- The `&+` form now works on `inline-array` and `structure`.
+- In the case where the type system would use a result type of `lca(none, x)`, the result type is now `none` instead of compiler abort.
+- The "none value" is now `(none)` instead of `none`

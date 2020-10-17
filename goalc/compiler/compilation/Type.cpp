@@ -343,7 +343,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
       new_func_env->settings.is_set = true;
     }
   });
-  if (result) {
+
+  if (result && !dynamic_cast<None*>(result)) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
     lambda_ts.add_arg(final_result->type());
@@ -704,5 +705,12 @@ Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object
     throw_compile_error(form, "Invalid declare-type form");
   }
 
+  return get_none();
+}
+
+Val* Compiler::compile_none(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
   return get_none();
 }

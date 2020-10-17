@@ -48,6 +48,8 @@
 ;; tab size for printing.
 (defconstant *tab-size* (the binteger 8))
 
+(defconstant *gtype-basic-offset* 4)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ENUMS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -108,6 +110,7 @@
 ; optionally, threads may know how to suspend/resume themselves.
 
 (declare-type process basic)
+(declare-type stack-frame basic)
 
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
@@ -124,7 +127,7 @@
   
   (:methods
     ;; todo, triple check these method numbers.
-    (stack-size-set! ((this thread) (stack-size integer)) none 9)
+    (stack-size-set! ((this thread) (stack-size int)) none 9)
     (thread-suspend ((this _type_)) none 10)       ;; only safe on a cpu-thread, but slot exists for thread
     (thread-resume  ((to-resume _type_)) none 11)  ;; only safe on a cpu-thread, but slot exists for thread
     )
@@ -166,14 +169,50 @@
    )
   
   (:methods
-    (activate ((obj process-tree) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
-    (deactivate  ((obj process-tree)) basic 10)
+    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
+    (deactivate  ((obj _type_)) basic 10)
     (dummy-method-11 () none 11)
-    (run-logic? ((obj process-tree)) symbol 12)
+    (run-logic? ((obj _type_)) symbol 12)
     (dummy-method () none 13)
     )  
   
   :size-assert #x20
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+
+;; A GOAL process.  A GOAL process contains memory and a suspendable main-thread.
+(deftype process (process-tree)
+  ((pool basic :offset-assert #x20)
+   (status basic :offset-assert #x24)
+   (pid int32 :offset-assert #x28)
+   (main-thread thread :offset-assert #x2c)
+   (top-thread thread :offset-assert #x30)
+   (entity basic :offset-assert #x34)
+   (state basic :offset-assert #x38)
+   (trans-hook function :offset-assert #x3c)
+   (post-hook function :offset-assert #x40)
+   (event-hook function :offset-assert #x44)
+   (allocated-length int32 :offset-assert #x48)
+   (next-state basic :offset-assert #x4c)
+   (heap-base pointer :offset-assert #x50)
+   (heap-top pointer :offset-assert #x54)
+   (heap-cur pointer :offset-assert #x58)
+   (stack-frame-top stack-frame :offset-assert #x5c)
+   (connection-list connectable :inline :offset-assert #x60)
+   (stack uint8 :dynamic :offset-assert #x70)
+   )
+  
+  (:methods
+    (activate ((obj process) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
+    (deactivate  ((obj process)) basic 10)
+    (dummy-method-11 () none 11)
+    (run-logic? ((obj process)) symbol 12)
+    (dummy-method () none 13)
+    )  
+  
+  :size-assert #x70
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
   )

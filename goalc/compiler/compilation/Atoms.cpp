@@ -66,6 +66,7 @@ static const std::unordered_map<
         {"cdr", &Compiler::compile_cdr},
         {"method", &Compiler::compile_method},
         {"declare-type", &Compiler::compile_declare_type},
+        {"none", &Compiler::compile_none},
 
         // LAMBDA
         {"lambda", &Compiler::compile_lambda},
@@ -225,11 +226,6 @@ Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
 Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   auto name = symbol_string(form);
 
-  // special case to get "nothing", used as a return value when nothing should be returned.
-  if (name == "none") {
-    return get_none();
-  }
-
   // see if the symbol is defined in any enclosing symbol macro envs (mlet's).
   auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);
   while (mlet_env) {
@@ -313,13 +309,31 @@ Val* Compiler::compile_float(float value, Env* env, int seg) {
 
 Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
+  if (args.unnamed.size() < 2 || !args.named.empty()) {
+    throw_compile_error(form, "&+ takes at least two arguments");
+  }
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  typecheck(form, m_ts.make_typespec("pointer"), first->type(), "&+ first argument");
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
+
+  bool ok_type = false;
+  for (auto& type : {"pointer", "structure", "inline-array"}) {
+    if (m_ts.typecheck(m_ts.make_typespec(type), first->type(), "", false, false)) {
+      ok_type = true;
+      break;
+    }
+  }
+
+  if (!ok_type) {
+    throw_compile_error(form, "&+'s first argument must be a pointer, structure, or inline-array");
+  }
+
   auto result = env->make_gpr(first->type());
   env->emit(std::make_unique<IR_RegSet>(result, first));
-  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
+
+  for (size_t i = 1; i < args.unnamed.size(); i++) {
+    auto second = compile_error_guard(args.unnamed.at(i), env)->to_gpr(env);
+    typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
+  }
+
   return result;
 }
