@@ -711,11 +711,11 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
   auto dsrav_candidate = b1_ir->forms.at(1);
 
   Register clobber;
-//  if (!is_int_math_3(dsubu_candidate.get(), IR_IntMath2::SUB, {}, make_gpr(Reg::R0), sa_in->reg,
-//                     &clobber)) {
-//    return nullptr;
-//  }
-  if(!is_int_math_2(dsubu_candidate.get(), IR_IntMath1::NEG, {}, sa_in->reg, &clobber)) {
+  //  if (!is_int_math_3(dsubu_candidate.get(), IR_IntMath2::SUB, {}, make_gpr(Reg::R0), sa_in->reg,
+  //                     &clobber)) {
+  //    return nullptr;
+  //  }
+  if (!is_int_math_2(dsubu_candidate.get(), IR_IntMath1::NEG, {}, sa_in->reg, &clobber)) {
     return nullptr;
   }
 

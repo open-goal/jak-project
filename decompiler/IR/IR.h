@@ -43,9 +43,9 @@ class IR_Register : public IR {
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   bool get_type_of_expr(const TypeMap& reg_types,
-                                DecompilerTypeSystem& dts,
-                                LinkedObjectFile& file,
-                                TypeSpec* out) const override;
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
   Register reg;
   int instr_idx = -1;
 };
