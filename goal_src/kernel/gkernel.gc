@@ -116,3 +116,126 @@
     (set! *listener-function* (the (function object) #f))
     )
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Thread and CPU Thread
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; A GOAL thread represents the execute of code in a process.
+; Each process has a "main thread", which is suspended and resumed.
+; A process may also execute various temporary threads which always run until completion.
+; The currently executing thread of a process is the "top-thread".
+
+; Some GOAL threads also have the ability to "back up" their stack, while others are "temporary".
+; The main thread of a process can "back up" it's stack, and all others are temporary.
+
+; All threads are actually cpu-threads. It's not clear why there are two separate types.
+; Perhaps the thread was the public interface and cpu-thread is internal to the kernel?
+
+(defmethod delete thread ((obj thread))
+  "Clean up a thread. This assumes it's the top-thread of the process and restores the previous top thread."
+  (when (eq? obj (-> obj process main-thread))
+    ;; We have attempted to delete the main thread, which is bad.
+    (break)
+    )
+  
+  ;; restore the old top-thread.
+  (set! (-> obj process top-thread) (-> obj previous))
+  (none)
+  )
+
+(defmethod print thread ((obj thread))
+  "Print thread."
+  (format #t "#<~A ~S of ~S pc: #x~X @ #x~X>" (-> obj type) (-> obj name) (-> obj process name) (-> obj pc) obj)
+  obj)
+
+(defmethod stack-size-set! thread ((this thread) (stack-size int))
+  "Set the backup stack size of a thread. This should only be done on the main-thread.
+  This should be done immediately after allocating the main-thread"
+  
+  (let ((proc (-> this process)))
+    (cond
+      ((neq? this (-> proc main-thread))
+       ;; oops. can only change the size of a main-thread's stack.
+       (msg-err "illegal attempt change stack size of ~A when the main-thread is not the top-thread.~%" proc)
+       (break) ;; ADDED
+       )
+      
+      ((= (-> this stack-size) stack-size)
+       ;; we already have this size. Don't do anything.
+       )
+      
+      ((eq? (-> proc heap-cur) (&+ this (-> this type size) (- *gtype-basic-offset*) (-> this stack-size)))
+       ;; our heap cur point to right after us. So we can safely bump it forward to give us more space.
+       (set! (-> proc heap-cur) (the pointer (&+ this (-> this type size) (- *gtype-basic-offset*) stack-size)))
+       (set! (-> this stack-size) stack-size)
+       )
+      (else
+        (msg-err "illegal attempt change stack size of ~A after more heap allocation has occured.~%" proc)
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod new cpu-thread ((allocation symbol) (type-to-make type) (parent-process process) (name symbol) (stack-size int) (stack-top pointer))
+  "Create a new CPU thread. Will allocate the main thread if none exists, otherwise a temp thread.
+  Sets the thread as the top-thread of the process
+  This is a special new method which ignores the allocation symbol.
+  The stack-top is for the execution stack.
+  The stack-size is for the backup stack (applicable for main thread only)"
+  
+  ;; first, let's see if we're doing the main or temp thread
+  (let* ((obj (cond
+                ((-> parent-process top-thread)
+                 ;; temp thread.
+                 (the cpu-thread (&+ stack-top
+                                     (- PROCESS_STACK_SIZE)
+                                     *gtype-basic-offset*
+                                     ))
+                 )
+                (else
+                  ;; the main thread
+                  (let ((alloc (align16 (-> parent-process heap-cur)))) ;; start at heap cur, aligned
+                    ;; bump heap to include our thread + its stack
+                    (set! (-> parent-process heap-cur) (the pointer (+ alloc (-> type-to-make size) stack-size)))
+                    (the cpu-thread (+ alloc *gtype-basic-offset*))
+                    )
+                  )
+                )))
+    
+    ;; set up the type manually, as we allocated the memory manually
+    (set! (-> obj type) type-to-make)
+    
+    ;; set up thread
+    (set! (-> obj name) name)
+    (set! (-> obj process) parent-process)
+    ;; start stack at the top
+    (set! (-> obj sp) stack-top)
+    (set! (-> obj stack-top) stack-top)
+    ;; remember the previous thread, in case we're a temp thread
+    (set! (-> obj previous) (-> parent-process top-thread))
+    ;; and make us the top!
+    (set! (-> parent-process top-thread) obj)
+    
+    ;; set up our suspend/resume hooks. By default just use the thread's methods.
+    ;; but something else could install a different hook if needed.
+    (set! (-> obj suspend-hook) (method obj thread-suspend))
+    (set! (-> obj resume-hook) (method obj thread-resume))
+    
+    ;; remember how much space we have for the backup stack.
+    (set! (-> obj stack-size) stack-size)
+    obj
+    )
+  )
+
+
+(defmethod asize-of cpu-thread ((obj cpu-thread))
+  "Get the size of a cpu-thread"
+  ;; we need this because the cpu-thread is stored in the process stack
+  (the int (+ (-> obj type size) (-> obj stack-size)))
+  )
+
+;; todo remove-exit
+
+;; todo stream<-process-mask

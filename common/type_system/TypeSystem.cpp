@@ -247,7 +247,6 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
   } else {
     fmt::print("[TypeSystem] The type {} is not defined.\n", name);
   }
-
   throw std::runtime_error("lookup_type failed");
 }
 
@@ -719,8 +718,14 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(pair_type, "car", make_typespec("object"));
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 
-  // todo, with kernel
-  (void)connectable_type;
+  // this type is very strange, as the compiler knows about it in gkernel-h, yet it is
+  // defined inside of connect.
+  add_field_to_type(connectable_type, "next0", make_typespec("connectable"));
+  add_field_to_type(connectable_type, "prev0", make_typespec("connectable"));
+  add_field_to_type(connectable_type, "next1", make_typespec("connectable"));
+  add_field_to_type(connectable_type, "prev1", make_typespec("connectable"));
+
+  // todo
   (void)file_stream_type;
 }
 
@@ -1008,6 +1013,10 @@ std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) {
 std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
   if (a == b) {
     return a;
+  }
+
+  if (a == "none" || b == "none") {
+    return "none";
   }
 
   auto a_up = get_path_up_tree(a);
