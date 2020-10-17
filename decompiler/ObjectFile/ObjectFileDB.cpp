@@ -648,7 +648,7 @@ void ObjectFileDB::analyze_functions() {
         if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
           // we're a global named function. This means we're stored in a symbol
           auto kv = dts.symbol_types.find(func.guessed_name.function_name);
-          if (kv != dts.symbol_types.end() && kv->second.arg_count() > 1) {
+          if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
             if (kv->second.base_type() != "function") {
               spdlog::error("Found a function named {} but the symbol has type {}",
                             func.guessed_name.to_string(), kv->second.print());

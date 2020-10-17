@@ -17,7 +17,8 @@ add_executable(decompiler
         Function/CfgVtx.cpp
         IR/BasicOpBuilder.cpp
         IR/CfgBuilder.cpp
-        IR/IR.cpp)
+        IR/IR.cpp
+		IR/IR_TypeAnalysis.cpp)
 
 target_link_libraries(decompiler
         goos

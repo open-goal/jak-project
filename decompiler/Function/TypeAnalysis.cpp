@@ -147,7 +147,7 @@ void Function::run_type_analysis(const TypeSpec& my_type,
         if (succ != -1) {
           if (lca_tm(bb_entry_types.at(succ), current_types, dts)) {
             changed = true;  // need another round
-            fmt::print("Block {} entry types are now ");
+            fmt::print("Block {} entry types are now ", succ);
             print_tm(bb_entry_types.at(succ));
 
             if (visited.find(succ) == visited.end()) {

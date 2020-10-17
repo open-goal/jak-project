@@ -22,6 +22,10 @@ class IR {
   virtual bool update_types(TypeMap& reg_types,
                             DecompilerTypeSystem& dts,
                             LinkedObjectFile& file) const;
+  virtual bool get_type_of_expr(const TypeMap& reg_types,
+                                DecompilerTypeSystem& dts,
+                                LinkedObjectFile& file,
+                                TypeSpec* out) const;
 
   bool is_basic_op = false;
 };
@@ -38,6 +42,10 @@ class IR_Register : public IR {
   IR_Register(Register _reg, int _instr_idx) : reg(_reg), instr_idx(_instr_idx) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                                DecompilerTypeSystem& dts,
+                                LinkedObjectFile& file,
+                                TypeSpec* out) const override;
   Register reg;
   int instr_idx = -1;
 };
@@ -81,6 +89,10 @@ class IR_Symbol : public IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_SymbolValue : public IR {
@@ -109,6 +121,10 @@ class IR_Load : public IR {
   std::shared_ptr<IR> location;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_FloatMath2 : public IR {
@@ -119,6 +135,10 @@ class IR_FloatMath2 : public IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_FloatMath1 : public IR {
@@ -156,15 +176,23 @@ class IR_IntMath2 : public IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_IntMath1 : public IR {
  public:
-  enum Kind { NOT, ABS } kind;
+  enum Kind { NOT, ABS, NEG } kind;
   IR_IntMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   std::shared_ptr<IR> arg;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_Call : public IR {
@@ -267,6 +295,9 @@ class IR_Branch : public IR {
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  virtual bool update_types(TypeMap& reg_types,
+                            DecompilerTypeSystem& dts,
+                            LinkedObjectFile& file) const;
 };
 
 class IR_Compare : public IR {

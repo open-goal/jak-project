@@ -98,21 +98,6 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
                                   src->to_form(file));
 }
 
-bool IR_Set::update_types(TypeMap& reg_types,
-                          DecompilerTypeSystem& dts,
-                          LinkedObjectFile& file) const {
-  auto dest_as_reg = dynamic_cast<IR_Register*>(dst.get());
-  if (dest_as_reg) {
-    auto src_as_reg = dynamic_cast<IR_Register*>(src.get());
-    if (src_as_reg) {
-      reg_types[dest_as_reg->reg] = reg_types[src_as_reg->reg];
-      return true;
-    }
-  }
-
-  return false;
-}
-
 goos::Object IR_Symbol::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::to_symbol("'" + name);
@@ -304,6 +289,9 @@ goos::Object IR_IntMath1::to_form(const LinkedObjectFile& file) const {
       break;
     case ABS:
       math_operator = "abs.si";
+      break;
+    case NEG:
+      math_operator = "-.i";
       break;
     default:
       assert(false);
