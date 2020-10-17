@@ -1095,6 +1095,7 @@ bool debug_reverse_deref = false;
 /*!
  * Todo:
  * - I suspect inlined basics will be off by 4-bytes, depending on where the basic field starts.
+ * - Inline array is not yet implemented.
  */
 bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
                                std::vector<ReverseDerefInfo::DerefToken>* path,
@@ -1104,7 +1105,9 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
     assert(input.load_size == 0);
   }
   if (debug_reverse_deref) {
-    printf("call to reverse deref with type %s\n", input.input_type.print().c_str());
+    fmt::print("Reverse Deref Type {} Offset {} Deref {} Load Size {} Signed {}\n",
+               input.input_type.print(), input.offset, input.mem_deref, input.load_size,
+               input.sign_extend);
   }
 
   if (input.offset == 0 && !input.mem_deref) {
@@ -1145,6 +1148,7 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
     if (debug_reverse_deref) {
       fmt::print("Got inline-array case\n");
     }
+    // todo
     return false;
   } else {
     auto type_info = lookup_type(input.input_type);
@@ -1163,9 +1167,12 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
                    corrected_offset + input.load_size, field.name(), field_deref.type.print(),
                    field.offset(), field.offset() + get_size_in_type(field));
       }
-      if (corrected_offset >= field.offset() &&
-          (corrected_offset + input.load_size <= field.offset() + get_size_in_type(field) ||
-           field.is_dynamic())) {
+      if (corrected_offset >= field.offset() && (corrected_offset + std::max(1, input.load_size) <=
+                                                     field.offset() + get_size_in_type(field) ||
+                                                 field.is_dynamic())) {
+        if (debug_reverse_deref) {
+          fmt::print("  ok, using field {}\n", field.name());
+        }
         // we are somewhere in this field!
         int offset_into_field = corrected_offset - field.offset();
 

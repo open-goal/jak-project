@@ -560,8 +560,8 @@ std::string LinkedObjectFile::print_disassembly() {
         } else {
           // print basic op stuff
           if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
-            if (line.length() < 40) {
-              line.append(40 - line.length(), ' ');
+            if (line.length() < 30) {
+              line.append(30 - line.length(), ' ');
             }
             line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
             for (int iidx = 0; iidx < instr.n_src; iidx++) {
@@ -575,6 +575,9 @@ std::string LinkedObjectFile::print_disassembly() {
 
             // print type map
             if (func.has_typemaps()) {
+              if (line.length() < 60) {
+                line.append(60 - line.length(), ' ');
+              }
               line += " tm: ";
               auto& tm = func.get_typemap_by_instr_idx(i);
               bool added = false;
@@ -590,6 +593,7 @@ std::string LinkedObjectFile::print_disassembly() {
               }
 
               if (added) {
+                line.pop_back();
                 line.pop_back();
               }
             }

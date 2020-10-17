@@ -101,6 +101,10 @@ class IR_SymbolValue : public IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_StaticAddress : public IR {
@@ -208,6 +212,10 @@ class IR_IntegerConstant : public IR {
   explicit IR_IntegerConstant(int64_t _value) : value(_value) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 struct BranchDelay {
@@ -308,6 +316,10 @@ class IR_Compare : public IR {
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_Nop : public IR {
