@@ -26,6 +26,13 @@ std::string IR::print(const LinkedObjectFile& file) const {
   return pretty_print::to_string(to_form(file));
 }
 
+bool IR::update_types(TypeMap& reg_types, DecompilerTypeSystem& dts, LinkedObjectFile& file) const {
+  (void)reg_types;
+  (void)dts;
+  (void)file;
+  return false;
+}
+
 goos::Object IR_Failed::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::build_list("INVALID-OPERATION");
@@ -282,6 +289,9 @@ goos::Object IR_IntMath1::to_form(const LinkedObjectFile& file) const {
       break;
     case ABS:
       math_operator = "abs.si";
+      break;
+    case NEG:
+      math_operator = "-.i";
       break;
     default:
       assert(false);

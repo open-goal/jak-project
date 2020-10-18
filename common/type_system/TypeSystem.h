@@ -29,6 +29,28 @@ struct DerefInfo {
   TypeSpec result_type;
 };
 
+struct ReverseDerefInfo {
+  struct DerefToken {
+    enum Kind { INDEX, FIELD } kind;
+    std::string name;
+    int index;
+  };
+
+  TypeSpec result_type;
+  std::vector<DerefToken> deref_path;
+  bool success = false;
+  bool addr_of = false;
+};
+
+struct ReverseDerefInputInfo {
+  int offset = -1;
+  bool mem_deref = false;
+  RegKind reg = RegKind::INVALID;
+  int load_size = -1;
+  bool sign_extend = false;
+  TypeSpec input_type;
+};
+
 class TypeSystem {
  public:
   TypeSystem();
@@ -39,18 +61,19 @@ class TypeSystem {
   void forward_declare_type_as_structure(const std::string& name);
   std::string get_runtime_type(const TypeSpec& ts);
 
-  DerefInfo get_deref_info(const TypeSpec& ts);
+  DerefInfo get_deref_info(const TypeSpec& ts) const;
+  ReverseDerefInfo get_reverse_deref_info(const ReverseDerefInputInfo& input) const;
 
   bool fully_defined_type_exists(const std::string& name) const;
   bool partially_defined_type_exists(const std::string& name) const;
   TypeSpec make_typespec(const std::string& name) const;
   TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
-                                  const std::string& return_type);
+                                  const std::string& return_type) const;
 
-  TypeSpec make_pointer_typespec(const std::string& type);
-  TypeSpec make_pointer_typespec(const TypeSpec& type);
-  TypeSpec make_inline_array_typespec(const std::string& type);
-  TypeSpec make_inline_array_typespec(const TypeSpec& type);
+  TypeSpec make_pointer_typespec(const std::string& type) const;
+  TypeSpec make_pointer_typespec(const TypeSpec& type) const;
+  TypeSpec make_inline_array_typespec(const std::string& type) const;
+  TypeSpec make_inline_array_typespec(const TypeSpec& type) const;
 
   Type* lookup_type(const TypeSpec& ts) const;
   Type* lookup_type(const std::string& name) const;
@@ -71,7 +94,8 @@ class TypeSystem {
   MethodInfo lookup_new_method(const std::string& type_name);
   void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
 
-  FieldLookupInfo lookup_field_info(const std::string& type_name, const std::string& field_name);
+  FieldLookupInfo lookup_field_info(const std::string& type_name,
+                                    const std::string& field_name) const;
   void assert_field_offset(const std::string& type_name, const std::string& field_name, int offset);
   int add_field_to_type(StructureType* type,
                         const std::string& field_name,
@@ -96,7 +120,7 @@ class TypeSystem {
    * Get a type by name and cast to a child class of Type*. Must succeed.
    */
   template <typename T>
-  T* get_type_of_type(const std::string& type_name) {
+  T* get_type_of_type(const std::string& type_name) const {
     auto x = lookup_type(type_name);
     T* result = dynamic_cast<T*>(x);
     if (!result) {
@@ -109,11 +133,15 @@ class TypeSystem {
   TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types);
 
  private:
+  bool reverse_deref(const ReverseDerefInputInfo& input,
+                     std::vector<ReverseDerefInfo::DerefToken>* path,
+                     bool* addr_of,
+                     TypeSpec* result_type) const;
   std::string lca_base(const std::string& a, const std::string& b);
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_size_in_type(const Field& field) const;
   int get_alignment_in_type(const Field& field);
-  Field lookup_field(const std::string& type_name, const std::string& field_name);
+  Field lookup_field(const std::string& type_name, const std::string& field_name) const;
   StructureType* add_builtin_structure(const std::string& parent,
                                        const std::string& type_name,
                                        bool boxed = false);

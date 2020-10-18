@@ -12,6 +12,10 @@ struct BasicBlock {
   int start_word;
   int end_word;
 
+  std::vector<int> pred;
+  int succ_ft = -1;
+  int succ_branch = -1;
+
   BasicBlock(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {}
 };
 

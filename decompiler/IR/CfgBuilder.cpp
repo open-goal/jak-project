@@ -553,6 +553,47 @@ bool is_int_math_3(IR* ir,
   return true;
 }
 
+bool is_int_math_2(IR* ir,
+                   MatchParam<IR_IntMath1::Kind> kind,
+                   MatchParam<Register> dst,
+                   MatchParam<Register> src0,
+                   Register* dst_out = nullptr,
+                   Register* src0_out = nullptr) {
+  // should be a set reg to int math 2 ir
+  auto set = dynamic_cast<IR_Set*>(ir);
+  if (!set) {
+    return false;
+  }
+
+  // destination should be a register
+  auto dest = dynamic_cast<IR_Register*>(set->dst.get());
+  if (!dest || dst != dest->reg) {
+    return false;
+  }
+
+  auto math = dynamic_cast<IR_IntMath1*>(set->src.get());
+  if (!math || kind != math->kind) {
+    return false;
+  }
+
+  auto arg = dynamic_cast<IR_Register*>(math->arg.get());
+
+  if (!arg || src0 != arg->reg) {
+    return false;
+  }
+
+  // it's a match!
+  if (dst_out) {
+    *dst_out = dest->reg;
+  }
+
+  if (src0_out) {
+    *src0_out = arg->reg;
+  }
+
+  return true;
+}
+
 /*!
  * Are these IR's both the same register? False if either is not a register.
  */
@@ -670,8 +711,11 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
   auto dsrav_candidate = b1_ir->forms.at(1);
 
   Register clobber;
-  if (!is_int_math_3(dsubu_candidate.get(), IR_IntMath2::SUB, {}, make_gpr(Reg::R0), sa_in->reg,
-                     &clobber)) {
+  //  if (!is_int_math_3(dsubu_candidate.get(), IR_IntMath2::SUB, {}, make_gpr(Reg::R0), sa_in->reg,
+  //                     &clobber)) {
+  //    return nullptr;
+  //  }
+  if (!is_int_math_2(dsubu_candidate.get(), IR_IntMath1::NEG, {}, sa_in->reg, &clobber)) {
     return nullptr;
   }
 

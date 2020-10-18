@@ -1692,31 +1692,41 @@ const std::vector<BlockVtx*>& ControlFlowGraph::create_blocks(int count) {
 /*!
  * Setup pred/succ for a block which falls through to the next.
  */
-void ControlFlowGraph::link_fall_through(BlockVtx* first, BlockVtx* second) {
+void ControlFlowGraph::link_fall_through(BlockVtx* first,
+                                         BlockVtx* second,
+                                         std::vector<BasicBlock>& blocks) {
   assert(!first->succ_ft);  // don't want to overwrite something by accident.
   // can only fall through to the next code in memory.
   assert(first->next == second);
   assert(second->prev == first);
   first->succ_ft = second;
+  assert(blocks.at(first->block_id).succ_ft == -1);
+  blocks.at(first->block_id).succ_ft = second->block_id;
 
   if (!second->has_pred(first)) {
     // if a block can block fall through and branch to the same block, we want to avoid adding
     // it as a pred twice. This is rare, but does happen and makes sense with likely branches
     // which only run the delay slot when taken.
     second->pred.push_back(first);
+    blocks.at(second->block_id).pred.push_back(first->block_id);
   }
 }
 
 /*!
  * Setup pred/succ for a block which branches to second.
  */
-void ControlFlowGraph::link_branch(BlockVtx* first, BlockVtx* second) {
+void ControlFlowGraph::link_branch(BlockVtx* first,
+                                   BlockVtx* second,
+                                   std::vector<BasicBlock>& blocks) {
   assert(!first->succ_branch);
-
   first->succ_branch = second;
+  assert(blocks.at(first->block_id).succ_branch == -1);
+  blocks.at(first->block_id).succ_branch = second->block_id;
+
   if (!second->has_pred(first)) {
     // see comment in link_fall_through
     second->pred.push_back(first);
+    blocks.at(second->block_id).pred.push_back(first->block_id);
   }
 }
 
@@ -1756,7 +1766,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
     if (b.end_word - b.start_word < 2) {
       // there's no room for a branch here, fall through to the end
       if (not_last) {
-        cfg->link_fall_through(blocks.at(i), blocks.at(i + 1));
+        cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
       }
     } else {
       // might be a branch
@@ -1790,7 +1800,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
         }
 
         assert(block_target != -1);
-        cfg->link_branch(blocks.at(i), blocks.at(block_target));
+        cfg->link_branch(blocks.at(i), blocks.at(block_target), func.basic_blocks);
 
         if (branch_always) {
           // don't continue to the next one
@@ -1798,13 +1808,13 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
         } else {
           // not an always branch
           if (not_last) {
-            cfg->link_fall_through(blocks.at(i), blocks.at(i + 1));
+            cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
           }
         }
       } else {
         // not a branch at all
         if (not_last) {
-          cfg->link_fall_through(blocks.at(i), blocks.at(i + 1));
+          cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
         }
       }
     }

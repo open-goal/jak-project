@@ -140,6 +140,10 @@ class Register {
   bool operator==(const Register& other) const;
   bool operator!=(const Register& other) const;
 
+  struct hash {
+    auto operator()(const Register& x) const { return std::hash<uint16_t>()(x.id); }
+  };
+
  private:
   uint16_t id = -1;
 };

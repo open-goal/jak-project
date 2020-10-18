@@ -316,4 +316,79 @@ TEST(TypeSystem, lca) {
             "(pointer object)");
 }
 
+TEST(TypeSystem, DecompLookupsTypeOfBasic) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+
+  auto string_type = ts.make_typespec("string");
+
+  ReverseDerefInputInfo input;
+  input.input_type = string_type;
+  input.mem_deref = true;
+  input.reg = RegKind::GPR_64;
+  input.load_size = 4;
+  input.sign_extend = false;
+  input.offset = -4;
+
+  auto result = ts.get_reverse_deref_info(input);
+  EXPECT_TRUE(result.success);
+  EXPECT_FALSE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_typespec("type"));
+  EXPECT_EQ(result.deref_path.size(), 1);
+  EXPECT_EQ(result.deref_path.at(0).name, "type");
+}
+
+TEST(TypeSystem, DecompLookupsMethod) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+
+  auto type_type = ts.make_typespec("type");
+
+  ReverseDerefInputInfo input;
+  input.input_type = type_type;
+  input.mem_deref = true;
+  input.reg = RegKind::GPR_64;
+  input.load_size = 4;
+  input.sign_extend = false;
+  input.offset = 16;  // should be method 0, new.
+
+  auto result = ts.get_reverse_deref_info(input);
+  EXPECT_TRUE(result.success);
+  EXPECT_FALSE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_typespec("function"));
+  EXPECT_EQ(result.deref_path.size(), 2);
+  EXPECT_EQ(result.deref_path.at(0).name, "method-table");
+  EXPECT_EQ(result.deref_path.at(1).index, 0);
+
+  input.input_type = type_type;
+  input.mem_deref = true;
+  input.reg = RegKind::GPR_64;
+  input.load_size = 4;
+  input.sign_extend = false;
+  input.offset = 24;  // should be method 2
+
+  result = ts.get_reverse_deref_info(input);
+  EXPECT_TRUE(result.success);
+  EXPECT_FALSE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_typespec("function"));
+  EXPECT_EQ(result.deref_path.size(), 2);
+  EXPECT_EQ(result.deref_path.at(0).name, "method-table");
+  EXPECT_EQ(result.deref_path.at(1).index, 2);
+
+  input.input_type = type_type;
+  input.mem_deref = false;
+  input.reg = RegKind::GPR_64;
+  input.load_size = 0;
+  input.sign_extend = false;
+  input.offset = 24;  // should be method 2
+
+  result = ts.get_reverse_deref_info(input);
+  EXPECT_TRUE(result.success);
+  EXPECT_TRUE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_pointer_typespec("function"));
+  EXPECT_EQ(result.deref_path.size(), 2);
+  EXPECT_EQ(result.deref_path.at(0).name, "method-table");
+  EXPECT_EQ(result.deref_path.at(1).index, 2);
+}
+
 // TODO - a big test to make sure all the builtin types are what we expect.

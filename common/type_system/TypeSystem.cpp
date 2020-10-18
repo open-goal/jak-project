@@ -107,7 +107,7 @@ std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
 /*!
  * Get information about what happens if you dereference an object of given type
  */
-DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
+DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
   DerefInfo info;
 
   if (!ts.has_single_arg()) {
@@ -193,7 +193,7 @@ bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
  * return type.
  */
 TypeSpec TypeSystem::make_function_typespec(const std::vector<std::string>& arg_types,
-                                            const std::string& return_type) {
+                                            const std::string& return_type) const {
   auto result = make_typespec("function");
   for (auto& x : arg_types) {
     result.add_arg(make_typespec(x));
@@ -205,28 +205,28 @@ TypeSpec TypeSystem::make_function_typespec(const std::vector<std::string>& arg_
 /*!
  * Create a TypeSpec for a pointer to a type.
  */
-TypeSpec TypeSystem::make_pointer_typespec(const std::string& type) {
+TypeSpec TypeSystem::make_pointer_typespec(const std::string& type) const {
   return make_pointer_typespec(make_typespec(type));
 }
 
 /*!
  * Create a TypeSpec for a pointer to a type.
  */
-TypeSpec TypeSystem::make_pointer_typespec(const TypeSpec& type) {
+TypeSpec TypeSystem::make_pointer_typespec(const TypeSpec& type) const {
   return TypeSpec("pointer", {type});
 }
 
 /*!
  * Create a TypeSpec for an inline-array of type
  */
-TypeSpec TypeSystem::make_inline_array_typespec(const std::string& type) {
+TypeSpec TypeSystem::make_inline_array_typespec(const std::string& type) const {
   return make_inline_array_typespec(make_typespec(type));
 }
 
 /*!
  * Create a TypeSpec for an inline-array of type
  */
-TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) {
+TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) const {
   return TypeSpec("inline-array", {type});
 }
 
@@ -466,7 +466,7 @@ void TypeSystem::assert_method_id(const std::string& type_name,
  * and how to access it.
  */
 FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
-                                              const std::string& field_name) {
+                                              const std::string& field_name) const {
   FieldLookupInfo info;
   info.field = lookup_field(type_name, field_name);
 
@@ -764,7 +764,7 @@ int TypeSystem::get_next_method_id(Type* type) {
 /*!
  * Lookup a field of a type by name
  */
-Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) {
+Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) const {
   auto type = get_type_of_type<StructureType>(type_name);
   Field field;
   if (!type->lookup_field(field_name, &field)) {
@@ -1088,4 +1088,169 @@ TypeSpec coerce_to_reg_type(const TypeSpec& in) {
   }
 
   return in;
+}
+
+bool debug_reverse_deref = false;
+
+/*!
+ * Todo:
+ * - I suspect inlined basics will be off by 4-bytes, depending on where the basic field starts.
+ * - Inline array is not yet implemented.
+ */
+bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
+                               std::vector<ReverseDerefInfo::DerefToken>* path,
+                               bool* addr_of,
+                               TypeSpec* result_type) const {
+  if (!input.mem_deref) {
+    assert(input.load_size == 0);
+  }
+  if (debug_reverse_deref) {
+    fmt::print("Reverse Deref Type {} Offset {} Deref {} Load Size {} Signed {}\n",
+               input.input_type.print(), input.offset, input.mem_deref, input.load_size,
+               input.sign_extend);
+  }
+
+  if (input.offset == 0 && !input.mem_deref) {
+    // base case, we are here!
+    *addr_of = false;
+    return true;
+  }
+
+  auto base_input_type = input.input_type.base_type();
+  if (base_input_type == "pointer") {
+    auto di = get_deref_info(input.input_type);
+    int closest_index = input.offset / di.stride;
+    int offset_into_elt = input.offset - (closest_index * di.stride);
+    auto base_type = di.result_type;
+
+    ReverseDerefInfo::DerefToken token;
+    token.kind = ReverseDerefInfo::DerefToken::INDEX;
+    token.index = closest_index;
+
+    assert(di.mem_deref);
+    if (offset_into_elt == 0) {
+      if (input.mem_deref) {
+        path->push_back(token);
+        *addr_of = false;
+        *result_type = base_type;
+        return true;
+      } else {
+        path->push_back(token);
+        *addr_of = true;
+        *result_type = make_pointer_typespec(base_type);
+        return true;
+      }
+    } else {
+      return false;
+    }
+
+  } else if (base_input_type == "inline-array") {
+    if (debug_reverse_deref) {
+      fmt::print("Got inline-array case\n");
+    }
+    // todo
+    return false;
+  } else {
+    auto type_info = lookup_type(input.input_type);
+    auto structure_type = dynamic_cast<StructureType*>(type_info);
+    if (!structure_type) {
+      if (debug_reverse_deref) {
+        fmt::print("Failed structure type check\n");
+      }
+      return false;
+    }
+    auto corrected_offset = input.offset + type_info->get_offset();
+    for (auto& field : structure_type->fields()) {
+      auto field_deref = lookup_field_info(type_info->get_name(), field.name());
+      if (debug_reverse_deref) {
+        fmt::print("Offset is {}, {} try field {} {} which is {}, {}\n", corrected_offset,
+                   corrected_offset + input.load_size, field.name(), field_deref.type.print(),
+                   field.offset(), field.offset() + get_size_in_type(field));
+      }
+      if (corrected_offset >= field.offset() && (corrected_offset + std::max(1, input.load_size) <=
+                                                     field.offset() + get_size_in_type(field) ||
+                                                 field.is_dynamic())) {
+        if (debug_reverse_deref) {
+          fmt::print("  ok, using field {}\n", field.name());
+        }
+        // we are somewhere in this field!
+        int offset_into_field = corrected_offset - field.offset();
+
+        ReverseDerefInfo::DerefToken token;
+        token.kind = ReverseDerefInfo::DerefToken::FIELD;
+        token.name = field.name();
+
+        if (offset_into_field == 0) {
+          if (field_deref.needs_deref) {
+            if (input.mem_deref) {
+              // perfect match to a field requiring a deref, which we have.
+              TypeSpec loc_type = make_pointer_typespec(field_deref.type);
+              auto di = get_deref_info(loc_type);
+              if (di.load_size == input.load_size && di.sign_extend == input.sign_extend) {
+                path->push_back(token);
+                *addr_of = false;
+                *result_type = field_deref.type;
+                return true;
+              } else {
+                return false;
+              }
+            } else {
+              // we didn't deref the field, so it's an addr of
+              path->push_back(token);
+              *addr_of = true;
+              *result_type = make_pointer_typespec(field_deref.type);
+              return true;
+            }
+          } else {
+            // field doesn't need deref to access.
+            if (input.mem_deref) {
+              // but we did deref...
+              // let's look deeper in this field.
+              path->push_back(token);
+              ReverseDerefInputInfo r_input = input;
+              r_input.offset = offset_into_field;
+              r_input.input_type = field_deref.type;
+              return reverse_deref(r_input, path, addr_of, result_type);
+            } else {
+              // and we didn't deref.
+              path->push_back(token);
+              *result_type = field_deref.type;
+              *addr_of = false;
+              return true;
+            }
+          }
+        } else {
+          // we are partially inside of a field here.
+          if (field_deref.needs_deref) {
+            // hmm.. shouldn't be possible
+            if (debug_reverse_deref) {
+              fmt::print("Failed extra deref case: {}.\n", field.print());
+            }
+            return false;
+          } else {
+            // we should try again.
+            path->push_back(token);
+            ReverseDerefInputInfo r_input = input;
+            r_input.offset = offset_into_field;
+            r_input.input_type = field_deref.type;
+            return reverse_deref(r_input, path, addr_of, result_type);
+          }
+        }
+      }
+    }
+  }
+
+  if (debug_reverse_deref) {
+    fmt::print("Failed (reached end)\n");
+  }
+  return false;
+}
+
+ReverseDerefInfo TypeSystem::get_reverse_deref_info(const ReverseDerefInputInfo& input) const {
+  if (!input.mem_deref) {
+    assert(input.load_size == 0);
+  }
+  ReverseDerefInfo result;
+  result.success = reverse_deref(input, &result.deref_path, &result.addr_of, &result.result_type);
+  return result;
 }
