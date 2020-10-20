@@ -348,8 +348,8 @@ std::string ObjectFileDB::generate_obj_listing() {
   // this check is extremely important. It makes sure we don't have any repeat names. This could
   // be caused by two files with the same name, in the same DGOs, but different data.
   assert(int(all_unique_names.size()) == unique_count);
-  result.pop_back(); // kill last new line
-  result.pop_back(); // kill last comma
+  result.pop_back();  // kill last new line
+  result.pop_back();  // kill last comma
   return result + "]";
 }
 
@@ -662,6 +662,7 @@ void ObjectFileDB::analyze_functions() {
               assert(false);
             }
             // GOOD!
+            func.type = kv->second;
             spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
                          kv->second.print());
             func.run_type_analysis(kv->second, dts, data.linked_data);

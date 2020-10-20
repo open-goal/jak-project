@@ -505,27 +505,26 @@ void LinkedObjectFile::process_fp_relative_links() {
   }
 }
 
-
 std::string LinkedObjectFile::to_asm_json() {
   nlohmann::json data;
   std::vector<nlohmann::json::object_t> functions;
 
   std::unordered_map<std::string, int> functions_seen;
   for (int seg = segments; seg-- > 0;) {
-    for(size_t fi = functions_by_seg.at(seg).size(); fi--;) {
+    for (size_t fi = functions_by_seg.at(seg).size(); fi--;) {
       auto& func = functions_by_seg.at(seg).at(fi);
       auto fname = func.guessed_name.to_string();
-      if(functions_seen.find(fname) != functions_seen.end()) {
-        printf("duplicated %s\n", fname.c_str());
+      if (functions_seen.find(fname) != functions_seen.end()) {
+        printf("duplicated %s\n", fname.c_str());  // todo - this needs fixing
         functions_seen[fname]++;
         fname += "-v" + std::to_string(functions_seen[fname]);
       } else {
         functions_seen[fname] = 0;
       }
 
-
       nlohmann::json::object_t f;
       f["name"] = fname;
+      f["type"] = func.type.print();
       f["segment"] = seg;
       f["warnings"] = func.warnings;
       std::vector<nlohmann::json::object_t> ops;
@@ -542,6 +541,13 @@ std::string LinkedObjectFile::to_asm_json() {
 
         if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
           op["basic_op"] = func.get_basic_op_at_instr(i)->print(*this);
+          if (func.has_typemaps()) {
+            auto& tm = func.get_typemap_by_instr_idx(i);
+            auto& json_type_map = op["type_map"];
+            for (auto& kv : tm) {
+              json_type_map[kv.first.to_charp()] = kv.second.print();
+            }
+          }
         }
 
         for (int iidx = 0; iidx < instr.n_src; iidx++) {

@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QTreeView, QVBoxLayout, QWidget, QPlainTextEdit, QLineEdit, QListView, QDialog
-from PyQt5.Qt import QStandardItemModel, QStandardItem, QFont
+from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QTreeView, QVBoxLayout, QWidget, QPlainTextEdit, QLineEdit, QListView, QDialog, QSplitter, QSizePolicy
+from PyQt5.Qt import QStandardItemModel, QStandardItem, QFont, QModelIndex
 import json
 import re
 import os
@@ -96,10 +96,15 @@ class ObjectFileView(QDialog):
 		with open(os.path.join(get_jak_path(), "decompiler_out", "{}_asm.json".format(name))) as f:
 			self.asm_data = json.loads(f.read())
 
-		layout = QVBoxLayout()
+		main_layout = QVBoxLayout()
 		monospaced_font = get_monospaced_font()
+		self.header_label = QLabel()
 
-		layout.addWidget(QLabel("Function list"))
+		main_layout.addWidget(self.header_label)
+
+		function_splitter = QSplitter()
+		function_splitter.setSizePolicy(QSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding))
+
 
 		self.function_list = QTreeView()
 		self.function_list_model = QStandardItemModel()
@@ -121,53 +126,110 @@ class ObjectFileView(QDialog):
 			seg_roots[f["segment"]].appendRow(function_entry)
 			self.functions_by_name[f["name"]] = f
 
+		self.header_label.setText("Object File {} Functions ({} total):".format(name, len(self.asm_data["functions"])))
+
 		self.function_list.setModel(self.function_list_model)
 		self.function_list.clicked.connect(self.display_function)
-		layout.addWidget(self.function_list)
+		function_splitter.addWidget(self.function_list)
 
-		self.function_display = QListView()
-		self.function_display.clicked.connect(self.basic_op_clicked)
-		layout.addWidget(self.function_display)
+
+
+		layout = QVBoxLayout()
+
+		self.function_header_label = QLabel("No function selected")
+		self.function_header_label.setFont(monospaced_font)
+		self.header_label.setSizePolicy(QSizePolicy(QSizePolicy.Minimum,
+                                                 QSizePolicy.Minimum))
+		layout.addWidget(self.function_header_label)
+
+		self.op_asm_split_view = QSplitter()
+		self.op_asm_split_view.setSizePolicy(QSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding))
+
+		self.basic_op_pane = QListView()
+		self.basic_op_pane.clicked.connect(self.basic_op_clicked)
+		#layout.addWidget(self.basic_op_pane)
+		self.op_asm_split_view.addWidget(self.basic_op_pane)
+
+		self.asm_pane = QListView()
+		self.op_asm_split_view.addWidget(self.asm_pane)
+
+		layout.addWidget(self.op_asm_split_view)
 
 		self.asm_display = QPlainTextEdit()
 		self.asm_display.setMaximumHeight(80)
 		layout.addWidget(self.asm_display)
 
+		self.warnings_label = QLabel()
+		layout.addWidget(self.warnings_label)
+
+		widget = QWidget()
+		widget.setLayout(layout)
+		function_splitter.addWidget(widget)
+		main_layout.addWidget(function_splitter)
+
 		# add it to the window!
-		self.setLayout(layout)
+		self.setLayout(main_layout)
 
 	def display_function(self, item):
 		name = item.data()
 		monospaced_font = get_monospaced_font()
 		func = self.functions_by_name[name]
-		model = QStandardItemModel()
-		root = model.invisibleRootItem()
+		basic_op_model = QStandardItemModel()
+		basic_op_root = basic_op_model.invisibleRootItem()
+		asm_model = QStandardItemModel()
+		asm_root = asm_model.invisibleRootItem()
 
 		self.basic_id_to_asm = []
 		self.current_function = name
 		op_idx = 0
 		basic_idx = 0
 		for op in func["asm"]:
+			if "label" in op:
+				asm_item = QStandardItem(op["label"] + "\n    " + op["asm_op"])
+			else:
+				asm_item = QStandardItem("    " + op["asm_op"])
+			asm_item.setFont(monospaced_font)
+			asm_item.setEditable(False)
+			asm_root.appendRow(asm_item)
+
 			if "basic_op" in op:
 				if "label" in op:
-					item = QStandardItem(op["label"] + "\n    " + op["basic_op"])
+					basic_item = QStandardItem(op["label"] + "\n    " + op["basic_op"])
 				else:
-					item = QStandardItem("    " + op["basic_op"])
-				item.setFont(monospaced_font)
-				item.setEditable(False)
-				root.appendRow(item)
+					basic_item = QStandardItem("    " + op["basic_op"])
+				basic_item.setFont(monospaced_font)
+				basic_item.setEditable(False)
+				basic_op_root.appendRow(basic_item)
 				self.basic_id_to_asm.append(op_idx)
 				basic_idx = basic_idx + 1
 			op_idx = op_idx + 1
 		self.basic_id_to_asm.append(op_idx)
-		self.function_display.setModel(model)
+		self.basic_op_pane.setModel(basic_op_model)
+		self.asm_pane.setModel(asm_model)
+		self.warnings_label.setText(func["warnings"])
+		self.asm_display.setPlainText("")
+		self.function_header_label.setText("{}, type: {}".format(name, func["type"]))
 
 	def basic_op_clicked(self, item):
 		text = ""
-		for i in range(self.basic_id_to_asm[item.row()], self.basic_id_to_asm[item.row() + 1]):
+		added_reg = 0
+		asm_idx = self.basic_id_to_asm[item.row()]
+
+		asm_op = self.functions_by_name[self.current_function]["asm"][asm_idx]
+		if "type_map" in asm_op:
+			for reg, type_name in asm_op["type_map"].items():
+				text += "{}: {} ".format(reg, type_name)
+				added_reg += 1
+				if added_reg >= 4:
+					text += "\n"
+					added_reg = 0
+			text += "\n"
+
+		for i in range(asm_idx, self.basic_id_to_asm[item.row() + 1]):
 			text += self.functions_by_name[self.current_function]["asm"][i]["asm_op"] + "\n"
 		self.asm_display.setPlainText(text)
 		self.asm_display.setFont(get_monospaced_font())
+		self.asm_pane.setCurrentIndex(self.asm_pane.model().index(asm_idx, 0))
 
 
 # A window for browsing all the object files.

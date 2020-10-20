@@ -84,6 +84,8 @@ class Function {
                          DecompilerTypeSystem& dts,
                          LinkedObjectFile& file);
 
+  TypeSpec type;
+
   std::shared_ptr<IR> ir = nullptr;
 
   int segment = -1;
