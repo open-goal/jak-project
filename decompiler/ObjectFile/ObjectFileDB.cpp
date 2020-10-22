@@ -602,6 +602,7 @@ void ObjectFileDB::analyze_functions() {
   int asm_funcs = 0;
   int non_asm_funcs = 0;
   int successful_cfg_irs = 0;
+  int successful_type_analysis = 0;
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
   if (get_config().find_basic_blocks) {
@@ -615,8 +616,15 @@ void ObjectFileDB::analyze_functions() {
 
       total_functions++;
       if (!func.suspected_asm) {
+        // run analysis
+
+        // first, find the prologue/epilogue
         func.analyze_prologue(data.linked_data);
+
+        // build a control flow graph
         func.cfg = build_cfg(data.linked_data, segment_id, func);
+
+        // convert individual basic blocks to sequences of IR Basic Ops
         for (auto& block : func.basic_blocks) {
           if (block.end_word > block.start_word) {
             add_basic_ops_to_block(&func, block, &data.linked_data);
@@ -625,6 +633,7 @@ void ObjectFileDB::analyze_functions() {
         total_basic_ops += func.get_basic_op_count();
         total_failed_basic_ops += func.get_failed_basic_op_count();
 
+        // Combine basic ops + CFG to build a nested IR
         func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
         non_asm_funcs++;
         if (func.ir) {
@@ -633,6 +642,26 @@ void ObjectFileDB::analyze_functions() {
 
         if (func.cfg->is_fully_resolved()) {
           resolved_cfg_functions++;
+        }
+
+        // type analysis
+        if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+          // we're a global named function. This means we're stored in a symbol
+          auto kv = dts.symbol_types.find(func.guessed_name.function_name);
+          if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+            if (kv->second.base_type() != "function") {
+              spdlog::error("Found a function named {} but the symbol has type {}",
+                            func.guessed_name.to_string(), kv->second.print());
+              assert(false);
+            }
+            // GOOD!
+            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+                         kv->second.print());
+            func.run_type_analysis(kv->second, dts, data.linked_data);
+            if (func.has_typemaps()) {
+              successful_type_analysis++;
+            }
+          }
         }
       } else {
         asm_funcs++;
@@ -670,8 +699,10 @@ void ObjectFileDB::analyze_functions() {
     int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
     spdlog::info(" {}/{} basic ops converted successfully ({}%)", successful_basic_ops,
                  total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-    spdlog::info(" {}/{} cfgs converted to ir ({}%)\n", successful_cfg_irs, non_asm_funcs,
+    spdlog::info(" {}/{} cfgs converted to ir ({}%)", successful_cfg_irs, non_asm_funcs,
                  100.f * float(successful_cfg_irs) / float(non_asm_funcs));
+    spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,
+                 non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
 
     //    for (auto& kv : unresolved_by_length) {
     //      printf("LEN %d\n", kv.first);

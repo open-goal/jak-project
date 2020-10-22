@@ -5,8 +5,13 @@
 #include <utility>
 #include "decompiler/Disasm/Register.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/type_system/TypeSpec.h"
 
 class LinkedObjectFile;
+class DecompilerTypeSystem;
+
+// Map of what type is in each register.
+using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
 
 class IR {
  public:
@@ -14,6 +19,13 @@ class IR {
   std::vector<std::shared_ptr<IR>> get_all_ir(LinkedObjectFile& file) const;
   std::string print(const LinkedObjectFile& file) const;
   virtual void get_children(std::vector<std::shared_ptr<IR>>* output) const = 0;
+  virtual bool update_types(TypeMap& reg_types,
+                            DecompilerTypeSystem& dts,
+                            LinkedObjectFile& file) const;
+  virtual bool get_type_of_expr(const TypeMap& reg_types,
+                                DecompilerTypeSystem& dts,
+                                LinkedObjectFile& file,
+                                TypeSpec* out) const;
 
   bool is_basic_op = false;
 };
@@ -30,6 +42,10 @@ class IR_Register : public IR {
   IR_Register(Register _reg, int _instr_idx) : reg(_reg), instr_idx(_instr_idx) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
   Register reg;
   int instr_idx = -1;
 };
@@ -51,6 +67,9 @@ class IR_Set : public IR {
       : kind(_kind), dst(std::move(_dst)), src(std::move(_src)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool update_types(TypeMap& reg_types,
+                    DecompilerTypeSystem& dts,
+                    LinkedObjectFile& file) const override;
   std::shared_ptr<IR> dst, src;
   std::shared_ptr<IR> clobber = nullptr;
 };
@@ -70,6 +89,10 @@ class IR_Symbol : public IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_SymbolValue : public IR {
@@ -78,6 +101,10 @@ class IR_SymbolValue : public IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_StaticAddress : public IR {
@@ -98,6 +125,10 @@ class IR_Load : public IR {
   std::shared_ptr<IR> location;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_FloatMath2 : public IR {
@@ -108,6 +139,10 @@ class IR_FloatMath2 : public IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_FloatMath1 : public IR {
@@ -145,15 +180,23 @@ class IR_IntMath2 : public IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_IntMath1 : public IR {
  public:
-  enum Kind { NOT, ABS } kind;
+  enum Kind { NOT, ABS, NEG } kind;
   IR_IntMath1(Kind _kind, std::shared_ptr<IR> _arg) : kind(_kind), arg(std::move(_arg)) {}
   std::shared_ptr<IR> arg;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_Call : public IR {
@@ -169,6 +212,10 @@ class IR_IntegerConstant : public IR {
   explicit IR_IntegerConstant(int64_t _value) : value(_value) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 struct BranchDelay {
@@ -256,6 +303,9 @@ class IR_Branch : public IR {
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  virtual bool update_types(TypeMap& reg_types,
+                            DecompilerTypeSystem& dts,
+                            LinkedObjectFile& file) const;
 };
 
 class IR_Compare : public IR {
@@ -266,6 +316,10 @@ class IR_Compare : public IR {
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool get_type_of_expr(const TypeMap& reg_types,
+                        DecompilerTypeSystem& dts,
+                        LinkedObjectFile& file,
+                        TypeSpec* out) const override;
 };
 
 class IR_Nop : public IR {

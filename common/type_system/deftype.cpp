@@ -178,11 +178,17 @@ void declare_method(StructureType* type, TypeSystem* type_system, const goos::Ob
   });
 }
 
-TypeFlags parse_structure_def(StructureType* type,
-                              TypeSystem* ts,
-                              const goos::Object& fields,
-                              const goos::Object& options) {
-  (void)options;
+struct StructureDefResult {
+  TypeFlags flags;
+  bool generate_runtime_type = true;
+  bool pack_me = false;
+};
+
+StructureDefResult parse_structure_def(StructureType* type,
+                                       TypeSystem* ts,
+                                       const goos::Object& fields,
+                                       const goos::Object& options) {
+  StructureDefResult result;
   for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o); });
   TypeFlags flags;
   flags.heap_base = 0;
@@ -229,6 +235,10 @@ TypeFlags parse_structure_def(StructureType* type,
         flag_assert = get_int(car(rest));
         flag_assert_set = true;
         rest = cdr(rest);
+      } else if (opt_name == ":no-runtime-type") {
+        result.generate_runtime_type = false;
+      } else if (opt_name == ":pack-me") {
+        result.pack_me = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -255,7 +265,8 @@ TypeFlags parse_structure_def(StructureType* type,
                     flags.flag, flag_assert));
   }
 
-  return flags;
+  result.flags = flags;
+  return result;
 }
 
 }  // namespace
@@ -303,14 +314,28 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
-    result.flags = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    ts->forward_declare_type_as_basic(name);
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    result.flags = sr.flags;
+    result.create_runtime_type = sr.generate_runtime_type;
+    if (sr.pack_me) {
+      fmt::print("[TypeSystem] :pack-me was set on {}, which is a basic and cannot be packed.",
+                 name);
+      throw std::runtime_error("invalid pack option on basic");
+    }
     ts->add_type(name, std::move(new_type));
   } else if (is_type("structure", parent_type, ts)) {
     auto new_type = std::make_unique<StructureType>(parent_type_name, name);
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
-    result.flags = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    ts->forward_declare_type_as_structure(name);
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    result.flags = sr.flags;
+    result.create_runtime_type = sr.generate_runtime_type;
+    if (sr.pack_me) {
+      new_type->set_pack(true);
+    }
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
     throw std::runtime_error("Creating a child type of integer is not supported yet.");

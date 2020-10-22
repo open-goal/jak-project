@@ -516,8 +516,14 @@ std::shared_ptr<IR> try_daddu(Instruction& instr, int idx) {
 }
 
 std::shared_ptr<IR> try_dsubu(Instruction& instr, int idx) {
-  if (is_gpr_3(instr, InstructionKind::DSUBU, {}, {}, {}) &&
+  if (is_gpr_3(instr, InstructionKind::DSUBU, {}, make_gpr(Reg::R0), {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
+    return make_set(
+        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath1>(IR_IntMath1::NEG, make_reg(instr.get_src(1).get_reg(), idx)));
+  } else if (is_gpr_3(instr, InstructionKind::DSUBU, {}, {}, {}) &&
+             !instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
+             !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
     return make_set(
         IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::SUB, make_reg(instr.get_src(0).get_reg(), idx),

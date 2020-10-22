@@ -74,6 +74,7 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
   // step 3, cleaning up things now that we know the memory layout
   for (int seg = N_SEG; seg-- > 0;) {
     handle_temp_static_type_links(seg);
+    handle_temp_static_sym_links(seg);
     handle_temp_jump_links(seg);
     handle_temp_instr_sym_links(seg);
     handle_temp_rip_func_links(seg);

@@ -68,8 +68,32 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
  * This will allow the type system to generate TypeSpecs for this type, but not access detailed
  * information, or know the exact size.
  */
-void TypeSystem::forward_declare_type(std::string name) {
-  m_forward_declared_types.insert(std::move(name));
+void TypeSystem::forward_declare_type(const std::string& name) {
+  if (m_types.find(name) == m_types.end()) {
+    m_forward_declared_types[name] = TYPE;
+  }
+}
+
+/*!
+ * Inform the type system that there will eventually be a type named "name" and that it's a basic.
+ * This allows the type to be used in a few specific places. For instance a basic can have
+ * a field where an element is the same type.
+ */
+void TypeSystem::forward_declare_type_as_basic(const std::string& name) {
+  if (m_types.find(name) == m_types.end()) {
+    m_forward_declared_types[name] = BASIC;
+  }
+}
+
+/*!
+ * Inform the type system that there will eventually be a type named "name" and that it's a
+ * structure. This allows the type to be used in a few specific places. For instance a structure can
+ * have a field where an element is the same type.
+ */
+void TypeSystem::forward_declare_type_as_structure(const std::string& name) {
+  if (m_types.find(name) == m_types.end()) {
+    m_forward_declared_types[name] = STRUCTURE;
+  }
 }
 
 /*!
@@ -83,7 +107,7 @@ std::string TypeSystem::get_runtime_type(const TypeSpec& ts) {
 /*!
  * Get information about what happens if you dereference an object of given type
  */
-DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
+DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
   DerefInfo info;
 
   if (!ts.has_single_arg()) {
@@ -121,7 +145,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) {
   } else if (ts.base_type() == "pointer") {
     info.can_deref = true;
     info.result_type = ts.get_single_arg();
-    auto result_type = lookup_type(info.result_type);
+    auto result_type = lookup_type_allow_partial_def(info.result_type);
     if (result_type->is_reference()) {
       // in memory, an array of pointers
       info.stride = POINTER_SIZE;
@@ -160,12 +184,16 @@ bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
   return m_types.find(name) != m_types.end();
 }
 
+bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
+  return m_forward_declared_types.find(name) != m_forward_declared_types.end();
+}
+
 /*!
  * Create a typespec for a function.  If the function doesn't return anything, use "none" as the
  * return type.
  */
 TypeSpec TypeSystem::make_function_typespec(const std::vector<std::string>& arg_types,
-                                            const std::string& return_type) {
+                                            const std::string& return_type) const {
   auto result = make_typespec("function");
   for (auto& x : arg_types) {
     result.add_arg(make_typespec(x));
@@ -177,28 +205,28 @@ TypeSpec TypeSystem::make_function_typespec(const std::vector<std::string>& arg_
 /*!
  * Create a TypeSpec for a pointer to a type.
  */
-TypeSpec TypeSystem::make_pointer_typespec(const std::string& type) {
+TypeSpec TypeSystem::make_pointer_typespec(const std::string& type) const {
   return make_pointer_typespec(make_typespec(type));
 }
 
 /*!
  * Create a TypeSpec for a pointer to a type.
  */
-TypeSpec TypeSystem::make_pointer_typespec(const TypeSpec& type) {
+TypeSpec TypeSystem::make_pointer_typespec(const TypeSpec& type) const {
   return TypeSpec("pointer", {type});
 }
 
 /*!
  * Create a TypeSpec for an inline-array of type
  */
-TypeSpec TypeSystem::make_inline_array_typespec(const std::string& type) {
+TypeSpec TypeSystem::make_inline_array_typespec(const std::string& type) const {
   return make_inline_array_typespec(make_typespec(type));
 }
 
 /*!
  * Create a TypeSpec for an inline-array of type
  */
-TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) {
+TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) const {
   return TypeSpec("inline-array", {type});
 }
 
@@ -219,7 +247,6 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
   } else {
     fmt::print("[TypeSystem] The type {} is not defined.\n", name);
   }
-
   throw std::runtime_error("lookup_type failed");
 }
 
@@ -231,6 +258,42 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
  */
 Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
   return lookup_type(ts.base_type());
+}
+
+/*!
+ * Get type info. If the type is not fully defined (ie, we are parsing its deftype now) and its
+ * forward defined as a basic or structure, just get basic/structure.
+ */
+Type* TypeSystem::lookup_type_allow_partial_def(const TypeSpec& ts) const {
+  return lookup_type_allow_partial_def(ts.base_type());
+}
+
+/*!
+ * Get type info. If the type is not fully defined (ie, we are parsing its deftype now) and its
+ * forward defined as a basic or structure, just get basic/structure.
+ */
+Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
+  // look up fully defined types first:
+  auto kv = m_types.find(name);
+  if (kv != m_types.end()) {
+    return kv->second.get();
+  }
+
+  auto fwd_dec = m_forward_declared_types.find(name);
+  if (fwd_dec != m_forward_declared_types.end()) {
+    if (fwd_dec->second == STRUCTURE) {
+      return lookup_type("structure");
+    } else if (fwd_dec->second == BASIC) {
+      return lookup_type("basic");
+    } else {
+      fmt::print("[TypeSystem] The type {} is not fully define (allow partial).\n", name);
+    }
+
+  } else {
+    fmt::print("[TypeSystem] The type {} is not defined.\n", name);
+  }
+
+  throw std::runtime_error("lookup_type_allow_partial_def failed");
 }
 
 MethodInfo TypeSystem::add_method(const std::string& type_name,
@@ -403,7 +466,7 @@ void TypeSystem::assert_method_id(const std::string& type_name,
  * and how to access it.
  */
 FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
-                                              const std::string& field_name) {
+                                              const std::string& field_name) const {
   FieldLookupInfo info;
   info.field = lookup_field(type_name, field_name);
 
@@ -412,7 +475,7 @@ FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
     info.array_size = info.field.array_size();
   }
 
-  auto base_type = lookup_type(info.field.type());
+  auto base_type = lookup_type_allow_partial_def(info.field.type());
   if (base_type->is_reference()) {
     if (info.field.is_inline()) {
       if (info.field.is_array()) {
@@ -542,11 +605,7 @@ void TypeSystem::add_builtin_types() {
   auto kheap_type = add_builtin_structure("structure", "kheap");
   auto array_type = add_builtin_basic("basic", "array");
   auto pair_type = add_builtin_structure("object", "pair", true);
-  auto process_tree_type = add_builtin_basic("basic", "process-tree");
-  auto process_type = add_builtin_basic("process-tree", "process");
-  auto thread_type = add_builtin_basic("basic", "thread");
   auto connectable_type = add_builtin_structure("structure", "connectable");
-  auto stack_frame_type = add_builtin_basic("basic", "stack-frame");
   auto file_stream_type = add_builtin_basic("basic", "file-stream");
   add_builtin_value_type("object", "pointer", 4);
   auto inline_array_type = add_builtin_value_type("object", "inline-array", 4);
@@ -566,7 +625,7 @@ void TypeSystem::add_builtin_types() {
   add_builtin_value_type("uinteger", "uint8", 1);
   add_builtin_value_type("uinteger", "uint16", 2);
   add_builtin_value_type("uinteger", "uint32", 4);
-  add_builtin_value_type("uinteger", "uint64", 81);
+  add_builtin_value_type("uinteger", "uint64", 8);
   add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
 
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
@@ -585,7 +644,7 @@ void TypeSystem::add_builtin_types() {
              make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
   add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
-  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int32"}, "_type_"));
+  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
   add_method(obj_type, "mem-usage",
              make_function_typespec({"_type_"}, "int32"));  // todo - this is a guess.
 
@@ -659,12 +718,14 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(pair_type, "car", make_typespec("object"));
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 
-  // todo, with kernel
-  (void)process_tree_type;
-  (void)process_type;
-  (void)thread_type;
-  (void)connectable_type;
-  (void)stack_frame_type;
+  // this type is very strange, as the compiler knows about it in gkernel-h, yet it is
+  // defined inside of connect.
+  add_field_to_type(connectable_type, "next0", make_typespec("connectable"));
+  add_field_to_type(connectable_type, "prev0", make_typespec("connectable"));
+  add_field_to_type(connectable_type, "next1", make_typespec("connectable"));
+  add_field_to_type(connectable_type, "prev1", make_typespec("connectable"));
+
+  // todo
   (void)file_stream_type;
 }
 
@@ -703,7 +764,7 @@ int TypeSystem::get_next_method_id(Type* type) {
 /*!
  * Lookup a field of a type by name
  */
-Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) {
+Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) const {
   auto type = get_type_of_type<StructureType>(type_name);
   Field field;
   if (!type->lookup_field(field_name, &field)) {
@@ -717,7 +778,7 @@ Field TypeSystem::lookup_field(const std::string& type_name, const std::string& 
  * Get the minimum required aligment of a field.
  */
 int TypeSystem::get_alignment_in_type(const Field& field) {
-  auto field_type = lookup_type(field.type());
+  auto field_type = lookup_type_allow_partial_def(field.type());
 
   if (field.is_inline()) {
     if (field.is_array()) {
@@ -727,7 +788,7 @@ int TypeSystem::get_alignment_in_type(const Field& field) {
     } else {
       // it is an inlined field, so return the alignment in memory
       // TODO - for inline, but not inline array, do we use structure alignment always?
-      return field_type->get_in_memory_alignment();
+      return field_type->get_inline_array_alignment();
     }
   }
 
@@ -740,18 +801,31 @@ int TypeSystem::get_alignment_in_type(const Field& field) {
   return POINTER_SIZE;
 }
 
+namespace {
+bool allow_inline(const Type* type) {
+  auto name = type->get_name();
+  return name != "basic" && name != "structure";
+}
+}  // namespace
+
 /*!
  * Get the size of a field in a type.  The array sizes should be consistent with get_deref_info's
  * stride.
  */
-int TypeSystem::get_size_in_type(const Field& field) {
+int TypeSystem::get_size_in_type(const Field& field) const {
   if (field.is_dynamic()) {
     return 0;
   }
-  auto field_type = lookup_type(field.type());
+  auto field_type = lookup_type_allow_partial_def(field.type());
 
   if (field.is_array()) {
     if (field.is_inline()) {
+      if (!allow_inline(field_type)) {
+        fmt::print(
+            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            field_type->get_name());
+        throw std::runtime_error("bad get size in type");
+      }
       assert(field_type->is_reference());
       return field.array_size() *
              align(field_type->get_size_in_memory(), field_type->get_inline_array_alignment());
@@ -766,8 +840,16 @@ int TypeSystem::get_size_in_type(const Field& field) {
   } else {
     // not an array
     if (field.is_inline()) {
+      if (!allow_inline(field_type)) {
+        fmt::print(
+            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            field_type->get_name());
+        throw std::runtime_error("bad get size in type");
+      }
       assert(field_type->is_reference());
-      return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
+      // return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
+      // looking at dead-pool-heap we tightly pack in this case
+      return field_type->get_size_in_memory();
     } else {
       if (field_type->is_reference()) {
         return POINTER_SIZE;
@@ -888,16 +970,16 @@ bool TypeSystem::typecheck_base_types(const std::string& expected,
   // declared, but not defined?)
   lookup_type(expected);
 
-  if (expected == actual) {
-    lookup_type(actual);  // make sure it exists
+  if (expected == actual || expected == lookup_type_allow_partial_def(actual)->get_name()) {
+    lookup_type_allow_partial_def(actual);  // make sure it exists
     return true;
   }
 
   std::string actual_name = actual;
-  auto actual_type = lookup_type(actual_name);
+  auto actual_type = lookup_type_allow_partial_def(actual_name);
   while (actual_type->has_parent()) {
     actual_name = actual_type->get_parent();
-    actual_type = lookup_type(actual_name);
+    actual_type = lookup_type_allow_partial_def(actual_name);
 
     if (expected == actual_name) {
       return true;
@@ -931,6 +1013,10 @@ std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) {
 std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
   if (a == b) {
     return a;
+  }
+
+  if (a == "none" || b == "none") {
+    return "none";
   }
 
   auto a_up = get_path_up_tree(a);
@@ -991,15 +1077,180 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
 TypeSpec coerce_to_reg_type(const TypeSpec& in) {
   if (in.arg_count() == 0) {
     if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||
-        in.base_type() == "int16") {
+        in.base_type() == "int64") {
       return TypeSpec("int");
     }
 
     if (in.base_type() == "uint8" || in.base_type() == "uint16" || in.base_type() == "uint32" ||
-        in.base_type() == "uint16") {
+        in.base_type() == "uint64") {
       return TypeSpec("uint");
     }
   }
 
   return in;
+}
+
+bool debug_reverse_deref = false;
+
+/*!
+ * Todo:
+ * - I suspect inlined basics will be off by 4-bytes, depending on where the basic field starts.
+ * - Inline array is not yet implemented.
+ */
+bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
+                               std::vector<ReverseDerefInfo::DerefToken>* path,
+                               bool* addr_of,
+                               TypeSpec* result_type) const {
+  if (!input.mem_deref) {
+    assert(input.load_size == 0);
+  }
+  if (debug_reverse_deref) {
+    fmt::print("Reverse Deref Type {} Offset {} Deref {} Load Size {} Signed {}\n",
+               input.input_type.print(), input.offset, input.mem_deref, input.load_size,
+               input.sign_extend);
+  }
+
+  if (input.offset == 0 && !input.mem_deref) {
+    // base case, we are here!
+    *addr_of = false;
+    return true;
+  }
+
+  auto base_input_type = input.input_type.base_type();
+  if (base_input_type == "pointer") {
+    auto di = get_deref_info(input.input_type);
+    int closest_index = input.offset / di.stride;
+    int offset_into_elt = input.offset - (closest_index * di.stride);
+    auto base_type = di.result_type;
+
+    ReverseDerefInfo::DerefToken token;
+    token.kind = ReverseDerefInfo::DerefToken::INDEX;
+    token.index = closest_index;
+
+    assert(di.mem_deref);
+    if (offset_into_elt == 0) {
+      if (input.mem_deref) {
+        path->push_back(token);
+        *addr_of = false;
+        *result_type = base_type;
+        return true;
+      } else {
+        path->push_back(token);
+        *addr_of = true;
+        *result_type = make_pointer_typespec(base_type);
+        return true;
+      }
+    } else {
+      return false;
+    }
+
+  } else if (base_input_type == "inline-array") {
+    if (debug_reverse_deref) {
+      fmt::print("Got inline-array case\n");
+    }
+    // todo
+    return false;
+  } else {
+    auto type_info = lookup_type(input.input_type);
+    auto structure_type = dynamic_cast<StructureType*>(type_info);
+    if (!structure_type) {
+      if (debug_reverse_deref) {
+        fmt::print("Failed structure type check\n");
+      }
+      return false;
+    }
+    auto corrected_offset = input.offset + type_info->get_offset();
+    for (auto& field : structure_type->fields()) {
+      auto field_deref = lookup_field_info(type_info->get_name(), field.name());
+      if (debug_reverse_deref) {
+        fmt::print("Offset is {}, {} try field {} {} which is {}, {}\n", corrected_offset,
+                   corrected_offset + input.load_size, field.name(), field_deref.type.print(),
+                   field.offset(), field.offset() + get_size_in_type(field));
+      }
+      if (corrected_offset >= field.offset() && (corrected_offset + std::max(1, input.load_size) <=
+                                                     field.offset() + get_size_in_type(field) ||
+                                                 field.is_dynamic())) {
+        if (debug_reverse_deref) {
+          fmt::print("  ok, using field {}\n", field.name());
+        }
+        // we are somewhere in this field!
+        int offset_into_field = corrected_offset - field.offset();
+
+        ReverseDerefInfo::DerefToken token;
+        token.kind = ReverseDerefInfo::DerefToken::FIELD;
+        token.name = field.name();
+
+        if (offset_into_field == 0) {
+          if (field_deref.needs_deref) {
+            if (input.mem_deref) {
+              // perfect match to a field requiring a deref, which we have.
+              TypeSpec loc_type = make_pointer_typespec(field_deref.type);
+              auto di = get_deref_info(loc_type);
+              if (di.load_size == input.load_size && di.sign_extend == input.sign_extend) {
+                path->push_back(token);
+                *addr_of = false;
+                *result_type = field_deref.type;
+                return true;
+              } else {
+                return false;
+              }
+            } else {
+              // we didn't deref the field, so it's an addr of
+              path->push_back(token);
+              *addr_of = true;
+              *result_type = make_pointer_typespec(field_deref.type);
+              return true;
+            }
+          } else {
+            // field doesn't need deref to access.
+            if (input.mem_deref) {
+              // but we did deref...
+              // let's look deeper in this field.
+              path->push_back(token);
+              ReverseDerefInputInfo r_input = input;
+              r_input.offset = offset_into_field;
+              r_input.input_type = field_deref.type;
+              return reverse_deref(r_input, path, addr_of, result_type);
+            } else {
+              // and we didn't deref.
+              path->push_back(token);
+              *result_type = field_deref.type;
+              *addr_of = false;
+              return true;
+            }
+          }
+        } else {
+          // we are partially inside of a field here.
+          if (field_deref.needs_deref) {
+            // hmm.. shouldn't be possible
+            if (debug_reverse_deref) {
+              fmt::print("Failed extra deref case: {}.\n", field.print());
+            }
+            return false;
+          } else {
+            // we should try again.
+            path->push_back(token);
+            ReverseDerefInputInfo r_input = input;
+            r_input.offset = offset_into_field;
+            r_input.input_type = field_deref.type;
+            return reverse_deref(r_input, path, addr_of, result_type);
+          }
+        }
+      }
+    }
+  }
+
+  if (debug_reverse_deref) {
+    fmt::print("Failed (reached end)\n");
+  }
+  return false;
+}
+
+ReverseDerefInfo TypeSystem::get_reverse_deref_info(const ReverseDerefInputInfo& input) const {
+  if (!input.mem_deref) {
+    assert(input.load_size == 0);
+  }
+  ReverseDerefInfo result;
+  result.success = reverse_deref(input, &result.deref_path, &result.addr_of, &result.result_type);
+  return result;
 }
