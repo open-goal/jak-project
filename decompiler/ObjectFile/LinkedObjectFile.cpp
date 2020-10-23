@@ -12,6 +12,7 @@
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
 #include "third-party/json.hpp"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 /*!
  * Set the number of segments in this object file.
@@ -505,7 +506,7 @@ void LinkedObjectFile::process_fp_relative_links() {
   }
 }
 
-std::string LinkedObjectFile::to_asm_json() {
+std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
   nlohmann::json data;
   std::vector<nlohmann::json::object_t> functions;
 
@@ -515,7 +516,10 @@ std::string LinkedObjectFile::to_asm_json() {
       auto& func = functions_by_seg.at(seg).at(fi);
       auto fname = func.guessed_name.to_string();
       if (functions_seen.find(fname) != functions_seen.end()) {
-        printf("duplicated %s\n", fname.c_str());  // todo - this needs fixing
+        spdlog::warn(
+            "Function {} appears multiple times in the same object file {} - it cannot be uniquely "
+            "referenced from config",
+            func.guessed_name.to_string(), obj_file_name);
         functions_seen[fname]++;
         fname += "-v" + std::to_string(functions_seen[fname]);
       } else {
@@ -527,6 +531,7 @@ std::string LinkedObjectFile::to_asm_json() {
       f["type"] = func.type.print();
       f["segment"] = seg;
       f["warnings"] = func.warnings;
+      f["parent_object"] = obj_file_name;
       std::vector<nlohmann::json::object_t> ops;
 
       for (int i = 1; i < func.end_word - func.start_word; i++) {

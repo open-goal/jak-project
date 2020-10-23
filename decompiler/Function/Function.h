@@ -56,9 +56,6 @@ struct FunctionName {
     method_id = id;
   }
 
-  bool expected_unique() const {
-    return kind == FunctionKind::GLOBAL || kind == FunctionKind::METHOD;
-  }
 };
 
 class BasicOpTypeInfo {
