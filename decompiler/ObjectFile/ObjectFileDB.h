@@ -21,10 +21,9 @@
  * A "record" which can be used to identify an object file.
  */
 struct ObjectFileRecord {
-  std::string name;
+  std::string name;  // including -ag, not including dgo suffix
   int version = -1;
   uint32_t hash = 0;
-  std::string to_unique_name() const;
 };
 
 /*!
@@ -38,13 +37,14 @@ struct ObjectFileData {
   int obj_version = -1;
   bool has_multiple_versions = false;
   std::string name_in_dgo;
+  std::string name_from_map;
   std::string to_unique_name() const;
   uint32_t reference_count = 0;  // number of times its used.
 };
 
 class ObjectFileDB {
  public:
-  ObjectFileDB(const std::vector<std::string>& _dgos);
+  ObjectFileDB(const std::vector<std::string>& _dgos, const std::string& obj_file_name_map_file);
   std::string generate_dgo_listing();
   std::string generate_obj_listing();
   void process_link_data();
@@ -55,10 +55,11 @@ class ObjectFileDB {
   void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
   void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
   void analyze_functions();
-  ObjectFileData& lookup_record(ObjectFileRecord rec);
+  ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
 
  private:
+  void load_map_file(const std::string& map_data);
   void get_objs_from_dgo(const std::string& filename);
   void add_obj_from_dgo(const std::string& obj_name,
                         const std::string& name_in_dgo,
@@ -105,6 +106,7 @@ class ObjectFileDB {
   std::unordered_map<std::string, std::vector<ObjectFileRecord>> obj_files_by_dgo;
 
   std::vector<std::string> obj_file_order;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>> dgo_obj_name_map;
 
   struct {
     uint32_t total_dgo_bytes = 0;
