@@ -324,7 +324,7 @@ std::string pad_string(const std::string& in, size_t length) {
 }  // namespace
 
 std::string ObjectFileDB::generate_obj_listing() {
-  std::string result;
+  std::string result = "[";
   std::set<std::string> all_unique_names;
   int unique_count = 0;
   for (auto& obj_file : obj_file_order) {
@@ -348,7 +348,9 @@ std::string ObjectFileDB::generate_obj_listing() {
   // this check is extremely important. It makes sure we don't have any repeat names. This could
   // be caused by two files with the same name, in the same DGOs, but different data.
   assert(int(all_unique_names.size()) == unique_count);
-  return result;
+  result.pop_back();  // kill last new line
+  result.pop_back();  // kill last comma
+  return result + "]";
 }
 
 /*!
@@ -447,9 +449,14 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
       auto file_text = obj.linked_data.print_disassembly();
       auto file_name = combine_path(output_dir, obj.record.to_unique_name() + ".func");
-      total_bytes += file_text.size();
+
+      auto json_asm_text = obj.linked_data.to_asm_json();
+      auto json_asm_file_name = combine_path(output_dir, obj.to_unique_name() + "_asm.json");
+      file_util::write_text_file(json_asm_file_name, json_asm_text);
+
+      total_bytes += file_text.size() + json_asm_text.size();
       file_util::write_text_file(file_name, file_text);
-      total_files++;
+      total_files += 2;
     }
   });
 
@@ -655,6 +662,7 @@ void ObjectFileDB::analyze_functions() {
               assert(false);
             }
             // GOOD!
+            func.type = kv->second;
             spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
                          kv->second.print());
             func.run_type_analysis(kv->second, dts, data.linked_data);
