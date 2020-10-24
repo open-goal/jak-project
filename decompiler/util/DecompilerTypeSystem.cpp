@@ -76,3 +76,40 @@ std::string DecompilerTypeSystem::dump_symbol_types() {
   }
   return result;
 }
+
+void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
+  auto kv = type_flags.find(name);
+  if (kv != type_flags.end()) {
+    printf("duplicated type flags for %s, was 0x%lx, now 0x%lx\n", name.c_str(), kv->second, flags);
+    throw std::runtime_error("duplicated type flags!");
+  }
+  type_flags[name] = flags;
+}
+
+void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::string& parent) {
+  auto kv = type_parents.find(child);
+  if (kv != type_parents.end()) {
+    printf("duplicated type parents for %s was %s now %s\n", child.c_str(), kv->second.c_str(),
+           parent.c_str());
+    throw std::runtime_error("duplicated type flags!");
+  }
+  type_parents[child] = parent;
+}
+
+std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string& child) const {
+  auto kv_tp = type_parents.find(child);
+  if (kv_tp != type_parents.end()) {
+    return kv_tp->second;
+  }
+
+  return "UNKNOWN";
+}
+
+bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) const {
+  auto kv = type_flags.find(type);
+  if (kv != type_flags.end()) {
+    *dest = kv->second;
+    return true;
+  }
+  return false;
+}

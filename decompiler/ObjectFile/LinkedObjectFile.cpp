@@ -794,8 +794,11 @@ std::string LinkedObjectFile::print_disassembly() {
 /*!
  * Hacky way to get a GOAL string object
  */
-std::string LinkedObjectFile::get_goal_string(int seg, int word_idx) {
-  std::string result = "\"";
+std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_quotes) {
+  std::string result;
+  if (with_quotes) {
+    result += "\"";
+  }
   // next should be the size
   if (word_idx + 1 >= int(words_by_seg[seg].size())) {
     return "invalid string!\n";
@@ -819,7 +822,10 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx) {
     memcpy(cword, &word.data, 4);
     result += cword[byte_offset];
   }
-  return result + "\"";
+  if (with_quotes) {
+    result += "\"";
+  }
+  return result;
 }
 
 /*!
@@ -997,4 +1003,16 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
   }
 
   return result;
+}
+
+u32 LinkedObjectFile::read_data_word(const Label& label) {
+  assert(0 == (label.offset % 4));
+  auto& word = words_by_seg.at(label.target_segment).at(label.offset / 4);
+  assert(word.kind == LinkedWord::Kind::PLAIN_DATA);
+  return word.data;
+}
+
+std::string LinkedObjectFile::get_goal_string_by_label(const Label& label) {
+  assert(0 == (label.offset % 4));
+  return get_goal_string(label.target_segment, (label.offset / 4) - 1, false);
 }
