@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
     dgos.push_back(combine_path(in_folder, dgo_name));
   }
 
-  ObjectFileDB db(dgos);
+  ObjectFileDB db(dgos, get_config().obj_file_name_map_file);
   file_util::write_text_file(combine_path(out_folder, "dgo.txt"), db.generate_dgo_listing());
   file_util::write_text_file(combine_path(out_folder, "obj.txt"), db.generate_obj_listing());
 

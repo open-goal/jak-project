@@ -2,7 +2,6 @@
 #include "third-party/json.hpp"
 #include "util/FileIO.h"
 #include "common/util/FileUtil.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 Config gConfig;
 
@@ -17,6 +16,9 @@ void set_config(const std::string& path_to_config_file) {
 
   gConfig.game_version = cfg.at("game_version").get<int>();
   gConfig.dgo_names = cfg.at("dgo_names").get<std::vector<std::string>>();
+  if (cfg.contains("obj_file_name_map_file")) {
+    gConfig.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
+  }
   gConfig.write_disassembly = cfg.at("write_disassembly").get<bool>();
   gConfig.write_hexdump = cfg.at("write_hexdump").get<bool>();
   gConfig.write_scripts = cfg.at("write_scripts").get<bool>();

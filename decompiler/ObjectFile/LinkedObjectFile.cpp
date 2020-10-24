@@ -12,6 +12,7 @@
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
 #include "third-party/json.hpp"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 /*!
  * Set the number of segments in this object file.
@@ -505,7 +506,7 @@ void LinkedObjectFile::process_fp_relative_links() {
   }
 }
 
-std::string LinkedObjectFile::to_asm_json() {
+std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
   nlohmann::json data;
   std::vector<nlohmann::json::object_t> functions;
 
@@ -515,7 +516,10 @@ std::string LinkedObjectFile::to_asm_json() {
       auto& func = functions_by_seg.at(seg).at(fi);
       auto fname = func.guessed_name.to_string();
       if (functions_seen.find(fname) != functions_seen.end()) {
-        printf("duplicated %s\n", fname.c_str());  // todo - this needs fixing
+        spdlog::warn(
+            "Function {} appears multiple times in the same object file {} - it cannot be uniquely "
+            "referenced from config",
+            func.guessed_name.to_string(), obj_file_name);
         functions_seen[fname]++;
         fname += "-v" + std::to_string(functions_seen[fname]);
       } else {
@@ -527,6 +531,7 @@ std::string LinkedObjectFile::to_asm_json() {
       f["type"] = func.type.print();
       f["segment"] = seg;
       f["warnings"] = func.warnings;
+      f["parent_object"] = obj_file_name;
       std::vector<nlohmann::json::object_t> ops;
 
       for (int i = 1; i < func.end_word - func.start_word; i++) {
@@ -569,6 +574,179 @@ std::string LinkedObjectFile::to_asm_json() {
   return data.dump();
 }
 
+std::string LinkedObjectFile::print_function_disassembly(Function& func,
+                                                         int seg,
+                                                         bool write_hex,
+                                                         const std::string& extra_name) {
+  std::string result;
+  result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+  result += "; .function " + func.guessed_name.to_string() + " " + extra_name + "\n";
+  result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+  result += func.prologue.to_string(2) + "\n";
+  if (!func.warnings.empty()) {
+    result += "Warnings: " + func.warnings + "\n";
+  }
+
+  // print each instruction in the function.
+  bool in_delay_slot = false;
+
+  for (int i = 1; i < func.end_word - func.start_word; i++) {
+    auto label_id = get_label_at(seg, (func.start_word + i) * 4);
+    if (label_id != -1) {
+      result += labels.at(label_id).name + ":\n";
+    }
+
+    for (int j = 1; j < 4; j++) {
+      //          assert(get_label_at(seg, (func.start_word + i)*4 + j) == -1);
+      if (get_label_at(seg, (func.start_word + i) * 4 + j) != -1) {
+        result += "BAD OFFSET LABEL: ";
+        result += labels.at(get_label_at(seg, (func.start_word + i) * 4 + j)).name + "\n";
+        assert(false);
+      }
+    }
+
+    auto& instr = func.instructions.at(i);
+    std::string line = "    " + instr.to_string(*this);
+
+    if (write_hex) {
+      if (line.length() < 60) {
+        line.append(60 - line.length(), ' ');
+      }
+      result += line;
+      result += " ;;";
+      auto& word = words_by_seg[seg].at(func.start_word + i);
+      append_word_to_string(result, word);
+    } else {
+      // print basic op stuff
+      if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
+        if (line.length() < 30) {
+          line.append(30 - line.length(), ' ');
+        }
+        line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
+        for (int iidx = 0; iidx < instr.n_src; iidx++) {
+          if (instr.get_src(iidx).is_label()) {
+            auto lab = labels.at(instr.get_src(iidx).get_label());
+            if (is_string(lab.target_segment, lab.offset)) {
+              line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
+            }
+          }
+        }
+
+        // print type map
+        if (func.has_typemaps()) {
+          if (line.length() < 60) {
+            line.append(60 - line.length(), ' ');
+          }
+          line += " tm: ";
+          auto& tm = func.get_typemap_by_instr_idx(i);
+          bool added = false;
+          for (auto reg_kind : {Reg::RegisterKind::GPR, Reg::RegisterKind::FPR}) {
+            for (int reg_idx = 0; reg_idx < 32; reg_idx++) {
+              auto gpr = Register(reg_kind, reg_idx);
+              auto kv = tm.find(gpr);
+              if (kv != tm.end()) {
+                added = true;
+                line += fmt::format("{}: {}, ", gpr.to_charp(), kv->second.print());
+              }
+            }
+          }
+
+          if (added) {
+            line.pop_back();
+            line.pop_back();
+          }
+        }
+      }
+      result += line + "\n";
+    }
+
+    if (in_delay_slot) {
+      result += "\n";
+      in_delay_slot = false;
+    }
+
+    if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
+      in_delay_slot = true;
+    }
+  }
+  result += "\n";
+  //
+  //      int bid = 0;
+  //      for(auto& bblock : func.basic_blocks) {
+  //        result += "BLOCK " + std::to_string(bid++)+ "\n";
+  //        for(int i = bblock.start_word; i < bblock.end_word; i++) {
+  //          if(i >= 0 && i < func.instructions.size()) {
+  //            result += func.instructions.at(i).to_string(*this) + "\n";
+  //          } else {
+  //            result += "BAD BBLOCK INSTR ID " + std::to_string(i);
+  //          }
+  //        }
+  //      }
+
+  // hack
+  if (func.cfg && !func.cfg->is_fully_resolved()) {
+    result += func.cfg->to_dot();
+    result += "\n";
+  }
+  if (func.cfg) {
+    result += func.cfg->to_form_string() + "\n";
+
+    // To debug block stuff.
+    /*
+    int bid = 0;
+    for(auto& block : func.basic_blocks) {
+      in_delay_slot = false;
+      result += "B" + std::to_string(bid++) + "\n";
+      for(auto i = block.start_word; i < block.end_word; i++) {
+        auto label_id = get_label_at(seg, (func.start_word + i) * 4);
+        if (label_id != -1) {
+          result += labels.at(label_id).name + ":\n";
+        }
+        auto& instr = func.instructions.at(i);
+        result += "    " + instr.to_string(*this) + "\n";
+        if (in_delay_slot) {
+          result += "\n";
+          in_delay_slot = false;
+        }
+
+        if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
+          in_delay_slot = true;
+        }
+      }
+    }
+     */
+  }
+
+  if (func.ir) {
+    result += ";; ir\n";
+    result += func.ir->print(*this);
+  }
+
+  result += "\n\n\n";
+  return result;
+}
+
+std::string LinkedObjectFile::print_asm_function_disassembly(const std::string& my_name) {
+  std::string result;
+  for (int seg = segments; seg-- > 0;) {
+    bool got_in_seg = false;
+    for (auto& func : functions_by_seg.at(seg)) {
+      if (func.suspected_asm) {
+        if (!got_in_seg) {
+          result += ";------------------------------------------\n;  ";
+          result += segment_names[seg];
+          result += " of " + my_name;
+          result += "\n;------------------------------------------\n\n";
+          got_in_seg = true;
+        }
+        result += print_function_disassembly(func, seg, false, my_name);
+      }
+    }
+  }
+
+  return result;
+}
+
 /*!
  * Print disassembled functions and data segments.
  */
@@ -585,150 +763,7 @@ std::string LinkedObjectFile::print_disassembly() {
 
     // functions
     for (auto& func : functions_by_seg.at(seg)) {
-      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-      result += "; .function " + func.guessed_name.to_string() + "\n";
-      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-      result += func.prologue.to_string(2) + "\n";
-      if (!func.warnings.empty()) {
-        result += "Warnings: " + func.warnings + "\n";
-      }
-
-      // print each instruction in the function.
-      bool in_delay_slot = false;
-
-      for (int i = 1; i < func.end_word - func.start_word; i++) {
-        auto label_id = get_label_at(seg, (func.start_word + i) * 4);
-        if (label_id != -1) {
-          result += labels.at(label_id).name + ":\n";
-        }
-
-        for (int j = 1; j < 4; j++) {
-          //          assert(get_label_at(seg, (func.start_word + i)*4 + j) == -1);
-          if (get_label_at(seg, (func.start_word + i) * 4 + j) != -1) {
-            result += "BAD OFFSET LABEL: ";
-            result += labels.at(get_label_at(seg, (func.start_word + i) * 4 + j)).name + "\n";
-            assert(false);
-          }
-        }
-
-        auto& instr = func.instructions.at(i);
-        std::string line = "    " + instr.to_string(*this);
-
-        if (write_hex) {
-          if (line.length() < 60) {
-            line.append(60 - line.length(), ' ');
-          }
-          result += line;
-          result += " ;;";
-          auto& word = words_by_seg[seg].at(func.start_word + i);
-          append_word_to_string(result, word);
-        } else {
-          // print basic op stuff
-          if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
-            if (line.length() < 30) {
-              line.append(30 - line.length(), ' ');
-            }
-            line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
-            for (int iidx = 0; iidx < instr.n_src; iidx++) {
-              if (instr.get_src(iidx).is_label()) {
-                auto lab = labels.at(instr.get_src(iidx).get_label());
-                if (is_string(lab.target_segment, lab.offset)) {
-                  line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
-                }
-              }
-            }
-
-            // print type map
-            if (func.has_typemaps()) {
-              if (line.length() < 60) {
-                line.append(60 - line.length(), ' ');
-              }
-              line += " tm: ";
-              auto& tm = func.get_typemap_by_instr_idx(i);
-              bool added = false;
-              for (auto reg_kind : {Reg::RegisterKind::GPR, Reg::RegisterKind::FPR}) {
-                for (int reg_idx = 0; reg_idx < 32; reg_idx++) {
-                  auto gpr = Register(reg_kind, reg_idx);
-                  auto kv = tm.find(gpr);
-                  if (kv != tm.end()) {
-                    added = true;
-                    line += fmt::format("{}: {}, ", gpr.to_charp(), kv->second.print());
-                  }
-                }
-              }
-
-              if (added) {
-                line.pop_back();
-                line.pop_back();
-              }
-            }
-          }
-          result += line + "\n";
-        }
-
-        if (in_delay_slot) {
-          result += "\n";
-          in_delay_slot = false;
-        }
-
-        if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
-          in_delay_slot = true;
-        }
-      }
-      result += "\n";
-      //
-      //      int bid = 0;
-      //      for(auto& bblock : func.basic_blocks) {
-      //        result += "BLOCK " + std::to_string(bid++)+ "\n";
-      //        for(int i = bblock.start_word; i < bblock.end_word; i++) {
-      //          if(i >= 0 && i < func.instructions.size()) {
-      //            result += func.instructions.at(i).to_string(*this) + "\n";
-      //          } else {
-      //            result += "BAD BBLOCK INSTR ID " + std::to_string(i);
-      //          }
-      //        }
-      //      }
-
-      // hack
-      if (func.cfg && !func.cfg->is_fully_resolved()) {
-        result += func.cfg->to_dot();
-        result += "\n";
-      }
-      if (func.cfg) {
-        result += func.cfg->to_form_string() + "\n";
-
-        // To debug block stuff.
-        /*
-        int bid = 0;
-        for(auto& block : func.basic_blocks) {
-          in_delay_slot = false;
-          result += "B" + std::to_string(bid++) + "\n";
-          for(auto i = block.start_word; i < block.end_word; i++) {
-            auto label_id = get_label_at(seg, (func.start_word + i) * 4);
-            if (label_id != -1) {
-              result += labels.at(label_id).name + ":\n";
-            }
-            auto& instr = func.instructions.at(i);
-            result += "    " + instr.to_string(*this) + "\n";
-            if (in_delay_slot) {
-              result += "\n";
-              in_delay_slot = false;
-            }
-
-            if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
-              in_delay_slot = true;
-            }
-          }
-        }
-         */
-      }
-
-      if (func.ir) {
-        result += ";; ir\n";
-        result += func.ir->print(*this);
-      }
-
-      result += "\n\n\n";
+      result += print_function_disassembly(func, seg, write_hex, "");
     }
 
     // print data

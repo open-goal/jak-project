@@ -26,6 +26,9 @@ struct FunctionName {
   int method_id = -1;         // only applicable for METHOD
   int unique_id = -1;
 
+  int id_in_object = -1;
+  std::string object_name;
+
   std::string to_string() const {
     switch (kind) {
       case FunctionKind::GLOBAL:
@@ -35,7 +38,7 @@ struct FunctionName {
       case FunctionKind::TOP_LEVEL_INIT:
         return "(top-level-login)";
       case FunctionKind::UNIDENTIFIED:
-        return "(anon-function " + std::to_string(unique_id) + ")";
+        return "(anon-function " + std::to_string(id_in_object) + " " + object_name + ")";
       default:
         throw std::runtime_error("Unsupported FunctionKind");
     }
@@ -54,10 +57,6 @@ struct FunctionName {
     kind = FunctionKind::METHOD;
     type_name = std::move(tn);
     method_id = id;
-  }
-
-  bool expected_unique() const {
-    return kind == FunctionKind::GLOBAL || kind == FunctionKind::METHOD;
   }
 };
 
