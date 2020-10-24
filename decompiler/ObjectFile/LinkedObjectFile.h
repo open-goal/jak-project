@@ -62,6 +62,11 @@ class LinkedObjectFile {
   bool has_any_functions();
   void append_word_to_string(std::string& dest, const LinkedWord& word) const;
   std::string to_asm_json(const std::string& obj_file_name);
+  std::string print_function_disassembly(Function& func,
+                                         int seg,
+                                         bool write_hex,
+                                         const std::string& extra_name);
+  std::string print_asm_function_disassembly(const std::string& my_name);
 
   struct Stats {
     uint32_t total_code_bytes = 0;

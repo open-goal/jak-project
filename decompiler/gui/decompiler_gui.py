@@ -208,7 +208,7 @@ class ObjectFileView(QDialog):
 		self.asm_pane.setModel(asm_model)
 		self.warnings_label.setText(func["warnings"])
 		self.asm_display.setPlainText("")
-		self.function_header_label.setText("{}, type: {}".format(name, func["type"]))
+		self.function_header_label.setText("{}, type: {}\nfunc: {} obj: {}".format(name, func["type"], func["name"], func["parent_object"]))
 
 	def basic_op_clicked(self, item):
 		text = ""
@@ -227,6 +227,9 @@ class ObjectFileView(QDialog):
 
 		for i in range(asm_idx, self.basic_id_to_asm[item.row() + 1]):
 			text += self.functions_by_name[self.current_function]["asm"][i]["asm_op"] + "\n"
+		op = self.functions_by_name[self.current_function]["asm"][asm_idx]
+		if "referenced_string" in op:
+			text += op["referenced_string"]
 		self.asm_display.setPlainText(text)
 		self.asm_display.setFont(get_monospaced_font())
 		self.asm_pane.setCurrentIndex(self.asm_pane.model().index(asm_idx, 0))

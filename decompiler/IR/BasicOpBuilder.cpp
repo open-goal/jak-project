@@ -1879,6 +1879,9 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
         case InstructionKind::PCPYH:
         case InstructionKind::PINTEH:
 
+        case InstructionKind::MTDAB:
+        case InstructionKind::MTDABM:
+
           // 128 bit integer
           //        case InstructionKind::LQ:
           //        case InstructionKind::SQ:

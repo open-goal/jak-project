@@ -1,6 +1,7 @@
 #include <cassert>
 #include <vector>
 #include "Function.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -89,8 +90,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
       // support
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
-        printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
-               guessed_name.to_string().c_str(), instr.to_string(file).c_str());
+        spdlog::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
+                     guessed_name.to_string(), instr.to_string(file));
         warnings += "Flagged as ASM function because of " + instr.to_string(file) + "\n";
         suspected_asm = true;
         return;

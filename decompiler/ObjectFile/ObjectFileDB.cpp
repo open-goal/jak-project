@@ -509,9 +509,12 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
+  std::string asm_functions;
+
   for_each_obj([&](ObjectFileData& obj) {
     if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
       auto file_text = obj.linked_data.print_disassembly();
+      asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
       auto file_name = combine_path(output_dir, obj.to_unique_name() + ".func");
 
       auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
@@ -524,12 +527,15 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     }
   });
 
+  total_bytes += asm_functions.size();
+  total_files++;
+  file_util::write_text_file(combine_path(output_dir, "asm_functions.func"), asm_functions);
+
   spdlog::info("Wrote functions dumps:");
   spdlog::info(" Total {} files", total_files);
   spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
   spdlog::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
                total_bytes / ((1u << 20u) * timer.getSeconds()));
-  // printf("\n");
 }
 
 /*!
@@ -628,20 +634,26 @@ void ObjectFileDB::analyze_functions() {
     std::unordered_map<std::string, std::unordered_set<std::string>> duplicated_functions;
 
     int uid = 1;
-    for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-      (void)segment_id;
-      func.guessed_name.unique_id = uid++;
-      auto name = func.guessed_name.to_string();
+    for_each_obj([&](ObjectFileData& data) {
+      int func_in_obj = 0;
+      for (int segment_id = 0; segment_id < int(data.linked_data.segments); segment_id++) {
+        for (auto& func : data.linked_data.functions_by_seg.at(segment_id)) {
+          func.guessed_name.unique_id = uid++;
+          func.guessed_name.id_in_object = func_in_obj++;
+          func.guessed_name.object_name = data.to_unique_name();
+          auto name = func.guessed_name.to_string();
 
-      if (unique_names.find(name) != unique_names.end()) {
-        duplicated_functions[name].insert(data.to_unique_name());
-      }
+          if (unique_names.find(name) != unique_names.end()) {
+            duplicated_functions[name].insert(data.to_unique_name());
+          }
 
-      unique_names.insert(name);
+          unique_names.insert(name);
 
-      if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
-        func.warnings += "flagged as asm by config\n";
-        func.suspected_asm = true;
+          if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
+            func.warnings += "flagged as asm by config\n";
+            func.suspected_asm = true;
+          }
+        }
       }
     });
 
@@ -687,10 +699,12 @@ void ObjectFileDB::analyze_functions() {
 
       total_functions++;
       if (!func.suspected_asm) {
-        // run analysis
-
         // first, find the prologue/epilogue
         func.analyze_prologue(data.linked_data);
+      }
+
+      if (!func.suspected_asm) {
+        // run analysis
 
         // build a control flow graph
         func.cfg = build_cfg(data.linked_data, segment_id, func);
@@ -713,6 +727,9 @@ void ObjectFileDB::analyze_functions() {
 
         if (func.cfg->is_fully_resolved()) {
           resolved_cfg_functions++;
+        } else {
+          spdlog::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
+                       data.to_unique_name());
         }
 
         // type analysis
