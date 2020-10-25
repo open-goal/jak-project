@@ -406,6 +406,7 @@ int identify_basic_field(int idx,
                          LinkedObjectFile& file,
                          TypeInspectorResult* result,
                          FieldPrint& print_info) {
+  (void)file;
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
   assert(load_info.size == 4);
   assert(load_info.kind == IR_Load::UNSIGNED || load_info.kind == IR_Load::SIGNED);
@@ -429,6 +430,7 @@ int identify_pointer_field(int idx,
                            LinkedObjectFile& file,
                            TypeInspectorResult* result,
                            FieldPrint& print_info) {
+  (void)file;
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
   assert(load_info.size == 4);
   assert(load_info.kind == IR_Load::UNSIGNED);
@@ -516,6 +518,7 @@ int identify_struct_not_inline_field(int idx,
                                      LinkedObjectFile& file,
                                      TypeInspectorResult* result,
                                      FieldPrint& print_info) {
+  (void)file;
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
 
   if (!(load_info.size == 4 && load_info.kind == IR_Load::UNSIGNED)) {
@@ -557,6 +560,7 @@ int identify_int_field(int idx,
                        LinkedObjectFile& file,
                        TypeInspectorResult* result,
                        FieldPrint& print_info) {
+  (void)file;
   auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
 
   std::string field_type_name;
@@ -795,9 +799,9 @@ std::string TypeInspectorResult::print_as_deftype() {
     result.append("\n  ");
   }
 
-  if(type_method_count > 9) {
+  if (type_method_count > 9) {
     result.append("(:methods\n    ");
-    for(int i = 9; i < type_method_count; i++) {
+    for (int i = 9; i < type_method_count; i++) {
       result.append(fmt::format("(dummy-{} () none {})\n    ", i, i));
     }
     result.append(")\n  ");
