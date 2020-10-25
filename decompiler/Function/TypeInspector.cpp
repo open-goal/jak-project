@@ -1,3 +1,4 @@
+#include "decompiler/config.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "TypeInspector.h"
 #include "Function.h"
@@ -256,6 +257,61 @@ int get_label_id_of_set(IR* ir) {
   return dynamic_cast<IR_StaticAddress*>(dynamic_cast<IR_Set*>(ir)->src.get())->label_id;
 }
 
+bool is_set_shift(IR* ir) {
+  auto as_set = dynamic_cast<IR_Set*>(ir);
+  if (as_set) {
+    auto as_math = dynamic_cast<IR_IntMath2*>(as_set->src.get());
+    if (as_math && (as_math->kind == IR_IntMath2::LEFT_SHIFT ||
+                    as_math->kind == IR_IntMath2::RIGHT_SHIFT_LOGIC ||
+                    as_math->kind == IR_IntMath2::RIGHT_SHIFT_ARITH)) {
+      return true;
+    }
+  }
+
+  auto as_asm = dynamic_cast<IR_AsmOp*>(ir);
+  return as_asm && as_asm->name == "sllv";
+}
+
+bool get_ptr_offset_constant_nonzero(IR_IntMath2* math, Register base, int* result) {
+  if (!is_reg(math->arg0.get(), base)) {
+    return false;
+  }
+
+  auto as_int = dynamic_cast<IR_IntegerConstant*>(math->arg1.get());
+  if (!as_int) {
+    return false;
+  }
+
+  *result = as_int->value;
+  return true;
+}
+
+bool get_ptr_offset_zero(IR_IntMath2* math, Register base, int* result) {
+  if (!is_reg(math->arg0.get(), make_gpr(Reg::R0)) || !is_reg(math->arg1.get(), base)) {
+    return false;
+  }
+  *result = 0;
+  return true;
+}
+
+bool get_ptr_offset(IR* ir, Register dst, Register base, int* result) {
+  auto as_set = dynamic_cast<IR_Set*>(ir);
+  if (!as_set) {
+    return false;
+  }
+
+  if (!is_reg(as_set->dst.get(), dst)) {
+    return false;
+  }
+
+  auto as_math = dynamic_cast<IR_IntMath2*>(as_set->src.get());
+  if (!as_math) {
+    return false;
+  }
+  return get_ptr_offset_constant_nonzero(as_math, base, result) ||
+         get_ptr_offset_zero(as_math, base, result);
+}
+
 bool is_weird(Function& function, LinkedObjectFile& file, TypeInspectorResult* result) {
   if (function.basic_blocks.size() > 1) {
     result->warnings += " too many basic blocks";
@@ -345,6 +401,157 @@ bool is_weird(Function& function, LinkedObjectFile& file, TypeInspectorResult* r
   return false;
 }
 
+int identify_basic_field(int idx,
+                         Function& function,
+                         LinkedObjectFile& file,
+                         TypeInspectorResult* result,
+                         FieldPrint& print_info) {
+  auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
+  assert(load_info.size == 4);
+  assert(load_info.kind == IR_Load::UNSIGNED || load_info.kind == IR_Load::SIGNED);
+
+  if (load_info.kind == IR_Load::SIGNED) {
+    result->warnings += "field " + print_info.field_name + " is a basic loaded with a signed load ";
+  }
+
+  int offset = load_info.offset;
+  if (result->is_basic) {
+    offset += BASIC_OFFSET;
+  }
+
+  Field field(print_info.field_name, TypeSpec("basic"), offset);
+  result->fields_of_type.push_back(field);
+  return idx;
+}
+
+int identify_pointer_field(int idx,
+                           Function& function,
+                           LinkedObjectFile& file,
+                           TypeInspectorResult* result,
+                           FieldPrint& print_info) {
+  auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
+  assert(load_info.size == 4);
+  assert(load_info.kind == IR_Load::UNSIGNED);
+
+  int offset = load_info.offset;
+  if (result->is_basic) {
+    offset += BASIC_OFFSET;
+  }
+
+  Field field(print_info.field_name, TypeSpec("pointer"), offset);
+  result->fields_of_type.push_back(field);
+  return idx;
+}
+
+int identify_array_field(int idx,
+                         Function& function,
+                         LinkedObjectFile& file,
+                         TypeInspectorResult* result,
+                         FieldPrint& print_info) {
+  auto& get_op = function.basic_ops.at(idx++);
+  int offset = 0;
+  if (!get_ptr_offset(get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP), &offset)) {
+    printf("bad get ptr offset %s\n", get_op->print(file).c_str());
+    assert(false);
+  }
+  if (result->is_basic) {
+    offset += BASIC_OFFSET;
+  }
+
+  Field field(print_info.field_name, TypeSpec("UNKNOWN"), offset);
+  if (print_info.array_size) {
+    field.set_array(print_info.array_size);
+  } else {
+    field.set_dynamic();
+  }
+  result->fields_of_type.push_back(field);
+  return idx;
+}
+
+int identify_float_field(int idx,
+                         Function& function,
+                         LinkedObjectFile& file,
+                         TypeInspectorResult* result,
+                         FieldPrint& print_info) {
+  auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
+  assert(load_info.size == 4);
+  assert(load_info.kind == IR_Load::FLOAT);
+
+  auto& float_move = function.basic_ops.at(idx++);
+  if (!is_reg_reg_move(float_move.get(), make_gpr(Reg::A2), make_fpr(0))) {
+    printf("bad float move: %s\n", float_move->print(file).c_str());
+    assert(false);
+  }
+
+  std::string type;
+  switch (print_info.format) {
+    case 'f':
+      type = "float";
+      break;
+    case 'm':
+      type = "meters";
+      break;
+    case 'r':
+      type = "deg";
+      break;
+    case 'X':
+      type = "float";
+      result->warnings += "field " + print_info.field_name + " is a float printed as hex? ";
+      break;
+    default:
+      assert(false);
+  }
+  int offset = load_info.offset;
+  if (result->is_basic) {
+    offset += BASIC_OFFSET;
+  }
+
+  Field field(print_info.field_name, TypeSpec(type), offset);
+  result->fields_of_type.push_back(field);
+  return idx;
+}
+
+int identify_struct_not_inline_field(int idx,
+                                     Function& function,
+                                     LinkedObjectFile& file,
+                                     TypeInspectorResult* result,
+                                     FieldPrint& print_info) {
+  auto load_info = get_load_info_from_set(function.basic_ops.at(idx++).get());
+
+  if (!(load_info.size == 4 && load_info.kind == IR_Load::UNSIGNED)) {
+    result->warnings += "field " + print_info.field_type_name + " is likely a value type";
+  }
+  int offset = load_info.offset;
+  if (result->is_basic) {
+    offset += BASIC_OFFSET;
+  }
+
+  Field field(print_info.field_name, TypeSpec(print_info.field_type_name), offset);
+  result->fields_of_type.push_back(field);
+  return idx;
+}
+
+int identify_struct_inline_field(int idx,
+                                 Function& function,
+                                 LinkedObjectFile& file,
+                                 TypeInspectorResult* result,
+                                 FieldPrint& print_info) {
+  auto& get_op = function.basic_ops.at(idx++);
+  int offset = 0;
+  if (!get_ptr_offset(get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP), &offset)) {
+    printf("bad get ptr offset %s\n", get_op->print(file).c_str());
+    assert(false);
+  }
+  if (result->is_basic) {
+    offset += BASIC_OFFSET;
+  }
+
+  Field field(print_info.field_name, TypeSpec(print_info.field_type_name), offset);
+  field.set_inline();
+  result->fields_of_type.push_back(field);
+  return idx;
+}
+
 int identify_int_field(int idx,
                        Function& function,
                        LinkedObjectFile& file,
@@ -382,8 +589,16 @@ int identify_int_field(int idx,
   }
 
   if (print_info.format == 'e') {
-    field_type_name = "seconds";
-    assert(load_info.kind == IR_Load::SIGNED);
+    switch (load_info.kind) {
+      case IR_Load::SIGNED:
+        field_type_name = "sseconds";
+        break;
+      case IR_Load::UNSIGNED:
+        field_type_name = "useconds";
+        break;
+      default:
+        assert(false);
+    }
     assert(load_info.size == 8);
   }
 
@@ -427,6 +642,34 @@ int detect(int idx, Function& function, LinkedObjectFile& file, TypeInspectorRes
       info.field_type_name.empty()) {
     idx = identify_int_field(idx, function, file, result, info);
     // it's a load!
+  } else if (is_get_load(first_get_op.get(), make_fpr(0), make_gpr(Reg::GP)) &&
+             (info.format == 'f' || info.format == 'm' || info.format == 'r' ||
+              info.format == 'X') &&
+             !info.has_array && info.field_type_name.empty()) {
+    idx = identify_float_field(idx, function, file, result, info);
+  } else if (is_get_load(first_get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP)) &&
+             info.format == 'A' && !info.has_array && info.field_type_name.empty()) {
+    idx = identify_basic_field(idx, function, file, result, info);
+  } else if (is_get_load(first_get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP)) &&
+             info.format == 'X' && !info.has_array && info.field_type_name.empty()) {
+    idx = identify_pointer_field(idx, function, file, result, info);
+  } else if (info.has_array && (info.format == 'X' || info.format == 'P') &&
+             info.field_type_name.empty()) {
+    idx = identify_array_field(idx, function, file, result, info);
+  } else if (!info.has_array && (info.format == 'X' || info.format == 'P') &&
+             !info.field_type_name.empty()) {
+    // structure.
+    if (is_get_load(first_get_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP))) {
+      // not inline
+      idx = identify_struct_not_inline_field(idx, function, file, result, info);
+    } else {
+      idx = identify_struct_inline_field(idx, function, file, result, info);
+    }
+  }
+
+  else if (is_set_shift(first_get_op.get())) {
+    result->warnings += "likely a bitfield type";
+    return -1;
   } else {
     printf("couldn't do %s, %s\n", str.c_str(), first_get_op->print(file).c_str());
     return -1;
@@ -446,9 +689,7 @@ TypeInspectorResult inspect_inspect_method(Function& inspect,
                                            const std::string& type_name,
                                            DecompilerTypeSystem& dts,
                                            LinkedObjectFile& file) {
-  printf("run on %s\n", type_name.c_str());
   TypeInspectorResult result;
-  // todo, fill out size and flag stuff.
   TypeFlags flags;
   flags.flag = 0;
   dts.lookup_flags(type_name, &flags.flag);
@@ -460,8 +701,9 @@ TypeInspectorResult inspect_inspect_method(Function& inspect,
   result.type_heap_base = flags.heap_base;
   assert(flags.pad == 0);
 
-  if (is_weird(inspect, file, &result)) {
-    printf("was weird: %s\n", result.warnings.c_str());
+  auto& bad_set = get_config().bad_inspect_types;
+  if (is_weird(inspect, file, &result) || bad_set.find(type_name) != bad_set.end()) {
+    // printf("was weird: %s\n", result.warnings.c_str());
     return result;
   }
   int idx = 7;
@@ -493,7 +735,7 @@ std::string TypeInspectorResult::print_as_deftype() {
 
     int mods = 0;
     // mods are array size, :inline, :dynamic
-    if (field.is_array()) {
+    if (field.is_array() && !field.is_dynamic()) {
       mods += std::to_string(field.array_size()).size();
     }
 
@@ -521,7 +763,7 @@ std::string TypeInspectorResult::print_as_deftype() {
     result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
 
     std::string mods;
-    if (field.is_array()) {
+    if (field.is_array() && !field.is_dynamic()) {
       mods += std::to_string(field.array_size());
       mods += " ";
     }
@@ -536,7 +778,7 @@ std::string TypeInspectorResult::print_as_deftype() {
       mods += " ";
     }
     result.append(mods);
-    result.append(longest_mods - int(mods.size()), ' ');
+    result.append(longest_mods - int(mods.size() - 1), ' ');
 
     result.append(":ofset-assert ");
     result.append(std::to_string(field.offset()));
@@ -546,7 +788,13 @@ std::string TypeInspectorResult::print_as_deftype() {
 
   result.append(fmt::format("  :method-count-assert {}\n", type_method_count));
   result.append(fmt::format("  :size-assert         #x{:x}\n", type_size));
-  result.append(fmt::format("  :flag-assert         #x{:x}\n  )\n", flags));
+  result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags));
+  if (!warnings.empty()) {
+    result.append(";; ");
+    result.append(warnings);
+    result.append("\n  ");
+  }
+  result.append(")\n");
 
   return result;
 }

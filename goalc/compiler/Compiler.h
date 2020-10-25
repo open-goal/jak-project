@@ -31,6 +31,7 @@ class Compiler {
   std::vector<std::string> run_test(const std::string& source_code);
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
+  void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
 
  private:
   void init_logger();
@@ -104,6 +105,7 @@ class Compiler {
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
+  bool m_throw_on_define_extern_redefinition = false;
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);
   bool is_float(const TypeSpec& ts);

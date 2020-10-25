@@ -33,4 +33,9 @@ void set_config(const std::string& path_to_config_file) {
   for (const auto& x : asm_functions_by_name) {
     gConfig.asm_functions_by_name.insert(x);
   }
+
+  auto bad_inspect = cfg.at("types_with_bad_inspect_methods").get<std::vector<std::string>>();
+  for (const auto& x : bad_inspect) {
+    gConfig.bad_inspect_types.insert(x);
+  }
 }

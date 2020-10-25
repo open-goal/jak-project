@@ -689,10 +689,11 @@ void ObjectFileDB::analyze_functions() {
   int successful_type_analysis = 0;
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
+
   if (get_config().find_basic_blocks) {
     timer.start();
     int total_basic_blocks = 0;
-    for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
+    for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
       //      printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
       //             data.to_unique_name().c_str());
       auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
@@ -722,9 +723,8 @@ void ObjectFileDB::analyze_functions() {
 
         if (func.is_inspect_method) {
           auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
-          if (result.success) {
-            printf("%s\n", result.print_as_deftype().c_str());
-          }
+          all_type_defs += ";; " + data.to_unique_name() + "\n";
+          all_type_defs += result.print_as_deftype() + "\n";
         }
 
         // Combine basic ops + CFG to build a nested IR

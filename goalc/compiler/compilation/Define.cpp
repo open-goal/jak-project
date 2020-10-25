@@ -74,6 +74,10 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
         "[Warning] define-extern has redefined the type of symbol %s\npreviously: %s\nnow: %s\n",
         symbol_string(sym).c_str(), existing_type->second.print().c_str(),
         new_type.print().c_str());
+
+    if (m_throw_on_define_extern_redefinition) {
+      throw_compile_error(form, "define-extern redefinition");
+    }
   }
 
   if (new_type == m_ts.make_typespec("type")) {

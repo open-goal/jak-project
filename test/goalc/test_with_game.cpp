@@ -132,3 +132,8 @@ TEST_F(WithGameTests, All) {
   runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
                          get_test_pass_string("new-static-basic", 9));
 }
+
+TEST_F(WithGameTests, TypeConsistency) {
+  compiler.enable_throw_on_redefines();
+  compiler.run_test_no_load("decompiler/config/all-types.gc");
+}

@@ -1,6 +1,7 @@
 #include "DecompilerTypeSystem.h"
 #include "common/goos/Reader.h"
 #include "common/type_system/deftype.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 DecompilerTypeSystem::DecompilerTypeSystem() {
   ts.add_builtin_types();
@@ -80,8 +81,11 @@ std::string DecompilerTypeSystem::dump_symbol_types() {
 void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
   auto kv = type_flags.find(name);
   if (kv != type_flags.end()) {
-    printf("duplicated type flags for %s, was 0x%lx, now 0x%lx\n", name.c_str(), kv->second, flags);
-    throw std::runtime_error("duplicated type flags!");
+    spdlog::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
+                 flags);
+    if (kv->second != flags) {
+      spdlog::warn("duplicated type flags that are inconsistent!");
+    }
   }
   type_flags[name] = flags;
 }
@@ -89,9 +93,11 @@ void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
 void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::string& parent) {
   auto kv = type_parents.find(child);
   if (kv != type_parents.end()) {
-    printf("duplicated type parents for %s was %s now %s\n", child.c_str(), kv->second.c_str(),
-           parent.c_str());
-    throw std::runtime_error("duplicated type flags!");
+    spdlog::warn("duplicated type parents for {} was {} now {}", child.c_str(), kv->second.c_str(),
+                 parent.c_str());
+    if (kv->second != parent) {
+      throw std::runtime_error("duplicated type parents that are inconsistent!");
+    }
   }
   type_parents[child] = parent;
 }
