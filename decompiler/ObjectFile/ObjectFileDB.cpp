@@ -14,7 +14,6 @@
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
 #include "common/util/BinaryReader.h"
-#include "decompiler/util/FileIO.h"
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
@@ -247,7 +246,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
   BinaryReader reader(dgo_data);
   auto header = reader.read<DgoHeader>();
 
-  auto dgo_base_name = base_name(filename);
+  auto dgo_base_name = file_util::base_name(filename);
   assert(header.name == dgo_base_name);
   assert_string_empty_after(header.name, 60);
 
@@ -286,7 +285,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   stats.total_obj_files++;
   assert(obj_size > 128);
   uint16_t version = *(uint16_t*)(obj_data + 8);
-  auto hash = crc32(obj_data, obj_size);
+  auto hash = file_util::crc32(obj_data, obj_size);
 
   bool duplicated = false;
   // first, check to see if we already got it...
@@ -486,7 +485,7 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   for_each_obj([&](ObjectFileData& obj) {
     if (obj.linked_data.segments == 3 || !dump_v3_only) {
       auto file_text = obj.linked_data.print_words();
-      auto file_name = combine_path(output_dir, obj.to_unique_name() + ".txt");
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".txt");
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
       total_files++;
@@ -516,10 +515,11 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
       auto file_text = obj.linked_data.print_disassembly();
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name = combine_path(output_dir, obj.to_unique_name() + ".func");
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".func");
 
       auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
-      auto json_asm_file_name = combine_path(output_dir, obj.to_unique_name() + "_asm.json");
+      auto json_asm_file_name =
+          file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
       file_util::write_text_file(json_asm_file_name, json_asm_text);
 
       total_bytes += file_text.size() + json_asm_text.size();
@@ -530,7 +530,8 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
 
   total_bytes += asm_functions.size();
   total_files++;
-  file_util::write_text_file(combine_path(output_dir, "asm_functions.func"), asm_functions);
+  file_util::write_text_file(file_util::combine_path(output_dir, "asm_functions.func"),
+                             asm_functions);
 
   spdlog::info("Wrote functions dumps:");
   spdlog::info(" Total {} files", total_files);
@@ -600,7 +601,7 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
     }
   });
 
-  auto file_name = combine_path(output_dir, "all_scripts.lisp");
+  auto file_name = file_util::combine_path(output_dir, "all_scripts.lisp");
   file_util::write_text_file(file_name, all_scripts);
 
   spdlog::info("Found scripts:");

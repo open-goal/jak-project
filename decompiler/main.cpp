@@ -3,7 +3,6 @@
 #include <vector>
 #include "ObjectFile/ObjectFileDB.h"
 #include "config.h"
-#include "util/FileIO.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
 #include "third-party/spdlog/include/spdlog/sinks/basic_file_sink.h"
 #include "common/util/FileUtil.h"
@@ -16,7 +15,7 @@ int main(int argc, char** argv) {
   spdlog::set_default_logger(lu);
   spdlog::flush_on(spdlog::level::info);
 
-  init_crc();
+  file_util::init_crc();
   init_opcode_info();
 
   if (argc != 4) {
@@ -30,12 +29,14 @@ int main(int argc, char** argv) {
 
   std::vector<std::string> dgos;
   for (const auto& dgo_name : get_config().dgo_names) {
-    dgos.push_back(combine_path(in_folder, dgo_name));
+    dgos.push_back(file_util::combine_path(in_folder, dgo_name));
   }
 
   ObjectFileDB db(dgos, get_config().obj_file_name_map_file);
-  file_util::write_text_file(combine_path(out_folder, "dgo.txt"), db.generate_dgo_listing());
-  file_util::write_text_file(combine_path(out_folder, "obj.txt"), db.generate_obj_listing());
+  file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
+                             db.generate_dgo_listing());
+  file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
+                             db.generate_obj_listing());
 
   db.process_link_data();
   db.find_code();
@@ -58,7 +59,8 @@ int main(int argc, char** argv) {
   // todo print type summary
   // printf("%s\n", get_type_info().get_summary().c_str());
 
-  file_util::write_text_file(combine_path(out_folder, "all-syms.gc"), db.dts.dump_symbol_types());
+  file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
+                             db.dts.dump_symbol_types());
   spdlog::info("Disassembly has completed successfully.");
   return 0;
 }
