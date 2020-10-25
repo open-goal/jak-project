@@ -356,7 +356,6 @@ int get_start_idx(Function& function,
   auto& get_format_op = function.basic_ops.at(1);
 
   if (is_get_sym_value(get_format_op.get(), make_gpr(Reg::T9), "format")) {
-
     auto& get_true = function.basic_ops.at(2);
     if (!is_get_sym(get_true.get(), make_gpr(Reg::A0), "#t")) {
       result->warnings += "bad get true";
@@ -428,7 +427,8 @@ int get_start_idx(Function& function,
       return 5;
 
     } else {
-      result->warnings += "unrecognized get op: " + get_format_op->print(file) + " parent was " + parent_type;
+      result->warnings +=
+          "unrecognized get op: " + get_format_op->print(file) + " parent was " + parent_type;
       return 0;
     }
   }
