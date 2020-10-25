@@ -5,6 +5,7 @@
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "TypeInspector.h"
 
 namespace {
 std::vector<Register> gpr_backups = {make_gpr(Reg::GP), make_gpr(Reg::S5), make_gpr(Reg::S4),
@@ -474,7 +475,8 @@ void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeS
  * Look through this function to find calls to method-set! which define methods.
  * Updates the guessed_name of the function and updates type_info.
  */
-void Function::find_method_defs(LinkedObjectFile& file) {
+void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts) {
+  (void)dts;
   int state = 0;
   int label_id = -1;
   int method_id = -1;
@@ -546,9 +548,112 @@ void Function::find_method_defs(LinkedObjectFile& file) {
         auto& func = file.get_function_at_label(label_id);
         assert(func.guessed_name.empty());
         func.guessed_name.set_as_method(type_name, method_id);
+        func.method_of_type = type_name;
+        if (method_id == GOAL_INSPECT_METHOD) {
+          func.is_inspect_method = true;
+        }
+
         state = 0;
         continue;
       }
+    }
+  }
+}
+
+void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts) {
+  int state = 0;
+  Register temp_reg;
+  std::string type_name;
+  std::string parent_type;
+  int label_idx = -1;
+
+  for (const auto& instr : instructions) {
+    // look for lw xx, type(s7)
+    if (instr.kind == InstructionKind::LW && instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
+        instr.get_src(0).get_sym() == "type" && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+      state = 1;
+      temp_reg = instr.get_dst(0).get_reg();
+      continue;
+    }
+
+    if (state == 1) {
+      // look for lwu t9, 16, v1
+      if (instr.kind == InstructionKind::LWU && instr.get_dst(0).get_reg() == make_gpr(Reg::T9) &&
+          instr.get_src(0).get_imm() == 16 && instr.get_src(1).get_reg() == temp_reg) {
+        state = 2;
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 2) {
+      // look for daddiu a0, s7, name-of-type
+      if (instr.kind == InstructionKind::DADDIU &&
+          instr.get_dst(0).get_reg() == make_gpr(Reg::A0) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::S7) && instr.get_src(1).is_sym()) {
+        state = 3;
+        type_name = instr.get_src(1).get_sym();
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 3) {
+      // look for lw a1, parent-type(s7)
+      if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::A1) &&
+          instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
+          instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+        state = 4;
+        parent_type = instr.get_src(0).get_sym();
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 4) {
+      // look for ld a2, LXX(fp)
+      if (instr.kind == InstructionKind::LD && instr.get_dst(0).get_reg() == make_gpr(Reg::A2) &&
+          instr.get_src(0).is_label() && instr.get_src(1).get_reg() == make_gpr(Reg::FP)) {
+        state = 5;
+        label_idx = instr.get_src(0).get_label();
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 5) {
+      if (instr.kind == InstructionKind::JALR && instr.get_dst(0).get_reg() == make_gpr(Reg::RA) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::T9)) {
+        state = 6;
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 6) {
+      // look for sll v0, ra, 0
+      if (instr.kind == InstructionKind::SLL && instr.get_dst(0).get_reg() == make_gpr(Reg::V0) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::RA) && instr.get_src(1).get_imm() == 0) {
+        // done!
+        //        fmt::print("Got type {} parent {}\n", type_name, parent_type);
+        dts.add_type_parent(type_name, parent_type);
+        Label flag_label = file.labels.at(label_idx);
+        u64 word = file.read_data_word(flag_label);
+        flag_label.offset += 4;
+        u64 word2 = file.read_data_word(flag_label);
+        word |= (word2 << 32);
+        dts.add_type_flags(type_name, word);
+        //        fmt::print("Flags are 0x{:x}\n", word);
+        state = 0;
+        continue;
+      }
+    } else {
+      state = 0;
     }
   }
 }

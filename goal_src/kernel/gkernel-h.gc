@@ -85,17 +85,17 @@
 
 ;; this stores the current state of the kernel.
 (deftype kernel-context (basic)
-  ((prevent-from-run    int32      :offset-assert 4)      ;; actually a process-mask
-   (require-for-run     int32      :offset-assert 8)      ;; actually a process-mask, unused?
-   (allow-to-run        int32      :offset-assert 12)     ;; actually a process-mask, unused?
-   (next-pid            int32      :offset-assert 16)     ;; next PID to give out
-   (fast-stack-top      pointer    :offset-assert 20)     ;; scratchpad stack (unused?)
-   (current-process     basic      :offset-assert 24)     ;; process?
-   (relocating-process  basic      :offset-assert 28)     ;; process?
-   (relocating-min      int32      :offset-assert 32)     ;; print hex
-   (relocating-max      int32      :offset-assert 36)     ;; print hex
-   (relocating-offset   int32      :offset-assert 40)     ;; ?
-   (low-memory-message  basic      :offset-assert 44)     ;; boolean?
+  ((prevent-from-run   uint32  :offset-assert 4)
+   (require-for-run    uint32  :offset-assert 8)
+   (allow-to-run       uint32  :offset-assert 12)
+   (next-pid           int32   :offset-assert 16)
+   (fast-stack-top     uint32  :offset-assert 20)
+   (current-process    basic   :offset-assert 24)
+   (relocating-process basic   :offset-assert 28)
+   (relocating-min     int32   :offset-assert 32)
+   (relocating-max     int32   :offset-assert 36)
+   (relocating-offset  int32   :offset-assert 40)
+   (low-memory-message basic   :offset-assert 44)
    )
   
   :size-assert #x30
@@ -146,6 +146,7 @@
    )
   
   (:methods
+    (new ((allocation symbol) (type-to-make type) (parent-process process) (name symbol) (stack-size int) (stack-top pointer)) _type_ 0)
     (thread-suspend ((this _type_)) none 10)
     (thread-resume  ((to-resume _type_)) none 11)
     )
@@ -160,7 +161,7 @@
 ;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
-   (mask int32 :offset-assert 8)
+   (mask uint32 :offset-assert 8)
    (parent pointer :offset-assert 12)
    (brother pointer :offset-assert 16)
    (child pointer :offset-assert 20)
@@ -302,12 +303,12 @@
 ;; A catch frame is a frame you can "throw" to, by name.
 ;; You can "throw" out of a function and into another function.
 (deftype catch-frame (stack-frame)
-  ((sp pointer :offset 12)   ;; where to reset the stack when throwing.
-   (ra pointer :offset 16)   ;; where to jump when throwing
+  ((sp int32 :offset 12)   ;; where to reset the stack when throwing.
+   (ra int32 :offset 16)   ;; where to jump when throwing
    
    ;; todo - rework for x86-64.
-   (freg float 6 :offset 20) ;; saved floating point registers from "catch" statement
-   (rreg uint128 8 :offset 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
+   (freg float 6 :offset-assert 20) ;; saved floating point registers from "catch" statement
+   (rreg uint128 8 :offset-assert 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
    )
   :size-assert #xb0
   :method-count-assert 9

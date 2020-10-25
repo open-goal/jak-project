@@ -162,6 +162,7 @@ class Field {
  public:
   Field() = default;
   Field(std::string name, TypeSpec ts);
+  Field(std::string name, TypeSpec ts, int offset);
   void set_dynamic();
   void set_array(int size);
   void set_inline();

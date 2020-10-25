@@ -6,9 +6,2219 @@
 ;; TYPES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;
+;; gcommon
+;;;;;;;;;;;;;;
+
+;; todo array
+;; todo vec4s
+
 (deftype bfloat (basic)
-  ((data float :offset-assert 4))
+  ((data float  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
+
+(deftype inline-array-class (basic)
+  ((length           int32  :offset-assert 4)
+   (allocated-length int32  :offset-assert 8)
+   (data             uint8  :dynamic :offset-assert 12)
+   (_pad             uint8 4)
+   )
+  
+    (:methods (new (symbol type int) _type_ 0)    ;; we will override print later on. This is optional to include
+            )
+    
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;
+;; gkernel-h
+;;;;;;;;;;;;;;
+
+(deftype kernel-context (basic)
+  ((prevent-from-run   uint32  :offset-assert 4)
+   (require-for-run    uint32  :offset-assert 8)
+   (allow-to-run       uint32  :offset-assert 12)
+   (next-pid           int32   :offset-assert 16)
+   (fast-stack-top     uint32  :offset-assert 20)
+   (current-process    basic   :offset-assert 24)
+   (relocating-process basic   :offset-assert 28)
+   (relocating-min     int32   :offset-assert 32)
+   (relocating-max     int32   :offset-assert 36)
+   (relocating-offset  int32   :offset-assert 40)
+   (low-memory-message basic   :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype thread (basic)
+  ((name         basic   :offset-assert 4)
+   (process      process :offset-assert 8)
+   (previous     thread  :offset-assert 12)
+   (suspend-hook basic   :offset-assert 16)
+   (resume-hook  basic   :offset-assert 20)
+   (pc           pointer :offset-assert 24)
+   (sp           pointer :offset-assert 28)
+   (stack-top    pointer :offset-assert 32)
+   (stack-size   int32   :offset-assert 36)
+   )
+    
+  (:methods
+    (stack-size-set! ((this thread) (stack-size int)) none 9)
+    (thread-suspend ((this _type_)) none 10)
+    (thread-resume  ((to-resume _type_)) none 11)
+    )
+  
+  :method-count-assert 12
+  :size-assert         #x28
+  :flag-assert         #xc00000028
+  )
+
+(deftype cpu-thread (thread)
+  ((rreg  uint64 8       :offset-assert 40)
+   (freg  float 6        :offset-assert 104)
+   (stack uint8 :dynamic :offset-assert 128)
+   )
+  
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (parent-process process) (name symbol) (stack-size int) (stack-top pointer)) _type_ 0)
+    (thread-suspend ((this _type_)) none 10)
+    (thread-resume  ((to-resume _type_)) none 11)
+    )
+    
+  :method-count-assert 12
+  :size-assert         #x80
+  :flag-assert         #xc00000080
+  )
+
+(deftype process-tree (basic)
+  ((name basic :offset-assert 4)
+   (mask uint32 :offset-assert 8)
+   (parent pointer :offset-assert 12)
+   (brother pointer :offset-assert 16)
+   (child pointer :offset-assert 20)
+   (ppointer pointer :offset-assert 24)
+   (self basic :offset-assert 28)
+   )
+  
+  (:methods
+    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
+    (deactivate  ((obj _type_)) basic 10)
+    (dummy-method-11 () none 11)
+    (run-logic? ((obj _type_)) symbol 12)
+    (dummy-method () none 13)
+    )  
+  
+  :size-assert #x20
+  :method-count-assert 14
+  :no-runtime-type
+  )
+
+(deftype process (process-tree)
+  ((pool basic :offset-assert #x20)
+   (status basic :offset-assert #x24)
+   (pid int32 :offset-assert #x28)
+   (main-thread thread :offset-assert #x2c)
+   (top-thread thread :offset-assert #x30)
+   (entity basic :offset-assert #x34)
+   (state basic :offset-assert #x38)
+   (trans-hook function :offset-assert #x3c)
+   (post-hook function :offset-assert #x40)
+   (event-hook function :offset-assert #x44)
+   (allocated-length int32 :offset-assert #x48)
+   (next-state basic :offset-assert #x4c)
+   (heap-base pointer :offset-assert #x50)
+   (heap-top pointer :offset-assert #x54)
+   (heap-cur pointer :offset-assert #x58)
+   (stack-frame-top stack-frame :offset-assert #x5c)
+   (connection-list connectable :inline :offset-assert #x60)
+   (stack uint8 :dynamic :offset-assert #x70)
+   )
+  
+  (:methods
+    (activate ((obj process) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
+    (deactivate  ((obj process)) basic 10)
+    (dummy-method-11 () none 11)
+    (run-logic? ((obj process)) symbol 12)
+    (dummy-method () none 13)
+    )  
+  
+  :size-assert #x70
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+(deftype dead-pool (process-tree)
+  (
+   ;; nothing new!
+   )
+  (:methods
+    (get-process ((pool dead-pool) (type-to-make type) (stack-size integer)) process 14)
+    (return-process ((pool dead-pool) (proc process)) process-tree 15)
+    )
+  :size-assert #x20
+  :method-count-assert 16
+  :flag-assert #x1000000020
+  )
+
+(deftype dead-pool-heap-rec (structure)
+  ((process process             :offset-assert 0)
+   (prev    dead-pool-heap-rec  :offset-assert 4)
+   (next    dead-pool-heap-rec  :offset-assert 8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype dead-pool-heap (dead-pool)
+  ((allocated-length   int32                       :offset-assert 32)
+   (compact-time       uint32                      :offset-assert 36)
+   (compact-count-targ uint32                      :offset-assert 40)
+   (compact-count      uint32                      :offset-assert 44)
+   (fill-percent       float                       :offset-assert 48)
+   (first-gap          dead-pool-heap-rec          :offset-assert 52)
+   (first-shrink       dead-pool-heap-rec          :offset-assert 56)
+   (heap               kheap              :inline  :offset-assert 64)
+   (alive-list         dead-pool-heap-rec :inline  :offset-assert 80)
+   (last               dead-pool-heap-rec :offset #x54  :offset-assert 84)
+   (dead-list          dead-pool-heap-rec :inline  :offset-assert 92)
+   (process-list       dead-pool-heap-rec :inline :dynamic :offset-assert 104)
+   )
+  
+  (:methods
+    (compact ((this dead-pool-heap) (count integer)) none 16)
+    (shrink-heap ((this dead-pool-heap) (proc process)) dead-pool-heap 17)
+    (churn ((this dead-pool-heap) (count integer)) none 18)
+    (memory-used ((this dead-pool-heap)) integer 19)
+    (memory-total ((this dead-pool-heap)) integer 20)
+    (gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec)) integer 21)
+    (gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec)) pointer 22)
+    (find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec)) dead-pool-heap-rec 23)
+    (find-gap-by-size ((this dead-pool-heap) (size integer)) dead-pool-heap-rec 24)
+    (memory-free ((this dead-pool-heap)) integer 25)
+    (compact-time ((this dead-pool-heap)) integer 26)
+    )
+  
+  :method-count-assert 27
+  :size-assert         #x68
+  :flag-assert         #x1b00000068
+  )
+
+(deftype stack-frame (basic)
+  ((name basic :offset 4)
+   (next stack-frame :offset 8) ;; which way does this point?
+   )
+  
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  )
+
+(deftype catch-frame (stack-frame)
+  ((sp   int32     :offset-assert 12)
+   (ra   int32     :offset-assert 16)
+   (freg float 6 :offset-assert 20) 
+   (rreg uint128 8 :offset-assert 48) 
+   )
+  :method-count-assert 9
+  :size-assert         #xb0
+  :flag-assert         #x9000000b0
+  )
+
+(deftype protect-frame (stack-frame)
+  ((exit function  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+;; todo handle
+
+(deftype state (protect-frame)
+  ((code  function  :offset-assert 16)
+   (trans function  :offset-assert 20)
+   (post  function  :offset-assert 24)
+   (enter function  :offset-assert 28)
+   (event basic     :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype event-message-block (structure)
+  ((to         basic     :offset-assert 0)
+   (from       basic     :offset-assert 4)
+   (num-params int32     :offset-assert 8)
+   (message    basic     :offset-assert 12)
+   (param      uint64 7  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
+
+;;;;;;;;;;;;;;
+;; pskernel
+;;;;;;;;;;;;;;
+
+(deftype lowmemmap (structure)
+  ((irq-info-stack  uint32   :offset-assert 0)
+   (irq2-info-stack uint32   :offset-assert 4)
+   (kernel-copy-fn  uint32   :offset-assert 8)
+   (kernel-write-fn uint32   :offset-assert 12)
+   (r1-save         uint128  :offset-assert 16)
+   (last-time       uint32   :offset-assert 32)
+   (high-time       uint32   :offset-assert 36)
+   (dma-status      uint32   :offset-assert 40)
+   (dma-qnext       uint32   :offset-assert 44)
+   (dma-qwc         uint32   :offset-assert 48)
+   (dma-tnext       uint32   :offset-assert 52)
+   (dma-stack0      uint32   :offset-assert 56)
+   (dma-stack1      uint32   :offset-assert 60)
+   (kernel-read-fn  uint32   :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+;;;;;;;;;;;;;;
+;; dgo-h
+;;;;;;;;;;;;;;
+
+(deftype dgo-entry (structure)
+  ((offset uint32  :offset-assert 0)
+   (length uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype dgo-file (basic)
+  ((num-go-files uint32           :offset-assert 4)
+   (total-length uint32           :offset-assert 8)
+   (rsvd         uint32           :offset-assert 12)
+   (data         uint8 :dynamic   :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;
+;; math
+;;;;;;;;;;;;;;
+
+(deftype random-generator (basic)
+  ((seed uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;;;;;;;;;;;;;;
+;; vector-h
+;;;;;;;;;;;;;;
+
+;; note - this one has two inspect methods
+(deftype vector (structure)
+  ((data float 4 :offset-assert 0)
+   (x float :offset 0)
+   (y float :offset 4)
+   (z float :offset 8)
+   (w float :offset 12)
+   (quad uint128 :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype bit-array (basic)
+  ((length           int32  :offset-assert 4)
+   (allocated-length int32  :offset-assert 8)
+   (_pad uint8)
+   )
+  :method-count-assert 13
+  :size-assert         #xd
+  :flag-assert         #xd0000000d
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    )
+  )
+
+(deftype vector4ub (structure)
+  ((data uint8 4 :offset-assert 0)
+   (x    uint8     :offset 0)
+   (y    uint8     :offset 1)
+   (z    uint8     :offset 2)
+   (w    uint8     :offset 3)
+   (clr  uint32    :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector4b (structure)
+  ((data int8 4 :offset-assert 0)
+   (x    int8      :offset 0)
+   (y    int8      :offset 1)
+   (z    int8      :offset 2)
+   (w    int8      :offset 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector2h (structure)
+  ((data int16 2 :offset-assert 0)
+   (x    int16     :offset 0)
+   (y    int16     :offset 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector2uh (structure)
+  ((data uint16 2 :offset-assert 0)
+   (x    uint16    :offset 0)
+   (y    uint16    :offset 2)
+   (val  uint32    :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype vector3h (structure)
+  ((data int16 2 :offset-assert 0) ;; probably a bug, should be 3.
+   (x    int16     :offset 0)
+   (y    int16     :offset 2)
+   (z    int16     :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+(deftype vector2w (structure)
+  ((data int32 2 :offset-assert 0)
+   (x    int32     :offset 0)
+   (y    int32     :offset 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype vector3w (structure)
+  ((data int32 3 :offset-assert 0)
+   (x    int32     :offset 0)
+   (y    int32     :offset 4)
+   (z    int32     :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype vector4w (structure)
+  ((data  int32 4 :offset-assert 0)
+   (x     int32     :offset 0)
+   (y     int32     :offset 4)
+   (z     int32     :offset 8)
+   (w     int32     :offset 12)
+   (dword uint64 2 :offset 0)
+   (quad  uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector4w-2 (structure)
+  ((data   int32 8 :offset-assert 0)
+   (quad   uint128 2 :offset 0)
+   (vector vector4w 2 :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype vector4w-3 (structure)
+  ((data   int32 12 :offset-assert 0)
+   (quad   uint128 3  :offset 0)
+   (vector vector4w 3  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype vector4w-4 (structure)
+  ((data   int32 16 :offset-assert 0)
+   (quad   uint128 4  :offset 0)
+   (vector vector4w 4  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype vector4h (structure)
+  ((data int16 4 :offset-assert 0)
+   (x    int16     :offset 0)
+   (y    int16     :offset 2)
+   (z    int16     :offset 4)
+   (w    int16     :offset 6)
+   (long uint64    :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype vector8h (structure)
+  ((data int16 8 :offset-assert 0)
+   (quad uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector16b (structure)
+  ((data int8 8 :offset-assert 0)
+   (quad uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; what's the s here?
+(deftype vector4s-3 (structure)
+  ((data   float 12 :offset-assert 0) ;; guess
+   (quad   uint128 3  :offset 0)
+   (vector vector4w 3  :offset 0)     ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype vector-array (inline-array-class)
+  (
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype rgbaf (vector)
+  ((r    float     :offset 0)
+   (g    float     :offset 4)
+   (b    float     :offset 8)
+   (a    float     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype plane (vector)
+  ((a    float     :offset 0)
+   (b    float     :offset 4)
+   (c    float     :offset 8)
+   (d    float     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sphere (vector)
+  ((r    float     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype box8s (structure)
+  ((data   float 8       :offset-assert 0)
+   (quad   uint128 2       :offset 0)
+   (vector vector 2       :offset 0)
+   (min    vector  :inline :offset 0)
+   (max    vector  :inline :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype box8s-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype cylinder (structure)
+  ((origin vector :inline :offset-assert 0)
+   (axis   vector :inline :offset-assert 16)
+   (radius float          :offset-assert 32)
+   (length float          :offset-assert 36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+(deftype cylinder-flat (structure)
+  ((origin vector :inline :offset-assert 0)
+   (axis   vector :inline :offset-assert 16)
+   (radius float          :offset-assert 32)
+   (length float          :offset-assert 36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+(deftype vertical-planes (structure)
+  ((data uint128 4 :offset-assert 0) ;; probably wrong
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype vertical-planes-array (basic)
+  ((length uint32           :offset-assert 4)
+   (data   vertical-planes :dynamic :offset 16) ;; todo, why is this here?
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; the signs on these are a guess
+(deftype qword (structure)
+  ((data     uint32  4       :offset-assert 0)
+   (byte     uint8  16      :offset 0)
+   (hword    uint16  8       :offset 0)
+   (word     uint32  4       :offset 0)
+   (dword    uint64  2       :offset 0)
+   (quad     uint128          :offset 0)
+   (vector   vector   :inline :offset 0)
+   (vector4w vector4w :inline :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector3s (structure)
+  ((data float 3 :offset-assert 0)
+   (x    float     :offset 0)
+   (y    float     :offset 4)
+   (z    float     :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;
+;; bounding-box-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype bounding-box (structure)
+  ((min vector :inline :offset-assert 0)
+   (max vector :inline :offset-assert 16)
+   )
+  :method-count-assert 16
+  :size-assert         #x20
+  :flag-assert         #x1000000020
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    )
+  )
+
+(deftype bounding-box4w (structure)
+  ((min vector4w :inline :offset-assert 0)
+   (max vector4w :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype bounding-box-both (structure)
+  ((box   bounding-box   :inline :offset-assert 0)
+   (box4w bounding-box4w :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; matrix-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype matrix (structure)
+  ((data   float 16 :offset-assert 0)
+   (vector vector 4  :offset 0)
+   (quad   uint128 4  :offset 0)
+   )
+  :method-count-assert 10
+  :size-assert         #x40
+  :flag-assert         #xa00000040
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+(deftype matrix3 (structure)
+  ((data   float 12 :offset-assert 0)
+   (vector vector 3  :offset 0)
+   (quad   uint128 3  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; guess on signs here
+(deftype matrix4h (structure)
+  ((data     int16 16 :offset-assert 0)
+   (vector4h vector4h 4  :offset 0)
+   (long     int64 4  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; quaternion-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype quaternion (structure)
+  ((data float 4       :offset-assert 0)
+   (x    float           :offset 0)
+   (y    float           :offset 4)
+   (z    float           :offset 8)
+   (w    float           :offset 12)
+   (vec  vector  :inline :offset 0)
+   (quad uint128         :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; euler-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype euler-angles (vector)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; transform-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype transform (structure)
+  ((trans vector :inline :offset-assert 0)
+   (rot   vector :inline :offset-assert 16) ;; maybe 3 if euler
+   (scale vector :inline :offset-assert 32) ;; maybe 3
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype trs (basic)
+  ((trans vector :inline :offset-assert 16)
+   (rot   vector :inline :offset-assert 32)  ;; maybe 3 if euler
+   (scale vector :inline :offset-assert 48)  ;; maybe 3
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; geometry-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype curve (structure)
+  ((cverts     uint32  :offset-assert 0)
+   (num-cverts int32   :offset-assert 4)
+   (knots      uint32  :offset-assert 8)
+   (num-knots  int32   :offset-assert 12)
+   (length     float   :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype border-plane (basic)
+  ((name   basic          :offset-assert 4)
+   (action basic          :offset-assert 8)
+   (slot   int8           :offset-assert 12)
+   (trans  vector :inline :offset-assert 16)
+   (normal vector :inline :offset-assert 32)
+   )
+  :method-count-assert 11
+  :size-assert         #x30
+  :flag-assert         #xb00000030
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; transformq-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype transformq (transform)
+  ((quat  quaternion :inline :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype trsq (trs)
+  ((quat  quaternion :inline :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype trsqv (trsq)
+  ((pause-adjust-distance float             :offset 4) ;; todo meters
+   (nav-radius            float             :offset 8) ;; todo meters
+   (transv                vector     :inline :offset-assert 64)
+   (rotv                  vector     :inline :offset-assert 80)
+   (scalev                vector     :inline :offset-assert 96)
+   (dir-targ              quaternion :inline :offset-assert 112)
+   (angle-change-time     uint64             :offset-assert 128)
+   (old-y-angle-diff      float              :offset-assert 136)
+   )
+  :method-count-assert 28
+  :size-assert         #x8c
+  :flag-assert         #x1c0000008c
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;
+;; gsound-h
+;;;;;;;;;;;;;;;;;;;
+
+(deftype sound-rpc-cmd (structure)
+  ((rsvd1   uint16  :offset-assert 0)
+   (command uint16  :offset-assert 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-play-parms (structure)
+  ((mask      uint16    :offset-assert 0)
+   (pitch-mod int16     :offset-assert 2)
+   (bend      int16     :offset-assert 4)
+   (fo-min    int16     :offset-assert 6)
+   (fo-max    int16     :offset-assert 8)
+   (fo-curve  int8      :offset-assert 10)
+   (priority  int8      :offset-assert 11)
+   (volume    int32     :offset-assert 12)
+   (trans     float 3 :offset-assert 16) ;; guess on type here
+   (group     uint8     :offset-assert 28)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x1d
+  :flag-assert         #x90000001d
+  )
+
+(deftype sound-rpc-bank-cmd (sound-rpc-cmd)
+  ((bank-name uint128  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-sound-cmd (sound-rpc-cmd)
+  ((id      uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-group-cmd (sound-rpc-cmd)
+  ((group   uint8   :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-load-music (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-unload-bank (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-play (sound-rpc-sound-cmd)
+  ((name    uint128                  :offset-assert 16)
+   (parms   sound-play-parms :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x3d
+  :flag-assert         #x90000003d
+  )
+
+(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-param (sound-rpc-sound-cmd)
+  ((parms     sound-play-parms :inline :offset-assert 8)
+   (auto-time int32                    :offset-assert 40)
+   (auto-from int32                    :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
+  ((volume  int32   :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype sound-rpc-pause-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-stop-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-continue-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-get-irx-version (sound-rpc-cmd)
+  ((major   uint32  :offset-assert 4)
+   (minor   uint32  :offset-assert 8)
+   (ee-addr uint32  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sound-rpc-set-language (sound-rpc-cmd)
+  ((lang    uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-falloff-curve (sound-rpc-cmd)
+  ((curve   int32   :offset-assert 4)
+   (falloff int32   :offset-assert 8)
+   (ease    int32   :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sound-rpc-set-sound-falloff (sound-rpc-cmd)
+  ((name    uint128  :offset-assert 16)
+   (curve   int32    :offset-assert 32)
+   (min     int32    :offset-assert 36)
+   (max     int32    :offset-assert 40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype sound-rpc-reload-info (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-set-reverb (sound-rpc-cmd)
+  ((core    uint8   :offset-assert 4)
+   (reverb  int32   :offset-assert 8)
+   (left    uint32  :offset-assert 12)
+   (right   uint32  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
+  ((ear-trans float 3 :offset-assert 4) ;; guess on float, may be fixed point
+   (cam-trans float 3 :offset-assert 16)
+   (cam-angle int32     :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-set-flava (sound-rpc-cmd)
+  ((flava   uint8   :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-shutdown (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-list-sounds (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-unload-music (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-union (structure)
+  ((data              uint32                     20 :offset-assert 0)
+   (load-bank         sound-rpc-load-bank            :offset 0)
+   (unload-bank       sound-rpc-unload-bank          :offset 0)
+   (play              sound-rpc-play                 :offset 0)
+   (pause-sound       sound-rpc-pause-sound          :offset 0)
+   (stop-sound        sound-rpc-stop-sound           :offset 0)
+   (continue-sound    sound-rpc-continue-sound       :offset 0)
+   (set-param         sound-rpc-set-param            :offset 0)
+   (set-master-volume sound-rpc-set-master-volume    :offset 0)
+   (pause-group       sound-rpc-pause-group          :offset 0)
+   (stop-group        sound-rpc-stop-group           :offset 0)
+   (continue-group    sound-rpc-continue-group       :offset 0)
+   (get-irx-version   sound-rpc-get-irx-version      :offset 0)
+   (set-falloff-curve sound-rpc-set-falloff-curve    :offset 0)
+   (set-sound-falloff sound-rpc-set-sound-falloff    :offset 0)
+   (reload-info       sound-rpc-reload-info          :offset 0)
+   (set-language      sound-rpc-set-language         :offset 0)
+   (set-reverb        sound-rpc-set-reverb           :offset 0)
+   (set-ear-trans     sound-rpc-set-ear-trans        :offset 0)
+   (set-flava         sound-rpc-set-flava            :offset 0)
+   (shutdown          sound-rpc-shutdown             :offset 0)
+   (list-sounds       sound-rpc-list-sounds          :offset 0)
+   (unload-music      sound-rpc-unload-music         :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype sound-spec (basic)
+  ((mask            uint16     :offset-assert 4)
+   (num             float      :offset-assert 8)
+   (group           uint8      :offset-assert 12)
+   (sound-name-char uint8 16 :offset 16)
+   (sound-name      uint128    :offset 16)
+   (trans           float 4  :offset-assert 32) ;; guess
+   (volume          int32      :offset-assert 48)
+   (pitch-mod       int32      :offset-assert 52)
+   (bend            int32      :offset-assert 56)
+   (fo-min          int16      :offset-assert 60)
+   (fo-max          int16      :offset-assert 62)
+   (fo-curve        int8       :offset-assert 64)
+   (priority        int8       :offset-assert 65)
+   (auto-time       int32      :offset-assert 68)
+   (auto-from       int32      :offset-assert 72)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
+
+(deftype ambient-sound (basic)
+  ((spec         basic           :offset-assert 4)
+   (playing-id   uint32          :offset-assert 8)
+   (trans        vector  :inline :offset-assert 16)
+   (name         uint128         :offset-assert 32)
+   (play-time    uint64          :offset-assert 48)
+   (time-base    uint64          :offset-assert 56)
+   (time-random  uint64          :offset-assert 64)
+   (volume       int32           :offset-assert 72)
+   (pitch        int32           :offset-assert 76)
+   (falloff-near int32           :offset-assert 80)
+   (falloff-far  int32           :offset-assert 84)
+   (falloff-mode int32           :offset-assert 88)
+   (params       uint32          :offset-assert 92)
+   (param-count  int32           :offset-assert 96)
+   (entity       basic           :offset-assert 100)
+   (sound-count  int32           :offset-assert 104)
+   )
+  :method-count-assert 14
+  :size-assert         #x6c
+  :flag-assert         #xe0000006c
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    )
+  )
+
+;;;;;;;;;;;;;
+;; timer-h
+;;;;;;;;;;;;;
+
+(deftype timer-bank (structure)
+  ((count uint32  :offset-assert 0)
+   (mode  uint32  :offset 16) ;; not sure why these are so widely spaced. match hw?
+   (comp  uint32  :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype timer-hold-bank (timer-bank)
+  ((hold  uint32  :offset 48) ;; not sure why so widely spaced
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+(deftype stopwatch (basic)
+  ((prev-time-elapsed uint64  :offset-assert 8)
+   (start-time        uint64  :offset-assert 16)
+   (begin-level       int32   :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(deftype profile-frame (structure)
+  ((name       basic   :offset-assert 0)
+   (time-stamp uint32  :offset-assert 4)
+   (color      uint32  :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype profile-bar (basic)
+  ((profile-frame-count int32        :offset-assert 4)
+   (cache-time          uint64       :offset-assert 8)
+   (data                profile-frame 1024 :inline :offset-assert 16)
+   )
+  :method-count-assert 14
+  :size-assert         #x4010
+  :flag-assert         #xe00004010
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    )
+  )
+
+;;;;;;;;;;;;;
+;; vif-h
+;;;;;;;;;;;;;
+
+;; todo vif-stat
+
+;; these are spaced strangely, is this some HW map?
+(deftype vif-bank (structure)
+  ((stat   uint32  :offset-assert 0)
+   (fbrst  uint32  :offset 16)
+   (err    uint32  :offset 32)
+   (mark   uint32  :offset 48)
+   (cycle  uint32  :offset 64)
+   (mode   uint32  :offset 80)
+   (num    uint32  :offset 96)
+   (mask   uint32  :offset 112)
+   (code   uint32  :offset 128)
+   (itops  uint32  :offset 144)
+   (base   uint32  :offset 160)
+   (offset uint32  :offset 176)
+   (tops   uint32  :offset 192)
+   (itop   uint32  :offset 208)
+   (top    uint32  :offset 224)
+   (r0     uint32  :offset 256)
+   (r1     uint32  :offset 272)
+   (r2     uint32  :offset 288)
+   (r3     uint32  :offset 304)
+   (c0     uint32  :offset 320)
+   (c1     uint32  :offset 336)
+   (c2     uint32  :offset 352)
+   (c3     uint32  :offset 368)
+   )
+  :method-count-assert 9
+  :size-assert         #x174
+  :flag-assert         #x900000174
+  )
+
+;;;;;;;;;;;;;
+;; dma-h
+;;;;;;;;;;;;;
+
+;; todo dma-chcr
+
+(deftype dma-bank (structure)
+  ((chcr uint32  :offset 0)
+   (madr uint32  :offset 16)
+   (qwc  uint32  :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype dma-bank-source (dma-bank)
+  ((tadr uint32  :offset 48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+(deftype dma-bank-vif (dma-bank-source)
+  ((as0  uint32  :offset 64)
+   (as1  uint32  :offset 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+(deftype dma-bank-spr (dma-bank-source)
+  ((sadr uint32  :offset 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+(deftype dma-bank-control (structure)
+  ((ctrl    uint32  :offset 0)
+   (stat    uint32  :offset 16)
+   (pcr     uint32  :offset 32)
+   (sqwc    uint32  :offset 48)
+   (rbsr    uint32  :offset 64)
+   (rbor    uint32  :offset 80)
+   (stadr   uint32  :offset 96)
+   (enabler uint32  :offset 5408)
+   (enablew uint32  :offset 5520)
+   )
+  :method-count-assert 9
+  :size-assert         #x1594
+  :flag-assert         #x900001594
+  )
+
+(deftype vu-code-block (basic)
+  ((name         basic   :offset-assert 4)
+   (code         uint32  :offset-assert 8)
+   (size         int32   :offset-assert 12)
+   (dest-address uint32  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; todo dma-tag
+(deftype dma-bucket (structure)
+  ((tag   uint64  :offset-assert 0)
+   (last  uint32  :offset-assert 8)
+   (dummy uint32  :offset-assert 12)
+   (next  uint32  :offset 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; todo vif-tag
+
+;;;;;;;;;;;;;
+;; video-h
+;;;;;;;;;;;;;
+
+(deftype video-parms (structure)
+  ((set-video-mode              basic  :offset-assert 0)
+   (reset-video-mode            basic  :offset-assert 4)
+   (screen-sy                   int32  :offset-assert 8)
+   (screen-hy                   int32  :offset-assert 12)
+   (screen-miny                 int32  :offset-assert 16)
+   (screen-maxy                 int32  :offset-assert 20)
+   (screen-masky                int32  :offset-assert 24)
+   (display-dx                  int32  :offset-assert 28)
+   (display-dy                  int32  :offset-assert 32)
+   (screen-pages-high           int32  :offset-assert 36)
+   (_pad                        int64)
+   (relative-x-scale            float  :offset-assert 48)
+   (relative-y-scale            float  :offset-assert 52)
+   (_pad2                       int64)
+   (relative-x-scale-reciprical float  :offset-assert 64)
+   (relative-y-scale-reciprical float  :offset-assert 68)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
+
+;;;;;;;;;;;;;;;
+;; vu1-user-h
+;;;;;;;;;;;;;;;
+
+(deftype dma-foreground-sink (basic)
+  ((bucket                   int32  :offset-assert 4)
+   (foreground-texture-page  int8   :offset-assert 8)
+   (foreground-texture-level int8   :offset-assert 9)
+   (foreground-output-bucket int8   :offset-assert 10)
+   )
+  :method-count-assert 9
+  :size-assert         #xb
+  :flag-assert         #x90000000b
+  )
+
+(deftype generic-bucket-state (structure)
+  ((gifbuf-adr uint32  :offset-assert 0)
+   (inbuf-adr  uint32  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype generic-dma-foreground-sink (dma-foreground-sink)
+  ((state                    generic-bucket-state :inline :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype dma-foreground-sink-group (basic)
+  ((sink         basic 3 :offset-assert 4)
+   (merc-sink    basic     :offset 4)
+   (generic-sink basic     :offset 8)
+   (level        basic     :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;;;;;;;;;;;;;;;
+;; dma-buffer
+;;;;;;;;;;;;;;;
+
+(deftype dma-packet (structure)
+  ((dma  uint64   :offset-assert 0)
+   (vif0 uint32   :offset-assert 8)
+   (vif1 uint32   :offset-assert 12)
+   (quad uint128  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype dma-packet-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype dma-gif-packet (structure)
+  ((dma-vif dma-packet :inline :offset-assert 0)
+   (gif     uint64    2       :offset-assert 16) ;; guess
+   (quad    uint128    2       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype dma-buffer (basic)
+  ((allocated-length int32     :offset-assert 4)
+   (base             uint32    :offset-assert 8)
+   (end              uint32    :offset-assert 12)
+   (data             uint64 1 :offset-assert 16) ;; hmmm, seems wrong
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;;;;;;;;;;;;;;;
+;; dma-disasm
+;;;;;;;;;;;;;;;
+
+(deftype vif-disasm-element (structure)
+  ((mask    uint32  :offset-assert 0)
+   (tag     uint32  :offset-assert 4)
+   (val     uint32  :offset-assert 8)
+   (print   uint32  :offset-assert 12)
+   (string1 basic   :offset-assert 16)
+   (string2 basic   :offset-assert 20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;;;;;;;;;;;;;;;
+;; pad
+;;;;;;;;;;;;;;;
+
+(deftype hw-cpad (basic)
+  ((valid   uint8      :offset-assert 4)
+   (status  uint8      :offset-assert 5)
+   (button0 uint16     :offset-assert 6)
+   (rightx  uint8      :offset-assert 8)
+   (righty  uint8      :offset-assert 9)
+   (leftx   uint8      :offset-assert 10)
+   (lefty   uint8      :offset-assert 11)
+   (abutton uint8 12 :offset-assert 12)
+   (dummy   uint8 12 :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype cpad-info (hw-cpad)
+  ((number             int32      :offset-assert 36)
+   (cpad-file          int32      :offset-assert 40)
+   (button0-abs        int32 3  :offset-assert 44) ;; guess
+   (button0-shadow-abs int32 1  :offset-assert 56) ;; guess
+   (button0-rel        int32 3  :offset-assert 60) ;; guess
+   (stick0-dir         float      :offset-assert 72)
+   (stick0-speed       float      :offset-assert 76)
+   (new-pad            int32      :offset-assert 80)
+   (state              int32      :offset-assert 84)
+   (align              uint8 6  :offset-assert 88)
+   (direct             uint8 6  :offset-assert 94)
+   (buzz-val           uint16 2  :offset-assert 100)
+   (buzz-time          uint64 2  :offset-assert 104)
+   (buzz               basic      :offset-assert 120)
+   (buzz-act           int32      :offset-assert 124)
+   (change-time        uint64     :offset-assert 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x88
+  :flag-assert         #x900000088
+  )
+
+(deftype cpad-list (basic)
+  ((num-cpads int32     :offset-assert 4)
+   (cpads     int32 2 :offset-assert 8) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;;
+;; gs
+;;;;;;;;;;;;;;;
+
+(deftype gs-bank (structure)
+  ((pmode    uint64  :offset-assert 0)
+   (smode2   uint64  :offset 32)
+   (dspfb1   uint64  :offset 112)
+   (display1 uint64  :offset 128)
+   (dspfb2   uint64  :offset 144)
+   (display2 uint64  :offset 160)
+   (extbuf   uint64  :offset 176)
+   (extdata  uint64  :offset 192)
+   (extwrite uint64  :offset 208)
+   (bgcolor  uint64  :offset 224)
+   (csr      uint64  :offset 4096)
+   (imr      uint64  :offset 4112)
+   (busdir   uint64  :offset 4160)
+   )
+  :method-count-assert 9
+  :size-assert         #x1048
+  :flag-assert         #x900001048
+  )
+
+;; todo gs-alpha, gs-fog, gs-fogcol
+
+(deftype gif-bank (structure)
+  ((ctrl  uint32  :offset 0)
+   (mode  uint32  :offset 16)
+   (stat  uint32  :offset 32)
+   (tag0  uint32  :offset 64)
+   (tag1  uint32  :offset 80)
+   (tag2  uint32  :offset 96)
+   (tag3  uint32  :offset 112)
+   (cnt   uint32  :offset 128)
+   (p3cnt uint32  :offset 144)
+   (p3tag uint32  :offset 160)
+   )
+  :method-count-assert 9
+  :size-assert         #xa4
+  :flag-assert         #x9000000a4
+  )
+
+(deftype gs-gif-tag (structure)
+  ((qword uint128   :offset-assert 0) ;; is "qword" and inline? in game
+   (dword uint64 2       :offset 0)
+   (word  uint32 4       :offset 0)
+   (tag   uint64          :offset 0)
+   (regs  uint64          :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; todo gif-tag
+(deftype gif-packet (basic)
+  ((reg-count int32     :offset-assert 4)
+   (gif-tag0  uint128   :offset-assert 16)
+   (args      uint64 1 :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+(deftype draw-context (basic)
+  ((orgx   int32     :offset-assert 4)
+   (orgy   int32     :offset-assert 8)
+   (orgz   int32     :offset-assert 12)
+   (width  int32     :offset-assert 16)
+   (height int32     :offset-assert 20)
+   (color  int32 4 :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+;;;;;;;;;;;;;;;
+;; display-h
+;;;;;;;;;;;;;;;
+
+(deftype display-env (structure)
+  ((pmode   uint64  :offset-assert 0)
+   (smode2  uint64  :offset-assert 8)
+   (dspfb   uint64  :offset-assert 16)
+   (display uint64  :offset-assert 24)
+   (bgcolor uint64  :offset-assert 32)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+(deftype draw-env (structure)
+  ((frame1         uint64  :offset-assert 0)
+   (frame1addr     uint64  :offset-assert 8)
+   (zbuf1          uint64  :offset-assert 16)
+   (zbuf1addr      uint64  :offset-assert 24)
+   (xyoffset1      uint64  :offset-assert 32)
+   (xyoffset1addr  uint64  :offset-assert 40)
+   (scissor1       uint64  :offset-assert 48)
+   (scissor1addr   uint64  :offset-assert 56)
+   (prmodecont     uint64  :offset-assert 64)
+   (prmodecontaddr uint64  :offset-assert 72)
+   (colclamp       uint64  :offset-assert 80)
+   (colclampaddr   uint64  :offset-assert 88)
+   (dthe           uint64  :offset-assert 96)
+   (dtheaddr       uint64  :offset-assert 104)
+   (test1          uint64  :offset-assert 112)
+   (test1addr      uint64  :offset-assert 120)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+(deftype display-frame (basic)
+  ((buffer       int32    11 :offset-assert 4) ;; no idea
+   (calc-buf     basic         :offset 8)
+   (vu1-buf      basic         :offset 8)
+   (debug-buf    basic         :offset 36)
+   (global-buf   basic         :offset 40)
+   (bucket-group dma-bucket    :offset 44)
+   (profile-bar  basic    2  :offset 48)
+   (run-time     uint64        :offset 56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype virtual-frame (structure)
+  ((display      display-env  :offset-assert 0)
+   (display-last display-env  :offset-assert 4)
+   (gif          uint32       :offset-assert 8)
+   (draw         draw-env     :offset-assert 12)
+   (frame        basic        :offset-assert 16)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; todo
+; (deftype display (basic)
+;   ((display-env0                    display-env :inline :offset-assert 8)
+;    (display-env1                    display-env :inline :offset-assert 48)
+;    (display-env2                    display-env :inline :offset-assert 88)
+;    (gif-tag0                        uint128             :offset-assert 128)
+;    (draw0                           draw-env    :inline :offset-assert 144)
+;    (gif-tag1                        uint128             :offset-assert 272)
+;    (draw1                           draw-env    :inline :offset-assert 288)
+;    (gif-tag2                        uint128             :offset-assert 416)
+;    (draw2                           draw-env    :inline :offset-assert 432)
+;    (on-screen                       int32               :offset-assert 560)
+;    (last-screen                     int32               :offset-assert 564)
+;    (frames                          UNKNOWN     6       :offset-assert 568)
+;    (bg-clear-color                  UNKNOWN     4       :offset-assert 760)
+;    (real-frame-counter              uint64              :offset-assert 776)
+;    (base-frame-counter              uint64              :offset-assert 784)
+;    (game-frame-counter              uint64              :offset-assert 792)
+;    (integral-frame-counter          uint64              :offset-assert 800)
+;    (real-integral-frame-counter     uint64              :offset-assert 808)
+;    (actual-frame-counter            uint64              :offset-assert 816)
+;    (real-actual-frame-counter       uint64              :offset-assert 824)
+;    (part-frame-counter              uint64              :offset-assert 832)
+;    (old-real-frame-counter          uint64              :offset-assert 840)
+;    (old-base-frame-counter          uint64              :offset-assert 848)
+;    (old-game-frame-counter          uint64              :offset-assert 856)
+;    (old-integral-frame-counter      uint64              :offset-assert 864)
+;    (old-real-integral-frame-counter uint64              :offset-assert 872)
+;    (old-actual-frame-counter        uint64              :offset-assert 880)
+;    (old-real-actual-frame-counter   uint64              :offset-assert 888)
+;    (old-part-frame-counter          uint64              :offset-assert 896)
+;    (time-ratio                      float               :offset-assert 904)
+;    (seconds-per-frame               float               :offset-assert 908)
+;    (frames-per-second               float               :offset-assert 912)
+;    (time-factor                     float               :offset-assert 916)
+;    (time-adjust-ratio               float               :offset-assert 920)
+;    )
+;   :method-count-assert 10
+;   :size-assert         #x39c
+;   :flag-assert         #xa0000039c
+;   (:methods
+;     (dummy-9 () none 9)
+;     )
+;   )
+
+;;;;;;;;;;;;;;;
+;; file-io
+;;;;;;;;;;;;;;;
+
+;; todo, builtin type issue
+; (deftype file-stream (basic)
+;   ((flags uint32  :offset-assert 4)
+;    (mode  basic   :offset-assert 8)
+;    (name  basic   :offset-assert 12)
+;    (file  uint32  :offset-assert 16)
+;    )
+;   :method-count-assert 9
+;   :size-assert         #x14
+;   :flag-assert         #x900000014
+;   )
+
+(deftype file-info (basic)
+  ((file-type      basic   :offset-assert 4)
+   (file-name      basic   :offset-assert 8)
+   (major-version  uint32  :offset-assert 12)
+   (minor-version  uint32  :offset-assert 16)
+   (maya-file-name basic   :offset-assert 20)
+   (tool-debug     basic   :offset-assert 24)
+   (mdb-file-name  basic   :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;;;;;;;;;;;;;;;
+;; loader-h
+;;;;;;;;;;;;;;;
+
+(deftype external-art-buffer (basic)
+  ((index                      int32          :offset-assert 4)
+   (other                      basic          :offset-assert 8)
+   (status                     basic          :offset-assert 12)
+   (locked?                    basic          :offset-assert 16)
+   (frame-lock                 basic          :offset-assert 20)
+   (heap                       kheap  :inline :offset-assert 32)
+   (pending-load-file          basic          :offset-assert 48)
+   (pending-load-file-part     int32          :offset-assert 52)
+   (pending-load-file-owner    uint64         :offset-assert 56)
+   (pending-load-file-priority float          :offset-assert 64)
+   (load-file                  basic          :offset-assert 68)
+   (load-file-part             int32          :offset-assert 72)
+   (load-file-owner            uint64         :offset-assert 80)
+   (load-file-priority         float          :offset-assert 88)
+   (buf                        uint32         :offset-assert 92)
+   (len                        int32          :offset-assert 96)
+   (art-group                  basic          :offset-assert 100)
+   )
+  :method-count-assert 16
+  :size-assert         #x68
+  :flag-assert         #x1000000068
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    )
+  )
+
+;; loader-h
+(deftype spool-anim (basic)
+  ((name         basic   :offset 16) ;; why?
+   (index        int32   :offset-assert 20)
+   (parts        int32   :offset-assert 24)
+   (priority     float   :offset-assert 28)
+   (owner        uint64  :offset-assert 32)
+   (command-list basic   :offset-assert 40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+;; loader-h
+; todo inline basics missing offset??
+; (deftype external-art-control (basic)
+;   ((buffer               basic    2       :offset-assert 4)
+;    ;(rec                  basic    3       :offset-assert 20) some inline structure
+;    (_pad uint8 142)
+;    (spool-lock           uint64             :offset-assert 160)
+;    (reserve-buffer       basic              :offset-assert 168)
+;    (reserve-buffer-count int32              :offset-assert 172)
+;    (active-stream        basic              :offset-assert 176)
+;    (preload-stream       spool-anim :inline :offset-assert 188)
+;    (last-preload-stream  spool-anim :inline :offset-assert 236)
+;    )
+;   :method-count-assert 17
+;   :size-assert         #x118
+;   :flag-assert         #x1100000118
+;   (:methods
+;     (dummy-9 () none 9)
+;     (dummy-10 () none 10)
+;     (dummy-11 () none 11)
+;     (dummy-12 () none 12)
+;     (dummy-13 () none 13)
+;     (dummy-14 () none 14)
+;     (dummy-15 () none 15)
+;     (dummy-16 () none 16)
+;     )
+;   )
+
+;;;;;;;;;;;;;;
+;; texture-h
+;;;;;;;;;;;;;;
+
+;; texture-h
+;; todo texture-id
+
+;; texture-h
+(deftype texture-pool-segment (structure)
+  ((dest uint32  :offset-assert 0)
+   (size uint32  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; texture-h
+(deftype texture-pool (basic)
+  ((top              int32                        :offset-assert 4)
+   (cur              int32                        :offset-assert 8)
+   (allocate-func    basic                        :offset-assert 12)
+   (font-palette     int32                        :offset-assert 16)
+   (segment          texture-pool-segment 4 :inline :offset-assert 20)
+   (segment-near     texture-pool-segment :inline :offset 20)
+   (segment-common   texture-pool-segment :inline :offset 28)
+   (common-page      int32              32      :offset-assert 52)
+   (common-page-mask int32                        :offset-assert 180)
+   (ids              int32              126     :offset-assert 184)
+   )
+  :method-count-assert 23
+  :size-assert         #x2b0
+  :flag-assert         #x17000002b0
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    )
+  )
+
+;; texture-h
+(deftype texture (basic)
+  ((w            int16     :offset-assert 4)
+   (h            int16     :offset-assert 6)
+   (num-mips     uint8     :offset-assert 8)
+   (tex1-control uint8     :offset-assert 9)
+   (psm          uint8     :offset-assert 10)
+   (mip-shift    uint8     :offset-assert 11)
+   (clutpsm      uint16    :offset-assert 12)
+   (dest         uint16 7 :offset-assert 14)
+   (clutdest     uint16    :offset-assert 28)
+   (width        uint8 7 :offset-assert 30)
+   (name         basic     :offset-assert 40)
+   (size         uint32    :offset-assert 44)
+   (uv-dist      float     :offset-assert 48)
+   (masks        uint32 3 :offset-assert 52)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; texture-h
+(deftype texture-page-segment (structure)
+  ((block-data uint32  :offset-assert 0)
+   (size       uint32  :offset-assert 4)
+   (dest       uint32  :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; texture-h
+(deftype texture-page (basic)
+  ((info      basic            :offset-assert 4)
+   (name      basic            :offset-assert 8)
+   (id        uint32           :offset-assert 12)
+   (length    int32            :offset-assert 16)
+   (mip0-size uint32           :offset-assert 20)
+   (size      uint32           :offset-assert 24)
+   (segment   texture-pool-segment 3 :inline :offset-assert 28) ;; this is wrong
+   (pad       uint32 16       :offset 64)
+   (data      uint8 :dynamic :offset-assert 128)
+   )
+  :method-count-assert 15
+  :size-assert         #x80
+  :flag-assert         #xf00000080
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    )
+  )
+
+;; texture-h
+(deftype texture-link (structure)
+  ((next uint32  :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; texture-h
+(deftype texture-page-dir-entry (structure)
+  ((length int16   :offset-assert 0)
+   (status uint16  :offset-assert 2)
+   (page   basic   :offset-assert 4)
+   (link   uint32  :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; texture-h
+(deftype texture-relocate-later (basic)
+  ((memcpy basic                   :offset-assert 4)
+   (dest   uint32                  :offset-assert 8)
+   (source uint32                  :offset-assert 12)
+   (move   uint32                  :offset-assert 16)
+   (entry  texture-page-dir-entry  :offset-assert 20)
+   (page   basic                   :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; texture-h
+(deftype adgif-shader (structure)
+  (
+   ;;(quad       UNKNOWN 5  :offset-assert 0)
+   ;;(prims      UNKNOWN 10 :offset-assert 0)
+   (tex0       uint64     :offset-assert 0)
+   (tex1       uint64     :offset 16)
+   (miptbp1    uint64     :offset 32)
+   (clamp      uint64     :offset 48)
+   (clamp-reg  uint64     :offset 56)
+   (alpha      uint64     :offset 64)
+   (link-test  uint32     :offset 8)
+   (texture-id uint32     :offset 24)
+   (next       uint32     :offset 40)
+   (_pad uint64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; texture-h
+(deftype adgif-shader-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;
+;; level-h
+;;;;;;;;;;;;;;
+
+;; level-h
+(deftype level-vis-info (basic)
+  ((level              basic            :offset-assert 4)
+   (from-level         basic            :offset-assert 8)
+   (from-bsp           basic            :offset-assert 12)
+   (flags              uint32           :offset-assert 16)
+   (length             uint32           :offset-assert 20)
+   (allocated-length   uint32           :offset-assert 24)
+   (dictionary-length  uint32           :offset-assert 28)
+   (dictionary         uint32           :offset-assert 32)
+   (string-block       uint32           :offset-assert 36)
+   (ramdisk            uint32           :offset-assert 40)
+   (vis-bits           uint32           :offset-assert 44)
+   (current-vis-string uint32           :offset-assert 48)
+   (vis-string         uint8 :dynamic :offset-assert 52)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; level-h
+(deftype level-load-info (basic)
+  ((name-list         basic 3 :offset-assert 4)
+   (index             int32     :offset-assert 16)
+   (name              basic     :offset 4)
+   (visname           basic     :offset 8)
+   (nickname          basic     :offset 12)
+   (packages          basic     :offset-assert 20)
+   (sound-banks       basic     :offset-assert 24)
+   (music-bank        basic     :offset-assert 28)
+   (ambient-sounds    basic     :offset-assert 32)
+   (mood              basic     :offset-assert 36)
+   (mood-func         basic     :offset-assert 40)
+   (ocean             basic     :offset-assert 44)
+   (sky               basic     :offset-assert 48)
+   (sun-fade          float     :offset-assert 52)
+   (continues         basic     :offset-assert 56)
+   (tasks             basic     :offset-assert 60)
+   (priority          int32     :offset-assert 64)
+   (load-commands     basic     :offset-assert 68)
+   (alt-load-commands basic     :offset-assert 72)
+   (bsp-mask          uint64    :offset-assert 80)
+   (bsphere           sphere    :offset-assert 88)
+   (buzzer            int32     :offset-assert 92)
+   (bottom-height     float    :offset-assert 96) ;; meters
+   (run-packages      basic     :offset-assert 100)
+   (prev-level        basic     :offset-assert 104)
+   (next-level        basic     :offset-assert 108)
+   (wait-for-load     basic     :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x74
+  :flag-assert         #x900000074
+  )
+
+;; level-h
+(deftype login-state (basic)
+  ((state int32      :offset-assert 4)
+   (pos   uint32     :offset-assert 8)
+   (elts  uint32     :offset-assert 12)
+   (elt   uint32 16 :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+; ;; level-h
+; (deftype level (basic)
+;   ((name                      basic           :offset-assert 4)
+;    (load-name                 basic           :offset-assert 8)
+;    (nickname                  basic           :offset-assert 12)
+;    (index                     int32           :offset-assert 16)
+;    (status                    basic           :offset-assert 20)
+;    (other                     basic           :offset-assert 24)
+;    (heap                      kheap   :inline :offset-assert 32)
+;    (bsp                       basic           :offset-assert 48)
+;    (art-group                 basic           :offset-assert 52)
+;    (info                      basic           :offset-assert 56)
+;    (texture-page              UNKNOWN 9       :offset-assert 60)
+;    (loaded-texture-page       UNKNOWN 16      :offset-assert 96)
+;    (loaded-texture-page-count int32           :offset-assert 160)
+;    (foreground-sink-group     UNKNOWN 3       :offset-assert 180)
+;    (foreground-draw-engine    UNKNOWN 3       :offset-assert 272)
+;    (entity                    basic           :offset-assert 284)
+;    (ambient                   basic           :offset-assert 288)
+;    (closest-object            UNKNOWN 9       :offset-assert 292)
+;    (upload-size               UNKNOWN 9       :offset-assert 328)
+;    (level-distance            meters          :offset-assert 364)
+;    (inside-sphere?            basic           :offset-assert 368)
+;    (inside-boxes?             basic           :offset-assert 372)
+;    (display?                  basic           :offset-assert 376)
+;    (meta-inside?              basic           :offset-assert 380)
+;    (mood                      basic           :offset-assert 384)
+;    (mood-func                 basic           :offset-assert 388)
+;    (vis-bits                  uint32          :offset-assert 392)
+;    (all-visible?              basic           :offset-assert 396)
+;    (force-all-visible?        basic           :offset-assert 400)
+;    (linking                   basic           :offset-assert 404)
+;    (vis-info                  UNKNOWN 8       :offset-assert 408)
+;    (vis-self-index            int32           :offset-assert 440)
+;    (vis-adj-index             int32           :offset-assert 444)
+;    (vis-buffer                UNKNOWN 2048    :offset-assert 448)
+;    (mem-usage-block           basic           :offset-assert 2496)
+;    (mem-usage                 int32           :offset-assert 2500)
+;    (code-memory-start         uint32          :offset-assert 2504)
+;    (code-memory-end           uint32          :offset-assert 2508)
+;    (texture-mask              UNKNOWN 9       :offset-assert 2512)
+;    (force-inside?             basic           :offset-assert 2548)
+;    )
+;   :method-count-assert 29
+;   :size-assert         #xa30
+;   :flag-assert         #x1d00000a30
+;   (:methods
+;     (dummy-9 () none 9)
+;     (dummy-10 () none 10)
+;     (dummy-11 () none 11)
+;     (dummy-12 () none 12)
+;     (dummy-13 () none 13)
+;     (dummy-14 () none 14)
+;     (dummy-15 () none 15)
+;     (dummy-16 () none 16)
+;     (dummy-17 () none 17)
+;     (dummy-18 () none 18)
+;     (dummy-19 () none 19)
+;     (dummy-20 () none 20)
+;     (dummy-21 () none 21)
+;     (dummy-22 () none 22)
+;     (dummy-23 () none 23)
+;     (dummy-24 () none 24)
+;     (dummy-25 () none 25)
+;     (dummy-26 () none 26)
+;     (dummy-27 () none 27)
+;     (dummy-28 () none 28)
+;     )
+;   )
+
+; ;; level-h
+; (deftype level-group (basic)
+;   ((length          int32                :offset-assert 4)
+;    (entity-link     entity-links         :offset-assert 16)
+;    (border?         basic                :offset-assert 20)
+;    (vis?            basic                :offset-assert 24)
+;    (want-level      basic                :offset-assert 28)
+;    (receiving-level basic                :offset-assert 32)
+;    (load-commands   basic                :offset-assert 36)
+;    (play?           basic                :offset-assert 40)
+;    (level           UNKNOWN      3       :offset-assert 100)
+;    (data            UNKNOWN      3       :offset-assert 100)
+;    (level0          level        :inline :offset-assert 100)
+;    (level1          level        :inline :offset-assert 2708)
+;    (level-default   level        :inline :offset-assert 5316)
+;    )
+;   :method-count-assert 27
+;   :size-assert         #x1ef4
+;   :flag-assert         #x1b00001ef4
+;   (:methods
+;     (dummy-9 () none 9)
+;     (dummy-10 () none 10)
+;     (dummy-11 () none 11)
+;     (dummy-12 () none 12)
+;     (dummy-13 () none 13)
+;     (dummy-14 () none 14)
+;     (dummy-15 () none 15)
+;     (dummy-16 () none 16)
+;     (dummy-17 () none 17)
+;     (dummy-18 () none 18)
+;     (dummy-19 () none 19)
+;     (dummy-20 () none 20)
+;     (dummy-21 () none 21)
+;     (dummy-22 () none 22)
+;     (dummy-23 () none 23)
+;     (dummy-24 () none 24)
+;     (dummy-25 () none 25)
+;     (dummy-26 () none 26)
+;     )
+;   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SYMBOLS
@@ -36,8 +2246,8 @@
 (define-extern lognor (function int int int))
 (define-extern logxor (function int int int))
 (define-extern lognot (function int int))
-(define-extern false-func (function basic))
-(define-extern true-func (function basic))
+(define-extern false-func (function symbol))
+(define-extern true-func (function symbol))
 ;; format
 ;; vec4s
 ;; vec4s method 3
@@ -93,70 +2303,51 @@
 
 
 (define-extern function type)
-(define-extern insert-cons! function)
-(define-extern / function)
-(define-extern 1/ function)
-(define-extern lognot function)
-(define-extern basic-type? function)
+(define-extern insert-cons! (function object object pair))
+(define-extern basic-type? (function basic type symbol))
 ;;(define-extern pair object) ;; unknown type
 
 (define-extern qmem-copy->! function)
-(define-extern mem-set32! function)
-(define-extern delete-car! function)
-(define-extern logxor function)
+(define-extern mem-set32! (function pointer int int pointer))
+(define-extern delete-car! (function object object object))
 ;;(define-extern inline-array-class object) ;; unknown type
 (define-extern mem-print function)
 ;;(define-extern vec4s object) ;; unknown type
 (define-extern array type)
 (define-extern print-tree-bitmask function)
-(define-extern logior function)
 (define-extern quad-copy! function)
-(define-extern assoc function)
+(define-extern assoc (function object object object))
 (define-extern mem-or! function)
 (define-extern fact function)
-(define-extern max function)
-(define-extern assoce function)
-(define-extern mod function)
-(define-extern false-func function)
+(define-extern assoce (function object object object))
 (define-extern basic type)
-(define-extern type-type? function)
-(define-extern member function)
-(define-extern nmember function)
+(define-extern type-type? (function type type symbol))
+(define-extern member (function object object object))
+(define-extern nmember (function basic object object))
 (define-extern breakpoint-range-set! function)
-(define-extern abs function)
 (define-extern nassoc function)
 ;;(define-extern _format object) ;; unknown type
-(define-extern logand function)
-(define-extern find-parent-method function)
-(define-extern true-func function)
+(define-extern find-parent-method (function type int function))
 (define-extern nassoce function)
-(define-extern ref function)
+(define-extern ref (function object int object))
 ;;(define-extern *print-column* object) ;; unknown type
-(define-extern delete! function)
+(define-extern delete! (function object object pair))
 (define-extern qmem-copy<-! function)
-(define-extern rem function)
-(define-extern mem-copy! function)
-(define-extern inspect function)
+(define-extern mem-copy! (function pointer pointer integer pointer))
 (define-extern type type)
 ;;(define-extern format object) ;; unknown type
 ;;(define-extern uint128 object) ;; unknown type
-(define-extern append! function)
+(define-extern append! (function object object object))
 ;;(define-extern *trace-list* object) ;; unknown type
-(define-extern min function)
-(define-extern last function)
+(define-extern last (function object object))
 (define-extern printl function)
 (define-extern valid? function)
 ;;(define-extern nothing object) ;; unknown type
-(define-extern ash function)
-(define-extern lognor function)
-(define-extern sort function)
+(define-extern sort (function object (function object object object) object))
 ;;(define-extern method-set! object) ;; unknown type
 ;;(define-extern *debug-segment* object) ;; unknown type
 (define-extern bfloat type)
-(define-extern * function)
 
-(define-extern print function)
-(define-extern - function)
 (define-extern string type)
 ;;(define-extern #t object) ;; unknown type
 ;;(define-extern integer object) ;; unknown type
@@ -170,7 +2361,7 @@
 (define-extern object type)
 ;;(define-extern uint64 object) ;; unknown type
 ;;(define-extern number object) ;; unknown type
-(define-extern name= function)
+(define-extern name= (function basic basic symbol))
 ;;(define-extern int64 object) ;; unknown type
 ;;(define-extern global object) ;; unknown type
 ;;(define-extern structure object) ;; unknown type
@@ -212,7 +2403,7 @@
 ;;(define-extern *pickup-dead-pool* object) ;; unknown type
 ;;(define-extern *kernel-packages* object) ;; unknown type
 ;;(define-extern *camera-master-dead-pool* object) ;; unknown type
-(define-extern load-package function)
+(define-extern load-package (function string kheap pair))
 (define-extern set-to-run function)
 ;;(define-extern *master-mode* object) ;; unknown type
 ;;(define-extern default-pool object) ;; unknown type
@@ -258,9 +2449,9 @@
 ;;(define-extern *last-loado-length* object) ;; unknown type
 ;;(define-extern *4k-dead-pool* object) ;; unknown type
 ;;(define-extern *default-dead-pool* object) ;; unknown type
-(define-extern kernel-dispatcher function)
+(define-extern kernel-dispatcher (function (function object)))
 ;;(define-extern *8k-dead-pool* object) ;; unknown type
-(define-extern unload-package function)
+(define-extern unload-package (function string pair))
 (define-extern reset-and-call function)
 (define-extern process-not-name function)
 ;;(define-extern *display-pool* object) ;; unknown type
@@ -338,7 +2529,7 @@
 (define-extern catn-string<-charp function)
 ;;(define-extern *string-tmp-str* object) ;; unknown type
 (define-extern string-suck-up! function)
-(define-extern copy-string<-string function)
+(define-extern copy-string<-string (function string string symbol))
 (define-extern string-skip-to-char function)
 (define-extern string-strip-trailing-whitespace! function)
 (define-extern string>? function)

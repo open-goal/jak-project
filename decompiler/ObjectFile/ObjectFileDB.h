@@ -57,6 +57,7 @@ class ObjectFileDB {
   void analyze_functions();
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
+  std::string all_type_defs;
 
  private:
   void load_map_file(const std::string& map_data);
@@ -95,6 +96,23 @@ class ObjectFileDB {
         for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
           //          printf("fn %d\n", fn);
           f(goal_func, i, data);
+          fn++;
+        }
+      }
+    });
+  }
+
+  template <typename Func>
+  void for_each_function_def_order(Func f) {
+    for_each_obj([&](ObjectFileData& data) {
+      //      printf("IN %s\n", data.record.to_unique_name().c_str());
+      for (int i = 0; i < int(data.linked_data.segments); i++) {
+        //        printf("seg %d\n", i);
+        int fn = 0;
+        //        for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
+        for (size_t j = data.linked_data.functions_by_seg.at(i).size(); j-- > 0;) {
+          //          printf("fn %d\n", fn);
+          f(data.linked_data.functions_by_seg.at(i).at(j), i, data);
           fn++;
         }
       }

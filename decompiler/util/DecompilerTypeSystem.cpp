@@ -1,6 +1,7 @@
 #include "DecompilerTypeSystem.h"
 #include "common/goos/Reader.h"
 #include "common/type_system/deftype.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 DecompilerTypeSystem::DecompilerTypeSystem() {
   ts.add_builtin_types();
@@ -75,4 +76,46 @@ std::string DecompilerTypeSystem::dump_symbol_types() {
     }
   }
   return result;
+}
+
+void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
+  auto kv = type_flags.find(name);
+  if (kv != type_flags.end()) {
+    spdlog::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
+                 flags);
+    if (kv->second != flags) {
+      spdlog::warn("duplicated type flags that are inconsistent!");
+    }
+  }
+  type_flags[name] = flags;
+}
+
+void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::string& parent) {
+  auto kv = type_parents.find(child);
+  if (kv != type_parents.end()) {
+    spdlog::warn("duplicated type parents for {} was {} now {}", child.c_str(), kv->second.c_str(),
+                 parent.c_str());
+    if (kv->second != parent) {
+      throw std::runtime_error("duplicated type parents that are inconsistent!");
+    }
+  }
+  type_parents[child] = parent;
+}
+
+std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string& child) const {
+  auto kv_tp = type_parents.find(child);
+  if (kv_tp != type_parents.end()) {
+    return kv_tp->second;
+  }
+
+  return "UNKNOWN";
+}
+
+bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) const {
+  auto kv = type_flags.find(type);
+  if (kv != type_flags.end()) {
+    *dest = kv->second;
+    return true;
+  }
+  return false;
 }

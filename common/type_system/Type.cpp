@@ -39,6 +39,8 @@ std::string MethodInfo::print_one_line() const {
 }
 
 Field::Field(std::string name, TypeSpec ts) : m_name(std::move(name)), m_type(std::move(ts)) {}
+Field::Field(std::string name, TypeSpec ts, int offset)
+    : m_name(std::move(name)), m_type(std::move(ts)), m_offset(offset) {}
 
 /*!
  * Print a one line description of a field.

@@ -104,7 +104,7 @@ TEST_F(WithGameTests, All) {
   runner.run_static_test(env, testCategory, "test-delete-car.gc", {"((a . b) (e . f))\n#f\n0\n"});
   runner.run_static_test(env, testCategory, "test-insert-cons.gc",
                          {"((c . w) (a . b) (e . f))\n0\n"});
-  runner.run_static_test(env, testCategory, "test-new-inline-array-class.gc", {"2820\n"});
+  runner.run_static_test(env, testCategory, "test-new-inline-array-class.gc", {"2824\n"});
   runner.run_static_test(env, testCategory, "test-memcpy.gc", {"13\n"});
   runner.run_static_test(env, testCategory, "test-memset.gc", {"11\n"});
   runner.run_static_test(env, testCategory, "test-binteger-print.gc", {"-17\n0\n"});
@@ -131,4 +131,11 @@ TEST_F(WithGameTests, All) {
                          get_test_pass_string("new-static-structure-integers", 7));
   runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
                          get_test_pass_string("new-static-basic", 9));
+}
+
+TEST(TypeConsistency, TypeConsistency) {
+  Compiler compiler;
+  compiler.enable_throw_on_redefines();
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
+  compiler.run_test_no_load("decompiler/config/all-types.gc");
 }

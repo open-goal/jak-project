@@ -70,7 +70,8 @@ class Function {
   Function(int _start_word, int _end_word);
   void analyze_prologue(const LinkedObjectFile& file);
   void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
-  void find_method_defs(LinkedObjectFile& file);
+  void find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
+  void find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr);
   bool has_basic_ops() { return !basic_ops.empty(); }
   bool has_typemaps() { return !basic_op_typemaps.empty(); }
@@ -94,6 +95,8 @@ class Function {
   FunctionName guessed_name;
 
   bool suspected_asm = false;
+  bool is_inspect_method = false;
+  std::string method_of_type;
 
   std::vector<Instruction> instructions;
   std::vector<BasicBlock> basic_blocks;
@@ -137,10 +140,10 @@ class Function {
   } prologue;
 
   bool uses_fp_register = false;
+  std::vector<std::shared_ptr<IR>> basic_ops;
 
  private:
   void check_epilogue(const LinkedObjectFile& file);
-  std::vector<std::shared_ptr<IR>> basic_ops;
   std::vector<TypeMap> basic_op_typemaps;
   std::unordered_map<int, int> instruction_to_basic_op;
   std::unordered_map<int, int> basic_op_to_instruction;

@@ -68,6 +68,9 @@ class LinkedObjectFile {
                                          const std::string& extra_name);
   std::string print_asm_function_disassembly(const std::string& my_name);
 
+  u32 read_data_word(const Label& label);
+  std::string get_goal_string_by_label(const Label& label);
+
   struct Stats {
     uint32_t total_code_bytes = 0;
     uint32_t total_v2_code_bytes = 0;
@@ -134,7 +137,7 @@ class LinkedObjectFile {
   goos::Object to_form_script_object(int seg, int byte_idx, std::vector<bool>& seen);
   bool is_empty_list(int seg, int byte_idx);
   bool is_string(int seg, int byte_idx);
-  std::string get_goal_string(int seg, int word_idx);
+  std::string get_goal_string(int seg, int word_idx, bool with_quotes = true);
 
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
