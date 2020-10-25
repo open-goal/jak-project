@@ -40,3 +40,7 @@
 - The `&+` form now works on `inline-array` and `structure`.
 - In the case where the type system would use a result type of `lca(none, x)`, the result type is now `none` instead of compiler abort.
 - The "none value" is now `(none)` instead of `none`
+
+- Creating a field of 128-bit value type no longer causes a compiler crash
+- 128-bit fields are inspected as `<cannot-print>`
+- Static fields can now contain floating point values

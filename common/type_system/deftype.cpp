@@ -239,7 +239,13 @@ StructureDefResult parse_structure_def(StructureType* type,
         result.generate_runtime_type = false;
       } else if (opt_name == ":pack-me") {
         result.pack_me = true;
-      } else {
+      } else if (opt_name == ":heap-base") {
+        u16 hb = get_int(car(rest));
+        rest = cdr(rest);
+        flags.heap_base = hb;
+      }
+
+      else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
     }

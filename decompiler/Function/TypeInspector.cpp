@@ -312,10 +312,13 @@ bool get_ptr_offset(IR* ir, Register dst, Register base, int* result) {
          get_ptr_offset_zero(as_math, base, result);
 }
 
-bool is_weird(Function& function, LinkedObjectFile& file, TypeInspectorResult* result) {
+int get_start_idx(Function& function,
+                  LinkedObjectFile& file,
+                  TypeInspectorResult* result,
+                  const std::string& parent_type) {
   if (function.basic_blocks.size() > 1) {
     result->warnings += " too many basic blocks";
-    return true;
+    return 0;
   }
 
   /*
@@ -341,64 +344,94 @@ bool is_weird(Function& function, LinkedObjectFile& file, TypeInspectorResult* r
   // check size
   if (function.basic_ops.size() < 7) {
     result->warnings += " not enough basic ops";
-    return true;
+    return 0;
   }
 
   auto& move_op = function.basic_ops.at(0);
   if (!is_reg_reg_move(move_op.get(), make_gpr(Reg::GP), make_gpr(Reg::A0))) {
     result->warnings += "bad first move";
-    return true;
+    return 0;
   }
 
   auto& get_format_op = function.basic_ops.at(1);
-  if (!is_get_sym_value(get_format_op.get(), make_gpr(Reg::T9), "format")) {
-    result->warnings += "bad get format";
-    return true;
+
+  if (is_get_sym_value(get_format_op.get(), make_gpr(Reg::T9), "format")) {
+    auto& get_true = function.basic_ops.at(2);
+    if (!is_get_sym(get_true.get(), make_gpr(Reg::A0), "#t")) {
+      result->warnings += "bad get true";
+      return 0;
+    }
+
+    auto& get_str = function.basic_ops.at(3);
+    if (!is_get_label(get_str.get(), make_gpr(Reg::A1))) {
+      result->warnings += "bad get label";
+      return 0;
+    }
+
+    auto str = file.get_goal_string_by_label(file.labels.at(get_label_id_of_set(get_str.get())));
+    if (str != "[~8x] ~A~%") {
+      result->warnings += "bad type dec string: " + str;
+      return 0;
+    }
+
+    auto& move2_op = function.basic_ops.at(4);
+    if (!is_reg_reg_move(move2_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP))) {
+      result->warnings += "bad second move";
+      return 0;
+    }
+
+    auto& load_op = function.basic_ops.at(5);
+    bool is_basic_load = is_get_load_with_offset(load_op.get(), make_gpr(Reg::A3),
+                                                 IR_Load::UNSIGNED, 4, make_gpr(Reg::GP), -4);
+    result->is_basic = is_basic_load;
+
+    bool is_struct_load = is_get_sym(load_op.get(), make_gpr(Reg::A3), function.method_of_type);
+
+    if (!is_basic_load && !is_struct_load) {
+      result->warnings += "bad load";
+      return 0;
+    }
+
+    auto& call = function.basic_ops.at(6);
+    if (!dynamic_cast<IR_Call*>(call.get())) {
+      result->warnings += "bad call";
+      return 0;
+    }
+
+    // okay!
+    return 7;
+  } else {
+    if (is_get_sym_value(get_format_op.get(), make_gpr(Reg::V1), parent_type)) {
+      // now get the inspect method.
+      auto& get_method_op = function.basic_ops.at(2);
+      if (!is_get_load_with_offset(get_method_op.get(), make_gpr(Reg::T9), IR_Load::UNSIGNED, 4,
+                                   make_gpr(Reg::V1), 28)) {
+        result->warnings += "bad get method op " + get_method_op->print(file);
+        return 0;
+      }
+
+      auto& move2_op = function.basic_ops.at(3);
+      if (!is_reg_reg_move(move2_op.get(), make_gpr(Reg::A0), make_gpr(Reg::GP))) {
+        result->warnings += "bad move2 op " + move2_op->print(file);
+        return 0;
+      }
+
+      auto& call_op = function.basic_ops.at(4);
+      if (!dynamic_cast<IR_Call*>(call_op.get())) {
+        result->warnings += "bad call op " + call_op->print(file);
+        return 0;
+      }
+
+      result->warnings += "inherited inpspect of " + parent_type;
+      result->is_basic = true;
+      return 5;
+
+    } else {
+      result->warnings +=
+          "unrecognized get op: " + get_format_op->print(file) + " parent was " + parent_type;
+      return 0;
+    }
   }
-
-  auto& get_true = function.basic_ops.at(2);
-  if (!is_get_sym(get_true.get(), make_gpr(Reg::A0), "#t")) {
-    result->warnings += "bad get true";
-    return true;
-  }
-
-  auto& get_str = function.basic_ops.at(3);
-  if (!is_get_label(get_str.get(), make_gpr(Reg::A1))) {
-    result->warnings += "bad get label";
-    return true;
-  }
-
-  auto str = file.get_goal_string_by_label(file.labels.at(get_label_id_of_set(get_str.get())));
-  if (str != "[~8x] ~A~%") {
-    result->warnings += "bad type dec string: " + str;
-    return true;
-  }
-
-  auto& move2_op = function.basic_ops.at(4);
-  if (!is_reg_reg_move(move2_op.get(), make_gpr(Reg::A2), make_gpr(Reg::GP))) {
-    result->warnings += "bad second move";
-    return true;
-  }
-
-  auto& load_op = function.basic_ops.at(5);
-  bool is_basic_load = is_get_load_with_offset(load_op.get(), make_gpr(Reg::A3), IR_Load::UNSIGNED,
-                                               4, make_gpr(Reg::GP), -4);
-  result->is_basic = is_basic_load;
-
-  bool is_struct_load = is_get_sym(load_op.get(), make_gpr(Reg::A3), function.method_of_type);
-
-  if (!is_basic_load && !is_struct_load) {
-    result->warnings += "bad load";
-    return true;
-  }
-
-  auto& call = function.basic_ops.at(6);
-  if (!dynamic_cast<IR_Call*>(call.get())) {
-    result->warnings += "bad call";
-    return true;
-  }
-
-  return false;
 }
 
 int identify_basic_field(int idx,
@@ -706,11 +739,11 @@ TypeInspectorResult inspect_inspect_method(Function& inspect,
   assert(flags.pad == 0);
 
   auto& bad_set = get_config().bad_inspect_types;
-  if (is_weird(inspect, file, &result) || bad_set.find(type_name) != bad_set.end()) {
+  int idx = get_start_idx(inspect, file, &result, result.parent_type_name);
+  if (idx == 0 || bad_set.find(type_name) != bad_set.end()) {
     // printf("was weird: %s\n", result.warnings.c_str());
     return result;
   }
-  int idx = 7;
   while (idx < int(inspect.basic_ops.size()) - 1 && idx != -1) {
     idx = detect(idx, inspect, file, &result);
   }

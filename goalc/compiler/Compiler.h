@@ -94,6 +94,7 @@ class Compiler {
                                   const std::string& method_type_name = "");
 
   bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
+  float try_getting_constant_float(const goos::Object& in, float* out, Env* env);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
@@ -189,6 +190,7 @@ class Compiler {
 
   // Math
   Val* compile_add(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_sub(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_div(const goos::Object& form, const goos::Object& rest, Env* env);
