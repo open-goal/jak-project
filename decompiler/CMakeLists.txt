@@ -9,7 +9,6 @@ add_executable(decompiler
         ObjectFile/LinkedObjectFile.cpp
         Function/Function.cpp
 		Function/TypeAnalysis.cpp
-        util/FileIO.cpp
         config.cpp
         util/DecompilerTypeSystem.cpp
         Function/BasicBlocks.cpp

@@ -1,6 +1,5 @@
 #include "config.h"
 #include "third-party/json.hpp"
-#include "util/FileIO.h"
 #include "common/util/FileUtil.h"
 
 Config gConfig;
