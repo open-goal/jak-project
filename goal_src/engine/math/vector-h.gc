@@ -5,3 +5,429 @@
 ;; name in dgo: vector-h
 ;; dgos: GAME, ENGINE
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; bit array
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype bit-array (basic)
+  ((length           int32  :offset-assert 4)
+   (allocated-length int32  :offset-assert 8)
+   (_pad uint8)
+   )
+  :method-count-assert 13
+  :size-assert         #xd
+  :flag-assert         #xd0000000d
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    )
+  )
+
+;; todo new
+;; todo 4
+;; todo 5
+;; todo 9
+;; todo 10
+;; todo 11
+;; todo 12
+;; 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; vector types (integer)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Vector of 4 unsigned bytes.
+(deftype vector4ub (structure)
+  ((data uint8 4 :offset-assert 0)
+   (x    uint8     :offset 0)
+   (y    uint8     :offset 1)
+   (z    uint8     :offset 2)
+   (w    uint8     :offset 3)
+   (clr  uint32    :offset 0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; Vector of 4 signed bytes
+(deftype vector4b (structure)
+  ((data int8 4 :offset-assert 0)
+   (x    int8      :offset 0)
+   (y    int8      :offset 1)
+   (z    int8      :offset 2)
+   (w    int8      :offset 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; Vector of 2 signed halfwords
+(deftype vector2h (structure)
+  ((data int16 2 :offset-assert 0)
+   (x    int16     :offset 0)
+   (y    int16     :offset 2)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; Vector of 2 unsigned halfwords
+(deftype vector2uh (structure)
+  ((data uint16 2 :offset-assert 0)
+   (x    uint16    :offset 0)
+   (y    uint16    :offset 2)
+   (val  uint32    :offset 0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; Vector of 3 halfwords
+(deftype vector3h (structure)
+  ((data int16 2 :offset-assert 0) ;; probably a bug, should be 3.
+   (x    int16     :offset 0)
+   (y    int16     :offset 2)
+   (z    int16     :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x6
+  :flag-assert         #x900000006
+  )
+
+;; Vector of 2 signed words
+(deftype vector2w (structure)
+  ((data int32 2 :offset-assert 0)
+   (x    int32     :offset 0)
+   (y    int32     :offset 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; Vector of 3 signed words
+(deftype vector3w (structure)
+  ((data int32 3 :offset-assert 0)
+   (x    int32     :offset 0)
+   (y    int32     :offset 4)
+   (z    int32     :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; Vector of 4 signed words
+(deftype vector4w (structure)
+  ((data  int32 4 :offset-assert 0)
+   (x     int32     :offset 0)
+   (y     int32     :offset 4)
+   (z     int32     :offset 8)
+   (w     int32     :offset 12)
+   (dword uint64 2 :offset 0)
+   (quad  uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmethod print vector4w ((this vector4w))
+  (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>"
+          (-> this data 0)
+          (-> this data 1)
+          (-> this data 2)
+          (-> this data 3)
+          this)
+  this
+  )
+
+;; Two vector4w's
+(deftype vector4w-2 (structure)
+  ((data   int32 8 :offset-assert 0)
+   (quad   uint128 2 :offset 0)
+   (vector vector4w 2 :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; Three vector4w's
+(deftype vector4w-3 (structure)
+  ((data   int32 12 :offset-assert 0)
+   (quad   uint128 3  :offset 0)
+   (vector vector4w 3  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; Four vector4w's
+(deftype vector4w-4 (structure)
+  ((data   int32 16 :offset-assert 0)
+   (quad   uint128 4  :offset 0)
+   (vector vector4w 4  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; Vector of 4 halfwords
+(deftype vector4h (structure)
+  ((data int16 4 :offset-assert 0)
+   (x    int16     :offset 0)
+   (y    int16     :offset 2)
+   (z    int16     :offset 4)
+   (w    int16     :offset 6)
+   (long uint64    :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; Vector of 8 halfwords
+(deftype vector8h (structure)
+  ((data int16 8 :offset-assert 0)
+   (quad uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; Vector of 16 signed bytes
+(deftype vector16b (structure)
+  ((data int8 8 :offset-assert 0)
+   (quad uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; vector types (floating point)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Vector of 4 floats. Shortened to "vector" because it is commonly used.
+(deftype vector (structure)
+  ((data float 4 :offset-assert 0)
+   (x float :offset 0)
+   (y float :offset 4)
+   (z float :offset 8)
+   (w float :offset 12)
+   (quad uint128 :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defmethod inspect vector ((this vector))
+  (format #t "[~8x] vector~%" this)
+  (format #t "~T[~F] [~F] [~F] [~F]~%"
+          (-> this data 0)
+          (-> this data 1)
+          (-> this data 2)
+          (-> this data 3))
+  this)
+
+(defmethod print vector ((this vector))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>"
+          (-> this data 0)
+          (-> this data 1)
+          (-> this data 2)
+          (-> this data 3)
+          this)
+  this)
+
+
+(define *null-vector*     (new 'static 'vector :x 0. :y 0. :z 0. :w 1.))
+(define *identity-vector* (new 'static 'vector :x 1. :y 1. :z 1. :w 1.))
+(define *x-vector*        (new 'static 'vector :x 1. :y 0. :z 0. :w 1.))
+(define *y-vector*        (new 'static 'vector :x 0. :y 1. :z 0. :w 1.))
+(define *z-vector*        (new 'static 'vector :x 0. :y 0. :z 1. :w 1.))
+(define *up-vector*       (new 'static 'vector :x 0. :y 1. :z 0. :w 1.))
+
+
+;; Three vector's
+(deftype vector4s-3 (structure)
+  ((data   float 12 :offset-assert 0) ;; guess
+   (quad   uint128 3  :offset 0)
+   (vector vector4w 3  :offset 0)     ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype vector-array (inline-array-class)
+  (
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(set! (-> vector-array heap-base) 16)
+
+(deftype rgbaf (vector)
+  ((r    float     :offset 0)
+   (g    float     :offset 4)
+   (b    float     :offset 8)
+   (a    float     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype plane (vector)
+  ((a    float     :offset 0)
+   (b    float     :offset 4)
+   (c    float     :offset 8)
+   (d    float     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sphere (vector)
+  ((r    float     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+; (deftype isphere (vec4s)
+;   ()
+;   :method-count-assert 9
+;   :size-assert         #x10
+;   :flag-assert         #x900000010
+;   )
+
+(deftype box8s (structure)
+  ((data   float 8       :offset-assert 0)
+   (quad   uint128 2       :offset 0)
+   (vector vector 2       :offset 0)
+   (min    vector  :inline :offset 0)
+   (max    vector  :inline :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype box8s-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(set! (-> box8s-array heap-base) 32)
+
+(deftype cylinder (structure)
+  ((origin vector :inline :offset-assert 0)
+   (axis   vector :inline :offset-assert 16)
+   (radius float          :offset-assert 32)
+   (length float          :offset-assert 36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+(deftype cylinder-flat (structure)
+  ((origin vector :inline :offset-assert 0)
+   (axis   vector :inline :offset-assert 16)
+   (radius float          :offset-assert 32)
+   (length float          :offset-assert 36)
+   )
+  :method-count-assert 11
+  :size-assert         #x28
+  :flag-assert         #xb00000028
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+;; vector-h
+(deftype vertical-planes (structure)
+  ((data uint128 4 :offset-assert 0) ;; probably wrong
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype vertical-planes-array (basic)
+  ((length uint32           :offset-assert 4)
+   (data   vertical-planes :dynamic :offset 16) ;; todo, why is this here?
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype qword (structure)
+  ((data     uint32  4       :offset-assert 0)
+   (byte     uint8  16      :offset 0)
+   (hword    uint16  8       :offset 0)
+   (word     uint32  4       :offset 0)
+   (dword    uint64  2       :offset 0)
+   (quad     uint128          :offset 0)
+   (vector   vector   :inline :offset 0)
+   (vector4w vector4w :inline :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vector3s (structure)
+  ((data float 3 :offset-assert 0)
+   (x    float     :offset 0)
+   (y    float     :offset 4)
+   (z    float     :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; todo dot, dot-vu, 4-dot, 4-dot-vu, +!, -!, zero!, reset!, copy!
+
+; (defun vector-dot ((a vector) (b vector))
+;   "Take the dot product of two vectors.
+;    Only does the x, y, z compoments"
+;    (let ((result 0.))
+;      (+! result (* (-> a x) (-> b x)))
+;      (+! result (* (-> a y) (-> b y)))
+;      (+! result (* (-> a z) (-> b z)))
+;      )
+;    result
+;    )
+
+(define *zero-vector* (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))

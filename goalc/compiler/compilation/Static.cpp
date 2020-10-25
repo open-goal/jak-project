@@ -119,6 +119,14 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
         throw_compile_error(
             form, "Setting a basic field to anything other than a symbol is currently unsupported");
       }
+    } else if (is_float(field_info.type)) {
+      float value = 0.f;
+      if (!try_getting_constant_float(field_value, &value, env)) {
+        throw_compile_error(form, fmt::format("Field {} is a float, but the value given couldn't "
+                                              "be converted to a float at compile time.",
+                                              field_name_def));
+      }
+      memcpy(obj->data.data() + field_offset, &value, sizeof(float));
     }
 
     else {

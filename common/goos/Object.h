@@ -300,6 +300,14 @@ class Object {
     return float_obj.value;
   }
 
+  const FloatType& as_float() const {
+    if (type != ObjectType::FLOAT) {
+      throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +
+                               print());
+    }
+    return float_obj.value;
+  }
+
   char& as_char() {
     if (type != ObjectType::CHAR) {
       throw std::runtime_error("as_char called on a " + object_type_to_string(type) + " " +

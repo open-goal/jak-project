@@ -111,24 +111,6 @@ void Compiler::generate_field_description(const goos::Object& form,
   if (m_ts.typecheck(m_ts.make_typespec("type"), f.type(), "", false, false)) {
     // type
     return;
-  } else if (m_ts.typecheck(m_ts.make_typespec("basic"), f.type(), "", false, false) ||
-             m_ts.typecheck(m_ts.make_typespec("binteger"), f.type(), "", false, false) ||
-             m_ts.typecheck(m_ts.make_typespec("pair"), f.type(), "", false, false)) {
-    // basic, binteger, pair
-    str_template += fmt::format("~T{}: ~A~%", f.name());
-    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("integer"), f.type(), "", false, false)) {
-    // Integer
-    str_template += fmt::format("~T{}: ~D~%", f.name());
-    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("float"), f.type(), "", false, false)) {
-    // Float
-    str_template += fmt::format("~T{}: ~f~%", f.name());
-    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("pointer"), f.type(), "", false, false)) {
-    // Pointers
-    str_template += fmt::format("~T{}: #x~X~%", f.name());
-    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (f.is_array() && !f.is_dynamic()) {
     // Arrays
     str_template += fmt::format("~T{}[{}] @ #x~X~%", f.name(), f.array_size());
@@ -140,6 +122,29 @@ void Compiler::generate_field_description(const goos::Object& form,
   } else if (f.is_dynamic()) {
     // Structure
     str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("basic"), f.type(), "", false, false) ||
+             m_ts.typecheck(m_ts.make_typespec("binteger"), f.type(), "", false, false) ||
+             m_ts.typecheck(m_ts.make_typespec("pair"), f.type(), "", false, false)) {
+    // basic, binteger, pair
+    str_template += fmt::format("~T{}: ~A~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("integer"), f.type(), "", false, false)) {
+    // Integer
+    if (f.type().print() == "uint128") {
+      str_template += fmt::format("~T{}: <cannot-print>~%", f.name());
+    } else {
+      str_template += fmt::format("~T{}: ~D~%", f.name());
+      format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+    }
+
+  } else if (m_ts.typecheck(m_ts.make_typespec("float"), f.type(), "", false, false)) {
+    // Float
+    str_template += fmt::format("~T{}: ~f~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("pointer"), f.type(), "", false, false)) {
+    // Pointers
+    str_template += fmt::format("~T{}: #x~X~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else {
     // Otherwise, we havn't implemented it!
