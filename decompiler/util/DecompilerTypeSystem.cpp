@@ -58,6 +58,19 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
 
     } else if (car(o).as_symbol()->name == "deftype") {
       parse_deftype(cdr(o), &ts);
+    } else if (car(o).as_symbol()->name == "declare-type") {
+      auto* rest = &cdr(o);
+      auto type_name = car(*rest);
+      rest = &cdr(*rest);
+      auto type_kind = car(*rest);
+      if (!cdr(*rest).is_empty_list()) {
+        throw std::runtime_error("malformed declare-type");
+      }
+      if (type_kind.as_symbol()->name == "basic") {
+        ts.forward_declare_type_as_basic(type_name.as_symbol()->name);
+      } else {
+        throw std::runtime_error("bad declare-type");
+      }
     } else {
       throw std::runtime_error("Decompiler cannot parse " + car(o).print());
     }
