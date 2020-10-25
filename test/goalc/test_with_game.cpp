@@ -133,7 +133,9 @@ TEST_F(WithGameTests, All) {
                          get_test_pass_string("new-static-basic", 9));
 }
 
-TEST_F(WithGameTests, TypeConsistency) {
+TEST(TypeConsistency, TypeConsistency) {
+  Compiler compiler;
   compiler.enable_throw_on_redefines();
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
   compiler.run_test_no_load("decompiler/config/all-types.gc");
 }

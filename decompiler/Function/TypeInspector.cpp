@@ -370,7 +370,7 @@ bool is_weird(Function& function, LinkedObjectFile& file, TypeInspectorResult* r
 
   auto str = file.get_goal_string_by_label(file.labels.at(get_label_id_of_set(get_str.get())));
   if (str != "[~8x] ~A~%") {
-    result->warnings += "bad type dec string";
+    result->warnings += "bad type dec string: " + str;
     return true;
   }
 
@@ -780,7 +780,7 @@ std::string TypeInspectorResult::print_as_deftype() {
     result.append(mods);
     result.append(longest_mods - int(mods.size() - 1), ' ');
 
-    result.append(":ofset-assert ");
+    result.append(":offset-assert ");
     result.append(std::to_string(field.offset()));
     result.append(")\n   ");
   }
@@ -793,6 +793,14 @@ std::string TypeInspectorResult::print_as_deftype() {
     result.append(";; ");
     result.append(warnings);
     result.append("\n  ");
+  }
+
+  if(type_method_count > 9) {
+    result.append("(:methods\n    ");
+    for(int i = 9; i < type_method_count; i++) {
+      result.append(fmt::format("(dummy-{} () none {})\n    ", i, i));
+    }
+    result.append(")\n  ");
   }
   result.append(")\n");
 
