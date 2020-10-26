@@ -718,8 +718,14 @@ void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
                                        emitter::gRegInfo.get_offset_reg(), m_offset, m_info.size,
                                        m_info.sign_extend),
                    irec);
+  } else if (m_dest->ireg().kind == emitter::RegKind::XMM && m_info.size == 4 &&
+             m_info.sign_extend == false && m_info.reg == ::RegKind::FLOAT) {
+    gen->add_instr(
+        IGen::load_goal_xmm32(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
+                              emitter::gRegInfo.get_offset_reg(), m_offset),
+        irec);
   } else {
-    throw std::runtime_error("IR_LoadConstOffset::do_codegen xmm not supported");
+    throw std::runtime_error("IR_LoadConstOffset::do_codegen not supported");
   }
 }
 
