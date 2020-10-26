@@ -26,15 +26,15 @@ struct WithGameParam {
 class WithGameTests : public testing::TestWithParam<WithGameParam> {
  public:
   static void SetUpTestSuite() {
+    runtime_thread = std::thread((GoalTest::runtime_with_kernel));
+    runner.c = &compiler;
+
     try {
-      compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
+      compiler.run_test("test/goalc/source_templates/with_game/test-build-game.gc");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);
     }
-
-    runtime_thread = std::thread((GoalTest::runtime_with_kernel));
-    runner.c = &compiler;
   }
 
   static void TearDownTestSuite() {
@@ -131,6 +131,8 @@ TEST_F(WithGameTests, All) {
                          get_test_pass_string("new-static-structure-integers", 7));
   runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
                          get_test_pass_string("new-static-basic", 9));
+  runner.run_static_test(env, testCategory, "test-vector-dot.gc",
+                         get_test_pass_string("vector-dot", 1));
 }
 
 TEST(TypeConsistency, TypeConsistency) {

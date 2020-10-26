@@ -419,15 +419,46 @@
 
 ;; todo dot, dot-vu, 4-dot, 4-dot-vu, +!, -!, zero!, reset!, copy!
 
-; (defun vector-dot ((a vector) (b vector))
-;   "Take the dot product of two vectors.
-;    Only does the x, y, z compoments"
-;    (let ((result 0.))
-;      (+! result (* (-> a x) (-> b x)))
-;      (+! result (* (-> a y) (-> b y)))
-;      (+! result (* (-> a z) (-> b z)))
-;      )
-;    result
-;    )
+(defun vector-dot ((a vector) (b vector))
+  "Take the dot product of two vectors.
+   Only does the x, y, z compoments.
+   Originally handwritten assembly to space out loads and use FPU accumulator"
+   (declare (inline))
+   (let ((result 0.))
+     (+! result (* (-> a x) (-> b x)))
+     (+! result (* (-> a y) (-> b y)))
+     (+! result (* (-> a z) (-> b z)))
+     result
+     )
+   )
+
+(defun vector-dot-vu ((a vector) (b vector))
+  "Take the dot product of two vectors.
+   Only does the x, y, z components.
+   Originally implemented using VU macro ops"
+   (declare (inline))
+   (vector-dot a b)
+  )
+
+(defun vector4-dot ((a vector) (b vector))
+  "Take the dot product of two vectors.
+   Does the x, y, z, and w compoments"
+   (declare (inline))
+   (let ((result 0.))
+     (+! result (* (-> a x) (-> b x)))
+     (+! result (* (-> a y) (-> b y)))
+     (+! result (* (-> a z) (-> b z)))
+     (+! result (* (-> a w) (-> b w)))
+     result
+     )
+   )
+
+(defun vector-dot-vu ((a vector) (b vector))
+  "Take the dot product of two vectors.
+   Does the x, y, z, and w compoments
+   Originally implemented using VU macro ops"
+   (declare (inline))
+   (vector4-dot a b)
+  )
 
 (define *zero-vector* (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))

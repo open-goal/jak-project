@@ -25,6 +25,7 @@ RegVal* Val::to_xmm(Env* fe) {
   if (rv->ireg().kind == emitter::RegKind::XMM) {
     return rv;
   } else {
+    assert(false);
     throw std::runtime_error("Register is not an XMM[0-15] register.");
   }
 }
@@ -121,6 +122,21 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
     return re;
   } else {
     auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
+    auto addr = base->to_gpr(fe);
+    fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));
+    return re;
+  }
+}
+
+RegVal* MemoryDerefVal::to_xmm(Env* fe) {
+  auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
+  if (base_as_co) {
+    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+    fe->emit(std::make_unique<IR_LoadConstOffset>(re, base_as_co->offset,
+                                                  base_as_co->base->to_gpr(fe), info));
+    return re;
+  } else {
+    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
     auto addr = base->to_gpr(fe);
     fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));
     return re;

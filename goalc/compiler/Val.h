@@ -184,6 +184,7 @@ class MemoryDerefVal : public Val {
       : Val(std::move(ts)), base(_base), info(_info) {}
   std::string print() const override { return "[" + base->print() + "]"; }
   RegVal* to_reg(Env* fe) override;
+  RegVal* to_xmm(Env* fe) override;
   Val* base = nullptr;
   MemLoadInfo info;
 };
