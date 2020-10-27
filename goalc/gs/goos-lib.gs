@@ -17,7 +17,7 @@
 ;; goos macro to let us define goal macros from goos:
 (defsmacro defgmacro
   (name args &rest body)
-  `(define :env *goal-env*,name
+  `(define :env *goal-env* ,name
      (macro ,args ,@body)))
 
 
