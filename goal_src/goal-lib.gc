@@ -73,278 +73,281 @@
 
   `(begin
     ;; connect, so we can send reset.  if we're already connected, does nothing (listen-to-target ,@args)
-    ;; send a reset message, disconnecting us (reset-target)
-    ;; establish connection again (listen-to-target ,@args)
-    ;; flush buffers (:status)))
+    ;; send a reset message, disconnecting us
+    (reset-target)
+    ;; establish connection again
+    (listen-to-target ,@args)
+    ;; flush buffers
+    (:status)))
 
-    (defmacro shutdown-target ()
-      `(begin (reset-target :shutdown)))
+(defmacro shutdown-target ()
+  `(begin (reset-target :shutdown)))
 
 
 ;;;;;;;;;;;;;;;;;;;
-    ;; GOAL Syntax
+;; GOAL Syntax
 ;;;;;;;;;;;;;;;;;;;
-    ;; Bind vars in body
-    (defmacro let (bindings &rest body)
-      `((lambda :inline-only #t,(apply first bindings)
-	  ,@body) ,@(apply second bindings)))
+;; Bind vars in body
+(defmacro let (bindings &rest body)
+  `((lambda :inline-only #t,(apply first bindings)
+      ,@body) ,@(apply second bindings)))
 
-    ;; Let, but recursive, allowing you to define variables in terms of others.
-    (defmacro let* (bindings &rest body)
-      (if (null? bindings)
-	  `(begin ,@body)
-	`((lambda :inline-only #t
-	    (,(caar bindings))
-	    (let* ,(cdr bindings)
-	      ,@body)) ,(car (cdar bindings)))))
+;; Let, but recursive, allowing you to define variables in terms of others.
+(defmacro let* (bindings &rest body)
+  (if (null? bindings)
+      `(begin ,@body)
+    `((lambda :inline-only #t
+	(,(caar bindings))
+	(let* ,(cdr bindings)
+	  ,@body)) ,(car (cdar bindings)))))
 
-    ;; Define a new function
-    (defmacro defun (name bindings &rest body)
-      (if (and (> (length body) 1) ;; more than one thing in function
-	       (string? (first body)) ;; first thing is a string
-	       )
-	  ;; then it's a docstring and we ignore it.
+;; Define a new function
+(defmacro defun (name bindings &rest body)
+  (if (and (> (length body) 1) ;; more than one thing in function
+	   (string? (first body)) ;; first thing is a string
+	   )
+      ;; then it's a docstring and we ignore it.
 
-	  `(define ,name
-	     (lambda :name ,name,bindings
-	       ,@(cdr body)))
-	;; otherwise don't ignore it.
+      `(define ,name
+	 (lambda :name ,name,bindings
+	   ,@(cdr body)))
+    ;; otherwise don't ignore it.
 
-	`(define ,name
-	   (lambda :name ,name,bindings ,@body))))
+    `(define ,name
+       (lambda :name ,name,bindings ,@body))))
 
-    (defmacro while (test &rest body)
-      (with-gensyms (reloop test-exit)
-		    `(begin (goto ,test-exit)
-			    (label ,reloop)
-			    ,@body
-			    (label ,test-exit)
-			    (when-goto ,test ,reloop)
-			    #f)))
+(defmacro while (test &rest body)
+  (with-gensyms (reloop test-exit)
+		`(begin (goto ,test-exit)
+			(label ,reloop)
+			,@body
+			(label ,test-exit)
+			(when-goto ,test ,reloop)
+			#f)))
 
-    (defmacro until (test &rest body)
-      (with-gensyms (reloop)
-		    `(begin (label ,reloop)
-			    ,@body
-			    (when-goto (not ,test)
-				       ,reloop))))
+(defmacro until (test &rest body)
+  (with-gensyms (reloop)
+		`(begin (label ,reloop)
+			,@body
+			(when-goto (not ,test)
+				   ,reloop))))
 
-    (defmacro dotimes (var &rest body)
-      `(let ((,(first var)
-	      0))
-	 (while (< ,(first var) ,(second var))
-	   ,@body
-	   (+1! ,(first var)))
-	 ,@(cddr var)))
+(defmacro dotimes (var &rest body)
+  `(let ((,(first var)
+	  0))
+     (while (< ,(first var) ,(second var))
+       ,@body
+       (+1! ,(first var)))
+     ,@(cddr var)))
 
-    ;; Backup some values, and restore after executing body.
-    ;; Non-dynamic (nonlocal jumps out of body will skip restore)
-    (defmacro protect (defs &rest body)
-      (if (null? defs)
-	  ;; nothing to backup, just insert body (base case)
+;; Backup some values, and restore after executing body.
+;; Non-dynamic (nonlocal jumps out of body will skip restore)
+(defmacro protect (defs &rest body)
+  (if (null? defs)
+      ;; nothing to backup, just insert body (base case)
 
-	  `(begin ,@body)
-	;; a unique name for the thing we are backing up
-	(with-gensyms (backup)
-		      ;; store the original value of the first def in backup
+      `(begin ,@body)
+    ;; a unique name for the thing we are backing up
+    (with-gensyms (backup)
+		  ;; store the original value of the first def in backup
 
-		      `(let ((,backup
-			      ,(first defs)))
-			 ;; backup any other things which need backing up
-			 (protect ,(cdr defs)
-				  ;; execute the body
+		  `(let ((,backup
+			  ,(first defs)))
+		     ;; backup any other things which need backing up
+		     (protect ,(cdr defs)
+			      ;; execute the body
 
-				  ,@body)
-			 ;; restore the first thing
-			 (set! ,(first defs)
-			       ,backup)))))
+			      ,@body)
+		     ;; restore the first thing
+		     (set! ,(first defs)
+			   ,backup)))))
 
-    (defmacro +! (place amount)
-      `(set! ,place
-	     (+ ,place ,amount)))
+(defmacro +! (place amount)
+  `(set! ,place
+	 (+ ,place ,amount)))
 
-    (defmacro if (condition true-case &rest others)
-      (if (> (length others) 1)
-	  (error "got too many arguments to if")
-	#f)
-      (if (null? others)
-	  `(cond
-	    (,condition ,true-case))
-	`(cond
-	  (,condition ,true-case)
-	  (else ,(first others)))))
-
-    (defmacro when (condition &rest body)
-      `(if ,condition
-	   (begin ,@body)))
-
-    (defmacro unless (condition &rest body)
-      `(if (not ,condition)
-	   (begin ,@body)))
-
-    ;; TODO - these work but aren't very efficient.
-
-    (defmacro and (&rest args)
-      (with-gensyms (result end)
-		    `(begin (let ((,result
-				   (the object #f)))
-			      ,@(apply (lambda (x)
-					 `(begin (set! ,result ,x)
-						 (if (eq? ,result #f)
-						     (goto ,end))))
-				       args)
-			      (label ,end)
-			      ,result))))
-
-    (defmacro or (&rest args)
-      (with-gensyms (result end)
-		    `(begin (let ((,result
-				   (the object #f)))
-			      ,@(apply (lambda (x)
-					 `(begin (set! ,result ,x)
-						 (if (not (eq? ,result #f))
-						     (goto ,end))))
-				       args)
-			      (label ,end)
-			      ,result))))
-
-;;;;;;;;;;;;;;;;;;;
-    ;; Math Macros
-;;;;;;;;;;;;;;;;;;;
-
-    (defmacro +1 (var)
-      `(+ ,var 1))
-
-    (defmacro +! (place amount)
-      `(set! ,place
-	     (+ ,place ,amount)))
-
-    (defmacro +1! (place)
-      `(set! ,place
-	     (+ 1 ,place)))
-
-    (defmacro -! (place amount)
-      `(set! ,place
-	     (- ,place ,amount)))
-
-    (defmacro *! (place amount)
-      `(set! ,place
-	     (* ,place ,amount)))
-
-    (defmacro 1 -
-      (var)
-      `(- ,var 1))
-
-    (defmacro zero? (thing)
-      `(eq? ,thing 0))
-
-    (defmacro &+! (val amount)
-      `(set! ,val
-	     (&+ ,val ,amount)))
-
-    (defmacro &- (a b)
-      `(- (the-as uint ,a)
-	  (the-as uint ,b)))
-
-    (defmacro &-> (&rest args)
-      `(& (-> ,@args)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; Bit Macros
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    (defmacro align16 (value)
-      `(logand #xfffffff0
-	       (+ (the-as integer ,value)
-		  15)))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; TYPE STUFF
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    (defmacro basic? (obj)
-      ;; todo, make this more efficient
-
-      `(= 4 (logand (the integer ,obj)
-		    #b111)))
-
-    (defmacro pair? (obj)
-      ;; todo, make this more efficient
-
-      `(= 2 (logand (the integer ,obj)
-		    #b111)))
-
-    (defmacro binteger? (obj)
-      `(zero? (logand (the integer ,obj)
-		      #b111)))
-
-    (defmacro rtype-of (obj)
+(defmacro if (condition true-case &rest others)
+  (if (> (length others) 1)
+      (error "got too many arguments to if")
+    #f)
+  (if (null? others)
       `(cond
-	((binteger? ,obj) binteger)
-	((pair? ,obj) pair)
-	(else (-> (the basic ,obj)
-		  type))))
+	(,condition ,true-case))
+    `(cond
+      (,condition ,true-case)
+      (else ,(first others)))))
+
+(defmacro when (condition &rest body)
+  `(if ,condition
+       (begin ,@body)))
+
+(defmacro unless (condition &rest body)
+  `(if (not ,condition)
+       (begin ,@body)))
+
+;; TODO - these work but aren't very efficient.
+
+(defmacro and (&rest args)
+  (with-gensyms (result end)
+		`(begin (let ((,result
+			       (the object #f)))
+			  ,@(apply (lambda (x)
+				     `(begin (set! ,result ,x)
+					     (if (eq? ,result #f)
+						 (goto ,end))))
+				   args)
+			  (label ,end)
+			  ,result))))
+
+(defmacro or (&rest args)
+  (with-gensyms (result end)
+		`(begin (let ((,result
+			       (the object #f)))
+			  ,@(apply (lambda (x)
+				     `(begin (set! ,result ,x)
+					     (if (not (eq? ,result #f))
+						 (goto ,end))))
+				   args)
+			  (label ,end)
+			  ,result))))
+
+;;;;;;;;;;;;;;;;;;;
+;; Math Macros
+;;;;;;;;;;;;;;;;;;;
+
+(defmacro +1 (var)
+  `(+ ,var 1))
+
+(defmacro +! (place amount)
+  `(set! ,place
+	 (+ ,place ,amount)))
+
+(defmacro +1! (place)
+  `(set! ,place
+	 (+ 1 ,place)))
+
+(defmacro -! (place amount)
+  `(set! ,place
+	 (- ,place ,amount)))
+
+(defmacro *! (place amount)
+  `(set! ,place
+	 (* ,place ,amount)))
+
+(defmacro 1 -
+  (var)
+  `(- ,var 1))
+
+(defmacro zero? (thing)
+  `(eq? ,thing 0))
+
+(defmacro &+! (val amount)
+  `(set! ,val
+	 (&+ ,val ,amount)))
+
+(defmacro &- (a b)
+  `(- (the-as uint ,a)
+      (the-as uint ,b)))
+
+(defmacro &-> (&rest args)
+  `(& (-> ,@args)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bit Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro align16 (value)
+  `(logand #xfffffff0
+	   (+ (the-as integer ,value)
+	      15)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; PAIR STUFF
+;; TYPE STUFF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro basic? (obj)
+  ;; todo, make this more efficient
+
+  `(= 4 (logand (the integer ,obj)
+		#b111)))
+
+(defmacro pair? (obj)
+  ;; todo, make this more efficient
+
+  `(= 2 (logand (the integer ,obj)
+		#b111)))
+
+(defmacro binteger? (obj)
+  `(zero? (logand (the integer ,obj)
+		  #b111)))
+
+(defmacro rtype-of (obj)
+  `(cond
+    ((binteger? ,obj) binteger)
+    ((pair? ,obj) pair)
+    (else (-> (the basic ,obj)
+	      type))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PAIR STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-    (defmacro cons (a b)
-      `(new 'global 'pair ,a ,b))
+(defmacro cons (a b)
+  `(new 'global 'pair ,a ,b))
 
-    (defmacro list (&rest args)
-      (if (null? args)
-	  (quote '())
-	`(cons ,(car args) (list ,@(cdr args)))))
+(defmacro list (&rest args)
+  (if (null? args)
+      (quote '())
+    `(cons ,(car args) (list ,@(cdr args)))))
 
-    (defmacro null? (arg)
-      ;; todo, make this better
+(defmacro null? (arg)
+  ;; todo, make this better
 
-      `(eq? ,arg '()))
-    (defmacro caar (arg)
-      `(car (car ,arg)))
+  `(eq? ,arg '()))
+(defmacro caar (arg)
+  `(car (car ,arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; METHOD STUFF
+;; METHOD STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-    (defmacro object-new (&rest sz)
-      (if (null? sz)
-	  `(the ,(current-method-type)
-	     ((method object new) allocation
-	      type-to-make
-	      (the int
-		(-> type-to-make size))))
-	`(the ,(current-method-type)
-	   ((method object new) allocation
-	    type-to-make
-	    ,@sz))))
+(defmacro object-new (&rest sz)
+  (if (null? sz)
+      `(the ,(current-method-type)
+	 ((method object new) allocation
+	  type-to-make
+	  (the int
+	    (-> type-to-make size))))
+    `(the ,(current-method-type)
+       ((method object new) allocation
+	type-to-make
+	,@sz))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; TEST STUFF
+;; TEST STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    (defmacro expect-eq (a b
-			   &key
-			   (name "unknown"))
-      `(if (!= ,a ,b)
-	   (format #t "Test Failed On Test ~D: ~A~%"
-		   *test-count* ,name)
-	 (+! *test-count* 1)))
+(defmacro expect-eq (a b
+		       &key
+		       (name "unknown"))
+  `(if (!= ,a ,b)
+       (format #t "Test Failed On Test ~D: ~A~%"
+	       *test-count* ,name)
+     (+! *test-count* 1)))
 
-    (defmacro expect-true (a)
-      `(expect-eq ,a #t))
+(defmacro expect-true (a)
+  `(expect-eq ,a #t))
 
-    (defmacro expect-false (a)
-      `(expect-eq ,a #f))
+(defmacro expect-false (a)
+  `(expect-eq ,a #f))
 
-    (defmacro start-test (test-name)
-      `(begin (define *test-name* ,test-name)
-	      (define *test-count* 0)))
+(defmacro start-test (test-name)
+  `(begin (define *test-name* ,test-name)
+	  (define *test-count* 0)))
 
-    (defmacro finish-test ()
-      `(format #t "Test ~A: ~D Passes~%" *test-name*
-	       *test-count*))
+(defmacro finish-test ()
+  `(format #t "Test ~A: ~D Passes~%" *test-name*
+	   *test-count*))
