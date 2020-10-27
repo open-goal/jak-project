@@ -1,4 +1,4 @@
-;-*-Lisp-*-
+;;-*-Lisp-*-
 ;; GOAL Data Description File
 
 ;; name: eichar-ice+0-ag.gd

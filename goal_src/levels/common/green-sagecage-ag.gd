@@ -1,4 +1,4 @@
-;-*-Lisp-*-
+;;-*-Lisp-*-
 ;; GOAL Data Description File
 
 ;; name: green-sagecage-ag.gd

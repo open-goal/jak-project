@@ -1,4 +1,4 @@
-;-*-Lisp-*-
+;;-*-Lisp-*-
 ;; GOAL Data Description File
 
 ;; name: plant-boss-main+0-ag.gd

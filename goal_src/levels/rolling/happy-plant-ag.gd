@@ -1,4 +1,4 @@
-;-*-Lisp-*-
+;;-*-Lisp-*-
 ;; GOAL Data Description File
 
 ;; name: happy-plant-ag.gd

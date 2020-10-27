@@ -1,4 +1,4 @@
-;-*-Lisp-*-
+;;-*-Lisp-*-
 ;; GOAL Data Description File
 
 ;; name: ropebridge-52-ag.gd
