@@ -221,44 +221,40 @@
 		      *gtype-basic-offset*)))
 	       (else
 		;; the main thread (let ((alloc (align16 (-> parent-process heap-cur)))) ;; start at heap cur, aligned
-                ;; bump heap to include our thread + its stack
-                (set! (-> parent-process heap-cur)
-		      (the pointer
-			(+ alloc
-			   (-> type-to-make size)
-			   stack-size)))
-                (the cpu-thread
-		  (+ alloc *gtype-basic-offset*))
-                )))))
-  ;; set up the type manually, as we allocated the memory manually
-  (set! (-> obj type)
-	type-to-make)
-  ;; set up thread
-  (set! (-> obj name)
-	name)
-  (set! (-> obj process)
-	parent-process)
-  ;; start stack at the top
-  (set! (-> obj sp)
-	stack-top)
-  (set! (-> obj stack-top)
-	stack-top)
-  ;; remember the previous thread, in case we're a temp thread
-  (set! (-> obj previous)
-	(-> parent-process top-thread))
-  ;; and make us the top!
-  (set! (-> parent-process top-thread)
-	obj)
-  ;; set up our suspend/resume hooks. By default just use the thread's methods.
-  ;; but something else could install a different hook if needed.
-  (set! (-> obj suspend-hook)
-	(method obj thread-suspend))
-  (set! (-> obj resume-hook)
-	(method obj thread-resume))
-  ;; remember how much space we have for the backup stack.
-  (set! (-> obj stack-size)
-	stack-size)
-  obj))
+                ;; bump heap to include our thread + its stack (set! (-> parent-process heap-cur) (the pointer (+ alloc
+		(-> type-to-make size)
+		stack-size)))
+	 (the cpu-thread
+	   (+ alloc *gtype-basic-offset*)))))))
+;; set up the type manually, as we allocated the memory manually
+(set! (-> obj type)
+      type-to-make)
+;; set up thread
+(set! (-> obj name)
+      name)
+(set! (-> obj process)
+      parent-process)
+;; start stack at the top
+(set! (-> obj sp)
+      stack-top)
+(set! (-> obj stack-top)
+      stack-top)
+;; remember the previous thread, in case we're a temp thread
+(set! (-> obj previous)
+      (-> parent-process top-thread))
+;; and make us the top!
+(set! (-> parent-process top-thread)
+      obj)
+;; set up our suspend/resume hooks. By default just use the thread's methods.
+;; but something else could install a different hook if needed.
+(set! (-> obj suspend-hook)
+      (method obj thread-suspend))
+(set! (-> obj resume-hook)
+      (method obj thread-resume))
+;; remember how much space we have for the backup stack.
+(set! (-> obj stack-size)
+      stack-size)
+obj))
 
 
 (defmethod asize-of

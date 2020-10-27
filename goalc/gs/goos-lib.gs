@@ -97,8 +97,7 @@
 (defsmacro let
   (bindings &rest body)
   `((lambda ,(apply first bindings)
-      ,@body) ,@
-    (apply second bindings)))
+      ,@body) ,@(apply second bindings)))
 
 (defsmacro let*
   (bindings &rest body)
