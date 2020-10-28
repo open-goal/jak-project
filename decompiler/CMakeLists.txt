@@ -9,7 +9,6 @@ add_executable(decompiler
         ObjectFile/LinkedObjectFile.cpp
         Function/Function.cpp
 		Function/TypeAnalysis.cpp
-        util/FileIO.cpp
         config.cpp
         util/DecompilerTypeSystem.cpp
         Function/BasicBlocks.cpp
@@ -18,7 +17,8 @@ add_executable(decompiler
         IR/BasicOpBuilder.cpp
         IR/CfgBuilder.cpp
         IR/IR.cpp
-		IR/IR_TypeAnalysis.cpp)
+		IR/IR_TypeAnalysis.cpp
+		Function/TypeInspector.cpp)
 
 target_link_libraries(decompiler
         goos

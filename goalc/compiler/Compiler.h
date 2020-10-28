@@ -31,6 +31,7 @@ class Compiler {
   std::vector<std::string> run_test(const std::string& source_code);
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
+  void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
 
  private:
   void init_logger();
@@ -93,6 +94,7 @@ class Compiler {
                                   const std::string& method_type_name = "");
 
   bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
+  float try_getting_constant_float(const goos::Object& in, float* out, Env* env);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
@@ -104,6 +106,7 @@ class Compiler {
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
+  bool m_throw_on_define_extern_redefinition = false;
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);
   bool is_float(const TypeSpec& ts);
@@ -187,6 +190,7 @@ class Compiler {
 
   // Math
   Val* compile_add(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_sub(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_div(const goos::Object& form, const goos::Object& rest, Env* env);

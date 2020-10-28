@@ -80,7 +80,7 @@ void Function::run_type_analysis(const TypeSpec& my_type,
   assert(my_type.arg_count() > 0);
 
   int n_args = int(my_type.arg_count()) - 1;
-  auto& return_type = my_type.get_arg(int(my_type.arg_count()) - 1);
+  // auto& return_type = my_type.get_arg(int(my_type.arg_count()) - 1);
 
   // all types at the entrance of each basic block.
   std::vector<TypeMap> bb_entry_types;

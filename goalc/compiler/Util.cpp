@@ -218,3 +218,14 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
   // todo, try more things like constants before giving up.
   return false;
 }
+
+float Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
+  (void)env;
+  if (in.is_float()) {
+    *out = in.as_float();
+    return true;
+  }
+
+  // todo, try more things like constants before giving up.
+  return false;
+}
