@@ -58,7 +58,7 @@ include_directories(SYSTEM third-party/inja)
 # adding this as a SYSTEM include suppresses all the terrible warnings in spdlog
 include_directories(SYSTEM third-party/spdlog/include)
 # this makes spdlog generate a shared library that we can link against
-set(SPDLOG_BUILD_SHARED ON)
+set(SPDLOG_BUILD_SHARED ON CACHE BOOL "a" FORCE)
 # this makes the spdlog includes not use the header only version, making compiling faster
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
