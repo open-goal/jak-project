@@ -33,10 +33,10 @@ add_library(compiler
 add_executable(goalc main.cpp)
 
 IF (WIN32)
-    target_link_libraries(compiler goos type_system listener mman common_util)
+    target_link_libraries(compiler goos type_system listener mman common_util spdlog)
 
 ELSE ()
-    target_link_libraries(compiler goos type_system listener common_util)
+    target_link_libraries(compiler goos type_system listener common_util spdlog)
 ENDIF ()
 
 target_link_libraries(goalc goos compiler type_system)
