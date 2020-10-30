@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 

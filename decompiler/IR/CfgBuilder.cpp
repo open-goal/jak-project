@@ -5,6 +5,7 @@
 #include "decompiler/Function/CfgVtx.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "decompiler/IR/IR.h"
 
 namespace {
 

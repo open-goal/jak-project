@@ -3,6 +3,7 @@
 #ifndef JAK_COMPILER_H
 #define JAK_COMPILER_H
 
+#include <functional>
 #include "common/type_system/TypeSystem.h"
 #include "Env.h"
 #include "goalc/listener/Listener.h"

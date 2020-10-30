@@ -8,8 +8,6 @@
 #include <unordered_map>
 #include "IRegister.h"
 #include "allocate.h"
-#include "LiveInfo.h"
-#include "StackOp.h"
 
 struct RegAllocBasicBlock {
   std::vector<int> instr_idx;

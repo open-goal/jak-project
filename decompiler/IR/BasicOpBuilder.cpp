@@ -11,6 +11,7 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "decompiler/IR/IR.h"
 
 namespace {
 

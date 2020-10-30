@@ -28,6 +28,7 @@ add_library(compiler
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
+        regalloc/allocate_common.cpp
         compiler/Compiler.cpp)
 
 add_executable(goalc main.cpp)
