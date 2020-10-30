@@ -1,6 +1,7 @@
 #include <decompiler/Disasm/InstructionMatching.h>
 #include "IR.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "third-party/fmt/core.h"
 
 bool IR::get_type_of_expr(const TypeMap& reg_types,
                           DecompilerTypeSystem& dts,

@@ -9,7 +9,6 @@
 #define JAK_REGISTER_H
 
 #include <cassert>
-#include <functional>
 #include <array>
 #include <vector>
 #include <string>

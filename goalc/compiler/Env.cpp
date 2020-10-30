@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include "third-party/fmt/core.h"
 #include "Env.h"
 #include "IR.h"
 

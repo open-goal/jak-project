@@ -3,6 +3,7 @@
 #include "common/link_types.h"
 #include "IR.h"
 #include "goalc/regalloc/allocate.h"
+#include "third-party/fmt/core.h"
 #include <chrono>
 #include <thread>
 

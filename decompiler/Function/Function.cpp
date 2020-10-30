@@ -6,6 +6,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "TypeInspector.h"
+#include "decompiler/IR/IR.h"
 
 namespace {
 std::vector<Register> gpr_backups = {make_gpr(Reg::GP), make_gpr(Reg::S5), make_gpr(Reg::S4),

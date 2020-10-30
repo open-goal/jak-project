@@ -1,5 +1,6 @@
 
 #include "test_runner.h"
+#include "third-party/fmt/core.h"
 
 #include <string>
 

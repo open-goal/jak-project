@@ -1,7 +1,7 @@
-#include "IR.h"
-
 #include <utility>
+#include "IR.h"
 #include "goalc/emitter/IGen.h"
+#include "third-party/fmt/core.h"
 
 using namespace emitter;
 

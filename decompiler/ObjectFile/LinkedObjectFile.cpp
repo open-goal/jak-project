@@ -7,12 +7,14 @@
 #include <cassert>
 #include <cstring>
 #include <numeric>
-#include "third-party/fmt/format.h"
+#include "decompiler/IR/IR.h"
+#include "third-party/fmt/core.h"
 #include "LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
 #include "third-party/json.hpp"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/goos/PrettyPrinter.h"
 
 /*!
  * Set the number of segments in this object file.
