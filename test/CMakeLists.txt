@@ -12,12 +12,8 @@ add_executable(goalc-test
         all_jak1_symbols.cpp
         test_type_system.cpp
         test_CodeTester.cpp
-        test_emitter_slow.cpp
-        test_emitter_loads_and_store.cpp
-        test_emitter_xmm32.cpp
-        test_emitter_integer_math.cpp
+        test_emitter.cpp
         test_common_util.cpp
-        test_deftype.cpp
         test_pretty_print.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})

@@ -1,4 +1,4 @@
-#include "third-party/fmt/format.h"
+#include "third-party/fmt/core.h"
 #include <unordered_set>
 #include "common/util/MatchParam.h"
 #include "CfgBuilder.h"

@@ -6,7 +6,7 @@
 
 #include <utility>
 #include "Interpreter.h"
-#include <third-party/fmt/format.h>
+#include <third-party/fmt/core.h>
 
 namespace goos {
 Interpreter::Interpreter() {

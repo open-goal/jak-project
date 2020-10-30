@@ -8,7 +8,7 @@
 #include <cstring>
 #include <numeric>
 #include "decompiler/IR/IR.h"
-#include "third-party/fmt/format.h"
+#include "third-party/fmt/core.h"
 #include "LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"

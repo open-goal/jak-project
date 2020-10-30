@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <stdexcept>
 #include "decompiler/Disasm/Instruction.h"
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
