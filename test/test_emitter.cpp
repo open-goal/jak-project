@@ -623,7 +623,6 @@ TEST(EmitterIntegerMath, null) {
   EXPECT_EQ(0, instr.emit(nullptr));
 }
 
-
 TEST(EmitterLoadsAndStores, load_constant_64_and_move_gpr_gpr_64) {
   std::vector<u64> u64_constants = {0, UINT64_MAX, INT64_MAX, 7, 12};
 
@@ -3109,7 +3108,6 @@ TEST(EmitterLoadsAndStores, static_addr) {
     EXPECT_EQ(result, (u64)(tester.data()) + 1);
   }
 }
-
 
 TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
   CodeTester tester;

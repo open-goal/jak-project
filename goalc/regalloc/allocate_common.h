@@ -1,6 +1,7 @@
 #ifndef JAK_ALLOCATE_COMMON_H
 #define JAK_ALLOCATE_COMMON_H
 #include <vector>
+#include <stdexcept>
 #include "goalc/emitter/Register.h"
 
 /*!

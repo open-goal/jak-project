@@ -3,7 +3,6 @@
 #include "common/goos/Reader.h"
 #include "common/type_system/deftype.h"
 
-
 TEST(TypeSystem, Construction) {
   // test that we can add all builtin types without any type errors
   TypeSystem ts;
