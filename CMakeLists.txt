@@ -104,6 +104,11 @@ add_subdirectory(third-party/fmt)
 # build spdlog library
 add_subdirectory(third-party/spdlog)
 
+# build zydis third party library for disassembling x86
+option(ZYDIS_BUILD_TOOLS "" OFF)
+option(ZYDIS_BUILD_EXAMPLES "" OFF)
+add_subdirectory("third-party/zydis")
+
 # windows memory management lib
 IF (WIN32)
     add_subdirectory(third-party/mman)
