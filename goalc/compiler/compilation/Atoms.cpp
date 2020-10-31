@@ -52,6 +52,13 @@ static const std::unordered_map<
         {"define-extern", &Compiler::compile_define_extern},
         {"set!", &Compiler::compile_set},
 
+        // DEBUGGING
+        {"dbs", &Compiler::compile_dbs},
+        {"dbg", &Compiler::compile_dbg},
+        {":cont", &Compiler::compile_cont},
+        {":break", &Compiler::compile_break},
+        {":dump-all-mem", &Compiler::compile_dump_all},
+
         // TYPE
         {"deftype", &Compiler::compile_deftype},
         {"defmethod", &Compiler::compile_defmethod},

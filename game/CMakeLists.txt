@@ -81,12 +81,12 @@ add_executable(gk main.cpp)
 
 IF (WIN32)
   # set stuff for windows
-  target_link_libraries(runtime mman cross_sockets common_util spdlog)
-  target_link_libraries(gk cross_sockets mman common_util runtime spdlog)
+  target_link_libraries(runtime mman cross_sockets common_util spdlog cross_os_debug)
+  target_link_libraries(gk cross_sockets mman common_util runtime spdlog cross_os_debug)
 ELSE()
   # set stuff for other systems
-  target_link_libraries(runtime pthread cross_sockets common_util spdlog)
-  target_link_libraries(gk cross_sockets pthread common_util runtime spdlog)
+  target_link_libraries(runtime pthread cross_sockets common_util spdlog cross_os_debug)
+  target_link_libraries(gk cross_sockets pthread common_util runtime spdlog cross_os_debug)
 
 ENDIF()
 

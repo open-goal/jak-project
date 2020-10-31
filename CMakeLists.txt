@@ -77,6 +77,9 @@ add_subdirectory(common/util)
 # build cross platform socket library
 add_subdirectory(common/cross_sockets)
 
+# build cross platform debug library
+add_subdirectory(common/cross_os_debug)
+
 # build decompiler
 add_subdirectory(decompiler)
 

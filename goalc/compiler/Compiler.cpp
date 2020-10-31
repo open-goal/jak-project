@@ -12,6 +12,7 @@ using namespace goos;
 Compiler::Compiler() {
   init_logger();
   init_settings();
+  m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
@@ -172,19 +173,10 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   return gen.run();
 }
 
-std::vector<std::string> Compiler::run_test(const std::string& source_code) {
+std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
   try {
-    if (!m_listener.is_connected()) {
-      for (int i = 0; i < 1000; i++) {
-        m_listener.connect_to_target();
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
-        if (m_listener.is_connected()) {
-          break;
-        }
-      }
-      if (!m_listener.is_connected()) {
-        throw std::runtime_error("Compiler::run_test couldn't connect!");
-      }
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
     }
 
     auto code = m_goos.reader.read_from_file({source_code});
@@ -204,6 +196,47 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
     fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
     throw e;
   }
+}
+
+std::vector<std::string> Compiler::run_test_from_string(const std::string& src) {
+  try {
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
+    }
+
+    auto code = m_goos.reader.read_from_string({src});
+    auto compiled = compile_object_file("test-code", code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
+    color_object_file(compiled);
+    auto data = codegen_object_file(compiled);
+    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener.send_code(data);
+    if (!m_listener.most_recent_send_was_acked()) {
+      gLogger.log(MSG_ERR, "Runtime is not responding after sending test code. Did it crash?\n");
+    }
+    return m_listener.stop_recording_messages();
+  } catch (std::exception& e) {
+    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
+    throw e;
+  }
+}
+
+bool Compiler::connect_to_target() {
+  if (!m_listener.is_connected()) {
+    for (int i = 0; i < 1000; i++) {
+      m_listener.connect_to_target();
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      if (m_listener.is_connected()) {
+        break;
+      }
+    }
+    if (!m_listener.is_connected()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {

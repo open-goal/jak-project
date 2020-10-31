@@ -85,4 +85,4 @@ TEST_F(StringTests, Formatting) {
 //  expected += "test P (with type) 1447236\n";
 //
 //  // todo, finish format testing.
-//  runner.run_test("test-format.gc", {expected}, expected.size());
+//  runner.run_test_from_file("test-format.gc", {expected}, expected.size());

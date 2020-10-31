@@ -37,7 +37,7 @@ void InitGoalProto() {
     MsgErr("gproto: open proto error\n");
   } else {
     protoBlock.send_buffer = nullptr;
-    protoBlock.receive_buffer = MessBufArea.cast<GoalMessageHeader>().c();
+    protoBlock.receive_buffer = MessBufArea.cast<ListenerMessageHeader>().c();
     protoBlock.send_status = -1;
     protoBlock.last_receive_size = -1;
     protoBlock.receive_progress = 0;
@@ -171,29 +171,29 @@ s32 SendFromBufferD(s32 msg_kind, u64 p2, char* data, s32 size) {
   // retry at most 10 times until we complete without an error.
   for (s32 i = 0; i < 10; i++) {
     // or'd with 0x20000000 to get noncache version
-    GoalMessageHeader* header = (GoalMessageHeader*)(data - sizeof(GoalMessageHeader));
-    protoBlock.send_remaining = size + sizeof(GoalMessageHeader);
+    ListenerMessageHeader* header = (ListenerMessageHeader*)(data - sizeof(ListenerMessageHeader));
+    protoBlock.send_remaining = size + sizeof(ListenerMessageHeader);
     protoBlock.send_buffer = header;
     protoBlock.send_ptr = (u8*)header;
 
-    protoBlock.send_status = size + sizeof(GoalMessageHeader);
+    protoBlock.send_status = size + sizeof(ListenerMessageHeader);
     // FlushCache(0);
 
     // set DECI2 message header
-    header->deci2_hdr.len = protoBlock.send_remaining;
-    header->deci2_hdr.rsvd = 0;
-    header->deci2_hdr.proto = DECI2_PROTOCOL;
-    header->deci2_hdr.src = 'E';  // from EE
-    header->deci2_hdr.dst = 'H';  // to HOST
+    header->deci2_header.len = protoBlock.send_remaining;
+    header->deci2_header.rsvd = 0;
+    header->deci2_header.proto = DECI2_PROTOCOL;
+    header->deci2_header.src = 'E';  // from EE
+    header->deci2_header.dst = 'H';  // to HOST
 
     // set GOAL message header
-    header->msg_kind = (u16)msg_kind;
+    header->msg_kind = (ListenerMessageKind)msg_kind;
     header->u6 = 0;
     header->msg_size = size;
     header->msg_id = p2;
 
     // start send!
-    auto rv = sceDeci2ReqSend(protoBlock.socket, header->deci2_hdr.dst);
+    auto rv = sceDeci2ReqSend(protoBlock.socket, header->deci2_header.dst);
     if (rv < 0) {
       printf("1sceDeci2ReqSend fail, reason code = %08x\n", rv);
       return 0xfffffffa;

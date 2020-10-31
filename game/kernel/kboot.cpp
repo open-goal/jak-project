@@ -8,6 +8,7 @@
 #include <chrono>
 #include <thread>
 
+#include "common/cross_os_debug/xdbg.h"
 #include "common/common_types.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
@@ -76,6 +77,9 @@ void kboot_init_globals() {
  * Add call to sceDeci2Reset when GOAL shuts down.
  */
 s32 goal_main(int argc, const char* const* argv) {
+  // Added for OpenGOAL's debugger
+  xdbg::allow_debugging();
+
   // Initialize global variables based on command line parameters
   // This call is not present in the retail version of the game
   // but the function is, and it likely goes here.

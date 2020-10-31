@@ -9,6 +9,7 @@
 #include "goalc/listener/Listener.h"
 #include "common/goos/Interpreter.h"
 #include "goalc/compiler/IR.h"
+#include "goalc/debugger/Debugger.h"
 #include "CompilerSettings.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
@@ -29,10 +30,16 @@ class Compiler {
   void ice(const std::string& err);
   None* get_none() { return m_none.get(); }
 
-  std::vector<std::string> run_test(const std::string& source_code);
+  std::vector<std::string> run_test_from_file(const std::string& source_code);
+  std::vector<std::string> run_test_from_string(const std::string& src);
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
+  Debugger& get_debugger() { return m_debugger; }
+
+  void poke_target() { m_listener.send_poke(); }
+
+  bool connect_to_target();
 
  private:
   void init_logger();
@@ -102,6 +109,7 @@ class Compiler {
   std::unique_ptr<None> m_none = nullptr;
   bool m_want_exit = false;
   listener::Listener m_listener;
+  Debugger m_debugger;
   goos::Interpreter m_goos;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
@@ -181,6 +189,13 @@ class Compiler {
   Val* compile_define(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_define_extern(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_set(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  // Debug
+  Val* compile_dbg(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
