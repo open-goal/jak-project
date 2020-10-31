@@ -25,6 +25,7 @@ add_library(compiler
         compiler/compilation/Type.cpp
         compiler/compilation/Static.cpp
         compiler/Util.cpp
+        debugger/Debugger.cpp
         logger/Logger.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp

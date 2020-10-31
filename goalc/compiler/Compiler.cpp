@@ -12,6 +12,7 @@ using namespace goos;
 Compiler::Compiler() {
   init_logger();
   init_settings();
+  m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));

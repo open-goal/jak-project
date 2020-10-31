@@ -53,15 +53,16 @@ Listener::~Listener() {
  * Disconnect if we are connected and shut down the receiving thread.
  */
 void Listener::disconnect() {
-  if (m_debug_context.valid && !m_debug_context.running) {
+  if (m_debugger && m_debugger->is_halted()) {
     printf(
         "[Listener] The listener was shut down while the debugger has paused the runtime, "
         "resuming\n");
-    xdbg::detach_and_resume(m_debug_context.tid);
-    m_debug_context.valid = false;
+    m_debugger->detach();
   }
 
-  m_debug_context.valid = false;
+  if (m_debugger) {
+    m_debugger->invalidate();
+  }
   m_connected = false;
   if (receive_thread_running) {
     rcv_thread.join();
@@ -339,10 +340,9 @@ void Listener::send_reset(bool shutdown) {
     return;
   }
 
-  if (m_debug_context.valid && !m_debug_context.running) {
-    printf("Tried to reset a halted target, resuming...\n");
-    xdbg::detach_and_resume(m_debug_context.tid);
-    m_debug_context.valid = false;
+  if (m_debugger && m_debugger->is_halted()) {
+    printf("Tried to reset a halted target, detaching...\n");
+    m_debugger->detach();
   }
 
   auto* header = (ListenerMessageHeader*)m_buffer;
@@ -465,13 +465,11 @@ void Listener::handle_output_message(const char* msg) {
       next = str.find(' ', x + 1);
       auto tid_str = str.substr(x, next - x);
 
-      m_debug_context.s7 = std::stoul(s7_str.substr(3), nullptr, 16);
-      m_debug_context.base = std::stoull(base_str.substr(3), nullptr, 16);
-      m_debug_context.tid = xdbg::ThreadID(tid_str.substr(1));
-      m_debug_context.valid = true;
-
-      printf("[Debugger] New debug info! s7 = 0x%x, base = 0x%lx, tid = %s\n", m_debug_context.s7,
-             m_debug_context.base, m_debug_context.tid.to_string().c_str());
+      if (m_debugger) {
+        m_debugger->set_context(std::stoul(s7_str.substr(3), nullptr, 16),
+                                std::stoull(base_str.substr(3), nullptr, 16), tid_str.substr(1));
+        printf("[Debugger] Context: %s\n", m_debugger->get_context_string().c_str());
+      }
 
     } else if (kind == "load") {
       assert(x + 1 < str.length());
@@ -511,6 +509,10 @@ void Listener::add_load(const std::string& name, const LoadEntry& le) {
     printf("[Listener Error] The runtime has loaded %s twice!\n", name.c_str());
   }
   m_load_entries[name] = le;
+}
+
+void Listener::add_debugger(Debugger* debugger) {
+  m_debugger = debugger;
 }
 
 }  // namespace listener

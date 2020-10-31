@@ -16,6 +16,7 @@
 #include "common/common_types.h"
 #include "common/listener_common.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "goalc/debugger/Debugger.h"
 
 namespace listener {
 
@@ -39,11 +40,11 @@ class Listener {
   void send_poke();
   void disconnect();
   void send_code(std::vector<uint8_t>& code);
+  void add_debugger(Debugger* debugger);
   bool most_recent_send_was_acked() const { return got_ack; }
   bool get_load_entry(const std::string& name, LoadEntry* out = nullptr);
   std::vector<std::string> get_all_loaded();
 
-  xdbg::DebugContext& get_debug_context() { return m_debug_context; }
 
  private:
   void add_load(const std::string& name, const LoadEntry& le);
@@ -52,7 +53,6 @@ class Listener {
   void send_buffer(int sz);
   bool wait_for_ack();
   void handle_output_message(const char* msg);
-  xdbg::DebugContext m_debug_context;
 
   char* m_buffer = nullptr;             //! buffer for incoming messages
   bool m_connected = false;             //! do we think we are connected?
@@ -60,6 +60,8 @@ class Listener {
   int listen_socket = -1;               //! socket
   bool got_ack = false;
   bool waiting_for_ack = false;
+
+  Debugger* m_debugger = nullptr;
 
   std::thread rcv_thread;
   std::mutex rcv_mtx;

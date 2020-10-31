@@ -34,8 +34,6 @@ struct DebugContext {
   ThreadID tid;
   uintptr_t base;
   uint32_t s7;
-  bool valid = false;
-  bool running = true;
 };
 
 // Functions
