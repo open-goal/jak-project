@@ -39,6 +39,10 @@ struct ThreadID {
   ThreadID(const std::string& str);
   ThreadID();  // todo - add id type here, like in linux version
 };
+
+struct MemoryHandle {
+  int a;
+};
 #endif
 
 struct DebugContext {
