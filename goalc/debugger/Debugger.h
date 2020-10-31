@@ -1,3 +1,8 @@
+/*!
+ * @file Debugger.h
+ * The OpenGOAL debugger.
+ */
+
 #pragma once
 
 #include "common/common_types.h"

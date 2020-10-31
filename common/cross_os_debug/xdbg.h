@@ -1,3 +1,9 @@
+/*!
+ * @file xdbg.h
+ * Debugging utility library. This hides the platform specific details of the debugger.
+ * Nothing in here should hold state, that should all be managed in Debugger.
+ */
+
 #pragma once
 
 #include <string>

@@ -1,3 +1,8 @@
+/*!
+ * @file xdbg.cpp
+ * Debugging utility library. This hides the platform specific details of the debugger.
+ */
+
 #include <cstring>
 #include "third-party/fmt/core.h"
 #include "xdbg.h"
@@ -17,8 +22,14 @@
 namespace xdbg {
 #ifdef __linux
 
+/*!
+ * In Linux, a ThreadID is just the pid_t of the thread.
+ */
 ThreadID::ThreadID(pid_t _id) : id(_id) {}
 
+/*!
+ * In Linux, the string representation of a ThreadID is just the number printed in base 10
+ */
 ThreadID::ThreadID(const std::string& str) {
   id = std::stoi(str);
 }
@@ -27,16 +38,36 @@ std::string ThreadID::to_string() const {
   return std::to_string(id);
 }
 
+/*!
+ * Get the ThreadID of whatever called this function.
+ */
 ThreadID get_current_thread_id() {
   return ThreadID(syscall(SYS_gettid));
 }
 
+/*!
+ * Called by the target to do any setup required for the debugger to attach (allowing tracing)
+ * Will be called from the GOAL thread.
+ */
+void allow_debugging() {
+  // modern Linux has "security features" which prevent processes from accessing memory of others.
+  // we disable these for the GOAL runtime process so the debugger can connect.
+  if (prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY) < 0) {
+    printf("[Debugger] Failed to PR_SET_PTRACER %s\n", strerror(errno));
+  }
+}
+
+/*!
+ * Attach to the given thread ID and halt it.
+ */
 bool attach_and_break(const ThreadID& tid) {
+  // SEIZE attaches without halting, but is required to use PTRACE_INTERRUPT in the future.
   auto rv = ptrace(PTRACE_SEIZE, tid.id, nullptr, nullptr);
   if (rv == -1) {
     printf("[Debugger] Failed to attach %s\n", strerror(errno));
     return false;
   } else {
+    // we attached, now send break
     printf("[Debugger] PTRACE_ATTACHED! Waiting for process to stop...\n");
     if (ptrace(PTRACE_INTERRUPT, tid.id, nullptr, nullptr) < 0) {
       printf("[Debugger] Failed to PTRACE_INTERRUPT %s\n", strerror(errno));
@@ -51,6 +82,7 @@ bool attach_and_break(const ThreadID& tid) {
       return false;
     }
 
+    // double check that we stopped for the right reason
     if (!WIFSTOPPED(status)) {
       printf("[Debugger] Failed to STOP: %s. The runtime is probably in a bad state now.\n",
              strerror(errno));
@@ -60,14 +92,9 @@ bool attach_and_break(const ThreadID& tid) {
   }
 }
 
-void allow_debugging() {
-  // modern Linux has "security features" which prevent processes from accessing memory of others.
-  // we disable these for the GOAL runtime process so the debugger can connect.
-  if (prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY) < 0) {
-    printf("[Debugger] Failed to PR_SET_PTRACER %s\n", strerror(errno));
-  }
-}
-
+/*!
+ * Detach from the given thread and resume it if it's halted.
+ */
 bool detach_and_resume(const ThreadID& tid) {
   if (ptrace(PTRACE_DETACH, tid.id, nullptr, nullptr) < 0) {
     printf("[Debugger] Failed to detach: %s\n", strerror(errno));
@@ -76,6 +103,9 @@ bool detach_and_resume(const ThreadID& tid) {
   return true;
 }
 
+/*!
+ * Get all registers now. Must be attached and stopped
+ */
 bool get_regs_now(const ThreadID& tid, Regs* out) {
   user regs = {};
   if (ptrace(PTRACE_GETREGS, tid.id, nullptr, &regs) < 0) {
@@ -105,6 +135,10 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
   return true;
 }
 
+/*!
+ * Break the given thread.  Must be attached and running.
+ * Waits for the given thread to actually stop first.
+ */
 bool break_now(const ThreadID& tid) {
   if (ptrace(PTRACE_INTERRUPT, tid.id, nullptr, nullptr) < 0) {
     printf("[Debugger] Failed to PTRACE_INTERRUPT %s\n", strerror(errno));
@@ -127,6 +161,9 @@ bool break_now(const ThreadID& tid) {
   return true;
 }
 
+/*!
+ * Continue the given thread. Must be attached and not running.
+ */
 bool cont_now(const ThreadID& tid) {
   if (ptrace(PTRACE_CONT, tid.id, nullptr, nullptr) < 0) {
     printf("[Debugger] Failed to PTRACE_CONT %s\n", strerror(errno));
@@ -180,6 +217,10 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
 const char* gpr_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
                            " r8", " r9", "r10", "r11", "r12", "r13", "r14", "r15"};
 
+/*!
+ * Print GPR register values, including rip.
+ * Splits into 5 lines.
+ */
 std::string Regs::print_gprs() const {
   std::string result;
   for (int i = 0; i < 4; i++) {
