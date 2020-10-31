@@ -145,3 +145,22 @@ TEST(TypeConsistency, TypeConsistency) {
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
   compiler.run_test_no_load("decompiler/config/all-types.gc");
 }
+
+#ifdef __linux
+TEST(Debugger, DebuggerBasicConnect) {
+  Compiler compiler;
+
+  if(!fork()) {
+    GoalTest::runtime_no_kernel();
+  } else {
+    compiler.connect_to_target();
+    compiler.poke_target();
+    compiler.run_test("test/goalc/source_templates/with_game/attach-debugger.gc");
+    EXPECT_TRUE(compiler.get_debug_state().valid);
+    EXPECT_FALSE(compiler.get_debug_state().running);
+    compiler.shutdown_target();
+
+    EXPECT_TRUE(wait(nullptr) >= 0);
+  }
+}
+#endif

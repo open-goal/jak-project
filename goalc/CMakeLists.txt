@@ -19,6 +19,7 @@ add_library(compiler
         compiler/compilation/Macro.cpp
         compiler/compilation/Math.cpp
         compiler/compilation/Define.cpp
+        compiler/compilation/Debug.cpp
         compiler/compilation/Function.cpp
         compiler/compilation/ControlFlow.cpp
         compiler/compilation/Type.cpp

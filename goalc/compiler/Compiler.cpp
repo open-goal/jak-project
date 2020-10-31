@@ -174,17 +174,8 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
 
 std::vector<std::string> Compiler::run_test(const std::string& source_code) {
   try {
-    if (!m_listener.is_connected()) {
-      for (int i = 0; i < 1000; i++) {
-        m_listener.connect_to_target();
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
-        if (m_listener.is_connected()) {
-          break;
-        }
-      }
-      if (!m_listener.is_connected()) {
-        throw std::runtime_error("Compiler::run_test couldn't connect!");
-      }
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test couldn't connect!");
     }
 
     auto code = m_goos.reader.read_from_file({source_code});
@@ -204,6 +195,22 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
     fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
     throw e;
   }
+}
+
+bool Compiler::connect_to_target() {
+  if (!m_listener.is_connected()) {
+    for (int i = 0; i < 1000; i++) {
+      m_listener.connect_to_target();
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      if (m_listener.is_connected()) {
+        break;
+      }
+    }
+    if (!m_listener.is_connected()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {

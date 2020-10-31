@@ -12,10 +12,18 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <unordered_map>
 #include "common/common_types.h"
 #include "common/listener_common.h"
+#include "common/cross_os_debug/xdbg.h"
 
 namespace listener {
+
+struct LoadEntry {
+  uint32_t segments[3] = {0, 0, 0};
+  std::string load_string;
+};
+
 class Listener {
  public:
   static constexpr int BUFFER_SIZE = 32 * 1024 * 1024;
@@ -31,11 +39,20 @@ class Listener {
   void send_poke();
   void disconnect();
   void send_code(std::vector<uint8_t>& code);
-  bool most_recent_send_was_acked() { return got_ack; }
+  bool most_recent_send_was_acked() const { return got_ack; }
+  bool get_load_entry(const std::string& name, LoadEntry* out = nullptr);
+  std::vector<std::string> get_all_loaded();
+
+  xdbg::DebugContext& get_debug_context() { return m_debug_context; }
 
  private:
+  void add_load(const std::string& name, const LoadEntry& le);
+  void do_unload(const std::string& name);
+
   void send_buffer(int sz);
   bool wait_for_ack();
+  void handle_output_message(const char* msg);
+  xdbg::DebugContext m_debug_context;
 
   char* m_buffer = nullptr;             //! buffer for incoming messages
   bool m_connected = false;             //! do we think we are connected?
@@ -49,6 +66,7 @@ class Listener {
   void receive_func();
   ListenerMessageKind filter = ListenerMessageKind::MSG_INVALID;
   std::vector<std::string> message_record;
+  std::unordered_map<std::string, LoadEntry> m_load_entries;
   char ack_recv_buff[512];
 };
 }  // namespace listener
