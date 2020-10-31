@@ -6,7 +6,7 @@
 class Debugger {
  public:
   Debugger() = default;
-  bool is_halted() const; // are we halted?
+  bool is_halted() const;  // are we halted?
   bool is_valid() const;
   bool is_attached() const;
   bool is_running() const;
@@ -16,6 +16,9 @@ class Debugger {
   std::string get_context_string() const;
 
   bool attach_and_break();
+
+  bool do_break();
+  bool do_continue();
 
  private:
   xdbg::DebugContext m_debug_context;

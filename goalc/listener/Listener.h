@@ -45,7 +45,6 @@ class Listener {
   bool get_load_entry(const std::string& name, LoadEntry* out = nullptr);
   std::vector<std::string> get_all_loaded();
 
-
  private:
   void add_load(const std::string& name, const LoadEntry& le);
   void do_unload(const std::string& name);

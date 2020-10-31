@@ -53,7 +53,10 @@ static const std::unordered_map<
         {"set!", &Compiler::compile_set},
 
         // DEBUGGING
+        {"dbs", &Compiler::compile_dbs},
         {"dbg", &Compiler::compile_dbg},
+        {":cont", &Compiler::compile_cont},
+        {":break", &Compiler::compile_break},
 
         // TYPE
         {"deftype", &Compiler::compile_deftype},

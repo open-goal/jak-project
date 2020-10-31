@@ -21,4 +21,28 @@ TEST(Debugger, DebuggerBasicConnect) {
     EXPECT_TRUE(wait(nullptr) >= 0);
   }
 }
+
+TEST(Debugger, DebuggerBreakAndContinue) {
+  Compiler compiler;
+  // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
+  // separate process.
+  if (!fork()) {
+    GoalTest::runtime_no_kernel();
+  } else {
+    compiler.connect_to_target();
+    compiler.poke_target();
+    compiler.run_test("test/goalc/source_templates/with_game/attach-debugger.gc");
+    EXPECT_TRUE(compiler.get_debugger().is_valid());
+    EXPECT_TRUE(compiler.get_debugger().is_halted());
+    for (int i = 0; i < 20; i++) {
+      EXPECT_TRUE(compiler.get_debugger().do_continue());
+      EXPECT_TRUE(compiler.get_debugger().do_break());
+    }
+    compiler.shutdown_target();
+
+    // and now the child process should be done!
+    EXPECT_TRUE(wait(nullptr) >= 0);
+  }
+}
+
 #endif

@@ -34,9 +34,7 @@ class Compiler {
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
-  Debugger& get_debugger() {
-    return m_debugger;
-  }
+  Debugger& get_debugger() { return m_debugger; }
 
   void poke_target() { m_listener.send_poke(); }
 
@@ -193,6 +191,9 @@ class Compiler {
 
   // Debug
   Val* compile_dbg(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);

@@ -1,3 +1,4 @@
+#include <cassert>
 #include "Debugger.h"
 #include "third-party/fmt/core.h"
 
@@ -11,6 +12,10 @@ bool Debugger::is_valid() const {
 
 void Debugger::invalidate() {
   m_context_valid = false;
+}
+
+bool Debugger::is_running() const {
+  return m_context_valid && m_attached && m_running;
 }
 
 bool Debugger::is_attached() const {
@@ -43,6 +48,13 @@ bool Debugger::attach_and_break() {
     if (xdbg::attach_and_break(m_debug_context.tid)) {
       m_attached = true;
       m_running = false;
+
+      xdbg::Regs regs;
+      if (!xdbg::get_regs_now(m_debug_context.tid, &regs)) {
+        fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
+      } else {
+        fmt::print("{}", regs.print_gprs());
+      }
       return true;
     }
   } else {
@@ -50,4 +62,30 @@ bool Debugger::attach_and_break() {
                is_valid(), m_attached);
   }
   return false;
+}
+
+bool Debugger::do_break() {
+  assert(is_valid() && is_attached() && is_running());
+  if (!xdbg::break_now(m_debug_context.tid)) {
+    return false;
+  } else {
+    m_running = false;
+    xdbg::Regs regs;
+    if (!xdbg::get_regs_now(m_debug_context.tid, &regs)) {
+      fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
+    } else {
+      fmt::print("{}", regs.print_gprs());
+    }
+    return true;
+  }
+}
+
+bool Debugger::do_continue() {
+  assert(is_valid() && is_attached() && is_halted());
+  if (!xdbg::cont_now(m_debug_context.tid)) {
+    return false;
+  } else {
+    m_running = true;
+    return true;
+  }
 }
