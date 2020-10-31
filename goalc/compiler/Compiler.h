@@ -33,13 +33,9 @@ class Compiler {
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
-  const xdbg::DebugContext& get_debug_state() {
-    return m_listener.get_debug_context();
-  }
+  const xdbg::DebugContext& get_debug_state() { return m_listener.get_debug_context(); }
 
-  void poke_target() {
-    m_listener.send_poke();
-  }
+  void poke_target() { m_listener.send_poke(); }
 
   bool connect_to_target();
 

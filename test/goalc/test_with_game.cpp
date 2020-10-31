@@ -150,7 +150,7 @@ TEST(TypeConsistency, TypeConsistency) {
 TEST(Debugger, DebuggerBasicConnect) {
   Compiler compiler;
 
-  if(!fork()) {
+  if (!fork()) {
     GoalTest::runtime_no_kernel();
   } else {
     compiler.connect_to_target();
