@@ -42,3 +42,12 @@ Continue the target if it has been stopped.
 
 ## `(:break)`
 Immediately stop the target if it is running. Will print some registers.
+
+## `(:dump-all-mem <path>)`
+Dump all GOAL memory to a file. Must be stopped.
+```
+(:dump-all-mem "mem.bin")
+```
+The path is relative to the Jak project folder.
+
+The file will be the exact size of `EE_MAIN_MEM_SIZE`, but the first `EE_LOW_MEM_PROTECT` bytes are zero, as these cannot be written or read.

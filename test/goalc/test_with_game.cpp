@@ -31,10 +31,10 @@ class WithGameTests : public testing::TestWithParam<WithGameParam> {
     runtime_thread = std::thread((GoalTest::runtime_with_kernel));
     runner.c = &compiler;
 
-    compiler.run_test("test/goalc/source_templates/with_game/test-load-game.gc");
+    compiler.run_test_from_file("test/goalc/source_templates/with_game/test-load-game.gc");
 
     try {
-      compiler.run_test("test/goalc/source_templates/with_game/test-build-game.gc");
+      compiler.run_test_from_file("test/goalc/source_templates/with_game/test-build-game.gc");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);

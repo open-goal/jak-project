@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
 
 Val* Compiler::compile_dbg(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -80,5 +81,28 @@ Val* Compiler::compile_break(const goos::Object& form, const goos::Object& rest,
                m_debugger.is_attached(), m_debugger.is_running());
   }
 
+  return get_none();
+}
+
+Val* Compiler::compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  if (!m_debugger.is_halted()) {
+    fmt::print("Couldn't dump memory. Must be attached and halted.\n");
+    return get_none();
+  }
+
+  auto args = get_va(form, rest);
+  va_check(form, args, {{goos::ObjectType::STRING}}, {});
+  auto dest_file = args.unnamed.at(0).as_string()->data;
+  auto buffer = new u8[EE_MAIN_MEM_SIZE];
+  memset(buffer, 0, EE_MAIN_MEM_SIZE);
+
+  if (!m_debugger.read_memory(buffer + EE_MAIN_MEM_LOW_PROTECT,
+                              EE_MAIN_MEM_SIZE - EE_MAIN_MEM_LOW_PROTECT,
+                              EE_MAIN_MEM_LOW_PROTECT)) {
+    fmt::print("Reading memory failed, not dumping.\n");
+  } else {
+    file_util::write_binary_file(file_util::get_file_path({dest_file}), buffer, EE_MAIN_MEM_SIZE);
+  }
   return get_none();
 }

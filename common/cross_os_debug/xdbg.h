@@ -28,6 +28,10 @@ struct ThreadID {
   ThreadID() = default;
 };
 
+struct MemoryHandle {
+  int fd;
+};
+
 #elif _WIN32
 struct ThreadID {
   // todo - whatever windows uses to identify a thread
@@ -63,5 +67,26 @@ bool detach_and_resume(const ThreadID& tid);
 bool get_regs_now(const ThreadID& tid, Regs* out);
 bool break_now(const ThreadID& tid);
 bool cont_now(const ThreadID& tid);
+bool open_memory(const ThreadID& tid, MemoryHandle* out);
+bool close_memory(const ThreadID& tid, MemoryHandle* handle);
+bool read_goal_memory(u8* dest_buffer,
+                      int size,
+                      u32 goal_addr,
+                      const DebugContext& context,
+                      const MemoryHandle& mem);
+
+bool write_goal_memory(const u8* src_buffer,
+                       int size,
+                       u32 goal_addr,
+                       const DebugContext& context,
+                       const MemoryHandle& mem);
+
+template <typename T>
+bool write_goal_value(T& value,
+                      u32 goal_addr,
+                      const DebugContext& context,
+                      const MemoryHandle& handle) {
+  return write_goal_memory(&value, sizeof(value), goal_addr, context, handle);
+}
 
 }  // namespace xdbg

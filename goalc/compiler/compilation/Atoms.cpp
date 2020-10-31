@@ -57,6 +57,7 @@ static const std::unordered_map<
         {"dbg", &Compiler::compile_dbg},
         {":cont", &Compiler::compile_cont},
         {":break", &Compiler::compile_break},
+        {":dump-all-mem", &Compiler::compile_dump_all},
 
         // TYPE
         {"deftype", &Compiler::compile_deftype},

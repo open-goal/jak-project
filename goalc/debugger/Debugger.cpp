@@ -11,7 +11,7 @@
  * Is the target halted? If we don't know or aren't connected, returns false.
  */
 bool Debugger::is_halted() const {
-  return m_context_valid && !m_running;
+  return m_context_valid && m_attached && !m_running;
 }
 
 /*!
@@ -49,6 +49,7 @@ bool Debugger::is_attached() const {
  */
 void Debugger::detach() {
   if (is_valid() && m_attached) {
+    xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
     m_context_valid = false;
     m_attached = false;
@@ -81,6 +82,10 @@ std::string Debugger::get_context_string() const {
 bool Debugger::attach_and_break() {
   if (is_valid() && !m_attached) {
     if (xdbg::attach_and_break(m_debug_context.tid)) {
+      if (!xdbg::open_memory(m_debug_context.tid, &m_memory_handle)) {
+        return false;
+      }
+
       m_attached = true;
       m_running = false;
 
@@ -129,4 +134,14 @@ bool Debugger::do_continue() {
     m_running = true;
     return true;
   }
+}
+
+bool Debugger::read_memory(u8* dest_buffer, int size, u32 goal_addr) {
+  assert(is_valid() && is_attached() && is_halted());
+  return xdbg::read_goal_memory(dest_buffer, size, goal_addr, m_debug_context, m_memory_handle);
+}
+
+bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
+  assert(is_valid() && is_attached() && is_halted());
+  return xdbg::write_goal_memory(src_buffer, size, goal_addr, m_debug_context, m_memory_handle);
 }

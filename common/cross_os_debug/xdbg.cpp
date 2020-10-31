@@ -4,17 +4,21 @@
  */
 
 #include <cstring>
+#include "common/goal_constants.h"
+#include "common/util/Timer.h"
 #include "third-party/fmt/core.h"
 #include "xdbg.h"
 
 #ifdef __linux
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/ptrace.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/user.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #elif _WIN32
 
 #endif
@@ -90,6 +94,61 @@ bool attach_and_break(const ThreadID& tid) {
     }
     return true;
   }
+}
+
+/*!
+ * Open memory of target. Assumes we are already connected and halted.
+ */
+bool open_memory(const ThreadID& tid, MemoryHandle* out) {
+  int fd = open(fmt::format("/proc/{}/mem", tid.id).c_str(), O_RDWR);
+  if (fd < -1) {
+    printf("[Debugger] Failed to open memory: %s.\n", strerror(errno));
+    return false;
+  }
+  out->fd = fd;
+  return true;
+}
+
+/*!
+ * Close memory of target.
+ */
+bool close_memory(const ThreadID& tid, MemoryHandle* handle) {
+  (void)tid;
+  if (close(handle->fd) < 0) {
+    printf("[Debugger] Failed to close memory: %s.\n", strerror(errno));
+    return false;
+  }
+  return true;
+}
+
+/*!
+ * Read data from target's EE memory
+ */
+bool read_goal_memory(u8* dest_buffer,
+                      int size,
+                      u32 goal_addr,
+                      const DebugContext& context,
+                      const MemoryHandle& mem) {
+  if (pread(mem.fd, dest_buffer, size, context.base + goal_addr) != size) {
+    printf("[Debugger] Failed to read memory: %s.\n", strerror(errno));
+    return false;
+  }
+  return true;
+}
+
+/*!
+ * Write data into target's EE memory
+ */
+bool write_goal_memory(const u8* src_buffer,
+                       int size,
+                       u32 goal_addr,
+                       const DebugContext& context,
+                       const MemoryHandle& mem) {
+  if (pwrite(mem.fd, src_buffer, size, context.base + goal_addr) != size) {
+    printf("[Debugger] Failed to write memory: %s.\n", strerror(errno));
+    return false;
+  }
+  return true;
 }
 
 /*!
@@ -209,6 +268,30 @@ bool cont_now(const ThreadID& tid) {
 }
 
 bool get_regs_now(const ThreadID& tid, Regs* out) {
+  return false;
+}
+
+bool open_memory(const ThreadID& tid, MemoryHandle* out) {
+  return false;
+}
+
+bool close_memory(const ThreadID& tid, MemoryHandle* handle) {
+  return false;
+}
+
+bool read_goal_memory(u8* dest_buffer,
+                      int size,
+                      u32 goal_addr,
+                      const DebugContext& context,
+                      const MemoryHandle& mem) {
+  return false;
+}
+
+bool write_goal_memory(const u8* src_buffer,
+                       int size,
+                       u32 goal_addr,
+                       const DebugContext& context,
+                       const MemoryHandle& mem) {
   return false;
 }
 

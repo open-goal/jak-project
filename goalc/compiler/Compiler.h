@@ -30,7 +30,8 @@ class Compiler {
   void ice(const std::string& err);
   None* get_none() { return m_none.get(); }
 
-  std::vector<std::string> run_test(const std::string& source_code);
+  std::vector<std::string> run_test_from_file(const std::string& source_code);
+  std::vector<std::string> run_test_from_string(const std::string& src);
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
@@ -194,6 +195,7 @@ class Compiler {
   Val* compile_dbs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);

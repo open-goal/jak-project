@@ -25,8 +25,22 @@ class Debugger {
   bool do_break();
   bool do_continue();
 
+  bool read_memory(u8* dest_buffer, int size, u32 goal_addr);
+  bool write_memory(const u8* src_buffer, int size, u32 goal_addr);
+
+  template <typename T>
+  bool write_value(const T& value, u32 goal_addr) {
+    return write_memory((const u8*)&value, sizeof(T), goal_addr);
+  }
+
+  template <typename T>
+  bool read_value(T* value, u32 goal_addr) {
+    return read_memory((u8*)value, sizeof(T), goal_addr);
+  }
+
  private:
   xdbg::DebugContext m_debug_context;
+  xdbg::MemoryHandle m_memory_handle;
   bool m_context_valid = false;
   bool m_running = true;
   bool m_attached = false;

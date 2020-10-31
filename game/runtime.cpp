@@ -45,6 +45,8 @@
 #include "game/overlord/overlord.h"
 #include "game/overlord/srpc.h"
 
+#include "common/goal_constants.h"
+
 u8* g_ee_main_mem = nullptr;
 
 namespace {
@@ -95,13 +97,6 @@ void deci2_runner(SystemThreadInterface& iface) {
 }
 
 // EE System
-constexpr int EE_MAIN_MEM_SIZE = 128 * (1 << 20);  // 128 MB, same as PS2 TOOL
-constexpr u64 EE_MAIN_MEM_MAP = 0x2000000000;      // intentionally > 32-bit to catch pointer bugs
-
-// when true, attempt to map the EE memory in the low 2 GB of RAM
-// this allows us to use EE pointers as real pointers.  However, this might not always work,
-// so this should be used only for debugging.
-constexpr bool EE_MEM_LOW_MAP = false;
 
 /*!
  * SystemThread Function for the EE (PS2 Main CPU)
@@ -137,7 +132,7 @@ void ee_runner(SystemThreadInterface& iface) {
   // prevent access to the first 1 MB of memory.
   // On the PS2 this is the kernel and can't be accessed either.
   // this may not work well on systems with a page size > 1 MB.
-  mprotect((void*)g_ee_main_mem, 1024 * 1024, PROT_NONE);
+  mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
   fileio_init_globals();
   kboot_init_globals();
   kdgo_init_globals();

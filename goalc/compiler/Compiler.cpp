@@ -173,10 +173,10 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   return gen.run();
 }
 
-std::vector<std::string> Compiler::run_test(const std::string& source_code) {
+std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
   try {
     if (!connect_to_target()) {
-      throw std::runtime_error("Compiler::run_test couldn't connect!");
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
     }
 
     auto code = m_goos.reader.read_from_file({source_code});
@@ -194,6 +194,31 @@ std::vector<std::string> Compiler::run_test(const std::string& source_code) {
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
     fmt::print("[Compiler] Failed to compile test program {}: {}\n", source_code, e.what());
+    throw e;
+  }
+}
+
+std::vector<std::string> Compiler::run_test_from_string(const std::string& src) {
+  try {
+    if (!connect_to_target()) {
+      throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
+    }
+
+    auto code = m_goos.reader.read_from_string({src});
+    auto compiled = compile_object_file("test-code", code, true);
+    if (compiled->is_empty()) {
+      return {};
+    }
+    color_object_file(compiled);
+    auto data = codegen_object_file(compiled);
+    m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
+    m_listener.send_code(data);
+    if (!m_listener.most_recent_send_was_acked()) {
+      gLogger.log(MSG_ERR, "Runtime is not responding after sending test code. Did it crash?\n");
+    }
+    return m_listener.stop_recording_messages();
+  } catch (std::exception& e) {
+    fmt::print("[Compiler] Failed to compile test program from string {}: {}\n", src, e.what());
     throw e;
   }
 }

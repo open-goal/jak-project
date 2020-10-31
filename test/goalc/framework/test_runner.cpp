@@ -48,7 +48,8 @@ void CompilerTestRunner::run_test(const std::string& test_category,
                                   const std::vector<std::string>& expected,
                                   MatchParam<int> truncate) {
   fprintf(stderr, "Testing %s\n", test_file.c_str());
-  auto result = c->run_test("test/goalc/source_generated/" + test_category + "/" + test_file);
+  auto result =
+      c->run_test_from_file("test/goalc/source_generated/" + test_category + "/" + test_file);
   if (!truncate.is_wildcard) {
     for (auto& x : result) {
       x = x.substr(0, truncate.value);
@@ -85,7 +86,7 @@ void CompilerTestRunner::run_test(const std::string& test_category,
 
 void CompilerTestRunner::run_always_pass(const std::string& test_category,
                                          const std::string& test_file) {
-  c->run_test("test/goalc/source_generated/" + test_category + "/" + test_file);
+  c->run_test_from_file("test/goalc/source_generated/" + test_category + "/" + test_file);
   tests.push_back({{}, {}, test_file, true});
 }
 
