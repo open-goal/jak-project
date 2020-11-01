@@ -4,6 +4,7 @@ add_library(compiler
         emitter/ObjectFileData.cpp
         emitter/ObjectGenerator.cpp
         emitter/Register.cpp
+        emitter/disassemble.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
@@ -35,10 +36,10 @@ add_library(compiler
 add_executable(goalc main.cpp)
 
 IF (WIN32)
-    target_link_libraries(compiler goos type_system mman common_util spdlog cross_os_debug cross_sockets)
+    target_link_libraries(compiler goos type_system mman common_util spdlog cross_os_debug cross_sockets Zydis)
 
 ELSE ()
-    target_link_libraries(compiler goos type_system common_util spdlog cross_os_debug cross_sockets)
+    target_link_libraries(compiler goos type_system common_util spdlog cross_os_debug cross_sockets Zydis)
 ENDIF ()
 
 target_link_libraries(goalc goos compiler type_system)

@@ -5,6 +5,9 @@
 
 #include <cassert>
 #include "Debugger.h"
+#include "common/util/Timer.h"
+#include "common/goal_constants.h"
+#include "common/symbols.h"
 #include "third-party/fmt/core.h"
 
 /*!
@@ -89,6 +92,7 @@ bool Debugger::attach_and_break() {
       m_attached = true;
       m_running = false;
 
+      read_symbol_table();
       xdbg::Regs regs;
       if (!xdbg::get_regs_now(m_debug_context.tid, &regs)) {
         fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
@@ -113,6 +117,7 @@ bool Debugger::do_break() {
     return false;
   } else {
     m_running = false;
+    read_symbol_table();
     xdbg::Regs regs;
     if (!xdbg::get_regs_now(m_debug_context.tid, &regs)) {
       fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
@@ -144,4 +149,121 @@ bool Debugger::read_memory(u8* dest_buffer, int size, u32 goal_addr) {
 bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
   assert(is_valid() && is_attached() && is_halted());
   return xdbg::write_goal_memory(src_buffer, size, goal_addr, m_debug_context, m_memory_handle);
+}
+
+void Debugger::read_symbol_table() {
+  assert(is_valid() && is_attached() && is_halted());
+  u32 bytes_read = 0;
+  u32 reads = 0;
+  Timer timer;
+
+  u32 st_base = m_debug_context.s7 - ((GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET);
+  u32 empty_pair_offset = (m_debug_context.s7 + FIX_SYM_EMPTY_PAIR - PAIR_OFFSET) - st_base;
+
+  std::vector<u8> mem;
+  mem.resize(0x20000);
+
+  if (!xdbg::read_goal_memory(mem.data(), 0x20000, st_base, m_debug_context, m_memory_handle)) {
+    fmt::print("Read failed during read_symbol_table\n");
+    return;
+  }
+  reads++;
+  bytes_read += 0x20000;
+
+  struct SymLower {
+    u32 type;
+    u32 value;
+  };
+
+  struct SymUpper {
+    u32 hash;
+    u32 str;
+  };
+
+  m_symbol_name_to_offset_map.clear();
+  m_symbol_offset_to_name_map.clear();
+  m_symbol_name_to_value_map.clear();
+
+  u32 sym_type = 0;
+  // now loop through all the symbols
+  for (int i = 0; i < (SYM_INFO_OFFSET + 4) / int(sizeof(SymLower)); i++) {
+    auto offset = i * sizeof(SymLower);
+    if (offset == empty_pair_offset) {
+      continue;
+    }
+    auto sym = (SymLower*)(mem.data() + offset);
+    if (sym->type) {
+      // got a symbol!
+      if (!sym_type) {
+        sym_type = sym->type;
+      } else {
+        if (sym_type != sym->type) {
+          fmt::print("Got bad symbol type. Expected 0x{:x} got 0x{:x}\n", sym_type, sym->type);
+          return;
+        }
+      }
+
+      // now get the info
+      auto info = (SymUpper*)(mem.data() + i * sizeof(SymLower) + SYM_INFO_OFFSET + BASIC_OFFSET);
+
+      // now get the string.
+      char str_buff[128];
+      if (!xdbg::read_goal_memory((u8*)str_buff, 128, info->str + 4, m_debug_context,
+                                  m_memory_handle)) {
+        fmt::print("Read symbol string failed during read_symbol_table\n");
+        return;
+      }
+      reads++;
+      bytes_read += 128;
+      // just in case
+      str_buff[127] = '\0';
+      assert(strlen(str_buff) < 50);
+      std::string str(str_buff);
+
+      // GOAL sym - s7
+      auto sym_offset = s32(offset + st_base + BASIC_OFFSET) - s32(m_debug_context.s7);
+      assert(sym_offset >= INT16_MIN);
+      assert(sym_offset <= INT16_MAX);
+
+      // update maps
+      if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
+        if (str == "asize-of-basic-func") {
+          // this is an actual bug in kscheme. The bug has no effect, but we replicate it so that
+          // the symbol table layout is closer.
+
+          // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
+          str += "-hack-copy";
+        } else {
+          fmt::print("Symbol {} appears multiple times!\n", str);
+        }
+      }
+
+      m_symbol_name_to_offset_map[str] = sym_offset;
+      m_symbol_offset_to_name_map[sym_offset] = str;
+      m_symbol_name_to_value_map[str] = sym->value;
+    }
+  }
+
+  assert(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
+  fmt::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
+             m_symbol_name_to_offset_map.size(), timer.getMs());
+}
+
+u32 Debugger::get_symbol_address(const std::string& sym_name) {
+  assert(is_valid());
+  auto kv = m_symbol_name_to_offset_map.find(sym_name);
+  if (kv != m_symbol_name_to_offset_map.end()) {
+    return m_debug_context.s7 + kv->second;
+  }
+  return 0;
+}
+
+bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
+  assert(is_valid());
+  auto kv = m_symbol_name_to_value_map.find(sym_name);
+  if (kv != m_symbol_name_to_value_map.end()) {
+    *output = kv->second;
+    return true;
+  }
+  return false;
 }
