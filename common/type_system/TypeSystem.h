@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <stdexcept>
 
 #include "TypeSpec.h"
 #include "Type.h"
