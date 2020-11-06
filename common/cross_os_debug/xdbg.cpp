@@ -351,6 +351,10 @@ bool write_goal_memory(const u8* src_buffer,
 bool check_stopped(const ThreadID& tid, SignalInfo* out) {
   return false;
 }
+
+bool set_regs_now(const ThreadID& tid, const Regs& out) {
+  return false;
+}
 #endif
 
 const char* gpr_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
