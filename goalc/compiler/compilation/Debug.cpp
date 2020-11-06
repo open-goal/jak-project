@@ -308,7 +308,7 @@ Val* Compiler::compile_di(const goos::Object& form, const goos::Object& rest, En
         "Cannot get debug info, the debugger must be connected and the target must be halted.");
   }
 
-  m_debugger.read_symbols_and_regs();
+  m_debugger.get_break_info();
   return get_none();
 }
 

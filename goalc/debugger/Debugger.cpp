@@ -1,6 +1,7 @@
 /*!
  * @file Debugger.h
  * The OpenGOAL debugger.
+ * Uses xdbg functions to debug an OpenGOAL target.
  */
 
 #include <cassert>
@@ -49,7 +50,8 @@ bool Debugger::is_attached() const {
 
 /*!
  * If attached, detach. If halted and attached, will unhalt.
- * Will silently do nothing if we aren't attached.
+ * Will silently do nothing if we aren't attached, so it is safe to just call detach() to try to
+ * clean up when exiting.
  */
 void Debugger::detach() {
   if (is_valid() && m_attached) {
@@ -86,11 +88,23 @@ std::string Debugger::get_context_string() const {
  */
 bool Debugger::attach_and_break() {
   if (is_valid() && !m_attached) {
+    // reset and start the stop watcher
     clear_signal_queue();
     start_watcher();
+
+    // attach and send a break command
     if (xdbg::attach_and_break(m_debug_context.tid)) {
+      // wait for the signal queue to get a stop and pop it.
       auto info = pop_signal();
+
+      // manually set up continue for this.
+      m_continue_info.valid = true;
+      m_continue_info.subtract_1 = false;
+
+      // this may fail if you crash at exactly the wrong time. todo - remove?
       assert(info.kind == xdbg::SignalInfo::BREAK);
+
+      // open the memory of the process
       if (!xdbg::open_memory(m_debug_context.tid, &m_memory_handle)) {
         return false;
       }
@@ -98,7 +112,8 @@ bool Debugger::attach_and_break() {
       m_attached = true;
       m_running = false;
 
-      read_symbols_and_regs();
+      // get info from target
+      get_break_info();
 
       auto signal_count = get_signal_count();
       assert(signal_count == 0);
@@ -111,7 +126,11 @@ bool Debugger::attach_and_break() {
   return false;
 }
 
-void Debugger::read_symbols_and_regs() {
+/*!
+ * Read the registers, symbol table, and instructions near rip.
+ * Print out some info about where we are.
+ */
+void Debugger::get_break_info() {
   read_symbol_table();
   m_regs_valid = false;
   if (!xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break)) {
@@ -131,6 +150,7 @@ void Debugger::read_symbols_and_regs() {
       read_memory(mem.data(), INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD,
                   rip - m_debug_context.base - INSTR_DUMP_SIZE_REV);
       fmt::print("{}\n", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
+
     } else {
       fmt::print("Not in GOAL code!\n");
     }
@@ -139,16 +159,19 @@ void Debugger::read_symbols_and_regs() {
 
 /*!
  * Stop the target. Must be attached and not stopped.
+ * Waits for break to be acknowledged and reads break info.
  */
 bool Debugger::do_break() {
   assert(is_valid() && is_attached() && is_running());
+  m_expecting_immeidate_break = true;
+  m_continue_info.valid = false;
   clear_signal_queue();
   if (!xdbg::break_now(m_debug_context.tid)) {
     return false;
   } else {
     auto info = pop_signal();
     assert(info.kind == xdbg::SignalInfo::BREAK);
-    read_symbols_and_regs();
+    get_break_info();
     m_running = false;
     return true;
   }
@@ -159,6 +182,24 @@ bool Debugger::do_break() {
  */
 bool Debugger::do_continue() {
   assert(is_valid() && is_attached() && is_halted());
+  if (!m_regs_valid) {
+    get_break_info();
+  }
+  assert(regs_valid());
+
+  if (!m_continue_info.valid) {
+    update_continue_info();
+  }
+  assert(m_continue_info.valid);
+  m_regs_valid = false;
+
+  if (m_continue_info.subtract_1) {
+    m_regs_at_break.rip--;
+    auto result = xdbg::set_regs_now(m_debug_context.tid, m_regs_at_break);
+    assert(result);
+  }
+
+  m_expecting_immeidate_break = false;
   if (!xdbg::cont_now(m_debug_context.tid)) {
     return false;
   } else {
@@ -270,6 +311,7 @@ void Debugger::read_symbol_table() {
           str += "-hack-copy";
         } else {
           fmt::print("Symbol {} appears multiple times!\n", str);
+          assert(false);
         }
       }
 
@@ -284,6 +326,10 @@ void Debugger::read_symbol_table() {
              m_symbol_name_to_offset_map.size(), timer.getMs());
 }
 
+/*!
+ * Get the address of a symbol by name. Returns a GOAL address.
+ * Returns 0 if the symbol doesn't exist.
+ */
 u32 Debugger::get_symbol_address(const std::string& sym_name) {
   assert(is_valid());
   auto kv = m_symbol_name_to_offset_map.find(sym_name);
@@ -293,6 +339,9 @@ u32 Debugger::get_symbol_address(const std::string& sym_name) {
   return 0;
 }
 
+/*!
+ * Get the value of a symbol by name. Returns if the symbol exists and populates output if it does.
+ */
 bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
   assert(is_valid());
   auto kv = m_symbol_name_to_value_map.find(sym_name);
@@ -303,6 +352,9 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
   return false;
 }
 
+/*!
+ * Starts the debugger watch thread which watches the target process to see if it stops.
+ */
 void Debugger::start_watcher() {
   assert(!m_watcher_running);
   m_watcher_running = true;
@@ -310,6 +362,9 @@ void Debugger::start_watcher() {
   m_watcher_thread = std::thread(&Debugger::watcher, this);
 }
 
+/*!
+ * Stops the debugger watch thread (waits for it to end)
+ */
 void Debugger::stop_watcher() {
   assert(m_watcher_running);
   m_watcher_running = false;
@@ -323,12 +378,16 @@ Debugger::~Debugger() {
   }
 }
 
+/*!
+ * The watcher thread.
+ */
 void Debugger::watcher() {
   xdbg::SignalInfo signal_info;
   while (!m_watcher_should_stop) {
     // we just sit in a loop, waiting for stops.
     if (xdbg::check_stopped(m_debug_context.tid, &signal_info)) {
       // the target stopped!
+      m_continue_info.valid = false;
 
       switch (signal_info.kind) {
         case xdbg::SignalInfo::SEGFAULT:
@@ -425,6 +484,7 @@ void Debugger::add_addr_breakpoint(u32 addr) {
 void Debugger::remove_addr_breakpoint(u32 addr) {
   {
     std::unique_lock<std::mutex> lock(m_watcher_mutex);
+    update_continue_info();
     auto kv = m_addr_breakpoints.find(addr);
     if (kv == m_addr_breakpoints.end()) {
       fmt::print("Breakpoint at address 0x{:08x} does not exist\n", addr);
@@ -438,4 +498,28 @@ void Debugger::remove_addr_breakpoint(u32 addr) {
 
     m_addr_breakpoints.erase(kv);
   }
+}
+
+void Debugger::update_continue_info() {
+  if (m_continue_info.valid || !is_halted()) {
+    return;
+  }
+
+  if (!m_regs_valid) {
+    get_break_info();
+  }
+
+  auto kv = m_addr_breakpoints.find(get_regs().rip - 1);
+  if (kv == m_addr_breakpoints.end()) {
+    m_continue_info.subtract_1 = false;
+  } else {
+    if (m_expecting_immeidate_break) {
+      printf("Warning, conflicting break and breakpoints. Not sure why we stopped!\n");
+    }
+
+    m_continue_info.subtract_1 = true;
+  }
+
+  m_expecting_immeidate_break = false;
+  m_continue_info.valid = true;
 }

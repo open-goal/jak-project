@@ -139,32 +139,48 @@ TEST(Debugger, Symbol) {
   }
 }
 
-// TEST(Debugger, CheckStopped) {
-//  Compiler compiler;
-//
-//  if (!fork()) {
-//    GoalTest::runtime_no_kernel();
-//    exit(0);
-//  } else {
-//    compiler.connect_to_target();
-//    compiler.poke_target();
-//    compiler.run_test_from_string("(dbg)");
-//    EXPECT_TRUE(compiler.get_debugger().is_valid());
-//    EXPECT_TRUE(compiler.get_debugger().is_halted());
-//    EXPECT_TRUE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
-//    for (int i = 0; i < 20; i++) {
-//      EXPECT_FALSE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
-//      EXPECT_TRUE(compiler.get_debugger().do_continue());
-//      EXPECT_FALSE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
-//      EXPECT_FALSE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
-//      EXPECT_TRUE(compiler.get_debugger().do_break());
-//      EXPECT_TRUE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
-//    }
-//    compiler.shutdown_target();
-//
-//    // and now the child process should be done!
-//    EXPECT_TRUE(wait(nullptr) >= 0);
-//  }
-//}
+TEST(Debugger, SimpleBreakpoint) {
+  Compiler compiler;
+
+  if (!fork()) {
+    GoalTest::runtime_no_kernel();
+    exit(0);
+  } else {
+    compiler.connect_to_target();
+    compiler.poke_target();
+    compiler.run_test_from_string("(defun test-function () (+ 1 2 3 4 5 6))");
+    ;
+    compiler.run_test_from_string("(dbg)");
+    u32 func_addr;
+    EXPECT_TRUE(compiler.get_debugger().get_symbol_value("test-function", &func_addr));
+    EXPECT_TRUE(compiler.get_debugger().is_valid());
+    EXPECT_TRUE(compiler.get_debugger().is_halted());
+
+    compiler.get_debugger().add_addr_breakpoint(func_addr);  // todo from code.
+    compiler.run_test_from_string("(:cont)");
+    compiler.run_test_from_string("(test-function)");
+    // wait for breakpoint to be hit.
+    while (!compiler.get_debugger().is_halted()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    compiler.get_debugger().get_break_info();
+    auto expected_instr_before_rip = compiler.get_debugger().get_x86_base_addr() + func_addr;
+    auto rip = compiler.get_debugger().get_regs().rip;
+    // instructions can be at most 15 bytes long.
+    EXPECT_TRUE(rip > expected_instr_before_rip && rip < expected_instr_before_rip + 15);
+
+    EXPECT_TRUE(compiler.get_debugger().is_halted());
+    compiler.get_debugger().remove_addr_breakpoint(func_addr);
+    compiler.get_debugger().do_continue();
+
+    auto result = compiler.run_test_from_string("(test-function)");
+    EXPECT_EQ(std::stoi(result.at(0)), 21);
+    compiler.shutdown_target();
+
+    // and now the child process should be done!
+    EXPECT_TRUE(wait(nullptr) >= 0);
+  }
+}
 
 #endif
