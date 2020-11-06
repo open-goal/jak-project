@@ -26,12 +26,21 @@ void Compiler::execute_repl() {
   while (!m_want_exit) {
     try {
       // 1). get a line from the user (READ)
-      std::string prompt;
+      std::string prompt = "g";
       if (m_listener.is_connected()) {
-        prompt = "gc";
+        prompt += "c";
       } else {
-        prompt = "g";
+        prompt += " ";
       }
+
+      if (m_debugger.is_halted()) {
+        prompt += "s";
+      } else if (m_debugger.is_attached()) {
+        prompt += "r";
+      } else {
+        prompt += " ";
+      }
+
       Object code = m_goos.reader.read_from_stdin(prompt);
 
       // 2). compile
@@ -246,6 +255,10 @@ std::vector<std::string> Compiler::run_test_no_load(const std::string& source_co
 }
 
 void Compiler::shutdown_target() {
+  if (m_debugger.is_attached()) {
+    m_debugger.detach();
+  }
+
   if (m_listener.is_connected()) {
     m_listener.send_reset(true);
   }

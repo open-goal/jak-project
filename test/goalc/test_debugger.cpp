@@ -106,4 +106,65 @@ TEST(Debugger, DebuggerWriteMemory) {
   }
 }
 
+TEST(Debugger, Symbol) {
+  Compiler compiler;
+  // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
+  // separate process.
+  if (!fork()) {
+    GoalTest::runtime_no_kernel();
+    exit(0);
+  } else {
+    compiler.connect_to_target();
+    compiler.poke_target();
+    compiler.run_test_from_string("(dbg)");
+    EXPECT_TRUE(compiler.get_debugger().do_continue());
+    auto result = compiler.run_test_from_string("(define test-symbol (the int 123))");
+    EXPECT_TRUE(compiler.get_debugger().do_break());
+    auto addr = compiler.get_debugger().get_symbol_address("test-symbol");
+    u32 value;
+    EXPECT_TRUE(compiler.get_debugger().read_value(&value, addr));
+    EXPECT_EQ(value, 123);
+    EXPECT_TRUE(compiler.get_debugger().write_value<u32>(456, addr));
+    EXPECT_TRUE(compiler.get_debugger().read_value(&value, addr));
+    EXPECT_EQ(value, 456);
+
+    EXPECT_TRUE(compiler.get_debugger().do_continue());
+    result = compiler.run_test_from_string("test-symbol");
+    EXPECT_EQ(456, std::stoi(result.at(0)));
+
+    compiler.shutdown_target();
+
+    // and now the child process should be done!
+    EXPECT_TRUE(wait(nullptr) >= 0);
+  }
+}
+
+// TEST(Debugger, CheckStopped) {
+//  Compiler compiler;
+//
+//  if (!fork()) {
+//    GoalTest::runtime_no_kernel();
+//    exit(0);
+//  } else {
+//    compiler.connect_to_target();
+//    compiler.poke_target();
+//    compiler.run_test_from_string("(dbg)");
+//    EXPECT_TRUE(compiler.get_debugger().is_valid());
+//    EXPECT_TRUE(compiler.get_debugger().is_halted());
+//    EXPECT_TRUE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
+//    for (int i = 0; i < 20; i++) {
+//      EXPECT_FALSE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
+//      EXPECT_TRUE(compiler.get_debugger().do_continue());
+//      EXPECT_FALSE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
+//      EXPECT_FALSE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
+//      EXPECT_TRUE(compiler.get_debugger().do_break());
+//      EXPECT_TRUE(xdbg::check_stopped(compiler.get_debugger().get_thread_id(), nullptr));
+//    }
+//    compiler.shutdown_target();
+//
+//    // and now the child process should be done!
+//    EXPECT_TRUE(wait(nullptr) >= 0);
+//  }
+//}
+
 #endif

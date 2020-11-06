@@ -60,6 +60,9 @@ static const std::unordered_map<
         {":dump-all-mem", &Compiler::compile_dump_all},
         {":pm", &Compiler::compile_pm},
         {":di", &Compiler::compile_di},
+        {":disasm", &Compiler::compile_disasm},
+        {":bp", &Compiler::compile_bp},
+        {":ubp", &Compiler::compile_ubp},
 
         // TYPE
         {"deftype", &Compiler::compile_deftype},

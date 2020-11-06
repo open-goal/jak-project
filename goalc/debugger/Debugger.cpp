@@ -9,6 +9,7 @@
 #include "common/goal_constants.h"
 #include "common/symbols.h"
 #include "third-party/fmt/core.h"
+#include "goalc/emitter/disassemble.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -52,6 +53,7 @@ bool Debugger::is_attached() const {
  */
 void Debugger::detach() {
   if (is_valid() && m_attached) {
+    stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
     m_context_valid = false;
@@ -84,7 +86,11 @@ std::string Debugger::get_context_string() const {
  */
 bool Debugger::attach_and_break() {
   if (is_valid() && !m_attached) {
+    clear_signal_queue();
+    start_watcher();
     if (xdbg::attach_and_break(m_debug_context.tid)) {
+      auto info = pop_signal();
+      assert(info.kind == xdbg::SignalInfo::BREAK);
       if (!xdbg::open_memory(m_debug_context.tid, &m_memory_handle)) {
         return false;
       }
@@ -92,13 +98,10 @@ bool Debugger::attach_and_break() {
       m_attached = true;
       m_running = false;
 
-      read_symbol_table();
-      xdbg::Regs regs;
-      if (!xdbg::get_regs_now(m_debug_context.tid, &regs)) {
-        fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
-      } else {
-        fmt::print("{}", regs.print_gprs());
-      }
+      read_symbols_and_regs();
+
+      auto signal_count = get_signal_count();
+      assert(signal_count == 0);
       return true;
     }
   } else {
@@ -108,22 +111,45 @@ bool Debugger::attach_and_break() {
   return false;
 }
 
+void Debugger::read_symbols_and_regs() {
+  read_symbol_table();
+  m_regs_valid = false;
+  if (!xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break)) {
+    fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
+  } else {
+    m_regs_valid = true;
+    fmt::print("{}", m_regs_at_break.print_gprs());
+  }
+
+  if (regs_valid()) {
+    std::vector<u8> mem;
+    mem.resize(INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD);
+    // very basic asm dump.
+    auto rip = m_regs_at_break.rip;
+    if (rip >= m_debug_context.base + EE_MAIN_MEM_LOW_PROTECT &&
+        rip < m_debug_context.base + EE_MAIN_MEM_SIZE) {
+      read_memory(mem.data(), INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD,
+                  rip - m_debug_context.base - INSTR_DUMP_SIZE_REV);
+      fmt::print("{}\n", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
+    } else {
+      fmt::print("Not in GOAL code!\n");
+    }
+  }
+}
+
 /*!
  * Stop the target. Must be attached and not stopped.
  */
 bool Debugger::do_break() {
   assert(is_valid() && is_attached() && is_running());
+  clear_signal_queue();
   if (!xdbg::break_now(m_debug_context.tid)) {
     return false;
   } else {
+    auto info = pop_signal();
+    assert(info.kind == xdbg::SignalInfo::BREAK);
+    read_symbols_and_regs();
     m_running = false;
-    read_symbol_table();
-    xdbg::Regs regs;
-    if (!xdbg::get_regs_now(m_debug_context.tid, &regs)) {
-      fmt::print("[Debugger] get_regs_now failed after break, something is wrong\n");
-    } else {
-      fmt::print("{}", regs.print_gprs());
-    }
     return true;
   }
 }
@@ -141,16 +167,25 @@ bool Debugger::do_continue() {
   }
 }
 
+/*!
+ * Read memory from an attached and halted target.
+ */
 bool Debugger::read_memory(u8* dest_buffer, int size, u32 goal_addr) {
   assert(is_valid() && is_attached() && is_halted());
   return xdbg::read_goal_memory(dest_buffer, size, goal_addr, m_debug_context, m_memory_handle);
 }
 
+/*!
+ * Write the memory of an attached and halted target.
+ */
 bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
   assert(is_valid() && is_attached() && is_halted());
   return xdbg::write_goal_memory(src_buffer, size, goal_addr, m_debug_context, m_memory_handle);
 }
 
+/*!
+ * Read the GOAL Symbol table from an attached and halted target.
+ */
 void Debugger::read_symbol_table() {
   assert(is_valid() && is_attached() && is_halted());
   u32 bytes_read = 0;
@@ -266,4 +301,141 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
     return true;
   }
   return false;
+}
+
+void Debugger::start_watcher() {
+  assert(!m_watcher_running);
+  m_watcher_running = true;
+  m_watcher_should_stop = false;
+  m_watcher_thread = std::thread(&Debugger::watcher, this);
+}
+
+void Debugger::stop_watcher() {
+  assert(m_watcher_running);
+  m_watcher_running = false;
+  m_watcher_should_stop = true;
+  m_watcher_thread.join();
+}
+
+Debugger::~Debugger() {
+  if (m_watcher_running) {
+    stop_watcher();
+  }
+}
+
+void Debugger::watcher() {
+  xdbg::SignalInfo signal_info;
+  while (!m_watcher_should_stop) {
+    // we just sit in a loop, waiting for stops.
+    if (xdbg::check_stopped(m_debug_context.tid, &signal_info)) {
+      // the target stopped!
+
+      switch (signal_info.kind) {
+        case xdbg::SignalInfo::SEGFAULT:
+          printf("Target has crashed with a SEGFAULT! Run (:di) to get more information.\n");
+          break;
+        case xdbg::SignalInfo::BREAK:
+          printf("Target has stopped. Run (:di) to get more information.\n");
+          break;
+        default:
+          printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
+          assert(false);
+      }
+
+      {
+        std::lock_guard<std::mutex> lock(m_watcher_mutex);
+        m_running = false;
+        m_watcher_queue.push({signal_info.kind});  // todo, more info?
+      }
+      m_watcher_cv.notify_one();
+
+    } else {
+      // the target didn't stop.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+}
+
+Debugger::SignalInfo Debugger::pop_signal() {
+  {
+    std::unique_lock<std::mutex> lock(m_watcher_mutex);
+    m_watcher_cv.wait(lock, [&] { return !m_watcher_queue.empty(); });
+  }
+
+  Debugger::SignalInfo result;
+  if (!try_pop_signal(&result)) {
+    assert(false);
+  }
+  return result;
+}
+
+bool Debugger::try_pop_signal(SignalInfo* out) {
+  {
+    std::unique_lock<std::mutex> lock(m_watcher_mutex);
+    if (!m_watcher_queue.empty()) {
+      *out = m_watcher_queue.front();
+      m_watcher_queue.pop();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+int Debugger::get_signal_count() {
+  std::unique_lock<std::mutex> lock(m_watcher_mutex);
+  return int(m_watcher_queue.size());
+}
+
+void Debugger::clear_signal_queue() {
+  std::unique_lock<std::mutex> lock(m_watcher_mutex);
+  while (!m_watcher_queue.empty()) {
+    m_watcher_queue.pop();
+  }
+}
+
+void Debugger::add_addr_breakpoint(u32 addr) {
+  {
+    std::unique_lock<std::mutex> lock(m_watcher_mutex);
+    auto kv = m_addr_breakpoints.find(addr);
+    if (kv != m_addr_breakpoints.end()) {
+      fmt::print("Breakpoint at address 0x{:08x} already exists as breakpoint {}\n", addr,
+                 kv->second.id);
+      return;
+    }
+
+    Breakpoint bp;
+    bp.goal_addr = addr;
+    bp.id = m_addr_breakpoints.size();
+    if (!read_memory(&bp.old_data, 1, addr)) {
+      fmt::print("Failed to read memory for breakpoint, not adding breakpoint\n");
+      return;
+    }
+
+    u8 int3 = 0xcc;
+    if (!write_memory(&int3, 1, addr)) {
+      fmt::print("Failed to write memory for breakpoint, not adding breakpoint\n");
+      return;
+    }
+
+    m_addr_breakpoints[addr] = bp;
+  }
+}
+
+void Debugger::remove_addr_breakpoint(u32 addr) {
+  {
+    std::unique_lock<std::mutex> lock(m_watcher_mutex);
+    auto kv = m_addr_breakpoints.find(addr);
+    if (kv == m_addr_breakpoints.end()) {
+      fmt::print("Breakpoint at address 0x{:08x} does not exist\n", addr);
+      return;
+    }
+
+    if (!write_memory(&kv->second.old_data, 1, addr)) {
+      fmt::print("Failed to remove breakpoint\n");
+      return;
+    }
+
+    m_addr_breakpoints.erase(kv);
+  }
 }

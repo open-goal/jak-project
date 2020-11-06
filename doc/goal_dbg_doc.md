@@ -190,16 +190,16 @@ gc> (:pm 4 1452224 10 :print-mode signed-dec)
 ```
 
 
-## `(:di)`
+## `(:disasm)`
 Disassembly instructions in memory
 
 ```
-(:di addr len)
+(:disasm addr len)
 ```
 
 Example (after doing a `(lt)`, `(blg)`, `(dbg)`):
 ```asm
-gc> (:di (sym-val basic-type?) 80)
+gc> (:disasm (sym-val basic-type?) 80)
 [0x2000162ae4] mov eax, [r15+rdi*1-0x04]
 [0x2000162ae9] mov ecx, [r15+r14*1+0x38]
 [0x2000162af1] mov rdx, rax
@@ -220,3 +220,166 @@ gc> (:di (sym-val basic-type?) 80)
 ```
 
 For now, the disassembly is pretty basic, but it should eventually support GOAL symbols.
+
+## Breakpoints
+
+```
+OpenGOAL Compiler 0.1
+
+;; first, connect to the target
+g  > (lt)
+[Listener] Socket connected established! (took 0 tries). Waiting for version...
+Got version 0.1 OK!
+[OUTPUT] reset #x147d24 #x2000000000 322300
+
+[Debugger] Context: valid = true, s7 = 0x147d24, base = 0x2000000000, tid = 322300
+
+
+;; run an infinite loop. This will time out because we don't see a response from the GOAL kernel that our function
+;; has returned.
+gc > (while #t (+ 1 2 3 4 5 6 7))
+  Error - target has timed out. If it is stuck in a loop, it must be manually killed.
+Runtime is not responding. Did it crash?
+
+
+;; so we can attach the debugger!
+gc > (dbg)
+[Debugger] PTRACE_ATTACHED! Waiting for process to stop...
+Target has stopped. Run (:di) to get more information.
+Read symbol table (146816 bytes, 124 reads, 123 symbols, 2.02 ms)
+rax: 0x000000000000000a rcx: 0x0000000000000005 rdx: 0x0000000000000000 rbx: 0x0000002000000000 
+rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
+ r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000 
+r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000 
+rip: 0x0000002007ffbf3b
+  [0x2007ffbf1b] add [rax], al
+  [0x2007ffbf1d] add [rcx+0x02], bh
+  [0x2007ffbf23] add rax, rcx
+  [0x2007ffbf26] mov ecx, 0x03
+  [0x2007ffbf2b] add rax, rcx
+  [0x2007ffbf2e] mov ecx, 0x04
+  [0x2007ffbf33] add rax, rcx
+  [0x2007ffbf36] mov ecx, 0x05
+- [0x2007ffbf3b] add rax, rcx
+  [0x2007ffbf3e] mov ecx, 0x06
+  [0x2007ffbf43] add rax, rcx
+  [0x2007ffbf46] mov ecx, 0x07
+  [0x2007ffbf4b] add rax, rcx
+  [0x2007ffbf4e] mov eax, [r15+r14*1+0x08]
+  [0x2007ffbf56] mov rcx, r14
+  [0x2007ffbf59] add rcx, 0x00
+  [0x2007ffbf60] cmp rax, rcx
+  [0x2007ffbf63] jnz 0x0000002007FFBF19
+  [0x2007ffbf69] mov eax, [r15+r14*1]
+  [0x2007ffbf71] ret
+  [0x2007ffbf72] add [rax], al
+  [0x2007ffbf74] add [rax], al
+  [0x2007ffbf76] add [rax], al
+  [0x2007ffbf78] add [rax], al
+  [0x2007ffbf7a] INVALID (0x00)
+
+Debugger connected.
+
+;; currently rcx = 5. let's set a breakpoint where it should be 7
+gcs> (:bp #x2007ffbf4b)
+
+;; and continue...
+gcs> (:cont)
+
+;; it hits the breakpoint. (this message should have more information...)
+Target has stopped. Run (:di) to get more information.
+
+;; get some info:
+gcs> (:di)
+Read symbol table (146816 bytes, 124 reads, 123 symbols, 1.46 ms)
+rax: 0x0000000000000015 rcx: 0x0000000000000007 rdx: 0x0000000000000000 rbx: 0x0000002000000000 
+rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
+ r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000 
+r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000 
+rip: 0x0000002007ffbf4c
+  [0x2007ffbf2c] add eax, ecx
+  [0x2007ffbf2e] mov ecx, 0x04
+  [0x2007ffbf33] add rax, rcx
+  [0x2007ffbf36] mov ecx, 0x05
+  [0x2007ffbf3b] add rax, rcx
+  [0x2007ffbf3e] mov ecx, 0x06
+  [0x2007ffbf43] add rax, rcx
+  [0x2007ffbf46] mov ecx, 0x07
+  [0x2007ffbf4b] int3            ;; oops! should probably patch this in the disassembly!
+- [0x2007ffbf4c] add eax, ecx
+  [0x2007ffbf4e] mov eax, [r15+r14*1+0x08]
+  [0x2007ffbf56] mov rcx, r14
+  [0x2007ffbf59] add rcx, 0x00
+  [0x2007ffbf60] cmp rax, rcx
+  [0x2007ffbf63] jnz 0x0000002007FFBF19
+  [0x2007ffbf69] mov eax, [r15+r14*1]
+  [0x2007ffbf71] ret
+  [0x2007ffbf72] add [rax], al
+  [0x2007ffbf74] add [rax], al
+  [0x2007ffbf76] add [rax], al
+  [0x2007ffbf78] add [rax], al
+  [0x2007ffbf7a] add [rax], al
+  [0x2007ffbf7c] add [rax], al
+  [0x2007ffbf7e] add [rax], al
+  [0x2007ffbf80] in al, 0x08
+  [0x2007ffbf82] INVALID (0x16)
+  [0x2007ffbf82] add [rax], al
+  [0x2007ffbf84] add [rcx], al
+  [0x2007ffbf86] add [rbx], al
+  [0x2007ffbf88] add [rax], al
+  [0x2007ffbf8a] INVALID (0x00)
+
+;; remove the breakpoint
+gcs> (:ubp #x2007ffbf4b)
+
+;; continue, it stays running
+gcs> (:cont)
+gcr> 
+
+;; break and check, the code is back to normal!
+gcr> (:break)
+Target has stopped. Run (:di) to get more information.
+Read symbol table (146816 bytes, 124 reads, 123 symbols, 1.28 ms)
+rax: 0x0000000000000015 rcx: 0x0000000000000007 rdx: 0x0000000000000000 rbx: 0x0000002000000000 
+rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
+ r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000 
+r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000 
+rip: 0x0000002007ffbf4b
+  [0x2007ffbf2b] add rax, rcx
+  [0x2007ffbf2e] mov ecx, 0x04
+  [0x2007ffbf33] add rax, rcx
+  [0x2007ffbf36] mov ecx, 0x05
+  [0x2007ffbf3b] add rax, rcx
+  [0x2007ffbf3e] mov ecx, 0x06
+  [0x2007ffbf43] add rax, rcx
+  [0x2007ffbf46] mov ecx, 0x07
+- [0x2007ffbf4b] add rax, rcx
+  [0x2007ffbf4e] mov eax, [r15+r14*1+0x08]
+  [0x2007ffbf56] mov rcx, r14
+  [0x2007ffbf59] add rcx, 0x00
+  [0x2007ffbf60] cmp rax, rcx
+  [0x2007ffbf63] jnz 0x0000002007FFBF19
+  [0x2007ffbf69] mov eax, [r15+r14*1]
+  [0x2007ffbf71] ret
+  [0x2007ffbf72] add [rax], al
+  [0x2007ffbf74] add [rax], al
+  [0x2007ffbf76] add [rax], al
+  [0x2007ffbf78] add [rax], al
+  [0x2007ffbf7a] add [rax], al
+  [0x2007ffbf7c] add [rax], al
+  [0x2007ffbf7e] add [rax], al
+  [0x2007ffbf80] in al, 0x08
+  [0x2007ffbf82] INVALID (0x16)
+  [0x2007ffbf82] add [rax], al
+  [0x2007ffbf84] add [rcx], al
+  [0x2007ffbf86] add [rbx], al
+  [0x2007ffbf88] add [rax], al
+
+gcs> 
+
+;; we can still properly exit from the target, even in this state!
+gcs> (e)
+Tried to reset a halted target, detaching...
+  Error - target has timed out. If it is stuck in a loop, it must be manually killed.
+[Listener] Closed connection to target
+```

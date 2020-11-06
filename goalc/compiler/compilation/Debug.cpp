@@ -299,6 +299,20 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
 }
 
 Val* Compiler::compile_di(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)form;
+  (void)rest;
+  (void)env;
+  if (!m_debugger.is_halted()) {
+    throw_compile_error(
+        form,
+        "Cannot get debug info, the debugger must be connected and the target must be halted.");
+  }
+
+  m_debugger.read_symbols_and_regs();
+  return get_none();
+}
+
+Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest, Env* env) {
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {{}, goos::ObjectType::INTEGER}, {});
@@ -314,20 +328,55 @@ Val* Compiler::compile_di(const goos::Object& form, const goos::Object& rest, En
   if (size > 1024 * 1024) {
     throw_compile_error(
         form,
-        fmt::format(":di used on over 1 MB of memory, this probably isn't what you meant to do."));
+        fmt::format(
+            ":disasm used on over 1 MB of memory, this probably isn't what you meant to do."));
   }
 
   std::vector<u8> mem;
   mem.resize(size);
 
   if (addr < EE_MAIN_MEM_LOW_PROTECT || (addr + size) > EE_MAIN_MEM_SIZE) {
-    throw_compile_error(form, ":di memory out of range");
+    throw_compile_error(form, ":disasm memory out of range");
   }
 
   m_debugger.read_memory(mem.data(), size, addr);
 
   fmt::print("{}\n",
              disassemble_x86(mem.data(), mem.size(), m_debugger.get_x86_base_addr() + addr));
+
+  return get_none();
+}
+
+Val* Compiler::compile_bp(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+
+  if (!m_debugger.is_halted()) {
+    throw_compile_error(
+        form,
+        "Cannot add breakpoint, the debugger must be connected and the target must be halted.");
+  }
+
+  u32 addr = parse_address_spec(args.unnamed.at(0));
+  m_debugger.add_addr_breakpoint(addr);
+
+  return get_none();
+}
+
+Val* Compiler::compile_ubp(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+
+  if (!m_debugger.is_halted()) {
+    throw_compile_error(
+        form,
+        "Cannot remove breakpoint, the debugger must be connected and the target must be halted.");
+  }
+
+  u32 addr = parse_address_spec(args.unnamed.at(0));
+  m_debugger.remove_addr_breakpoint(addr);
 
   return get_none();
 }

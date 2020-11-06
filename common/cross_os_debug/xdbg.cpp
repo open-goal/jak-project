@@ -78,22 +78,41 @@ bool attach_and_break(const ThreadID& tid) {
       return false;
     }
 
-    // we could technically hang here forever if runtime ignores the signal.
-    int status;
-    if (waitpid(tid.id, &status, 0) < 0) {
-      printf("[Debugger] Failed to waitpid: %s. The runtime is probably in a bad state now.\n",
-             strerror(errno));
-      return false;
-    }
-
-    // double check that we stopped for the right reason
-    if (!WIFSTOPPED(status)) {
-      printf("[Debugger] Failed to STOP: %s. The runtime is probably in a bad state now.\n",
-             strerror(errno));
-      return false;
-    }
     return true;
   }
+}
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  int status;
+  if (waitpid(tid.id, &status, WNOHANG) < 0) {
+    printf("[Debugger] Failed to waitpid: %s.\n", strerror(errno));
+    //    assert(false);  // todo, temp because I think we should never hit this.
+    return false;
+  }
+
+  if (WIFSTOPPED(status)) {
+    auto sig = WSTOPSIG(status);
+    if (out) {
+      switch (sig) {
+        case SIGSEGV:
+          out->kind = SignalInfo::SEGFAULT;
+          break;
+        case SIGFPE:
+          out->kind = SignalInfo::MATH_EXCEPTION;
+          break;
+        case SIGTRAP:
+          out->kind = SignalInfo::BREAK;
+          break;
+
+        default:
+          out->kind = SignalInfo::UNKNOWN;
+      }
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 /*!
@@ -204,19 +223,6 @@ bool break_now(const ThreadID& tid) {
     return false;
   }
 
-  int status;
-  if (waitpid(tid.id, &status, 0) < 0) {
-    printf("[Debugger] Failed to waitpid: %s. The runtime is probably in a bad state now.\n",
-           strerror(errno));
-    return false;
-  }
-
-  if (!WIFSTOPPED(status)) {
-    printf("[Debugger] Failed to STOP: %s. The runtime is probably in a bad state now.\n",
-           strerror(errno));
-    return false;
-  }
-
   return true;
 }
 
@@ -295,6 +301,9 @@ bool write_goal_memory(const u8* src_buffer,
   return false;
 }
 
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  return false;
+}
 #endif
 
 const char* gpr_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",

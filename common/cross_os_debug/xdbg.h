@@ -63,6 +63,15 @@ struct Regs {
   std::string print_xmms_as_flt_vec() const;
 };
 
+struct SignalInfo {
+  enum Kind {
+    SEGFAULT,        // access bad memory
+    BREAK,           // hit a breakpoint or execute int3
+    MATH_EXCEPTION,  // divide by zero
+    UNKNOWN          // some other signal that is unsupported
+  } kind = UNKNOWN;
+};
+
 // Functions
 ThreadID get_current_thread_id();
 bool attach_and_break(const ThreadID& tid);
@@ -92,5 +101,7 @@ bool write_goal_value(T& value,
                       const MemoryHandle& handle) {
   return write_goal_memory(&value, sizeof(value), goal_addr, context, handle);
 }
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out);
 
 }  // namespace xdbg
