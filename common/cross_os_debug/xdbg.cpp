@@ -1,6 +1,7 @@
 /*!
  * @file xdbg.cpp
  * Debugging utility library. This hides the platform specific details of the debugger.
+ * Nothing in here should hold state, that should all be managed in Debugger.
  */
 
 #include <cstring>
@@ -44,6 +45,7 @@ std::string ThreadID::to_string() const {
 
 /*!
  * Get the ThreadID of whatever called this function.
+ * The runtime calls this to get the Thread to be debugged.
  */
 ThreadID get_current_thread_id() {
   return ThreadID(syscall(SYS_gettid));
@@ -78,26 +80,52 @@ bool attach_and_break(const ThreadID& tid) {
       return false;
     }
 
-    // we could technically hang here forever if runtime ignores the signal.
-    int status;
-    if (waitpid(tid.id, &status, 0) < 0) {
-      printf("[Debugger] Failed to waitpid: %s. The runtime is probably in a bad state now.\n",
-             strerror(errno));
-      return false;
-    }
-
-    // double check that we stopped for the right reason
-    if (!WIFSTOPPED(status)) {
-      printf("[Debugger] Failed to STOP: %s. The runtime is probably in a bad state now.\n",
-             strerror(errno));
-      return false;
-    }
     return true;
   }
 }
 
 /*!
+ * Has the given thread transitioned from running to stopped?
+ * If the thread has transitioned to stop, check_stopped should only return true once.
+ * If true, populates out with information about why it stopped.
+ * This shouldn't hang if the thread doesn't stop.
+ */
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  int status;
+  if (waitpid(tid.id, &status, WNOHANG) < 0) {
+    printf("[Debugger] Failed to waitpid: %s.\n", strerror(errno));
+    //    assert(false);  // todo, temp because I think we should never hit this.
+    return false;
+  }
+
+  if (WIFSTOPPED(status)) {
+    auto sig = WSTOPSIG(status);
+    if (out) {
+      switch (sig) {
+        case SIGSEGV:
+          out->kind = SignalInfo::SEGFAULT;
+          break;
+        case SIGFPE:
+          out->kind = SignalInfo::MATH_EXCEPTION;
+          break;
+        case SIGTRAP:
+          out->kind = SignalInfo::BREAK;
+          break;
+
+        default:
+          out->kind = SignalInfo::UNKNOWN;
+      }
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+/*!
  * Open memory of target. Assumes we are already connected and halted.
+ * If successful returns true and populates out with a "handle" to the memory.
  */
 bool open_memory(const ThreadID& tid, MemoryHandle* out) {
   int fd = open(fmt::format("/proc/{}/mem", tid.id).c_str(), O_RDWR);
@@ -195,25 +223,50 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
 }
 
 /*!
+ * Set all registers now. Must be attached and stopped
+ */
+bool set_regs_now(const ThreadID& tid, const Regs& out) {
+  user regs = {};
+  if (ptrace(PTRACE_GETREGS, tid.id, nullptr, &regs) < 0) {
+    printf("[Debugger] Failed to PTRACE_GETREGS %s\n", strerror(errno));
+    return false;
+  }
+
+  regs.regs.rax = out.gprs[0];
+  regs.regs.rcx = out.gprs[1];
+  regs.regs.rdx = out.gprs[2];
+  regs.regs.rbx = out.gprs[3];
+  regs.regs.rsp = out.gprs[4];
+  regs.regs.rbp = out.gprs[5];
+  regs.regs.rsi = out.gprs[6];
+  regs.regs.rdi = out.gprs[7];
+  regs.regs.r8 = out.gprs[8];
+  regs.regs.r9 = out.gprs[9];
+  regs.regs.r10 = out.gprs[10];
+  regs.regs.r11 = out.gprs[11];
+  regs.regs.r12 = out.gprs[12];
+  regs.regs.r13 = out.gprs[13];
+  regs.regs.r14 = out.gprs[14];
+  regs.regs.r15 = out.gprs[15];
+  regs.regs.rip = out.rip;
+
+  if (ptrace(PTRACE_SETREGS, tid.id, nullptr, &regs) < 0) {
+    printf("[Debugger] Failed to PTRACE_SETREGS %s\n", strerror(errno));
+    return false;
+  }
+  // todo, set fprs.
+  return true;
+}
+
+/*!
  * Break the given thread.  Must be attached and running.
- * Waits for the given thread to actually stop first.
+ * Does not wait for the thread to stop.
+ * Eventually check_stop should return true with a reason of BREAK, unless the target gets really
+ * lucky and manages to crash before the SIGTRAP reaches the target
  */
 bool break_now(const ThreadID& tid) {
   if (ptrace(PTRACE_INTERRUPT, tid.id, nullptr, nullptr) < 0) {
     printf("[Debugger] Failed to PTRACE_INTERRUPT %s\n", strerror(errno));
-    return false;
-  }
-
-  int status;
-  if (waitpid(tid.id, &status, 0) < 0) {
-    printf("[Debugger] Failed to waitpid: %s. The runtime is probably in a bad state now.\n",
-           strerror(errno));
-    return false;
-  }
-
-  if (!WIFSTOPPED(status)) {
-    printf("[Debugger] Failed to STOP: %s. The runtime is probably in a bad state now.\n",
-           strerror(errno));
     return false;
   }
 
@@ -295,6 +348,13 @@ bool write_goal_memory(const u8* src_buffer,
   return false;
 }
 
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  return false;
+}
+
+bool set_regs_now(const ThreadID& tid, const Regs& out) {
+  return false;
+}
 #endif
 
 const char* gpr_names[] = {"rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",

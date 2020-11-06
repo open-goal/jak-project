@@ -9,6 +9,7 @@
 #define JAK_KSCHEME_H
 
 #include "common/common_types.h"
+#include "common/goal_constants.h"
 #include "kmachine.h"
 #include "kmalloc.h"
 
@@ -19,9 +20,6 @@ extern Ptr<u32> s7;
 extern Ptr<u32> SymbolTable2;
 extern Ptr<u32> LastSymbol;
 
-constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
-
-constexpr s32 SYM_INFO_OFFSET = 0xff34;
 constexpr u32 EMPTY_HASH = 0x8454B6E6;
 constexpr u32 OFFSET_MASK = 7;
 constexpr u32 CRC_POLY = 0x04c11db7;

@@ -19,6 +19,9 @@
 namespace xdbg {
 #ifdef __linux
 
+/*!
+ * Identification for a thread.
+ */
 struct ThreadID {
   pid_t id = 0;
 
@@ -28,6 +31,9 @@ struct ThreadID {
   ThreadID() = default;
 };
 
+/*!
+ * Handle for the memory of a process.
+ */
 struct MemoryHandle {
   int fd;
 };
@@ -45,12 +51,18 @@ struct MemoryHandle {
 };
 #endif
 
+/*!
+ * The info required to debug the target.
+ */
 struct DebugContext {
-  ThreadID tid;
-  uintptr_t base;
-  uint32_t s7;
+  ThreadID tid;    //! The target's GOAL thread
+  uintptr_t base;  //! The base address for the GOAL memory
+  uint32_t s7;     //! The value of s7 (GOAL address)
 };
 
+/*!
+ * The x86-64 registers, including rip.
+ */
 struct Regs {
   u64 gprs[16];
   u128 xmms[16];
@@ -63,12 +75,25 @@ struct Regs {
   std::string print_xmms_as_flt_vec() const;
 };
 
+/*!
+ * Information about why the target has stopped.
+ */
+struct SignalInfo {
+  enum Kind {
+    SEGFAULT,        // access bad memory
+    BREAK,           // hit a breakpoint or execute int3
+    MATH_EXCEPTION,  // divide by zero
+    UNKNOWN          // some other signal that is unsupported
+  } kind = UNKNOWN;
+};
+
 // Functions
 ThreadID get_current_thread_id();
 bool attach_and_break(const ThreadID& tid);
 void allow_debugging();
 bool detach_and_resume(const ThreadID& tid);
 bool get_regs_now(const ThreadID& tid, Regs* out);
+bool set_regs_now(const ThreadID& tid, const Regs& in);
 bool break_now(const ThreadID& tid);
 bool cont_now(const ThreadID& tid);
 bool open_memory(const ThreadID& tid, MemoryHandle* out);
@@ -92,5 +117,7 @@ bool write_goal_value(T& value,
                       const MemoryHandle& handle) {
   return write_goal_memory(&value, sizeof(value), goal_addr, context, handle);
 }
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out);
 
 }  // namespace xdbg

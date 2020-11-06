@@ -11,6 +11,9 @@ constexpr int POINTER_SIZE = 4;
 constexpr int BASIC_OFFSET = 4;
 constexpr int STRUCTURE_ALIGNMENT = 16;
 
+constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
+constexpr s32 SYM_INFO_OFFSET = 0xff34;
+
 enum class RegKind { GPR_64, FLOAT, INT_128, FLOAT_4X, INVALID };
 
 constexpr u32 GOAL_NEW_METHOD = 0;       // method ID of GOAL new

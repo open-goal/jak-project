@@ -107,7 +107,9 @@ add_subdirectory(third-party/spdlog)
 # build zydis third party library for disassembling x86
 option(ZYDIS_BUILD_TOOLS "" OFF)
 option(ZYDIS_BUILD_EXAMPLES "" OFF)
+option(ZYDIS_BUILD_SHARED_LIB "" ON)
 add_subdirectory("third-party/zydis")
+
 
 # windows memory management lib
 IF (WIN32)

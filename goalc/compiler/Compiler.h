@@ -196,6 +196,12 @@ class Compiler {
   Val* compile_break(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cont(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_dump_all(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_pm(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_di(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_disasm(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_bp(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_ubp(const goos::Object& form, const goos::Object& rest, Env* env);
+  u32 parse_address_spec(const goos::Object& form);
 
   // Macro
   Val* compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env);
