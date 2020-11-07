@@ -1005,12 +1005,7 @@ uint64_t _call_goal_on_stack_asm_linux(u64 rsp,
                                        void* offset);
 #elif _WIN32
 uint64_t _call_goal_asm_win32(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
-uint64_t _call_goal_on_stack_asm_win32(u64 rsp,
-                                       u64 u0,
-                                       u64 u1,
-                                       void* fptr,
-                                       void* st_ptr,
-                                       void* offset);
+uint64_t _call_goal_on_stack_asm_win32(u64 rsp, void* fptr, void* st_ptr, void* offset);
 #endif
 }
 
@@ -1040,7 +1035,7 @@ u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset) {
 #ifdef __linux__
   return _call_goal_on_stack_asm_linux(rsp, 0, 0, fptr, st_ptr, offset);
 #elif _WIN32
-  return _call_goal_on_stack_asm_win32(rsp, 0, 0, fptr, st_ptr, offset);
+  return _call_goal_on_stack_asm_win32(rsp, fptr, st_ptr, offset);
 #endif
 }
 

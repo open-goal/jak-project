@@ -230,6 +230,10 @@ _call_goal_asm_win32:
 global _call_goal_on_stack_asm_win32
 
 _call_goal_on_stack_asm_win32:
+  ;; arg0 (rcx) stack
+  ;; arg1 (rdx) fp
+  ;; arg2 (r8) st
+  ;; arg3 (r9) off
   push rdx    ; 8
   push rbx    ; 16
   push rbp    ; 24
@@ -249,12 +253,9 @@ _call_goal_on_stack_asm_win32:
   mov rsp, rcx
   push rsi
 
-  ;mov rdi, rcx ;; rdi is GOAL first argument, rcx is windows first argument
-  ;mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
-  ;mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
-  mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
-  mov r15, [rsp + 152] ;; symbol table
-  mov r14, [rsp + 144] ;; offset
+  mov r13, rdx ;; fp
+  mov r14, r8  ;; st
+  mov r15, r9  ;; offset
 
   call r13
 
