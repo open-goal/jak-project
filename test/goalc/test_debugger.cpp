@@ -170,6 +170,11 @@ TEST(Debugger, SimpleBreakpoint) {
     // instructions can be at most 15 bytes long.
     EXPECT_TRUE(rip > expected_instr_before_rip && rip < expected_instr_before_rip + 15);
 
+    // check rsp in goal code to make sure the GOAL stack is in the right space.
+    auto rsp = compiler.get_debugger().get_regs().gprs[emitter::RSP];
+    EXPECT_TRUE(rsp < compiler.get_debugger().get_x86_base_addr() + EE_MAIN_MEM_SIZE);
+    EXPECT_TRUE(rsp > compiler.get_debugger().get_x86_base_addr() + EE_MAIN_MEM_SIZE - (16 * 1024));
+
     EXPECT_TRUE(compiler.get_debugger().is_halted());
     compiler.get_debugger().remove_addr_breakpoint(func_addr);
     compiler.get_debugger().do_continue();

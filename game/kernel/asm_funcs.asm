@@ -246,7 +246,7 @@ _call_goal_on_stack_asm_win32:
 
   ;; stack swap
   mov rsi, rsp
-  mov rsp, rdi
+  mov rsp, rcx
   push rsi
 
   ;mov rdi, rcx ;; rdi is GOAL first argument, rcx is windows first argument
