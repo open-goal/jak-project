@@ -28,8 +28,11 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 #include "Listener.h"
 #include "common/versions.h"
+
+#include "third-party/fmt/core.h"
 
 using namespace versions;
 constexpr bool debug_listener = false;
@@ -258,8 +261,6 @@ void Listener::receive_func() {
 
         if (hdr->msg_kind == ListenerMessageKind::MSG_PRINT) {
           printf("%s\n", str_buff);
-        } else {
-          printf("[OUTPUT] %s\n", str_buff);
         }
 
         rcv_mtx.lock();
@@ -438,6 +439,10 @@ bool Listener::wait_for_ack() {
   return false;
 }
 
+/*!
+ * Handle an output message from the runtime.
+ * This is used to update the memory map and get initial information for the debugger.
+ */
 void Listener::handle_output_message(const char* msg) {
   std::string all(msg);
 
@@ -482,12 +487,13 @@ void Listener::handle_output_message(const char* msg) {
       auto load_kind_str = str.substr(x, next - x);
       x = next;
 
-      std::string seg_strings[3];
+      std::string seg_strings[6];
 
       for (auto& seg_string : seg_strings) {
         assert(x + 1 < str.length());
         next = str.find(' ', x + 1);
         seg_string = str.substr(x, next - x);
+        x = next;
       }
 
       LoadEntry entry;
@@ -496,23 +502,38 @@ void Listener::handle_output_message(const char* msg) {
         entry.segments[i] = std::stoul(seg_strings[i].substr(3), nullptr, 16);
       }
 
+      for (int i = 0; i < 3; i++) {
+        entry.segment_sizes[i] = std::stoul(seg_strings[i + 3].substr(3), nullptr, 16);
+      }
+
       add_load(name_str.substr(2, name_str.length() - 3), entry);
+      // fmt::print("LOAD:\n{}", entry.print());
     } else {
       // todo unload
-      printf("[Listener Warning] unknown output kind \"%s\"\n", kind.c_str());
+      printf("[Listener Warning] unknown output message \"%s\"\n", msg);
     }
   }
 }
 
+/*!
+ * Add a load to the load listing.
+ */
 void Listener::add_load(const std::string& name, const LoadEntry& le) {
-  if (m_load_entries.find(name) != m_load_entries.end()) {
-    printf("[Listener Error] The runtime has loaded %s twice!\n", name.c_str());
+  if (m_load_entries.find(name) != m_load_entries.end() && name != "*listener*") {
+    printf("[Listener Warning] The runtime has loaded %s twice!\n", name.c_str());
   }
   m_load_entries[name] = le;
 }
 
+/*!
+ * Add a debugger that the listener should inform.
+ */
 void Listener::add_debugger(Debugger* debugger) {
   m_debugger = debugger;
+}
+
+MemoryMap Listener::build_memory_map() {
+  return MemoryMap(m_load_entries);
 }
 
 }  // namespace listener

@@ -13,10 +13,15 @@
 #include <queue>
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "goalc/listener/MemoryMap.h"
+
+namespace listener {
+class Listener;
+}
 
 class Debugger {
  public:
-  Debugger() = default;
+  explicit Debugger(listener::Listener* listener) : m_listener(listener) {}
   ~Debugger();
   bool is_halted() const;
   bool is_valid() const;
@@ -137,4 +142,7 @@ class Debugger {
   bool m_context_valid = false;
   bool m_running = true;
   bool m_attached = false;
+
+  listener::Listener* m_listener = nullptr;
+  listener::MemoryMap m_memory_map;
 };

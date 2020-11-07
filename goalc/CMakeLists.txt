@@ -27,6 +27,7 @@ add_library(compiler
         debugger/Debugger.cpp
         logger/Logger.cpp
         listener/Listener.cpp
+        listener/MemoryMap.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp

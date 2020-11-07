@@ -150,8 +150,10 @@ void output_segment_load(const char* name, Ptr<u8> link_block, u32 flags) {
     char false_str[] = "nil";
     char* flag_str = (flags & LINK_FLAG_OUTPUT_TRUE) ? true_str : false_str;
     auto lbp = link_block.cast<ObjectFileHeader>();
-    sprintf(buffer, "load \"%s\" %s #x%x #x%x #x%x\n", name, flag_str, lbp->code_infos[0].offset,
-            lbp->code_infos[1].offset, lbp->code_infos[2].offset);
+    // modified to also include segment sizes.
+    sprintf(buffer, "load \"%s\" %s #x%x #x%x #x%x #x%x #x%x #x%x\n", name, flag_str,
+            lbp->code_infos[0].offset, lbp->code_infos[1].offset, lbp->code_infos[2].offset,
+            lbp->code_infos[0].size, lbp->code_infos[1].size, lbp->code_infos[2].size);
     OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }

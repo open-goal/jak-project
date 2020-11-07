@@ -9,7 +9,7 @@
 
 using namespace goos;
 
-Compiler::Compiler() {
+Compiler::Compiler() : m_debugger(&m_listener) {
   init_logger();
   init_settings();
   m_listener.add_debugger(&m_debugger);

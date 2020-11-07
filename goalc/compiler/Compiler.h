@@ -36,6 +36,7 @@ class Compiler {
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
   Debugger& get_debugger() { return m_debugger; }
+  listener::Listener& listener() { return m_listener; }
 
   void poke_target() { m_listener.send_poke(); }
 

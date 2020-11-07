@@ -11,6 +11,7 @@
 #include "common/symbols.h"
 #include "third-party/fmt/core.h"
 #include "goalc/emitter/disassemble.h"
+#include "goalc/listener/Listener.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -131,6 +132,8 @@ bool Debugger::attach_and_break() {
  * Print out some info about where we are.
  */
 void Debugger::get_break_info() {
+  m_memory_map = m_listener->build_memory_map();
+  // fmt::print("{}", m_memory_map.print());
   read_symbol_table();
   m_regs_valid = false;
   if (!xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break)) {
