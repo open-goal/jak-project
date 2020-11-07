@@ -1,4 +1,5 @@
 #include <cassert>
+#include <algorithm>
 #include "MemoryMap.h"
 #include "third-party/fmt/core.h"
 #include "common/link_types.h"
