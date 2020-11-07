@@ -6,7 +6,10 @@
 #include <string>
 #include <vector>
 #include <cassert>
-#include "common/goos/PrettyPrinter.h"
+
+namespace goos {
+class Object;
+}
 
 /*!
  * In v, find an item equal to old, and replace it with replace.

@@ -3,9 +3,10 @@
 #include "TypeInspector.h"
 #include "Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "third-party/fmt/format.h"
+#include "third-party/fmt/core.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/type_system/deftype.h"
+#include "decompiler/IR/IR.h"
 
 namespace {
 struct FieldPrint {

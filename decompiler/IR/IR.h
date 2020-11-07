@@ -3,12 +3,17 @@
 
 #include <cassert>
 #include <utility>
+#include <memory>
+#include <unordered_map>
 #include "decompiler/Disasm/Register.h"
-#include "common/goos/PrettyPrinter.h"
 #include "common/type_system/TypeSpec.h"
 
 class LinkedObjectFile;
 class DecompilerTypeSystem;
+
+namespace goos {
+class Object;
+}
 
 // Map of what type is in each register.
 using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;

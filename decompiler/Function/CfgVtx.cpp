@@ -1,4 +1,5 @@
 #include <cassert>
+#include "common/goos/PrettyPrinter.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "CfgVtx.h"

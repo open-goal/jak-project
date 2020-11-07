@@ -49,7 +49,20 @@ Listener::~Listener() {
   }
 }
 
+/*!
+ * Disconnect if we are connected and shut down the receiving thread.
+ */
 void Listener::disconnect() {
+  if (m_debugger && m_debugger->is_halted()) {
+    printf(
+        "[Listener] The listener was shut down while the debugger has paused the runtime, "
+        "resuming\n");
+    m_debugger->detach();
+  }
+
+  if (m_debugger) {
+    m_debugger->invalidate();
+  }
   m_connected = false;
   if (receive_thread_running) {
     rcv_thread.join();
@@ -57,6 +70,9 @@ void Listener::disconnect() {
   }
 }
 
+/*!
+ * Are we currently connected? Returns false if we are currently disconnecting.
+ */
 bool Listener::is_connected() const {
   return m_connected;
 }
@@ -250,6 +266,10 @@ void Listener::receive_func() {
         if (hdr->msg_kind == filter) {
           message_record.emplace_back(str_buff);
         }
+
+        if (hdr->msg_kind == ListenerMessageKind::MSG_OUTPUT) {
+          handle_output_message(str_buff);
+        }
         rcv_mtx.unlock();
 
       } break;
@@ -261,6 +281,9 @@ void Listener::receive_func() {
   }
 }
 
+/*!
+ * Start recording messages of the given kind.
+ */
 void Listener::record_messages(ListenerMessageKind kind) {
   if (filter != ListenerMessageKind::MSG_INVALID) {
     printf("[Listener] Already recording!\n");
@@ -268,13 +291,22 @@ void Listener::record_messages(ListenerMessageKind kind) {
   filter = kind;
 }
 
+/*!
+ * Stop recording messages and return a list of messages.
+ */
 std::vector<std::string> Listener::stop_recording_messages() {
+  rcv_mtx.lock();
   filter = ListenerMessageKind::MSG_INVALID;
   auto result = message_record;
   message_record.clear();
+  rcv_mtx.unlock();
   return result;
 }
 
+/*!
+ * Send a "CODE" message for the target to execute as the Listener Function.
+ * Returns once the target acks the code.
+ */
 void Listener::send_code(std::vector<uint8_t>& code) {
   got_ack = false;
   int total_size = code.size() + sizeof(ListenerMessageHeader);
@@ -287,38 +319,52 @@ void Listener::send_code(std::vector<uint8_t>& code) {
   auto* buffer_data = (char*)(header + 1);
   header->deci2_header.rsvd = 0;
   header->deci2_header.len = total_size;
-  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.proto = DECI2_PROTOCOL;
   header->deci2_header.src = 'H';
   header->deci2_header.dst = 'E';
   header->msg_size = code.size();
   header->ltt_msg_kind = LTT_MSG_CODE;
   header->u6 = 0;
-  header->u8 = 0;
+  header->msg_id = 0;
   memcpy(buffer_data, code.data(), code.size());
   send_buffer(total_size);
 }
 
+/*!
+ * Send a message to tell the target to reset. The shutdown parameter tells the target to shutdown.
+ * Waits for the target to ack the shutdown message.
+ */
 void Listener::send_reset(bool shutdown) {
   if (!m_connected) {
     printf("Not connected, so cannot reset target.\n");
     return;
   }
+
+  if (m_debugger && m_debugger->is_halted()) {
+    printf("Tried to reset a halted target, detaching...\n");
+    m_debugger->detach();
+  }
+
   auto* header = (ListenerMessageHeader*)m_buffer;
   header->deci2_header.rsvd = 0;
   header->deci2_header.len = sizeof(ListenerMessageHeader);
-  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.proto = DECI2_PROTOCOL;
   header->deci2_header.src = 'H';
   header->deci2_header.dst = 'E';
   header->msg_size = 0;
   header->ltt_msg_kind = LTT_MSG_RESET;
   header->u6 = 0;
-  header->u8 = shutdown ? UINT64_MAX : 0;
+  header->msg_id = shutdown ? UINT64_MAX : 0;
   send_buffer(sizeof(ListenerMessageHeader));
   disconnect();
   close_socket(listen_socket);
-  printf("closed connection to target\n");
+  printf("[Listener] Closed connection to target\n");
 }
 
+/*!
+ * Send a "poke" message.
+ * This makes the target think its connect and flush any buffers that are pending.
+ */
 void Listener::send_poke() {
   if (!m_connected) {
     printf("Not connected, so cannot poke target.\n");
@@ -327,16 +373,20 @@ void Listener::send_poke() {
   auto* header = (ListenerMessageHeader*)m_buffer;
   header->deci2_header.rsvd = 0;
   header->deci2_header.len = sizeof(ListenerMessageHeader);
-  header->deci2_header.proto = 0xe042;  // todo don't hardcode
+  header->deci2_header.proto = DECI2_PROTOCOL;
   header->deci2_header.src = 'H';
   header->deci2_header.dst = 'E';
   header->msg_size = 0;
   header->ltt_msg_kind = LTT_MSG_POKE;
   header->u6 = 0;
-  header->u8 = 0;
+  header->msg_id = 0;
   send_buffer(sizeof(ListenerMessageHeader));
 }
 
+/*!
+ * Low level send of the m_buffer.
+ * Waits for the target to respond or times out and prints an error.
+ */
 void Listener::send_buffer(int sz) {
   int wrote = 0;
 
@@ -363,11 +413,16 @@ void Listener::send_buffer(int sz) {
       printf("  OK\n");
     }
   } else {
-    printf("  NG - target has timed out.  If it has died, disconnect with (disconnect-target)\n");
+    printf(
+        "  Error - target has timed out. If it is stuck in a loop, it must be manually killed.\n");
   }
 }
 
+/*!
+ * Wait for the target to send an ack.
+ */
 bool Listener::wait_for_ack() {
+  // todo, check the message ID.
   if (!m_connected) {
     printf("wait_for_ack called when not connected!\n");
     return false;
@@ -381,6 +436,83 @@ bool Listener::wait_for_ack() {
 
   waiting_for_ack = false;
   return false;
+}
+
+void Listener::handle_output_message(const char* msg) {
+  std::string all(msg);
+
+  std::string::size_type last_line = 0, line = all.find('\n');
+
+  while (line != std::string::npos) {
+    auto str = all.substr(last_line, line - last_line);
+    last_line = line + 1;
+    line = all.find('\n', last_line);
+
+    auto x = str.find(' ');
+    auto kind = str.substr(0, x);
+    if (kind == "reset") {
+      assert(x + 1 < str.length());
+      auto next = str.find(' ', x + 1);
+      auto s7_str = str.substr(x, next - x);
+      x = next;
+
+      assert(x + 1 < str.length());
+      next = str.find(' ', x + 1);
+      auto base_str = str.substr(x, next - x);
+      x = next;
+
+      assert(x + 1 < str.length());
+      next = str.find(' ', x + 1);
+      auto tid_str = str.substr(x, next - x);
+
+      if (m_debugger) {
+        m_debugger->set_context(std::stoul(s7_str.substr(3), nullptr, 16),
+                                std::stoull(base_str.substr(3), nullptr, 16), tid_str.substr(1));
+        printf("[Debugger] Context: %s\n", m_debugger->get_context_string().c_str());
+      }
+
+    } else if (kind == "load") {
+      assert(x + 1 < str.length());
+      auto next = str.find(' ', x + 1);
+      auto name_str = str.substr(x, next - x);
+      x = next;
+
+      assert(x + 1 < str.length());
+      next = str.find(' ', x + 1);
+      auto load_kind_str = str.substr(x, next - x);
+      x = next;
+
+      std::string seg_strings[3];
+
+      for (auto& seg_string : seg_strings) {
+        assert(x + 1 < str.length());
+        next = str.find(' ', x + 1);
+        seg_string = str.substr(x, next - x);
+      }
+
+      LoadEntry entry;
+      entry.load_string = load_kind_str.substr(1);
+      for (int i = 0; i < 3; i++) {
+        entry.segments[i] = std::stoul(seg_strings[i].substr(3), nullptr, 16);
+      }
+
+      add_load(name_str.substr(2, name_str.length() - 3), entry);
+    } else {
+      // todo unload
+      printf("[Listener Warning] unknown output kind \"%s\"\n", kind.c_str());
+    }
+  }
+}
+
+void Listener::add_load(const std::string& name, const LoadEntry& le) {
+  if (m_load_entries.find(name) != m_load_entries.end()) {
+    printf("[Listener Error] The runtime has loaded %s twice!\n", name.c_str());
+  }
+  m_load_entries[name] = le;
+}
+
+void Listener::add_debugger(Debugger* debugger) {
+  m_debugger = debugger;
 }
 
 }  // namespace listener

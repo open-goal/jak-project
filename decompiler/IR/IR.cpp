@@ -1,5 +1,6 @@
 #include "IR.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "common/goos/PrettyPrinter.h"
 
 std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
   (void)file;

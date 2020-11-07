@@ -5,11 +5,12 @@
 
 #include <cstring>
 #include <cmath>
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include <cstdio>
 
 #include "common/goal_constants.h"
 #include "common/common_types.h"
+#include "common/cross_os_debug/xdbg.h"
 #include "kprint.h"
 #include "kmachine.h"
 #include "kboot.h"
@@ -94,7 +95,7 @@ void init_output() {
  */
 void clear_output() {
   if (MasterDebug) {
-    kstrcpy((char*)Ptr<u8>(OutputBufArea + sizeof(GoalMessageHeader)).c(), "");
+    kstrcpy((char*)Ptr<u8>(OutputBufArea + sizeof(ListenerMessageHeader)).c(), "");
     OutputPending = Ptr<u8>(0);
   }
 }
@@ -105,7 +106,7 @@ void clear_output() {
  * EXACT
  */
 void clear_print() {
-  *Ptr<u8>(PrintBufArea + sizeof(GoalMessageHeader)) = 0;
+  *Ptr<u8>(PrintBufArea + sizeof(ListenerMessageHeader)) = 0;
   PrintPending = Ptr<u8>(0);
 }
 
@@ -116,8 +117,14 @@ void clear_print() {
  */
 void reset_output() {
   if (MasterDebug) {
-    sprintf(OutputBufArea.cast<char>().c() + sizeof(GoalMessageHeader), "reset #x%x\n", s7.offset);
-    OutputPending = OutputBufArea + sizeof(GoalMessageHeader);
+    // original GOAL:
+    // sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x\n",
+    // s7.offset);
+
+    // modified for OpenGOAL:
+    sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x #x%lx %s\n",
+            s7.offset, (uintptr_t)g_ee_main_mem, xdbg::get_current_thread_id().to_string().c_str());
+    OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }
 
@@ -126,10 +133,10 @@ void reset_output() {
  * DONE, EXACT
  */
 void output_unload(const char* name) {
-  if (!MasterDebug) {
-    sprintf(strend(OutputBufArea.cast<char>().c() + sizeof(GoalMessageHeader)), "unload \"%s\"\n",
-            name);
-    OutputPending = OutputBufArea + sizeof(GoalMessageHeader);
+  if (MasterDebug) {
+    sprintf(strend(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader)),
+            "unload \"%s\"\n", name);
+    OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }
 
@@ -138,14 +145,14 @@ void output_unload(const char* name) {
  */
 void output_segment_load(const char* name, Ptr<u8> link_block, u32 flags) {
   if (MasterDebug) {
-    char* buffer = strend(OutputBufArea.cast<char>().c() + sizeof(GoalMessageHeader));
+    char* buffer = strend(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
     char true_str[] = "t";
     char false_str[] = "nil";
     char* flag_str = (flags & LINK_FLAG_OUTPUT_TRUE) ? true_str : false_str;
     auto lbp = link_block.cast<ObjectFileHeader>();
     sprintf(buffer, "load \"%s\" %s #x%x #x%x #x%x\n", name, flag_str, lbp->code_infos[0].offset,
             lbp->code_infos[1].offset, lbp->code_infos[2].offset);
-    OutputPending = OutputBufArea + sizeof(GoalMessageHeader);
+    OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }
 
@@ -160,7 +167,7 @@ void cprintf(const char* format, ...) {
   va_start(args, format);
   char* str = PrintPending.cast<char>().c();
   if (!PrintPending.offset)
-    str = PrintBufArea.cast<char>().c() + sizeof(GoalMessageHeader);
+    str = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
   PrintPending = make_ptr(strend(str)).cast<u8>();
   vsprintf((char*)PrintPending.c(), format, args);
 
@@ -594,7 +601,7 @@ s32 format_impl(uint64_t* args) {
   // set up print pending
   char* print_temp = PrintPending.cast<char>().c();
   if (!PrintPending.offset) {
-    print_temp = PrintBufArea.cast<char>().c() + sizeof(GoalMessageHeader);
+    print_temp = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
   }
   PrintPending = make_ptr(strend(print_temp)).cast<u8>();
 

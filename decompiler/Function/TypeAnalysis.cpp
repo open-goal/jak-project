@@ -20,6 +20,8 @@
 #include "Function.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "third-party/fmt/core.h"
+#include "decompiler/IR/IR.h"
 
 namespace {
 /*!

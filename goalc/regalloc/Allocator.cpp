@@ -4,8 +4,8 @@
  */
 
 #include <algorithm>
+#include "third-party/fmt/core.h"
 #include "Allocator.h"
-#include "LiveInfo.h"
 
 /*!
  * Find basic blocks and add block link info.

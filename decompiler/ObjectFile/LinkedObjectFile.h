@@ -15,7 +15,7 @@
 #include <unordered_set>
 #include "LinkedWord.h"
 #include "decompiler/Function/Function.h"
-#include "common/goos/PrettyPrinter.h"
+#include "common/common_types.h"
 
 /*!
  * A label to a location in this object file.

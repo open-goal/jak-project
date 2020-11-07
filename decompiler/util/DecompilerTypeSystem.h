@@ -2,7 +2,6 @@
 #define JAK_DECOMPILERTYPESYSTEM_H
 
 #include "common/type_system/TypeSystem.h"
-#include "third-party/fmt/format.h"
 
 class DecompilerTypeSystem {
  public:
@@ -25,20 +24,7 @@ class DecompilerTypeSystem {
     add_symbol(name, TypeSpec(base_type));
   }
 
-  void add_symbol(const std::string& name, const TypeSpec& type_spec) {
-    add_symbol(name);
-    auto skv = symbol_types.find(name);
-    if (skv == symbol_types.end() || skv->second == type_spec) {
-      symbol_types[name] = type_spec;
-    } else {
-      if (ts.typecheck(type_spec, skv->second, "", false, false)) {
-      } else {
-        fmt::print("Attempting to redefine type of symbol {} from {} to {}\n", name,
-                   skv->second.print(), type_spec.print());
-        throw std::runtime_error("Type redefinition");
-      }
-    }
-  }
+  void add_symbol(const std::string& name, const TypeSpec& type_spec);
 
   void parse_type_defs(const std::vector<std::string>& file_path);
 

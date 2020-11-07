@@ -17,6 +17,11 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
+
+  if (m_debugger.is_attached()) {
+    m_debugger.detach();
+  }
+
   if (m_listener.is_connected()) {
     m_listener.send_reset(false);
   }

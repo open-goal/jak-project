@@ -1,13 +1,44 @@
-#pragma once
-
-#ifndef JAK_LIVEINFO_H
-#define JAK_LIVEINFO_H
-
-#include <cassert>
+#ifndef JAK_ALLOCATE_COMMON_H
+#define JAK_ALLOCATE_COMMON_H
 #include <vector>
-#include <string>
 #include <stdexcept>
-#include "Assignment.h"
+#include "goalc/emitter/Register.h"
+
+/*!
+ * An operation that's added to an Instruction so that it loads/stores things from the stack if
+ * needed for spilling.
+ */
+struct StackOp {
+  struct Op {
+    int slot = -1;
+    emitter::Register reg;
+    bool load = false;   // load from reg before instruction?
+    bool store = false;  // store into reg after instruction?
+  };
+
+  std::vector<Op> ops;
+
+  std::string print() const;
+};
+
+/*!
+ * The assignment of an IRegister to a real Register.
+ * For a single IR Instruction.
+ */
+struct Assignment {
+  enum class Kind { STACK, REGISTER, UNASSIGNED } kind = Kind::UNASSIGNED;
+  emitter::Register reg = -1;  //! where the IRegister is now
+  int stack_slot = -1;         //! index of the slot, if we are ever spilled
+  bool spilled = false;        //! are we ever spilled
+
+  std::string to_string() const;
+
+  bool occupies_same_reg(const Assignment& other) const { return other.reg == reg && (reg != -1); }
+
+  bool occupies_reg(emitter::Register other_reg) const { return reg == other_reg && (reg != -1); }
+
+  bool is_assigned() const { return kind != Kind::UNASSIGNED; }
+};
 
 // with this on, gaps in usage of registers allow other variables to steal registers.
 // this reduces stack spills/moves, but may make register allocation slower.
@@ -175,13 +206,6 @@ struct LiveInfo {
     return assignment.at(id - min);
   }
 
-  std::string print_assignment() {
-    std::string result = "Assignment for var " + std::to_string(var) + "\n";
-    for (uint32_t i = 0; i < assignment.size(); i++) {
-      result += fmt::format("i[{:3d}] {}\n", i + min, assignment.at(i).to_string());
-    }
-    return result;
-  }
+  std::string print_assignment();
 };
-
-#endif  // JAK_LIVEINFO_H
+#endif  // JAK_ALLOCATE_COMMON_H

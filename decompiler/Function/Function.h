@@ -5,13 +5,17 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <stdexcept>
 #include "decompiler/Disasm/Instruction.h"
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
-#include "decompiler/IR/IR.h"
 #include "common/type_system/TypeSpec.h"
 
 class DecompilerTypeSystem;
+// Map of what type is in each register.
+using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
+class IR;
 
 struct FunctionName {
   enum class FunctionKind {

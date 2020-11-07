@@ -12,13 +12,10 @@ add_executable(goalc-test
         all_jak1_symbols.cpp
         test_type_system.cpp
         test_CodeTester.cpp
-        test_emitter_slow.cpp
-        test_emitter_loads_and_store.cpp
-        test_emitter_xmm32.cpp
-        test_emitter_integer_math.cpp
+        test_emitter.cpp
         test_common_util.cpp
-        test_deftype.cpp
         test_pretty_print.cpp
+        test_zydis.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
@@ -28,9 +25,9 @@ IF (WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
   # TODO - split out these declarations for platform specific includes
-  target_link_libraries(goalc-test cross_sockets goos common_util listener runtime compiler type_system gtest mman)
+  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest mman Zydis)
 ELSE()
-  target_link_libraries(goalc-test cross_sockets goos common_util listener runtime compiler type_system gtest)
+  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest Zydis)
 ENDIF()
 
 if(CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)

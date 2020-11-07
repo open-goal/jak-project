@@ -1,3 +1,4 @@
+#include "third-party/fmt/core.h"
 #include "Val.h"
 #include "Env.h"
 #include "IR.h"

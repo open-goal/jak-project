@@ -6,11 +6,12 @@
  */
 
 #include <vector>
-#include "common/type_system/Type.h"
+#include "common/common_types.h"
 
 class Function;
 class DecompilerTypeSystem;
 class LinkedObjectFile;
+class Field;
 
 struct TypeInspectorResult {
   bool success = false;

@@ -16,6 +16,7 @@
 #include <vector>
 #include "LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "common/common_types.h"
 
 /*!
  * A "record" which can be used to identify an object file.

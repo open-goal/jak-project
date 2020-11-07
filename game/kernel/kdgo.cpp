@@ -176,7 +176,7 @@ void BeginLoadingDGO(const char* name, Ptr<u8> buffer1, Ptr<u8> buffer2, Ptr<u8>
 
   // file name
   strcpy(sMsg[msgID].name, name);
-  spdlog::debug("[Begin Loading DGO RPC] {}, 0x{}, 0x{}, 0x{}", name, buffer1.offset,
+  spdlog::debug("[Begin Loading DGO RPC] {}, 0x{:x}, 0x{:x}, 0x{:x}", name, buffer1.offset,
                 buffer2.offset, currentHeap.offset);
   // this RPC will return once we have loaded the first object file.
   // but we call async, so we don't block here.

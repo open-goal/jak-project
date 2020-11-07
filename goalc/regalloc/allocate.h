@@ -15,9 +15,7 @@
 #include <vector>
 #include "goalc/emitter/Register.h"
 #include "IRegister.h"
-#include "StackOp.h"
-#include "Assignment.h"
-#include "LiveInfo.h"
+#include "allocate_common.h"
 
 /*!
  * Information about an instruction needed for register allocation.

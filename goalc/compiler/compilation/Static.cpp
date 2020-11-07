@@ -5,6 +5,7 @@
  */
 
 #include "goalc/compiler/Compiler.h"
+#include "third-party/fmt/core.h"
 
 namespace {
 bool integer_fits(s64 in, int size, bool is_signed) {
