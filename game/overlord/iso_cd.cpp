@@ -385,7 +385,7 @@ void LoadDiscID() {
   for (uint32_t i = 0; i < SECTOR_SIZE / 4; i++) {
     CD_ID_SectorSum += CD_ID_Sector[i];
   }
-  spdlog::info("[OVERLORD] DISK_ID.DIZ OK 0x{}\n", CD_ID_SectorSum);
+  spdlog::info("[OVERLORD] DISK_ID.DIZ OK 0x{:x}\n", CD_ID_SectorSum);
 }
 
 /*!

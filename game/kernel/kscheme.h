@@ -89,6 +89,7 @@ u64 inspect_pair(u32 obj);
 u64 inspect_binteger(u64 obj);
 s32 InitHeapAndSymbol();
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset);
+u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset);
 void print_symbol_table();
 u64 make_string_from_c(const char* c_str);
 Ptr<Symbol> find_symbol_from_c(const char* name);
