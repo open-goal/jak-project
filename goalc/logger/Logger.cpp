@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include "Logger.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 void Logger::close() {
   if (fp) {
@@ -44,11 +45,13 @@ void Logger::log(LoggerMessageKind kind, const char* format, ...) {
 
   if (!settings.prefix.empty()) {
     fprintf(dest, "%s", settings.prefix.c_str());
+    spdlog::warn(dest, "{}", settings.prefix.c_str());
   }
 
   if (settings.color != COLOR_NORMAL) {
     const char* color_codes[] = {"", "[0;31m", "[0;32m", "[0;36m"};
     printf("\033%s", color_codes[settings.color]);
+    // spdlog::info("\033{}", color_codes[settings.color]);
   }
 
   va_list arglist;
@@ -58,6 +61,7 @@ void Logger::log(LoggerMessageKind kind, const char* format, ...) {
 
   if (settings.color != COLOR_NORMAL) {
     printf("\033[0m");
+    // spdlog::info("\033[0m");
     fflush(stdout);
   }
 
