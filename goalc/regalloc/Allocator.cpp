@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "third-party/fmt/core.h"
 #include "Allocator.h"
+#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 /*!
  * Find basic blocks and add block link info.
@@ -446,6 +447,7 @@ bool can_var_be_assigned(int var,
           if (!allowed_by_move_eliminator) {
             if (debug_trace >= 2) {
               printf("at idx %d, %s conflicts\n", instr, other_lr.print_assignment().c_str());
+              spdlog::info("at idx {}, {} conflicts", instr, other_lr.print_assignment().c_str());
             }
 
             return false;
