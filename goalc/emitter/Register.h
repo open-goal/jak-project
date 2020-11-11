@@ -20,6 +20,9 @@ enum class RegKind : u8 { GPR, XMM, INVALID };
 
 std::string to_string(RegKind kind);
 
+constexpr int GPR_SIZE = 8;
+constexpr int XMM_SIZE = 16;
+
 // registers by name
 enum X86_REG : s8 {
   RAX,  // return, temp

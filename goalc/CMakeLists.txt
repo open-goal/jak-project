@@ -25,6 +25,7 @@ add_library(compiler
         compiler/compilation/Static.cpp
         compiler/Util.cpp
         debugger/Debugger.cpp
+        debugger/DebugInfo.cpp
         logger/Logger.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp

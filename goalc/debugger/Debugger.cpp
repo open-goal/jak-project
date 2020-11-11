@@ -114,7 +114,7 @@ bool Debugger::attach_and_break() {
       m_running = false;
 
       // get info from target
-      get_break_info();
+      update_break_info();
 
       auto signal_count = get_signal_count();
       assert(signal_count == 0);
@@ -131,7 +131,7 @@ bool Debugger::attach_and_break() {
  * Read the registers, symbol table, and instructions near rip.
  * Print out some info about where we are.
  */
-void Debugger::get_break_info() {
+void Debugger::update_break_info() {
   m_memory_map = m_listener->build_memory_map();
   // fmt::print("{}", m_memory_map.print());
   read_symbol_table();
@@ -152,8 +152,37 @@ void Debugger::get_break_info() {
         rip < m_debug_context.base + EE_MAIN_MEM_SIZE) {
       read_memory(mem.data(), INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD,
                   rip - m_debug_context.base - INSTR_DUMP_SIZE_REV);
-      fmt::print("{}\n", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
+      fmt::print("{}", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
+      auto map_loc = m_memory_map.lookup(rip - m_debug_context.base);
+      if (map_loc.empty) {
+        fmt::print("In unknown code\n");
+        m_break_info.knows_object = false;
+        m_break_info.knows_function = false;
+      } else {
+        u64 obj_offset = rip - m_debug_context.base - map_loc.start_addr;
+        m_break_info.knows_object = true;
+        m_break_info.object_name = map_loc.obj_name;
+        m_break_info.object_seg = map_loc.seg_id;
+        m_break_info.object_offset = obj_offset;
 
+        FunctionDebugInfo* info = nullptr;
+        std::string name;
+
+        if (get_debug_info(map_loc.obj_name)
+                .lookup_function(&info, &name, obj_offset, map_loc.seg_id)) {
+          m_break_info.knows_function = true;
+          m_break_info.function_name = name;
+          m_break_info.function_offset = obj_offset - info->offset_in_seg;
+
+          fmt::print(
+              "In function {} in segment {} of obj {}, offset_obj 0x{:x}, offset_func 0x{:x}\n",
+              name, map_loc.seg_id, map_loc.obj_name, obj_offset, m_break_info.function_offset);
+        } else {
+          m_break_info.knows_function = false;
+          fmt::print("In segment {} of obj {}, offset 0x{:x}\n", map_loc.seg_id, map_loc.obj_name,
+                     obj_offset);
+        }
+      }
     } else {
       fmt::print("Not in GOAL code!\n");
     }
@@ -174,7 +203,7 @@ bool Debugger::do_break() {
   } else {
     auto info = pop_signal();
     assert(info.kind == xdbg::SignalInfo::BREAK);
-    get_break_info();
+    update_break_info();
     m_running = false;
     return true;
   }
@@ -186,7 +215,7 @@ bool Debugger::do_break() {
 bool Debugger::do_continue() {
   assert(is_valid() && is_attached() && is_halted());
   if (!m_regs_valid) {
-    get_break_info();
+    update_break_info();
   }
   assert(regs_valid());
 
@@ -509,7 +538,7 @@ void Debugger::update_continue_info() {
   }
 
   if (!m_regs_valid) {
-    get_break_info();
+    update_break_info();
   }
 
   auto kv = m_addr_breakpoints.find(get_regs().rip - 1);
@@ -525,4 +554,13 @@ void Debugger::update_continue_info() {
 
   m_expecting_immeidate_break = false;
   m_continue_info.valid = true;
+}
+
+DebugInfo& Debugger::get_debug_info(const std::string& object_name) {
+  auto kv = m_debug_info.find(object_name);
+  if (kv != m_debug_info.end()) {
+    return kv->second;
+  }
+
+  return m_debug_info.insert(std::make_pair(object_name, DebugInfo(object_name))).first->second;
 }

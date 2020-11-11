@@ -96,6 +96,7 @@ class FileEnv : public Env {
     assert(m_top_level_func);
     return *m_top_level_func;
   }
+  const std::string& name() { return m_name; }
 
   bool is_empty();
   ~FileEnv() = default;
@@ -166,6 +167,8 @@ class FunctionEnv : public DeclareEnv {
     m_unnamed_labels.emplace_back(std::make_unique<Label>());
     return m_unnamed_labels.back().get();
   }
+
+  const std::string& name() const { return m_name; }
 
   int idx_in_file = -1;
 

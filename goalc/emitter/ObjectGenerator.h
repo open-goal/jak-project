@@ -9,9 +9,12 @@
 #include "ObjectFileData.h"
 #include "Instruction.h"
 
+class FunctionDebugInfo;
+
 namespace emitter {
 
 struct FunctionRecord {
+  FunctionDebugInfo* debug = nullptr;
   int seg = -1;
   int func_id = -1;
 };
@@ -42,6 +45,7 @@ class ObjectGenerator {
   ObjectFileData generate_data_v3();
 
   FunctionRecord add_function_to_seg(int seg,
+                                     FunctionDebugInfo* debug,
                                      int min_align = 16);  // should align and insert function tag
   FunctionRecord get_existing_function_record(int f_idx);
   IR_Record add_ir(const FunctionRecord& func);
@@ -81,11 +85,12 @@ class ObjectGenerator {
   std::vector<u8> generate_header_v3();
 
   template <typename T>
-  void insert_data(int seg, const T& x) {
+  u64 insert_data(int seg, const T& x) {
     auto& data = m_data_by_seg.at(seg);
     auto insert_location = data.size();
     data.resize(insert_location + sizeof(T));
     memcpy(data.data() + insert_location, &x, sizeof(T));
+    return insert_location;
   }
 
   template <typename T>
@@ -101,6 +106,7 @@ class ObjectGenerator {
     std::vector<int> ir_to_instruction;
     std::vector<int> instruction_to_byte_in_data;
     int min_align = 16;
+    FunctionDebugInfo* debug = nullptr;
   };
 
   struct StaticData {

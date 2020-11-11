@@ -14,6 +14,7 @@
  */
 
 #include "ObjectGenerator.h"
+#include "goalc/debugger/DebugInfo.h"
 #include "common/goal_constants.h"
 #include "common/versions.h"
 
@@ -43,6 +44,10 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
         insert_data<u8>(seg, 0xae);
       }
 
+      // add debug info for the function start
+      function.debug->offset_in_seg = m_data_by_seg.at(seg).size();
+      function.debug->seg = seg;
+
       // insert instructions!
       for (const auto& instr : function.instructions) {
         u8 temp[128];
@@ -53,6 +58,8 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
           insert_data<u8>(seg, temp[i]);
         }
       }
+
+      function.debug->length = m_data_by_seg.at(seg).size() - function.debug->offset_in_seg;
     }
   }
 
@@ -98,12 +105,16 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
  * Add a new function to seg, and return a FunctionRecord which can be used to specify this
  * new function.
  */
-FunctionRecord ObjectGenerator::add_function_to_seg(int seg, int min_align) {
+FunctionRecord ObjectGenerator::add_function_to_seg(int seg,
+                                                    FunctionDebugInfo* debug,
+                                                    int min_align) {
   FunctionRecord rec;
   rec.seg = seg;
   rec.func_id = int(m_function_data_by_seg.at(seg).size());
+  rec.debug = debug;
   m_function_data_by_seg.at(seg).emplace_back();
   m_function_data_by_seg.at(seg).back().min_align = min_align;
+  m_function_data_by_seg.at(seg).back().debug = debug;
   m_all_function_records.push_back(rec);
   return rec;
 }

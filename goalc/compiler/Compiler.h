@@ -31,7 +31,8 @@ class Compiler {
   None* get_none() { return m_none.get(); }
 
   std::vector<std::string> run_test_from_file(const std::string& source_code);
-  std::vector<std::string> run_test_from_string(const std::string& src);
+  std::vector<std::string> run_test_from_string(const std::string& src,
+                                                const std::string& obj_name = "*listener*");
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
