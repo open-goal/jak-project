@@ -4,7 +4,7 @@ add_library(compiler
         emitter/ObjectFileData.cpp
         emitter/ObjectGenerator.cpp
         emitter/Register.cpp
-        emitter/disassemble.cpp
+        debugger/disassemble.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp

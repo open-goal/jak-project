@@ -178,7 +178,7 @@ void Compiler::color_object_file(FileEnv* env) {
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
-  auto debug_info = &m_debugger.get_debug_info(env->name());
+  auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
   CodeGenerator gen(env, debug_info);
   return gen.run();

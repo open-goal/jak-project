@@ -10,7 +10,7 @@
 #include "common/goal_constants.h"
 #include "common/symbols.h"
 #include "third-party/fmt/core.h"
-#include "goalc/emitter/disassemble.h"
+#include "goalc/debugger/disassemble.h"
 #include "goalc/listener/Listener.h"
 
 /*!
@@ -132,6 +132,8 @@ bool Debugger::attach_and_break() {
  * Print out some info about where we are.
  */
 void Debugger::update_break_info() {
+  // todo adjust rip if break instruction????
+
   m_memory_map = m_listener->build_memory_map();
   // fmt::print("{}", m_memory_map.print());
   read_symbol_table();
@@ -148,14 +150,20 @@ void Debugger::update_break_info() {
     mem.resize(INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD);
     // very basic asm dump.
     auto rip = m_regs_at_break.rip;
+    m_break_info.real_rip = rip;
+    m_break_info.goal_rip = rip - m_debug_context.base;
+
+    m_break_info.disassembly_failed = false;
+
     if (rip >= m_debug_context.base + EE_MAIN_MEM_LOW_PROTECT &&
         rip < m_debug_context.base + EE_MAIN_MEM_SIZE) {
       read_memory(mem.data(), INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD,
                   rip - m_debug_context.base - INSTR_DUMP_SIZE_REV);
-      fmt::print("{}", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
       auto map_loc = m_memory_map.lookup(rip - m_debug_context.base);
       if (map_loc.empty) {
         fmt::print("In unknown code\n");
+        fmt::print("{}", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
+        m_break_info.disassembly_failed = true;
         m_break_info.knows_object = false;
         m_break_info.knows_function = false;
       } else {
@@ -168,22 +176,53 @@ void Debugger::update_break_info() {
         FunctionDebugInfo* info = nullptr;
         std::string name;
 
-        if (get_debug_info(map_loc.obj_name)
+        if (get_debug_info_for_object(map_loc.obj_name)
                 .lookup_function(&info, &name, obj_offset, map_loc.seg_id)) {
+          update_continue_info();
           m_break_info.knows_function = true;
           m_break_info.function_name = name;
           m_break_info.function_offset = obj_offset - info->offset_in_seg;
 
+          assert(!info->instructions.empty());
+
+          std::vector<u8> function_mem;
+          function_mem.resize(info->instructions.back().offset +
+                              info->instructions.back().instruction.length());
+          read_memory(function_mem.data(), function_mem.size(),
+                      map_loc.start_addr + info->offset_in_seg);
+
+          int rip_offset = 0;
+          if (m_continue_info.valid && m_continue_info.is_addr_breakpiont) {
+            int offset_in_fmem = int(m_continue_info.addr_breakpoint.goal_addr) -
+                                 (map_loc.start_addr + info->offset_in_seg);
+            if (offset_in_fmem < 0 || offset_in_fmem >= int(function_mem.size())) {
+              m_break_info.disassembly_failed = true;
+            } else {
+              function_mem.at(offset_in_fmem) = m_continue_info.addr_breakpoint.old_data;
+              rip_offset = -1;
+            }
+          }
+
           fmt::print(
               "In function {} in segment {} of obj {}, offset_obj 0x{:x}, offset_func 0x{:x}\n",
               name, map_loc.seg_id, map_loc.obj_name, obj_offset, m_break_info.function_offset);
+
+          fmt::print("{}", disassemble_x86_function(
+                               function_mem.data(), function_mem.size(),
+                               m_debug_context.base + map_loc.start_addr + info->offset_in_seg,
+                               rip + rip_offset, info->instructions, info->irs,
+                               &m_break_info.disassembly_failed));
+
         } else {
+          m_break_info.disassembly_failed = true;
           m_break_info.knows_function = false;
           fmt::print("In segment {} of obj {}, offset 0x{:x}\n", map_loc.seg_id, map_loc.obj_name,
                      obj_offset);
+          fmt::print("{}", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
         }
       }
     } else {
+      m_break_info.disassembly_failed = true;
       fmt::print("Not in GOAL code!\n");
     }
   }
@@ -544,19 +583,22 @@ void Debugger::update_continue_info() {
   auto kv = m_addr_breakpoints.find(get_regs().rip - 1);
   if (kv == m_addr_breakpoints.end()) {
     m_continue_info.subtract_1 = false;
+    m_continue_info.is_addr_breakpiont = false;
   } else {
     if (m_expecting_immeidate_break) {
       printf("Warning, conflicting break and breakpoints. Not sure why we stopped!\n");
     }
 
     m_continue_info.subtract_1 = true;
+    m_continue_info.is_addr_breakpiont = true;
+    m_continue_info.addr_breakpoint = kv->second;
   }
 
   m_expecting_immeidate_break = false;
   m_continue_info.valid = true;
 }
 
-DebugInfo& Debugger::get_debug_info(const std::string& object_name) {
+DebugInfo& Debugger::get_debug_info_for_object(const std::string& object_name) {
   auto kv = m_debug_info.find(object_name);
   if (kv != m_debug_info.end()) {
     return kv->second;

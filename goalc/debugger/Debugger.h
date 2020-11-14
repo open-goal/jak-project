@@ -32,6 +32,8 @@ struct BreakInfo {
   bool knows_function = false;
   std::string function_name;
   u32 function_offset = -1;
+
+  bool disassembly_failed = false;
 };
 
 class Debugger {
@@ -57,7 +59,7 @@ class Debugger {
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
   void update_break_info();
-  DebugInfo& get_debug_info(const std::string& object_name);
+  DebugInfo& get_debug_info_for_object(const std::string& object_name);
   const BreakInfo& get_cached_break_info() { return m_break_info; }
 
   /*!
@@ -143,6 +145,8 @@ class Debugger {
   struct ContinueInfo {
     bool subtract_1 = false;
     bool valid = false;
+    bool is_addr_breakpiont = false;
+    Breakpoint addr_breakpoint;
   } m_continue_info;
 
   // for more complicated breakpoint stuff, we have a queue of stops.

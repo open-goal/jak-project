@@ -1,5 +1,5 @@
 #include "goalc/compiler/Compiler.h"
-#include "goalc/emitter/disassemble.h"
+#include "goalc/debugger/disassemble.h"
 #include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
 

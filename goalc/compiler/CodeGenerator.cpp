@@ -65,8 +65,9 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   // back up xmms
   for (auto& saved_reg : allocs.used_saved_regs) {
     if (saved_reg.is_xmm()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE));
-      m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(RSP, saved_reg));
+      m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE), InstructionInfo::PROLOGUE);
+      m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(RSP, saved_reg),
+                            InstructionInfo::PROLOGUE);
       stack_offset += XMM_SIZE;
     }
   }
@@ -74,7 +75,7 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   // back up gprs
   for (auto& saved_reg : allocs.used_saved_regs) {
     if (saved_reg.is_gpr()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(saved_reg));
+      m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(saved_reg), InstructionInfo::PROLOGUE);
       stack_offset += GPR_SIZE;
     }
   }
@@ -96,7 +97,8 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
       } else {
         // otherwise to an extra push, and remember so we can do an extra pop later on.
         bonus_push = true;
-        m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(ri.get_saved_gpr(0)));
+        m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(ri.get_saved_gpr(0)),
+                              InstructionInfo::PROLOGUE);
       }
       stack_offset += 8;
     }
@@ -105,7 +107,8 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
 
     // do manual stack offset.
     if (manually_added_stack_offset) {
-      m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm(RSP, manually_added_stack_offset));
+      m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm(RSP, manually_added_stack_offset),
+                            InstructionInfo::PROLOGUE);
     }
   }
 
@@ -113,7 +116,7 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
     auto& ir = env->code().at(ir_idx);
     // start of IR
-    auto i_rec = m_gen.add_ir(f_rec);
+    auto i_rec = m_gen.add_ir(f_rec, ir->print());
 
     // load anything off the stack that was spilled and is needed.
     auto& bonus = allocs.stack_ops.at(ir_idx);
@@ -146,29 +149,31 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   if (manually_added_stack_offset || allocs.needs_aligned_stack_for_spills ||
       env->needs_aligned_stack()) {
     if (manually_added_stack_offset) {
-      m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm(RSP, manually_added_stack_offset));
+      m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm(RSP, manually_added_stack_offset),
+                            InstructionInfo::EPILOGUE);
     }
 
     if (bonus_push) {
       assert(!manually_added_stack_offset);
-      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(ri.get_saved_gpr(0)));
+      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(ri.get_saved_gpr(0)), InstructionInfo::EPILOGUE);
     }
   }
 
   for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
     auto& saved_reg = allocs.used_saved_regs.at(i);
     if (saved_reg.is_gpr()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(saved_reg));
+      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(saved_reg), InstructionInfo::EPILOGUE);
     }
   }
 
   for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
     auto& saved_reg = allocs.used_saved_regs.at(i);
     if (saved_reg.is_xmm()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(saved_reg, RSP));
-      m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(RSP, XMM_SIZE));
+      m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(saved_reg, RSP),
+                            InstructionInfo::EPILOGUE);
+      m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(RSP, XMM_SIZE), InstructionInfo::EPILOGUE);
     }
   }
 
-  m_gen.add_instr_no_ir(f_rec, IGen::ret());
+  m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::EPILOGUE);
 }

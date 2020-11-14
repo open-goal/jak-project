@@ -49,11 +49,15 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
       function.debug->seg = seg;
 
       // insert instructions!
-      for (const auto& instr : function.instructions) {
+
+      for (size_t instr_idx = 0; instr_idx < function.instructions.size(); instr_idx++) {
+        const auto& instr = function.instructions[instr_idx];
         u8 temp[128];
         auto count = instr.emit(temp);
         assert(count < 128);
         function.instruction_to_byte_in_data.push_back(data.size());
+        function.debug->instructions.at(instr_idx).offset =
+            data.size() - function.debug->offset_in_seg;
         for (int i = 0; i < count; i++) {
           insert_data<u8>(seg, temp[i]);
         }
@@ -128,13 +132,15 @@ FunctionRecord ObjectGenerator::get_existing_function_record(int f_idx) {
  * actual Instructions. These Instructions can be added with add_instruction.  The IR_Record
  * can be used as a label for jump targets.
  */
-IR_Record ObjectGenerator::add_ir(const FunctionRecord& func) {
+IR_Record ObjectGenerator::add_ir(const FunctionRecord& func, const std::string& debug_print) {
   IR_Record rec;
   rec.seg = func.seg;
   rec.func_id = func.func_id;
   auto& func_data = m_function_data_by_seg.at(rec.seg).at(rec.func_id);
   rec.ir_id = int(func_data.ir_to_instruction.size());
   func_data.ir_to_instruction.push_back(int(func_data.instructions.size()));
+  assert(int(func.debug->irs.size()) == rec.ir_id);
+  func.debug->irs.push_back(debug_print);
   return rec;
 }
 
@@ -173,12 +179,18 @@ InstructionRecord ObjectGenerator::add_instr(Instruction inst, IR_Record ir) {
   rec.ir_id = ir.ir_id;
   auto& func_data = m_function_data_by_seg.at(rec.seg).at(rec.func_id);
   rec.instr_id = int(func_data.instructions.size());
-  func_data.instructions.push_back(inst);
+  func_data.instructions.emplace_back(inst);
+  auto debug = m_function_data_by_seg.at(ir.seg).at(ir.func_id).debug;
+  debug->instructions.emplace_back(inst, InstructionInfo::Kind::IR, ir.ir_id);
   return rec;
 }
 
-void ObjectGenerator::add_instr_no_ir(FunctionRecord func, Instruction inst) {
-  m_function_data_by_seg.at(func.seg).at(func.func_id).instructions.push_back(inst);
+void ObjectGenerator::add_instr_no_ir(FunctionRecord func,
+                                      Instruction inst,
+                                      InstructionInfo::Kind kind) {
+  auto info = InstructionInfo(inst, kind);
+  m_function_data_by_seg.at(func.seg).at(func.func_id).instructions.emplace_back(inst);
+  func.debug->instructions.push_back(info);
 }
 
 /*!
