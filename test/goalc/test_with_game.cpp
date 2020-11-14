@@ -137,6 +137,22 @@ TEST_F(WithGameTests, All) {
                          get_test_pass_string("new-static-basic", 9));
   runner.run_static_test(env, testCategory, "test-vector-dot.gc",
                          get_test_pass_string("vector-dot", 1));
+
+  auto mem_map = compiler.listener().build_memory_map();
+
+  // we should have gkernel main segment
+  listener::MemoryMapEntry gk_main;
+  EXPECT_TRUE(mem_map.lookup("gkernel", MAIN_SEGMENT, &gk_main));
+  auto lookup_2 = mem_map.lookup(gk_main.start_addr + 12);
+  EXPECT_TRUE(lookup_2.obj_name == "gkernel");
+  EXPECT_FALSE(lookup_2.empty);
+  EXPECT_EQ(lookup_2.seg_id, MAIN_SEGMENT);
+
+  auto di = compiler.get_debugger().get_debug_info_for_object("gcommon");
+  bool fail = false;
+  auto result = di.disassemble_debug_functions(&fail);
+  // printf("Got\n%s\n", result.c_str());
+  EXPECT_FALSE(fail);
 }
 
 TEST(TypeConsistency, TypeConsistency) {

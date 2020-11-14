@@ -147,8 +147,11 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // getting squashed.
 
       // this setup allows listener function execution to clean up after itself.
-      ListenerFunction->value =
-          link_and_exec(buffer, "*listener*", 0, kdebugheap, LINK_FLAG_FORCE_DEBUG).offset;
+
+      // we have added the LINK_FLAG_OUTPUT_LOAD
+      ListenerFunction->value = link_and_exec(buffer, "*listener*", 0, kdebugheap,
+                                              LINK_FLAG_FORCE_DEBUG | LINK_FLAG_OUTPUT_LOAD)
+                                    .offset;
       return;  // don't ack yet, this will happen after the function runs.
     } break;
     default:

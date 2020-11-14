@@ -13,10 +13,32 @@
 #include <queue>
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "goalc/listener/MemoryMap.h"
+#include "DebugInfo.h"
+
+namespace listener {
+class Listener;
+}
+
+struct BreakInfo {
+  u64 real_rip = 0;
+  u32 goal_rip = 0;
+
+  bool knows_object = false;
+  std::string object_name;
+  u8 object_seg = -1;
+  u32 object_offset = -1;
+
+  bool knows_function = false;
+  std::string function_name;
+  u32 function_offset = -1;
+
+  bool disassembly_failed = false;
+};
 
 class Debugger {
  public:
-  Debugger() = default;
+  explicit Debugger(listener::Listener* listener) : m_listener(listener) {}
   ~Debugger();
   bool is_halted() const;
   bool is_valid() const;
@@ -36,7 +58,9 @@ class Debugger {
   bool get_symbol_value(const std::string& sym_name, u32* output);
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
-  void get_break_info();
+  void update_break_info();
+  DebugInfo& get_debug_info_for_object(const std::string& object_name);
+  const BreakInfo& get_cached_break_info() { return m_break_info; }
 
   /*!
    * Get the x86 address of GOAL memory
@@ -121,6 +145,8 @@ class Debugger {
   struct ContinueInfo {
     bool subtract_1 = false;
     bool valid = false;
+    bool is_addr_breakpiont = false;
+    Breakpoint addr_breakpoint;
   } m_continue_info;
 
   // for more complicated breakpoint stuff, we have a queue of stops.
@@ -137,4 +163,10 @@ class Debugger {
   bool m_context_valid = false;
   bool m_running = true;
   bool m_attached = false;
+
+  BreakInfo m_break_info;
+
+  listener::Listener* m_listener = nullptr;
+  listener::MemoryMap m_memory_map;
+  std::unordered_map<std::string, DebugInfo> m_debug_info;
 };

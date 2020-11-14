@@ -17,13 +17,9 @@
 #include "common/listener_common.h"
 #include "common/cross_os_debug/xdbg.h"
 #include "goalc/debugger/Debugger.h"
+#include "MemoryMap.h"
 
 namespace listener {
-
-struct LoadEntry {
-  uint32_t segments[3] = {0, 0, 0};
-  std::string load_string;
-};
 
 class Listener {
  public:
@@ -42,8 +38,7 @@ class Listener {
   void send_code(std::vector<uint8_t>& code);
   void add_debugger(Debugger* debugger);
   bool most_recent_send_was_acked() const { return got_ack; }
-  bool get_load_entry(const std::string& name, LoadEntry* out = nullptr);
-  std::vector<std::string> get_all_loaded();
+  MemoryMap build_memory_map();
 
  private:
   void add_load(const std::string& name, const LoadEntry& le);

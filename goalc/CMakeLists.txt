@@ -4,7 +4,7 @@ add_library(compiler
         emitter/ObjectFileData.cpp
         emitter/ObjectGenerator.cpp
         emitter/Register.cpp
-        emitter/disassemble.cpp
+        debugger/disassemble.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
@@ -25,8 +25,10 @@ add_library(compiler
         compiler/compilation/Static.cpp
         compiler/Util.cpp
         debugger/Debugger.cpp
+        debugger/DebugInfo.cpp
         logger/Logger.cpp
         listener/Listener.cpp
+        listener/MemoryMap.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp

@@ -281,6 +281,7 @@ std::string IR_FunctionCall::print() {
     result += fmt::format("{} ", x->print());
   }
   result.pop_back();
+  result.push_back(')');
   return result;
 }
 
