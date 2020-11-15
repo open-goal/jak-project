@@ -18,7 +18,8 @@ add_executable(decompiler
         IR/CfgBuilder.cpp
         IR/IR.cpp
 		IR/IR_TypeAnalysis.cpp
-		Function/TypeInspector.cpp)
+		Function/TypeInspector.cpp
+		data/tpage.cpp)
 
 target_link_libraries(decompiler
         goos

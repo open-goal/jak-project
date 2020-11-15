@@ -24,8 +24,9 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.write_hexdump_on_v3_only = cfg.at("write_hexdump_on_v3_only").get<bool>();
   gConfig.disassemble_objects_without_functions =
       cfg.at("disassemble_objects_without_functions").get<bool>();
-  gConfig.find_basic_blocks = cfg.at("find_basic_blocks").get<bool>();
   gConfig.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
+  gConfig.analyze_functions = cfg.at("analyze_functions").get<bool>();
+  gConfig.process_tpages = cfg.at("process_tpages").get<bool>();
 
   std::vector<std::string> asm_functions_by_name =
       cfg.at("asm_functions_by_name").get<std::vector<std::string>>();
