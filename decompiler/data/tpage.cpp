@@ -120,7 +120,6 @@ u32 psmt8_addr(u32 x, u32 y, u32 width) {
   return (page * 128 * 64) + (block * 16 * 16) + pixel;
 }
 
-
 /*
 (deftype texture-page-segment (structure)
   ((block-data pointer :offset-assert 0)
@@ -515,10 +514,10 @@ enum class CPSM { PSMCT32 = 0x0 };
 
 /*!
  * Process a texture page.
+ * TODO - document
  */
-void process_tpage(ObjectFileData& data) {
-  spdlog::info("Processing tpage \"{}\" total size {} words", data.name_in_dgo,
-               data.linked_data.words_by_seg.at(0).size());
+TPageResultStats process_tpage(ObjectFileData& data) {
+  TPageResultStats stats;
   auto& words = data.linked_data.words_by_seg.at(0);
 
   // at the beginning there's a texture-page object.
@@ -547,33 +546,52 @@ void process_tpage(ObjectFileData& data) {
     tex_data[i] = get_word<u32>(words.at(tex_start + i));
   }
 
-  // "VRAM", contains
+  // "VRAM", will be used as temporary storage for scrambled up textures.
   std::vector<u8> vram;
-  vram.resize(4 * 1024 * 1024);
-  int copy_width = 128;  // 64 * tex.width[0];
-  int copy_height = 4 * tex_size / copy_width;
+  vram.resize(4 * 1024 * 1024);  // 4 MB, like PS2 VRAM
 
-  for (int y = 0; y < copy_height / 4; y++) {
+  // all textures are copied to vram 128 pixels wide, regardless of actual width
+  int copy_width = 128;
+  // scale the copy height to be whatever it needs to be to transfer the right amount of data.
+  int copy_height = tex_size / copy_width;
+
+  // copy texture to "VRAM" in PSMCT32 format, regardless of actual texture format.
+  for (int y = 0; y < copy_height; y++) {
     for (int x = 0; x < copy_width; x++) {
+      // VRAM address (bytes)
       auto addr32 = psmct32_addr(x, y, copy_width);
       *(u32*)(vram.data() + addr32) = *(u32*)(tex_data.data() + (x + y * copy_width));
     }
   }
 
+  // get all textures in the tpage
   for (auto& tex : texture_page.textures) {
+    // I think these get inserted for CLUTs, but I'm not sure.
     if (tex.null_texture) {
       continue;
     }
 
-    if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == 0) {
+    stats.total_textures++;
+
+    if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT32)) {
+      // this is the only supported texture format for now.
+
+      // will store output pixels, rgba (8888)
       std::vector<u32> out;
 
+      // width is like the TEX0 register, in 64 texel units.
+      // not sure what the other widths are yet.
       int read_width = 64 * tex.width[0];
 
+      // loop over pixels in output texture image
       for (int y = 0; y < tex.h; y++) {
         for (int x = 0; x < tex.w; x++) {
+          // read as the PSMT8 type. The dest field tells us a block offset.
           auto addr8 = psmt8_addr(x, y, read_width) + tex.dest[0] * 256;
           u8 value = *(u8*)(vram.data() + addr8);
+
+          // there's yet another scramble from the CLUT. The palette index turns into an X, Y value
+          // See GS manual 2.7.3 CLUT Storage Mode, IDTEX8 in CSM1 mode.
           u32 clut_chunk = value / 16;
           u32 off_in_chunk = value % 16;
           u8 clx = 0, cly = 0;
@@ -586,17 +604,21 @@ void process_tpage(ObjectFileData& data) {
             cly++;
           }
           clx += off_in_chunk;
+
+          // the x, y CLUT value is looked up in PSMCT32 mode
           u32 clut_addr = psmct32_addr(clx, cly, 64) + tex.clutdest * 256;
           u32 clut_value = *(u32*)(vram.data() + clut_addr);
-
-          out.push_back((255 << 24) | clut_value);
+          out.push_back(clut_value);
         }
       }
 
+      // write texture to a PNG.
       file_util::write_rgba_png(
           fmt::format(file_util::get_file_path({"assets", "textures", "{}-{}-{}-{}.png"}),
                       data.name_in_dgo, tex.name, tex.w, tex.h),
           out.data(), tex.w, tex.h);
+      stats.successful_textures++;
     }
   }
+  return stats;
 }

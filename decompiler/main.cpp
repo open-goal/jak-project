@@ -11,8 +11,8 @@ int main(int argc, char** argv) {
   spdlog::info("Beginning disassembly. This may take a few minutes...");
 
   spdlog::set_level(spdlog::level::debug);
-//  auto lu = spdlog::basic_logger_mt("GOAL Decompiler", "logs/decompiler.log");
-//  spdlog::set_default_logger(lu);
+  auto lu = spdlog::basic_logger_mt("GOAL Decompiler", "logs/decompiler.log");
+  spdlog::set_default_logger(lu);
   spdlog::flush_on(spdlog::level::info);
 
   file_util::init_crc();

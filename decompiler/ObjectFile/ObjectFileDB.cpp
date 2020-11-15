@@ -614,12 +614,19 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
 }
 
 void ObjectFileDB::process_tpages() {
+  spdlog::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
+  int total = 0, success = 0;
+  Timer timer;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
-      process_tpage(data);
+      auto statistics = process_tpage(data);
+      total += statistics.total_textures;
+      success += statistics.successful_textures;
     }
   });
+  spdlog::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
+               100.f * float(success) / float(total), timer.getMs());
 }
 
 void ObjectFileDB::analyze_functions() {
