@@ -1,9 +1,33 @@
+/*!
+ * @file tpage.cpp
+ * Extract textures from a tpage GOAL object file.
+ *
+ * TODO -
+ * support 24-bit textures
+ * support 4-bit CLUT
+ * support other cpsms
+ * export other mips
+ * check all data is read
+ * export info files
+ * investigate null textures
+ * report statistics (number of textures, memory, success...)
+ * check duplicate names
+ */
+
 #include <common/util/FileUtil.h>
 #include "tpage.h"
 #include "common/versions.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
 
+namespace {
+
+/*!
+ * Convert from a pixel location in a texture (x, y, texture buffer width) to VRAM address (byte).
+ * Uses the PSMCT32 format.
+ * This format is used either to store 8-bit RGBA (texture palettes) or to copy memory.
+ * See Ch. 8, Details of GS Local Memory for these tables.
+ */
 u32 psmct32_addr(u32 x, u32 y, u32 width) {
   // XXX_col refers to which XXX you're in (screen)
   // XXX refers to which XXX you're in (memory)
@@ -29,7 +53,7 @@ u32 psmct32_addr(u32 x, u32 y, u32 width) {
 
   u32 block = psm32_table[block_row][block_col];
 
-  // next the column
+  // next the column (there's only one "column" per column)
   u32 col_row = block_y / 2;
   u32 col_y = block_y % 2;
   u32 col_x = block_x;
@@ -39,13 +63,15 @@ u32 psmct32_addr(u32 x, u32 y, u32 width) {
   u32 pixel = psm32_pix_table[col_y][col_x];
 
   // now the sum
-  auto result = ((page * 64 * 32) + (block * 8 * 8) + (col_row * 8 * 2) + pixel) * 4;
-  if (result == 16384) {
-    printf("%d %d p%d b%d c%d px%d -> %d\n", x, y, page, block, col_row, pixel, result);
-  }
-  return result;
+  return ((page * 64 * 32) + (block * 8 * 8) + (col_row * 8 * 2) + pixel) * 4;
 }
 
+/*!
+ * Convert from a pixel location in a texture (x, y, texture buffer width) to VRAM address (byte).
+ * Uses the PSMT8 format.
+ * This format is used either to store 8-bit palette indices, used in most textures.
+ * See Ch. 8, Details of GS Local Memory for these tables.
+ */
 u32 psmt8_addr(u32 x, u32 y, u32 width) {
   // page is 128, 64
   // block is 16, 16
@@ -70,6 +96,7 @@ u32 psmt8_addr(u32 x, u32 y, u32 width) {
                                  {10, 11, 14, 15, 26, 27, 30, 31}};
   u32 block = psm32_table[block_row][block_col];  // it's the same table!!!
 
+  // both columns and pixels within columns.
   const uint8_t pix_table[16][16] = {
       {0, 4, 16, 20, 32, 36, 48, 52, 2, 6, 18, 22, 34, 38, 50, 54},
       {8, 12, 24, 28, 40, 44, 56, 60, 10, 14, 26, 30, 42, 46, 58, 62},
@@ -93,7 +120,6 @@ u32 psmt8_addr(u32 x, u32 y, u32 width) {
   return (page * 128 * 64) + (block * 16 * 16) + pixel;
 }
 
-// TODO - check for gaps!!!
 
 /*
 (deftype texture-page-segment (structure)
@@ -142,9 +168,14 @@ u32 psmt8_addr(u32 x, u32 y, u32 width) {
    )
  */
 
+// texture format names.
 std::unordered_map<u8, std::string> psms = {{0x02, "PSMCT16"}, {0x13, "PSMT8"}, {0x14, "PSMT4"}};
 
+/*!
+ * GOAL texture type. Stores info about a single texture in a texture page.
+ */
 struct Texture {
+  // there are some texture entries that are just #f. I believe these may be CLUTs.
   bool null_texture = false;
   union {
     struct {
@@ -193,6 +224,10 @@ struct Texture {
   }
 };
 
+/*!
+ * GOAL texture-page-segment.
+ * Unclear what the segments really are, maybe you could split up big tpages if needed?
+ */
 struct TexturePageSegment {
   Label block_data_label;
   u32 size = 0xffffffff;
@@ -203,6 +238,10 @@ struct TexturePageSegment {
   }
 };
 
+/*!
+ * GOAL file-info type.
+ * This can probably be borrowed for other asset files.
+ */
 struct FileInfo {
   std::string file_type;
   std::string file_name;
@@ -223,6 +262,9 @@ struct FileInfo {
   }
 };
 
+/*!
+ * GOAL texture-page type.
+ */
 struct TexturePage {
   Label info_label;
   FileInfo info;
@@ -254,18 +296,20 @@ struct TexturePage {
     for (const auto& seg : segments) {
       x += seg.print_debug();
     }
-    // todo, segments
+
     for (const auto& tex : textures) {
       x += fmt::format(" Texture {}\n", tex.name);
       x += tex.debug_print();
     }
-    // todo, textures
 
     return x;
   }
 };
 
-namespace {
+/*!
+ * Convert a label to the offset (words) in the object segment.
+ * If basic is set, gives you a pointer to the beginning of the memory, if the thing is a basic.
+ */
 int label_to_word_offset(Label l, bool basic) {
   assert((l.offset & 3) == 0);
   int result = l.offset / 4;
@@ -298,6 +342,9 @@ T get_word(const LinkedWord& word) {
   return result;
 }
 
+/*!
+ * Read a texture object.
+ */
 Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words, int offset) {
   Texture tex;
   if (!is_type_tag(words.at(offset), "texture")) {
@@ -333,6 +380,9 @@ Texture read_texture(ObjectFileData& data, const std::vector<LinkedWord>& words,
   return tex;
 }
 
+/*!
+ * Read a file-info object.
+ */
 FileInfo read_file_info(ObjectFileData& data, const std::vector<LinkedWord>& words, int offset) {
   FileInfo info;
   if (!is_type_tag(words.at(offset), "file-info")) {
@@ -368,6 +418,9 @@ FileInfo read_file_info(ObjectFileData& data, const std::vector<LinkedWord>& wor
   return info;
 }
 
+/*!
+ * Read a texture-page object.
+ */
 TexturePage read_texture_page(ObjectFileData& data,
                               const std::vector<LinkedWord>& words,
                               int offset,
@@ -453,41 +506,16 @@ TexturePage read_texture_page(ObjectFileData& data,
   return tpage;
 }
 
+// texture format enums
 enum class PSM { PSMCT16 = 0x02, PSMT8 = 0x13 };
+// clut format enums
 enum class CPSM { PSMCT32 = 0x0 };
-
-u32 rgb15_to_32(u16 in) {
-  u32 r = (in & 0b11111);
-  u32 g = (in >> 5) & 0b11111;
-  u32 b = (in >> 10) & 0b11111;
-  u32 out = (r << 3) + (g << (3 + 8)) + (b << (3 + 16)) + (0xff << 24);
-  return out;
-}
-
-u32 debug_u8_to_32(u8 in) {
-  u32 r = in;
-  u32 g = in;
-  u32 b = in;
-  u32 out = (r) + (g << (8)) + (b << (16)) + (0xff << 24);
-  return out;
-}
 
 }  // namespace
 
-/*
-Texture com-bucket
-  w: 64, h: 64
-  mips: 4, tex1_control: 9, psm: 19, mip_shift: 0
-  clutpsm: 0
-  dest: 864 644 222 223 0 0 0
-  clutdest: 283
-  width: 2 2 2 2 0 0 0 0
-  size: 0
-  uv_dist: 4.0
-  masks: 1082130432 24 1048
-
+/*!
+ * Process a texture page.
  */
-
 void process_tpage(ObjectFileData& data) {
   spdlog::info("Processing tpage \"{}\" total size {} words", data.name_in_dgo,
                data.linked_data.words_by_seg.at(0).size());
@@ -508,8 +536,8 @@ void process_tpage(ObjectFileData& data) {
 
   // Read the texture_page struct
   TexturePage texture_page = read_texture_page(data, words, 0, end_of_texture_page);
-  fmt::print("\n\n{}", texture_page.print_debug());
 
+  // Get raw data for textures.
   std::vector<u32> tex_data;
   auto tex_start = label_to_word_offset(texture_page.segments[0].block_data_label, false);
   auto tex_size = int(words.size()) - int(tex_start);
@@ -519,91 +547,56 @@ void process_tpage(ObjectFileData& data) {
     tex_data[i] = get_word<u32>(words.at(tex_start + i));
   }
 
+  // "VRAM", contains
+  std::vector<u8> vram;
+  vram.resize(4 * 1024 * 1024);
+  int copy_width = 128;  // 64 * tex.width[0];
+  int copy_height = 4 * tex_size / copy_width;
+
+  for (int y = 0; y < copy_height / 4; y++) {
+    for (int x = 0; x < copy_width; x++) {
+      auto addr32 = psmct32_addr(x, y, copy_width);
+      *(u32*)(vram.data() + addr32) = *(u32*)(tex_data.data() + (x + y * copy_width));
+    }
+  }
+
   for (auto& tex : texture_page.textures) {
     if (tex.null_texture) {
       continue;
     }
-    std::vector<u32> out;
-    std::vector<u8> vram;
-    vram.resize(4 * 1024 * 1024);
-    std::vector<bool> vram_write, vram_read;
-    vram_write.resize(4 * 1024 * 1024, false);
-    vram_read.resize(4 * 1024 * 1024, false);
-    if (tex.psm == int(PSM::PSMT8) &&
-        //(tex.name == "com-bucket" || tex.name == "left" || tex.name == "right")
-        true
-        ) {
-      u8* raw_data = (u8*)(tex_data.data()) + tex.dest[0] * 256;
 
-      u32* clut = (u32*)(tex_data.data()) + tex.clutdest * 256 / 4;
-      printf("texture %s size %d %d dest %d cpsm 0x%x\n", tex.name.c_str(), tex.w, tex.h, tex.dest[0], tex.clutpsm);
-
-      {
-        int copy_width = 128;
-        int copy_height = (tex.h * tex.w) / copy_width;
-        printf(" copy %d %d\n", copy_width, copy_height);
-      }
-
-      int copy_width = 128; //64 * tex.width[0];
-      int copy_height = (tex.w * tex.h) / copy_width;
-
-      for (int y = 0; y < copy_height / 4; y++) {
-        for (int x = 0; x < copy_width; x++) {
-          auto addr32 = psmct32_addr(x, y, copy_width);
-          *(u32*)(vram.data() + addr32) = *(u32*)(raw_data + 4 * (x + y * copy_width));
-          if (vram_write.at(addr32)) {
-            printf("WRITE %d %d -> %d\n", x, y, addr32);
-          }
-          vram_write.at(addr32) = true;
-        }
-      }
-
-      {
-        int read_width = 128;
-        int read_height = tex.h;
-      }
+    if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == 0) {
+      std::vector<u32> out;
 
       int read_width = 64 * tex.width[0];
 
-      int inc = 0;
       for (int y = 0; y < tex.h; y++) {
         for (int x = 0; x < tex.w; x++) {
-          int xx = inc % read_width;
-          int yy = inc / read_width;
-          auto addr8 = psmt8_addr(xx, yy, read_width);
+          auto addr8 = psmt8_addr(x, y, read_width) + tex.dest[0] * 256;
           u8 value = *(u8*)(vram.data() + addr8);
-//          out.push_back(debug_u8_to_32(value));
-//          u32 clut_chunk = value / 16;
-//          u32 off_in_chunk = value % 16;
-//          u8 clx = 0, cly = 0;
-//          if (clut_chunk & 1) {
-//            clx = 8;
-//          }
-//          cly = (clut_chunk >> 1) * 2;
-//          if(off_in_chunk >= 8) {
-//            off_in_chunk -= 8;
-//            cly++;
-//          }
-//          clx += off_in_chunk;
-
-
-          out.push_back(debug_u8_to_32(value));
-          if (vram_read.at(addr8)) {
-            printf("READ %d %d -> %d\n", x, y, addr8);
+          u32 clut_chunk = value / 16;
+          u32 off_in_chunk = value % 16;
+          u8 clx = 0, cly = 0;
+          if (clut_chunk & 1) {
+            clx = 8;
           }
-          vram_read.at(addr8) = true;
-          if (!vram_write.at(addr8)) {
-//            printf("nowrite\n");
+          cly = (clut_chunk >> 1) * 2;
+          if (off_in_chunk >= 8) {
+            off_in_chunk -= 8;
+            cly++;
           }
-          inc++;
+          clx += off_in_chunk;
+          u32 clut_addr = psmct32_addr(clx, cly, 64) + tex.clutdest * 256;
+          u32 clut_value = *(u32*)(vram.data() + clut_addr);
+
+          out.push_back((255 << 24) | clut_value);
         }
       }
 
-      //      file_util::write_binary_file(fmt::format("{}-{}-{}.data", tex.name, tex.w, tex.h),
-      //      out.data(), out.size() * 4);
-      file_util::write_rgba_png(fmt::format("{}-{}-{}.png", tex.name, tex.w, tex.h), out.data(),
-                                tex.w, tex.h);
+      file_util::write_rgba_png(
+          fmt::format(file_util::get_file_path({"assets", "textures", "{}-{}-{}-{}.png"}),
+                      data.name_in_dgo, tex.name, tex.w, tex.h),
+          out.data(), tex.w, tex.h);
     }
   }
-
 }
