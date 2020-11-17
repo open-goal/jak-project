@@ -148,23 +148,24 @@ TEST(Debugger, SimpleBreakpoint) {
   } else {
     compiler.connect_to_target();
     compiler.poke_target();
-    compiler.run_test_from_string("(defun test-function () (+ 1 2 3 4 5 6))");
-    ;
-    compiler.run_test_from_string("(dbg)");
+    compiler.run_test_from_string(
+        "(defun fake-function () 0) (defun test-function () (+ 1 2 3 4 5 6)) (defun "
+        "fake-function-2 () 0)");
+    compiler.run_test_from_string("(dbg)", "a");
     u32 func_addr;
     EXPECT_TRUE(compiler.get_debugger().get_symbol_value("test-function", &func_addr));
     EXPECT_TRUE(compiler.get_debugger().is_valid());
     EXPECT_TRUE(compiler.get_debugger().is_halted());
 
     compiler.get_debugger().add_addr_breakpoint(func_addr);  // todo from code.
-    compiler.run_test_from_string("(:cont)");
-    compiler.run_test_from_string("(test-function)");
+    compiler.run_test_from_string("(:cont)", "a");
+    compiler.run_test_from_string("(test-function)", "a");
     // wait for breakpoint to be hit.
     while (!compiler.get_debugger().is_halted()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    compiler.get_debugger().get_break_info();
+    compiler.get_debugger().update_break_info();
     auto expected_instr_before_rip = compiler.get_debugger().get_x86_base_addr() + func_addr;
     auto rip = compiler.get_debugger().get_regs().rip;
     // instructions can be at most 15 bytes long.
@@ -176,6 +177,15 @@ TEST(Debugger, SimpleBreakpoint) {
     EXPECT_TRUE(rsp > compiler.get_debugger().get_x86_base_addr() + EE_MAIN_MEM_SIZE - (16 * 1024));
 
     EXPECT_TRUE(compiler.get_debugger().is_halted());
+    auto bi = compiler.get_debugger().get_cached_break_info();
+    EXPECT_TRUE(bi.knows_function);
+    EXPECT_TRUE(bi.knows_object);
+    EXPECT_TRUE(bi.object_name == "*listener*");
+    EXPECT_TRUE(bi.function_name == "test-function");
+    EXPECT_FALSE(bi.disassembly_failed);
+    // if we change this to be before the break instruction this might need to be 0 in the future.
+    EXPECT_EQ(bi.function_offset, 1);
+
     compiler.get_debugger().remove_addr_breakpoint(func_addr);
     compiler.get_debugger().do_continue();
 

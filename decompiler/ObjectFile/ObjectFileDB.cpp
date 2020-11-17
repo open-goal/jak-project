@@ -10,6 +10,7 @@
 #include <set>
 #include <cstring>
 #include <map>
+#include "decompiler/data/tpage.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
@@ -515,16 +516,20 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
       auto file_text = obj.linked_data.print_disassembly();
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".func");
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
 
-      auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
-      auto json_asm_file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
-      file_util::write_text_file(json_asm_file_name, json_asm_text);
+      if (get_config().analyze_functions) {
+        auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
+        auto json_asm_file_name =
+            file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
+        file_util::write_text_file(json_asm_file_name, json_asm_text);
+        total_files++;
+        total_bytes += json_asm_text.size();
+      }
 
-      total_bytes += file_text.size() + json_asm_text.size();
+      total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
-      total_files += 2;
+      total_files++;
     }
   });
 
@@ -606,6 +611,22 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
 
   spdlog::info("Found scripts:");
   spdlog::info(" Total {:.3f} ms\n", timer.getMs());
+}
+
+void ObjectFileDB::process_tpages() {
+  spdlog::info("- Finding textures in tpages...");
+  std::string tpage_string = "tpage-";
+  int total = 0, success = 0;
+  Timer timer;
+  for_each_obj([&](ObjectFileData& data) {
+    if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
+      auto statistics = process_tpage(data);
+      total += statistics.total_textures;
+      success += statistics.successful_textures;
+    }
+  });
+  spdlog::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
+               100.f * float(success) / float(total), timer.getMs());
 }
 
 void ObjectFileDB::analyze_functions() {
@@ -691,123 +712,121 @@ void ObjectFileDB::analyze_functions() {
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
 
-  if (get_config().find_basic_blocks) {
-    timer.start();
-    int total_basic_blocks = 0;
-    for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-      //      printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
-      //             data.to_unique_name().c_str());
-      auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
-      total_basic_blocks += blocks.size();
-      func.basic_blocks = blocks;
+  timer.start();
+  int total_basic_blocks = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    //      printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
+    //             data.to_unique_name().c_str());
+    auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
+    total_basic_blocks += blocks.size();
+    func.basic_blocks = blocks;
 
-      total_functions++;
-      if (!func.suspected_asm) {
-        // first, find the prologue/epilogue
-        func.analyze_prologue(data.linked_data);
+    total_functions++;
+    if (!func.suspected_asm) {
+      // first, find the prologue/epilogue
+      func.analyze_prologue(data.linked_data);
+    }
+
+    if (!func.suspected_asm) {
+      // run analysis
+
+      // build a control flow graph
+      func.cfg = build_cfg(data.linked_data, segment_id, func);
+
+      // convert individual basic blocks to sequences of IR Basic Ops
+      for (auto& block : func.basic_blocks) {
+        if (block.end_word > block.start_word) {
+          add_basic_ops_to_block(&func, block, &data.linked_data);
+        }
+      }
+      total_basic_ops += func.get_basic_op_count();
+      total_failed_basic_ops += func.get_failed_basic_op_count();
+
+      if (func.is_inspect_method) {
+        auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
+        all_type_defs += ";; " + data.to_unique_name() + "\n";
+        all_type_defs += result.print_as_deftype() + "\n";
       }
 
-      if (!func.suspected_asm) {
-        // run analysis
+      // Combine basic ops + CFG to build a nested IR
+      func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
+      non_asm_funcs++;
+      if (func.ir) {
+        successful_cfg_irs++;
+      }
 
-        // build a control flow graph
-        func.cfg = build_cfg(data.linked_data, segment_id, func);
-
-        // convert individual basic blocks to sequences of IR Basic Ops
-        for (auto& block : func.basic_blocks) {
-          if (block.end_word > block.start_word) {
-            add_basic_ops_to_block(&func, block, &data.linked_data);
-          }
-        }
-        total_basic_ops += func.get_basic_op_count();
-        total_failed_basic_ops += func.get_failed_basic_op_count();
-
-        if (func.is_inspect_method) {
-          auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
-          all_type_defs += ";; " + data.to_unique_name() + "\n";
-          all_type_defs += result.print_as_deftype() + "\n";
-        }
-
-        // Combine basic ops + CFG to build a nested IR
-        func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
-        non_asm_funcs++;
-        if (func.ir) {
-          successful_cfg_irs++;
-        }
-
-        if (func.cfg->is_fully_resolved()) {
-          resolved_cfg_functions++;
-        } else {
-          spdlog::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
-                       data.to_unique_name());
-        }
-
-        // type analysis
-        if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-          // we're a global named function. This means we're stored in a symbol
-          auto kv = dts.symbol_types.find(func.guessed_name.function_name);
-          if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
-            if (kv->second.base_type() != "function") {
-              spdlog::error("Found a function named {} but the symbol has type {}",
-                            func.guessed_name.to_string(), kv->second.print());
-              assert(false);
-            }
-            // GOOD!
-            func.type = kv->second;
-
-            /*
-            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-                         kv->second.print());
-            func.run_type_analysis(kv->second, dts, data.linked_data);
-             */
-
-            if (func.has_typemaps()) {
-              successful_type_analysis++;
-            }
-          }
-        }
+      if (func.cfg->is_fully_resolved()) {
+        resolved_cfg_functions++;
       } else {
-        asm_funcs++;
+        spdlog::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
+                     data.to_unique_name());
       }
 
-      if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
-        if (func.cfg->is_fully_resolved()) {
-        } else {
-          unresolved_by_length[func.end_word - func.start_word].push_back(
-              func.guessed_name.to_string());
+      // type analysis
+      if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+        // we're a global named function. This means we're stored in a symbol
+        auto kv = dts.symbol_types.find(func.guessed_name.function_name);
+        if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+          if (kv->second.base_type() != "function") {
+            spdlog::error("Found a function named {} but the symbol has type {}",
+                          func.guessed_name.to_string(), kv->second.print());
+            assert(false);
+          }
+          // GOOD!
+          func.type = kv->second;
+
+          /*
+          spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+                       kv->second.print());
+          func.run_type_analysis(kv->second, dts, data.linked_data);
+           */
+
+          if (func.has_typemaps()) {
+            successful_type_analysis++;
+          }
         }
       }
+    } else {
+      asm_funcs++;
+    }
 
-      if (!func.suspected_asm && func.basic_blocks.size() <= 1) {
-        total_trivial_cfg_functions++;
+    if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
+      if (func.cfg->is_fully_resolved()) {
+      } else {
+        unresolved_by_length[func.end_word - func.start_word].push_back(
+            func.guessed_name.to_string());
       }
+    }
 
-      if (!func.guessed_name.empty()) {
-        total_named_functions++;
-      }
-    });
+    if (!func.suspected_asm && func.basic_blocks.size() <= 1) {
+      total_trivial_cfg_functions++;
+    }
 
-    spdlog::info("Found {} functions ({} with no control flow)", total_functions,
-                 total_trivial_cfg_functions);
-    spdlog::info("Named {}/{} functions ({:.3f}%)", total_named_functions, total_functions,
-                 100.f * float(total_named_functions) / float(total_functions));
-    spdlog::info("Excluding {} asm functions", asm_funcs);
-    spdlog::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
-    spdlog::info(" {}/{} functions passed cfg analysis stage ({:.3f}%)", resolved_cfg_functions,
-                 non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
-    int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
-    spdlog::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
-                 total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-    spdlog::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
-                 100.f * float(successful_cfg_irs) / float(non_asm_funcs));
-    spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,
-                 non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
+    if (!func.guessed_name.empty()) {
+      total_named_functions++;
+    }
+  });
 
-    //    for (auto& kv : unresolved_by_length) {
-    //      printf("LEN %d\n", kv.first);
-    //      for (auto& x : kv.second) {
-    //        printf("  %s\n", x.c_str());
-    //      }
-    //    }
-  }
+  spdlog::info("Found {} functions ({} with no control flow)", total_functions,
+               total_trivial_cfg_functions);
+  spdlog::info("Named {}/{} functions ({:.3f}%)", total_named_functions, total_functions,
+               100.f * float(total_named_functions) / float(total_functions));
+  spdlog::info("Excluding {} asm functions", asm_funcs);
+  spdlog::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
+  spdlog::info(" {}/{} functions passed cfg analysis stage ({:.3f}%)", resolved_cfg_functions,
+               non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
+  int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
+  spdlog::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
+               total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+  spdlog::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
+               100.f * float(successful_cfg_irs) / float(non_asm_funcs));
+  spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,
+               non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
+
+  //    for (auto& kv : unresolved_by_length) {
+  //      printf("LEN %d\n", kv.first);
+  //      for (auto& x : kv.second) {
+  //        printf("  %s\n", x.c_str());
+  //      }
+  //    }
 }

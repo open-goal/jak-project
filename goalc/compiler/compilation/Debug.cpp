@@ -1,5 +1,5 @@
 #include "goalc/compiler/Compiler.h"
-#include "goalc/emitter/disassemble.h"
+#include "goalc/debugger/disassemble.h"
 #include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
 
@@ -308,7 +308,7 @@ Val* Compiler::compile_di(const goos::Object& form, const goos::Object& rest, En
         "Cannot get debug info, the debugger must be connected and the target must be halted.");
   }
 
-  m_debugger.get_break_info();
+  m_debugger.update_break_info();
   return get_none();
 }
 

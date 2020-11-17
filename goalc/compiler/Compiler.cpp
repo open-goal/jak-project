@@ -9,7 +9,7 @@
 
 using namespace goos;
 
-Compiler::Compiler() {
+Compiler::Compiler() : m_debugger(&m_listener) {
   init_logger();
   init_settings();
   m_listener.add_debugger(&m_debugger);
@@ -178,7 +178,9 @@ void Compiler::color_object_file(FileEnv* env) {
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
-  CodeGenerator gen(env);
+  auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
+  debug_info->clear();
+  CodeGenerator gen(env, debug_info);
   return gen.run();
 }
 
@@ -207,14 +209,15 @@ std::vector<std::string> Compiler::run_test_from_file(const std::string& source_
   }
 }
 
-std::vector<std::string> Compiler::run_test_from_string(const std::string& src) {
+std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
+                                                        const std::string& obj_name) {
   try {
     if (!connect_to_target()) {
       throw std::runtime_error("Compiler::run_test_from_file couldn't connect!");
     }
 
     auto code = m_goos.reader.read_from_string({src});
-    auto compiled = compile_object_file("test-code", code, true);
+    auto compiled = compile_object_file(obj_name, code, true);
     if (compiled->is_empty()) {
       return {};
     }

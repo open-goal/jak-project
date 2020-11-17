@@ -17,8 +17,9 @@ struct Config {
   bool write_scripts = false;
   bool write_hexdump_on_v3_only = false;
   bool disassemble_objects_without_functions = false;
-  bool find_basic_blocks = false;
   bool write_hex_near_instructions = false;
+  bool analyze_functions = false;
+  bool process_tpages = false;
   std::unordered_set<std::string> asm_functions_by_name;
   // ...
 };

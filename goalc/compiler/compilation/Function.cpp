@@ -69,6 +69,7 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
  */
 Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto obj_env = get_parent_env_of_type<FileEnv>(env);
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
       !args.only_contains_named({"name", "inline-only", "segment"})) {
@@ -130,7 +131,11 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   }
 
   if (!inline_only) {
-    // compile a function! First create env
+    // compile a function! First create a unique name...
+    std::string function_name = lambda.debug_name;
+    if (function_name.empty()) {
+      function_name = fmt::format("anonymous-function-{}", obj_env->functions().size());
+    }
     auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
     new_func_env->set_segment(segment);
 
@@ -192,7 +197,6 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     new_func_env->finish();
 
     // save our code for possible inlining
-    auto obj_env = get_parent_env_of_type<FileEnv>(new_func_env.get());
     assert(obj_env);
     if (new_func_env->settings.save_code) {
       obj_env->add_function(std::move(new_func_env));
