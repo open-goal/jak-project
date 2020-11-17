@@ -101,6 +101,8 @@ class Reader {
 
   std::unordered_map<std::string, std::string> reader_macros;
 };
+
+std::string get_readable_string(const char* in);
 }  // namespace goos
 
 #endif  // JAK1_READER_H

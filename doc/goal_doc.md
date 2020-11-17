@@ -776,6 +776,7 @@ There is an escape code `\` for string:
 - `\t` tab character
 - `\\` the `\` character
 - `\"` the `"` character
+- `\cXX` where `XX` is a two character hex number: insert this character.
 - Any other character following a `\` is an error.
 
 OpenGOAL stores strings in the same segment of the function which uses the string. I believe GOAL does the same. 
