@@ -171,6 +171,28 @@ TEST(GoosReader, String) {
   EXPECT_ANY_THROW(reader.read_from_string("\"\\w\""));  // "\w" invalid escape
 }
 
+TEST(GoosReader, StringWithNumberEscapes) {
+  Reader reader;
+
+  // build a weird test string
+  std::string str;
+  for (int i = 1; i < 256; i++) {
+    str.push_back(i);
+  }
+
+  // create a readable string:
+  std::string readable = "\"";
+  readable += goos::get_readable_string(str.data());
+  readable.push_back('"');
+
+  EXPECT_TRUE(check_first_string(reader.read_from_string(readable), str));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c1\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\cag\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c-1\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c-2\""));
+}
+
 TEST(GoosReader, Symbol) {
   std::vector<std::string> test_symbols = {
       "test", "test-two", "__werid-sym__", "-a", "-", "/", "*", "+", "a", "#f"};
