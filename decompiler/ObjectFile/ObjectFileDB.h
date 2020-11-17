@@ -59,6 +59,7 @@ class ObjectFileDB {
   void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
   void analyze_functions();
   void process_tpages();
+  std::string process_game_text();
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;

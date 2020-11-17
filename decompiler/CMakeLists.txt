@@ -19,7 +19,8 @@ add_executable(decompiler
         IR/IR.cpp
 		IR/IR_TypeAnalysis.cpp
 		Function/TypeInspector.cpp
-		data/tpage.cpp)
+		data/tpage.cpp
+		data/game_text.cpp)
 
 target_link_libraries(decompiler
         goos

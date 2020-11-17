@@ -21,6 +21,7 @@ struct Config {
   bool write_hex_near_instructions = false;
   bool analyze_functions = false;
   bool process_tpages = false;
+  bool process_game_text = false;
   std::unordered_set<std::string> asm_functions_by_name;
   // ...
 };

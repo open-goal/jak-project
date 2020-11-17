@@ -234,11 +234,9 @@ static uint32_t align16(uint32_t in) {
  * frame and level data is ~10 MB.
  */
 static void link_v2_or_v4(LinkedObjectFile& f,
-                    const std::vector<uint8_t>& data,
-                    const std::string& name,
-                    DecompilerTypeSystem& dts) {
-
-
+                          const std::vector<uint8_t>& data,
+                          const std::string& name,
+                          DecompilerTypeSystem& dts) {
   const auto* header = (const LinkHeaderV4*)&data.at(0);
   assert(header->version == 4 || header->version == 2);
 
@@ -253,8 +251,8 @@ static void link_v2_or_v4(LinkedObjectFile& f,
     // code size is specified!
     code_size = header->code_size;
   } else {
-    // link data starts immediately after the header
-    link_data_offset = sizeof(LinkHeaderV2); // todo, simplify this.
+    // link data starts immediately
+    link_data_offset = 0;
 
     // code is after all the link data
     code_offset = header->length;
@@ -279,19 +277,12 @@ static void link_v2_or_v4(LinkedObjectFile& f,
   // read v2 header after the code
   const uint8_t* link_data = &data.at(link_data_offset);
   uint32_t link_ptr_offset = link_data_offset;
-  const LinkHeaderV2* link_header_v2;
-  if (header->version == 4) {
-    // there's a second header only in v4. (todo, make this less confusing)
-    link_ptr_offset += sizeof(LinkHeaderV2);
-    link_header_v2 = (const LinkHeaderV2*)(link_data);  // subtract off type tag
-    assert(link_header_v2->type_tag == 0xffffffff);
-    assert(link_header_v2->version == 2);
-    assert(link_header_v2->length == header->length);
-    f.stats.total_v2_link_bytes += link_header_v2->length;
-  } else {
-    // todo stats for real v2's
-    link_header_v2 = (const LinkHeaderV2*)header;
-  }
+  link_ptr_offset += sizeof(LinkHeaderV2);
+  auto* link_header_v2 = (const LinkHeaderV2*)(link_data);
+  assert(link_header_v2->type_tag == 0xffffffff);
+  assert(link_header_v2->version == 2);
+  assert(link_header_v2->length == header->length);
+  f.stats.total_v2_link_bytes += link_header_v2->length;
 
   // first "section" of link data is a list of where all the pointer are.
   if (data.at(link_ptr_offset) == 0) {
@@ -404,14 +395,11 @@ static void link_v2_or_v4(LinkedObjectFile& f,
   }
 
   // check length
-  if (header->version == 4) {
-    assert(link_header_v2->length == align64(link_ptr_offset - link_data_offset + 1));
-    while (link_ptr_offset < data.size()) {
-      assert(data.at(link_ptr_offset) == 0);
-      link_ptr_offset++;
-    }
-  } else {
-    // todo v2 checks
+  assert(link_header_v2->length == align64(link_ptr_offset - link_data_offset + 1));
+  size_t expected_end = header->version == 4 ? data.size() : link_header_v2->length;
+  while (link_ptr_offset < expected_end) {
+    assert(data.at(link_ptr_offset) == 0);
+    link_ptr_offset++;
   }
 }
 
