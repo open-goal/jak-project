@@ -50,7 +50,13 @@ int main(int argc, char** argv) {
     db.write_object_file_words(out_folder, get_config().write_hexdump_on_v3_only);
   }
 
-  db.analyze_functions();
+  if (get_config().analyze_functions) {
+    db.analyze_functions();
+  }
+
+  if (get_config().process_tpages) {
+    db.process_tpages();
+  }
 
   if (get_config().write_disassembly) {
     db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions);

@@ -4,6 +4,9 @@
 #include <fstream>
 #include <sstream>
 #include <cassert>
+#include "BinaryWriter.h"
+#include "common/common_types.h"
+#include "third-party/svpng.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -61,6 +64,17 @@ void file_util::write_binary_file(const std::string& name, void* data, size_t si
   if (fwrite(data, size, 1, fp) != 1) {
     throw std::runtime_error("couldn't write file " + name);
   }
+
+  fclose(fp);
+}
+
+void file_util::write_rgba_png(const std::string& name, void* data, int w, int h) {
+  FILE* fp = fopen(name.c_str(), "wb");
+  if (!fp) {
+    throw std::runtime_error("couldn't open file " + name);
+  }
+
+  svpng(fp, w, h, (const unsigned char*)data, 1);
 
   fclose(fp);
 }

@@ -10,6 +10,7 @@
 #include "game/sce/stubs.h"
 #include "fileio.h"
 #include "kprint.h"
+#include "common/versions.h"
 
 namespace {
 // buffer for file paths.  This might be static char buffer[512]. Maybe 633 is the line number?
@@ -274,6 +275,7 @@ char* DecodeFileName(const char* name) {
  * DONE, Had unused int, char*, and MakeFileNameInfo params.
  */
 char* MakeFileName(int type, const char* name, int new_string) {
+  using namespace versions;
   // start with network filesystem
   kstrcpy(buffer_633, "host:");
   char* buf = strend(buffer_633);

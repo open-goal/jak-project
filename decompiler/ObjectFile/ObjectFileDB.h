@@ -56,6 +56,8 @@ class ObjectFileDB {
   void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
   void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
   void analyze_functions();
+  void process_tpages();
+
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
   std::string all_type_defs;
