@@ -32,6 +32,33 @@ std::string strip_dgo_extension(const std::string& x) {
   }
   return x;
 }
+
+std::string obj_filename_to_name(const std::string& x) {
+  auto end = x.length();
+
+  // find last dot
+  auto last_dot = end;
+  for (; last_dot-- > 0;) {
+    if (x.at(last_dot) == '.') {
+      break;
+    }
+  }
+
+  if (last_dot == 0) {
+    last_dot = end;
+  }
+
+  auto last_slash = end;
+  for (; last_slash-- > 0;) {
+    if (x.at(last_slash) == '\\' || x.at(last_slash) == '/') {
+      break;
+    }
+  }
+
+  assert(last_dot > last_slash + 1);
+  assert(last_slash + 1 < x.length());
+  return x.substr(last_slash + 1, last_dot - last_slash - 1);
+}
 }  // namespace
 
 std::string ObjectFileData::to_unique_name() const {
@@ -72,7 +99,8 @@ ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
  * Build an object file DB for the given list of DGOs.
  */
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
-                           const std::string& obj_file_name_map_file) {
+                           const std::string& obj_file_name_map_file,
+                           const std::vector<std::string>& object_files) {
   Timer timer;
 
   spdlog::info("-Loading types...");
@@ -91,6 +119,12 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   spdlog::info("-Initializing ObjectFileDB...");
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
+  }
+
+  for (auto& obj : object_files) {
+    auto data = file_util::read_binary_file(obj);
+    auto name = obj_filename_to_name(obj);
+    add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
   }
 
   spdlog::info("ObjectFileDB Initialized:");

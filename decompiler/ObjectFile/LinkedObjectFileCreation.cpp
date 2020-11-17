@@ -216,24 +216,52 @@ static uint32_t align16(uint32_t in) {
 }
 
 /*!
- * Process link data for a "V4" object file.
+ * Process link data for a "V4" or "V2" object file.
  * In reality a V4 seems to be just a V2 object, but with the link data after the real data.
  * There's a V4 header at the very beginning, but another V2 header/link data at the end
  * -----------------------------------------------
  * | V4 header | data | V2 header | V2 link data |
  * -----------------------------------------------
+ *
+ * V2
+ * -----------------------------------
+ * | V2 header | V2 link data | data |
+ * -----------------------------------
+ * The V4 format avoids having to copy the data to the left once the V2 link data is discarded.
+ * Presumably once they decided that data could never be relocated after being loaded in,
+ * it became worth it to throw away the link data, and avoid the memcpy of the data.
+ * The memcpy is surprisingly expensive, when you consider the linker ran for ~3% of a frame each
+ * frame and level data is ~10 MB.
  */
-static void link_v4(LinkedObjectFile& f,
+static void link_v2_or_v4(LinkedObjectFile& f,
                     const std::vector<uint8_t>& data,
                     const std::string& name,
                     DecompilerTypeSystem& dts) {
-  // read the V4 header to find where the link data really is
-  const auto* header = (const LinkHeaderV4*)&data.at(0);
-  uint32_t link_data_offset = header->code_size + sizeof(LinkHeaderV4);  // no basic offset
 
-  // code starts immediately after the header
-  uint32_t code_offset = sizeof(LinkHeaderV4);
-  uint32_t code_size = header->code_size;
+
+  const auto* header = (const LinkHeaderV4*)&data.at(0);
+  assert(header->version == 4 || header->version == 2);
+
+  // these are different depending on the version.
+  uint32_t code_offset, link_data_offset, code_size;
+
+  if (header->version == 4) {
+    // code starts immediately after the V4 header
+    code_offset = sizeof(LinkHeaderV4);
+    // link_data_offset points to a V2 header
+    link_data_offset = header->code_size + sizeof(LinkHeaderV4);
+    // code size is specified!
+    code_size = header->code_size;
+  } else {
+    // link data starts immediately after the header
+    link_data_offset = sizeof(LinkHeaderV2); // todo, simplify this.
+
+    // code is after all the link data
+    code_offset = header->length;
+    // we have to compute the code size ourself
+    code_size = data.size() - code_offset;
+    assert(header->type_tag == 0xffffffff);
+  }
 
   f.stats.total_code_bytes += code_size;
   f.stats.total_v2_code_bytes += code_size;
@@ -241,7 +269,7 @@ static void link_v4(LinkedObjectFile& f,
   // add all code
   const uint8_t* code_start = &data.at(code_offset);
   const uint8_t* code_end =
-      &data.at(code_offset + code_size);  // safe because link data is after code.
+      &data.at(code_offset + code_size - 1) + 1;  // get the pointer to one past the end.
   assert(((code_end - code_start) % 4) == 0);
   f.set_segment_count(1);
   for (auto x = code_start; x < code_end; x += 4) {
@@ -250,12 +278,20 @@ static void link_v4(LinkedObjectFile& f,
 
   // read v2 header after the code
   const uint8_t* link_data = &data.at(link_data_offset);
-  const auto* link_header_v2 = (const LinkHeaderV2*)(link_data);  // subtract off type tag
-  assert(link_header_v2->type_tag == 0xffffffff);
-  assert(link_header_v2->version == 2);
-  assert(link_header_v2->length == header->length);
-  f.stats.total_v2_link_bytes += link_header_v2->length;
-  uint32_t link_ptr_offset = link_data_offset + sizeof(LinkHeaderV2);
+  uint32_t link_ptr_offset = link_data_offset;
+  const LinkHeaderV2* link_header_v2;
+  if (header->version == 4) {
+    // there's a second header only in v4. (todo, make this less confusing)
+    link_ptr_offset += sizeof(LinkHeaderV2);
+    link_header_v2 = (const LinkHeaderV2*)(link_data);  // subtract off type tag
+    assert(link_header_v2->type_tag == 0xffffffff);
+    assert(link_header_v2->version == 2);
+    assert(link_header_v2->length == header->length);
+    f.stats.total_v2_link_bytes += link_header_v2->length;
+  } else {
+    // todo stats for real v2's
+    link_header_v2 = (const LinkHeaderV2*)header;
+  }
 
   // first "section" of link data is a list of where all the pointer are.
   if (data.at(link_ptr_offset) == 0) {
@@ -368,10 +404,14 @@ static void link_v4(LinkedObjectFile& f,
   }
 
   // check length
-  assert(link_header_v2->length == align64(link_ptr_offset - link_data_offset + 1));
-  while (link_ptr_offset < data.size()) {
-    assert(data.at(link_ptr_offset) == 0);
-    link_ptr_offset++;
+  if (header->version == 4) {
+    assert(link_header_v2->length == align64(link_ptr_offset - link_data_offset + 1));
+    while (link_ptr_offset < data.size()) {
+      assert(data.at(link_ptr_offset) == 0);
+      link_ptr_offset++;
+    }
+  } else {
+    // todo v2 checks
   }
 }
 
@@ -790,12 +830,13 @@ LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
   if (header->version == 3) {
     assert(header->type_tag == 0);
     link_v3(result, data, name, dts);
-  } else if (header->version == 4) {
+  } else if (header->version == 4 || header->version == 2) {
     assert(header->type_tag == 0xffffffff);
-    link_v4(result, data, name, dts);
+    link_v2_or_v4(result, data, name, dts);
   } else if (header->version == 5) {
     link_v5(result, data, name, dts);
   } else {
+    printf("Unsupported version %d\n", header->version);
     assert(false);
   }
 

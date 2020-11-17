@@ -27,12 +27,16 @@ int main(int argc, char** argv) {
   std::string in_folder = argv[2];
   std::string out_folder = argv[3];
 
-  std::vector<std::string> dgos;
+  std::vector<std::string> dgos, objs;
   for (const auto& dgo_name : get_config().dgo_names) {
     dgos.push_back(file_util::combine_path(in_folder, dgo_name));
   }
 
-  ObjectFileDB db(dgos, get_config().obj_file_name_map_file);
+  for (const auto& obj_name : get_config().object_file_names) {
+    objs.push_back(file_util::combine_path(in_folder, obj_name));
+  }
+
+  ObjectFileDB db(dgos, get_config().obj_file_name_map_file, objs);
   file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
                              db.generate_dgo_listing());
   file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
