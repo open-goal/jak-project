@@ -66,11 +66,13 @@ struct link_control {
   }
 };
 
+// only used in OpenGOAL
 struct SegmentInfo {
   uint32_t offset;
   uint32_t size;
 };
 
+// only used in OpenGOAL
 struct ObjectFileHeader {
   uint16_t goal_version_major;
   uint16_t goal_version_minor;

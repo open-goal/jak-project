@@ -9,6 +9,7 @@
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "common/link_types.h"
 
 // There are three link versions:
 // V2 - not really in use anymore, but V4 will resue logic from it (and the game didn't rename the
@@ -24,13 +25,6 @@ struct LinkHeaderCommon {
   uint32_t type_tag;  // for the basic offset, is 0 or -1 depending on version
   uint32_t length;    // different exact meanings, but length of the link data.
   uint16_t version;   // what version (2, 3, 4)
-};
-
-// Header for link data used for V2 linking data
-struct LinkHeaderV2 {
-  uint32_t type_tag;  // always -1
-  uint32_t length;    // length of link data
-  uint32_t version;   // always 2
 };
 
 // Header for link data used for V4
@@ -101,12 +95,15 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
     uint32_t next_reloc = link_ptr_offset + 1;
 
     if (seek & 3) {
+      // 0b01, 0b10
       seek = (relocPtr[1] << 8) | table_value;
       next_reloc = link_ptr_offset + 2;
       if (seek & 2) {
+        // 0b10
         seek = (relocPtr[2] << 16) | seek;
         next_reloc = link_ptr_offset + 3;
         if (seek & 1) {
+          // 0b11
           seek = (relocPtr[3] << 24) | seek;
           next_reloc = link_ptr_offset + 4;
         }

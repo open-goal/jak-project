@@ -24,6 +24,8 @@ add_library(compiler
         compiler/compilation/Type.cpp
         compiler/compilation/Static.cpp
         compiler/Util.cpp
+        data_compiler/game_text.cpp
+        data_compiler/DataObjectGenerator.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         logger/Logger.cpp

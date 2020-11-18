@@ -33,6 +33,7 @@ static const std::unordered_map<
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
         {"asm-file", &Compiler::compile_asm_file},
+        {"asm-data-file", &Compiler::compile_asm_data_file},
         {"listen-to-target", &Compiler::compile_listen_to_target},
         {"reset-target", &Compiler::compile_reset_target},
         {":status", &Compiler::compile_poke},
