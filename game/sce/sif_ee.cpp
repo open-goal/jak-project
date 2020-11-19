@@ -152,6 +152,7 @@ s32 sceWrite(s32 fd, const void* buf, s32 nbyte) {
   (void)buf;
   (void)nbyte;
   assert(false);
+  return 0;
 }
 
 s32 sceLseek(s32 fd, s32 offset, s32 where) {
