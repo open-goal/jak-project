@@ -1,3 +1,12 @@
+/*!
+ * @file game_text.cpp
+ * Builds the XCOMMON.TXT text files.  Each file contains all the strings that appear in the game
+ * translated into a language.
+ *
+ * The decompiler/data/game_text.cpp file extracts text from the game and creates a file that
+ * can be read with these functions.
+ */
+
 #include <algorithm>
 #include "game_text.h"
 #include "common/goos/Reader.h"
@@ -43,6 +52,15 @@ const goos::Object& cdr(const goos::Object& x) {
   return x.as_pair()->cdr;
 }
 
+/*!
+ * Parse a game text file for all languages.
+ * The result is a vector<map<text_id, string>>
+ *  so result[lang_id][text_id] gets you the text in the given language.
+ *
+ * The file should begin with (language-count x) with the given number of languages.
+ * Each entry should be (text-id "text-in-lang-0" "text-in-lang-1" ... )
+ * The text id's can be out of order or missing entries.
+ */
 std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data) {
   std::vector<std::unordered_map<int, std::string>> text;
   bool languages_set = false;
@@ -109,13 +127,18 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
   )
  */
 
+/*!
+ * Write game text data to a file. Uses the V2 object format which is identical between GOAL and
+ * OpenGOAL, so this should produce exactly identical files to what is found in the game.
+ */
 void compile(const std::vector<std::unordered_map<int, std::string>>& text) {
+  // get all text ID's we know
   std::vector<int> add_order;
   add_order.reserve(text.front().size());
-
   for (auto& x : text.front()) {
     add_order.push_back(x.first);
   }
+  // and sort them to be added in order. This matches the game.
   std::sort(add_order.begin(), add_order.end());
 
   for (int lang = 0; lang < int(text.size()); lang++) {
@@ -123,12 +146,16 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text) {
     gen.add_type_tag("game-text-info");  // type
     gen.add_word(text.front().size());   // length
     gen.add_word(lang);                  // language-id
-    gen.add_ref_to_string("common");     // group-name
+    // this string is found in the string pool.
+    gen.add_ref_to_string_in_pool("common");  // group-name
 
     // now add all the datas:
     for (auto id : add_order) {
-      gen.add_word(id);                             // id
-      gen.add_ref_to_string(text.at(lang).at(id));  // text
+      gen.add_word(id);  // id
+      // these strings must be in the string pool, as sometimes there are duplicate
+      // strings in a single language, and these strings should be stored once and have multiple
+      // references to them.
+      gen.add_ref_to_string_in_pool(text.at(lang).at(id));  // text
     }
     auto data = gen.generate_v2();
     file_util::write_binary_file(
@@ -138,6 +165,9 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text) {
 }
 }  // namespace
 
+/*!
+ * Read a game text description file and generate GOAL objects.
+ */
 void compile_game_text(const std::string& filename) {
   goos::Reader reader;
   auto code = reader.read_from_file({filename});

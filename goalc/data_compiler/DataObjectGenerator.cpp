@@ -62,7 +62,7 @@ void DataObjectGenerator::link_word_to_byte(int source_word, int target_byte) {
   m_ptr_links.push_back(rec);
 }
 
-int DataObjectGenerator::add_ref_to_string(const std::string& str) {
+int DataObjectGenerator::add_ref_to_string_in_pool(const std::string& str) {
   auto result = int(m_words.size());
   m_words.push_back(0);
   m_string_pool[str].push_back(result);

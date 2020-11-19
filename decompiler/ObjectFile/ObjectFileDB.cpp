@@ -34,6 +34,10 @@ std::string strip_dgo_extension(const std::string& x) {
   return x;
 }
 
+/*!
+ * Get an object name from a file name.
+ * Strips off the file extension and anything before the last slash.
+ */
 std::string obj_filename_to_name(const std::string& x) {
   auto end = x.length();
 
@@ -81,6 +85,7 @@ std::string ObjectFileData::to_unique_name() const {
     return record.name;
   }
 }
+
 ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
   ObjectFileData* result = nullptr;
 

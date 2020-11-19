@@ -10,7 +10,7 @@ class DataObjectGenerator {
   int add_word(u32 word);
   void link_word_to_word(int source, int target, int offset = 0);
   void link_word_to_byte(int source_word, int target_byte);
-  int add_ref_to_string(const std::string& str);
+  int add_ref_to_string_in_pool(const std::string& str);
   int add_type_tag(const std::string& str);
   int add_symbol_link(const std::string& str);
   std::vector<u8> generate_v2();

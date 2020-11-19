@@ -7,7 +7,7 @@
 #include <cassert>
 #include <cstring>
 #include <cstdio>
-#include "game/sce/stubs.h"
+#include "game/sce/sif_ee.h"
 #include "fileio.h"
 #include "kprint.h"
 #include "common/versions.h"
@@ -255,6 +255,8 @@ char* DecodeFileName(const char* name) {
       result = MakeFileName(CODE_FILE_TYPE, name + 6, 0);
     } else if (!strncmp(name, "$RES/", 5)) {
       result = MakeFileName(RES_FILE_TYPE, name + 5, 0);
+    } else if (!strncmp(name, "$JAK-PROJECT/", 13)) {
+      result = MakeFileName(JAK_PROJECT_FILE_TYPE, name + 13, 0);
     } else {
       printf("[ERROR] DecodeFileName: UNKNOWN FILE NAME %s\n", name);
       result = nullptr;
@@ -378,6 +380,8 @@ char* MakeFileName(int type, const char* name, int new_string) {
     // REFPLANT? no idea
     static char nextDir[] = "/";
     sprintf(buf, "%sconfig_data/refplant/%s", nextDir, name);
+  } else if (type == JAK_PROJECT_FILE_TYPE) {
+    sprintf(buffer_633, "/%s", name);
   } else {
     printf("UNKNOWN FILE TYPE %d\n", type);
   }
