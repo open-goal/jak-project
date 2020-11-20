@@ -24,6 +24,8 @@ add_library(compiler
         compiler/compilation/Type.cpp
         compiler/compilation/Static.cpp
         compiler/Util.cpp
+        data_compiler/game_text.cpp
+        data_compiler/DataObjectGenerator.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         logger/Logger.cpp
@@ -36,12 +38,13 @@ add_library(compiler
         compiler/Compiler.cpp)
 
 add_executable(goalc main.cpp)
+add_executable(data_compiler data_compiler.cpp)
 
 IF (WIN32)
     target_link_libraries(compiler goos type_system mman common_util spdlog cross_os_debug cross_sockets Zydis)
-
 ELSE ()
     target_link_libraries(compiler goos type_system common_util spdlog cross_os_debug cross_sockets Zydis)
 ENDIF ()
 
 target_link_libraries(goalc goos compiler type_system)
+target_link_libraries(data_compiler goos compiler type_system)

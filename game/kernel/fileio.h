@@ -42,6 +42,8 @@ enum GoalFileType {
   CNT_FILE_TYPE = 0x3a,
   RES_FILE_TYPE = 0x3b,
   REFPLANT_FILE_TYPE = 0x301,
+  // added this, allows access directly to jak-project/ from within the game.
+  JAK_PROJECT_FILE_TYPE = 0x302
 };
 
 constexpr char FOLDER_PREFIX[] = "";

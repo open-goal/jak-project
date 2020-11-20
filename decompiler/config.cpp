@@ -15,6 +15,7 @@ void set_config(const std::string& path_to_config_file) {
 
   gConfig.game_version = cfg.at("game_version").get<int>();
   gConfig.dgo_names = cfg.at("dgo_names").get<std::vector<std::string>>();
+  gConfig.object_file_names = cfg.at("object_file_names").get<std::vector<std::string>>();
   if (cfg.contains("obj_file_name_map_file")) {
     gConfig.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
   }
@@ -27,6 +28,7 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
   gConfig.analyze_functions = cfg.at("analyze_functions").get<bool>();
   gConfig.process_tpages = cfg.at("process_tpages").get<bool>();
+  gConfig.process_game_text = cfg.at("process_game_text").get<bool>();
 
   std::vector<std::string> asm_functions_by_name =
       cfg.at("asm_functions_by_name").get<std::vector<std::string>>();

@@ -473,7 +473,13 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     }
 
     if (result->type().base_type() == "inline-array") {
-      assert(false);
+      auto di = m_ts.get_deref_info(result->type());
+      auto base_type = di.result_type;
+      assert(di.can_deref);
+      auto offset = compile_integer(di.stride, env)->to_gpr(env);
+      // todo, check for integer and avoid runtime multiply
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
+      result = fe->alloc_val<MemoryOffsetVal>(di.result_type, result, offset);
     } else if (result->type().base_type() == "pointer") {
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;

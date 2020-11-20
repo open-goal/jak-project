@@ -15,7 +15,7 @@
 #include "Instruction.h"
 #include "goalc/debugger/DebugInfo.h"
 
-class FunctionDebugInfo;
+struct FunctionDebugInfo;
 
 namespace emitter {
 

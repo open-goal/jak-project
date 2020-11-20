@@ -8,6 +8,7 @@
 #include "common/util/Timer.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
+#include "goalc/data_compiler/game_text.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -42,6 +43,22 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
     });
   } catch (std::runtime_error& e) {
     throw_compile_error(form, std::string("seval error: ") + e.what());
+  }
+  return get_none();
+}
+
+/*!
+ * Compile a "data file"
+ */
+Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
+  auto kind = symbol_string(args.unnamed.at(0));
+  if (kind == "game-text") {
+    compile_game_text(as_string(args.unnamed.at(1)));
+  } else {
+    throw_compile_error(form, "Unknown asm data file mode");
   }
   return get_none();
 }
@@ -143,7 +160,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     printf("F: %36s ", obj_file_name.c_str());
     timing.emplace_back("total", total_timer.getMs());
     for (auto& e : timing) {
-      printf(" %12s %4.2f", e.first.c_str(), e.second / 1000.f);
+      printf(" %12s %4.0f", e.first.c_str(), e.second);
     }
     printf("\n");
   }

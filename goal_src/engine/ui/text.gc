@@ -5,3 +5,51 @@
 ;; name in dgo: text
 ;; dgos: GAME, ENGINE
 
+(define *game-text-word* (new 'global 'string 256 (the string '#f)))
+(define *game-text-line* (new 'global 'string 256 (the string '#f)))
+(define *level-text-file-load-flag* '#t)
+
+;; allocate the game text heap if it isn't already allocated.
+(when (= 0 (-> *common-text-heap* base))
+  (let ((heap *common-text-heap*))
+    (set! (-> heap base) (malloc 'global 34816))
+    (set! (-> heap current) (-> heap base))
+    (set! (-> heap top-base) (&+ (-> heap base) 34816))
+    (set! (-> heap top) (-> heap top-base))
+    )
+  )
+
+(defmethod length game-text-info ((obj game-text-info))
+  "Get the length (number of strings) in a game-text-info."
+  (-> obj length)
+  )
+
+(defmethod asize-of game-text-info ((obj game-text-info))
+  (the int (+ (-> obj type size) (* 8 (-> obj length))))
+  )
+
+(defmethod inspect game-text-info ((obj game-text-info))
+  (format '#t "[~8x] ~A~%" obj (-> obj type))
+  (format '#t "~Tlength: ~D~%" (-> obj length))
+  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  
+  (let ((i 0))
+    (while (< i (-> obj length))
+      (format '#t "~T  [~D] #x~X ~A~%" i (-> obj data i id) (-> obj data i text))
+      (+! i 1)
+      )
+    )
+  obj
+  )
+
+;; todo method 8
+;; todo method 9
+;; todo text-is-loading
+;; todo load-game-text-info
+;; todo load-level-text-files
+;; todo draw-debug-text-box
+;; todo set-font-color-alpha
+;; todo print-game-text-scaled
+;; todo print-game-text
+;; todo disable-level-text-file-loading
+;; todo enable-level-text-file-loading

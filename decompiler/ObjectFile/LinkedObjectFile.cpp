@@ -823,6 +823,7 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_q
     char cword[4];
     memcpy(cword, &word.data, 4);
     result += cword[byte_offset];
+    assert(result.back() != 0);
   }
   if (with_quotes) {
     result += "\"";

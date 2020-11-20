@@ -10,6 +10,7 @@
 struct Config {
   int game_version = -1;
   std::vector<std::string> dgo_names;
+  std::vector<std::string> object_file_names;
   std::unordered_set<std::string> bad_inspect_types;
   std::string obj_file_name_map_file;
   bool write_disassembly = false;
@@ -20,6 +21,7 @@ struct Config {
   bool write_hex_near_instructions = false;
   bool analyze_functions = false;
   bool process_tpages = false;
+  bool process_game_text = false;
   std::unordered_set<std::string> asm_functions_by_name;
   // ...
 };

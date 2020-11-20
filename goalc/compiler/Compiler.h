@@ -34,6 +34,7 @@ class Compiler {
   std::vector<std::string> run_test_from_string(const std::string& src,
                                                 const std::string& obj_name = "*listener*");
   std::vector<std::string> run_test_no_load(const std::string& source_code);
+  void run_front_end_on_string(const std::string& src);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
   Debugger& get_debugger() { return m_debugger; }
@@ -54,6 +55,7 @@ class Compiler {
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
   Val* compile_integer(s64 value, Env* env);
+  Val* compile_char(const goos::Object& code, Env* env);
   Val* compile_float(const goos::Object& code, Env* env);
   Val* compile_float(float value, Env* env, int seg);
   Val* compile_symbol(const goos::Object& form, Env* env);
@@ -173,6 +175,7 @@ class Compiler {
   Val* compile_seval(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_exit(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_poke(const goos::Object& form, const goos::Object& rest, Env* env);

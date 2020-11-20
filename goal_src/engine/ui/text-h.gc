@@ -5,3 +5,39 @@
 ;; name in dgo: text-h
 ;; dgos: GAME, ENGINE
 
+;; This file contains types related to game text.
+;; Each game string is assigned an ID number.
+;; This ID is used to lookup the string for the currently selected language.
+
+;; an individual string. 
+(deftype game-text (structure)
+  ((id   uint32  :offset-assert 0)
+   (text string  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; A table of all strings.
+(deftype game-text-info (basic)
+  ((length      int32            :offset-assert 4)
+   (language-id int32            :offset-assert 8)
+   (group-name  string           :offset-assert 12)
+   (data        game-text :dynamic :inline :offset-assert 16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+;; todo, need support for array
+;(define *text-group-names* #("common"))
+
+(define *common-text-heap* (new 'global 'kheap))
+;; probably some other type.
+(define *common-text* #f)

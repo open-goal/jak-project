@@ -36,4 +36,12 @@ struct ObjectHeader {
   char name[60];
 };
 
+// Header for link data used for V2 linking data
+// used in GOAL and OpenGOAL
+struct LinkHeaderV2 {
+  uint32_t type_tag;  // always -1
+  uint32_t length;    // length of link data
+  uint32_t version;   // always 2
+};
+
 #endif  // JAK1_LINK_TYPES_H

@@ -11,6 +11,7 @@
 #include <cstring>
 #include <map>
 #include "decompiler/data/tpage.h"
+#include "decompiler/data/game_text.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
@@ -31,6 +32,37 @@ std::string strip_dgo_extension(const std::string& x) {
     return x.substr(0, x.length() - 4);
   }
   return x;
+}
+
+/*!
+ * Get an object name from a file name.
+ * Strips off the file extension and anything before the last slash.
+ */
+std::string obj_filename_to_name(const std::string& x) {
+  auto end = x.length();
+
+  // find last dot
+  auto last_dot = end;
+  for (; last_dot-- > 0;) {
+    if (x.at(last_dot) == '.') {
+      break;
+    }
+  }
+
+  if (last_dot == 0) {
+    last_dot = end;
+  }
+
+  auto last_slash = end;
+  for (; last_slash-- > 0;) {
+    if (x.at(last_slash) == '\\' || x.at(last_slash) == '/') {
+      break;
+    }
+  }
+
+  assert(last_dot > last_slash + 1);
+  assert(last_slash + 1 < x.length());
+  return x.substr(last_slash + 1, last_dot - last_slash - 1);
 }
 }  // namespace
 
@@ -53,6 +85,7 @@ std::string ObjectFileData::to_unique_name() const {
     return record.name;
   }
 }
+
 ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
   ObjectFileData* result = nullptr;
 
@@ -72,7 +105,8 @@ ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
  * Build an object file DB for the given list of DGOs.
  */
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
-                           const std::string& obj_file_name_map_file) {
+                           const std::string& obj_file_name_map_file,
+                           const std::vector<std::string>& object_files) {
   Timer timer;
 
   spdlog::info("-Loading types...");
@@ -91,6 +125,12 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   spdlog::info("-Initializing ObjectFileDB...");
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
+  }
+
+  for (auto& obj : object_files) {
+    auto data = file_util::read_binary_file(obj);
+    auto name = obj_filename_to_name(obj);
+    add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
   }
 
   spdlog::info("ObjectFileDB Initialized:");
@@ -627,6 +667,34 @@ void ObjectFileDB::process_tpages() {
   });
   spdlog::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
                100.f * float(success) / float(total), timer.getMs());
+}
+
+std::string ObjectFileDB::process_game_text() {
+  spdlog::info("- Finding game text...");
+  std::string text_string = "COMMON";
+  Timer timer;
+  int file_count = 0;
+  int string_count = 0;
+  int char_count = 0;
+  std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
+
+  for_each_obj([&](ObjectFileData& data) {
+    if (data.name_in_dgo.substr(1) == text_string) {
+      file_count++;
+      auto statistics = ::process_game_text(data);
+      string_count += statistics.total_text;
+      char_count += statistics.total_chars;
+      if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
+        assert(false);
+      }
+      text_by_language_by_id[statistics.language] = std::move(statistics.text);
+    }
+  });
+
+  spdlog::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
+               string_count, char_count, timer.getMs());
+
+  return write_game_text(text_by_language_by_id);
 }
 
 void ObjectFileDB::analyze_functions() {

@@ -1,5 +1,8 @@
 #include <cstring>
 #include <cassert>
+#include <cstdio>
+#include <unordered_map>
+#include "common/util/FileUtil.h"
 #include "sif_ee.h"
 #include "game/system/iop_thread.h"
 #include "game/runtime.h"
@@ -8,7 +11,8 @@ namespace ee {
 
 namespace {
 ::IOP* iop;
-}
+std::unordered_map<s32, FILE*> sce_fds;
+}  // namespace
 
 void LIBRARY_sceSif_register(::IOP* i) {
   iop = i;
@@ -16,6 +20,10 @@ void LIBRARY_sceSif_register(::IOP* i) {
 
 void LIBRARY_INIT_sceSif() {
   iop = nullptr;
+  for (auto& kv : sce_fds) {
+    fclose(kv.second);
+  }
+  sce_fds.clear();
 }
 void sceSifInitRpc(unsigned int mode) {
   (void)mode;
@@ -91,4 +99,81 @@ s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode) {
   bd->serve = (sceSifServeData*)1;
   return 0;
 }
+
+s32 sceOpen(const char* filename, s32 flag) {
+  auto name = file_util::get_file_path({filename});
+  FILE* fp = nullptr;
+  switch (flag) {
+    case SCE_RDONLY:
+      fp = fopen(name.c_str(), "r");
+      break;
+    default:
+      assert(false);
+  }
+
+  if (!fp) {
+    printf("[SCE] sceOpen(%s) failed.\n", name.c_str());
+    return -1;
+  }
+
+  s32 fp_idx = sce_fds.size() + 1;
+  sce_fds[fp_idx] = fp;
+  return fp_idx;
+}
+
+s32 sceClose(s32 fd) {
+  if (fd < 0) {
+    // todo, what should we really return?
+    return 0;
+  }
+
+  auto kv = sce_fds.find(fd);
+  if (kv != sce_fds.end()) {
+    fclose(kv->second);
+    sce_fds.erase(fd);
+    return 0;
+  } else {
+    printf("[SCE] sceClose called on invalid fd\n");
+    return 0;
+  }
+}
+
+s32 sceRead(s32 fd, void* buf, s32 nbyte) {
+  auto kv = sce_fds.find(fd);
+  if (kv == sce_fds.end()) {
+    return -1;
+  } else {
+    return fread(buf, 1, nbyte, kv->second);
+  }
+}
+
+s32 sceWrite(s32 fd, const void* buf, s32 nbyte) {
+  (void)fd;
+  (void)buf;
+  (void)nbyte;
+  assert(false);
+  return 0;
+}
+
+s32 sceLseek(s32 fd, s32 offset, s32 where) {
+  auto kv = sce_fds.find(fd);
+  if (kv == sce_fds.end()) {
+    return -1;
+  } else {
+    switch (where) {
+      case SCE_SEEK_CUR:
+        fseek(kv->second, offset, SEEK_CUR);
+        return ftell(kv->second);
+      case SCE_SEEK_END:
+        fseek(kv->second, offset, SEEK_END);
+        return ftell(kv->second);
+      case SCE_SEEK_SET:
+        fseek(kv->second, offset, SEEK_SET);
+        return ftell(kv->second);
+      default:
+        assert(false);
+    }
+  }
+}
+
 }  // namespace ee
