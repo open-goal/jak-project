@@ -140,6 +140,8 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
       return compile_pair(code, env);
     case goos::ObjectType::INTEGER:
       return compile_integer(code, env);
+    case goos::ObjectType::CHAR:
+      return compile_char(code, env);
     case goos::ObjectType::SYMBOL:
       return compile_symbol(code, env);
     case goos::ObjectType::STRING:
@@ -193,6 +195,11 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
 Val* Compiler::compile_integer(const goos::Object& code, Env* env) {
   assert(code.is_int());
   return compile_integer(code.integer_obj.value, env);
+}
+
+Val* Compiler::compile_char(const goos::Object& code, Env* env) {
+  assert(code.is_char());
+  return compile_integer(uint8_t(code.char_obj.value), env);
 }
 
 /*!

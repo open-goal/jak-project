@@ -54,6 +54,7 @@ class Compiler {
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
   Val* compile_integer(s64 value, Env* env);
+  Val* compile_char(const goos::Object& code, Env* env);
   Val* compile_float(const goos::Object& code, Env* env);
   Val* compile_float(float value, Env* env, int seg);
   Val* compile_symbol(const goos::Object& form, Env* env);

@@ -19,7 +19,7 @@
 
 namespace {
 // turn on printf's for debugging linking issues.
-constexpr bool link_debug_printfs = true;
+constexpr bool link_debug_printfs = false;
 
 bool is_opengoal_object(const void* data) {
   auto* header = (const LinkHeaderV2*)data;

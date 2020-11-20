@@ -52,6 +52,25 @@ const goos::Object& cdr(const goos::Object& x) {
   return x.as_pair()->cdr;
 }
 
+std::string get_string(const goos::Object& x) {
+  if (x.is_string()) {
+    return x.as_string()->data;
+  }
+  throw std::runtime_error(x.print() + " was supposed to be an string, but isn't");
+}
+
+std::string uppercase(const std::string& in) {
+  std::string result;
+  result.reserve(in.size());
+  for (auto c : in) {
+    if (c >= 'a' && c <= 'z') {
+      c -= ('a' - 'A');
+    }
+    result.push_back(c);
+  }
+  return result;
+}
+
 /*!
  * Parse a game text file for all languages.
  * The result is a vector<map<text_id, string>>
@@ -61,9 +80,13 @@ const goos::Object& cdr(const goos::Object& x) {
  * Each entry should be (text-id "text-in-lang-0" "text-in-lang-1" ... )
  * The text id's can be out of order or missing entries.
  */
-std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data) {
+std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data,
+                                                        std::string* group_name) {
   std::vector<std::unordered_map<int, std::string>> text;
   bool languages_set = false;
+  bool group_name_set = false;
+  std::string possible_group_name;
+
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
     if (obj.is_pair()) {
       auto head = obj.as_pair()->car;
@@ -76,7 +99,19 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
         if (!cdr(cdr(obj)).is_empty_list()) {
           throw std::runtime_error("language-count has too many arguments");
         }
-      } else if (head.is_int()) {
+      } else if (head.is_symbol() && head.as_symbol()->name == "group-name") {
+        if (group_name_set) {
+          throw std::runtime_error("group-name has been set multiple times.");
+        }
+        group_name_set = true;
+
+        possible_group_name = get_string(car(cdr(obj)));
+        if (!cdr(cdr(obj)).is_empty_list()) {
+          throw std::runtime_error("group-name has too many arguments");
+        }
+      }
+
+      else if (head.is_int()) {
         int i = 0;
         int id = head.as_int();
         for_each_in_list(cdr(obj), [&](const goos::Object& entry) {
@@ -108,6 +143,11 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
       throw std::runtime_error("Invalid game text file");
     }
   });
+
+  if (!group_name_set) {
+    throw std::runtime_error("group-name not set.");
+  }
+  *group_name = possible_group_name;
   return text;
 }
 
@@ -131,7 +171,8 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
  * Write game text data to a file. Uses the V2 object format which is identical between GOAL and
  * OpenGOAL, so this should produce exactly identical files to what is found in the game.
  */
-void compile(const std::vector<std::unordered_map<int, std::string>>& text) {
+void compile(const std::vector<std::unordered_map<int, std::string>>& text,
+             const std::string& group_name) {
   // get all text ID's we know
   std::vector<int> add_order;
   add_order.reserve(text.front().size());
@@ -147,7 +188,7 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text) {
     gen.add_word(text.front().size());   // length
     gen.add_word(lang);                  // language-id
     // this string is found in the string pool.
-    gen.add_ref_to_string_in_pool("common");  // group-name
+    gen.add_ref_to_string_in_pool(group_name);  // group-name
 
     // now add all the datas:
     for (auto id : add_order) {
@@ -158,9 +199,10 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text) {
       gen.add_ref_to_string_in_pool(text.at(lang).at(id));  // text
     }
     auto data = gen.generate_v2();
+
     file_util::write_binary_file(
-        file_util::get_file_path({"out", fmt::format("{}COMMON.TXT", lang)}), data.data(),
-        data.size());
+        file_util::get_file_path({"out", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
+        data.data(), data.size());
   }
 }
 }  // namespace
@@ -172,6 +214,7 @@ void compile_game_text(const std::string& filename) {
   goos::Reader reader;
   auto code = reader.read_from_file({filename});
   printf("[Build Game Text] %s\n", filename.c_str());
-  auto text_map = parse(code);
-  compile(text_map);
+  std::string group_name;
+  auto text_map = parse(code, &group_name);
+  compile(text_map, group_name);
 }

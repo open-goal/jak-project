@@ -149,6 +149,7 @@ std::string write_game_text(
 
   // write!
   std::string result = fmt::format("(language-count {})\n", langauges.size());
+  result += "(group-name \"common\")\n";
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);
     for (auto& y : x.second) {

@@ -160,7 +160,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     printf("F: %36s ", obj_file_name.c_str());
     timing.emplace_back("total", total_timer.getMs());
     for (auto& e : timing) {
-      printf(" %12s %4.2f", e.first.c_str(), e.second / 1000.f);
+      printf(" %12s %4.0f", e.first.c_str(), e.second);
     }
     printf("\n");
   }
