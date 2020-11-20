@@ -251,6 +251,11 @@ bool Compiler::connect_to_target() {
   return true;
 }
 
+void Compiler::run_front_end_on_string(const std::string& src) {
+  auto code = m_goos.reader.read_from_string({src});
+  compile_object_file("run-on-string", code, true);
+}
+
 std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
   auto code = m_goos.reader.read_from_file({source_code});
   compile_object_file("test-code", code, true);
