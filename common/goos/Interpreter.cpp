@@ -380,8 +380,8 @@ ArgumentSpec Interpreter::parse_arg_spec(const Object& form, Object& rest) {
 void Interpreter::vararg_check(
     const Object& form,
     const Arguments& args,
-    const std::vector<MatchParam<ObjectType>>& unnamed,
-    const std::unordered_map<std::string, std::pair<bool, MatchParam<ObjectType>>>& named) {
+    const std::vector<std::optional<ObjectType>>& unnamed,
+    const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named) {
   assert(args.rest.empty());
   if (unnamed.size() != args.unnamed.size()) {
     throw_eval_error(form, "Got " + std::to_string(args.unnamed.size()) +
@@ -389,11 +389,10 @@ void Interpreter::vararg_check(
   }
 
   for (size_t i = 0; i < unnamed.size(); i++) {
-    if (unnamed[i] != args.unnamed[i].type) {
-      assert(!unnamed[i].is_wildcard);
+    if (unnamed[i].has_value() && unnamed[i] != args.unnamed[i].type) {
       throw_eval_error(form, "Argument " + std::to_string(i) + " has type " +
                                  object_type_to_string(args.unnamed[i].type) + " but " +
-                                 object_type_to_string(unnamed[i].value) + " was expected");
+                                 object_type_to_string(unnamed[i].value()) + " was expected");
     }
   }
 
@@ -407,12 +406,12 @@ void Interpreter::vararg_check(
       }
     } else {
       // argument given.
-      if (kv.second.second != kv2->second.type) {
+      if (kv.second.second.has_value() && kv.second.second != kv2->second.type) {
         // but is wrong type
-        assert(!kv.second.second.is_wildcard);
         throw_eval_error(form, "Argument \"" + kv.first + "\" has type " +
                                    object_type_to_string(kv2->second.type) + " but " +
-                                   object_type_to_string(kv.second.second.value) + " was expected");
+                                   object_type_to_string(kv.second.second.value()) +
+                                   " was expected");
       }
     }
   }
