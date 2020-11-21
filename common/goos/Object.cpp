@@ -1,3 +1,43 @@
+/*!
+ * @file Object.cpp
+ * An "Object" represents a scheme object.
+ * There are different types of objects, as represented by ObjectType.
+ * An "Object" is an efficient wrapper around any of these types.
+ * Some types are "heap allocated", and have reference semantics, and others are
+ * "fixed" and have value semantics.  Heap allocated objects implement reference counting with
+ * std::shared_ptr.
+ *
+ * To create a new Object for a heap allocated type, use the make_new static method of the type of
+ * object you want to make. This will return a correctly setup Object. For fixed objects, use
+ * Object::make_<type>
+ *
+ * To convert an Object into a more specific object, use the as_<type> method of Object.
+ * It will throw an exception is you get the type wrong.
+ *
+ * These are all the types:
+ *
+ * EMPTY_LIST - a special heap allocated object. There is only one EMPTY_LIST allocated, and
+ * EmptyListObject::make_new() will always return an Object which references that one.
+ *
+ * INTEGER - a fixed type. Use Object::make_integer() to create one. Internally uses int64_t
+ * FLOAT - a fixed type. Use Object::make_float() to create one. Internally uses double
+ * CHAR - a fixed type. Use Object::make_char() to create one. Internally uses char
+ *
+ * SYMBOL - a special heap allocated object. SymbolObject::make_new requires a SymbolTable to
+ * store the newly allocated symbol in, and will return an existing symbol if there already is one.
+ *
+ * STRING - a heap allocated object. Create with StringObject::make_new. Uses std::string internally
+ *
+ * PAIR - a heap allocated object containing two Objects.
+ *
+ * ARRAY - a heap allocated object containing a std::vector<Object>
+ *
+ * LAMBDA - a heap allocated object representing a GOOS lambda
+ * MACRO - a heap allocated object representing a GOOS macro
+ * ENVIRONMENT - a heap allocated object representing a GOOS environment
+ *
+ */
+
 #include "Object.h"
 #include "common/util/FileUtil.h"
 

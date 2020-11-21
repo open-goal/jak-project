@@ -1,3 +1,9 @@
+/*!
+ * @file PrettyPrinter.cpp
+ * A Pretty Printer for GOOS.
+ * It is not very good, but significantly better than putting everything on one line
+ */
+
 #include <cassert>
 #include <stdexcept>
 #include <utility>

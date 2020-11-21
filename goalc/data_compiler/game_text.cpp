@@ -200,8 +200,10 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text,
     }
     auto data = gen.generate_v2();
 
+    file_util::create_dir_if_needed(file_util::get_file_path({"out", "iso"}));
     file_util::write_binary_file(
-        file_util::get_file_path({"out", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
+        file_util::get_file_path(
+            {"out", "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
         data.data(), data.size());
   }
 }

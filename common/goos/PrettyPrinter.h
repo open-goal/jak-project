@@ -1,9 +1,11 @@
+#pragma once
+
 /*!
  * @file PrettyPrinter.h
  * A Pretty Printer for GOOS.
+ * It is not very good, but significantly better than putting everything on one line
  */
 
-#pragma once
 #include <string>
 #include <vector>
 #include "common/goos/Object.h"

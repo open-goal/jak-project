@@ -1,3 +1,8 @@
+/*!
+ * @file TypeSpec.cpp
+ * A GOAL TypeSpec is a reference to a type or compound type.
+ */
+
 #include "TypeSpec.h"
 #include "Type.h"
 

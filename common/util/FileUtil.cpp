@@ -1,6 +1,12 @@
+/*!
+ * @file FileUtil.cpp
+ * Utility functions for reading and writing files.
+ */
+
 #include "FileUtil.h"
 #include <iostream>
-#include <stdio.h> /* defines FILENAME_MAX */
+#include <filesystem>
+#include <cstdio> /* defines FILENAME_MAX */
 #include <fstream>
 #include <sstream>
 #include <cassert>
@@ -53,6 +59,14 @@ std::string file_util::get_file_path(const std::vector<std::string>& input) {
   }
 
   return filePath;
+}
+
+bool file_util::create_dir_if_needed(const std::string& path) {
+  if (!std::filesystem::is_directory(path)) {
+    std::filesystem::create_directories(path);
+    return true;
+  }
+  return false;
 }
 
 void file_util::write_binary_file(const std::string& name, void* data, size_t size) {

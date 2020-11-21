@@ -2,11 +2,8 @@
 
 /*!
  * @file Interpreter.h
- * The GOOS Interpreter
+ * The GOOS Interpreter and implementation of special and "built-in forms"
  */
-
-#ifndef JAK1_INTERPRETER_H
-#define JAK1_INTERPRETER_H
 
 #include <memory>
 #include <optional>
@@ -237,5 +234,3 @@ class Interpreter {
   std::unordered_map<std::string, ObjectType> string_to_type;
 };
 }  // namespace goos
-
-#endif  // JAK1_INTERPRETER_H

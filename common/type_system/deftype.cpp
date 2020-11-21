@@ -1,3 +1,9 @@
+/*!
+ * @file deftype.cpp
+ * Parser for the GOAL "deftype" form.
+ * This is used both in the compiler and in the decompiler for the type definition file.
+ */
+
 #include "deftype.h"
 #include "third-party/fmt/core.h"
 

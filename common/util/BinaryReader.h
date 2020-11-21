@@ -1,7 +1,9 @@
 #pragma once
 
-#ifndef JAK_V2_BINARYREADER_H
-#define JAK_V2_BINARYREADER_H
+/*!
+ * @file BinaryReader.h
+ * Read raw data like a stream.
+ */
 
 #include <cstdint>
 #include <cassert>
@@ -38,5 +40,3 @@ class BinaryReader {
   uint32_t size;
   uint32_t seek = 0;
 };
-
-#endif  // JAK_V2_BINARYREADER_H

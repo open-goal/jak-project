@@ -1,9 +1,15 @@
-#include <cassert>
-#include <third-party/fmt/core.h>
-#include "TypeSystem.h"
-#include "type_util.h"
+/*!
+ * @file TypeSystem.cpp
+ * The GOAL Type System.
+ * Stores types, symbol types, methods, etc, and does typechecking, lowest-common-ancestor, field
+ * access types, and reverse type lookups.
+ */
+
 #include <cassert>
 #include <stdexcept>
+#include <third-party/fmt/core.h>
+#include "TypeSystem.h"
+#include "common/util/math_util.h"
 
 TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.

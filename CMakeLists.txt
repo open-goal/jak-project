@@ -39,7 +39,7 @@ IF (WIN32)
 ENDIF ()
 
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 
 if(CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)
@@ -61,9 +61,6 @@ include_directories(SYSTEM third-party/spdlog/include)
 set(SPDLOG_BUILD_SHARED ON CACHE BOOL "a" FORCE)
 # this makes the spdlog includes not use the header only version, making compiling faster
 add_definitions(-DSPDLOG_COMPILED_LIB)
-
-# build asset packer/unpacker
-add_subdirectory(asset_tool)
 
 # build goos
 add_subdirectory(common/goos)

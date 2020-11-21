@@ -8,30 +8,29 @@
 
 <!-- toc -->
 
+- [Project Description](#project-description)
 - [Table of Contents](#table-of-contents)
-- [Requirements](#requirements)
 - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
 - [Getting Started - Windows](#getting-started---windows)
-- [Project Description](#project-description)
 - [Project Layout](#project-layout)
-- [Design](#design)
-- [Coding Guidelines](#coding-guidelines)
-- [TODOs](#todos)
-  - [GOAL Decompiler](#goal-decompiler)
-  - [GOAL Runtime](#goal-runtime)
-  - [GOAL Compiler](#goal-compiler)
-  - [Asset Extraction Tool](#asset-extraction-tool)
-  - [Asset Packing Tool](#asset-packing-tool)
-
 <!-- tocstop -->
+## Project Description
 
-## Requirements
+This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
+- decompile the original game code into human-readable GOAL code
+- develop our own compiler for GOAL and recompile game code for x86-64
+- create a tool to extract game assets into formats that can be easily viewed or modified
+- create tools to repack game assets into a format that our port uses.
 
-- `cmake` for build system
-- `clang-format` for formatting code (there is already a `.clang-format` provided)
-- `gtest` for testing. (Run `git submodule update --init --recursive` to check out the repository)
-- `nasm` for assembling x86
-- Third party libraries (`nlohmann/json`, `minilzo`, and `linenoise`) are provided in the `third-party` folder
+Our objectives are:
+- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled. 
+- Our GOAL compiler's performance should be around the same as unoptimized C.
+- try to match things from the original game and development as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
+- support modifications. It should be possible to make edits to the code without everything else breaking.
+- 
+
+We support both Linux and Windows on x86-64.
+
 
 ## Getting Started - Linux (Ubuntu)
 
@@ -84,190 +83,99 @@ You may also wish to view the files that pertain to each CMake target, rather th
 
 ![](./doc/imgs/cmake-target-view.png)
 
-TODO
-
-- more steps to follow as we actually figure it out!
-- running tests
-- etc
-
-## Project Description
-
-This project is to port Jak 1 (NTSC, "black label" version) to PC. The strategy is to:
-
-- recompile for x86 to get much better performance than emulation
-- create human-reabable GOAL source code that can be modified
-- create a GOAL compiler for x86-64 which supports live patching of code like the original
-- attempt to match the original game as close as possible (for no reason other than it's fun)
-- unpack assets in a format that can be modified
-
-There are 6 components to this project
-
-- GOAL decompiler. The result will be manually cleaned up for running on a PC.
-- GOAL compiler for x86-64.
-- Game source code, made from cleaning up the result of the GOAL decompiler.
-- GOAL runtime. This will replace the parts of the game written in C++
-- Asset extraction tool to extract the models/textures/large data from the game
-- Asset packing tool.
-
-The process to build the port will be
-
-- Build data extraction tool, GOAL compiler, and GOAL runtime library (all written in C++)
-- Run the GOAL compiler on the game source code to build the game engine
-- Run asset extraction on the game disc to get level data, textures, geometry data, music...
-- Run the asset packing tool to combine the unpacked assets with the compiled game engine to create the game!
-
-Some statistics:
-
-- Estimated ~500k lines of GOAL code
-- 10410 functions
-- 5451 functions with no control flow (no branching, loops, if/else, short-circuiting boolean operators, gotos, etc)
-
-The rough timeline is to finish sometime in 2022. If it looks like this is impossible, the project will be abandoned. But I have already spent about 4 months preparing to start this and seems doable. I also have some background in compilers, and familiarity with PS2 (worked on DobieStation PS2 emulator) / MIPS in general (wrote a PS1 emulator). I think the trick will be making good automated tools - the approach taken for SM64 and other N64 decompilations is way too labor-intensive to work.
 
 ## Project Layout
+There are four main components to the project. 
 
-- `goalc` is the GOAL compiler
-- `decompiler` is the decompiler
-- `decompiler_out` is the decompiler output
-- `data` will contain big assets and the output of the GOAL compiler (not checked in to git)
-- `out` will contain the finished game (not checked into git)
-- `resources` will contain data which is checked into git
-- `game` will contain the game source code (C/C++)
-- `goal_src` will contain GOAL source code for the game
-- `common` will contain all data/type shared between different applications.
-- `doc` will contain documentation
-- `iso_data` is where the files from the DVD go
-- `third-party` will contain code we didn't write. Google Test is a git submodule in this folder.
-- `tests` will contain all tests
-- `asset_tool` will contain the asset packer/unpacker
+The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of GOAL is called OpenGOAL. All of the compiler source code is in `goalc`. To run the compiler on Linux, there is a script `gc.sh`.  The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
 
-## Design
+The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD into the `iso_data` folder. Then run `decomp.sh` to run the decompiler. The decompile will extract assets to the `assets` folder. These assets will be used by the compiler when building the port. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
 
-(if anybody has better ideas, feel free to suggest improvements! This is just a rough plan for now)
+The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder.  Right now most of this is placeholders, but you can take a look at `kernel/gcommon.gc` or `goal-lib.gc` to see some in-progress source code.
 
-- All C++ code should build from the top-level `cmake`.
-- All C++ applications (GOAL compiler, asset extractor, asset packer, runtime, test) should have a script in the top level which launches them.
-- All file paths should be relative to the `jak` folder.
-- The planned workflow for building a game:
-  - `git submodule update --init --recursive` : check out gtest
-  - `mkdir build; cd build` : create build folder for C++
-  - `cmake ..; make -j` : build C++ code
-  - `cd ..`
-  - `./test.sh` : run gtests
-  - `./asset_extractor.sh ./iso_data` : extract assets from game
-  - `./build_engine.sh` : run GOAL compiler to build all game code
-  - `./build_game.sh` : run the asset packer to build the game
-  - `./run_game.sh` : run the game
-- Workflow for development:
-  - `./gc.sh` : run the compiler in interactive mode
-  - `./gs.sh` : run a goos interpreter in interactive mode
-  - `./decomp.sh : run the decompiler
+The final component is the "runtime", located in `game`. This is the part of the game that's written in C++. In the port, that includes:
+- The "C Kernel", which contains the GOAL linker and some low-level GOAL language features. GOAL has a completely custom dynamically linked object file format so in order to load the first GOAL code, you need a linker written in C++. Some low-level functions for memory allocation, communicating with the I/O Processor, symbol table, strings, and the type system are also implemented in C, as these are required for the linker.  It also listens for incoming messages from the compiler and passes them to the running game. This also initializes the game, by initializing the PS2 hardware, allocating the GOAL heaps, loading the GOAL kernel off of the DVD, and executing the kernel dispatcher function. This is in the `game/kernel` folder.  This should be as close as possible to the game, and all differences should be noted with a comment.
 
-## Coding Guidelines
+- Implementation of Sony's standard library. GOAL code can call C library functions, and Naughty Dog used some Sony library functions to access files, memory cards, controllers, and communicate with the separate I/O Processor. The library functions are in `game/sce`. Implementations of library features specific to the PC port are located in `game/system`.
 
-- Avoid warnings
-- Use asserts over throwing exceptions in game code (throwing exceptions from C code called by GOAL code is sketchy)
+- The I/O Processor driver, Overlord. The PS2 had a separate CPU called the I/O Processor (IOP) that was directly connected to the DVD drive hardware and the sound hardware. Naughty Dog created a custom driver for the IOP that handled streaming data off of the DVD. It is much more complicated than I first expected. It's located in `game/overlord`. Like the C kernel, we try to keep this as close as possible to the actual game.
 
-## TODOs
+- Sound Code. Naughty Dog used a third party library for sound. We have not started on this yet.
 
-- Clean up header guard names (or just use `#pragma once`?)
-- Investigate a better config format
-  - The current JSON library seems to have issues with comments, which I really like
-- Clean up use of namespaces
-- Clean up the print message when `gk` starts.
-- Finish commenting runtime stuff
-- Runtime document
-- GOOS document
-- Listener protocol document
-- Gtest setup for checking decompiler results against hand-decompiled stuff
-- Clean up decompiler print spam, finish up the CFG stuff
-- Decompiler document
+- PC specific graphics stuff. We have not started on this yet.
 
-### GOAL Decompiler
+## Directory Layout
 
-The decompiler is in progress, at
-https://github.com/water111/jak-disassembler
+- `.github`: GitHub actions CI setup
+- `.vs`: Visual Studio project configurations
+- `assets`: extracted assets (textures, translated game text) generated by the decompiler. Not included in the repository. To be used when building the PC port.
+- `build`: C++ CMake build folder
+- `common`: common C++ code shared between the compiler, decompiler, and game.
+  - `cross_os_debug`: platform-independent library for implementing the OpenGOAL debugger. Linux-only currently
+  - `cross_sockets`: platform-indpendent library for sockets. Used to connect the compiler to a running game. Linux and Windows.
+  - `goos`: the compiler-time macro language and parser for OpenGOAL.
+  - `type_system`: the OpenGOAL type system
+  - `util`: Random utility functions for accessing files, timers, etc.
+- `decompiler`: Source code for the decompiler
+  - `config`: JSON config files for the decompiler and type definition file.
+  - `data`: utilities to extract assets from the game
+  - `Disasm`: MIPS disassembler
+  - `Function`: Tools for analyzing GOAL functions
+  - `gui`: an early prototype of a Python GUI for reading the output of the decompiler
+  - `IR`: the "Intermediate Representation" for GOAL functions
+  - `ObjectFile`: Utilities for processing the GOAL object file format.
+  - `scripts`: Useful scripts for setting up the decompilation
+  - `util`: random utilities
+- `decompiler_out`: output of the decompiler that's not automaically used by the compiler. This is for humans to read and use. Not included in the repository.
+- `doc`: more documentation!
+- `game`: the source code for the game executable
+  - `common`: shared stuff between the `kernel` and `overlord`
+  - `kernel`: the part of the GOAL kernel written in C. The entry point for the game is in `kboot.cpp`.
+  - `overlord`: the I/O processor driver used to get data off of the DVD
+  - `sce`: the Sony library implementation
+  - `system`: PC-port specific stuff
+- `goal_src`: The GOAL code for the game. It's mostly empty now.
+  - `build`: info related to the GOAL build system.
+  - `engine`: the game engine
+  - `kernel`: The GOAL kernel
+  - `levels`: Level specific code.
+- `goalc`: The OpenGOAL compiler
+  - `compiler`: The implementation of the OpenGOAL language
+  - `data_compiler`: Tools for packing data
+  - `debugger`: The OpenGOAL debugger (part of the compiler)
+  - `emitter`: x86-64 emitter and object file generator
+  - `listener`: The OpenGOAL listener, which connects the compiler to a running GOAL program for the interactive REPL
+  - `regalloc`: Register alocator 
+- `iso_data`: 
+- `out`: Outputs from the build process. Only the `iso` subfolder should contain assets used by the game.
+  - `iso`: Final outputs that are used by the game.
+  - `obj`: Object files generated by the compiler.
+- `resources`: To be removed. Contains fake versions of some files required to get things booting.
+- `scripts`: Utility scripts.
+- `test`: Unit tests (run on GitHub Actions)
+- `third-party`: Third party libraries
+  - CMake Code Coverage. For code coverage statistics on GitHub builds
+  - `fmt`. String formatting library
+  - `googletest`: Test framework
+  - `inja`: templating library used for generating test code for compiler tests
+  - `minilzo`: decompression code for Jak 2 and later DGOs
+  - `mman`: Windows library used to emulate `mmap` on Linux
+  - `run-clang-format`: Utility to check and enforce code formatting
+  - `run-clang-tidy`
+  - `spdlog`: Logging library
+  - `zydis`: x86-64 disassembler used in the OpenGOAL debugger
+  - `json`: A JSON library
+  - `linenoise`: Used for the REPL input. Support history and useful editing shortcuts.
+  - `svpng`: Save a PNG file
 
-Here is the plan for writing the decompiler:
 
-- [x] Decode the CGO/DGO format.
-- [x] Decode the linking data format.
-- [x] Identify all code and disassemble
-- [x] Recover references
-- [x] Split code into functions, and build a graph of basic blocks
-- [ ] Create a control flow graph for each function (currently succeeds for 9857/10410 functions)
-- [ ] Extract type/method information from debug data
-- [ ] Convert instructions to an intermediate representation (IR) and eliminate GOAL/MIPS idioms
-- [ ] Regsiter liveness analysis
-- [ ] Type propagation
-- [ ] Variable map and scoping
-- [ ] S-expression construction (expression stack)
+## More Documentation
+Check out these files for more documentation. Some of it is still in progress
+- `doc/goal_dbg_doc.md`: OpenGOAL debugger
+- `doc/goal_doc.md`: OpenGOAL language
+- `doc/reader.md`: OpenGOAL "reader" documentation (OpenGOAL syntax)
+- `doc/type_system.md`: OpenGOAL type system documentation
+- `doc/porting_to_x86.md`: Summary of changes we're making to port to x86-64
+- `doc/goos.md`: GOOS macro language
 
-### GOAL Runtime
-
-The "runtime" will be a replacement for all of the C/C++ code of the original game. There is C/C++ code that runs on the main processor (EE) and the separate I/O processor (IOP).
-
-- The "C Kernel", which runs on the EE and contains
-  - [ ] File I/O (for debugging, not used by retail game)
-  - [x] Initialization to boostrap the GOAL Kernel and start the game engine
-  - [x] Connection to compiler for debugging/live code patching
-  - [x] Interface to OVERLORD (see next section) for DGO loading
-  - [x] GOAL Linker
-  - [ ] PS2-specific hardware initialization as required by Sony libraries
-  - [x] GOAL "kheap" allocator
-  - [ ] Memory card interface
-  - [x] GOAL printf (called `format`) implementation
-  - [x] GOAL hash/symbol table implementation
-  - [x] Implementation of some built-in GOAL methods/functions
-- The "OVERLORD" IOP driver, which ran on the PS2's separate I/O Processor for loading things off the DVD and doing sound things
-  - [x] DGO loader
-  - [x] File system for loading from DVD or "fakeiso" mode for loading from a folder
-  - [x] "ISOThread" queue system for prioritizing reads
-  - [ ] Sound stuff
-  - [ ] Streaming animation stuff
-  - [ ] Ramdisk stuff (implemented but totally untested)
-- The "989_snd" sound driver (no progress has been made here, the rough plan is to do a high level emulation of the sound system)
-- Sony libraries
-  - [x] SIF (interface between EE/IOP for sending data, receiving data, and making remote procedure calls)
-  - [x] IOP Kernel (single-processor non-preemptive multitasking)
-  - [x] stubs for stuff that doesn't really matter
-
-The "Sony libraries" are a simple wrapper around my `system` library, which implements the threading/communication stuff.
-
-Likely there will be sound/graphics code in here at some point, but this part is not fully planned yet.
-
-### GOAL Compiler
-
-The GOAL compiler will target x86-64. At first just Linux. There is a macro language called GOOS which is basically just Scheme but with a few bonus features.
-
-The compiler will reuse a significant amount of code from my existing LISP compiler for x86-64. I have a very bad WIP combination which is capable of building a modified `gkernel.gc` for x86 as a proof of concept. It can create and run functions in threads.
-
-An important part of the compiler is the test suite. Without tests the compiler will be full of bugs. So every feature should have a good set of tests.
-
-### Asset Extraction Tool
-
-Not started yet. The simplest version of this tool is just to use the decompiler logic to turn the level/art-group/texture/TXT files into GOAL source code, and copy all STR/sound/visibility files, as these don't need to be modified.
-
-Eventually this should export to a more useful format.
-
-File formats:
-
-- [ ] Art group (a GOAL object format)
-  - There may be more formats related to art groups.
-- [ ] Texture page (a GOAL object format)
-  - [ ] Texture page directory (a GOAL object format)
-- [ ] Level (`vis-bt`) (a GOAL object format)
-- [ ] `TEXT/*.TXT` (text, a GOAL object format)
-- [ ] `MUS` (sequenced music)
-- [ ] `SBK` (sound bank)
-- [ ] `STR` (streaming animation)
-- [ ] `VAG` (ADPCM audio)
-- [ ] `VIS` (visibility data bitstream)
-- [ ] Loading screen image
-- [ ] save game icon (I do not care about this)
-
-### Asset Packing Tool
-
-Packs together all assets/compiled code/runtime into a format that can be played. The simplest version to go with the simplest extraction tool will just pass the level/art-group/texture/TXT files to the compiler, and copy STR/sound/visbility files into the fakeiso. Then pack in CGOs/DGOs.
-
-It's important that the asset extraction/packing can be automated so we can avoid distributing the assets, which are large and probably not supposed to be distributed.
+## Tests
