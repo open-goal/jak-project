@@ -9,7 +9,7 @@
 #define JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
 
 #include "Instruction.h"
-#include "common/util/MatchParam.h"
+#include "decompiler/util/MatchParam.h"
 
 bool is_no_link_gpr_store(const Instruction& instr,
                           MatchParam<int> size,
