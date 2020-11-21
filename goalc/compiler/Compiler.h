@@ -4,6 +4,7 @@
 #define JAK_COMPILER_H
 
 #include <functional>
+#include <optional>
 #include "common/type_system/TypeSystem.h"
 #include "Env.h"
 #include "goalc/listener/Listener.h"
@@ -77,11 +78,11 @@ class Compiler {
                         const std::function<void(const goos::Object&)>& f);
 
   goos::Arguments get_va(const goos::Object& form, const goos::Object& rest);
-  void va_check(
-      const goos::Object& form,
-      const goos::Arguments& args,
-      const std::vector<MatchParam<goos::ObjectType>>& unnamed,
-      const std::unordered_map<std::string, std::pair<bool, MatchParam<goos::ObjectType>>>& named);
+  void va_check(const goos::Object& form,
+                const goos::Arguments& args,
+                const std::vector<std::optional<goos::ObjectType>>& unnamed,
+                const std::unordered_map<std::string,
+                                         std::pair<bool, std::optional<goos::ObjectType>>>& named);
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);

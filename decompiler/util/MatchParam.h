@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK1_MATCHPARAM_H
-#define JAK1_MATCHPARAM_H
-
 template <typename T>
 struct MatchParam {
   MatchParam() { is_wildcard = true; }
@@ -19,5 +16,3 @@ struct MatchParam {
   bool operator==(const T& other) const { return is_wildcard || (value == other); }
   bool operator!=(const T& other) const { return !(*this == other); }
 };
-
-#endif  // JAK1_MATCHPARAM_H
