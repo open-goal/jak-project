@@ -12,6 +12,7 @@
 #include <map>
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
+#include "decompiler/data/StrFileReader.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
@@ -106,7 +107,8 @@ ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
  */
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
                            const std::string& obj_file_name_map_file,
-                           const std::vector<std::string>& object_files) {
+                           const std::vector<std::string>& object_files,
+                           const std::vector<std::string>& str_files) {
   Timer timer;
 
   spdlog::info("-Loading types...");
@@ -122,15 +124,31 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
         "consistent naming when doing a partial decompilation.");
   }
 
-  spdlog::info("-Initializing ObjectFileDB...");
+  spdlog::info("-Loading DGOs...");
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
   }
 
+  spdlog::info("-Loading plain object files...");
   for (auto& obj : object_files) {
     auto data = file_util::read_binary_file(obj);
     auto name = obj_filename_to_name(obj);
     add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
+  }
+
+  spdlog::info("-Loading streaming object files...");
+  for (auto& obj : str_files) {
+    StrFileReader reader(obj);
+    // name from the file name
+    std::string base_name = obj_filename_to_name(obj);
+    // name from inside the file (this does a lot of sanity checking)
+    auto obj_name = reader.get_full_name(base_name + ".STR");
+    for (int i = 0; i < reader.chunk_count(); i++) {
+      // append the chunk ID to the full name
+      std::string name = obj_name + fmt::format("+{}", i);
+      auto& data = reader.get_chunk(i);
+      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
+    }
   }
 
   spdlog::info("ObjectFileDB Initialized:");
@@ -320,12 +338,12 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
  */
 void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     const std::string& name_in_dgo,
-                                    uint8_t* obj_data,
+                                    const uint8_t* obj_data,
                                     uint32_t obj_size,
                                     const std::string& dgo_name) {
   stats.total_obj_files++;
   assert(obj_size > 128);
-  uint16_t version = *(uint16_t*)(obj_data + 8);
+  uint16_t version = *(const uint16_t*)(obj_data + 8);
   auto hash = file_util::crc32(obj_data, obj_size);
 
   bool duplicated = false;
@@ -442,8 +460,8 @@ std::string ObjectFileDB::generate_obj_listing() {
       dgos.pop_back();
       dgos.pop_back();
       dgos += "]";
-      result += "[\"" + pad_string(x.to_unique_name() + "\", ", 40) + "\"" +
-                pad_string(x.name_in_dgo + "\", ", 30) + std::to_string(x.obj_version) + ", " +
+      result += "[\"" + pad_string(x.to_unique_name() + "\", ", 50) + "\"" +
+                pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
       all_unique_names.insert(x.to_unique_name());
