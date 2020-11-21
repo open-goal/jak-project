@@ -23,4 +23,6 @@ std::string base_name(const std::string& filename);
 void init_crc();
 uint32_t crc32(const uint8_t* data, size_t size);
 uint32_t crc32(const std::vector<uint8_t>& data);
+void MakeISOName(char* dst, const char* src);
+void ISONameFromAnimationName(char* dst, const char* src);
 }  // namespace file_util

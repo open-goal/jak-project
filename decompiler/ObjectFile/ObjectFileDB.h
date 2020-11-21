@@ -47,7 +47,8 @@ class ObjectFileDB {
  public:
   ObjectFileDB(const std::vector<std::string>& _dgos,
                const std::string& obj_file_name_map_file,
-               const std::vector<std::string>& object_files);
+               const std::vector<std::string>& object_files,
+               const std::vector<std::string>& str_files);
   std::string generate_dgo_listing();
   std::string generate_obj_listing();
   void process_link_data();
@@ -70,7 +71,7 @@ class ObjectFileDB {
   void get_objs_from_dgo(const std::string& filename);
   void add_obj_from_dgo(const std::string& obj_name,
                         const std::string& name_in_dgo,
-                        uint8_t* obj_data,
+                        const uint8_t* obj_data,
                         uint32_t obj_size,
                         const std::string& dgo_name);
 

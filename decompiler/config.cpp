@@ -16,6 +16,7 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.game_version = cfg.at("game_version").get<int>();
   gConfig.dgo_names = cfg.at("dgo_names").get<std::vector<std::string>>();
   gConfig.object_file_names = cfg.at("object_file_names").get<std::vector<std::string>>();
+  gConfig.str_file_names = cfg.at("str_file_names").get<std::vector<std::string>>();
   if (cfg.contains("obj_file_name_map_file")) {
     gConfig.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
   }

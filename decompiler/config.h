@@ -11,6 +11,7 @@ struct Config {
   int game_version = -1;
   std::vector<std::string> dgo_names;
   std::vector<std::string> object_file_names;
+  std::vector<std::string> str_file_names;
   std::unordered_set<std::string> bad_inspect_types;
   std::string obj_file_name_map_file;
   bool write_disassembly = false;
