@@ -1,5 +1,10 @@
 #pragma once
 
+/*!
+ * @file Type.h
+ * Representation of a GOAL type in the type system.
+ */
+
 #ifndef JAK_TYPE_H
 #define JAK_TYPE_H
 

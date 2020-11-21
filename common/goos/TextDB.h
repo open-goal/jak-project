@@ -13,9 +13,6 @@
  *   (+ 1 (+ a b)) ; compute the sum
  */
 
-#ifndef JAK1_TEXTDB_H
-#define JAK1_TEXTDB_H
-
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -99,4 +96,3 @@ class TextDb {
 };
 }  // namespace goos
 
-#endif  // JAK1_TEXTDB_H

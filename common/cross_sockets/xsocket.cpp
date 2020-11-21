@@ -1,3 +1,8 @@
+/*!
+ * @file xsocket.cpp
+ * Cross platform socket library used for the listener.
+ */
+
 #ifdef __linux
 #include <sys/socket.h>
 #include <netinet/tcp.h>

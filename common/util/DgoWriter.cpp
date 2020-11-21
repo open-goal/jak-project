@@ -1,3 +1,8 @@
+/*!
+ * @file DgoWriter.cpp
+ * Create a DGO from existing files.
+ */
+
 #include "BinaryWriter.h"
 #include "FileUtil.h"
 #include "DgoWriter.h"
@@ -22,7 +27,5 @@ void build_dgo(const DgoDescription& description) {
     }
   }
 
-  printf("DGO: %15s %.3f MB\n", description.dgo_name.c_str(),
-         (float)(writer.get_size()) / (1 << 20));
   writer.write_to_file(file_util::get_file_path({"out", description.dgo_name}));
 }

@@ -1,8 +1,12 @@
+/*!
+ * @file Type.cpp
+ * Representation of a GOAL type in the type system.
+ */
+
 #include <stdexcept>
 #include <cassert>
 #include <third-party/fmt/core.h>
 #include "Type.h"
-#include "type_util.h"
 
 namespace {
 std::string reg_kind_to_string(RegKind kind) {

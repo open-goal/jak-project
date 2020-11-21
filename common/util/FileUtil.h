@@ -1,4 +1,10 @@
 #pragma once
+
+/*!
+ * @file FileUtil.h
+ * Utility functions for reading and writing files.
+ */
+
 #include <string>
 #include <vector>
 

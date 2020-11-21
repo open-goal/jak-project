@@ -1,7 +1,6 @@
 /*!
  * @file Interpreter.cpp
- * The GOOS Interpreter and implementation of special forms.
- * Additional "built-in" forms are implemented in InterpreterEval
+ * The GOOS Interpreter and implementation of special and "built-in forms"
  */
 
 #include <utility>

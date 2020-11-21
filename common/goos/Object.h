@@ -40,8 +40,6 @@
  *
  */
 
-#ifndef JAK1_OBJECT_H
-#define JAK1_OBJECT_H
 
 #include <string>
 #include <cassert>
@@ -640,5 +638,3 @@ class ArrayObject : public HeapObject {
 Object build_list(const std::vector<Object>& objects);
 
 }  // namespace goos
-
-#endif  // JAK1_OBJECT_H

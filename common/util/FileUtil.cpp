@@ -1,3 +1,8 @@
+/*!
+ * @file FileUtil.cpp
+ * Utility functions for reading and writing files.
+ */
+
 #include "FileUtil.h"
 #include <iostream>
 #include <stdio.h> /* defines FILENAME_MAX */

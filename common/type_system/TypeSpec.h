@@ -2,6 +2,7 @@
 
 /*!
  * @file TypeSpec.h
+ * A GOAL TypeSpec is a reference to a type or compound type.
  */
 
 #ifndef JAK_TYPESPEC_H
