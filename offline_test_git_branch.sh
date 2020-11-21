@@ -10,6 +10,8 @@ echo "  ================= Cloning..."
 
 ISO_DATA_PATH=${1}
 BRANCH_NAME=${2:-master}
+# Provide a default location to bind the ISO_DATA_PATH
+ISO_DATA_SYM_LINK_DIR=${3:-iso_data}
 
 if [ -z "$1" ]
   then
@@ -27,7 +29,7 @@ git submodule update --init --recursive
 
 # create symlink to the iso_data folder.
 rm -r iso_data
-ln -s $ISO_DATA_PATH 
+ln -s $ISO_DATA_PATH $ISO_DATA_SYM_LINK_DIR
 
 
 mkdir build
