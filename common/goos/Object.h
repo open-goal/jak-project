@@ -40,7 +40,6 @@
  *
  */
 
-
 #include <string>
 #include <cassert>
 #include <memory>

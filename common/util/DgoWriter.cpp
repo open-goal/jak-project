@@ -14,7 +14,8 @@ void build_dgo(const DgoDescription& description) {
   writer.add_cstr_len(description.dgo_name.c_str(), 60);
 
   for (auto& obj : description.entries) {
-    auto obj_data = file_util::read_binary_file(file_util::get_file_path({"data", obj.file_name}));
+    auto obj_data =
+        file_util::read_binary_file(file_util::get_file_path({"out", "obj", obj.file_name}));
     // size
     writer.add<uint32_t>(obj_data.size());
     // name
@@ -27,5 +28,6 @@ void build_dgo(const DgoDescription& description) {
     }
   }
 
-  writer.write_to_file(file_util::get_file_path({"out", description.dgo_name}));
+  file_util::create_dir_if_needed(file_util::get_file_path({"out", "iso"}));
+  writer.write_to_file(file_util::get_file_path({"out", "iso", description.dgo_name}));
 }

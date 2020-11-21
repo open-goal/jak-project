@@ -95,4 +95,3 @@ class TextDb {
   std::unordered_map<std::shared_ptr<goos::HeapObject>, TextRef> map;
 };
 }  // namespace goos
-

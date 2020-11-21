@@ -4,7 +4,6 @@
  * It is not very good, but significantly better than putting everything on one line
  */
 
-
 #include <cassert>
 #include <stdexcept>
 #include <utility>

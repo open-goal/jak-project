@@ -40,4 +40,3 @@ class BinaryReader {
   uint32_t size;
   uint32_t seek = 0;
 };
-

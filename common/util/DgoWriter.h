@@ -17,5 +17,3 @@ struct DgoDescription {
 };
 
 void build_dgo(const DgoDescription& description);
-
-

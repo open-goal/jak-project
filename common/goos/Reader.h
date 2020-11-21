@@ -101,4 +101,3 @@ class Reader {
 
 std::string get_readable_string(const char* in);
 }  // namespace goos
-

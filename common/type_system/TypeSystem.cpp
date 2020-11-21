@@ -11,7 +11,6 @@
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
 
-
 TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.
   add_type("none", std::make_unique<NullType>("none"));

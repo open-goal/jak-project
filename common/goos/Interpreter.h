@@ -5,7 +5,6 @@
  * The GOOS Interpreter and implementation of special and "built-in forms"
  */
 
-
 #include <memory>
 #include <optional>
 #include "Object.h"
