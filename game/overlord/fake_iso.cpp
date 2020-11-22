@@ -127,7 +127,7 @@ int FS_Init(u8* buffer) {
     }
 
     i = 0;
-    while (*ptr && (*ptr != '\n') && (*ptr != ' ') && i < 128) {
+    while (*ptr && (*ptr != '\n') && (*ptr != ' ') && (*ptr != EOF) && i < 128) {
       e->file_path[i] = *ptr;
       ptr++;
       i++;
