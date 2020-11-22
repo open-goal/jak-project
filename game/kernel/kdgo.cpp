@@ -16,6 +16,7 @@
 #include "game/common/ramdisk_rpc_types.h"
 #include "game/common/loader_rpc_types.h"
 #include "game/common/play_rpc_types.h"
+#include "game/common/str_rpc_types.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
 
 using namespace ee;
@@ -49,6 +50,27 @@ s32 RpcCall(s32 rpcChannel,
                        nullptr);
 }
 
+// Terrible hack! Remove soon!
+
+namespace {
+struct RpcCallArgCache {
+  s32 rpcChannel;
+  u32 fno;
+  u32 async;
+} rpc_arg_cache;
+}  // namespace
+
+void RpcCall_wrapper_part1(s32 rpcChannel, u32 fno, u32 async) {
+  rpc_arg_cache.rpcChannel = rpcChannel;
+  rpc_arg_cache.fno = fno;
+  rpc_arg_cache.async = async;
+}
+
+u64 RpcCall_wrapper_part2(u64 send_buff, s32 send_size, u64 recv_buff, s32 recv_size) {
+  return RpcCall_wrapper(rpc_arg_cache.rpcChannel, rpc_arg_cache.fno, rpc_arg_cache.async,
+                         send_buff, send_size, recv_buff, recv_size);
+}
+
 /*!
  * GOAL Wrapper for RpcCall.
  */
@@ -59,6 +81,7 @@ u64 RpcCall_wrapper(s32 rpcChannel,
                     s32 send_size,
                     u64 recv_buff,
                     s32 recv_size) {
+  fprintf(stderr, "size in c is %d\n", recv_size);
   return sceSifCallRpc(&cd[rpcChannel], fno, async, Ptr<u8>(send_buff).c(), send_size,
                        Ptr<u8>(recv_buff).c(), recv_size, nullptr, nullptr);
 }
@@ -126,7 +149,7 @@ u32 RpcBind(s32 channel, s32 id) {
 u32 InitRPC() {
   if (!RpcBind(PLAYER_RPC_CHANNEL, PLAYER_RPC_ID) && !RpcBind(LOADER_RPC_CHANNEL, LOADER_RPC_ID) &&
       !RpcBind(RAMDISK_RPC_CHANNEL, RAMDISK_RPC_ID) && !RpcBind(DGO_RPC_CHANNEL, DGO_RPC_ID) &&
-      !RpcBind(4, 0xdeb5) && !RpcBind(PLAY_RPC_CHANNEL, PLAY_RPC_ID)) {
+      !RpcBind(STR_RPC_CHANNEL, STR_RPC_ID) && !RpcBind(PLAY_RPC_CHANNEL, PLAY_RPC_ID)) {
     return 0;
   }
   printf("Entering endless loop ... please wait\n");

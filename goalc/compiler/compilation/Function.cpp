@@ -441,10 +441,11 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     }
     for (uint32_t i = 0; i < args.size(); i++) {
       if (method_type_name.empty()) {
-        typecheck(form, function->type().get_arg(i), args.at(i)->type(), "function argument");
+        typecheck(form, function->type().get_arg(i), args.at(i)->type(),
+                  fmt::format("function argument {}", i));
       } else {
         typecheck(form, function->type().get_arg(i).substitute_for_method_call(method_type_name),
-                  args.at(i)->type(), "function argument");
+                  args.at(i)->type(), fmt::format("function argument {}", i));
       }
     }
   }

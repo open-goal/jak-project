@@ -44,6 +44,7 @@
 #include "game/overlord/iso_cd.h"
 #include "game/overlord/overlord.h"
 #include "game/overlord/srpc.h"
+#include "game/overlord/stream.h"
 
 #include "common/goal_constants.h"
 
@@ -183,7 +184,7 @@ void iop_runner(SystemThreadInterface& iface) {
   // soundcommon
   srpc_init_globals();
   // ssound
-  // stream
+  stream_init_globals();
 
   iface.initialization_complete();
 

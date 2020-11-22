@@ -29,4 +29,6 @@ u64 RpcCall_wrapper(s32 rpcChannel,
 u32 RpcBusy(s32 channel);
 void LoadDGOTest();
 
+void RpcCall_wrapper_part1(s32 rpcChannel, u32 fno, u32 async);
+u64 RpcCall_wrapper_part2(u64 send_buff, s32 send_size, u64 recv_buff, s32 recv_size);
 #endif  // JAK_V2_KDGO_H

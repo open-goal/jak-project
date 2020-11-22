@@ -6,19 +6,9 @@
 #include <cassert>
 #include <cstring>
 #include "common/util/FileUtil.h"
-#include "game/overlord/isocommon.h"
+#include "game/common/overlord_common.h"
+#include "game/common/str_rpc_types.h"
 #include "StrFileReader.h"
-
-// up to 64 chunks per STR file.
-constexpr int SECTOR_TABLE_SIZE = 64;
-
-// there is a 1 sector long header
-struct StrFileHeader {
-  u32 sectors[SECTOR_TABLE_SIZE];  // start of chunk, in sectors. including this sector.
-  u32 sizes[SECTOR_TABLE_SIZE];    // size of chunk, in bytes. always an integer number of sectors.
-  u32 pad[512 - 128];              // all zero
-};
-static_assert(sizeof(StrFileHeader) == SECTOR_SIZE, "Sector header size");
 
 StrFileReader::StrFileReader(const std::string& file_path) {
   auto data = file_util::read_binary_file(file_path);
@@ -26,7 +16,7 @@ StrFileReader::StrFileReader(const std::string& file_path) {
   assert(data.size() % SECTOR_SIZE == 0);  // should be multiple of the sector size.
   int end_sector = int(data.size()) / SECTOR_SIZE;
 
-  auto* header = (StrFileHeader*)data.data();
+  auto* header = (StrFileHeaderSector*)data.data();
 
   bool got_zero = false;
   for (int i = 0; i < SECTOR_TABLE_SIZE; i++) {
