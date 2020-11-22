@@ -201,6 +201,7 @@ static const char* get_file_path(FileRecord* fr) {
  */
 uint32_t FS_GetLength(FileRecord* fr) {
   const char* path = get_file_path(fr);
+  file_util::assert_file_exists(path, "fake_iso FS_GetLength");
   FILE* fp = fopen(path, "rb");
   assert(fp);
   fseek(fp, 0, SEEK_END);

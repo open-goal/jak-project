@@ -307,4 +307,12 @@ void MakeISOName(char* dst, const char* src) {
   }
   *dst_ptr = 0;
 }
+
+void assert_file_exists(const char* path, const char* error_message) {
+  if (!std::filesystem::exists(path)) {
+    fprintf(stderr, "File %s was not found: %s\n", path, error_message);
+    assert(false);
+  }
+}
+
 }  // namespace file_util
