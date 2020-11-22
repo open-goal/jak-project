@@ -11,6 +11,30 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
   assert(ass.kind == Assignment::Kind::REGISTER);
   return ass.reg;
 }
+
+void load_constant(u64 value,
+                   emitter::ObjectGenerator* gen,
+                   emitter::IR_Record irec,
+                   Register dest_reg) {
+  s64 svalue = value;
+  if (svalue == 0) {
+    gen->add_instr(IGen::xor_gpr64_gpr64(dest_reg, dest_reg), irec);
+  } else if (svalue > 0) {
+    if (svalue < UINT32_MAX) {
+      gen->add_instr(IGen::mov_gpr64_u32(dest_reg, value), irec);
+    } else {
+      // need a real 64 bit load
+      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, value), irec);
+    }
+  } else {
+    if (svalue >= INT32_MIN) {
+      gen->add_instr(IGen::mov_gpr64_s32(dest_reg, svalue), irec);
+    } else {
+      // need a real 64 bit load
+      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, value), irec);
+    }
+  }
+}
 }  // namespace
 
 ///////////
@@ -77,26 +101,7 @@ void IR_LoadConstant64::do_codegen(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
   auto dest_reg = get_reg(m_dest, allocs, irec);
-
-  s64 svalue = m_value;
-
-  if (svalue == 0) {
-    gen->add_instr(IGen::xor_gpr64_gpr64(dest_reg, dest_reg), irec);
-  } else if (svalue > 0) {
-    if (svalue < UINT32_MAX) {
-      gen->add_instr(IGen::mov_gpr64_u32(dest_reg, m_value), irec);
-    } else {
-      // need a real 64 bit load
-      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, m_value), irec);
-    }
-  } else {
-    if (svalue >= INT32_MIN) {
-      gen->add_instr(IGen::mov_gpr64_s32(dest_reg, svalue), irec);
-    } else {
-      // need a real 64 bit load
-      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, m_value), irec);
-    }
-  }
+  load_constant(m_value, gen, irec, dest_reg);
 }
 
 /////////////////////
@@ -858,4 +863,34 @@ void IR_IntToFloat::do_codegen(emitter::ObjectGenerator* gen,
                                emitter::IR_Record irec) {
   gen->add_instr(IGen::int32_to_float(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
                  irec);
+}
+
+///////////////////////
+// GetStackAddr
+///////////////////////
+
+IR_GetStackAddr::IR_GetStackAddr(const RegVal* dest, int slot) : m_dest(dest), m_slot(slot) {}
+
+std::string IR_GetStackAddr::print() {
+  return fmt::format("mov {}, stack-slot-{}", m_dest->print(), m_slot);
+}
+
+RegAllocInstr IR_GetStackAddr::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  return rai;
+}
+
+void IR_GetStackAddr::do_codegen(emitter::ObjectGenerator* gen,
+                                 const AllocationResult& allocs,
+                                 emitter::IR_Record irec) {
+  auto dest_reg = get_reg(m_dest, allocs, irec);
+  int offset = GPR_SIZE * (m_slot + allocs.stack_slots_for_spills);
+
+  // dest = offset
+  load_constant(offset, gen, irec, dest_reg);
+  // dest = offset + RSP
+  gen->add_instr(IGen::add_gpr64_gpr64(dest_reg, RSP), irec);
+  // dest = offset + RSP - offset
+  gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
 }

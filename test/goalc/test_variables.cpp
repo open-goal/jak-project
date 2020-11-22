@@ -68,3 +68,8 @@ TEST_F(VariableTests, Let) {
   runner.run_static_test(env, testCategory, "let-star.static.gc", {"30\n"});
   runner.run_static_test(env, testCategory, "mlet.static.gc", {"10\n"});
 }
+
+TEST_F(VariableTests, StackVars) {
+  runner.run_static_test(env, testCategory, "stack-ints.gc", {"12\n"});
+  runner.run_static_test(env, testCategory, "stack-ints-2.gc", {"1\n"});
+}

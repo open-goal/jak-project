@@ -219,6 +219,11 @@ TEST_F(WithGameTests, ApproxPi) {
                          get_test_pass_string("approx-pi", 4));
 }
 
+TEST_F(WithGameTests, ApproxPiStack) {
+  runner.run_static_test(env, testCategory, "test-approx-pi-stack.gc",
+                         get_test_pass_string("approx-pi-stack", 4));
+}
+
 TEST_F(WithGameTests, DynamicType) {
   runner.run_static_test(env, testCategory, "test-dynamic-type.gc",
                          get_test_pass_string("dynamic-type", 4));
