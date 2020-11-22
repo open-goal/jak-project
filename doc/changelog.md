@@ -45,3 +45,5 @@
 - 128-bit fields are inspected as `<cannot-print>`
 - Static fields can now contain floating point values
 - Fixed a bug where loading a float from an object and immediately using it math would cause a compiler crash
+
+- Arrays of value types can be created on the stack with `new`.

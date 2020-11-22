@@ -889,12 +889,15 @@ You cannot use this on dynamically sized member types. However, the array size c
 You can create a static object with `(new 'static 'obj-type [field-def]...)`. For now it must be a structure or basic.
 Each field def looks like `:field-name field-value`. The `field-value` is evaluated at compile time. For now, fields
 can only be integers, floats, or symbols.
+
+Fields which aren't explicitly initialized are zeroed, except for the type field of basics, which is properly initialized to the correct type.
+
 This does not work on dynamically sized structures.
 
 ### Stack Allocated Objects
-Currently only single integers, floats, or pointers can be stack allocated.
-Use `(new 'stack 'int32)` to get a `(pointer int32)`. Note that this behavior is different from heap allocations, you
-don't need to create an array of length 1. This may change in the future because this behavior is confusing.
+Currently only arrays of integers, floats, or pointers can be stack allocated.
+For example, use `(new 'array 'int32 1)` to get a `(pointer int32)`. Unlike heap allocated arrays, these stack arrays
+must have a size that can be determined at compile time. 
 
 ## Defining a `new` Method
 
