@@ -68,8 +68,9 @@ struct AllocationResult {
   std::vector<std::vector<Assignment>> assignment;  // variable, instruction
   std::vector<LiveInfo> ass_as_ranges;              // another format, maybe easier?
   std::vector<emitter::Register> used_saved_regs;   // which saved regs get clobbered?
-  int stack_slots = 0;                              // how many space on the stack do we need?
-  std::vector<StackOp> stack_ops;                   // additional instructions to spill/restore
+  int stack_slots_for_spills = 0;                   // how many space on the stack do we need?
+  int stack_slots_for_vars = 0;
+  std::vector<StackOp> stack_ops;  // additional instructions to spill/restore
   bool needs_aligned_stack_for_spills = false;
 };
 
@@ -81,6 +82,7 @@ struct AllocationInput {
   std::vector<IRegConstraint> constraints;           // all register constraints
   int max_vars = -1;                                 // maximum register id.
   std::vector<std::string> debug_instruction_names;  // optional, for debug prints
+  int stack_slots_for_stack_vars = 0;
 
   struct {
     bool print_input = false;

@@ -27,7 +27,9 @@ RegVal* Val::to_xmm(Env* fe) {
     return rv;
   } else {
     assert(false);
-    throw std::runtime_error("Register is not an XMM[0-15] register.");
+    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+    fe->emit(std::make_unique<IR_RegSet>(re, rv));
+    return re;
   }
 }
 
@@ -115,6 +117,7 @@ RegVal* MemoryOffsetVal::to_reg(Env* fe) {
 }
 
 RegVal* MemoryDerefVal::to_reg(Env* fe) {
+  // todo, support better loads/stores from the stack
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
   if (base_as_co) {
     auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
@@ -130,6 +133,7 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
 }
 
 RegVal* MemoryDerefVal::to_xmm(Env* fe) {
+  // todo, support better loads/stores from the stack
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
   if (base_as_co) {
     auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
@@ -167,5 +171,11 @@ RegVal* PairEntryVal::to_reg(Env* fe) {
   info.sign_extend = true;
   info.size = 4;
   fe->emit(std::make_unique<IR_LoadConstOffset>(re, offset, base->to_gpr(fe), info));
+  return re;
+}
+
+RegVal* StackVarAddrVal::to_reg(Env* fe) {
+  auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
+  fe->emit(std::make_unique<IR_GetStackAddr>(re, m_slot));
   return re;
 }

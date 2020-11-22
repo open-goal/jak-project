@@ -160,7 +160,8 @@ AllocationResult allocate_registers(const AllocationInput& input) {
   // prepare the result
   result.ok = true;
   result.needs_aligned_stack_for_spills = cache.used_stack;
-  result.stack_slots = cache.current_stack_slot;
+  result.stack_slots_for_spills = cache.current_stack_slot;
+  result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
 
   // copy over the assignment result
   result.assignment.resize(cache.max_var);

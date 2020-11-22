@@ -165,6 +165,7 @@ void Compiler::color_object_file(FileEnv* env) {
 
     input.max_vars = f->max_vars();
     input.constraints = f->constraints();
+    input.stack_slots_for_stack_vars = f->stack_slots_used_for_stack_vars();
 
     if (m_settings.debug_print_regalloc) {
       input.debug_settings.print_input = true;

@@ -605,7 +605,10 @@ Get element from pair
 The type of the result is always `object`, as pairs can hold any `object`. The type-check for `car` and `cdr` is relaxed - it allows it to be applied to any `pair` or `object`.  The reason for allowing `object` is so you can write `(car (car x))` instead of `(car (the pair (car x)))`. However, if the argument to `car` is not a `pair`, you will get garbage or a crash.
 
 ## `new`
-See section on creating new GOAL objects
+```lisp
+(new [allocation] [new-type-specification] [args]) 
+```
+See section on creating new GOAL objects. 
 
 ## `print-type`
 Print the type of some GOAL expression at compile time.
@@ -863,6 +866,38 @@ These can differ by padding for alignment.
 ## Built-in Methods
 
 ## New - How To Create GOAL Objects
+GOAL has several different ways to create objects, all using the `new` form.
+
+### Heap Allocated Objects
+A new object can be allocated on a heap with `(new 'global 'obj-type [new-method-arguments])`.
+This simply calls the `new` method of the given type. You can also replace `'global` with `'debug` to allocate on the debug heap.
+Currently these are the only two heaps supported, in the future you will be able to call the new method with other arguments
+to allow you to do an "in place new" or allocate on a different heap.
+
+This will only work on structures and basics. If you want a heap allocated float/integer/pointer, create an array of size 1.
+This will work on dynamically sized items.
+
+### Heap Allocated Arrays
+You can construct a heap array with `(new 'global 'inline-array 'obj-type count)` or `(new 'global 'array 'obj-type count)`.
+These objects are not initialized. Note that the `array` version creates a `(pointer obj-type)` plain array, 
+__not__ a GOAL `array` type fancy array.  In the future this may change because it is confusing.
+
+Because these objects are uninitialized, you cannot provide constructor arguments.
+You cannot use this on dynamically sized member types. However, the array size can be determined at runtime.
+
+### Static Objects
+You can create a static object with `(new 'static 'obj-type [field-def]...)`. For now it must be a structure or basic.
+Each field def looks like `:field-name field-value`. The `field-value` is evaluated at compile time. For now, fields
+can only be integers, floats, or symbols.
+
+Fields which aren't explicitly initialized are zeroed, except for the type field of basics, which is properly initialized to the correct type.
+
+This does not work on dynamically sized structures.
+
+### Stack Allocated Objects
+Currently only arrays of integers, floats, or pointers can be stack allocated.
+For example, use `(new 'array 'int32 1)` to get a `(pointer int32)`. Unlike heap allocated arrays, these stack arrays
+must have a size that can be determined at compile time. 
 
 ## Defining a `new` Method
 

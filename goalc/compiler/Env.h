@@ -157,18 +157,17 @@ class FunctionEnv : public DeclareEnv {
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
   void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
   RegVal* lexical_lookup(goos::Object sym) override;
-
   const AllocationResult& alloc_result() { return m_regalloc_result; }
-
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
   void require_aligned_stack() { m_aligned_stack_required = true; }
-
   Label* alloc_unnamed_label() {
     m_unnamed_labels.emplace_back(std::make_unique<Label>());
     return m_unnamed_labels.back().get();
   }
-
   const std::string& name() const { return m_name; }
+
+  StackVarAddrVal* allocate_stack_variable(const TypeSpec& ts, int size_bytes);
+  int stack_slots_used_for_stack_vars() const { return m_stack_var_slots_used; }
 
   int idx_in_file = -1;
 
@@ -205,7 +204,7 @@ class FunctionEnv : public DeclareEnv {
   AllocationResult m_regalloc_result;
 
   bool m_aligned_stack_required = false;
-
+  int m_stack_var_slots_used = 0;
   std::unordered_map<std::string, Label> m_labels;
   std::vector<std::unique_ptr<Label>> m_unnamed_labels;
 };

@@ -507,7 +507,7 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   auto loc = compile_error_guard(args.unnamed.at(0), env);
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
   if (!as_mem_deref) {
-    throw_compile_error(form, "Cannot take the address of this");
+    throw_compile_error(form, "Cannot take the address of this " + loc->print());
   }
   return as_mem_deref->base;
 }
@@ -574,6 +574,8 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
 
 Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, Env* env) {
   // todo - support compound types.
+  // todo - stack arrays?
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   auto allocation = quoted_sym_as_string(pair_car(_rest));
   auto rest = &pair_cdr(_rest);
@@ -649,6 +651,46 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
     }
+  } else if (allocation == "stack") {
+    auto type_of_object = m_ts.make_typespec(type_as_string);
+
+    printf("type as string is %s\n", type_as_string.c_str());
+    if (type_as_string == "inline-array" || type_as_string == "array") {
+      bool is_inline = type_as_string == "inline-array";
+      auto elt_type = quoted_sym_as_string(pair_car(*rest));
+      rest = &pair_cdr(*rest);
+
+      auto count_obj = pair_car(*rest);
+      rest = &pair_cdr(*rest);
+      // try to get the size as a compile time constant.
+      int64_t constant_count = 0;
+      bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
+      if (!is_constant_size) {
+        throw_compile_error(form, "cannot create a dynamically sized stack array");
+      }
+
+      if (!rest->is_empty_list()) {
+        // got extra arguments
+        throw_compile_error(form, "new array form got more arguments than expected");
+      }
+
+      auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
+                          : m_ts.make_pointer_typespec(elt_type);
+      auto info = m_ts.get_deref_info(ts);
+      if (!info.can_deref) {
+        throw_compile_error(form,
+                            fmt::format("Cannot make an {} of {}\n", type_as_string, ts.print()));
+      }
+
+      if (!m_ts.lookup_type(elt_type)->is_reference()) {
+        // not a reference type
+        int size_in_bytes = info.stride * constant_count;
+        auto addr = fe->allocate_stack_variable(ts, size_in_bytes);
+        return addr;
+      }
+      // todo, stack structures.
+    }
+    // todo, stack not-arrays
   }
 
   throw_compile_error(form, "unsupported new form");
