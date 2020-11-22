@@ -152,6 +152,23 @@ struct MemLoadInfo {
   int size = -1;
 };
 
+/*!
+ * A spot on the stack.
+ */
+class StackVarAddrVal : public Val {
+ public:
+  StackVarAddrVal(TypeSpec ts, int slot, int slot_count)
+      : Val(std::move(ts)), m_slot(slot), m_slot_count(slot_count) {}
+  int slot() const { return m_slot; }
+  int slot_count() const { return m_slot_count; }
+  std::string print() const override { return "stack-" + std::to_string(m_slot); }
+
+  RegVal* to_reg(Env* fe) override;
+
+ private:
+  int m_slot, m_slot_count;
+};
+
 class MemoryOffsetConstantVal : public Val {
  public:
   MemoryOffsetConstantVal(TypeSpec ts, Val* _base, int _offset)
@@ -173,9 +190,6 @@ class MemoryOffsetVal : public Val {
   Val* base = nullptr;
   Val* offset = nullptr;
 };
-
-// MemOffConstant
-// MemOffVar
 
 class MemoryDerefVal : public Val {
  public:
@@ -225,8 +239,7 @@ class FloatConstantVal : public Val {
  protected:
   StaticFloat* m_value = nullptr;
 };
-// IntegerConstant
-// FloatConstant
+
 // Bitfield
 
 #endif  // JAK_VAL_H

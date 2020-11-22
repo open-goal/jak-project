@@ -507,7 +507,7 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   auto loc = compile_error_guard(args.unnamed.at(0), env);
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
   if (!as_mem_deref) {
-    throw_compile_error(form, "Cannot take the address of this");
+    throw_compile_error(form, "Cannot take the address of this " + loc->print());
   }
   return as_mem_deref->base;
 }
@@ -574,6 +574,8 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
 
 Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, Env* env) {
   // todo - support compound types.
+  // todo - stack arrays?
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   auto allocation = quoted_sym_as_string(pair_car(_rest));
   auto rest = &pair_cdr(_rest);
@@ -648,6 +650,16 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     auto type_of_object = m_ts.make_typespec(type_as_string);
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+    }
+  } else if (allocation == "stack") {
+    auto type_of_object = m_ts.make_typespec(type_as_string);
+    auto ti = m_ts.lookup_type(type_of_object);
+    if (ti->is_reference()) {
+    } else {
+      int size_in_bytes = ti->get_size_in_memory();
+      auto ptr_type = m_ts.make_pointer_typespec(type_of_object);
+      auto addr = fe->allocate_stack_variable(ptr_type, size_in_bytes);
+      return addr;
     }
   }
 

@@ -353,4 +353,18 @@ class IR_IntToFloat : public IR {
   const RegVal* m_src = nullptr;
 };
 
+class IR_GetStackAddr : public IR {
+ public:
+  IR_GetStackAddr(const RegVal* dest, int slot);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  int m_slot = -1;
+};
+
 #endif  // JAK_IR_H

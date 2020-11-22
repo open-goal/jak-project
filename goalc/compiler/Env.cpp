@@ -261,6 +261,14 @@ RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
   return kv->second;
 }
 
+StackVarAddrVal* FunctionEnv::allocate_stack_variable(const TypeSpec& ts, int size_bytes) {
+  require_aligned_stack();
+  int slots_used = (size_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
+  auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
+  m_stack_var_slots_used += slots_used;
+  return result;
+}
+
 ///////////////////
 // LexicalEnv
 ///////////////////

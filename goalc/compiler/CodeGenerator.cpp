@@ -83,8 +83,9 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   // do we include an extra push to get 8 more bytes to keep the stack aligned?
   bool bonus_push = false;
 
-  // the offset to add directly to rsp for stack variables (no push/pop)
-  int manually_added_stack_offset = GPR_SIZE * allocs.stack_slots;
+  // the offset to add directly to rsp for stack variables or spills (no push/pop)
+  int manually_added_stack_offset =
+      GPR_SIZE * (allocs.stack_slots_for_spills + allocs.stack_slots_for_vars);
   stack_offset += manually_added_stack_offset;
 
   // do we need to align or manually offset?
