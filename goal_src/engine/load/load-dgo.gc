@@ -107,3 +107,28 @@ struct DgoHeader {
     '#t
     )
   )
+
+(defun str-load-status ((length-out (pointer int32)))
+  "Check the status of the str load.
+   The 'busy status indicates it is still going
+   The 'error status indicates the load failed.
+   The 'complete status means the load is finished, and length-out contains the loaded length."
+   
+   ;; still going..
+   (if (check-busy *load-str-rpc*)
+       (return-from #f 'busy)
+       )
+   
+   ;; not busy, we can free the lock
+   (set! *load-str-lock* '#f)
+   (set! *que-str-lock* '#t)
+   ;; grab the response
+   (let ((response (the load-chunk-msg (pop-last-received *load-str-rpc*))))
+     (if (= 1 (-> response result))
+         (return-from #f 'error)
+         )
+     ;; no error!
+     (set! (-> length-out) (the int (-> response maxlen)))
+     'complete
+     )
+  )
