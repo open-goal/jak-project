@@ -43,7 +43,7 @@ s32 str_thread;
 s32 play_thread;
 u8 gVagDir[VAGDIR_SIZE];
 u32 gPlayPos;
-RPC_Dgo_Cmd sRPCBuff[1];  // todo move...
+static RPC_Dgo_Cmd sRPCBuff[1];  // todo move...
 DgoCommand scmd;
 
 void iso_init_globals() {
@@ -171,16 +171,16 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
     return 1;
   }
 
-  //  thread_param.attr = TH_C;
-  //  thread_param.initPriority = 97;
-  //  thread_param.stackSize = 0x800;
-  //  thread_param.option = 0;
-  //  thread_param.entry = (void*)STRThread;
-  //  strcpy(thread_param.name, "STRThread");
-  //  str_thread = CreateThread(&thread_param);
-  //  if(str_thread <= 0) {
-  //    return 1;
-  //  }
+  thread_param.attr = TH_C;
+  thread_param.initPriority = 97;
+  thread_param.stackSize = 0x800;
+  thread_param.option = 0;
+  thread_param.entry = (void*)STRThread;
+  strcpy(thread_param.name, "STRThread");
+  str_thread = CreateThread(&thread_param);
+  if (str_thread <= 0) {
+    return 1;
+  }
   //
   //  thread_param.attr = TH_C;
   //  thread_param.initPriority = 97;
@@ -196,7 +196,7 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   // Start the threads!
   StartThread(iso_thread, 0);
   StartThread(dgo_thread, 0);
-  //  StartThread(str_thread, 0);
+  StartThread(str_thread, 0);
   //  StartThread(play_thread, 0);
 
   // wait for ISO Thread to initialize

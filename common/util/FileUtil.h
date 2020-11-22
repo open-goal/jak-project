@@ -25,4 +25,5 @@ uint32_t crc32(const uint8_t* data, size_t size);
 uint32_t crc32(const std::vector<uint8_t>& data);
 void MakeISOName(char* dst, const char* src);
 void ISONameFromAnimationName(char* dst, const char* src);
+void assert_file_exists(const char* path, const char* error_message);
 }  // namespace file_util

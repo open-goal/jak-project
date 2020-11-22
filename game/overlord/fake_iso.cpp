@@ -79,26 +79,10 @@ void fake_iso_init_globals() {
 int FS_Init(u8* buffer) {
   (void)buffer;
 
-  // get path to next/data/fake_iso.txt, the map file.
-  char fakeiso_path[512];
-  strcpy(fakeiso_path, file_util::get_file_path({"game", "fake_iso.txt"}).c_str());
-
-  // open the map.
-  FILE* fp = fopen(fakeiso_path, "r");
-  assert(fp);
-  fseek(fp, 0, SEEK_END);
-  size_t len = ftell(fp);
-  rewind(fp);
-  char* fakeiso = (char*)malloc(len + 1);
-  if (fread(fakeiso, len, 1, fp) != 1) {
-#ifdef __linux__
-    assert(false);
-#endif
-  }
-  fakeiso[len] = '\0';
+  auto config_str = file_util::read_text_file(file_util::get_file_path({"game", "fake_iso.txt"}));
+  const char* ptr = config_str.c_str();
 
   // loop over lines
-  char* ptr = fakeiso;
   while (*ptr) {
     // newlines
     while (*ptr && *ptr == '\n')
@@ -127,7 +111,7 @@ int FS_Init(u8* buffer) {
     }
 
     i = 0;
-    while (*ptr && (*ptr != '\n') && (*ptr != ' ') && i < 128) {
+    while (*ptr && (*ptr != '\n') && (*ptr != ' ') && (*ptr != EOF) && i < 128) {
       e->file_path[i] = *ptr;
       ptr++;
       i++;
@@ -144,8 +128,6 @@ int FS_Init(u8* buffer) {
     // repurpose "location" as the index.
     sFiles[i].location = i;
   }
-
-  free(fakeiso);
 
   // TODO load tweak music.
 
@@ -201,6 +183,7 @@ static const char* get_file_path(FileRecord* fr) {
  */
 uint32_t FS_GetLength(FileRecord* fr) {
   const char* path = get_file_path(fr);
+  file_util::assert_file_exists(path, "fake_iso FS_GetLength");
   FILE* fp = fopen(path, "rb");
   assert(fp);
   fseek(fp, 0, SEEK_END);

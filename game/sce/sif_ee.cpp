@@ -85,6 +85,7 @@ s32 sceSifCallRpc(sceSifClientData* bd,
   assert(!end_para);
   assert(mode == 1);  // async
   iop->kernel.sif_rpc(bd->rpcd.id, fno, mode, send, ssize, recv, rsize);
+  iop->signal_run_iop();
   return 0;
 }
 

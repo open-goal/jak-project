@@ -1,7 +1,38 @@
 
 (start-test "game-text")
 
-(let ((text (the game-text-info (load "$ISO/0TEST.TXT" *common-text-heap*))))
+(defun hack-load ()
+  ;(declare (inline))
+  (str-load "0TEST.TXT" 
+            -1 
+            (the pointer (align64 (-> *common-text-heap* current))) 
+            ; note, this max size is probably wrong because of the alignment.
+            (the int (&- (-> *common-text-heap* top) (-> *common-text-heap* current)))
+            )
+  
+  
+  (sync *load-str-rpc* '#t)
+  
+  (let* ((got-length (new 'stack 'array 'int32 1))
+         (status (str-load-status got-length)))
+    ;(format #t "Status is ~A, length ~D~%" status (-> got-length))
+    
+    ;; failed!
+    (if (!= status 'complete)
+        (return-from #f #f)
+        )
+    
+    (link (the pointer (align64 (-> *common-text-heap* current))) 
+          (-> "test" data)
+          (-> got-length)
+          *common-text-heap*
+          0
+          )
+    )
+
+  )
+
+(let ((text (the game-text-info (hack-load))))
   (format 0 "~I~%" text)
   (expect-true (= #x123 (-> text data 0 id)))
   (expect-true (= #x456 (-> text data 1 id)))

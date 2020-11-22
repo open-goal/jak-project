@@ -10311,39 +10311,43 @@
 ;     )
 ;   )
 
-; ;; rpc-h
-; (deftype rpc-buffer (basic)
-;   ((elt-size  uint32           :offset-assert 4)
-;    (elt-count uint32           :offset-assert 8)
-;    (elt-used  uint32           :offset-assert 12)
-;    (busy      basic            :offset-assert 16)
-;    (base      uint32           :offset-assert 20)
-;    (data      UNKNOWN :dynamic :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+;; rpc-h
+(deftype rpc-buffer (basic)
+  ((elt-size  uint32           :offset-assert 4)
+   (elt-count uint32           :offset-assert 8)
+   (elt-used  uint32           :offset-assert 12)
+   (busy      basic            :offset-assert 16)
+   (base      pointer          :offset-assert 20)
+   (data      uint8   :dynamic :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  (:methods
+    (new (symbol type uint uint) rpc-buffer 0)
+    )
+  )
 
-; ;; rpc-h
-; (deftype rpc-buffer-pair (basic)
-;   ((buffer           UNKNOWN 2 :offset-assert 4)
-;    (current          basic     :offset-assert 12)
-;    (last-recv-buffer uint32    :offset-assert 16)
-;    (rpc-port         int32     :offset-assert 20)
-;    )
-;   :method-count-assert 15
-;   :size-assert         #x18
-;   :flag-assert         #xf00000018
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
+;; rpc-h
+(deftype rpc-buffer-pair (basic)
+  ((buffer           rpc-buffer 2 :offset-assert 4)
+   (current          rpc-buffer   :offset-assert 12)
+   (last-recv-buffer pointer      :offset-assert 16)
+   (rpc-port         int32     :offset-assert 20)
+   )
+  :method-count-assert 15
+  :size-assert         #x18
+  :flag-assert         #xf00000018
+  (:methods
+    (new (symbol type uint uint int) rpc-buffer-pair 0)
+    (call (rpc-buffer-pair uint pointer uint) int 9)
+    (add-element (rpc-buffer-pair) pointer 10)
+    (decrement-elt-used (rpc-buffer-pair) int 11)
+    (sync (rpc-buffer-pair symbol) int 12)
+    (check-busy (rpc-buffer-pair) symbol 13)
+    (pop-last-received (rpc-buffer-pair) pointer 14)
+    )
+  )
 
 ; ;; path-h
 ; (deftype path-control (basic)
@@ -10659,7 +10663,8 @@
    (b1      uint32   :offset-assert 4)
    (b2      uint32   :offset-assert 8)
    (bt      uint32   :offset-assert 12)
-   (name    uint128  :offset-assert 16)
+   ;(name    uint128  :offset-assert 16)
+   (name uint8 16 :offset-assert 16)
    (address uint32   :offset 4)
    )
   :method-count-assert 9
@@ -10667,30 +10672,30 @@
   :flag-assert         #x900000020
   )
 
-; ;; load-dgo
-; (deftype load-chunk-msg (structure)
-;   ((rsvd     uint16     :offset-assert 0)
-;    (result   uint16     :offset-assert 2)
-;    (address  uint32     :offset-assert 4)
-;    (section  uint32     :offset-assert 8)
-;    (maxlen   uint32     :offset-assert 12)
-;    (id       uint32     :offset-assert 4)
-;    (basename UNKNOWN 48 :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40
-;   :flag-assert         #x900000040
-;   )
+;; load-dgo
+(deftype load-chunk-msg (structure)
+  ((rsvd     uint16     :offset-assert 0)
+   (result   uint16     :offset-assert 2)
+   (address  uint32     :offset-assert 4)
+   (section  uint32     :offset-assert 8)
+   (maxlen   uint32     :offset-assert 12)
+   (id       uint32     :offset 4)
+   (basename uint8 48 :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
 
-; ;; load-dgo
-; (deftype dgo-header (structure)
-;   ((length   uint32     :offset-assert 0)
-;    (rootname UNKNOWN 60 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40
-;   :flag-assert         #x900000040
-;   )
+;; load-dgo
+(deftype dgo-header (structure)
+  ((length   uint32     :offset-assert 0)
+   (rootname uint8 60 :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
 
 ; ;; ramdisk
 ; (deftype ramdisk-rpc-fill (structure)
@@ -31160,7 +31165,7 @@
 (define-extern string-strip-whitespace! function)
 (define-extern string<? function)
 (define-extern string-get-flag!! function)
-(define-extern charp<-string function)
+(define-extern charp<-string (function (pointer uint8) string int))
 (define-extern string>=? function)
 (define-extern string-charp= function)
 (define-extern string->float function)
@@ -32848,13 +32853,13 @@
 (define-extern dgo-load-begin function)
 (define-extern dgo-load-continue function)
 (define-extern destroy-mem function)
-(define-extern str-load function)
+(define-extern str-load (function string int pointer int symbol))
 ;;(define-extern *load-str-rpc* object) ;; unknown type
 ;;(define-extern load-chunk-msg object) ;; unknown type
 ;;(define-extern *dgo-name* object) ;; unknown type
 (define-extern str-ambient-play function)
 ;;(define-extern *load-str-lock* object) ;; unknown type
-(define-extern str-load-status function)
+(define-extern str-load-status (function (pointer int32) symbol))
 (define-extern str-load-cancel function)
 (define-extern str-play-queue function)
 (define-extern str-ambient-stop function)
