@@ -114,3 +114,27 @@ TEST_F(FunctionTests, AllowInline) {
   EXPECT_EQ(got_mult, 1);
   EXPECT_EQ(got_call, 1);
 }
+
+TEST_F(FunctionTests, ReturnNone) {
+  runner.run_static_test(env, testCategory, "function-returning-none.static.gc", {"1\n"});
+}
+
+TEST_F(FunctionTests, InlineBlock1) {
+  runner.run_static_test(env, testCategory, "inline-with-block-1.static.gc", {"1\n"});
+}
+
+TEST_F(FunctionTests, InlineBlock2) {
+  runner.run_static_test(env, testCategory, "inline-with-block-2.static.gc", {"3\n"});
+}
+
+TEST_F(FunctionTests, InlineBlock3) {
+  runner.run_static_test(env, testCategory, "inline-with-block-3.static.gc", {"4\n"});
+}
+
+TEST_F(FunctionTests, InlineBlock4) {
+  runner.run_static_test(env, testCategory, "inline-with-block-4.static.gc", {"3.0000\n0\n"});
+}
+
+TEST_F(FunctionTests, ReturnFromTrick) {
+  runner.run_static_test(env, testCategory, "return-from-trick.static.gc", {"1\n"});
+}

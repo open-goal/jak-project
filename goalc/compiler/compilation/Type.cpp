@@ -654,7 +654,6 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   } else if (allocation == "stack") {
     auto type_of_object = m_ts.make_typespec(type_as_string);
 
-    printf("type as string is %s\n", type_as_string.c_str());
     if (type_as_string == "inline-array" || type_as_string == "array") {
       bool is_inline = type_as_string == "inline-array";
       auto elt_type = quoted_sym_as_string(pair_car(*rest));

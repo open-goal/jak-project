@@ -66,7 +66,7 @@ Exit a `block` or function early.
 (return-from block-name value)
 ```
 
-Looks up the block and exits from it with the value. You can exit out nested blocks. If you are enclosed in multiple blocks with the same name, exits from the inner-most one with a matching name. Everything in a function is wrapped in a block named `#f`, so you can use `(return-from #f x)` to return early from a function with `x`.  Unlike returning from a block, using `return-from` to exit a function currently does _not_ modify the return type of your function and does _not_ check the type of what you return. 
+Looks up the block and exits from it with the value. You can exit out nested blocks. If you are enclosed in multiple blocks with the same name, exits from the inner-most one with a matching name. Everything in a function is wrapped in a block named `#f`, so you can use `(return-from #f x)` to return early from a function with `x`.  When using this form, it may change the return type of the function or block. The return type will be the lowest common ancestor type of all written return paths. If there is an unreachable return path, it will still be considered.
 
 Example
 ```lisp
@@ -108,6 +108,9 @@ Example:
 ```
 
 The `goto` form used very rarely outside of macros and inline assembly. Try to avoid using `goto`.
+
+## `top-level`
+This form is reserved by the compiler. Internally all forms in a file are grouped under a `top-level` form, so you may see this in error messages. Do not name anything `top-level`.
 
 # Compiler Forms - Compiler Control
 These forms are used to control the GOAL compiler, and are usually entered at the GOAL REPL, or as part of a macro that's executed at the GOAL REPL. These shouldn't really be used in GOAL source code.

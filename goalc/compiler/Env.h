@@ -234,6 +234,7 @@ class LabelEnv : public Env {
   explicit LabelEnv(Env* parent) : Env(parent) {}
   std::string print() override { return "labelenv"; }
   std::unordered_map<std::string, Label>& get_label_map() override;
+  BlockEnv* find_block(const std::string& name) override;
 
  protected:
   std::unordered_map<std::string, Label> m_labels;
