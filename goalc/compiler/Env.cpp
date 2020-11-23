@@ -248,6 +248,11 @@ std::unordered_map<std::string, Label>& LabelEnv::get_label_map() {
   return m_labels;
 }
 
+BlockEnv* LabelEnv::find_block(const std::string& name) {
+  (void)name;
+  return nullptr;
+}
+
 RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
   if (!sym.is_symbol()) {
     throw std::runtime_error("invalid symbol in lexical_lookup");

@@ -13,7 +13,7 @@
 namespace versions {
 // language version
 constexpr s32 GOAL_VERSION_MAJOR = 0;
-constexpr s32 GOAL_VERSION_MINOR = 1;
+constexpr s32 GOAL_VERSION_MINOR = 2;
 constexpr u32 ART_FILE_VERSION = 6;
 constexpr u32 LEVEL_FILE_VERSION = 30;
 constexpr u32 DGO_FILE_VERSION = 1;

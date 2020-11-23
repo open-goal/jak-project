@@ -182,13 +182,16 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
         new_func_env->settings.is_set = true;
       }
     });
-    if (result) {
+    if (result && !dynamic_cast<None*>(result)) {
       // got a result, so to_gpr it and return it.
       auto final_result = result->to_gpr(new_func_env.get());
       new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-      lambda_ts.add_arg(final_result->type());
+      func_block_env->return_types.push_back(final_result->type());
+      auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
+      lambda_ts.add_arg(return_type);
+      //      lambda_ts.add_arg(final_result->type());
     } else {
-      // empty body, return none
+      // empty body or returning none, return none
       lambda_ts.add_arg(m_ts.make_typespec("none"));
     }
     // put null instruction at the end so jumps to the end have somewhere to go.
@@ -316,13 +319,13 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     // construct a lexical environment
     auto lexical_env = fe->alloc_env<LexicalEnv>(env);
 
-    Env* compile_env = lexical_env;
+    Env* inlined_compile_env = lexical_env;
 
     // if need to, create a label env.
     // we don't want a separate label env with lets, but we do for inlined functions.
     // either inlined through the auto-inliner, or through an explicit (inline x) form.
     if (auto_inline || got_inlined_lambda) {
-      compile_env = fe->alloc_env<LabelEnv>(lexical_env);
+      inlined_compile_env = fe->alloc_env<LabelEnv>(lexical_env);
     }
 
     // check arg types
@@ -350,13 +353,25 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
     }
 
+    // setup env
+    BlockEnv* inlined_block_env = nullptr;
+    RegVal* result_reg_if_return_from = nullptr;
+    if (auto_inline || got_inlined_lambda) {
+      inlined_block_env = fe->alloc_env<BlockEnv>(inlined_compile_env, "#f");
+      result_reg_if_return_from =
+          inlined_compile_env->make_ireg(get_none()->type(), emitter::RegKind::GPR);
+      inlined_block_env->return_value = result_reg_if_return_from;
+      inlined_block_env->end_label = Label(fe);
+      inlined_compile_env = inlined_block_env;
+    }
+
     // compile inline!
     bool first_thing = true;
     Val* result = get_none();
     for_each_in_list(head_as_lambda->lambda.body, [&](const goos::Object& o) {
-      result = compile_error_guard(o, compile_env);
+      result = compile_error_guard(o, inlined_compile_env);
       if (!dynamic_cast<None*>(result)) {
-        result = result->to_reg(compile_env);
+        result = result->to_reg(inlined_compile_env);
       }
       if (first_thing) {
         first_thing = false;
@@ -366,6 +381,27 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
 
     // ignore the user specified return type and return the most specific type.
     // todo - does this make sense for an inline function? Should we check the return type?
+
+    if (inlined_block_env && !inlined_block_env->return_types.empty()) {
+      // there were return froms used in the function, so we fall back to using the separate
+      // return gpr.
+      if (!dynamic_cast<None*>(result)) {
+        auto final_result = result->to_gpr(inlined_compile_env);
+        inlined_compile_env->emit(
+            std::make_unique<IR_RegSet>(result_reg_if_return_from, final_result));
+        inlined_block_env->return_types.push_back(final_result->type());
+        auto return_type = m_ts.lowest_common_ancestor(inlined_block_env->return_types);
+        inlined_block_env->return_value->set_type(return_type);
+      } else {
+        inlined_block_env->return_value->set_type(get_none()->type());
+      }
+
+      inlined_compile_env->emit(std::make_unique<IR_Null>());
+      inlined_block_env->end_label.idx = inlined_block_env->end_label.func->code().size();
+      return inlined_block_env->return_value;
+    }
+
+    inlined_compile_env->emit(std::make_unique<IR_Null>());
     return result;
   } else {
     // not an inlined/immediate, it's a real function call.

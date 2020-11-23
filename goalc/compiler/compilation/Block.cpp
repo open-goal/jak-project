@@ -84,14 +84,16 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   auto return_type = m_ts.lowest_common_ancestor(return_types);
   block_env->return_value->set_type(coerce_to_reg_type(return_type));
 
-  // an IR to move the result of the block into the block's return register (if no return-from's are
-  // taken)
-  auto ir_move_rv = std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(fe));
+  if (!dynamic_cast<None*>(result)) {
+    // an IR to move the result of the block into the block's return register (if no return-from's
+    // are taken)
+    auto ir_move_rv = std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(fe));
 
-  // note - one drawback of doing this single pass is that a block always evaluates to a gpr.
-  // so we may have an unneeded xmm -> gpr move that could have been an xmm -> xmm that could have
-  // been eliminated.
-  env->emit(std::move(ir_move_rv));
+    // note - one drawback of doing this single pass is that a block always evaluates to a gpr.
+    // so we may have an unneeded xmm -> gpr move that could have been an xmm -> xmm that could have
+    // been eliminated.
+    env->emit(std::move(ir_move_rv));
+  }
 
   // now we know the end of the block, so we set the label index to be on whatever comes after the
   // return move. functions always end with a "null" IR and "null" instruction, so this is safe.

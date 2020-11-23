@@ -47,3 +47,8 @@
 - Fixed a bug where loading a float from an object and immediately using it math would cause a compiler crash
 
 - Arrays of value types can be created on the stack with `new`.
+
+## V0.2
+- Breaking change: return type of a function using `return-from #f` to return a value from the entire function is now the lowest common ancestor of all possible return values.
+- Fixed bug where `return-from` could reach outside of an inlined function.
+- Fixed bug where `return-from` might not behave correctly when returning from inside a let inside an inlined function.
