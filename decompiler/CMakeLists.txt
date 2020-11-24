@@ -21,7 +21,8 @@ add_executable(decompiler
 		Function/TypeInspector.cpp
 		data/tpage.cpp
 		data/game_text.cpp
-		data/StrFileReader.cpp)
+		data/StrFileReader.cpp
+		data/game_count.cpp data/LinkedWordReader.h)
 
 target_link_libraries(decompiler
         goos

@@ -13,6 +13,7 @@
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
+#include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
 #include "third-party/minilzo/minilzo.h"
@@ -715,6 +716,26 @@ std::string ObjectFileDB::process_game_text() {
   return write_game_text(text_by_language_by_id);
 }
 
+std::string ObjectFileDB::process_game_count() {
+  spdlog::info("- Finding game count file...");
+  bool found = false;
+  std::string result;
+
+  for_each_obj([&](ObjectFileData& data) {
+    if (data.name_in_dgo == "game-cnt") {
+      assert(!found);
+      found = true;
+      result = write_game_count(::process_game_count(data));
+    }
+  });
+
+  if (!found) {
+    spdlog::warn("did not find game-cnt file");
+  }
+
+  return result;
+}
+
 void ObjectFileDB::analyze_functions() {
   spdlog::info("- Analyzing Functions...");
   Timer timer;
@@ -915,4 +936,11 @@ void ObjectFileDB::analyze_functions() {
   //        printf("  %s\n", x.c_str());
   //      }
   //    }
+}
+
+void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
+  for_each_obj([&](ObjectFileData& data) {
+    auto dest = output_dir + "/" + data.to_unique_name();
+    file_util::write_binary_file(dest, data.data.data(), data.data.size());
+  });
 }

@@ -5,6 +5,7 @@
 
 #include <utility>
 #include "Interpreter.h"
+#include "ParseHelpers.h"
 #include <third-party/fmt/core.h>
 
 namespace goos {
@@ -381,44 +382,9 @@ void Interpreter::vararg_check(
     const Arguments& args,
     const std::vector<std::optional<ObjectType>>& unnamed,
     const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named) {
-  assert(args.rest.empty());
-  if (unnamed.size() != args.unnamed.size()) {
-    throw_eval_error(form, "Got " + std::to_string(args.unnamed.size()) +
-                               " arguments, but expected " + std::to_string(unnamed.size()));
-  }
-
-  for (size_t i = 0; i < unnamed.size(); i++) {
-    if (unnamed[i].has_value() && unnamed[i] != args.unnamed[i].type) {
-      throw_eval_error(form, "Argument " + std::to_string(i) + " has type " +
-                                 object_type_to_string(args.unnamed[i].type) + " but " +
-                                 object_type_to_string(unnamed[i].value()) + " was expected");
-    }
-  }
-
-  for (const auto& kv : named) {
-    auto kv2 = args.named.find(kv.first);
-    if (kv2 == args.named.end()) {
-      // argument not given.
-      if (kv.second.first) {
-        // but was required
-        throw_eval_error(form, "Required named argument \"" + kv.first + "\" was not found");
-      }
-    } else {
-      // argument given.
-      if (kv.second.second.has_value() && kv.second.second != kv2->second.type) {
-        // but is wrong type
-        throw_eval_error(form, "Argument \"" + kv.first + "\" has type " +
-                                   object_type_to_string(kv2->second.type) + " but " +
-                                   object_type_to_string(kv.second.second.value()) +
-                                   " was expected");
-      }
-    }
-  }
-
-  for (const auto& kv : args.named) {
-    if (named.find(kv.first) == named.end()) {
-      throw_eval_error(form, "Got unrecognized keyword argument \"" + kv.first + "\"");
-    }
+  std::string err;
+  if (!va_check(args, unnamed, named, &err)) {
+    throw_eval_error(form, err);
   }
 }
 

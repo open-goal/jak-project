@@ -2,7 +2,7 @@
 #include <string>
 #include <unordered_map>
 
-class ObjectFileData;
+struct ObjectFileData;
 
 struct GameTextResult {
   int total_text = 0;

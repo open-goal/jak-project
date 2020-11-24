@@ -26,6 +26,7 @@ add_library(compiler
         compiler/Util.cpp
         data_compiler/game_text.cpp
         data_compiler/DataObjectGenerator.cpp
+        data_compiler/game_count.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         logger/Logger.cpp

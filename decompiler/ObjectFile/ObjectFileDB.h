@@ -55,11 +55,13 @@ class ObjectFileDB {
   void process_labels();
   void find_code();
   void find_and_write_scripts(const std::string& output_dir);
+  void dump_raw_objects(const std::string& output_dir);
 
   void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
   void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
   void analyze_functions();
   void process_tpages();
+  std::string process_game_count();
   std::string process_game_text();
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);

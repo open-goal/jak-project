@@ -46,6 +46,12 @@ int main(int argc, char** argv) {
   file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
                              db.generate_obj_listing());
 
+  if (get_config().dump_objs) {
+    auto path = file_util::combine_path(out_folder, "raw_obj");
+    file_util::create_dir_if_needed(path);
+    db.dump_raw_objects(path);
+  }
+
   db.process_link_data();
   db.find_code();
   db.process_labels();
@@ -69,6 +75,11 @@ int main(int argc, char** argv) {
 
   if (get_config().process_tpages) {
     db.process_tpages();
+  }
+
+  if (get_config().process_game_count) {
+    auto result = db.process_game_count();
+    file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
   }
 
   if (get_config().write_disassembly) {
