@@ -297,11 +297,10 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
       if (o.file_name.substr(o.file_name.length() - 3) != ".go") {
         desc.entries.push_back(o);
       } else {
-        //        // allow data objects to be missing.
-        //        if (std::filesystem::exists(file_util::get_file_path({"out", "obj",
-        //        o.file_name}))) {
-        //          desc.entries.push_back(o);
-        //        }
+        // allow data objects to be missing.
+        if (std::filesystem::exists(file_util::get_file_path({"out", "obj", o.file_name}))) {
+          desc.entries.push_back(o);
+        }
       }
     });
 

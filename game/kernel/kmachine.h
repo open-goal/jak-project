@@ -23,6 +23,7 @@ constexpr u32 GLOBAL_HEAP_END = 0x1ffc000;
 //! Location of kglobalheap, kdebugheap kheapinfo structures.
 constexpr u32 GLOBAL_HEAP_INFO_ADDR = 0x13AD00;
 constexpr u32 DEBUG_HEAP_INFO_ADDR = 0x13AD10;
+constexpr u32 LINK_CONTROL_NAME_ADDR = 0x13AD80;
 
 //! Where to place the debug heap
 constexpr u32 DEBUG_HEAP_START = 0x5000000;

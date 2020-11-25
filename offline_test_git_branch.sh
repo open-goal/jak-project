@@ -45,9 +45,15 @@ echo " ================ Decompiling..."
 ../decomp.sh
 
 echo " ================ Building assets..."
-./goalc/data_compiler
+../gc.sh -cmd \(build-data\)
 
 echo " ================ Checking assets..."
 ../check.sh
+
+echo " ================ Building game..."
+../gc.sh -cmd \(build-game\)
+
+echo " ================ Booting game..."
+../boot_game.sh
 
 echo "Offline test has completed successfully!"
