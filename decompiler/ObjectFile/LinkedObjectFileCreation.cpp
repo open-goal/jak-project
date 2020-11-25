@@ -27,14 +27,6 @@ struct LinkHeaderCommon {
   uint16_t version;   // what version (2, 3, 4)
 };
 
-// Header for link data used for V4
-struct LinkHeaderV4 {
-  uint32_t type_tag;   // always -1
-  uint32_t length;     // length of V2 link data found after object.
-  uint32_t version;    // always 4
-  uint32_t code_size;  // length of object data before link data starts
-};
-
 // Per-segment info for V3 and V5 link data
 struct SegmentInfo {
   uint32_t relocs;  // offset of relocation table

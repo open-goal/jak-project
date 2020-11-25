@@ -44,4 +44,12 @@ struct LinkHeaderV2 {
   uint32_t version;   // always 2
 };
 
+// Header for link data used for V4
+struct LinkHeaderV4 {
+  uint32_t type_tag;   // always -1
+  uint32_t length;     // length of V2 link data found after object.
+  uint32_t version;    // always 4
+  uint32_t code_size;  // length of object data before link data starts
+};
+
 #endif  // JAK1_LINK_TYPES_H

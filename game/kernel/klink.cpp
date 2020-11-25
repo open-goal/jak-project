@@ -217,8 +217,12 @@ void link_control::begin(Ptr<uint8_t> object_file,
       }
 
     } else {
-      // not yet implemented
-      assert(false);
+      auto header_v4 = (const LinkHeaderV4*)header;
+      auto old_object_data = m_object_data;
+      m_link_block_ptr =
+          old_object_data + header_v4->code_size + sizeof(LinkHeaderV4) + BASIC_OFFSET;
+      m_object_data = old_object_data + sizeof(LinkHeaderV4);
+      m_code_size = header_v4->code_size;
     }
 
     if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {
@@ -768,7 +772,14 @@ void link_control::finish() {
       output_segment_load(m_object_name, m_link_block_ptr, m_flags);
     }
   } else {
-    printf("UNHANDELD OBJECT FILE VERSION IN FINISH\n");
+    if (m_flags & LINK_FLAG_EXECUTE) {
+      auto entry = m_entry;
+      auto name = basename_goal(m_object_name);
+      strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
+      call_method_of_type_arg2(entry.offset, Ptr<Type>(*((entry - 4).cast<u32>())),
+                               GOAL_RELOC_METHOD, m_heap.offset,
+                               Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
+    }
   }
 
   *EnableMethodSet = *EnableMethodSet - m_keep_debug;

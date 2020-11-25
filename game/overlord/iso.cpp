@@ -649,7 +649,7 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
     }
   }
 
-  printf("[DGO State Machine Complete] Out of things to read!\n");
+  //  printf("[DGO State Machine Complete] Out of things to read!\n");
 
 cleanup_and_return:
   if (return_value == 0) {

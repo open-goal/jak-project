@@ -23,6 +23,8 @@ struct Config {
   bool analyze_functions = false;
   bool process_tpages = false;
   bool process_game_text = false;
+  bool process_game_count = false;
+  bool dump_objs = false;
   std::unordered_set<std::string> asm_functions_by_name;
   // ...
 };

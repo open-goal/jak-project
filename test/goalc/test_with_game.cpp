@@ -293,6 +293,15 @@ TEST_F(WithGameTests, GameText) {
                          get_test_pass_string("game-text", 5));
 }
 
+TEST_F(WithGameTests, GameCount) {
+  compiler.run_test_from_string(
+      "(asm-data-file game-count \"test/test_data/test_game_counts.txt\")");
+  compiler.run_test_from_string("(build-dgos \"test/test_data/test_game_count_dgos.txt\")");
+  compiler.run_test_from_string("(dgo-load \"game\" global #xf #x200000)");
+  runner.run_static_test(env, testCategory, "test-game-count.gc",
+                         get_test_pass_string("game-count", 4));
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

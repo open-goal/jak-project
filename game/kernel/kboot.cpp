@@ -184,5 +184,5 @@ void KernelCheckAndDispatch() {
  * DONE, EXACT
  */
 void KernelShutdown() {
-  MasterExit = 1;  // GOAL Kernel Dispatch loop will stop now.
+  MasterExit = 2;  // GOAL Kernel Dispatch loop will stop now.
 }

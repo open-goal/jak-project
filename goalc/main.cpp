@@ -25,11 +25,16 @@ int main(int argc, char** argv) {
   (void)argc;
   (void)argv;
 
+  std::string argument;
   bool verbose = false;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
       break;
+    }
+
+    if (std::string("-cmd") == argv[i] && i < argc - 1) {
+      argument = argv[++i];
     }
   }
   setup_logging(verbose);
@@ -38,7 +43,12 @@ int main(int argc, char** argv) {
                versions::GOAL_VERSION_MINOR);
 
   Compiler compiler;
-  compiler.execute_repl();
+
+  if (argument.empty()) {
+    compiler.execute_repl();
+  } else {
+    compiler.run_front_end_on_string(argument);
+  }
 
   return 0;
 }

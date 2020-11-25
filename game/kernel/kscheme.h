@@ -102,6 +102,7 @@ u64 loado(u32 file_name_in, u32 heap_in);
 u64 unload(u32 name);
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f);
 u64 call_goal_function_by_name(const char* name);
+u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32 a2);
 Ptr<Type> alloc_and_init_type(Ptr<Symbol> sym, u32 method_count);
 Ptr<Symbol> set_fixed_symbol(u32 offset, const char* name, u32 value);
 

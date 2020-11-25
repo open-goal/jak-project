@@ -100,8 +100,6 @@ std::vector<u8> DataObjectGenerator::generate_v2() {
   // Generate the link table.
   std::vector<u8> link = generate_link_table();
 
-  // add words
-
   // header
   LinkHeaderV2 header;
   header.type_tag = 0xffffffff;
@@ -121,6 +119,38 @@ std::vector<u8> DataObjectGenerator::generate_v2() {
     result.push_back(0);
   }
 
+  return result;
+}
+
+std::vector<u8> DataObjectGenerator::generate_v4() {
+  // add string data at the end.
+  add_strings();
+
+  // Generate the link table.
+  std::vector<u8> link = generate_link_table();
+
+  // header (first)
+  LinkHeaderV4 first_header;
+  first_header.type_tag = 0xffffffff;
+  first_header.length = sizeof(LinkHeaderV2) + link.size();
+  first_header.version = 4;
+  first_header.code_size = 4 * m_words.size();
+
+  LinkHeaderV2 second_header;
+  second_header.version = 2;
+  second_header.type_tag = 0xffffffff;
+  second_header.length = first_header.length;
+
+  std::vector<u8> result;
+  add_data_to_vector(first_header, &result);
+  auto start = result.size();
+  result.resize(result.size() + m_words.size() * 4);
+  memcpy(result.data() + start, m_words.data(), m_words.size() * 4);
+  while (result.size() % 16) {
+    result.push_back(0);
+  }
+  add_data_to_vector(second_header, &result);
+  result.insert(result.end(), link.begin(), link.end());
   return result;
 }
 

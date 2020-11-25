@@ -3,12 +3,14 @@
  * Compiler implementation for forms which actually control the compiler.
  */
 
+#include <filesystem>
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "common/util/Timer.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "goalc/data_compiler/game_text.h"
+#include "goalc/data_compiler/game_count.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -57,6 +59,8 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   auto kind = symbol_string(args.unnamed.at(0));
   if (kind == "game-text") {
     compile_game_text(as_string(args.unnamed.at(1)));
+  } else if (kind == "game-count") {
+    compile_game_count(as_string(args.unnamed.at(1)));
   } else {
     throw_compile_error(form, "Unknown asm data file mode");
   }
@@ -290,8 +294,13 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
       DgoDescription::DgoEntry o;
       o.file_name = as_string(e_arg.unnamed.at(0));
       o.name_in_dgo = as_string(e_arg.unnamed.at(1));
-      if (o.file_name.substr(o.file_name.length() - 3) != ".go") {  // kill v2's for now.
+      if (o.file_name.substr(o.file_name.length() - 3) != ".go") {
         desc.entries.push_back(o);
+      } else {
+        // allow data objects to be missing.
+        if (std::filesystem::exists(file_util::get_file_path({"out", "obj", o.file_name}))) {
+          desc.entries.push_back(o);
+        }
       }
     });
 
