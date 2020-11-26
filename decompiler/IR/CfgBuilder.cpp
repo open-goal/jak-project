@@ -471,6 +471,7 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
     if (jump_to_next.first->branch_delay.kind == BranchDelay::SET_REG_TRUE &&
         cne->entries.size() == 1) {
       convert_cond_no_else_to_compare(ir);
+      return;
     } else {
       assert(jump_to_next.first->branch_delay.kind == BranchDelay::SET_REG_FALSE ||
              jump_to_next.first->branch_delay.kind == BranchDelay::NOP);
