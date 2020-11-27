@@ -19,10 +19,10 @@ namespace {
  * Create a GOAL "set!" form.
  * These will later be compacted into more complicated nested expressions.
  */
-std::shared_ptr<IR_Set> make_set(IR_Set::Kind kind,
-                                 const std::shared_ptr<IR>& dst,
-                                 const std::shared_ptr<IR>& src) {
-  return std::make_shared<IR_Set>(kind, dst, src);
+std::shared_ptr<IR_Set_Atomic> make_set_atomic(IR_Set_Atomic::Kind kind,
+                                               const std::shared_ptr<IR>& dst,
+                                               const std::shared_ptr<IR>& src) {
+  return std::make_shared<IR_Set_Atomic>(kind, dst, src);
 }
 
 /*!
@@ -56,8 +56,8 @@ std::shared_ptr<IR_IntegerConstant> make_int(int64_t x) {
 /*!
  * Create an assembly passthrough in the form op dst, src, src
  */
-std::shared_ptr<IR> to_asm_reg_reg_reg(const std::string& str, Instruction& instr, int idx) {
-  auto result = std::make_shared<IR_AsmOp>(str);
+std::shared_ptr<IR_Atomic> to_asm_reg_reg_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp_Atomic>(str);
   result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
   result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
   result->src1 = make_reg(instr.get_src(1).get_reg(), idx);
@@ -67,8 +67,8 @@ std::shared_ptr<IR> to_asm_reg_reg_reg(const std::string& str, Instruction& inst
 /*!
  * Create an assembly passthrough for op src
  */
-std::shared_ptr<IR> to_asm_src_reg(const std::string& str, Instruction& instr, int idx) {
-  auto result = std::make_shared<IR_AsmOp>(str);
+std::shared_ptr<IR_Atomic> to_asm_src_reg(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp_Atomic>(str);
   result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
   return result;
 }
@@ -76,8 +76,10 @@ std::shared_ptr<IR> to_asm_src_reg(const std::string& str, Instruction& instr, i
 /*!
  * Create an assembly passthrough for op dst src
  */
-std::shared_ptr<IR> to_asm_dst_reg_src_reg(const std::string& str, Instruction& instr, int idx) {
-  auto result = std::make_shared<IR_AsmOp>(str);
+std::shared_ptr<IR_Atomic> to_asm_dst_reg_src_reg(const std::string& str,
+                                                  Instruction& instr,
+                                                  int idx) {
+  auto result = std::make_shared<IR_AsmOp_Atomic>(str);
   result->dst = make_reg(instr.get_dst(0).get_reg(), idx);
   result->src0 = make_reg(instr.get_src(0).get_reg(), idx);
   return result;
@@ -101,8 +103,8 @@ std::shared_ptr<IR> instr_atom_to_ir(const InstructionAtom& ia, int idx) {
   }
 }
 
-std::shared_ptr<IR> to_asm_automatic(const std::string& str, Instruction& instr, int idx) {
-  auto result = std::make_shared<IR_AsmOp>(str);
+std::shared_ptr<IR_Atomic> to_asm_automatic(const std::string& str, Instruction& instr, int idx) {
+  auto result = std::make_shared<IR_AsmOp_Atomic>(str);
   assert(instr.n_dst < 2);
   assert(instr.n_src < 4);
   if (instr.n_dst >= 1) {
@@ -124,561 +126,576 @@ std::shared_ptr<IR> to_asm_automatic(const std::string& str, Instruction& instr,
   return result;
 }
 
-std::shared_ptr<IR> try_subu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_subu(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::SUBU, {}, {}, {})) {
     return to_asm_reg_reg_reg("subu", instr, idx);
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sllv(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sllv(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::SLLV, {}, {}, make_gpr(Reg::R0))) {
     return to_asm_reg_reg_reg("sllv", instr, idx);
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_or(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_or(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::OR, {}, make_gpr(Reg::S7), make_gpr(Reg::R0))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx), make_sym("#f"));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_sym("#f"));
   } else if (is_gpr_3(instr, InstructionKind::OR, {}, {}, make_gpr(Reg::R0))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_reg(instr.get_src(0).get_reg(), idx));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_reg(instr.get_src(0).get_reg(), idx));
   } else {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::OR, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_ori(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_ori(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::ORI && instr.get_src(0).is_reg(make_gpr(Reg::R0)) &&
       instr.get_src(1).is_imm()) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_int(instr.get_src(1).get_imm()));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_int(instr.get_src(1).get_imm()));
   } else if (instr.kind == InstructionKind::ORI && instr.get_src(1).is_imm()) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::OR, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_por(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_por(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::POR, {}, {}, make_gpr(Reg::R0))) {
-    return make_set(IR_Set::REG_I128, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_reg(instr.get_src(0).get_reg(), idx));
+    return make_set_atomic(IR_Set_Atomic::REG_I128, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_reg(instr.get_src(0).get_reg(), idx));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_mtc1(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_mtc1(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::MTC1) {
-    return make_set(IR_Set::GPR_TO_FPR, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_reg(instr.get_src(0).get_reg(), idx));
+    return make_set_atomic(IR_Set_Atomic::GPR_TO_FPR, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_reg(instr.get_src(0).get_reg(), idx));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_mfc1(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_mfc1(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::MFC1) {
-    return make_set(IR_Set::FPR_TO_GPR64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_reg(instr.get_src(0).get_reg(), idx));
+    return make_set_atomic(IR_Set_Atomic::FPR_TO_GPR64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_reg(instr.get_src(0).get_reg(), idx));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lwc1(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lwc1(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LWC1 && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(
             IR_Load::FLOAT, 4, std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LWC1 && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::FLOAT, 4, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LWC1 && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::FLOAT, 4,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::FLOAT, 4,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lhu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lhu(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LHU && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 2,
-                        std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
+    return make_set_atomic(IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_Load>(
+                               IR_Load::UNSIGNED, 2,
+                               std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LHU && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::UNSIGNED, 2, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LHU && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 2,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::UNSIGNED, 2,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lh(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lh(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LH && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(
             IR_Load::SIGNED, 2, std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LH && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::SIGNED, 2, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LH && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::SIGNED, 2,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::SIGNED, 2,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lb(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lb(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LB && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(
             IR_Load::SIGNED, 1, std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LB && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::SIGNED, 1, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LB && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::SIGNED, 1,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::SIGNED, 1,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lbu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lbu(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LBU && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 1,
-                        std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
+    return make_set_atomic(IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_Load>(
+                               IR_Load::UNSIGNED, 1,
+                               std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LBU && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::UNSIGNED, 1, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LBU && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 1,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::UNSIGNED, 1,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lwu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lwu(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LWU && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 4,
-                        std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
+    return make_set_atomic(IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_Load>(
+                               IR_Load::UNSIGNED, 4,
+                               std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LWU && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::UNSIGNED, 4, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LWU && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 4,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::UNSIGNED, 4,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_ld(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_ld(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LD && instr.get_dst(0).is_reg() &&
       instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 8,
-                        std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
+    return make_set_atomic(IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_Load>(
+                               IR_Load::UNSIGNED, 8,
+                               std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LD && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::UNSIGNED, 8, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LD && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 8,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::UNSIGNED, 8,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsll(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsll(Instruction& instr, int idx) {
   if (is_gpr_2_imm_int(instr, InstructionKind::DSLL, {}, {}, {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::LEFT_SHIFT,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_int(instr.get_src(1).get_imm())));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(IR_IntMath2::LEFT_SHIFT,
+                                                         make_reg(instr.get_src(0).get_reg(), idx),
+                                                         make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsll32(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsll32(Instruction& instr, int idx) {
   if (is_gpr_2_imm_int(instr, InstructionKind::DSLL32, {}, {}, {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::LEFT_SHIFT,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_int(32 + instr.get_src(1).get_imm())));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::LEFT_SHIFT, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_int(32 + instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsra(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsra(Instruction& instr, int idx) {
   if (is_gpr_2_imm_int(instr, InstructionKind::DSRA, {}, {}, {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_int(instr.get_src(1).get_imm())));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
+                                                         make_reg(instr.get_src(0).get_reg(), idx),
+                                                         make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsra32(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsra32(Instruction& instr, int idx) {
   if (is_gpr_2_imm_int(instr, InstructionKind::DSRA32, {}, {}, {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_int(32 + instr.get_src(1).get_imm())));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
+                                      make_reg(instr.get_src(0).get_reg(), idx),
+                                      make_int(32 + instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsrl(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsrl(Instruction& instr, int idx) {
   if (is_gpr_2_imm_int(instr, InstructionKind::DSRL, {}, {}, {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_int(instr.get_src(1).get_imm())));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                                         make_reg(instr.get_src(0).get_reg(), idx),
+                                                         make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsrl32(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsrl32(Instruction& instr, int idx) {
   if (is_gpr_2_imm_int(instr, InstructionKind::DSRL32, {}, {}, {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_int(32 + instr.get_src(1).get_imm())));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                      make_reg(instr.get_src(0).get_reg(), idx),
+                                      make_int(32 + instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_float_math_2(Instruction& instr,
-                                     int idx,
-                                     InstructionKind instr_kind,
-                                     IR_FloatMath2::Kind ir_kind) {
+std::shared_ptr<IR_Atomic> try_float_math_2(Instruction& instr,
+                                            int idx,
+                                            InstructionKind instr_kind,
+                                            IR_FloatMath2::Kind ir_kind) {
   if (is_gpr_3(instr, instr_kind, {}, {}, {})) {
-    return make_set(
-        IR_Set::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_FloatMath2>(ir_kind, make_reg(instr.get_src(0).get_reg(), idx),
                                         make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_daddiu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_daddiu(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
       instr.get_src(1).kind == InstructionAtom::IMM_SYM) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_sym(instr.get_src(1).get_sym()));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_sym(instr.get_src(1).get_sym()));
   } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::FP)) &&
              instr.get_src(1).kind == InstructionAtom::LABEL) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_StaticAddress>(instr.get_src(1).get_label()));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_StaticAddress>(instr.get_src(1).get_label()));
   } else if (instr.kind == InstructionKind::DADDIU) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::ADD, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lw(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lw(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LW && instr.get_src(1).is_reg(make_gpr(Reg::S7)) &&
       instr.get_src(0).kind == InstructionAtom::IMM_SYM) {
-    return make_set(IR_Set::SYM_LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_sym_value(instr.get_src(0).get_sym()));
+    return make_set_atomic(IR_Set_Atomic::SYM_LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_sym_value(instr.get_src(0).get_sym()));
   } else if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(
             IR_Load::SIGNED, 4, std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(
-        IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_Load>(IR_Load::SIGNED, 4, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::SIGNED, 4,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::SIGNED, 4,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lq(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lq(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LQ && instr.get_src(1).is_reg(make_gpr(Reg::S7)) &&
       instr.get_src(0).kind == InstructionAtom::IMM_SYM) {
     assert(false);
   } else if (instr.kind == InstructionKind::LQ && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_link_or_label() && instr.get_src(1).is_reg(make_gpr(Reg::FP))) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 16,
-                        std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
+    return make_set_atomic(IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_Load>(
+                               IR_Load::UNSIGNED, 16,
+                               std::make_shared<IR_StaticAddress>(instr.get_src(0).get_label())));
   } else if (instr.kind == InstructionKind::LQ && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 0) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(IR_Load::UNSIGNED, 16,
-                                              make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_Load>(IR_Load::UNSIGNED, 16,
+                                                     make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::LQ && instr.get_dst(0).is_reg() &&
              instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_Load>(
-                        IR_Load::UNSIGNED, 16,
-                        std::make_shared<IR_IntMath2>(
-                            IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
-                            std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
+    return make_set_atomic(
+        IR_Set_Atomic::LOAD, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_Load>(
+            IR_Load::UNSIGNED, 16,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(0).get_imm()))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_daddu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_daddu(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::DADDU, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::ADD, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return to_asm_reg_reg_reg("daddu", instr, idx);
 }
 
-std::shared_ptr<IR> try_dsubu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsubu(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::DSUBU, {}, make_gpr(Reg::R0), {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath1>(IR_IntMath1::NEG, make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (is_gpr_3(instr, InstructionKind::DSUBU, {}, {}, {}) &&
              !instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
              !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::SUB, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_mult3(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_mult3(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::MULT3, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::MUL_SIGNED,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::MUL_SIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_multu3(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_multu3(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::MULTU3, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::MUL_UNSIGNED,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::MUL_UNSIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_and(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_and(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::AND, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::AND, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_andi(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_andi(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::ANDI) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::AND, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_xori(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_xori(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::XORI) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::XOR, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_int(instr.get_src(1).get_imm())));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_nor(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_nor(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::NOR, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath1>(IR_IntMath1::NOT, make_reg(instr.get_src(0).get_reg(), idx)));
   } else if (is_gpr_3(instr, InstructionKind::NOR, {}, {}, {}) &&
              !instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
              !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::NOR, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_xor(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_xor(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::XOR, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(
-        IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::XOR, make_reg(instr.get_src(0).get_reg(), idx),
                                       make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_addiu(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_addiu(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::ADDIU && instr.get_src(0).is_reg(make_gpr(Reg::R0))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_int(instr.get_src(1).get_imm()));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_int(instr.get_src(1).get_imm()));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lui(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_lui(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::LUI && instr.get_src(0).is_imm()) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_int(instr.get_src(0).get_imm() << 16));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_int(instr.get_src(0).get_imm() << 16));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sll(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sll(Instruction& instr, int idx) {
   (void)idx;
   if (is_nop(instr)) {
-    return std::make_shared<IR_Nop>();
+    return std::make_shared<IR_Nop_Atomic>();
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsrav(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsrav(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::DSRAV, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_ARITH,
+                                      make_reg(instr.get_src(0).get_reg(), idx),
+                                      make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsrlv(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsrlv(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::DSRLV, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath2>(IR_IntMath2::RIGHT_SHIFT_LOGIC,
+                                      make_reg(instr.get_src(0).get_reg(), idx),
+                                      make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsllv(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_dsllv(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::DSLLV, {}, {}, {}) &&
       !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::LEFT_SHIFT,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::LEFT_SHIFT, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sw(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sw(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SW && instr.get_src(1).is_sym() &&
       instr.get_src(2).is_reg(make_gpr(Reg::S7))) {
-    return std::make_shared<IR_Set>(IR_Set::SYM_STORE, make_sym_value(instr.get_src(1).get_sym()),
-                                    make_reg(instr.get_src(0).get_reg(), idx));
+    return std::make_shared<IR_Set_Atomic>(IR_Set_Atomic::SYM_STORE,
+                                           make_sym_value(instr.get_src(1).get_sym()),
+                                           make_reg(instr.get_src(0).get_reg(), idx));
   } else if (instr.kind == InstructionKind::SW && instr.get_src(1).is_imm()) {
-    return std::make_shared<IR_Store>(
-        IR_Store::INTEGER,
+    return std::make_shared<IR_Store_Atomic>(
+        IR_Store_Atomic::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -687,10 +704,10 @@ std::shared_ptr<IR> try_sw(Instruction& instr, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sb(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sb(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SB && instr.get_src(1).is_imm()) {
-    return std::make_shared<IR_Store>(
-        IR_Store::INTEGER,
+    return std::make_shared<IR_Store_Atomic>(
+        IR_Store_Atomic::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -699,10 +716,10 @@ std::shared_ptr<IR> try_sb(Instruction& instr, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sh(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sh(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SH && instr.get_src(1).is_imm()) {
-    return std::make_shared<IR_Store>(
-        IR_Store::INTEGER,
+    return std::make_shared<IR_Store_Atomic>(
+        IR_Store_Atomic::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -711,10 +728,10 @@ std::shared_ptr<IR> try_sh(Instruction& instr, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sd(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sd(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SD && instr.get_src(1).is_imm()) {
-    return std::make_shared<IR_Store>(
-        IR_Store::INTEGER,
+    return std::make_shared<IR_Store_Atomic>(
+        IR_Store_Atomic::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -723,10 +740,10 @@ std::shared_ptr<IR> try_sd(Instruction& instr, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sq(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_sq(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SQ && instr.get_src(1).is_imm()) {
-    return std::make_shared<IR_Store>(
-        IR_Store::INTEGER,
+    return std::make_shared<IR_Store_Atomic>(
+        IR_Store_Atomic::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -735,10 +752,10 @@ std::shared_ptr<IR> try_sq(Instruction& instr, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_swc1(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_swc1(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SWC1 && instr.get_src(1).is_imm()) {
-    return std::make_shared<IR_Store>(
-        IR_Store::FLOAT,
+    return std::make_shared<IR_Store_Atomic>(
+        IR_Store_Atomic::FLOAT,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -747,105 +764,109 @@ std::shared_ptr<IR> try_swc1(Instruction& instr, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_cvtws(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_cvtws(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::CVTWS) {
-    return make_set(IR_Set::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_FloatMath1>(IR_FloatMath1::FLOAT_TO_INT,
-                                                    make_reg(instr.get_src(0).get_reg(), idx)));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_FloatMath1>(IR_FloatMath1::FLOAT_TO_INT,
+                                        make_reg(instr.get_src(0).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_cvtsw(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_cvtsw(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::CVTSW) {
-    return make_set(IR_Set::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_FloatMath1>(IR_FloatMath1::INT_TO_FLOAT,
-                                                    make_reg(instr.get_src(0).get_reg(), idx)));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_FloatMath1>(IR_FloatMath1::INT_TO_FLOAT,
+                                        make_reg(instr.get_src(0).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_float_math_1(Instruction& instr,
-                                     int idx,
-                                     InstructionKind ikind,
-                                     IR_FloatMath1::Kind irkind) {
+std::shared_ptr<IR_Atomic> try_float_math_1(Instruction& instr,
+                                            int idx,
+                                            InstructionKind ikind,
+                                            IR_FloatMath1::Kind irkind) {
   if (instr.kind == ikind) {
-    return make_set(
-        IR_Set::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_FloatMath1>(irkind, make_reg(instr.get_src(0).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_movs(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_movs(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::MOVS) {
-    return make_set(IR_Set::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
-                    make_reg(instr.get_src(0).get_reg(), idx));
+    return make_set_atomic(IR_Set_Atomic::REG_FLT, make_reg(instr.get_dst(0).get_reg(), idx),
+                           make_reg(instr.get_src(0).get_reg(), idx));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_movn(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_movn(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::MOVN, {}, make_gpr(Reg::S7), {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_CMoveF>(make_reg(instr.get_src(1).get_reg(), idx), false));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_CMoveF>(make_reg(instr.get_src(1).get_reg(), idx), false));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_movz(Instruction& instr, int idx) {
+std::shared_ptr<IR_Atomic> try_movz(Instruction& instr, int idx) {
   if (is_gpr_3(instr, InstructionKind::MOVZ, {}, make_gpr(Reg::S7), {})) {
-    return make_set(IR_Set::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_CMoveF>(make_reg(instr.get_src(1).get_reg(), idx), true));
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_CMoveF>(make_reg(instr.get_src(1).get_reg(), idx), true));
   }
   return nullptr;
 }
 
 // TWO Instructions
-std::shared_ptr<IR> try_div(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_div(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::DIV && instr.get_src(0).is_reg() &&
       instr.get_src(1).is_reg() && next_instr.kind == InstructionKind::MFLO &&
       next_instr.get_dst(0).is_reg()) {
-    return make_set(IR_Set::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::DIV_SIGNED,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::DIV_SIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::DIV && instr.get_src(0).is_reg() &&
              instr.get_src(1).is_reg() && next_instr.kind == InstructionKind::MFHI &&
              next_instr.get_dst(0).is_reg()) {
-    return make_set(IR_Set::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::MOD_SIGNED,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::MOD_SIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_divu(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_divu(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::DIVU && instr.get_src(0).is_reg() &&
       instr.get_src(1).is_reg() && next_instr.kind == InstructionKind::MFLO &&
       next_instr.get_dst(0).is_reg()) {
-    return make_set(IR_Set::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::DIV_UNSIGNED,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::DIV_UNSIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   } else if (instr.kind == InstructionKind::DIVU && instr.get_src(0).is_reg() &&
              instr.get_src(1).is_reg() && next_instr.kind == InstructionKind::MFHI &&
              next_instr.get_dst(0).is_reg()) {
-    return make_set(IR_Set::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
-                    std::make_shared<IR_IntMath2>(IR_IntMath2::MOD_UNSIGNED,
-                                                  make_reg(instr.get_src(0).get_reg(), idx),
-                                                  make_reg(instr.get_src(1).get_reg(), idx)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(next_instr.get_dst(0).get_reg(), idx),
+                           std::make_shared<IR_IntMath2>(
+                               IR_IntMath2::MOD_UNSIGNED, make_reg(instr.get_src(0).get_reg(), idx),
+                               make_reg(instr.get_src(1).get_reg(), idx)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_jalr(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_jalr(Instruction& instr, Instruction& next_instr, int idx) {
   (void)idx;
   if (instr.kind == InstructionKind::JALR && instr.get_dst(0).is_reg(make_gpr(Reg::RA)) &&
       instr.get_src(0).is_reg(make_gpr(Reg::T9)) &&
       is_gpr_2_imm_int(next_instr, InstructionKind::SLL, make_gpr(Reg::V0), make_gpr(Reg::RA), 0)) {
-    return std::make_shared<IR_Call>();
+    return std::make_shared<IR_Call_Atomic>();
   }
   return nullptr;
 }
@@ -894,17 +915,17 @@ BranchDelay get_branch_delay(Instruction& i, int idx) {
   return b;
 }
 
-std::shared_ptr<IR> try_bne(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_bne(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BNE && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::NONZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
   } else if (instr.kind == InstructionKind::BNE && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::TRUTHY, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
   } else if (instr.kind == InstructionKind::BNE) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::NOT_EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
                   make_reg(instr.get_src(1).get_reg(), idx), nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
@@ -912,13 +933,13 @@ std::shared_ptr<IR> try_bne(Instruction& instr, Instruction& next_instr, int idx
   return nullptr;
 }
 
-std::shared_ptr<IR> try_bnel(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_bnel(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BNEL && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::TRUTHY, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
   } else if (instr.kind == InstructionKind::BNEL && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::NONZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
   } else if (instr.kind == InstructionKind::BNEL) {
@@ -930,19 +951,19 @@ std::shared_ptr<IR> try_bnel(Instruction& instr, Instruction& next_instr, int id
   return nullptr;
 }
 
-std::shared_ptr<IR> try_beql(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_beql(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BEQL && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FALSE, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
   } else if (instr.kind == InstructionKind::BEQL && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::ZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
   }
 
   else if (instr.kind == InstructionKind::BEQL) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
                   make_reg(instr.get_src(1).get_reg(), idx), nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), true);
@@ -950,18 +971,18 @@ std::shared_ptr<IR> try_beql(Instruction& instr, Instruction& next_instr, int id
   return nullptr;
 }
 
-std::shared_ptr<IR> try_beq(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_beq(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BEQ && instr.get_src(0).is_reg(make_gpr(Reg::R0)) &&
       instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
-    return std::make_shared<IR_Branch>(Condition(Condition::ALWAYS, nullptr, nullptr, nullptr),
-                                       instr.get_src(2).get_label(),
-                                       get_branch_delay(next_instr, idx), false);
+    return std::make_shared<IR_Branch_Atomic>(
+        Condition(Condition::ALWAYS, nullptr, nullptr, nullptr), instr.get_src(2).get_label(),
+        get_branch_delay(next_instr, idx), false);
   } else if (instr.kind == InstructionKind::BEQ && instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FALSE, make_reg(instr.get_src(1).get_reg(), idx), nullptr, nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
   } else if (instr.kind == InstructionKind::BEQ) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
                   make_reg(instr.get_src(1).get_reg(), idx), nullptr),
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
@@ -969,9 +990,9 @@ std::shared_ptr<IR> try_beq(Instruction& instr, Instruction& next_instr, int idx
   return nullptr;
 }
 
-std::shared_ptr<IR> try_bgtzl(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_bgtzl(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BGTZL) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GREATER_THAN_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx),
                   nullptr, nullptr),
         instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
@@ -979,9 +1000,9 @@ std::shared_ptr<IR> try_bgtzl(Instruction& instr, Instruction& next_instr, int i
   return nullptr;
 }
 
-std::shared_ptr<IR> try_bgezl(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_bgezl(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BGEZL) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_ZERO_SIGNED, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
                   nullptr),
         instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
@@ -989,9 +1010,9 @@ std::shared_ptr<IR> try_bgezl(Instruction& instr, Instruction& next_instr, int i
   return nullptr;
 }
 
-std::shared_ptr<IR> try_bltzl(Instruction& instr, Instruction& next_instr, int idx) {
+std::shared_ptr<IR_Atomic> try_bltzl(Instruction& instr, Instruction& next_instr, int idx) {
   if (instr.kind == InstructionKind::BLTZL) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_ZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr,
                   nullptr),
         instr.get_src(1).get_label(), get_branch_delay(next_instr, idx), true);
@@ -999,7 +1020,7 @@ std::shared_ptr<IR> try_bltzl(Instruction& instr, Instruction& next_instr, int i
   return nullptr;
 }
 
-std::shared_ptr<IR> try_daddiu(Instruction& i0, Instruction& i1, int idx) {
+std::shared_ptr<IR_Atomic> try_daddiu(Instruction& i0, Instruction& i1, int idx) {
   if (i0.kind == InstructionKind::DADDIU && i1.kind == InstructionKind::MOVN &&
       i0.get_src(0).get_reg() == make_gpr(Reg::S7)) {
     auto dst_reg = i0.get_dst(0).get_reg();
@@ -1008,9 +1029,9 @@ std::shared_ptr<IR> try_daddiu(Instruction& i0, Instruction& i1, int idx) {
     assert(i0.get_src(1).get_imm() == 8);
     assert(i1.get_dst(0).get_reg() == dst_reg);
     assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::ZERO, make_reg(src_reg, idx), nullptr, nullptr)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(Condition(
+                               Condition::ZERO, make_reg(src_reg, idx), nullptr, nullptr)));
   } else if (i0.kind == InstructionKind::DADDIU && i1.kind == InstructionKind::MOVZ &&
              i0.get_src(0).get_reg() == make_gpr(Reg::S7)) {
     auto dst_reg = i0.get_dst(0).get_reg();
@@ -1019,20 +1040,20 @@ std::shared_ptr<IR> try_daddiu(Instruction& i0, Instruction& i1, int idx) {
     assert(i0.get_src(1).get_imm() == 8);
     assert(i1.get_dst(0).get_reg() == dst_reg);
     assert(i1.get_src(0).get_reg() == make_gpr(Reg::S7));
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::NONZERO, make_reg(src_reg, idx), nullptr, nullptr)));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(Condition(
+                               Condition::NONZERO, make_reg(src_reg, idx), nullptr, nullptr)));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, int idx) {
+std::shared_ptr<IR_Atomic> try_lui(Instruction& i0, Instruction& i1, int idx) {
   if (i0.kind == InstructionKind::LUI && i1.kind == InstructionKind::ORI &&
       i0.get_src(0).is_label() && i1.get_src(1).is_label()) {
     assert(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());
     assert(i0.get_src(0).get_label() == i1.get_src(1).get_label());
-    auto op = make_set(IR_Set::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
-                       std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
+                              std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
     if (i0.get_dst(0).get_reg() != i1.get_dst(0).get_reg()) {
       op->clobber = make_reg(i0.get_dst(0).get_reg(), idx);
     }
@@ -1040,8 +1061,8 @@ std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, int idx) {
   } else if (i0.kind == InstructionKind::LUI && i1.kind == InstructionKind::ORI &&
              i0.get_src(0).is_imm() && i1.get_src(1).is_imm() &&
              i0.get_dst(0).get_reg() == i1.get_src(0).get_reg()) {
-    auto op = make_set(
-        IR_Set::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
+    auto op = make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
         make_int((int64_t(i1.get_src(1).get_imm()) + int64_t(i0.get_src(0).get_imm() << 16))));
     if (i0.get_dst(0).get_reg() != i1.get_dst(0).get_reg()) {
       op->clobber = make_reg(i0.get_dst(0).get_reg(), idx);
@@ -1051,7 +1072,7 @@ std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, int idx) {
   return nullptr;
 }
 
-std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, int idx) {
+std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, int idx) {
   if (is_gpr_3(i0, InstructionKind::SLT, {}, {}, {})) {
     auto temp = i0.get_dst(0).get_reg();
     auto left = i0.get_src(0).get_reg();
@@ -1059,9 +1080,9 @@ std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, int idx) {
     if (is_gpr_3(i1, InstructionKind::MOVZ, left, right, temp)) {
       // success!
       auto result =
-          make_set(IR_Set::REG_64, make_reg(left, idx),
-                   std::make_shared<IR_IntMath2>(IR_IntMath2::MIN_SIGNED, make_reg(left, idx),
-                                                 make_reg(right, idx)));
+          make_set_atomic(IR_Set_Atomic::REG_64, make_reg(left, idx),
+                          std::make_shared<IR_IntMath2>(IR_IntMath2::MIN_SIGNED,
+                                                        make_reg(left, idx), make_reg(right, idx)));
       result->clobber = make_reg(temp, idx);
       return result;
     }
@@ -1069,9 +1090,9 @@ std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, int idx) {
     if (is_gpr_3(i1, InstructionKind::MOVN, left, right, temp)) {
       // success!
       auto result =
-          make_set(IR_Set::REG_64, make_reg(left, idx),
-                   std::make_shared<IR_IntMath2>(IR_IntMath2::MAX_SIGNED, make_reg(left, idx),
-                                                 make_reg(right, idx)));
+          make_set_atomic(IR_Set_Atomic::REG_64, make_reg(left, idx),
+                          std::make_shared<IR_IntMath2>(IR_IntMath2::MAX_SIGNED,
+                                                        make_reg(left, idx), make_reg(right, idx)));
       result->clobber = make_reg(temp, idx);
       return result;
     }
@@ -1080,7 +1101,7 @@ std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, int idx) {
 }
 
 // THREE OP
-std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_lui(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::LUI && i1.kind == InstructionKind::ORI &&
       i0.get_src(0).is_label() && i1.get_src(1).is_label() &&
       is_gpr_3(i2, InstructionKind::ADDU, {}, make_gpr(Reg::FP), {})) {
@@ -1088,8 +1109,8 @@ std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, Instruction& i2, i
     assert(i0.get_src(0).get_label() == i1.get_src(1).get_label());
     assert(i2.get_dst(0).get_reg() == i2.get_src(1).get_reg());
     assert(i2.get_dst(0).get_reg() == i1.get_dst(0).get_reg());
-    auto op = make_set(IR_Set::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
-                       std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(i1.get_dst(0).get_reg(), idx),
+                              std::make_shared<IR_StaticAddress>(i0.get_src(0).get_label()));
     if (i0.get_dst(0).get_reg() != i1.get_dst(0).get_reg()) {
       op->clobber = make_reg(i0.get_dst(0).get_reg(), idx);
     }
@@ -1098,7 +1119,7 @@ std::shared_ptr<IR> try_lui(Instruction& i0, Instruction& i1, Instruction& i2, i
   return nullptr;
 }
 
-std::shared_ptr<IR> try_dsubu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_dsubu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::DSUBU && i1.kind == InstructionKind::DADDIU &&
       i2.kind == InstructionKind::MOVN) {
     // check for equality
@@ -1111,10 +1132,10 @@ std::shared_ptr<IR> try_dsubu(Instruction& i0, Instruction& i1, Instruction& i2,
     assert(i2.get_dst(0).get_reg() == dst_reg);
     assert(i2.get_src(0).get_reg() == make_gpr(Reg::S7));
     assert(i2.get_src(1).get_reg() == clobber_reg);
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::EQUAL, make_reg(src0_reg, idx),
-                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(
+                               Condition(Condition::EQUAL, make_reg(src0_reg, idx),
+                                         make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
   } else if (i0.kind == InstructionKind::DSUBU && i1.kind == InstructionKind::DADDIU &&
              i2.kind == InstructionKind::MOVZ) {
     // check for equality
@@ -1129,22 +1150,22 @@ std::shared_ptr<IR> try_dsubu(Instruction& i0, Instruction& i1, Instruction& i2,
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::NOT_EQUAL, make_reg(src0_reg, idx),
-                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(
+                               Condition(Condition::NOT_EQUAL, make_reg(src0_reg, idx),
+                                         make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::SLT && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1161,17 +1182,17 @@ std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, Instruction& i2, i
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx),
-                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(
+                               Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx),
+                                         make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
   } else if (i0.kind == InstructionKind::SLT && i1.kind == InstructionKind::BEQ) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1188,22 +1209,22 @@ std::shared_ptr<IR> try_slt(Instruction& i0, Instruction& i1, Instruction& i2, i
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx),
-                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(
+                               Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx),
+                                         make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_slti(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_slti(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   auto src1 = make_int(i0.get_src(1).get_imm());
   if (i0.kind == InstructionKind::SLTI && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx), src1,
                   make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1219,8 +1240,8 @@ std::shared_ptr<IR> try_slti(Instruction& i0, Instruction& i1, Instruction& i2, 
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(
-        IR_Set::REG_64, make_reg(dst_reg, idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
         std::make_shared<IR_Compare>(Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx),
                                                src1, make_reg(clobber_reg, idx))));
   } else if (i0.kind == InstructionKind::SLTI && i1.kind == InstructionKind::BEQ) {
@@ -1228,7 +1249,7 @@ std::shared_ptr<IR> try_slti(Instruction& i0, Instruction& i1, Instruction& i2, 
     auto src0_reg = i0.get_src(0).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx), src1, make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
   } else if (i0.kind == InstructionKind::SLTI && i1.kind == InstructionKind::DADDIU &&
@@ -1243,22 +1264,22 @@ std::shared_ptr<IR> try_slti(Instruction& i0, Instruction& i1, Instruction& i2, 
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(
-        IR_Set::REG_64, make_reg(dst_reg, idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
         std::make_shared<IR_Compare>(Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx), src1,
                                                make_reg(clobber_reg, idx))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sltiu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_sltiu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   auto src1 = make_int(i0.get_src(1).get_imm());
   if (i0.kind == InstructionKind::SLTIU && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_UNSIGNED, make_reg(src0_reg, idx), src1,
                   make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1274,18 +1295,19 @@ std::shared_ptr<IR> try_sltiu(Instruction& i0, Instruction& i1, Instruction& i2,
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(Condition(Condition::LESS_THAN_UNSIGNED,
-                                                           make_reg(src0_reg, idx), src1,
-                                                           make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(Condition(Condition::LESS_THAN_UNSIGNED,
+                                                                  make_reg(src0_reg, idx), src1,
+                                                                  make_reg(clobber_reg, idx))));
   } else if (i0.kind == InstructionKind::SLTIU && i1.kind == InstructionKind::BEQ) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx),
-                                                 src1, make_reg(clobber_reg, idx)),
-                                       i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
+    return std::make_shared<IR_Branch_Atomic>(
+        Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx), src1,
+                  make_reg(clobber_reg, idx)),
+        i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
   } else if (i0.kind == InstructionKind::SLTIU && i1.kind == InstructionKind::DADDIU &&
              i2.kind == InstructionKind::MOVN) {
     auto clobber_reg = i0.get_dst(0).get_reg();
@@ -1298,22 +1320,22 @@ std::shared_ptr<IR> try_sltiu(Instruction& i0, Instruction& i1, Instruction& i2,
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(
-        IR_Set::REG_64, make_reg(dst_reg, idx),
+    return make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
         std::make_shared<IR_Compare>(Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx),
                                                src1, make_reg(clobber_reg, idx))));
   }
   return nullptr;
 }
 
-std::shared_ptr<IR> try_ceqs(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_ceqs(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::CEQS && i1.kind == InstructionKind::BC1T) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FLOAT_EQUAL, make_reg(i0.get_src(0).get_reg(), idx),
                   make_reg(i0.get_src(1).get_reg(), idx), nullptr),
         i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
   } else if (i0.kind == InstructionKind::CEQS && i1.kind == InstructionKind::BC1F) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FLOAT_NOT_EQUAL, make_reg(i0.get_src(0).get_reg(), idx),
                   make_reg(i0.get_src(1).get_reg(), idx), nullptr),
         i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
@@ -1321,14 +1343,14 @@ std::shared_ptr<IR> try_ceqs(Instruction& i0, Instruction& i1, Instruction& i2, 
   return nullptr;
 }
 
-std::shared_ptr<IR> try_clts(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_clts(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::CLTS && i1.kind == InstructionKind::BC1T) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FLOAT_LESS_THAN, make_reg(i0.get_src(0).get_reg(), idx),
                   make_reg(i0.get_src(1).get_reg(), idx), nullptr),
         i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
   } else if (i0.kind == InstructionKind::CLTS && i1.kind == InstructionKind::BC1F) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FLOAT_GEQ, make_reg(i0.get_src(0).get_reg(), idx),
                   make_reg(i0.get_src(1).get_reg(), idx), nullptr),
         i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
@@ -1336,14 +1358,14 @@ std::shared_ptr<IR> try_clts(Instruction& i0, Instruction& i1, Instruction& i2, 
   return nullptr;
 }
 
-std::shared_ptr<IR> try_cles(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_cles(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::CLES && i1.kind == InstructionKind::BC1T) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FLOAT_LEQ, make_reg(i0.get_src(0).get_reg(), idx),
                   make_reg(i0.get_src(1).get_reg(), idx), nullptr),
         i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
   } else if (i0.kind == InstructionKind::CLES && i1.kind == InstructionKind::BC1F) {
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::FLOAT_GREATER_THAN, make_reg(i0.get_src(0).get_reg(), idx),
                   make_reg(i0.get_src(1).get_reg(), idx), nullptr),
         i1.get_src(0).get_label(), get_branch_delay(i2, idx), false);
@@ -1351,14 +1373,14 @@ std::shared_ptr<IR> try_cles(Instruction& i0, Instruction& i1, Instruction& i2, 
   return nullptr;
 }
 
-std::shared_ptr<IR> try_sltu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
+std::shared_ptr<IR_Atomic> try_sltu(Instruction& i0, Instruction& i1, Instruction& i2, int idx) {
   if (i0.kind == InstructionKind::SLTU && i1.kind == InstructionKind::BNE) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::LESS_THAN_UNSIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1375,17 +1397,17 @@ std::shared_ptr<IR> try_sltu(Instruction& i0, Instruction& i1, Instruction& i2, 
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::LESS_THAN_UNSIGNED, make_reg(src0_reg, idx),
-                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(
+                               Condition(Condition::LESS_THAN_UNSIGNED, make_reg(src0_reg, idx),
+                                         make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
   } else if (i0.kind == InstructionKind::SLTU && i1.kind == InstructionKind::BEQ) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
     auto src1_reg = i0.get_src(1).get_reg();
     assert(i1.get_src(0).get_reg() == clobber_reg);
     assert(i1.get_src(1).get_reg() == make_gpr(Reg::R0));
-    return std::make_shared<IR_Branch>(
+    return std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx), make_reg(src1_reg, idx),
                   make_reg(clobber_reg, idx)),
         i1.get_src(2).get_label(), get_branch_delay(i2, idx), false);
@@ -1402,21 +1424,21 @@ std::shared_ptr<IR> try_sltu(Instruction& i0, Instruction& i1, Instruction& i2, 
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    return make_set(IR_Set::REG_64, make_reg(dst_reg, idx),
-                    std::make_shared<IR_Compare>(
-                        Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx),
-                                  make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+    return make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                           std::make_shared<IR_Compare>(
+                               Condition(Condition::GEQ_UNSIGNED, make_reg(src0_reg, idx),
+                                         make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
   }
   return nullptr;
 }
 
 // five op
-std::shared_ptr<IR> try_lwu(Instruction& i0,
-                            Instruction& i1,
-                            Instruction& i2,
-                            Instruction& i3,
-                            Instruction& i4,
-                            int idx) {
+std::shared_ptr<IR_Atomic> try_lwu(Instruction& i0,
+                                   Instruction& i1,
+                                   Instruction& i2,
+                                   Instruction& i3,
+                                   Instruction& i4,
+                                   int idx) {
   (void)idx;
   auto s6 = make_gpr(Reg::S6);
   if (i0.kind == InstructionKind::LWU && i0.get_dst(0).is_reg(s6) &&
@@ -1440,7 +1462,7 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
 
     int length = 0;
 
-    std::shared_ptr<IR> result = nullptr;
+    std::shared_ptr<IR_Atomic> result = nullptr;
     if (instr + 4 < block.end_word) {
       auto& i1 = func->instructions.at(instr + 1);
       auto& i2 = func->instructions.at(instr + 2);
@@ -1902,7 +1924,7 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     if (!result) {
       // temp hack for debug:
       printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
-      func->add_basic_op(std::make_shared<IR_Failed>(), instr, instr + 1);
+      func->add_basic_op(std::make_shared<IR_Failed_Atomic>(), instr, instr + 1);
     } else {
       if (!func->contains_asm_ops && dynamic_cast<IR_AsmOp*>(result.get())) {
         func->warnings += "Function contains asm op";

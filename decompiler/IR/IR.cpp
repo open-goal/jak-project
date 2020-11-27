@@ -99,6 +99,41 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
                                   src->to_form(file));
 }
 
+goos::Object IR_Store_Atomic::to_form(const LinkedObjectFile& file) const {
+  std::string store_operator;
+  switch (kind) {
+    case FLOAT:
+      store_operator = "s.f";
+      break;
+    case INTEGER:
+      switch (size) {
+        case 1:
+          store_operator = "s.b";
+          break;
+        case 2:
+          store_operator = "s.h";
+          break;
+        case 4:
+          store_operator = "s.w";
+          break;
+        case 8:
+          store_operator = "s.d";
+          break;
+        case 16:
+          store_operator = "s.q";
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    default:
+      assert(false);
+  }
+
+  return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
+                                  src->to_form(file));
+}
+
 goos::Object IR_Symbol::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::to_symbol("'" + name);

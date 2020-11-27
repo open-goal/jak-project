@@ -15,6 +15,7 @@
 class DecompilerTypeSystem;
 // Map of what type is in each register.
 using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
+class IR_Atomic;
 class IR;
 
 struct FunctionName {
@@ -76,11 +77,11 @@ class Function {
   void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
-  void add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr);
+  void add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr);
   bool has_basic_ops() { return !basic_ops.empty(); }
   bool has_typemaps() { return !basic_op_typemaps.empty(); }
   bool instr_starts_basic_op(int idx);
-  std::shared_ptr<IR> get_basic_op_at_instr(int idx);
+  std::shared_ptr<IR_Atomic> get_basic_op_at_instr(int idx);
   const TypeMap& get_typemap_by_instr_idx(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
@@ -144,7 +145,7 @@ class Function {
   } prologue;
 
   bool uses_fp_register = false;
-  std::vector<std::shared_ptr<IR>> basic_ops;
+  std::vector<std::shared_ptr<IR_Atomic>> basic_ops;
 
  private:
   void check_epilogue(const LinkedObjectFile& file);
