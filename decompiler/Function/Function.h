@@ -85,6 +85,7 @@ class Function {
   const TypeMap& get_typemap_by_instr_idx(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
+  int get_reginfo_basic_op_count();
   void run_type_analysis(const TypeSpec& my_type,
                          DecompilerTypeSystem& dts,
                          LinkedObjectFile& file);

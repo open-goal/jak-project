@@ -811,6 +811,7 @@ void ObjectFileDB::analyze_functions() {
   int total_named_functions = 0;
   int total_basic_ops = 0;
   int total_failed_basic_ops = 0;
+  int total_reginfo_ops = 0;
 
   int asm_funcs = 0;
   int non_asm_funcs = 0;
@@ -848,6 +849,7 @@ void ObjectFileDB::analyze_functions() {
       }
       total_basic_ops += func.get_basic_op_count();
       total_failed_basic_ops += func.get_failed_basic_op_count();
+      total_reginfo_ops += func.get_reginfo_basic_op_count();
 
       if (func.is_inspect_method) {
         auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
@@ -925,6 +927,8 @@ void ObjectFileDB::analyze_functions() {
   int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
   spdlog::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
                total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+  spdlog::info(" {}/{} basic ops with reginfo ({:.3f}%)", total_reginfo_ops, total_basic_ops,
+               100.f * float(total_reginfo_ops) / float(total_basic_ops));
   spdlog::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
                100.f * float(successful_cfg_irs) / float(non_asm_funcs));
   spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,

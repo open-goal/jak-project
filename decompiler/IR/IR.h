@@ -37,6 +37,8 @@ class IR {
 
 class IR_Atomic : public virtual IR {
  public:
+  std::vector<Register> read_regs, write_regs, clobber_regs;
+  bool reg_info_set = false;
 };
 
 class IR_Failed : public virtual IR {
@@ -93,13 +95,22 @@ class IR_Set_Atomic : public IR_Set, public IR_Atomic {
  public:
   IR_Set_Atomic(IR_Set::Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src)
       : IR_Set(_kind, std::move(_dst), std::move(_src)) {}
+
+  template <typename T>
+  void update_reginfo_self(int n_dest, int n_src, int n_clobber);
+
+  void update_reginfo_regreg();
 };
+
+class IR_IntMath2;
+template <>
+void IR_Set_Atomic::update_reginfo_self<IR_IntMath2>(int n_dest, int n_src, int n_clobber);
 
 class IR_Store : public virtual IR_Set {
  public:
   enum Kind { INTEGER, FLOAT } kind;
   IR_Store(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src, int _size)
-      : IR_Set(IR_Set::LOAD, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
+      : IR_Set(IR_Set::STORE, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
   int size;
   goos::Object to_form(const LinkedObjectFile& file) const override;
 };
@@ -112,9 +123,10 @@ class IR_Store_Atomic : public IR_Set_Atomic {
  public:
   enum Kind { INTEGER, FLOAT } kind;
   IR_Store_Atomic(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src, int _size)
-      : IR_Set_Atomic(IR_Set::LOAD, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
+      : IR_Set_Atomic(IR_Set::STORE, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
   int size;
   goos::Object to_form(const LinkedObjectFile& file) const override;
+  void update_reginfo_self(int n_dest, int n_src, int n_clobber);
 };
 
 class IR_Symbol : public virtual IR {
@@ -274,6 +286,10 @@ struct BranchDelay {
   explicit BranchDelay(Kind _kind) : kind(_kind) {}
   goos::Object to_form(const LinkedObjectFile& file) const;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const;
+
+  std::vector<Register> read_regs;
+  std::vector<Register> write_regs;
+  std::vector<Register> clobber_regs;
 };
 
 struct Condition {
@@ -356,6 +372,8 @@ class IR_Branch_Atomic : public virtual IR_Branch, public IR_Atomic {
                    BranchDelay _branch_delay,
                    bool _likely)
       : IR_Branch(std::move(_condition), _dest_label_idx, std::move(_branch_delay), _likely) {}
+  // note - counts only for the condition.
+  void update_reginfo_self(int n_dst, int n_src, int n_clobber);
 };
 
 class IR_Compare : public virtual IR {
@@ -508,6 +526,7 @@ class IR_AsmOp : public virtual IR {
 class IR_AsmOp_Atomic : public virtual IR_AsmOp, public IR_Atomic {
  public:
   IR_AsmOp_Atomic(std::string _name) : IR_AsmOp(std::move(_name)) {}
+  void set_reg_info();
 };
 
 class IR_CMoveF : public virtual IR {
