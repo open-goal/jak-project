@@ -34,6 +34,8 @@ class IR_Atomic : public virtual IR {
   bool reg_info_set = false;
 
   TypeState end_types;  // types at the end of this instruction
+  std::vector<std::string> warnings;
+  void warn(const std::string& str) { warnings.emplace_back(str); }
 
   virtual void propagate_types(const TypeState& input,
                                const LinkedObjectFile& file,
@@ -162,6 +164,9 @@ class IR_Load : public virtual IR {
   std::shared_ptr<IR> location;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_FloatMath2 : public virtual IR {
@@ -172,6 +177,9 @@ class IR_FloatMath2 : public virtual IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_FloatMath1 : public virtual IR {
@@ -209,6 +217,9 @@ class IR_IntMath2 : public virtual IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntMath1 : public virtual IR {
@@ -261,6 +272,8 @@ struct BranchDelay {
   std::vector<Register> read_regs;
   std::vector<Register> write_regs;
   std::vector<Register> clobber_regs;
+
+  void type_prop(TypeState& output, const LinkedObjectFile& file, DecompilerTypeSystem& dts);
 };
 
 struct Condition {
@@ -342,6 +355,9 @@ class IR_Branch_Atomic : public virtual IR_Branch, public IR_Atomic {
       : IR_Branch(std::move(_condition), _dest_label_idx, std::move(_branch_delay), _likely) {}
   // note - counts only for the condition.
   void update_reginfo_self(int n_dst, int n_src, int n_clobber);
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Compare : public virtual IR {

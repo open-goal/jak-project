@@ -63,7 +63,6 @@ struct FunctionName {
   }
 };
 
-
 class Function {
  public:
   Function(int _start_word, int _end_word);

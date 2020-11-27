@@ -78,11 +78,17 @@ std::string IR_Atomic::print_with_reguse(const LinkedObjectFile& file) const {
 
 std::string IR_Atomic::print_with_types(const TypeState& init_types,
                                         const LinkedObjectFile& file) const {
-  std::string result = print(file);
+  std::string result;
+
+  for (auto& warning : warnings) {
+    result += ";; warn: " + warning + "\n";
+  }
+  result += print(file);
   if (result.length() < 40) {
     result.append(40 - result.length(), ' ');
   }
   result += " ;; ";
+
   auto read_mask = regs_to_gpr_mask(read_regs);
   auto write_mask = regs_to_gpr_mask(write_regs);
 

@@ -9,6 +9,12 @@ struct TP_Type {
   // in the case that we are type_object, just store the type name in a single arg ts.
   TypeSpec ts;
   std::string print() const;
+
+  TP_Type() = default;
+  explicit TP_Type(const TypeSpec& _ts) {
+    kind = OBJECT_OF_TYPE;
+    ts = _ts;
+  }
 };
 
 struct TypeState {
@@ -17,7 +23,7 @@ struct TypeState {
 
   std::string print_gpr_masked(u32 mask) const;
   TP_Type& get(const Register& r) {
-    switch(r.get_kind()) {
+    switch (r.get_kind()) {
       case Reg::GPR:
         return gpr_types[r.get_gpr()];
       case Reg::FPR:
@@ -28,7 +34,7 @@ struct TypeState {
   }
 
   const TP_Type& get(const Register& r) const {
-    switch(r.get_kind()) {
+    switch (r.get_kind()) {
       case Reg::GPR:
         return gpr_types[r.get_gpr()];
       case Reg::FPR:
