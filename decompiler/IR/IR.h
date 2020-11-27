@@ -16,17 +16,16 @@ namespace goos {
 class Object;
 }
 
-// Map of what type is in each register.
-using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
-
 class IR {
  public:
   virtual goos::Object to_form(const LinkedObjectFile& file) const = 0;
   std::vector<std::shared_ptr<IR>> get_all_ir(LinkedObjectFile& file) const;
   std::string print(const LinkedObjectFile& file) const;
   virtual void get_children(std::vector<std::shared_ptr<IR>>* output) const = 0;
-
   bool is_basic_op = false;
+  virtual TP_Type get_expression_type(const TypeState& input,
+                                      const LinkedObjectFile& file,
+                                      DecompilerTypeSystem& dts);
 };
 
 class IR_Atomic : public virtual IR {
@@ -36,6 +35,9 @@ class IR_Atomic : public virtual IR {
 
   TypeState end_types;  // types at the end of this instruction
 
+  virtual void propagate_types(const TypeState& input,
+                               const LinkedObjectFile& file,
+                               DecompilerTypeSystem& dts);
   std::string print_with_types(const TypeState& init_types, const LinkedObjectFile& file) const;
   std::string print_with_reguse(const LinkedObjectFile& file) const;
 };
@@ -59,6 +61,9 @@ class IR_Register : public virtual IR {
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   Register reg;
   int instr_idx = -1;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Set : public virtual IR {
@@ -90,8 +95,10 @@ class IR_Set_Atomic : public IR_Set, public IR_Atomic {
 
   template <typename T>
   void update_reginfo_self(int n_dest, int n_src, int n_clobber);
-
   void update_reginfo_regreg();
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntMath2;

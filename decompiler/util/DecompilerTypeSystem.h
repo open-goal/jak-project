@@ -2,6 +2,7 @@
 #define JAK_DECOMPILERTYPESYSTEM_H
 
 #include "common/type_system/TypeSystem.h"
+#include "decompiler/Disasm/Register.h"
 
 struct TP_Type {
   enum Kind { OBJECT_OF_TYPE, TYPE_OBJECT, FALSE, NONE } kind = NONE;
@@ -15,6 +16,27 @@ struct TypeState {
   TP_Type fpr_types[32];
 
   std::string print_gpr_masked(u32 mask) const;
+  TP_Type& get(const Register& r) {
+    switch(r.get_kind()) {
+      case Reg::GPR:
+        return gpr_types[r.get_gpr()];
+      case Reg::FPR:
+        return fpr_types[r.get_fpr()];
+      default:
+        assert(false);
+    }
+  }
+
+  const TP_Type& get(const Register& r) const {
+    switch(r.get_kind()) {
+      case Reg::GPR:
+        return gpr_types[r.get_gpr()];
+      case Reg::FPR:
+        return fpr_types[r.get_fpr()];
+      default:
+        assert(false);
+    }
+  }
 };
 
 class DecompilerTypeSystem {

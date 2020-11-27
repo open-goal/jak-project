@@ -683,10 +683,6 @@ std::shared_ptr<IR_Atomic> Function::get_basic_op_at_instr(int idx) {
   return basic_ops.at(instruction_to_basic_op.at(idx));
 }
 
-const TypeMap& Function::get_typemap_by_instr_idx(int idx) {
-  return basic_op_typemaps.at(instruction_to_basic_op.at(idx));
-}
-
 int Function::get_basic_op_count() {
   return basic_ops.size();
 }
@@ -709,4 +705,43 @@ int Function::get_reginfo_basic_op_count() {
     }
   }
   return count;
+}
+
+/*!
+ * Topological sort of basic blocks.
+ * Returns a valid ordering + a list of blocks that you can't reach and therefore
+ * aren't in the ordering.
+ */
+BlockTopologicalSort Function::bb_topo_sort() {
+  BlockTopologicalSort result;
+  std::unordered_set<int> visit_set;
+  std::vector<int> visit_queue;
+  if (basic_blocks.empty()) {
+    assert(false);
+  }
+
+  visit_queue.push_back(0);
+
+  while (!visit_queue.empty()) {
+    // let's visit the most recently added:
+    auto to_visit = visit_queue.back();
+    visit_queue.pop_back();
+    result.vist_order.push_back(to_visit);
+
+    auto& block = basic_blocks.at(to_visit);
+    for (auto next : {block.succ_branch, block.succ_ft}) {
+      if (next != -1 && visit_set.find(next) == visit_set.end()) {
+        visit_set.insert(next);
+        visit_queue.push_back(next);
+      }
+    }
+  }
+
+  for (int i = 0; i < int(basic_blocks.size()); i++) {
+    if (visit_set.find(i) == visit_set.end()) {
+      result.unreachable.insert(i);
+    }
+  }
+
+  return result;
 }

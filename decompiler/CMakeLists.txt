@@ -20,7 +20,9 @@ add_executable(decompiler
 		data/tpage.cpp
 		data/game_text.cpp
 		data/StrFileReader.cpp
-		data/game_count.cpp data/LinkedWordReader.h)
+		data/game_count.cpp
+		Function/TypeAnalysis.cpp
+		IR/IR_TypeAnalysis.cpp)
 
 target_link_libraries(decompiler
         goos
