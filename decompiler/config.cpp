@@ -32,6 +32,7 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.process_game_text = cfg.at("process_game_text").get<bool>();
   gConfig.process_game_count = cfg.at("process_game_count").get<bool>();
   gConfig.dump_objs = cfg.at("dump_objs").get<bool>();
+  gConfig.write_func_json = cfg.at("write_func_json").get<bool>();
 
   std::vector<std::string> asm_functions_by_name =
       cfg.at("asm_functions_by_name").get<std::vector<std::string>>();

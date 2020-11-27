@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "decompiler/Disasm/Register.h"
 #include "common/type_system/TypeSpec.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 class LinkedObjectFile;
 class DecompilerTypeSystem;
@@ -39,6 +40,11 @@ class IR_Atomic : public virtual IR {
  public:
   std::vector<Register> read_regs, write_regs, clobber_regs;
   bool reg_info_set = false;
+
+  TypeState end_types;  // types at the end of this instruction
+
+  std::string print_with_types(const TypeState& init_types, const LinkedObjectFile& file) const;
+  std::string print_with_reguse(const LinkedObjectFile& file) const;
 };
 
 class IR_Failed : public virtual IR {

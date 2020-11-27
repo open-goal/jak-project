@@ -1,6 +1,7 @@
 #include "IR.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/goos/PrettyPrinter.h"
+#include "third-party/fmt/core.h"
 
 std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
   (void)file;
@@ -32,6 +33,69 @@ bool IR::update_types(TypeMap& reg_types, DecompilerTypeSystem& dts, LinkedObjec
   (void)dts;
   (void)file;
   return false;
+}
+
+namespace {
+void add_regs_to_str(const std::vector<Register>& regs, std::string& str) {
+  bool first = true;
+  for (auto& reg : regs) {
+    if (first) {
+      first = false;
+    } else {
+      str.push_back(' ');
+    }
+    str.append(reg.to_charp());
+  }
+}
+
+u32 regs_to_gpr_mask(const std::vector<Register>& regs) {
+  u32 result = 0;
+  for (const auto& reg : regs) {
+    if (reg.get_kind() == Reg::GPR) {
+      result |= (1 << reg.get_gpr());
+    }
+  }
+  return result;
+}
+}  // namespace
+
+std::string IR_Atomic::print_with_reguse(const LinkedObjectFile& file) const {
+  std::string result = print(file);
+  if (result.length() < 40) {
+    result.append(40 - result.length(), ' ');
+  }
+  result += " ;;";
+  if (!write_regs.empty()) {
+    result += "write: [";
+    add_regs_to_str(write_regs, result);
+    result += "] ";
+  }
+  if (!read_regs.empty()) {
+    result += "read: [";
+    add_regs_to_str(read_regs, result);
+    result += "] ";
+  }
+  if (!clobber_regs.empty()) {
+    result += "clobber: [";
+    add_regs_to_str(clobber_regs, result);
+    result += "] ";
+  }
+  return result;
+}
+
+std::string IR_Atomic::print_with_types(const TypeState& init_types,
+                                        const LinkedObjectFile& file) const {
+  std::string result = print(file);
+  if (result.length() < 40) {
+    result.append(40 - result.length(), ' ');
+  }
+  result += " ;; ";
+  auto read_mask = regs_to_gpr_mask(read_regs);
+  auto write_mask = regs_to_gpr_mask(write_regs);
+
+  result += fmt::format("[{}] -> [{}]", init_types.print_gpr_masked(read_mask),
+                        end_types.print_gpr_masked(write_mask));
+  return result;
 }
 
 goos::Object IR_Failed::to_form(const LinkedObjectFile& file) const {

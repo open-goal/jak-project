@@ -793,6 +793,44 @@ std::string LinkedObjectFile::print_disassembly() {
   return result;
 }
 
+std::string LinkedObjectFile::print_type_analysis_debug() {
+  std::string result;
+
+  assert(segments <= 3);
+  for (int seg = segments; seg-- > 0;) {
+    // segment header
+    result += ";------------------------------------------\n;  ";
+    result += segment_names[seg];
+    result += "\n;------------------------------------------\n\n";
+
+    // functions
+    for (auto& func : functions_by_seg.at(seg)) {
+      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+      result += "; .function " + func.guessed_name.to_string() + "\n";
+      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+
+      for (auto& block : func.basic_blocks) {
+        result += "\n";
+        if (!block.label_name.empty()) {
+          result += block.label_name + ":\n";
+        }
+
+        TypeState* init_types = &block.init_types;
+        for (int i = block.start_basic_op; i < block.end_basic_op; i++) {
+          result += "  ";
+          // result += func.basic_ops.at(i)->print_with_reguse(*this);
+          // result += func.basic_ops.at(i)->print(*this);
+          result += func.basic_ops.at(i)->print_with_types(*init_types, *this);
+          result += "\n";
+          init_types = &func.basic_ops.at(i)->end_types;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 /*!
  * Hacky way to get a GOAL string object
  */

@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "CfgVtx.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 class LinkedObjectFile;
 class Function;
@@ -11,6 +12,12 @@ class Function;
 struct BasicBlock {
   int start_word;
   int end_word;
+  TypeState init_types;
+
+  int start_basic_op = -1;
+  int end_basic_op = -1;
+
+  std::string label_name;
 
   std::vector<int> pred;
   int succ_ft = -1;

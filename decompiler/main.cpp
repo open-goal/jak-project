@@ -83,7 +83,9 @@ int main(int argc, char** argv) {
   }
 
   if (get_config().write_disassembly) {
-    db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions);
+    db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions,
+                         get_config().write_func_json);
+    db.write_debug_type_analysis(out_folder);
   }
 
   // todo print type summary
