@@ -28,13 +28,6 @@ std::string IR::print(const LinkedObjectFile& file) const {
   return pretty_print::to_string(to_form(file));
 }
 
-bool IR::update_types(TypeMap& reg_types, DecompilerTypeSystem& dts, LinkedObjectFile& file) const {
-  (void)reg_types;
-  (void)dts;
-  (void)file;
-  return false;
-}
-
 namespace {
 void add_regs_to_str(const std::vector<Register>& regs, std::string& str) {
   bool first = true;
