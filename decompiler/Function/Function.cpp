@@ -659,7 +659,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
   }
 }
 
-void Function::add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr) {
+void Function::add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr) {
   op->is_basic_op = true;
   assert(end_instr > start_instr);
 
@@ -679,7 +679,7 @@ bool Function::instr_starts_basic_op(int idx) {
   return false;
 }
 
-std::shared_ptr<IR> Function::get_basic_op_at_instr(int idx) {
+std::shared_ptr<IR_Atomic> Function::get_basic_op_at_instr(int idx) {
   return basic_ops.at(instruction_to_basic_op.at(idx));
 }
 
@@ -695,6 +695,16 @@ int Function::get_failed_basic_op_count() {
   int count = 0;
   for (auto& x : basic_ops) {
     if (dynamic_cast<IR_Failed*>(x.get())) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int Function::get_reginfo_basic_op_count() {
+  int count = 0;
+  for (auto& x : basic_ops) {
+    if (x->reg_info_set) {
       count++;
     }
   }

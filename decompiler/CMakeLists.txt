@@ -8,7 +8,6 @@ add_executable(decompiler
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/LinkedObjectFile.cpp
         Function/Function.cpp
-		Function/TypeAnalysis.cpp
         config.cpp
         util/DecompilerTypeSystem.cpp
         Function/BasicBlocks.cpp
@@ -17,7 +16,6 @@ add_executable(decompiler
         IR/BasicOpBuilder.cpp
         IR/CfgBuilder.cpp
         IR/IR.cpp
-		IR/IR_TypeAnalysis.cpp
 		Function/TypeInspector.cpp
 		data/tpage.cpp
 		data/game_text.cpp

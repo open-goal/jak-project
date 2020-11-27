@@ -1,6 +1,7 @@
 #include "DecompilerTypeSystem.h"
 #include "common/goos/Reader.h"
 #include "common/type_system/deftype.h"
+#include "decompiler/Disasm/Register.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
 
 DecompilerTypeSystem::DecompilerTypeSystem() {
@@ -146,4 +147,151 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
       throw std::runtime_error("Type redefinition");
     }
   }
+}
+
+std::string TP_Type::print() const {
+  switch (kind) {
+    case OBJECT_OF_TYPE:
+      return ts.print();
+    case TYPE_OBJECT:
+      return fmt::format("[{}]", ts.print());
+    case FALSE:
+      return fmt::format("[#f]");
+    case NONE:
+      return fmt::format("[none]");
+    default:
+      assert(false);
+  }
+}
+
+std::string TypeState::print_gpr_masked(u32 mask) const {
+  std::string result;
+  for (int i = 0; i < 32; i++) {
+    if (mask & (1 << i)) {
+      result += Register(Reg::GPR, i).to_charp();
+      result += ": ";
+      result += gpr_types[i].print();
+      result += " ";
+    }
+  }
+  return result;
+}
+
+TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+  switch (existing.kind) {
+    case TP_Type::OBJECT_OF_TYPE:
+      switch (add.kind) {
+        case TP_Type::OBJECT_OF_TYPE: {
+          // two normal types, do LCA as normal.
+          TP_Type result;
+          result.kind = TP_Type::OBJECT_OF_TYPE;
+          result.ts = ts.lowest_common_ancestor(existing.ts, add.ts);
+          *changed = (result.ts != existing.ts);
+          return result;
+        }
+        case TP_Type::TYPE_OBJECT: {
+          // normal, [type object]. Change type object to less specific "type".
+          TP_Type result;
+          result.kind = TP_Type::OBJECT_OF_TYPE;
+          result.ts = ts.lowest_common_ancestor(existing.ts, ts.make_typespec("type"));
+          *changed = (result.ts != existing.ts);
+          return result;
+        }
+        case TP_Type::FALSE:
+          // allow #f anywhere
+          *changed = false;
+          return existing;
+        case TP_Type::NONE:
+          // allow possibly undefined.
+          *changed = false;
+          return existing;
+        default:
+          assert(false);
+      }
+      break;
+    case TP_Type::TYPE_OBJECT:
+      switch (add.kind) {
+        case TP_Type::OBJECT_OF_TYPE: {
+          TP_Type result;
+          result.kind = TP_Type::OBJECT_OF_TYPE;
+          result.ts = ts.lowest_common_ancestor(ts.make_typespec("type"), add.ts);
+          *changed = true;  // changed type
+          return result;
+        }
+        case TP_Type::TYPE_OBJECT: {
+          // two type objects.
+          TP_Type result;
+          result.kind = TP_Type::TYPE_OBJECT;
+          result.ts = ts.lowest_common_ancestor(existing.ts, add.ts);
+          *changed = (result.ts != existing.ts);
+          return result;
+        }
+        case TP_Type::FALSE:
+          // allow #f anywhere
+          *changed = false;
+          return existing;
+        case TP_Type::NONE:
+          // allow possibly undefined.
+          *changed = false;
+          return existing;
+        default:
+          assert(false);
+      }
+      break;
+    case TP_Type::FALSE:
+      switch (add.kind) {
+        case TP_Type::OBJECT_OF_TYPE:
+          *changed = true;
+          return add;
+        case TP_Type::TYPE_OBJECT:
+          *changed = true;
+          return add;
+        case TP_Type::FALSE:
+          *changed = false;
+          return existing;
+        case TP_Type::NONE:
+          *changed = false;
+          return existing;
+        default:
+          assert(false);
+      }
+      break;
+    case TP_Type::NONE:
+      switch (add.kind) {
+        case TP_Type::OBJECT_OF_TYPE:
+        case TP_Type::TYPE_OBJECT:
+        case TP_Type::FALSE:
+        case TP_Type::NONE:
+          *changed = false;
+          return existing;
+        default:
+          assert(false);
+      }
+      break;
+    default:
+      assert(false);
+  }
+}
+
+bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
+  bool result = false;
+  for (int i = 0; i < 32; i++) {
+    bool diff = false;
+    auto new_type = tp_lca(combined->gpr_types[i], add.gpr_types[i], &diff);
+    if (diff) {
+      result = true;
+      combined->gpr_types[i] = new_type;
+    }
+  }
+
+  for (int i = 0; i < 32; i++) {
+    bool diff = false;
+    auto new_type = tp_lca(combined->fpr_types[i], add.fpr_types[i], &diff);
+    if (diff) {
+      result = true;
+      combined->fpr_types[i] = new_type;
+    }
+  }
+
+  return result;
 }

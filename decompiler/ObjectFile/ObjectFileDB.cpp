@@ -560,11 +560,35 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   // printf("\n");
 }
 
+void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
+  spdlog::info("- Writing debug type analysis...");
+  Timer timer;
+  uint32_t total_bytes = 0, total_files = 0;
+
+  for_each_obj([&](ObjectFileData& obj) {
+    if (obj.linked_data.has_any_functions()) {
+      auto file_text = obj.linked_data.print_type_analysis_debug();
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_db.asm");
+
+      total_bytes += file_text.size();
+      file_util::write_text_file(file_name, file_text);
+      total_files++;
+    }
+  });
+
+  spdlog::info("Wrote functions dumps:");
+  spdlog::info(" Total {} files", total_files);
+  spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
+  spdlog::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
+               total_bytes / ((1u << 20u) * timer.getSeconds()));
+}
+
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
-                                     bool disassemble_objects_without_functions) {
+                                     bool disassemble_objects_without_functions,
+                                     bool write_json) {
   spdlog::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -577,7 +601,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
 
-      if (get_config().analyze_functions) {
+      if (get_config().analyze_functions && write_json) {
         auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
         auto json_asm_file_name =
             file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
@@ -736,6 +760,9 @@ std::string ObjectFileDB::process_game_count() {
   return result;
 }
 
+/*!
+ * This is the main decompiler routine which runs after we've identified functions.
+ */
 void ObjectFileDB::analyze_functions() {
   spdlog::info("- Analyzing Functions...");
   Timer timer;
@@ -744,73 +771,76 @@ void ObjectFileDB::analyze_functions() {
   int resolved_cfg_functions = 0;
   const auto& config = get_config();
 
-  {
-    timer.start();
-    for_each_obj([&](ObjectFileData& data) {
-      if (data.linked_data.segments == 3) {
-        // the top level segment should have a single function
-        assert(data.linked_data.functions_by_seg.at(2).size() == 1);
+  // Step 1 - analyze the "top level" or "login" code for each object file.
+  // this will give us type definitions, method definitions, and function definitions...
+  spdlog::info("  - Processing top levels...");
 
-        auto& func = data.linked_data.functions_by_seg.at(2).front();
-        assert(func.guessed_name.empty());
-        func.guessed_name.set_as_top_level();
-        func.find_global_function_defs(data.linked_data, dts);
-        func.find_type_defs(data.linked_data, dts);
-        func.find_method_defs(data.linked_data, dts);
-      }
-    });
+  timer.start();
+  for_each_obj([&](ObjectFileData& data) {
+    if (data.linked_data.segments == 3) {
+      // the top level segment should have a single function
+      assert(data.linked_data.functions_by_seg.at(2).size() == 1);
 
-    // check for function uniqueness.
-    std::unordered_set<std::string> unique_names;
-    std::unordered_map<std::string, std::unordered_set<std::string>> duplicated_functions;
+      auto& func = data.linked_data.functions_by_seg.at(2).front();
+      assert(func.guessed_name.empty());
+      func.guessed_name.set_as_top_level();
+      func.find_global_function_defs(data.linked_data, dts);
+      func.find_type_defs(data.linked_data, dts);
+      func.find_method_defs(data.linked_data, dts);
+    }
+  });
 
-    int uid = 1;
-    for_each_obj([&](ObjectFileData& data) {
-      int func_in_obj = 0;
-      for (int segment_id = 0; segment_id < int(data.linked_data.segments); segment_id++) {
-        for (auto& func : data.linked_data.functions_by_seg.at(segment_id)) {
-          func.guessed_name.unique_id = uid++;
-          func.guessed_name.id_in_object = func_in_obj++;
-          func.guessed_name.object_name = data.to_unique_name();
-          auto name = func.guessed_name.to_string();
+  // check for function uniqueness.
+  std::unordered_set<std::string> unique_names;
+  std::unordered_map<std::string, std::unordered_set<std::string>> duplicated_functions;
 
-          if (unique_names.find(name) != unique_names.end()) {
-            duplicated_functions[name].insert(data.to_unique_name());
-          }
+  int uid = 1;
+  for_each_obj([&](ObjectFileData& data) {
+    int func_in_obj = 0;
+    for (int segment_id = 0; segment_id < int(data.linked_data.segments); segment_id++) {
+      for (auto& func : data.linked_data.functions_by_seg.at(segment_id)) {
+        func.guessed_name.unique_id = uid++;
+        func.guessed_name.id_in_object = func_in_obj++;
+        func.guessed_name.object_name = data.to_unique_name();
+        auto name = func.guessed_name.to_string();
 
-          unique_names.insert(name);
+        if (unique_names.find(name) != unique_names.end()) {
+          duplicated_functions[name].insert(data.to_unique_name());
+        }
 
-          if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
-            func.warnings += "flagged as asm by config\n";
-            func.suspected_asm = true;
-          }
+        unique_names.insert(name);
+
+        if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
+          func.warnings += "flagged as asm by config\n";
+          func.suspected_asm = true;
         }
       }
-    });
+    }
+  });
 
-    for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
-      (void)segment_id;
-      auto name = func.guessed_name.to_string();
+  for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    auto name = func.guessed_name.to_string();
 
-      if (duplicated_functions.find(name) != duplicated_functions.end()) {
-        duplicated_functions[name].insert(data.to_unique_name());
-        func.warnings += "this function exists in multiple non-identical object files";
-      }
-    });
-    /*
-        for (const auto& kv : duplicated_functions) {
-          printf("Function %s is found in non-identical object files:\n", kv.first.c_str());
-          for (const auto& obj : kv.second) {
-            printf(" %s\n", obj.c_str());
-          }
+    if (duplicated_functions.find(name) != duplicated_functions.end()) {
+      duplicated_functions[name].insert(data.to_unique_name());
+      func.warnings += "this function exists in multiple non-identical object files";
+    }
+  });
+  /*
+      for (const auto& kv : duplicated_functions) {
+        printf("Function %s is found in non-identical object files:\n", kv.first.c_str());
+        for (const auto& obj : kv.second) {
+          printf(" %s\n", obj.c_str());
         }
-        */
-  }
+      }
+      */
 
   int total_trivial_cfg_functions = 0;
   int total_named_functions = 0;
   int total_basic_ops = 0;
   int total_failed_basic_ops = 0;
+  int total_reginfo_ops = 0;
 
   int asm_funcs = 0;
   int non_asm_funcs = 0;
@@ -821,14 +851,19 @@ void ObjectFileDB::analyze_functions() {
 
   timer.start();
   int total_basic_blocks = 0;
+
+  // Main Pass over each function...
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    total_functions++;
     //      printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
     //             data.to_unique_name().c_str());
+
+    // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
     total_basic_blocks += blocks.size();
     func.basic_blocks = blocks;
 
-    total_functions++;
+    // analyze the proluge
     if (!func.suspected_asm) {
       // first, find the prologue/epilogue
       func.analyze_prologue(data.linked_data);
@@ -837,18 +872,28 @@ void ObjectFileDB::analyze_functions() {
     if (!func.suspected_asm) {
       // run analysis
 
-      // build a control flow graph
+      // build a control flow graph, just looking at branch instructions.
       func.cfg = build_cfg(data.linked_data, segment_id, func);
 
       // convert individual basic blocks to sequences of IR Basic Ops
       for (auto& block : func.basic_blocks) {
         if (block.end_word > block.start_word) {
+          auto label_id =
+              data.linked_data.get_label_at(segment_id, (func.start_word + block.start_word) * 4);
+          if (label_id != -1) {
+            block.label_name = data.linked_data.get_label_name(label_id);
+          }
+
+          block.start_basic_op = func.basic_ops.size();
           add_basic_ops_to_block(&func, block, &data.linked_data);
+          block.end_basic_op = func.basic_ops.size();
         }
       }
       total_basic_ops += func.get_basic_op_count();
       total_failed_basic_ops += func.get_failed_basic_op_count();
+      total_reginfo_ops += func.get_reginfo_basic_op_count();
 
+      // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
         auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
         all_type_defs += ";; " + data.to_unique_name() + "\n";
@@ -925,6 +970,8 @@ void ObjectFileDB::analyze_functions() {
   int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
   spdlog::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
                total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+  spdlog::info(" {}/{} basic ops with reginfo ({:.3f}%)", total_reginfo_ops, total_basic_ops,
+               100.f * float(total_reginfo_ops) / float(total_basic_ops));
   spdlog::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
                100.f * float(successful_cfg_irs) / float(non_asm_funcs));
   spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,

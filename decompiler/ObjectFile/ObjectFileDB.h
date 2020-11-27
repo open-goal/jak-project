@@ -58,7 +58,11 @@ class ObjectFileDB {
   void dump_raw_objects(const std::string& output_dir);
 
   void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
-  void write_disassembly(const std::string& output_dir, bool disassemble_objects_without_functions);
+  void write_disassembly(const std::string& output_dir,
+                         bool disassemble_objects_without_functions,
+                         bool write_json);
+
+  void write_debug_type_analysis(const std::string& output_dir);
   void analyze_functions();
   void process_tpages();
   std::string process_game_count();
