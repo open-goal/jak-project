@@ -5,6 +5,7 @@
 
 #include "CfgVtx.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
 
 class LinkedObjectFile;
 class Function;
@@ -24,6 +25,11 @@ struct BasicBlock {
   int succ_branch = -1;
 
   BasicBlock(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {}
+};
+
+struct BlockTopologicalSort {
+  std::vector<int> vist_order;
+  std::unordered_set<int> unreachable;
 };
 
 std::vector<BasicBlock> find_blocks_in_function(const LinkedObjectFile& file,

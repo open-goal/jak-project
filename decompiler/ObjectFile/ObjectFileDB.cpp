@@ -846,6 +846,7 @@ void ObjectFileDB::analyze_functions() {
   int non_asm_funcs = 0;
   int successful_cfg_irs = 0;
   int successful_type_analysis = 0;
+  int attempted_type_analysis = 0;
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
 
@@ -915,26 +916,50 @@ void ObjectFileDB::analyze_functions() {
       }
 
       // type analysis
-      if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-        // we're a global named function. This means we're stored in a symbol
-        auto kv = dts.symbol_types.find(func.guessed_name.function_name);
-        if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
-          if (kv->second.base_type() != "function") {
-            spdlog::error("Found a function named {} but the symbol has type {}",
-                          func.guessed_name.to_string(), kv->second.print());
-            assert(false);
+      if (get_config().function_type_prop) {
+        if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+          // we're a global named function. This means we're stored in a symbol
+          auto kv = dts.symbol_types.find(func.guessed_name.function_name);
+          if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+            if (kv->second.base_type() != "function") {
+              spdlog::error("Found a function named {} but the symbol has type {}",
+                            func.guessed_name.to_string(), kv->second.print());
+              assert(false);
+            }
+            // GOOD!
+            func.type = kv->second;
+            func.attempted_type_analysis = true;
+            attempted_type_analysis++;
+            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+                         kv->second.print());
+            if (func.run_type_analysis(kv->second, dts, data.linked_data)) {
+              successful_type_analysis++;
+            }
           }
-          // GOOD!
-          func.type = kv->second;
+        } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+          // it's a method.
+          try {
+            auto info =
+                dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
+            if (info.type.arg_count() >= 1) {
+              if (info.type.base_type() != "function") {
+                spdlog::error("Found a method named {} but the symbol has type {}",
+                              func.guessed_name.to_string(), info.type.print());
+                assert(false);
+              }
+              // GOOD!
+              func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
+              func.attempted_type_analysis = true;
+              attempted_type_analysis++;
+              spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+                           func.type.print());
+              if (func.run_type_analysis(func.type, dts, data.linked_data)) {
+                successful_type_analysis++;
+              }
+            }
 
-          /*
-          spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-                       kv->second.print());
-          func.run_type_analysis(kv->second, dts, data.linked_data);
-           */
-
-          if (func.has_typemaps()) {
-            successful_type_analysis++;
+          } catch (std::runtime_error& e) {
+            // failed to lookup method info
           }
         }
       }
@@ -974,6 +999,11 @@ void ObjectFileDB::analyze_functions() {
                100.f * float(total_reginfo_ops) / float(total_basic_ops));
   spdlog::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
                100.f * float(successful_cfg_irs) / float(non_asm_funcs));
+  spdlog::info(" {}/{} functions attempted type analysis ({:.2f}%)", attempted_type_analysis,
+               non_asm_funcs, 100.f * float(attempted_type_analysis) / float(non_asm_funcs));
+  spdlog::info(" {}/{} functions that attempted type analysis succeeded ({:.2f}%)",
+               successful_type_analysis, attempted_type_analysis,
+               100.f * float(successful_type_analysis) / float(attempted_type_analysis));
   spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,
                non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
 

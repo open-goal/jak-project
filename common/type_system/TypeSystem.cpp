@@ -426,6 +426,40 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, const std::st
 }
 
 /*!
+ * Lookup information on a method by ID number. Error if it can't be found.  Will check parent types
+ * if the given type doesn't specialize the method.
+ */
+MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id) {
+  if (method_id == GOAL_NEW_METHOD) {
+    return lookup_new_method(type_name);
+  }
+
+  MethodInfo info;
+
+  // first lookup the type
+  auto* type = lookup_type(type_name);
+
+  auto* iter_type = type;
+  // look up the method
+  while (true) {
+    if (iter_type->get_my_method(method_id, &info)) {
+      return info;
+    }
+
+    if (iter_type->has_parent()) {
+      iter_type = lookup_type(iter_type->get_parent());
+    } else {
+      // couldn't find method.
+      break;
+    }
+  }
+
+  fmt::print("[TypeSystem] The method with id {} of type {} could not be found.\n", method_id,
+             type_name);
+  throw std::runtime_error("lookup_method failed");
+}
+
+/*!
  * Lookup information on a new method and get the most specialized version.
  */
 MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) {
@@ -715,7 +749,14 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(kheap_type, "top-base", make_typespec("pointer"));
 
   // todo
-  (void)array_type;
+  builtin_structure_inherit(array_type);
+  add_method(array_type, "new",
+             make_function_typespec({"symbol", "type", "type", "int"}, "_type_"));
+  // array has: number, number, type
+  add_field_to_type(array_type, "length", make_typespec("int32"));
+  add_field_to_type(array_type, "allocated-length", make_typespec("int32"));
+  add_field_to_type(array_type, "content-type", make_typespec("type"));
+  add_field_to_type(array_type, "data", make_typespec("uint8"), false, true);
 
   // pair
   pair_type->override_offset(2);
@@ -1064,6 +1105,10 @@ TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b
   return result;
 }
 
+TypeSpec TypeSystem::lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) {
+  return coerce_to_reg_type(lowest_common_ancestor(a, b));
+}
+
 /*!
  * Lowest common ancestor of multiple (or at least one) type.
  */
@@ -1083,12 +1128,12 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
 TypeSpec coerce_to_reg_type(const TypeSpec& in) {
   if (in.arg_count() == 0) {
     if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||
-        in.base_type() == "int64") {
+        in.base_type() == "int64" || in.base_type() == "integer") {
       return TypeSpec("int");
     }
 
     if (in.base_type() == "uint8" || in.base_type() == "uint16" || in.base_type() == "uint32" ||
-        in.base_type() == "uint64") {
+        in.base_type() == "uint64" || in.base_type() == "uinteger") {
       return TypeSpec("uint");
     }
   }
@@ -1133,6 +1178,9 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
     token.kind = ReverseDerefInfo::DerefToken::INDEX;
     token.index = closest_index;
 
+    if (!di.mem_deref) {
+      return false;
+    }
     assert(di.mem_deref);
     if (offset_into_elt == 0) {
       if (input.mem_deref) {

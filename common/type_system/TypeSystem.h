@@ -96,6 +96,7 @@ class TypeSystem {
                         bool allow_new_method = true);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
   MethodInfo lookup_method(const std::string& type_name, const std::string& method_name);
+  MethodInfo lookup_method(const std::string& type_name, int method_id);
   MethodInfo lookup_new_method(const std::string& type_name);
   void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
 
@@ -135,6 +136,7 @@ class TypeSystem {
   }
 
   TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b);
+  TypeSpec lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b);
   TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types);
 
  private:

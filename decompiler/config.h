@@ -26,7 +26,9 @@ struct Config {
   bool process_game_count = false;
   bool dump_objs = false;
   bool write_func_json = false;
+  bool function_type_prop = false;
   std::unordered_set<std::string> asm_functions_by_name;
+  std::unordered_set<std::string> pair_functions_by_name;
   // ...
 };
 

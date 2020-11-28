@@ -179,6 +179,13 @@ std::shared_ptr<IR_Atomic> try_or(Instruction& instr, int idx) {
     op->write_regs.push_back(dest);
     op->reg_info_set = true;
     return op;
+  } else if (is_gpr_3(instr, InstructionKind::OR, {}, make_gpr(Reg::R0), make_gpr(Reg::R0))) {
+    auto dest = instr.get_dst(0).get_reg();
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dest, idx),
+                              std::make_shared<IR_IntegerConstant>(0));
+    op->write_regs.push_back(dest);
+    op->reg_info_set = true;
+    return op;
   } else if (is_gpr_3(instr, InstructionKind::OR, {}, {}, make_gpr(Reg::R0))) {
     // set register from register : or dest, source, r0
     auto dest = instr.get_dst(0).get_reg();
@@ -726,6 +733,20 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& instr, int idx) {
     op->write_regs.push_back(instr.get_dst(0).get_reg());
     op->reg_info_set = true;
     return op;
+  } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
+             instr.get_src(1).is_imm() && instr.get_src(1).get_imm() == -10) {
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                              std::make_shared<IR_EmptyPair>());
+    op->write_regs.push_back(instr.get_dst(0).get_reg());
+    op->reg_info_set = true;
+    return op;
+  } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
+             instr.get_src(1).is_imm() && instr.get_src(1).get_imm() == -32768) {
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                              std::make_shared<IR_SymbolValue>("__START-OF-TABLE__"));
+    op->write_regs.push_back(instr.get_dst(0).get_reg());
+    op->reg_info_set = true;
+    return op;
   } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::FP)) &&
              instr.get_src(1).kind == InstructionAtom::LABEL) {
     auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
@@ -745,8 +766,16 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& instr, int idx) {
 }
 
 std::shared_ptr<IR_Atomic> try_daddu(Instruction& instr, int idx) {
-  if (is_gpr_3(instr, InstructionKind::DADDU, {}, {}, {}) &&
-      !instr.get_src(0).is_reg(make_gpr(Reg::S7)) && !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
+  if (is_gpr_3(instr, InstructionKind::DADDU, {}, make_gpr(Reg::R0), {})) {
+    auto op = make_set_atomic(
+        IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+        std::make_shared<IR_IntMath2>(IR_IntMath2::ADD, make_reg(instr.get_src(1).get_reg(), idx),
+                                      std::make_shared<IR_IntegerConstant>(0)));
+    op->update_reginfo_self<IR_IntMath2>(1, 1, 0);
+    return op;
+  } else if (is_gpr_3(instr, InstructionKind::DADDU, {}, {}, {}) &&
+             !instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
+             !instr.get_src(1).is_reg(make_gpr(Reg::S7))) {
     auto op = make_set_atomic(
         IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
         std::make_shared<IR_IntMath2>(IR_IntMath2::ADD, make_reg(instr.get_src(0).get_reg(), idx),

@@ -3,6 +3,7 @@
 #include "common/type_system/deftype.h"
 #include "decompiler/Disasm/Register.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "TP_Type.h"
 
 DecompilerTypeSystem::DecompilerTypeSystem() {
   ts.add_builtin_types();
@@ -149,35 +150,9 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   }
 }
 
-std::string TP_Type::print() const {
-  switch (kind) {
-    case OBJECT_OF_TYPE:
-      return ts.print();
-    case TYPE_OBJECT:
-      return fmt::format("[{}]", ts.print());
-    case FALSE:
-      return fmt::format("[#f]");
-    case NONE:
-      return fmt::format("[none]");
-    default:
-      assert(false);
-  }
-}
-
-std::string TypeState::print_gpr_masked(u32 mask) const {
-  std::string result;
-  for (int i = 0; i < 32; i++) {
-    if (mask & (1 << i)) {
-      result += Register(Reg::GPR, i).to_charp();
-      result += ": ";
-      result += gpr_types[i].print();
-      result += " ";
-    }
-  }
-  return result;
-}
-
-TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+TP_Type DecompilerTypeSystem::tp_lca_no_simplify(const TP_Type& existing,
+                                                 const TP_Type& add,
+                                                 bool* changed) {
   switch (existing.kind) {
     case TP_Type::OBJECT_OF_TYPE:
       switch (add.kind) {
@@ -185,7 +160,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           // two normal types, do LCA as normal.
           TP_Type result;
           result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor(existing.ts, add.ts);
+          result.ts = ts.lowest_common_ancestor_reg(existing.ts, add.ts);
           *changed = (result.ts != existing.ts);
           return result;
         }
@@ -193,7 +168,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           // normal, [type object]. Change type object to less specific "type".
           TP_Type result;
           result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor(existing.ts, ts.make_typespec("type"));
+          result.ts = ts.lowest_common_ancestor_reg(existing.ts, ts.make_typespec("type"));
           *changed = (result.ts != existing.ts);
           return result;
         }
@@ -214,7 +189,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         case TP_Type::OBJECT_OF_TYPE: {
           TP_Type result;
           result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor(ts.make_typespec("type"), add.ts);
+          result.ts = ts.lowest_common_ancestor_reg(ts.make_typespec("type"), add.ts);
           *changed = true;  // changed type
           return result;
         }
@@ -222,7 +197,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           // two type objects.
           TP_Type result;
           result.kind = TP_Type::TYPE_OBJECT;
-          result.ts = ts.lowest_common_ancestor(existing.ts, add.ts);
+          result.ts = ts.lowest_common_ancestor_reg(existing.ts, add.ts);
           *changed = (result.ts != existing.ts);
           return result;
         }
@@ -261,6 +236,9 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         case TP_Type::OBJECT_OF_TYPE:
         case TP_Type::TYPE_OBJECT:
         case TP_Type::FALSE:
+        case TP_Type::METHOD_NEW_OF_OBJECT:
+          *changed = true;
+          return add;
         case TP_Type::NONE:
           *changed = false;
           return existing;
@@ -268,9 +246,30 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           assert(false);
       }
       break;
+    case TP_Type::METHOD_NEW_OF_OBJECT:
+      switch (add.kind) {
+        case TP_Type::METHOD_NEW_OF_OBJECT: {
+          if (existing.ts == add.ts) {
+            *changed = false;
+            return existing;
+          } else {
+            assert(false);
+          }
+        }
+        case TP_Type::NONE:
+          *changed = false;
+          return existing;
+        default:
+          assert(false);
+      }
+
     default:
       assert(false);
   }
+}
+
+TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+  return tp_lca_no_simplify(existing.simplify(), add.simplify(), changed);
 }
 
 bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {

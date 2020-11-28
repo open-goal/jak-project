@@ -548,13 +548,13 @@ std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
 
         if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
           op["basic_op"] = func.get_basic_op_at_instr(i)->print(*this);
-          if (func.has_typemaps()) {
-            auto& tm = func.get_typemap_by_instr_idx(i);
-            auto& json_type_map = op["type_map"];
-            for (auto& kv : tm) {
-              json_type_map[kv.first.to_charp()] = kv.second.print();
-            }
-          }
+          //          if (func.has_typemaps()) {
+          //            auto& tm = func.get_typemap_by_instr_idx(i);
+          //            auto& json_type_map = op["type_map"];
+          //            for (auto& kv : tm) {
+          //              json_type_map[kv.first.to_charp()] = kv.second.print();
+          //            }
+          //          }
         }
 
         for (int iidx = 0; iidx < instr.n_src; iidx++) {
@@ -631,31 +631,6 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
             if (is_string(lab.target_segment, lab.offset)) {
               line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
             }
-          }
-        }
-
-        // print type map
-        if (func.has_typemaps()) {
-          if (line.length() < 60) {
-            line.append(60 - line.length(), ' ');
-          }
-          line += " tm: ";
-          auto& tm = func.get_typemap_by_instr_idx(i);
-          bool added = false;
-          for (auto reg_kind : {Reg::RegisterKind::GPR, Reg::RegisterKind::FPR}) {
-            for (int reg_idx = 0; reg_idx < 32; reg_idx++) {
-              auto gpr = Register(reg_kind, reg_idx);
-              auto kv = tm.find(gpr);
-              if (kv != tm.end()) {
-                added = true;
-                line += fmt::format("{}: {}, ", gpr.to_charp(), kv->second.print());
-              }
-            }
-          }
-
-          if (added) {
-            line.pop_back();
-            line.pop_back();
           }
         }
       }
@@ -808,6 +783,9 @@ std::string LinkedObjectFile::print_type_analysis_debug() {
       result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
       result += "; .function " + func.guessed_name.to_string() + "\n";
       result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+      if (!func.warnings.empty()) {
+        result += ";; WARNING: " + func.warnings + "\n";
+      }
 
       for (auto& block : func.basic_blocks) {
         result += "\n";
@@ -820,9 +798,14 @@ std::string LinkedObjectFile::print_type_analysis_debug() {
           result += "  ";
           // result += func.basic_ops.at(i)->print_with_reguse(*this);
           // result += func.basic_ops.at(i)->print(*this);
-          result += func.basic_ops.at(i)->print_with_types(*init_types, *this);
-          result += "\n";
-          init_types = &func.basic_ops.at(i)->end_types;
+          if (func.attempted_type_analysis) {
+            result += func.basic_ops.at(i)->print_with_types(*init_types, *this);
+            result += "\n";
+            init_types = &func.basic_ops.at(i)->end_types;
+          } else {
+            result += func.basic_ops.at(i)->print(*this);
+            result += "\n";
+          }
         }
       }
     }

@@ -2,20 +2,10 @@
 #define JAK_DECOMPILERTYPESYSTEM_H
 
 #include "common/type_system/TypeSystem.h"
+#include "decompiler/Disasm/Register.h"
 
-struct TP_Type {
-  enum Kind { OBJECT_OF_TYPE, TYPE_OBJECT, FALSE, NONE } kind = NONE;
-  // in the case that we are type_object, just store the type name in a single arg ts.
-  TypeSpec ts;
-  std::string print() const;
-};
-
-struct TypeState {
-  TP_Type gpr_types[32];
-  TP_Type fpr_types[32];
-
-  std::string print_gpr_masked(u32 mask) const;
-};
+struct TP_Type;
+struct TypeState;
 
 class DecompilerTypeSystem {
  public:
@@ -46,7 +36,16 @@ class DecompilerTypeSystem {
   std::string lookup_parent_from_inspects(const std::string& child) const;
   bool lookup_flags(const std::string& type, u64* dest) const;
   TP_Type tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed);
+  TP_Type tp_lca_no_simplify(const TP_Type& existing, const TP_Type& add, bool* changed);
   bool tp_lca(TypeState* combined, const TypeState& add);
+  struct {
+    bool allow_pair;
+    std::string current_method_type;
+    void reset() {
+      allow_pair = false;
+      current_method_type.clear();
+    }
+  } type_prop_settings;
 };
 
 #endif  // JAK_DECOMPILERTYPESYSTEM_H

@@ -33,11 +33,18 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.process_game_count = cfg.at("process_game_count").get<bool>();
   gConfig.dump_objs = cfg.at("dump_objs").get<bool>();
   gConfig.write_func_json = cfg.at("write_func_json").get<bool>();
+  gConfig.function_type_prop = cfg.at("function_type_prop").get<bool>();
 
   std::vector<std::string> asm_functions_by_name =
       cfg.at("asm_functions_by_name").get<std::vector<std::string>>();
   for (const auto& x : asm_functions_by_name) {
     gConfig.asm_functions_by_name.insert(x);
+  }
+
+  std::vector<std::string> pair_functions_by_name =
+      cfg.at("pair_functions_by_name").get<std::vector<std::string>>();
+  for (const auto& x : pair_functions_by_name) {
+    gConfig.pair_functions_by_name.insert(x);
   }
 
   auto bad_inspect = cfg.at("types_with_bad_inspect_methods").get<std::vector<std::string>>();

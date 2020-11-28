@@ -8,6 +8,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
 
 class LinkedObjectFile;
 class DecompilerTypeSystem;
@@ -16,17 +17,16 @@ namespace goos {
 class Object;
 }
 
-// Map of what type is in each register.
-using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
-
 class IR {
  public:
   virtual goos::Object to_form(const LinkedObjectFile& file) const = 0;
   std::vector<std::shared_ptr<IR>> get_all_ir(LinkedObjectFile& file) const;
   std::string print(const LinkedObjectFile& file) const;
   virtual void get_children(std::vector<std::shared_ptr<IR>>* output) const = 0;
-
   bool is_basic_op = false;
+  virtual TP_Type get_expression_type(const TypeState& input,
+                                      const LinkedObjectFile& file,
+                                      DecompilerTypeSystem& dts);
 };
 
 class IR_Atomic : public virtual IR {
@@ -35,7 +35,12 @@ class IR_Atomic : public virtual IR {
   bool reg_info_set = false;
 
   TypeState end_types;  // types at the end of this instruction
+  std::vector<std::string> warnings;
+  void warn(const std::string& str) { warnings.emplace_back(str); }
 
+  virtual void propagate_types(const TypeState& input,
+                               const LinkedObjectFile& file,
+                               DecompilerTypeSystem& dts);
   std::string print_with_types(const TypeState& init_types, const LinkedObjectFile& file) const;
   std::string print_with_reguse(const LinkedObjectFile& file) const;
 };
@@ -59,6 +64,9 @@ class IR_Register : public virtual IR {
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   Register reg;
   int instr_idx = -1;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Set : public virtual IR {
@@ -90,8 +98,10 @@ class IR_Set_Atomic : public IR_Set, public IR_Atomic {
 
   template <typename T>
   void update_reginfo_self(int n_dest, int n_src, int n_clobber);
-
   void update_reginfo_regreg();
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntMath2;
@@ -119,6 +129,9 @@ class IR_Store_Atomic : public IR_Set_Atomic {
   int size;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void update_reginfo_self(int n_dest, int n_src, int n_clobber);
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Symbol : public virtual IR {
@@ -127,6 +140,9 @@ class IR_Symbol : public virtual IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_SymbolValue : public virtual IR {
@@ -135,6 +151,19 @@ class IR_SymbolValue : public virtual IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
+};
+
+class IR_EmptyPair : public virtual IR {
+ public:
+  explicit IR_EmptyPair() = default;
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_StaticAddress : public virtual IR {
@@ -143,6 +172,9 @@ class IR_StaticAddress : public virtual IR {
   int label_id = -1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Load : public virtual IR {
@@ -155,6 +187,9 @@ class IR_Load : public virtual IR {
   std::shared_ptr<IR> location;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_FloatMath2 : public virtual IR {
@@ -165,6 +200,9 @@ class IR_FloatMath2 : public virtual IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_FloatMath1 : public virtual IR {
@@ -202,6 +240,9 @@ class IR_IntMath2 : public virtual IR {
   std::shared_ptr<IR> arg0, arg1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntMath1 : public virtual IR {
@@ -211,6 +252,9 @@ class IR_IntMath1 : public virtual IR {
   std::shared_ptr<IR> arg;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Call : public virtual IR {
@@ -224,6 +268,9 @@ class IR_Call : public virtual IR {
 class IR_Call_Atomic : public virtual IR_Call, public IR_Atomic {
  public:
   IR_Call_Atomic() = default;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntegerConstant : public virtual IR {
@@ -232,6 +279,9 @@ class IR_IntegerConstant : public virtual IR {
   explicit IR_IntegerConstant(int64_t _value) : value(_value) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 struct BranchDelay {
@@ -254,6 +304,8 @@ struct BranchDelay {
   std::vector<Register> read_regs;
   std::vector<Register> write_regs;
   std::vector<Register> clobber_regs;
+
+  void type_prop(TypeState& output, const LinkedObjectFile& file, DecompilerTypeSystem& dts);
 };
 
 struct Condition {
@@ -335,6 +387,9 @@ class IR_Branch_Atomic : public virtual IR_Branch, public IR_Atomic {
       : IR_Branch(std::move(_condition), _dest_label_idx, std::move(_branch_delay), _likely) {}
   // note - counts only for the condition.
   void update_reginfo_self(int n_dst, int n_src, int n_clobber);
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Compare : public virtual IR {
@@ -345,6 +400,9 @@ class IR_Compare : public virtual IR {
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Nop : public virtual IR {
@@ -357,6 +415,9 @@ class IR_Nop : public virtual IR {
 class IR_Nop_Atomic : public IR_Nop, public IR_Atomic {
  public:
   IR_Nop_Atomic() = default;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Suspend : public virtual IR, public IR_Atomic {
@@ -364,6 +425,15 @@ class IR_Suspend : public virtual IR, public IR_Atomic {
   IR_Suspend() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+};
+
+class IR_Breakpoint_Atomic : public virtual IR_Atomic {
+  IR_Breakpoint_Atomic() = default;
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Begin : public virtual IR {
@@ -484,6 +554,9 @@ class IR_AsmOp_Atomic : public virtual IR_AsmOp, public IR_Atomic {
  public:
   IR_AsmOp_Atomic(std::string _name) : IR_AsmOp(std::move(_name)) {}
   void set_reg_info();
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_CMoveF : public virtual IR {

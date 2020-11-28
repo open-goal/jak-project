@@ -78,11 +78,17 @@ std::string IR_Atomic::print_with_reguse(const LinkedObjectFile& file) const {
 
 std::string IR_Atomic::print_with_types(const TypeState& init_types,
                                         const LinkedObjectFile& file) const {
-  std::string result = print(file);
+  std::string result;
+
+  for (auto& warning : warnings) {
+    result += ";; warn: " + warning + "\n";
+  }
+  result += print(file);
   if (result.length() < 40) {
     result.append(40 - result.length(), ' ');
   }
   result += " ;; ";
+
   auto read_mask = regs_to_gpr_mask(read_regs);
   auto write_mask = regs_to_gpr_mask(write_regs);
 
@@ -360,6 +366,24 @@ goos::Object IR_SymbolValue::to_form(const LinkedObjectFile& file) const {
 
 void IR_SymbolValue::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
+}
+
+goos::Object IR_EmptyPair::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::to_symbol("'()");
+}
+
+void IR_EmptyPair::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+TP_Type IR_EmptyPair::get_expression_type(const TypeState& input,
+                                          const LinkedObjectFile& file,
+                                          DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)file;
+  (void)dts;
+  return TP_Type(TypeSpec("pair"));
 }
 
 goos::Object IR_StaticAddress::to_form(const LinkedObjectFile& file) const {

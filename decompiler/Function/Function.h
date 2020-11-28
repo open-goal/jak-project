@@ -13,8 +13,6 @@
 #include "common/type_system/TypeSpec.h"
 
 class DecompilerTypeSystem;
-// Map of what type is in each register.
-using TypeMap = std::unordered_map<Register, TypeSpec, Register::hash>;
 class IR_Atomic;
 class IR;
 
@@ -65,11 +63,6 @@ struct FunctionName {
   }
 };
 
-class BasicOpTypeInfo {
- public:
-  std::unordered_map<Register, TypeSpec> all_reg_types;
-};
-
 class Function {
  public:
   Function(int _start_word, int _end_word);
@@ -79,16 +72,15 @@ class Function {
   void find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr);
   bool has_basic_ops() { return !basic_ops.empty(); }
-  bool has_typemaps() { return !basic_op_typemaps.empty(); }
   bool instr_starts_basic_op(int idx);
   std::shared_ptr<IR_Atomic> get_basic_op_at_instr(int idx);
-  const TypeMap& get_typemap_by_instr_idx(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
   int get_reginfo_basic_op_count();
-  void run_type_analysis(const TypeSpec& my_type,
+  bool run_type_analysis(const TypeSpec& my_type,
                          DecompilerTypeSystem& dts,
                          LinkedObjectFile& file);
+  BlockTopologicalSort bb_topo_sort();
 
   TypeSpec type;
 
@@ -116,6 +108,8 @@ class Function {
 
   std::string warnings;
   bool contains_asm_ops = false;
+
+  bool attempted_type_analysis = false;
 
   struct Prologue {
     bool decoded = false;  // have we removed the prologue from basic blocks?
@@ -150,7 +144,6 @@ class Function {
 
  private:
   void check_epilogue(const LinkedObjectFile& file);
-  std::vector<TypeMap> basic_op_typemaps;
   std::unordered_map<int, int> instruction_to_basic_op;
   std::unordered_map<int, int> basic_op_to_instruction;
 };
