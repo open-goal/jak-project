@@ -136,6 +136,7 @@ class TypeSystem {
   }
 
   TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b);
+  TypeSpec lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b);
   TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types);
 
  private:

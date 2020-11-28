@@ -172,6 +172,9 @@ class IR_StaticAddress : public virtual IR {
   int label_id = -1;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Load : public virtual IR {

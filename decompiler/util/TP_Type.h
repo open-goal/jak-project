@@ -12,7 +12,8 @@ struct TP_Type {
     FALSE,
     NONE,
     PRODUCT,
-    PARTIAL_METHOD_TABLE_ACCESS  // type + method_number * 4
+    PARTIAL_METHOD_TABLE_ACCESS,  // type + method_number * 4
+    METHOD_NEW_OF_OBJECT
   } kind = NONE;
   // in the case that we are type_object, just store the type name in a single arg ts.
   TypeSpec ts;
@@ -40,6 +41,7 @@ struct TP_Type {
       case NONE:
         return TypeSpec("none");
       case PRODUCT:
+      case METHOD_NEW_OF_OBJECT:
         return ts;
       default:
         assert(false);

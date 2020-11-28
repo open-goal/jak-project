@@ -749,7 +749,13 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(kheap_type, "top-base", make_typespec("pointer"));
 
   // todo
-  (void)array_type;
+  builtin_structure_inherit(array_type);
+  add_method(array_type, "new",
+             make_function_typespec({"symbol", "type", "type", "int"}, "_type_"));
+  // array has: number, number, type
+  add_field_to_type(array_type, "length", make_typespec("int32"));
+  add_field_to_type(array_type, "allocated-length", make_typespec("int32"));
+  add_field_to_type(array_type, "content-type", make_typespec("type"));
 
   // pair
   pair_type->override_offset(2);
@@ -1098,6 +1104,10 @@ TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b
   return result;
 }
 
+TypeSpec TypeSystem::lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) {
+  return coerce_to_reg_type(lowest_common_ancestor(a, b));
+}
+
 /*!
  * Lowest common ancestor of multiple (or at least one) type.
  */
@@ -1117,12 +1127,12 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
 TypeSpec coerce_to_reg_type(const TypeSpec& in) {
   if (in.arg_count() == 0) {
     if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||
-        in.base_type() == "int64") {
+        in.base_type() == "int64" || in.base_type() == "integer") {
       return TypeSpec("int");
     }
 
     if (in.base_type() == "uint8" || in.base_type() == "uint16" || in.base_type() == "uint32" ||
-        in.base_type() == "uint64") {
+        in.base_type() == "uint64" || in.base_type() == "uinteger") {
       return TypeSpec("uint");
     }
   }

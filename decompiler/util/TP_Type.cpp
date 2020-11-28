@@ -9,6 +9,8 @@ TP_Type TP_Type::simplify() {
   switch (kind) {
     case PRODUCT:
       return TP_Type(ts);
+    case METHOD_NEW_OF_OBJECT:
+      return TP_Type(ts);
     default:
       assert(false);
   }
@@ -28,6 +30,8 @@ std::string TP_Type::print() const {
       return fmt::format("[{} x {}]", ts.print(), multiplier);
     case PARTIAL_METHOD_TABLE_ACCESS:
       return fmt::format("[[vtable-access]]");
+    case METHOD_NEW_OF_OBJECT:
+      return fmt::format("[(method object new)]");
     default:
       assert(false);
   }

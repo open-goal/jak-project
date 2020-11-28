@@ -158,7 +158,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           // two normal types, do LCA as normal.
           TP_Type result;
           result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor(existing.ts, add.ts);
+          result.ts = ts.lowest_common_ancestor_reg(existing.ts, add.ts);
           *changed = (result.ts != existing.ts);
           return result;
         }
@@ -166,7 +166,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           // normal, [type object]. Change type object to less specific "type".
           TP_Type result;
           result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor(existing.ts, ts.make_typespec("type"));
+          result.ts = ts.lowest_common_ancestor_reg(existing.ts, ts.make_typespec("type"));
           *changed = (result.ts != existing.ts);
           return result;
         }
@@ -187,7 +187,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         case TP_Type::OBJECT_OF_TYPE: {
           TP_Type result;
           result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor(ts.make_typespec("type"), add.ts);
+          result.ts = ts.lowest_common_ancestor_reg(ts.make_typespec("type"), add.ts);
           *changed = true;  // changed type
           return result;
         }
@@ -195,7 +195,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           // two type objects.
           TP_Type result;
           result.kind = TP_Type::TYPE_OBJECT;
-          result.ts = ts.lowest_common_ancestor(existing.ts, add.ts);
+          result.ts = ts.lowest_common_ancestor_reg(existing.ts, add.ts);
           *changed = (result.ts != existing.ts);
           return result;
         }
@@ -234,6 +234,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         case TP_Type::OBJECT_OF_TYPE:
         case TP_Type::TYPE_OBJECT:
         case TP_Type::FALSE:
+        case TP_Type::METHOD_NEW_OF_OBJECT:
           *changed = true;
           return add;
         case TP_Type::NONE:
@@ -243,6 +244,23 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
           assert(false);
       }
       break;
+    case TP_Type::METHOD_NEW_OF_OBJECT:
+      switch (add.kind) {
+        case TP_Type::METHOD_NEW_OF_OBJECT: {
+          if (existing.ts == add.ts) {
+            *changed = false;
+            return existing;
+          } else {
+            assert(false);
+          }
+        }
+        case TP_Type::NONE:
+          *changed = false;
+          return existing;
+        default:
+          assert(false);
+      }
+
     default:
       assert(false);
   }

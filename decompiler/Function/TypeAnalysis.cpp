@@ -30,6 +30,10 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
     dts.type_prop_settings.allow_pair = true;
   }
 
+  if (guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    dts.type_prop_settings.current_method_type = guessed_name.type_name;
+  }
+
   // STEP 1 - get the topo sort.
   auto order = bb_topo_sort();
   //  fmt::print("blocks: {}\n  ", basic_blocks.size());

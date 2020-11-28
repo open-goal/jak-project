@@ -40,7 +40,11 @@ class DecompilerTypeSystem {
 
   struct {
     bool allow_pair;
-    void reset() { allow_pair = false; }
+    std::string current_method_type;
+    void reset() {
+      allow_pair = false;
+      current_method_type.clear();
+    }
   } type_prop_settings;
 };
 

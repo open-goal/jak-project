@@ -3,10 +3,11 @@
 #include "third-party/fmt/core.h"
 #include "common/goos/Object.h"
 #include "decompiler/util/TP_Type.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace {
 bool is_plain_type(const TP_Type& type, const TypeSpec& ts) {
-  return type.kind == TP_Type::OBJECT_OF_TYPE && type.ts == ts;
+  return type.as_typespec() == ts;
 }
 
 bool is_integer_type(const TP_Type& type) {
@@ -124,9 +125,20 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
                                      DecompilerTypeSystem& dts) {
   (void)input;
   auto as_static = dynamic_cast<IR_StaticAddress*>(location.get());
-  if (as_static && kind == FLOAT) {
-    // loading static data with a FLOAT kind load (lwc1), assume result is a float.
-    return TP_Type(dts.ts.make_typespec("float"));
+  if (as_static) {
+    if (kind == FLOAT) {
+      // loading static data with a FLOAT kind load (lwc1), assume result is a float.
+      return TP_Type(dts.ts.make_typespec("float"));
+    }
+
+    if (size == 8) {
+      // kinda hacky
+      if (kind == SIGNED) {
+        return TP_Type(dts.ts.make_typespec("int"));
+      } else if (kind == UNSIGNED) {
+        return TP_Type(dts.ts.make_typespec("uint"));
+      }
+    }
   }
 
   RegOffset ro;
@@ -137,6 +149,13 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         size == 4 && kind == UNSIGNED) {
       // method get
       auto method_id = (ro.offset - 16) / 4;
+      if (input_type.ts.base_type() == "object" && method_id == GOAL_NEW_METHOD) {
+        // remember that we're an object new.
+        auto method_info = dts.ts.lookup_method(input_type.ts.print(), method_id);
+        auto result = TP_Type(method_info.type.substitute_for_method_call(input_type.ts.print()));
+        result.kind = TP_Type::METHOD_NEW_OF_OBJECT;
+        return result;
+      }
       auto method_info = dts.ts.lookup_method(input_type.ts.print(), method_id);
       return TP_Type(method_info.type.substitute_for_method_call(input_type.ts.print()));
     }
@@ -150,15 +169,15 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         case UNSIGNED:
           switch (size) {
             case 1:
-              return TP_Type(TypeSpec("uint8"));
+              return TP_Type(TypeSpec("uint"));
             case 2:
-              return TP_Type(TypeSpec("uint16"));
+              return TP_Type(TypeSpec("uint"));
             case 4:
-              return TP_Type(TypeSpec("uint32"));
+              return TP_Type(TypeSpec("uint"));
             case 8:
-              return TP_Type(TypeSpec("uint64"));
+              return TP_Type(TypeSpec("uint"));
             case 16:
-              return TP_Type(TypeSpec("uint128"));
+              return TP_Type(TypeSpec("uint"));
             default:
               assert(false);
           }
@@ -166,15 +185,15 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         case SIGNED:
           switch (size) {
             case 1:
-              return TP_Type(TypeSpec("int8"));
+              return TP_Type(TypeSpec("int"));
             case 2:
-              return TP_Type(TypeSpec("int16"));
+              return TP_Type(TypeSpec("int"));
             case 4:
-              return TP_Type(TypeSpec("int32"));
+              return TP_Type(TypeSpec("int"));
             case 8:
-              return TP_Type(TypeSpec("int64"));
+              return TP_Type(TypeSpec("int"));
             case 16:
-              return TP_Type(TypeSpec("int128"));
+              return TP_Type(TypeSpec("int"));
             default:
               assert(false);
           }
@@ -206,7 +225,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       }
 
       if (rd.success) {
-        return TP_Type(rd.result_type);
+        return TP_Type(coerce_to_reg_type(rd.result_type));
       }
 
       if (dts.type_prop_settings.allow_pair) {
@@ -215,9 +234,9 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
              input_type.as_typespec() == TypeSpec("pair"))) {
           // pair access!
           if (ro.offset == 2) {
-            return TP_Type(TypeSpec("object"));
-          } else if (ro.offset == -2) {
             return TP_Type(TypeSpec("pair"));
+          } else if (ro.offset == -2) {
+            return TP_Type(TypeSpec("object"));
           }
         }
       }
@@ -275,6 +294,10 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
         // result is going to be signed, regardless of inputs.
         return TP_Type(TypeSpec("int"));
 
+      case MUL_UNSIGNED:
+        // result is going to be unsigned, regardless of inputs.
+        return TP_Type(TypeSpec("uint"));
+
       case LEFT_SHIFT: {
         // multiply!
         auto as_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
@@ -300,7 +323,9 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     return TP_Type::make_partial_method_table_access();
   }
 
-  if (arg0_type.as_typespec() == TypeSpec("object") && is_integer_type(arg1_type)) {
+  if ((arg0_type.as_typespec() == TypeSpec("object") ||
+       arg0_type.as_typespec() == TypeSpec("pair")) &&
+      is_integer_type(arg1_type)) {
     // boxed object tag trick
     return TP_Type(TypeSpec("int"));
   }
@@ -311,7 +336,8 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   }
 
   throw std::runtime_error(
-      fmt::format("Can't get_expression_type on this IR_IntMath2: {}", print(file)));
+      fmt::format("Can't get_expression_type on this IR_IntMath2: {}, args {} and {}", print(file),
+                  arg0_type.print(), arg1_type.print()));
 }
 
 void BranchDelay::type_prop(TypeState& output,
@@ -463,7 +489,15 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
   (void)dts;
   // todo clobber
   end_types = input;
-  auto in_type = input.get(Register(Reg::GPR, Reg::T9)).as_typespec();
+
+  auto in_tp = input.get(Register(Reg::GPR, Reg::T9));
+  if (in_tp.kind == TP_Type::METHOD_NEW_OF_OBJECT &&
+      !dts.type_prop_settings.current_method_type.empty()) {
+    end_types.get(Register(Reg::GPR, Reg::V0)) =
+        TP_Type(dts.type_prop_settings.current_method_type);
+    return;
+  }
+  auto in_type = in_tp.as_typespec();
   if (in_type.base_type() != "function") {
     throw std::runtime_error("Called something that wasn't a function: " + in_type.print());
   }
@@ -481,4 +515,21 @@ void IR_Store_Atomic::propagate_types(const TypeState& input,
   (void)file;
   (void)dts;
   end_types = input;
+}
+
+TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
+                                              const LinkedObjectFile& file,
+                                              DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)dts;
+  auto label = file.labels.at(label_id);
+  if ((label.offset & 0xf) == 4) {
+    // it's a basic! probably.
+    const auto& word = file.words_by_seg.at(label.target_segment).at((label.offset - 4) / 4);
+    if (word.kind == LinkedWord::TYPE_PTR) {
+      return TP_Type(TypeSpec(word.symbol_name));
+    }
+  }
+
+  throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
 }
