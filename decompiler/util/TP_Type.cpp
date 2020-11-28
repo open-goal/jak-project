@@ -5,14 +5,16 @@
  * Takes the weird TP_Types and converts them to one of the main 4.
  * This is supposed to be used if the fancy type analysis steps are attempted but fail.
  */
-TP_Type TP_Type::simplify() {
+TP_Type TP_Type::simplify() const {
   switch (kind) {
     case PRODUCT:
       return TP_Type(ts);
     case METHOD_NEW_OF_OBJECT:
       return TP_Type(ts);
+    case OBJ_PLUS_PRODUCT:
+      return TP_Type(TypeSpec("none"));
     default:
-      assert(false);
+      return *this;
   }
 }
 
@@ -32,6 +34,8 @@ std::string TP_Type::print() const {
       return fmt::format("[[vtable-access]]");
     case METHOD_NEW_OF_OBJECT:
       return fmt::format("[(method object new)]");
+    case OBJ_PLUS_PRODUCT:
+      return fmt::format("[{} + int x {}]", ts.print(), multiplier);
     default:
       assert(false);
   }

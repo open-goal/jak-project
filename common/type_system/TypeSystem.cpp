@@ -756,6 +756,7 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(array_type, "length", make_typespec("int32"));
   add_field_to_type(array_type, "allocated-length", make_typespec("int32"));
   add_field_to_type(array_type, "content-type", make_typespec("type"));
+  add_field_to_type(array_type, "data", make_typespec("uint8"), false, true);
 
   // pair
   pair_type->override_offset(2);

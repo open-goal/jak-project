@@ -12,6 +12,7 @@ struct TP_Type {
     FALSE,
     NONE,
     PRODUCT,
+    OBJ_PLUS_PRODUCT,
     PARTIAL_METHOD_TABLE_ACCESS,  // type + method_number * 4
     METHOD_NEW_OF_OBJECT
   } kind = NONE;
@@ -25,7 +26,7 @@ struct TP_Type {
     ts = _ts;
   }
 
-  TP_Type simplify();
+  TP_Type simplify() const;
   std::string print() const;
 
   bool is_object_of_type() const { return kind == TYPE_OBJECT || ts == TypeSpec("type"); }

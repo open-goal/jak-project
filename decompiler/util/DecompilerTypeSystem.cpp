@@ -150,7 +150,9 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   }
 }
 
-TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+TP_Type DecompilerTypeSystem::tp_lca_no_simplify(const TP_Type& existing,
+                                                 const TP_Type& add,
+                                                 bool* changed) {
   switch (existing.kind) {
     case TP_Type::OBJECT_OF_TYPE:
       switch (add.kind) {
@@ -264,6 +266,10 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
     default:
       assert(false);
   }
+}
+
+TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+  return tp_lca_no_simplify(existing.simplify(), add.simplify(), changed);
 }
 
 bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {

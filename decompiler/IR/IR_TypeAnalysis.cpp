@@ -161,6 +161,15 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     }
 
     if (input_type.kind == TP_Type::OBJECT_OF_TYPE &&
+        input_type.as_typespec() == TypeSpec("type") && ro.offset >= 16 && (ro.offset & 3) == 0 &&
+        size == 4 && kind == UNSIGNED) {
+      // method get
+      auto method_id = (ro.offset - 16) / 4;
+      auto method_info = dts.ts.lookup_method("object", method_id);
+      return TP_Type(method_info.type.substitute_for_method_call("object"));
+    }
+
+    if (input_type.kind == TP_Type::OBJECT_OF_TYPE &&
         input_type.as_typespec() == TypeSpec("pointer")) {
       // we got a plain pointer. let's just assume we're loading an integer.
       // perhaps we should disable this feature by default on 4-byte loads if we're getting
@@ -208,7 +217,28 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     if (input_type.kind == TP_Type::PARTIAL_METHOD_TABLE_ACCESS && ro.offset == 16) {
       // access method vtable
       return TP_Type(TypeSpec("function"));
+    } else if (input_type.kind == TP_Type::OBJ_PLUS_PRODUCT) {
+      // note, we discard and completely ignore the stride here.
+      ReverseDerefInputInfo rd_in;
+      rd_in.mem_deref = true;
+      rd_in.input_type = input_type.ts;
+      rd_in.reg = get_reg_kind(ro.reg);  // bleh
+      rd_in.offset = ro.offset;
+      rd_in.sign_extend = kind == SIGNED;
+      rd_in.load_size = size;
+      auto rd = dts.ts.get_reverse_deref_info(rd_in);
+
+      if (rd.success) {
+        return TP_Type(coerce_to_reg_type(rd.result_type));
+      }
     } else {
+      if (input_type.as_typespec() == TypeSpec("object") && ro.offset == -4 && kind == UNSIGNED &&
+          size == 4 && ro.reg.get_kind() == Reg::GPR) {
+        // get type of basic likely, but misrecognized as an object.
+        // occurs often in typecase-like structures because other possible types are "stripped".
+        return TP_Type(TypeSpec("type"));
+      }
+
       // nice
       ReverseDerefInputInfo rd_in;
       rd_in.mem_deref = true;
@@ -220,6 +250,8 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
 
       auto rd = dts.ts.get_reverse_deref_info(rd_in);
       if (!rd.success && !dts.type_prop_settings.allow_pair) {
+        printf("input type is %s, offset is %d, sign %d size %d\n",
+               rd_in.input_type.print().c_str(), rd_in.offset, rd_in.sign_extend, rd_in.load_size);
         throw std::runtime_error(
             fmt::format("Could not get type of load: {}. Reverse Deref Failed.", print(file)));
       }
@@ -295,6 +327,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
         return TP_Type(TypeSpec("int"));
 
       case MUL_UNSIGNED:
+      case RIGHT_SHIFT_LOGIC:
         // result is going to be unsigned, regardless of inputs.
         return TP_Type(TypeSpec("uint"));
 
@@ -318,9 +351,42 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     }
   }
 
-  if (arg0_type.kind == TP_Type::PRODUCT && arg1_type.is_object_of_type()) {
+  if (kind == ADD && arg0_type.kind == TP_Type::PRODUCT && arg1_type.is_object_of_type()) {
     // access the methods!
     return TP_Type::make_partial_method_table_access();
+  }
+
+  auto a1_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
+  if (a1_const && kind == ADD && arg0_type.kind == TP_Type::OBJECT_OF_TYPE) {
+    // access a field.
+    ReverseDerefInputInfo rd_in;
+    rd_in.mem_deref = false;
+    rd_in.input_type = arg0_type.as_typespec();
+    rd_in.offset = a1_const->value;
+    rd_in.load_size = 0;
+    auto rd = dts.ts.get_reverse_deref_info(rd_in);
+
+    if (rd.success) {
+      return TP_Type(coerce_to_reg_type(rd.result_type));
+    }
+  }
+
+  if (kind == ADD && is_integer_type(arg0_type) && arg1_type.kind == TP_Type::OBJECT_OF_TYPE) {
+    // product + object with multiplier 1 (access array of bytes for example)
+    TP_Type result;
+    result.kind = TP_Type::OBJ_PLUS_PRODUCT;
+    result.ts = arg1_type.as_typespec();
+    result.multiplier = 1;
+    return result;
+  }
+
+  if (kind == ADD && arg0_type.kind == TP_Type::PRODUCT &&
+      arg1_type.kind == TP_Type::OBJECT_OF_TYPE) {
+    TP_Type result;
+    result.kind = TP_Type::OBJ_PLUS_PRODUCT;
+    result.ts = arg1_type.as_typespec();
+    result.multiplier = arg0_type.multiplier;
+    return result;
   }
 
   if ((arg0_type.as_typespec() == TypeSpec("object") ||
@@ -382,6 +448,18 @@ void BranchDelay::type_prop(TypeState& output,
       output.get(dst->reg) = TP_Type(TypeSpec("symbol"));
     } break;
 
+    case SET_BINTEGER: {
+      auto dst = dynamic_cast<IR_Register*>(destination.get());
+      assert(dst);
+      output.get(dst->reg) = TP_Type::make_type_object("binteger");
+    } break;
+
+    case SET_PAIR: {
+      auto dst = dynamic_cast<IR_Register*>(destination.get());
+      assert(dst);
+      output.get(dst->reg) = TP_Type::make_type_object("pair");
+    } break;
+
     case NOP:
       break;
 
@@ -426,6 +504,8 @@ TP_Type IR_SymbolValue::get_expression_type(const TypeState& input,
     TP_Type result;
     result.kind = TP_Type::FALSE;
     return result;
+  } else if (name == "__START-OF-TABLE__") {
+    return TP_Type(TypeSpec("uint"));
   }
 
   auto type = dts.symbol_types.find(name);
@@ -532,4 +612,18 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
   }
 
   throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
+}
+
+void IR_AsmOp_Atomic::propagate_types(const TypeState& input,
+                                      const LinkedObjectFile& file,
+                                      DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  auto dst_reg = dynamic_cast<IR_Register*>(dst.get());
+  end_types = input;
+  if (dst_reg) {
+    if (name == "daddu") {
+      end_types.get(dst_reg->reg) = TP_Type(TypeSpec("uint"));
+    }
+  }
 }
