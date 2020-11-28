@@ -261,6 +261,8 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         case TP_Type::OBJECT_OF_TYPE:
         case TP_Type::TYPE_OBJECT:
         case TP_Type::FALSE:
+          *changed = true;
+          return add;
         case TP_Type::NONE:
           *changed = false;
           return existing;

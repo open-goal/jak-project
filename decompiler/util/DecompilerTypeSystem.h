@@ -15,6 +15,21 @@ struct TP_Type {
     kind = OBJECT_OF_TYPE;
     ts = _ts;
   }
+
+  TypeSpec as_typespec() const {
+    switch(kind) {
+      case OBJECT_OF_TYPE:
+        return ts;
+      case TYPE_OBJECT:
+        return TypeSpec("type");
+      case FALSE:
+        return TypeSpec("symbol");
+      case NONE:
+        return TypeSpec("none");
+      default:
+        assert(false);
+    }
+  }
 };
 
 struct TypeState {

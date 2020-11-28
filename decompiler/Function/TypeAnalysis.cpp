@@ -24,11 +24,11 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
                                  LinkedObjectFile& file) {
   // STEP 1 - get the topo sort.
   auto order = bb_topo_sort();
-  fmt::print("blocks: {}\n  ", basic_blocks.size());
-  for (auto x : order.vist_order) {
-    fmt::print("{} ", x);
-  }
-  fmt::print("\n");
+  //  fmt::print("blocks: {}\n  ", basic_blocks.size());
+  //  for (auto x : order.vist_order) {
+  //    fmt::print("{} ", x);
+  //  }
+  //  fmt::print("\n");
 
   // STEP 2 - establish visit order
   assert(!order.vist_order.empty());
@@ -79,10 +79,10 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
   }
 
   auto last_op = basic_ops.back();
-  auto last_type = last_op->end_types.get(Register(Reg::GPR, Reg::V0)).print();
-  if (last_type != my_type.last_arg().print()) {
-    warnings +=
-        fmt::format("return type mismatch {} vs {}.  ", last_type, my_type.last_arg().print());
+  auto last_type = last_op->end_types.get(Register(Reg::GPR, Reg::V0)).as_typespec();
+  if (last_type != my_type.last_arg()) {
+    warnings += fmt::format("return type mismatch {} vs {}.  ", last_type.print(),
+                            my_type.last_arg().print());
   }
 
   return true;

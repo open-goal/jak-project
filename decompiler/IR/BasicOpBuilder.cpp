@@ -179,6 +179,13 @@ std::shared_ptr<IR_Atomic> try_or(Instruction& instr, int idx) {
     op->write_regs.push_back(dest);
     op->reg_info_set = true;
     return op;
+  } else if (is_gpr_3(instr, InstructionKind::OR, {}, make_gpr(Reg::R0), make_gpr(Reg::R0))) {
+    auto dest = instr.get_dst(0).get_reg();
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dest, idx),
+                              std::make_shared<IR_IntegerConstant>(0));
+    op->write_regs.push_back(dest);
+    op->reg_info_set = true;
+    return op;
   } else if (is_gpr_3(instr, InstructionKind::OR, {}, {}, make_gpr(Reg::R0))) {
     // set register from register : or dest, source, r0
     auto dest = instr.get_dst(0).get_reg();

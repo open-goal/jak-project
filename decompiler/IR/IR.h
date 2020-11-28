@@ -136,6 +136,9 @@ class IR_Symbol : public virtual IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_SymbolValue : public virtual IR {
@@ -144,6 +147,9 @@ class IR_SymbolValue : public virtual IR {
   std::string name;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_StaticAddress : public virtual IR {
@@ -229,6 +235,9 @@ class IR_IntMath1 : public virtual IR {
   std::shared_ptr<IR> arg;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Call : public virtual IR {
@@ -250,6 +259,9 @@ class IR_IntegerConstant : public virtual IR {
   explicit IR_IntegerConstant(int64_t _value) : value(_value) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 struct BranchDelay {
@@ -368,6 +380,9 @@ class IR_Compare : public virtual IR {
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_Nop : public virtual IR {

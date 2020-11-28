@@ -1133,6 +1133,9 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
     token.kind = ReverseDerefInfo::DerefToken::INDEX;
     token.index = closest_index;
 
+    if (!di.mem_deref) {
+      return false;
+    }
     assert(di.mem_deref);
     if (offset_into_elt == 0) {
       if (input.mem_deref) {
