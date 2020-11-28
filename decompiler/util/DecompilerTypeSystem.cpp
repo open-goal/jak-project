@@ -3,6 +3,7 @@
 #include "common/type_system/deftype.h"
 #include "decompiler/Disasm/Register.h"
 #include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "TP_Type.h"
 
 DecompilerTypeSystem::DecompilerTypeSystem() {
   ts.add_builtin_types();
@@ -147,34 +148,6 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
       throw std::runtime_error("Type redefinition");
     }
   }
-}
-
-std::string TP_Type::print() const {
-  switch (kind) {
-    case OBJECT_OF_TYPE:
-      return ts.print();
-    case TYPE_OBJECT:
-      return fmt::format("[{}]", ts.print());
-    case FALSE:
-      return fmt::format("[#f]");
-    case NONE:
-      return fmt::format("[none]");
-    default:
-      assert(false);
-  }
-}
-
-std::string TypeState::print_gpr_masked(u32 mask) const {
-  std::string result;
-  for (int i = 0; i < 32; i++) {
-    if (mask & (1 << i)) {
-      result += Register(Reg::GPR, i).to_charp();
-      result += ": ";
-      result += gpr_types[i].print();
-      result += " ";
-    }
-  }
-  return result;
 }
 
 TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {

@@ -8,6 +8,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
 
 class LinkedObjectFile;
 class DecompilerTypeSystem;
@@ -145,6 +146,16 @@ class IR_SymbolValue : public virtual IR {
  public:
   explicit IR_SymbolValue(std::string _name) : name(std::move(_name)) {}
   std::string name;
+  goos::Object to_form(const LinkedObjectFile& file) const override;
+  void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
+};
+
+class IR_EmptyPair : public virtual IR {
+ public:
+  explicit IR_EmptyPair() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   TP_Type get_expression_type(const TypeState& input,
@@ -395,6 +406,9 @@ class IR_Nop : public virtual IR {
 class IR_Nop_Atomic : public IR_Nop, public IR_Atomic {
  public:
   IR_Nop_Atomic() = default;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Suspend : public virtual IR, public IR_Atomic {

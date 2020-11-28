@@ -368,6 +368,24 @@ void IR_SymbolValue::get_children(std::vector<std::shared_ptr<IR>>* output) cons
   (void)output;
 }
 
+goos::Object IR_EmptyPair::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::to_symbol("'()");
+}
+
+void IR_EmptyPair::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+TP_Type IR_EmptyPair::get_expression_type(const TypeState& input,
+                                          const LinkedObjectFile& file,
+                                          DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)file;
+  (void)dts;
+  return TP_Type(TypeSpec("pair"));
+}
+
 goos::Object IR_StaticAddress::to_form(const LinkedObjectFile& file) const {
   // return pretty_print::build_list(pretty_print::to_symbol("&"), file.get_label_name(label_id));
   return pretty_print::to_symbol(file.get_label_name(label_id));

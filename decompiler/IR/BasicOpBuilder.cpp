@@ -733,6 +733,13 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& instr, int idx) {
     op->write_regs.push_back(instr.get_dst(0).get_reg());
     op->reg_info_set = true;
     return op;
+  } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
+             instr.get_src(1).is_imm() && instr.get_src(1).get_imm() == -10) {
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                              std::make_shared<IR_EmptyPair>());
+    op->write_regs.push_back(instr.get_dst(0).get_reg());
+    op->reg_info_set = true;
+    return op;
   } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::FP)) &&
              instr.get_src(1).kind == InstructionAtom::LABEL) {
     auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),

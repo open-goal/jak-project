@@ -5,6 +5,7 @@
 
 #include "CfgVtx.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/TP_Type.h"
 
 class LinkedObjectFile;
 class Function;

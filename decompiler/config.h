@@ -27,6 +27,7 @@ struct Config {
   bool dump_objs = false;
   bool write_func_json = false;
   std::unordered_set<std::string> asm_functions_by_name;
+  std::unordered_set<std::string> pair_functions_by_name;
   // ...
 };
 

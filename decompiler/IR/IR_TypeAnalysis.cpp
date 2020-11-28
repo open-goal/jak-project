@@ -2,6 +2,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "third-party/fmt/core.h"
 #include "common/goos/Object.h"
+#include "decompiler/util/TP_Type.h"
 
 namespace {
 bool is_plain_type(const TP_Type& type, const TypeSpec& ts) {
@@ -124,21 +125,43 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
 
   RegOffset ro;
   if (get_as_reg_offset(location.get(), &ro)) {
-    // nice
-    ReverseDerefInputInfo rd_in;
-    rd_in.mem_deref = true;
-    rd_in.input_type = input.get(ro.reg).as_typespec();
-    rd_in.reg = get_reg_kind(ro.reg);  // bleh
-    rd_in.offset = ro.offset;
-    rd_in.sign_extend = kind == SIGNED;
-    rd_in.load_size = size;
+    auto& input_type = input.get(ro.reg);
+    if (input_type.kind == TP_Type::PARTIAL_METHOD_TABLE_ACCESS && ro.offset == 16) {
+      // access method vtable
+      return TP_Type(TypeSpec("function"));
+    } else {
+      // nice
+      ReverseDerefInputInfo rd_in;
+      rd_in.mem_deref = true;
+      rd_in.input_type = input_type.as_typespec();
+      rd_in.reg = get_reg_kind(ro.reg);  // bleh
+      rd_in.offset = ro.offset;
+      rd_in.sign_extend = kind == SIGNED;
+      rd_in.load_size = size;
 
-    auto rd = dts.ts.get_reverse_deref_info(rd_in);
-    if (!rd.success) {
-      throw std::runtime_error(
-          fmt::format("Could not get type of load: {}. Reverse Deref Failed.", print(file)));
+      auto rd = dts.ts.get_reverse_deref_info(rd_in);
+      if (!rd.success && !dts.type_prop_settings.allow_pair) {
+        throw std::runtime_error(
+            fmt::format("Could not get type of load: {}. Reverse Deref Failed.", print(file)));
+      }
+
+      if (rd.success) {
+        return TP_Type(rd.result_type);
+      }
+
+      if (dts.type_prop_settings.allow_pair) {
+        if (kind == SIGNED && size == 4 &&
+            (input_type.as_typespec() == TypeSpec("object") ||
+             input_type.as_typespec() == TypeSpec("pair"))) {
+          // pair access!
+          if (ro.offset == 2) {
+            return TP_Type(TypeSpec("object"));
+          } else if (ro.offset == -2) {
+            return TP_Type(TypeSpec("pair"));
+          }
+        }
+      }
     }
-    return TP_Type(rd.result_type);
   }
 
   throw std::runtime_error(
@@ -191,9 +214,30 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
       case MAX_SIGNED:
         // result is going to be signed, regardless of inputs.
         return TP_Type(TypeSpec("int"));
+
+      case LEFT_SHIFT: {
+        // multiply!
+        auto as_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
+        if (as_const) {
+          // shift by constant integer. could be accessing the method array.
+          TP_Type result;
+          result.kind = TP_Type::PRODUCT;
+          result.ts = get_int_type(arg0_type).ts;
+          result.multiplier = (1 << as_const->value);
+          return result;
+        } else {
+          // normal variable shift.
+          return get_int_type(arg0_type);
+        }
+      }
       default:
         break;
     }
+  }
+
+  if (arg0_type.kind == TP_Type::PRODUCT && arg1_type.is_object_of_type()) {
+    // access the methods!
+    return TP_Type::make_partial_method_table_access();
   }
 
   throw std::runtime_error(
@@ -322,4 +366,12 @@ TP_Type IR_Compare::get_expression_type(const TypeState& input,
   (void)file;
   (void)dts;
   return TP_Type(TypeSpec("symbol"));
+}
+
+void IR_Nop_Atomic::propagate_types(const TypeState& input,
+                                    const LinkedObjectFile& file,
+                                    DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  end_types = input;
 }

@@ -1,6 +1,7 @@
 #include "TypeAnalysis.h"
 #include "decompiler/IR/IR.h"
 #include "third-party/fmt/core.h"
+#include "decompiler/config.h"
 
 namespace {
 TypeState construct_initial_typestate(const TypeSpec& f_ts) {
@@ -22,6 +23,13 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
 bool Function::run_type_analysis(const TypeSpec& my_type,
                                  DecompilerTypeSystem& dts,
                                  LinkedObjectFile& file) {
+  // STEP 0 - setup settings
+  dts.type_prop_settings.reset();
+  if (get_config().pair_functions_by_name.find(guessed_name.to_string()) !=
+      get_config().pair_functions_by_name.end()) {
+    dts.type_prop_settings.allow_pair = true;
+  }
+
   // STEP 1 - get the topo sort.
   auto order = bb_topo_sort();
   //  fmt::print("blocks: {}\n  ", basic_blocks.size());
