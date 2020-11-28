@@ -99,6 +99,12 @@ void IR_Set_Atomic::propagate_types(const TypeState& input,
       auto t = src->get_expression_type(input, file, dts);
       end_types.get(as_reg->reg) = t;
     } break;
+
+    case IR_Set::SYM_STORE: {
+      auto as_reg = dynamic_cast<IR_Register*>(dst.get());
+      assert(!as_reg);
+      return;
+    }
     default:
       throw std::runtime_error(fmt::format(
           "Could not propagate types through IR_Set_Atomic, kind not handled {}", print(file)));
@@ -126,6 +132,60 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
   RegOffset ro;
   if (get_as_reg_offset(location.get(), &ro)) {
     auto& input_type = input.get(ro.reg);
+
+    if (input_type.kind == TP_Type::TYPE_OBJECT && ro.offset >= 16 && (ro.offset & 3) == 0 &&
+        size == 4 && kind == UNSIGNED) {
+      // method get
+      auto method_id = (ro.offset - 16) / 4;
+      auto method_info = dts.ts.lookup_method(input_type.ts.print(), method_id);
+      return TP_Type(method_info.type.substitute_for_method_call(input_type.ts.print()));
+    }
+
+    if (input_type.kind == TP_Type::OBJECT_OF_TYPE &&
+        input_type.as_typespec() == TypeSpec("pointer")) {
+      // we got a plain pointer. let's just assume we're loading an integer.
+      // perhaps we should disable this feature by default on 4-byte loads if we're getting
+      // lots of false positives for loading pointers from plain pointers.
+      switch (kind) {
+        case UNSIGNED:
+          switch (size) {
+            case 1:
+              return TP_Type(TypeSpec("uint8"));
+            case 2:
+              return TP_Type(TypeSpec("uint16"));
+            case 4:
+              return TP_Type(TypeSpec("uint32"));
+            case 8:
+              return TP_Type(TypeSpec("uint64"));
+            case 16:
+              return TP_Type(TypeSpec("uint128"));
+            default:
+              assert(false);
+          }
+          break;
+        case SIGNED:
+          switch (size) {
+            case 1:
+              return TP_Type(TypeSpec("int8"));
+            case 2:
+              return TP_Type(TypeSpec("int16"));
+            case 4:
+              return TP_Type(TypeSpec("int32"));
+            case 8:
+              return TP_Type(TypeSpec("int64"));
+            case 16:
+              return TP_Type(TypeSpec("int128"));
+            default:
+              assert(false);
+          }
+          break;
+        case FLOAT:
+          return TP_Type(TypeSpec("float"));
+        default:
+          assert(false);
+      }
+    }
+
     if (input_type.kind == TP_Type::PARTIAL_METHOD_TABLE_ACCESS && ro.offset == 16) {
       // access method vtable
       return TP_Type(TypeSpec("function"));
@@ -240,6 +300,16 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     return TP_Type::make_partial_method_table_access();
   }
 
+  if (arg0_type.as_typespec() == TypeSpec("object") && is_integer_type(arg1_type)) {
+    // boxed object tag trick
+    return TP_Type(TypeSpec("int"));
+  }
+
+  if (dts.ts.typecheck(TypeSpec("pointer"), arg0_type.as_typespec(), "", false, false) &&
+      is_integer_type(arg1_type)) {
+    return arg0_type;
+  }
+
   throw std::runtime_error(
       fmt::format("Can't get_expression_type on this IR_IntMath2: {}", print(file)));
 }
@@ -280,6 +350,11 @@ void BranchDelay::type_prop(TypeState& output,
       output.get(dst->reg) = output.get(src->reg);
       break;
     }
+    case SET_REG_TRUE: {
+      auto dst = dynamic_cast<IR_Register*>(destination.get());
+      assert(dst);
+      output.get(dst->reg) = TP_Type(TypeSpec("symbol"));
+    } break;
 
     case NOP:
       break;
@@ -332,6 +407,11 @@ TP_Type IR_SymbolValue::get_expression_type(const TypeState& input,
     throw std::runtime_error("Don't have the type of symbol " + name);
   }
 
+  if (type->second == TypeSpec("type")) {
+    // let's remember what we got this from.
+    return TP_Type::make_type_object(name);
+  }
+
   return TP_Type(type->second);
 }
 
@@ -371,6 +451,33 @@ TP_Type IR_Compare::get_expression_type(const TypeState& input,
 void IR_Nop_Atomic::propagate_types(const TypeState& input,
                                     const LinkedObjectFile& file,
                                     DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  end_types = input;
+}
+
+void IR_Call_Atomic::propagate_types(const TypeState& input,
+                                     const LinkedObjectFile& file,
+                                     DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  // todo clobber
+  end_types = input;
+  auto in_type = input.get(Register(Reg::GPR, Reg::T9)).as_typespec();
+  if (in_type.base_type() != "function") {
+    throw std::runtime_error("Called something that wasn't a function: " + in_type.print());
+  }
+
+  if (in_type.arg_count() < 1) {
+    throw std::runtime_error("Called a function, but we don't know its type");
+  }
+
+  end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type(in_type.last_arg());
+}
+
+void IR_Store_Atomic::propagate_types(const TypeState& input,
+                                      const LinkedObjectFile& file,
+                                      DecompilerTypeSystem& dts) {
   (void)file;
   (void)dts;
   end_types = input;

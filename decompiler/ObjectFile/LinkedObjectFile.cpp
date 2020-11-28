@@ -798,9 +798,14 @@ std::string LinkedObjectFile::print_type_analysis_debug() {
           result += "  ";
           // result += func.basic_ops.at(i)->print_with_reguse(*this);
           // result += func.basic_ops.at(i)->print(*this);
-          result += func.basic_ops.at(i)->print_with_types(*init_types, *this);
-          result += "\n";
-          init_types = &func.basic_ops.at(i)->end_types;
+          if (func.attempted_type_analysis) {
+            result += func.basic_ops.at(i)->print_with_types(*init_types, *this);
+            result += "\n";
+            init_types = &func.basic_ops.at(i)->end_types;
+          } else {
+            result += func.basic_ops.at(i)->print(*this);
+            result += "\n";
+          }
         }
       }
     }

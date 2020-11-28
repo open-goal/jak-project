@@ -927,7 +927,7 @@ void ObjectFileDB::analyze_functions() {
           }
           // GOOD!
           func.type = kv->second;
-
+          func.attempted_type_analysis = true;
           attempted_type_analysis++;
           spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(), kv->second.print());
           if (func.run_type_analysis(kv->second, dts, data.linked_data)) {

@@ -166,6 +166,21 @@ bool Type::get_my_method(const std::string& name, MethodInfo* out) const {
 }
 
 /*!
+ * Get a method that is defined specifically in this type by id. Returns if it was found or not.
+ */
+bool Type::get_my_method(int id, MethodInfo* out) const {
+  assert(id > 0);  // 0 is new, should use explicit new method functions instead.
+  for (auto& x : m_methods) {
+    if (x.id == id) {
+      *out = x;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/*!
  * Get the last method defined specifically for this type. Returns if there were any methods
  * defined specifically for this type or not.
  */

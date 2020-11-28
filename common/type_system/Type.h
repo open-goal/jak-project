@@ -69,6 +69,7 @@ class Type {
   std::string get_parent() const;
   void set_runtime_type(std::string name);
   bool get_my_method(const std::string& name, MethodInfo* out) const;
+  bool get_my_method(int id, MethodInfo* out) const;
   bool get_my_last_method(MethodInfo* out) const;
   bool get_my_new_method(MethodInfo* out) const;
   const MethodInfo& add_method(const MethodInfo& info);

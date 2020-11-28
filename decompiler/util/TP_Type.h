@@ -39,6 +39,8 @@ struct TP_Type {
         return TypeSpec("symbol");
       case NONE:
         return TypeSpec("none");
+      case PRODUCT:
+        return ts;
       default:
         assert(false);
     }
@@ -47,6 +49,13 @@ struct TP_Type {
   static TP_Type make_partial_method_table_access() {
     TP_Type result;
     result.kind = PARTIAL_METHOD_TABLE_ACCESS;
+    return result;
+  }
+
+  static TP_Type make_type_object(const std::string& name) {
+    TP_Type result;
+    result.kind = TYPE_OBJECT;
+    result.ts = TypeSpec(name);
     return result;
   }
 };

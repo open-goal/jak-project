@@ -129,6 +129,9 @@ class IR_Store_Atomic : public IR_Set_Atomic {
   int size;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void update_reginfo_self(int n_dest, int n_src, int n_clobber);
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Symbol : public virtual IR {
@@ -262,6 +265,9 @@ class IR_Call : public virtual IR {
 class IR_Call_Atomic : public virtual IR_Call, public IR_Atomic {
  public:
   IR_Call_Atomic() = default;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntegerConstant : public virtual IR {

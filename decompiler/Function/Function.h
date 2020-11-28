@@ -109,6 +109,8 @@ class Function {
   std::string warnings;
   bool contains_asm_ops = false;
 
+  bool attempted_type_analysis = false;
+
   struct Prologue {
     bool decoded = false;  // have we removed the prologue from basic blocks?
     int total_stack_usage = -1;

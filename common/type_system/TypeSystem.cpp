@@ -426,6 +426,40 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, const std::st
 }
 
 /*!
+ * Lookup information on a method by ID number. Error if it can't be found.  Will check parent types
+ * if the given type doesn't specialize the method.
+ */
+MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id) {
+  if (method_id == GOAL_NEW_METHOD) {
+    return lookup_new_method(type_name);
+  }
+
+  MethodInfo info;
+
+  // first lookup the type
+  auto* type = lookup_type(type_name);
+
+  auto* iter_type = type;
+  // look up the method
+  while (true) {
+    if (iter_type->get_my_method(method_id, &info)) {
+      return info;
+    }
+
+    if (iter_type->has_parent()) {
+      iter_type = lookup_type(iter_type->get_parent());
+    } else {
+      // couldn't find method.
+      break;
+    }
+  }
+
+  fmt::print("[TypeSystem] The method with id {} of type {} could not be found.\n", method_id,
+             type_name);
+  throw std::runtime_error("lookup_method failed");
+}
+
+/*!
  * Lookup information on a new method and get the most specialized version.
  */
 MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) {
