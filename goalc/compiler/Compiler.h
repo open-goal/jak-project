@@ -91,6 +91,7 @@ class Compiler {
   bool is_quoted_sym(const goos::Object& o);
   bool is_basic(const TypeSpec& ts);
   bool is_structure(const TypeSpec& ts);
+  bool is_bitfield(const TypeSpec& ts);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -163,6 +164,10 @@ class Compiler {
                                              const TypeSpec& type,
                                              const goos::Object& field_defs,
                                              Env* env);
+  Val* compile_new_static_bitfield(const goos::Object& form,
+                                   const TypeSpec& type,
+                                   const goos::Object& field_defs,
+                                   Env* env);
 
  public:
   // Atoms

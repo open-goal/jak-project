@@ -311,6 +311,10 @@ TEST_F(WithGameTests, SimpleBitField) {
   runner.run_static_test(env, testCategory, "test-set-bitfield.gc", {"#t50.3432\n0\n"});
 }
 
+TEST_F(WithGameTests, StaticBitField) {
+  runner.run_static_test(env, testCategory, "test-static-bitfield.gc", {"#t50.3432\n0\n"});
+}
+
 TEST_F(WithGameTests, TrickyBitField) {
   runner.run_static_test(env, testCategory, "test-bitfield-tricky-access.gc",
                          get_test_pass_string("bitfield-tricky-access", 14));

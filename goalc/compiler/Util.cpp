@@ -150,6 +150,10 @@ bool Compiler::is_structure(const TypeSpec& ts) {
   return m_ts.typecheck(m_ts.make_typespec("structure"), ts, "", false, false);
 }
 
+bool Compiler::is_bitfield(const TypeSpec& ts) {
+  return m_ts.is_bitfield_type(ts.base_type());
+}
+
 bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
   (void)env;
   if (in.is_int()) {

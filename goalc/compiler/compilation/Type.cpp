@@ -662,6 +662,11 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
     }
+
+    if (is_bitfield(type_of_object)) {
+      return compile_new_static_bitfield(form, type_of_object, *rest, env);
+    }
+
   } else if (allocation == "stack") {
     auto type_of_object = m_ts.make_typespec(type_as_string);
 
