@@ -442,6 +442,57 @@ Val* Compiler::compile_variable_shift(const RegVal* in,
   return result;
 }
 
+Val* Compiler::compile_shl(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto sa = args.unnamed.at(1).as_int();
+  if (sa < 0 || sa > 64) {
+    throw_compile_error(form, "Cannot shift by more than 64, or by a negative amount");
+  }
+  return compile_fixed_shift(first, sa, env, IntegerMathKind::SHL_64);
+}
+
+Val* Compiler::compile_shr(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto sa = args.unnamed.at(1).as_int();
+  if (sa < 0 || sa > 64) {
+    throw_compile_error(form, "Cannot shift by more than 64, or by a negative amount");
+  }
+  return compile_fixed_shift(first, sa, env, IntegerMathKind::SHR_64);
+}
+
+Val* Compiler::compile_sar(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto sa = args.unnamed.at(1).as_int();
+  if (sa < 0 || sa > 64) {
+    throw_compile_error(form, "Cannot shift by more than 64, or by a negative amount");
+  }
+  return compile_fixed_shift(first, sa, env, IntegerMathKind::SAR_64);
+}
+
+Val* Compiler::compile_fixed_shift(const RegVal* in, u8 sa, Env* env, IntegerMathKind kind) {
+  // type check
+  if (get_math_mode(in->type()) != MathMode::MATH_INT) {
+    throw std::runtime_error("Can't shift a " + in->type().print());
+  }
+
+  if (sa > 64) {
+    throw std::runtime_error("Can't shift by more than 64");
+  }
+
+  // copy to result register
+  auto result = env->make_gpr(in->type());
+  env->emit(std::make_unique<IR_RegSet>(result, in));
+  // do the shift
+  env->emit(std::make_unique<IR_IntegerMath>(kind, result, sa));
+  return result;
+}
+
 Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}}, {});

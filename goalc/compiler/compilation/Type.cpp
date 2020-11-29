@@ -464,7 +464,13 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
         continue;
       }
 
-      // todo try bitfield
+      auto bitfield_type = dynamic_cast<BitFieldType*>(type_info);
+      if (bitfield_type) {
+        auto bitfield_info = m_ts.lookup_bitfield_info(type_info->get_name(), field_name);
+        result = fe->alloc_val<BitFieldVal>(bitfield_info.result_type, result, bitfield_info.offset,
+                                            bitfield_info.size, bitfield_info.sign_extend);
+        continue;
+      }
     }
 
     auto index_value = compile_error_guard(field_obj, env)->to_gpr(env);
@@ -546,8 +552,13 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
 
     if (m_ts.typecheck(m_ts.make_typespec("integer"), desired_ts, "", false, false)) {
       auto result = number_to_integer(base, env);
-      result->set_type(desired_ts);
-      return result;
+      if (result != base) {
+        result->set_type(desired_ts);
+        return result;
+      } else {
+        result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+        return result;
+      }
     }
 
     if (m_ts.typecheck(m_ts.make_typespec("float"), desired_ts, "", false, false)) {
@@ -651,6 +662,11 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     if (is_structure(type_of_object)) {
       return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
     }
+
+    if (is_bitfield(type_of_object)) {
+      return compile_new_static_bitfield(form, type_of_object, *rest, env);
+    }
+
   } else if (allocation == "stack") {
     auto type_of_object = m_ts.make_typespec(type_as_string);
 

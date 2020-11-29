@@ -88,6 +88,99 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   return get_none();
 }
 
+void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
+  assert(!dst->sext());
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+
+  // first, get the value we want to modify:
+  auto original_original = dst->parent()->to_gpr(env);
+  // let's not directly modify original, and instead create a copy then use do_set on parent.
+  // this way we avoid "cheating" the set system, although it should be safe...
+  auto original = fe->make_gpr(original_original->type());
+  env->emit(std::make_unique<IR_RegSet>(original, original_original));
+
+  // we'll need a temp register to hold a mask:
+  auto temp = fe->make_gpr(src->type());
+  // mask value should be 1's everywhere except for the field so we can AND with it
+  u64 mask_val = ~(((1 << dst->size()) - 1) << dst->offset());
+  env->emit(std::make_unique<IR_LoadConstant64>(temp, mask_val));
+  // modify the original!
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, original, temp));
+
+  // put the source in temp
+  env->emit(std::make_unique<IR_RegSet>(temp, src));
+
+  // to shift us all the way to the left and clear upper bits
+  int left_shift_amnt = 64 - dst->size();
+  int right_shift_amnt = (64 - dst->size()) - dst->offset();
+  assert(right_shift_amnt >= 0);
+
+  if (left_shift_amnt > 0) {
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, temp, left_shift_amnt));
+  }
+
+  if (right_shift_amnt > 0) {
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, temp, right_shift_amnt));
+  }
+
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, original, temp));
+  do_set(form, dst->parent(), original, env);
+}
+
+/*!
+ * The internal "set" logic.
+ */
+Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* env) {
+  if (!dest->settable()) {
+    throw_compile_error(form,
+                        "Tried to use set! on something that wasn't settable: " + dest->print());
+  }
+  auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
+  auto as_pair = dynamic_cast<PairEntryVal*>(dest);
+  auto as_reg = dynamic_cast<RegVal*>(dest);
+  auto as_sym_val = dynamic_cast<SymbolValueVal*>(dest);
+  auto as_bitfield = dynamic_cast<BitFieldVal*>(dest);
+
+  if (as_mem_deref) {
+    // setting somewhere in memory
+    auto base = as_mem_deref->base;
+    auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
+    if (base_as_mco) {
+      // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
+      auto ti = m_ts.lookup_type(as_mem_deref->type());
+      env->emit(std::make_unique<IR_StoreConstOffset>(
+          source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
+      return source;
+    } else {
+      // nope, the pointer to dereference is some compliated thing.
+      auto ti = m_ts.lookup_type(as_mem_deref->type());
+      env->emit(
+          std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env), ti->get_load_size()));
+      return source;
+    }
+  } else if (as_pair) {
+    // this could probably be part of MemoryDerefVal and not a special case here.
+    env->emit(std::make_unique<IR_StoreConstOffset>(source, as_pair->is_car ? -2 : 2,
+                                                    as_pair->base->to_gpr(env), 4));
+    return source;
+  } else if (as_reg) {
+    typecheck(form, as_reg->type(), source->type(), "set! lexical variable");
+    env->emit(std::make_unique<IR_RegSet>(as_reg, source));
+    return source;
+  } else if (as_sym_val) {
+    typecheck(form, as_sym_val->type(), source->type(), "set! global symbol");
+    auto result_in_gpr = source->to_gpr(env);
+    env->emit(std::make_unique<IR_SetSymbolValue>(as_sym_val->sym(), result_in_gpr));
+    return result_in_gpr;
+  } else if (as_bitfield) {
+    set_bitfield(form, as_bitfield, source, env);
+    return get_none();
+  }
+
+  throw_compile_error(form, "Set not implemented for: " + dest->print());
+  return get_none();
+}
+
 /*!
  * Set something to something.
  * Lots of special cases.
@@ -101,71 +194,6 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   // and to_reg'd first, then the destination is computed, if the destination requires math to
   // compute.
   auto source = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-
-  if (destination.is_symbol()) {
-    // destination is just a symbol, so it's either a lexical variable or a global.
-
-    // first, attempt a lexical set:
-    auto lex_place = env->lexical_lookup(destination);
-    if (lex_place) {
-      // typecheck and set!
-      typecheck(form, lex_place->type(), source->type(), "set! lexical variable");
-      env->emit(std::make_unique<IR_RegSet>(lex_place, source));
-      return source;
-    } else {
-      // try to set symbol
-      auto existing = m_symbol_types.find(destination.as_symbol()->name);
-      if (existing == m_symbol_types.end()) {
-        throw_compile_error(
-            form, "could not find something called " + symbol_string(destination) + " to set!");
-      } else {
-        typecheck(form, existing->second, source->type(), "set! global symbol");
-        auto fe = get_parent_env_of_type<FunctionEnv>(env);
-        auto sym_val =
-            fe->alloc_val<SymbolVal>(symbol_string(destination), m_ts.make_typespec("symbol"));
-        auto result_in_gpr = source->to_gpr(env);
-        if (!sym_val->settable()) {
-          throw_compile_error(
-              form, "Tried to use set! on something that wasn't settable: " + sym_val->print());
-        }
-        env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, result_in_gpr));
-        return result_in_gpr;
-      }
-    }
-  } else {
-    // destination is some complex expression, so compile it and hopefully get something settable.
-    auto dest = compile_error_guard(destination, env);
-    if (!dest->settable()) {
-      throw_compile_error(form,
-                          "Tried to use set! on something that wasn't settable: " + dest->print());
-    }
-    auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
-    auto as_pair = dynamic_cast<PairEntryVal*>(dest);
-    if (as_mem_deref) {
-      // setting somewhere in memory
-      auto base = as_mem_deref->base;
-      auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
-      if (base_as_mco) {
-        // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
-        auto ti = m_ts.lookup_type(as_mem_deref->type());
-        env->emit(std::make_unique<IR_StoreConstOffset>(
-            source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
-        return source;
-      } else {
-        // nope, the pointer to dereference is some compliated thing.
-        auto ti = m_ts.lookup_type(as_mem_deref->type());
-        env->emit(std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env),
-                                                        ti->get_load_size()));
-        return source;
-      }
-    } else if (as_pair) {
-      // this could probably be part of MemoryDerefVal and not a special case here.
-      env->emit(std::make_unique<IR_StoreConstOffset>(source, as_pair->is_car ? -2 : 2,
-                                                      as_pair->base->to_gpr(env), 4));
-      return source;
-    } else {
-      throw_compile_error(form, "Set not implemented for this yet");
-    }
-  }
-  throw std::runtime_error("Unexpected error in Set");
+  auto dest = compile_error_guard(destination, env);
+  return do_set(form, dest, source, env);
 }

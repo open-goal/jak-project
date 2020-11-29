@@ -392,6 +392,9 @@ void IR_FunctionAddr::do_codegen(emitter::ObjectGenerator* gen,
 IR_IntegerMath::IR_IntegerMath(IntegerMathKind kind, RegVal* dest, RegVal* arg)
     : m_kind(kind), m_dest(dest), m_arg(arg) {}
 
+IR_IntegerMath::IR_IntegerMath(IntegerMathKind kind, RegVal* dest, u8 shift_amount)
+    : m_kind(kind), m_dest(dest), m_shift_amount(shift_amount) {}
+
 std::string IR_IntegerMath::print() {
   switch (m_kind) {
     case IntegerMathKind::ADD_64:
@@ -412,6 +415,12 @@ std::string IR_IntegerMath::print() {
       return fmt::format("shlv {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::SHRV_64:
       return fmt::format("shrv {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::SAR_64:
+      return fmt::format("sar {}, {}", m_dest->print(), m_shift_amount);
+    case IntegerMathKind::SHL_64:
+      return fmt::format("shl {}, {}", m_dest->print(), m_shift_amount);
+    case IntegerMathKind::SHR_64:
+      return fmt::format("shr {}, {}", m_dest->print(), m_shift_amount);
     case IntegerMathKind::AND_64:
       return fmt::format("and {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::OR_64:
@@ -430,7 +439,8 @@ RegAllocInstr IR_IntegerMath::to_rai() {
   rai.write.push_back(m_dest->ireg());
   rai.read.push_back(m_dest->ireg());
 
-  if (m_kind != IntegerMathKind::NOT_64) {
+  if (m_kind != IntegerMathKind::NOT_64 && m_kind != IntegerMathKind::SHL_64 &&
+      m_kind != IntegerMathKind::SAR_64 && m_kind != IntegerMathKind::SHR_64) {
     rai.read.push_back(m_arg->ireg());
   }
 
@@ -479,6 +489,15 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
     case IntegerMathKind::SARV_64:
       gen->add_instr(IGen::sar_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
       assert(get_reg(m_arg, allocs, irec) == emitter::RCX);
+      break;
+    case IntegerMathKind::SHL_64:
+      gen->add_instr(IGen::shl_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
+      break;
+    case IntegerMathKind::SHR_64:
+      gen->add_instr(IGen::shr_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
+      break;
+    case IntegerMathKind::SAR_64:
+      gen->add_instr(IGen::sar_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
       break;
     case IntegerMathKind::IMUL_32: {
       auto dr = get_reg(m_dest, allocs, irec);

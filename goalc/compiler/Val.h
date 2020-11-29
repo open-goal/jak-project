@@ -85,6 +85,7 @@ class RegVal : public Val {
 class SymbolVal : public Val {
  public:
   SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {
+    // this is for define, which looks at the SymbolVal and not the SymbolValueVal.
     mark_as_settable();
   }
   const std::string& name() const { return m_name; }
@@ -98,10 +99,14 @@ class SymbolVal : public Val {
 class SymbolValueVal : public Val {
  public:
   SymbolValueVal(const SymbolVal* sym, TypeSpec ts, bool sext)
-      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {}
+      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {
+    // this is for set, which looks at the Symbol's Value.
+    mark_as_settable();
+  }
   const std::string& name() const { return m_sym->name(); }
   std::string print() const override { return "[<" + name() + ">]"; }
   RegVal* to_reg(Env* fe) override;
+  const SymbolVal* sym() const { return m_sym; }
 
  protected:
   const SymbolVal* m_sym = nullptr;
@@ -240,6 +245,28 @@ class FloatConstantVal : public Val {
   StaticFloat* m_value = nullptr;
 };
 
-// Bitfield
+class BitFieldVal : public Val {
+ public:
+  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend)
+      : Val(std::move(ts)),
+        m_parent(parent),
+        m_offset(offset),
+        m_size(size),
+        m_sign_extend(sign_extend) {
+    m_is_settable = parent->settable();
+  }
+  std::string print() const override;
+  RegVal* to_reg(Env* env) override;
+  int offset() const { return m_offset; }
+  int size() const { return m_size; }
+  bool sext() const { return m_sign_extend; }
+  Val* parent() { return m_parent; }
+
+ protected:
+  Val* m_parent = nullptr;
+  int m_offset = -1;
+  int m_size = -1;
+  bool m_sign_extend = false;
+};
 
 #endif  // JAK_VAL_H

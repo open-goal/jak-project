@@ -302,6 +302,24 @@ TEST_F(WithGameTests, GameCount) {
                          get_test_pass_string("game-count", 4));
 }
 
+TEST_F(WithGameTests, BitFieldAccess) {
+  runner.run_static_test(env, testCategory, "test-bitfield-access.gc",
+                         {"#tfffffffffffff344f213ffffffffffffffff\n0\n"});
+}
+
+TEST_F(WithGameTests, SimpleBitField) {
+  runner.run_static_test(env, testCategory, "test-set-bitfield.gc", {"#t50.3432\n0\n"});
+}
+
+TEST_F(WithGameTests, StaticBitField) {
+  runner.run_static_test(env, testCategory, "test-static-bitfield.gc", {"#t50.3432\n0\n"});
+}
+
+TEST_F(WithGameTests, TrickyBitField) {
+  runner.run_static_test(env, testCategory, "test-bitfield-tricky-access.gc",
+                         get_test_pass_string("bitfield-tricky-access", 14));
+}
+
 TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
 }

@@ -49,6 +49,8 @@ class Compiler {
   void init_logger();
   void init_settings();
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
+  void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
+  Val* do_set(const goos::Object& form, Val* dst, RegVal* src, Env* env);
   Val* compile_goos_macro(const goos::Object& o,
                           const goos::Object& macro_obj,
                           const goos::Object& rest,
@@ -89,6 +91,7 @@ class Compiler {
   bool is_quoted_sym(const goos::Object& o);
   bool is_basic(const TypeSpec& ts);
   bool is_structure(const TypeSpec& ts);
+  bool is_bitfield(const TypeSpec& ts);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -134,6 +137,7 @@ class Compiler {
   bool is_none(Val* in);
 
   Val* compile_variable_shift(const RegVal* in, const RegVal* sa, Env* env, IntegerMathKind kind);
+  Val* compile_fixed_shift(const RegVal* in, u8 sa, Env* env, IntegerMathKind kind);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
@@ -160,6 +164,10 @@ class Compiler {
                                              const TypeSpec& type,
                                              const goos::Object& field_defs,
                                              Env* env);
+  Val* compile_new_static_bitfield(const goos::Object& form,
+                                   const TypeSpec& type,
+                                   const goos::Object& field_defs,
+                                   Env* env);
 
  public:
   // Atoms
@@ -225,6 +233,9 @@ class Compiler {
   Val* compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_shl(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_sar(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_shr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mod(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logxor(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_lognot(const goos::Object& form, const goos::Object& rest, Env* env);

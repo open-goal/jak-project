@@ -26,7 +26,6 @@ RegVal* Val::to_xmm(Env* fe) {
   if (rv->ireg().kind == emitter::RegKind::XMM) {
     return rv;
   } else {
-    assert(false);
     auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
     fe->emit(std::make_unique<IR_RegSet>(re, rv));
     return re;
@@ -178,4 +177,43 @@ RegVal* StackVarAddrVal::to_reg(Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
   fe->emit(std::make_unique<IR_GetStackAddr>(re, m_slot));
   return re;
+}
+
+std::string BitFieldVal::print() const {
+  return fmt::format("[bitfield sz {} off {} sx {} of {}]", m_size, m_offset, m_sign_extend,
+                     m_parent->print());
+}
+
+RegVal* BitFieldVal::to_reg(Env* env) {
+  // first get the parent value
+  auto parent_reg = m_parent->to_gpr(env);
+
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto result = fe->make_ireg(coerce_to_reg_type(m_ts), emitter::RegKind::GPR);
+  env->emit(std::make_unique<IR_RegSet>(result, parent_reg));
+
+  int start_bit = m_offset;
+  int end_bit = m_offset + m_size;
+  int epad = 64 - end_bit;
+  assert(epad >= 0);
+  int spad = start_bit;
+
+  // shift left as much as possible to kill upper bits
+  if (epad > 0) {
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, result, epad));
+  }
+
+  int next_shift = epad + spad;
+  assert(next_shift + m_size == 64);
+  assert(next_shift >= 0);
+
+  if (next_shift > 0) {
+    if (m_sign_extend) {
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SAR_64, result, next_shift));
+    } else {
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, result, next_shift));
+    }
+  }
+
+  return result;
 }

@@ -174,12 +174,12 @@ class Field {
   void set_inline();
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
-
   bool is_inline() const { return m_inline; }
-
   bool is_array() const { return m_array; }
-
   bool is_dynamic() const { return m_dynamic; }
+  const std::string& name() const { return m_name; }
+  int offset() const { return m_offset; }
+  bool operator==(const Field& other) const;
 
   int alignment() const {
     assert(m_alignment != -1);
@@ -191,17 +191,11 @@ class Field {
     return m_array_size;
   }
 
-  const std::string& name() const { return m_name; }
-
-  int offset() const { return m_offset; }
-
-  bool operator==(const Field& other) const;
-
  private:
   friend class TypeSystem;
   void set_alignment(int alignment) { m_alignment = alignment; }
-
   void set_offset(int offset) { m_offset = offset; }
+
   std::string m_name;
   TypeSpec m_type;
   int m_offset = -1;
@@ -260,8 +254,34 @@ class BasicType : public StructureType {
   ~BasicType() = default;
 };
 
-class BitField {};
+class BitField {
+ public:
+  BitField() = default;
+  BitField(TypeSpec type, std::string name, int offset, int size);
+  const std::string name() const { return m_name; }
+  int offset() const { return m_offset; }
+  int size() const { return m_size; }
+  const TypeSpec& type() const { return m_type; }
+  bool operator==(const BitField& other) const;
+  std::string print() const;
 
-class BitFieldType : ValueType {};
+ private:
+  TypeSpec m_type;
+  std::string m_name;
+  int m_offset = -1;  // in bits
+  int m_size = -1;    // in bits.
+};
+
+class BitFieldType : public ValueType {
+ public:
+  BitFieldType(std::string parent, std::string name, int size, bool sign_extend);
+  bool lookup_field(const std::string& name, BitField* out) const;
+  std::string print() const override;
+  bool operator==(const Type& other) const override;
+
+ private:
+  friend class TypeSystem;
+  std::vector<BitField> m_fields;
+};
 
 #endif  // JAK_TYPE_H

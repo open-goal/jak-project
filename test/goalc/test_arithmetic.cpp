@@ -227,8 +227,13 @@ TEST_F(ArithmeticTests, NestedFunctionCall) {
   runner.run_static_test(env, testCategory, "nested-function.static.gc", {"10\n"});
 }
 
-TEST_F(ArithmeticTests, ShiftOperations) {
+TEST_F(ArithmeticTests, VariableShift) {
   runner.run_static_test(env, testCategory, "shiftvs.static.gc", {"11\n"});
+}
+
+TEST_F(ArithmeticTests, FixedShift) {
+  // same math as the variable shift test, just using the fixed shift operators.
+  runner.run_static_test(env, testCategory, "shift-fixed.static.gc", {"11\n"});
 }
 
 TEST_F(ArithmeticTests, Subtraction) {

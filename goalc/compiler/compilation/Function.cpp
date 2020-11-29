@@ -150,6 +150,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       IRegConstraint constr;
       constr.instr_idx = 0;  // constraint at function start
       auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, emitter::RegKind::GPR);
+      ireg->mark_as_settable();
       constr.ireg = ireg->ireg();
       constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
       new_func_env->params[lambda.params.at(i).name] = ireg;
@@ -350,6 +351,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       auto type = eval_args.at(i)->type();
       auto copy = env->make_ireg(type, get_preferred_reg_kind(type));
       env->emit(std::make_unique<IR_RegSet>(copy, eval_args.at(i)));
+      copy->mark_as_settable();
       lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
     }
 
@@ -494,6 +496,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   std::vector<RegVal*> arg_outs;
   for (auto& arg : args) {
     arg_outs.push_back(env->make_ireg(arg->type(), emitter::RegKind::GPR));
+    arg_outs.back()->mark_as_settable();
     env->emit(std::make_unique<IR_RegSet>(arg_outs.back(), arg));
   }
 

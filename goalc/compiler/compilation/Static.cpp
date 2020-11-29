@@ -34,7 +34,90 @@ bool integer_fits(s64 in, int size, bool is_signed) {
       assert(false);
   }
 }
+
+u32 float_as_u32(float x) {
+  u32 result;
+  memcpy(&result, &x, 4);
+  return result;
+}
 }  // namespace
+
+Val* Compiler::compile_new_static_bitfield(const goos::Object& form,
+                                           const TypeSpec& type,
+                                           const goos::Object& _field_defs,
+                                           Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  u64 as_int = 0;
+
+  auto type_info = dynamic_cast<BitFieldType*>(m_ts.lookup_type(type));
+  assert(type_info);
+  assert(type_info->get_load_size() <= 8);
+
+  auto* field_defs = &_field_defs;
+  while (!field_defs->is_empty_list()) {
+    auto field_name_def = symbol_string(pair_car(*field_defs));
+    field_defs = &pair_cdr(*field_defs);
+
+    auto field_value = pair_car(*field_defs);
+    field_defs = &pair_cdr(*field_defs);
+
+    if (field_name_def.at(0) != ':') {
+      throw_compile_error(form,
+                          "expected field def name to start with :, instead got " + field_name_def);
+    }
+
+    field_name_def = field_name_def.substr(1);
+    auto field_info = m_ts.lookup_bitfield_info(type_info->get_name(), field_name_def);
+
+    auto field_offset = field_info.offset;
+    auto field_size = field_info.size;
+    assert(field_offset + field_size <= type_info->get_load_size() * 8);
+
+    if (is_integer(field_info.result_type)) {
+      s64 value = 0;
+      if (!try_getting_constant_integer(field_value, &value, env)) {
+        throw_compile_error(form,
+                            fmt::format("Field {} is an integer, but the value given couldn't be "
+                                        "converted to an integer at compile time.",
+                                        field_name_def));
+      }
+
+      // todo, check the integer fits!
+      u64 unsigned_value = value;
+      u64 or_value = unsigned_value;
+      // shift us all the way left to clear upper bits.
+      or_value <<= (64 - field_size);
+      // and back right.
+      or_value >>= (64 - field_size);
+      if (or_value != unsigned_value) {
+        throw_compile_error(form, fmt::format("Field {}'s value doesn't fit.", field_name_def));
+      }
+
+      as_int |= (or_value << field_offset);
+    } else if (is_float(field_info.result_type)) {
+      if (field_size != 32) {
+        throw_compile_error(form,
+                            fmt::format("Tried to put a float into a float bitfield that's not 4 "
+                                        "bytes. This is probably not what you wanted to do."));
+      }
+
+      float value = 0.f;
+      if (!try_getting_constant_float(field_value, &value, env)) {
+        throw_compile_error(form, fmt::format("Field {} is a float, but the value given couldn't "
+                                              "be converted to a float at compile time.",
+                                              field_name_def));
+      }
+      u64 float_value = float_as_u32(value);
+      as_int |= (float_value << field_offset);
+    }
+
+    else {
+      assert(false);  // for now
+    }
+  }
+
+  return fe->alloc_val<IntegerConstantVal>(type, as_int);
+}
 
 Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
                                                      const TypeSpec& type,

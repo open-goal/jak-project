@@ -1,0 +1,66 @@
+(start-test "bitfield-tricky-access")
+
+(deftype bitfield-test-type-4 (uint32)
+  ((a uint8 :offset 3)
+   (b uint16 :offset 19 :size 12)
+   )
+  )
+
+(deftype bitfield-in-structure-type (structure)
+  ((a uint32 :offset 0)
+   (bitfield bitfield-test-type-4 :offset 0)
+   )
+  )
+
+;; check we can use a bitfield in a symbol
+(define *global-bitfield* (the bitfield-test-type-4 #x0))
+(set! (-> *global-bitfield* a) #xfe)
+(set! (-> *global-bitfield* b) #x12341234)
+
+(expect-eq #xfe (-> *global-bitfield* a))
+(expect-eq #x234 (-> *global-bitfield* b))
+(expect-eq #x11A007F0 (the uint *global-bitfield*))
+
+
+;; check we can use a bitfield as a field inside a structure
+(let ((heap-bitfield (new 'global 'bitfield-in-structure-type)))
+  (set! (-> heap-bitfield a) 0)
+  (set! (-> heap-bitfield bitfield a) #xfe)
+  (set! (-> heap-bitfield bitfield b) #x12341234)
+  (expect-eq #xfe (-> heap-bitfield bitfield a))
+  (expect-eq #x234 (-> heap-bitfield bitfield b))
+  (expect-eq #x11A007F0 (the uint (-> heap-bitfield bitfield)))
+  )
+
+
+(deftype bitfield-test-type-5 (uint32)
+  ((a uint8 :offset 0)
+   (b uint16 :offset 19 :size 12)
+   )
+  )
+
+;; check we can use a bitfield inside of a bitfield
+(deftype nested-bitfield (uint64)
+  ((a uint8 :offset 2 :size 3)
+   (bitfield bitfield-test-type-5 :offset 5)
+   )
+  )
+
+(let ((thing (the nested-bitfield #x0)))
+  (set! (-> thing a) #xfffff) ;; shoudlbe truncated to #b111
+  (expect-eq 7 (-> thing a))
+  (expect-eq 0 (-> thing bitfield a))
+  (set! (-> thing bitfield a ) #xffff) ;; truncated to #xff
+  (expect-eq #xff (-> thing bitfield a))
+  (expect-eq 7 (-> thing a))
+  )
+
+(define *global-nested-bitfield* (the nested-bitfield 0))
+  (set! (-> *global-nested-bitfield* a) #xfffff) ;; shoudlbe truncated to #b111
+  (expect-eq 7 (-> *global-nested-bitfield* a))
+  (expect-eq 0 (-> *global-nested-bitfield* bitfield a))
+  (set! (-> *global-nested-bitfield* bitfield a ) #xffff) ;; truncated to #xff
+  (expect-eq #xff (-> *global-nested-bitfield* bitfield a))
+  (expect-eq 7 (-> *global-nested-bitfield* a))
+
+(finish-test)
