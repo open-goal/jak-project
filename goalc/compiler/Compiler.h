@@ -134,6 +134,7 @@ class Compiler {
   bool is_none(Val* in);
 
   Val* compile_variable_shift(const RegVal* in, const RegVal* sa, Env* env, IntegerMathKind kind);
+  Val* compile_fixed_shift(const RegVal* in, u8 sa, Env* env, IntegerMathKind kind);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
@@ -225,6 +226,9 @@ class Compiler {
   Val* compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_shl(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_sar(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_shr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mod(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logxor(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_lognot(const goos::Object& form, const goos::Object& rest, Env* env);

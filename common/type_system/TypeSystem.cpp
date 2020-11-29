@@ -1308,3 +1308,64 @@ ReverseDerefInfo TypeSystem::get_reverse_deref_info(const ReverseDerefInputInfo&
   result.success = reverse_deref(input, &result.deref_path, &result.addr_of, &result.result_type);
   return result;
 }
+
+/*!
+ * Is the given type a bitfield type?
+ */
+bool TypeSystem::is_bitfield_type(const std::string& type_name) const {
+  return dynamic_cast<BitFieldType*>(lookup_type(type_name));
+}
+
+/*!
+ * Get information about a field within a bitfield type.
+ */
+BitfieldLookupInfo TypeSystem::lookup_bitfield_info(const std::string& type_name,
+                                                    const std::string& field_name) const {
+  auto type = get_type_of_type<BitFieldType>(type_name);
+  BitField f;
+  if (!type->lookup_field(field_name, &f)) {
+    fmt::print("[TypeSystem] Type {} has no bitfield named {}\n", type_name, field_name);
+    throw std::runtime_error("lookup_bitfield failed");
+  }
+
+  BitfieldLookupInfo result;
+  result.result_type = f.type();
+  result.offset = f.offset();
+  result.sign_extend = lookup_type(result.result_type)->get_load_signed();
+  result.size = f.size();
+  return result;
+}
+
+/*!
+ * Add a new field to a bitfield type.
+ * Set the field size to -1 if you want to just use the size of the type and not clip it.
+ */
+void TypeSystem::add_field_to_bitfield(BitFieldType* type,
+                                       const std::string& field_name,
+                                       const TypeSpec& field_type,
+                                       int offset,
+                                       int field_size) {
+  // in bits
+  auto load_size = lookup_type(field_type)->get_load_size() * 8;
+  if (field_size == -1) {
+    field_size = load_size;
+  }
+
+  if (field_size > load_size) {
+    fmt::print(
+        "[TypeSystem] Type {}'s bitfield {}'s set size is {}, which is larger than the actual "
+        "type: {}\n",
+        type->get_name(), field_name, field_size, load_size);
+    throw std::runtime_error("Failed to add bitfield to type");
+  }
+
+  if (field_size + offset > type->get_load_size() * 8) {
+    fmt::print(
+        "[TypeSystem] Type {}'s bitfield {} will run off the end of the type (ends at {} bits, "
+        "type is {} bits)\n",
+        type->get_name(), field_name, field_size + offset, type->get_load_size() * 8);
+    throw std::runtime_error("Failed to add bitfield to type");
+  }
+  BitField field(field_type, field_name, offset, field_size);
+  type->m_fields.push_back(field);
+}

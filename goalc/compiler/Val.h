@@ -240,6 +240,22 @@ class FloatConstantVal : public Val {
   StaticFloat* m_value = nullptr;
 };
 
-// Bitfield
+class BitFieldVal : public Val {
+ public:
+  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend)
+      : Val(std::move(ts)),
+        m_parent(parent),
+        m_offset(offset),
+        m_size(size),
+        m_sign_extend(sign_extend) {}
+  std::string print() const override;
+  RegVal* to_reg(Env* env) override;
+
+ protected:
+  Val* m_parent = nullptr;
+  int m_offset = -1;
+  int m_size = -1;
+  bool m_sign_extend = false;
+};
 
 #endif  // JAK_VAL_H

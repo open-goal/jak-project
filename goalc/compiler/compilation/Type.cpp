@@ -464,7 +464,13 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
         continue;
       }
 
-      // todo try bitfield
+      auto bitfield_type = dynamic_cast<BitFieldType*>(type_info);
+      if (bitfield_type) {
+        auto bitfield_info = m_ts.lookup_bitfield_info(type_info->get_name(), field_name);
+        result = fe->alloc_val<BitFieldVal>(bitfield_info.result_type, result, bitfield_info.offset,
+                                            bitfield_info.size, bitfield_info.sign_extend);
+        continue;
+      }
     }
 
     auto index_value = compile_error_guard(field_obj, env)->to_gpr(env);

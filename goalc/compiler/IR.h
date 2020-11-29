@@ -211,6 +211,7 @@ enum class IntegerMathKind {
 class IR_IntegerMath : public IR {
  public:
   IR_IntegerMath(IntegerMathKind kind, RegVal* dest, RegVal* arg);
+  IR_IntegerMath(IntegerMathKind kind, RegVal* dest, u8 shift_amount);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -221,7 +222,8 @@ class IR_IntegerMath : public IR {
  protected:
   IntegerMathKind m_kind;
   RegVal* m_dest;
-  RegVal* m_arg;
+  RegVal* m_arg = nullptr;
+  u8 m_shift_amount = 0;
 };
 
 enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS, MIN_SS, MAX_SS };

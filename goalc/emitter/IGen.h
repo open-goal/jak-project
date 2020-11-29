@@ -1528,9 +1528,10 @@ class IGen {
   /*!
    * Shift 64-ptr left (logical) by the constant shift amount "sa".
    */
-  static Instruction shl_gpr64_u8(uint8_t reg, uint8_t sa) {
+  static Instruction shl_gpr64_u8(Register reg, uint8_t sa) {
+    assert(reg.is_gpr());
     Instruction instr(0xc1);
-    instr.set_modrm_and_rex(4, reg, 3, true);
+    instr.set_modrm_and_rex(4, reg.hw_id(), 3, true);
     instr.set(Imm(1, sa));
     return instr;
   }
@@ -1538,9 +1539,10 @@ class IGen {
   /*!
    * Shift 64-ptr right (logical) by the constant shift amount "sa".
    */
-  static Instruction shr_gpr64_u8(uint8_t reg, uint8_t sa) {
+  static Instruction shr_gpr64_u8(Register reg, uint8_t sa) {
+    assert(reg.is_gpr());
     Instruction instr(0xc1);
-    instr.set_modrm_and_rex(5, reg, 3, true);
+    instr.set_modrm_and_rex(5, reg.hw_id(), 3, true);
     instr.set(Imm(1, sa));
     return instr;
   }
@@ -1548,9 +1550,10 @@ class IGen {
   /*!
    * Shift 64-ptr right (arithmetic) by the constant shift amount "sa".
    */
-  static Instruction sar_gpr64_u8(uint8_t reg, uint8_t sa) {
+  static Instruction sar_gpr64_u8(Register reg, uint8_t sa) {
+    assert(reg.is_gpr());
     Instruction instr(0xc1);
-    instr.set_modrm_and_rex(7, reg, 3, true);
+    instr.set_modrm_and_rex(7, reg.hw_id(), 3, true);
     instr.set(Imm(1, sa));
     return instr;
   }

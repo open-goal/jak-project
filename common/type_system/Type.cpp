@@ -502,6 +502,15 @@ bool StructureType::operator==(const Type& other) const {
   // clang-format on
 }
 
+bool BitFieldType::operator==(const Type& other) const {
+  if (typeid(*this) != typeid(other)) {
+    return false;
+  }
+
+  auto* p_other = dynamic_cast<const BitFieldType*>(&other);
+  return other.is_equal(*this) && m_fields == p_other->m_fields;
+}
+
 int StructureType::get_size_in_memory() const {
   return m_size_in_mem;
 }
@@ -568,4 +577,44 @@ std::string BasicType::print() const {
 
 int BasicType::get_offset() const {
   return BASIC_OFFSET;
+}
+
+/////////////////
+// Bitfield
+/////////////////
+
+BitField::BitField(TypeSpec type, std::string name, int offset, int size)
+    : m_type(std::move(type)), m_name(std::move(name)), m_offset(offset), m_size(size) {}
+
+bool BitField::operator==(const BitField& other) const {
+  return m_type == other.m_type && m_name == other.m_name && m_offset == other.m_offset &&
+         other.m_size == m_size;
+}
+
+BitFieldType::BitFieldType(std::string parent, std::string name, int size, bool sign_extend)
+    : ValueType(std::move(parent), std::move(name), false, size, sign_extend, RegKind::GPR_64) {}
+
+bool BitFieldType::lookup_field(const std::string& name, BitField* out) const {
+  for (auto& field : m_fields) {
+    if (field.name() == name) {
+      *out = field;
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string BitField::print() const {
+  return fmt::format("[{} {}] sz {} off {}", name(), type().print(), size(), offset());
+}
+
+std::string BitFieldType::print() const {
+  std::string result;
+  result += fmt::format("Parent type: {}\nFields:\n", get_parent());
+  for (auto& field : m_fields) {
+    result += fmt::format("  {}\n", field.print());
+  }
+  result += fmt::format("Mem size: {}, load size: {}, signed {}, align {}\n", get_size_in_memory(),
+                        get_load_size(), get_load_signed(), get_in_memory_alignment());
+  return result;
 }

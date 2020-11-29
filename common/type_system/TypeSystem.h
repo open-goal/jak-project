@@ -24,6 +24,13 @@ struct FieldLookupInfo {
   int array_size = -1;
 };
 
+struct BitfieldLookupInfo {
+  TypeSpec result_type;
+  int offset = -1;
+  int size = -1;
+  bool sign_extend = false;
+};
+
 struct DerefInfo {
   bool can_deref = false;
   bool mem_deref = false;
@@ -102,6 +109,8 @@ class TypeSystem {
 
   FieldLookupInfo lookup_field_info(const std::string& type_name,
                                     const std::string& field_name) const;
+  BitfieldLookupInfo lookup_bitfield_info(const std::string& type_name,
+                                          const std::string& field_name) const;
   void assert_field_offset(const std::string& type_name, const std::string& field_name, int offset);
   int add_field_to_type(StructureType* type,
                         const std::string& field_name,
@@ -121,6 +130,13 @@ class TypeSystem {
                  bool throw_on_error = true) const;
   std::vector<std::string> get_path_up_tree(const std::string& type);
   int get_next_method_id(Type* type);
+
+  bool is_bitfield_type(const std::string& type_name) const;
+  void add_field_to_bitfield(BitFieldType* type,
+                             const std::string& field_name,
+                             const TypeSpec& field_type,
+                             int offset,
+                             int field_size);
 
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
