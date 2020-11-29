@@ -52,3 +52,9 @@
 - Breaking change: return type of a function using `return-from #f` to return a value from the entire function is now the lowest common ancestor of all possible return values.
 - Fixed bug where `return-from` could reach outside of an inlined function.
 - Fixed bug where `return-from` might not behave correctly when returning from inside a let inside an inlined function.
+- Added `fmin` and `fmax` floating point min and max. These work on multiple arguments and use the `minss`/`maxss` instructions for the best performance.
+- Added `imul64` instruction for doing a real 64-bit multiplication.  This must be used when porting code that looks at the `hi` register after an EE `mult`.
+- Added `shl`, `shr`, and `sar` shifts which take a constant integer. These cannot be used with a variable shift amount.
+- Added bitfield types to the type system
+- Added the ability to cast integers to bitfield types
+- Fixed a bug where casting between integer types with `the` that did not involve emitting code would permanently change the type of the variable.

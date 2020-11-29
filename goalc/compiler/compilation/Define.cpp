@@ -88,6 +88,45 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   return get_none();
 }
 
+void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
+  assert(!dst->sext());
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+
+  // first, get the value we want to modify:
+  auto original_original = dst->parent()->to_gpr(env);
+  // let's not directly modify original, and instead create a copy then use do_set on parent.
+  // this way we avoid "cheating" the set system, although it should be safe...
+  auto original = fe->make_gpr(original_original->type());
+  env->emit(std::make_unique<IR_RegSet>(original, original_original));
+
+  // we'll need a temp register to hold a mask:
+  auto temp = fe->make_gpr(src->type());
+  // mask value should be 1's everywhere except for the field so we can AND with it
+  u64 mask_val = ~(((1 << dst->size()) - 1) << dst->offset());
+  env->emit(std::make_unique<IR_LoadConstant64>(temp, mask_val));
+  // modify the original!
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, original, temp));
+
+  // put the source in temp
+  env->emit(std::make_unique<IR_RegSet>(temp, src));
+
+  // to shift us all the way to the left and clear upper bits
+  int left_shift_amnt = 64 - dst->size();
+  int right_shift_amnt = (64 - dst->size()) - dst->offset();
+  assert(right_shift_amnt >= 0);
+
+  if (left_shift_amnt > 0) {
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, temp, left_shift_amnt));
+  }
+
+  if (right_shift_amnt > 0) {
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, temp, right_shift_amnt));
+  }
+
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, original, temp));
+  do_set(form, dst->parent(), original, env);
+}
+
 /*!
  * The internal "set" logic.
  */
@@ -100,6 +139,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
   auto as_pair = dynamic_cast<PairEntryVal*>(dest);
   auto as_reg = dynamic_cast<RegVal*>(dest);
   auto as_sym_val = dynamic_cast<SymbolValueVal*>(dest);
+  auto as_bitfield = dynamic_cast<BitFieldVal*>(dest);
 
   if (as_mem_deref) {
     // setting somewhere in memory
@@ -132,6 +172,9 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
     auto result_in_gpr = source->to_gpr(env);
     env->emit(std::make_unique<IR_SetSymbolValue>(as_sym_val->sym(), result_in_gpr));
     return result_in_gpr;
+  } else if (as_bitfield) {
+    set_bitfield(form, as_bitfield, source, env);
+    return get_none();
   }
 
   throw_compile_error(form, "Set not implemented for: " + dest->print());

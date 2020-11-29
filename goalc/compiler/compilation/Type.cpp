@@ -552,8 +552,13 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
 
     if (m_ts.typecheck(m_ts.make_typespec("integer"), desired_ts, "", false, false)) {
       auto result = number_to_integer(base, env);
-      result->set_type(desired_ts);
-      return result;
+      if (result != base) {
+        result->set_type(desired_ts);
+        return result;
+      } else {
+        result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+        return result;
+      }
     }
 
     if (m_ts.typecheck(m_ts.make_typespec("float"), desired_ts, "", false, false)) {

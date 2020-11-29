@@ -252,9 +252,15 @@ class BitFieldVal : public Val {
         m_parent(parent),
         m_offset(offset),
         m_size(size),
-        m_sign_extend(sign_extend) {}
+        m_sign_extend(sign_extend) {
+    m_is_settable = parent->settable();
+  }
   std::string print() const override;
   RegVal* to_reg(Env* env) override;
+  int offset() const { return m_offset; }
+  int size() const { return m_size; }
+  bool sext() const { return m_sign_extend; }
+  Val* parent() { return m_parent; }
 
  protected:
   Val* m_parent = nullptr;

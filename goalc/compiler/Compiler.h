@@ -49,6 +49,7 @@ class Compiler {
   void init_logger();
   void init_settings();
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
+  void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
   Val* do_set(const goos::Object& form, Val* dst, RegVal* src, Env* env);
   Val* compile_goos_macro(const goos::Object& o,
                           const goos::Object& macro_obj,
