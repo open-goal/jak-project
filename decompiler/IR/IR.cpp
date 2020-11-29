@@ -962,6 +962,15 @@ void IR_Suspend::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
 }
 
+goos::Object IR_Breakpoint_Atomic::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::build_list("breakpoint!");
+}
+
+void IR_Breakpoint_Atomic::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
 goos::Object IR_Begin::to_form(const LinkedObjectFile& file) const {
   std::vector<goos::Object> list;
   list.push_back(pretty_print::to_symbol("begin"));

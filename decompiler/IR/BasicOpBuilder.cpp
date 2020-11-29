@@ -512,8 +512,14 @@ std::shared_ptr<IR_Atomic> try_ld(Instruction& instr, int idx) {
 
 // TODO SPECIAL
 std::shared_ptr<IR_Atomic> try_lw(Instruction& instr, int idx) {
-  if (instr.kind == InstructionKind::LW && instr.get_src(1).is_reg(make_gpr(Reg::S7)) &&
-      instr.get_src(0).kind == InstructionAtom::IMM_SYM) {
+  if (instr.kind == InstructionKind::LW && instr.get_dst(0).is_reg(make_gpr(Reg::R0)) &&
+      instr.get_src(0).is_imm() && instr.get_src(0).get_imm() == 2 &&
+      instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
+    auto op = std::make_shared<IR_Breakpoint_Atomic>();
+    op->reg_info_set = true;
+    return op;
+  } else if (instr.kind == InstructionKind::LW && instr.get_src(1).is_reg(make_gpr(Reg::S7)) &&
+             instr.get_src(0).kind == InstructionAtom::IMM_SYM) {
     // symbol load
     auto dst = instr.get_dst(0).get_reg();
     auto op = make_set_atomic(IR_Set_Atomic::SYM_LOAD, make_reg(dst, idx),

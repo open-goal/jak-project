@@ -239,6 +239,13 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         return TP_Type(TypeSpec("type"));
       }
 
+      if (input_type.kind == TP_Type::OBJECT_OF_TYPE && ro.offset == -4 && kind == UNSIGNED &&
+          size == 4 && ro.reg.get_kind() == Reg::GPR) {
+        // get type of basic likely, but misrecognized as an object.
+        // occurs often in typecase-like structures because other possible types are "stripped".
+        return TP_Type::make_type_object(input_type.as_typespec().base_type());
+      }
+
       // nice
       ReverseDerefInputInfo rd_in;
       rd_in.mem_deref = true;
@@ -294,6 +301,26 @@ TP_Type IR_FloatMath2::get_expression_type(const TypeState& input,
     case MIN:
     case MAX:
       return TP_Type(dts.ts.make_typespec("float"));
+    default:
+      assert(false);
+  }
+}
+
+TP_Type IR_FloatMath1::get_expression_type(const TypeState& input,
+                                           const LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)file;
+  (void)dts;
+  // FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT
+  switch (kind) {
+    case FLOAT_TO_INT:
+      return TP_Type(TypeSpec("int"));
+    case INT_TO_FLOAT:
+    case ABS:
+    case NEG:
+    case SQRT:
+      return TP_Type(TypeSpec("float"));
     default:
       assert(false);
   }
@@ -626,4 +653,12 @@ void IR_AsmOp_Atomic::propagate_types(const TypeState& input,
       end_types.get(dst_reg->reg) = TP_Type(TypeSpec("uint"));
     }
   }
+}
+
+void IR_Breakpoint_Atomic::propagate_types(const TypeState& input,
+                                           const LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  end_types = input;
 }

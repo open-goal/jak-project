@@ -218,9 +218,9 @@ class Compiler {
 
   // Math
   Val* compile_add(const goos::Object& form, const goos::Object& rest, Env* env);
-
   Val* compile_sub(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_imul64(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_div(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -231,6 +231,8 @@ class Compiler {
   Val* compile_logand(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_logior(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_fmin(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_fmax(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);

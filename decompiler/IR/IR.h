@@ -212,6 +212,9 @@ class IR_FloatMath1 : public virtual IR {
   std::shared_ptr<IR> arg;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_IntMath2 : public virtual IR {
@@ -428,6 +431,7 @@ class IR_Suspend : public virtual IR, public IR_Atomic {
 };
 
 class IR_Breakpoint_Atomic : public virtual IR_Atomic {
+ public:
   IR_Breakpoint_Atomic() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;

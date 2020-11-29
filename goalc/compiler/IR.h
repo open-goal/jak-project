@@ -193,6 +193,7 @@ enum class IntegerMathKind {
   ADD_64,
   SUB_64,
   IMUL_32,
+  IMUL_64,
   IDIV_32,
   SHLV_64,
   SARV_64,
@@ -223,7 +224,7 @@ class IR_IntegerMath : public IR {
   RegVal* m_arg;
 };
 
-enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS };
+enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS, MIN_SS, MAX_SS };
 
 class IR_FloatMath : public IR {
  public:
