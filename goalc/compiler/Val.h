@@ -85,6 +85,7 @@ class RegVal : public Val {
 class SymbolVal : public Val {
  public:
   SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {
+    // this is for define, which looks at the SymbolVal and not the SymbolValueVal.
     mark_as_settable();
   }
   const std::string& name() const { return m_name; }
@@ -98,10 +99,14 @@ class SymbolVal : public Val {
 class SymbolValueVal : public Val {
  public:
   SymbolValueVal(const SymbolVal* sym, TypeSpec ts, bool sext)
-      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {}
+      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {
+    // this is for set, which looks at the Symbol's Value.
+    mark_as_settable();
+  }
   const std::string& name() const { return m_sym->name(); }
   std::string print() const override { return "[<" + name() + ">]"; }
   RegVal* to_reg(Env* fe) override;
+  const SymbolVal* sym() const { return m_sym; }
 
  protected:
   const SymbolVal* m_sym = nullptr;

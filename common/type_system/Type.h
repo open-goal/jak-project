@@ -278,6 +278,7 @@ class BitFieldType : public ValueType {
   bool lookup_field(const std::string& name, BitField* out) const;
   std::string print() const override;
   bool operator==(const Type& other) const override;
+
  private:
   friend class TypeSystem;
   std::vector<BitField> m_fields;
