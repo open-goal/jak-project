@@ -5,30 +5,20 @@
 ;; name in dgo: math
 ;; dgos: GAME, ENGINE
 
+;; contains various math helpers
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; float macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; at some point, these could be more optimized.
+;; at some point, this could be more optimized.
+;; MIPS has an explicit abs.s instruction, but x86-64 doesn't.
+;; modern clang on O3 does a comiss/branch and this is probably pretty close.
 
 (defmacro fabs (x)
-  ;"Floating point absolute value. On MIPS there is a abs.s instruction.
-  ; In the future we could consider optimizing this more for x86, but this is good enough."
-  `(if (< ,x 0)
-       (- ,x)
-       ,x)
-  )
-
-(defmacro fmin (x y)
-  `(if (< ,x ,y)
-       ,x
-       ,y)
-  )
-
-(defmacro fmax (x y)
-  `(if (> ,x ,y)
-       ,x
-       ,y)
+  `(if (< (the float ,x) 0)
+       (- (the float ,x))
+       (the float ,x))
   )
 
 

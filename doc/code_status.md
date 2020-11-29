@@ -48,3 +48,18 @@ Types and one function. Done, but the matrix-copy! function isn't that efficient
 
 ## quaternion-h.gc
 Done!
+
+## euler-h.gc
+Needs static arrays
+
+## transform-h.gc
+Done!
+
+## geometry-h.gc
+Done!
+
+## trigonometry-h.gc
+Empty File.
+
+## transformq-h.gc
+Not done. 

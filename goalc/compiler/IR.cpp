@@ -522,6 +522,10 @@ std::string IR_FloatMath::print() {
       return fmt::format("addss {}, {}", m_dest->print(), m_arg->print());
     case FloatMathKind::SUB_SS:
       return fmt::format("subss {}, {}", m_dest->print(), m_arg->print());
+    case FloatMathKind::MAX_SS:
+      return fmt::format("maxss {}, {}", m_dest->print(), m_arg->print());
+    case FloatMathKind::MIN_SS:
+      return fmt::format("minss {}, {}", m_dest->print(), m_arg->print());
     default:
       throw std::runtime_error("Unsupported FloatMathKind");
   }
@@ -554,6 +558,14 @@ void IR_FloatMath::do_codegen(emitter::ObjectGenerator* gen,
     case FloatMathKind::SUB_SS:
       gen->add_instr(
           IGen::subss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case FloatMathKind::MAX_SS:
+      gen->add_instr(
+          IGen::maxss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case FloatMathKind::MIN_SS:
+      gen->add_instr(
+          IGen::minss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
       break;
     default:
       assert(false);

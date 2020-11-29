@@ -195,6 +195,52 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
   return get_none();
 }
 
+Val* Compiler::compile_fmin(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  if (!args.named.empty() || args.unnamed.empty()) {
+    throw_compile_error(form, "Invalid fmin form");
+  }
+
+  // look at the first value to determine the math mode
+  auto first_val = compile_error_guard(args.unnamed.at(0), env);
+  if (get_math_mode(first_val->type()) != MATH_FLOAT) {
+    throw_compile_error(form, "Must use floats in fmin");
+  }
+  auto result = env->make_xmm(first_val->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+  for (size_t i = 1; i < args.unnamed.size(); i++) {
+    auto val = compile_error_guard(args.unnamed.at(i), env);
+    if (get_math_mode(val->type()) != MATH_FLOAT) {
+      throw_compile_error(form, "Must use floats in fmin");
+    }
+    env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MIN_SS, result, val->to_xmm(env)));
+  }
+  return result;
+}
+
+Val* Compiler::compile_fmax(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  if (!args.named.empty() || args.unnamed.empty()) {
+    throw_compile_error(form, "Invalid fmax form");
+  }
+
+  // look at the first value to determine the math mode
+  auto first_val = compile_error_guard(args.unnamed.at(0), env);
+  if (get_math_mode(first_val->type()) != MATH_FLOAT) {
+    throw_compile_error(form, "Must use floats in fmax");
+  }
+  auto result = env->make_xmm(first_val->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+  for (size_t i = 1; i < args.unnamed.size(); i++) {
+    auto val = compile_error_guard(args.unnamed.at(i), env);
+    if (get_math_mode(val->type()) != MATH_FLOAT) {
+      throw_compile_error(form, "Must use floats in fmax");
+    }
+    env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MAX_SS, result, val->to_xmm(env)));
+  }
+  return result;
+}
+
 Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
