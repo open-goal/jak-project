@@ -70,6 +70,8 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       }
       if (type_kind.as_symbol()->name == "basic") {
         ts.forward_declare_type_as_basic(type_name.as_symbol()->name);
+      } else if (type_kind.as_symbol()->name == "structure") {
+        ts.forward_declare_type_as_structure(type_name.as_symbol()->name);
       } else {
         throw std::runtime_error("bad declare-type");
       }

@@ -5,3 +5,156 @@
 ;; name in dgo: math
 ;; dgos: GAME, ENGINE
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; float macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; at some point, these could be more optimized.
+
+(defmacro fabs (x)
+  ;"Floating point absolute value. On MIPS there is a abs.s instruction.
+  ; In the future we could consider optimizing this more for x86, but this is good enough."
+  `(if (< ,x 0)
+       (- ,x)
+       ,x)
+  )
+
+(defmacro fmin (x y)
+  `(if (< ,x ,y)
+       ,x
+       ,y)
+  )
+
+(defmacro fmax (x y)
+  `(if (> ,x ,y)
+       ,x
+       ,y)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; float utility
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun truncate ((x float))
+  "Truncate a floating point number to an integer value.
+  Positive values round down and negative values round up."
+  (declare (inline))
+  (the float (the int x))
+  )
+
+(defun integral? ((x float))
+  "Is a float an exact integer?"
+  (= (truncate x) x)
+  )
+
+(defun fractional-part ((x float))
+  "Get the fractional part of a float"
+  (- x (truncate x))
+  )
+
+;; todo, rgba, xyzw, xyzwh
+
+(defun log2 ((x int))
+  "Straight out of Bit Twiddling Hacks graphics.stanford.edu"
+  (- (sarv (the-as integer (the float x)) 23) 127)
+  )
+
+(defun seek ((x float) (target float) (diff float))
+  "Move x toward target by at most diff, with floats"
+  (let ((err (- target x)))
+    ;; if we can get there all at once
+    (if (<= (fabs err) diff)
+      (return-from #f target)
+      )
+
+    (if (>= err 0)
+      (+ x diff)
+      (- x diff)
+      )
+    )
+  )
+
+(defun lerp ((minimum float) (maximum float) (amount float))
+  "Interpolate between minimum and maximum.  The output is not clamped."
+  (+ minimum (* amount (- maximum minimum)))
+  )
+
+(defun lerp-scale ((min-out float) (max-out float) 
+                   (in float) (min-in float) (max-in float))
+  "Interpolate from [min-in, max-in] to [min-out, max-out].
+   If the output is out of range, it will be clamped.
+   This is not a great implementation."
+   (let ((scale (fmax 0.0 (fmin 1.0 (/ (- in min-in) (- max-in min-in))))))
+     (+ (* (- 1.0 scale) min-out)
+        (* scale max-out)
+        )
+     )
+   )
+
+(defun lerp-clamp ((minimum float) (maximum float) (amount float))
+  "Interpolate between minimum and maximum.  Clamp output.
+  For some reason, the interpolate here is done in a less efficient way than lerp."
+  (if (<= amount 0.0)
+    (return-from #f minimum)
+    )
+
+  (if (>= amount 1.0)
+    (return-from #f maximum)
+    )
+  ;; lerp computes this part, but more efficiently
+  (+ (* (- 1.0 amount) minimum)
+     (* amount maximum)
+     )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; integer utility
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun seekl ((x int) (target int) (diff int))
+  "Move x toward a target by at most diff, with integers"
+  (let ((err (- target x)))
+    (if (< (abs err) diff)
+      (return-from #f target)
+      )
+
+    (if (>= err 0)
+      (+ x diff)
+      (- x diff)
+      )
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; random vu
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; terrible random integer generator
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftype random-generator (basic)
+  ((seed uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(define *random-generator* (new 'global 'random-generator))
+;; I wonder who wrote this code.
+(set! (-> *random-generator* seed) #x666EDD1E)
+
+(defun rand-uint31-gen ((gen random-generator))
+  "Generate a supposedly random integer"
+  (let ((result (-> gen seed)))
+    ;; addiu v1, r0, 16807
+    (+! result 16807)
+    ;; to 32 bit, doing sign extension.
+    (set! result (shlv result 32))
+    (set! result (sarv result 32))
+    )
+  )
