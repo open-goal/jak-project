@@ -148,13 +148,32 @@
 ;; I wonder who wrote this code.
 (set! (-> *random-generator* seed) #x666EDD1E)
 
+(defmacro sext32-64 (x)
+  `(sarv (shlv ,x 32) 32)
+  )
+
 (defun rand-uint31-gen ((gen random-generator))
-  "Generate a supposedly random integer"
-  (let ((result (-> gen seed)))
-    ;; addiu v1, r0, 16807
-    (+! result 16807)
-    ;; to 32 bit, doing sign extension.
-    (set! result (shlv result 32))
-    (set! result (sarv result 32))
+  "Generate a supposedly random integer.
+  Note, this might not quite be right.
+  But the highest bit is always zero, like it says
+  and it looks kinda random to me."
+  (let* ((sd (-> gen seed))
+         ;; addiu v1, r0, 16807
+         ;; mult3 v0, v1, a1
+         (prod (imul64 16807 sd))
+         ;; mfhi v1
+         (hi (shrv prod 32)) ;; sign extend this?
+         (lo (sarv (shlv prod 32) 32))
+         ;; daddu v1, v1, v1
+         (v1 (+ hi hi))
+         ;; srl a1, v0, 31
+         (a1 (logand #xffffffff (shrv lo 31)))
+         ;; or v1, v1, a1
+         ;; daddu v0, v0 v1
+         (result (+ lo (logior v1 a1)))
+        )
+    (set! result (shrv (logand #xffffffff (shlv result 1)) 1))
+    (set! (-> gen seed) result)
+    result
     )
   )

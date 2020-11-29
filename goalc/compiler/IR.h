@@ -193,6 +193,7 @@ enum class IntegerMathKind {
   ADD_64,
   SUB_64,
   IMUL_32,
+  IMUL_64,
   IDIV_32,
   SHLV_64,
   SARV_64,

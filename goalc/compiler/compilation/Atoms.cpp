@@ -101,6 +101,7 @@ static const std::unordered_map<
         {"+", &Compiler::compile_add},
         {"-", &Compiler::compile_sub},
         {"*", &Compiler::compile_mul},
+        {"imul64", &Compiler::compile_imul64},
         {"/", &Compiler::compile_div},
         {"shlv", &Compiler::compile_shlv},
         {"shrv", &Compiler::compile_shrv},

@@ -1388,6 +1388,19 @@ class IGen {
   }
 
   /*!
+   * Multiply gprs (64-bit, signed).
+   * DANGER - this treats all operands as 64-bit. This is not like the EE.
+   */
+  static Instruction imul_gpr64_gpr64(Register dst, Register src) {
+    Instruction instr(0xf);
+    instr.set_op2(0xaf);
+    assert(dst.is_gpr());
+    assert(src.is_gpr());
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    return instr;
+  }
+
+  /*!
    * Divide (idiv, 32 bit)
    * todo UNTESTED
    */
