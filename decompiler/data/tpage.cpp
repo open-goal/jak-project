@@ -224,13 +224,14 @@ u32 psmt4_addr_half_byte(u32 x, u32 y, u32 width) {
   return (page * 128 * 128) + (block * 32 * 16) + pixel;
 }
 
-u32 rgba15_to_rgba32(u32 in) {
-  u32 r = in & 0b11111;
-  u32 g = (in >> 5) & 0b11111;
-  u32 b = (in >> 10) & 0b11111;
+u32 rgba16_to_rgba32(u32 in) {
+  float ratio = 255.0 / 31.0;
+  u32 r = (in & 0b11111) * ratio;
+  u32 g = ((in >> 5) & 0b11111) * ratio;
+  u32 b = ((in >> 10) & 0b11111) * ratio;
+  u32 a = (in & 0x8000) * 0x1FE00;
 
-  // todo, this isn't quite right.
-  return (r << 3) + (g << (3 + 8)) + (b << (3 + 16)) + (255 << 24);
+  return a | (b << 16) | (g << 8) | r;
 }
 
 /*
@@ -767,7 +768,7 @@ TPageResultStats process_tpage(ObjectFileData& data) {
           // the x, y CLUT value is looked up in PSMCT32 mode
           u32 clut_addr = psmct16_addr(clx, cly, 64) + tex.clutdest * 256;
           u32 clut_value = *(u16*)(vram.data() + clut_addr);
-          out.push_back(rgba15_to_rgba32(clut_value));
+          out.push_back(rgba16_to_rgba32(clut_value));
         }
       }
 
@@ -795,7 +796,7 @@ TPageResultStats process_tpage(ObjectFileData& data) {
           // read as the PSMT8 type. The dest field tells us a block offset.
           auto addr8 = psmct16_addr(x, y, read_width) + tex.dest[0] * 256;
           u16 value = *(u16*)(vram.data() + addr8);
-          out.push_back(rgba15_to_rgba32(value));
+          out.push_back(rgba16_to_rgba32(value));
         }
       }
 
@@ -839,7 +840,7 @@ TPageResultStats process_tpage(ObjectFileData& data) {
           // the x, y CLUT value is looked up in PSMCT16 mode
           u32 clut_addr = psmct16_addr(clx, cly, 64) + tex.clutdest * 256;
           u32 clut_value = *(u16*)(vram.data() + clut_addr);
-          out.push_back(rgba15_to_rgba32(clut_value));
+          out.push_back(rgba16_to_rgba32(clut_value));
         }
       }
 
