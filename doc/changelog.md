@@ -58,3 +58,7 @@
 - Added bitfield types to the type system
 - Added the ability to cast integers to bitfield types
 - Fixed a bug where casting between integer types with `the` that did not involve emitting code would permanently change the type of the variable.
+- Added a `:disassemble` option to `asm-file` to disassemble functions for debugging purposes.
+
+## V0.3
+- Added typechecking when setting fields of a type.

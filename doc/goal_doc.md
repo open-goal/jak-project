@@ -12,6 +12,7 @@ Documented forms are crossed out.
 - ~~asm-file~~
 - ~~m~~
 - ~~ml~~
+- ~~md~~
 - ~~build-game~~
 - ~~build-data~~
 - ~~blg~~
@@ -621,10 +622,13 @@ This runs the compiler on a given file. The file path is relative to the `jak-pr
 - `:color`: run register allocation and code generation. Can be omitted if you don't want actually generate code. Usually you want this option.
 - `:write`: write the object file to the `out/obj` folder. You must also have `:color` on. You must do this to include this file in a DGO.
 - `:load`: send the object file to the target with the listener. Requires `:color` but not `:write`. There may be issues with `:load`ing very large object files (believed fixed).
+- `:disassemble`: prints a disassembly of the code by function.  Currently data is not disassebmled. This code is not linked so references to symbols will have placeholder values like `0xDEADBEEF`.  The IR is printed next to each instruction so you can see what symbol is supposed to be linked. Requires `:color`.
+- `:no-code`: checks that the result of processing the file generates no code or data. This will be true if your file contains only macros / constant definition. The `goal-lib.gc` file that is loaded by the compiler automatically when it starts must generate no code. You can use `(asm-file "goal_src/goal-lib.gc" :no-code)` to reload this file and double check that it doesn't generate code.
 
 To reduce typing, there are some useful macros:
 - `(m "filename")` is "make" and does a `:color` and `:write`.
 - `(ml "filename")` is "make and load" and does a `:color` and `:write` and `:load`. This effectively replaces the previous version of file in the currently running game with the one you just compiled, and is a super useful tool for quick debugging/iterating.
+- `(md "filename")` is "make debug" and does a `:color`, `:write`, and `:disassemble`. It is quite useful for working on the compiler and seeing what code is output.
 - `(build-game)` does `m` on all game files and rebuilds DGOs
 - `(blg)` (build and load game) does `build-game` then sends commands to load KERNEL and GAME CGOs. The load is done through DGO loading, not `:load`ing individual object files.
 

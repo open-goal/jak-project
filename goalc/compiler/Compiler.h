@@ -75,6 +75,9 @@ class Compiler {
   SymbolVal* compile_get_sym_obj(const std::string& name, Env* env);
   void color_object_file(FileEnv* env);
   std::vector<u8> codegen_object_file(FileEnv* env);
+  bool codegen_and_disassemble_object_file(FileEnv* env,
+                                           std::vector<u8>* data_out,
+                                           std::string* asm_out);
 
   void for_each_in_list(const goos::Object& list,
                         const std::function<void(const goos::Object&)>& f);

@@ -89,7 +89,6 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 }
 
 void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
-  assert(!dst->sext());
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   // first, get the value we want to modify:
@@ -142,6 +141,11 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
   auto as_bitfield = dynamic_cast<BitFieldVal*>(dest);
 
   if (as_mem_deref) {
+    auto dest_type = coerce_to_reg_type(as_mem_deref->type());
+    if (dest_type != TypeSpec("uint") || source->type() != TypeSpec("int")) {
+      typecheck(form, dest_type, source->type(), "set! memory");
+    }
+
     // setting somewhere in memory
     auto base = as_mem_deref->base;
     auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);

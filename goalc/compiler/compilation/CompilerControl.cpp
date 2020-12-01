@@ -79,6 +79,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   bool color = false;
   bool write = false;
   bool no_code = false;
+  bool disassemble = false;
 
   std::vector<std::pair<std::string, float>> timing;
   Timer total_timer;
@@ -97,6 +98,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
         write = true;
       } else if (setting == ":no-code") {
         no_code = true;
+      } else if (setting == ":disassemble") {
+        disassemble = true;
       } else {
         throw_compile_error(form, "invalid option " + setting + " in asm-file form");
       }
@@ -133,7 +136,14 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // code/object file generation
     Timer codegen_timer;
-    auto data = codegen_object_file(obj_file);
+    std::vector<u8> data;
+    std::string disasm;
+    if (disassemble) {
+      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
+      printf("%s\n", disasm.c_str());
+    } else {
+      data = codegen_object_file(obj_file);
+    }
     timing.emplace_back("codegen", codegen_timer.getMs());
 
     // send to target
@@ -158,6 +168,10 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     if (write) {
       printf("WARNING - couldn't write because coloring is not enabled\n");
+    }
+
+    if (disassemble) {
+      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
     }
   }
 

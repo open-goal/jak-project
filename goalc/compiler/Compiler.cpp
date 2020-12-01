@@ -185,6 +185,18 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   return gen.run();
 }
 
+bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
+                                                   std::vector<u8>* data_out,
+                                                   std::string* asm_out) {
+  auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
+  debug_info->clear();
+  CodeGenerator gen(env, debug_info);
+  *data_out = gen.run();
+  bool ok = false;
+  *asm_out = debug_info->disassemble_all_functions(&ok);
+  return ok;
+}
+
 std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
   try {
     if (!connect_to_target()) {
