@@ -108,16 +108,25 @@ void TextDb::link(const Object& o, std::shared_ptr<SourceText> frag, int offset)
 /*!
  * Given an object, get a string representing where it's from. Or "?" if we can't find it.
  */
-std::string TextDb::get_info_for(const Object& o) {
+std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error) {
   if (o.is_pair()) {
     auto kv = map.find(o.heap_obj);
     if (kv != map.end()) {
+      if (terminate_compiler_error) {
+        *terminate_compiler_error = kv->second.frag->terminate_compiler_error();
+      }
       return get_info_for(kv->second.frag, kv->second.offset);
     } else {
-      return "?";
+      if (terminate_compiler_error) {
+        *terminate_compiler_error = false;
+      }
+      return "?\n";
     }
   } else {
-    return "?";
+    if (terminate_compiler_error) {
+      *terminate_compiler_error = false;
+    }
+    return "?\n";
   }
 }
 

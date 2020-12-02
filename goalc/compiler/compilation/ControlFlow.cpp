@@ -50,7 +50,7 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
       if (fas->name == "not") {
         auto arg = pair_car(rest);
         if (!pair_cdr(rest).is_empty_list()) {
-          throw_compile_error(condition, "A condition with \"not\" can have only one argument");
+          throw_compiler_error(condition, "A condition with \"not\" can have only one argument");
         }
         return compile_condition(arg, env, !invert);
       }
@@ -75,12 +75,12 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
           // there is no support for comparing bintegers, so we turn the binteger comparison into an
           // integer.
           if (is_binteger(first_arg->type())) {
-            first_arg = number_to_integer(first_arg, env);
+            first_arg = number_to_integer(condition, first_arg, env);
           }
 
           // convert second one to appropriate type as needed
           if (is_number(second_arg->type())) {
-            second_arg = to_math_type(second_arg, math_mode, env);
+            second_arg = to_math_type(condition, second_arg, math_mode, env);
           }
         }
 
@@ -182,7 +182,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
     auto clauses = pair_cdr(o);
 
     if (got_else) {
-      throw_compile_error(form, "cannot have anything after an else in a cond");
+      throw_compiler_error(form, "Cond from cannot have any cases after else.");
     }
 
     if (test.is_symbol() && symbol_string(test) == "else") {

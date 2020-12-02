@@ -44,7 +44,7 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
       m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
     });
   } catch (std::runtime_error& e) {
-    throw_compile_error(form, std::string("seval error: ") + e.what());
+    throw_compiler_error(form, "Error while evaluating GOOS: ", e.what());
   }
   return get_none();
 }
@@ -62,7 +62,7 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   } else if (kind == "game-count") {
     compile_game_count(as_string(args.unnamed.at(1)));
   } else {
-    throw_compile_error(form, "Unknown asm data file mode");
+    throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }
   return get_none();
 }
@@ -101,7 +101,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       } else if (setting == ":disassemble") {
         disassemble = true;
       } else {
-        throw_compile_error(form, "invalid option " + setting + " in asm-file form");
+        throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
     }
     i++;
@@ -203,18 +203,18 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (o.is_string()) {
       if (got_ip) {
-        throw_compile_error(form, "got multiple strings!");
+        throw_compiler_error(form, "listen-to-target can only use 1 IP address");
       }
       got_ip = true;
       ip = o.as_string()->data;
     } else if (o.is_int()) {
       if (got_port) {
-        throw_compile_error(form, "got multiple ports!");
+        throw_compiler_error(form, "listen-to-target can only use 1 port number");
       }
       got_port = true;
       port = o.integer_obj.value;
     } else {
-      throw_compile_error(form, "invalid argument to listen-to-target");
+      throw_compiler_error(form, "invalid argument to listen-to-target: \"{}\"", o.print());
     }
   });
 
@@ -234,7 +234,7 @@ Val* Compiler::compile_reset_target(const goos::Object& form, const goos::Object
     if (o.is_symbol() && symbol_string(o) == ":shutdown") {
       shutdown = true;
     } else {
-      throw_compile_error(form, "invalid argument to reset-target");
+      throw_compiler_error(form, "invalid argument to reset-target: \"{}\"", o.print());
     }
   });
   m_listener.send_reset(shutdown);

@@ -15,32 +15,36 @@ u32 Compiler::parse_address_spec(const goos::Object& form) {
       if (rest.is_pair() && rest.as_pair()->car.is_symbol()) {
         u32 addr = m_debugger.get_symbol_address(symbol_string(rest.as_pair()->car));
         if (!addr) {
-          throw_compile_error(form, "debugger doesn't know where the symbol is");
+          throw_compiler_error(form,
+                               "Could not find symbol {} in the target to create an addr-spec",
+                               symbol_string(rest.as_pair()->car));
         }
         return addr;
       } else {
-        throw_compile_error(form, "invalid sym form");
+        throw_compiler_error(form, "addr-spec sym form must receive exactly one symbol argument.");
         return 0;
       }
     } else if (first.is_symbol() && symbol_string(first) == "sym-val") {
       if (rest.is_pair() && rest.as_pair()->car.is_symbol()) {
         u32 addr = 0;
         if (!m_debugger.get_symbol_value(symbol_string(rest.as_pair()->car), &addr)) {
-          throw_compile_error(form, "debugger doesn't know where the symbol is");
+          throw_compiler_error(form,
+                               "Could not find symbol {} in the target to create an addr-spec",
+                               symbol_string(rest.as_pair()->car));
         }
         return addr;
       } else {
-        throw_compile_error(form, "invalid sym-val form");
+        throw_compiler_error(form,
+                             "addr-spec sym-val form must receive exactly one symbol argument.");
         return 0;
       }
-    }
-
-    else {
-      throw_compile_error(form, "can't parse this address spec");
+    } else {
+      throw_compiler_error(form, "Can't parse this address spec: option {} was not recognized.",
+                           first.print());
       return 0;
     }
   } else {
-    throw_compile_error(form, "can't parse this address spec");
+    throw_compiler_error(form, "Invalid address spec.");
     return 0;
   }
 }
@@ -219,27 +223,28 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
     } else if (mode_name == "float") {
       mode = FLOAT;
     } else {
-      throw_compile_error(form, "Unknown print-mode for :pm " + mode_name);
+      throw_compiler_error(form, "Unknown print-mode {} for :pm.", mode_name);
     }
   }
 
   if (!m_debugger.is_halted()) {
-    throw_compile_error(
+    throw_compiler_error(
         form, "Cannot print memory, the debugger must be connected and the target must be halted.");
   }
 
   auto mem_size = elts * elt_size;
   if (mem_size > 1024 * 1024) {
-    throw_compile_error(
-        form,
-        fmt::format(":pm used on over 1 MB of memory, this probably isn't what you meant to do."));
+    throw_compiler_error(form, fmt::format(":pm used on over 1 MB of memory. Not printing."));
   }
 
   std::vector<u8> mem;
   mem.resize(mem_size);
 
   if (addr < EE_MAIN_MEM_LOW_PROTECT || (addr + mem_size) > EE_MAIN_MEM_SIZE) {
-    throw_compile_error(form, ":pm memory out of range");
+    throw_compiler_error(form,
+                         ":pm memory out of range. Wanted to print 0x{:x} to 0x{:x}, but valid "
+                         "memory is 0x{:x} to 0x{:x}.",
+                         addr, addr + mem_size, EE_MAIN_MEM_LOW_PROTECT, EE_MAIN_MEM_SIZE);
   }
 
   m_debugger.read_memory(mem.data(), mem_size, addr);
@@ -261,7 +266,7 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
           mem_print((u64*)mem.data(), elts, addr, mode);
           break;
         default:
-          throw_compile_error(form, ":pm bad element size");
+          throw_compiler_error(form, ":pm {} is an invalid element size for unsigned", elt_size);
       }
       break;
     case SIGNED_DEC:
@@ -279,7 +284,7 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
           mem_print((s64*)mem.data(), elts, addr, mode);
           break;
         default:
-          throw_compile_error(form, ":pm bad element size");
+          throw_compiler_error(form, ":pm {} is a bad element size for signed", elt_size);
       }
       break;
     case FLOAT:
@@ -288,7 +293,8 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
           mem_print((float*)mem.data(), elts, addr, mode);
           break;
         default:
-          throw_compile_error(form, ":pm bad element size");
+          throw_compiler_error(form, ":pm float can only be printed with size 4, but got size {}",
+                               elt_size);
       }
       break;
     default:
@@ -303,7 +309,7 @@ Val* Compiler::compile_di(const goos::Object& form, const goos::Object& rest, En
   (void)rest;
   (void)env;
   if (!m_debugger.is_halted()) {
-    throw_compile_error(
+    throw_compiler_error(
         form,
         "Cannot get debug info, the debugger must be connected and the target must be halted.");
   }
@@ -320,13 +326,13 @@ Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest
   u32 size = args.unnamed.at(1).as_int();
 
   if (!m_debugger.is_halted()) {
-    throw_compile_error(
+    throw_compiler_error(
         form,
         "Cannot disassemble memory, the debugger must be connected and the target must be halted.");
   }
 
   if (size > 1024 * 1024) {
-    throw_compile_error(
+    throw_compiler_error(
         form,
         fmt::format(
             ":disasm used on over 1 MB of memory, this probably isn't what you meant to do."));
@@ -336,7 +342,10 @@ Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest
   mem.resize(size);
 
   if (addr < EE_MAIN_MEM_LOW_PROTECT || (addr + size) > EE_MAIN_MEM_SIZE) {
-    throw_compile_error(form, ":disasm memory out of range");
+    throw_compiler_error(form,
+                         ":disasm memory out of range. Wanted to print 0x{:x} to 0x{:x}, but valid "
+                         "memory is 0x{:x} to 0x{:x}.",
+                         addr, addr + size, EE_MAIN_MEM_LOW_PROTECT, EE_MAIN_MEM_SIZE);
   }
 
   m_debugger.read_memory(mem.data(), size, addr);
@@ -353,7 +362,7 @@ Val* Compiler::compile_bp(const goos::Object& form, const goos::Object& rest, En
   va_check(form, args, {{}}, {});
 
   if (!m_debugger.is_halted()) {
-    throw_compile_error(
+    throw_compiler_error(
         form,
         "Cannot add breakpoint, the debugger must be connected and the target must be halted.");
   }
@@ -370,7 +379,7 @@ Val* Compiler::compile_ubp(const goos::Object& form, const goos::Object& rest, E
   va_check(form, args, {{}}, {});
 
   if (!m_debugger.is_halted()) {
-    throw_compile_error(
+    throw_compiler_error(
         form,
         "Cannot remove breakpoint, the debugger must be connected and the target must be halted.");
   }

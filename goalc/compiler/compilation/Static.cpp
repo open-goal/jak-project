@@ -62,8 +62,8 @@ Val* Compiler::compile_new_static_bitfield(const goos::Object& form,
     field_defs = &pair_cdr(*field_defs);
 
     if (field_name_def.at(0) != ':') {
-      throw_compile_error(form,
-                          "expected field def name to start with :, instead got " + field_name_def);
+      throw_compiler_error(
+          form, "expected field def name to start with :, instead got " + field_name_def);
     }
 
     field_name_def = field_name_def.substr(1);
@@ -76,10 +76,10 @@ Val* Compiler::compile_new_static_bitfield(const goos::Object& form,
     if (is_integer(field_info.result_type)) {
       s64 value = 0;
       if (!try_getting_constant_integer(field_value, &value, env)) {
-        throw_compile_error(form,
-                            fmt::format("Field {} is an integer, but the value given couldn't be "
-                                        "converted to an integer at compile time.",
-                                        field_name_def));
+        throw_compiler_error(form,
+                             "Field {} is an integer, but the value given couldn't be "
+                             "converted to an integer at compile time.",
+                             field_name_def);
       }
 
       // todo, check the integer fits!
@@ -90,22 +90,23 @@ Val* Compiler::compile_new_static_bitfield(const goos::Object& form,
       // and back right.
       or_value >>= (64 - field_size);
       if (or_value != unsigned_value) {
-        throw_compile_error(form, fmt::format("Field {}'s value doesn't fit.", field_name_def));
+        throw_compiler_error(form, "Field {}'s value doesn't fit.", field_name_def);
       }
 
       as_int |= (or_value << field_offset);
     } else if (is_float(field_info.result_type)) {
       if (field_size != 32) {
-        throw_compile_error(form,
-                            fmt::format("Tried to put a float into a float bitfield that's not 4 "
-                                        "bytes. This is probably not what you wanted to do."));
+        throw_compiler_error(form,
+                             "Tried to put a float into a float bitfield that's not 4 "
+                             "bytes. This is probably not what you wanted to do.");
       }
 
       float value = 0.f;
       if (!try_getting_constant_float(field_value, &value, env)) {
-        throw_compile_error(form, fmt::format("Field {} is a float, but the value given couldn't "
-                                              "be converted to a float at compile time.",
-                                              field_name_def));
+        throw_compiler_error(form,
+                             "Field {} is a float, but the value given couldn't "
+                             "be converted to a float at compile time.",
+                             field_name_def);
       }
       u64 float_value = float_as_u32(value);
       as_int |= (float_value << field_offset);
@@ -148,8 +149,8 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
     field_defs = &pair_cdr(*field_defs);
 
     if (field_name_def.at(0) != ':') {
-      throw_compile_error(form,
-                          "expected field def name to start with :, instead got " + field_name_def);
+      throw_compiler_error(
+          form, "expected field def name to start with :, instead got " + field_name_def);
     }
 
     field_name_def = field_name_def.substr(1);
@@ -157,7 +158,7 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
 
     if (field_info.field.is_dynamic() || field_info.field.is_inline() ||
         field_info.field.is_array()) {
-      throw_compile_error(form, "Static objects not yet implemented for dynamic/inline/array");
+      throw_compiler_error(form, "Static objects not yet implemented for dynamic/inline/array");
     }
 
     auto field_offset = field_info.field.offset();
@@ -169,17 +170,17 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
     if (is_integer(field_info.type)) {
       s64 value = 0;
       if (!try_getting_constant_integer(field_value, &value, env)) {
-        throw_compile_error(form,
-                            fmt::format("Field {} is an integer, but the value given couldn't be "
-                                        "converted to an integer at compile time.",
-                                        field_name_def));
+        throw_compiler_error(form,
+                             "Field {} is an integer, but the value given couldn't be "
+                             "converted to an integer at compile time.",
+                             field_name_def);
       }
 
       if (!integer_fits(value, deref_info.load_size, deref_info.sign_extend)) {
-        throw_compile_error(
-            form, fmt::format("Field {} is set to a compile time integer value of {} which would "
-                              "overflow (size {} signed {})",
-                              field_name_def, value, deref_info.load_size, deref_info.sign_extend));
+        throw_compiler_error(form,
+                             "Field {} is set to a compile time integer value of {} which would "
+                             "overflow (size {} signed {})",
+                             field_name_def, value, deref_info.load_size, deref_info.sign_extend);
       }
 
       if (field_size == 1 || field_size == 2 || field_size == 4 || field_size == 8) {
@@ -200,15 +201,15 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
         u32 linker_val = 0xffffffff;
         memcpy(obj->data.data() + field_offset, &linker_val, 4);
       } else {
-        throw_compile_error(
+        throw_compiler_error(
             form, "Setting a basic field to anything other than a symbol is currently unsupported");
       }
     } else if (is_float(field_info.type)) {
       float value = 0.f;
       if (!try_getting_constant_float(field_value, &value, env)) {
-        throw_compile_error(form, fmt::format("Field {} is a float, but the value given couldn't "
-                                              "be converted to a float at compile time.",
-                                              field_name_def));
+        throw_compiler_error(form, fmt::format("Field {} is a float, but the value given couldn't "
+                                               "be converted to a float at compile time.",
+                                               field_name_def));
       }
       memcpy(obj->data.data() + field_offset, &value, sizeof(float));
     }

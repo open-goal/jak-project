@@ -18,7 +18,8 @@ int get_offset_of_method(int id) {
  * Given a type and method name (known at compile time), get the method.
  * This can be used for method calls where the type is unknown at run time (non-virtual method call)
  */
-RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
+RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
+                                             const TypeSpec& type,
                                              const std::string& method_name,
                                              Env* env) {
   auto info = m_ts.lookup_method(type.base_type(), method_name);
@@ -26,7 +27,7 @@ RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
   auto offset_of_method = get_offset_of_method(info.id);
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto typ = compile_get_symbol_value(type.base_type(), env)->to_gpr(env);
+  auto typ = compile_get_symbol_value(form, type.base_type(), env)->to_gpr(env);
   MemLoadInfo load_info;
   load_info.sign_extend = false;
   load_info.size = POINTER_SIZE;
@@ -48,7 +49,8 @@ RegVal* Compiler::compile_get_method_of_type(const TypeSpec& type,
  * type to look up the method at runtime (virtual call).  If we don't know it's a basic, we get the
  * method from the compile-time type. (fixed type non-virtual call)
  */
-RegVal* Compiler::compile_get_method_of_object(RegVal* object,
+RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
+                                               RegVal* object,
                                                const std::string& method_name,
                                                Env* env) {
   auto& compile_time_type = object->type();
@@ -66,7 +68,7 @@ RegVal* Compiler::compile_get_method_of_object(RegVal* object,
     env->emit(std::make_unique<IR_LoadConstOffset>(runtime_type, -4, object, info));
   } else {
     // can't look up at runtime
-    runtime_type = compile_get_symbol_value(compile_time_type.base_type(), env)->to_gpr(env);
+    runtime_type = compile_get_symbol_value(form, compile_time_type.base_type(), env)->to_gpr(env);
   }
 
   auto offset_of_method = get_offset_of_method(method_info.id);
@@ -98,7 +100,7 @@ Val* Compiler::compile_format_string(const goos::Object& form,
   args.insert(args.begin(), compile_get_sym_obj(out_stream, env)->to_gpr(env));
 
   // generate code in the method_env
-  auto format_function = compile_get_symbol_value("_format", env)->to_gpr(env);
+  auto format_function = compile_get_symbol_value(form, "_format", env)->to_gpr(env);
   return compile_real_function_call(form, format_function, args, env);
 }
 
@@ -205,10 +207,10 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   obj_env_inspect->add_function(std::move(method_env));
 
   // call method-set!
-  auto type_obj = compile_get_symbol_value(structured_type->get_name(), env)->to_gpr(env);
+  auto type_obj = compile_get_symbol_value(form, structured_type->get_name(), env)->to_gpr(env);
   auto id_val = compile_integer(m_ts.lookup_method(structured_type->get_name(), "inspect").id, env)
                     ->to_gpr(env);
-  auto method_set_val = compile_get_symbol_value("method-set!", env)->to_gpr(env);
+  auto method_set_val = compile_get_symbol_value(form, "method-set!", env)->to_gpr(env);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method->to_gpr(env)},
                                     env);
 }
@@ -235,10 +237,11 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
 
   if (result.create_runtime_type) {
     // get the new method of type object. this is new_type in kscheme.cpp
-    auto new_type_method = compile_get_method_of_type(m_ts.make_typespec("type"), "new", env);
+    auto new_type_method = compile_get_method_of_type(form, m_ts.make_typespec("type"), "new", env);
     // call (new 'type 'type-name parent-type flags)
     auto new_type_symbol = compile_get_sym_obj(result.type.base_type(), env)->to_gpr(env);
-    auto parent_type = compile_get_symbol_value(result.type_info->get_parent(), env)->to_gpr(env);
+    auto parent_type =
+        compile_get_symbol_value(form, result.type_info->get_parent(), env)->to_gpr(env);
     auto flags_int = compile_integer(result.flags.flag, env)->to_gpr(env);
     compile_real_function_call(form, new_type_method, {new_type_symbol, parent_type, flags_int},
                                env);
@@ -266,10 +269,10 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto body = &pair_cdr(*rest);
 
   if (!method_name.is_symbol()) {
-    throw_compile_error(form, "method name must be a symbol, got " + method_name.print());
+    throw_compiler_error(form, "Method name must be a symbol, got {}", method_name.print());
   }
   if (!type_name.is_symbol()) {
-    throw_compile_error(form, "method type must be a symbol, got " + method_name.print());
+    throw_compiler_error(form, "Method type must be a symbol, got {}", method_name.print());
   }
 
   auto place = fe->alloc_val<LambdaVal>(get_none()->type());
@@ -316,7 +319,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   // set up arguments
   if (lambda.params.size() > 8) {
-    throw_compile_error(form, "Methods cannot have more than 8 arguments");
+    throw_compiler_error(form, "Methods cannot have more than 8 arguments");
   }
   std::vector<RegVal*> args_for_coloring;
   for (u32 i = 0; i < lambda.params.size(); i++) {
@@ -371,10 +374,10 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   auto info =
       m_ts.add_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, false);
-  auto type_obj = compile_get_symbol_value(symbol_string(type_name), env)->to_gpr(env);
+  auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(env);
   auto id_val = compile_integer(info.id, env)->to_gpr(env);
   auto method_val = place->to_gpr(env);
-  auto method_set_val = compile_get_symbol_value("method-set!", env)->to_gpr(env);
+  auto method_set_val = compile_get_symbol_value(form, "method-set!", env)->to_gpr(env);
   return compile_real_function_call(form, method_set_val, {type_obj, id_val, method_val}, env);
 }
 
@@ -422,7 +425,7 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
 Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   if (_rest.is_empty_list()) {
-    throw_compile_error(form, "-> must get at least one argument");
+    throw_compiler_error(form, "-> must get at least one argument");
   }
 
   auto& first_arg = pair_car(_rest);
@@ -435,7 +438,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     // one argument, do a pointer deref
     auto deref_info = m_ts.get_deref_info(result->type());
     if (!deref_info.can_deref) {
-      throw_compile_error(form, "Cannot dereference a " + result->type().print());
+      throw_compiler_error(form, "Cannot dereference a {}.", result->type().print());
     }
 
     if (deref_info.mem_deref) {
@@ -475,7 +478,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
 
     auto index_value = compile_error_guard(field_obj, env)->to_gpr(env);
     if (!is_integer(index_value->type())) {
-      throw_compile_error(form, "cannot use -> with " + field_obj.print());
+      throw_compiler_error(form, "Cannot use -> with {}.", field_obj.print());
     }
 
     if (result->type().base_type() == "inline-array") {
@@ -498,7 +501,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
       result->mark_as_settable();
     } else {
-      throw_compile_error(form, "can't access array of type " + result->type().print());
+      throw_compiler_error(form, "Cannot access array of type {}.", result->type().print());
     }
   }
   return result;
@@ -513,7 +516,7 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   auto loc = compile_error_guard(args.unnamed.at(0), env);
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
   if (!as_mem_deref) {
-    throw_compile_error(form, "Cannot take the address of this " + loc->print());
+    throw_compiler_error(form, "Cannot take the address of {}.", loc->print());
   }
   return as_mem_deref->base;
 }
@@ -547,11 +550,11 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
 
   if (is_number(base->type())) {
     if (m_ts.typecheck(m_ts.make_typespec("binteger"), desired_ts, "", false, false)) {
-      return number_to_binteger(base, env);
+      return number_to_binteger(form, base, env);
     }
 
     if (m_ts.typecheck(m_ts.make_typespec("integer"), desired_ts, "", false, false)) {
-      auto result = number_to_integer(base, env);
+      auto result = number_to_integer(form, base, env);
       if (result != base) {
         result->set_type(desired_ts);
         return result;
@@ -562,7 +565,7 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
     }
 
     if (m_ts.typecheck(m_ts.make_typespec("float"), desired_ts, "", false, false)) {
-      return number_to_float(base, env);
+      return number_to_float(form, base, env);
     }
   }
 
@@ -611,18 +614,17 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
 
       if (!rest->is_empty_list()) {
         // got extra arguments
-        throw_compile_error(form, "new array form got more arguments than expected");
+        throw_compiler_error(form, "new array form got more arguments than expected");
       }
 
       auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
                           : m_ts.make_pointer_typespec(elt_type);
       auto info = m_ts.get_deref_info(ts);
       if (!info.can_deref) {
-        throw_compile_error(form,
-                            fmt::format("Cannot make an {} of {}\n", type_as_string, ts.print()));
+        throw_compiler_error(form, "Cannot make an {} of {}\n", type_as_string, ts.print());
       }
 
-      auto malloc_func = compile_get_symbol_value("malloc", env)->to_reg(env);
+      auto malloc_func = compile_get_symbol_value(form, "malloc", env)->to_reg(env);
       std::vector<RegVal*> args;
       args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
 
@@ -646,13 +648,13 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
       // allocation
       args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
       // type
-      args.push_back(compile_get_symbol_value(type_of_obj.base_type(), env)->to_reg(env));
+      args.push_back(compile_get_symbol_value(form, type_of_obj.base_type(), env)->to_reg(env));
       // the other arguments
       for_each_in_list(*rest, [&](const goos::Object& o) {
         args.push_back(compile_error_guard(o, env)->to_reg(env));
       });
 
-      auto new_method = compile_get_method_of_type(type_of_obj, "new", env);
+      auto new_method = compile_get_method_of_type(form, type_of_obj, "new", env);
       auto new_obj = compile_real_function_call(form, new_method, args, env);
       new_obj->set_type(type_of_obj);
       return new_obj;
@@ -681,20 +683,19 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
       int64_t constant_count = 0;
       bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
       if (!is_constant_size) {
-        throw_compile_error(form, "cannot create a dynamically sized stack array");
+        throw_compiler_error(form, "Cannot create a dynamically sized stack array");
       }
 
       if (!rest->is_empty_list()) {
         // got extra arguments
-        throw_compile_error(form, "new array form got more arguments than expected");
+        throw_compiler_error(form, "New array form got more arguments than expected");
       }
 
       auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
                           : m_ts.make_pointer_typespec(elt_type);
       auto info = m_ts.get_deref_info(ts);
       if (!info.can_deref) {
-        throw_compile_error(form,
-                            fmt::format("Cannot make an {} of {}\n", type_as_string, ts.print()));
+        throw_compiler_error(form, "Cannot make an {} of {}\n", type_as_string, ts.print());
       }
 
       if (!m_ts.lookup_type(elt_type)->is_reference()) {
@@ -708,7 +709,7 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     // todo, stack not-arrays
   }
 
-  throw_compile_error(form, "unsupported new form");
+  throw_compiler_error(form, "Unsupported new form");
   return get_none();
 }
 
@@ -748,15 +749,16 @@ Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest
 
   if (arg.is_symbol()) {
     if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
-      return compile_get_method_of_type(m_ts.make_typespec(symbol_string(arg)), method_name, env);
+      return compile_get_method_of_type(form, m_ts.make_typespec(symbol_string(arg)), method_name,
+                                        env);
     } else if (m_ts.partially_defined_type_exists(symbol_string(arg))) {
-      throw_compile_error(form,
-                          "The method form is ambiguous when used on a forward declared type.");
+      throw_compiler_error(form,
+                           "The method form is ambiguous when used on a forward declared type.");
     }
   }
 
   auto obj = compile_error_guard(arg, env)->to_gpr(env);
-  return compile_get_method_of_object(obj, method_name, env);
+  return compile_get_method_of_object(form, obj, method_name, env);
 }
 
 Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -772,7 +774,7 @@ Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object
   } else if (kind == "structure") {
     m_ts.forward_declare_type_as_structure(type_name);
   } else {
-    throw_compile_error(form, "Invalid declare-type form");
+    throw_compiler_error(form, "Invalid declare-type form: unrecognized option {}.", kind);
   }
 
   return get_none();
