@@ -48,7 +48,7 @@ class DebugInfo {
 
   void clear() { m_functions.clear(); }
 
-  std::string disassemble_debug_functions(bool* had_failure);
+  std::string disassemble_all_functions(bool* had_failure);
 
  private:
   std::string m_obj_name;

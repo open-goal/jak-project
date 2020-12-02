@@ -34,6 +34,10 @@ class SourceText {
   virtual std::string get_description() = 0;
   std::string get_line_containing_offset(int offset);
   int get_line_idx(int offset);
+  // should the compiler keep looking up the stack when printing errors on this, or not?
+  // this should return true if the text source is specific enough so that they can find what they
+  // want
+  virtual bool terminate_compiler_error() { return true; }
 
   virtual ~SourceText(){};
 
@@ -87,7 +91,7 @@ class TextDb {
  public:
   void insert(const std::shared_ptr<SourceText>& frag);
   void link(const Object& o, std::shared_ptr<SourceText> frag, int offset);
-  std::string get_info_for(const Object& o);
+  std::string get_info_for(const Object& o, bool* terminate_compiler_error = nullptr);
   std::string get_info_for(const std::shared_ptr<SourceText>& frag, int offset);
 
  private:

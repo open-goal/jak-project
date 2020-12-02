@@ -38,11 +38,11 @@ bool Compiler::is_singed_integer_or_binteger(const TypeSpec& ts) {
          !m_ts.typecheck(m_ts.make_typespec("uinteger"), ts, "", false, false);
 }
 
-Val* Compiler::number_to_integer(Val* in, Env* env) {
+Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {
   (void)env;
   auto ts = in->type();
   if (is_binteger(ts)) {
-    throw std::runtime_error("Can't convert " + in->print() + " (a binteger) to an integer.");
+    throw_compiler_error(form, "Cannot convert {} (a binteger) to an integer yet.", in->print());
   } else if (is_float(ts)) {
     auto fe = get_parent_env_of_type<FunctionEnv>(env);
     auto result = fe->make_gpr(m_ts.make_typespec("int"));
@@ -51,31 +51,33 @@ Val* Compiler::number_to_integer(Val* in, Env* env) {
   } else if (is_integer(ts)) {
     return in;
   }
-  throw std::runtime_error("Can't convert " + in->print() + " to an integer.");
+  throw_compiler_error(form, "Cannot convert a {} to an integer.", in->type().print());
+  return nullptr;
 }
 
-Val* Compiler::number_to_binteger(Val* in, Env* env) {
+Val* Compiler::number_to_binteger(const goos::Object& form, Val* in, Env* env) {
   (void)env;
   auto ts = in->type();
   if (is_binteger(ts)) {
     return in;
   } else if (is_float(ts)) {
-    throw std::runtime_error("Can't convert " + in->print() + " (a float) to a binteger.");
+    throw_compiler_error(form, "Cannot convert {} (a float) to an integer yet.", in->print());
   } else if (is_integer(ts)) {
     auto fe = get_parent_env_of_type<FunctionEnv>(env);
     RegVal* input = in->to_reg(env);
     auto sa = fe->make_gpr(m_ts.make_typespec("int"));
     env->emit(std::make_unique<IR_LoadConstant64>(sa, 3));
-    return compile_variable_shift(input, sa, env, IntegerMathKind::SHLV_64);
+    return compile_variable_shift(form, input, sa, env, IntegerMathKind::SHLV_64);
   }
-  throw std::runtime_error("Can't convert " + in->print() + " to a binteger.");
+  throw_compiler_error(form, "Cannot convert a {} to a binteger.", in->type().print());
+  return nullptr;
 }
 
-Val* Compiler::number_to_float(Val* in, Env* env) {
+Val* Compiler::number_to_float(const goos::Object& form, Val* in, Env* env) {
   (void)env;
   auto ts = in->type();
   if (is_binteger(ts)) {
-    throw std::runtime_error("Can't convert " + in->print() + " (a binteger) to a float.");
+    throw_compiler_error(form, "Cannot convert {} (a binteger) to an float yet.", in->print());
   } else if (is_float(ts)) {
     return in;
   } else if (is_integer(ts)) {
@@ -83,28 +85,29 @@ Val* Compiler::number_to_float(Val* in, Env* env) {
     auto result = fe->make_xmm(m_ts.make_typespec("float"));
     env->emit(std::make_unique<IR_IntToFloat>(result, in->to_gpr(env)));
     return result;
-  } else {
-    throw std::runtime_error("Can't convert " + in->print() + " a float.");
   }
+  throw_compiler_error(form, "Cannot convert a {} to a float.", in->type().print());
+  return nullptr;
 }
 
-Val* Compiler::to_math_type(Val* in, MathMode mode, Env* env) {
+Val* Compiler::to_math_type(const goos::Object& form, Val* in, MathMode mode, Env* env) {
   switch (mode) {
     case MATH_BINT:
-      return number_to_binteger(in, env);
+      return number_to_binteger(form, in, env);
     case MATH_INT:
-      return number_to_integer(in, env);
+      return number_to_integer(form, in, env);
     case MATH_FLOAT:
-      return number_to_float(in, env);
+      return number_to_float(form, in, env);
     default:
-      throw std::runtime_error("Unknown math type: " + in->print());
+      throw_compiler_error(form, "Cannot do math on a {}.", in->type().print());
   }
+  return nullptr;
 }
 
 Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
-    throw_compile_error(form, "Invalid + form");
+    throw_compiler_error(form, "Invalid + form");
   }
 
   // look at the first value to determine the math mode
@@ -119,7 +122,7 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_IntegerMath>(
             IntegerMathKind::ADD_64, result,
-            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                 ->to_gpr(env)));
       }
       return result;
@@ -132,14 +135,13 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::ADD_SS, result,
-            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                 ->to_xmm(env)));
       }
       return result;
     }
     case MATH_INVALID:
-      throw_compile_error(
-          form, "Cannot determine the math mode for object of type " + first_type.print());
+      throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
       assert(false);
@@ -151,7 +153,7 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
 Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
-    throw_compile_error(form, "Invalid * form");
+    throw_compiler_error(form, "Invalid * form");
   }
 
   // look at the first value to determine the math mode
@@ -167,7 +169,7 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_IntegerMath>(
             IntegerMathKind::IMUL_32, result,
-            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                 ->to_gpr(env)));
       }
       return result;
@@ -179,14 +181,13 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::MUL_SS, result,
-            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                 ->to_xmm(env)));
       }
       return result;
     }
     case MATH_INVALID:
-      throw_compile_error(
-          form, "Cannot determine the math mode for object of type " + first_type.print());
+      throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
       assert(false);
@@ -198,20 +199,20 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
 Val* Compiler::compile_fmin(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
-    throw_compile_error(form, "Invalid fmin form");
+    throw_compiler_error(form, "Invalid fmin form");
   }
 
   // look at the first value to determine the math mode
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
   if (get_math_mode(first_val->type()) != MATH_FLOAT) {
-    throw_compile_error(form, "Must use floats in fmin");
+    throw_compiler_error(form, "Must use floats in fmin");
   }
   auto result = env->make_xmm(first_val->type());
   env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
   for (size_t i = 1; i < args.unnamed.size(); i++) {
     auto val = compile_error_guard(args.unnamed.at(i), env);
     if (get_math_mode(val->type()) != MATH_FLOAT) {
-      throw_compile_error(form, "Must use floats in fmin");
+      throw_compiler_error(form, "Must use floats in fmin");
     }
     env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MIN_SS, result, val->to_xmm(env)));
   }
@@ -221,20 +222,20 @@ Val* Compiler::compile_fmin(const goos::Object& form, const goos::Object& rest, 
 Val* Compiler::compile_fmax(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
-    throw_compile_error(form, "Invalid fmax form");
+    throw_compiler_error(form, "Invalid fmax form");
   }
 
   // look at the first value to determine the math mode
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
   if (get_math_mode(first_val->type()) != MATH_FLOAT) {
-    throw_compile_error(form, "Must use floats in fmax");
+    throw_compiler_error(form, "Must use floats in fmax");
   }
   auto result = env->make_xmm(first_val->type());
   env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
   for (size_t i = 1; i < args.unnamed.size(); i++) {
     auto val = compile_error_guard(args.unnamed.at(i), env);
     if (get_math_mode(val->type()) != MATH_FLOAT) {
-      throw_compile_error(form, "Must use floats in fmax");
+      throw_compiler_error(form, "Must use floats in fmax");
     }
     env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MAX_SS, result, val->to_xmm(env)));
   }
@@ -244,7 +245,7 @@ Val* Compiler::compile_fmax(const goos::Object& form, const goos::Object& rest, 
 Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
-    throw_compile_error(form, "Invalid * form");
+    throw_compiler_error(form, "Invalid imul64 form");
   }
 
   // look at the first value to determine the math mode
@@ -259,15 +260,15 @@ Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_IntegerMath>(
             IntegerMathKind::IMUL_64, result,
-            to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                 ->to_gpr(env)));
       }
       return result;
     }
     case MATH_FLOAT:
     case MATH_INVALID:
-      throw_compile_error(
-          form, "Cannot determine the math mode for object of type " + first_type.print());
+    case MATH_BINT:
+      throw_compiler_error(form, "Cannot do imul64 on a {}.", first_type.print());
       break;
     default:
       assert(false);
@@ -279,7 +280,7 @@ Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest
 Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
-    throw_compile_error(form, "Invalid - form");
+    throw_compiler_error(form, "Invalid - form");
   }
 
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
@@ -291,19 +292,19 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
         auto result = compile_integer(0, env)->to_gpr(env);
         env->emit(std::make_unique<IR_IntegerMath>(
             IntegerMathKind::SUB_64, result,
-            to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
                 ->to_gpr(env)));
         return result;
       } else {
         auto result = env->make_gpr(first_type);
         env->emit(std::make_unique<IR_RegSet>(
-            result, to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
+            result, to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
                         ->to_gpr(env)));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit(std::make_unique<IR_IntegerMath>(
               IntegerMathKind::SUB_64, result,
-              to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+              to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                   ->to_gpr(env)));
         }
         return result;
@@ -315,27 +316,26 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
             compile_float(0, env, get_parent_env_of_type<FunctionEnv>(env)->segment)->to_xmm(env);
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::SUB_SS, result,
-            to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
+            to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
                 ->to_xmm(env)));
         return result;
       } else {
         auto result = env->make_xmm(first_type);
         env->emit(std::make_unique<IR_RegSet>(
-            result, to_math_type(compile_error_guard(args.unnamed.at(0), env), math_type, env)
+            result, to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
                         ->to_xmm(env)));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit(std::make_unique<IR_FloatMath>(
               FloatMathKind::SUB_SS, result,
-              to_math_type(compile_error_guard(args.unnamed.at(i), env), math_type, env)
+              to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
                   ->to_xmm(env)));
         }
         return result;
       }
 
     case MATH_INVALID:
-      throw_compile_error(
-          form, "Cannot determine the math mode for object of type " + first_type.print());
+      throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
       assert(false);
@@ -347,7 +347,7 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
 Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.size() != 2) {
-    throw_compile_error(form, "Invalid / form");
+    throw_compiler_error(form, "Invalid / form");
   }
 
   auto first_val = compile_error_guard(args.unnamed.at(0), env);
@@ -368,7 +368,8 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
 
       env->emit(std::make_unique<IR_IntegerMath>(
           IntegerMathKind::IDIV_32, result,
-          to_math_type(compile_error_guard(args.unnamed.at(1), env), math_type, env)->to_gpr(env)));
+          to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
+              ->to_gpr(env)));
       return result;
     }
 
@@ -377,13 +378,13 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
       env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
       env->emit(std::make_unique<IR_FloatMath>(
           FloatMathKind::DIV_SS, result,
-          to_math_type(compile_error_guard(args.unnamed.at(1), env), math_type, env)->to_xmm(env)));
+          to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
+              ->to_xmm(env)));
       return result;
     }
 
     case MATH_INVALID:
-      throw_compile_error(
-          form, "Cannot determine the math mode for object of type " + first_type.print());
+      throw_compiler_error(form, "Cannot do math on a {}.", first_type.print());
       break;
     default:
       assert(false);
@@ -397,7 +398,7 @@ Val* Compiler::compile_shlv(const goos::Object& form, const goos::Object& rest, 
   va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(first, second, env, IntegerMathKind::SHLV_64);
+  return compile_variable_shift(form, first, second, env, IntegerMathKind::SHLV_64);
 }
 
 Val* Compiler::compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -405,7 +406,7 @@ Val* Compiler::compile_sarv(const goos::Object& form, const goos::Object& rest, 
   va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(first, second, env, IntegerMathKind::SARV_64);
+  return compile_variable_shift(form, first, second, env, IntegerMathKind::SARV_64);
 }
 
 Val* Compiler::compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -413,10 +414,11 @@ Val* Compiler::compile_shrv(const goos::Object& form, const goos::Object& rest, 
   va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(first, second, env, IntegerMathKind::SHRV_64);
+  return compile_variable_shift(form, first, second, env, IntegerMathKind::SHRV_64);
 }
 
-Val* Compiler::compile_variable_shift(const RegVal* in,
+Val* Compiler::compile_variable_shift(const goos::Object& form,
+                                      const RegVal* in,
                                       const RegVal* sa,
                                       Env* env,
                                       IntegerMathKind kind) {
@@ -434,7 +436,7 @@ Val* Compiler::compile_variable_shift(const RegVal* in,
 
   if (get_math_mode(in->type()) != MathMode::MATH_INT ||
       get_math_mode(sa->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't shift a " + in->type().print() + " by a " + sa->type().print());
+    throw_compiler_error(form, "Cannot shift a {} by a {}", in->type().print(), sa->type().print());
   }
 
   fenv->constrain(sa_con);
@@ -448,9 +450,9 @@ Val* Compiler::compile_shl(const goos::Object& form, const goos::Object& rest, E
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto sa = args.unnamed.at(1).as_int();
   if (sa < 0 || sa > 64) {
-    throw_compile_error(form, "Cannot shift by more than 64, or by a negative amount");
+    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
   }
-  return compile_fixed_shift(first, sa, env, IntegerMathKind::SHL_64);
+  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SHL_64);
 }
 
 Val* Compiler::compile_shr(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -459,9 +461,9 @@ Val* Compiler::compile_shr(const goos::Object& form, const goos::Object& rest, E
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto sa = args.unnamed.at(1).as_int();
   if (sa < 0 || sa > 64) {
-    throw_compile_error(form, "Cannot shift by more than 64, or by a negative amount");
+    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount");
   }
-  return compile_fixed_shift(first, sa, env, IntegerMathKind::SHR_64);
+  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SHR_64);
 }
 
 Val* Compiler::compile_sar(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -470,19 +472,23 @@ Val* Compiler::compile_sar(const goos::Object& form, const goos::Object& rest, E
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto sa = args.unnamed.at(1).as_int();
   if (sa < 0 || sa > 64) {
-    throw_compile_error(form, "Cannot shift by more than 64, or by a negative amount");
+    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount");
   }
-  return compile_fixed_shift(first, sa, env, IntegerMathKind::SAR_64);
+  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SAR_64);
 }
 
-Val* Compiler::compile_fixed_shift(const RegVal* in, u8 sa, Env* env, IntegerMathKind kind) {
+Val* Compiler::compile_fixed_shift(const goos::Object& form,
+                                   const RegVal* in,
+                                   u8 sa,
+                                   Env* env,
+                                   IntegerMathKind kind) {
   // type check
   if (get_math_mode(in->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't shift a " + in->type().print());
+    throw_compiler_error(form, "Cannot shift a {}.", in->type().print());
   }
 
   if (sa > 64) {
-    throw std::runtime_error("Can't shift by more than 64");
+    throw_compiler_error(form, "Cannot shift by more than 64.");
   }
 
   // copy to result register
@@ -502,8 +508,8 @@ Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, E
 
   if (get_math_mode(first->type()) != MathMode::MATH_INT ||
       get_math_mode(second->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't mod a " + first->type().print() + " by a " +
-                             second->type().print());
+    throw_compiler_error(form, "Cannot mod a {} by a {}.", first->type().print(),
+                         second->type().print());
   }
 
   auto result = env->make_gpr(first->type());
@@ -526,8 +532,8 @@ Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
   if (get_math_mode(first->type()) != MathMode::MATH_INT ||
       get_math_mode(second->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't logand a " + first->type().print() + " by a " +
-                             second->type().print());
+    throw_compiler_error(form, "Cannot logand a {} by a {}.", first->type().print(),
+                         second->type().print());
   }
 
   auto result = env->make_gpr(first->type());
@@ -543,8 +549,8 @@ Val* Compiler::compile_logior(const goos::Object& form, const goos::Object& rest
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
   if (get_math_mode(first->type()) != MathMode::MATH_INT ||
       get_math_mode(second->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't logior a " + first->type().print() + " by a " +
-                             second->type().print());
+    throw_compiler_error(form, "Cannot logior a {} by a {}.", first->type().print(),
+                         second->type().print());
   }
 
   auto result = env->make_gpr(first->type());
@@ -560,8 +566,8 @@ Val* Compiler::compile_logxor(const goos::Object& form, const goos::Object& rest
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
   if (get_math_mode(first->type()) != MathMode::MATH_INT ||
       get_math_mode(second->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't logxor a " + first->type().print() + " by a " +
-                             second->type().print());
+    throw_compiler_error(form, "Cannot logxor a {} by a {}.", first->type().print(),
+                         second->type().print());
   }
 
   auto result = env->make_gpr(first->type());
@@ -575,7 +581,7 @@ Val* Compiler::compile_lognot(const goos::Object& form, const goos::Object& rest
   va_check(form, args, {{}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   if (get_math_mode(first->type()) != MathMode::MATH_INT) {
-    throw std::runtime_error("Can't lognot a " + first->type().print());
+    throw_compiler_error(form, "Cannot lognot a {}.", first->type().print());
   }
 
   auto result = env->make_gpr(first->type());

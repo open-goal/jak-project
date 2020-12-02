@@ -4,6 +4,7 @@
 #include "IR.h"
 #include "goalc/regalloc/allocate.h"
 #include "third-party/fmt/core.h"
+#include "CompilerException.h"
 #include <chrono>
 #include <thread>
 
@@ -129,25 +130,43 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
 Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   try {
     return compile(code, env);
-  } catch (std::runtime_error& e) {
-    printf(
-        "------------------------------------------------------------------------------------------"
-        "-\n");
+  } catch (CompilerException& ce) {
+    if (ce.print_err_stack) {
+      auto obj_print = code.print();
+      if (obj_print.length() > 80) {
+        obj_print = obj_print.substr(0, 80);
+        obj_print += "...";
+      }
+      bool term;
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+      fmt::print(m_goos.reader.db.get_info_for(code, &term));
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+      fmt::print("{}\n", obj_print);
+      if (term) {
+        ce.print_err_stack = false;
+      }
+      std::string line(80, '-');
+      line.push_back('\n');
+      fmt::print(line);
+    }
+    throw ce;
+  }
+
+  catch (std::runtime_error& e) {
     auto obj_print = code.print();
     if (obj_print.length() > 80) {
       obj_print = obj_print.substr(0, 80);
       obj_print += "...";
     }
-    printf("object: %s\nfrom  : %s\n", obj_print.c_str(),
-           m_goos.reader.db.get_info_for(code).c_str());
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+    fmt::print(m_goos.reader.db.get_info_for(code));
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+    fmt::print("{}\n", obj_print);
+    std::string line(80, '-');
+    line.push_back('\n');
+    fmt::print(line);
     throw e;
   }
-}
-
-void Compiler::throw_compile_error(const goos::Object& o, const std::string& err) {
-  gLogger.log(MSG_ERR, "[Error] Could not compile %s!\nReason: %s\n", o.print().c_str(),
-              err.c_str());
-  throw std::runtime_error(err);
 }
 
 void Compiler::ice(const std::string& error) {
@@ -183,6 +202,18 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   debug_info->clear();
   CodeGenerator gen(env, debug_info);
   return gen.run();
+}
+
+bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
+                                                   std::vector<u8>* data_out,
+                                                   std::string* asm_out) {
+  auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
+  debug_info->clear();
+  CodeGenerator gen(env, debug_info);
+  *data_out = gen.run();
+  bool ok = false;
+  *asm_out = debug_info->disassemble_all_functions(&ok);
+  return ok;
 }
 
 std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {

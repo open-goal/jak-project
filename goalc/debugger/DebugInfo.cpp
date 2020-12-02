@@ -22,7 +22,7 @@ std::string FunctionDebugInfo::disassemble_debug_info(bool* had_failure) {
   return result;
 }
 
-std::string DebugInfo::disassemble_debug_functions(bool* had_failure) {
+std::string DebugInfo::disassemble_all_functions(bool* had_failure) {
   std::string result;
   for (auto& kv : m_functions) {
     result += kv.second.disassemble_debug_info(had_failure) + "\n\n";

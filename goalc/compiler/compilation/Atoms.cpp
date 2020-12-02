@@ -229,10 +229,13 @@ SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
  * Will throw a compilation error if the symbol wasn't previously defined.
  * TODO - determine sign extension behavior when loading symbol values.
  */
-Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
+Val* Compiler::compile_get_symbol_value(const goos::Object& form,
+                                        const std::string& name,
+                                        Env* env) {
   auto existing_symbol = m_symbol_types.find(name);
   if (existing_symbol == m_symbol_types.end()) {
-    throw std::runtime_error("The symbol " + name + " was not defined");
+    throw_compiler_error(
+        form, "The symbol {} was looked up as a global variable, but it does not exist.", name);
   }
 
   auto ts = existing_symbol->second;
@@ -272,9 +275,9 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   if (global_constant != m_global_constants.end()) {
     // check there is no symbol with the same name
     if (existing_symbol != m_symbol_types.end()) {
-      throw_compile_error(form,
-                          "symbol is both a runtime symbol and a global constant.  Something is "
-                          "likely very wrong.");
+      throw_compiler_error(form,
+                           "Ambiguous symbol: {} is both a global variable and a constant and it "
+                           "is not clear which should be used here.");
     }
 
     // got a global constant
@@ -282,7 +285,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   }
 
   // none of those, so get a global symbol.
-  return compile_get_symbol_value(name, env);
+  return compile_get_symbol_value(form, name, env);
 }
 
 /*!
@@ -333,7 +336,7 @@ Val* Compiler::compile_float(float value, Env* env, int seg) {
 Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (args.unnamed.size() < 2 || !args.named.empty()) {
-    throw_compile_error(form, "&+ takes at least two arguments");
+    throw_compiler_error(form, "&+ must be used with at least two arguments.");
   }
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
 
@@ -346,7 +349,9 @@ Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object&
   }
 
   if (!ok_type) {
-    throw_compile_error(form, "&+'s first argument must be a pointer, structure, or inline-array");
+    throw_compiler_error(
+        form, "&+ was used with a {}, which is not a pointer, structure, or inline-array.",
+        first->type().print());
   }
 
   auto result = env->make_gpr(first->type());

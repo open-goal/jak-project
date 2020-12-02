@@ -28,13 +28,15 @@ Needs child types of integer
 ## vu-macros.gc
 Empty.
 
+# Math Section
+
 ## math.gc
 Has a unit test for a lot of functions.
 rand-vu-init, rand-vu, rand-vu-nostep, rand-vu-float-range, rand-vu-percent?, rand-vu-int-range, rand-vu-int-count aren't implemented
 
 rand-uint31-gen might be wrong.
 
-## vector.gc
+## vector-h.gc
 Partially done
 
 ## gravity-h.gc
@@ -63,3 +65,17 @@ Empty File.
 
 ## transformq-h.gc
 Not done. 
+
+## bounding-box.gc
+
+## matrix.gc
+
+## transform.gc
+
+## quaternion.gc
+
+## euler.gc
+
+## geometry.gc
+
+## trigonometry.gc

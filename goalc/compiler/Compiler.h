@@ -12,6 +12,9 @@
 #include "goalc/compiler/IR.h"
 #include "goalc/debugger/Debugger.h"
 #include "CompilerSettings.h"
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/color.h"
+#include "CompilerException.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -27,7 +30,6 @@ class Compiler {
                                                           Env* env);
   Val* compile(const goos::Object& code, Env* env);
   Val* compile_error_guard(const goos::Object& code, Env* env);
-  void throw_compile_error(const goos::Object& o, const std::string& err);
   void ice(const std::string& err);
   None* get_none() { return m_none.get(); }
 
@@ -64,7 +66,7 @@ class Compiler {
   Val* compile_symbol(const goos::Object& form, Env* env);
   Val* compile_string(const goos::Object& form, Env* env);
   Val* compile_string(const std::string& str, Env* env, int seg = MAIN_SEGMENT);
-  Val* compile_get_symbol_value(const std::string& name, Env* env);
+  Val* compile_get_symbol_value(const goos::Object& form, const std::string& name, Env* env);
   Val* compile_function_or_method_call(const goos::Object& form, Env* env);
 
   Val* get_field_of_structure(const StructureType* type,
@@ -75,6 +77,9 @@ class Compiler {
   SymbolVal* compile_get_sym_obj(const std::string& name, Env* env);
   void color_object_file(FileEnv* env);
   std::vector<u8> codegen_object_file(FileEnv* env);
+  bool codegen_and_disassemble_object_file(FileEnv* env,
+                                           std::vector<u8>* data_out,
+                                           std::string* asm_out);
 
   void for_each_in_list(const goos::Object& list,
                         const std::function<void(const goos::Object&)>& f);
@@ -130,14 +135,22 @@ class Compiler {
   bool is_integer(const TypeSpec& ts);
   bool is_binteger(const TypeSpec& ts);
   bool is_singed_integer_or_binteger(const TypeSpec& ts);
-  Val* number_to_integer(Val* in, Env* env);
-  Val* number_to_float(Val* in, Env* env);
-  Val* number_to_binteger(Val* in, Env* env);
-  Val* to_math_type(Val* in, MathMode mode, Env* env);
+  Val* number_to_integer(const goos::Object& form, Val* in, Env* env);
+  Val* number_to_float(const goos::Object& form, Val* in, Env* env);
+  Val* number_to_binteger(const goos::Object& form, Val* in, Env* env);
+  Val* to_math_type(const goos::Object& form, Val* in, MathMode mode, Env* env);
   bool is_none(Val* in);
 
-  Val* compile_variable_shift(const RegVal* in, const RegVal* sa, Env* env, IntegerMathKind kind);
-  Val* compile_fixed_shift(const RegVal* in, u8 sa, Env* env, IntegerMathKind kind);
+  Val* compile_variable_shift(const goos::Object& form,
+                              const RegVal* in,
+                              const RegVal* sa,
+                              Env* env,
+                              IntegerMathKind kind);
+  Val* compile_fixed_shift(const goos::Object& form,
+                           const RegVal* in,
+                           u8 sa,
+                           Env* env,
+                           IntegerMathKind kind);
 
   Val* compile_format_string(const goos::Object& form,
                              Env* env,
@@ -150,10 +163,14 @@ class Compiler {
                                   RegVal* reg,
                                   const Field& f);
   Val* generate_inspector_for_type(const goos::Object& form, Env* env, Type* type);
-  RegVal* compile_get_method_of_type(const TypeSpec& type,
+  RegVal* compile_get_method_of_type(const goos::Object& form,
+                                     const TypeSpec& type,
                                      const std::string& method_name,
                                      Env* env);
-  RegVal* compile_get_method_of_object(RegVal* object, const std::string& method_name, Env* env);
+  RegVal* compile_get_method_of_object(const goos::Object& form,
+                                       RegVal* object,
+                                       const std::string& method_name,
+                                       Env* env);
   Val* compile_define_constant(const goos::Object& form,
                                const goos::Object& rest,
                                Env* env,
@@ -168,6 +185,20 @@ class Compiler {
                                    const TypeSpec& type,
                                    const goos::Object& field_defs,
                                    Env* env);
+
+  template <typename... Args>
+  void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    if (!str.empty() && str.back() == '\n') {
+      fmt::print(str, std::forward<Args>(args)...);
+    } else {
+      fmt::print(str + '\n', std::forward<Args>(args)...);
+    }
+
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
+    fmt::print("{}\n", code.print());
+    throw CompilerException("Compilation Error");
+  }
 
  public:
   // Atoms

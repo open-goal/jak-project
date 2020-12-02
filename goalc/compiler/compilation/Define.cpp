@@ -19,8 +19,9 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   // check we aren't duplicated a name as both a symbol and global constant
   auto global_constant = m_global_constants.find(sym.as_symbol());
   if (global_constant != m_global_constants.end()) {
-    throw_compile_error(
-        form, "it is illegal to define a GOAL symbol with the same name as a GOAL global constant");
+    throw_compiler_error(
+        form, "Cannot define a symbol named {}, it already exists as a global constant (value {}).",
+        sym.print(), global_constant->second.print());
   }
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
@@ -47,8 +48,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   }
 
   if (!sym_val->settable()) {
-    throw_compile_error(
-        form, "Tried to use define on something that wasn't settable: " + sym_val->print());
+    throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
   }
   fe->emit(std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
@@ -68,15 +68,17 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 
   auto existing_type = m_symbol_types.find(symbol_string(sym));
   if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {
-    // todo spdlog
-    gLogger.log(
-        MSG_WARN,
-        "[Warning] define-extern has redefined the type of symbol %s\npreviously: %s\nnow: %s\n",
-        symbol_string(sym).c_str(), existing_type->second.print().c_str(),
-        new_type.print().c_str());
-
     if (m_throw_on_define_extern_redefinition) {
-      throw_compile_error(form, "define-extern redefinition");
+      throw_compiler_error(form,
+                           "define-extern would redefine the type of symbol {} from {} to {}.",
+                           symbol_string(sym), existing_type->second.print(), new_type.print());
+    } else {
+      // todo nicer warning message.
+      gLogger.log(
+          MSG_WARN,
+          "[Warning] define-extern has redefined the type of symbol %s\npreviously: %s\nnow: %s\n",
+          symbol_string(sym).c_str(), existing_type->second.print().c_str(),
+          new_type.print().c_str());
     }
   }
 
@@ -89,7 +91,6 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 }
 
 void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
-  assert(!dst->sext());
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   // first, get the value we want to modify:
@@ -132,8 +133,7 @@ void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* 
  */
 Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* env) {
   if (!dest->settable()) {
-    throw_compile_error(form,
-                        "Tried to use set! on something that wasn't settable: " + dest->print());
+    throw_compiler_error(form, "Cannot set! {} because it is not settable.", dest->print());
   }
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(dest);
   auto as_pair = dynamic_cast<PairEntryVal*>(dest);
@@ -142,6 +142,11 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
   auto as_bitfield = dynamic_cast<BitFieldVal*>(dest);
 
   if (as_mem_deref) {
+    auto dest_type = coerce_to_reg_type(as_mem_deref->type());
+    if (dest_type != TypeSpec("uint") || source->type() != TypeSpec("int")) {
+      typecheck(form, dest_type, source->type(), "set! memory");
+    }
+
     // setting somewhere in memory
     auto base = as_mem_deref->base;
     auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
@@ -177,7 +182,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
     return get_none();
   }
 
-  throw_compile_error(form, "Set not implemented for: " + dest->print());
+  throw_compiler_error(form, "There is no implementation of set! for {}.", dest->print());
   return get_none();
 }
 

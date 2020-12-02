@@ -44,7 +44,7 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
       m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
     });
   } catch (std::runtime_error& e) {
-    throw_compile_error(form, std::string("seval error: ") + e.what());
+    throw_compiler_error(form, "Error while evaluating GOOS: ", e.what());
   }
   return get_none();
 }
@@ -62,7 +62,7 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
   } else if (kind == "game-count") {
     compile_game_count(as_string(args.unnamed.at(1)));
   } else {
-    throw_compile_error(form, "Unknown asm data file mode");
+    throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }
   return get_none();
 }
@@ -79,6 +79,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   bool color = false;
   bool write = false;
   bool no_code = false;
+  bool disassemble = false;
 
   std::vector<std::pair<std::string, float>> timing;
   Timer total_timer;
@@ -97,8 +98,10 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
         write = true;
       } else if (setting == ":no-code") {
         no_code = true;
+      } else if (setting == ":disassemble") {
+        disassemble = true;
       } else {
-        throw_compile_error(form, "invalid option " + setting + " in asm-file form");
+        throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
     }
     i++;
@@ -133,7 +136,14 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // code/object file generation
     Timer codegen_timer;
-    auto data = codegen_object_file(obj_file);
+    std::vector<u8> data;
+    std::string disasm;
+    if (disassemble) {
+      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
+      printf("%s\n", disasm.c_str());
+    } else {
+      data = codegen_object_file(obj_file);
+    }
     timing.emplace_back("codegen", codegen_timer.getMs());
 
     // send to target
@@ -158,6 +168,10 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     if (write) {
       printf("WARNING - couldn't write because coloring is not enabled\n");
+    }
+
+    if (disassemble) {
+      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
     }
   }
 
@@ -189,18 +203,18 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (o.is_string()) {
       if (got_ip) {
-        throw_compile_error(form, "got multiple strings!");
+        throw_compiler_error(form, "listen-to-target can only use 1 IP address");
       }
       got_ip = true;
       ip = o.as_string()->data;
     } else if (o.is_int()) {
       if (got_port) {
-        throw_compile_error(form, "got multiple ports!");
+        throw_compiler_error(form, "listen-to-target can only use 1 port number");
       }
       got_port = true;
       port = o.integer_obj.value;
     } else {
-      throw_compile_error(form, "invalid argument to listen-to-target");
+      throw_compiler_error(form, "invalid argument to listen-to-target: \"{}\"", o.print());
     }
   });
 
@@ -220,7 +234,7 @@ Val* Compiler::compile_reset_target(const goos::Object& form, const goos::Object
     if (o.is_symbol() && symbol_string(o) == ":shutdown") {
       shutdown = true;
     } else {
-      throw_compile_error(form, "invalid argument to reset-target");
+      throw_compiler_error(form, "invalid argument to reset-target: \"{}\"", o.print());
     }
   });
   m_listener.send_reset(shutdown);

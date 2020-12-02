@@ -282,7 +282,7 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
 TEST_F(WithGameTests, DebuggerDisassemble) {
   auto di = compiler.get_debugger().get_debug_info_for_object("gcommon");
   bool fail = false;
-  auto result = di.disassemble_debug_functions(&fail);
+  auto result = di.disassemble_all_functions(&fail);
   // printf("Got\n%s\n", result.c_str());
   EXPECT_FALSE(fail);
 }

@@ -53,11 +53,13 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
 
   auto kv = m_inlineable_functions.find(args.unnamed.at(0).as_symbol());
   if (kv == m_inlineable_functions.end()) {
-    throw_compile_error(form, "Couldn't find function to inline!");
+    throw_compiler_error(form, "Cannot inline {} because the function's code could not be found.",
+                         args.unnamed.at(0).print());
   }
 
   if (kv->second->func && !kv->second->func->settings.allow_inline) {
-    throw_compile_error(form, "Found function to inline, but it isn't allowed.");
+    throw_compiler_error(form,
+                         "Cannot inline {} because inlining of this function was disallowed.");
   }
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
@@ -73,7 +75,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
       !args.only_contains_named({"name", "inline-only", "segment"})) {
-    throw_compile_error(form, "Invalid lambda form");
+    throw_compiler_error(form, "Invalid lambda form");
   }
 
   auto place = fe->alloc_val<LambdaVal>(get_none()->type());
@@ -126,7 +128,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     } else if (segment_name == "debug") {
       segment = DEBUG_SEGMENT;
     } else {
-      throw_compile_error(form, "invalid segment override in lambda");
+      throw_compiler_error(form, "Segment {} was not recognized in lambda option.", segment_name);
     }
   }
 
@@ -141,7 +143,10 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
 
     // set up arguments
     if (lambda.params.size() >= 8) {
-      throw_compile_error(form, "lambda generating code has too many parameters!");
+      throw_compiler_error(form,
+                           "Cannot generate an x86-64 function for a lambda with {} parameters.  "
+                           "The current limit is 8.",
+                           lambda.params.size());
     }
 
     // set up argument register constraints.
@@ -314,7 +319,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
 
     // check args are ok
     if (head_as_lambda->lambda.params.size() != eval_args.size()) {
-      throw_compile_error(form, "invalid argument count");
+      throw_compiler_error(form, "Expected {} arguments but got {} for inlined lambda.",
+                           head_as_lambda->lambda.params.size(), eval_args.size());
     }
 
     // construct a lexical environment
@@ -332,9 +338,9 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     // check arg types
     if (!head->type().arg_count()) {
       if (head->type().arg_count() - 1 != eval_args.size()) {
-        throw_compile_error(form,
-                            "invalid number of arguments to function call (inline or immediate "
-                            "lambda application)");
+        throw_compiler_error(form,
+                             "Expected {} arguments for an inlined lambda with type {} but got {}.",
+                             head->type().arg_count() - 1, head->type().print(), eval_args.size());
       }
       // immediate lambdas (lets) will have all types as the most general object by default
       // inlined functions will have real types that are checked...
@@ -411,11 +417,10 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     if (is_method_call) {
       // method needs at least one argument to tell what we're calling the method on.
       if (eval_args.empty()) {
-        throw_compile_error(form,
-                            "Unrecognized symbol " + uneval_head.print() + " as head of form");
+        throw_compiler_error(form, "Unrecognized symbol {} as head of form.", uneval_head.print());
       }
       // get the method function pointer
-      head = compile_get_method_of_object(eval_args.front(), symbol_string(uneval_head), env);
+      head = compile_get_method_of_object(form, eval_args.front(), symbol_string(uneval_head), env);
       fmt::format("method of object {} {}\n", head->print(), head->type().print());
     }
 
@@ -431,11 +436,11 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       }
 
     } else {
-      throw_compile_error(form, "can't figure out this function call!");
+      throw_compiler_error(form, "Invalid function call! Possibly a compiler bug.");
     }
   }
 
-  throw_compile_error(form, "call_function_or_method unreachable");
+  assert(false);
   return get_none();
 }
 
@@ -461,8 +466,8 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   TypeSpec return_ts;
   if (function->type().arg_count() == 0) {
     // if the type system doesn't know what the function will return, don't allow it to be called
-    throw_compile_error(
-        form, "This function call has unknown argument and return types and cannot be called");
+    throw_compiler_error(
+        form, "This function call has unknown argument and return types and cannot be called.");
   } else {
     return_ts = function->type().last_arg();
   }
@@ -472,10 +477,9 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   // check arg count:
   if (function->type().arg_count() && !is_varargs_function(function->type())) {
     if (function->type().arg_count() - 1 != args.size()) {
-      throw_compile_error(form, "invalid number of arguments to function call: got " +
-                                    std::to_string(args.size()) + " and expected " +
-                                    std::to_string(function->type().arg_count() - 1) + " for " +
-                                    function->type().print());
+      throw_compiler_error(form,
+                           "Expected {} arguments but got {} for a real function call on type {}.",
+                           function->type().arg_count() - 1, args.size(), function->type().print());
     }
     for (uint32_t i = 0; i < args.size(); i++) {
       if (method_type_name.empty()) {
@@ -489,7 +493,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   }
 
   if (args.size() > 8) {
-    throw_compile_error(form, "Function call cannot use more than 8 parameters");
+    throw_compiler_error(form, "Function call cannot use more than 8 parameters.");
   }
 
   // set args (introducing a move here makes coloring more likely to be possible)
@@ -522,42 +526,42 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
   auto& settings = get_parent_env_of_type<DeclareEnv>(env)->settings;
 
   if (settings.is_set) {
-    throw_compile_error(form, "function has multiple declares");
+    throw_compiler_error(form, "Function cannot have multiple declares");
   }
   settings.is_set = true;
 
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (!o.is_pair()) {
-      throw_compile_error(o, "invalid declare specification");
+      throw_compiler_error(o, "Invalid declare specification.");
     }
 
     auto first = o.as_pair()->car;
     auto rrest = o.as_pair()->cdr;
 
     if (!first.is_symbol()) {
-      throw_compile_error(first, "invalid declare specification, expected a symbol");
+      throw_compiler_error(
+          first, "Invalid declare option specification, expected a symbol, but got {} instead.",
+          first.print());
     }
 
     if (first.as_symbol()->name == "inline") {
       if (!rrest.is_empty_list()) {
-        throw_compile_error(first, "invalid inline declare");
+        throw_compiler_error(first, "Invalid inline declare, no options were expected.");
       }
       settings.allow_inline = true;
       settings.inline_by_default = true;
       settings.save_code = true;
     } else if (first.as_symbol()->name == "allow-inline") {
       if (!rrest.is_empty_list()) {
-        throw_compile_error(first, "invalid allow-inline declare");
+        throw_compiler_error(first, "Invalid allow-inline declare");
       }
       settings.allow_inline = true;
       settings.inline_by_default = false;
       settings.save_code = true;
     } else if (first.as_symbol()->name == "asm-func") {
       get_parent_env_of_type<FunctionEnv>(env)->is_asm_func = true;
-    }
-
-    else {
-      throw_compile_error(first, "unrecognized declare statement");
+    } else {
+      throw_compiler_error(first, "Unrecognized declare option {}.", first.print());
     }
   });
   return get_none();

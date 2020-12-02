@@ -7,7 +7,7 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
 
   std::string err;
   if (!goos::get_va(rest, &err, &args)) {
-    throw_compile_error(form, err);
+    throw_compiler_error(form, err);
   }
   return args;
 }
@@ -20,7 +20,7 @@ void Compiler::va_check(
         named) {
   std::string err;
   if (!goos::va_check(args, unnamed, named, &err)) {
-    throw_compile_error(form, err);
+    throw_compiler_error(form, err);
   }
 }
 
@@ -34,7 +34,7 @@ void Compiler::for_each_in_list(const goos::Object& list,
   }
 
   if (!iter->is_empty_list()) {
-    throw_compile_error(list, "invalid list in for_each_in_list");
+    throw_compiler_error(list, "Invalid list: {}", list.print());
   }
 }
 
@@ -50,7 +50,7 @@ std::string Compiler::quoted_sym_as_string(const goos::Object& o) {
   auto args = get_va(o, o);
   va_check(o, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}}, {});
   if (symbol_string(args.unnamed.at(0)) != "quote") {
-    throw_compile_error(o, "invalid quoted symbol " + o.print());
+    throw_compiler_error(o, "Invalid quoted symbol: {}.", o.print());
   }
   return symbol_string(args.unnamed.at(1));
 }
@@ -83,7 +83,7 @@ const goos::Object& Compiler::pair_cdr(const goos::Object& o) {
 
 void Compiler::expect_empty_list(const goos::Object& o) {
   if (!o.is_empty_list()) {
-    throw_compile_error(o, "expected to be an empty list");
+    throw_compiler_error(o, "expected to be an empty list");
   }
 }
 
@@ -98,7 +98,7 @@ TypeSpec Compiler::parse_typespec(const goos::Object& src) {
 
     return ts;
   } else {
-    throw_compile_error(src, "invalid typespec");
+    throw_compiler_error(src, "Invalid typespec.");
   }
   assert(false);
   return {};
