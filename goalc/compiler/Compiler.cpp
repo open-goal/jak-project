@@ -1,5 +1,4 @@
 #include "Compiler.h"
-#include "goalc/logger/Logger.h"
 #include "common/link_types.h"
 #include "IR.h"
 #include "goalc/regalloc/allocate.h"
@@ -11,8 +10,6 @@
 using namespace goos;
 
 Compiler::Compiler() : m_debugger(&m_listener) {
-  init_logger();
-  init_settings();
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -61,35 +58,18 @@ void Compiler::execute_repl() {
         if (m_listener.is_connected()) {
           m_listener.send_code(data);
           if (!m_listener.most_recent_send_was_acked()) {
-            gLogger.log(MSG_ERR, "Runtime is not responding. Did it crash?\n");
+            print_compiler_warning("Runtime is not responding. Did it crash?\n");
           }
         }
       }
 
     } catch (std::exception& e) {
-      gLogger.log(MSG_WARN, "REPL Error: %s\n", e.what());
+      print_compiler_warning("REPL Error: %s\n", e.what());
     }
   }
 
   m_listener.disconnect();
 }
-
-Compiler::~Compiler() {
-  gLogger.close();
-}
-
-void Compiler::init_logger() {
-  gLogger.set_file("compiler.txt");  // todo, a better file than this...
-  gLogger.config[MSG_COLOR].kind = LOG_FILE;
-  gLogger.config[MSG_DEBUG].kind = LOG_IGNORE;
-  gLogger.config[MSG_TGT].color = COLOR_GREEN;
-  gLogger.config[MSG_TGT_INFO].color = COLOR_BLUE;
-  gLogger.config[MSG_WARN].color = COLOR_RED;
-  gLogger.config[MSG_ICE].color = COLOR_RED;
-  gLogger.config[MSG_ERR].color = COLOR_RED;
-}
-
-void Compiler::init_settings() {}
 
 FileEnv* Compiler::compile_object_file(const std::string& name,
                                        goos::Object code,
@@ -169,11 +149,6 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   }
 }
 
-void Compiler::ice(const std::string& error) {
-  gLogger.log(MSG_ICE, "[ICE] %s\n", error.c_str());
-  throw std::runtime_error("ICE");
-}
-
 void Compiler::color_object_file(FileEnv* env) {
   for (auto& f : env->functions()) {
     AllocationInput input;
@@ -232,7 +207,7 @@ std::vector<std::string> Compiler::run_test_from_file(const std::string& source_
     m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
     m_listener.send_code(data);
     if (!m_listener.most_recent_send_was_acked()) {
-      gLogger.log(MSG_ERR, "Runtime is not responding after sending test code. Did it crash?\n");
+      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
     }
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {
@@ -258,7 +233,7 @@ std::vector<std::string> Compiler::run_test_from_string(const std::string& src,
     m_listener.record_messages(ListenerMessageKind::MSG_PRINT);
     m_listener.send_code(data);
     if (!m_listener.most_recent_send_was_acked()) {
-      gLogger.log(MSG_ERR, "Runtime is not responding after sending test code. Did it crash?\n");
+      print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
     }
     return m_listener.stop_recording_messages();
   } catch (std::exception& e) {

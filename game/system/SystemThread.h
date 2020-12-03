@@ -49,8 +49,6 @@ class SystemThread {
   Timer stats_timer;
   Timer stat_diff_timer;
   double cpu_user = 0, cpu_kernel = 0;
-  uint64_t last_cpu_user = 0, last_cpu_kernel = 0;
-  uint64_t last_collection_nanoseconds = 0;
   int id = -1;
   bool want_exit = false;
   bool running = false;

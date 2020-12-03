@@ -1,6 +1,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "third-party/fmt/core.h"
 #include "common/type_system/deftype.h"
+#include "goalc/compiler/Enum.h"
 
 namespace {
 
@@ -785,4 +786,124 @@ Val* Compiler::compile_none(const goos::Object& form, const goos::Object& rest, 
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
   return get_none();
+}
+
+Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& _rest, Env* env) {
+  // format is (defenum name [options] [entries])
+  (void)env;
+  auto* rest = &_rest;
+
+  // name
+  auto enum_name = symbol_string(pair_car(*rest));
+  rest = &pair_cdr(*rest);
+
+  // default enum type will be int32.
+  auto enum_type = m_ts.make_typespec("int32");
+  bool is_bitfield = false;
+
+  auto current = pair_car(*rest);
+  while (current.is_symbol() && symbol_string(current).at(0) == ':') {
+    auto option_name = symbol_string(current);
+    rest = &pair_cdr(*rest);
+    auto option_value = pair_car(*rest);
+    rest = &pair_cdr(*rest);
+    current = pair_car(*rest);
+
+    if (option_name == ":type") {
+      enum_type = parse_typespec(option_value);
+    } else if (option_name == ":bitfield") {
+      if (symbol_string(option_value) == "#t") {
+        is_bitfield = true;
+      } else if (symbol_string(option_value) == "#f") {
+        is_bitfield = false;
+      } else {
+        throw_compiler_error(form, "Invalid option {} to :bitfield option.", option_value.print());
+      }
+    } else {
+      throw_compiler_error(form, "Unknown option {} for defenum.", option_name);
+    }
+  }
+
+  GoalEnum new_enum;
+  new_enum.base_type = enum_type;
+  new_enum.is_bitfield = is_bitfield;
+
+  while (!rest->is_empty_list()) {
+    auto def = pair_car(*rest);
+    auto name = symbol_string(pair_car(def));
+    def = pair_cdr(def);
+    auto value = pair_car(def);
+    if (!value.is_int()) {
+      throw_compiler_error(def, "Expected integer for enum value, got {}", value.print());
+    }
+
+    def = pair_cdr(def);
+    if (!def.is_empty_list()) {
+      throw_compiler_error(def, "Got too many items in defenum defintion.");
+    }
+
+    new_enum.entries[name] = value.integer_obj.value;
+    rest = &pair_cdr(*rest);
+  }
+
+  auto existing_kv = m_enums.find(enum_name);
+  if (existing_kv != m_enums.end() && existing_kv->second != new_enum) {
+    print_compiler_warning("defenum changes the definition of existing enum {}", enum_name.c_str());
+  }
+  m_enums[enum_name] = new_enum;
+
+  return get_none();
+}
+
+Val* Compiler::compile_enum_lookup(const goos::Object& form,
+                                   const GoalEnum& e,
+                                   const goos::Object& rest,
+                                   Env* env) {
+  if (e.is_bitfield) {
+    int64_t value = 0;
+    for_each_in_list(rest, [&](const goos::Object& o) {
+      auto kv = e.entries.find(symbol_string(o));
+      if (kv == e.entries.end()) {
+        throw_compiler_error(form, "The value {} was not found in enum.", o.print());
+      }
+      value |= (1 << kv->second);
+    });
+
+    auto result = compile_integer(value, env);
+    result->set_type(e.base_type);
+    return result;
+  } else {
+    int64_t value = 0;
+    bool got = false;
+    for_each_in_list(rest, [&](const goos::Object& o) {
+      if (got) {
+        throw_compiler_error(form, "Invalid enum lookup.");
+      }
+      auto kv = e.entries.find(symbol_string(o));
+      if (kv == e.entries.end()) {
+        throw_compiler_error(form, "The value {} was not found in enum.", o.print());
+      }
+      value = kv->second;
+      got = true;
+    });
+
+    if (!got) {
+      throw_compiler_error(form, "Invalid enum lookup.");
+    }
+
+    auto result = compile_integer(value, env);
+    result->set_type(e.base_type);
+    return result;
+  }
+
+  return get_none();
+}
+
+bool GoalEnum::operator==(const GoalEnum& other) const {
+  return base_type == other.base_type && is_bitfield == other.is_bitfield &&
+         entries == other.entries;
+}
+
+bool GoalEnum::operator!=(const GoalEnum& other) const {
+  return !(*this == other);
 }

@@ -4,7 +4,6 @@
  */
 
 #include "goalc/compiler/Compiler.h"
-#include "goalc/logger/Logger.h"
 #include "third-party/fmt/core.h"
 
 namespace {

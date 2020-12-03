@@ -29,7 +29,6 @@ add_library(compiler
         data_compiler/game_count.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
-        logger/Logger.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp
         regalloc/IRegister.cpp

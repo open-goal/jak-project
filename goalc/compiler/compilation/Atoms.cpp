@@ -68,7 +68,7 @@ static const std::unordered_map<
         // TYPE
         {"deftype", &Compiler::compile_deftype},
         {"defmethod", &Compiler::compile_defmethod},
-        //        {"defenum", &Compiler::compile_defenum},
+        {"defenum", &Compiler::compile_defenum},
         {"->", &Compiler::compile_deref},
         {"&", &Compiler::compile_addr_of},
         {"the-as", &Compiler::compile_the_as},
@@ -152,7 +152,7 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
     case goos::ObjectType::FLOAT:
       return compile_float(code, env);
     default:
-      ice("Don't know how to compile " + code.print());
+      throw_compiler_error(code, "Cannot compile {}.", code.print());
   }
   return get_none();
 }
@@ -161,7 +161,6 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
  * Compile a pair/list.
  * Can be a compiler form, function call (possibly inlined), method call, immediate application of a
  * lambda, or a goos macro.
- * TODO - enums.
  */
 Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
   auto pair = code.as_pair();
@@ -182,7 +181,10 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
       return compile_goos_macro(code, macro_obj, rest, env);
     }
 
-    // try as an enum (not yet implemented)
+    auto enum_kv = m_enums.find(head_sym->name);
+    if (enum_kv != m_enums.end()) {
+      return compile_enum_lookup(code, enum_kv->second, rest, env);
+    }
   }
 
   // if none of the above cases worked, then treat it like a function/method call.

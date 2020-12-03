@@ -27,6 +27,7 @@ class IR {
   virtual TP_Type get_expression_type(const TypeState& input,
                                       const LinkedObjectFile& file,
                                       DecompilerTypeSystem& dts);
+  virtual ~IR() = default;
 };
 
 class IR_Atomic : public virtual IR {

@@ -73,3 +73,8 @@ TEST_F(VariableTests, StackVars) {
   runner.run_static_test(env, testCategory, "stack-ints.gc", {"12\n"});
   runner.run_static_test(env, testCategory, "stack-ints-2.gc", {"1\n"});
 }
+
+TEST_F(VariableTests, Bitfields) {
+  runner.run_static_test(env, testCategory, "bitfield-enums.gc", {"5\n"});
+  runner.run_static_test(env, testCategory, "integer-enums.gc", {"11\n"});
+}

@@ -45,6 +45,7 @@ class Val {
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
   bool settable() const { return m_is_settable; }
   void mark_as_settable() { m_is_settable = true; }
+  virtual ~Val() = default;
 
  protected:
   TypeSpec m_ts;

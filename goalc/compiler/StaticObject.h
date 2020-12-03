@@ -21,6 +21,7 @@ class StaticObject {
   virtual LoadInfo get_load_info() const = 0;
   virtual void generate(emitter::ObjectGenerator* gen) = 0;
   virtual int get_addr_offset() const = 0;
+  virtual ~StaticObject() = default;
 
   emitter::StaticRecord rec;
 };

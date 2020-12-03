@@ -1,8 +1,8 @@
-if (CMAKE_COMPILER_IS_GNUCXX)
+if (UNIX)
   set(CMAKE_CXX_FLAGS "-O3")
 else ()
   set(CMAKE_CXX_FLAGS "/EHsc")
-endif (CMAKE_COMPILER_IS_GNUCXX)
+endif (UNIX)
 
 include_directories(../)
 add_library(fmt SHARED format.cc)
