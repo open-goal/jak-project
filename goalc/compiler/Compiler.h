@@ -15,6 +15,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/color.h"
 #include "CompilerException.h"
+#include "Enum.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -125,6 +126,7 @@ class Compiler {
   Debugger m_debugger;
   goos::Interpreter m_goos;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
+  std::unordered_map<std::string, GoalEnum> m_enums;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
@@ -140,6 +142,10 @@ class Compiler {
   Val* number_to_binteger(const goos::Object& form, Val* in, Env* env);
   Val* to_math_type(const goos::Object& form, Val* in, MathMode mode, Env* env);
   bool is_none(Val* in);
+  Val* compile_enum_lookup(const goos::Object& form,
+                           const GoalEnum& e,
+                           const goos::Object& rest,
+                           Env* env);
 
   Val* compile_variable_shift(const goos::Object& form,
                               const RegVal* in,
@@ -295,6 +301,7 @@ class Compiler {
   Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_none(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 #endif  // JAK_COMPILER_H
