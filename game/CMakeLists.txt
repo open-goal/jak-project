@@ -3,18 +3,18 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Set default compile flags for GCC
 # optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-if(CMAKE_COMPILER_IS_GNUCXX)
+if(UNIX)
     message(STATUS "GCC detected, adding compile flags")
-    set(CMAKE_CXX_FLAGS 
-        "${CMAKE_CXX_FLAGS} \
-        -ggdb \
+    set(CMAKE_CXX_FLAGS
+            "${CMAKE_CXX_FLAGS} \
         -Wall \
-				-Winit-self \
+        -Winit-self \
+        -ggdb \
         -Wextra \
-        -Wcast-align \
+        -Wno-cast-align \
         -Wcast-qual \
         -Wdisabled-optimization \
-        -Wformat=2 \
+        -Wformat \
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
@@ -22,7 +22,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
         -Wsign-promo")
 else()
 		set(CMAKE_CXX_FLAGS "/EHsc")
-endif(CMAKE_COMPILER_IS_GNUCXX)
+endif(UNIX)
 
 enable_language(ASM_NASM)
 set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)

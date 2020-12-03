@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Set default compile flags for GCC
 # optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-if (CMAKE_COMPILER_IS_GNUCXX)
+if (UNIX)
     message(STATUS "GCC detected, adding compile flags")
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} \
@@ -17,10 +17,10 @@ if (CMAKE_COMPILER_IS_GNUCXX)
         -Winit-self \
         -ggdb \
         -Wextra \
-        -Wcast-align \
+        -Wno-cast-align \
         -Wcast-qual \
         -Wdisabled-optimization \
-        -Wformat=2 \
+        -Wformat \
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
@@ -29,7 +29,7 @@ if (CMAKE_COMPILER_IS_GNUCXX)
 else ()
     set(CMAKE_CXX_FLAGS "/EHsc")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
-endif (CMAKE_COMPILER_IS_GNUCXX)
+endif (UNIX)
 
 IF (WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -41,7 +41,7 @@ ENDIF ()
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 
-if(CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
+if(UNIX AND CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   message("Code Coverage build is enabled!")

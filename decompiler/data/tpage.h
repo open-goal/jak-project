@@ -1,6 +1,6 @@
 #pragma once
 
-class ObjectFileData;
+struct ObjectFileData;
 
 struct TPageResultStats {
   int total_textures = 0;
