@@ -152,7 +152,7 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
     case goos::ObjectType::FLOAT:
       return compile_float(code, env);
     default:
-      ice("Don't know how to compile " + code.print());
+      throw_compiler_error(code, "Cannot compile {}.", code.print());
   }
   return get_none();
 }

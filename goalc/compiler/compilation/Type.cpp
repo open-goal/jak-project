@@ -1,4 +1,3 @@
-#include <goalc/logger/Logger.h>
 #include "goalc/compiler/Compiler.h"
 #include "third-party/fmt/core.h"
 #include "common/type_system/deftype.h"
@@ -849,7 +848,7 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& _re
 
   auto existing_kv = m_enums.find(enum_name);
   if (existing_kv != m_enums.end() && existing_kv->second != new_enum) {
-    gLogger.log(MSG_WARN, "defenum changes the definition of existing enum %s", enum_name.c_str());
+    print_compiler_warning("defenum changes the definition of existing enum {}", enum_name.c_str());
   }
   m_enums[enum_name] = new_enum;
 

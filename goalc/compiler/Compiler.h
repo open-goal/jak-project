@@ -22,7 +22,6 @@ enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 class Compiler {
  public:
   Compiler();
-  ~Compiler();
   void execute_repl();
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
@@ -31,9 +30,7 @@ class Compiler {
                                                           Env* env);
   Val* compile(const goos::Object& code, Env* env);
   Val* compile_error_guard(const goos::Object& code, Env* env);
-  void ice(const std::string& err);
   None* get_none() { return m_none.get(); }
-
   std::vector<std::string> run_test_from_file(const std::string& source_code);
   std::vector<std::string> run_test_from_string(const std::string& src,
                                                 const std::string& obj_name = "*listener*");
@@ -43,14 +40,10 @@ class Compiler {
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
   Debugger& get_debugger() { return m_debugger; }
   listener::Listener& listener() { return m_listener; }
-
   void poke_target() { m_listener.send_poke(); }
-
   bool connect_to_target();
 
  private:
-  void init_logger();
-  void init_settings();
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
   Val* do_set(const goos::Object& form, Val* dst, RegVal* src, Env* env);
@@ -204,6 +197,16 @@ class Compiler {
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
     fmt::print("{}\n", code.print());
     throw CompilerException("Compilation Error");
+  }
+
+  template <typename... Args>
+  void print_compiler_warning(const std::string& str, Args&&... args) {
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "[Warning] ");
+    if (!str.empty() && str.back() == '\n') {
+      fmt::print(str, std::forward<Args>(args)...);
+    } else {
+      fmt::print(str + '\n', std::forward<Args>(args)...);
+    }
   }
 
  public:

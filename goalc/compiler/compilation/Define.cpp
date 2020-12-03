@@ -4,7 +4,6 @@
  */
 
 #include "goalc/compiler/Compiler.h"
-#include "goalc/logger/Logger.h"
 
 /*!
  * Define or set a global value. Has some special magic to store data for functions which may be
@@ -73,10 +72,8 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
                            "define-extern would redefine the type of symbol {} from {} to {}.",
                            symbol_string(sym), existing_type->second.print(), new_type.print());
     } else {
-      // todo nicer warning message.
-      gLogger.log(
-          MSG_WARN,
-          "[Warning] define-extern has redefined the type of symbol %s\npreviously: %s\nnow: %s\n",
+      print_compiler_warning(
+          "[Warning] define-extern has redefined the type of symbol {}\npreviously: {}\nnow: {}\n",
           symbol_string(sym).c_str(), existing_type->second.print().c_str(),
           new_type.print().c_str());
     }
