@@ -299,3 +299,20 @@ void Compiler::typecheck(const goos::Object& form,
   (void)form;
   m_ts.typecheck(expected, actual, error_message, true, true);
 }
+
+/*!
+ * Like typecheck, but will allow Val* to be #f if the destination isn't a number.
+ * Also will convert to register types for the type checking.
+ */
+void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
+                                              const TypeSpec& expected,
+                                              const Val* actual,
+                                              const std::string& error_message) {
+  if (!m_ts.typecheck(m_ts.make_typespec("number"), expected, "", false, false)) {
+    auto as_sym_val = dynamic_cast<const SymbolVal*>(actual);
+    if (as_sym_val && as_sym_val->name() == "#f") {
+      return;
+    }
+  }
+  typecheck(form, expected, coerce_to_reg_type(actual->type()), error_message);
+}

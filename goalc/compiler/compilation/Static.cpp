@@ -200,6 +200,17 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
         // instead of just the symbol table offset.
         u32 linker_val = 0xffffffff;
         memcpy(obj->data.data() + field_offset, &linker_val, 4);
+      } else if (field_value.is_symbol() &&
+                 (field_value.as_symbol()->name == "#t" || field_value.as_symbol()->name == "#f")) {
+        obj->add_symbol_record(symbol_string(field_value), field_offset);
+        assert(deref_info.mem_deref);
+        assert(deref_info.can_deref);
+        assert(deref_info.load_size == 4);
+
+        // the linker needs to see a -1 in order to know to insert a symbol pointer
+        // instead of just the symbol table offset.
+        u32 linker_val = 0xffffffff;
+        memcpy(obj->data.data() + field_offset, &linker_val, 4);
       } else {
         throw_compiler_error(
             form, "Setting a basic field to anything other than a symbol is currently unsupported");

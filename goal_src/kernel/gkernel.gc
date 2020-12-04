@@ -79,16 +79,16 @@
 
 ;; The kernel context is a global which stores the state of the kernel.
 (define *kernel-context* (new 'static 'kernel-context
-                              :prevent-from-run #x41 ;; todo, bitfield enum types
+                              :prevent-from-run (process-mask execute sleep)
                               :next-pid 2
-                              :current-process '#f
-                              :relocating-process '#f
-                              :low-memory-message '#t
+                              :current-process #f
+                              :relocating-process #f
+                              :low-memory-message #t
                               )
         )
 
 ;; the main stack for running GOAL code!
-(define *dram-stack* (new 'global 'array 'uint8 #x3800)) ;;DPROCESS_STACK_SIZE
+(define *dram-stack* (new 'global 'array 'uint8 DPROCESS_STACK_SIZE))
 
 ;; I don't think this stack is used, but I'm not sure.
 (set! (-> *kernel-context* fast-stack-top) *scratch-memory-top*)
@@ -98,32 +98,14 @@
 (define *null-kernel-context* (new 'static 'kernel-context))
 
 
-(defun kernel-dispatcher ()
-  "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"
-  
-  ;; check if we have a new listener function to run
-  (when *listener-function*
-    ;; we do! enable method-set for debug purposes
-    (+! *enable-method-set* 1)
-    
-    ;; execute and print result
-    (let ((result (*listener-function*)))
-      (format #t "~D~%" result)
-      )
-    (+! *enable-method-set* -1)
-    
-    ;; clear the pending function.
-    (set! *listener-function* (the (function object) #f))
-    )
-  )
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Thread and CPU Thread
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; A GOAL thread represents the execute of code in a process.
+; A GOAL thread represents the execution of code in a process.
 ; Each process has a "main thread", which is suspended and resumed.
 ; A process may also execute various temporary threads which always run until completion.
+; A "temporary thread" cannot suspend and resume, but a "main thread" can.
 ; The currently executing thread of a process is the "top-thread".
 
 ; Some GOAL threads also have the ability to "back up" their stack, while others are "temporary".
@@ -188,14 +170,17 @@
   ;; first, let's see if we're doing the main or temp thread
   (let* ((obj (cond
                 ((-> parent-process top-thread)
-                 ;; temp thread.
+                 ;; we're allocating a temporary thread, the main thread already exists.
+                 ;; we can stash the cpu-thread structure at the bottom of the stack.
+                 ;; we assume the smaller PROCESS_STACK_SIZE
                  (the cpu-thread (&+ stack-top
                                      (- PROCESS_STACK_SIZE)
                                      *gtype-basic-offset*
                                      ))
                  )
                 (else
-                  ;; the main thread
+                  ;; the main thread. We need the main thread's cpu-thread to stick around, so we put it in the 
+                  ;; process heap.
                   (let ((alloc (align16 (-> parent-process heap-cur)))) ;; start at heap cur, aligned
                     ;; bump heap to include our thread + its stack
                     (set! (-> parent-process heap-cur) (the pointer (+ alloc (-> type-to-make size) stack-size)))
@@ -236,6 +221,144 @@
   (the int (+ (-> obj type size) (-> obj stack-size)))
   )
 
-;; todo remove-exit
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Remove Exit
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; todo stream<-process-mask
+(defun remove-exit ()
+  "This is likely a defbehavior for process.
+  Pops a single stack frame, if there is one."
+  (rlet ((self :reg r13 :type process))
+        (when (-> self stack-frame-top)
+          (set! (-> self stack-frame-top) (-> self stack-frame-top next))
+          )
+        )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Tree
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; GOAL processes are stored in a left child, right sibling tree.
+;; The base class of process is process-tree.
+;; Each process-tree element has a process-mask which indicates what type of node it is.
+
+(defun-debug stream<-process-mask (stream (mask int))
+  "Print out a process mask. This function may have been auto-generated?"
+  ; 24
+  (if (not (eq? 0 (logand mask (process-mask death))))
+      (format stream "death "))
+  ; 23
+  (if (not (eq? 0 (logand mask (process-mask attackable))))
+      (format stream "attackable "))  
+  ; 22
+  (if (not (eq? 0 (logand mask (process-mask projectile))))
+      (format stream "projectile "))  
+  ; 21
+  (if (not (eq? 0 (logand mask (process-mask entity))))
+      (format stream "entity "))
+  ; 20
+  (if (not (eq? 0 (logand mask (process-mask ambient))))
+      (format stream "ambient "))    
+  ; 19
+  (if (not (eq? 0 (logand mask (process-mask platform))))
+      (format stream "platform "))
+  ; 18
+  (if (not (eq? 0 (logand mask (process-mask camera))))
+      (format stream "camera "))  
+  ; 17
+  (if (not (eq? 0 (logand mask (process-mask enemy))))
+      (format stream "enemy "))  
+  ; 16
+  (if (not (eq? 0 (logand mask (process-mask collectable))))
+      (format stream "collectable "))
+  ; 15
+  (if (not (eq? 0 (logand mask (process-mask crate))))
+      (format stream "crate "))  
+  ; 14
+  (if (not (eq? 0 (logand mask (process-mask sidekick))))
+      (format stream "sidekick "))
+  ; 13
+  (if (not (eq? 0 (logand mask (process-mask target))))
+      (format stream "target "))  
+  ; 12
+  (if (not (eq? 0 (logand mask (process-mask movie-subject))))
+      (format stream "movie-subject "))
+  ; 11
+  (if (not (eq? 0 (logand mask (process-mask movie))))
+      (format stream "movie "))
+  ; 10
+  (if (not (eq? 0 (logand mask (process-mask going))))
+      (format stream "going "))  
+  ; 9
+  (if (not (eq? 0 (logand mask (process-mask heap-shrunk))))
+      (format stream "heap-shrunk "))
+  ; 8
+  (if (not (eq? 0 (logand mask (process-mask process-tree))))
+      (format stream "process-tree "))  
+  ; 7
+  (if (not (eq? 0 (logand mask (process-mask sleep-code))))
+      (format stream "sleep-code "))
+  ; 6
+  (if (not (eq? 0 (logand mask (process-mask sleep))))
+      (format stream "sleep "))  
+  ; 5
+  (if (not (eq? 0 (logand mask (process-mask actor-pause))))
+      (format stream "actor-pause "))  
+  ; 4
+  (if (not (eq? 0 (logand mask (process-mask progress))))
+      (format stream "progress "))
+  ; 3
+  (if (not (eq? 0 (logand mask (process-mask menu))))
+      (format stream "menu "))    
+  ; 2
+  (if (not (eq? 0 (logand mask (process-mask pause))))
+      (format stream "pause "))
+  ; 1
+  (if (not (eq? 0 (logand mask (process-mask draw))))
+      (format stream "draw "))  
+  ; 0
+  (if (not (eq? 0 (logand mask (process-mask execute))))
+      (format stream "execute "))  
+  )
+
+;; game state
+(define *master-mode* 'game)
+(define *pause-lock* #f)
+
+(defmethod new process-tree ((allocation symbol) (type-to-make type) (name basic))
+  "Create a process-tree node"
+  
+  ;; allocate
+  (let ((obj (object-new)))
+    (set! (-> obj name) name)
+    (set! (-> obj mask) (process-mask process-tree))
+    (set! (-> obj parent) #f)
+    (set! (-> obj brother) #f)
+    (set! (-> obj child) #f)
+    
+    (set! (-> obj self) obj)
+    (set! (-> obj ppointer) (&-> obj self))
+    obj
+    )
+  )
+
+(defun kernel-dispatcher ()
+  "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"
+  
+  ;; check if we have a new listener function to run
+  (when *listener-function*
+    ;; we do! enable method-set for debug purposes
+    (+! *enable-method-set* 1)
+    
+    ;; execute and print result
+    (let ((result (*listener-function*)))
+      (format #t "~D~%" result)
+      )
+    (+! *enable-method-set* -1)
+    
+    ;; clear the pending function.
+    (set! *listener-function* (the (function object) #f))
+    )
+  )

@@ -11,7 +11,8 @@
  */
 Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::SYMBOL, {}}, {});
+  va_check(form, args, {goos::ObjectType::SYMBOL, {}},
+           {{"no-typecheck", {false, goos::ObjectType::SYMBOL}}});
   auto& sym = args.unnamed.at(0);
   auto& val = args.unnamed.at(1);
 
@@ -43,7 +44,13 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   if (existing_type == m_symbol_types.end()) {
     m_symbol_types[sym.as_symbol()->name] = in_gpr->type();
   } else {
-    typecheck(form, existing_type->second, in_gpr->type(), "define on existing symbol");
+    bool do_typecheck = true;
+    if (args.has_named("no-typecheck")) {
+      do_typecheck = !get_true_or_false(form, args.named.at("no-typecheck"));
+    }
+    if (do_typecheck) {
+      typecheck(form, existing_type->second, in_gpr->type(), "define on existing symbol");
+    }
   }
 
   if (!sym_val->settable()) {
@@ -122,13 +129,18 @@ void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* 
   }
 
   env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, original, temp));
-  do_set(form, dst->parent(), original, env);
+  do_set(form, dst->parent(), original, original, env);
 }
 
 /*!
  * The internal "set" logic.
+ * The source is provided both as the directly Val* from compilation and as a RegVal*.
+ * This is a bit weird, but is required to do things in exactly the same order as GOAL, but
+ * makes us able to check if the source is #f, which is allowed to bypass type checking in some
+ * cases. If the source is unavailable, you can just put the same thing for src_in_reg and src, but
+ * you'll lose the ability to detect and accept #f as a null reference.
  */
-Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* env) {
+Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, Val* src, Env* env) {
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot set! {} because it is not settable.", dest->print());
   }
@@ -140,8 +152,8 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
 
   if (as_mem_deref) {
     auto dest_type = coerce_to_reg_type(as_mem_deref->type());
-    if (dest_type != TypeSpec("uint") || source->type() != TypeSpec("int")) {
-      typecheck(form, dest_type, source->type(), "set! memory");
+    if (dest_type != TypeSpec("uint") || coerce_to_reg_type(src->type()) != TypeSpec("int")) {
+      typecheck_reg_type_allow_false(form, dest_type, src, "set! memory");
     }
 
     // setting somewhere in memory
@@ -151,31 +163,31 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* source, Env* 
       // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
       auto ti = m_ts.lookup_type(as_mem_deref->type());
       env->emit(std::make_unique<IR_StoreConstOffset>(
-          source, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
-      return source;
+          src_in_reg, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
+      return src_in_reg;
     } else {
       // nope, the pointer to dereference is some compliated thing.
       auto ti = m_ts.lookup_type(as_mem_deref->type());
-      env->emit(
-          std::make_unique<IR_StoreConstOffset>(source, 0, base->to_gpr(env), ti->get_load_size()));
-      return source;
+      env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, 0, base->to_gpr(env),
+                                                      ti->get_load_size()));
+      return src_in_reg;
     }
   } else if (as_pair) {
     // this could probably be part of MemoryDerefVal and not a special case here.
-    env->emit(std::make_unique<IR_StoreConstOffset>(source, as_pair->is_car ? -2 : 2,
+    env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, as_pair->is_car ? -2 : 2,
                                                     as_pair->base->to_gpr(env), 4));
-    return source;
+    return src_in_reg;
   } else if (as_reg) {
-    typecheck(form, as_reg->type(), source->type(), "set! lexical variable");
-    env->emit(std::make_unique<IR_RegSet>(as_reg, source));
-    return source;
+    typecheck_reg_type_allow_false(form, as_reg->type(), src, "set! lexical variable");
+    env->emit(std::make_unique<IR_RegSet>(as_reg, src_in_reg));
+    return src_in_reg;
   } else if (as_sym_val) {
-    typecheck(form, as_sym_val->type(), source->type(), "set! global symbol");
-    auto result_in_gpr = source->to_gpr(env);
+    typecheck_reg_type_allow_false(form, as_sym_val->type(), src, "set! global symbol");
+    auto result_in_gpr = src_in_reg->to_gpr(env);
     env->emit(std::make_unique<IR_SetSymbolValue>(as_sym_val->sym(), result_in_gpr));
     return result_in_gpr;
   } else if (as_bitfield) {
-    set_bitfield(form, as_bitfield, source, env);
+    set_bitfield(form, as_bitfield, src_in_reg, env);
     return get_none();
   }
 
@@ -195,7 +207,8 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   // todo, I don't know if this is the correct order or not. Right now the value is computed
   // and to_reg'd first, then the destination is computed, if the destination requires math to
   // compute.
-  auto source = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto source = compile_error_guard(args.unnamed.at(1), env);
+  auto source_reg = source->to_reg(env);
   auto dest = compile_error_guard(destination, env);
-  return do_set(form, dest, source, env);
+  return do_set(form, dest, source_reg, source, env);
 }

@@ -161,6 +161,32 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
     return true;
   }
 
+  if (in.is_pair()) {
+    auto head = in.as_pair()->car;
+    if (head.is_symbol()) {
+      auto head_sym = head.as_symbol();
+      auto enum_kv = m_enums.find(head_sym->name);
+      if (enum_kv != m_enums.end()) {
+        bool success;
+        u64 as_enum = enum_lookup(in, enum_kv->second, in.as_pair()->cdr, false, &success);
+        if (success) {
+          *out = as_enum;
+          return true;
+        }
+      }
+    }
+  }
+
+  if (in.is_symbol()) {
+    auto global_constant = m_global_constants.find(in.as_symbol());
+    if (global_constant != m_global_constants.end()) {
+      // recursively get constant integer, so we can have constants set to constants, etc.
+      if (try_getting_constant_integer(global_constant->second, out, env)) {
+        return true;
+      }
+    }
+  }
+
   // todo, try more things like constants before giving up.
   return false;
 }
