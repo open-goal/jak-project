@@ -929,3 +929,86 @@ void IR_GetStackAddr::do_codegen(emitter::ObjectGenerator* gen,
   // dest = offset + RSP - offset
   gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
 }
+
+///////////////////////
+// Asm
+///////////////////////
+
+IR_Asm::IR_Asm(bool use_coloring) : m_use_coloring(use_coloring) {}
+
+std::string IR_Asm::get_color_suffix_string() {
+  if (m_use_coloring) {
+    return "";
+  } else {
+    return " :no-color";
+  }
+}
+
+///////////////////////
+// AsmRet
+///////////////////////
+
+IR_AsmRet::IR_AsmRet(bool use_coloring) : IR_Asm(use_coloring) {}
+
+std::string IR_AsmRet::print() {
+  return fmt::format(".ret{}", get_color_suffix_string());
+}
+
+RegAllocInstr IR_AsmRet::to_rai() {
+  return {};
+}
+
+void IR_AsmRet::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  (void)allocs;
+  gen->add_instr(IGen::ret(), irec);
+}
+
+///////////////////////
+// AsmPush
+///////////////////////
+
+IR_AsmPush::IR_AsmPush(bool use_coloring, const RegVal* src) : IR_Asm(use_coloring), m_src(src) {}
+
+std::string IR_AsmPush::print() {
+  return fmt::format(".push{} {}", get_color_suffix_string(), m_src->print());
+}
+
+RegAllocInstr IR_AsmPush::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_AsmPush::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  gen->add_instr(IGen::push_gpr64(get_reg(m_src, allocs, irec)), irec);
+}
+
+///////////////////////
+// AsmPop
+///////////////////////
+
+IR_AsmPop::IR_AsmPop(bool use_coloring, const RegVal* dst) : IR_Asm(use_coloring), m_dst(dst) {}
+
+std::string IR_AsmPop::print() {
+  return fmt::format(".pop{} {}", get_color_suffix_string(), m_dst->print());
+}
+
+RegAllocInstr IR_AsmPop::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+  }
+  return rai;
+}
+
+void IR_AsmPop::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  gen->add_instr(IGen::pop_gpr64(get_reg(m_dst, allocs, irec)), irec);
+}

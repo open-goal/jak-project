@@ -35,7 +35,8 @@ add_library(compiler
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
         regalloc/allocate_common.cpp
-        compiler/Compiler.cpp)
+        compiler/Compiler.cpp
+        compiler/compilation/Asm.cpp)
 
 add_executable(goalc main.cpp)
 

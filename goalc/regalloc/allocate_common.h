@@ -77,6 +77,7 @@ struct LiveInfo {
    * Add an instruction id where this variable is live.
    */
   void add_live_instruction(int value) {
+    assert(value >= 0);
     if (value > max)
       max = value;
     if (value < min)
@@ -158,6 +159,20 @@ struct LiveInfo {
     ass.reg = reg;
     ass.kind = Assignment::Kind::REGISTER;
     assignment.at(id - min) = ass;
+    has_constraint = true;
+    best_hint = ass;
+  }
+
+  /*!
+   * Lock an assignment everywhere.
+   */
+  void constrain_everywhere(emitter::Register reg) {
+    Assignment ass;
+    ass.reg = reg;
+    ass.kind = Assignment::Kind::REGISTER;
+    for (int i = min; i <= max; i++) {
+      assignment.at(i - min) = ass;
+    }
     has_constraint = true;
     best_hint = ass;
   }

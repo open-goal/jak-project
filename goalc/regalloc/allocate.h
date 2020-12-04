@@ -83,6 +83,7 @@ struct AllocationInput {
   int max_vars = -1;                                 // maximum register id.
   std::vector<std::string> debug_instruction_names;  // optional, for debug prints
   int stack_slots_for_stack_vars = 0;
+  bool is_asm_function = false;
 
   struct {
     bool print_input = false;
