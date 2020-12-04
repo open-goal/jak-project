@@ -571,7 +571,11 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       if (!rrest->as_pair()->cdr.is_empty_list()) {
         throw_compiler_error(first, "Invalid asm-func declare");
       }
-
+    } else if (first.as_symbol()->name == "print-asm") {
+      if (!rrest->is_empty_list()) {
+        throw_compiler_error(first, "Invalid print-asm declare");
+      }
+      settings.print_asm = true;
     } else {
       throw_compiler_error(first, "Unrecognized declare option {}.", first.print());
     }

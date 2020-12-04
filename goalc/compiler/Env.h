@@ -129,6 +129,7 @@ class DeclareEnv : public Env {
     bool inline_by_default = false;  // if a function, inline when possible?
     bool save_code = true;           // if a function, should we save the code?
     bool allow_inline = false;       // should we allow the user to use this an inline function
+    bool print_asm = false;          // should we print out the asm for this function?
   } settings;
 };
 

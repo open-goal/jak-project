@@ -192,20 +192,20 @@ void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 
-  //  if (!allocs.used_saved_regs.empty()) {
-  //    std::string err = fmt::format(
-  //        "ASM Function {}'s coloring using the following callee-saved registers: ", env->name());
-  //    for (auto& x : allocs.used_saved_regs) {
-  //      err += x.print();
-  //      err += " ";
-  //    }
-  //    err.pop_back();
-  //    err.push_back('.');
-  //    throw std::runtime_error(err);
-  //  }
+  if (!allocs.used_saved_regs.empty()) {
+    std::string err = fmt::format(
+        "ASM Function {}'s coloring using the following callee-saved registers: ", env->name());
+    for (auto& x : allocs.used_saved_regs) {
+      err += x.print();
+      err += " ";
+    }
+    err.pop_back();
+    err.push_back('.');
+    throw std::runtime_error(err);
+  }
 
   if (allocs.stack_slots_for_spills) {
-    fmt::print("STACK SLOTS FOR SPILLS\n");
+    throw std::runtime_error("ASM Function has used the stack for spills.");
   }
 
   if (allocs.stack_slots_for_vars) {

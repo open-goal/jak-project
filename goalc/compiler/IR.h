@@ -416,4 +416,18 @@ class IR_AsmPop : public IR_Asm {
   const RegVal* m_dst = nullptr;
 };
 
+class IR_AsmSub : public IR_Asm {
+ public:
+  IR_AsmSub(bool use_coloring, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
 #endif  // JAK_IR_H

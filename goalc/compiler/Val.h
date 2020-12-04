@@ -11,6 +11,7 @@
 #include <utility>
 #include <string>
 #include <stdexcept>
+#include <optional>
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
@@ -74,9 +75,12 @@ class RegVal : public Val {
   RegVal* to_reg(Env* fe) override;
   RegVal* to_gpr(Env* fe) override;
   RegVal* to_xmm(Env* fe) override;
+  void set_rlet_constraint(emitter::Register reg);
+  const std::optional<emitter::Register>& rlet_constraint() const;
 
  protected:
   IRegister m_ireg;
+  std::optional<emitter::Register> m_rlet_constraint = std::nullopt;
 };
 
 /*!

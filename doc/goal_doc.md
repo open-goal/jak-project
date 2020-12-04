@@ -871,7 +871,7 @@ The other two cases are handled by `let` and `defun` macros, and shouldn't show 
 ## `declare`
 Set options for a function or method
 ```lisp
-(declare [(inline)] [(allow-inline)] [(disallow-inline)] [(asm-func)])
+(declare [(inline)] [(allow-inline)] [(disallow-inline)] [(asm-func)] [(print-asm)])
 ```
 If used, this should be the first thing inside of a `defun`/`defmethod`. Don't use it anywhere else.
 Example:
@@ -884,7 +884,8 @@ Example:
 
 - `inline` means "inline whenever possible". See function inlining section for why inlining may be impossible in some cases.
 - `allow-inline` or `disallow-inline`. You can control if inlining is allowed, though it is not clear why I thought this would be useful. Currently the default is to allow always.
-- `asm-func` currently does nothing. Eventually should disable generating prologues/epilogues. Use if you want an entirely asm function. Used very rarely and probably only in the GOAL kernel.
+- `print-asm` if codegen runs on this function (`:color #t`), disassemble the result and print it. This is intended for compiler debugging.
+- `asm-func` will disable the prologue and epilogue from being generated. You need to include your own `ret` instruction or similar. The compiler will error if it needs to use the stack for a stack variable or a spilled register. The coloring system will not use callee saved registers.  As a result, complicated GOAL expression may fail inside an `asm-func` function. The intent is to use it for context switching routines inside in the kernel, where you may not be able to use the stack, or may not want to return with `ret`.
 
 This form will probably get more options in the future.
 

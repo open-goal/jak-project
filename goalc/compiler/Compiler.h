@@ -230,6 +230,7 @@ class Compiler {
   Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_push(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms
 

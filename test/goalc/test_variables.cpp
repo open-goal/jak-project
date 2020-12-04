@@ -78,3 +78,7 @@ TEST_F(VariableTests, Bitfields) {
   runner.run_static_test(env, testCategory, "bitfield-enums.gc", {"5\n"});
   runner.run_static_test(env, testCategory, "integer-enums.gc", {"11\n"});
 }
+
+TEST_F(VariableTests, InlineAsm) {
+  runner.run_static_test(env, testCategory, "inline-asm.static.gc", {"1\n"});
+}

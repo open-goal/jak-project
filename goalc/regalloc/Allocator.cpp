@@ -119,11 +119,7 @@ void compute_live_ranges(RegAllocCache* cache, const AllocationInput& in) {
 
   // make us alive at any constrained instruction. todo, if this happens is this a sign of an issue
   for (auto& con : in.constraints) {
-    if (con.contrain_everywhere) {
-      for (u64 i = 0; i < in.instructions.size(); i++) {
-        cache->live_ranges.at(con.ireg.id).add_live_instruction(i);
-      }
-    } else {
+    if (!con.contrain_everywhere) {
       cache->live_ranges.at(con.ireg.id).add_live_instruction(con.instr_idx);
     }
   }

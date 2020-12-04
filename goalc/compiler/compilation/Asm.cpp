@@ -55,6 +55,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
       ts = parse_typespec(def_args.named.at("type"));
     }
 
+    // figure out the class
     emitter::RegKind register_kind = emitter::RegKind::GPR;
     if (def_args.has_named("class")) {
       auto& class_name = def_args.named.at("class").as_symbol()->name;
@@ -75,6 +76,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
       constraint.ireg = new_place_reg->ireg();
       constraint.contrain_everywhere = true;
       constraint.desired_register = parse_register(def_args.named.at("reg"));
+      new_place_reg->set_rlet_constraint(constraint.desired_register);
       constraints.push_back(constraint);
     }
 
@@ -132,5 +134,21 @@ Val* Compiler::compile_asm_push(const goos::Object& form, const goos::Object& re
     color = get_true_or_false(form, args.named.at("color"));
   }
   env->emit_ir<IR_AsmPush>(color, compile_error_guard(args.unnamed.at(0), env)->to_gpr(env));
+  return get_none();
+}
+
+Val* Compiler::compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot .sub this. Got a {}.", dest->print());
+  }
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  env->emit_ir<IR_AsmSub>(color, dest, src);
   return get_none();
 }
