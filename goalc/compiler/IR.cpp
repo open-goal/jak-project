@@ -16,8 +16,14 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
         auto ass_reg = range.at(rv->ireg().id).get(irec.ir_id);
         if (ass_reg.kind == Assignment::Kind::REGISTER) {
           assert(ass_reg.reg == reg);
+        } else {
+          assert(false);
         }
+      } else {
+        assert(false);
       }
+    } else {
+      assert(false);
     }
     return reg;
   } else {
@@ -25,6 +31,14 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
     assert(ass.kind == Assignment::Kind::REGISTER);
     return ass.reg;
   }
+}
+
+Register get_no_color_reg(const RegVal* rv) {
+  if (!rv->rlet_constraint().has_value()) {
+    throw std::runtime_error(
+        "Accessed a non-rlet constrained variable without the coloring system.");
+  }
+  return rv->rlet_constraint().value();
 }
 
 void load_constant(u64 value,
@@ -1001,7 +1015,11 @@ RegAllocInstr IR_AsmPush::to_rai() {
 void IR_AsmPush::do_codegen(emitter::ObjectGenerator* gen,
                             const AllocationResult& allocs,
                             emitter::IR_Record irec) {
-  gen->add_instr(IGen::push_gpr64(get_reg(m_src, allocs, irec)), irec);
+  if (m_use_coloring) {
+    gen->add_instr(IGen::push_gpr64(get_reg(m_src, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::push_gpr64(get_no_color_reg(m_src)), irec);
+  }
 }
 
 ///////////////////////
@@ -1025,7 +1043,11 @@ RegAllocInstr IR_AsmPop::to_rai() {
 void IR_AsmPop::do_codegen(emitter::ObjectGenerator* gen,
                            const AllocationResult& allocs,
                            emitter::IR_Record irec) {
-  gen->add_instr(IGen::pop_gpr64(get_reg(m_dst, allocs, irec)), irec);
+  if (m_use_coloring) {
+    gen->add_instr(IGen::pop_gpr64(get_reg(m_dst, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::pop_gpr64(get_no_color_reg(m_dst)), irec);
+  }
 }
 
 ///////////////////////
@@ -1052,6 +1074,10 @@ RegAllocInstr IR_AsmSub::to_rai() {
 void IR_AsmSub::do_codegen(emitter::ObjectGenerator* gen,
                            const AllocationResult& allocs,
                            emitter::IR_Record irec) {
-  gen->add_instr(IGen::sub_gpr64_gpr64(get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)),
-                 irec);
+  if (m_use_coloring) {
+    gen->add_instr(
+        IGen::sub_gpr64_gpr64(get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::sub_gpr64_gpr64(get_no_color_reg(m_dst), get_no_color_reg(m_src)), irec);
+  }
 }
