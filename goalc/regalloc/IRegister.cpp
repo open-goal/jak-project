@@ -15,5 +15,9 @@ std::string IRegister::to_string() const {
 }
 
 std::string IRegConstraint::to_string() const {
-  return fmt::format("[{:3d}] {} in {}", instr_idx, ireg.to_string(), desired_register.print());
+  if (contrain_everywhere) {
+    return fmt::format("[all] {} in {}", ireg.to_string(), desired_register.print());
+  } else {
+    return fmt::format("[{:3d}] {} in {}", instr_idx, ireg.to_string(), desired_register.print());
+  }
 }

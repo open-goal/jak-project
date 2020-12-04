@@ -7,9 +7,38 @@ using namespace emitter;
 
 namespace {
 Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_Record irec) {
-  auto& ass = allocs.ass_as_ranges.at(rv->ireg().id).get(irec.ir_id);
-  assert(ass.kind == Assignment::Kind::REGISTER);
-  return ass.reg;
+  if (rv->rlet_constraint().has_value()) {
+    auto& range = allocs.ass_as_ranges;
+    auto reg = rv->rlet_constraint().value();
+    if (rv->ireg().id < int(range.size())) {
+      auto& lr = range.at(rv->ireg().id);
+      if (irec.ir_id >= lr.min && irec.ir_id <= lr.max) {
+        auto ass_reg = range.at(rv->ireg().id).get(irec.ir_id);
+        if (ass_reg.kind == Assignment::Kind::REGISTER) {
+          assert(ass_reg.reg == reg);
+        } else {
+          assert(false);
+        }
+      } else {
+        assert(false);
+      }
+    } else {
+      assert(false);
+    }
+    return reg;
+  } else {
+    auto& ass = allocs.ass_as_ranges.at(rv->ireg().id).get(irec.ir_id);
+    assert(ass.kind == Assignment::Kind::REGISTER);
+    return ass.reg;
+  }
+}
+
+Register get_no_color_reg(const RegVal* rv) {
+  if (!rv->rlet_constraint().has_value()) {
+    throw std::runtime_error(
+        "Accessed a non-rlet constrained variable without the coloring system.");
+  }
+  return rv->rlet_constraint().value();
 }
 
 void load_constant(u64 value,
@@ -928,4 +957,127 @@ void IR_GetStackAddr::do_codegen(emitter::ObjectGenerator* gen,
   gen->add_instr(IGen::add_gpr64_gpr64(dest_reg, RSP), irec);
   // dest = offset + RSP - offset
   gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
+}
+
+///////////////////////
+// Asm
+///////////////////////
+
+IR_Asm::IR_Asm(bool use_coloring) : m_use_coloring(use_coloring) {}
+
+std::string IR_Asm::get_color_suffix_string() {
+  if (m_use_coloring) {
+    return "";
+  } else {
+    return " :no-color";
+  }
+}
+
+///////////////////////
+// AsmRet
+///////////////////////
+
+IR_AsmRet::IR_AsmRet(bool use_coloring) : IR_Asm(use_coloring) {}
+
+std::string IR_AsmRet::print() {
+  return fmt::format(".ret{}", get_color_suffix_string());
+}
+
+RegAllocInstr IR_AsmRet::to_rai() {
+  return {};
+}
+
+void IR_AsmRet::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  (void)allocs;
+  gen->add_instr(IGen::ret(), irec);
+}
+
+///////////////////////
+// AsmPush
+///////////////////////
+
+IR_AsmPush::IR_AsmPush(bool use_coloring, const RegVal* src) : IR_Asm(use_coloring), m_src(src) {}
+
+std::string IR_AsmPush::print() {
+  return fmt::format(".push{} {}", get_color_suffix_string(), m_src->print());
+}
+
+RegAllocInstr IR_AsmPush::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_AsmPush::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  if (m_use_coloring) {
+    gen->add_instr(IGen::push_gpr64(get_reg(m_src, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::push_gpr64(get_no_color_reg(m_src)), irec);
+  }
+}
+
+///////////////////////
+// AsmPop
+///////////////////////
+
+IR_AsmPop::IR_AsmPop(bool use_coloring, const RegVal* dst) : IR_Asm(use_coloring), m_dst(dst) {}
+
+std::string IR_AsmPop::print() {
+  return fmt::format(".pop{} {}", get_color_suffix_string(), m_dst->print());
+}
+
+RegAllocInstr IR_AsmPop::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+  }
+  return rai;
+}
+
+void IR_AsmPop::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  if (m_use_coloring) {
+    gen->add_instr(IGen::pop_gpr64(get_reg(m_dst, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::pop_gpr64(get_no_color_reg(m_dst)), irec);
+  }
+}
+
+///////////////////////
+// AsmSub
+///////////////////////
+
+IR_AsmSub::IR_AsmSub(bool use_coloring, const RegVal* dst, const RegVal* src)
+    : IR_Asm(use_coloring), m_dst(dst), m_src(src) {}
+
+std::string IR_AsmSub::print() {
+  return fmt::format(".sub{} {}, {}", get_color_suffix_string(), m_dst->print(), m_src->print());
+}
+
+RegAllocInstr IR_AsmSub::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_AsmSub::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  if (m_use_coloring) {
+    gen->add_instr(
+        IGen::sub_gpr64_gpr64(get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::sub_gpr64_gpr64(get_no_color_reg(m_dst), get_no_color_reg(m_src)), irec);
+  }
 }

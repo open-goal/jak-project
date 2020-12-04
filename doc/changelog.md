@@ -62,3 +62,7 @@
 
 ## V0.3
 - Added typechecking when setting fields of a type.
+- Added inline assembly `.ret`, `.sub`, `.push`, and `.pop`.
+- Added `rlet` to declare register variables.
+- Added `:color #f` option to inline assembly forms to exclude them from the coloring system.
+- Added `asm-func` to declare for purely assembly functions.

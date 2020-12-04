@@ -44,6 +44,7 @@ class Compiler {
   bool connect_to_target();
 
  private:
+  bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
   Val* do_set(const goos::Object& form, Val* dst, RegVal* src, Env* env);
@@ -135,6 +136,7 @@ class Compiler {
   Val* number_to_binteger(const goos::Object& form, Val* in, Env* env);
   Val* to_math_type(const goos::Object& form, Val* in, MathMode mode, Env* env);
   bool is_none(Val* in);
+  emitter::Register parse_register(const goos::Object& code);
   Val* compile_enum_lookup(const goos::Object& form,
                            const GoalEnum& e,
                            const goos::Object& rest,
@@ -200,6 +202,19 @@ class Compiler {
   }
 
   template <typename... Args>
+  void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    if (!str.empty() && str.back() == '\n') {
+      fmt::print(str, std::forward<Args>(args)...);
+    } else {
+      fmt::print(str + '\n', std::forward<Args>(args)...);
+    }
+
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
+    throw CompilerException("Compilation Error");
+  }
+
+  template <typename... Args>
   void print_compiler_warning(const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "[Warning] ");
     if (!str.empty() && str.back() == '\n') {
@@ -210,6 +225,13 @@ class Compiler {
   }
 
  public:
+  // Asm
+  Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_push(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env);
+
   // Atoms
 
   // Block

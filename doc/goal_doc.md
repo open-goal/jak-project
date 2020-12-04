@@ -142,6 +142,11 @@ Documented forms are crossed out.
 - &+
 - ~~build-dgos~~
 - ~~set-config!~~
+- rlet
+- .ret
+- .sub
+- .push
+- .pop
 - set-config!
 
 # Language Basics
@@ -871,7 +876,7 @@ The other two cases are handled by `let` and `defun` macros, and shouldn't show 
 ## `declare`
 Set options for a function or method
 ```lisp
-(declare [(inline)] [(allow-inline)] [(disallow-inline)] [(asm-func)])
+(declare [(inline)] [(allow-inline)] [(disallow-inline)] [(asm-func return-typespec)] [(print-asm)])
 ```
 If used, this should be the first thing inside of a `defun`/`defmethod`. Don't use it anywhere else.
 Example:
@@ -884,7 +889,8 @@ Example:
 
 - `inline` means "inline whenever possible". See function inlining section for why inlining may be impossible in some cases.
 - `allow-inline` or `disallow-inline`. You can control if inlining is allowed, though it is not clear why I thought this would be useful. Currently the default is to allow always.
-- `asm-func` currently does nothing. Eventually should disable generating prologues/epilogues. Use if you want an entirely asm function. Used very rarely and probably only in the GOAL kernel.
+- `print-asm` if codegen runs on this function (`:color #t`), disassemble the result and print it. This is intended for compiler debugging.
+- `asm-func` will disable the prologue and epilogue from being generated. You need to include your own `ret` instruction or similar. The compiler will error if it needs to use the stack for a stack variable or a spilled register. The coloring system will not use callee saved registers.  As a result, complicated GOAL expression may fail inside an `asm-func` function. The intent is to use it for context switching routines inside in the kernel, where you may not be able to use the stack, or may not want to return with `ret`.  The return type of an `asm-func` must manually be specified as the compiler doesn't automatically put the result in the return register and cannot do type analysis to figure out the real return type.
 
 This form will probably get more options in the future.
 
@@ -1153,6 +1159,86 @@ None of the edge cases of `the` apply to `the-as`.
 
 ## Pointer Math
 Not implemented well yet.
+
+# Compiler Forms - Assembly
+
+## `rlet`
+```lisp
+(rlet ((var-name [:reg reg-name] [:class reg-class] [:type typespec])...)
+  body...
+  )
+```
+Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr` or `xmm`) and the compiler will pick a GPR or XMM for you.
+
+If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you.
+If you pick a special register like `rsp`, it won't be backed up.  
+
+Inside the `rlet`, all uses of `var-name` will always be in the given register.  If the variable goes dead (or is never live), the compiler may reuse the register as it wants.  The compiler may also spill the variable onto the stack.  Of course, if you are in an `asm-func`, the stack will never be used.
+
+Here is an example of using an `rlet` to access registers:
+```lisp
+(defun get-goal-rsp-2 ()
+  "Get the stack pointer as a GOAL pointer"
+  (rlet ((rsp :reg rsp :type uint)
+         (off :reg r15 :type uint))
+        (the pointer (- rsp off))
+        )
+  )
+```
+
+## General assembly forms
+In general, assembly forms have a name that begins with a `.`. They all evaluate to `none` and copy the form of an x86-64 instruction. For example `(.sub dst src)`. A destination must be a settable register (ok if it's spilled). So you can't do something like `(.sub (-> obj field) x)`. Instead, do `(set! temp (-> obj field))`, `(.sub temp x)`, `(set! (-> obj field) temp)`.   The sources can be any expression.
+
+By default, assembly forms work with the coloring system. This means that assembly and high level expression can be mixed together without clobbering each other. It also means use of callee-saved registers will cause them to be backed up/restored in the function prologue and epilogue.  Use of weird registers like `r15`, `r14`, and `rsp` works as you would expect with the coloring system. 
+ 
+But you can also request to skip this with `:color #f` option, like `(.push my-reg-var :color #f)`. Be very careful with this. The `:color #f` option will only work with register variables from `rlet` which have a manually specified register. It will entirely bypass the coloring system and use this register. Use of this with other GOAL code is extremely dangerous and should be done very carefully or avoided.
+
+## `.sub`
+```lisp
+(.sub dest src [:color #t|#f])
+```
+x86-64 subtraction. If coloring is on (the default), the `dest` must be a settable register (`rlet` var, `let` var, function argument, ...). It can't be a place like a symbol, field, stack variable, etc.  If coloring is off, both `src` and `dest` must be registers defined and constrained in an enclosing `rlet`.
+
+Example:
+```
+(defun get-goal-rsp ()
+  (declare (asm-func uint))
+  (rlet ((rsp :reg rsp :type uint)
+         (off :reg r15 :type uint)
+         (ret :reg rax :type uint)
+         )
+        
+        ;; mov rax, rsp
+        (set! ret rsp)
+        ;; sub rax, r15
+        (.sub ret off)
+        ;; ret
+        (.ret)
+        )
+  )
+```
+
+## `.push`
+```lisp
+(.push src [:color #t|#f])
+```
+
+The x86-64 push instruction. Does a 64-bit GPR.  The `src` can be any expression if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
+
+## `.pop`
+```lisp
+(.pop dst [:color #t|#f])
+```
+
+The x86-64 pop instruction.  Does a 64-bit GPR. The `dst` can be any settable register if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
+
+## `.ret`
+```lisp
+(.ret [:color #t|#f])
+```
+
+The x86-64 ret instruction. The color option does nothing. This is not recognized as a control flow instruction by the coloring system.
+
 
 # Compiler Forms - Unsorted
 

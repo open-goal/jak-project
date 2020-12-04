@@ -59,6 +59,14 @@ RegVal* RegVal::to_xmm(Env* fe) {
   }
 }
 
+void RegVal::set_rlet_constraint(emitter::Register reg) {
+  m_rlet_constraint = reg;
+}
+
+const std::optional<emitter::Register>& RegVal::rlet_constraint() const {
+  return m_rlet_constraint;
+}
+
 RegVal* IntegerConstantVal::to_reg(Env* fe) {
   auto rv = fe->make_gpr(coerce_to_reg_type(m_ts));
   fe->emit(std::make_unique<IR_LoadConstant64>(rv, m_value));

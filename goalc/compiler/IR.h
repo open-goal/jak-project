@@ -371,4 +371,63 @@ class IR_GetStackAddr : public IR {
   int m_slot = -1;
 };
 
+class IR_Asm : public IR {
+ public:
+  explicit IR_Asm(bool use_coloring);
+  std::string get_color_suffix_string();
+
+ protected:
+  bool m_use_coloring;
+};
+
+class IR_AsmRet : public IR_Asm {
+ public:
+  IR_AsmRet(bool use_coloring);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
+class IR_AsmPush : public IR_Asm {
+ public:
+  IR_AsmPush(bool use_coloring, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_src = nullptr;
+};
+
+class IR_AsmPop : public IR_Asm {
+ public:
+  IR_AsmPop(bool use_coloring, const RegVal* dst);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+};
+
+class IR_AsmSub : public IR_Asm {
+ public:
+  IR_AsmSub(bool use_coloring, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
 #endif  // JAK_IR_H

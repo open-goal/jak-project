@@ -13,12 +13,13 @@ static const std::unordered_map<
     std::string,
     Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
     goal_forms = {
-        //        // inline asm
-        //        {".ret", &Compiler::compile_asm},
-        //        {".push", &Compiler::compile_asm},
-        //        {".pop", &Compiler::compile_asm},
+        // inline asm
+        {".ret", &Compiler::compile_asm_ret},
+        {".push", &Compiler::compile_asm_push},
+        {".pop", &Compiler::compile_asm_pop},
+        {"rlet", &Compiler::compile_rlet},
         //        {".jmp", &Compiler::compile_asm},
-        //        {".sub", &Compiler::compile_asm},
+        {".sub", &Compiler::compile_asm_sub},
         //        {".ret-reg", &Compiler::compile_asm},
 
         // BLOCK FORMS
@@ -86,7 +87,6 @@ static const std::unordered_map<
         {"declare", &Compiler::compile_declare},
         {"inline", &Compiler::compile_inline},
         //        {"with-inline", &Compiler::compile_with_inline},
-        //        {"rlet", &Compiler::compile_rlet},
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
 
         // MACRO

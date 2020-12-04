@@ -1,0 +1,53 @@
+
+(defun test-asm-func ()
+  (declare (asm-func uint64))
+  (rlet ((x :reg rbx :type int)
+         (ret :reg rax :type int))
+    (.push x :color #f)
+    (.push 3)
+    (.pop x :color #f)
+    (.push x :color #f)
+    (.pop ret)
+    (.pop x :color #f)
+    )
+  (.ret)
+  )
+
+(defun get-goal-rsp ()
+  (declare (asm-func uint)
+           (print-asm))
+  (rlet ((rsp :reg rsp :type uint)
+         (off :reg r15 :type uint)
+         (ret :reg rax :type uint)
+         (unused :reg r11) ;; just to test that this isn't a compiler error.
+         )
+        
+        ;; just something weird to make the regalloc more interesting
+        (.push off)
+        (set! off (the uint 12))
+        (.pop off)
+        
+        ;; do the actual computation
+        (set! ret rsp)
+        (.sub ret off)
+        
+        ;; return!
+        (.ret)
+        )
+  )
+
+(defun get-goal-rsp-2 ()
+  (rlet ((rsp :reg rsp :type uint)
+         (off :reg r15 :type uint))
+        (- rsp off)
+        )
+  )
+
+(if (and
+     (= (get-goal-rsp) (get-goal-rsp-2))
+     (< #x7ffff00 (get-goal-rsp))
+     (> #x7ffffff (get-goal-rsp))
+     (= 3 (test-asm-func))
+     )
+    1
+    0)

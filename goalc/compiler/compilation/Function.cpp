@@ -187,14 +187,17 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
         new_func_env->settings.is_set = true;
       }
     });
-    if (result && !dynamic_cast<None*>(result)) {
+
+    if (new_func_env->is_asm_func) {
+      // don't add return automatically!
+      lambda_ts.add_arg(new_func_env->asm_func_return_type);
+    } else if (result && !dynamic_cast<None*>(result)) {
       // got a result, so to_gpr it and return it.
       auto final_result = result->to_gpr(new_func_env.get());
       new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
       func_block_env->return_types.push_back(final_result->type());
       auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
       lambda_ts.add_arg(return_type);
-      //      lambda_ts.add_arg(final_result->type());
     } else {
       // empty body or returning none, return none
       lambda_ts.add_arg(m_ts.make_typespec("none"));
@@ -535,7 +538,7 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
     }
 
     auto first = o.as_pair()->car;
-    auto rrest = o.as_pair()->cdr;
+    auto rrest = &o.as_pair()->cdr;
 
     if (!first.is_symbol()) {
       throw_compiler_error(
@@ -544,21 +547,35 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
     }
 
     if (first.as_symbol()->name == "inline") {
-      if (!rrest.is_empty_list()) {
+      if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid inline declare, no options were expected.");
       }
       settings.allow_inline = true;
       settings.inline_by_default = true;
       settings.save_code = true;
     } else if (first.as_symbol()->name == "allow-inline") {
-      if (!rrest.is_empty_list()) {
+      if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid allow-inline declare");
       }
       settings.allow_inline = true;
       settings.inline_by_default = false;
       settings.save_code = true;
     } else if (first.as_symbol()->name == "asm-func") {
-      get_parent_env_of_type<FunctionEnv>(env)->is_asm_func = true;
+      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      fe->is_asm_func = true;
+      if (!rrest->is_pair()) {
+        throw_compiler_error(
+            form, "Declare asm-func must provide the function's return type as an argument.");
+      }
+      fe->asm_func_return_type = parse_typespec(rrest->as_pair()->car);
+      if (!rrest->as_pair()->cdr.is_empty_list()) {
+        throw_compiler_error(first, "Invalid asm-func declare");
+      }
+    } else if (first.as_symbol()->name == "print-asm") {
+      if (!rrest->is_empty_list()) {
+        throw_compiler_error(first, "Invalid print-asm declare");
+      }
+      settings.print_asm = true;
     } else {
       throw_compiler_error(first, "Unrecognized declare option {}.", first.print());
     }

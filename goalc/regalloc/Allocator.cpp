@@ -119,7 +119,9 @@ void compute_live_ranges(RegAllocCache* cache, const AllocationInput& in) {
 
   // make us alive at any constrained instruction. todo, if this happens is this a sign of an issue
   for (auto& con : in.constraints) {
-    cache->live_ranges.at(con.ireg.id).add_live_instruction(con.instr_idx);
+    if (!con.contrain_everywhere) {
+      cache->live_ranges.at(con.ireg.id).add_live_instruction(con.instr_idx);
+    }
   }
 }
 }  // namespace
@@ -346,7 +348,11 @@ void do_constrained_alloc(RegAllocCache* cache, const AllocationInput& in, bool 
     if (trace_debug) {
       fmt::print("[RA] Apply constraint {}\n", constr.to_string());
     }
-    cache->live_ranges.at(var_id).constrain_at_one(constr.instr_idx, constr.desired_register);
+    if (constr.contrain_everywhere) {
+      cache->live_ranges.at(var_id).constrain_everywhere(constr.desired_register);
+    } else {
+      cache->live_ranges.at(var_id).constrain_at_one(constr.instr_idx, constr.desired_register);
+    }
   }
 }
 
@@ -356,12 +362,24 @@ void do_constrained_alloc(RegAllocCache* cache, const AllocationInput& in, bool 
 bool check_constrained_alloc(RegAllocCache* cache, const AllocationInput& in) {
   bool ok = true;
   for (auto& constr : in.constraints) {
-    if (!cache->live_ranges.at(constr.ireg.id)
-             .conflicts_at(constr.instr_idx, constr.desired_register)) {
-      fmt::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
-                 constr.ireg.to_string(), constr.desired_register.print(),
-                 cache->live_ranges.at(constr.ireg.id).get(constr.instr_idx).to_string());
-      ok = false;
+    if (constr.contrain_everywhere) {
+      auto& lr = cache->live_ranges.at(constr.ireg.id);
+      for (int i = lr.min; i <= lr.max; i++) {
+        if (!lr.conflicts_at(i, constr.desired_register)) {
+          fmt::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
+                     constr.ireg.to_string(), constr.desired_register.print(),
+                     cache->live_ranges.at(constr.ireg.id).get(i).to_string());
+          ok = false;
+        }
+      }
+    } else {
+      if (!cache->live_ranges.at(constr.ireg.id)
+               .conflicts_at(constr.instr_idx, constr.desired_register)) {
+        fmt::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
+                   constr.ireg.to_string(), constr.desired_register.print(),
+                   cache->live_ranges.at(constr.ireg.id).get(constr.instr_idx).to_string());
+        ok = false;
+      }
     }
   }
 
@@ -618,11 +636,20 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
 
 const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, RegAllocCache* cache) {
   auto& info = cache->iregs.at(v);
+  // todo fix this.
   //  assert(info.kind != emitter::RegKind::INVALID);
   if (info.kind == emitter::RegKind::GPR || info.kind == emitter::RegKind::INVALID) {
-    return emitter::gRegInfo.get_gpr_alloc_order();
+    if (cache->is_asm_func) {
+      return emitter::gRegInfo.get_gpr_temp_alloc_order();
+    } else {
+      return emitter::gRegInfo.get_gpr_alloc_order();
+    }
   } else if (info.kind == emitter::RegKind::XMM) {
-    return emitter::gRegInfo.get_xmm_alloc_order();
+    if (cache->is_asm_func) {
+      return emitter::gRegInfo.get_xmm_temp_alloc_order();
+    } else {
+      return emitter::gRegInfo.get_xmm_alloc_order();
+    }
   } else {
     throw std::runtime_error("Unsupported RegKind");
   }
@@ -758,7 +785,10 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
     bonus.slot = get_stack_slot_for_var(var, cache);
     bonus.load = is_read;
     bonus.store = is_written;
-    cache->stack_ops.at(instr).ops.push_back(bonus);
+
+    if (bonus.load || bonus.store) {
+      cache->stack_ops.at(instr).ops.push_back(bonus);
+    }
   }
   return true;
 }

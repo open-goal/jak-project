@@ -29,3 +29,13 @@ std::string DebugInfo::disassemble_all_functions(bool* had_failure) {
   }
   return result;
 }
+
+std::string DebugInfo::disassemble_function_by_name(const std::string& name, bool* had_failure) {
+  std::string result;
+  for (auto& kv : m_functions) {
+    if (kv.second.name == name) {
+      result += kv.second.disassemble_debug_info(had_failure) + "\n\n";
+    }
+  }
+  return result;
+}

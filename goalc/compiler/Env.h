@@ -39,8 +39,12 @@ class Env {
   RegVal* make_gpr(const TypeSpec& ts);
   RegVal* make_xmm(const TypeSpec& ts);
   virtual ~Env() = default;
-
   Env* parent() { return m_parent; }
+
+  template <typename IR_Type, typename... Args>
+  void emit_ir(Args&&... args) {
+    emit(std::make_unique<IR_Type>(std::forward<Args>(args)...));
+  }
 
  protected:
   Env* m_parent = nullptr;
@@ -125,6 +129,7 @@ class DeclareEnv : public Env {
     bool inline_by_default = false;  // if a function, inline when possible?
     bool save_code = true;           // if a function, should we save the code?
     bool allow_inline = false;       // should we allow the user to use this an inline function
+    bool print_asm = false;          // should we print out the asm for this function?
   } settings;
 };
 
@@ -188,6 +193,7 @@ class FunctionEnv : public DeclareEnv {
   int segment = -1;
   std::string method_of_type_name = "#f";
   bool is_asm_func = false;
+  TypeSpec asm_func_return_type;
   std::vector<UnresolvedGoto> unresolved_gotos;
   std::vector<UnresolvedConditionalGoto> unresolved_cond_gotos;
   std::unordered_map<std::string, RegVal*> params;

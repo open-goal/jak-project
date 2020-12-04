@@ -175,3 +175,17 @@ float Compiler::try_getting_constant_float(const goos::Object& in, float* out, E
   // todo, try more things like constants before giving up.
   return false;
 }
+
+bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& boolean) {
+  // todo try other things.
+  if (boolean.is_symbol()) {
+    if (boolean.as_symbol()->name == "#t") {
+      return true;
+    }
+    if (boolean.as_symbol()->name == "#f") {
+      return false;
+    }
+  }
+  throw_compiler_error(form, "The value {} cannot be used as a boolean.", boolean.print());
+  return false;
+}

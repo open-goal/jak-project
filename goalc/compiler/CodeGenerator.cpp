@@ -6,7 +6,8 @@
  */
 
 #include <unordered_set>
-#include <goalc/debugger/DebugInfo.h>
+#include "goalc/debugger/DebugInfo.h"
+#include "third-party/fmt/core.h"
 #include "CodeGenerator.h"
 #include "goalc/emitter/IGen.h"
 #include "IR.h"
@@ -48,11 +49,19 @@ std::vector<u8> CodeGenerator::run() {
   return m_gen.generate_data_v3().to_vector();
 }
 
+void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
+  if (env->is_asm_func) {
+    do_asm_function(env, f_idx);
+  } else {
+    do_goal_function(env, f_idx);
+  }
+}
+
 /*!
  * Add instructions to the function, specified by index.
  * Generates prologues / epilogues.
  */
-void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
+void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   // todo, extra alignment settings
 
@@ -177,4 +186,44 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   }
 
   m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::EPILOGUE);
+}
+
+void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx) {
+  auto f_rec = m_gen.get_existing_function_record(f_idx);
+  const auto& allocs = env->alloc_result();
+
+  if (!allocs.used_saved_regs.empty()) {
+    std::string err = fmt::format(
+        "ASM Function {}'s coloring using the following callee-saved registers: ", env->name());
+    for (auto& x : allocs.used_saved_regs) {
+      err += x.print();
+      err += " ";
+    }
+    err.pop_back();
+    err.push_back('.');
+    throw std::runtime_error(err);
+  }
+
+  if (allocs.stack_slots_for_spills) {
+    throw std::runtime_error("ASM Function has used the stack for spills.");
+  }
+
+  if (allocs.stack_slots_for_vars) {
+    throw std::runtime_error("ASM Function has variables on the stack.");
+  }
+
+  // emit each IR into x86 instructions.
+  for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
+    auto& ir = env->code().at(ir_idx);
+    // start of IR
+    auto i_rec = m_gen.add_ir(f_rec, ir->print());
+
+    // Make sure we aren't automatically accessing the stack.
+    if (!allocs.stack_ops.at(ir_idx).ops.empty()) {
+      throw std::runtime_error("ASM Function used a bonus op.");
+    }
+
+    // do the actual op
+    ir->do_codegen(&m_gen, allocs, i_rec);
+  }
 }

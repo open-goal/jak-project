@@ -64,7 +64,7 @@ void Compiler::execute_repl() {
       }
 
     } catch (std::exception& e) {
-      print_compiler_warning("REPL Error: %s\n", e.what());
+      print_compiler_warning("REPL Error: {}\n", e.what());
     }
   }
 
@@ -152,6 +152,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
 void Compiler::color_object_file(FileEnv* env) {
   for (auto& f : env->functions()) {
     AllocationInput input;
+    input.is_asm_function = f->is_asm_func;
     for (auto& i : f->code()) {
       input.instructions.push_back(i->to_rai());
       input.debug_instruction_names.push_back(i->print());
@@ -173,10 +174,22 @@ void Compiler::color_object_file(FileEnv* env) {
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
-  auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
-  debug_info->clear();
-  CodeGenerator gen(env, debug_info);
-  return gen.run();
+  try {
+    auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
+    debug_info->clear();
+    CodeGenerator gen(env, debug_info);
+    bool ok = true;
+    auto result = gen.run();
+    for (auto& f : env->functions()) {
+      if (f->settings.print_asm) {
+        fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
+      }
+    }
+    return result;
+  } catch (std::exception& e) {
+    throw_compiler_error_no_code("Error during codegen: {}", e.what());
+  }
+  return {};
 }
 
 bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
@@ -186,7 +199,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   debug_info->clear();
   CodeGenerator gen(env, debug_info);
   *data_out = gen.run();
-  bool ok = false;
+  bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok);
   return ok;
 }

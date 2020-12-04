@@ -126,6 +126,7 @@ void print_result(const AllocationInput& in, const AllocationResult& result) {
 AllocationResult allocate_registers(const AllocationInput& input) {
   AllocationResult result;
   RegAllocCache cache;
+  cache.is_asm_func = input.is_asm_function;
 
   // if desired, print input for debugging.
   if (input.debug_settings.print_input) {
