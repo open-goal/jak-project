@@ -82,3 +82,7 @@ TEST_F(VariableTests, Bitfields) {
 TEST_F(VariableTests, InlineAsm) {
   runner.run_static_test(env, testCategory, "inline-asm.static.gc", {"1\n"});
 }
+
+TEST_F(VariableTests, StaticBitfieldField) {
+  runner.run_static_test(env, testCategory, "static-bitfield-field.gc", {"22\n"});
+}

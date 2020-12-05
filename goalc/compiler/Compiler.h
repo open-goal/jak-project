@@ -47,7 +47,7 @@ class Compiler {
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
-  Val* do_set(const goos::Object& form, Val* dst, RegVal* src, Env* env);
+  Val* do_set(const goos::Object& form, Val* dst, RegVal* src_in_reg, Val* src, Env* env);
   Val* compile_goos_macro(const goos::Object& o,
                           const goos::Object& macro_obj,
                           const goos::Object& rest,
@@ -99,6 +99,10 @@ class Compiler {
                  const TypeSpec& expected,
                  const TypeSpec& actual,
                  const std::string& error_message = "");
+  void typecheck_reg_type_allow_false(const goos::Object& form,
+                                      const TypeSpec& expected,
+                                      const Val* actual,
+                                      const std::string& error_message = "");
 
   TypeSpec parse_typespec(const goos::Object& src);
   bool is_local_symbol(const goos::Object& obj, Env* env);
@@ -137,6 +141,11 @@ class Compiler {
   Val* to_math_type(const goos::Object& form, Val* in, MathMode mode, Env* env);
   bool is_none(Val* in);
   emitter::Register parse_register(const goos::Object& code);
+  u64 enum_lookup(const goos::Object& form,
+                  const GoalEnum& e,
+                  const goos::Object& rest,
+                  bool throw_on_error,
+                  bool* success);
   Val* compile_enum_lookup(const goos::Object& form,
                            const GoalEnum& e,
                            const goos::Object& rest,
@@ -231,7 +240,10 @@ class Compiler {
   Val* compile_asm_push(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env);
-
+  Val* compile_asm_add(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
   // Atoms
 
   // Block

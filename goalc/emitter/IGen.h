@@ -1281,9 +1281,11 @@ class IGen {
   }
 
   /*!
-   * Call a function stored in a 64-bit gpr
+   * Jump to an x86-64 address stored in a 64-bit gpr.
    */
-  static Instruction jmp_r64(uint8_t reg) {
+  static Instruction jmp_r64(Register reg_) {
+    assert(reg_.is_gpr());
+    auto reg = reg_.hw_id();
     Instruction instr(0xff);
     if (reg >= 8) {
       instr.set(REX(false, false, false, true));

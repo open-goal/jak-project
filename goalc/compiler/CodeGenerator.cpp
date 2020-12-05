@@ -28,7 +28,7 @@ std::vector<u8> CodeGenerator::run() {
     if (function_names.find(f->name()) == function_names.end()) {
       function_names.insert(f->name());
     } else {
-      printf("Failed to codegen, there are two functions with internal names %s\n",
+      printf("Failed to codegen, there are two functions with internal names [%s]\n",
              f->name().c_str());
       throw std::runtime_error("Failed to codegen.");
     }

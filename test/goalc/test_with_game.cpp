@@ -259,7 +259,7 @@ TEST_F(WithGameTests, NewStaticStructureIntegers) {
 
 TEST_F(WithGameTests, NewStaticBasic) {
   runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
-                         get_test_pass_string("new-static-basic", 9));
+                         get_test_pass_string("new-static-basic", 11));
 }
 
 TEST_F(WithGameTests, VectorDot) {

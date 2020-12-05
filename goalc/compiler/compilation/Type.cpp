@@ -289,7 +289,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     } else {
       // type of argument is specified
       auto param_args = get_va(o, o);
-      va_check(o, param_args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+      va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));
@@ -327,6 +327,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
     auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, emitter::RegKind::GPR);
+    ireg->mark_as_settable();
     constr.ireg = ireg->ireg();
     constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
     new_func_env->params[lambda.params.at(i).name] = ireg;
@@ -855,48 +856,75 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& _re
   return get_none();
 }
 
-Val* Compiler::compile_enum_lookup(const goos::Object& form,
-                                   const GoalEnum& e,
-                                   const goos::Object& rest,
-                                   Env* env) {
+u64 Compiler::enum_lookup(const goos::Object& form,
+                          const GoalEnum& e,
+                          const goos::Object& rest,
+                          bool throw_on_error,
+                          bool* success) {
+  *success = true;
   if (e.is_bitfield) {
-    int64_t value = 0;
+    uint64_t value = 0;
     for_each_in_list(rest, [&](const goos::Object& o) {
       auto kv = e.entries.find(symbol_string(o));
       if (kv == e.entries.end()) {
-        throw_compiler_error(form, "The value {} was not found in enum.", o.print());
+        if (throw_on_error) {
+          throw_compiler_error(form, "The value {} was not found in enum.", o.print());
+        } else {
+          *success = false;
+          return;
+        }
       }
       value |= (1 << kv->second);
     });
 
-    auto result = compile_integer(value, env);
-    result->set_type(e.base_type);
-    return result;
+    return value;
   } else {
-    int64_t value = 0;
+    uint64_t value = 0;
     bool got = false;
     for_each_in_list(rest, [&](const goos::Object& o) {
       if (got) {
-        throw_compiler_error(form, "Invalid enum lookup.");
+        if (throw_on_error) {
+          throw_compiler_error(form, "Invalid enum lookup.");
+        } else {
+          *success = false;
+          return;
+        }
       }
       auto kv = e.entries.find(symbol_string(o));
       if (kv == e.entries.end()) {
-        throw_compiler_error(form, "The value {} was not found in enum.", o.print());
+        if (throw_on_error) {
+          throw_compiler_error(form, "The value {} was not found in enum.", o.print());
+        } else {
+          *success = false;
+          return;
+        }
       }
       value = kv->second;
       got = true;
     });
 
     if (!got) {
-      throw_compiler_error(form, "Invalid enum lookup.");
+      if (throw_on_error) {
+        throw_compiler_error(form, "Invalid enum lookup.");
+      } else {
+        *success = false;
+      }
     }
 
-    auto result = compile_integer(value, env);
-    result->set_type(e.base_type);
-    return result;
+    return value;
   }
+}
 
-  return get_none();
+Val* Compiler::compile_enum_lookup(const goos::Object& form,
+                                   const GoalEnum& e,
+                                   const goos::Object& rest,
+                                   Env* env) {
+  bool success;
+  u64 value = enum_lookup(form, e, rest, true, &success);
+  assert(success);
+  auto result = compile_integer(value, env);
+  result->set_type(e.base_type);
+  return result;
 }
 
 bool GoalEnum::operator==(const GoalEnum& other) const {

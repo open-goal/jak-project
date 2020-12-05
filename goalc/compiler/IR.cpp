@@ -1081,3 +1081,142 @@ void IR_AsmSub::do_codegen(emitter::ObjectGenerator* gen,
     gen->add_instr(IGen::sub_gpr64_gpr64(get_no_color_reg(m_dst), get_no_color_reg(m_src)), irec);
   }
 }
+
+///////////////////////
+// AsmAdd
+///////////////////////
+
+IR_AsmAdd::IR_AsmAdd(bool use_coloring, const RegVal* dst, const RegVal* src)
+    : IR_Asm(use_coloring), m_dst(dst), m_src(src) {}
+
+std::string IR_AsmAdd::print() {
+  return fmt::format(".add{} {}, {}", get_color_suffix_string(), m_dst->print(), m_src->print());
+}
+
+RegAllocInstr IR_AsmAdd::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_AsmAdd::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  if (m_use_coloring) {
+    gen->add_instr(
+        IGen::add_gpr64_gpr64(get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)), irec);
+  } else {
+    gen->add_instr(IGen::add_gpr64_gpr64(get_no_color_reg(m_dst), get_no_color_reg(m_src)), irec);
+  }
+}
+
+///////////////////////
+// AsmGetSymbolValue
+///////////////////////
+
+IR_GetSymbolValueAsm::IR_GetSymbolValueAsm(bool use_coloring,
+                                           const RegVal* dest,
+                                           std::string sym_name,
+                                           bool sext)
+    : IR_Asm(use_coloring), m_dest(dest), m_sym_name(std::move(sym_name)), m_sext(sext) {}
+
+std::string IR_GetSymbolValueAsm::print() {
+  return fmt::format(".load-sym{} {} [{}]", get_color_suffix_string(), m_dest->print(), m_sym_name);
+}
+
+RegAllocInstr IR_GetSymbolValueAsm::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dest->ireg());
+  }
+  return rai;
+}
+
+void IR_GetSymbolValueAsm::do_codegen(emitter::ObjectGenerator* gen,
+                                      const AllocationResult& allocs,
+                                      emitter::IR_Record irec) {
+  auto dst_reg = m_use_coloring ? get_reg(m_dest, allocs, irec) : get_no_color_reg(m_dest);
+  if (m_sext) {
+    auto instr =
+        gen->add_instr(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
+                           dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), 0x0badbeef),
+                       irec);
+    gen->link_instruction_symbol_mem(instr, m_sym_name);
+  } else {
+    auto instr =
+        gen->add_instr(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
+                           dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), 0x0badbeef),
+                       irec);
+    gen->link_instruction_symbol_mem(instr, m_sym_name);
+  }
+}
+
+///////////////////////
+// AsmJumpReg
+///////////////////////
+
+IR_JumpReg::IR_JumpReg(bool use_coloring, const RegVal* src) : IR_Asm(use_coloring), m_src(src) {}
+
+std::string IR_JumpReg::print() {
+  return fmt::format(".jr{} {}", get_color_suffix_string(), m_src->print());
+}
+
+RegAllocInstr IR_JumpReg::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_JumpReg::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  auto src_reg = m_use_coloring ? get_reg(m_src, allocs, irec) : get_no_color_reg(m_src);
+  gen->add_instr(IGen::jmp_r64(src_reg), irec);
+}
+
+///////////////////////
+// AsmRegSet
+///////////////////////
+
+IR_RegSetAsm::IR_RegSetAsm(bool use_color, const RegVal* dst, const RegVal* src)
+    : IR_Asm(use_color), m_dst(dst), m_src(src) {}
+
+std::string IR_RegSetAsm::print() {
+  return fmt::format(".mov{} {} {}", get_color_suffix_string(), m_dst->print(), m_src->print());
+}
+
+RegAllocInstr IR_RegSetAsm::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_RegSetAsm::do_codegen(emitter::ObjectGenerator* gen,
+                              const AllocationResult& allocs,
+                              emitter::IR_Record irec) {
+  auto val_reg = m_use_coloring ? get_reg(m_src, allocs, irec) : get_no_color_reg(m_src);
+  auto dest_reg = m_use_coloring ? get_reg(m_dst, allocs, irec) : get_no_color_reg(m_dst);
+
+  if (val_reg == dest_reg) {
+    gen->add_instr(IGen::null(), irec);
+  } else if (val_reg.is_gpr() && dest_reg.is_gpr()) {
+    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
+  } else if (val_reg.is_xmm() && dest_reg.is_gpr()) {
+    gen->add_instr(IGen::movd_gpr32_xmm32(dest_reg, val_reg), irec);
+  } else if (val_reg.is_gpr() && dest_reg.is_xmm()) {
+    gen->add_instr(IGen::movd_xmm32_gpr32(dest_reg, val_reg), irec);
+  } else if (val_reg.is_xmm() && dest_reg.is_xmm()) {
+    gen->add_instr(IGen::mov_xmm32_xmm32(dest_reg, val_reg), irec);
+  } else {
+    assert(false);
+  }
+}

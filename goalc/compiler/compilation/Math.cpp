@@ -67,7 +67,9 @@ Val* Compiler::number_to_binteger(const goos::Object& form, Val* in, Env* env) {
     RegVal* input = in->to_reg(env);
     auto sa = fe->make_gpr(m_ts.make_typespec("int"));
     env->emit(std::make_unique<IR_LoadConstant64>(sa, 3));
-    return compile_variable_shift(form, input, sa, env, IntegerMathKind::SHLV_64);
+    auto result = compile_variable_shift(form, input, sa, env, IntegerMathKind::SHLV_64);
+    result->set_type(m_ts.make_typespec("binteger"));
+    return result;
   }
   throw_compiler_error(form, "Cannot convert a {} to a binteger.", in->type().print());
   return nullptr;
@@ -115,7 +117,8 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
   auto first_type = first_val->type();
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
-    case MATH_INT: {
+    case MATH_INT:
+    case MATH_BINT: {
       auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_val->to_gpr(env)));
 

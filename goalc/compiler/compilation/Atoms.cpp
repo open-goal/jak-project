@@ -18,9 +18,11 @@ static const std::unordered_map<
         {".push", &Compiler::compile_asm_push},
         {".pop", &Compiler::compile_asm_pop},
         {"rlet", &Compiler::compile_rlet},
-        //        {".jmp", &Compiler::compile_asm},
+        {".jr", &Compiler::compile_asm_jr},
         {".sub", &Compiler::compile_asm_sub},
-        //        {".ret-reg", &Compiler::compile_asm},
+        {".add", &Compiler::compile_asm_add},
+        {".load-sym", &Compiler::compile_asm_load_sym},
+        {".mov", &Compiler::compile_asm_mov},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
@@ -253,6 +255,12 @@ Val* Compiler::compile_get_symbol_value(const goos::Object& form,
  */
 Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   auto name = symbol_string(form);
+
+  // optimization to look these up as symbol objects, not getting the value of a symbol.
+  // so you don't have to type '#f, '#t everywhere to get the best performance.
+  if (name == "#t" || name == "#f") {
+    return compile_get_sym_obj(name, env);
+  }
 
   // see if the symbol is defined in any enclosing symbol macro envs (mlet's).
   auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);

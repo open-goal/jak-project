@@ -430,4 +430,60 @@ class IR_AsmSub : public IR_Asm {
   const RegVal* m_src = nullptr;
 };
 
+class IR_AsmAdd : public IR_Asm {
+ public:
+  IR_AsmAdd(bool use_coloring, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_GetSymbolValueAsm : public IR_Asm {
+ public:
+  IR_GetSymbolValueAsm(bool use_coloring, const RegVal* dest, std::string sym_name, bool sext);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  std::string m_sym_name;
+  bool m_sext = false;
+};
+
+class IR_JumpReg : public IR_Asm {
+ public:
+  IR_JumpReg(bool use_coloring, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_src = nullptr;
+};
+
+class IR_RegSetAsm : public IR_Asm {
+ public:
+  IR_RegSetAsm(bool use_color, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
 #endif  // JAK_IR_H

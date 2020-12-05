@@ -135,9 +135,9 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     // compile a function! First create a unique name...
     std::string function_name = lambda.debug_name;
     if (function_name.empty()) {
-      function_name = fmt::format("anonymous-function-{}", obj_env->functions().size());
+      function_name = obj_env->get_anon_function_name();
     }
-    auto new_func_env = std::make_unique<FunctionEnv>(env, lambda.debug_name);
+    auto new_func_env = std::make_unique<FunctionEnv>(env, function_name);
     new_func_env->set_segment(segment);
 
     // set up arguments

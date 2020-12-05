@@ -66,3 +66,11 @@
 - Added `rlet` to declare register variables.
 - Added `:color #f` option to inline assembly forms to exclude them from the coloring system.
 - Added `asm-func` to declare for purely assembly functions.
+- Enum values now work where constant integers are expected.
+- The boolean values `#f` and `#t` now are gotten as symbol objects, not values of symbols.
+- In a static field initialization, you can use `#f` and `#t` instead of `'#f` and `'#t`
+- Added `no-typecheck` option to define.
+- Reworked type checking for `set!`. You may now use `#f` for non-numeric types.
+- Fixed a bug where arguments to a method were unmodifiable.
+- Fixed a bug where multiple anonymous lambda functions in the same file would throw a compiler error related to function name uniqueness.
+- Method declarations can now use compound types. Previously they could only use simple types due to a mistake in deftype parser.

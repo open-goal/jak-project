@@ -96,6 +96,9 @@ class FileEnv : public Env {
   void debug_print_tl();
   const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
   const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
+  std::string get_anon_function_name() {
+    return "anon-function-" + std::to_string(m_anon_func_counter++);
+  }
   const FunctionEnv& top_level_function() {
     assert(m_top_level_func);
     return *m_top_level_func;
@@ -110,6 +113,7 @@ class FileEnv : public Env {
   std::vector<std::unique_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
   std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
+  int m_anon_func_counter = 0;
 
   // statics
   FunctionEnv* m_top_level_func = nullptr;

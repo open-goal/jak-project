@@ -179,6 +179,26 @@
     )
   )
 
+;; Define a new function, but only if we're debugging.
+;; TODO - should place the function in the debug segment!
+(defmacro defun-debug (name bindings &rest body)
+  `(if *debug-segment*
+       ,(if (and
+             (> (length body) 1)      ;; more than one thing in function
+             (string? (first body))   ;; first thing is a string
+             )
+           ;; then it's a docstring and we ignore it.
+           `(define ,name (lambda :name ,name :segment debug ,bindings ,@(cdr body)))
+           ;; otherwise don't ignore it.
+           `(define ,name (lambda :name ,name :segment debug ,bindings ,@body))
+           )
+       
+       ;; function not loaded, set function to the nothing function.
+       ;; we don't typecheck this.
+       (define :no-typecheck #t ,name nothing)
+       )
+  )
+
 (defmacro while (test &rest body)
   (with-gensyms (reloop test-exit)
     `(begin
@@ -209,6 +229,15 @@
             (+1! ,(first var))
             )
      ,@(cddr var)
+     )
+  )
+
+(defmacro countdown (var &rest body)
+  `(let ((,(first var) ,(second var)))
+     (while (!= ,(first var) 0)
+       (set! ,(first var) (- ,(first var) 1))
+       ,@body
+       )
      )
   )
 
@@ -338,6 +367,10 @@
 
 (defmacro zero? (thing)
   `(eq? ,thing 0)
+  )
+
+(defmacro nonzero? (thing)
+  `(neq? ,thing 0)
   )
 
 (defmacro &+! (val amount)

@@ -152,3 +152,78 @@ Val* Compiler::compile_asm_sub(const goos::Object& form, const goos::Object& res
   env->emit_ir<IR_AsmSub>(color, dest, src);
   return get_none();
 }
+
+Val* Compiler::compile_asm_add(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot .add this. Got a {}.", dest->print());
+  }
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  env->emit_ir<IR_AsmAdd>(color, dest, src);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(
+      form, args, {{}, {goos::ObjectType::SYMBOL}},
+      {{"sext", {false, goos::ObjectType::SYMBOL}}, {"color", {false, goos::ObjectType::SYMBOL}}});
+  auto& sym_name = args.unnamed.at(1).as_symbol()->name;
+  auto sym_kv = m_symbol_types.find(sym_name);
+  if (sym_kv == m_symbol_types.end()) {
+    throw_compiler_error(form, "Cannot find a symbol named {}.", sym_name);
+  }
+  auto ts = sym_kv->second;
+  bool sext = m_ts.lookup_type(ts)->get_load_signed();
+  if (args.has_named("sext")) {
+    sext = get_true_or_false(form, args.named.at("sext"));
+  }
+
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot .load-sym this. Got a {}.", dest->print());
+  }
+
+  env->emit_ir<IR_GetSymbolValueAsm>(color, dest, sym_name, sext);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto src = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  env->emit_ir<IR_JumpReg>(color, src);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot .mov this. Got a {}.", dest->print());
+  }
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  env->emit_ir<IR_RegSetAsm>(color, dest, src);
+  return get_none();
+}
