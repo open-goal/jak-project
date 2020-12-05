@@ -103,6 +103,10 @@
   `(format 0 ,@args)
   )
 
+(defmacro msg-warn (&rest args)
+  `(format 0 ,@args)
+  )
+
 ;; todo process pointer
 ;; todo process memory usage
 ;; with pp
@@ -259,8 +263,8 @@
    )
   (:methods
     (new ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic)) _type_ 0)
-    (get-process ((pool dead-pool) (type-to-make type) (stack-size integer)) process 14)
-    (return-process ((pool dead-pool) (proc process)) process-tree 15)
+    (get-process ((pool _type_) (type-to-make type) (stack-size int)) process 14)
+    (return-process ((pool _type_) (proc process)) none 15)
     )
   :size-assert #x20
   :method-count-assert 16
@@ -302,17 +306,18 @@
    (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104)
    )
   (:methods
-    (compact ((this dead-pool-heap) (count integer)) none 16)
+    (new ((allocation symbol) (type-to-make type) (name basic) (allocated-length int) (heap-size int)) _type_ 0)
+    (compact ((this dead-pool-heap) (count int)) none 16)
     (shrink-heap ((this dead-pool-heap) (proc process)) dead-pool-heap 17)
-    (churn ((this dead-pool-heap) (count integer)) none 18)
-    (memory-used ((this dead-pool-heap)) integer 19)
-    (memory-total ((this dead-pool-heap)) integer 20)
-    (gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec)) integer 21)
+    (churn ((this dead-pool-heap) (count int)) none 18)
+    (memory-used ((this dead-pool-heap)) int 19)
+    (memory-total ((this dead-pool-heap)) int 20)
+    (gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec)) int 21)
     (gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec)) pointer 22)
     (find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec)) dead-pool-heap-rec 23)
-    (find-gap-by-size ((this dead-pool-heap) (size integer)) dead-pool-heap-rec 24)
-    (memory-free ((this dead-pool-heap)) integer 25)
-    (compact-time ((this dead-pool-heap)) integer 26)
+    (find-gap-by-size ((this dead-pool-heap) (size int)) dead-pool-heap-rec 24)
+    (memory-free ((this dead-pool-heap)) int 25)
+    (compact-time ((this dead-pool-heap)) uint 26)
     )
   
   :size-assert #x68
@@ -465,4 +470,12 @@
 (defmacro process-heap-size (proc)
   ;; get how much heap a process has
   `(the int (-> ,proc allocated-length))
+  )
+
+(defmacro process-mask? (mask enum-value)
+  `(!= 0 (logand ,mask (process-mask ,enum-value)))
+  )
+
+(defmacro process-mask-set! (mask enum-value)
+  `(set! ,mask (logior ,mask (process-mask ,enum-value)))
   )

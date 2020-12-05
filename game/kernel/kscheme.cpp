@@ -827,6 +827,7 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
 
   // BUG! This uses the child method count, but should probably use the parent method count.
   for (u32 i = 0; i < n_methods; i++) {
+    // for (u32 i = 0; i < Ptr<Type>(parent)->num_methods; i++) {
     child_slots[i] = parent_slots[i];
   }
 

@@ -159,6 +159,7 @@ std::string FileEnv::print() {
 void FileEnv::add_function(std::unique_ptr<FunctionEnv> fe) {
   assert(fe->idx_in_file == -1);
   fe->idx_in_file = m_functions.size();
+  assert(!fe->name().empty());
   m_functions.push_back(std::move(fe));
 }
 

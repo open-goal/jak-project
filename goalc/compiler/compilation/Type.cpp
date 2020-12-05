@@ -327,6 +327,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
     auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, emitter::RegKind::GPR);
+    ireg->mark_as_settable();
     constr.ireg = ireg->ireg();
     constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
     new_func_env->params[lambda.params.at(i).name] = ireg;

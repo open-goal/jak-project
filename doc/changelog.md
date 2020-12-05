@@ -71,3 +71,5 @@
 - In a static field initialization, you can use `#f` and `#t` instead of `'#f` and `'#t`
 - Added `no-typecheck` option to define.
 - Reworked type checking for `set!`. You may now use `#f` for non-numeric types.
+- Fixed a bug where arguments to a method were unmodifiable.
+- Fixed a bug where multiple anonymous lambda functions in the same file would throw a compiler error related to function name uniqueness.

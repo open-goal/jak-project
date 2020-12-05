@@ -5,6 +5,8 @@
 ;; name in dgo: gkernel
 ;; dgos: KERNEL
 
+;; Fwd
+(define-extern change-parent (function process-tree process-tree process-tree))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; System Globals
@@ -89,6 +91,7 @@
 
 ;; the main stack for running GOAL code!
 (define *dram-stack* (new 'global 'array 'uint8 DPROCESS_STACK_SIZE))
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
 
 ;; I don't think this stack is used, but I'm not sure.
 (set! (-> *kernel-context* fast-stack-top) *scratch-memory-top*)
@@ -621,6 +624,8 @@
 
 ; a dead-pool is a collection of processes of fixed size that you can get processes from.
 
+(define-extern *debug-dead-pool* dead-pool-heap)
+
 (defmethod new dead-pool ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic))
   "Create a pool of count dead processes, each with a fixed size stack-size"
   (let ((obj (object-new)))
@@ -648,6 +653,806 @@
     obj
     )
   )
+
+(defmethod get-process dead-pool ((obj dead-pool) (type-to-make type) (stack-size int))
+  "Get a process from this dead pool of the given type." 
+  (let ((proc (-> obj child)))
+    
+    (when (and (not proc) *debug-segment* (neq? obj *debug-dead-pool*))
+      ;; we failed, but we're in debug mode and not looking at the debug pool
+      ;; try again from the debug pool and warn if this works
+      (set! proc (the (pointer process-tree) (get-process *debug-dead-pool* type-to-make stack-size)))
+      (when proc
+        (format 0 "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"
+                type-to-make (as-process proc) (-> obj name))
+        )
+      ;; there's a bug here. proc is a process here, but will be used as a process pointer.
+      ;; let's just kill the program here.
+      ;; this is likely a copy-paste bug from get-process dead-pool-heap.
+      (break) 
+      )
+    
+    (cond
+      (proc
+        ;; success! set our type and return.
+        (set! (-> (-> proc) type) type-to-make)
+        (the process (-> proc)) ;; cast from process-tree to process.
+        )
+      (else
+        (format 0 "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"
+                type-to-make (as-process proc) (-> obj name))
+        (the process #f)
+        )
+      )
+    )
+  )
+
+
+(defmethod return-process dead-pool ((obj dead-pool) (proc process))
+  "Return a process to its pool once you are done with it."
+  (change-parent proc obj)
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Dead Pool Heap
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; a dead-pool-heap is a chunk of memory where you can allocate variable sized processes.
+; these processes start out with a lot of memory, then shrink their heap (compact) to the size
+; they actually need.  To avoid heap fragmentation, the dead-pool-heap system will relocate
+; processes. This requires that you implement the relocate method on your process.
+
+(define-extern *null-process* process)
+
+(defmethod new dead-pool-heap ((allocation symbol) (type-to-make type) (name basic) (allocated-length int) (heap-size int))
+  "Create a new dead pool heap. It will support allocated-length processes and have a total heap size of heap-size"
+  (let ((obj (object-new (+ (the int (-> type-to-make size))
+                            (align16 (* allocated-length 12))
+                            heap-size))))
+    (set! (-> obj name) name)
+    (set! (-> obj mask) (process-mask process-tree))
+    (set! (-> obj allocated-length) allocated-length)
+    (set! (-> obj parent) #f)
+    (set! (-> obj brother) #f)
+    (set! (-> obj child) #f)
+    
+    (set! (-> obj self) obj)
+    (set! (-> obj ppointer) (&-> obj self))
+    
+    ;; initialize each process handle
+    ;; build them into a linked list of null-process
+    (countdown (i allocated-length)
+      (let ((rec (-> obj process-list i)))
+        (set! (-> rec process) *null-process*)
+        (set! (-> rec next) (-> obj process-list (+ i 1)))
+        )
+      )
+    
+    ;; set up the dead-list
+    (set! (-> obj dead-list next) (-> obj process-list 0))
+    (set! (-> obj alive-list process) #f) ;; likely typo here, should be dead-list
+    (set! (-> obj process-list (- allocated-length 1) next) #f)
+    
+    ;; nothing is alive 
+    (set! (-> obj last) (-> obj alive-list))
+    (set! (-> obj alive-list next) #f)
+    (set! (-> obj alive-list process) #f)
+    (set! (-> obj first-gap) (-> obj alive-list))
+    (set! (-> obj first-shrink) #f)
+    
+    ;; setup the heap. It just begins after the process records.
+    (set! (-> obj heap base) (the pointer (align16 (-> obj process-list allocated-length))))
+    (set! (-> obj heap current) (-> obj heap base))
+    (set! (-> obj heap top) (&+ (-> obj heap base) heap-size))
+    (set! (-> obj heap top-base) (-> obj heap top))
+    obj
+    )
+  )
+
+(defmethod gap-location dead-pool-heap ((obj dead-pool-heap) (rec dead-pool-heap-rec))
+  "Get the gap after the given process. 
+  If root of the alive list is given, will give the first gap between the heap and the first process.
+  If there is no gap, may point to the next process. Not 16-byte aligned."
+  (cond
+    ((-> rec process)
+     (the pointer (&+ (-> rec process) (-> process size) (-> rec process allocated-length) (- *gtype-basic-offset*)))
+     ;;               start of proc     end of type data  process's heap                   basic offset
+     )
+    (else
+      (-> obj heap base)
+      )
+    )
+  )
+
+(defmethod gap-size dead-pool-heap ((obj dead-pool-heap) (rec dead-pool-heap-rec))
+  "Determine the size between the given process and the next process or end of the heap.
+   If you give the first rec, it will given the gap between the beginning of the heap and the next process."
+  (the int
+       (cond
+         ((-> rec process)
+          ;; compute the end of my process (no basic offset)
+          (let ((my-end (&+ (-> rec process) (-> process size) (-> rec process allocated-length))))
+            (if (-> rec next)
+                ;; if there's a next process, look at the difference to the next (basic offsets cancel)
+                (&- (-> rec next process) my-end)
+                ;; no next process, look at the top of the heap.
+                (&- (-> obj heap top) (&+ my-end *gtype-basic-offset*))
+                )
+            )
+          )
+         (else
+           (if (-> rec next)
+               (&- (-> rec next process) (&+ (-> obj heap base) *gtype-basic-offset*))
+               (&- (-> obj heap top) (-> obj heap base)))
+           )
+         )
+       )
+  )
+
+(defmethod find-gap dead-pool-heap ((obj dead-pool-heap) (rec dead-pool-heap-rec))
+  "Start at the given record and find the closest gap after it. Returns the rec
+  which has the gap after it. If no gaps, returns the last rec."
+  (while (and (-> rec next) (zero? (gap-size obj rec)))
+    ; no gap here!
+    (set! rec (-> rec next))
+    )
+  rec
+  )
+
+
+(defmethod inspect dead-pool-heap ((obj dead-pool-heap))
+  "Inspect a dead-pool-heap and all of the recs and their gaps"
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tmask: ~D~%" (-> obj mask))
+  (format #t "~Tparent: #x~X~%" (-> obj parent))
+  (format #t "~Tbrother: #x~X~%" (-> obj brother))
+  (format #t "~Tchild: #x~X~%" (-> obj child))
+  (format #t "~Tppointer: #x~X~%" (-> obj ppointer))
+  (format #t "~Tself: ~A~%" (-> obj self))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (-> obj heap))
+  (format #t "~Tfirst-gap: #<dead-pool-heap-rec @ #x~X>~%" (-> obj first-gap))
+  (format #t "~Tfirst-shrink: #<dead-pool-heap-rec @ #x~X>~%" (-> obj first-shrink))
+  (format #t "~Talive-list: #<dead-pool-heap-rec @ #x~X>~%" (-> obj alive-list))
+  (format #t "~Tlast: #<dead-pool-heap-rec @ #x~X>~%" (-> obj last))
+  (format #t "~Tdead-list: #<dead-pool-heap-rec @ #x~X>~%" (-> obj dead-list))
+  
+  ;; here we consider the free memory to be all of the stuff after the last process.
+  ;; we don't consider random gaps to be "free".
+  ;; this means you can do a single allocation of free bytes and it will always succeed.
+  (let* ((total (the int (&- (-> obj heap top) (-> obj heap base))))
+         (free (if (-> obj last)
+                   (gap-size obj (-> obj last))
+                   total))
+         )
+    (format #t "~Tprocess-list[0] @ #x~X     ~D/~D bytes used~%" (-> obj process-list) (- total free) total)
+    )
+  
+  (let ((rec (-> obj alive-list))
+        (i 0)
+        )
+    (while rec
+      (when (-> rec process)
+        (format #t "~T  [~3D] #<dead-pool-heap-rec @ #x~X>  ~A~%" i rec (-> rec process))
+        )
+      (let ((gap (gap-size obj rec)))
+        (unless (zero? gap)
+          (format #t "~T   gap: ~D bytes @ #x~X~%" gap (gap-location obj rec)))
+        )
+      (set! rec (-> rec next))
+      (+! i 1)
+      )
+    )
+  
+  obj)
+
+(defmethod asize-of dead-pool-heap ((obj dead-pool-heap))
+  "Get our total size. Uses the heap top as the end."
+  (- (the int (-> obj heap top)) (the int obj) *gtype-basic-offset*)
+  )
+
+(defmethod memory-used dead-pool-heap ((obj dead-pool-heap))
+  "Get the amount of memory used. This includes gaps between processes."
+  (if (-> obj last)
+      ; we have at least one process, get the not-last-gap memory
+      (- (memory-total obj) (gap-size obj (-> obj last)))
+      ; no processes.
+      0
+      )
+  )
+
+(defmethod memory-total dead-pool-heap ((obj dead-pool-heap))
+  "Get the total amount of memory for processes"
+  (the int (&- (-> obj heap top) (-> obj heap base)))
+  )
+
+(defmethod memory-free dead-pool-heap ((obj dead-pool-heap))
+  "Get the total memory free."
+  (let ((top (-> obj heap top)))
+    (if (-> obj last)
+        ; get the last gap size
+        (gap-size obj (-> obj last))
+        ; otherwise just the whole heap.
+        (the int (&- top (-> obj heap base)))
+        )
+    )
+  )
+
+(defmethod compact-time dead-pool-heap ((obj dead-pool-heap))
+  "Access the compact time field."
+  (-> obj compact-time)
+  )
+
+(defmethod find-gap-by-size dead-pool-heap ((obj dead-pool-heap) (size int))
+  "Find a gap which will fit at least size bytes. Returns the rec for the proc before the gap.
+  Will return a #f rec if there's no gap big enough."
+  ; start our search at first-gap
+  (let ((rec (-> obj first-gap)))
+    (while (and rec (< (gap-size obj rec) size))
+      ;; nope, not big enough.
+      (set! rec (-> rec next))
+      )
+    rec
+    )
+  )
+
+(define-extern *vis-boot* basic)
+
+(defmethod get-process dead-pool-heap ((obj dead-pool-heap) (type-to-make type) (stack-size int))
+  "Allocate a process"
+  
+  ;; get a record for the new process
+  (let ((rec (-> obj dead-list next))
+        ;; will eventually hold our new process
+        (proc (the process #f))
+        ;; find the rec which has a big enough gap
+        (insert (find-gap-by-size obj (+ (the int (-> process size)) stack-size)))
+        )
+    
+    (cond
+      ;; check we got both a record and a gap
+      ((and rec insert)
+       
+       ;; pop the record off of the list
+       (set! (-> obj dead-list next) (-> rec next))
+       
+       ;; splice it into the alive list in the right spot
+       (let ((next (-> insert next)))
+         ;; after the gap rec
+         (set! (-> insert next) rec)
+         ;; us to the process after the gap
+         (set! (-> rec next) next)
+         
+         ;; link the proc after us back
+         (when next
+           (set! (-> next prev) rec)
+           )
+         ;; and us back to the proc before the gap
+         (set! (-> rec prev) insert)
+         
+         ;; if we are inserting after the last process, we should update the last.
+         (when (eq? insert (-> obj last))
+           (set! (-> obj last) rec)
+           )
+         
+         ;; get the gap
+         (set! proc (the process (gap-location obj insert)))
+         ;; and allocate! The method new does the offset for us.
+         (set! proc ((method process new) (the symbol proc) process 'process stack-size))
+         
+         ;; update our rec to contain this process.
+         (set! (-> rec process) proc)
+         ;; and the ppointer should point to the rec, not the processs, so we can track the process if it moves.
+         (set! (-> proc ppointer) (&-> rec process))
+         
+         ;; if we used the first gap, update first gap
+         (when (eq? (-> obj first-gap) insert)
+           (set! (-> obj first-gap) (find-gap obj rec))
+           )
+         
+         ;; we haven't shrunk yet. If we don't have a first-shrink, or we are before it,
+         ;; mark us as first shrink.
+         (when (or (not (-> obj first-shrink))
+                   (< (the int proc) (the int (-> obj first-shrink process)))
+                   )
+           (set! (-> obj first-shrink) rec)
+           )
+         
+         ;; update tree stuff.
+         (set! (-> proc parent) (-> obj ppointer))
+         (set! (-> proc pool) obj)
+         (set! (-> obj child) (&-> rec process))
+         )
+       
+       )
+      (else
+        ;; allocation failed! try again on the debug heap if we're debugging.
+        (when (and *debug-segment* (not (eq? obj *debug-dead-pool*)))
+          (set! proc (get-process *debug-dead-pool* type-to-make stack-size))
+          (when (and proc *vis-boot*)
+            (format 0 "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%" type-to-make proc (-> obj name)))
+          )
+        
+        )
+      )
+    
+    (cond
+      (proc
+        ;; success! set type and return.
+        (set! (-> proc type) type-to-make)
+        )
+      (else
+        ;; failure. complain.
+        (format 0 "WARNING: ~A ~A could not be allocated, because ~A was empty.~%" type-to-make proc (-> obj name))
+        )
+      )
+    
+    proc)
+  )
+
+(defmethod return-process dead-pool-heap ((obj dead-pool-heap) (proc process))
+  "Return a process to a dead pool heap"
+  
+  ;; check we are returning to the correct pool
+  (unless (eq? obj (-> proc pool))
+    (format 0 "ERROR: process ~A does not belong to dead-pool-heap ~A.~%" proc obj)
+    )
+  
+  ;; reclaim us.
+  (change-parent proc obj)
+  
+  ;; we don't maintain a real tree for a dead-pool-heap, so undo any change to child
+  ;; done by change-parent
+  (set! (-> obj child) #f)
+  
+  ;; we know our ppointer is really a rec for a dead-pool-heap process, so we can use
+  ;; this trick to quickly find our rec.
+  (let ((rec (the dead-pool-heap-rec (-> proc ppointer))))
+    
+    ;; if we are at or below the first gap, update first gap.
+    (when (or (eq? (-> obj first-gap) rec)
+              (< (the int (gap-location obj rec)) (the int (gap-location obj (-> obj first-gap))))
+              )
+      (set! (-> obj first-gap) (-> rec prev))
+      )
+    
+    
+    ;; update the first-shrink. We aren't smart about this and just move it backward.
+    (when (eq? (-> obj first-shrink) rec)
+      (set! (-> obj first-shrink) (-> rec prev))
+      (when (not (-> obj first-shrink process))
+        (set! (-> obj first-shrink) #f))
+      )
+    
+    ;; remove us from list
+    (set! (-> rec prev next) (-> rec next))
+    (cond
+      ((-> rec next)
+       ;; update links
+       (set! (-> rec next prev) (-> rec prev))
+       )
+      (else
+        ;; we were last, update that.
+        (set! (-> obj last) (-> rec prev))
+        )
+      )
+    
+    ;; insert at the front of the dead list.
+    (set! (-> rec next) (-> obj dead-list next))
+    (set! (-> obj dead-list next) rec)
+    (set! (-> rec process) *null-process*)
+    
+    (none)
+    )
+  )
+
+(defmethod shrink-heap dead-pool-heap ((obj dead-pool-heap) (proc process))
+  "Shrink the heap of a process. 
+  This resizes the process heap to be the exact size it is currently using."
+  (when proc
+    ;; get our rec.
+    (let ((rec (the dead-pool-heap-rec (-> proc ppointer))))
+      ;; check if it's ok to shrink
+      (unless (or (process-mask? (-> proc mask) heap-shrunk)  ;; already shrunk
+                  (and (not (-> proc next-state))             ;; uninitialized
+                       (not (-> proc state)))                 ;; uninitialized
+                  )
+        ;; shrink!
+        (set! (-> proc allocated-length) (the int (&- (-> proc heap-cur) (-> proc stack))))
+        (set! (-> proc heap-top) (&-> (-> proc stack) (-> proc allocated-length)))
+        
+        ;; update first gap
+        (when (< (the int proc) (the int (gap-location obj (-> obj first-gap))))
+          (set! (-> obj first-gap) (find-gap obj rec))
+          )
+        
+        ;; mark us as shrunk
+        (process-mask-set! (-> proc mask) heap-shrunk)
+        )
+      
+      ;; update first shrink
+      (when (eq? (-> obj first-shrink) rec)
+        (set! (-> obj first-shrink) (-> rec next))
+        )
+      )
+    )
+  obj
+  )
+
+(define-extern *stdcon* basic) ;; todo, more specific
+
+(defmethod compact dead-pool-heap ((obj dead-pool-heap) (count int))
+  "Do heap compaction.  The count argument tells us how much work to do.
+  If the heap is very full we will automatically do more work than requested."
+  
+  ;; first we see how much memory is in use.
+  (let ((free (memory-free obj))
+        (total (memory-total obj))
+        )
+    (let ((perc (/ (the float free) (the float total))))
+      (cond
+        ((< perc 0.1)
+         ;; 90% full! set count very large to try to fix this and complain.
+         (set! count 1000)
+         (when (and *debug-segment* (-> *kernel-context* low-memory-message))
+           (format *stdcon* "~3LLow Actor Memory~%~0L")
+           )
+         )
+        ((< perc 0.2)
+         ;; 80% full, try 4x harder
+         (set! count (* count 4))
+         )
+        ((< perc 0.3)
+         ;; 70% full, try 2x harder
+         (set! count (* count 2))
+         )
+        )
+      )
+    )
+  
+  ;; update stats
+  (set! (-> obj compact-count-targ) count)
+  (set! (-> obj compact-count) 0)
+  
+  ;; and do compaction!
+  (countdown (ii count)
+    
+    ;; first try to shrink a heap.
+    (let ((shrink (-> obj first-shrink)))
+      (when (not shrink)
+        ;; not sure when this happens, but reset shrink if we need to.
+        (set! shrink (set! (-> obj first-shrink) (-> obj alive-list next)))
+        )
+      (when shrink
+        ;; do a shrink!
+        (shrink-heap obj (-> shrink process))
+        )
+      )
+    
+    ;; now find the first gap
+    (let ((gap (-> obj first-gap)))
+      ;; and the thing after it
+      (when (-> gap next)
+        (let ((proc (-> gap next process))
+              (size (gap-size obj gap)))
+          (unless (zero? size)
+            (format #t "[kernel] Relocating process ~A by ~D.~%" proc (- size))
+            (when (< size 0)
+              ;; bug!
+              (break)
+              )
+            
+            ;; try shrinking before relocating.
+            (shrink-heap obj proc)
+            ;; relocate!
+            (relocate proc (- size))
+            ;; update first gap
+            (set! (-> obj first-gap) (find-gap obj gap))
+            ;; and update stats.
+            (+! (-> obj compact-count) 1)
+            )
+          )
+        )
+      )
+    )
+  
+  (none)
+  )
+
+(defmethod churn dead-pool-heap ((obj dead-pool-heap) (count int))
+  "Mess with the heap"
+  
+  (countdown (ii count)
+    (let ((rec (-> obj alive-list next)))
+      (when rec
+        (when (or (eq? (-> obj first-gap) rec)
+                  (< (the int (gap-location obj rec)) (the int (gap-location obj (-> obj first-gap))))
+                  )
+          (set! (-> obj first-gap) (-> rec prev)))
+        
+
+        (when (eq? (-> obj first-shrink) rec)
+          (set! (-> obj first-shrink) (-> rec prev))
+          (when (not (-> obj first-shrink process))
+            (set! (-> obj first-shrink) #f))
+          )
+        
+        (set! (-> rec prev next) (-> rec next))
+        (cond
+          ((-> rec next)
+           (set! (-> rec next prev) (-> rec prev))
+           )
+          (else
+            (set! (-> obj last) (-> rec prev))
+            )
+          )
+        
+        (let* ((insert (-> obj last))
+               (next (-> insert next))
+               )
+          
+          (set! (-> insert next) rec)
+          (set! (-> rec next) next)
+          (when next
+            (set! (-> next prev) rec))
+          (set! (-> rec prev) insert)
+          
+          (set! (-> obj last) rec)
+          (set! (-> rec process) (relocate (-> rec process) (the int (&- (gap-location obj insert) 
+                                                                         (the int (&- (-> rec process) *gtype-basic-offset*))))))
+          )
+        )
+      )
+    )
+  
+  (none)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Finding
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; GOAL lambdas aren't real lambdas, so you have to do this.
+(define *global-search-name* (the basic #f))
+(define *global-search-count* 0)
+
+(define-extern search-process-tree (function process-tree (function process-tree object) process))
+(define-extern iterate-process-tree (function process-tree (function object object) kernel-context object))
+(define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
+
+(defun process-by-name (name (pool process-tree))
+  "Look up a process in the given pool by name"
+  (set! *global-search-name* (the basic name))
+  (the process (search-process-tree pool (lambda ((var process))
+                                           (name= (-> var name) *global-search-name*))))
+  )
+
+(defun process-not-name (name (pool process-tree))
+  "Look up a process with not the given name."
+  (set! *global-search-name* (the basic name))
+  (the process (search-process-tree pool (lambda ((var process))
+             (not (name= (-> var name) *global-search-name*)))))
+  )
+
+(defun process-count ((this process-tree))
+  "Count number of processes in the given tree using iterate-process-tree"
+  (set! *global-search-count* 0)
+  (iterate-process-tree this 
+                        (lambda ((obj process))
+                          (+! *global-search-count* 1)
+                          #t)
+                        *null-kernel-context*)
+  *global-search-count*)
+
+(defun kill-by-name (name (pool process-tree))
+  "Call deactivate on all process with the given name."
+  (let ((proc (the process-tree #f)))
+    (while (set! proc (process-by-name name pool))
+      (deactivate proc)
+      )
+    )
+  )
+
+(defun kill-by-type (type (pool process-tree))
+  "Call deactivate on all processes with the given type"
+  (break) ; this is sketchy.
+  (set! *global-search-name* (the basic type))
+  (let ((proc (the process-tree #f)))
+    (while (set! proc (search-process-tree pool (lambda ((var process))
+                                                  (= (the type *global-search-name*)
+                                                     (-> var type)))))
+      (deactivate proc)
+      )
+    )
+  )
+
+(defun kill-not-name (name (pool process-tree))
+  "Call deactivate on all processes that don't match the name"
+  (let ((proc (the process-tree #f)))
+    (while (set! proc (process-not-name name pool))
+      (deactivate proc)
+      )
+    )
+  )
+
+(defun kill-not-type (type (pool process-tree))
+  "Call deactivate on all prcesses that don't match the given type"
+  (break) ;; this function is weird.
+  (set! *global-search-name* (the basic type))
+  (let ((proc (the process-tree #f)))
+    (while (set! proc (search-process-tree pool (lambda ((var process))
+                                                  (!= (the type *global-search-name*)
+                                                     (-> var type)))))
+      (deactivate proc)
+      )
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Iterating
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod run-logic? process ((obj process))
+  "Return if the process should be run or not."
+  #t)
+
+;; the following three functions recursively iterate through process trees.
+
+(defun iterate-process-tree ((obj process-tree) (func (function object object)) (context kernel-context))
+  "Call func on all processes that aren't a process-tree. If func returns 'dead, stop.
+  The kernel-context is ignored."
+  (let ((ret (or (process-mask? (-> obj mask) process-tree)
+                 (func obj))))
+    (cond
+      ((eq? ret 'dead)
+       ;; stop.
+       )
+      (else
+        ;; iterate through brothers
+        (let ((brother (-> obj child)))
+          (while brother
+            ;; kinda weird, we use the brother from _before_ recursing.
+            (let ((old-brother (-> (-> brother) brother)))
+              (iterate-process-tree (-> brother) func context)
+              (set! brother old-brother)
+              )
+            )
+          )
+        )
+      )
+    ret
+    )
+  )
+
+(defun execute-process-tree ((obj process-tree) (func (function object object)) (context kernel-context))
+  "Like iterate, but also requires that prevent-from-run's mask doesn't block, and that run-logic?
+  is true in order to call the function."
+  
+  ;; check mask for tree, mask for prevent, run-logic?, then run!
+  (let ((ret (or (process-mask? (-> obj mask) process-tree)
+                 (not (and (or (zero? (logand (-> context prevent-from-run) (-> obj mask))))
+                           (run-logic? obj)))
+                 (func obj)
+                 )))
+    
+    ;; run on our children
+    (cond
+      ((eq? ret 'dead)
+       )
+      (else (let ((brother (-> obj child)))
+              (while brother
+                (let ((temp (-> (-> brother) brother)))
+                  (execute-process-tree (-> brother) func context)
+                  (set! brother temp))
+                )
+              )
+            )
+      )
+    ret)
+  )
+
+
+(defun search-process-tree ((obj process-tree) (func (function process-tree object)))
+  "Find the first process which func return true on. Won't find process-tree's (by mask)"
+  
+  ;; reject process-tree
+  (unless (process-mask? (-> obj mask) process-tree)
+    ;; is this a match?
+    (when (func obj)
+      (return-from #f (the process obj))
+      )
+    )
+  
+  ;; not a match, check out children
+  (let ((brother (-> obj child)))
+    (while brother
+      (let ((temp (-> (-> brother) brother)))
+        (let ((ret (search-process-tree (-> brother) func)))
+          (when ret
+            (return-from #f (the process ret))
+            )
+          )
+        (set! brother temp)
+        )
+      )
+    )
+  (the process #f)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tree Stuff
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun change-parent ((obj process-tree) (new-parent process-tree))
+  "Make obj a child of new-parent"
+  (let ((parent (-> obj parent)))
+    ;; parent is a ppointer.
+    
+    ;; need to remove obj from its current parent
+    (when parent
+      (let ((proc (-> (-> parent) child)))
+        (if (eq? (as-process proc) obj)
+            ;; case where we're the first child is easy!
+            (set! (-> (-> parent) child) (-> obj brother))
+            ;; otherwise, look through brothers to find us.
+            (begin
+              (while (not (eq? (as-process (-> (-> proc) brother)) obj))
+                (set! proc (-> (-> proc) brother))
+                )
+              ;; ok, got us, splice out of list.
+              (set! (-> (-> proc) brother) (-> obj brother))
+              )
+            )
+        )
+      )
+    
+    ;; add to new parent
+    (set! (-> obj parent) (-> new-parent ppointer))
+    (set! (-> obj brother) (-> new-parent child))
+    (set! (-> new-parent child) (-> obj ppointer))
+    obj
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Globals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(let ((obj (define *listener-process* (new 'global 'process 'listener 2048))))
+  (set! (-> obj status) 'ready)
+  (set! (-> obj pid) 1)
+  ;; allocation symbol is actually process, but it's ignored so this is ok for now.
+  (set! (-> obj main-thread) (new 'global 'cpu-thread obj 'main 256 *kernel-dram-stack*))
+  )
+
+;; these are unknown
+(define *null-process* (new 'global 'process 'listener 16))
+(define *vis-boot* #f)
+
+;; a few pools of fixed size processes that are shared.
+(define *16k-dead-pool* (new 'global 'dead-pool 1 (* 16 1024) '*16k-dead-pool*))
+(define *8k-dead-pool* (new 'global 'dead-pool 1 (* 8 1024) '*8k-dead-pool*))
+(define *4k-dead-pool* (new 'global 'dead-pool 4 (* 4 1024) '*4k-dead-pool*))
+
+;; some very important process pools
+(define *target-dead-pool* (new 'global 'dead-pool 1 (* 48 1024) '*target-dead-pool*))
+(define *camera-dead-pool* (new 'global 'dead-pool 7 (* 4 1024) '*camera-dead-pool*))
+(define *camera-master-dead-pool* (new 'global 'dead-pool 1 (* 8 1024) '*camera-master-dead-pool*))
+
+(if *debug-segment*
+  (define *debug-dead-pool* (new 'debug 'dead-pool-heap '*debug-dead-pool* 768 (* 1024 1024)))
+  )
+
+(define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* 768 PROCESS_HEAP_SIZE))
+(define *default-dead-pool* (the dead-pool *nk-dead-pool*))
+(define *pickup-dead-pool* (the dead-pool *nk-dead-pool*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Temp Hacks
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun kernel-dispatcher ()
   "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"
