@@ -238,8 +238,8 @@
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
-   (ppointer pointer :offset-assert 24)
-   (self basic :offset-assert 28)
+   (ppointer (pointer process-tree) :offset-assert 24)
+   (self process-tree :offset-assert 28)
    )
   
   (:methods
@@ -264,7 +264,7 @@
    (main-thread thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
    (entity basic :offset-assert #x34)
-   (state basic :offset-assert #x38)
+   (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
    (event-hook function :offset-assert #x44)
@@ -279,6 +279,7 @@
    )
   
   (:methods
+    (new ((allocation symbol) (type-to-make type) (name basic) (stack-size int)) _type_ 0)
     (activate ((obj process) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
     (deactivate  ((obj process)) basic 10)
     (dummy-method-11 () none 11)
@@ -297,6 +298,7 @@
    ;; nothing new!
    )
   (:methods
+    (new ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic)) _type_ 0)
     (get-process ((pool dead-pool) (type-to-make type) (stack-size integer)) process 14)
     (return-process ((pool dead-pool) (proc process)) process-tree 15)
     )
@@ -425,6 +427,12 @@
 
 (define-extern remove-exit (function stack-frame))
 (define-extern stream<-process-mask (function object int object))
+(define-extern inspect-process-heap (function process symbol))
+(define-extern return-from-thread (function none))
+(define-extern return-from-thread-dead (function none))
+(define-extern reset-and-call (function thread function none))
+
+
 (define-extern search-process-tree (function process-tree (function symbol object) object))
 (define-extern kill-by-name (function object process-tree symbol))
 (define-extern process-by-name (function object process-tree process))
@@ -31127,12 +31135,10 @@
 (define-extern set-to-run function)
 ;;(define-extern *master-mode* object) ;; unknown type
 ;;(define-extern default-pool object) ;; unknown type
-(define-extern return-from-thread-dead function)
 ;;(define-extern listener object) ;; unknown type
 (define-extern process-count function)
 ;;(define-extern target-pool object) ;; unknown type
 (define-extern set-to-run-bootstrap function)
-(define-extern return-from-thread function)
 ;;(define-extern *camera-dead-pool* object) ;; unknown type
 ;;(define-extern *last-loado-debug-usage* object) ;; unknown type
 ;;(define-extern process object) ;; unknown type
@@ -31143,7 +31149,6 @@
 ;;(define-extern *16k-dead-pool* object) ;; unknown type
 (define-extern entity-deactivate-handler function)
 ;;(define-extern *null-process* object) ;; unknown type
-(define-extern inspect-process-heap function)
 ;;(define-extern *target-pool* object) ;; unknown type
 ;;(define-extern *global-search-name* object) ;; unknown type
 ;;(define-extern *kernel-boot-mode* object) ;; unknown type
@@ -31169,7 +31174,6 @@
 (define-extern kernel-dispatcher (function (function object)))
 ;;(define-extern *8k-dead-pool* object) ;; unknown type
 (define-extern unload-package (function string pair))
-(define-extern reset-and-call function)
 (define-extern process-not-name function)
 ;;(define-extern *display-pool* object) ;; unknown type
 ;;(define-extern *kernel-version* object) ;; unknown type

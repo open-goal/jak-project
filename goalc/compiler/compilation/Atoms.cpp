@@ -18,8 +18,10 @@ static const std::unordered_map<
         {".push", &Compiler::compile_asm_push},
         {".pop", &Compiler::compile_asm_pop},
         {"rlet", &Compiler::compile_rlet},
-        //        {".jmp", &Compiler::compile_asm},
+        {".jr", &Compiler::compile_asm_jr},
         {".sub", &Compiler::compile_asm_sub},
+        {".add", &Compiler::compile_asm_add},
+        {".load-sym", &Compiler::compile_asm_load_sym},
         //        {".ret-reg", &Compiler::compile_asm},
 
         // BLOCK FORMS

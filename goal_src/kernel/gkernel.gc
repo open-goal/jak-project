@@ -329,7 +329,6 @@
 
 (defmethod new process-tree ((allocation symbol) (type-to-make type) (name basic))
   "Create a process-tree node"
-  
   ;; allocate
   (let ((obj (object-new)))
     (set! (-> obj name) name)
@@ -340,6 +339,312 @@
     
     (set! (-> obj self) obj)
     (set! (-> obj ppointer) (&-> obj self))
+    obj
+    )
+  )
+
+(defmethod inspect process-tree ((obj process-tree))
+  "Inspect a process-tree node."
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~S~%" (-> obj name))
+  (format #t "~Tmask: #x~X~%" (-> obj mask))
+  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  obj
+  )
+
+
+(defmethod new process ((allocation symbol) (type-to-make type) (name basic) (stack-size int))
+  "Allocate a new process.
+  The process stack is initially set to the entire process memory."
+  (let ((obj (if (eq? (-> allocation type) symbol)
+                 (object-new (the int (+ (-> process size) stack-size))) ;; symbol, allocate on heap
+                 (the process (&+ allocation *gtype-basic-offset*)))))   ;; treat as address.
+    
+    ;; initialize
+    (set! (-> obj name) name)
+    (set! (-> obj status) 'dead)
+    (set! (-> obj pid) 0)
+    (set! (-> obj pool) #f)
+    (set! (-> obj allocated-length) stack-size)
+    (set! (-> obj top-thread) #f)
+    (set! (-> obj main-thread) #f)
+    
+    ;; set up the heap to start at the stack
+    (set! (-> obj heap-cur) (-> obj stack))
+    (set! (-> obj heap-base) (-> obj stack))
+    
+    ;; and end at the end of the stack.
+    (set! (-> obj heap-top) (&-> (-> obj stack) (-> obj allocated-length)))
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; heap top-base bug
+    ;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; original there was something like (set! (-> heap-top-base) (-> heap-top))
+    ;; but this overlaps with the stack-frame-top and did nothing.
+    ;; this is likely because they added the concept of heap "top" to kheaps in
+    ;; general, but not to process heaps.
+    
+    ;; setup state stuff
+    (set! (-> obj stack-frame-top) #f)
+    (set! (-> obj state) #f)
+    (set! (-> obj next-state) #f)
+    (set! (-> obj entity) #f)
+    
+    ;; setup handlers
+    (set! (-> obj trans-hook) #f)
+    (set! (-> obj post-hook) #f)
+    (set! (-> obj event-hook) #f)
+
+    ;; setup process tree
+    (set! (-> obj parent) #f)
+    (set! (-> obj brother) #f)
+    (set! (-> obj child) #f)
+    
+    ;; setup reference stuff.
+    (set! (-> obj self) obj)
+    (set! (-> obj ppointer) (&-> obj self))
+    obj
+    )            
+  )
+
+(defun inspect-process-heap ((obj process))
+  "Inspect the heap of a process."
+  (let ((ptr (&+ (-> obj heap-base) *gtype-basic-offset*))) ; point to first basic
+    ;; loop over objects
+    (while (< (the int ptr) (the int (-> obj heap-cur)))
+      ;; inspect the object
+      (inspect (the basic ptr))
+      ;; seek to the next object on the heap.
+      (set! ptr (&+ ptr (align16 (asize-of (the basic ptr)))))
+      )
+    )
+  )
+
+(defmethod inspect process ((obj process))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~S~%" (-> obj name))
+  (format #t "~Tmask: #x~X~%" (-> obj mask))
+  (format #t "~Tstatus: ~A~%" (-> obj status))
+  (format #t "~Tmain-thread: ~A~%" (-> obj main-thread))
+  (format #t "~Ttop-thread: ~A~%" (-> obj top-thread))
+  (format #t "~Tentity: ~A~%" (-> obj entity))
+  (format #t "~Tstate: ~A~%" (-> obj state))
+  (format #t "~Tnext-state: ~A~%" (-> obj next-state))
+  (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
+  (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
+  (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
+  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
+  (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
+  (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
+  (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
+  (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
+
+  ;; print all objects on the process heap
+  (protect (*print-column*)
+    (+! *print-column* *tab-size*)
+    (format #t "----~%")
+    (inspect-process-heap obj)
+    (format #t "----~%")
+    )
+
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tstack[~D] @ #x~X~%" (-> obj allocated-length) (-> obj stack))
+  obj
+  )
+
+(defmethod asize-of process ((obj process))
+  (the int (+ (-> process size) (-> obj allocated-length)))
+  )
+
+(defmethod print process ((obj process))
+  (format #t "#<~A ~S ~A :state ~S " 
+          (-> obj type) 
+          (-> obj name) 
+          (-> obj status) 
+          (when (-> obj state) (-> obj state name)))
+  
+  (format #t ":stack ~D/~D :heap ~D/~D @ #x~X>"
+          (process-stack-used obj)
+          (process-stack-size obj)
+          (process-heap-used obj)
+          (process-heap-size obj)
+          obj
+          )
+  obj
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Context Suspend And Resume - Kernel
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the following functions are used for managing contexts.
+;; saved registers: rbx, rbp, r10, r11, r12
+
+;; DANGER - THE KERNEL DOES NOT SAVE ITS FLOATING POINT CONTEXT!!!!
+
+;; we use this to store a GOAL pointer to the kernel's stack pointer when executing user code.
+;; to get back to the kernel, we use this global symbol.
+(define-extern *kernel-sp* pointer)
+
+(defun return-from-thread ()
+  "Context switch to the saved kernel context now.
+  This is intended to be jumped to with the ret instruction
+  at the end of a normal function, so this should preserve rax."
+  (declare (asm-func none)
+           ;(print-asm)
+           )
+  (rlet ((sp :reg rsp :type uint)
+         (off :reg r15 :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type uint)
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint)
+         )
+        ;; get the kernel stack pointer as a GOAL pointer
+        (.load-sym :sext #f sp *kernel-sp*)
+        ;; convert it back to a real pointer
+        (.add sp off)
+        
+        ;; restore saved registers...
+        ;; without coloring system because this is "cheating".
+        (.pop :color #f s4)
+        (.pop :color #f s3)
+        (.pop :color #f s2)
+        (.pop :color #f s1)
+        (.pop :color #f s0)
+        ;; return to the kernel function that called the user code
+        (.ret)
+        )
+  )
+
+(defun return-from-thread-dead ()
+  "Like return from thread, but we clean up our process with deactivate first.
+  The return register is not preserved here, instead we return the value of deactivate"
+  (declare (asm-func none)
+           ;(print-asm)
+           )
+  (rlet ((pp :reg r13 :type process)
+         (sp :reg rsp :type uint)
+         (off :reg r15 :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type uint)
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint)
+         )
+        
+        ;; first call the deactivate method.
+        (deactivate pp)
+        ;; get the kernel stack pointer as a GOAL pointer
+        (.load-sym :sext #f sp *kernel-sp*)
+        ;; convert it back to a real pointer
+        (.add sp off)
+        
+        ;; restore saved registers...
+        ;; without coloring system because this is "cheating".
+        (.pop :color #f s4)
+        (.pop :color #f s3)
+        (.pop :color #f s2)
+        (.pop :color #f s1)
+        (.pop :color #f s0)
+        ;; return to the kernel function that called the user code
+        (.ret)
+        )
+  )
+
+(defun reset-and-call ((obj thread) (func function))
+  "Make the given thread the top thread, reset the stack, and call the function.
+  Sets up a return trampoline so when the function returns it will return to the
+  kernel context."
+  (declare (asm-func none)
+           ;(print-asm)
+           )
+  
+  (rlet ((pp :reg r13 :type process)
+         (sp :reg rsp :type uint)
+         (off :reg r15 :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type uint)
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint)
+         )
+        
+        ;; set up the process pointer
+        (set! pp (-> obj process))
+        ;; mark the process as running and set its top thread
+        (set! (-> pp status) 'running)
+        (set! (-> pp top-thread) obj)
+        
+        ;; save the current kernel regs
+        (.push :color #f s0)
+        (.push :color #f s1)
+        (.push :color #f s2)
+        (.push :color #f s3)
+        (.push :color #f s4)
+        
+        ;; make rsp a GOAL pointer
+        (.sub sp off)
+        ;; and store it
+        (set! *kernel-sp* (the pointer sp)) ;; todo, asm form here?
+        
+        ;; setup the rsp for the new thread
+        (set! sp (the uint (-> obj stack-top)))
+        (.add sp off)
+        
+        ;; push the return trampoline to the stack for the user code to return to
+        (.push 0) ;; for 16-byte stack alignment.
+        (.push return-from-thread)
+        ;; and call the function!
+        (.jr func)
+        )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Context Suspend And Resume - Thread
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; todo thread suspend
+;; todo thread resume
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Dead Pool
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; a dead-pool is a collection of processes of fixed size that you can get processes from.
+
+(defmethod new dead-pool ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic))
+  "Create a pool of count dead processes, each with a fixed size stack-size"
+  (let ((obj (object-new)))
+    ;; setup process naming
+    (set! (-> obj name) name)
+    (set! (-> obj mask) (process-mask process-tree))
+    ;; setup process tree
+    (set! (-> obj parent) #f)
+    (set! (-> obj brother) #f)
+    (set! (-> obj child) #f)
+    ;; setup ref
+    (set! (-> obj self) obj)
+    (set! (-> obj ppointer) (&-> obj self))
+    
+    (dotimes (i count)
+      ;; create each process
+      (let ((old-bro (-> obj child))
+            (next ((method process new) allocation process 'dead stack-size)))
+        (set! (-> obj child) (as-ppointer next))
+        (set! (-> next parent) (as-ppointer obj))
+        (set! (-> next pool) obj)
+        (set! (-> next brother) old-bro)
+        )
+      )
     obj
     )
   )

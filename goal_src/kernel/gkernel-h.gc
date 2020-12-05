@@ -141,6 +141,7 @@
 
 (declare-type process basic)
 (declare-type stack-frame basic)
+(declare-type state basic)
 
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
@@ -195,8 +196,8 @@
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
-   (ppointer pointer :offset-assert 24)
-   (self basic :offset-assert 28)
+   (ppointer (pointer process-tree) :offset-assert 24)
+   (self process-tree :offset-assert 28)
    )
   
   (:methods
@@ -222,7 +223,7 @@
    (main-thread thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
    (entity basic :offset-assert #x34)
-   (state basic :offset-assert #x38)
+   (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
    (event-hook function :offset-assert #x44)
@@ -237,6 +238,7 @@
    )
   
   (:methods
+    (new ((allocation symbol) (type-to-make type) (name basic) (stack-size int)) _type_ 0)
     (activate ((obj process) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
     (deactivate  ((obj process)) basic 10)
     (dummy-method-11 () none 11)
@@ -256,6 +258,7 @@
    ;; nothing new!
    )
   (:methods
+    (new ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic)) _type_ 0)
     (get-process ((pool dead-pool) (type-to-make type) (stack-size integer)) process 14)
     (return-process ((pool dead-pool) (proc process)) process-tree 15)
     )
@@ -355,7 +358,46 @@
   :flag-assert #x900000010
   )
 
-;; handle (todo, need bitfield types)
+(deftype handle (uint64)
+  ((process (pointer process) :offset 0) ;; todo, more specific type
+   (pid int32 :offset 32)
+   (u64 uint64 :offset 0)
+   )
+  :flag-assert #x900000008
+  )
+
+(defmethod inspect handle ((obj handle))
+  (format #t "[~8x] ~A~%" 'handle)
+  (format #t "~Tprocess: #x~x~%" (-> obj process))
+  (format #t "~Tpid: ~D~%" (-> obj pid))
+  obj
+  )
+
+
+(defmacro get-process-from-handle (handle)
+  ;; the actual implementation is more clever than this.
+  `(if (-> ,handle process)
+       (let ((proc (-> (-> ,handle process))))
+         (if (= (-> ,handle pid)
+                (-> proc pid))
+             proc
+             )
+         )
+       )
+  )
+
+(defmethod print handle ((obj handle))
+  ;; the get-process-from-handle macro can't deal with
+  ;; a 0 in the process field, so we check it manually here.
+  (if (nonzero? (-> obj u64))
+      (format #t "#<handle :process ~A :pid ~D>"
+              (get-process-from-handle obj)
+              (-> obj pid)
+              )
+      (format #t "#<handle :process 0 :pid 0>")
+      )
+  obj
+  )
 
 ;; GOAL State.  A Process can be in a State.
 (deftype state (protect-frame)  ; state is a protect frame so we can "exit" it with cleanup
@@ -384,4 +426,43 @@
   :size-assert #x48
   :method-count-assert 9
   :flag-assert #x900000048
+  )
+
+(defmacro as-process (ppointer)
+  `(if ,ppointer
+       (-> (-> ,ppointer) self)
+       )
+  )
+
+(defmacro as-ppointer (proc)
+  ;"safely get a (pointer process) from a process, returning #f if invalid."
+  `(if ,proc
+       (-> ,proc ppointer)
+       )
+  )
+
+(defmacro process-stack-used (proc)
+  ;; get how much stack the top thread of a process has used.
+  `(- (the int (-> ,proc top-thread stack-top))
+      (the int (-> ,proc top-thread sp))
+      )
+  )
+
+(defmacro process-stack-size (proc)
+  ;; get how much stack the top thread of a process has
+  `(-> ,proc top-thread stack-size)
+  )
+
+(defmacro process-heap-used (proc)
+  ;; get how much heap a process has used.
+  `(- (-> ,proc allocated-length)
+      (- (the int (-> ,proc heap-top))
+         (the int (-> ,proc heap-cur))
+         )
+      )
+  )
+
+(defmacro process-heap-size (proc)
+  ;; get how much heap a process has
+  `(the int (-> ,proc allocated-length))
   )
