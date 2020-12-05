@@ -12,6 +12,9 @@
 ;; System Globals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; HACK ADDED
+(define *use-old-listener-print* #t)
+
 ;; Set version number symbols
 (define *kernel-version* (the binteger (logior (ash *kernel-major-version* 16) *kernel-minor-version*)))
 (define *irx-version* (the binteger (logior (ash *irx-major-version* 16) *irx-minor-version*)))
@@ -565,7 +568,7 @@
   "Make the given thread the top thread, reset the stack, and call the function.
   Sets up a return trampoline so when the function returns it will return to the
   kernel context."
-  (declare (asm-func none)
+  (declare (asm-func object)
            ;(print-asm)
            )
   
@@ -577,6 +580,7 @@
          (s2 :reg r10 :type uint)
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
+         (temp :reg rax :type uint)
          )
         
         ;; set up the process pointer
@@ -602,9 +606,12 @@
         (.add sp off)
         
         ;; push the return trampoline to the stack for the user code to return to
-        (.push 0) ;; for 16-byte stack alignment.
-        (.push return-from-thread)
+        ;(.push 0) ;; for 16-byte stack alignment.
+        (set! temp (the uint return-from-thread))
+        (.add temp off)
+        (.push temp)
         ;; and call the function!
+        (.add func off)
         (.jr func)
         )
   )
@@ -1381,6 +1388,31 @@
   (the process #f)
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Kernel Dispatcher
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern *listener-process* process)
+
+(defun kernel-dispatcher ()
+  "Run the kernel!
+  "
+  
+  (when *listener-function*
+    (let ((result (reset-and-call (-> *listener-process* main-thread) *listener-function*)))
+      (if *use-old-listener-print*
+          (format #t "~D~%" result result result)
+          (format #t "~D        #x~X        ~F        ~A~%" result result result result)
+          )
+      )
+    (set! *listener-function* #f)
+    (+! *enable-method-set* -1)
+    )
+  
+  
+  
+  (set! *listener-function* (the (function object) #f))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tree Stuff
@@ -1454,21 +1486,21 @@
 ;; Temp Hacks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun kernel-dispatcher ()
-  "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"
+; (defun kernel-dispatcher ()
+;   "Kernel Dispatcher Function. This gets called from the main loop in kboot.cpp's KernelCheckAndDispatch"
   
-  ;; check if we have a new listener function to run
-  (when *listener-function*
-    ;; we do! enable method-set for debug purposes
-    (+! *enable-method-set* 1)
+;   ;; check if we have a new listener function to run
+;   (when *listener-function*
+;     ;; we do! enable method-set for debug purposes
+;     (+! *enable-method-set* 1)
     
-    ;; execute and print result
-    (let ((result (*listener-function*)))
-      (format #t "~D~%" result)
-      )
-    (+! *enable-method-set* -1)
+;     ;; execute and print result
+;     (let ((result (*listener-function*)))
+;       (format #t "~D~%" result)
+;       )
+;     (+! *enable-method-set* -1)
     
-    ;; clear the pending function.
-    (set! *listener-function* (the (function object) #f))
-    )
-  )
+;     ;; clear the pending function.
+;     (set! *listener-function* (the (function object) #f))
+;     )
+;   )
