@@ -146,14 +146,15 @@
 (declare-type process basic)
 (declare-type stack-frame basic)
 (declare-type state basic)
+(declare-type cpu-thread basic)
 
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
   ((name          basic    :offset-assert 4)   ;; name of the thread (usually a symbol?)
    (process       process  :offset-assert 8)   ;; process that the thread belongs to
    (previous      thread   :offset-assert 12)  ;; previous thread that was running in the process
-   (suspend-hook  basic    :offset-assert 16)  ;; function to suspend this thread
-   (resume-hook   basic    :offset-assert 20)  ;; function to resume this thread
+   (suspend-hook  (function cpu-thread none) :offset-assert 16)  ;; function to suspend this thread
+   (resume-hook   (function cpu-thread none) :offset-assert 20)  ;; function to resume this thread
    (pc            pointer  :offset-assert 24)  ;; program counter of the thread
    (sp            pointer  :offset-assert 28)  ;; stack pointer of the thread (actual stack)
    (stack-top     pointer  :offset-assert 32)  ;; top of the thread's stack (actual stack)
@@ -224,7 +225,7 @@
   ((pool basic :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
-   (main-thread thread :offset-assert #x2c)
+   (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
    (entity basic :offset-assert #x34)
    (state state :offset-assert #x38)
@@ -349,6 +350,10 @@
    (freg float 6 :offset-assert 20) ;; saved floating point registers from "catch" statement
    (rreg uint128 8 :offset-assert 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
    )
+  
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (name symbol) (func function) (params (pointer uint64))) object 0)
+    )
   :size-assert #xb0
   :method-count-assert 9
   :flag-assert #x9000000b0

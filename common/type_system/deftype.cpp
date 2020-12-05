@@ -192,22 +192,22 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
       }
     }
 
-    std::vector<std::string> arg_types;
+    TypeSpec function_typespec("function");
+
     for_each_in_list(args, [&](const goos::Object& o) {
       if (o.is_symbol()) {
-        arg_types.emplace_back(symbol_string(o));
+        function_typespec.add_arg(parse_typespec(type_system, o));
       } else {
         auto next = cdr(&o);
-        arg_types.emplace_back(symbol_string(car(next)));
+        function_typespec.add_arg(parse_typespec(type_system, car(next)));
         if (!cdr(next)->is_empty_list()) {
           throw std::runtime_error("too many things in method def arg type: " + def.print());
         };
       }
     });
+    function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->add_method(
-        type, method_name,
-        type_system->make_function_typespec(arg_types, symbol_string(return_type)));
+    auto info = type_system->add_method(type, method_name, function_typespec);
 
     // check the method assert
     if (id != -1) {

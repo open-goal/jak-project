@@ -488,7 +488,7 @@
 ;; Context Suspend And Resume - Kernel
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; the following functions are used for managing contexts.
+;; the following functions are used for going from the kernel to temporary threads and back.
 ;; saved registers: rbx, rbp, r10, r11, r12
 
 ;; DANGER - THE KERNEL DOES NOT SAVE ITS FLOATING POINT CONTEXT!!!!
@@ -621,8 +621,167 @@
 ;; Context Suspend And Resume - Thread
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; todo thread suspend
-;; todo thread resume
+;; these are for resuming and suspending a thread.
+
+(defmethod thread-suspend cpu-thread ((unused cpu-thread))
+  "Suspend the thread and return to the kernel."
+  
+  (declare (asm-func none)
+           ;(print-asm)
+           )
+  
+  ;; we begin this function with the thread object in pp.
+  ;; not sure why we do this, maybe at one point suspending didn't clobber
+  ;; temp registers?
+  (rlet ((obj :reg r13 :type cpu-thread)
+         (temp :reg rax :type uint)
+         (off :reg r15 :type uint)
+         (sp :reg rsp :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type uint)
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint))
+        
+        ;; get the return address pushed by "call"
+        (.pop temp)
+        ;; convert to a GOAL address
+        (.sub temp off)
+        ;; store return address in thread
+        (set! (-> obj pc) (the pointer temp))
+        
+        ;; convert our stack pointer to a GOAL address
+        (.sub sp off)
+        ;; store in thread.
+        (set! (-> obj sp) (the pointer sp))
+        
+        ;; back up registers
+        (.mov :color #f temp s0)
+        (set! (-> obj rreg 0) temp)
+        (.mov :color #f temp s1)
+        (set! (-> obj rreg 1) temp)
+        (.mov :color #f temp s2)
+        (set! (-> obj rreg 2) temp)
+        (.mov :color #f temp s3)
+        (set! (-> obj rreg 3) temp)
+        (.mov :color #f temp s4)
+        (set! (-> obj rreg 4) temp)
+        
+        ;; todo, back up fprs
+        
+        ;; get our process
+        (let ((proc (-> obj process)))
+          (when (> (process-stack-used proc) (-> obj stack-size))
+            (break) ;; too much stack has been used and we can't suspend!
+            )
+          
+          ;; mark the process as suspended and copy the stack
+          (set! (-> proc status) 'suspended)
+          (let ((cur (the (pointer uint64) (-> obj stack-top)))
+                (save (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
+                )
+            (while (> (the int cur) (the int sp))
+              (set! cur (the (pointer uint64) (&- cur 8)))
+              (set! save (the (pointer uint64) (&- save 8)))
+              (set! (-> save) (-> cur))
+              )
+            )
+          )
+        
+        ;; actually setting pp to 0
+        (set! obj (the cpu-thread 0))
+        
+        ;; get the kernel stack pointer as a GOAL pointer
+        (.load-sym :sext #f sp *kernel-sp*)
+        ;; convert it back to a real pointer
+        (.add sp off)
+        
+        ;; restore saved registers...
+        ;; without coloring system because this is "cheating".
+        (.pop :color #f s4)
+        (.pop :color #f s3)
+        (.pop :color #f s2)
+        (.pop :color #f s1)
+        (.pop :color #f s0)
+        ;; return to the kernel function that called the user code
+        (.ret)
+        )
+  (none)
+  )
+
+
+(defmethod thread-resume cpu-thread ((thread-to-resume cpu-thread))
+  (declare (asm-func none)
+           ;(print-asm)
+           )
+  
+  (rlet ((obj :reg r13 :type cpu-thread)
+         (temp :reg rax :type uint)
+         (off :reg r15 :type uint)
+         (sp :reg rsp :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type uint)
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint)) 
+        
+        ;; save the current kernel regs
+        (.push :color #f s0)
+        (.push :color #f s1)
+        (.push :color #f s2)
+        (.push :color #f s3)
+        (.push :color #f s4)
+        
+        ;; make rsp a GOAL pointer
+        (.sub sp off)
+        ;; and store it
+        (set! *kernel-sp* (the pointer sp)) ;; todo, asm form here?
+        
+        ;; temp, stash thread in process-pointer
+        (set! obj thread-to-resume)
+        
+        ;; set stack pointer for the thread.
+        (set! sp (the uint (-> obj sp)))
+        
+        ;; restore the stack.
+        (let ((cur (the (pointer uint64) (-> obj stack-top)))
+              (restore (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
+              )
+          (while (> (the int cur) (the int sp))
+            (set! cur (the (pointer uint64) (&- cur 8)))
+            (set! restore (the (pointer uint64) (&- restore 8)))
+            (set! (-> cur) (-> restore))
+            )
+          )
+        
+        ;; offset sp after we're done looking at it.
+        (.add sp off)
+        
+        ;; setup process
+        (set! (-> (-> obj process) top-thread) obj)
+        (set! (-> (-> obj process) status) 'running)
+        
+        ;; restore reg
+        (set! temp (-> obj rreg 0))
+        (.mov :color #f s0 temp)
+        (set! temp (-> obj rreg 1))
+        (.mov :color #f s1 temp)
+        (set! temp (-> obj rreg 2))
+        (.mov :color #f s2 temp)
+        (set! temp (-> obj rreg 3))
+        (.mov :color #f s3 temp)
+        (set! temp (-> obj rreg 4))
+        (.mov :color #f s4 temp)
+        
+        ;; todo restore fpr.
+        
+        (set! temp (the uint (-> obj pc)))
+        (.add temp off)
+        (set! obj (the cpu-thread (-> obj process)))
+        (.jr temp)
+        )
+  (none)
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1393,6 +1552,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *listener-process* process)
+(define-extern *active-pool* process-tree)
+(define-extern *stdcon0* basic) ; more specific?
+(define-extern *stdcon1* basic) ; more specific?
+(define-extern *debug-draw-pauseable* symbol)
 
 (defun kernel-dispatcher ()
   "Run the kernel!
@@ -1410,9 +1573,231 @@
     )
   
   
+  (execute-process-tree 
+    *active-pool* 
+    (lambda ((obj process))
+      (format 0 "Call to dispatcher lambda!~%")
+      (let ((context *kernel-context*))
+        
+        (cond
+          ((or (eq? (-> obj status) 'waiting-to-run)
+               (eq? (-> obj status) 'suspended))
+           
+           ;; we should run!
+           ;; set current process to us
+           (set! (-> context current-process) obj)
+           
+           ;; update pause junk for this run
+           (cond
+             ((process-mask? (-> obj mask) pause)
+              ;; we're paused.
+              (set! *stdcon* *stdcon1*)
+              (set! *debug-draw-pauseable* #t)
+              )
+             (else
+               (set! *stdcon* *stdcon0*)
+               (set! *debug-draw-pauseable* #f)
+               )
+             )
+           
+           ;; TRANS
+           (cond
+             ((-> obj trans-hook)
+              ;; we have a trans hook defined. let's create a thread and run it. we can reuse the stack of the main-thread
+              ;; it is safe to do this because the main-thread is currently suspended or hasn't run yet.
+              ;; hack process -> global new todo 
+              (let ((trans (new 'global 'cpu-thread obj 'trans PROCESS_STACK_SAVE_SIZE (-> obj main-thread stack-top))))
+                ;; call the function in the thread.
+                (reset-and-call trans (-> obj trans-hook))
+                ;; remove the cpu-thread
+                (delete trans)
+                ;; check for deadness
+                (when (eq? (-> obj status) 'dead)
+                  (set! (-> context current-process) #f)
+                  (return-from #f 'dead)
+                  )
+                )
+              )
+             )
+           
+           ;; MAIN CODE
+           (if (process-mask? (-> obj mask) sleep-code)
+               ;; we're sleeping. Move us to suspended, in case we were in waiting to run.
+               (set! (-> obj status) 'suspended)
+               ;; not sleeping. call resume hook
+               ((-> obj main-thread resume-hook) (-> obj main-thread))
+               )
+           ;; check for deadness
+           (cond
+             ((eq? (-> obj status) 'dead)
+              ;; oops we died. return 'dead
+              (set! (-> context current-process) #f)
+              'dead
+              )
+             (else
+               ;; not dead.
+               ;; POST CODE
+               (cond
+                 ((-> obj post-hook)
+                  ;; hack process -> global new todo 
+                  (let ((post (new 'global 'cpu-thread obj 'post PROCESS_STACK_SAVE_SIZE *kernel-dram-stack*)))
+                    (reset-and-call post (-> obj post-hook))
+                    (delete post)
+                    (when (eq? (-> obj status) 'dead)
+                      ;; oops we died.
+                      (set! (-> context current-process) #f)
+                      (return-from #f 'dead)
+                      )
+                    (set! (-> obj status) 'suspended)
+                    )
+                  )
+                 )
+               (set! (-> context current-process) #f)
+               #f
+               )
+             )
+           )
+          
+          ((eq? (-> obj status) 'dead)
+           'dead)
+          )
+        )
+      )
+    *kernel-context*
+    )
   
+  ;; todo, remove this and replace it with the rest of the kernel dispatcher.
   (set! *listener-function* (the (function object) #f))
   )
+
+(define-extern inspect-process-tree (function process-tree int int symbol process-tree))
+(defun inspect-process-tree ((obj process-tree) (level int) (mask int) (detail symbol))
+  "Debug print a pocess-tree"
+  (print-tree-bitmask mask (+ 0 level))
+  
+  ;; print us
+  (cond
+    (detail
+      (format #t "__________________~%")
+      ;; this is here, but I removed it because it prints at the wrong indent and looks weird.
+      ;(format #t "~S~A~%" (if (zero? level) "" "+---") obj)
+      (protect (*print-column*)
+               (set! *print-column* (the binteger (* level 4)))
+               (inspect obj)
+               )
+      )
+    (else
+      (format #t "~S~A~%" (if (zero? level) "" "+---") obj)
+      )
+    )
+  
+  ;; print our children
+  (let ((child (-> obj child)))
+    (while child
+      (inspect-process-tree (-> child) (+ level 1) (if (not (-> (-> child) brother)) mask (logior mask (ash 1 (+ 1 level)))) detail)
+      (set! child (-> (-> child) brother))
+      )
+    )
+  obj
+  )
+
+(defmacro set-u128-as-u64! (dst src)
+  `(set! (-> (the (pointer uint64) (& ,dst)))
+         ,src
+         )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stack Frame Stuff (TODO)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The GOAL kernel supports dynamic throw and catch.
+;; The catch frames are managed per process (you can't throw to a frame outside your process)
+;; But otherwise it is fully dynamic.
+
+; (defmethod new catch-frame ((allocation symbol) (type-to-make type) (name symbol) (func function) (param-block (pointer uint64)))
+;   "Run func in a catch frame with the given 8 parameters.
+;   The return value is the result of the function.
+;   The allocation must be an address"
+;   (declare (asm-func object)
+;            (print-asm)
+;            )
+  
+;   (rlet ((pp :reg r13 :type process)
+;          (temp :reg rax :type uint)
+;          (off :reg r15 :type uint)
+;          (sp :reg rsp :type uint)
+;          (s0 :reg rbx :type uint)
+;          (s1 :reg rbp :type uint)
+;          (s2 :reg r10 :type uint)
+;          (s3 :reg r11 :type uint)
+;          (s4 :reg r12 :type uint)
+;          (a0 :reg rdi :type uint)
+;          (a1 :reg rsi :type uint)
+;          (a2 :reg rdx :type uint)
+;          (a3 :reg rcx :type uint)
+;          (a4 :reg r8 :type uint)
+;          (a5 :reg r9 :type uint)
+;          (a6 :reg r10 :type uint)
+;          (a7 :reg r11 :type uint)
+;          ) 
+        
+;         ;; we treat the allocation as an address.
+;         (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
+;           ;; setup catch frame
+;           (set! (-> obj type) type-to-make)
+;           (set! (-> obj name) name)
+;           ;; get the return address
+;           (.pop temp)
+;           (.push temp)
+;           ;; make it a GOAL address so it fits in 32 bitys
+;           (.sub temp off)
+;           ;; store it
+;           (set! (-> obj ra) (the int temp))
+          
+;           ;; todo, do we need a stack offset here?
+;           (set! temp sp)
+;           (.sub temp off)
+;           (set! (-> obj sp) (the int sp))
+          
+;           ;; back up registers
+;           (.mov :color #f temp s0)
+;           (set-u128-as-u64! (-> obj rreg 0) temp)
+;           (.mov :color #f temp s1)
+;           (set-u128-as-u64! (-> obj rreg 1) temp)
+;           (.mov :color #f temp s2)
+;           (set-u128-as-u64! (-> obj rreg 2) temp)
+;           (.mov :color #f temp s3)
+;           (set-u128-as-u64! (-> obj rreg 3) temp)
+;           (.mov :color #f temp s4)
+;           (set-u128-as-u64! (-> obj rreg 4) temp)
+;           ;; todo save fprs
+          
+;           ;; push this stack frame
+;           (set! (-> obj next) (-> pp stack-frame-top))
+;           (set! (-> pp stack-frame-top) obj)
+          
+;           (let ((ret ((the-super-u64-fucntion func)
+;                        ;(-> param-block 0)
+;                        (-> param-block)
+;                        ;(-> param-block 1)
+;                        (-> (&+ param-block 8))
+;                        (-> (&+ param-block 16))
+;                        (-> (&+ param-block 24))
+;                        ;(-> (&+ param-block 32))
+;           ;             (-> param-block 5)
+;                       ))
+;                 )
+            
+;           ;   (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
+;             )
+;           )
+;         )
+;   ;; the code in here may throw at any point in time, without properly resetting saved registers.
+;   ;; so we should save them ourself.
+  
+;   (the object #f)
+;   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tree Stuff
@@ -1481,6 +1866,12 @@
 (define *nk-dead-pool* (new 'global 'dead-pool-heap '*nk-dead-pool* 768 PROCESS_HEAP_SIZE))
 (define *default-dead-pool* (the dead-pool *nk-dead-pool*))
 (define *pickup-dead-pool* (the dead-pool *nk-dead-pool*))
+
+;; todo dead pool list
+
+(define *active-pool* (new 'global 'process-tree 'active-pool))
+(change-parent (define *display-pool* (new 'global 'process-tree 'display-pool)) *active-pool*)
+(change-parent (define *camera-pool* (new 'global 'process-tree 'camera-pool)) *active-pool*)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Temp Hacks

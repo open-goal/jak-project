@@ -22,7 +22,7 @@ static const std::unordered_map<
         {".sub", &Compiler::compile_asm_sub},
         {".add", &Compiler::compile_asm_add},
         {".load-sym", &Compiler::compile_asm_load_sym},
-        //        {".ret-reg", &Compiler::compile_asm},
+        {".mov", &Compiler::compile_asm_mov},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},

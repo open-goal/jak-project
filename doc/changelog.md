@@ -73,3 +73,4 @@
 - Reworked type checking for `set!`. You may now use `#f` for non-numeric types.
 - Fixed a bug where arguments to a method were unmodifiable.
 - Fixed a bug where multiple anonymous lambda functions in the same file would throw a compiler error related to function name uniqueness.
+- Method declarations can now use compound types. Previously they could only use simple types due to a mistake in deftype parser.

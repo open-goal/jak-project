@@ -472,4 +472,18 @@ class IR_JumpReg : public IR_Asm {
   const RegVal* m_src = nullptr;
 };
 
+class IR_RegSetAsm : public IR_Asm {
+ public:
+  IR_RegSetAsm(bool use_color, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
 #endif  // JAK_IR_H

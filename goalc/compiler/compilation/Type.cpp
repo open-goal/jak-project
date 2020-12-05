@@ -289,7 +289,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     } else {
       // type of argument is specified
       auto param_args = get_va(o, o);
-      va_check(o, param_args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+      va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
 
       GoalArg parm;
       parm.name = symbol_string(param_args.unnamed.at(0));

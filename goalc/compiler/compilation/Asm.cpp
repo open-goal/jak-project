@@ -211,3 +211,19 @@ Val* Compiler::compile_asm_jr(const goos::Object& form, const goos::Object& rest
   env->emit_ir<IR_JumpReg>(color, src);
   return get_none();
 }
+
+Val* Compiler::compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot .mov this. Got a {}.", dest->print());
+  }
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  env->emit_ir<IR_RegSetAsm>(color, dest, src);
+  return get_none();
+}

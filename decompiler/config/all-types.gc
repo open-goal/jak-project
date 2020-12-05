@@ -188,14 +188,15 @@
 
 (declare-type process basic)
 (declare-type stack-frame basic)
+(declare-type cpu-thread basic)
 
 ;; gkernel-h
 (deftype thread (basic)
   ((name         basic   :offset-assert 4)
    (process      process :offset-assert 8)
    (previous     thread  :offset-assert 12)
-   (suspend-hook basic   :offset-assert 16)
-   (resume-hook  basic   :offset-assert 20)
+   (suspend-hook (function cpu-thread none)   :offset-assert 16)
+   (resume-hook  (function cpu-thread none)   :offset-assert 20)
    (pc           pointer :offset-assert 24)
    (sp           pointer :offset-assert 28)
    (stack-top    pointer :offset-assert 32)
@@ -261,7 +262,7 @@
   ((pool basic :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
-   (main-thread thread :offset-assert #x2c)
+   (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
    (entity basic :offset-assert #x34)
    (state state :offset-assert #x38)
@@ -371,6 +372,11 @@
    (freg float 6 :offset-assert 20) 
    (rreg uint128 8 :offset-assert 48) 
    )
+  
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (name symbol) (func function) (params (pointer uint64))) object 0)
+    )
+  
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
@@ -473,7 +479,8 @@
 (define-extern change-parent (function process-tree process-tree process-tree))
 
 (define-extern *active-pool* process-tree)
-
+(define-extern kernel-dispatcher (function (function object)))
+(define-extern inspect-process-tree (function process-tree int int symbol process-tree))
 
 
 ;;(define-extern stack-frame object) ;; unknown type
@@ -524,12 +531,10 @@
 ;;(define-extern *target-dead-pool* object) ;; unknown type
 ;;(define-extern *4k-dead-pool* object) ;; unknown type
 ;;(define-extern *default-dead-pool* object) ;; unknown type
-(define-extern kernel-dispatcher (function (function object)))
 ;;(define-extern *8k-dead-pool* object) ;; unknown type
 ;;(define-extern *display-pool* object) ;; unknown type
 ;;(define-extern active-pool object) ;; unknown type
 ;;(define-extern *dead-pool-list* object) ;; unknown type
-(define-extern inspect-process-tree function)
 ;;(define-extern camera-pool object) ;; unknown type
 ;;(define-extern suspended object) ;; unknown type
 ;;(define-extern dgo-load object) ;; unknown type
