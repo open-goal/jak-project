@@ -62,6 +62,37 @@ class IRegSet {
     }
   }
 
+  void make_max_size(IRegSet& other) {
+    if (other.size() < size()) {
+      other.resize(size());
+    } else {
+      resize(other.size());
+    }
+  }
+
+  /*!
+   * this = (this & !other)
+   */
+  void bitwise_and_not(IRegSet& other) {
+    // make same size
+    make_max_size(other);
+
+    for (size_t i = 0; i < m_data.size(); i++) {
+      m_data.at(i) &= ~other.m_data.at(i);
+    }
+  }
+
+  /*!
+   * this = (this | other)
+   */
+  void bitwise_or(IRegSet& other) {
+    make_max_size(other);
+
+    for (size_t i = 0; i < m_data.size(); i++) {
+      m_data.at(i) |= other.m_data.at(i);
+    }
+  }
+
  private:
   std::vector<u64> m_data;
   int m_bits = 0;

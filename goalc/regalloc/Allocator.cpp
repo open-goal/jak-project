@@ -111,8 +111,10 @@ void compute_live_ranges(RegAllocCache* cache, const AllocationInput& in) {
     // and liveliness analysis
     assert(block.live.size() == block.instr_idx.size());
     for (uint32_t i = 0; i < block.live.size(); i++) {
-      for (auto& x : block.live[i]) {
-        cache->live_ranges.at(x).add_live_instruction(block.instr_idx.at(i));
+      for (int j = 0; j < block.live[i].size(); j++) {
+        if (block.live[i][j]) {
+          cache->live_ranges.at(j).add_live_instruction(block.instr_idx.at(i));
+        }
       }
     }
   }
@@ -177,13 +179,6 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
   cache->stack_ops.resize(in.instructions.size());
 }
 
-namespace {
-template <typename T>
-bool in_set(std::set<T>& set, const T& obj) {
-  return set.find(obj) != set.end();
-}
-}  // namespace
-
 void RegAllocBasicBlock::analyze_liveliness_phase1(const std::vector<RegAllocInstr>& instructions) {
   for (int i = instr_idx.size(); i-- > 0;) {
     auto ii = instr_idx.at(i);
@@ -200,36 +195,16 @@ void RegAllocBasicBlock::analyze_liveliness_phase1(const std::vector<RegAllocIns
     // kill things which are overwritten
     dd.clear();
     for (auto& x : instr.write) {
-      if (!in_set(lv, x.id)) {
+      if (!lv[x.id]) {
         dd.insert(x.id);
       }
     }
 
-    // b.use = i.liveout
-    std::set<int> use_old = use;
-    use.clear();
-    for (auto& x : lv) {
-      use.insert(x);
-    }
-    // | (bu.use & !i.dead)
-    for (auto& x : use_old) {
-      if (!in_set(dd, x)) {
-        use.insert(x);
-      }
-    }
+    use.bitwise_and_not(dd);
+    use.bitwise_or(lv);
 
-    // b.defs = i.dead
-    std::set<int> defs_old = defs;
-    defs.clear();
-    for (auto& x : dd) {
-      defs.insert(x);
-    }
-    // | b.defs & !i.lv
-    for (auto& x : defs_old) {
-      if (!in_set(lv, x)) {
-        defs.insert(x);
-      }
-    }
+    defs.bitwise_and_not(lv);
+    defs.bitwise_or(dd);
   }
 }
 
@@ -240,17 +215,13 @@ bool RegAllocBasicBlock::analyze_liveliness_phase2(std::vector<RegAllocBasicBloc
   auto out = defs;
 
   for (auto s : succ) {
-    for (auto in : blocks.at(s).input) {
-      out.insert(in);
-    }
+    out.bitwise_or(blocks.at(s).input);
   }
 
-  std::set<int> in = use;
-  for (auto x : out) {
-    if (!in_set(defs, x)) {
-      in.insert(x);
-    }
-  }
+  IRegSet in = use;
+  IRegSet temp = out;
+  temp.bitwise_and_not(defs);
+  in.bitwise_or(temp);
 
   if (in != input || out != output) {
     changed = true;
@@ -264,29 +235,25 @@ bool RegAllocBasicBlock::analyze_liveliness_phase2(std::vector<RegAllocBasicBloc
 void RegAllocBasicBlock::analyze_liveliness_phase3(std::vector<RegAllocBasicBlock>& blocks,
                                                    const std::vector<RegAllocInstr>& instructions) {
   (void)instructions;
-  std::set<int> live_local;
+  IRegSet live_local;
   for (auto s : succ) {
-    for (auto i : blocks.at(s).input) {
-      live_local.insert(i);
-    }
+    live_local.bitwise_or(blocks.at(s).input);
   }
 
   for (int i = instr_idx.size(); i-- > 0;) {
     auto& lv = live.at(i);
     auto& dd = dead.at(i);
 
-    std::set<int> new_live = lv;
-    for (auto x : live_local) {
-      if (!in_set(dd, x)) {
-        new_live.insert(x);
-      }
-    }
+    IRegSet new_live = live_local;
+    new_live.bitwise_and_not(dd);
+    new_live.bitwise_or(lv);
+
     lv = live_local;
     live_local = new_live;
   }
 }
 
-std::string RegAllocBasicBlock::print_summary() const {
+std::string RegAllocBasicBlock::print_summary() {
   std::string result = "block " + std::to_string(idx) + "\nsucc: ";
   for (auto s : succ) {
     result += std::to_string(s) + " ";
@@ -296,26 +263,34 @@ std::string RegAllocBasicBlock::print_summary() const {
     result += std::to_string(p) + " ";
   }
   result += "\nuse: ";
-  for (auto x : use) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < use.size(); x++) {
+    if (use[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
   result += "\ndef: ";
-  for (auto x : defs) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < defs.size(); x++) {
+    if (defs[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
   result += "\ninput: ";
-  for (auto x : input) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < input.size(); x++) {
+    if (input[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
   result += "\noutput: ";
-  for (auto x : output) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < output.size(); x++) {
+    if (output[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
 
   return result;
 }
 
-std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) const {
+std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) {
   std::string result = print_summary() + "\n";
   int k = 0;
   for (auto instr : instr_idx) {
@@ -327,8 +302,10 @@ std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) c
     }
 
     result += "  " + line + " live: ";
-    for (auto j : live.at(k)) {
-      result += std::to_string(j) + " ";
+    for (int x = 0; x < live.at(k).size(); x++) {
+      if (live.at(k)[x]) {
+        result += std::to_string(x) + " ";
+      }
     }
     result += "\n";
 
