@@ -51,7 +51,7 @@ std::vector<u8> CodeGenerator::run() {
 
 void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   if (env->is_asm_func) {
-    do_asm_function(env, f_idx);
+    do_asm_function(env, f_idx, env->asm_func_saved_regs);
   } else {
     do_goal_function(env, f_idx);
   }
@@ -71,7 +71,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   // compute how much stack we will use
   int stack_offset = 0;
 
-  // back up xmms
+  // back up xmms (currently not aligned)
   for (auto& saved_reg : allocs.used_saved_regs) {
     if (saved_reg.is_xmm()) {
       m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE), InstructionInfo::PROLOGUE);
@@ -133,7 +133,9 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     for (auto& op : bonus.ops) {
       if (op.load) {
         if (op.reg.is_gpr()) {
-          m_gen.add_instr(IGen::load64_gpr64_plus_s32(op.reg, op.slot * GPR_SIZE, RSP), i_rec);
+          m_gen.add_instr(IGen::load64_gpr64_plus_s32(
+                              op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, RSP),
+                          i_rec);
         } else {
           assert(false);
         }
@@ -147,7 +149,9 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     for (auto& op : bonus.ops) {
       if (op.store) {
         if (op.reg.is_gpr()) {
-          m_gen.add_instr(IGen::store64_gpr64_plus_s32(RSP, op.slot * GPR_SIZE, op.reg), i_rec);
+          m_gen.add_instr(IGen::store64_gpr64_plus_s32(
+                              RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, op.reg),
+                          i_rec);
         } else {
           assert(false);
         }
@@ -188,11 +192,11 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::EPILOGUE);
 }
 
-void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx) {
+void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 
-  if (!allocs.used_saved_regs.empty()) {
+  if (!allow_saved_regs && !allocs.used_saved_regs.empty()) {
     std::string err = fmt::format(
         "ASM Function {}'s coloring using the following callee-saved registers: ", env->name());
     for (auto& x : allocs.used_saved_regs) {

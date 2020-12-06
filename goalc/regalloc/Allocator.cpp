@@ -111,8 +111,10 @@ void compute_live_ranges(RegAllocCache* cache, const AllocationInput& in) {
     // and liveliness analysis
     assert(block.live.size() == block.instr_idx.size());
     for (uint32_t i = 0; i < block.live.size(); i++) {
-      for (auto& x : block.live[i]) {
-        cache->live_ranges.at(x).add_live_instruction(block.instr_idx.at(i));
+      for (int j = 0; j < block.live[i].size(); j++) {
+        if (block.live[i][j]) {
+          cache->live_ranges.at(j).add_live_instruction(block.instr_idx.at(i));
+        }
       }
     }
   }
@@ -175,14 +177,22 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
     cache->live_ranges.at(i).prepare_for_allocation(i);
   }
   cache->stack_ops.resize(in.instructions.size());
-}
 
-namespace {
-template <typename T>
-bool in_set(std::set<T>& set, const T& obj) {
-  return set.find(obj) != set.end();
+  // cache a list of live ranges which are live at each instruction.
+  // filters out unseen lr's as well.
+  // this makes instr * lr1 * lr2 loop much faster!
+  cache->live_ranges_by_instr.resize(in.instructions.size());
+  for (u32 lr_idx = 0; lr_idx < cache->live_ranges.size(); lr_idx++) {
+    auto& lr = cache->live_ranges.at(lr_idx);
+    if (lr.seen) {
+      for (int i = lr.min; i <= lr.max; i++) {
+        if (lr.is_live_at_instr(i)) {
+          cache->live_ranges_by_instr.at(i).push_back(lr_idx);
+        }
+      }
+    }
+  }
 }
-}  // namespace
 
 void RegAllocBasicBlock::analyze_liveliness_phase1(const std::vector<RegAllocInstr>& instructions) {
   for (int i = instr_idx.size(); i-- > 0;) {
@@ -200,36 +210,16 @@ void RegAllocBasicBlock::analyze_liveliness_phase1(const std::vector<RegAllocIns
     // kill things which are overwritten
     dd.clear();
     for (auto& x : instr.write) {
-      if (!in_set(lv, x.id)) {
+      if (!lv[x.id]) {
         dd.insert(x.id);
       }
     }
 
-    // b.use = i.liveout
-    std::set<int> use_old = use;
-    use.clear();
-    for (auto& x : lv) {
-      use.insert(x);
-    }
-    // | (bu.use & !i.dead)
-    for (auto& x : use_old) {
-      if (!in_set(dd, x)) {
-        use.insert(x);
-      }
-    }
+    use.bitwise_and_not(dd);
+    use.bitwise_or(lv);
 
-    // b.defs = i.dead
-    std::set<int> defs_old = defs;
-    defs.clear();
-    for (auto& x : dd) {
-      defs.insert(x);
-    }
-    // | b.defs & !i.lv
-    for (auto& x : defs_old) {
-      if (!in_set(lv, x)) {
-        defs.insert(x);
-      }
-    }
+    defs.bitwise_and_not(lv);
+    defs.bitwise_or(dd);
   }
 }
 
@@ -240,17 +230,13 @@ bool RegAllocBasicBlock::analyze_liveliness_phase2(std::vector<RegAllocBasicBloc
   auto out = defs;
 
   for (auto s : succ) {
-    for (auto in : blocks.at(s).input) {
-      out.insert(in);
-    }
+    out.bitwise_or(blocks.at(s).input);
   }
 
-  std::set<int> in = use;
-  for (auto x : out) {
-    if (!in_set(defs, x)) {
-      in.insert(x);
-    }
-  }
+  IRegSet in = use;
+  IRegSet temp = out;
+  temp.bitwise_and_not(defs);
+  in.bitwise_or(temp);
 
   if (in != input || out != output) {
     changed = true;
@@ -264,29 +250,25 @@ bool RegAllocBasicBlock::analyze_liveliness_phase2(std::vector<RegAllocBasicBloc
 void RegAllocBasicBlock::analyze_liveliness_phase3(std::vector<RegAllocBasicBlock>& blocks,
                                                    const std::vector<RegAllocInstr>& instructions) {
   (void)instructions;
-  std::set<int> live_local;
+  IRegSet live_local;
   for (auto s : succ) {
-    for (auto i : blocks.at(s).input) {
-      live_local.insert(i);
-    }
+    live_local.bitwise_or(blocks.at(s).input);
   }
 
   for (int i = instr_idx.size(); i-- > 0;) {
     auto& lv = live.at(i);
     auto& dd = dead.at(i);
 
-    std::set<int> new_live = lv;
-    for (auto x : live_local) {
-      if (!in_set(dd, x)) {
-        new_live.insert(x);
-      }
-    }
+    IRegSet new_live = live_local;
+    new_live.bitwise_and_not(dd);
+    new_live.bitwise_or(lv);
+
     lv = live_local;
     live_local = new_live;
   }
 }
 
-std::string RegAllocBasicBlock::print_summary() const {
+std::string RegAllocBasicBlock::print_summary() {
   std::string result = "block " + std::to_string(idx) + "\nsucc: ";
   for (auto s : succ) {
     result += std::to_string(s) + " ";
@@ -296,26 +278,34 @@ std::string RegAllocBasicBlock::print_summary() const {
     result += std::to_string(p) + " ";
   }
   result += "\nuse: ";
-  for (auto x : use) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < use.size(); x++) {
+    if (use[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
   result += "\ndef: ";
-  for (auto x : defs) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < defs.size(); x++) {
+    if (defs[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
   result += "\ninput: ";
-  for (auto x : input) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < input.size(); x++) {
+    if (input[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
   result += "\noutput: ";
-  for (auto x : output) {
-    result += std::to_string(x) + " ";
+  for (int x = 0; x < output.size(); x++) {
+    if (output[x]) {
+      result += std::to_string(x) + " ";
+    }
   }
 
   return result;
 }
 
-std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) const {
+std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) {
   std::string result = print_summary() + "\n";
   int k = 0;
   for (auto instr : instr_idx) {
@@ -327,8 +317,10 @@ std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) c
     }
 
     result += "  " + line + " live: ";
-    for (auto j : live.at(k)) {
-      result += std::to_string(j) + " ";
+    for (int x = 0; x < live.at(k).size(); x++) {
+      if (live.at(k)[x]) {
+        result += std::to_string(x) + " ";
+      }
     }
     result += "\n";
 
@@ -384,12 +376,13 @@ bool check_constrained_alloc(RegAllocCache* cache, const AllocationInput& in) {
   }
 
   for (uint32_t i = 0; i < in.instructions.size(); i++) {
-    for (auto& lr1 : cache->live_ranges) {
-      if (!lr1.seen || !lr1.is_live_at_instr(i))
-        continue;
-      for (auto& lr2 : cache->live_ranges) {
-        if (!lr2.seen || !lr2.is_live_at_instr(i) || (&lr1 == &lr2))
+    for (auto idx1 : cache->live_ranges_by_instr.at(i)) {
+      auto& lr1 = cache->live_ranges.at(idx1);
+      for (auto idx2 : cache->live_ranges_by_instr.at(i)) {
+        if (idx1 == idx2) {
           continue;
+        }
+        auto& lr2 = cache->live_ranges.at(idx2);
         // if lr1 is assigned...
         auto& ass1 = lr1.get(i);
         if (ass1.kind != Assignment::Kind::UNASSIGNED) {
@@ -430,44 +423,44 @@ bool can_var_be_assigned(int var,
   // our live range:
   auto& lr = cache->live_ranges.at(var);
   // check against all other live ranges:
-  for (auto& other_lr : cache->live_ranges) {
-    if (other_lr.var == var /*|| !other_lr.seen*/)
-      continue;  // but not us!
-    for (int instr = lr.min; instr <= lr.max; instr++) {
-      if (other_lr.is_live_at_instr(instr)) {
-        // LR's overlap
-        if (/*(instr != other_lr.max) && */ other_lr.conflicts_at(instr, ass)) {
-          bool allowed_by_move_eliminator = false;
-          if (move_eliminator) {
-            if (enable_fancy_coloring) {
-              if (lr.dies_next_at_instr(instr) && other_lr.becomes_live_at_instr(instr) &&
-                  in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-
-              if (lr.becomes_live_at_instr(instr) && other_lr.dies_next_at_instr(instr) &&
-                  in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-            } else {
-              // case to allow rename (from us to them)
-              if (instr == lr.max && instr == other_lr.min && in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-
-              if (instr == lr.min && instr == other_lr.min && in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-            }
-          }
-
-          if (!allowed_by_move_eliminator) {
-            if (debug_trace >= 2) {
-              printf("at idx %d, %s conflicts\n", instr, other_lr.print_assignment().c_str());
+  for (int instr = lr.min; instr <= lr.max; instr++) {
+    for (int other_idx : cache->live_ranges_by_instr.at(instr)) {
+      auto& other_lr = cache->live_ranges.at(other_idx);
+      if (other_lr.var == var) {
+        continue;
+      }
+      // LR's overlap
+      if (/*(instr != other_lr.max) && */ other_lr.conflicts_at(instr, ass)) {
+        bool allowed_by_move_eliminator = false;
+        if (move_eliminator) {
+          if (enable_fancy_coloring) {
+            if (lr.dies_next_at_instr(instr) && other_lr.becomes_live_at_instr(instr) &&
+                in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
             }
 
-            return false;
+            if (lr.becomes_live_at_instr(instr) && other_lr.dies_next_at_instr(instr) &&
+                in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
+            }
+          } else {
+            // case to allow rename (from us to them)
+            if (instr == lr.max && instr == other_lr.min && in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
+            }
+
+            if (instr == lr.min && instr == other_lr.min && in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
+            }
           }
+        }
+
+        if (!allowed_by_move_eliminator) {
+          if (debug_trace >= 2) {
+            printf("at idx %d, %s conflicts\n", instr, other_lr.print_assignment().c_str());
+          }
+
+          return false;
         }
       }
     }
@@ -522,41 +515,42 @@ bool assignment_ok_at(int var,
                       const AllocationInput& in,
                       int debug_trace) {
   auto& lr = cache->live_ranges.at(var);
-  for (auto& other_lr : cache->live_ranges) {
-    if (other_lr.var == var /*|| !other_lr.seen*/)
+  for (auto other_idx : cache->live_ranges_by_instr.at(idx)) {
+    auto& other_lr = cache->live_ranges.at(other_idx);
+    if (other_lr.var == var) {
       continue;
-    if (other_lr.is_live_at_instr(idx)) {
-      if (/*(idx != other_lr.max) &&*/ other_lr.conflicts_at(idx, ass)) {
-        bool allowed_by_move_eliminator = false;
-        if (move_eliminator) {
-          if (enable_fancy_coloring) {
-            if (lr.dies_next_at_instr(idx) && other_lr.becomes_live_at_instr(idx) &&
-                in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
+    }
 
-            if (lr.becomes_live_at_instr(idx) && other_lr.dies_next_at_instr(idx) &&
-                in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
-          } else {
-            // case to allow rename (from us to them)
-            if (idx == lr.max && idx == other_lr.min && in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
+    if (/*(idx != other_lr.max) &&*/ other_lr.conflicts_at(idx, ass)) {
+      bool allowed_by_move_eliminator = false;
+      if (move_eliminator) {
+        if (enable_fancy_coloring) {
+          if (lr.dies_next_at_instr(idx) && other_lr.becomes_live_at_instr(idx) &&
+              in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
+          }
 
-            if (idx == lr.min && idx == other_lr.min && in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
+          if (lr.becomes_live_at_instr(idx) && other_lr.dies_next_at_instr(idx) &&
+              in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
+          }
+        } else {
+          // case to allow rename (from us to them)
+          if (idx == lr.max && idx == other_lr.min && in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
+          }
+
+          if (idx == lr.min && idx == other_lr.min && in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
           }
         }
+      }
 
-        if (!allowed_by_move_eliminator) {
-          if (debug_trace >= 2) {
-            printf("at idx %d, %s conflicts\n", idx, other_lr.print_assignment().c_str());
-          }
-          return false;
+      if (!allowed_by_move_eliminator) {
+        if (debug_trace >= 2) {
+          printf("at idx %d, %s conflicts\n", idx, other_lr.print_assignment().c_str());
         }
+        return false;
       }
     }
   }
@@ -634,18 +628,20 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
   }
 }
 
-const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, RegAllocCache* cache) {
+const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v,
+                                                                      RegAllocCache* cache,
+                                                                      bool get_all) {
   auto& info = cache->iregs.at(v);
   // todo fix this.
   //  assert(info.kind != emitter::RegKind::INVALID);
   if (info.kind == emitter::RegKind::GPR || info.kind == emitter::RegKind::INVALID) {
-    if (cache->is_asm_func) {
+    if (!get_all && cache->is_asm_func) {
       return emitter::gRegInfo.get_gpr_temp_alloc_order();
     } else {
       return emitter::gRegInfo.get_gpr_alloc_order();
     }
   } else if (info.kind == emitter::RegKind::XMM) {
-    if (cache->is_asm_func) {
+    if (!get_all && cache->is_asm_func) {
       return emitter::gRegInfo.get_xmm_temp_alloc_order();
     } else {
       return emitter::gRegInfo.get_xmm_alloc_order();
@@ -816,7 +812,8 @@ bool do_allocation_for_var(int var,
     }
   }
 
-  auto reg_order = get_default_alloc_order_for_var(var, cache);
+  auto reg_order = get_default_alloc_order_for_var(var, cache, false);
+  auto& all_reg_order = get_default_alloc_order_for_var(var, cache, true);
 
   // todo, try other regs..
   if (!colored && move_eliminator) {
@@ -825,14 +822,14 @@ bool do_allocation_for_var(int var,
 
     if (first_instr.is_move) {
       auto& possible_coloring = cache->live_ranges.at(first_instr.read.front().id).get(lr.min);
-      if (possible_coloring.is_assigned() && in_vec(reg_order, possible_coloring.reg)) {
+      if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
         colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
       }
     }
 
     if (!colored && last_instr.is_move) {
       auto& possible_coloring = cache->live_ranges.at(last_instr.write.front().id).get(lr.max);
-      if (possible_coloring.is_assigned() && in_vec(reg_order, possible_coloring.reg)) {
+      if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
         colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
       }
     }

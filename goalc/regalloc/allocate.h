@@ -72,6 +72,20 @@ struct AllocationResult {
   int stack_slots_for_vars = 0;
   std::vector<StackOp> stack_ops;  // additional instructions to spill/restore
   bool needs_aligned_stack_for_spills = false;
+
+  // we put the variables before the spills so the variables are 16-byte aligned.
+
+  int total_stack_slots() const { return stack_slots_for_spills + stack_slots_for_vars; }
+
+  int get_slot_for_var(int slot) const {
+    assert(slot < stack_slots_for_vars);
+    return slot;
+  }
+
+  int get_slot_for_spill(int slot) const {
+    assert(slot < stack_slots_for_spills);
+    return slot + stack_slots_for_vars;
+  }
 };
 
 /*!

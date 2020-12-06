@@ -88,6 +88,7 @@ class Compiler {
   std::string as_string(const goos::Object& o);
   std::string symbol_string(const goos::Object& o);
   std::string quoted_sym_as_string(const goos::Object& o);
+  goos::Object unquote(const goos::Object& o);
   bool is_quoted_sym(const goos::Object& o);
   bool is_basic(const TypeSpec& ts);
   bool is_structure(const TypeSpec& ts);
@@ -115,6 +116,19 @@ class Compiler {
 
   bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
   float try_getting_constant_float(const goos::Object& in, float* out, Env* env);
+  Val* compile_heap_new(const goos::Object& form,
+                        const std::string& allocation,
+                        const goos::Object& type,
+                        const goos::Object* rest,
+                        Env* env);
+  Val* compile_static_new(const goos::Object& form,
+                          const goos::Object& type,
+                          const goos::Object* rest,
+                          Env* env);
+  Val* compile_stack_new(const goos::Object& form,
+                         const goos::Object& type,
+                         const goos::Object* rest,
+                         Env* env);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;

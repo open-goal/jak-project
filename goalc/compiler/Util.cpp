@@ -55,6 +55,15 @@ std::string Compiler::quoted_sym_as_string(const goos::Object& o) {
   return symbol_string(args.unnamed.at(1));
 }
 
+goos::Object Compiler::unquote(const goos::Object& o) {
+  auto args = get_va(o, o);
+  va_check(o, args, {{goos::ObjectType::SYMBOL}, {}}, {});
+  if (symbol_string(args.unnamed.at(0)) != "quote") {
+    throw_compiler_error(o, "Invalid quoted symbol: {}.", o.print());
+  }
+  return args.unnamed.at(1);
+}
+
 bool Compiler::is_quoted_sym(const goos::Object& o) {
   if (o.is_pair()) {
     auto car = pair_car(o);
