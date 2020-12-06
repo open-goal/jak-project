@@ -51,7 +51,7 @@ std::vector<u8> CodeGenerator::run() {
 
 void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   if (env->is_asm_func) {
-    do_asm_function(env, f_idx);
+    do_asm_function(env, f_idx, env->asm_func_saved_regs);
   } else {
     do_goal_function(env, f_idx);
   }
@@ -188,11 +188,11 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::EPILOGUE);
 }
 
-void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx) {
+void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 
-  if (!allocs.used_saved_regs.empty()) {
+  if (!allow_saved_regs && !allocs.used_saved_regs.empty()) {
     std::string err = fmt::format(
         "ASM Function {}'s coloring using the following callee-saved registers: ", env->name());
     for (auto& x : allocs.used_saved_regs) {

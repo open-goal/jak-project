@@ -576,6 +576,14 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
         throw_compiler_error(first, "Invalid print-asm declare");
       }
       settings.print_asm = true;
+
+    } else if (first.as_symbol()->name == "allow-saved-regs") {
+      if (!rrest->is_empty_list()) {
+        throw_compiler_error(first, "Invalid allow-saved-regs declare");
+      }
+      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      fe->asm_func_saved_regs = true;
+
     } else {
       throw_compiler_error(first, "Unrecognized declare option {}.", first.print());
     }
