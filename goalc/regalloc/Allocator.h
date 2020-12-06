@@ -38,6 +38,8 @@ struct RegAllocCache {
   int current_stack_slot = 0;
   bool used_stack = false;
   bool is_asm_func = false;
+
+  std::vector<std::vector<int>> live_ranges_by_instr;
 };
 
 void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in);

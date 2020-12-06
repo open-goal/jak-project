@@ -177,6 +177,18 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
     cache->live_ranges.at(i).prepare_for_allocation(i);
   }
   cache->stack_ops.resize(in.instructions.size());
+
+  cache->live_ranges_by_instr.resize(in.instructions.size());
+  for (u32 lr_idx = 0; lr_idx < cache->live_ranges.size(); lr_idx++) {
+    auto& lr = cache->live_ranges.at(lr_idx);
+    if (lr.seen) {
+      for (int i = lr.min; i <= lr.max; i++) {
+        if (lr.is_live_at_instr(i)) {
+          cache->live_ranges_by_instr.at(i).push_back(lr_idx);
+        }
+      }
+    }
+  }
 }
 
 void RegAllocBasicBlock::analyze_liveliness_phase1(const std::vector<RegAllocInstr>& instructions) {
@@ -361,12 +373,13 @@ bool check_constrained_alloc(RegAllocCache* cache, const AllocationInput& in) {
   }
 
   for (uint32_t i = 0; i < in.instructions.size(); i++) {
-    for (auto& lr1 : cache->live_ranges) {
-      if (!lr1.seen || !lr1.is_live_at_instr(i))
-        continue;
-      for (auto& lr2 : cache->live_ranges) {
-        if (!lr2.seen || !lr2.is_live_at_instr(i) || (&lr1 == &lr2))
+    for (auto idx1 : cache->live_ranges_by_instr.at(i)) {
+      auto& lr1 = cache->live_ranges.at(idx1);
+      for (auto idx2 : cache->live_ranges_by_instr.at(i)) {
+        if (idx1 == idx2) {
           continue;
+        }
+        auto& lr2 = cache->live_ranges.at(idx2);
         // if lr1 is assigned...
         auto& ass1 = lr1.get(i);
         if (ass1.kind != Assignment::Kind::UNASSIGNED) {
@@ -407,44 +420,44 @@ bool can_var_be_assigned(int var,
   // our live range:
   auto& lr = cache->live_ranges.at(var);
   // check against all other live ranges:
-  for (auto& other_lr : cache->live_ranges) {
-    if (other_lr.var == var /*|| !other_lr.seen*/)
-      continue;  // but not us!
-    for (int instr = lr.min; instr <= lr.max; instr++) {
-      if (other_lr.is_live_at_instr(instr)) {
-        // LR's overlap
-        if (/*(instr != other_lr.max) && */ other_lr.conflicts_at(instr, ass)) {
-          bool allowed_by_move_eliminator = false;
-          if (move_eliminator) {
-            if (enable_fancy_coloring) {
-              if (lr.dies_next_at_instr(instr) && other_lr.becomes_live_at_instr(instr) &&
-                  in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-
-              if (lr.becomes_live_at_instr(instr) && other_lr.dies_next_at_instr(instr) &&
-                  in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-            } else {
-              // case to allow rename (from us to them)
-              if (instr == lr.max && instr == other_lr.min && in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-
-              if (instr == lr.min && instr == other_lr.min && in.instructions.at(instr).is_move) {
-                allowed_by_move_eliminator = true;
-              }
-            }
-          }
-
-          if (!allowed_by_move_eliminator) {
-            if (debug_trace >= 2) {
-              printf("at idx %d, %s conflicts\n", instr, other_lr.print_assignment().c_str());
+  for (int instr = lr.min; instr <= lr.max; instr++) {
+    for (int other_idx : cache->live_ranges_by_instr.at(instr)) {
+      auto& other_lr = cache->live_ranges.at(other_idx);
+      if (other_lr.var == var) {
+        continue;
+      }
+      // LR's overlap
+      if (/*(instr != other_lr.max) && */ other_lr.conflicts_at(instr, ass)) {
+        bool allowed_by_move_eliminator = false;
+        if (move_eliminator) {
+          if (enable_fancy_coloring) {
+            if (lr.dies_next_at_instr(instr) && other_lr.becomes_live_at_instr(instr) &&
+                in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
             }
 
-            return false;
+            if (lr.becomes_live_at_instr(instr) && other_lr.dies_next_at_instr(instr) &&
+                in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
+            }
+          } else {
+            // case to allow rename (from us to them)
+            if (instr == lr.max && instr == other_lr.min && in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
+            }
+
+            if (instr == lr.min && instr == other_lr.min && in.instructions.at(instr).is_move) {
+              allowed_by_move_eliminator = true;
+            }
           }
+        }
+
+        if (!allowed_by_move_eliminator) {
+          if (debug_trace >= 2) {
+            printf("at idx %d, %s conflicts\n", instr, other_lr.print_assignment().c_str());
+          }
+
+          return false;
         }
       }
     }
@@ -499,41 +512,42 @@ bool assignment_ok_at(int var,
                       const AllocationInput& in,
                       int debug_trace) {
   auto& lr = cache->live_ranges.at(var);
-  for (auto& other_lr : cache->live_ranges) {
-    if (other_lr.var == var /*|| !other_lr.seen*/)
+  for (auto other_idx : cache->live_ranges_by_instr.at(idx)) {
+    auto& other_lr = cache->live_ranges.at(other_idx);
+    if (other_lr.var == var) {
       continue;
-    if (other_lr.is_live_at_instr(idx)) {
-      if (/*(idx != other_lr.max) &&*/ other_lr.conflicts_at(idx, ass)) {
-        bool allowed_by_move_eliminator = false;
-        if (move_eliminator) {
-          if (enable_fancy_coloring) {
-            if (lr.dies_next_at_instr(idx) && other_lr.becomes_live_at_instr(idx) &&
-                in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
+    }
 
-            if (lr.becomes_live_at_instr(idx) && other_lr.dies_next_at_instr(idx) &&
-                in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
-          } else {
-            // case to allow rename (from us to them)
-            if (idx == lr.max && idx == other_lr.min && in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
+    if (/*(idx != other_lr.max) &&*/ other_lr.conflicts_at(idx, ass)) {
+      bool allowed_by_move_eliminator = false;
+      if (move_eliminator) {
+        if (enable_fancy_coloring) {
+          if (lr.dies_next_at_instr(idx) && other_lr.becomes_live_at_instr(idx) &&
+              in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
+          }
 
-            if (idx == lr.min && idx == other_lr.min && in.instructions.at(idx).is_move) {
-              allowed_by_move_eliminator = true;
-            }
+          if (lr.becomes_live_at_instr(idx) && other_lr.dies_next_at_instr(idx) &&
+              in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
+          }
+        } else {
+          // case to allow rename (from us to them)
+          if (idx == lr.max && idx == other_lr.min && in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
+          }
+
+          if (idx == lr.min && idx == other_lr.min && in.instructions.at(idx).is_move) {
+            allowed_by_move_eliminator = true;
           }
         }
+      }
 
-        if (!allowed_by_move_eliminator) {
-          if (debug_trace >= 2) {
-            printf("at idx %d, %s conflicts\n", idx, other_lr.print_assignment().c_str());
-          }
-          return false;
+      if (!allowed_by_move_eliminator) {
+        if (debug_trace >= 2) {
+          printf("at idx %d, %s conflicts\n", idx, other_lr.print_assignment().c_str());
         }
+        return false;
       }
     }
   }
