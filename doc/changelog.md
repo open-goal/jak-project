@@ -74,3 +74,9 @@
 - Fixed a bug where arguments to a method were unmodifiable.
 - Fixed a bug where multiple anonymous lambda functions in the same file would throw a compiler error related to function name uniqueness.
 - Method declarations can now use compound types. Previously they could only use simple types due to a mistake in deftype parser.
+- Added a declare option for `allow-saved-regs` to let `asm-func`s use saved registers in special cases
+- Improved register allocation for the above case to avoid inserting extra moves to and from temp registers.
+- Fixed a bug where early returns out of methods would not change the return type of the method.
+- Fixed a bug where the return instruction was still emitted and the overridden return type of `asm-func` was ignored for methods
+- Rearranged function stack frames so spilled register variable slots come after stack structures.
+- Added `stack` allocated and constructed basic/structure types.

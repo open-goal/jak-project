@@ -176,6 +176,9 @@ class FunctionEnv : public DeclareEnv {
   const std::string& name() const { return m_name; }
 
   StackVarAddrVal* allocate_stack_variable(const TypeSpec& ts, int size_bytes);
+  StackVarAddrVal* allocate_aligned_stack_variable(const TypeSpec& ts,
+                                                   int size_bytes,
+                                                   int align_bytes);
   int stack_slots_used_for_stack_vars() const { return m_stack_var_slots_used; }
 
   int idx_in_file = -1;

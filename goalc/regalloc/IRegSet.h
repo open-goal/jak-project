@@ -1,4 +1,18 @@
 #pragma once
+/*!
+ * @file IRegSet.h
+ * An efficient implementation of a set of IRegs.
+ * This takes advantage of the fact that:
+ *  - IReg id values are pretty densely packed (ie no huge gaps in ids)
+ *  - Generally there are ~hundreds of IRegs in complicated functions
+ * and has a bit per ireg.
+ *
+ * The container dynamically increases size as needed. Uninitialized values are 0.
+ * Doing operations on pairs of sets will resize both to be the max size.
+ * This was found to be more efficient in the end.
+ *
+ * The space used is (highest_set_reg + 63) / 64 + constant overhead (vector + int)
+ */
 #include <vector>
 #include <cassert>
 #include "common/common_types.h"
@@ -6,6 +20,11 @@
 class IRegSet {
  public:
   IRegSet() = default;
+
+  /*!
+   * Add the given ireg to the set.
+   * Resizes if needed.
+   */
   void insert(int x) {
     resize(x + 1);
     assert(m_bits > x);
@@ -14,12 +33,19 @@ class IRegSet {
     m_data.at(word) |= (1ll << bit);
   }
 
+  /*!
+   * Remove everything from the set.
+   */
   void clear() {
     for (auto& x : m_data) {
       x = 0;
     }
   }
 
+  /*!
+   * Is the given register in the set?
+   * Will resize if needed. (todo - is this better than not resizing?)
+   */
   bool operator[](int x) {
     resize(x + 1);
     auto word = x / 64;
@@ -27,8 +53,15 @@ class IRegSet {
     return m_data.at(word) & (1ll << bit);
   }
 
+  /*!
+   * The size is (maximum value we can access with operator[] without resizing) - 1
+   */
   int size() const { return m_bits; }
 
+  /*!
+   * Is this the same set?
+   * Doesn't resize either.
+   */
   bool operator==(const IRegSet& other) const {
     auto compare_size = std::min(m_data.size(), other.m_data.size());
     size_t i;
@@ -71,7 +104,8 @@ class IRegSet {
   }
 
   /*!
-   * this = (this & !other)
+   * this = (this & !other).
+   * Resizes the smaller one.
    */
   void bitwise_and_not(IRegSet& other) {
     // make same size
@@ -84,6 +118,7 @@ class IRegSet {
 
   /*!
    * this = (this | other)
+   * Resizes the smaller one
    */
   void bitwise_or(IRegSet& other) {
     make_max_size(other);

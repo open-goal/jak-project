@@ -949,7 +949,7 @@ void IR_GetStackAddr::do_codegen(emitter::ObjectGenerator* gen,
                                  const AllocationResult& allocs,
                                  emitter::IR_Record irec) {
   auto dest_reg = get_reg(m_dest, allocs, irec);
-  int offset = GPR_SIZE * (m_slot + allocs.stack_slots_for_spills);
+  int offset = GPR_SIZE * allocs.get_slot_for_var(m_slot);
 
   // dest = offset
   load_constant(offset, gen, irec, dest_reg);

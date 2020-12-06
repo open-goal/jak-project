@@ -275,6 +275,29 @@ StackVarAddrVal* FunctionEnv::allocate_stack_variable(const TypeSpec& ts, int si
   return result;
 }
 
+StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts,
+                                                              int size_bytes,
+                                                              int align_bytes) {
+  require_aligned_stack();
+  assert(align_bytes <= 16);
+  int align_slots = (align_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
+  while (m_stack_var_slots_used % align_slots) {
+    m_stack_var_slots_used++;
+  }
+
+  // we align our size too. The stack versions of the default new methods in kscheme.cpp round up
+  // to 16 bytes and memset this size, which can cause issues if we make this size only 8 byte
+  // aligned.
+  while (size_bytes % align_bytes) {
+    size_bytes++;
+  }
+
+  int slots_used = (size_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
+  auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
+  m_stack_var_slots_used += slots_used;
+  return result;
+}
+
 ///////////////////
 // LexicalEnv
 ///////////////////

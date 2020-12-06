@@ -349,6 +349,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   bool first_thing = true;
   for_each_in_list(lambda.body, [&](const goos::Object& o) {
     result = compile_error_guard(o, func_block_env);
+    if (!dynamic_cast<None*>(result)) {
+      result = result->to_reg(func_block_env);
+    }
     if (first_thing) {
       first_thing = false;
       // you could probably cheat and do a (begin (blorp) (declare ...)) to get around this.
@@ -356,10 +359,15 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     }
   });
 
-  if (result && !dynamic_cast<None*>(result)) {
+  if (new_func_env->is_asm_func) {
+    // don't add return automatically!
+    lambda_ts.add_arg(new_func_env->asm_func_return_type);
+  } else if (result && !dynamic_cast<None*>(result)) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-    lambda_ts.add_arg(final_result->type());
+    func_block_env->return_types.push_back(final_result->type());
+    auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
+    lambda_ts.add_arg(return_type);
   } else {
     lambda_ts.add_arg(m_ts.make_typespec("none"));
   }
@@ -646,6 +654,9 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
       return array;
     } else {
       auto type_of_obj = m_ts.make_typespec(type_as_string);
+      if (!m_ts.lookup_type(type_of_obj)->is_reference()) {
+        throw_compiler_error(form, "Cannot heap allocate the value type {}.", type_of_obj.print());
+      }
       std::vector<RegVal*> args;
       // allocation
       args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
@@ -706,9 +717,40 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
         auto addr = fe->allocate_stack_variable(ts, size_in_bytes);
         return addr;
       }
-      // todo, stack structures.
+      // todo, stack structure arrays
+    } else {
+      auto type_of_obj = m_ts.make_typespec(type_as_string);
+      auto ti = m_ts.lookup_type(type_of_obj);
+
+      if (!ti->is_reference()) {
+        throw_compiler_error(form, "Cannot stack allocate the value type {}.", type_of_obj.print());
+      }
+      auto ti_as_struct = dynamic_cast<StructureType*>(ti);
+      assert(ti_as_struct);
+
+      if (ti_as_struct->is_dynamic()) {
+        throw_compiler_error(form, "Cannot stack allocate the dynamic type {}.",
+                             type_of_obj.print());
+      }
+      std::vector<RegVal*> args;
+      // allocation
+      auto mem = fe->allocate_aligned_stack_variable(type_of_obj, ti->get_size_in_memory(), 16)
+                     ->to_gpr(env);
+      // the new method actual takes a "symbol" according the type system. So we have to cheat it.
+      mem->set_type(TypeSpec("symbol"));
+      args.push_back(mem);
+      // type
+      args.push_back(compile_get_symbol_value(form, type_of_obj.base_type(), env)->to_reg(env));
+      // the other arguments
+      for_each_in_list(*rest, [&](const goos::Object& o) {
+        args.push_back(compile_error_guard(o, env)->to_reg(env));
+      });
+
+      auto new_method = compile_get_method_of_type(form, type_of_obj, "new", env);
+      auto new_obj = compile_real_function_call(form, new_method, args, env);
+      new_obj->set_type(type_of_obj);
+      return new_obj;
     }
-    // todo, stack not-arrays
   }
 
   throw_compiler_error(form, "Unsupported new form");

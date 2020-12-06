@@ -178,6 +178,9 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
   }
   cache->stack_ops.resize(in.instructions.size());
 
+  // cache a list of live ranges which are live at each instruction.
+  // filters out unseen lr's as well.
+  // this makes instr * lr1 * lr2 loop much faster!
   cache->live_ranges_by_instr.resize(in.instructions.size());
   for (u32 lr_idx = 0; lr_idx < cache->live_ranges.size(); lr_idx++) {
     auto& lr = cache->live_ranges.at(lr_idx);
