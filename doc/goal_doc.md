@@ -890,7 +890,8 @@ Example:
 - `inline` means "inline whenever possible". See function inlining section for why inlining may be impossible in some cases.
 - `allow-inline` or `disallow-inline`. You can control if inlining is allowed, though it is not clear why I thought this would be useful. Currently the default is to allow always.
 - `print-asm` if codegen runs on this function (`:color #t`), disassemble the result and print it. This is intended for compiler debugging.
-- `asm-func` will disable the prologue and epilogue from being generated. You need to include your own `ret` instruction or similar. The compiler will error if it needs to use the stack for a stack variable or a spilled register. The coloring system will not use callee saved registers.  As a result, complicated GOAL expression may fail inside an `asm-func` function. The intent is to use it for context switching routines inside in the kernel, where you may not be able to use the stack, or may not want to return with `ret`.  The return type of an `asm-func` must manually be specified as the compiler doesn't automatically put the result in the return register and cannot do type analysis to figure out the real return type.
+- `asm-func` will disable the prologue and epilogue from being generated. You need to include your own `ret` instruction or similar. The compiler will error if it needs to use the stack for a stack variable or a spilled register. The coloring system will not use callee saved registers and will error if you force it to use one.  As a result, complicated GOAL expression may fail inside an `asm-func` function. The intent is to use it for context switching routines inside in the kernel, where you may not be able to use the stack, or may not want to return with `ret`.  The return type of an `asm-func` must manually be specified as the compiler doesn't automatically put the result in the return register and cannot do type analysis to figure out the real return type.
+- `allow-saved-regs` allows an `asm-func`'s coloring to use saved registers without an error. Stacks spills are still an error. The compiler will not automatically put things in a saved register, you must do this yourself. The move eliminator may still be used on your variables which use saved registers, so you should be careful if you really care about where saved variables are used.
 
 This form will probably get more options in the future.
 
@@ -1437,10 +1438,13 @@ Fields which aren't explicitly initialized are zeroed, except for the type field
 
 This does not work on dynamically sized structures.
 
-### Stack Allocated Objects
+### Stack Allocated Arrays
 Currently only arrays of integers, floats, or pointers can be stack allocated.
-For example, use `(new 'array 'int32 1)` to get a `(pointer int32)`. Unlike heap allocated arrays, these stack arrays
-must have a size that can be determined at compile time. 
+For example, use `(new 'stack ''array 'int32 1)` to get a `(pointer int32)`. Unlike heap allocated arrays, these stack arrays
+must have a size that can be determined at compile time.  The objects are uninitialized.
+
+### Stack Allocated Structures
+Works like heap allocated, the objects are initialized with the constructor. The constructor must support "stack mode". Using `object-new` supports stack mode so usually you don't have to worry about this.  The structure's memory will be memset to 0 with `object-new` automatically.
 
 ## Defining a `new` Method
 

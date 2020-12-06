@@ -349,6 +349,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   bool first_thing = true;
   for_each_in_list(lambda.body, [&](const goos::Object& o) {
     result = compile_error_guard(o, func_block_env);
+    if (!dynamic_cast<None*>(result)) {
+      result = result->to_reg(func_block_env);
+    }
     if (first_thing) {
       first_thing = false;
       // you could probably cheat and do a (begin (blorp) (declare ...)) to get around this.
@@ -356,10 +359,15 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     }
   });
 
-  if (result && !dynamic_cast<None*>(result)) {
+  if (new_func_env->is_asm_func) {
+    // don't add return automatically!
+    lambda_ts.add_arg(new_func_env->asm_func_return_type);
+  } else if (result && !dynamic_cast<None*>(result)) {
     auto final_result = result->to_gpr(new_func_env.get());
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
-    lambda_ts.add_arg(final_result->type());
+    func_block_env->return_types.push_back(final_result->type());
+    auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
+    lambda_ts.add_arg(return_type);
   } else {
     lambda_ts.add_arg(m_ts.make_typespec("none"));
   }
@@ -588,127 +596,185 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
   return get_none();
 }
 
-Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, Env* env) {
-  // todo - support compound types.
-  // todo - stack arrays?
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+/*!
+ * New on global or debug heap.
+ */
+Val* Compiler::compile_heap_new(const goos::Object& form,
+                                const std::string& allocation,
+                                const goos::Object& type,
+                                const goos::Object* rest,
+                                Env* env) {
+  auto main_type = parse_typespec(unquote(type));
+  if (main_type == TypeSpec("inline-array") || main_type == TypeSpec("array")) {
+    bool is_inline = main_type == TypeSpec("inline-array");
+    auto elt_type = quoted_sym_as_string(pair_car(*rest));
+    rest = &pair_cdr(*rest);
 
+    auto count_obj = pair_car(*rest);
+    rest = &pair_cdr(*rest);
+    // try to get the size as a compile time constant.
+    int64_t constant_count = 0;
+    bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
+
+    if (!rest->is_empty_list()) {
+      // got extra arguments
+      throw_compiler_error(form, "new array form got more arguments than expected");
+    }
+
+    auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
+                        : m_ts.make_pointer_typespec(elt_type);
+    auto info = m_ts.get_deref_info(ts);
+    if (!info.can_deref) {
+      throw_compiler_error(form, "Cannot make an {} of {}\n", main_type.print(), ts.print());
+    }
+
+    auto malloc_func = compile_get_symbol_value(form, "malloc", env)->to_reg(env);
+    std::vector<RegVal*> args;
+    args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
+
+    if (is_constant_size) {
+      auto array_size = constant_count * info.stride;
+      args.push_back(compile_integer(array_size, env)->to_reg(env));
+    } else {
+      auto array_size = compile_integer(info.stride, env)->to_reg(env);
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, array_size,
+                                                 compile_error_guard(count_obj, env)->to_gpr(env)));
+      args.push_back(array_size);
+    }
+
+    auto array = compile_real_function_call(form, malloc_func, args, env);
+    array->set_type(ts);
+    return array;
+  } else {
+    if (!m_ts.lookup_type(main_type)->is_reference()) {
+      throw_compiler_error(form, "Cannot heap allocate the value type {}.", main_type.print());
+    }
+    std::vector<RegVal*> args;
+    // allocation
+    args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
+    // type
+    args.push_back(compile_get_symbol_value(form, main_type.base_type(), env)->to_reg(env));
+    // the other arguments
+    for_each_in_list(*rest, [&](const goos::Object& o) {
+      args.push_back(compile_error_guard(o, env)->to_reg(env));
+    });
+
+    auto new_method = compile_get_method_of_type(form, main_type, "new", env);
+    auto new_obj = compile_real_function_call(form, new_method, args, env);
+    new_obj->set_type(main_type);
+    return new_obj;
+  }
+}
+
+Val* Compiler::compile_static_new(const goos::Object& form,
+                                  const goos::Object& type,
+                                  const goos::Object* rest,
+                                  Env* env) {
+  auto type_of_object = parse_typespec(unquote(type));
+  if (is_structure(type_of_object)) {
+    return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+  }
+
+  if (is_bitfield(type_of_object)) {
+    return compile_new_static_bitfield(form, type_of_object, *rest, env);
+  }
+
+  throw_compiler_error(form,
+                       "Cannot do a static new of a {} because it is not a bitfield or structure.");
+  return get_none();
+}
+
+Val* Compiler::compile_stack_new(const goos::Object& form,
+                                 const goos::Object& type,
+                                 const goos::Object* rest,
+                                 Env* env) {
+  auto type_of_object = parse_typespec(unquote(type));
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
+    bool is_inline = type_of_object == TypeSpec("inline-array");
+    auto elt_type = quoted_sym_as_string(pair_car(*rest));
+    rest = &pair_cdr(*rest);
+
+    auto count_obj = pair_car(*rest);
+    rest = &pair_cdr(*rest);
+    // try to get the size as a compile time constant.
+    int64_t constant_count = 0;
+    bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
+    if (!is_constant_size) {
+      throw_compiler_error(form, "Cannot create a dynamically sized stack array");
+    }
+
+    if (!rest->is_empty_list()) {
+      // got extra arguments
+      throw_compiler_error(form, "New array form got more arguments than expected");
+    }
+
+    auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
+                        : m_ts.make_pointer_typespec(elt_type);
+    auto info = m_ts.get_deref_info(ts);
+    if (!info.can_deref) {
+      throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
+    }
+
+    if (!m_ts.lookup_type(elt_type)->is_reference()) {
+      // not a reference type
+      int size_in_bytes = info.stride * constant_count;
+      auto addr = fe->allocate_stack_variable(ts, size_in_bytes);
+      return addr;
+    }
+    // todo
+    throw_compiler_error(form, "Static array of type {} is not yet supported.", ts.print());
+    return get_none();
+  } else {
+    auto ti = m_ts.lookup_type(type_of_object);
+
+    if (!ti->is_reference()) {
+      throw_compiler_error(form, "Cannot stack allocate the value type {}.",
+                           type_of_object.print());
+    }
+    auto ti_as_struct = dynamic_cast<StructureType*>(ti);
+    assert(ti_as_struct);
+
+    if (ti_as_struct->is_dynamic()) {
+      throw_compiler_error(form, "Cannot stack allocate the dynamic type {}.",
+                           type_of_object.print());
+    }
+    std::vector<RegVal*> args;
+    // allocation
+    auto mem = fe->allocate_aligned_stack_variable(type_of_object, ti->get_size_in_memory(), 16)
+                   ->to_gpr(env);
+    // the new method actual takes a "symbol" according the type system. So we have to cheat it.
+    mem->set_type(TypeSpec("symbol"));
+    args.push_back(mem);
+    // type
+    args.push_back(compile_get_symbol_value(form, type_of_object.base_type(), env)->to_reg(env));
+    // the other arguments
+    for_each_in_list(*rest, [&](const goos::Object& o) {
+      args.push_back(compile_error_guard(o, env)->to_reg(env));
+    });
+
+    auto new_method = compile_get_method_of_type(form, type_of_object, "new", env);
+    auto new_obj = compile_real_function_call(form, new_method, args, env);
+    new_obj->set_type(type_of_object);
+    return new_obj;
+  }
+}
+
+Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, Env* env) {
   auto allocation = quoted_sym_as_string(pair_car(_rest));
   auto rest = &pair_cdr(_rest);
 
-  // auto type_of_obj = get_base_typespec(quoted_sym_as_string(pair_car(rest)));
-  auto type_as_string = quoted_sym_as_string(pair_car(*rest));
+  auto type = pair_car(*rest);
   rest = &pair_cdr(*rest);
 
   if (allocation == "global" || allocation == "debug") {
     // allocate on a named heap
-
-    if (type_as_string == "inline-array" || type_as_string == "array") {
-      bool is_inline = type_as_string == "inline-array";
-      auto elt_type = quoted_sym_as_string(pair_car(*rest));
-      rest = &pair_cdr(*rest);
-
-      auto count_obj = pair_car(*rest);
-      rest = &pair_cdr(*rest);
-      // try to get the size as a compile time constant.
-      int64_t constant_count = 0;
-      bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
-
-      if (!rest->is_empty_list()) {
-        // got extra arguments
-        throw_compiler_error(form, "new array form got more arguments than expected");
-      }
-
-      auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
-                          : m_ts.make_pointer_typespec(elt_type);
-      auto info = m_ts.get_deref_info(ts);
-      if (!info.can_deref) {
-        throw_compiler_error(form, "Cannot make an {} of {}\n", type_as_string, ts.print());
-      }
-
-      auto malloc_func = compile_get_symbol_value(form, "malloc", env)->to_reg(env);
-      std::vector<RegVal*> args;
-      args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
-
-      if (is_constant_size) {
-        auto array_size = constant_count * info.stride;
-        args.push_back(compile_integer(array_size, env)->to_reg(env));
-      } else {
-        auto array_size = compile_integer(info.stride, env)->to_reg(env);
-        env->emit(
-            std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, array_size,
-                                             compile_error_guard(count_obj, env)->to_gpr(env)));
-        args.push_back(array_size);
-      }
-
-      auto array = compile_real_function_call(form, malloc_func, args, env);
-      array->set_type(ts);
-      return array;
-    } else {
-      auto type_of_obj = m_ts.make_typespec(type_as_string);
-      std::vector<RegVal*> args;
-      // allocation
-      args.push_back(compile_get_sym_obj(allocation, env)->to_reg(env));
-      // type
-      args.push_back(compile_get_symbol_value(form, type_of_obj.base_type(), env)->to_reg(env));
-      // the other arguments
-      for_each_in_list(*rest, [&](const goos::Object& o) {
-        args.push_back(compile_error_guard(o, env)->to_reg(env));
-      });
-
-      auto new_method = compile_get_method_of_type(form, type_of_obj, "new", env);
-      auto new_obj = compile_real_function_call(form, new_method, args, env);
-      new_obj->set_type(type_of_obj);
-      return new_obj;
-    }
+    return compile_heap_new(form, allocation, type, rest, env);
   } else if (allocation == "static") {
-    auto type_of_object = m_ts.make_typespec(type_as_string);
-    if (is_structure(type_of_object)) {
-      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
-    }
-
-    if (is_bitfield(type_of_object)) {
-      return compile_new_static_bitfield(form, type_of_object, *rest, env);
-    }
-
+    // put in code.
+    return compile_static_new(form, type, rest, env);
   } else if (allocation == "stack") {
-    auto type_of_object = m_ts.make_typespec(type_as_string);
-
-    if (type_as_string == "inline-array" || type_as_string == "array") {
-      bool is_inline = type_as_string == "inline-array";
-      auto elt_type = quoted_sym_as_string(pair_car(*rest));
-      rest = &pair_cdr(*rest);
-
-      auto count_obj = pair_car(*rest);
-      rest = &pair_cdr(*rest);
-      // try to get the size as a compile time constant.
-      int64_t constant_count = 0;
-      bool is_constant_size = try_getting_constant_integer(count_obj, &constant_count, env);
-      if (!is_constant_size) {
-        throw_compiler_error(form, "Cannot create a dynamically sized stack array");
-      }
-
-      if (!rest->is_empty_list()) {
-        // got extra arguments
-        throw_compiler_error(form, "New array form got more arguments than expected");
-      }
-
-      auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
-                          : m_ts.make_pointer_typespec(elt_type);
-      auto info = m_ts.get_deref_info(ts);
-      if (!info.can_deref) {
-        throw_compiler_error(form, "Cannot make an {} of {}\n", type_as_string, ts.print());
-      }
-
-      if (!m_ts.lookup_type(elt_type)->is_reference()) {
-        // not a reference type
-        int size_in_bytes = info.stride * constant_count;
-        auto addr = fe->allocate_stack_variable(ts, size_in_bytes);
-        return addr;
-      }
-      // todo, stack structures.
-    }
-    // todo, stack not-arrays
+    return compile_stack_new(form, type, rest, env);
   }
 
   throw_compiler_error(form, "Unsupported new form");

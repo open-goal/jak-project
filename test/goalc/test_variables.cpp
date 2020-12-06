@@ -86,3 +86,11 @@ TEST_F(VariableTests, InlineAsm) {
 TEST_F(VariableTests, StaticBitfieldField) {
   runner.run_static_test(env, testCategory, "static-bitfield-field.gc", {"22\n"});
 }
+
+TEST_F(VariableTests, StackArrayAlignment) {
+  runner.run_static_test(env, testCategory, "stack-array-align.gc", {"3\n"});
+}
+
+TEST_F(VariableTests, StackStructureAlignment) {
+  runner.run_static_test(env, testCategory, "stack-structure-align.gc", {"1234\n"});
+}
