@@ -1707,6 +1707,14 @@
          )
   )
 
+(defmacro set-u64-from-u128! (dst src)
+  `(set! ,dst (-> (the (pointer uint64) (& ,src))))
+  )
+
+(defmacro the-super-u64-fucntion (func)
+  `(the-as (function uint uint uint uint uint uint object) ,func)
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Stack Frame Stuff (TODO)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1715,93 +1723,180 @@
 ;; The catch frames are managed per process (you can't throw to a frame outside your process)
 ;; But otherwise it is fully dynamic.
 
-; (defmethod new catch-frame ((allocation symbol) (type-to-make type) (name symbol) (func function) (param-block (pointer uint64)))
-;   "Run func in a catch frame with the given 8 parameters.
-;   The return value is the result of the function.
-;   The allocation must be an address"
-;   (declare (asm-func object)
-;            (print-asm)
-;            )
+(defmethod new catch-frame ((allocation symbol) (type-to-make type) (name symbol) (func function) (param-block (pointer uint64)))
+  "Run func in a catch frame with the given 8 parameters.
+  The return value is the result of the function.
+  The allocation must be an address.
+  Unlike the original, this only works on the first six parameters, but I think this doesn't matter."
+  (declare (asm-func object)
+           ;(print-asm)
+           (allow-saved-regs) ;; very dangerous!
+           )
   
-;   (rlet ((pp :reg r13 :type process)
-;          (temp :reg rax :type uint)
-;          (off :reg r15 :type uint)
-;          (sp :reg rsp :type uint)
-;          (s0 :reg rbx :type uint)
-;          (s1 :reg rbp :type uint)
-;          (s2 :reg r10 :type uint)
-;          (s3 :reg r11 :type uint)
-;          (s4 :reg r12 :type uint)
-;          (a0 :reg rdi :type uint)
-;          (a1 :reg rsi :type uint)
-;          (a2 :reg rdx :type uint)
-;          (a3 :reg rcx :type uint)
-;          (a4 :reg r8 :type uint)
-;          (a5 :reg r9 :type uint)
-;          (a6 :reg r10 :type uint)
-;          (a7 :reg r11 :type uint)
-;          ) 
+  (rlet ((pp :reg r13 :type process)
+         (temp :reg rax :type uint)
+         (off :reg r15 :type uint)
+         (sp :reg rsp :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type (pointer uint64))
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint)
+         ) 
         
-;         ;; we treat the allocation as an address.
-;         (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
-;           ;; setup catch frame
-;           (set! (-> obj type) type-to-make)
-;           (set! (-> obj name) name)
-;           ;; get the return address
-;           (.pop temp)
-;           (.push temp)
-;           ;; make it a GOAL address so it fits in 32 bitys
-;           (.sub temp off)
-;           ;; store it
-;           (set! (-> obj ra) (the int temp))
+        ;; we treat the allocation as an address.
+        (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
+          ;; setup catch frame
+          (set! (-> obj type) type-to-make)
+          (set! (-> obj name) name)
+          ;; get the return address (the compiler won't touch the stack because we're an asm-func)
+          (.pop temp)
+          (.push temp)
+          ;; make it a GOAL address so it fits in 32 bitys
+          (.sub temp off)
+          ;; store it
+          (set! (-> obj ra) (the int temp))
           
-;           ;; todo, do we need a stack offset here?
-;           (set! temp sp)
-;           (.sub temp off)
-;           (set! (-> obj sp) (the int sp))
+          ;; todo, do we need a stack offset here?
+          ;; remember the stack pointer
+          (set! temp sp)
+          (.sub temp off)
+          (set! (-> obj sp) (the int sp))
           
-;           ;; back up registers
-;           (.mov :color #f temp s0)
-;           (set-u128-as-u64! (-> obj rreg 0) temp)
-;           (.mov :color #f temp s1)
-;           (set-u128-as-u64! (-> obj rreg 1) temp)
-;           (.mov :color #f temp s2)
-;           (set-u128-as-u64! (-> obj rreg 2) temp)
-;           (.mov :color #f temp s3)
-;           (set-u128-as-u64! (-> obj rreg 3) temp)
-;           (.mov :color #f temp s4)
-;           (set-u128-as-u64! (-> obj rreg 4) temp)
-;           ;; todo save fprs
+          ;; back up registers we care about
+          (.mov :color #f temp s0)
+          (set-u128-as-u64! (-> obj rreg 0) temp)
+          (.mov :color #f temp s1)
+          (set-u128-as-u64! (-> obj rreg 1) temp)
+          (.mov :color #f temp s2)
+          (set-u128-as-u64! (-> obj rreg 2) temp)
+          (.mov :color #f temp s3)
+          (set-u128-as-u64! (-> obj rreg 3) temp)
+          (.mov :color #f temp s4)
+          (set-u128-as-u64! (-> obj rreg 4) temp)
+          ;; todo save fprs
           
-;           ;; push this stack frame
-;           (set! (-> obj next) (-> pp stack-frame-top))
-;           (set! (-> pp stack-frame-top) obj)
+          ;; push this stack frame
+          (set! (-> obj next) (-> pp stack-frame-top))
+          (set! (-> pp stack-frame-top) obj)
           
-;           (let ((ret ((the-super-u64-fucntion func)
-;                        ;(-> param-block 0)
-;                        (-> param-block)
-;                        ;(-> param-block 1)
-;                        (-> (&+ param-block 8))
-;                        (-> (&+ param-block 16))
-;                        (-> (&+ param-block 24))
-;                        ;(-> (&+ param-block 32))
-;           ;             (-> param-block 5)
-;                       ))
-;                 )
+          ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
+          (.push :color #f s3)
+          (.push :color #f s2)
+          (set! s3 (the uint func))
+          (set! s2 param-block)
+          
+          ;; todo - are we aligned correctly here?
+          (let ((ret ((the-super-u64-fucntion s3)
+                      (-> s2 0)
+                      (-> s2 1)
+                      (-> s2 2)
+                      (-> s2 3)
+                      (-> s2 4)
+                      (-> s2 5)
+                      ))
+                )
             
-;           ;   (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
-;             )
-;           )
-;         )
-;   ;; the code in here may throw at any point in time, without properly resetting saved registers.
-;   ;; so we should save them ourself.
+            (.pop :color #f s2)
+            (.pop :color #f s3)
+            (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
+            (.ret)
+            (the object ret)
+            )
+          )
+        )
+  )
+
+(defun throw-dispatch ((obj catch-frame) value)
+  "Throw the given value to the catch frame.
+  Only can throw a 64-bit value. The original could throw 128 bits."
+  (declare (asm-func none)
+           ;(print-asm)
+           )
   
-;   (the object #f)
-;   )
+  (rlet ((pp :reg r13 :type process)
+         (temp :reg rax :type uint)
+         (off :reg r15 :type uint)
+         (sp :reg rsp :type uint)
+         (s0 :reg rbx :type uint)
+         (s1 :reg rbp :type uint)
+         (s2 :reg r10 :type (pointer uint64))
+         (s3 :reg r11 :type uint)
+         (s4 :reg r12 :type uint)
+         )
+        
+        ;; pop everything we threw past
+        (set! (-> pp stack-frame-top) (-> obj next))
+        
+        ;; restore regs we care about.
+        (set-u64-from-u128! temp (-> obj rreg 0))
+        (.mov :color #f s0 temp)
+        (set-u64-from-u128! temp (-> obj rreg 1))
+        (.mov :color #f s1 temp)
+        (set-u64-from-u128! temp (-> obj rreg 2))
+        (.mov :color #f s2 temp)
+        (set-u64-from-u128! temp (-> obj rreg 3))
+        (.mov :color #f s3 temp)
+        (set-u64-from-u128! temp (-> obj rreg 4))
+        (.mov :color #f s4 temp)
+        ;; todo fpr
+        
+        ;; set stack pointer
+        (set! sp (the uint (-> obj sp)))
+        (.add sp off)
+        
+        ;; overwrite our return address
+        (.pop temp)
+        (set! temp (the uint (-> obj ra)))
+        (.add temp off)
+        (.push temp)
+        
+        ;; load the return register
+        (.mov temp value)
+        (.ret)
+        )
+  )
+
+(defun throw ((name symbol) value)
+  "Dynamic throw."
+  (rlet ((pp :reg r13 :type process))
+        (let ((cur (-> pp stack-frame-top)))
+          (while cur
+            (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
+              ;; match!
+              (throw-dispatch (the catch-frame cur) value)
+              )
+            
+            (if (eq? (-> cur type) protect-frame)
+                ;; call the cleanup function
+                ((-> (the protect-frame cur) exit))
+                )
+            )
+          )
+        )
+  (format 0 "ERROR: throw could not find tag ~A~%" name)
+  (break)
+  )
+
+(defmethod new protect-frame ((allocation symbol) (type-to-make type) (func (function object)))
+  (let ((obj (the protect-frame (&+ allocation *gtype-basic-offset*))))
+    (set! (-> obj type) type-to-make)
+    (set! (-> obj name) 'protect-frame)
+    (set! (-> obj exit) func)
+    
+    (rlet ((pp :reg r13 :type process))
+          (set! (-> obj next) (-> pp stack-frame-top))
+          (set! (-> pp stack-frame-top) obj)
+          )
+    obj
+    )
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tree Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; todo previous-brother
 
 (defun change-parent ((obj process-tree) (new-parent process-tree))
   "Make obj a child of new-parent"
@@ -1833,6 +1928,50 @@
     obj
     )
   )
+
+;; todo change-brother
+;; todo change-to-last-brother
+ 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Process Control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod activate process ((obj process) (dest process-tree) (name basic) (stack-top pointer))
+  "Activate a process! Put it on the given active tree and set up the main thread."
+  (set! (-> obj mask) (logand (-> dest mask) PROCESS_CLEAR_MASK))
+  (set! (-> obj status) 'ready)
+  (let ((pid (-> *kernel-context* next-pid)))
+    (set! (-> obj pid) pid)
+    (set! (-> *kernel-context* next-pid) (+ 1 pid)))
+  (set! (-> obj top-thread) #f)
+  (set! (-> obj main-thread) #f)
+  (set! (-> obj name) name)
+  (set! (-> obj heap-base) (set! (-> obj heap-cur) (&+ (-> obj stack) (-> obj type heap-base))))
+  (set! (-> obj stack-frame-top) #f)
+  (mem-set32! (-> obj stack) (the int (/ (-> obj type heap-base) 4)) 0)
+  
+  (set! (-> obj trans-hook) #f)
+  (set! (-> obj post-hook) #f)
+  (set! (-> obj event-hook) #f)
+  (set! (-> obj state) #f)
+  (set! (-> obj next-state) #f)
+  (if (process-mask? (-> dest mask) process-tree)
+      (set! (-> obj entity) #f)
+      (set! (-> obj entity) (-> (the process dest) entity))
+      )
+  
+  (set! (-> obj connection-list next1) #f)
+  (set! (-> obj connection-list prev1) #f)
+  
+  ;; todo global -> process
+  (let ((thread (new 'global 'cpu-thread obj 'code PROCESS_STACK_SAVE_SIZE stack-top)))
+    (set! (-> obj main-thread) thread)
+    )
+  (change-parent obj dest)
+  )
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Process Globals

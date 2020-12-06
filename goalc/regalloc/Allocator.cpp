@@ -634,18 +634,18 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
   }
 }
 
-const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, RegAllocCache* cache) {
+const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v, RegAllocCache* cache, bool get_all) {
   auto& info = cache->iregs.at(v);
   // todo fix this.
   //  assert(info.kind != emitter::RegKind::INVALID);
   if (info.kind == emitter::RegKind::GPR || info.kind == emitter::RegKind::INVALID) {
-    if (cache->is_asm_func) {
+    if (!get_all && cache->is_asm_func) {
       return emitter::gRegInfo.get_gpr_temp_alloc_order();
     } else {
       return emitter::gRegInfo.get_gpr_alloc_order();
     }
   } else if (info.kind == emitter::RegKind::XMM) {
-    if (cache->is_asm_func) {
+    if (!get_all && cache->is_asm_func) {
       return emitter::gRegInfo.get_xmm_temp_alloc_order();
     } else {
       return emitter::gRegInfo.get_xmm_alloc_order();
@@ -810,13 +810,17 @@ bool do_allocation_for_var(int var,
   auto& lr = cache->live_ranges.at(var);
   bool colored = false;
   if (lr.best_hint.is_assigned()) {
+    if (debug_trace >= 2) {
+      printf("var %d, trying hint %s\n", var, lr.best_hint.to_string().c_str());
+    }
     colored = try_assignment_for_var(var, lr.best_hint, cache, in, debug_trace);
     if (debug_trace >= 2) {
       printf("var %d reg %s ? %d\n", var, lr.best_hint.to_string().c_str(), colored);
     }
   }
 
-  auto reg_order = get_default_alloc_order_for_var(var, cache);
+  auto reg_order = get_default_alloc_order_for_var(var, cache, false);
+  auto all_reg_order = get_default_alloc_order_for_var(var, cache, true);
 
   // todo, try other regs..
   if (!colored && move_eliminator) {
@@ -825,15 +829,21 @@ bool do_allocation_for_var(int var,
 
     if (first_instr.is_move) {
       auto& possible_coloring = cache->live_ranges.at(first_instr.read.front().id).get(lr.min);
-      if (possible_coloring.is_assigned() && in_vec(reg_order, possible_coloring.reg)) {
+      if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
         colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
+        if (debug_trace >= 2 && colored) {
+          printf("var %d colored through first move elim to %s\n", var, possible_coloring.to_string().c_str());
+        }
       }
     }
 
     if (!colored && last_instr.is_move) {
       auto& possible_coloring = cache->live_ranges.at(last_instr.write.front().id).get(lr.max);
-      if (possible_coloring.is_assigned() && in_vec(reg_order, possible_coloring.reg)) {
+      if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
         colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
+        if (debug_trace >= 2 && colored) {
+          printf("var %d colored through second move elim to %s\n", var, possible_coloring.to_string().c_str());
+        }
       }
     }
   }
@@ -886,11 +896,18 @@ bool run_allocator(RegAllocCache* cache, const AllocationInput& in, int debug_tr
     }
   }
 
+  std::vector<int> unconstrained_allocs;
   for (uint32_t i = 0; i < cache->live_ranges.size(); i++) {
     if (cache->live_ranges.at(i).seen && !cache->live_ranges.at(i).has_constraint) {
-      allocation_order.push_back(i);
+      unconstrained_allocs.push_back(i);
     }
   }
+
+  std::sort(unconstrained_allocs.begin(), unconstrained_allocs.end(), [&](int a, int b) {
+    return cache->live_ranges.at(a).size() > cache->live_ranges.at(b).size();
+  });
+
+  allocation_order.insert(allocation_order.end(), unconstrained_allocs.begin(), unconstrained_allocs.end());
 
   for (int var : allocation_order) {
     if (!do_allocation_for_var(var, cache, in, debug_trace)) {

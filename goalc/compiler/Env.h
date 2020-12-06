@@ -197,6 +197,7 @@ class FunctionEnv : public DeclareEnv {
   int segment = -1;
   std::string method_of_type_name = "#f";
   bool is_asm_func = false;
+  bool asm_func_saved_regs = false;
   TypeSpec asm_func_return_type;
   std::vector<UnresolvedGoto> unresolved_gotos;
   std::vector<UnresolvedConditionalGoto> unresolved_cond_gotos;
