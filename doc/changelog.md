@@ -80,3 +80,4 @@
 - Fixed a bug where the return instruction was still emitted and the overridden return type of `asm-func` was ignored for methods
 - Rearranged function stack frames so spilled register variable slots come after stack structures.
 - Added `stack` allocated and constructed basic/structure types.
+- Fixed a bug where functions with exactly 8 parameters created a compiler error.
