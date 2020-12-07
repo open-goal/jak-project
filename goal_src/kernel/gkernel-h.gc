@@ -147,6 +147,7 @@
 (declare-type stack-frame basic)
 (declare-type state basic)
 (declare-type cpu-thread basic)
+(declare-type dead-pool basic)
 
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
@@ -208,7 +209,7 @@
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic)) _type_ 0)
     (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
-    (deactivate  ((obj _type_)) basic 10)
+    (deactivate  ((obj _type_)) none 10)
     (dummy-method-11 () none 11)
     (run-logic? ((obj _type_)) symbol 12)
     (dummy-method () none 13)
@@ -222,7 +223,7 @@
 
 ;; A GOAL process.  A GOAL process contains memory and a suspendable main-thread.
 (deftype process (process-tree)
-  ((pool basic :offset-assert #x20)
+  ((pool dead-pool :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
@@ -245,7 +246,7 @@
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic) (stack-size int)) _type_ 0)
     (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
-    (deactivate  ((obj process)) basic 10)
+    (deactivate  ((obj process)) none 10)
     (dummy-method-11 () none 11)
     (run-logic? ((obj process)) symbol 12)
     (dummy-method () none 13)

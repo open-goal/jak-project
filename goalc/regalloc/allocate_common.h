@@ -221,9 +221,7 @@ struct LiveInfo {
     return assignment.at(id - min);
   }
 
-  int size() const {
-    return 1 + max - min;
-  }
+  int size() const { return 1 + max - min; }
 
   bool overlaps(const LiveInfo& other) const {
     auto overlap_min = std::max(min, other.min);

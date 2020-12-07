@@ -2073,7 +2073,7 @@
    This stub remaps these saved registers to argument registers.
    It also creates a return trampoline to return-from-thread-dead"
   (declare (asm-func none)
-           (print-asm)
+           ;(print-asm)
            )
   
   (rlet ((s0 :reg rbx :type uint)
@@ -2139,15 +2139,125 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod deactivate process-tree ((obj process-tree))
+  ;; todo
   (format 0 "CALL TO DEACTIVATE~%")
-  (the basic #f)
+  (none)
   )
 
-;; todo: dead-state
+;; todo defstate
+(define dead-state 
+        (new 'static 'state
+             :name #f
+             :next #f
+             :exit #f
+             :code #f
+             :trans #f
+             :post #f
+             :enter #f
+             :event #f))
 
-(define entity-deactivate-handler nothing)
+(set! (-> dead-state code) nothing)
 
-;; todo, process deactivate.
+
+;; hack
+(define-extern entity-deactivate-handler (function process object none))
+(define-extern process-disconnect (function object none))
+
+(defmethod deactivate process ((obj process))
+  "Deactivate a process. This returns the process to the dead pool
+   it came from. You can use this on your own process to kill yourself
+  and immediately return to the kernel.
+  You can also use this during initialization to kill yourself and return
+  to the process that initialzed you.
+  All protects/states will be cleaned up, with pp set correctly for the process.
+  But you might not have the stack of your main thread, so don't reference stack
+  vars from within your exit handlers."
+  
+  ;; don't do anything if we already died.
+  (unless (eq? (-> obj status) 'dead)
+    (set! (-> obj next-state) dead-state)
+    
+    ;; call entity handler
+    (when (-> obj entity)
+      (entity-deactivate-handler obj (-> obj entity))
+      )
+    
+    ;; clean up stack frames the process is in.
+    ;; first, set pp so the cleanup code thinks its running in the right process.
+    (rlet ((pp :reg r13 :type process))
+          (let ((old-pp pp))
+            (set! pp obj)
+            (let ((cur (-> pp stack-frame-top)))
+              (while cur
+                (when (or
+                        (= (-> cur type) protect-frame)
+                        (= (-> cur type) state)
+                        )
+                  ;; we're a state or protect-frame, we can exit.
+                  ((-> (the protect-frame cur) exit))
+                  )
+                (set! cur (-> cur next))
+                )
+              )
+            (set! pp old-pp)
+            )
+          )
+    
+    ;; hack - if this isn't defined yet, don't try it.
+    (if (!= 0 (the uint process-disconnect))
+        (process-disconnect obj)
+        )
+    
+    ;; kill our child and their brothers
+    (let ((bro (-> obj child)))
+      (while bro
+        (let ((temp (-> (-> bro) brother)))
+          (deactivate (-> bro))
+          (set! bro temp)
+          )
+        )
+      )
+    
+    ;; return ourself to the pool
+    (return-process (-> obj pool) obj)
+    (set! (-> obj state) #f)
+    (set! (-> obj next-state) #f)
+    (set! (-> obj entity) #f)
+    (set! (-> obj pid) 0)
+    
+    ;; deal with getting out of here.
+    (cond
+      ;; first case - we deactivated the running process
+      ;; (note, we don't check against pp because run-function-in-process
+      ;;  will change pp for running initializations.)
+      ((eq? obj (-> *kernel-context* current-process))
+       ;; go straight to dead.
+       (set! (-> obj status) 'dead)
+       ;; and return (with no deactivate)
+       (let ((temp (the uint return-from-thread)))
+         (rlet ((off :reg r15 :type uint))
+               (+! temp off)
+               (.push temp)
+               (.ret)
+               )
+         )
+       )
+      ;; second case - we deactivated while initializing.
+      ((eq? (-> obj status) 'initialize)
+       ;; added this
+       
+       ; (if (!= pp obj)
+       ;     (format 0 "ERROR: deactivated a non-current initializing process!")
+       ;     (break)
+       ;     )
+       (set! (-> obj status) 'dead)
+       (throw 'initalize #f)
+       )
+      )
+    (set! (-> obj status) 'dead)
+    )
+   (none)
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
