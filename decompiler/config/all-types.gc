@@ -190,6 +190,7 @@
 (declare-type stack-frame basic)
 (declare-type cpu-thread basic)
 (declare-type state basic)
+(declare-type dead-pool basic)
 
 ;; gkernel-h
 (deftype thread (basic)
@@ -246,8 +247,8 @@
   
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic)) _type_ 0)
-    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
-    (deactivate  ((obj _type_)) basic 10)
+    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
+    (deactivate  ((obj _type_)) none 10)
     (dummy-method-11 () none 11)
     (run-logic? ((obj _type_)) symbol 12)
     (dummy-method () none 13)
@@ -260,7 +261,7 @@
 
 ;; gkernel
 (deftype process (process-tree)
-  ((pool basic :offset-assert #x20)
+  ((pool dead-pool :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
@@ -280,10 +281,11 @@
    (stack uint8 :dynamic :offset-assert #x70)
    )
   
+  
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic) (stack-size int)) _type_ 0)
-    (activate ((obj process) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
-    (deactivate  ((obj process)) basic 10)
+    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
+    (deactivate  ((obj process)) none 10)
     (dummy-method-11 () none 11)
     (run-logic? ((obj process)) symbol 12)
     (dummy-method () none 13)
@@ -384,8 +386,12 @@
   )
 
 (deftype protect-frame (stack-frame)
-  ((exit function  :offset-assert 12)
+  ((exit (function object)  :offset-assert 12)
    )
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (func (function object))) protect-frame)
+    )
+  
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -483,79 +489,66 @@
 (define-extern kernel-dispatcher (function (function object)))
 (define-extern inspect-process-tree (function process-tree int int symbol process-tree))
 
+(define-extern throw-dispatch (function catch-frame object none))
+(define-extern run-function-in-process (function process function object object object object object object object))
+(define-extern throw (function symbol object int))
+(define-extern set-to-run (function cpu-thread function object object object object object object pointer))
+(define-extern set-to-run-bootstrap (function none))
+(define-extern entity-deactivate-handler (function process object none))
+(define-extern process-disconnect (function object none))
 
-;;(define-extern stack-frame object) ;; unknown type
+(define-extern stack-frame type)
 (define-extern state type)
-;;(define-extern dead-pool-heap-rec object) ;; unknown type
-;;(define-extern dead-pool object) ;; unknown type
-;;(define-extern catch-frame object) ;; unknown type
-;;(define-extern thread object) ;; unknown type
-;;(define-extern handle object) ;; unknown type
-;;(define-extern cpu-thread object) ;; unknown type
-;;(define-extern dead-pool-heap object) ;; unknown type
+(define-extern dead-pool-heap-rec type)
+(define-extern dead-pool type)
+(define-extern catch-frame type)
+(define-extern thread type)
+(define-extern handle type)
+(define-extern cpu-thread type)
+(define-extern dead-pool-heap type)
 (define-extern kernel-context type)
-;;(define-extern protect-frame object) ;; unknown type
-;;(define-extern event-message-block object) ;; unknown type
-;;(define-extern process-tree object) ;; unknown type
-;;(define-extern *listener-process* object) ;; unknown type
-;;(define-extern *entity-pool* object) ;; unknown type
-;;(define-extern *default-pool* object) ;; unknown type
-;;(define-extern malloc object) ;; unknown type
-;;(define-extern ready object) ;; unknown type
-;;(define-extern *camera-pool* object) ;; unknown type
-(define-extern throw-dispatch function)
-;;(define-extern game object) ;; unknown type
-(define-extern run-function-in-process function)
-(define-extern throw function)
-;;(define-extern *nk-dead-pool* object) ;; unknown type
+(define-extern protect-frame type)
+(define-extern event-message-block type)
+(define-extern process-tree type)
+(define-extern *listener-process* process)
+(define-extern *entity-pool* process-tree)
+(define-extern *default-pool* process-tree)
+(define-extern malloc (function symbol int pointer)) ;; from kernel-defs.gc
+(define-extern *camera-pool* process-tree)
+
+(define-extern *nk-dead-pool* dead-pool-heap)
 (define-extern change-to-last-brother function)
-;;(define-extern *pickup-dead-pool* object) ;; unknown type
-;;(define-extern *camera-master-dead-pool* object) ;; unknown type
-(define-extern set-to-run function)
-;;(define-extern default-pool object) ;; unknown type
-;;(define-extern listener object) ;; unknown type
-;;(define-extern target-pool object) ;; unknown type
-(define-extern set-to-run-bootstrap function)
-;;(define-extern *camera-dead-pool* object) ;; unknown type
-;;(define-extern process object) ;; unknown type
-(define-extern previous-brother function)
-;;(define-extern dead-state object) ;; unknown type
-;;(define-extern debug object) ;; unknown type
-;;(define-extern *16k-dead-pool* object) ;; unknown type
-(define-extern entity-deactivate-handler function)
-;;(define-extern *target-pool* object) ;; unknown type
-;;(define-extern entity-pool object) ;; unknown type
-;;(define-extern main object) ;; unknown type
-(define-extern change-brother function)
-;;(define-extern *active-pool* object) ;; unknown type
-;;(define-extern display-pool object) ;; unknown type
-;;(define-extern *target-dead-pool* object) ;; unknown type
-;;(define-extern *4k-dead-pool* object) ;; unknown type
-;;(define-extern *default-dead-pool* object) ;; unknown type
-;;(define-extern *8k-dead-pool* object) ;; unknown type
-;;(define-extern *display-pool* object) ;; unknown type
-;;(define-extern active-pool object) ;; unknown type
-;;(define-extern *dead-pool-list* object) ;; unknown type
-;;(define-extern camera-pool object) ;; unknown type
-;;(define-extern suspended object) ;; unknown type
-;;(define-extern dgo-load object) ;; unknown type
-;;(define-extern initialize-dead object) ;; unknown type
-;;(define-extern #f object) ;; unknown type
-;;(define-extern waiting-to-run object) ;; unknown type
+(define-extern *pickup-dead-pool* dead-pool)
+(define-extern *camera-master-dead-pool* dead-pool)
+(define-extern *camera-dead-pool* dead-pool)
+(define-extern process type)
+(define-extern dead-state state)
+(define-extern *16k-dead-pool* dead-pool)
+(define-extern *target-pool* process-tree)
+(define-extern *active-pool* process-tree)
+(define-extern *target-dead-pool* dead-pool)
+(define-extern *4k-dead-pool* dead-pool)
+(define-extern *default-dead-pool* dead-pool)
+(define-extern *8k-dead-pool* dead-pool)
+(define-extern *display-pool* process-tree)
+
+(define-extern #f symbol)
 ;;(define-extern *stdcon0* object) ;; unknown type
-;;(define-extern initialize-go object) ;; unknown type
-;;(define-extern trans object) ;; unknown type
-;;(define-extern code object) ;; unknown type
 ;;(define-extern *listener-function* object) ;; unknown type
 ;;(define-extern *stdcon1* object) ;; unknown type
 ;;(define-extern initialize object) ;; unknown type
-(define-extern process-disconnect function)
+
 ;;(define-extern *debug-draw-pauseable* object) ;; unknown type
 ;;(define-extern _empty_ object) ;; unknown type
 ;;(define-extern running object) ;; unknown type
 ;;(define-extern *enable-method-set* object) ;; unknown type
 ;;(define-extern post object) ;; unknown type
 ;;(define-extern dead object) ;; unknown type
+
+;; todo
+(define-extern previous-brother function)
+(define-extern change-brother function)
+;;(define-extern *dead-pool-list* object) ;; unknown type
 
 ;; pskernel
 (deftype lowmemmap (structure)

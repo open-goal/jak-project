@@ -1,0 +1,64 @@
+(defun deactivate-myself ()
+  "Deactivate the current process. A workaround because rlet isn't working well."
+  (rlet ((pp :reg r13 :type process))
+        (deactivate pp)
+        )
+  )
+
+(defun target-function ((a0 uint) (a1 uint) (a2 uint) (a3 uint) (a4 uint) (a5 uint))
+  (format #t "TARGET FUNCTION ~D ~D ~D~%" a0 a1 a2)
+  (format #t "~D ~D ~D~%" a3 a4 a5)
+  
+  (let ((stack-arr (new 'stack 'array 'uint8 12)))
+    (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
+    )
+  
+  (dotimes (i 10)
+    (format #t "proc1: ~D~%" i)
+    (when (> i 4)
+      (format #t "DEACTIVATE PROC 1~%")
+      (deactivate-myself)
+      )
+    (suspend)
+    )
+  )
+
+(define-extern recurse (function int (pointer int32) int))
+(defun recurse ((i int) (ptr (pointer int32)))
+  (if (> i 0)
+      (recurse (- i 1) ptr)
+      (suspend)
+      )
+  (set! (-> ptr) (+ (-> ptr) 1))
+  1
+  )
+
+(defun target-function-2 ()
+  (let ((stack-var (new 'stack 'array 'int32 1)))
+    (set! (-> stack-var) 0)
+    (countdown (i 10)
+      (format #t "proc2: ~D~%" (-> stack-var))
+      (recurse 5 stack-var)
+      )
+    )
+  
+  )
+
+(defun kernel-test ()
+  (define test-process (get-process *nk-dead-pool* process 1024))
+  
+  (activate test-process *active-pool* 'test-proc *kernel-dram-stack*)
+  
+  
+  (set-to-run (-> test-process main-thread)
+              target-function
+              1 2 3 4 5 6
+              )
+  
+  (define test-process-2 (get-process *nk-dead-pool* process 1024))
+  (activate test-process-2 *active-pool* 'test-2 *kernel-dram-stack*)
+  (set-to-run (-> test-process-2 main-thread)
+              target-function-2
+              0 0 0 0 0 0)
+  0
+  )

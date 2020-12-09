@@ -305,6 +305,16 @@ std::vector<std::string> Listener::stop_recording_messages() {
 }
 
 /*!
+ * Get the number of messages recorded so far.
+ */
+int Listener::get_received_message_count() {
+  rcv_mtx.lock();
+  auto result = message_record.size();
+  rcv_mtx.unlock();
+  return result;
+}
+
+/*!
  * Send a "CODE" message for the target to execute as the Listener Function.
  * Returns once the target acks the code.
  */
