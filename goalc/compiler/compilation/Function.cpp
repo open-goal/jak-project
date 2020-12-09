@@ -141,7 +141,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     new_func_env->set_segment(segment);
 
     // set up arguments
-    if (lambda.params.size() >= 8) {
+    if (lambda.params.size() > 8) {
       throw_compiler_error(form,
                            "Cannot generate an x86-64 function for a lambda with {} parameters.  "
                            "The current limit is 8.",

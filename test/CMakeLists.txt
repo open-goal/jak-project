@@ -16,6 +16,7 @@ add_executable(goalc-test
         test_common_util.cpp
         test_pretty_print.cpp
         test_zydis.cpp
+        goalc/test_goal_kernel.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 

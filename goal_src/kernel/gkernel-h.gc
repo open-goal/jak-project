@@ -147,6 +147,7 @@
 (declare-type stack-frame basic)
 (declare-type state basic)
 (declare-type cpu-thread basic)
+(declare-type dead-pool basic)
 
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
@@ -207,8 +208,8 @@
   
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic)) _type_ 0)
-    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
-    (deactivate  ((obj _type_)) basic 10)
+    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
+    (deactivate  ((obj _type_)) none 10)
     (dummy-method-11 () none 11)
     (run-logic? ((obj _type_)) symbol 12)
     (dummy-method () none 13)
@@ -222,7 +223,7 @@
 
 ;; A GOAL process.  A GOAL process contains memory and a suspendable main-thread.
 (deftype process (process-tree)
-  ((pool basic :offset-assert #x20)
+  ((pool dead-pool :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
@@ -244,8 +245,8 @@
   
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic) (stack-size int)) _type_ 0)
-    (activate ((obj process) (dest process-tree) (name basic) (stack-top pointer)) basic 9)
-    (deactivate  ((obj process)) basic 10)
+    (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
+    (deactivate  ((obj process)) none 10)
     (dummy-method-11 () none 11)
     (run-logic? ((obj process)) symbol 12)
     (dummy-method () none 13)
@@ -361,8 +362,11 @@
 
 ;; A protect frame is a frame which has a cleanup function called on exit.
 (deftype protect-frame (stack-frame)
-  ((exit function :offset-assert 12)) ;; function to call to clean up
+  ((exit (function object) :offset-assert 12)) ;; function to call to clean up
   
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (func (function object))) protect-frame)
+    )
   :size-assert 16
   :method-count-assert 9
   :flag-assert #x900000010
@@ -483,4 +487,13 @@
 
 (defmacro process-mask-set! (mask enum-value)
   `(set! ,mask (logior ,mask (process-mask ,enum-value)))
+  )
+
+(defmacro suspend ()
+  `(rlet ((pp :reg r13))
+         (.push pp)
+         (set! pp (-> (the process pp) top-thread))
+         ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
+         (.pop pp)
+         )
   )

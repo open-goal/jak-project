@@ -204,6 +204,23 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   return ok;
 }
 
+void Compiler::compile_and_send_from_string(const std::string& source_code) {
+  if (!connect_to_target()) {
+    throw std::runtime_error(
+        "Compiler failed to connect to target for compile_and_send_from_string.");
+  }
+
+  auto code = m_goos.reader.read_from_string(source_code);
+  auto compiled = compile_object_file("test-code", code, true);
+  assert(!compiled->is_empty());
+  color_object_file(compiled);
+  auto data = codegen_object_file(compiled);
+  m_listener.send_code(data);
+  if (!m_listener.most_recent_send_was_acked()) {
+    print_compiler_warning("Runtime is not responding after sending test code. Did it crash?\n");
+  }
+}
+
 std::vector<std::string> Compiler::run_test_from_file(const std::string& source_code) {
   try {
     if (!connect_to_target()) {

@@ -221,6 +221,14 @@ struct LiveInfo {
     return assignment.at(id - min);
   }
 
+  int size() const { return 1 + max - min; }
+
+  bool overlaps(const LiveInfo& other) const {
+    auto overlap_min = std::max(min, other.min);
+    auto overlap_max = std::min(max, other.max);
+    return overlap_min <= overlap_max;
+  }
+
   std::string print_assignment();
 };
 #endif  // JAK_ALLOCATE_COMMON_H
