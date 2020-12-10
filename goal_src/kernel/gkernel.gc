@@ -1822,6 +1822,7 @@
           ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
           (.push :color #f s3)
           (.push :color #f s2)
+          (.push :color #f s2)
           (set! s3 (the uint func))
           (set! s2 param-block)
           
@@ -1835,7 +1836,7 @@
                       (-> s2 5)
                       ))
                 )
-            
+            (.pop :color #f s2)
             (.pop :color #f s2)
             (.pop :color #f s3)
             (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
@@ -1910,6 +1911,7 @@
                 ;; call the cleanup function
                 ((-> (the protect-frame cur) exit))
                 )
+            (set! cur (-> cur next))
             )
           )
         )
@@ -2045,7 +2047,7 @@
                ;; this means we died, and we should be deactivated.
                (deactivate pp)
                )
-              ((= (-> pp status) 'initalize-go)
+              ((= (-> pp status) 'initialize-go)
                ;; we returned with a (suspend) or (go) ? not sure
                ;; either way, we're ready for next time!
                (set! (-> pp status) 'waiting-to-run)
@@ -2251,7 +2253,7 @@
        ;     (break)
        ;     )
        (set! (-> obj status) 'dead)
-       (throw 'initalize #f)
+       (throw 'initialize #f)
        )
       )
     (set! (-> obj status) 'dead)

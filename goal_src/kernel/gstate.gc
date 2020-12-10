@@ -5,3 +5,78 @@
 ;; name in dgo: gstate
 ;; dgos: KERNEL
 
+(defmethod new state ((allocation symbol) (type-to-make type) (name basic) (code function) 
+                      (trans function) (enter function) (exit (function object)) (event function))
+  "Create a new state with the given functions"
+  (let ((obj (object-new)))
+    (set! (-> obj name) name)
+    (set! (-> obj next) #f)
+    (set! (-> obj exit) exit)
+    (set! (-> obj code) code)
+    (set! (-> obj trans) trans)
+    (set! (-> obj post) #f)
+    (set! (-> obj enter) enter)
+    (set! (-> obj event) event)
+    obj
+    )
+  )
+
+;; inhereit state
+(defun inherit-state ((child state) (parent state))
+  (set! (-> child exit) (-> parent exit))
+  (set! (-> child code) (-> parent code))
+  (set! (-> child trans) (-> parent trans))
+  (set! (-> child post) (-> parent post))
+  (set! (-> child enter) (-> parent enter))
+  (set! (-> child event) (-> parent event))
+  )
+
+(defmethod print state ((obj state))
+  (format #t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
+  obj
+  )
+
+(define-extern enter-state (function object object object object object object none))
+(defun enter-state (arg0 arg1 arg2 arg3 arg4 arg5)
+  "Enter the state in pp next."
+  (rlet ((pp :reg r13 :type process))
+        ;; clear sleep and sleep-code mask bits
+        (set! (-> pp mask) (logand (lognot (process-mask sleep sleep-code))
+                                   (-> pp mask)))
+        ;; mark us as going...
+        (set! (-> pp mask) (logior (process-mask going)
+                                   (-> pp mask)))
+        
+        (cond ((eq? (-> pp status) 'initialize)
+               ;; we are an initializing process that tried to go to a new state.
+               ;; we do not do this immediately, but instead set ourselves up to call
+               ;; enter-state again when we run next.
+               
+               ;; we clear trans-hook so when the kernel runs us next time, we don't run
+               ;; the old trans-hook.
+               (set! (-> pp trans-hook) #f)
+               
+               ;; and set us to try again!
+               (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
+               
+               ;; now we exit to the caller of initialize.
+               ;; to signal we got here:
+               (set! (-> pp status) 'initalize-go)
+               (format #t "Throwing back to run-function-in-process!~%")
+               
+               ;; throw back to the run-function-in-process
+               (throw 'initialize #t)
+               #t
+               )
+              (else
+                (format 0 "UNHANDLED ENTER-STATE~%")
+                (break)
+                )
+              )
+        )
+  (none)
+  )
+  ;; print state
+  ;; enter state
+  ;; send-event-function
+  ;;loopint code
