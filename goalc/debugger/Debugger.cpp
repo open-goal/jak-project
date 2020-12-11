@@ -193,7 +193,7 @@ void Debugger::update_break_info() {
 
           int rip_offset = 0;
           if (m_continue_info.valid && m_continue_info.is_addr_breakpiont) {
-            int offset_in_fmem = int(m_continue_info.addr_breakpoint.goal_addr) -
+            int offset_in_fmem = uint64_t(m_continue_info.addr_breakpoint.goal_addr) -
                                  (map_loc.start_addr + info->offset_in_seg);
             if (offset_in_fmem < 0 || offset_in_fmem >= int(function_mem.size())) {
               m_break_info.disassembly_failed = true;

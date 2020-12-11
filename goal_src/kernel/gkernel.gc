@@ -1800,7 +1800,7 @@
           ;; remember the stack pointer
           (set! temp sp)
           (.sub temp off)
-          (set! (-> obj sp) (the int sp))
+          (set! (-> obj sp) (the int temp))
           
           ;; back up registers we care about
           (.mov :color #f temp s0)
@@ -1847,17 +1847,6 @@
         )
   )
 
-(defmethod inspect catch-frame ((obj catch-frame))
-  (format #t "[~X] ~A~%" obj (-> obj type))
-  (format #t "~Tname: ~A~%" (-> obj name))
-  (format #t "~Tnext: ~A~%" (-> obj next))
-  (format #t "~Tsp: #x~X~%" (-> obj sp))
-  (format #t "~Tra: #x~X~%" (-> obj ra))
-  (dotimes (i 5)
-    (format #t "~Trreg[~D]: #x~X~%" i (-> (the (pointer uint64) (&-> obj rreg i))))
-    )
-  obj
-  )
 
 (defun throw-dispatch ((obj catch-frame) value)
   "Throw the given value to the catch frame.
@@ -1916,7 +1905,6 @@
           (while cur
             (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
               ;; match!
-              (format 0 "THROW DISPATCH on ~%~I~%" cur)
               
               (throw-dispatch (the catch-frame cur) value)
               )
@@ -2031,26 +2019,18 @@
   The function will run until it attempts to change state. At the first attempt to change state,
   this function will return.  The idea is that you use this when you want to initialize a process NOW.
   This will then return the value of the function you called!"
-  ; (declare (print-asm))
-  (rlet ((pp :reg r13 :type process)
-         (r12 :reg r12 :type uint)
-         (temp-r12 :reg rax :type uint))
+  (rlet ((pp :reg r13 :type process))
         
         (let ((param-array (new 'stack 'array 'uint64 6))
               )
-          (.mov :color #f temp-r12 r12)
           ;; copy params to the stack.
           
-          ; (format 0 "r12 = ~X~%" temp-r12) 
-          (format 0 "call to rfip, stack array #x~X, r12 = #x~X~%" param-array temp-r12)
           (set! (-> param-array 0) (the uint64 a0))
           (set! (-> param-array 1) (the uint64 a1))
           (set! (-> param-array 2) (the uint64 a2))
           (set! (-> param-array 3) (the uint64 a3))
           (set! (-> param-array 4) (the uint64 a4))
           (set! (-> param-array 5) (the uint64 a5))
-          
-          (format 0 "copied to stack~%")
           
           (let* ((old-pp pp)
                  (func-val (begin
@@ -2063,7 +2043,6 @@
                              )))
             ;; the function returned, either through a throw or through actually returning.
             ;; the status will give us a clue of what happened.
-            (format 0 "rfip: #x~X~%" func-val)
             (cond 
               ((= (-> pp status) 'initialize)
                ;; we returned and didn't change status.
