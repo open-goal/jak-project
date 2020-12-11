@@ -1847,6 +1847,18 @@
         )
   )
 
+(defmethod inspect catch-frame ((obj catch-frame))
+  (format #t "[~X] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tnext: ~A~%" (-> obj next))
+  (format #t "~Tsp: #x~X~%" (-> obj sp))
+  (format #t "~Tra: #x~X~%" (-> obj ra))
+  (dotimes (i 5)
+    (format #t "~Trreg[~D]: #x~X~%" i (-> (the (pointer uint64) (&-> obj rreg i))))
+    )
+  obj
+  )
+
 (defun throw-dispatch ((obj catch-frame) value)
   "Throw the given value to the catch frame.
   Only can throw a 64-bit value. The original could throw 128 bits."
@@ -1904,7 +1916,8 @@
           (while cur
             (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
               ;; match!
-              (format 0 "THROW DISPATCH on ~A~%" cur)
+              (format 0 "THROW DISPATCH on ~%~I~%" cur)
+              
               (throw-dispatch (the catch-frame cur) value)
               )
             
