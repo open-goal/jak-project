@@ -1,3 +1,35 @@
+; (defun get-saved-regs ((dest (pointer uint64)))
+;   (rlet ((s0 :reg rbx :type uint)
+;          (s1 :reg rbp :type uint)
+;          (s2 :reg r10 :type uint)
+;          (s3 :reg r11 :type uint)
+;          (s4 :reg r12 :type uint))
+;         (set! (-> dest 0) s0)
+;         (set! (-> dest 1) s1)
+;         (set! (-> dest 2) s2)
+;         (set! (-> dest 3) s3)
+;         (set! (-> dest 4) s4)
+        
+;         )
+;   )
+
+(defmacro with-named-reg-vars-check (&rest body)
+  `(let ((one 1)
+         (two 2)
+         (three 3)
+         (four 4)
+         (five 5)
+         (six 6)
+         (seven 7)
+         (eight 8)
+         (nine 9))
+     ,@body
+     (format 0 "~d ~d ~d ~d ~d ~d " one two three four five six)
+     (format 0 "~d ~d ~d~%" seven eight nine)
+     )
+  
+  )
+
 (defun deactivate-myself ()
   "Deactivate the current process. A workaround because rlet isn't working well."
   (rlet ((pp :reg r13 :type process))
@@ -60,5 +92,46 @@
   (set-to-run (-> test-process-2 main-thread)
               target-function-2
               0 0 0 0 0 0)
+  0
+  )
+
+(defun init-child-proc (a0 a1 a2 a3 a4 a5)
+  (format #t "Args: ~D ~D ~D~%" a0 a1 a2)
+  (format #t "~D ~D ~D~%" a3 a4 a5)
+  (let ((stack-arr (new 'stack 'array 'uint8 12)))
+    (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
+    )
+  (if (eq? a0 (the int 0))
+      (deactivate-myself)
+      )
+  'init-child-proc-result
+  )
+
+
+(defun initializer-process-function (a0)
+  (let ((child-proc (get-process *nk-dead-pool* process 1024)))
+    ;; let's go
+    (activate child-proc *active-pool* 'child-proc *kernel-dram-stack*)
+    (let ((result (run-function-in-process child-proc init-child-proc a0 2 3 4 5 6)))
+      (format #t "run-function-in-process result: ~A~%" result)
+      )
+    )
+  
+  (deactivate-myself)
+  )
+
+(defun kernel-test-2 ()
+  (define initalizer-process (get-process *nk-dead-pool* process 1024))
+  (activate initalizer-process *active-pool* 'initializer-proc *kernel-dram-stack*)
+  (set-to-run (-> initalizer-process main-thread)
+              initializer-process-function
+              0 0 0 0 0 0
+              )
+  (define initalizer-process-2 (get-process *nk-dead-pool* process 1024))
+  (activate initalizer-process-2 *active-pool* 'initializer-proc-2 *kernel-dram-stack*)
+  (set-to-run (-> initalizer-process-2 main-thread)
+              initializer-process-function
+              1 0 0 0 0 0
+              )
   0
   )

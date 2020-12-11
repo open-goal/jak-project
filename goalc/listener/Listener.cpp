@@ -90,6 +90,8 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
     return true;
   }
 
+  disconnect();
+
   if (listen_socket >= 0) {
     close_socket(listen_socket);
   }

@@ -1800,7 +1800,7 @@
           ;; remember the stack pointer
           (set! temp sp)
           (.sub temp off)
-          (set! (-> obj sp) (the int sp))
+          (set! (-> obj sp) (the int temp))
           
           ;; back up registers we care about
           (.mov :color #f temp s0)
@@ -1822,6 +1822,7 @@
           ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
           (.push :color #f s3)
           (.push :color #f s2)
+          (.push :color #f s2)
           (set! s3 (the uint func))
           (set! s2 param-block)
           
@@ -1835,7 +1836,7 @@
                       (-> s2 5)
                       ))
                 )
-            
+            (.pop :color #f s2)
             (.pop :color #f s2)
             (.pop :color #f s3)
             (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
@@ -1845,6 +1846,7 @@
           )
         )
   )
+
 
 (defun throw-dispatch ((obj catch-frame) value)
   "Throw the given value to the catch frame.
@@ -1903,6 +1905,7 @@
           (while cur
             (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
               ;; match!
+              
               (throw-dispatch (the catch-frame cur) value)
               )
             
@@ -1910,6 +1913,7 @@
                 ;; call the cleanup function
                 ((-> (the protect-frame cur) exit))
                 )
+            (set! cur (-> cur next))
             )
           )
         )
@@ -2015,11 +2019,12 @@
   The function will run until it attempts to change state. At the first attempt to change state,
   this function will return.  The idea is that you use this when you want to initialize a process NOW.
   This will then return the value of the function you called!"
-  
   (rlet ((pp :reg r13 :type process))
         
-        (let ((param-array (new 'stack 'array 'uint64 6)))
+        (let ((param-array (new 'stack 'array 'uint64 6))
+              )
           ;; copy params to the stack.
+          
           (set! (-> param-array 0) (the uint64 a0))
           (set! (-> param-array 1) (the uint64 a1))
           (set! (-> param-array 2) (the uint64 a2))
@@ -2045,7 +2050,7 @@
                ;; this means we died, and we should be deactivated.
                (deactivate pp)
                )
-              ((= (-> pp status) 'initalize-go)
+              ((= (-> pp status) 'initialize-go)
                ;; we returned with a (suspend) or (go) ? not sure
                ;; either way, we're ready for next time!
                (set! (-> pp status) 'waiting-to-run)
@@ -2251,7 +2256,7 @@
        ;     (break)
        ;     )
        (set! (-> obj status) 'dead)
-       (throw 'initalize #f)
+       (throw 'initialize #f)
        )
       )
     (set! (-> obj status) 'dead)

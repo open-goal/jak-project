@@ -1060,7 +1060,6 @@ u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
   }
   // throw std::runtime_error("call_method_of_type failed!\n");
   printf("[ERROR] call_method_of_type failed!\n");
-  printf("type is %s\n", info(type->symbol)->str->data());
   return arg;
 }
 
