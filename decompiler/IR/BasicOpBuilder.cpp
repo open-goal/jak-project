@@ -1532,7 +1532,7 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, int idx) {
       result->clobber_regs.push_back(temp);
       result->write_regs.push_back(left);
       result->read_regs.push_back(right);
-      result->read_regs.push_back(right);
+      result->read_regs.push_back(left);
       result->reg_info_set = true;
       return result;
     }
@@ -1547,7 +1547,7 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, int idx) {
       result->clobber_regs.push_back(temp);
       result->write_regs.push_back(left);
       result->read_regs.push_back(right);
-      result->read_regs.push_back(right);
+      result->read_regs.push_back(left);
       result->reg_info_set = true;
       return result;
     }

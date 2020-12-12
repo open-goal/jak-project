@@ -602,9 +602,12 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
       !dts.type_prop_settings.current_method_type.empty()) {
     end_types.get(Register(Reg::GPR, Reg::V0)) =
         TP_Type(dts.type_prop_settings.current_method_type);
+    // todo, set my call type here
     return;
   }
+
   auto in_type = in_tp.as_typespec();
+
   if (in_type.base_type() != "function") {
     throw std::runtime_error("Called something that wasn't a function: " + in_type.print());
   }
@@ -612,6 +615,10 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
   if (in_type.arg_count() < 1) {
     throw std::runtime_error("Called a function, but we don't know its type");
   }
+
+  // set the call type!
+  call_type = in_type;
+  call_type_set = true;
 
   end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type(in_type.last_arg());
 

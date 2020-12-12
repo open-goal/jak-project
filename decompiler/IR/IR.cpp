@@ -607,7 +607,12 @@ goos::Object IR_FloatMath1::to_form(const LinkedObjectFile& file) const {
 
 goos::Object IR_Call::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return pretty_print::build_list("call!");
+  std::vector<goos::Object> result;
+  result.push_back(pretty_print::to_symbol("call!"));
+  for (auto& x : args) {
+    result.push_back(x->to_form(file));
+  }
+  return pretty_print::build_list(result);
 }
 
 void IR_Call::get_children(std::vector<std::shared_ptr<IR>>* output) const {

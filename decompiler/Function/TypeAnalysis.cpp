@@ -65,7 +65,7 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
         try {
           op->propagate_types(*init_types, file, dts);
         } catch (std::runtime_error& e) {
-          fmt::print("Type prop fail: {}\n\n\n", e.what());
+          fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
           warnings += "Type prop attempted and failed.  ";
           return false;
         }

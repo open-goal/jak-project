@@ -560,7 +560,8 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   // printf("\n");
 }
 
-void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
+void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
+                                             const std::string& suffix) {
   spdlog::info("- Writing debug type analysis...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -568,7 +569,8 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
   for_each_obj([&](ObjectFileData& obj) {
     if (obj.linked_data.has_any_functions()) {
       auto file_text = obj.linked_data.print_type_analysis_debug();
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_db.asm");
+      auto file_name =
+          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_db.asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -932,8 +934,8 @@ void ObjectFileDB::analyze_functions() {
             func.type = kv->second;
             func.attempted_type_analysis = true;
             attempted_type_analysis++;
-            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-                         kv->second.print());
+            //            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+            //                         kv->second.print());
             if (func.run_type_analysis(kv->second, dts, data.linked_data)) {
               successful_type_analysis++;
             }
@@ -953,8 +955,8 @@ void ObjectFileDB::analyze_functions() {
               func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
               func.attempted_type_analysis = true;
               attempted_type_analysis++;
-              spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-                           func.type.print());
+              //              spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+              //                           func.type.print());
               if (func.run_type_analysis(func.type, dts, data.linked_data)) {
                 successful_type_analysis++;
               }
@@ -1018,12 +1020,24 @@ void ObjectFileDB::analyze_functions() {
 }
 
 void ObjectFileDB::analyze_expressions() {
+  spdlog::info("- Analyzing Expressions...");
+  Timer timer;
+  int attempts = 0;
+  int success = 0;
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
     // register usage
     func.run_reg_usage();
-    func.build_expression(data.linked_data);
+    attempts++;
+    if (func.build_expression(data.linked_data)) {
+      success++;
+    } else {
+      func.warnings.append("Expression analysis failed.\n");
+    }
   });
+
+  spdlog::info(" {}/{} functions passed expression building ({:.2f}%)\n", success, attempts,
+               100.f * float(success) / float(attempts));
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
