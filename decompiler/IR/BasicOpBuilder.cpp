@@ -2435,7 +2435,7 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
       func->add_basic_op(std::make_shared<IR_Failed_Atomic>(), instr, instr + 1);
     } else {
       if (!func->contains_asm_ops && dynamic_cast<IR_AsmOp*>(result.get())) {
-        func->warnings += "Function contains asm op";
+        func->warnings += ";; Function contains asm op\n";
         func->contains_asm_ops = true;
       }
 

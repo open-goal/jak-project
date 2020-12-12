@@ -48,6 +48,12 @@ void set_config(const std::string& path_to_config_file) {
     gConfig.pair_functions_by_name.insert(x);
   }
 
+  std::vector<std::string> no_type_analysis_functions_by_name =
+      cfg.at("no_type_analysis_functions_by_name").get<std::vector<std::string>>();
+  for (const auto& x : no_type_analysis_functions_by_name) {
+    gConfig.no_type_analysis_functions_by_name.insert(x);
+  }
+
   auto bad_inspect = cfg.at("types_with_bad_inspect_methods").get<std::vector<std::string>>();
   for (const auto& x : bad_inspect) {
     gConfig.bad_inspect_types.insert(x);

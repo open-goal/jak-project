@@ -66,7 +66,7 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
           op->propagate_types(*init_types, file, dts);
         } catch (std::runtime_error& e) {
           fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
-          warnings += "Type prop attempted and failed.  ";
+          warnings += ";; Type prop attempted and failed.\n";
           return false;
         }
 
@@ -93,7 +93,7 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
   auto last_op = basic_ops.back();
   auto last_type = last_op->end_types.get(Register(Reg::GPR, Reg::V0)).as_typespec();
   if (last_type != my_type.last_arg()) {
-    warnings += fmt::format("return type mismatch {} vs {}.  ", last_type.print(),
+    warnings += fmt::format(";; return type mismatch {} vs {}.  ", last_type.print(),
                             my_type.last_arg().print());
   }
 

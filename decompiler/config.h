@@ -30,6 +30,7 @@ struct Config {
   bool analyze_expressions = false;
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
+  std::unordered_set<std::string> no_type_analysis_functions_by_name;
   // ...
 };
 

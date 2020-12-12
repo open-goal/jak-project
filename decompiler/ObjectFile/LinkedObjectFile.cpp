@@ -586,7 +586,7 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
   if (!func.warnings.empty()) {
-    result += "Warnings: " + func.warnings + "\n";
+    result += ";;Warnings:\n" + func.warnings + "\n";
   }
 
   // print each instruction in the function.
@@ -784,7 +784,7 @@ std::string LinkedObjectFile::print_type_analysis_debug() {
       result += "; .function " + func.guessed_name.to_string() + "\n";
       result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
       if (!func.warnings.empty()) {
-        result += ";; WARNING: " + func.warnings + "\n";
+        result += ";; WARNING:\n" + func.warnings + "\n";
       }
 
       for (auto& block : func.basic_blocks) {

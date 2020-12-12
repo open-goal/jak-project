@@ -71,7 +71,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       if (instr.kind == InstructionKind::SW && instr.get_src(0).get_reg() == make_gpr(Reg::SP)) {
         printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
                guessed_name.to_string().c_str(), instr.to_string(file).c_str());
-        warnings += "Flagged as ASM function because of " + instr.to_string(file) + "\n";
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file) + "\n";
         suspected_asm = true;
         return;
       }
@@ -94,7 +94,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
         spdlog::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
                      guessed_name.to_string(), instr.to_string(file));
-        warnings += "Flagged as ASM function because of " + instr.to_string(file) + "\n";
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file) + "\n";
         suspected_asm = true;
         return;
       }
@@ -134,7 +134,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             "[Warning] %s Stack Zeroing Detected in Function::analyze_prologue, prologue may be "
             "wrong\n",
             guessed_name.to_string().c_str());
-        warnings += "Stack Zeroing Detected, prologue may be wrong\n";
+        warnings += ";; Stack Zeroing Detected, prologue may be wrong\n";
         expect_nothing_after_gprs = true;
         break;
       }
@@ -146,7 +146,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         printf(
             "[Warning] %s Suspected ASM function because register $a0 was stored on the stack!\n",
             guessed_name.to_string().c_str());
-        warnings += "a0 on stack detected, flagging as asm\n";
+        warnings += ";; a0 on stack detected, flagging as asm\n";
         return;
       }
 
@@ -165,7 +165,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
                  guessed_name.to_string().c_str(),
                  instructions.at(idx + i).to_string(file).c_str());
-          warnings += "Suspected asm function due to stack store: " +
+          warnings += ";; Suspected asm function due to stack store: " +
                       instructions.at(idx + i).to_string(file) + "\n";
           return;
         }
@@ -195,7 +195,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
                    guessed_name.to_string().c_str(),
                    instructions.at(idx + i).to_string(file).c_str());
-            warnings += "Suspected asm function due to stack store: " +
+            warnings += ";; Suspected asm function due to stack store: " +
                         instructions.at(idx + i).to_string(file) + "\n";
             return;
           }
@@ -356,7 +356,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
           "[Warning] %s Double Return Epilogue Hack!  This is probably an ASM function in "
           "disguise\n",
           guessed_name.to_string().c_str());
-      warnings += "Double Return Epilogue - this is probably an ASM function\n";
+      warnings += ";; Double Return Epilogue - this is probably an ASM function\n";
     }
     // delay slot should be daddiu sp, sp, offset
     assert(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),

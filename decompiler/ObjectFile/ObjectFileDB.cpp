@@ -815,7 +815,7 @@ void ObjectFileDB::analyze_functions() {
         unique_names.insert(name);
 
         if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
-          func.warnings += "flagged as asm by config\n";
+          func.warnings += ";; flagged as asm by config\n";
           func.suspected_asm = true;
         }
       }
@@ -828,7 +828,7 @@ void ObjectFileDB::analyze_functions() {
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
-      func.warnings += "this function exists in multiple non-identical object files";
+      func.warnings += ";; this function exists in multiple non-identical object files";
     }
   });
   /*
@@ -921,54 +921,65 @@ void ObjectFileDB::analyze_functions() {
 
       // type analysis
       if (get_config().function_type_prop) {
-        if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-          // we're a global named function. This means we're stored in a symbol
-          auto kv = dts.symbol_types.find(func.guessed_name.function_name);
-          if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
-            if (kv->second.base_type() != "function") {
-              spdlog::error("Found a function named {} but the symbol has type {}",
-                            func.guessed_name.to_string(), kv->second.print());
-              assert(false);
-            }
-            // GOOD!
-            func.type = kv->second;
-            func.attempted_type_analysis = true;
-            attempted_type_analysis++;
-            //            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-            //                         kv->second.print());
-            if (func.run_type_analysis(kv->second, dts, data.linked_data)) {
-              successful_type_analysis++;
-            }
-          }
-        } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-          // it's a method.
-          try {
-            auto info =
-                dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
-            if (info.type.arg_count() >= 1) {
-              if (info.type.base_type() != "function") {
-                spdlog::error("Found a method named {} but the symbol has type {}",
-                              func.guessed_name.to_string(), info.type.print());
+        if (get_config().no_type_analysis_functions_by_name.find(func.guessed_name.to_string()) ==
+            get_config().no_type_analysis_functions_by_name.end()) {
+          if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+            // we're a global named function. This means we're stored in a symbol
+            auto kv = dts.symbol_types.find(func.guessed_name.function_name);
+            if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+              if (kv->second.base_type() != "function") {
+                spdlog::error("Found a function named {} but the symbol has type {}",
+                              func.guessed_name.to_string(), kv->second.print());
                 assert(false);
               }
               // GOOD!
-              func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
+              func.type = kv->second;
               func.attempted_type_analysis = true;
               attempted_type_analysis++;
-              //              spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-              //                           func.type.print());
-              if (func.run_type_analysis(func.type, dts, data.linked_data)) {
+              //            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+              //                         kv->second.print());
+              if (func.run_type_analysis(kv->second, dts, data.linked_data)) {
                 successful_type_analysis++;
               }
             }
+          } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+            // it's a method.
+            try {
+              auto info =
+                  dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
+              if (info.type.arg_count() >= 1) {
+                if (info.type.base_type() != "function") {
+                  spdlog::error("Found a method named {} but the symbol has type {}",
+                                func.guessed_name.to_string(), info.type.print());
+                  assert(false);
+                }
+                // GOOD!
+                func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
+                func.attempted_type_analysis = true;
+                attempted_type_analysis++;
+                //              spdlog::info("Type Analysis on {} {}",
+                //              func.guessed_name.to_string(),
+                //                           func.type.print());
+                if (func.run_type_analysis(func.type, dts, data.linked_data)) {
+                  successful_type_analysis++;
+                }
+              }
 
-          } catch (std::runtime_error& e) {
-            // failed to lookup method info
+            } catch (std::runtime_error& e) {
+              // failed to lookup method info
+            }
           }
+
+          if (!func.attempted_type_analysis) {
+            func.warnings.append(";; Failed to try type analysis\n");
+          }
+        } else {
+          func.warnings.append(";; Marked as no type analysis in config\n");
         }
       }
     } else {
       asm_funcs++;
+      func.warnings.append(";; Assembly Function. Analysis passes were not attempted.\n");
     }
 
     if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
@@ -1032,7 +1043,7 @@ void ObjectFileDB::analyze_expressions() {
     if (func.build_expression(data.linked_data)) {
       success++;
     } else {
-      func.warnings.append("Expression analysis failed.\n");
+      func.warnings.append(";; Expression analysis failed.\n");
     }
   });
 
