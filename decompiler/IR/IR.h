@@ -5,6 +5,7 @@
 #include <utility>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include "decompiler/Disasm/Register.h"
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
@@ -12,6 +13,7 @@
 
 class LinkedObjectFile;
 class DecompilerTypeSystem;
+class ExpressionStack;
 
 namespace goos {
 class Object;
@@ -27,12 +29,29 @@ class IR {
   virtual TP_Type get_expression_type(const TypeState& input,
                                       const LinkedObjectFile& file,
                                       DecompilerTypeSystem& dts);
+
+  // update the expression stack
+  virtual bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+    (void)stack;
+    (void)file;
+    throw std::runtime_error("expression_stack NYI for " + print(file));
+  }
+
+  // update myself to use consumed registers from the stack.
+  virtual bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                                 ExpressionStack& stack,
+                                 LinkedObjectFile& file) {
+    (void)consume;
+    (void)stack;
+    throw std::runtime_error("update_from_stack NYI for " + print(file));
+  }
   virtual ~IR() = default;
 };
 
 class IR_Atomic : public virtual IR {
  public:
   std::vector<Register> read_regs, write_regs, clobber_regs;
+  std::unordered_set<Register, Register::hash> consumed;
   bool reg_info_set = false;
 
   TypeState end_types;  // types at the end of this instruction
@@ -81,12 +100,14 @@ class IR_Set : public virtual IR {
     FPR_TO_GPR64,
     GPR_TO_FPR,
     REG_FLT,
-    REG_I128
+    REG_I128,
+    EXPR
   } kind;
   IR_Set(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src)
       : kind(_kind), dst(std::move(_dst)), src(std::move(_src)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+
   std::shared_ptr<IR> dst, src;
   std::shared_ptr<IR> clobber = nullptr;
 };
@@ -103,6 +124,7 @@ class IR_Set_Atomic : public IR_Set, public IR_Atomic {
   void propagate_types(const TypeState& input,
                        const LinkedObjectFile& file,
                        DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_IntMath2;
@@ -176,6 +198,9 @@ class IR_StaticAddress : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_Load : public virtual IR {
@@ -191,6 +216,9 @@ class IR_Load : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_FloatMath2 : public virtual IR {
@@ -204,6 +232,9 @@ class IR_FloatMath2 : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_FloatMath1 : public virtual IR {

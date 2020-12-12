@@ -94,6 +94,14 @@ std::string IR_Atomic::print_with_types(const TypeState& init_types,
 
   result += fmt::format("[{}] -> [{}]", init_types.print_gpr_masked(read_mask),
                         end_types.print_gpr_masked(write_mask));
+
+  if (!consumed.empty()) {
+    result += "c:";
+    for (auto x : consumed) {
+      result += " ";
+      result += x.to_charp();
+    }
+  }
   return result;
 }
 

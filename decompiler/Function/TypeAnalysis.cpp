@@ -9,7 +9,7 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   int goal_args[] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3, Reg::T0, Reg::T1, Reg::T2, Reg::T3};
   assert(f_ts.base_type() == "function");
   assert(f_ts.arg_count() >= 1);
-  assert(f_ts.arg_count() <= 8);
+  assert(f_ts.arg_count() <= 8 + 1);  // 8 args + 1 return.
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
     auto reg_type = f_ts.get_arg(i);

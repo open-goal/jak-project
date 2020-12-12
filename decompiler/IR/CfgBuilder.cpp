@@ -1145,7 +1145,6 @@ std::shared_ptr<IR> build_cfg_ir(Function& function,
     auto all_children = ir->get_all_ir(file);
     all_children.push_back(ir);
     for (auto& child : all_children) {
-      //      printf("child is %s\n", child->print(file).c_str());
       auto as_begin = dynamic_cast<IR_Begin*>(child.get());
       if (as_begin) {
         clean_up_while_loops(as_begin, file);

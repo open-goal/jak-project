@@ -1095,6 +1095,11 @@ std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
  */
 TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) {
   auto result = make_typespec(lca_base(a.base_type(), b.base_type()));
+  if (result == TypeSpec("function") && a.m_arguments.size() == 2 && b.m_arguments.size() == 2 &&
+      (a.m_arguments.at(0) == TypeSpec("_varargs_") ||
+       b.m_arguments.at(0) == TypeSpec("_varargs_"))) {
+    return TypeSpec("function");
+  }
   if (!a.m_arguments.empty() && !b.m_arguments.empty() &&
       a.m_arguments.size() == b.m_arguments.size()) {
     // recursively add arguments

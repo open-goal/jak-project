@@ -588,7 +588,8 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
                                      bool disassemble_objects_without_functions,
-                                     bool write_json) {
+                                     bool write_json,
+                                     const std::string& file_suffix) {
   spdlog::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -599,7 +600,8 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
       auto file_text = obj.linked_data.print_disassembly();
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
+      auto file_name =
+          file_util::combine_path(output_dir, obj.to_unique_name() + file_suffix + ".asm");
 
       if (get_config().analyze_functions && write_json) {
         auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
@@ -1013,6 +1015,15 @@ void ObjectFileDB::analyze_functions() {
   //        printf("  %s\n", x.c_str());
   //      }
   //    }
+}
+
+void ObjectFileDB::analyze_expressions() {
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    // register usage
+    func.run_reg_usage();
+    func.build_expression(data.linked_data);
+  });
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {

@@ -614,6 +614,15 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
   }
 
   end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type(in_type.last_arg());
+
+  // we can also update register usage here.
+  read_regs.clear();
+  read_regs.emplace_back(Reg::GPR, Reg::T9);
+  const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
+                                Reg::T0, Reg::T1, Reg::T2, Reg::T3};
+  for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
+    read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+  }
 }
 
 void IR_Store_Atomic::propagate_types(const TypeState& input,
