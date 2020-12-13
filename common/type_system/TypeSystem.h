@@ -46,6 +46,16 @@ struct ReverseDerefInfo {
     enum Kind { INDEX, FIELD } kind;
     std::string name;
     int index;
+    std::string print() const {
+      switch (kind) {
+        case INDEX:
+          return std::to_string(index);
+        case FIELD:
+          return name;
+        default:
+          assert(false);
+      }
+    }
   };
 
   TypeSpec result_type;

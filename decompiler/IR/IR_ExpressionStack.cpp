@@ -73,6 +73,7 @@ bool IR_Set::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
 }
 
 bool IR_Call_Atomic::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)file;
   if (!call_type_set) {
     throw std::runtime_error("Call type is unknown on an IR_Call_Atomic");
   }

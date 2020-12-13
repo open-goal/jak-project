@@ -17,10 +17,11 @@ bool is_integer_type(const TP_Type& type) {
 /*!
  * If first arg is unsigned, make the result unsigned.
  * Otherwise signed. This is the default GOAL behavior I guess.
+ * This strips away any fancy stuff like [uint x 4]
  */
 TP_Type get_int_type(const TP_Type& one) {
   if (is_plain_type(one, TypeSpec("uint"))) {
-    return one;
+    return TP_Type(one.as_typespec());
   } else {
     return TP_Type(TypeSpec("int"));
   }
@@ -28,6 +29,7 @@ TP_Type get_int_type(const TP_Type& one) {
 
 struct RegOffset {
   Register reg;
+  std::shared_ptr<IR_Register> reg_ir;
   int offset;
 };
 
@@ -35,6 +37,7 @@ bool get_as_reg_offset(const IR* ir, RegOffset* out) {
   auto as_reg = dynamic_cast<const IR_Register*>(ir);
   if (as_reg) {
     out->reg = as_reg->reg;
+    out->reg_ir = std::make_shared<IR_Register>(*as_reg);
     out->offset = 0;
     return true;
   }
@@ -46,6 +49,7 @@ bool get_as_reg_offset(const IR* ir, RegOffset* out) {
     if (first_as_reg && second_as_const) {
       out->reg = first_as_reg->reg;
       out->offset = second_as_const->value;
+      out->reg_ir = std::dynamic_pointer_cast<IR_Register>(as_math->arg0);
       return true;
     }
   }
@@ -123,7 +127,11 @@ TP_Type IR_Register::get_expression_type(const TypeState& input,
 TP_Type IR_Load::get_expression_type(const TypeState& input,
                                      const LinkedObjectFile& file,
                                      DecompilerTypeSystem& dts) {
-  (void)input;
+  clear_load_path();
+
+  ////////////////////
+  // STATIC
+  ////////////////////
   auto as_static = dynamic_cast<IR_StaticAddress*>(location.get());
   if (as_static) {
     if (kind == FLOAT) {
@@ -147,7 +155,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
 
     if (input_type.kind == TP_Type::TYPE_OBJECT && ro.offset >= 16 && (ro.offset & 3) == 0 &&
         size == 4 && kind == UNSIGNED) {
-      // method get
+      // method get of fixed type
       auto method_id = (ro.offset - 16) / 4;
       if (input_type.ts.base_type() == "object" && method_id == GOAL_NEW_METHOD) {
         // remember that we're an object new.
@@ -163,7 +171,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     if (input_type.kind == TP_Type::OBJECT_OF_TYPE &&
         input_type.as_typespec() == TypeSpec("type") && ro.offset >= 16 && (ro.offset & 3) == 0 &&
         size == 4 && kind == UNSIGNED) {
-      // method get
+      // method get of dynamic type.
       auto method_id = (ro.offset - 16) / 4;
       auto method_info = dts.ts.lookup_method("object", method_id);
       return TP_Type(method_info.type.substitute_for_method_call("object"));
@@ -174,6 +182,8 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       // we got a plain pointer. let's just assume we're loading an integer.
       // perhaps we should disable this feature by default on 4-byte loads if we're getting
       // lots of false positives for loading pointers from plain pointers.
+
+      // todo, load_path
       switch (kind) {
         case UNSIGNED:
           switch (size) {
@@ -232,18 +242,23 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         return TP_Type(coerce_to_reg_type(rd.result_type));
       }
     } else {
+      if (input_type.kind == TP_Type::OBJECT_OF_TYPE && ro.offset == -4 && kind == UNSIGNED &&
+          size == 4 && ro.reg.get_kind() == Reg::GPR) {
+        // get type of basic likely, but misrecognized as an object.
+        // occurs often in typecase-like structures because other possible types are "stripped".
+        load_path_base = ro.reg_ir;
+        load_path_addr_of = false;
+        load_path.push_back("type");
+        load_path_set = true;
+
+        return TP_Type::make_type_object(input_type.as_typespec().base_type());
+      }
+
       if (input_type.as_typespec() == TypeSpec("object") && ro.offset == -4 && kind == UNSIGNED &&
           size == 4 && ro.reg.get_kind() == Reg::GPR) {
         // get type of basic likely, but misrecognized as an object.
         // occurs often in typecase-like structures because other possible types are "stripped".
         return TP_Type(TypeSpec("type"));
-      }
-
-      if (input_type.kind == TP_Type::OBJECT_OF_TYPE && ro.offset == -4 && kind == UNSIGNED &&
-          size == 4 && ro.reg.get_kind() == Reg::GPR) {
-        // get type of basic likely, but misrecognized as an object.
-        // occurs often in typecase-like structures because other possible types are "stripped".
-        return TP_Type::make_type_object(input_type.as_typespec().base_type());
       }
 
       // nice
@@ -264,6 +279,12 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       }
 
       if (rd.success) {
+        load_path_set = true;
+        load_path_addr_of = rd.addr_of;
+        load_path_base = ro.reg_ir;
+        for (auto& x : rd.deref_path) {
+          load_path.push_back(x.print());
+        }
         return TP_Type(coerce_to_reg_type(rd.result_type));
       }
 
@@ -380,7 +401,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
 
   if (kind == ADD && arg0_type.kind == TP_Type::PRODUCT && arg1_type.is_object_of_type()) {
     // access the methods!
-    return TP_Type::make_partial_method_table_access();
+    return TP_Type::make_partial_method_table_access(arg1_type.as_typespec());
   }
 
   auto a1_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
@@ -594,6 +615,11 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
                                      DecompilerTypeSystem& dts) {
   (void)file;
   (void)dts;
+  const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
+                                Reg::T0, Reg::T1, Reg::T2, Reg::T3};
+  const Reg::Gpr goal_function_clobber_regs[] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
+                                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3,
+                                                 Reg::T4, Reg::V1, Reg::T9};
   // todo clobber
   end_types = input;
 
@@ -616,6 +642,52 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
     throw std::runtime_error("Called a function, but we don't know its type");
   }
 
+  if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
+    // we're calling a varags function, which is format. We can determine the argument count
+    // by looking at the format string, if we can get it.
+    auto arg_type = input.get(Register(Reg::GPR, Reg::A1));
+    if (arg_type.kind == TP_Type::STRING) {
+      auto& str = arg_type.str_data;
+      int arg_count = 0;
+      for (size_t i = 0; i < str.length(); i++) {
+        if (str.at(i) == '~') {
+          i++;  // also eat the next character.
+          if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
+            // newline (~%) or tab (~T) don't take an argument.
+            continue;
+          }
+          arg_count++;
+        }
+      }
+
+      TypeSpec format_call_type("function");
+      format_call_type.add_arg(TypeSpec("object"));  // destination
+      format_call_type.add_arg(TypeSpec("string"));  // format string
+      for (int i = 0; i < arg_count; i++) {
+        format_call_type.add_arg(TypeSpec("object"));
+      }
+      format_call_type.add_arg(TypeSpec("object"));
+      arg_count += 2;  // for destination and format string.
+      call_type = format_call_type;
+      call_type_set = true;
+
+      end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type(in_type.last_arg());
+
+      // we can also update register usage here.
+      read_regs.clear();
+      read_regs.emplace_back(Reg::GPR, Reg::T9);
+      for (int i = 0; i < arg_count; i++) {
+        read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+      }
+
+      for (auto reg : goal_function_clobber_regs) {
+        end_types.get(Register(Reg::GPR, reg)) = TP_Type::make_none();
+      }
+      return;
+    } else {
+      throw std::runtime_error("Failed to get string for _varags_ call, got " + arg_type.print());
+    }
+  }
   // set the call type!
   call_type = in_type;
   call_type_set = true;
@@ -625,10 +697,12 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
   // we can also update register usage here.
   read_regs.clear();
   read_regs.emplace_back(Reg::GPR, Reg::T9);
-  const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
-                                Reg::T0, Reg::T1, Reg::T2, Reg::T3};
+
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+  }
+  for (auto reg : goal_function_clobber_regs) {
+    end_types.get(Register(Reg::GPR, reg)) = TP_Type::make_none();
   }
 }
 
@@ -650,7 +724,11 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
     // it's a basic! probably.
     const auto& word = file.words_by_seg.at(label.target_segment).at((label.offset - 4) / 4);
     if (word.kind == LinkedWord::TYPE_PTR) {
-      return TP_Type(TypeSpec(word.symbol_name));
+      if (word.symbol_name == "string") {
+        return TP_Type::make_string_object(file.get_goal_string_by_label(label));
+      } else {
+        return TP_Type(TypeSpec(word.symbol_name));
+      }
     }
   }
 

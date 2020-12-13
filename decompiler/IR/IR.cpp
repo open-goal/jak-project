@@ -3,6 +3,9 @@
 #include "common/goos/PrettyPrinter.h"
 #include "third-party/fmt/core.h"
 
+// hack to print out reverse deref paths on loads to help with debugging load stuff.
+bool enable_hack_load_path_print = false;
+
 std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
   (void)file;
   std::vector<std::shared_ptr<IR>> result;
@@ -404,6 +407,19 @@ void IR_StaticAddress::get_children(std::vector<std::shared_ptr<IR>>* output) co
 }
 
 goos::Object IR_Load::to_form(const LinkedObjectFile& file) const {
+  if (load_path_set && enable_hack_load_path_print) {
+    std::vector<goos::Object> list;
+    if (load_path_addr_of) {
+      list.push_back(pretty_print::to_symbol("&->"));
+    } else {
+      list.push_back(pretty_print::to_symbol("->"));
+    }
+    list.push_back(load_path_base->to_form(file));
+    for (auto& x : load_path) {
+      list.push_back(pretty_print::to_symbol(x));
+    }
+    return pretty_print::build_list(list);
+  }
   std::string load_operator;
   switch (kind) {
     case FLOAT:
@@ -609,6 +625,12 @@ goos::Object IR_Call::to_form(const LinkedObjectFile& file) const {
   (void)file;
   std::vector<goos::Object> result;
   result.push_back(pretty_print::to_symbol("call!"));
+
+  if (call_type_set) {
+    result.push_back(pretty_print::to_symbol(":arg-count"));
+    result.push_back(pretty_print::to_symbol(std::to_string(call_type.arg_count() - 1)));
+  }
+
   for (auto& x : args) {
     result.push_back(x->to_form(file));
   }

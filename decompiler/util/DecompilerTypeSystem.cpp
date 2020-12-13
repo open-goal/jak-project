@@ -271,7 +271,27 @@ TP_Type DecompilerTypeSystem::tp_lca_no_simplify(const TP_Type& existing,
 }
 
 TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
-  return tp_lca_no_simplify(existing.simplify(), add.simplify(), changed);
+  // we should handle existing == add without simplifying anything.
+  if (existing == add) {
+    *changed = false;
+    return existing;
+  }
+
+  // we should handle the case of tp_lca(complex, none) or tp_lca(none, complex) correctly,
+  // without simplifying.
+  if (add.kind == TP_Type::NONE) {
+    *changed = false;
+    return existing;
+  }
+
+  if (existing.kind == TP_Type::NONE) {
+    *changed = true;  // existing != none because of previous check.
+    return add;
+  }
+  auto result = tp_lca_no_simplify(existing.simplify(), add.simplify(), changed);
+  //  printf("%s --- %s ---> %s\n", existing.print().c_str(), add.print().c_str(),
+  //  result.print().c_str());
+  return result;
 }
 
 bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {

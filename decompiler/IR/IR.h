@@ -240,6 +240,19 @@ class IR_Load : public virtual IR {
   bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
                          ExpressionStack& stack,
                          LinkedObjectFile& file) override;
+
+  // this load_path stuff is just for debugging and shouldn't be used as part of the real
+  // decompilation.
+  void clear_load_path() {
+    load_path_set = false;
+    load_path_addr_of = false;
+    load_path.clear();
+    load_path_base = nullptr;
+  }
+  std::shared_ptr<IR> load_path_base = nullptr;
+  bool load_path_set = false;
+  bool load_path_addr_of = false;
+  std::vector<std::string> load_path;
 };
 
 class IR_FloatMath2 : public virtual IR {
@@ -331,6 +344,8 @@ class IR_Call : public virtual IR {
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::vector<std::shared_ptr<IR>> args;
+  TypeSpec call_type;
+  bool call_type_set = false;
 };
 
 // todo
@@ -341,8 +356,6 @@ class IR_Call_Atomic : public virtual IR_Call, public IR_Atomic {
                        const LinkedObjectFile& file,
                        DecompilerTypeSystem& dts) override;
   bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
-  TypeSpec call_type;
-  bool call_type_set = false;
 };
 
 class IR_IntegerConstant : public virtual IR {

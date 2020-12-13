@@ -14,11 +14,13 @@ struct TP_Type {
     PRODUCT,
     OBJ_PLUS_PRODUCT,
     PARTIAL_METHOD_TABLE_ACCESS,  // type + method_number * 4
-    METHOD_NEW_OF_OBJECT
+    METHOD_NEW_OF_OBJECT,
+    STRING
   } kind = NONE;
   // in the case that we are type_object, just store the type name in a single arg ts.
   TypeSpec ts;
   int multiplier;
+  std::string str_data;
 
   TP_Type() = default;
   explicit TP_Type(const TypeSpec& _ts) {
@@ -49,9 +51,10 @@ struct TP_Type {
     }
   }
 
-  static TP_Type make_partial_method_table_access() {
+  static TP_Type make_partial_method_table_access(TypeSpec ts) {
     TP_Type result;
     result.kind = PARTIAL_METHOD_TABLE_ACCESS;
+    result.ts = std::move(ts);
     return result;
   }
 
@@ -61,6 +64,22 @@ struct TP_Type {
     result.ts = TypeSpec(name);
     return result;
   }
+
+  static TP_Type make_string_object(const std::string& str) {
+    TP_Type result;
+    result.kind = STRING;
+    result.ts = TypeSpec("string");
+    result.str_data = str;
+    return result;
+  }
+
+  static TP_Type make_none() {
+    TP_Type result;
+    result.kind = NONE;
+    return result;
+  }
+
+  bool operator==(const TP_Type& other) const;
 };
 
 struct TypeState {
