@@ -3,6 +3,7 @@
 
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/Disasm/Register.h"
+#include "common/goos/Reader.h"
 
 struct TP_Type;
 struct TypeState;
@@ -30,6 +31,7 @@ class DecompilerTypeSystem {
 
   void add_symbol(const std::string& name, const TypeSpec& type_spec);
   void parse_type_defs(const std::vector<std::string>& file_path);
+  TypeSpec parse_type_spec(const std::string& str);
   void add_type_flags(const std::string& name, u64 flags);
   void add_type_parent(const std::string& child, const std::string& parent);
   std::string dump_symbol_types();
@@ -46,6 +48,9 @@ class DecompilerTypeSystem {
       current_method_type.clear();
     }
   } type_prop_settings;
+
+ private:
+  goos::Reader m_reader;
 };
 
 #endif  // JAK_DECOMPILERTYPESYSTEM_H

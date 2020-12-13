@@ -921,6 +921,7 @@ void ObjectFileDB::analyze_functions() {
 
       // type analysis
       if (get_config().function_type_prop) {
+        auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
         if (get_config().no_type_analysis_functions_by_name.find(func.guessed_name.to_string()) ==
             get_config().no_type_analysis_functions_by_name.end()) {
           if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
@@ -938,7 +939,7 @@ void ObjectFileDB::analyze_functions() {
               attempted_type_analysis++;
               //            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
               //                         kv->second.print());
-              if (func.run_type_analysis(kv->second, dts, data.linked_data)) {
+              if (func.run_type_analysis(kv->second, dts, data.linked_data, hints)) {
                 successful_type_analysis++;
               }
             }
@@ -960,7 +961,7 @@ void ObjectFileDB::analyze_functions() {
                 //              spdlog::info("Type Analysis on {} {}",
                 //              func.guessed_name.to_string(),
                 //                           func.type.print());
-                if (func.run_type_analysis(func.type, dts, data.linked_data)) {
+                if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
                   successful_type_analysis++;
                 }
               }
@@ -997,6 +998,10 @@ void ObjectFileDB::analyze_functions() {
     if (!func.guessed_name.empty()) {
       total_named_functions++;
     }
+
+    //    if (func.guessed_name.to_string() == "reset-and-call") {
+    //      assert(false);
+    //    }
   });
 
   spdlog::info("Found {} functions ({} with no control flow)", total_functions,

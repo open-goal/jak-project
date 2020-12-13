@@ -94,6 +94,7 @@ std::string IR_Atomic::print_with_types(const TypeState& init_types,
 
   auto read_mask = regs_to_gpr_mask(read_regs);
   auto write_mask = regs_to_gpr_mask(write_regs);
+  write_mask |= regs_to_gpr_mask({Register(Reg::GPR, Reg::A0)});
 
   result += fmt::format("[{}] -> [{}]", init_types.print_gpr_masked(read_mask),
                         end_types.print_gpr_masked(write_mask));

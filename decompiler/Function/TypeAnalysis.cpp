@@ -18,11 +18,28 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   }
   return result;
 }
+
+void apply_hints(const std::vector<TypeHint>& hints, TypeState* state, DecompilerTypeSystem& dts) {
+  for (auto& hint : hints) {
+    state->get(hint.reg) = TP_Type(dts.parse_type_spec(hint.type_name));
+  }
+}
+
+void try_apply_hints(int idx,
+                     const std::unordered_map<int, std::vector<TypeHint>>& hints,
+                     TypeState* state,
+                     DecompilerTypeSystem& dts) {
+  auto kv = hints.find(idx);
+  if (kv != hints.end()) {
+    apply_hints(kv->second, state, dts);
+  }
+}
 }  // namespace
 
 bool Function::run_type_analysis(const TypeSpec& my_type,
                                  DecompilerTypeSystem& dts,
-                                 LinkedObjectFile& file) {
+                                 LinkedObjectFile& file,
+                                 const std::unordered_map<int, std::vector<TypeHint>>& hints) {
   // STEP 0 - setup settings
   dts.type_prop_settings.reset();
   if (get_config().pair_functions_by_name.find(guessed_name.to_string()) !=
@@ -48,6 +65,8 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
 
   // STEP 3 - initialize type state.
   basic_blocks.at(0).init_types = construct_initial_typestate(my_type);
+  // and add hints:
+  try_apply_hints(0, hints, &basic_blocks.at(0).init_types, dts);
 
   // STEP 2 - loop while types are changing
   bool run_again = true;
@@ -59,6 +78,11 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
       TypeState* init_types = &block.init_types;
       for (int op_id = block.start_basic_op; op_id < block.end_basic_op; op_id++) {
         auto& op = basic_ops.at(op_id);
+
+        // apply type hints only if we are not the first op.
+        if (op_id != block.start_basic_op) {
+          try_apply_hints(op_id, hints, init_types, dts);
+        }
 
         // while the implementation of propagate_types is in progress, it may throw
         // for unimplemented cases.  Eventually this try/catch should be removed.
@@ -80,6 +104,9 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
       for (auto succ_block_id : {block.succ_ft, block.succ_branch}) {
         if (succ_block_id != -1) {
           auto& succ_block = basic_blocks.at(succ_block_id);
+          // apply hint
+          try_apply_hints(succ_block.start_basic_op, hints, init_types, dts);
+
           // set types to LCA (current, new)
           if (dts.tp_lca(&succ_block.init_types, *init_types)) {
             // if something changed, run again!

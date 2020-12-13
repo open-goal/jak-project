@@ -444,9 +444,28 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     return TP_Type(TypeSpec("int"));
   }
 
-  if (dts.ts.typecheck(TypeSpec("pointer"), arg0_type.as_typespec(), "", false, false) &&
+  if (kind == ADD &&
+      dts.ts.typecheck(TypeSpec("pointer"), arg0_type.as_typespec(), "", false, false) &&
       is_integer_type(arg1_type)) {
     return arg0_type;
+  }
+
+  if ((kind == ADD || kind == AND) &&
+      dts.ts.typecheck(TypeSpec("pointer"), arg1_type.as_typespec(), "", false, false) &&
+      is_integer_type(arg0_type)) {
+    return arg1_type;
+  }
+
+  if (kind == ADD &&
+      dts.ts.typecheck(TypeSpec("binteger"), arg0_type.as_typespec(), "", false, false) &&
+      is_integer_type(arg1_type)) {
+    return arg0_type;
+  }
+
+  if (kind == SUB &&
+      dts.ts.typecheck(TypeSpec("pointer"), arg0_type.as_typespec(), "", false, false) &&
+      dts.ts.typecheck(TypeSpec("pointer"), arg1_type.as_typespec(), "", false, false)) {
+    return TP_Type(TypeSpec("int"));
   }
 
   throw std::runtime_error(

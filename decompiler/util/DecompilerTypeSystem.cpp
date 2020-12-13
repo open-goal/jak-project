@@ -43,8 +43,7 @@ void for_each_in_list(goos::Object& list, T f) {
 }  // namespace
 
 void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_path) {
-  goos::Reader reader;
-  auto read = reader.read_from_file(file_path);
+  auto read = m_reader.read_from_file(file_path);
   auto data = cdr(read);
 
   for_each_in_list(data, [&](goos::Object& o) {
@@ -79,6 +78,12 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       throw std::runtime_error("Decompiler cannot parse " + car(o).print());
     }
   });
+}
+
+TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) {
+  auto read = m_reader.read_from_string(str);
+  auto data = cdr(read);
+  return parse_typespec(&ts, data);
 }
 
 std::string DecompilerTypeSystem::dump_symbol_types() {

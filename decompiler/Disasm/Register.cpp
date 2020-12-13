@@ -109,6 +109,26 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
   }
 }
 
+Register::Register(const std::string& name) {
+  // first try gprs,
+  for (int i = 0; i < Reg::MAX_GPR; i++) {
+    if (name == gpr_names[i]) {
+      id = (Reg::GPR << 8) | i;
+      return;
+    }
+  }
+
+  // next fprs
+  for (int i = 0; i < 32; i++) {
+    if (name == fpr_names[i]) {
+      id = (Reg::FPR << 8) | i;
+      return;
+    }
+  }
+
+  throw std::runtime_error("Unknown register name: " + name);
+}
+
 /*!
  * Convert to string. The register must be valid.
  */

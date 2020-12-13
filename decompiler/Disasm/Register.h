@@ -127,6 +127,7 @@ class Register {
  public:
   Register() = default;
   Register(Reg::RegisterKind kind, uint32_t num);
+  Register(const std::string& name);
   const char* to_charp() const;
   std::string to_string() const;
   Reg::RegisterKind get_kind() const;

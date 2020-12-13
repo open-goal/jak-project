@@ -13,6 +13,7 @@
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
 #include "common/type_system/TypeSpec.h"
+#include "decompiler/config.h"
 
 class DecompilerTypeSystem;
 class IR_Atomic;
@@ -81,7 +82,8 @@ class Function {
   int get_reginfo_basic_op_count();
   bool run_type_analysis(const TypeSpec& my_type,
                          DecompilerTypeSystem& dts,
-                         LinkedObjectFile& file);
+                         LinkedObjectFile& file,
+                         const std::unordered_map<int, std::vector<TypeHint>>& hints);
   void run_reg_usage();
   bool build_expression(LinkedObjectFile& file);
   BlockTopologicalSort bb_topo_sort();
