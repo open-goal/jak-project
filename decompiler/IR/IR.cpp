@@ -94,7 +94,6 @@ std::string IR_Atomic::print_with_types(const TypeState& init_types,
 
   auto read_mask = regs_to_gpr_mask(read_regs);
   auto write_mask = regs_to_gpr_mask(write_regs);
-  write_mask |= regs_to_gpr_mask({Register(Reg::GPR, Reg::A0)});
 
   result += fmt::format("[{}] -> [{}]", init_types.print_gpr_masked(read_mask),
                         end_types.print_gpr_masked(write_mask));
@@ -387,15 +386,6 @@ goos::Object IR_EmptyPair::to_form(const LinkedObjectFile& file) const {
 
 void IR_EmptyPair::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
-}
-
-TP_Type IR_EmptyPair::get_expression_type(const TypeState& input,
-                                          const LinkedObjectFile& file,
-                                          DecompilerTypeSystem& dts) {
-  (void)input;
-  (void)file;
-  (void)dts;
-  return TP_Type(TypeSpec("pair"));
 }
 
 goos::Object IR_StaticAddress::to_form(const LinkedObjectFile& file) const {

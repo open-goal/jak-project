@@ -1,50 +1,6 @@
 #include "TP_Type.h"
 #include "third-party/fmt/core.h"
 
-/*!
- * Takes the weird TP_Types and converts them to one of the main 4.
- * This is supposed to be used if the fancy type analysis steps are attempted but fail.
- */
-TP_Type TP_Type::simplify() const {
-  switch (kind) {
-    case PRODUCT:
-      return TP_Type(ts);
-    case METHOD_NEW_OF_OBJECT:
-      return TP_Type(ts);
-    case OBJ_PLUS_PRODUCT:
-      return TP_Type(TypeSpec("none"));
-    case STRING:
-      return TP_Type(TypeSpec("string"));
-    default:
-      return *this;
-  }
-}
-
-std::string TP_Type::print() const {
-  switch (kind) {
-    case OBJECT_OF_TYPE:
-      return ts.print();
-    case TYPE_OBJECT:
-      return fmt::format("[{}]", ts.print());
-    case FALSE:
-      return fmt::format("[#f]");
-    case NONE:
-      return fmt::format("[none]");
-    case PRODUCT:
-      return fmt::format("[{} x {}]", ts.print(), multiplier);
-    case PARTIAL_METHOD_TABLE_ACCESS:
-      return fmt::format("[[vtable-access of {}]]", ts.print());
-    case METHOD_NEW_OF_OBJECT:
-      return fmt::format("[(method object new) -> {}]", ts.print());
-    case OBJ_PLUS_PRODUCT:
-      return fmt::format("[{} + int x {}]", ts.print(), multiplier);
-    case STRING:
-      return fmt::format("[\"{}\"]", str_data);
-    default:
-      assert(false);
-  }
-}
-
 std::string TypeState::print_gpr_masked(u32 mask) const {
   std::string result;
   for (int i = 0; i < 32; i++) {
@@ -58,30 +14,99 @@ std::string TypeState::print_gpr_masked(u32 mask) const {
   return result;
 }
 
+std::string TP_Type::print() const {
+  switch (kind) {
+    case Kind::TYPESPEC:
+      return m_ts.print();
+    case Kind::TYPE_OF_TYPE_OR_CHILD:
+      return fmt::format("<the type {}>", m_ts.print());
+    case Kind::FALSE_AS_NULL:
+      return fmt::format("'#f");
+    case Kind::UNINITIALIZED:
+      return fmt::format("<uninitialized>");
+    case Kind::PRODUCT_WITH_CONSTANT:
+      return fmt::format("<value x {}>", m_int);
+    case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+      return fmt::format("<{} + (value x {})>", m_ts.print(), m_int);
+    case Kind::OBJECT_NEW_METHOD:
+      return fmt::format("<(object-new) for {}>", m_ts.print());
+    case Kind::STRING_CONSTANT:
+      return fmt::format("<string \"{}\">", m_str);
+    case Kind::INTEGER_CONSTANT:
+      return fmt::format("<integer {}>", m_int);
+    case Kind::DYNAMIC_METHOD_ACCESS:
+      return fmt::format("<dynamic-method-access>");
+    case Kind::INVALID:
+    default:
+      assert(false);
+  }
+}
+
 bool TP_Type::operator==(const TP_Type& other) const {
   if (kind != other.kind) {
     return false;
   }
 
   switch (kind) {
-    case OBJECT_OF_TYPE:
-      return ts == other.ts;
-    case TYPE_OBJECT:
-      return ts == other.ts;
-    case FALSE:
+    case Kind::TYPESPEC:
+      return m_ts == other.m_ts;
+    case Kind::TYPE_OF_TYPE_OR_CHILD:
+      return m_ts == other.m_ts;
+    case Kind::FALSE_AS_NULL:
       return true;
-    case NONE:
+    case Kind::UNINITIALIZED:
       return true;
-    case PRODUCT:
-      return (ts == other.ts) && (multiplier == other.multiplier);
-    case PARTIAL_METHOD_TABLE_ACCESS:
-      return (ts == other.ts);
-    case METHOD_NEW_OF_OBJECT:
-      return (ts == other.ts);
-    case OBJ_PLUS_PRODUCT:
-      return (ts == other.ts) && (multiplier == other.multiplier);
-    case STRING:
-      return str_data == other.str_data && ts == other.ts;
+    case Kind::PRODUCT_WITH_CONSTANT:
+      return m_int == other.m_int;
+    case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+      return m_ts == other.m_ts && m_int == other.m_int;
+    case Kind::OBJECT_NEW_METHOD:
+      return m_ts == other.m_ts;
+    case Kind::STRING_CONSTANT:
+      return m_str == other.m_str;
+    case Kind::INTEGER_CONSTANT:
+      return m_int == other.m_int;
+    case Kind::DYNAMIC_METHOD_ACCESS:
+      return true;
+    case Kind::INVALID:
+    default:
+      assert(false);
+  }
+}
+
+bool TP_Type::operator!=(const TP_Type& other) const {
+  return !((*this) == other);
+}
+
+TypeSpec TP_Type::typespec() const {
+  switch (kind) {
+    case Kind::TYPESPEC:
+      return m_ts;
+    case Kind::TYPE_OF_TYPE_OR_CHILD:
+      return TypeSpec("type");
+    case Kind::FALSE_AS_NULL:
+      return TypeSpec("symbol");
+    case Kind::UNINITIALIZED:
+      return TypeSpec("none");
+    case Kind::PRODUCT_WITH_CONSTANT:
+      return TypeSpec("int");
+    case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+      // this can be part of an array access, so we don't really know the type.
+      // probably not a good idea to try to do anything with this as a typespec
+      // so let's be very vague
+      return TypeSpec("object");
+    case Kind::OBJECT_NEW_METHOD:
+      // similar to previous case, being more vague than we need to be because we don't
+      // want to assume the return type incorrectly and you shouldn't try to do anything with
+      // this as a typespec.
+      return TypeSpec("function");
+    case Kind::STRING_CONSTANT:
+      return TypeSpec("string");
+    case Kind::INTEGER_CONSTANT:
+      return TypeSpec("int");
+    case Kind::DYNAMIC_METHOD_ACCESS:
+      return TypeSpec("object");
+    case Kind::INVALID:
     default:
       assert(false);
   }

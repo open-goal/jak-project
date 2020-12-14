@@ -13,15 +13,14 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
     auto reg_type = f_ts.get_arg(i);
-    result.gpr_types[reg_id].ts = reg_type;
-    result.gpr_types[reg_id].kind = TP_Type::OBJECT_OF_TYPE;
+    result.gpr_types[reg_id] = TP_Type::make_from_typespec(reg_type);
   }
   return result;
 }
 
 void apply_hints(const std::vector<TypeHint>& hints, TypeState* state, DecompilerTypeSystem& dts) {
   for (auto& hint : hints) {
-    state->get(hint.reg) = TP_Type(dts.parse_type_spec(hint.type_name));
+    state->get(hint.reg) = TP_Type::make_from_typespec(dts.parse_type_spec(hint.type_name));
   }
 }
 
@@ -118,7 +117,7 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
   }
 
   auto last_op = basic_ops.back();
-  auto last_type = last_op->end_types.get(Register(Reg::GPR, Reg::V0)).as_typespec();
+  auto last_type = last_op->end_types.get(Register(Reg::GPR, Reg::V0)).typespec();
   if (last_type != my_type.last_arg()) {
     warnings += fmt::format(";; return type mismatch {} vs {}.  ", last_type.print(),
                             my_type.last_arg().print());
