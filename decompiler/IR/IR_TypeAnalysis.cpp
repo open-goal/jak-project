@@ -251,22 +251,26 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     //    }
     //
 
-    //    } else if (input_type.kind == TP_Type::OBJ_PLUS_PRODUCT) {
-    //      // note, we discard and completely ignore the stride here.
-    //      ReverseDerefInputInfo rd_in;
-    //      rd_in.mem_deref = true;
-    //      rd_in.input_type = input_type.ts;
-    //      rd_in.reg = get_reg_kind(ro.reg);  // bleh
-    //      rd_in.offset = ro.offset;
-    //      rd_in.sign_extend = kind == SIGNED;
-    //      rd_in.load_size = size;
-    //      auto rd = dts.ts.get_reverse_deref_info(rd_in);
+    //    } else
     //
-    //      if (rd.success) {
-    //        return TP_Type(coerce_to_reg_type(rd.result_type));
-    //      }
+    if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+      // note, we discard and completely ignore the stride here.
+      ReverseDerefInputInfo rd_in;
+      rd_in.mem_deref = true;
+      rd_in.input_type = input_type.get_obj_plus_const_mult_typespec();
+      rd_in.reg = get_reg_kind(ro.reg);  // bleh
+      rd_in.offset = ro.offset;
+      rd_in.sign_extend = kind == SIGNED;
+      rd_in.load_size = size;
+      auto rd = dts.ts.get_reverse_deref_info(rd_in);
+
+      if (rd.success) {
+        return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
+      }
+    }
     //    } else {
-    //      if (input_type.kind == TP_Type::OBJECT_OF_TYPE && ro.offset == -4 && kind == UNSIGNED &&
+    //      if (input_type.kind == TP_Type::OBJECT_OF_TYPE && ro.offset == -4 && kind == UNSIGNED
+    //      &&
     //          size == 4 && ro.reg.get_kind() == Reg::GPR) {
     //        // get type of basic likely, but misrecognized as an object.
     //        // occurs often in typecase-like structures because other possible types are
@@ -488,11 +492,6 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   //    }
   //  }
   //
-  //  if (kind == ADD && arg0_type.kind == TP_Type::PRODUCT && arg1_type.is_object_of_type()) {
-  //    // access the methods!
-  //    assert(false);
-  //    return TP_Type::make_partial_method_table_access(arg1_type.as_typespec());
-  //  }
   //
   //  auto a1_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
   //  if (a1_const && kind == ADD && arg0_type.kind == TP_Type::OBJECT_OF_TYPE) {
@@ -509,7 +508,8 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   //    }
   //  }
   //
-  //  if (kind == ADD && is_integer_type(arg0_type) && arg1_type.kind == TP_Type::OBJECT_OF_TYPE) {
+  //  if (kind == ADD && is_integer_type(arg0_type) && arg1_type.kind == TP_Type::OBJECT_OF_TYPE)
+  //  {
   //    // product + object with multiplier 1 (access array of bytes for example)
   //    TP_Type result;
   //    result.kind = TP_Type::OBJ_PLUS_PRODUCT;
@@ -518,15 +518,17 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   //    return result;
   //  }
   //
-  //  if (kind == ADD && arg0_type.kind == TP_Type::PRODUCT &&
-  //      arg1_type.kind == TP_Type::OBJECT_OF_TYPE) {
-  //    TP_Type result;
-  //    result.kind = TP_Type::OBJ_PLUS_PRODUCT;
-  //    result.ts = arg1_type.as_typespec();
-  //    result.multiplier = arg0_type.multiplier;
-  //    return result;
-  //  }
-  //
+  if (kind == ADD && arg0_type.is_product() && arg1_type.kind == TP_Type::Kind::TYPESPEC) {
+    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier());
+  }
+
+  // byte access of offset array field trick.
+  // arg1 holds a structure.
+  // arg0 is an integer in a register.
+  if (tc(dts, TypeSpec("structure"), arg1_type) && !dynamic_cast<IR_IntegerConstant*>(arg0.get()) &&
+      is_int_or_uint(dts, arg0_type)) {
+    return TP_Type::make_object_plus_product(arg1_type.typespec(), 1);
+  }
 
   //
   //  if (kind == ADD &&
@@ -650,7 +652,8 @@ TP_Type IR_IntMath1::get_expression_type(const TypeState& input,
         // if we take the absolute value of a thing, just make it signed.
         return TP_Type::make_from_typespec(TypeSpec("int"));
       case NOT:
-        // otherwise, make it int/uint as needed (this works because we check is_int_or_uint above)
+        // otherwise, make it int/uint as needed (this works because we check is_int_or_uint
+        // above)
         return TP_Type::make_from_typespec(arg_type.typespec());
     }
   }

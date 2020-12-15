@@ -20,7 +20,12 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
 
 void apply_hints(const std::vector<TypeHint>& hints, TypeState* state, DecompilerTypeSystem& dts) {
   for (auto& hint : hints) {
-    state->get(hint.reg) = TP_Type::make_from_typespec(dts.parse_type_spec(hint.type_name));
+    try {
+      state->get(hint.reg) = TP_Type::make_from_typespec(dts.parse_type_spec(hint.type_name));
+    } catch (std::exception& e) {
+      printf("failed to parse hint: %s\n", e.what());
+      assert(false);
+    }
   }
 }
 

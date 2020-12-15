@@ -1189,10 +1189,19 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
     assert(di.mem_deref);
     if (offset_into_elt == 0) {
       if (input.mem_deref) {
-        path->push_back(token);
-        *addr_of = false;
-        *result_type = base_type;
-        return true;
+        // todo - this is a hack to let quadword loads always succeed because we don't support it
+        // correctly at this point.
+        if (input.load_size == 16 ||
+            (di.load_size == input.load_size && di.sign_extend == input.sign_extend)) {
+          path->push_back(token);
+          *addr_of = false;
+          *result_type = base_type;
+          return true;
+        } else {
+          printf("load size %d %d, sext %d %d, input %s\n", di.load_size, input.load_size,
+                 di.sign_extend, input.sign_extend, input.input_type.print().c_str());
+          return false;
+        }
       } else {
         path->push_back(token);
         *addr_of = true;

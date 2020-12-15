@@ -111,7 +111,7 @@ class TP_Type {
   bool is_constant_string() const { return kind == Kind::STRING_CONSTANT; }
   bool is_integer_constant() const { return kind == Kind::INTEGER_CONSTANT; }
   bool is_integer_constant(int64_t value) const { return is_integer_constant() && m_int == value; }
-
+  bool is_product() const { return kind == Kind::PRODUCT_WITH_CONSTANT; }
   bool is_product_with(int64_t value) const {
     return kind == Kind::PRODUCT_WITH_CONSTANT && m_int == value;
   }
@@ -181,6 +181,14 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_object_plus_product(const TypeSpec& ts, int64_t multiplier) {
+    TP_Type result;
+    result.kind = Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT;
+    result.m_ts = ts;
+    result.m_int = multiplier;
+    return result;
+  }
+
   const TypeSpec& get_objects_typespec() const {
     assert(kind == Kind::TYPESPEC);
     return m_ts;
@@ -193,6 +201,11 @@ class TP_Type {
 
   const TypeSpec& get_method_new_object_typespec() const {
     assert(kind == Kind::OBJECT_NEW_METHOD);
+    return m_ts;
+  }
+
+  const TypeSpec& get_obj_plus_const_mult_typespec() const {
+    assert(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_ts;
   }
 

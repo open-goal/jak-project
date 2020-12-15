@@ -83,7 +83,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
 TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) {
   auto read = m_reader.read_from_string(str);
   auto data = cdr(read);
-  return parse_typespec(&ts, data);
+  return parse_typespec(&ts, car(data));
 }
 
 std::string DecompilerTypeSystem::dump_symbol_types() {
