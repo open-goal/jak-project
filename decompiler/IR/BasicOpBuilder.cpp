@@ -1403,6 +1403,12 @@ std::shared_ptr<IR_Atomic> try_beq(Instruction& instr, Instruction& next_instr, 
         instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
     op->update_reginfo_self(0, 1, 0);
     return op;
+  } else if (instr.kind == InstructionKind::BEQ && instr.get_src(1).is_reg(make_gpr(Reg::R0))) {
+    auto op = std::make_shared<IR_Branch_Atomic>(
+        Condition(Condition::ZERO, make_reg(instr.get_src(0).get_reg(), idx), nullptr, nullptr),
+        instr.get_src(2).get_label(), get_branch_delay(next_instr, idx), false);
+    op->update_reginfo_self(0, 1, 0);
+    return op;
   } else if (instr.kind == InstructionKind::BEQ) {
     auto op = std::make_shared<IR_Branch_Atomic>(
         Condition(Condition::EQUAL, make_reg(instr.get_src(0).get_reg(), idx),
@@ -1532,7 +1538,7 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, int idx) {
       result->clobber_regs.push_back(temp);
       result->write_regs.push_back(left);
       result->read_regs.push_back(right);
-      result->read_regs.push_back(right);
+      result->read_regs.push_back(left);
       result->reg_info_set = true;
       return result;
     }
@@ -1547,7 +1553,7 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, int idx) {
       result->clobber_regs.push_back(temp);
       result->write_regs.push_back(left);
       result->read_regs.push_back(right);
-      result->read_regs.push_back(right);
+      result->read_regs.push_back(left);
       result->reg_info_set = true;
       return result;
     }
@@ -1646,12 +1652,22 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
-                              std::make_shared<IR_Compare>(
-                                  Condition(Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx),
-                                            make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
-    op->update_reginfo_self<IR_Compare>(1, 2, 1);
-    return op;
+    if (src1_reg == make_gpr(Reg::R0)) {
+      auto op = make_set_atomic(
+          IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+          std::make_shared<IR_Compare>(Condition(Condition::LESS_THAN_ZERO, make_reg(src0_reg, idx),
+                                                 nullptr, make_reg(clobber_reg, idx))));
+      op->update_reginfo_self<IR_Compare>(1, 1, 1);
+      return op;
+    } else {
+      auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                                std::make_shared<IR_Compare>(Condition(
+                                    Condition::LESS_THAN_SIGNED, make_reg(src0_reg, idx),
+                                    make_reg(src1_reg, idx), make_reg(clobber_reg, idx))));
+      op->update_reginfo_self<IR_Compare>(1, 2, 1);
+      return op;
+    }
+
   } else if (i0.kind == InstructionKind::SLT && i1.kind == InstructionKind::BEQ) {
     auto clobber_reg = i0.get_dst(0).get_reg();
     auto src0_reg = i0.get_src(0).get_reg();
@@ -2435,7 +2451,7 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
       func->add_basic_op(std::make_shared<IR_Failed_Atomic>(), instr, instr + 1);
     } else {
       if (!func->contains_asm_ops && dynamic_cast<IR_AsmOp*>(result.get())) {
-        func->warnings += "Function contains asm op";
+        func->warnings += ";; Function contains asm op\n";
         func->contains_asm_ops = true;
       }
 

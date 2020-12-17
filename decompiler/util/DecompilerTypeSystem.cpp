@@ -43,8 +43,7 @@ void for_each_in_list(goos::Object& list, T f) {
 }  // namespace
 
 void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_path) {
-  goos::Reader reader;
-  auto read = reader.read_from_file(file_path);
+  auto read = m_reader.read_from_file(file_path);
   auto data = cdr(read);
 
   for_each_in_list(data, [&](goos::Object& o) {
@@ -79,6 +78,12 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       throw std::runtime_error("Decompiler cannot parse " + car(o).print());
     }
   });
+}
+
+TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) {
+  auto read = m_reader.read_from_string(str);
+  auto data = cdr(read);
+  return parse_typespec(&ts, car(data));
 }
 
 std::string DecompilerTypeSystem::dump_symbol_types() {
@@ -152,128 +157,126 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   }
 }
 
-TP_Type DecompilerTypeSystem::tp_lca_no_simplify(const TP_Type& existing,
-                                                 const TP_Type& add,
-                                                 bool* changed) {
-  switch (existing.kind) {
-    case TP_Type::OBJECT_OF_TYPE:
-      switch (add.kind) {
-        case TP_Type::OBJECT_OF_TYPE: {
-          // two normal types, do LCA as normal.
-          TP_Type result;
-          result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor_reg(existing.ts, add.ts);
-          *changed = (result.ts != existing.ts);
-          return result;
-        }
-        case TP_Type::TYPE_OBJECT: {
-          // normal, [type object]. Change type object to less specific "type".
-          TP_Type result;
-          result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor_reg(existing.ts, ts.make_typespec("type"));
-          *changed = (result.ts != existing.ts);
-          return result;
-        }
-        case TP_Type::FALSE:
-          // allow #f anywhere
-          *changed = false;
-          return existing;
-        case TP_Type::NONE:
-          // allow possibly undefined.
-          *changed = false;
-          return existing;
-        default:
-          assert(false);
+/*!
+ * Compute the least common ancestor of two TP Types.
+ */
+TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+  // starting from most vague to most specific
+
+  // simplist case, no difference.
+  if (existing == add) {
+    *changed = false;
+    return existing;
+  }
+
+  // being sometimes uninitialized should not modify types.
+  if (add.kind == TP_Type::Kind::UNINITIALIZED) {
+    *changed = false;
+    return existing;
+  }
+
+  // replace anything that's uninitialized sometimes.
+  if (existing.kind == TP_Type::Kind::UNINITIALIZED) {
+    *changed = true;  // existing != none because of previous check.
+    return add;
+  }
+
+  // similar to before, false as null shouldn't modify types.
+  if (add.kind == TP_Type::Kind::FALSE_AS_NULL) {
+    *changed = false;
+    return existing;
+  }
+
+  // replace any false as nulls.
+  if (existing.kind == TP_Type::Kind::FALSE_AS_NULL) {
+    *changed = true;  // existing != false because of previous check.
+    return add;
+  }
+
+  // different values, but the same kind.
+  if (existing.kind == add.kind) {
+    switch (existing.kind) {
+      case TP_Type::Kind::TYPESPEC: {
+        auto new_result = TP_Type::make_from_typespec(coerce_to_reg_type(ts.lowest_common_ancestor(
+            existing.get_objects_typespec(), add.get_objects_typespec())));
+        *changed = (new_result != existing);
+        return new_result;
       }
-      break;
-    case TP_Type::TYPE_OBJECT:
-      switch (add.kind) {
-        case TP_Type::OBJECT_OF_TYPE: {
-          TP_Type result;
-          result.kind = TP_Type::OBJECT_OF_TYPE;
-          result.ts = ts.lowest_common_ancestor_reg(ts.make_typespec("type"), add.ts);
-          *changed = true;  // changed type
-          return result;
-        }
-        case TP_Type::TYPE_OBJECT: {
-          // two type objects.
-          TP_Type result;
-          result.kind = TP_Type::TYPE_OBJECT;
-          result.ts = ts.lowest_common_ancestor_reg(existing.ts, add.ts);
-          *changed = (result.ts != existing.ts);
-          return result;
-        }
-        case TP_Type::FALSE:
-          // allow #f anywhere
-          *changed = false;
-          return existing;
-        case TP_Type::NONE:
-          // allow possibly undefined.
-          *changed = false;
-          return existing;
-        default:
-          assert(false);
-      }
-      break;
-    case TP_Type::FALSE:
-      switch (add.kind) {
-        case TP_Type::OBJECT_OF_TYPE:
-          *changed = true;
-          return add;
-        case TP_Type::TYPE_OBJECT:
-          *changed = true;
-          return add;
-        case TP_Type::FALSE:
-          *changed = false;
-          return existing;
-        case TP_Type::NONE:
-          *changed = false;
-          return existing;
-        default:
-          assert(false);
-      }
-      break;
-    case TP_Type::NONE:
-      switch (add.kind) {
-        case TP_Type::OBJECT_OF_TYPE:
-        case TP_Type::TYPE_OBJECT:
-        case TP_Type::FALSE:
-        case TP_Type::METHOD_NEW_OF_OBJECT:
-          *changed = true;
-          return add;
-        case TP_Type::NONE:
-          *changed = false;
-          return existing;
-        default:
-          assert(false);
-      }
-      break;
-    case TP_Type::METHOD_NEW_OF_OBJECT:
-      switch (add.kind) {
-        case TP_Type::METHOD_NEW_OF_OBJECT: {
-          if (existing.ts == add.ts) {
-            *changed = false;
-            return existing;
-          } else {
-            assert(false);
-          }
-        }
-        case TP_Type::NONE:
-          *changed = false;
-          return existing;
-        default:
-          assert(false);
+      case TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD: {
+        auto new_result = TP_Type::make_type_object(ts.lowest_common_ancestor(
+            existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+        *changed = (new_result != existing);
+        return new_result;
       }
 
-    default:
-      assert(false);
+      case TP_Type::Kind::PRODUCT_WITH_CONSTANT:
+        // we know they are different.
+        *changed = true;
+        return TP_Type::make_from_typespec(TypeSpec("int"));
+      case TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+        *changed = true;
+        // todo - there might be cases where we need to LCA the base types??
+        return TP_Type::make_from_typespec(TypeSpec("object"));
+      case TP_Type::Kind::OBJECT_NEW_METHOD:
+        *changed = true;
+        // this case should never happen I think.
+        return TP_Type::make_from_typespec(TypeSpec("function"));
+      case TP_Type::Kind::STRING_CONSTANT: {
+        auto existing_count = get_format_arg_count(existing.get_string());
+        auto added_count = get_format_arg_count(add.get_string());
+        *changed = true;
+        if (added_count == existing_count) {
+          return TP_Type::make_from_format_string(existing_count);
+        } else {
+          return TP_Type::make_from_typespec(TypeSpec("string"));
+        }
+      }
+      case TP_Type::Kind::INTEGER_CONSTANT:
+        *changed = true;
+        return TP_Type::make_from_typespec(TypeSpec("int"));
+      case TP_Type::Kind::FORMAT_STRING:
+        if (existing.get_format_string_arg_count() == add.get_format_string_arg_count()) {
+          *changed = false;
+          return existing;
+        } else {
+          *changed = true;
+          return TP_Type::make_from_typespec(TypeSpec("string"));
+        }
+
+      case TP_Type::Kind::FALSE_AS_NULL:
+      case TP_Type::Kind::UNINITIALIZED:
+      case TP_Type::Kind::DYNAMIC_METHOD_ACCESS:
+      case TP_Type::Kind::INVALID:
+      default:
+        assert(false);
+    }
+  } else {
+    // trying to combine two of different types.
+    if (existing.can_be_format_string() && add.can_be_format_string()) {
+      int existing_count = get_format_arg_count(existing);
+      int add_count = get_format_arg_count(add);
+      TP_Type result_type;
+      if (existing_count == add_count) {
+        result_type = TP_Type::make_from_format_string(existing_count);
+      } else {
+        result_type = TP_Type::make_from_typespec(TypeSpec("string"));
+      }
+
+      *changed = (result_type == existing);
+      return result_type;
+    }
+
+    // otherwise, as an absolute fallback, convert both to TypeSpecs and do TypeSpec LCA
+    auto new_result =
+        TP_Type::make_from_typespec(ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+    *changed = (new_result != existing);
+    return new_result;
   }
 }
 
-TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
-  return tp_lca_no_simplify(existing.simplify(), add.simplify(), changed);
-}
-
+/*!
+ * Find the least common ancestor of an entire typestate.
+ */
 bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
   bool result = false;
   for (int i = 0; i < 32; i++) {
@@ -295,4 +298,27 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
   }
 
   return result;
+}
+
+int DecompilerTypeSystem::get_format_arg_count(const std::string& str) {
+  int arg_count = 0;
+  for (size_t i = 0; i < str.length(); i++) {
+    if (str.at(i) == '~') {
+      i++;  // also eat the next character.
+      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
+        // newline (~%) or tab (~T) don't take an argument.
+        continue;
+      }
+      arg_count++;
+    }
+  }
+  return arg_count;
+}
+
+int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) {
+  if (type.is_constant_string()) {
+    return get_format_arg_count(type.get_string());
+  } else {
+    return type.get_format_string_arg_count();
+  }
 }

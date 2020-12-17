@@ -60,11 +60,13 @@ class ObjectFileDB {
   void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
   void write_disassembly(const std::string& output_dir,
                          bool disassemble_objects_without_functions,
-                         bool write_json);
+                         bool write_json,
+                         const std::string& file_suffix = "");
 
-  void write_debug_type_analysis(const std::string& output_dir);
+  void write_debug_type_analysis(const std::string& output_dir, const std::string& suffix = "");
   void analyze_functions();
   void process_tpages();
+  void analyze_expressions();
   std::string process_game_count();
   std::string process_game_text();
 

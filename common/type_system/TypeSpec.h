@@ -51,6 +51,7 @@ class TypeSpec {
   size_t arg_count() const { return m_arguments.size(); }
 
   const TypeSpec& get_arg(int idx) const { return m_arguments.at(idx); }
+  TypeSpec& get_arg(int idx) { return m_arguments.at(idx); }
   const TypeSpec& last_arg() const {
     assert(!m_arguments.empty());
     return m_arguments.back();

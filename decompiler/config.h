@@ -6,6 +6,13 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
+#include "decompiler/Disasm/Register.h"
+
+struct TypeHint {
+  Register reg;
+  std::string type_name;
+};
 
 struct Config {
   int game_version = -1;
@@ -27,8 +34,12 @@ struct Config {
   bool dump_objs = false;
   bool write_func_json = false;
   bool function_type_prop = false;
+  bool analyze_expressions = false;
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
+  std::unordered_set<std::string> no_type_analysis_functions_by_name;
+  std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeHint>>>
+      type_hints_by_function_by_idx;
   // ...
 };
 

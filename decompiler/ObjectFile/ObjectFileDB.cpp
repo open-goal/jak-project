@@ -560,7 +560,8 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   // printf("\n");
 }
 
-void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
+void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
+                                             const std::string& suffix) {
   spdlog::info("- Writing debug type analysis...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -568,7 +569,8 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
   for_each_obj([&](ObjectFileData& obj) {
     if (obj.linked_data.has_any_functions()) {
       auto file_text = obj.linked_data.print_type_analysis_debug();
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_db.asm");
+      auto file_name =
+          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_db.asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -588,7 +590,8 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir) {
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
                                      bool disassemble_objects_without_functions,
-                                     bool write_json) {
+                                     bool write_json,
+                                     const std::string& file_suffix) {
   spdlog::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -599,7 +602,8 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
     if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
       auto file_text = obj.linked_data.print_disassembly();
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
+      auto file_name =
+          file_util::combine_path(output_dir, obj.to_unique_name() + file_suffix + ".asm");
 
       if (get_config().analyze_functions && write_json) {
         auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
@@ -811,7 +815,7 @@ void ObjectFileDB::analyze_functions() {
         unique_names.insert(name);
 
         if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
-          func.warnings += "flagged as asm by config\n";
+          func.warnings += ";; flagged as asm by config\n";
           func.suspected_asm = true;
         }
       }
@@ -824,7 +828,7 @@ void ObjectFileDB::analyze_functions() {
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
-      func.warnings += "this function exists in multiple non-identical object files";
+      func.warnings += ";; this function exists in multiple non-identical object files";
     }
   });
   /*
@@ -917,54 +921,66 @@ void ObjectFileDB::analyze_functions() {
 
       // type analysis
       if (get_config().function_type_prop) {
-        if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-          // we're a global named function. This means we're stored in a symbol
-          auto kv = dts.symbol_types.find(func.guessed_name.function_name);
-          if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
-            if (kv->second.base_type() != "function") {
-              spdlog::error("Found a function named {} but the symbol has type {}",
-                            func.guessed_name.to_string(), kv->second.print());
-              assert(false);
-            }
-            // GOOD!
-            func.type = kv->second;
-            func.attempted_type_analysis = true;
-            attempted_type_analysis++;
-            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-                         kv->second.print());
-            if (func.run_type_analysis(kv->second, dts, data.linked_data)) {
-              successful_type_analysis++;
-            }
-          }
-        } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-          // it's a method.
-          try {
-            auto info =
-                dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
-            if (info.type.arg_count() >= 1) {
-              if (info.type.base_type() != "function") {
-                spdlog::error("Found a method named {} but the symbol has type {}",
-                              func.guessed_name.to_string(), info.type.print());
+        auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
+        if (get_config().no_type_analysis_functions_by_name.find(func.guessed_name.to_string()) ==
+            get_config().no_type_analysis_functions_by_name.end()) {
+          if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+            // we're a global named function. This means we're stored in a symbol
+            auto kv = dts.symbol_types.find(func.guessed_name.function_name);
+            if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+              if (kv->second.base_type() != "function") {
+                spdlog::error("Found a function named {} but the symbol has type {}",
+                              func.guessed_name.to_string(), kv->second.print());
                 assert(false);
               }
               // GOOD!
-              func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
+              func.type = kv->second;
               func.attempted_type_analysis = true;
               attempted_type_analysis++;
-              spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-                           func.type.print());
-              if (func.run_type_analysis(func.type, dts, data.linked_data)) {
+              //            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+              //                         kv->second.print());
+              if (func.run_type_analysis(kv->second, dts, data.linked_data, hints)) {
                 successful_type_analysis++;
               }
             }
+          } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+            // it's a method.
+            try {
+              auto info =
+                  dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
+              if (info.type.arg_count() >= 1) {
+                if (info.type.base_type() != "function") {
+                  spdlog::error("Found a method named {} but the symbol has type {}",
+                                func.guessed_name.to_string(), info.type.print());
+                  assert(false);
+                }
+                // GOOD!
+                func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
+                func.attempted_type_analysis = true;
+                attempted_type_analysis++;
+                //              spdlog::info("Type Analysis on {} {}",
+                //              func.guessed_name.to_string(),
+                //                           func.type.print());
+                if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
+                  successful_type_analysis++;
+                }
+              }
 
-          } catch (std::runtime_error& e) {
-            // failed to lookup method info
+            } catch (std::runtime_error& e) {
+              // failed to lookup method info
+            }
           }
+
+          if (!func.attempted_type_analysis) {
+            func.warnings.append(";; Failed to try type analysis\n");
+          }
+        } else {
+          func.warnings.append(";; Marked as no type analysis in config\n");
         }
       }
     } else {
       asm_funcs++;
+      func.warnings.append(";; Assembly Function. Analysis passes were not attempted.\n");
     }
 
     if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
@@ -982,6 +998,10 @@ void ObjectFileDB::analyze_functions() {
     if (!func.guessed_name.empty()) {
       total_named_functions++;
     }
+
+    //    if (func.guessed_name.to_string() == "reset-and-call") {
+    //      assert(false);
+    //    }
   });
 
   spdlog::info("Found {} functions ({} with no control flow)", total_functions,
@@ -1013,6 +1033,27 @@ void ObjectFileDB::analyze_functions() {
   //        printf("  %s\n", x.c_str());
   //      }
   //    }
+}
+
+void ObjectFileDB::analyze_expressions() {
+  spdlog::info("- Analyzing Expressions...");
+  Timer timer;
+  int attempts = 0;
+  int success = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    // register usage
+    func.run_reg_usage();
+    attempts++;
+    if (func.build_expression(data.linked_data)) {
+      success++;
+    } else {
+      func.warnings.append(";; Expression analysis failed.\n");
+    }
+  });
+
+  spdlog::info(" {}/{} functions passed expression building ({:.2f}%)\n", success, attempts,
+               100.f * float(success) / float(attempts));
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {

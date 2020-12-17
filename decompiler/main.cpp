@@ -88,6 +88,12 @@ int main(int argc, char** argv) {
     db.write_debug_type_analysis(out_folder);
   }
 
+  if (get_config().analyze_expressions) {
+    db.analyze_expressions();
+    db.write_disassembly(out_folder, false, false, "_expr");
+    db.write_debug_type_analysis(out_folder, "_expr");
+  }
+
   // todo print type summary
   // printf("%s\n", get_type_info().get_summary().c_str());
 

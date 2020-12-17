@@ -623,7 +623,8 @@ std::shared_ptr<IR> try_sc_as_abs(Function& f, LinkedObjectFile& file, ShortCirc
   auto b0_ptr = cfg_to_ir(f, file, b0);
   auto b0_ir = dynamic_cast<IR_Begin*>(b0_ptr.get());
 
-  auto branch = dynamic_cast<IR_Branch*>(b0_ir->forms.back().get());
+  auto branch_sp = b0_ir->forms.back();
+  auto branch = dynamic_cast<IR_Branch*>(branch_sp.get());
   if (!branch) {
     return nullptr;
   }
@@ -647,7 +648,10 @@ std::shared_ptr<IR> try_sc_as_abs(Function& f, LinkedObjectFile& file, ShortCirc
     b0_ir->forms.pop_back();
     // add the ash
     b0_ir->forms.push_back(std::make_shared<IR_Set>(
-        IR_Set::REG_64, output, std::make_shared<IR_IntMath1>(IR_IntMath1::ABS, input)));
+        IR_Set::REG_64, output,
+        std::make_shared<IR_IntMath1>(IR_IntMath1::ABS, input,
+                                      std::dynamic_pointer_cast<IR_Atomic>(branch_sp))));
+
     return b0_ptr;
   }
 
@@ -682,7 +686,8 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
     return nullptr;
   }
 
-  auto branch = dynamic_cast<IR_Branch*>(b0_ir->forms.back().get());
+  auto branch_sp = b0_ir->forms.back();
+  auto branch = dynamic_cast<IR_Branch*>(branch_sp.get());
   if (!branch || b1_ir->forms.size() != 2) {
     return nullptr;
   }
@@ -752,7 +757,10 @@ std::shared_ptr<IR> try_sc_as_ash(Function& f, LinkedObjectFile& file, ShortCirc
     // add the ash
     b0_ir->forms.push_back(std::make_shared<IR_Set>(
         IR_Set::REG_64, dest_ir,
-        std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir, is_arith)));
+        std::make_shared<IR_Ash>(shift_ir, value_ir, clobber_ir,
+                                 std::dynamic_pointer_cast<IR_Branch_Atomic>(branch_sp),
+                                 std::dynamic_pointer_cast<IR_Atomic>(dsubu_candidate),
+                                 std::dynamic_pointer_cast<IR_Atomic>(dsrav_candidate), is_arith)));
     return b0_ptr;
   }
 
@@ -1145,7 +1153,6 @@ std::shared_ptr<IR> build_cfg_ir(Function& function,
     auto all_children = ir->get_all_ir(file);
     all_children.push_back(ir);
     for (auto& child : all_children) {
-      //      printf("child is %s\n", child->print(file).c_str());
       auto as_begin = dynamic_cast<IR_Begin*>(child.get());
       if (as_begin) {
         clean_up_while_loops(as_begin, file);

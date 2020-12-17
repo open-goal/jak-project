@@ -23,7 +23,11 @@ add_executable(decompiler
 		data/game_count.cpp
 		Function/TypeAnalysis.cpp
 		IR/IR_TypeAnalysis.cpp
-		util/TP_Type.cpp)
+		util/TP_Type.cpp
+		Function/RegUsage.cpp
+		Function/ExpressionBuilder.cpp
+		Function/ExpressionStack.cpp
+		IR/IR_ExpressionStack.cpp)
 
 target_link_libraries(decompiler
         goos
