@@ -40,6 +40,8 @@ class DecompilerTypeSystem {
   TP_Type tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed);
   TP_Type tp_lca_no_simplify(const TP_Type& existing, const TP_Type& add, bool* changed);
   bool tp_lca(TypeState* combined, const TypeState& add);
+  int get_format_arg_count(const std::string& str);
+  int get_format_arg_count(const TP_Type& type);
   struct {
     bool allow_pair;
     std::string current_method_type;

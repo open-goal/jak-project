@@ -1198,8 +1198,10 @@ bool TypeSystem::reverse_deref(const ReverseDerefInputInfo& input,
           *result_type = base_type;
           return true;
         } else {
-          printf("load size %d %d, sext %d %d, input %s\n", di.load_size, input.load_size,
-                 di.sign_extend, input.sign_extend, input.input_type.print().c_str());
+          if (debug_reverse_deref) {
+            fmt::print("load size {} {}, sext {} {}, input {}\n", di.load_size, input.load_size,
+                       di.sign_extend, input.sign_extend, input.input_type.print().c_str());
+          }
           return false;
         }
       } else {

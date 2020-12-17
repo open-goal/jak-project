@@ -98,6 +98,7 @@ class TP_Type {
     OBJECT_PLUS_PRODUCT_WITH_CONSTANT,  // address: obj + (val * multiplier)
     OBJECT_NEW_METHOD,      // the method new of object, as used in an (object-new) or similar.
     STRING_CONSTANT,        // a string that's part of the string pool
+    FORMAT_STRING,          // a string with a given number of format arguments
     INTEGER_CONSTANT,       // a constant integer.
     DYNAMIC_METHOD_ACCESS,  // partial access into a
     INVALID
@@ -115,10 +116,24 @@ class TP_Type {
   bool is_product_with(int64_t value) const {
     return kind == Kind::PRODUCT_WITH_CONSTANT && m_int == value;
   }
+  bool is_format_string() const { return kind == Kind::FORMAT_STRING; }
+  bool can_be_format_string() const { return is_format_string() || is_constant_string(); }
+
+  int get_format_string_arg_count() const {
+    assert(is_format_string());
+    return m_int;
+  }
 
   const std::string& get_string() const {
     assert(is_constant_string());
     return m_str;
+  }
+
+  static TP_Type make_from_format_string(int n_args) {
+    TP_Type result;
+    result.kind = Kind::FORMAT_STRING;
+    result.m_int = n_args;
+    return result;
   }
 
   static TP_Type make_from_typespec(const TypeSpec& ts) {

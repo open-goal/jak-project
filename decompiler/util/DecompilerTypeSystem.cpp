@@ -221,12 +221,27 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         *changed = true;
         // this case should never happen I think.
         return TP_Type::make_from_typespec(TypeSpec("function"));
-      case TP_Type::Kind::STRING_CONSTANT:
+      case TP_Type::Kind::STRING_CONSTANT: {
+        auto existing_count = get_format_arg_count(existing.get_string());
+        auto added_count = get_format_arg_count(add.get_string());
         *changed = true;
-        return TP_Type::make_from_typespec(TypeSpec("string"));
+        if (added_count == existing_count) {
+          return TP_Type::make_from_format_string(existing_count);
+        } else {
+          return TP_Type::make_from_typespec(TypeSpec("string"));
+        }
+      }
       case TP_Type::Kind::INTEGER_CONSTANT:
         *changed = true;
         return TP_Type::make_from_typespec(TypeSpec("int"));
+      case TP_Type::Kind::FORMAT_STRING:
+        if (existing.get_format_string_arg_count() == add.get_format_string_arg_count()) {
+          *changed = false;
+          return existing;
+        } else {
+          *changed = true;
+          return TP_Type::make_from_typespec(TypeSpec("string"));
+        }
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
@@ -237,7 +252,20 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
     }
   } else {
     // trying to combine two of different types.
-    // if we find any special cases we can add it here.
+    if (existing.can_be_format_string() && add.can_be_format_string()) {
+      int existing_count = get_format_arg_count(existing);
+      int add_count = get_format_arg_count(add);
+      TP_Type result_type;
+      if (existing_count == add_count) {
+        result_type = TP_Type::make_from_format_string(existing_count);
+      } else {
+        result_type = TP_Type::make_from_typespec(TypeSpec("string"));
+      }
+
+      *changed = (result_type == existing);
+      return result_type;
+    }
+
     // otherwise, as an absolute fallback, convert both to TypeSpecs and do TypeSpec LCA
     auto new_result =
         TP_Type::make_from_typespec(ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
@@ -270,4 +298,27 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
   }
 
   return result;
+}
+
+int DecompilerTypeSystem::get_format_arg_count(const std::string& str) {
+  int arg_count = 0;
+  for (size_t i = 0; i < str.length(); i++) {
+    if (str.at(i) == '~') {
+      i++;  // also eat the next character.
+      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
+        // newline (~%) or tab (~T) don't take an argument.
+        continue;
+      }
+      arg_count++;
+    }
+  }
+  return arg_count;
+}
+
+int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) {
+  if (type.is_constant_string()) {
+    return get_format_arg_count(type.get_string());
+  } else {
+    return type.get_format_string_arg_count();
+  }
 }

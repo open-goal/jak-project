@@ -772,18 +772,15 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
     // we're calling a varags function, which is format. We can determine the argument count
     // by looking at the format string, if we can get it.
     auto arg_type = input.get(Register(Reg::GPR, Reg::A1));
-    if (arg_type.is_constant_string()) {
-      auto& str = arg_type.get_string();
-      int arg_count = 0;
-      for (size_t i = 0; i < str.length(); i++) {
-        if (str.at(i) == '~') {
-          i++;  // also eat the next character.
-          if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
-            // newline (~%) or tab (~T) don't take an argument.
-            continue;
-          }
-          arg_count++;
-        }
+    if (arg_type.is_constant_string() || arg_type.is_format_string()) {
+      int arg_count = -1;
+
+      if (arg_type.is_constant_string()) {
+        auto& str = arg_type.get_string();
+        arg_count = dts.get_format_arg_count(str);
+      } else {
+        // is format string.
+        arg_count = arg_type.get_format_string_arg_count();
       }
 
       TypeSpec format_call_type("function");

@@ -32,6 +32,8 @@ std::string TP_Type::print() const {
       return fmt::format("<(object-new) for {}>", m_ts.print());
     case Kind::STRING_CONSTANT:
       return fmt::format("<string \"{}\">", m_str);
+    case Kind::FORMAT_STRING:
+      return fmt::format("<string with {} args>", m_int);
     case Kind::INTEGER_CONSTANT:
       return fmt::format("<integer {}>", m_int);
     case Kind::DYNAMIC_METHOD_ACCESS:
@@ -65,6 +67,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::STRING_CONSTANT:
       return m_str == other.m_str;
     case Kind::INTEGER_CONSTANT:
+      return m_int == other.m_int;
+    case Kind::FORMAT_STRING:
       return m_int == other.m_int;
     case Kind::DYNAMIC_METHOD_ACCESS:
       return true;
@@ -106,6 +110,8 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("int");
     case Kind::DYNAMIC_METHOD_ACCESS:
       return TypeSpec("object");
+    case Kind::FORMAT_STRING:
+      return TypeSpec("string");
     case Kind::INVALID:
     default:
       assert(false);
