@@ -8,6 +8,7 @@
 (deftype basic-field-test-type (basic)
   ((name string)
    (kc kernel-context)
+   (kci kernel-context :inline)
    (pos float)
    (bf int32)
    (list pair))
@@ -19,6 +20,12 @@
                 :list '(a b c ) 
                 :name "name" 
                 :bf (new 'static 'basic-field-test-bitfield :f1 1 :f3 1) 
-                :kc (new 'static 'kernel-context :next-pid 12))))
-  (format #t "~A ~D ~f ~A ~D~%" (-> obj name) (-> obj kc next-pid) (-> obj pos) (-> obj list) (-> obj bf))
+                :kc (new 'static 'kernel-context :next-pid 12)
+                :kci (new 'static 'kernel-context :current-process 'asdf :relocating-min 33))))
+  (format #t "~A ~D ~f ~A ~D" (-> obj name) (-> obj kc next-pid) (-> obj pos) (-> obj list) (-> obj bf))
+  (format #t " ~D ~D ~A ~A~%" 
+          (-> obj kci relocating-min) 
+          (logand 15 (the int (-> obj kci))) 
+          (-> obj kci type) 
+          (-> obj kci current-process))
   )

@@ -59,11 +59,14 @@ class StaticStructure : public StaticObject {
     StaticStructure* dest = nullptr;
     int offset_in_dest = -1;
   };
+
+  std::vector<SymbolRecord> types;
   std::vector<SymbolRecord> symbols;
   std::vector<PointerRecord> pointers;
 
   void add_symbol_record(std::string name, int offset);
   void add_pointer_record(int offset_in_this, StaticStructure* dest, int offset_in_dest);
+  void add_type_record(std::string name, int offset);
 };
 
 class StaticBasic : public StaticStructure {
@@ -71,7 +74,6 @@ class StaticBasic : public StaticStructure {
   std::string type_name;
   StaticBasic(int _seg, std::string _type_name);
   int get_addr_offset() const override;
-  void generate(emitter::ObjectGenerator* gen) override;
 };
 
 class StaticString : public StaticBasic {

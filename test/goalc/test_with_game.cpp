@@ -331,7 +331,7 @@ TEST_F(WithGameTests, StaticPairs) {
 
 TEST_F(WithGameTests, FancyStatic) {
   runner.run_static_test(env, testCategory, "test-fancy-static-fields.gc",
-                         {"\"name\" 12 12.3400 (a b c) 5\n0\n"});
+                         {"\"name\" 12 12.3400 (a b c) 5 33 4 kernel-context asdf\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

@@ -78,18 +78,18 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     field_name_def = field_name_def.substr(1);
     auto field_info = m_ts.lookup_field_info(type_info->get_name(), field_name_def);
 
-    if (field_info.field.is_dynamic() || field_info.field.is_inline() ||
-        field_info.field.is_array()) {
+    if (field_info.field.is_dynamic() || field_info.field.is_array()) {
       throw_compiler_error(form, "Static objects not yet implemented for dynamic/inline/array");
     }
 
     auto field_offset = field_info.field.offset() + offset;
-    assert(field_info.needs_deref);  // for now...
-    auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
-    auto field_size = deref_info.load_size;
-    assert(field_offset + field_size <= int(structure->data.size()));
 
     if (is_integer(field_info.type)) {
+      assert(field_info.needs_deref);  // for now...
+      auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+      auto field_size = deref_info.load_size;
+      assert(field_offset + field_size <= int(structure->data.size()));
+      assert(!field_info.field.is_inline());
       s64 value = 0;
       auto sr = compile_static(field_value, env);
       if (!sr.is_constant_data()) {
@@ -115,27 +115,74 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
     } else if (is_structure(field_info.type) || is_pair(field_info.type)) {
       // todo - rewrite this to correctly handle structures within structures.
-      auto sr = compile_static(field_value, env);
-      if (sr.is_symbol()) {
-        if (sr.symbol_name() != "#f") {
-          typecheck(form, field_info.type, sr.typespec());
+      if (is_pair(field_info.type)) {
+        assert(!field_info.field.is_inline());
+      }
+
+      if (field_info.field.is_inline()) {
+        // for an inline field, we only accept (new 'static '<type> ...)
+        if (!field_value.is_list()) {
+          throw_compiler_error(field_value, "Inline field was not properly specified");
         }
-        structure->add_symbol_record(sr.symbol_name(), field_offset);
-        assert(deref_info.mem_deref);
-        assert(deref_info.can_deref);
-        assert(deref_info.load_size == 4);
-        // the linker needs to see a -1 in order to know to insert a symbol pointer
-        // instead of just the symbol table offset.
-        u32 linker_val = 0xffffffff;
-        memcpy(structure->data.data() + field_offset, &linker_val, 4);
-      } else if (sr.is_reference()) {
-        typecheck(form, field_info.type, sr.typespec());
-        structure->add_pointer_record(field_offset, sr.reference(),
-                                      sr.reference()->get_addr_offset());
+
+        goos::Object constructor_args;
+        auto new_form = get_list_as_vector(field_value, &constructor_args, 3);
+        if (new_form.size() != 3) {
+          throw_compiler_error(field_value,
+                               "Inline field must be defined with (new 'static 'type-name ...)");
+        }
+
+        if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+          throw_compiler_error(field_value,
+                               "Inline field must be defined with (new 'static 'type-name ...)");
+        }
+
+        if (!is_quoted_sym(new_form.at(1)) ||
+            unquote(new_form.at(1)).as_symbol()->name != "static") {
+          throw_compiler_error(field_value,
+                               "Inline field must be defined with (new 'static 'type-name ...)");
+        }
+
+        auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+        compile_static_structure_inline(field_value, inlined_type, constructor_args, structure,
+                                        field_offset, env);
+
+        if (is_basic(inlined_type)) {
+          structure->add_type_record(inlined_type.base_type(), field_offset);
+        }
+
       } else {
-        throw_compiler_error(form, "Unsupported field value {}.", field_value.print());
+        assert(field_info.needs_deref);
+        auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+        auto field_size = deref_info.load_size;
+        assert(field_offset + field_size <= int(structure->data.size()));
+        auto sr = compile_static(field_value, env);
+        if (sr.is_symbol()) {
+          if (sr.symbol_name() != "#f") {
+            typecheck(form, field_info.type, sr.typespec());
+          }
+          structure->add_symbol_record(sr.symbol_name(), field_offset);
+          assert(deref_info.mem_deref);
+          assert(deref_info.can_deref);
+          assert(deref_info.load_size == 4);
+          // the linker needs to see a -1 in order to know to insert a symbol pointer
+          // instead of just the symbol table offset.
+          u32 linker_val = 0xffffffff;
+          memcpy(structure->data.data() + field_offset, &linker_val, 4);
+        } else if (sr.is_reference()) {
+          typecheck(form, field_info.type, sr.typespec());
+          structure->add_pointer_record(field_offset, sr.reference(),
+                                        sr.reference()->get_addr_offset());
+        } else {
+          throw_compiler_error(form, "Unsupported field value {}.", field_value.print());
+        }
       }
     } else if (is_float(field_info.type)) {
+      assert(field_info.needs_deref);
+      auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+      auto field_size = deref_info.load_size;
+      assert(field_offset + field_size <= int(structure->data.size()));
+      assert(!field_info.field.is_inline());
       auto sr = compile_static(field_value, env);
       if (!sr.is_constant_data()) {
         throw_compiler_error(form, "Could not use {} for a float field", field_value.print());

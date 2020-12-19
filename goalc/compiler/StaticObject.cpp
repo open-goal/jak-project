@@ -104,6 +104,10 @@ void StaticStructure::generate_structure(emitter::ObjectGenerator* gen) {
   for (auto& ptr : pointers) {
     gen->link_static_pointer(rec, ptr.offset_in_this, ptr.dest->rec, ptr.offset_in_dest);
   }
+
+  for (auto& type : types) {
+    gen->link_static_type_ptr(rec, type.offset, type.name);
+  }
 }
 
 void StaticStructure::generate(emitter::ObjectGenerator* gen) {
@@ -127,20 +131,24 @@ void StaticStructure::add_pointer_record(int offset_in_this,
   pointers.push_back(prec);
 }
 
+void StaticStructure::add_type_record(std::string name, int offset) {
+  SymbolRecord srec;
+  srec.name = std::move(name);
+  srec.offset = offset;
+  types.push_back(srec);
+}
+
 ///////////////////
 // StaticBasic
 ///////////////////
 
 StaticBasic::StaticBasic(int _seg, std::string _type_name)
-    : StaticStructure(_seg), type_name(std::move(_type_name)) {}
+    : StaticStructure(_seg), type_name(std::move(_type_name)) {
+  add_type_record(type_name, 0);
+}
 
 int StaticBasic::get_addr_offset() const {
   return BASIC_OFFSET;
-}
-
-void StaticBasic::generate(emitter::ObjectGenerator* gen) {
-  generate_structure(gen);
-  gen->link_static_type_ptr(rec, 0, type_name);
 }
 
 ///////////////////
