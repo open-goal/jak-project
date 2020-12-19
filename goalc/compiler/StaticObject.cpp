@@ -16,17 +16,11 @@ uint32_t push_data_to_byte_vector(T data, std::vector<uint8_t>& v) {
 ////////////////
 // StaticString
 ////////////////
-StaticString::StaticString(std::string data, int _seg) : text(std::move(data)), seg(_seg) {}
+StaticString::StaticString(std::string text_data, int _seg)
+    : StaticBasic(_seg, "string"), text(std::move(text_data)) {}
 
 std::string StaticString::print() const {
   return fmt::format("static-string \"{}\"", text);
-}
-
-StaticObject::LoadInfo StaticString::get_load_info() const {
-  LoadInfo info;
-  info.requires_load = false;
-  info.prefer_xmm = false;
-  return info;
 }
 
 void StaticString::generate(emitter::ObjectGenerator* gen) {
@@ -47,10 +41,6 @@ void StaticString::generate(emitter::ObjectGenerator* gen) {
     d.push_back(c);
   }
   d.push_back(0);
-}
-
-int StaticString::get_addr_offset() const {
-  return BASIC_OFFSET;
 }
 
 ////////////////

@@ -27,17 +27,6 @@ class StaticObject {
   emitter::StaticRecord rec;
 };
 
-class StaticString : public StaticObject {
- public:
-  explicit StaticString(std::string data, int _seg);
-  std::string text;
-  int seg = -1;
-  std::string print() const override;
-  LoadInfo get_load_info() const override;
-  void generate(emitter::ObjectGenerator* gen) override;
-  int get_addr_offset() const override;
-};
-
 class StaticFloat : public StaticObject {
  public:
   explicit StaticFloat(float _value, int _seg);
@@ -82,6 +71,14 @@ class StaticBasic : public StaticStructure {
   std::string type_name;
   StaticBasic(int _seg, std::string _type_name);
   int get_addr_offset() const override;
+  void generate(emitter::ObjectGenerator* gen) override;
+};
+
+class StaticString : public StaticBasic {
+ public:
+  explicit StaticString(std::string data, int _seg);
+  std::string text;
+  std::string print() const override;
   void generate(emitter::ObjectGenerator* gen) override;
 };
 

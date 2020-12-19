@@ -247,20 +247,36 @@ Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
 
 StaticResult Compiler::compile_static_no_eval(const goos::Object& form, Env* env) {
   auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto segment = fe->segment;
+  if (segment == TOP_LEVEL_SEGMENT) {
+    segment = MAIN_SEGMENT;
+  }
   if (form.is_pair()) {
     auto car = compile_static_no_eval(form.as_pair()->car, env);
     auto cdr = compile_static_no_eval(form.as_pair()->cdr, env);
-    auto pair_structure = std::make_unique<StaticPair>(car, cdr, MAIN_SEGMENT);
+    auto pair_structure = std::make_unique<StaticPair>(car, cdr, segment);
     auto result =
         StaticResult::make_structure_reference(pair_structure.get(), m_ts.make_typespec("pair"));
     fie->add_static(std::move(pair_structure));
     return result;
   } else if (form.is_int()) {
+    if (!integer_fits(form.as_int(), 4, true)) {
+      throw_compiler_error(
+          form, "Cannot store {} (0x{:x}) in a pair because it overflows a signed 32-bit integer.",
+          form.as_int(), form.as_int());
+    }
     return StaticResult::make_constant_data(form.as_int());
   } else if (form.is_symbol()) {
     return StaticResult::make_symbol(form.as_symbol()->name);
   } else if (form.is_empty_list()) {
     return StaticResult::make_symbol("_empty_");
+  } else if (form.is_string()) {
+    auto obj = std::make_unique<StaticString>(form.as_string()->data, segment);
+    auto result = StaticResult::make_structure_reference(obj.get(), m_ts.make_typespec("string"));
+    fie->add_static(std::move(obj));
+    return result;
+    assert(false);
   } else {
     assert(false);  // not yet implemented
   }

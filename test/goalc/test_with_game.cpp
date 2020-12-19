@@ -325,7 +325,8 @@ TEST_F(WithGameTests, Math) {
 }
 
 TEST_F(WithGameTests, StaticPairs) {
-  runner.run_static_test(env, testCategory, "test-static-pair-1.gc", {"(1 beans 2 twelve)\n0\n"});
+  runner.run_static_test(env, testCategory, "test-static-pair-1.gc",
+                         {"(1 (w . a) beans 2 (-1 -2) twelve (a . \"test\"))\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {
