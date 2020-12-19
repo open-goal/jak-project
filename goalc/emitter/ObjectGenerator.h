@@ -77,7 +77,10 @@ class ObjectGenerator {
   void link_instruction_symbol_mem(const InstructionRecord& rec, const std::string& name);
   void link_instruction_symbol_ptr(const InstructionRecord& rec, const std::string& name);
   void link_static_symbol_ptr(StaticRecord rec, int offset, const std::string& name);
-
+  void link_static_pointer(const StaticRecord& source,
+                           int source_offset,
+                           const StaticRecord& dest,
+                           int dest_offset);
   void link_instruction_static(const InstructionRecord& instr,
                                const StaticRecord& target_static,
                                int offset);
@@ -91,11 +94,13 @@ class ObjectGenerator {
   void handle_temp_static_sym_links(int seg);
   void handle_temp_rip_data_links(int seg);
   void handle_temp_rip_func_links(int seg);
+  void handle_temp_static_ptr_links(int seg);
 
   void emit_link_table(int seg);
   void emit_link_type_pointer(int seg);
   void emit_link_symbol(int seg);
   void emit_link_rip(int seg);
+  void emit_link_ptr(int seg);
   std::vector<u8> generate_header_v3();
 
   template <typename T>
@@ -139,6 +144,13 @@ class ObjectGenerator {
     int offset = -1;
   };
 
+  struct StaticPointerLink {
+    StaticRecord source;
+    int offset_in_source = -1;
+    StaticRecord dest;
+    int offset_in_dest = -1;
+  };
+
   struct SymbolInstrLink {
     InstructionRecord rec;
     bool is_mem_access = false;
@@ -166,6 +178,13 @@ class ObjectGenerator {
     IR_Record dest;
   };
 
+  struct PointerLink {
+    int segment = -1;
+    // both in bytes.
+    int source = -1;
+    int dest = -1;
+  };
+
   template <typename T>
   using seg_vector = std::array<std::vector<T>, N_SEG>;
 
@@ -185,6 +204,7 @@ class ObjectGenerator {
   seg_vector<JumpLink> m_jump_temp_links_by_seg;
   seg_map<SymbolInstrLink> m_symbol_instr_temp_links_by_seg;
   seg_map<StaticSymbolLink> m_static_sym_temp_links_by_seg;
+  seg_vector<StaticPointerLink> m_static_temp_ptr_links_by_seg;
   seg_vector<RipFuncLink> m_rip_func_temp_links_by_seg;
   seg_vector<RipDataLink> m_rip_data_temp_links_by_seg;
 
@@ -192,6 +212,7 @@ class ObjectGenerator {
   seg_map<int> m_type_ptr_links_by_seg;
   seg_map<int> m_sym_links_by_seg;
   seg_vector<RipLink> m_rip_links_by_seg;
+  seg_vector<PointerLink> m_pointer_links_by_seg;
 
   std::vector<FunctionRecord> m_all_function_records;
 };

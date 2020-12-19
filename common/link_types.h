@@ -14,6 +14,7 @@ enum LinkKind {
   LINK_TYPE_PTR = 2,                  //! link a pointer to a type.
   LINK_DISTANCE_TO_OTHER_SEG_64 = 3,  //! link to another segment
   LINK_DISTANCE_TO_OTHER_SEG_32 = 4,  //! link to another segment
+  LINK_PTR = 5,                       //! link a pointer within this segment
 };
 
 enum SegmentTypes { MAIN_SEGMENT = 0, DEBUG_SEGMENT = 1, TOP_LEVEL_SEGMENT = 2 };

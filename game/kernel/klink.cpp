@@ -343,7 +343,7 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
 }
 
 /*!
- * Link a single pointer.
+ * Link a single relative offset (used for RIP)
  */
 uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
                                 ObjectFileHeader* ofh,
@@ -360,7 +360,8 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   // printf("link object in seg %d diff %d at %d (%d + %d)\n", target_seg, diff, offset_of_patch,
   // link_data[2], ofh->code_infos[current_seg].offset);
 
-  // both 32-bit and 64-bit pointer links are supported, though 64-bit ones should disappear soon.
+  // both 32-bit and 64-bit pointer links are supported, though 64-bit ones are no longer in use.
+  // we still support it just in case we want to run ancient code.
   if (size == 4) {
     *Ptr<int32_t>(offset_of_patch).c() = diff;
   } else if (size == 8) {
@@ -370,6 +371,14 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   }
 
   return 1 + 3 * 4;
+}
+
+uint32_t ptr_link_v3(Ptr<u8> link, ObjectFileHeader* ofh, int current_seg) {
+  auto* link_data = link.cast<u32>().c();
+  u32 patch_loc = link_data[0] + ofh->code_infos[current_seg].offset;
+  u32 patch_value = link_data[1] + ofh->code_infos[current_seg].offset;
+  *Ptr<u32>(patch_loc).c() = patch_value;
+  return 8;
 }
 
 /*!
@@ -468,15 +477,17 @@ uint32_t link_control::work_v3() {
             lp = lp + 1;  // seek past id
             lp = lp + typelink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset));
             break;
-
           case LINK_DISTANCE_TO_OTHER_SEG_64:
             lp = lp + 1;
             lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 8);
             break;
-
           case LINK_DISTANCE_TO_OTHER_SEG_32:
             lp = lp + 1;
             lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 4);
+            break;
+          case LINK_PTR:
+            lp = lp + 1;
+            lp = lp + ptr_link_v3(lp, ofh, m_segment_process);
             break;
           default:
             printf("unknown link table thing %d\n", *lp);

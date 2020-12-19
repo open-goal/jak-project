@@ -81,3 +81,9 @@
 - Rearranged function stack frames so spilled register variable slots come after stack structures.
 - Added `stack` allocated and constructed basic/structure types.
 - Fixed a bug where functions with exactly 8 parameters created a compiler error.
+
+## V0.4
+- Breaking change: added new link kind to link table format. Code compiled with previous versions will still work, but code compiled in V0.4 that uses static pairs will cause a "unknown link table code 5" error.
+- Added support for static pairs and lists. Symbols, integers, and strings are supported.
+- Added much better support for setting fields of statics. Now you can set constants, symbols, strings, pairs, integers, floats, or other statics, including inlined structures/basics! Also uses the full type system for typechecking
+- Fixed a bug where accessing an inline basic field did not apply the 4-byte basic offset.

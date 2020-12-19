@@ -412,8 +412,9 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
     result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
     result->mark_as_settable();
   } else {
-    result =
-        fe->alloc_val<MemoryOffsetConstantVal>(field.type, object, field.field.offset() + offset);
+    auto field_type_info = m_ts.lookup_type(field.type);
+    result = fe->alloc_val<MemoryOffsetConstantVal>(
+        field.type, object, field.field.offset() + offset + field_type_info->get_offset());
     result->mark_as_settable();
   }
   return result;

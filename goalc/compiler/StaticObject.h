@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include "common/type_system/TypeSpec.h"
 #include "goalc/emitter/ObjectGenerator.h"
 
 class StaticObject {
@@ -24,17 +25,6 @@ class StaticObject {
   virtual ~StaticObject() = default;
 
   emitter::StaticRecord rec;
-};
-
-class StaticString : public StaticObject {
- public:
-  explicit StaticString(std::string data, int _seg);
-  std::string text;
-  int seg = -1;
-  std::string print() const override;
-  LoadInfo get_load_info() const override;
-  void generate(emitter::ObjectGenerator* gen) override;
-  int get_addr_offset() const override;
 };
 
 class StaticFloat : public StaticObject {
@@ -63,9 +53,20 @@ class StaticStructure : public StaticObject {
     int offset = -1;
     std::string name;
   };
+
+  struct PointerRecord {
+    int offset_in_this = -1;
+    StaticStructure* dest = nullptr;
+    int offset_in_dest = -1;
+  };
+
+  std::vector<SymbolRecord> types;
   std::vector<SymbolRecord> symbols;
+  std::vector<PointerRecord> pointers;
 
   void add_symbol_record(std::string name, int offset);
+  void add_pointer_record(int offset_in_this, StaticStructure* dest, int offset_in_dest);
+  void add_type_record(std::string name, int offset);
 };
 
 class StaticBasic : public StaticStructure {
@@ -73,7 +74,83 @@ class StaticBasic : public StaticStructure {
   std::string type_name;
   StaticBasic(int _seg, std::string _type_name);
   int get_addr_offset() const override;
+};
+
+class StaticString : public StaticBasic {
+ public:
+  explicit StaticString(std::string data, int _seg);
+  std::string text;
+  std::string print() const override;
   void generate(emitter::ObjectGenerator* gen) override;
+};
+
+/*!
+ * Represents a "static value". Like a reference to a static structure (including pair, string,
+ * basic), a symbol, or some constant (bitfield, integer, float).  Cannot be used to store a static
+ * structure itself, just a reference to one, meaning you cannot set an inlined structure to a
+ * StaticResult.
+ */
+class StaticResult {
+ public:
+  StaticResult() = default;
+
+  static StaticResult make_structure_reference(StaticStructure* structure, TypeSpec ts);
+  static StaticResult make_constant_data(u64 value, TypeSpec ts);
+  static StaticResult make_symbol(const std::string& name);
+
+  std::string print() const;
+
+  const TypeSpec& typespec() const { return m_ts; }
+  bool is_reference() const { return m_kind == Kind::STRUCTURE_REFERENCE; }
+  bool is_constant_data() const { return m_kind == Kind::CONSTANT_DATA; }
+  bool is_symbol() const { return m_kind == Kind::SYMBOL; }
+
+  StaticStructure* reference() const {
+    assert(is_reference());
+    return m_struct;
+  }
+
+  s32 get_as_s32() const {
+    assert(is_constant_data());
+    // todo, check that it fits.
+    return (s32)m_constant_data;
+  }
+
+  const std::string& symbol_name() const {
+    assert(is_symbol());
+    return m_symbol;
+  }
+
+  u64 constant_data() const {
+    assert(is_constant_data());
+    return m_constant_data;
+  }
+
+ private:
+  // used for all types
+  TypeSpec m_ts;
+
+  // used for only STRUCTURE_REFERENCE
+  StaticStructure* m_struct = nullptr;
+
+  // used for only constant data
+  u64 m_constant_data = 0;
+
+  // used for only symbol
+  std::string m_symbol;
+
+  enum class Kind { STRUCTURE_REFERENCE, CONSTANT_DATA, SYMBOL, INVALID } m_kind = Kind::INVALID;
+};
+
+class StaticPair : public StaticStructure {
+ public:
+  StaticPair(StaticResult car, StaticResult cdr, int _seg);
+  int get_addr_offset() const override;
+  void generate(emitter::ObjectGenerator* gen) override;
+  void generate_item(const StaticResult& item, int offset);
+
+ private:
+  StaticResult m_car, m_cdr;
 };
 
 #endif  // JAK_STATICOBJECT_H

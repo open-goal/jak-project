@@ -90,6 +90,7 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
     handle_temp_instr_sym_links(seg);
     handle_temp_rip_func_links(seg);
     handle_temp_rip_data_links(seg);
+    handle_temp_static_ptr_links(seg);
   }
 
   // actual linking?
@@ -264,6 +265,23 @@ void ObjectGenerator::link_static_symbol_ptr(StaticRecord rec,
   m_static_sym_temp_links_by_seg.at(rec.seg)[name].push_back({rec, offset});
 }
 
+/*!
+ * Insert a pointer to other static data. This patching will happen during runtime linking.
+ * The source and destination must be in the same segment.
+ */
+void ObjectGenerator::link_static_pointer(const StaticRecord& source,
+                                          int source_offset,
+                                          const StaticRecord& dest,
+                                          int dest_offset) {
+  StaticPointerLink link;
+  link.source = source;
+  link.dest = dest;
+  link.offset_in_source = source_offset;
+  link.offset_in_dest = dest_offset;
+  assert(link.source.seg == link.dest.seg);
+  m_static_temp_ptr_links_by_seg.at(source.seg).push_back(link);
+}
+
 void ObjectGenerator::link_instruction_static(const InstructionRecord& instr,
                                               const StaticRecord& target_static,
                                               int offset) {
@@ -306,6 +324,21 @@ void ObjectGenerator::handle_temp_static_sym_links(int seg) {
       int total_offset = static_object.location + link.offset;
       m_sym_links_by_seg.at(seg)[sym_name].push_back(total_offset);
     }
+  }
+}
+
+/*!
+ * m_static_temp_ptr_links_by_seg -> m_pointer_links_by_seg
+ */
+void ObjectGenerator::handle_temp_static_ptr_links(int seg) {
+  for (const auto& link : m_static_temp_ptr_links_by_seg.at(seg)) {
+    const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
+    const auto& dest_object = m_static_data_by_seg.at(seg).at(link.dest.static_id);
+    PointerLink result_link;
+    result_link.segment = seg;
+    result_link.source = source_object.location + link.offset_in_source;
+    result_link.dest = dest_object.location + link.offset_in_dest;
+    m_pointer_links_by_seg.at(seg).push_back(result_link);
   }
 }
 
@@ -444,6 +477,17 @@ void ObjectGenerator::emit_link_symbol(int seg) {
   }
 }
 
+void ObjectGenerator::emit_link_ptr(int seg) {
+  auto& out = m_link_by_seg.at(seg);
+  for (auto& rec : m_pointer_links_by_seg.at(seg)) {
+    out.push_back(LINK_PTR);
+    assert(rec.dest >= 0);
+    assert(rec.source >= 0);
+    push_data<u32>(rec.source, out);
+    push_data<u32>(rec.dest, out);
+  }
+}
+
 void ObjectGenerator::emit_link_rip(int seg) {
   auto& out = m_link_by_seg.at(seg);
   for (auto& rec : m_rip_links_by_seg.at(seg)) {
@@ -476,6 +520,7 @@ void ObjectGenerator::emit_link_table(int seg) {
   emit_link_symbol(seg);
   emit_link_type_pointer(seg);
   emit_link_rip(seg);
+  emit_link_ptr(seg);
   m_link_by_seg.at(seg).push_back(LINK_TABLE_END);
 }
 

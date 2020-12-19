@@ -106,7 +106,8 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
       empty_pair->set_type(m_ts.make_typespec("pair"));
       return empty_pair;
     }
-      // todo...
+    case goos::ObjectType::PAIR:
+      return compile_static_pair(thing, env);
     default:
       throw_compiler_error(form, "Quote is not yet implemented for {}.", thing.print());
   }

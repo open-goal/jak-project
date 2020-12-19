@@ -94,6 +94,10 @@ class Compiler {
   bool is_basic(const TypeSpec& ts);
   bool is_structure(const TypeSpec& ts);
   bool is_bitfield(const TypeSpec& ts);
+  bool is_pair(const TypeSpec& ts);
+  std::vector<goos::Object> get_list_as_vector(const goos::Object& o,
+                                               goos::Object* rest_out = nullptr,
+                                               int max_length = -1);
   const goos::Object& pair_car(const goos::Object& o);
   const goos::Object& pair_cdr(const goos::Object& o);
   void expect_empty_list(const goos::Object& o);
@@ -210,6 +214,24 @@ class Compiler {
                                    const TypeSpec& type,
                                    const goos::Object& field_defs,
                                    Env* env);
+  Val* compile_static_pair(const goos::Object& form, Env* env);
+  StaticResult compile_static(const goos::Object& form, Env* env);
+  StaticResult compile_static_no_eval_for_pairs(const goos::Object& form, Env* env);
+  StaticResult compile_static_bitfield(const goos::Object& form,
+                                       const TypeSpec& type,
+                                       const goos::Object& _field_defs,
+                                       Env* env);
+  StaticResult compile_new_static_structure(const goos::Object& form,
+                                            const TypeSpec& type,
+                                            const goos::Object& _field_defs,
+                                            Env* env);
+
+  void compile_static_structure_inline(const goos::Object& form,
+                                       const TypeSpec& type,
+                                       const goos::Object& _field_defs,
+                                       StaticStructure* structure,
+                                       int offset,
+                                       Env* env);
 
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {

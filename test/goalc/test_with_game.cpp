@@ -259,7 +259,7 @@ TEST_F(WithGameTests, NewStaticStructureIntegers) {
 
 TEST_F(WithGameTests, NewStaticBasic) {
   runner.run_static_test(env, testCategory, "test-new-static-basic.gc",
-                         get_test_pass_string("new-static-basic", 11));
+                         get_test_pass_string("new-static-basic", 12));
 }
 
 TEST_F(WithGameTests, VectorDot) {
@@ -322,6 +322,16 @@ TEST_F(WithGameTests, TrickyBitField) {
 
 TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
+}
+
+TEST_F(WithGameTests, StaticPairs) {
+  runner.run_static_test(env, testCategory, "test-static-pair-1.gc",
+                         {"(1 (w . a) beans 2 (-1 -2) twelve (a . \"test\"))\n0\n"});
+}
+
+TEST_F(WithGameTests, FancyStatic) {
+  runner.run_static_test(env, testCategory, "test-fancy-static-fields.gc",
+                         {"\"name\" 12 12.3400 (a b c) 5 33 4 kernel-context asdf\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

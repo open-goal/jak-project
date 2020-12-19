@@ -163,6 +163,10 @@ bool Compiler::is_bitfield(const TypeSpec& ts) {
   return m_ts.is_bitfield_type(ts.base_type());
 }
 
+bool Compiler::is_pair(const TypeSpec& ts) {
+  return m_ts.typecheck(m_ts.make_typespec("pair"), ts, "", false, false);
+}
+
 bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
   (void)env;
   if (in.is_int()) {
@@ -223,4 +227,32 @@ bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& b
   }
   throw_compiler_error(form, "The value {} cannot be used as a boolean.", boolean.print());
   return false;
+}
+
+std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
+                                                       goos::Object* rest_out,
+                                                       int max_length) {
+  std::vector<goos::Object> result;
+
+  auto* cur = &o;
+  int n = 0;
+  while (true) {
+    if (max_length >= 0 && n >= max_length) {
+      if (rest_out) {
+        *rest_out = *cur;
+      }
+      return result;
+    }
+
+    if (cur->is_pair()) {
+      result.push_back(cur->as_pair()->car);
+      cur = &cur->as_pair()->cdr;
+      n++;
+    } else if (cur->is_empty_list()) {
+      if (rest_out) {
+        *rest_out = goos::EmptyListObject::make_new();
+      }
+      return result;
+    }
+  }
 }
