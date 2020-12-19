@@ -144,6 +144,10 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         }
 
         auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+        if (inlined_type != field_info.type) {
+          throw_compiler_error(field_value, "Cannot store a {} in an inline {}",
+                               inlined_type.print(), field_info.type.print());
+        }
         compile_static_structure_inline(field_value, inlined_type, constructor_args, structure,
                                         field_offset, env);
 
