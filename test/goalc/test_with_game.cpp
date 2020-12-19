@@ -324,6 +324,10 @@ TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
 }
 
+TEST_F(WithGameTests, StaticPairs) {
+  runner.run_static_test(env, testCategory, "test-static-pair-1.gc", {"(1 beans 2 twelve)\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

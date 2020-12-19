@@ -210,6 +210,9 @@ class Compiler {
                                    const TypeSpec& type,
                                    const goos::Object& field_defs,
                                    Env* env);
+  Val* compile_static_pair(const goos::Object& form, Env* env);
+  StaticResult compile_static(const goos::Object& form, Env* env);
+  StaticResult compile_static_no_eval(const goos::Object& form, Env* env);
 
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {

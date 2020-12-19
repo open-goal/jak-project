@@ -6,6 +6,7 @@
 
 #include "goalc/compiler/Compiler.h"
 #include "third-party/fmt/core.h"
+#include "common/goos/ParseHelpers.h"
 
 namespace {
 bool integer_fits(s64 in, int size, bool is_signed) {
@@ -233,4 +234,34 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
   auto fie = get_parent_env_of_type<FileEnv>(env);
   fie->add_static(std::move(obj));
   return result;
+}
+
+Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
+  assert(form.is_pair());  // (quote PAIR)
+  auto result = compile_static_no_eval(form, env);
+  assert(result.is_reference());
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());
+  return static_result;
+}
+
+StaticResult Compiler::compile_static_no_eval(const goos::Object& form, Env* env) {
+  auto fie = get_parent_env_of_type<FileEnv>(env);
+  if (form.is_pair()) {
+    auto car = compile_static_no_eval(form.as_pair()->car, env);
+    auto cdr = compile_static_no_eval(form.as_pair()->cdr, env);
+    auto pair_structure = std::make_unique<StaticPair>(car, cdr, MAIN_SEGMENT);
+    auto result =
+        StaticResult::make_structure_reference(pair_structure.get(), m_ts.make_typespec("pair"));
+    fie->add_static(std::move(pair_structure));
+    return result;
+  } else if (form.is_int()) {
+    return StaticResult::make_constant_data(form.as_int());
+  } else if (form.is_symbol()) {
+    return StaticResult::make_symbol(form.as_symbol()->name);
+  } else if (form.is_empty_list()) {
+    return StaticResult::make_symbol("_empty_");
+  } else {
+    assert(false);  // not yet implemented
+  }
 }
