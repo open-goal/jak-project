@@ -549,16 +549,41 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; array (todo)
+;; array
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; boxed "pointer like" array.
+;; unlike inline-array-class, all arrays are type array, but the content-type field stores the element type.
+;; the stride of an array is 4, unless the element is a number, in which case the stride is the "size"
 
-#|
-(defun segfault-function ()
-  "Function which segfaults."
-  ;; this is added only to test debugging stuff and isn't in the game.
-  (segfault)
+(defmethod new array ((allocation symbol) (type-to-make type) (content-type type) (size int))
+  "Create a new array. The length and allocated-length are both set to size."
+  (let ((obj (object-new (* size (if (type-type? content-type number)
+                                     (-> content-type size)
+                                     4
+                                     )))))
+    (set! (-> obj length) size)
+    (set! (-> obj allocated-length) size)
+    (set! (-> obj content-type) content-type)
+    obj
+    )
   )
-|#
+
+;; todo array print and array inspect
+
+(defmethod length array ((obj array))
+  "Get the length field of an array."
+  (-> obj length)
+  )
+
+(defmethod asize-of array ((obj array))
+  "Get the size in memory of an array."
+  (the int (+ (-> array size) (* (-> obj allocated-length) 
+                                 (if (type-type? (-> obj content-type) number)
+                                     (-> obj content-type size)
+                                     4))))
+  )
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; memcpy and similar

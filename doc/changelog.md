@@ -87,3 +87,5 @@
 - Added support for static pairs and lists. Symbols, integers, and strings are supported.
 - Added much better support for setting fields of statics. Now you can set constants, symbols, strings, pairs, integers, floats, or other statics, including inlined structures/basics! Also uses the full type system for typechecking
 - Fixed a bug where accessing an inline basic field did not apply the 4-byte basic offset.
+- Made string/float constants go in the main segment when they are declared in the top-level segment, instead of the top-level segment. This is what GOAL seems to do (not 100% sure yet) and avoids issues where you set something to a string constant in the top-level. This avoids the possibility of memory bugs at the cost of more memory usage (likely very little additional memory).
+- Added support for boxed arrays. They can be created with `new` and indexed with `->`. The compound type `(array <elt-type>)` is used to describe an array with a given content type.

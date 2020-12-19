@@ -194,6 +194,10 @@ bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
   return m_forward_declared_types.find(name) != m_forward_declared_types.end();
 }
 
+TypeSpec TypeSystem::make_array_typespec(const TypeSpec& element_type) const {
+  return TypeSpec("array", {element_type});
+}
+
 /*!
  * Create a typespec for a function.  If the function doesn't return anything, use "none" as the
  * return type.

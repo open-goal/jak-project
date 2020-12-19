@@ -302,8 +302,11 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
  * Compile a string constant. The constant is placed in the same segment as the parent function.
  */
 Val* Compiler::compile_string(const goos::Object& form, Env* env) {
-  return compile_string(form.as_string()->data, env,
-                        get_parent_env_of_type<FunctionEnv>(env)->segment);
+  auto segment = get_parent_env_of_type<FunctionEnv>(env)->segment;
+  if (segment == TOP_LEVEL_SEGMENT) {
+    segment = MAIN_SEGMENT;
+  }
+  return compile_string(form.as_string()->data, env, segment);
 }
 
 /*!
@@ -324,9 +327,12 @@ Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
  * of the code, at least in Jak 1.
  */
 Val* Compiler::compile_float(const goos::Object& code, Env* env) {
+  auto segment = get_parent_env_of_type<FunctionEnv>(env)->segment;
+  if (segment == TOP_LEVEL_SEGMENT) {
+    segment = MAIN_SEGMENT;
+  }
   assert(code.is_float());
-  return compile_float(code.float_obj.value, env,
-                       get_parent_env_of_type<FunctionEnv>(env)->segment);
+  return compile_float(code.float_obj.value, env, segment);
 }
 
 /*!
