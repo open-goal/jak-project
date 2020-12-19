@@ -329,6 +329,11 @@ TEST_F(WithGameTests, StaticPairs) {
                          {"(1 (w . a) beans 2 (-1 -2) twelve (a . \"test\"))\n0\n"});
 }
 
+TEST_F(WithGameTests, FancyStatic) {
+  runner.run_static_test(env, testCategory, "test-fancy-static-fields.gc",
+                         {"\"name\" 12 12.3400 (a b c) 5\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

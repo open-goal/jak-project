@@ -113,32 +113,27 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         // not sure how we can create 128-bit integer constants at this point...
         assert(false);
       }
-    } else if (is_basic(field_info.type)) {
+    } else if (is_structure(field_info.type) || is_pair(field_info.type)) {
       // todo - rewrite this to correctly handle structures within structures.
-      if (is_quoted_sym(field_value)) {
-        structure->add_symbol_record(quoted_sym_as_string(field_value), field_offset);
+      auto sr = compile_static(field_value, env);
+      if (sr.is_symbol()) {
+        if (sr.symbol_name() != "#f") {
+          typecheck(form, field_info.type, sr.typespec());
+        }
+        structure->add_symbol_record(sr.symbol_name(), field_offset);
         assert(deref_info.mem_deref);
         assert(deref_info.can_deref);
         assert(deref_info.load_size == 4);
-
         // the linker needs to see a -1 in order to know to insert a symbol pointer
         // instead of just the symbol table offset.
         u32 linker_val = 0xffffffff;
         memcpy(structure->data.data() + field_offset, &linker_val, 4);
-      } else if (field_value.is_symbol() &&
-                 (field_value.as_symbol()->name == "#t" || field_value.as_symbol()->name == "#f")) {
-        structure->add_symbol_record(symbol_string(field_value), field_offset);
-        assert(deref_info.mem_deref);
-        assert(deref_info.can_deref);
-        assert(deref_info.load_size == 4);
-
-        // the linker needs to see a -1 in order to know to insert a symbol pointer
-        // instead of just the symbol table offset.
-        u32 linker_val = 0xffffffff;
-        memcpy(structure->data.data() + field_offset, &linker_val, 4);
+      } else if (sr.is_reference()) {
+        typecheck(form, field_info.type, sr.typespec());
+        structure->add_pointer_record(field_offset, sr.reference(),
+                                      sr.reference()->get_addr_offset());
       } else {
-        throw_compiler_error(
-            form, "Setting a basic field to anything other than a symbol is currently unsupported");
+        throw_compiler_error(form, "Unsupported field value {}.", field_value.print());
       }
     } else if (is_float(field_info.type)) {
       auto sr = compile_static(field_value, env);
