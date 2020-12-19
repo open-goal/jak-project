@@ -93,7 +93,7 @@ class StaticResult {
   StaticResult() = default;
 
   static StaticResult make_structure_reference(StaticStructure* structure, TypeSpec ts);
-  static StaticResult make_constant_data(u64 value);
+  static StaticResult make_constant_data(u64 value, TypeSpec ts);
   static StaticResult make_symbol(const std::string& name);
 
   std::string print() const;
@@ -117,6 +117,11 @@ class StaticResult {
   const std::string& symbol_name() const {
     assert(is_symbol());
     return m_symbol;
+  }
+
+  u64 constant_data() const {
+    assert(is_constant_data());
+    return m_constant_data;
   }
 
  private:

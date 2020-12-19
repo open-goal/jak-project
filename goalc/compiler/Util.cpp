@@ -224,3 +224,31 @@ bool Compiler::get_true_or_false(const goos::Object& form, const goos::Object& b
   throw_compiler_error(form, "The value {} cannot be used as a boolean.", boolean.print());
   return false;
 }
+
+std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
+                                                       goos::Object* rest_out,
+                                                       int max_length) {
+  std::vector<goos::Object> result;
+
+  auto* cur = &o;
+  int n = 0;
+  while (true) {
+    if (max_length >= 0 && n >= max_length) {
+      if (rest_out) {
+        *rest_out = *cur;
+      }
+      return result;
+    }
+
+    if (cur->is_pair()) {
+      result.push_back(cur->as_pair()->car);
+      cur = &cur->as_pair()->cdr;
+      n++;
+    } else if (cur->is_empty_list()) {
+      if (rest_out) {
+        *rest_out = goos::EmptyListObject::make_new();
+      }
+      return result;
+    }
+  }
+}

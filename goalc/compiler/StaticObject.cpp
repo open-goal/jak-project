@@ -189,10 +189,11 @@ StaticResult StaticResult::make_structure_reference(StaticStructure* structure, 
   return result;
 }
 
-StaticResult StaticResult::make_constant_data(u64 value) {
+StaticResult StaticResult::make_constant_data(u64 value, TypeSpec ts) {
   StaticResult result;
   result.m_kind = Kind::CONSTANT_DATA;
   result.m_constant_data = value;
+  result.m_ts = std::move(ts);
   return result;
 }
 
@@ -200,5 +201,6 @@ StaticResult StaticResult::make_symbol(const std::string& name) {
   StaticResult result;
   result.m_kind = Kind::SYMBOL;
   result.m_symbol = name;
+  result.m_ts = TypeSpec("symbol");
   return result;
 }
