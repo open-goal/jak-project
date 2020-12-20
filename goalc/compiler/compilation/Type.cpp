@@ -736,13 +736,21 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object& type,
                                   const goos::Object* rest,
                                   Env* env) {
-  auto type_of_object = parse_typespec(unquote(type));
-  if (is_structure(type_of_object)) {
-    return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
-  }
+  auto unquoted = unquote(type);
+  if (unquoted.is_symbol() && unquoted.as_symbol()->name == "boxed-array") {
+    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto sr = compile_static(form, env);
+    auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
+    return result;
+  } else {
+    auto type_of_object = parse_typespec(unquote(type));
+    if (is_structure(type_of_object)) {
+      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+    }
 
-  if (is_bitfield(type_of_object)) {
-    return compile_new_static_bitfield(form, type_of_object, *rest, env);
+    if (is_bitfield(type_of_object)) {
+      return compile_new_static_bitfield(form, type_of_object, *rest, env);
+    }
   }
 
   throw_compiler_error(form,
