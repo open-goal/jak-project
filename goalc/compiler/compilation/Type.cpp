@@ -474,8 +474,19 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       auto struct_type = dynamic_cast<StructureType*>(type_info);
 
       if (struct_type) {
-        result = get_field_of_structure(struct_type, result, field_name, env);
-        continue;
+        if (result->type().base_type() == "array") {
+          // this is an ugly hack, but I don't know a better way. For things that are both
+          // array-indexable and a structure, we treat it like a structure only if the
+          // deref thing is one of the field names. Otherwise, array.
+          if (field_name == "content-type" || field_name == "length" ||
+              field_name == "allocated-length") {
+            result = get_field_of_structure(struct_type, result, field_name, env);
+            continue;
+          }
+        } else {
+          result = get_field_of_structure(struct_type, result, field_name, env);
+          continue;
+        }
       }
 
       auto bitfield_type = dynamic_cast<BitFieldType*>(type_info);
@@ -510,6 +521,34 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
       auto loc = fe->alloc_val<MemoryOffsetVal>(result->type(), result, offset);
       result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+      result->mark_as_settable();
+    } else if (result->type().base_type() == "array") {
+      // accessing an array. this is a bit weird.
+      if (!result->type().has_single_arg()) {
+        throw_compiler_error(form, "The array type {} is invalid or cannot be indexed.",
+                             result->type().print());
+      }
+      // the (pointer element-type)
+      auto loc_type = m_ts.make_pointer_typespec(result->type().get_single_arg());
+      // figure out how to access this...
+      auto di = m_ts.get_deref_info(loc_type);
+      // and the result
+      auto base_type = di.result_type;
+      assert(base_type == result->type().get_single_arg());
+      assert(di.mem_deref);
+      assert(di.can_deref);
+      // the total offset is 12 + stride * idx
+      auto offset = compile_integer(12, env)->to_gpr(env);
+      auto stride = compile_integer(di.stride, env)->to_gpr(env);
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, stride, index_value));
+      env->emit_ir<IR_IntegerMath>(IntegerMathKind::ADD_64, offset, stride);
+      // offset now contains the total offset.
+
+      // create a location to deref (so we can do address-of and get this), with pointer type
+      auto loc = fe->alloc_val<MemoryOffsetVal>(loc_type, result, offset);
+      // and result type.
+      result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
+      // array values should be settable
       result->mark_as_settable();
     } else {
       throw_compiler_error(form, "Cannot access array of type {}.", result->type().print());
@@ -605,7 +644,12 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
                                 const goos::Object& type,
                                 const goos::Object* rest,
                                 Env* env) {
-  auto main_type = parse_typespec(unquote(type));
+  bool making_boxed_array = unquote(type).as_symbol()->name == "boxed-array";
+  TypeSpec main_type;
+  if (!making_boxed_array) {
+    main_type = parse_typespec(unquote(type));
+  }
+
   if (main_type == TypeSpec("inline-array") || main_type == TypeSpec("array")) {
     bool is_inline = main_type == TypeSpec("inline-array");
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
@@ -647,6 +691,12 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     array->set_type(ts);
     return array;
   } else {
+    bool got_content_type = false;  // for boxed array
+    std::string content_type;       // for boxed array.
+    if (making_boxed_array) {
+      main_type = TypeSpec("array");
+    }
+
     if (!m_ts.lookup_type(main_type)->is_reference()) {
       throw_compiler_error(form, "Cannot heap allocate the value type {}.", main_type.print());
     }
@@ -657,12 +707,27 @@ Val* Compiler::compile_heap_new(const goos::Object& form,
     args.push_back(compile_get_symbol_value(form, main_type.base_type(), env)->to_reg(env));
     // the other arguments
     for_each_in_list(*rest, [&](const goos::Object& o) {
-      args.push_back(compile_error_guard(o, env)->to_reg(env));
+      if (making_boxed_array && !got_content_type) {
+        got_content_type = true;
+        if (o.is_symbol()) {
+          content_type = o.as_symbol()->name;
+          args.push_back(compile_get_symbol_value(form, content_type, env)->to_reg(env));
+        } else {
+          throw_compiler_error(form, "Invalid boxed-array type {}", o.print());
+        }
+      } else {
+        args.push_back(compile_error_guard(o, env)->to_reg(env));
+      }
     });
 
     auto new_method = compile_get_method_of_type(form, main_type, "new", env);
     auto new_obj = compile_real_function_call(form, new_method, args, env);
-    new_obj->set_type(main_type);
+    if (making_boxed_array) {
+      new_obj->set_type(m_ts.make_array_typespec(m_ts.make_typespec(content_type)));
+    } else {
+      new_obj->set_type(main_type);
+    }
+
     return new_obj;
   }
 }
@@ -671,13 +736,21 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object& type,
                                   const goos::Object* rest,
                                   Env* env) {
-  auto type_of_object = parse_typespec(unquote(type));
-  if (is_structure(type_of_object)) {
-    return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
-  }
+  auto unquoted = unquote(type);
+  if (unquoted.is_symbol() && unquoted.as_symbol()->name == "boxed-array") {
+    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto sr = compile_static(form, env);
+    auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
+    return result;
+  } else {
+    auto type_of_object = parse_typespec(unquote(type));
+    if (is_structure(type_of_object)) {
+      return compile_new_static_structure_or_basic(form, type_of_object, *rest, env);
+    }
 
-  if (is_bitfield(type_of_object)) {
-    return compile_new_static_bitfield(form, type_of_object, *rest, env);
+    if (is_bitfield(type_of_object)) {
+      return compile_new_static_bitfield(form, type_of_object, *rest, env);
+    }
   }
 
   throw_compiler_error(form,

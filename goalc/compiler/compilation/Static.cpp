@@ -433,25 +433,92 @@ StaticResult Compiler::compile_static(const goos::Object& form, Env* env) {
                              args.at(1).print());
       }
 
-      auto ts = parse_typespec(unquote(args.at(1)));
-      if (ts == TypeSpec("string")) {
-        // (new 'static 'string)
-        if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list() &&
-            rest.as_pair()->car.is_string()) {
-          auto obj = std::make_unique<StaticString>(rest.as_pair()->car.as_string()->data, segment);
-          auto result =
-              StaticResult::make_structure_reference(obj.get(), m_ts.make_typespec("string"));
-          fie->add_static(std::move(obj));
-          return result;
-        } else {
-          throw_compiler_error(form, "Invalid new static string");
+      if (unquote(args.at(1)).as_symbol()->name == "boxed-array") {
+        // (new 'static 'boxed-array ...)
+        // get all arguments now
+        args = get_list_as_vector(rest, &constructor_args);
+        if (args.size() < 4) {
+          throw_compiler_error(form,
+                               "new static boxed array must have type and min-size arguments");
         }
-      } else if (is_bitfield(ts)) {
-        return compile_static_bitfield(form, ts, constructor_args, env);
-      } else if (is_structure(ts)) {
-        return compile_new_static_structure(form, ts, constructor_args, env);
+        auto content_type = parse_typespec(args.at(2));
+        s64 min_size;
+        if (!try_getting_constant_integer(args.at(3), &min_size, env)) {
+          throw_compiler_error(form, "The length {} is not valid.", args.at(3).print());
+        }
+        s32 length = std::max(min_size, s64(args.size() - 4));
+        // todo - generalize this array stuff if we ever need other types of static arrays.
+        auto pointer_type = m_ts.make_pointer_typespec(content_type);
+        auto deref_info = m_ts.get_deref_info(pointer_type);
+        assert(deref_info.can_deref);
+        assert(deref_info.mem_deref);
+        auto array_size_bytes = length * deref_info.stride;
+        // todo, segments
+        auto obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");
+        obj->data.resize(16 + array_size_bytes);
+        // 0 - 4 : type tag (set automatically)
+        // 4 - 8 : length
+        memcpy(obj->data.data() + 4, &length, 4);
+        // 8 - 12 allocated length
+        memcpy(obj->data.data() + 8, &length, 4);
+        // 12 - 16 content type
+        obj->add_type_record(content_type.base_type(), 12);
+
+        // now add arguments:
+        for (size_t i = 4; i < args.size(); i++) {
+          int arg_idx = i - 4;
+          int elt_offset = 16 + arg_idx * deref_info.stride;
+          auto sr = compile_static(args.at(i), env);
+          if (is_integer(content_type)) {
+            typecheck(form, TypeSpec("integer"), sr.typespec());
+          } else {
+            typecheck(form, content_type, sr.typespec());
+          }
+          if (sr.is_symbol()) {
+            assert(deref_info.stride == 4);
+            obj->add_symbol_record(sr.symbol_name(), elt_offset);
+            u32 symbol_placeholder = 0xffffffff;
+            memcpy(obj->data.data() + elt_offset, &symbol_placeholder, 4);
+          } else if (sr.is_reference()) {
+            assert(deref_info.stride == 4);
+            obj->add_pointer_record(elt_offset, sr.reference(), sr.reference()->get_addr_offset());
+          } else if (sr.is_constant_data()) {
+            if (!integer_fits(sr.constant_data(), deref_info.load_size, deref_info.sign_extend)) {
+              throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
+                                   sr.constant_data(), arg_idx, content_type.print());
+            }
+            u64 data = sr.constant_data();
+            memcpy(obj->data.data() + elt_offset, &data, deref_info.load_size);
+          } else {
+            assert(false);
+          }
+        }
+        auto result = StaticResult::make_structure_reference(
+            obj.get(), m_ts.make_array_typespec(content_type));
+        fie->add_static(std::move(obj));
+        return result;
       } else {
-        throw_compiler_error(form, "Cannot construct a static {}.", ts.print());
+        auto ts = parse_typespec(unquote(args.at(1)));
+        if (ts == TypeSpec("string")) {
+          // (new 'static 'string)
+          if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list() &&
+              rest.as_pair()->car.is_string()) {
+            auto obj =
+                std::make_unique<StaticString>(rest.as_pair()->car.as_string()->data, segment);
+            auto result =
+                StaticResult::make_structure_reference(obj.get(), m_ts.make_typespec("string"));
+            fie->add_static(std::move(obj));
+            return result;
+          } else {
+            throw_compiler_error(form, "Invalid new static string");
+          }
+        } else if (is_bitfield(ts)) {
+          return compile_static_bitfield(form, ts, constructor_args, env);
+        } else if (is_structure(ts)) {
+          return compile_new_static_structure(form, ts, constructor_args, env);
+        } else {
+          throw_compiler_error(form, "Cannot construct a static {}.", ts.print());
+        }
       }
     } else {
       // maybe an enum
