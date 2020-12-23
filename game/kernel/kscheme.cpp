@@ -470,10 +470,9 @@ Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
   }
 
   /*
-   * call rax
-   * ret
+   * jmp rax
    */
-  for (auto x : {0xFF, 0xD0, 0xC3}) {
+  for (auto x : {0xFF, 0xE0}) {
     mem.c()[i++] = x;
   }
 
