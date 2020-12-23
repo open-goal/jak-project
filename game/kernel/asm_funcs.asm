@@ -4,12 +4,9 @@
 
 ;; GOAL Runtime assembly functions. These exist only in the x86 version of GOAL.
 
-;; declaration of the extern "C" function format_impl
-extern format_impl
-
 SECTION .TEXT
 
-;; this format pushes all 8 OpenGOAL registers into a stack array.
+;; this function pushes all 8 OpenGOAL registers into a stack array.
 ;; then it calls the function pointed to by rax with a pointer to this array.
 ;; it returns the return value of the called function.
 global _stack_call_linux
@@ -44,6 +41,7 @@ _stack_call_linux:
   ; return!
   ret
 
+;; windows implementation of stack_call
 global _stack_call_win32
 _stack_call_win32:
   pop rax
