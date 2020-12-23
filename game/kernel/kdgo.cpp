@@ -53,7 +53,7 @@ s32 RpcCall(s32 rpcChannel,
 namespace {
 struct GoalStackArgs {
   u64 args[8];
-  template<typename T>
+  template <typename T>
   T get_as(int i) {
     static_assert(sizeof(T) <= 8, "arg size");
     T result;
@@ -61,7 +61,7 @@ struct GoalStackArgs {
     return result;
   }
 };
-}
+}  // namespace
 
 /*!
  * GOAL Wrapper for RpcCall.
