@@ -25,8 +25,5 @@ void InitSoundScheme() {
   make_function_symbol_from_c("rpc-call", (void*)RpcCall_wrapper);
   make_function_symbol_from_c("rpc-busy?", (void*)RpcBusy);
   make_function_symbol_from_c("test-load-dgo-c", (void*)LoadDGOTest);
-
-  // terrible hack!
-  make_function_symbol_from_c("rpc-call-p1", (void*)RpcCall_wrapper_part1);
-  make_function_symbol_from_c("rpc-call-p2", (void*)RpcCall_wrapper_part2);
+  make_stack_arg_function_symbol_from_c("rpc-call", (void*)RpcCall_wrapper);
 }
