@@ -50,38 +50,31 @@ s32 RpcCall(s32 rpcChannel,
                        nullptr);
 }
 
-// Terrible hack! Remove soon!
-
 namespace {
-struct RpcCallArgCache {
-  s32 rpcChannel;
-  u32 fno;
-  u32 async;
-} rpc_arg_cache;
+struct GoalStackArgs {
+  u64 args[8];
+  template <typename T>
+  T get_as(int i) {
+    static_assert(sizeof(T) <= 8, "arg size");
+    T result;
+    memcpy(&result, args + i, sizeof(T));
+    return result;
+  }
+};
 }  // namespace
-
-void RpcCall_wrapper_part1(s32 rpcChannel, u32 fno, u32 async) {
-  rpc_arg_cache.rpcChannel = rpcChannel;
-  rpc_arg_cache.fno = fno;
-  rpc_arg_cache.async = async;
-}
-
-u64 RpcCall_wrapper_part2(u64 send_buff, s32 send_size, u64 recv_buff, s32 recv_size) {
-  return RpcCall_wrapper(rpc_arg_cache.rpcChannel, rpc_arg_cache.fno, rpc_arg_cache.async,
-                         send_buff, send_size, recv_buff, recv_size);
-}
 
 /*!
  * GOAL Wrapper for RpcCall.
  */
-u64 RpcCall_wrapper(s32 rpcChannel,
-                    u32 fno,
-                    u32 async,
-                    u64 send_buff,
-                    s32 send_size,
-                    u64 recv_buff,
-                    s32 recv_size) {
-  fprintf(stderr, "size in c is %d\n", recv_size);
+u64 RpcCall_wrapper(void* _args) {
+  GoalStackArgs* args = (GoalStackArgs*)_args;
+  auto rpcChannel = args->get_as<s32>(0);
+  auto fno = args->get_as<u32>(1);
+  auto async = args->get_as<u32>(2);
+  auto send_buff = args->get_as<u64>(3);
+  auto send_size = args->get_as<s32>(4);
+  auto recv_buff = args->get_as<u64>(5);
+  auto recv_size = args->get_as<s32>(6);
   return sceSifCallRpc(&cd[rpcChannel], fno, async, Ptr<u8>(send_buff).c(), send_size,
                        Ptr<u8>(recv_buff).c(), recv_size, nullptr, nullptr);
 }
