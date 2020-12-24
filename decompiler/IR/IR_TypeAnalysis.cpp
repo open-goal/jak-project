@@ -193,66 +193,52 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       return TP_Type::make_from_typespec(method_type);
     }
 
-    //    if (input_type.kind == TP_Type::OBJECT_OF_TYPE &&
-    //        input_type.as_typespec() == TypeSpec("type") && ro.offset >= 16 && (ro.offset & 3) ==
-    //        0
-    //        && size == 4 && kind == UNSIGNED) {
-    //      // method get of dynamic type.
-    //      auto method_id = (ro.offset - 16) / 4;
-    //      auto method_info = dts.ts.lookup_method("object", method_id);
-    //      return TP_Type(method_info.type.substitute_for_method_call("object"));
-    //    }
-    //
-    //    if (input_type.kind == TP_Type::OBJECT_OF_TYPE &&
-    //        input_type.as_typespec() == TypeSpec("pointer")) {
-    //      // we got a plain pointer. let's just assume we're loading an integer.
-    //      // perhaps we should disable this feature by default on 4-byte loads if we're getting
-    //      // lots of false positives for loading pointers from plain pointers.
-    //
-    //      // todo, load_path
-    //      switch (kind) {
-    //        case UNSIGNED:
-    //          switch (size) {
-    //            case 1:
-    //              return TP_Type(TypeSpec("uint"));
-    //            case 2:
-    //              return TP_Type(TypeSpec("uint"));
-    //            case 4:
-    //              return TP_Type(TypeSpec("uint"));
-    //            case 8:
-    //              return TP_Type(TypeSpec("uint"));
-    //            case 16:
-    //              return TP_Type(TypeSpec("uint"));
-    //            default:
-    //              assert(false);
-    //          }
-    //          break;
-    //        case SIGNED:
-    //          switch (size) {
-    //            case 1:
-    //              return TP_Type(TypeSpec("int"));
-    //            case 2:
-    //              return TP_Type(TypeSpec("int"));
-    //            case 4:
-    //              return TP_Type(TypeSpec("int"));
-    //            case 8:
-    //              return TP_Type(TypeSpec("int"));
-    //            case 16:
-    //              return TP_Type(TypeSpec("int"));
-    //            default:
-    //              assert(false);
-    //          }
-    //          break;
-    //        case FLOAT:
-    //          return TP_Type(TypeSpec("float"));
-    //        default:
-    //          assert(false);
-    //      }
-    //    }
-    //
+    if (input_type.kind == TP_Type::Kind::TYPESPEC && input_type.typespec() == TypeSpec("type") &&
+        ro.offset >= 16 && (ro.offset & 3) == 0 && size == 4 && kind == UNSIGNED) {
+      // method get of an unknown type. We assume the most general "object" type.
+      auto method_id = (ro.offset - 16) / 4;
+      auto method_info = dts.ts.lookup_method("object", method_id);
+      if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
+        // this can get us the wrong thing for `new` methods.  And maybe relocate?
+        return TP_Type::make_from_typespec(method_info.type.substitute_for_method_call("object"));
+      }
+    }
 
-    //    } else
-    //
+    if (input_type.typespec() == TypeSpec("pointer")) {
+      // we got a plain pointer. let's just assume we're loading an integer.
+      // perhaps we should disable this feature by default on 4-byte loads if we're getting
+      // lots of false positives for loading pointers from plain pointers.
+
+      switch (kind) {
+        case UNSIGNED:
+          switch (size) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+              return TP_Type::make_from_typespec(TypeSpec("uint"));
+            default:
+              break;
+          }
+          break;
+        case SIGNED:
+          switch (size) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+              return TP_Type::make_from_typespec(TypeSpec("int"));
+            default:
+              break;
+          }
+          break;
+        case FLOAT:
+          return TP_Type::make_from_typespec(TypeSpec("float"));
+        default:
+          assert(false);
+      }
+    }
+
     if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
       // note, we discard and completely ignore the stride here.
       ReverseDerefInputInfo rd_in;
@@ -268,18 +254,19 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
       }
     }
-    //    } else {
-    //      if (input_type.kind == TP_Type::OBJECT_OF_TYPE && ro.offset == -4 && kind == UNSIGNED
-    //      &&
-    //          size == 4 && ro.reg.get_kind() == Reg::GPR) {
-    //        // get type of basic likely, but misrecognized as an object.
-    //        // occurs often in typecase-like structures because other possible types are
-    //        "stripped". load_path_base = ro.reg_ir; load_path_addr_of = false;
-    //        load_path.push_back("type");
-    //        load_path_set = true;
-    //
-    //        return TP_Type::make_type_object(input_type.as_typespec().base_type());
-    //      }
+
+    if (input_type.kind == TP_Type::Kind::TYPESPEC && ro.offset == -4 && kind == UNSIGNED &&
+        size == 4 && ro.reg.get_kind() == Reg::GPR) {
+      // get type of basic likely, but misrecognized as an object.
+      // occurs often in typecase-like structures because other possible types are
+      // "stripped".
+      load_path_base = ro.reg_ir;
+      load_path_addr_of = false;
+      load_path.push_back("type");
+      load_path_set = true;
+
+      return TP_Type::make_type_object(input_type.typespec().base_type());
+    }
     //
     //      if (input_type.as_typespec() == TypeSpec("object") && ro.offset == -4 && kind ==
     //      UNSIGNED
@@ -410,6 +397,12 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
         break;
       }
 
+    case MUL_SIGNED: {
+      if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
+        return TP_Type::make_from_product(arg0_type.get_integer_constant());
+      }
+    } break;
+
     case ADD:
       if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
         // dynamic access into the method array with shift, add, offset-load
@@ -438,9 +431,13 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     return TP_Type::make_from_typespec(arg0_type.typespec());
   }
 
+  if (tc(dts, TypeSpec("binteger"), arg0_type) && is_int_or_uint(dts, arg1_type)) {
+    return TP_Type::make_from_typespec(TypeSpec("binteger"));
+  }
+
   // special cases for non-integers
   if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair")) &&
-      arg1_type.is_integer_constant(62)) {
+      (arg1_type.is_integer_constant(62) || arg1_type.is_integer_constant(61))) {
     // boxed object tag trick.
     return TP_Type::make_from_typespec(TypeSpec("int"));
   }
@@ -493,20 +490,20 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   //  }
   //
   //
-  //  auto a1_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
-  //  if (a1_const && kind == ADD && arg0_type.kind == TP_Type::OBJECT_OF_TYPE) {
-  //    // access a field.
-  //    ReverseDerefInputInfo rd_in;
-  //    rd_in.mem_deref = false;
-  //    rd_in.input_type = arg0_type.as_typespec();
-  //    rd_in.offset = a1_const->value;
-  //    rd_in.load_size = 0;
-  //    auto rd = dts.ts.get_reverse_deref_info(rd_in);
-  //
-  //    if (rd.success) {
-  //      return TP_Type(coerce_to_reg_type(rd.result_type));
-  //    }
-  //  }
+  auto a1_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
+  if (a1_const && kind == ADD && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+    // access a field.
+    ReverseDerefInputInfo rd_in;
+    rd_in.mem_deref = false;
+    rd_in.input_type = arg0_type.typespec();
+    rd_in.offset = a1_const->value;
+    rd_in.load_size = 0;
+    auto rd = dts.ts.get_reverse_deref_info(rd_in);
+
+    if (rd.success) {
+      return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
+    }
+  }
   //
   //  if (kind == ADD && is_integer_type(arg0_type) && arg1_type.kind == TP_Type::OBJECT_OF_TYPE)
   //  {
@@ -522,12 +519,33 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier());
   }
 
+  if (kind == ADD && arg1_type.is_product() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier());
+  }
+
+  if (kind == ADD && arg0_type.typespec() == TypeSpec("pointer") &&
+      tc(dts, TypeSpec("integer"), arg1_type)) {
+    // plain pointer plus integer = plain pointer
+    return TP_Type::make_from_typespec(TypeSpec("pointer"));
+  }
+
+  if (kind == ADD && arg1_type.typespec() == TypeSpec("pointer") &&
+      tc(dts, TypeSpec("integer"), arg0_type)) {
+    // plain pointer plus integer = plain pointer
+    return TP_Type::make_from_typespec(TypeSpec("pointer"));
+  }
+
   // byte access of offset array field trick.
   // arg1 holds a structure.
   // arg0 is an integer in a register.
   if (tc(dts, TypeSpec("structure"), arg1_type) && !dynamic_cast<IR_IntegerConstant*>(arg0.get()) &&
       is_int_or_uint(dts, arg0_type)) {
     return TP_Type::make_object_plus_product(arg1_type.typespec(), 1);
+  }
+
+  if (kind == AND) {
+    // base case for and. Just get an integer.
+    return TP_Type::make_from_typespec(TypeSpec("int"));
   }
 
   //
@@ -549,11 +567,10 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   //    return arg0_type;
   //  }
   //
-  //  if (kind == SUB &&
-  //      dts.ts.typecheck(TypeSpec("pointer"), arg0_type.as_typespec(), "", false, false) &&
-  //      dts.ts.typecheck(TypeSpec("pointer"), arg1_type.as_typespec(), "", false, false)) {
-  //    return TP_Type(TypeSpec("int"));
-  //  }
+  if (kind == SUB && tc(dts, TypeSpec("pointer"), arg0_type) &&
+      tc(dts, TypeSpec("pointer"), arg1_type)) {
+    return TP_Type::make_from_typespec(TypeSpec("int"));
+  }
 
   throw std::runtime_error(
       fmt::format("Can't get_expression_type on this IR_IntMath2: {}, args {} and {}", print(file),
@@ -859,29 +876,29 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
 
   throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
 }
-//
-// void IR_AsmOp_Atomic::propagate_types(const TypeState& input,
-//                                      const LinkedObjectFile& file,
-//                                      DecompilerTypeSystem& dts) {
-//  (void)file;
-//  (void)dts;
-//  auto dst_reg = dynamic_cast<IR_Register*>(dst.get());
-//  end_types = input;
-//  if (dst_reg) {
-//    if (name == "daddu") {
-//      end_types.get(dst_reg->reg) = TP_Type(TypeSpec("uint"));
-//    }
-//  }
-//}
-//
-// void IR_Breakpoint_Atomic::propagate_types(const TypeState& input,
-//                                           const LinkedObjectFile& file,
-//                                           DecompilerTypeSystem& dts) {
-//  (void)file;
-//  (void)dts;
-//  end_types = input;
-//}
-//
+
+void IR_AsmOp_Atomic::propagate_types(const TypeState& input,
+                                      const LinkedObjectFile& file,
+                                      DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  auto dst_reg = dynamic_cast<IR_Register*>(dst.get());
+  end_types = input;
+  if (dst_reg) {
+    if (name == "daddu") {
+      end_types.get(dst_reg->reg) = TP_Type::make_from_typespec(TypeSpec("uint"));
+    }
+  }
+}
+
+void IR_Breakpoint_Atomic::propagate_types(const TypeState& input,
+                                           const LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  end_types = input;
+}
+
 TP_Type IR_EmptyPair::get_expression_type(const TypeState& input,
                                           const LinkedObjectFile& file,
                                           DecompilerTypeSystem& dts) {

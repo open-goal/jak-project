@@ -1005,14 +1005,26 @@ std::shared_ptr<IR_Atomic> try_sw(Instruction& instr, int idx) {
       op->update_reginfo_self(0, 2, 0);
       return op;
     } else {
-      auto op = std::make_shared<IR_Store_Atomic>(
-          IR_Store_Atomic::INTEGER,
-          std::make_shared<IR_IntMath2>(
-              IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
-              std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
-          make_reg(instr.get_src(0).get_reg(), idx), 4);
-      op->update_reginfo_self(0, 2, 0);
-      return op;
+      if (instr.get_src(0).is_reg(make_gpr(Reg::S7))) {
+        // store false
+        auto op = std::make_shared<IR_Store_Atomic>(
+            IR_Store_Atomic::Kind::INTEGER,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
+            make_sym("#f"), 4);
+        op->update_reginfo_self(0, 1, 0);
+        return op;
+      } else {
+        auto op = std::make_shared<IR_Store_Atomic>(
+            IR_Store_Atomic::INTEGER,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
+            make_reg(instr.get_src(0).get_reg(), idx), 4);
+        op->update_reginfo_self(0, 2, 0);
+        return op;
+      }
     }
   }
   return nullptr;
