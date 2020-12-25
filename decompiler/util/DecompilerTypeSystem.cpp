@@ -262,7 +262,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         result_type = TP_Type::make_from_typespec(TypeSpec("string"));
       }
 
-      *changed = (result_type == existing);
+      *changed = (result_type != existing);
       return result_type;
     }
 

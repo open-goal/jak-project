@@ -800,7 +800,29 @@ std::string LinkedObjectFile::print_type_analysis_debug() {
           // result += func.basic_ops.at(i)->print(*this);
           if (func.attempted_type_analysis) {
             result += fmt::format("[{:3d}] ", i);
-            result += func.basic_ops.at(i)->print_with_types(*init_types, *this);
+            auto& op = func.basic_ops.at(i);
+            result += op->print_with_types(*init_types, *this);
+
+            // temporary debug load path print
+            auto op_as_set = dynamic_cast<IR_Set_Atomic*>(op.get());
+            if (op_as_set) {
+              auto op_as_load = dynamic_cast<IR_Load*>(op_as_set->src.get());
+              if (op_as_load && op_as_load->load_path_set) {
+                if (op_as_load->load_path_addr_of) {
+                  result += " (&->";
+                } else {
+                  result += " (->";
+                }
+                result += ' ';
+                result += op_as_load->load_path_base->print(*this);
+                for (auto& tok : op_as_load->load_path) {
+                  result += ' ';
+                  result += tok;
+                }
+                result += ')';
+              }
+            }
+
             result += "\n";
             init_types = &func.basic_ops.at(i)->end_types;
           } else {

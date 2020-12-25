@@ -229,6 +229,11 @@ class TP_Type {
     return m_int;
   }
 
+  uint64_t get_integer_constant() const {
+    assert(kind == Kind::INTEGER_CONSTANT);
+    return m_int;
+  }
+
  private:
   TypeSpec m_ts;
   std::string m_str;

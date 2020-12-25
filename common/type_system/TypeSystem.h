@@ -13,6 +13,7 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
+#include <optional>
 
 #include "TypeSpec.h"
 #include "Type.h"
@@ -73,6 +74,38 @@ struct ReverseDerefInputInfo {
   TypeSpec input_type;
 };
 
+/*!
+ * A description of a dereference (size + sign extend)
+ */
+struct DerefKind {
+  bool is_store = false;     // when true, the sign extension shouldn't matter
+  int size = -1;             // how many bytes
+  bool sign_extend = false;  // for loads only (4 bytes and under), do we sign extend?
+  RegKind reg_kind = RegKind::INVALID;
+};
+
+struct FieldReverseLookupInput {
+  std::optional<DerefKind> deref = std::nullopt;  // if we actually access memory
+  int offset = 0;                                 // if we apply a constant offset
+  int stride = 0;                                 // if we are doing a + (idx * stride)
+  TypeSpec base_type;                             // the type of the thing we're accessing
+};
+
+struct FieldReverseLookupOutput {
+  struct Token {
+    enum class Kind { FIELD, CONSTANT_IDX, VAR_IDX } kind;
+    std::string name;
+    int idx;
+
+    std::string print() const;
+  };
+
+  bool success = false;
+  bool addr_of = false;  // do we take the address of this result?
+  TypeSpec result_type;
+  std::vector<Token> tokens;
+};
+
 class TypeSystem {
  public:
   TypeSystem();
@@ -85,6 +118,7 @@ class TypeSystem {
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
   ReverseDerefInfo get_reverse_deref_info(const ReverseDerefInputInfo& input) const;
+  FieldReverseLookupOutput reverse_field_lookup(const FieldReverseLookupInput& input) const;
 
   bool fully_defined_type_exists(const std::string& name) const;
   bool partially_defined_type_exists(const std::string& name) const;
@@ -171,6 +205,26 @@ class TypeSystem {
                      std::vector<ReverseDerefInfo::DerefToken>* path,
                      bool* addr_of,
                      TypeSpec* result_type) const;
+  bool try_reverse_lookup(const FieldReverseLookupInput& input,
+                          std::vector<FieldReverseLookupOutput::Token>* path,
+                          bool* addr_of,
+                          TypeSpec* result_type) const;
+  bool try_reverse_lookup_pointer(const FieldReverseLookupInput& input,
+                                  std::vector<FieldReverseLookupOutput::Token>* path,
+                                  bool* addr_of,
+                                  TypeSpec* result_type) const;
+  bool try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
+                                       std::vector<FieldReverseLookupOutput::Token>* path,
+                                       bool* addr_of,
+                                       TypeSpec* result_type) const;
+  bool try_reverse_lookup_array(const FieldReverseLookupInput& input,
+                                std::vector<FieldReverseLookupOutput::Token>* path,
+                                bool* addr_of,
+                                TypeSpec* result_type) const;
+  bool try_reverse_lookup_other(const FieldReverseLookupInput& input,
+                                std::vector<FieldReverseLookupOutput::Token>* path,
+                                bool* addr_of,
+                                TypeSpec* result_type) const;
   std::string lca_base(const std::string& a, const std::string& b);
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_size_in_type(const Field& field) const;

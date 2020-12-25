@@ -517,9 +517,9 @@ class IR_Breakpoint_Atomic : public virtual IR_Atomic {
   IR_Breakpoint_Atomic() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
-  //  void propagate_types(const TypeState& input,
-  //                       const LinkedObjectFile& file,
-  //                       DecompilerTypeSystem& dts) override;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Begin : public virtual IR {
@@ -655,9 +655,9 @@ class IR_AsmOp_Atomic : public virtual IR_AsmOp, public IR_Atomic {
  public:
   IR_AsmOp_Atomic(std::string _name) : IR_AsmOp(std::move(_name)) {}
   void set_reg_info();
-  //  void propagate_types(const TypeState& input,
-  //                       const LinkedObjectFile& file,
-  //                       DecompilerTypeSystem& dts) override;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_CMoveF : public virtual IR {

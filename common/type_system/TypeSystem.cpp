@@ -126,6 +126,10 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
   info.reg = RegKind::GPR_64;
   info.mem_deref = true;
 
+  if (typecheck(TypeSpec("float"), ts, "", false, false)) {
+    info.reg = RegKind::FLOAT;
+  }
+
   if (ts.base_type() == "inline-array") {
     auto result_type = lookup_type(ts.get_single_arg());
     auto result_structure_type = dynamic_cast<StructureType*>(result_type);

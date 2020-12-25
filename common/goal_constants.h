@@ -10,6 +10,7 @@ constexpr s32 PAIR_OFFSET = 2;
 constexpr int POINTER_SIZE = 4;
 constexpr int BASIC_OFFSET = 4;
 constexpr int STRUCTURE_ALIGNMENT = 16;
+constexpr int ARRAY_DATA_OFFSET = 12;  // not including type tag
 
 constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
 constexpr s32 SYM_INFO_OFFSET = 0xff34;
