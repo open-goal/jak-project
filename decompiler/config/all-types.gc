@@ -7,7 +7,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; to move
-(define-extern name= (function basic basic symbol)) ;; gstring
 (define-extern stop (function int)) ;; logic-target
 (define-extern set-blackout-frames (function int int))
 
@@ -470,7 +469,6 @@
 (define-extern *debug-dead-pool* dead-pool-heap)
 (define-extern *null-process* process)
 (define-extern *vis-boot* basic)
-(define-extern *stdcon* basic) ;; todo, more specific
 
 (define-extern *global-search-name* basic)
 (define-extern *global-search-count* int)
@@ -553,7 +551,13 @@
 (define-extern change-brother function)
 ;;(define-extern *dead-pool-list* object) ;; unknown type
 
-;; pskernel
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PSKERNEL            ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern lowmemmap type)
 (deftype lowmemmap (structure)
   ((irq-info-stack  uint32   :offset-assert 0)
    (irq2-info-stack uint32   :offset-assert 4)
@@ -574,6 +578,74 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
+
+(define-extern kernel-copy-function (function object object object object none))
+(define-extern kernel-copy-to-kernel-ram (function none))
+(define-extern kernel-write-function (function object object object none))
+(define-extern kernel-write (function none))
+(define-extern kernel-read-function (function object object none))
+(define-extern kernel-read (function none))
+(define-extern kernel-check-hardwired-addresses (function none))
+(define-extern install-default-debug-handler (function object none))
+(define-extern return-from-exception (function object none))
+(define-extern kernel-set-exception-vector (function none))
+(define-extern kernel-set-interrupt-vector (function none))
+(define-extern kernel-set-level2-vector (function none))
+(define-extern deinstall-debug-handler (function none))
+(define-extern deinstall-debug-handlers (function none))
+(define-extern resend-exception (function none))
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GSTRING             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+(define-extern *string-tmp-str* string)
+(define-extern *temp-string* string)
+(define-extern *stdcon0* string)
+(define-extern *stdcon1* string)
+(define-extern *stdcon* string)
+(define-extern *debug-draw-pauseable* symbol)
+
+(define-extern copy-string<-string (function string string string))
+(define-extern string= (function string string symbol))
+(define-extern string-charp= (function string (pointer uint8) symbol))
+(define-extern name= (function basic basic symbol))
+(define-extern copyn-string<-charp (function string (pointer uint8) int string))
+(define-extern string<-charp (function string (pointer uint8) string))
+(define-extern charp<-string (function (pointer uint8) string int))
+(define-extern copy-charp<-charp (function (pointer uint8) (pointer uint8) (pointer uint8)))
+(define-extern cat-string<-string (function string string string))
+(define-extern catn-string<-charp (function string (pointer uint8) int string))
+(define-extern cat-string<-string_to_charp (function string string int (pointer uint8)))
+(define-extern append-character-to-string (function string uint8 int))
+(define-extern charp-basename (function (pointer uint8) (pointer uint8)))
+(define-extern clear (function string string))
+(define-extern string<? (function string string symbol))
+(define-extern string>? (function string string symbol))
+(define-extern string<=? (function string string symbol))
+(define-extern string>=? (function string string symbol))
+(define-extern string-skip-to-char (function (pointer uint8) uint8 (pointer uint8)))
+;; this one might be wrong
+(define-extern string-cat-to-last-char (function uint8 string uint8 (pointer uint8)))
+(define-extern string-skip-whitespace (function (pointer uint8) (pointer uint8)))
+(define-extern string-suck-up! (function string (pointer uint8) symbol))
+(define-extern string-strip-leading-whitespace! (function string symbol))
+(define-extern string-strip-trailing-whitespace! (function string symbol))
+(define-extern string-strip-whitespace! (function string symbol))
+(define-extern string-get-arg!! (function string string symbol))
+(define-extern string->int (function string int))
+(define-extern string->float (function string float))
+(define-extern string-get-int32!! (function (pointer int32) string symbol))
+(define-extern string-get-float!! (function (pointer float) string symbol))
+(define-extern string-get-flag!! (function (pointer symbol) string string string symbol))
+
+
+
+
+
+
+
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -31215,55 +31287,7 @@
 ;; KERNEL
 
 
-(define-extern install-default-debug-handler function)
-(define-extern return-from-exception function)
-;;(define-extern lowmemmap object) ;; unknown type
-(define-extern kernel-write function)
-(define-extern kernel-read function)
-(define-extern deinstall-debug-handlers function)
-(define-extern kernel-set-exception-vector function)
-(define-extern kernel-copy-function function)
-(define-extern kernel-check-hardwired-addresses function)
-(define-extern kernel-set-level2-vector function)
-(define-extern kernel-set-interrupt-vector function)
-(define-extern kernel-read-function function)
-(define-extern kernel-copy-to-kernel-ram function)
-(define-extern kernel-write-function function)
-(define-extern resend-exception function)
-(define-extern deinstall-debug-handler function)
-;;(define-extern install-debug-handler object) ;; unknown type
-(define-extern copyn-string<-charp function)
-(define-extern string<-charp function)
-(define-extern string-get-arg!! function)
-(define-extern string-get-float!! function)
-(define-extern append-character-to-string function)
-(define-extern string-get-int32!! function)
-(define-extern charp-basename function)
-(define-extern copy-charp<-charp function)
-(define-extern string-skip-whitespace function)
-(define-extern string-strip-whitespace! function)
-(define-extern string<? function)
-(define-extern string-get-flag!! function)
-(define-extern charp<-string (function (pointer uint8) string int))
-(define-extern string>=? function)
-(define-extern string-charp= function)
-(define-extern string->float function)
-(define-extern cat-string<-string_to_charp function)
-(define-extern string->int function)
-(define-extern string<=? function)
-(define-extern cat-string<-string function)
-(define-extern clear function)
-(define-extern string= function)
-;;(define-extern *temp-string* object) ;; unknown type
-(define-extern string-strip-leading-whitespace! function)
-(define-extern catn-string<-charp function)
-;;(define-extern *string-tmp-str* object) ;; unknown type
-(define-extern string-suck-up! function)
-(define-extern copy-string<-string (function string string symbol))
-(define-extern string-skip-to-char function)
-(define-extern string-strip-trailing-whitespace! function)
-(define-extern string>? function)
-(define-extern string-cat-to-last-char function)
+
 ;;(define-extern dgo-entry object) ;; unknown type
 ;;(define-extern dgo-file object) ;; unknown type
 (define-extern enter-state function)

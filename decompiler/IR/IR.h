@@ -668,6 +668,9 @@ class IR_CMoveF : public virtual IR {
       : src(std::move(_src)), on_zero(_on_zero) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  TP_Type get_expression_type(const TypeState& input,
+                              const LinkedObjectFile& file,
+                              DecompilerTypeSystem& dts) override;
 };
 
 class IR_AsmReg : public virtual IR {

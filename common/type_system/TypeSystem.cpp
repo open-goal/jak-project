@@ -732,6 +732,10 @@ void TypeSystem::add_builtin_types() {
   builtin_structure_inherit(string_type);
   add_field_to_type(string_type, "allocated-length", make_typespec("int32"));   // todo integer type
   add_field_to_type(string_type, "data", make_typespec("uint8"), false, true);  // todo integer type
+  // string is never deftype'd for the decompiler, so we need to manually give the constructor
+  // type here.
+  add_method(string_type, "new",
+             make_function_typespec({"symbol", "type", "int", "string"}, "_type_"));
 
   // FUNCTION
   builtin_structure_inherit(function_type);

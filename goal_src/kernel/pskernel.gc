@@ -5,3 +5,128 @@
 ;; name in dgo: pskernel
 ;; dgos: KERNEL
 
+#|
+pskernel.gc contains a bunch of utilities for poking around the PS2's kernel.
+These are unused in the retail game, and wouldn't be "safe" to use on a retail console,
+as later console revisions may have different memory layout of the BIOS. I suspect this
+was used for the purposes of debugging and handling crashes.
+They took over syscall 102 to access memory inside the kernel.
+
+There's an error message:
+"I CANNOT CONTINUE TO LOAD GOAL, BECAUSE THE KERNEL VERSION HAS CHANGED~%"
+"~%Alternatively, try removing pskernel.gc and debug-handlers.gc from project.cl, do an (lg) and then (:r) again~%"
+
+My theory is that debug-handlers.gc held crash handlers, and on load would install them using functions defined in pskernel.gc.
+In the retail game, they removed debug-handlers, but not pskernel. 
+
+In the PC port, all of these functions are just stubs.
+|#
+
+;; map of the kernel's memory.
+(deftype lowmemmap (structure)
+  ((irq-info-stack  uint32   :offset-assert 0)
+   (irq2-info-stack uint32   :offset-assert 4)
+   (kernel-copy-fn  uint32   :offset-assert 8)
+   (kernel-write-fn uint32   :offset-assert 12)
+   (r1-save         uint128  :offset-assert 16)
+   (last-time       uint32   :offset-assert 32)
+   (high-time       uint32   :offset-assert 36)
+   (dma-status      uint32   :offset-assert 40)
+   (dma-qnext       uint32   :offset-assert 44)
+   (dma-qwc         uint32   :offset-assert 48)
+   (dma-tnext       uint32   :offset-assert 52)
+   (dma-stack0      uint32   :offset-assert 56)
+   (dma-stack1      uint32   :offset-assert 60)
+   (kernel-read-fn  uint32   :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+(defmacro nyi-break (name)
+  `(begin
+     (format 0 "~A is not implemented!~%" (quote ,name))
+     (break)
+     (none)
+     )
+  )
+
+(defun kernel-copy-function (unused source dest size)
+  "Copy size words from source to dest. The a0 argument is ignored. 
+  Uses registers a0, a1, a2, a3"
+  (nyi-break kernel-copy-function)
+  )
+
+(defun kernel-copy-to-kernel-ram ()
+  "Does a syscall 102. This is CpuConfig on released PS2 BIOSes.
+  I'm guessing this somehow calls kernel-copy-function"
+  (nyi-break kernel-copy-to-kernel-ram)
+  )
+
+(defun kernel-write-function (unused source dest)
+  "Writes a single word to the destination"
+  (nyi-break kernel-write-function)
+  )
+
+(defun kernel-write ()
+  "Does a syscall 102. I'm guessing this somehow calls kernel-write-function."
+  (nyi-break kernel-write)
+  )
+
+(defun kernel-read-function (unused source)
+  "Read a single word (signed) from source"
+  (nyi-break kernel-read-function)
+  )
+
+(defun kernel-read ()
+  "Does a syscall 102. I'm guessing this somehow calls kernel-read-function"
+  (nyi-break kernel-read)
+  )
+
+(defun kernel-check-hardwired-addresses ()
+  "Checks a bunch of stuff in the kernel using kernel-read.
+  If the memory layout isn't what it expects, it prints an error and crashes."
+  (nyi-break kernel-check-hardwired-addresses)
+  )
+
+(defun install-default-debug-handler (handler)
+  "Installs the given handler as the debug handler 1 through 13.
+  Uses the install-debug-handler function defined in kmachine.cpp"
+  (nyi-break install-default-debug-handler)
+  )
+
+(defun return-from-exception (regs)
+  "Restore the registers and eret."
+  (nyi-break return-from-exception)
+  )
+
+(defun kernel-set-exception-vector ()
+  "Use syscall 13/syscall 14 to set exception handlers"
+  (nyi-break kernel-set-exception-vector)
+  )
+
+(defun kernel-set-interrupt-vector ()
+  "Use syscall 15 to set an interrupt handler"
+  (nyi-break kernel-set-interrupt-vector)
+  )
+
+(defun kernel-set-level2-vector ()
+  "Set some handler by writing directly to kernel memory. Not sure what this is."
+  (nyi-break kernel-set-level2-vector)
+  )
+
+(defun deinstall-debug-handler ()
+  "Set the kernel exception handler back to the default?"
+  (nyi-break deinstall-debug-handler)
+  )
+
+(defun deinstall-debug-handlers ()
+  "Set a bunch of excpetion handlers back to the default?"
+  (nyi-break deinstall-debug-handlers)
+  )
+
+(defun resend-exception ()
+  "I think this was to return from a GOAL crash handler back to the EE kernel's crash handler."
+  (nyi-break resend-exception)
+  )

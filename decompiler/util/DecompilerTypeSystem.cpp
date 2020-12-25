@@ -267,8 +267,8 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
     }
 
     // otherwise, as an absolute fallback, convert both to TypeSpecs and do TypeSpec LCA
-    auto new_result =
-        TP_Type::make_from_typespec(ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+    auto new_result = TP_Type::make_from_typespec(
+        coerce_to_reg_type(ts.lowest_common_ancestor(existing.typespec(), add.typespec())));
     *changed = (new_result != existing);
     return new_result;
   }
