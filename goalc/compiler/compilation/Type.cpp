@@ -538,7 +538,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       assert(di.mem_deref);
       assert(di.can_deref);
       // the total offset is 12 + stride * idx
-      auto offset = compile_integer(12, env)->to_gpr(env);
+      auto offset = compile_integer(ARRAY_DATA_OFFSET, env)->to_gpr(env);
       auto stride = compile_integer(di.stride, env)->to_gpr(env);
       env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, stride, index_value));
       env->emit_ir<IR_IntegerMath>(IntegerMathKind::ADD_64, offset, stride);

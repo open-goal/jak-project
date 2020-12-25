@@ -240,17 +240,25 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     }
 
     if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
-      // note, we discard and completely ignore the stride here.
-      ReverseDerefInputInfo rd_in;
-      rd_in.mem_deref = true;
-      rd_in.input_type = input_type.get_obj_plus_const_mult_typespec();
-      rd_in.reg = get_reg_kind(ro.reg);  // bleh
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = kind == SIGNED;
+      dk.size = size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+      rd_in.stride = input_type.get_multiplier();
       rd_in.offset = ro.offset;
-      rd_in.sign_extend = kind == SIGNED;
-      rd_in.load_size = size;
-      auto rd = dts.ts.get_reverse_deref_info(rd_in);
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
+        load_path_set = true;
+        load_path_addr_of = rd.addr_of;
+        load_path_base = ro.reg_ir;
+        for (auto& x : rd.tokens) {
+          load_path.push_back(x.print());
+        }
         return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
       }
     }
@@ -284,20 +292,22 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       return TP_Type::make_from_typespec(TypeSpec("function"));
     }
     // Assume we're accessing a field of an object.
-    ReverseDerefInputInfo rd_in;
-    rd_in.mem_deref = true;
-    rd_in.input_type = input_type.typespec();
-    rd_in.reg = get_reg_kind(ro.reg);
+    FieldReverseLookupInput rd_in;
+    DerefKind dk;
+    dk.is_store = false;
+    dk.reg_kind = get_reg_kind(ro.reg);
+    dk.sign_extend = kind == SIGNED;
+    dk.size = size;
+    rd_in.deref = dk;
+    rd_in.base_type = input_type.typespec();
+    rd_in.stride = 0;
     rd_in.offset = ro.offset;
-    rd_in.sign_extend = kind == SIGNED;
-    rd_in.load_size = size;
-
-    auto rd = dts.ts.get_reverse_deref_info(rd_in);
+    auto rd = dts.ts.reverse_field_lookup(rd_in);
 
     // only error on failure if "pair" is disabled. otherwise it might be a pair.
     if (!rd.success && !dts.type_prop_settings.allow_pair) {
-      printf("input type is %s, offset is %d, sign %d size %d\n", rd_in.input_type.print().c_str(),
-             rd_in.offset, rd_in.sign_extend, rd_in.load_size);
+      printf("input type is %s, offset is %d, sign %d size %d\n", rd_in.base_type.print().c_str(),
+             rd_in.offset, rd_in.deref.value().sign_extend, rd_in.deref.value().size);
       throw std::runtime_error(
           fmt::format("Could not get type of load: {}. Reverse Deref Failed.", print(file)));
     }
@@ -306,7 +316,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       load_path_set = true;
       load_path_addr_of = rd.addr_of;
       load_path_base = ro.reg_ir;
-      for (auto& x : rd.deref_path) {
+      for (auto& x : rd.tokens) {
         load_path.push_back(x.print());
       }
       return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
@@ -493,14 +503,15 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   auto a1_const = dynamic_cast<IR_IntegerConstant*>(arg1.get());
   if (a1_const && kind == ADD && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
     // access a field.
-    ReverseDerefInputInfo rd_in;
-    rd_in.mem_deref = false;
-    rd_in.input_type = arg0_type.typespec();
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = 0;
     rd_in.offset = a1_const->value;
-    rd_in.load_size = 0;
-    auto rd = dts.ts.get_reverse_deref_info(rd_in);
+    rd_in.base_type = arg0_type.typespec();
+    auto rd = dts.ts.reverse_field_lookup(rd_in);
 
     if (rd.success) {
+      // todo, load path.
       return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
     }
   }

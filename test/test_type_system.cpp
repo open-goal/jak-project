@@ -2,6 +2,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "common/goos/Reader.h"
 #include "common/type_system/deftype.h"
+#include "common/goos/ParseHelpers.h"
 
 TEST(TypeSystem, Construction) {
   // test that we can add all builtin types without any type errors
@@ -322,21 +323,23 @@ TEST(TypeSystem, DecompLookupsTypeOfBasic) {
   ts.add_builtin_types();
 
   auto string_type = ts.make_typespec("string");
-
-  ReverseDerefInputInfo input;
-  input.input_type = string_type;
-  input.mem_deref = true;
-  input.reg = RegKind::GPR_64;
-  input.load_size = 4;
-  input.sign_extend = false;
+  FieldReverseLookupInput input;
+  input.stride = 0;
+  input.base_type = string_type;
   input.offset = -4;
+  DerefKind dk;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegKind::GPR_64;
+  input.deref = dk;
+  auto result = ts.reverse_field_lookup(input);
 
-  auto result = ts.get_reverse_deref_info(input);
   EXPECT_TRUE(result.success);
   EXPECT_FALSE(result.addr_of);
   EXPECT_TRUE(result.result_type == ts.make_typespec("type"));
-  EXPECT_EQ(result.deref_path.size(), 1);
-  EXPECT_EQ(result.deref_path.at(0).name, "type");
+  EXPECT_EQ(result.tokens.size(), 1);
+  EXPECT_EQ(result.tokens.at(0).name, "type");
 }
 
 TEST(TypeSystem, DecompLookupsMethod) {
@@ -345,51 +348,54 @@ TEST(TypeSystem, DecompLookupsMethod) {
 
   auto type_type = ts.make_typespec("type");
 
-  ReverseDerefInputInfo input;
-  input.input_type = type_type;
-  input.mem_deref = true;
-  input.reg = RegKind::GPR_64;
-  input.load_size = 4;
-  input.sign_extend = false;
-  input.offset = 16;  // should be method 0, new.
+  FieldReverseLookupInput input;
+  input.stride = 0;
+  input.base_type = type_type;
+  input.offset = 16;
+  DerefKind dk;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegKind::GPR_64;
+  input.deref = dk;
+  auto result = ts.reverse_field_lookup(input);
 
-  auto result = ts.get_reverse_deref_info(input);
   EXPECT_TRUE(result.success);
   EXPECT_FALSE(result.addr_of);
   EXPECT_TRUE(result.result_type == ts.make_typespec("function"));
-  EXPECT_EQ(result.deref_path.size(), 2);
-  EXPECT_EQ(result.deref_path.at(0).name, "method-table");
-  EXPECT_EQ(result.deref_path.at(1).index, 0);
+  EXPECT_EQ(result.tokens.size(), 2);
+  EXPECT_EQ(result.tokens.at(0).name, "method-table");
+  EXPECT_EQ(result.tokens.at(1).idx, 0);
 
-  input.input_type = type_type;
-  input.mem_deref = true;
-  input.reg = RegKind::GPR_64;
-  input.load_size = 4;
-  input.sign_extend = false;
-  input.offset = 24;  // should be method 2
+  input.stride = 0;
+  input.base_type = type_type;
+  input.offset = 24;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegKind::GPR_64;
+  input.deref = dk;
+  result = ts.reverse_field_lookup(input);
 
-  result = ts.get_reverse_deref_info(input);
   EXPECT_TRUE(result.success);
   EXPECT_FALSE(result.addr_of);
   EXPECT_TRUE(result.result_type == ts.make_typespec("function"));
-  EXPECT_EQ(result.deref_path.size(), 2);
-  EXPECT_EQ(result.deref_path.at(0).name, "method-table");
-  EXPECT_EQ(result.deref_path.at(1).index, 2);
+  EXPECT_EQ(result.tokens.size(), 2);
+  EXPECT_EQ(result.tokens.at(0).name, "method-table");
+  EXPECT_EQ(result.tokens.at(1).idx, 2);
 
-  input.input_type = type_type;
-  input.mem_deref = false;
-  input.reg = RegKind::GPR_64;
-  input.load_size = 0;
-  input.sign_extend = false;
-  input.offset = 24;  // should be method 2
+  input.stride = 0;
+  input.base_type = type_type;
+  input.offset = 24;
+  input.deref = std::nullopt;
+  result = ts.reverse_field_lookup(input);
 
-  result = ts.get_reverse_deref_info(input);
   EXPECT_TRUE(result.success);
   EXPECT_TRUE(result.addr_of);
   EXPECT_TRUE(result.result_type == ts.make_pointer_typespec("function"));
-  EXPECT_EQ(result.deref_path.size(), 2);
-  EXPECT_EQ(result.deref_path.at(0).name, "method-table");
-  EXPECT_EQ(result.deref_path.at(1).index, 2);
+  EXPECT_EQ(result.tokens.size(), 2);
+  EXPECT_EQ(result.tokens.at(0).name, "method-table");
+  EXPECT_EQ(result.tokens.at(1).idx, 2);
 }
 
 TEST(Deftype, deftype) {
