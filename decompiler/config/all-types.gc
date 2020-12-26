@@ -54,6 +54,7 @@
 (define-extern method-set! (function type int function none)) ;; may actually return function.
 (define-extern *listener-function* (function object))
 (define-extern *enable-method-set* int)
+(define-extern install-debug-handler (function int object symbol))
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -269,7 +270,7 @@
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
-   (event-hook function :offset-assert #x44)
+   (event-hook (function stack-frame (function object) function state object) :offset-assert #x44)
    (allocated-length int32 :offset-assert #x48)
    (next-state basic :offset-assert #x4c)
    (heap-base pointer :offset-assert #x50)
@@ -408,9 +409,9 @@
 ;; gkernel-h
 (deftype state (protect-frame)
   ((code  function  :offset-assert 16)
-   (trans function  :offset-assert 20)
+   (trans (function object)  :offset-assert 20)
    (post  function  :offset-assert 24)
-   (enter function  :offset-assert 28)
+   (enter (function object object object object object object object)  :offset-assert 28)
    (event basic     :offset-assert 32)
    )
   (:methods
@@ -484,7 +485,10 @@
 (define-extern search-process-tree (function process-tree (function process-tree object) process))
 (define-extern execute-process-tree (function process-tree (function object object) kernel-context object))
 
+(define-extern previous-brother (function process-tree process-tree))
 (define-extern change-parent (function process-tree process-tree process-tree))
+(define-extern change-brother (function process-tree process-tree process-tree))
+(define-extern change-to-last-brother (function process-tree process-tree))
 
 (define-extern *active-pool* process-tree)
 (define-extern kernel-dispatcher (function (function object)))
@@ -518,7 +522,7 @@
 (define-extern *camera-pool* process-tree)
 
 (define-extern *nk-dead-pool* dead-pool-heap)
-(define-extern change-to-last-brother function)
+
 (define-extern *pickup-dead-pool* dead-pool)
 (define-extern *camera-master-dead-pool* dead-pool)
 (define-extern *camera-dead-pool* dead-pool)
@@ -547,8 +551,6 @@
 ;;(define-extern dead object) ;; unknown type
 
 ;; todo
-(define-extern previous-brother function)
-(define-extern change-brother function)
 ;;(define-extern *dead-pool-list* object) ;; unknown type
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
@@ -673,6 +675,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
+(define-extern looping-code (function symbol))
+(define-extern send-event-function (function process state object))
+(define-extern enter-state (function object object object object object object object))
+(define-extern inherit-state (function state state state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;; END OF KERNEL.CGO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -31298,10 +31304,6 @@
 
 ;;(define-extern dgo-entry object) ;; unknown type
 ;;(define-extern dgo-file object) ;; unknown type
-(define-extern enter-state function)
-(define-extern send-event-function function)
-(define-extern looping-code function)
-(define-extern inherit-state function)
 ;;(define-extern time-frame object) ;; unknown type
 ;;(define-extern part-id object) ;; unknown type
 

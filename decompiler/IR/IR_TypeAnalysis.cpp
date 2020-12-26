@@ -766,6 +766,14 @@ void IR_Nop_Atomic::propagate_types(const TypeState& input,
   end_types = input;
 }
 
+void IR_Suspend_Atomic::propagate_types(const TypeState& input,
+                                        const LinkedObjectFile& file,
+                                        DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  end_types = input;
+}
+
 void IR_Call_Atomic::propagate_types(const TypeState& input,
                                      const LinkedObjectFile& file,
                                      DecompilerTypeSystem& dts) {

@@ -505,11 +505,14 @@ class IR_Nop_Atomic : public IR_Nop, public IR_Atomic {
                        DecompilerTypeSystem& dts) override;
 };
 
-class IR_Suspend : public virtual IR, public IR_Atomic {
+class IR_Suspend_Atomic : public virtual IR, public IR_Atomic {
  public:
-  IR_Suspend() = default;
+  IR_Suspend_Atomic() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  void propagate_types(const TypeState& input,
+                       const LinkedObjectFile& file,
+                       DecompilerTypeSystem& dts) override;
 };
 
 class IR_Breakpoint_Atomic : public virtual IR_Atomic {

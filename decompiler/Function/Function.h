@@ -50,6 +50,11 @@ struct FunctionName {
     }
   }
 
+  int get_anon_id() const {
+    assert(kind == FunctionKind::UNIDENTIFIED);
+    return id_in_object;
+  }
+
   bool empty() const { return kind == FunctionKind::UNIDENTIFIED; }
 
   void set_as_top_level() { kind = FunctionKind::TOP_LEVEL_INIT; }

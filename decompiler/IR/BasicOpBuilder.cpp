@@ -2020,7 +2020,7 @@ std::shared_ptr<IR_Atomic> try_lwu(Instruction& i0,
       i2.get_src(0).get_imm() == 12 && i2.get_src(1).is_reg(s6) &&
       i3.kind == InstructionKind::JALR && i3.get_dst(0).is_reg(make_gpr(Reg::RA)) &&
       i3.get_src(0).is_reg(s6) && i4.kind == InstructionKind::MFLO1 && i4.get_dst(0).is_reg(s6)) {
-    auto op = std::make_shared<IR_Suspend>();
+    auto op = std::make_shared<IR_Suspend_Atomic>();
     op->reg_info_set = true;
     return op;
   }

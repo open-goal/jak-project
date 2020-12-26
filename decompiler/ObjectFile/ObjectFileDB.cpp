@@ -992,6 +992,31 @@ void ObjectFileDB::analyze_functions() {
               // failed
               bad_type_analysis++;
             }
+          } else if (func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+            auto obj_name = data.to_unique_name();
+            // try looking up the object
+            const auto& map = get_config().anon_function_types_by_obj_by_id;
+            auto obj_kv = map.find(obj_name);
+            if (obj_kv != map.end()) {
+              auto func_kv = obj_kv->second.find(func.guessed_name.get_anon_id());
+              if (func_kv != obj_kv->second.end()) {
+                attempted_type_analysis++;
+                func.type = dts.parse_type_spec(func_kv->second);
+                func.attempted_type_analysis = true;
+                if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
+                  successful_type_analysis++;
+                } else {
+                  // tried, but failed.
+                  bad_type_analysis++;
+                }
+              } else {
+                // no id
+                bad_type_analysis++;
+              }
+            } else {
+              // no object in map
+              bad_type_analysis++;
+            }
           } else {
             // unsupported function kind
             bad_type_analysis++;

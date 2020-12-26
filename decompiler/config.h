@@ -40,7 +40,8 @@ struct Config {
   std::unordered_set<std::string> no_type_analysis_functions_by_name;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeHint>>>
       type_hints_by_function_by_idx;
-  // ...
+  std::unordered_map<std::string, std::unordered_map<int, std::string>>
+      anon_function_types_by_obj_by_id;
 };
 
 Config& get_config();
