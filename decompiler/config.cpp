@@ -94,7 +94,7 @@ void set_config(const std::string& path_to_config_file) {
   for (auto& kv : anon_func_json.items()) {
     auto& obj_file_name = kv.key();
     auto& anon_types = kv.value();
-    for(auto& anon_type : anon_types) {
+    for (auto& anon_type : anon_types) {
       auto id = anon_type.at(0).get<int>();
       const auto& type_name = anon_type.at(1).get<std::string>();
       gConfig.anon_function_types_by_obj_by_id[obj_file_name][id] = type_name;
