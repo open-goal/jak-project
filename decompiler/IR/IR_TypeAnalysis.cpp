@@ -367,26 +367,26 @@ TP_Type IR_FloatMath2::get_expression_type(const TypeState& input,
   }
 }
 
-// TP_Type IR_FloatMath1::get_expression_type(const TypeState& input,
-//                                           const LinkedObjectFile& file,
-//                                           DecompilerTypeSystem& dts) {
-//  (void)input;
-//  (void)file;
-//  (void)dts;
-//  // FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT
-//  switch (kind) {
-//    case FLOAT_TO_INT:
-//      return TP_Type(TypeSpec("int"));
-//    case INT_TO_FLOAT:
-//    case ABS:
-//    case NEG:
-//    case SQRT:
-//      return TP_Type(TypeSpec("float"));
-//    default:
-//      assert(false);
-//  }
-//}
-//
+TP_Type IR_FloatMath1::get_expression_type(const TypeState& input,
+                                           const LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)file;
+  (void)dts;
+  // FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT
+  switch (kind) {
+    case FLOAT_TO_INT:
+      return TP_Type::make_from_typespec(TypeSpec("int"));
+    case INT_TO_FLOAT:
+    case ABS:
+    case NEG:
+    case SQRT:
+      return TP_Type::make_from_typespec(TypeSpec("float"));
+    default:
+      assert(false);
+  }
+}
+
 TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
                                          const LinkedObjectFile& file,
                                          DecompilerTypeSystem& dts) {
@@ -877,8 +877,10 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
   (void)input;
   (void)dts;
   // todo - we should map out static data and use a real type system lookup here.
+
   auto label = file.labels.at(label_id);
-  if ((label.offset & 0xf) == 4) {
+  // strings are 16-byte aligned, but functions are 8 byte aligned?
+  if ((label.offset & 7) == BASIC_OFFSET) {
     // it's a basic! probably.
     const auto& word = file.words_by_seg.at(label.target_segment).at((label.offset - 4) / 4);
     if (word.kind == LinkedWord::TYPE_PTR) {
@@ -889,6 +891,8 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
         return TP_Type::make_from_typespec(TypeSpec(word.symbol_name));
       }
     }
+  } else if ((label.offset & 7) == PAIR_OFFSET) {
+    return TP_Type::make_from_typespec(TypeSpec("pair"));
   }
 
   throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);

@@ -34,16 +34,26 @@
 (define-extern string type)
 (define-extern uint8 type)
 (define-extern int8 type)
+(define-extern uint16 type)
 (define-extern int16 type)
 (define-extern uint32 type)
 (define-extern int32 type)
+(define-extern uint64 type)
+(define-extern int64 type)
+(define-extern uint128 type)
+(define-extern int128 type)
 (define-extern float type)
-(define-extern nothing (function none)) 
+(define-extern nothing (function none))
+
 
 ;; functions defined in C. TODO - this will end up being a duplicate of kernel-defs.gc?
 (define-extern dgo-load (function string kheap int int none))
 (define-extern *kernel-boot-message* symbol)
 (define-extern *debug-segment* symbol)
+(define-extern _format (function _varargs_ object))
+(define-extern method-set! (function type int function none)) ;; may actually return function.
+(define-extern *listener-function* (function object))
+(define-extern *enable-method-set* int)
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -71,7 +81,16 @@
 (define-extern false-func (function symbol))
 (define-extern true-func (function symbol))
 (define-extern format (function _varargs_ object))
-;; TODO - vec4s (or just forget it)
+(define-extern vec4s type)
+
+; ;; gcommon
+; (deftype vec4s (uint128)
+;   ()
+;   :method-count-assert 9
+;   :size-assert         #x10
+;   :flag-assert         #x900000010
+;   ;; a bitfield type
+;   )
 
 (deftype bfloat (basic)
   ((data float  :offset-assert 4)
@@ -123,7 +142,7 @@
 (define-extern print (function object object))
 (define-extern printl (function object object))
 (define-extern inspect (function object object))
-(define-extern mem-print (function pointer int symbol))
+(define-extern mem-print (function (pointer uint32) int symbol))
 (define-extern *trace-list* pair)
 (define-extern print-tree-bitmask (function int int symbol))
 (define-extern valid? (function object type basic basic object symbol))
@@ -131,14 +150,7 @@
 ;; has issues:
 (define-extern breakpoint-range-set! function)
 
-; ;; gcommon
-; (deftype vec4s (uint128)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   ;; likely a bitfield type
-;   )
+
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -545,7 +557,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-(define-extern lowmemmap type)
 (deftype lowmemmap (structure)
   ((irq-info-stack  uint32   :offset-assert 0)
    (irq2-info-stack uint32   :offset-assert 4)

@@ -58,7 +58,8 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
 
     } else if (car(o).as_symbol()->name == "deftype") {
-      parse_deftype(cdr(o), &ts);
+      auto dtr = parse_deftype(cdr(o), &ts);
+      add_symbol(dtr.type.base_type(), "type");
     } else if (car(o).as_symbol()->name == "declare-type") {
       auto* rest = &cdr(o);
       auto type_name = car(*rest);
