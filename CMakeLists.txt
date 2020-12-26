@@ -1,5 +1,10 @@
 # Top Level CMakeLists.txt
-cmake_minimum_required(VERSION 3.16)
+if (UNIX)
+    cmake_minimum_required(VERSION 3.10)
+else ()
+    cmake_minimum_required(VERSION 3.16)
+endif ()
+
 project(jak)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
