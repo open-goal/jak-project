@@ -8,6 +8,21 @@ Config& get_config() {
   return gConfig;
 }
 
+namespace {
+/*!
+ * Read an entry from cfg containing the name of a json file, and parse that file.
+ * Relative to jak-project directory.
+ */
+nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::string& file_key) {
+  auto file_name = cfg.at(file_key).get<std::string>();
+  auto file_txt = file_util::read_text_file(file_util::get_file_path({file_name}));
+  return nlohmann::json::parse(file_txt, nullptr, true, true);
+}
+}  // namespace
+
+/*!
+ * Parse the main config file and set the global decompiler configuration.
+ */
 void set_config(const std::string& path_to_config_file) {
   auto config_str = file_util::read_text_file(path_to_config_file);
   // to ignore comments in json, which may be useful
@@ -59,10 +74,7 @@ void set_config(const std::string& path_to_config_file) {
     gConfig.bad_inspect_types.insert(x);
   }
 
-  auto type_hints_file_name = cfg.at("type_hints_file").get<std::string>();
-  auto type_hints_txt = file_util::read_text_file(file_util::get_file_path({type_hints_file_name}));
-  auto type_hints_json = nlohmann::json::parse(type_hints_txt, nullptr, true, true);
-
+  auto type_hints_json = read_json_file_from_config(cfg, "type_hints_file");
   for (auto& kv : type_hints_json.items()) {
     auto& function_name = kv.key();
     auto& hints = kv.value();
@@ -75,6 +87,17 @@ void set_config(const std::string& path_to_config_file) {
         type_hint.type_name = assignment.at(1).get<std::string>();
         gConfig.type_hints_by_function_by_idx[function_name][idx].push_back(type_hint);
       }
+    }
+  }
+
+  auto anon_func_json = read_json_file_from_config(cfg, "anonymous_function_types_file");
+  for (auto& kv : anon_func_json.items()) {
+    auto& obj_file_name = kv.key();
+    auto& anon_types = kv.value();
+    for (auto& anon_type : anon_types) {
+      auto id = anon_type.at(0).get<int>();
+      const auto& type_name = anon_type.at(1).get<std::string>();
+      gConfig.anon_function_types_by_obj_by_id[obj_file_name][id] = type_name;
     }
   }
 }

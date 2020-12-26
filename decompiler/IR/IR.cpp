@@ -975,7 +975,7 @@ void IR_Compare::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   condition.get_children(output);
 }
 
-goos::Object IR_Suspend::to_form(const LinkedObjectFile& file) const {
+goos::Object IR_Suspend_Atomic::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::build_list("suspend!");
 }
@@ -984,7 +984,7 @@ void IR_Nop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
 }
 
-void IR_Suspend::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+void IR_Suspend_Atomic::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
 }
 

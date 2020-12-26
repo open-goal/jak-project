@@ -58,7 +58,8 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
       add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
 
     } else if (car(o).as_symbol()->name == "deftype") {
-      parse_deftype(cdr(o), &ts);
+      auto dtr = parse_deftype(cdr(o), &ts);
+      add_symbol(dtr.type.base_type(), "type");
     } else if (car(o).as_symbol()->name == "declare-type") {
       auto* rest = &cdr(o);
       auto type_name = car(*rest);
@@ -267,8 +268,8 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
     }
 
     // otherwise, as an absolute fallback, convert both to TypeSpecs and do TypeSpec LCA
-    auto new_result =
-        TP_Type::make_from_typespec(ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+    auto new_result = TP_Type::make_from_typespec(
+        coerce_to_reg_type(ts.lowest_common_ancestor(existing.typespec(), add.typespec())));
     *changed = (new_result != existing);
     return new_result;
   }

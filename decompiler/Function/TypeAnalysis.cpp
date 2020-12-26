@@ -15,6 +15,9 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
     auto reg_type = f_ts.get_arg(i);
     result.gpr_types[reg_id] = TP_Type::make_from_typespec(reg_type);
   }
+
+  // todo, more specific process types for behaviors.
+  result.gpr_types[Reg::S6] = TP_Type::make_from_typespec(TypeSpec("process"));
   return result;
 }
 

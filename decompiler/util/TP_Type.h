@@ -113,6 +113,7 @@ class TP_Type {
   bool is_integer_constant() const { return kind == Kind::INTEGER_CONSTANT; }
   bool is_integer_constant(int64_t value) const { return is_integer_constant() && m_int == value; }
   bool is_product() const { return kind == Kind::PRODUCT_WITH_CONSTANT; }
+  bool is_product_plus_obj() const { return kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT; }
   bool is_product_with(int64_t value) const {
     return kind == Kind::PRODUCT_WITH_CONSTANT && m_int == value;
   }

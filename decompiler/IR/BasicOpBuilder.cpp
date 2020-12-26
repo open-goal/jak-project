@@ -12,6 +12,7 @@
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/IR/IR.h"
+#include "common/symbols.h"
 
 namespace {
 
@@ -753,6 +754,13 @@ std::shared_ptr<IR_Atomic> try_daddiu(Instruction& instr, int idx) {
     op->write_regs.push_back(instr.get_dst(0).get_reg());
     op->reg_info_set = true;
     return op;
+  } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::S7)) &&
+             instr.get_src(1).is_imm() && instr.get_src(1).get_imm() == FIX_SYM_TRUE) {
+    auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
+                              std::make_shared<IR_Symbol>("#t"));
+    op->write_regs.push_back(instr.get_dst(0).get_reg());
+    op->reg_info_set = true;
+    return op;
   } else if (instr.kind == InstructionKind::DADDIU && instr.get_src(0).is_reg(make_gpr(Reg::FP)) &&
              instr.get_src(1).kind == InstructionAtom::LABEL) {
     auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(instr.get_dst(0).get_reg(), idx),
@@ -1032,14 +1040,42 @@ std::shared_ptr<IR_Atomic> try_sw(Instruction& instr, int idx) {
 
 std::shared_ptr<IR_Atomic> try_sb(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SB && instr.get_src(1).is_imm()) {
-    auto op = std::make_shared<IR_Store_Atomic>(
-        IR_Store_Atomic::INTEGER,
-        std::make_shared<IR_IntMath2>(
-            IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
-            std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
-        make_reg(instr.get_src(0).get_reg(), idx), 1);
-    op->update_reginfo_self(0, 2, 0);
-    return op;
+    if (instr.get_src(1).get_imm() == 0) {
+      if (instr.get_src(0).is_reg(make_gpr(Reg::R0))) {
+        auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::INTEGER,
+                                                    make_reg(instr.get_src(2).get_reg(), idx),
+                                                    std::make_shared<IR_IntegerConstant>(0), 1);
+        op->update_reginfo_self(0, 1, 0);
+        return op;
+      } else {
+        auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::INTEGER,
+                                                    make_reg(instr.get_src(2).get_reg(), idx),
+                                                    make_reg(instr.get_src(0).get_reg(), idx), 1);
+        op->update_reginfo_self(0, 2, 0);
+        return op;
+      }
+
+    } else {
+      if (instr.get_src(0).is_reg(make_gpr(Reg::R0))) {
+        auto op = std::make_shared<IR_Store_Atomic>(
+            IR_Store_Atomic::INTEGER,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
+            std::make_shared<IR_IntegerConstant>(0), 1);
+        op->update_reginfo_self(0, 1, 0);
+        return op;
+      } else {
+        auto op = std::make_shared<IR_Store_Atomic>(
+            IR_Store_Atomic::INTEGER,
+            std::make_shared<IR_IntMath2>(
+                IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
+                std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
+            make_reg(instr.get_src(0).get_reg(), idx), 1);
+        op->update_reginfo_self(0, 2, 0);
+        return op;
+      }
+    }
   }
   return nullptr;
 }
@@ -1169,6 +1205,7 @@ std::shared_ptr<IR_Atomic> try_movn(Instruction& instr, int idx) {
     op->write_regs.push_back(dst);
     op->read_regs.push_back(src);
     op->reg_info_set = true;
+    return op;
   }
   return nullptr;
 }
@@ -1182,6 +1219,7 @@ std::shared_ptr<IR_Atomic> try_movz(Instruction& instr, int idx) {
     op->write_regs.push_back(dst);
     op->read_regs.push_back(src);
     op->reg_info_set = true;
+    return op;
   }
   return nullptr;
 }
@@ -1982,7 +2020,7 @@ std::shared_ptr<IR_Atomic> try_lwu(Instruction& i0,
       i2.get_src(0).get_imm() == 12 && i2.get_src(1).is_reg(s6) &&
       i3.kind == InstructionKind::JALR && i3.get_dst(0).is_reg(make_gpr(Reg::RA)) &&
       i3.get_src(0).is_reg(s6) && i4.kind == InstructionKind::MFLO1 && i4.get_dst(0).is_reg(s6)) {
-    auto op = std::make_shared<IR_Suspend>();
+    auto op = std::make_shared<IR_Suspend_Atomic>();
     op->reg_info_set = true;
     return op;
   }

@@ -828,7 +828,7 @@ void ObjectFileDB::analyze_functions() {
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
-      func.warnings += ";; this function exists in multiple non-identical object files";
+      func.warnings += ";; this function exists in multiple non-identical object files\n";
     }
   });
   /*
@@ -851,6 +851,7 @@ void ObjectFileDB::analyze_functions() {
   int successful_cfg_irs = 0;
   int successful_type_analysis = 0;
   int attempted_type_analysis = 0;
+  int bad_type_analysis = 0;  // didn't attempt because we didn't know how + attempted but failed
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
 
@@ -941,7 +942,13 @@ void ObjectFileDB::analyze_functions() {
               //                         kv->second.print());
               if (func.run_type_analysis(kv->second, dts, data.linked_data, hints)) {
                 successful_type_analysis++;
+              } else {
+                // bad, failed.
+                bad_type_analysis++;
               }
+            } else {
+              // bad, don't know global type
+              bad_type_analysis++;
             }
           } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
             // it's a method.
@@ -963,12 +970,56 @@ void ObjectFileDB::analyze_functions() {
                 //                           func.type.print());
                 if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
                   successful_type_analysis++;
+                } else {
+                  bad_type_analysis++;
                 }
+              } else {
+                // not enough type info
+                bad_type_analysis++;
               }
 
             } catch (std::runtime_error& e) {
               // failed to lookup method info
+              bad_type_analysis++;
             }
+          } else if (func.guessed_name.kind == FunctionName::FunctionKind::TOP_LEVEL_INIT) {
+            attempted_type_analysis++;
+            func.type = dts.ts.make_function_typespec({}, "none");
+            func.attempted_type_analysis = true;
+            if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
+              successful_type_analysis++;
+            } else {
+              // failed
+              bad_type_analysis++;
+            }
+          } else if (func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+            auto obj_name = data.to_unique_name();
+            // try looking up the object
+            const auto& map = get_config().anon_function_types_by_obj_by_id;
+            auto obj_kv = map.find(obj_name);
+            if (obj_kv != map.end()) {
+              auto func_kv = obj_kv->second.find(func.guessed_name.get_anon_id());
+              if (func_kv != obj_kv->second.end()) {
+                attempted_type_analysis++;
+                func.type = dts.parse_type_spec(func_kv->second);
+                func.attempted_type_analysis = true;
+                if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
+                  successful_type_analysis++;
+                } else {
+                  // tried, but failed.
+                  bad_type_analysis++;
+                }
+              } else {
+                // no id
+                bad_type_analysis++;
+              }
+            } else {
+              // no object in map
+              bad_type_analysis++;
+            }
+          } else {
+            // unsupported function kind
+            bad_type_analysis++;
           }
 
           if (!func.attempted_type_analysis) {
@@ -1024,8 +1075,12 @@ void ObjectFileDB::analyze_functions() {
   spdlog::info(" {}/{} functions that attempted type analysis succeeded ({:.2f}%)",
                successful_type_analysis, attempted_type_analysis,
                100.f * float(successful_type_analysis) / float(attempted_type_analysis));
-  spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)\n", successful_type_analysis,
+  spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)", successful_type_analysis,
                non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
+  spdlog::info(
+      " {} functions were supposed to do type analysis but either failed or didn't know their "
+      "types.\n",
+      bad_type_analysis);
 
   //    for (auto& kv : unresolved_by_length) {
   //      printf("LEN %d\n", kv.first);

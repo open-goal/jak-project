@@ -367,26 +367,26 @@ TP_Type IR_FloatMath2::get_expression_type(const TypeState& input,
   }
 }
 
-// TP_Type IR_FloatMath1::get_expression_type(const TypeState& input,
-//                                           const LinkedObjectFile& file,
-//                                           DecompilerTypeSystem& dts) {
-//  (void)input;
-//  (void)file;
-//  (void)dts;
-//  // FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT
-//  switch (kind) {
-//    case FLOAT_TO_INT:
-//      return TP_Type(TypeSpec("int"));
-//    case INT_TO_FLOAT:
-//    case ABS:
-//    case NEG:
-//    case SQRT:
-//      return TP_Type(TypeSpec("float"));
-//    default:
-//      assert(false);
-//  }
-//}
-//
+TP_Type IR_FloatMath1::get_expression_type(const TypeState& input,
+                                           const LinkedObjectFile& file,
+                                           DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)file;
+  (void)dts;
+  // FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT
+  switch (kind) {
+    case FLOAT_TO_INT:
+      return TP_Type::make_from_typespec(TypeSpec("int"));
+    case INT_TO_FLOAT:
+    case ABS:
+    case NEG:
+    case SQRT:
+      return TP_Type::make_from_typespec(TypeSpec("float"));
+    default:
+      assert(false);
+  }
+}
+
 TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
                                          const LinkedObjectFile& file,
                                          DecompilerTypeSystem& dts) {
@@ -534,24 +534,30 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier());
   }
 
-  if (kind == ADD && arg0_type.typespec() == TypeSpec("pointer") &&
+  if (kind == ADD && arg0_type.typespec().base_type() == "pointer" &&
       tc(dts, TypeSpec("integer"), arg1_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_typespec(TypeSpec("pointer"));
   }
 
-  if (kind == ADD && arg1_type.typespec() == TypeSpec("pointer") &&
+  if (kind == ADD && arg1_type.typespec().base_type() == "pointer" &&
       tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_typespec(TypeSpec("pointer"));
   }
 
-  // byte access of offset array field trick.
-  // arg1 holds a structure.
-  // arg0 is an integer in a register.
   if (tc(dts, TypeSpec("structure"), arg1_type) && !dynamic_cast<IR_IntegerConstant*>(arg0.get()) &&
       is_int_or_uint(dts, arg0_type)) {
-    return TP_Type::make_object_plus_product(arg1_type.typespec(), 1);
+    if (arg1_type.typespec() == TypeSpec("symbol") &&
+        arg0_type.is_integer_constant(SYM_INFO_OFFSET + POINTER_SIZE)) {
+      // symbol -> GOAL String
+      return TP_Type::make_from_typespec(dts.ts.make_pointer_typespec("string"));
+    } else {
+      // byte access of offset array field trick.
+      // arg1 holds a structure.
+      // arg0 is an integer in a register.
+      return TP_Type::make_object_plus_product(arg1_type.typespec(), 1);
+    }
   }
 
   if (kind == AND) {
@@ -687,7 +693,7 @@ TP_Type IR_IntMath1::get_expression_type(const TypeState& input,
   }
 
   throw std::runtime_error("IR_IntMath1::get_expression_type case not handled: " +
-                           to_form(file).print());
+                           to_form(file).print() + " " + arg_type.print());
 }
 
 TP_Type IR_SymbolValue::get_expression_type(const TypeState& input,
@@ -755,6 +761,14 @@ TP_Type IR_Compare::get_expression_type(const TypeState& input,
 void IR_Nop_Atomic::propagate_types(const TypeState& input,
                                     const LinkedObjectFile& file,
                                     DecompilerTypeSystem& dts) {
+  (void)file;
+  (void)dts;
+  end_types = input;
+}
+
+void IR_Suspend_Atomic::propagate_types(const TypeState& input,
+                                        const LinkedObjectFile& file,
+                                        DecompilerTypeSystem& dts) {
   (void)file;
   (void)dts;
   end_types = input;
@@ -871,8 +885,10 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
   (void)input;
   (void)dts;
   // todo - we should map out static data and use a real type system lookup here.
+
   auto label = file.labels.at(label_id);
-  if ((label.offset & 0xf) == 4) {
+  // strings are 16-byte aligned, but functions are 8 byte aligned?
+  if ((label.offset & 7) == BASIC_OFFSET) {
     // it's a basic! probably.
     const auto& word = file.words_by_seg.at(label.target_segment).at((label.offset - 4) / 4);
     if (word.kind == LinkedWord::TYPE_PTR) {
@@ -883,6 +899,8 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
         return TP_Type::make_from_typespec(TypeSpec(word.symbol_name));
       }
     }
+  } else if ((label.offset & 7) == PAIR_OFFSET) {
+    return TP_Type::make_from_typespec(TypeSpec("pair"));
   }
 
   throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
@@ -918,4 +936,13 @@ TP_Type IR_EmptyPair::get_expression_type(const TypeState& input,
   (void)dts;
   // GOAL's empty pair is actually a pair type, containing the empty pair as the car and cdr
   return TP_Type::make_from_typespec(TypeSpec("pair"));
+}
+
+TP_Type IR_CMoveF::get_expression_type(const TypeState& input,
+                                       const LinkedObjectFile& file,
+                                       DecompilerTypeSystem& dts) {
+  (void)input;
+  (void)file;
+  (void)dts;
+  return TP_Type::make_from_typespec(TypeSpec("symbol"));
 }
