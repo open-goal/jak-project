@@ -169,7 +169,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
     func_block_env->return_value = return_reg;
     func_block_env->end_label = Label(new_func_env.get());
-    func_block_env->emit(std::make_unique<IR_FunctionStart>(args_for_coloring));
+    func_block_env->emit(std::make_unique<IR_ValueReset>(args_for_coloring));
 
     // compile the function, iterating through the body.
     Val* result = nullptr;

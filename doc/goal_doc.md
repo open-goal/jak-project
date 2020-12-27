@@ -1165,16 +1165,16 @@ Not implemented well yet.
 
 ## `rlet`
 ```lisp
-(rlet ((var-name [:reg reg-name] [:class reg-class] [:type typespec])...)
+(rlet ((var-name [:reg reg-name] [:class reg-class] [:type typespec] [:reset-here #t|#f])...)
   body...
   )
 ```
 Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr` or `xmm`) and the compiler will pick a GPR or XMM for you.
 
-If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you.
+If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you in the prologue and restore it in the epilogue.
 If you pick a special register like `rsp`, it won't be backed up.  
 
-Inside the `rlet`, all uses of `var-name` will always be in the given register.  If the variable goes dead (or is never live), the compiler may reuse the register as it wants.  The compiler may also spill the variable onto the stack.  Of course, if you are in an `asm-func`, the stack will never be used.
+Inside the `rlet`, all uses of `var-name` will always be in the given register.  If the variable goes dead (or is never live), the compiler may reuse the register as it wants.  The compiler may also spill the variable onto the stack.  Of course, if you are in an `asm-func`, the stack will never be used.  Be extremely careful about using "normal" registers without the coloring system and with higher-level code as the compiler may use your "normal" register as a temporary.  If you read the value of a register and use the coloring system, the variable will then be alive starting at the beginning of the function, and will make that register unavailable to the compiler and other `rlet`s that occur before. This is useful to preserve the value of a temporary register if needed, but can also be undesirable in other cases.  If you add the `:reset-here #t` flag, it will make the variable dead until the start of the `rlet`. It "resets" the value of the register in the coloring system at the start of the `rlet`.  The default value is false. It is recommended to keep the default value when accessing specific registers that are also normally used by the compiler.  For special registers like `rsp`, `r15`, `r14`, and `r13`, if you plan to use them with the coloring system, it is recommended to set the `reset-here` flag.
 
 Here is an example of using an `rlet` to access registers:
 ```lisp

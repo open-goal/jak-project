@@ -1099,11 +1099,14 @@ void ObjectFileDB::analyze_expressions() {
     (void)segment_id;
     // register usage
     func.run_reg_usage();
-    attempts++;
-    if (func.build_expression(data.linked_data)) {
-      success++;
-    } else {
-      func.warnings.append(";; Expression analysis failed.\n");
+
+    if (func.attempted_type_analysis) {
+      attempts++;
+      if (func.build_expression(data.linked_data)) {
+        success++;
+      } else {
+        func.warnings.append(";; Expression analysis failed.\n");
+      }
     }
   });
 

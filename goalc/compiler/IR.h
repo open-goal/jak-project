@@ -316,9 +316,9 @@ class IR_Null : public IR {
                   emitter::IR_Record irec) override;
 };
 
-class IR_FunctionStart : public IR {
+class IR_ValueReset : public IR {
  public:
-  IR_FunctionStart(std::vector<RegVal*> args);
+  IR_ValueReset(std::vector<RegVal*> args);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,

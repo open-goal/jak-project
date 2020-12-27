@@ -1,41 +1,3 @@
-; (defun get-saved-regs ((dest (pointer uint64)))
-;   (rlet ((s0 :reg rbx :type uint)
-;          (s1 :reg rbp :type uint)
-;          (s2 :reg r10 :type uint)
-;          (s3 :reg r11 :type uint)
-;          (s4 :reg r12 :type uint))
-;         (set! (-> dest 0) s0)
-;         (set! (-> dest 1) s1)
-;         (set! (-> dest 2) s2)
-;         (set! (-> dest 3) s3)
-;         (set! (-> dest 4) s4)
-        
-;         )
-;   )
-
-(defmacro with-named-reg-vars-check (&rest body)
-  `(let ((one 1)
-         (two 2)
-         (three 3)
-         (four 4)
-         (five 5)
-         (six 6)
-         (seven 7)
-         (eight 8)
-         (nine 9))
-     ,@body
-     (format 0 "~d ~d ~d ~d ~d ~d " one two three four five six)
-     (format 0 "~d ~d ~d~%" seven eight nine)
-     )
-  
-  )
-
-(defun deactivate-myself ()
-  "Deactivate the current process. A workaround because rlet isn't working well."
-  (rlet ((pp :reg r13 :type process))
-        (deactivate pp)
-        )
-  )
 
 (defun target-function ((a0 uint) (a1 uint) (a2 uint) (a3 uint) (a4 uint) (a5 uint))
   (format #t "TARGET FUNCTION ~D ~D ~D~%" a0 a1 a2)
@@ -49,7 +11,7 @@
     (format #t "proc1: ~D~%" i)
     (when (> i 4)
       (format #t "DEACTIVATE PROC 1~%")
-      (deactivate-myself)
+      (process-deactivate)
       )
     (suspend)
     )
@@ -102,7 +64,7 @@
     (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
     )
   (if (eq? a0 (the int 0))
-      (deactivate-myself)
+      (process-deactivate)
       )
   'init-child-proc-result
   )
@@ -117,7 +79,7 @@
       )
     )
   
-  (deactivate-myself)
+  (process-deactivate)
   )
 
 (defun kernel-test-2 ()
