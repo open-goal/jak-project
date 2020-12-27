@@ -492,10 +492,16 @@
   )
 
 (defmacro suspend ()
-  `(rlet ((pp :reg r13))
+  `(rlet ((pp :reg r13 :reset-here #t))
          (.push pp)
          (set! pp (-> (the process pp) top-thread))
          ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
          (.pop pp)
+         )
+  )
+
+(defmacro process-deactivate ()
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         (deactivate pp)
          )
   )

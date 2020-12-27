@@ -25,17 +25,18 @@ bool Function::build_expression(LinkedObjectFile& file) {
     // or more complicated analysis to do as good as possible on outer begins.
     auto all_children = ir->get_all_ir(file);
     std::vector<IR_Begin*> all_begins;
-    for (auto i = all_children.size(); i-- > 0;) {
-      auto as_begin = dynamic_cast<IR_Begin*>(all_children.at(i).get());
-      if (as_begin) {
-        all_begins.push_back(as_begin);
-      }
-    }
 
     // the top level may also be a begin
     auto as_begin = dynamic_cast<IR_Begin*>(ir.get());
     if (as_begin) {
       all_begins.push_back(as_begin);
+    }
+
+    for (auto& i : all_children) {
+      auto child_as_begin = dynamic_cast<IR_Begin*>(i.get());
+      if (child_as_begin) {
+        all_begins.push_back(child_as_begin);
+      }
     }
 
     // turn each begin into an expression

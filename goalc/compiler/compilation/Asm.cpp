@@ -37,6 +37,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
   auto lenv = fenv->alloc_env<LexicalEnv>(env);
 
   std::vector<IRegConstraint> constraints;
+  std::vector<RegVal*> reset_regs;
 
   for_each_in_list(defs, [&](const goos::Object& o) {
     // (new-place [:reg old-place] [:type type-spec] [:class reg-type] [:bind #f|lexical|lambda])
@@ -44,6 +45,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     va_check(o, def_args, {goos::ObjectType::SYMBOL},
              {{"reg", {false, goos::ObjectType::SYMBOL}},
               {"type", {false, {}}},
+              {"reset-here", {false, {}}},
               {"class", {false, goos::ObjectType::SYMBOL}}});
 
     // get the name of the new place
@@ -71,17 +73,27 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     // alloc a register:
     auto new_place_reg = env->make_ireg(ts, register_kind);
     new_place_reg->mark_as_settable();
+
     if (def_args.has_named("reg")) {
       IRegConstraint constraint;
       constraint.ireg = new_place_reg->ireg();
       constraint.contrain_everywhere = true;
       constraint.desired_register = parse_register(def_args.named.at("reg"));
+      if (def_args.has_named("reset-here") &&
+          get_true_or_false(form, def_args.get_named("reset-here"))) {
+        reset_regs.push_back(new_place_reg);
+      }
+
       new_place_reg->set_rlet_constraint(constraint.desired_register);
       constraints.push_back(constraint);
     }
 
     lenv->vars[new_place_name.as_symbol()->name] = new_place_reg;
   });
+
+  if (!reset_regs.empty()) {
+    lenv->emit_ir<IR_ValueReset>(reset_regs);
+  }
 
   Val* result = get_none();
   for (u64 i = 1; i < args.unnamed.size(); i++) {

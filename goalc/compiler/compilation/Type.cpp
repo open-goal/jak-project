@@ -182,7 +182,7 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   constraint.desired_register = emitter::gRegInfo.get_arg_reg(0);  // to the first argument
   method_env->constrain(constraint);
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
-  method_env->emit(std::make_unique<IR_FunctionStart>(std::vector<RegVal*>{input}));
+  method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input}));
 
   RegVal* type_name = nullptr;
   if (dynamic_cast<BasicType*>(structured_type)) {
@@ -342,7 +342,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());
-  func_block_env->emit(std::make_unique<IR_FunctionStart>(args_for_coloring));
+  func_block_env->emit(std::make_unique<IR_ValueReset>(args_for_coloring));
 
   // compile the function!
   Val* result = nullptr;

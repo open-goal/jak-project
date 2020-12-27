@@ -857,15 +857,15 @@ void IR_Null::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 ///////////////////////
-// FunctionStart
+// ValueReset
 ///////////////////////
-IR_FunctionStart::IR_FunctionStart(std::vector<RegVal*> args) : m_args(std::move(args)) {}
+IR_ValueReset::IR_ValueReset(std::vector<RegVal*> args) : m_args(std::move(args)) {}
 
-std::string IR_FunctionStart::print() {
-  return "function-start";
+std::string IR_ValueReset::print() {
+  return "value-reset";
 }
 
-RegAllocInstr IR_FunctionStart::to_rai() {
+RegAllocInstr IR_ValueReset::to_rai() {
   RegAllocInstr rai;
   for (auto& x : m_args) {
     rai.write.push_back(x->ireg());
@@ -873,9 +873,9 @@ RegAllocInstr IR_FunctionStart::to_rai() {
   return rai;
 }
 
-void IR_FunctionStart::do_codegen(emitter::ObjectGenerator* gen,
-                                  const AllocationResult& allocs,
-                                  emitter::IR_Record irec) {
+void IR_ValueReset::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
   (void)gen;
   (void)allocs;
   (void)irec;
