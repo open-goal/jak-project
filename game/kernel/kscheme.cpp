@@ -163,7 +163,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
 
     return kmalloc(*Ptr<Ptr<kheapinfo>>(heapSymbol), size, KMALLOC_MEMSET, gstr->data()).offset;
   } else if (heapOffset == FIX_SYM_PROCESS_TYPE) {
-    assert(false); // nyi
+    assert(false);  // nyi
     // allocate on current process heap
     //    Ptr start = *ptr<Ptr>(getS6() + 0x4c + 8);
     //    Ptr heapEnd = *ptr<Ptr>(getS6() + 0x4c + 4);
@@ -179,7 +179,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
     //      alignedSize); return 0;
     //    }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
-    assert(false); // nyi, I think unused.
+    assert(false);  // nyi, I think unused.
   } else {
     memset(Ptr<u8>(heapSymbol).c(), 0, (size_t)alignedSize);  // treat it as a stack address
     return heapSymbol;

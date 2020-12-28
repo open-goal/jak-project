@@ -203,13 +203,13 @@ s32 CreateSema(SemaParam* param) {
 
 s32 WaitSema(s32 sema) {
   (void)sema;
-  assert(false); // nyi
+  assert(false);  // nyi
   return 0;
 }
 
 s32 SignalSema(s32 sema) {
   (void)sema;
-  assert(false); // nyi
+  assert(false);  // nyi
   return 0;
 }
 
