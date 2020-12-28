@@ -65,6 +65,8 @@ class Listener {
   std::vector<std::string> message_record;
   std::unordered_map<std::string, LoadEntry> m_load_entries;
   char ack_recv_buff[512];
+  uint64_t last_sent_id = 0;
+  uint64_t last_recvd_id = 0;
 };
 }  // namespace listener
 

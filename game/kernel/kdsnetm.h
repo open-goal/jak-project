@@ -68,7 +68,7 @@ void GoalProtoHandler(int event, int param, void* data);
  * DONE, original version used an uncached address and had a FlushCache call, which were both
  * removed
  */
-s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
+s32 SendFromBufferD(s32 p1, u64 msg_id, char* data, s32 size);
 
 /*!
  * Print GOAL Protocol status

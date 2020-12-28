@@ -182,6 +182,9 @@ bool Listener::connect_to_target(int n_tries, const std::string& ip, int port) {
     listen_socket = -1;
     return false;
   }
+
+  last_recvd_id = 0;
+  last_sent_id = 0;
 }
 
 /*!
@@ -218,7 +221,17 @@ void Listener::receive_func() {
       case ListenerMessageKind::MSG_ACK:
         // an "ack" message, sent by the target to indicate it got something.
         if (!waiting_for_ack) {
-          printf("[Listener] Got an ack message when we weren't expecting one.");
+          if (hdr->msg_id == last_sent_id) {
+            printf("[Listener] Received ACK for most recent message late.\n");
+            if (last_recvd_id != hdr->msg_id - 1) {
+              printf(
+                  "[Listener] WARNING: message ID jumped from %ld to %ld. Some messages may have "
+                  "been lost. You must wait for an ACK before sending the next message.\n",
+                  last_recvd_id, hdr->msg_id);
+            }
+          } else {
+            printf("[Listener] Got an unexpcted ACK message.");
+          }
         }
 
         if (hdr->deci2_header.len < 512) {
@@ -236,6 +249,13 @@ void Listener::receive_func() {
           ack_recv_buff[ack_recv_prog] = '\0';
           assert(ack_recv_prog < 512);
           got_ack = true;
+          last_recvd_id = hdr->msg_id;
+          if (last_recvd_id > last_sent_id) {
+            printf(
+                "[Listener] ERROR: Got an ack message with id of %ld, but the last message sent "
+                "had an ID of %ld.\n",
+                last_recvd_id, last_sent_id);
+          }
         } else {
           printf("[Listener] got invalid ack!\n");
         }
@@ -245,6 +265,7 @@ void Listener::receive_func() {
       case ListenerMessageKind::MSG_PRINT: {
         auto* str_buff = new char[hdr->msg_size + 1];  // plus one for the null terminator
         int msg_prog = 0;
+        assert(hdr->msg_id == 0);
         while (rcvd < hdr->deci2_header.len) {
           if (!m_connected) {
             return;
@@ -338,7 +359,8 @@ void Listener::send_code(std::vector<uint8_t>& code) {
   header->msg_size = code.size();
   header->ltt_msg_kind = LTT_MSG_CODE;
   header->u6 = 0;
-  header->msg_id = 0;
+  last_sent_id++;
+  header->msg_id = last_sent_id;
   memcpy(buffer_data, code.data(), code.size());
   send_buffer(total_size);
 }
@@ -365,9 +387,10 @@ void Listener::send_reset(bool shutdown) {
   header->deci2_header.src = 'H';
   header->deci2_header.dst = 'E';
   header->msg_size = 0;
-  header->ltt_msg_kind = LTT_MSG_RESET;
+  header->ltt_msg_kind = shutdown ? LTT_MSG_SHUTDOWN : LTT_MSG_RESET;
   header->u6 = 0;
-  header->msg_id = shutdown ? UINT64_MAX : 0;
+  last_sent_id++;
+  header->msg_id = last_sent_id;
   send_buffer(sizeof(ListenerMessageHeader));
   disconnect();
   close_socket(listen_socket);
@@ -392,7 +415,8 @@ void Listener::send_poke() {
   header->msg_size = 0;
   header->ltt_msg_kind = LTT_MSG_POKE;
   header->u6 = 0;
-  header->msg_id = 0;
+  last_sent_id++;
+  header->msg_id = last_sent_id;
   send_buffer(sizeof(ListenerMessageHeader));
 }
 
@@ -426,8 +450,7 @@ void Listener::send_buffer(int sz) {
       printf("  OK\n");
     }
   } else {
-    printf(
-        "  Error - target has timed out. If it is stuck in a loop, it must be manually killed.\n");
+    printf("  Timed out waiting for ack.\n");
   }
 }
 

@@ -47,6 +47,7 @@
 #include "game/overlord/stream.h"
 
 #include "common/goal_constants.h"
+#include "common/cross_os_debug/xdbg.h"
 
 u8* g_ee_main_mem = nullptr;
 
@@ -75,7 +76,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   server.wait_for_protos_ready();
   // then allow the server to accept connections
   if (!server.init()) {
-    throw std::runtime_error("DECI2 server init failed");
+    assert(false);
   }
 
   spdlog::debug("[DECI2] Waiting for listener...");
@@ -147,6 +148,9 @@ void ee_runner(SystemThreadInterface& iface) {
   klisten_init_globals();
   kmemcard_init_globals();
   kprint_init_globals();
+
+  // Added for OpenGOAL's debugger
+  xdbg::allow_debugging();
 
   goal_main(g_argc, g_argv);
   spdlog::debug("[EE] Done!");

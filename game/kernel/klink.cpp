@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <cassert>
+#include <cstdio>
 #include <common/versions.h>
 #include "klink.h"
 #include "fileio.h"
@@ -81,7 +82,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
           "VERSION ERROR: C Kernel built from GOAL %d.%d, but object file %s is from GOAL %d.%d\n",
           versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR, name, ofh->goal_version_major,
           ofh->goal_version_minor);
-      exit(0);
+      assert(false);
     }
     if (link_debug_printfs) {
       printf("Object file header:\n");
@@ -352,11 +353,20 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   // target seg, dist into mine, dist into target, patch loc in mine
   uint8_t target_seg = *link;
   assert(target_seg < ofh->segment_count);
+
   uint32_t* link_data = (link + 1).cast<uint32_t>().c();
   int32_t mine = link_data[0] + ofh->code_infos[current_seg].offset;
   int32_t tgt = link_data[1] + ofh->code_infos[target_seg].offset;
   int32_t diff = tgt - mine;
   uint32_t offset_of_patch = link_data[2] + ofh->code_infos[current_seg].offset;
+
+  if (!ofh->code_infos[target_seg].offset) {
+    // we want to address GOAL 0. In the case where this is a rip-relative load or store, this
+    // will crash, which is what we want. If it's an lea and just getting an address, this will get
+    // us a nullptr. If you do a method-set! with a null pointer it does nothing, so it's safe to
+    // method-set! to things that are in unloaded segments and it'll just keep the old method.
+    diff = -mine;
+  }
   // printf("link object in seg %d diff %d at %d (%d + %d)\n", target_seg, diff, offset_of_patch,
   // link_data[2], ofh->code_infos[current_seg].offset);
 
@@ -367,7 +377,7 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   } else if (size == 8) {
     *Ptr<int64_t>(offset_of_patch).c() = diff;
   } else {
-    throw std::runtime_error("unknown size in cross_seg_dist_link_v3");
+    assert(false);
   }
 
   return 1 + 3 * 4;
@@ -463,36 +473,38 @@ uint32_t link_control::work_v3() {
     // state 1: linking. For now all links are done at once. This is probably going to be fine on a
     // modern computer.  But the game broke this into multiple steps.
     if (m_segment_process < ofh->segment_count) {
-      Ptr<u8> lp(ofh->link_infos[m_segment_process].offset);
+      if (ofh->code_infos[m_segment_process].offset) {
+        Ptr<u8> lp(ofh->link_infos[m_segment_process].offset);
 
-      while (*lp) {
-        switch (*lp) {
-          case LINK_TABLE_END:
-            break;
-          case LINK_SYMBOL_OFFSET:
-            lp = lp + 1;
-            lp = lp + symlink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset));
-            break;
-          case LINK_TYPE_PTR:
-            lp = lp + 1;  // seek past id
-            lp = lp + typelink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset));
-            break;
-          case LINK_DISTANCE_TO_OTHER_SEG_64:
-            lp = lp + 1;
-            lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 8);
-            break;
-          case LINK_DISTANCE_TO_OTHER_SEG_32:
-            lp = lp + 1;
-            lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 4);
-            break;
-          case LINK_PTR:
-            lp = lp + 1;
-            lp = lp + ptr_link_v3(lp, ofh, m_segment_process);
-            break;
-          default:
-            printf("unknown link table thing %d\n", *lp);
-            exit(0);
-            break;
+        while (*lp) {
+          switch (*lp) {
+            case LINK_TABLE_END:
+              break;
+            case LINK_SYMBOL_OFFSET:
+              lp = lp + 1;
+              lp = lp + symlink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset));
+              break;
+            case LINK_TYPE_PTR:
+              lp = lp + 1;  // seek past id
+              lp = lp + typelink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset));
+              break;
+            case LINK_DISTANCE_TO_OTHER_SEG_64:
+              lp = lp + 1;
+              lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 8);
+              break;
+            case LINK_DISTANCE_TO_OTHER_SEG_32:
+              lp = lp + 1;
+              lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 4);
+              break;
+            case LINK_PTR:
+              lp = lp + 1;
+              lp = lp + ptr_link_v3(lp, ofh, m_segment_process);
+              break;
+            default:
+              printf("unknown link table thing %d\n", *lp);
+              assert(false);
+              break;
+          }
         }
       }
 

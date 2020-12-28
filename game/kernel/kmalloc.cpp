@@ -6,6 +6,7 @@
  */
 
 #include <cstring>
+#include <cstdio>
 #include "common/goal_constants.h"
 #include "kmalloc.h"
 #include "kprint.h"

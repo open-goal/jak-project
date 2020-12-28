@@ -126,9 +126,7 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
  * completely defined.
  */
 u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
-  if (size <= 0) {
-    throw std::runtime_error("got <= 0 size allocation in alloc_from_heap!");
-  }
+  assert(size > 0);
 
   // align to 16 bytes (part one)
   s32 alignedSize = size + 0xf;
@@ -165,7 +163,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
 
     return kmalloc(*Ptr<Ptr<kheapinfo>>(heapSymbol), size, KMALLOC_MEMSET, gstr->data()).offset;
   } else if (heapOffset == FIX_SYM_PROCESS_TYPE) {
-    throw std::runtime_error("this type of process allocation is not supported yet!\n");
+    assert(false);  // nyi
     // allocate on current process heap
     //    Ptr start = *ptr<Ptr>(getS6() + 0x4c + 8);
     //    Ptr heapEnd = *ptr<Ptr>(getS6() + 0x4c + 4);
@@ -181,7 +179,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
     //      alignedSize); return 0;
     //    }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
-    throw std::runtime_error("this type of scratchpad allocation is not used!\n");
+    assert(false);  // nyi, I think unused.
   } else {
     memset(Ptr<u8>(heapSymbol).c(), 0, (size_t)alignedSize);  // treat it as a stack address
     return heapSymbol;
@@ -1122,8 +1120,8 @@ u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
               (*type_tag).offset);
     }
   }
-  // throw std::runtime_error("call_method_of_type failed!\n");
   printf("[ERROR] call_method_of_type failed!\n");
+  assert(false);
   return arg;
 }
 
@@ -1159,7 +1157,8 @@ u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32
               (*type_tag).offset);
     }
   }
-  throw std::runtime_error("call_method_of_type failed!\n");
+  printf("[ERROR] call_method_of_type_arg2 failed!\n");
+  assert(false);
   return arg;
 }
 

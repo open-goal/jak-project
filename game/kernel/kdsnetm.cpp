@@ -161,7 +161,7 @@ void GoalProtoHandler(int event, int param, void* opt) {
  * DONE, original version used an uncached address and had a FlushCache call, which were both
  * removed
  */
-s32 SendFromBufferD(s32 msg_kind, u64 p2, char* data, s32 size) {
+s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
   // wait for send to finish or error first...
   while (protoBlock.send_status > 0) {
     // on actual PS2, the kernel will run this in another thread.
@@ -190,7 +190,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 p2, char* data, s32 size) {
     header->msg_kind = (ListenerMessageKind)msg_kind;
     header->u6 = 0;
     header->msg_size = size;
-    header->msg_id = p2;
+    header->msg_id = msg_id;
 
     // start send!
     auto rv = sceDeci2ReqSend(protoBlock.socket, header->deci2_header.dst);
