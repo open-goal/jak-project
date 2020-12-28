@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
+#include <cassert>
 
 #include "common/goal_constants.h"
 #include "common/common_types.h"
@@ -348,10 +349,9 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
       value = (char)rounder;
     } else if (!(ru32 >> 31)) {  // sign bit
       value = 0;
-      throw std::runtime_error("got very large exponent in rounding calculation");
+      assert(false);  // not sure what happens here.
     } else {
       value = -1;  // happens on NaN's
-      //      throw std::runtime_error("got negative sign bit in rounding calculation");
     }
 
     // place number at the end of the buffer and move pointer back
@@ -396,10 +396,9 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
           value = (char)next_int;
         } else if (!(ru32 >> 0x1f)) {
           value = 0;
-          throw std::runtime_error("got very large exponent in rounding calculation");
+          assert(false);  // not sure what happens here.
         } else {
           value = -1;  // happens on NaN's
-          //          throw std::runtime_error("got negative sign bit in rounding calculation");
         }
         *count_chrp = value + '0';
         count_chrp++;
@@ -411,7 +410,7 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
     // however, the rounding flag is always disabled and the rounding code doesn't work.
     if ((fraction_part != 0.f) && ((flags & 1) != 0)) {
       start_ptr = round(fraction_part, nullptr, start_ptr, count_chrp - 1, 0, lead_char);
-      throw std::runtime_error("cvt_float called round!");
+      assert(false);
     }
   }
 
@@ -563,7 +562,7 @@ char* kitoa(char* buffer, s64 value, u64 base, s32 length, char pad, u32 flag) {
  * uses C varags, but 128-bit varags don't work, so "format" always passes 0 for quadword printing.
  */
 void kqtoa() {
-  throw std::runtime_error("kqtoa not implemented");
+  assert(false);
 }
 
 struct format_struct {
@@ -801,7 +800,7 @@ s32 format_impl(uint64_t* args) {
                 }
                 kstrinsert(output_ptr, pad, desired_length - print_len);
               } else {
-                throw std::runtime_error("unsupported justify in format");
+                assert(false);
                 //                output_ptr = strend(output_ptr);
                 //                while(0 < (desired_length - print_len)) {
                 //                  char pad = ' ';
@@ -852,7 +851,7 @@ s32 format_impl(uint64_t* args) {
                 kstrinsert(output_ptr, pad, desired_length - print_len);
 
               } else {
-                throw std::runtime_error("unsupported justify in format");
+                assert(false);
                 //                output_ptr = strend(output_ptr);
                 //                u32 l140 = 0;
                 //                while(l140 < (desired_length - print_len)) {
@@ -893,9 +892,7 @@ s32 format_impl(uint64_t* args) {
                 call_method_of_type(in, type, GOAL_PRINT_METHOD);
               }
             } else {
-              // TODO - if we can't throw exceptions, what is the option?
-              // log, break and continue?
-              throw std::runtime_error("failed to find symbol in format!");
+              assert(false);  // bad type.
             }
           }
           output_ptr = strend(output_ptr);
@@ -916,7 +913,7 @@ s32 format_impl(uint64_t* args) {
                 call_method_of_type(in, type, GOAL_INSPECT_METHOD);
               }
             } else {
-              throw std::runtime_error("failed to find symbol in format!");
+              assert(false);  // bad type
             }
           }
           output_ptr = strend(output_ptr);
@@ -924,7 +921,7 @@ s32 format_impl(uint64_t* args) {
 
         case 'Q':  // not yet implemented.  hopefully andy gavin finishes this one soon.
         case 'q':
-          throw std::runtime_error("nyi q format string");
+          assert(false);
           break;
 
         case 'X':  // hex, 64 bit, pad padchar
@@ -1021,7 +1018,7 @@ s32 format_impl(uint64_t* args) {
             precision = 4;
           float value;
           if (in < 0) {
-            throw std::runtime_error("time seconds format error negative.\n");
+            assert(false);  // i don't get this one
           } else {
             value = in;
           }
@@ -1037,7 +1034,7 @@ s32 format_impl(uint64_t* args) {
 
         default:
           MsgErr("format: unknown code 0x%02x\n", format_ptr[1]);
-          throw std::runtime_error("format error");
+          assert(false);
           break;
       }
       format_ptr++;
@@ -1079,13 +1076,13 @@ s32 format_impl(uint64_t* args) {
         *PrintPendingLocal3 = 0;
         return 0;
       } else if (type == *Ptr<Ptr<Type>>(s7.offset + FIX_SYM_FILE_STREAM_TYPE)) {
-        throw std::runtime_error("FORMAT into a file stream not supported");
+        assert(false);  // file stream nyi
       }
     }
-    throw std::runtime_error("unknown format destination");
+    assert(false);  // unknown destination
     return 0;
   }
 
-  throw std::runtime_error("how did we get here?");
+  assert(false);  // ??????
   return 7;
 }

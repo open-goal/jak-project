@@ -366,7 +366,7 @@ int ShutdownMachine() {
   CloseListener();
   ShutdownSound();
   ShutdownGoalProto();
-  Msg(6, "kernel: machine shutdown");
+  Msg(6, "kernel: machine shutdown\n");
   return 0;
 }
 

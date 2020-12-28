@@ -41,6 +41,7 @@ struct CompilerTestRunner {
 
 void runtime_no_kernel();
 void runtime_with_kernel();
+void runtime_with_kernel_no_debug_segment();
 
 void createDirIfAbsent(const std::string& path);
 std::string getTemplateDir(const std::string& category);

@@ -273,6 +273,9 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
 
   const char* path = get_file_path(fd->fr);
   FILE* fp = fopen(path, "rb");
+  if (!fp) {
+    spdlog::error("[OVERLORD] fake iso could not open the file \"{}\"", path);
+  }
   assert(fp);
   fseek(fp, 0, SEEK_END);
   uint32_t file_len = ftell(fp);

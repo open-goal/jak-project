@@ -41,7 +41,9 @@ enum ListenerToTargetMsgKind : u16 {
   LTT_MSG_PRINT = 6,          //! Print an object
   LTT_MSG_PRINT_SYMBOLS = 7,  //! Print all symbols
   LTT_MSG_RESET = 8,          //! Reset the game
-  LTT_MSG_CODE = 9            //! Send code to patch into the game
+  LTT_MSG_CODE = 9,           //! Send code to patch into the game
+  // below here are added
+  LTT_MSG_SHUTDOWN = 10  //! Shut down the runtime.
 };
 
 /*!

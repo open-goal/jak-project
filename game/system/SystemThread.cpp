@@ -15,7 +15,7 @@
 SystemThread& SystemThreadManager::create_thread(const std::string& name) {
   if (thread_count >= MAX_SYSTEM_THREADS) {
     spdlog::critical("Out of System Threads! MAX_SYSTEM_THREADS is ", MAX_SYSTEM_THREADS);
-    throw std::runtime_error("Out of System Threads! Please increase MAX_SYSTEM_THREADS");
+    assert(false);
   }
   auto& thread = threads[thread_count];
 

@@ -102,6 +102,12 @@ void runtime_with_kernel() {
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
+void runtime_with_kernel_no_debug_segment() {
+  constexpr int argc = 3;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
+
 void createDirIfAbsent(const std::string& path) {
   if (!std::filesystem::is_directory(path) || !std::filesystem::exists(path)) {
     std::filesystem::create_directory(path);

@@ -16,7 +16,6 @@ void setup_logging(bool verbose) {
     auto game_logger = spdlog::stdout_color_mt("GOAL Runtime");
     spdlog::set_default_logger(game_logger);
     spdlog::flush_on(spdlog::level::info);
-    spdlog::set_pattern("%v");
     spdlog::info("Verbose logging enabled");
   } else {
     auto game_logger = spdlog::basic_logger_mt("GOAL Runtime", "logs/runtime.log");

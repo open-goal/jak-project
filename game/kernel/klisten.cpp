@@ -5,6 +5,8 @@
  */
 
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include "klisten.h"
 #include "kboot.h"
 #include "kprint.h"
@@ -133,9 +135,9 @@ void ProcessListenerMessage(Ptr<char> msg) {
       break;
     case LTT_MSG_RESET:
       MasterExit = 1;
-      if (protoBlock.msg_id == UINT64_MAX) {
-        MasterExit = 2;
-      }
+      break;
+    case LTT_MSG_SHUTDOWN:
+      MasterExit = 2;
       break;
     case LTT_MSG_CODE: {
       auto buffer = kmalloc(kdebugheap, MessCount, 0, "listener-link-block");
