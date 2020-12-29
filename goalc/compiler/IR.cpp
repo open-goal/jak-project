@@ -794,6 +794,11 @@ void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
         IGen::load_goal_xmm32(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
                               emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
+  } else if (m_dest->ireg().kind == emitter::RegKind::XMM && m_info.size == 16 &&
+             m_info.sign_extend == false && m_info.reg == ::RegKind::FLOAT_4X) {
+    gen->add_instr(IGen::load_goal_vf(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
+                                      emitter::gRegInfo.get_offset_reg(), m_offset),
+                   irec);
   } else {
     throw std::runtime_error("IR_LoadConstOffset::do_codegen not supported");
   }
