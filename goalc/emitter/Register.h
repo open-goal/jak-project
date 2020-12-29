@@ -13,12 +13,13 @@
 #include <vector>
 #include <string>
 #include "common/common_types.h"
+#include "common/goal_constants.h"
 
 namespace emitter {
 
-enum class RegKind : u8 { GPR, XMM, INVALID };
-
-std::string to_string(RegKind kind);
+enum class HWRegKind : u8 { GPR, XMM, INVALID };
+HWRegKind reg_class_to_hw(RegClass reg_class);
+std::string to_string(HWRegKind kind);
 
 constexpr int GPR_SIZE = 8;
 constexpr int XMM_SIZE = 16;

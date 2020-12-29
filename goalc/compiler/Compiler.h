@@ -112,7 +112,7 @@ class Compiler {
 
   TypeSpec parse_typespec(const goos::Object& src);
   bool is_local_symbol(const goos::Object& obj, Env* env);
-  emitter::RegKind get_preferred_reg_kind(const TypeSpec& ts);
+  emitter::HWRegKind get_preferred_reg_kind(const TypeSpec& ts);
   Val* compile_real_function_call(const goos::Object& form,
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,

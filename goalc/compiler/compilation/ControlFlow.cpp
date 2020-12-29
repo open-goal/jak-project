@@ -90,8 +90,8 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
 
         // pick between a floating point and an integer comparison.
         if (is_float(first_arg->type())) {
-          gc.a = first_arg->to_xmm(env);
-          gc.b = second_arg->to_xmm(env);
+          gc.a = first_arg->to_fpr(env);
+          gc.b = second_arg->to_fpr(env);
           gc.is_float = true;
         } else {
           gc.a = first_arg->to_gpr(env);

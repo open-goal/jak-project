@@ -58,20 +58,21 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     }
 
     // figure out the class
-    emitter::RegKind register_kind = emitter::RegKind::GPR;
+    RegClass register_class = RegClass::GPR_64;
     if (def_args.has_named("class")) {
       auto& class_name = def_args.named.at("class").as_symbol()->name;
       if (class_name == "gpr") {
-        register_kind = emitter::RegKind::GPR;
-      } else if (class_name == "xmm") {
-        register_kind = emitter::RegKind::XMM;
+        register_class = RegClass::GPR_64;
+        // todo remove xmm
+      } else if (class_name == "xmm" || class_name == "fpr") {
+        register_class = RegClass::FLOAT;
       } else {
         throw_compiler_error(o, "Register class {} is unknown.", class_name);
       }
     }
 
     // alloc a register:
-    auto new_place_reg = env->make_ireg(ts, register_kind);
+    auto new_place_reg = env->make_ireg(ts, register_class);
     new_place_reg->mark_as_settable();
 
     if (def_args.has_named("reg")) {

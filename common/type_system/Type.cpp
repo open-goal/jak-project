@@ -9,18 +9,18 @@
 #include "Type.h"
 
 namespace {
-std::string reg_kind_to_string(RegKind kind) {
+std::string reg_kind_to_string(RegClass kind) {
   switch (kind) {
-    case RegKind::GPR_64:
+    case RegClass::GPR_64:
       return "gpr64";
-    case RegKind::INT_128:
+    case RegClass::INT_128:
       return "int128";
-    case RegKind::FLOAT:
+    case RegClass::FLOAT:
       return "float";
-    case RegKind::FLOAT_4X:
+    case RegClass::VECTOR_FLOAT:
       return "float-4x";
     default:
-      throw std::runtime_error("Unsupported RegKind");
+      throw std::runtime_error("Unsupported HWRegKind");
   }
 }
 
@@ -268,8 +268,8 @@ int NullType::get_size_in_memory() const {
   throw std::runtime_error("get_size_in_memory called on NullType");
 }
 
-RegKind NullType::get_preferred_reg_kind() const {
-  throw std::runtime_error("get_preferred_reg_kind called on NullType");
+RegClass NullType::get_preferred_reg_class() const {
+  throw std::runtime_error("get_preferred_reg_class called on NullType");
 }
 
 int NullType::get_offset() const {
@@ -306,7 +306,7 @@ ValueType::ValueType(std::string parent,
                      bool is_boxed,
                      int size,
                      bool sign_extend,
-                     RegKind reg)
+                     RegClass reg)
     : Type(std::move(parent), std::move(name), is_boxed),
       m_size(size),
       m_sign_extend(sign_extend),
@@ -339,7 +339,7 @@ int ValueType::get_size_in_memory() const {
 /*!
  * The type of register that this value likes to be loaded into.
  */
-RegKind ValueType::get_preferred_reg_kind() const {
+RegClass ValueType::get_preferred_reg_class() const {
   return m_reg_kind;
 }
 
@@ -447,8 +447,8 @@ int ReferenceType::get_load_size() const {
 /*!
  * Pointers go in GPRs
  */
-RegKind ReferenceType::get_preferred_reg_kind() const {
-  return RegKind::GPR_64;
+RegClass ReferenceType::get_preferred_reg_class() const {
+  return RegClass::GPR_64;
 }
 
 std::string ReferenceType::print() const {
@@ -592,7 +592,7 @@ bool BitField::operator==(const BitField& other) const {
 }
 
 BitFieldType::BitFieldType(std::string parent, std::string name, int size, bool sign_extend)
-    : ValueType(std::move(parent), std::move(name), false, size, sign_extend, RegKind::GPR_64) {}
+    : ValueType(std::move(parent), std::move(name), false, size, sign_extend, RegClass::GPR_64) {}
 
 bool BitFieldType::lookup_field(const std::string& name, BitField* out) const {
   for (auto& field : m_fields) {

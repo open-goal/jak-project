@@ -136,12 +136,12 @@ bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
   return false;
 }
 
-emitter::RegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
-  switch (m_ts.lookup_type(ts)->get_preferred_reg_kind()) {
-    case RegKind::GPR_64:
-      return emitter::RegKind::GPR;
-    case RegKind::FLOAT:
-      return emitter::RegKind::XMM;
+emitter::HWRegKind Compiler::get_preferred_reg_kind(const TypeSpec& ts) {
+  switch (m_ts.lookup_type(ts)->get_preferred_reg_class()) {
+    case RegClass::GPR_64:
+      return emitter::HWRegKind::GPR;
+    case RegClass::FLOAT:
+      return emitter::HWRegKind::XMM;
     default:
       throw std::runtime_error("Unknown preferred register kind");
   }

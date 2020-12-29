@@ -1,3 +1,4 @@
+#include <cassert>
 #include "third-party/fmt/core.h"
 #include "IRegister.h"
 
@@ -10,8 +11,18 @@ std::string IRegister::to_string() const {
   //    }
   //    return result;
   //  } else {
-  return fmt::format("i{}-{}", emitter::to_string(kind), id);
-  //  }
+  switch (reg_class) {
+    case RegClass::GPR_64:
+      return fmt::format("igpr-{}", id);
+    case RegClass::FLOAT:
+      return fmt::format("ifpr-{}", id);
+    case RegClass::INT_128:
+      return fmt::format("ii128-{}", id);
+    case RegClass::VECTOR_FLOAT:
+      return fmt::format("ivf-{}", id);
+    default:
+      assert(false);
+  }
 }
 
 std::string IRegConstraint::to_string() const {

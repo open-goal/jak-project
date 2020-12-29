@@ -123,11 +123,11 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
   }
 
   // default to GPR
-  info.reg = RegKind::GPR_64;
+  info.reg = RegClass::GPR_64;
   info.mem_deref = true;
 
   if (typecheck(TypeSpec("float"), ts, "", false, false)) {
-    info.reg = RegKind::FLOAT;
+    info.reg = RegClass::FLOAT;
   }
 
   if (ts.base_type() == "inline-array") {
@@ -165,7 +165,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
       // an array of values, which should be loaded in the correct way to the correct register
       info.stride = result_type->get_size_in_memory();
       info.sign_extend = result_type->get_load_signed();
-      info.reg = result_type->get_preferred_reg_kind();
+      info.reg = result_type->get_preferred_reg_class();
       info.load_size = result_type->get_load_size();
       assert(result_type->get_size_in_memory() == result_type->get_load_size());
     }
@@ -640,7 +640,7 @@ void TypeSystem::add_builtin_types() {
 
   // OBJECT
   auto obj_type = add_type(
-      "object", std::make_unique<ValueType>("object", "object", false, 4, false, RegKind::GPR_64));
+      "object", std::make_unique<ValueType>("object", "object", false, 4, false, RegClass::GPR_64));
 
   auto structure_type = add_builtin_structure("object", "structure");
   auto basic_type = add_builtin_basic("structure", "basic");
@@ -660,7 +660,7 @@ void TypeSystem::add_builtin_types() {
   inline_array_type->set_runtime_type("pointer");
 
   add_builtin_value_type("object", "number", 8);  // sign extend?
-  add_builtin_value_type("number", "float", 4, false, false, RegKind::FLOAT);
+  add_builtin_value_type("number", "float", 4, false, false, RegClass::FLOAT);
   add_builtin_value_type("number", "integer", 8, false, false);   // sign extend?
   add_builtin_value_type("integer", "binteger", 8, true, false);  // sign extend?
   add_builtin_value_type("integer", "sinteger", 8, false, true);
@@ -668,13 +668,13 @@ void TypeSystem::add_builtin_types() {
   add_builtin_value_type("sinteger", "int16", 2, false, true);
   add_builtin_value_type("sinteger", "int32", 4, false, true);
   add_builtin_value_type("sinteger", "int64", 8, false, true);
-  add_builtin_value_type("sinteger", "int128", 16, false, true, RegKind::INT_128);
+  add_builtin_value_type("sinteger", "int128", 16, false, true, RegClass::INT_128);
   add_builtin_value_type("integer", "uinteger", 8);
   add_builtin_value_type("uinteger", "uint8", 1);
   add_builtin_value_type("uinteger", "uint16", 2);
   add_builtin_value_type("uinteger", "uint32", 4);
   add_builtin_value_type("uinteger", "uint64", 8);
-  add_builtin_value_type("uinteger", "uint128", 16, false, false, RegKind::INT_128);
+  add_builtin_value_type("uinteger", "uint128", 16, false, false, RegClass::INT_128);
 
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
   int_type->disallow_in_runtime();
@@ -948,7 +948,7 @@ ValueType* TypeSystem::add_builtin_value_type(const std::string& parent,
                                               int size,
                                               bool boxed,
                                               bool sign_extend,
-                                              RegKind reg) {
+                                              RegClass reg) {
   add_type(type_name,
            std::make_unique<ValueType>(parent, type_name, boxed, size, sign_extend, reg));
   return get_type_of_type<ValueType>(type_name);

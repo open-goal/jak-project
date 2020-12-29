@@ -618,13 +618,14 @@ int get_stack_slot_for_var(int var, RegAllocCache* cache) {
 const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int v,
                                                                             RegAllocCache* cache) {
   auto& info = cache->iregs.at(v);
-  assert(info.kind != emitter::RegKind::INVALID);
-  if (info.kind == emitter::RegKind::GPR) {
+  assert(info.reg_class != RegClass::INVALID);
+  auto hw_kind = emitter::reg_class_to_hw(info.reg_class);
+  if (hw_kind == emitter::HWRegKind::GPR) {
     return emitter::gRegInfo.get_gpr_spill_alloc_order();
-  } else if (info.kind == emitter::RegKind::XMM) {
+  } else if (hw_kind == emitter::HWRegKind::XMM) {
     return emitter::gRegInfo.get_xmm_spill_alloc_order();
   } else {
-    throw std::runtime_error("Unsupported RegKind");
+    throw std::runtime_error("Unsupported HWRegKind");
   }
 }
 
@@ -632,22 +633,22 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v,
                                                                       RegAllocCache* cache,
                                                                       bool get_all) {
   auto& info = cache->iregs.at(v);
-  // todo fix this.
-  //  assert(info.kind != emitter::RegKind::INVALID);
-  if (info.kind == emitter::RegKind::GPR || info.kind == emitter::RegKind::INVALID) {
+  assert(info.reg_class != RegClass::INVALID);
+  auto hw_kind = emitter::reg_class_to_hw(info.reg_class);
+  if (hw_kind == emitter::HWRegKind::GPR || hw_kind == emitter::HWRegKind::INVALID) {
     if (!get_all && cache->is_asm_func) {
       return emitter::gRegInfo.get_gpr_temp_alloc_order();
     } else {
       return emitter::gRegInfo.get_gpr_alloc_order();
     }
-  } else if (info.kind == emitter::RegKind::XMM) {
+  } else if (hw_kind == emitter::HWRegKind::XMM) {
     if (!get_all && cache->is_asm_func) {
       return emitter::gRegInfo.get_xmm_temp_alloc_order();
     } else {
       return emitter::gRegInfo.get_xmm_alloc_order();
     }
   } else {
-    throw std::runtime_error("Unsupported RegKind");
+    throw std::runtime_error("Unsupported HWRegKind");
   }
 }
 

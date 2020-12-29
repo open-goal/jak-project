@@ -15,7 +15,7 @@ constexpr int ARRAY_DATA_OFFSET = 12;  // not including type tag
 constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
 constexpr s32 SYM_INFO_OFFSET = 0xff34;
 
-enum class RegKind { GPR_64, FLOAT, INT_128, FLOAT_4X, INVALID };
+enum class RegClass { GPR_64, FLOAT, INT_128, VECTOR_FLOAT, INVALID };
 
 constexpr u32 GOAL_NEW_METHOD = 0;       // method ID of GOAL new
 constexpr u32 GOAL_DEL_METHOD = 1;       // method ID of GOAL delete

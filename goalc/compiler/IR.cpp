@@ -79,7 +79,7 @@ RegAllocInstr IR_Return::to_rai() {
   RegAllocInstr rai;
   rai.write.push_back(m_return_reg->ireg());
   rai.read.push_back(m_value->ireg());
-  if (m_value->ireg().kind == m_return_reg->ireg().kind) {
+  if (m_value->ireg().reg_class == m_return_reg->ireg().reg_class) {
     rai.is_move = true;  // only true if we aren't moving from register kind to register kind
   }
   return rai;
@@ -233,7 +233,7 @@ RegAllocInstr IR_RegSet::to_rai() {
   RegAllocInstr rai;
   rai.write.push_back(m_dest->ireg());
   rai.read.push_back(m_src->ireg());
-  if (m_dest->ireg().kind == m_src->ireg().kind) {
+  if (m_dest->ireg().reg_class == m_src->ireg().reg_class) {
     rai.is_move = true;  // only true if we aren't moving from register kind to register kind
   }
   return rai;
@@ -643,7 +643,7 @@ void IR_StaticVarLoad::do_codegen(emitter::ObjectGenerator* gen,
   auto load_info = m_src->get_load_info();
   assert(m_src->get_addr_offset() == 0);
 
-  if (m_dest->ireg().kind == emitter::RegKind::XMM) {
+  if (m_dest->ireg().reg_class == RegClass::FLOAT) {
     assert(load_info.load_signed == false);
     assert(load_info.load_size == 4);
     assert(load_info.requires_load == true);
@@ -783,19 +783,19 @@ RegAllocInstr IR_LoadConstOffset::to_rai() {
 void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
                                     const AllocationResult& allocs,
                                     emitter::IR_Record irec) {
-  if (m_dest->ireg().kind == emitter::RegKind::GPR) {
+  if (m_dest->ireg().reg_class == RegClass::GPR_64) {
     gen->add_instr(IGen::load_goal_gpr(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
                                        emitter::gRegInfo.get_offset_reg(), m_offset, m_info.size,
                                        m_info.sign_extend),
                    irec);
-  } else if (m_dest->ireg().kind == emitter::RegKind::XMM && m_info.size == 4 &&
-             m_info.sign_extend == false && m_info.reg == ::RegKind::FLOAT) {
+  } else if (m_dest->ireg().reg_class == RegClass::FLOAT && m_info.size == 4 &&
+             m_info.sign_extend == false && m_info.reg == RegClass::FLOAT) {
     gen->add_instr(
         IGen::load_goal_xmm32(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
                               emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
-  } else if (m_dest->ireg().kind == emitter::RegKind::XMM && m_info.size == 16 &&
-             m_info.sign_extend == false && m_info.reg == ::RegKind::FLOAT_4X) {
+  } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT && m_info.size == 16 &&
+             m_info.sign_extend == false && m_info.reg == RegClass::VECTOR_FLOAT) {
     gen->add_instr(IGen::load_goal_vf(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
                                       emitter::gRegInfo.get_offset_reg(), m_offset),
                    irec);
@@ -827,12 +827,12 @@ RegAllocInstr IR_StoreConstOffset::to_rai() {
 void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
                                      const AllocationResult& allocs,
                                      emitter::IR_Record irec) {
-  if (m_value->ireg().kind == emitter::RegKind::GPR) {
+  if (m_value->ireg().reg_class == RegClass::GPR_64) {
     gen->add_instr(
         IGen::store_goal_gpr(get_reg(m_base, allocs, irec), get_reg(m_value, allocs, irec),
                              emitter::gRegInfo.get_offset_reg(), m_offset, m_size),
         irec);
-  } else if (m_value->ireg().kind == emitter::RegKind::XMM && m_size == 4) {
+  } else if (m_value->ireg().reg_class == RegClass::FLOAT && m_size == 4) {
     gen->add_instr(
         IGen::store_goal_xmm32(get_reg(m_base, allocs, irec), get_reg(m_value, allocs, irec),
                                emitter::gRegInfo.get_offset_reg(), m_offset),

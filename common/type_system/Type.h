@@ -44,7 +44,7 @@ class Type {
   virtual int get_size_in_memory() const = 0;
 
   // if we have no other information, what kind of register should we load into?
-  virtual RegKind get_preferred_reg_kind() const = 0;
+  virtual RegClass get_preferred_reg_class() const = 0;
 
   // get the "offset" applied to boxed objects
   virtual int get_offset() const = 0;
@@ -106,7 +106,7 @@ class NullType : public Type {
   bool get_load_signed() const override;
   int get_size_in_memory() const override;
   int get_inline_array_alignment() const override;
-  RegKind get_preferred_reg_kind() const override;
+  RegClass get_preferred_reg_class() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
   std::string print() const override;
@@ -125,12 +125,12 @@ class ValueType : public Type {
             bool is_boxed,
             int size,
             bool sign_extend,
-            RegKind reg);
+            RegClass reg);
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
   int get_size_in_memory() const override;
-  RegKind get_preferred_reg_kind() const override;
+  RegClass get_preferred_reg_class() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
   int get_inline_array_alignment() const override;
@@ -146,7 +146,7 @@ class ValueType : public Type {
   int m_size = -1;
   int m_offset = 0;
   bool m_sign_extend = false;
-  RegKind m_reg_kind = RegKind::INVALID;
+  RegClass m_reg_kind = RegClass::INVALID;
 };
 
 /*!
@@ -159,7 +159,7 @@ class ReferenceType : public Type {
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
-  RegKind get_preferred_reg_kind() const override;
+  RegClass get_preferred_reg_class() const override;
   std::string print() const override;
   ~ReferenceType() = default;
 };
