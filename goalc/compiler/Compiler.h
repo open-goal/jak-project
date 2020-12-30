@@ -233,8 +233,6 @@ class Compiler {
                                        int offset,
                                        Env* env);
 
-
-
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
