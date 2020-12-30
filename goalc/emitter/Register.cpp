@@ -70,14 +70,27 @@ RegisterInfo RegisterInfo::make_register_info() {
 
 RegisterInfo gRegInfo = RegisterInfo::make_register_info();
 
-std::string to_string(RegKind kind) {
+std::string to_string(HWRegKind kind) {
   switch (kind) {
-    case RegKind::GPR:
+    case HWRegKind::GPR:
       return "gpr";
-    case RegKind::XMM:
+    case HWRegKind::XMM:
       return "xmm";
     default:
-      throw std::runtime_error("Unsupported RegKind");
+      throw std::runtime_error("Unsupported HWRegKind");
+  }
+}
+
+HWRegKind reg_class_to_hw(RegClass reg_class) {
+  switch (reg_class) {
+    case RegClass::VECTOR_FLOAT:
+    case RegClass::FLOAT:
+    case RegClass::INT_128:
+      return HWRegKind::XMM;
+    case RegClass::GPR_64:
+      return HWRegKind::GPR;
+    default:
+      assert(false);
   }
 }
 

@@ -128,7 +128,7 @@ TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
   EXPECT_TRUE(info.can_deref);
   EXPECT_TRUE(info.mem_deref);
   EXPECT_FALSE(info.sign_extend);  // it's a memory address being loaded
-  EXPECT_EQ(info.reg, RegKind::GPR_64);
+  EXPECT_EQ(info.reg, RegClass::GPR_64);
   EXPECT_EQ(info.stride, 4);
   EXPECT_EQ(info.result_type.print(), "(function string symbol int32)");
   EXPECT_EQ(info.load_size, 4);
@@ -141,7 +141,7 @@ TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
   EXPECT_EQ(info.load_size, 8);
   EXPECT_EQ(info.stride, 8);
   EXPECT_EQ(info.sign_extend, true);
-  EXPECT_EQ(info.reg, RegKind::GPR_64);
+  EXPECT_EQ(info.reg, RegClass::GPR_64);
   EXPECT_EQ(info.result_type.print(), "int64");
 
   // test inline-array (won't work because type is dynamically sized)
@@ -331,7 +331,7 @@ TEST(TypeSystem, DecompLookupsTypeOfBasic) {
   dk.size = 4;
   dk.sign_extend = false;
   dk.is_store = false;
-  dk.reg_kind = RegKind::GPR_64;
+  dk.reg_kind = RegClass::GPR_64;
   input.deref = dk;
   auto result = ts.reverse_field_lookup(input);
 
@@ -356,7 +356,7 @@ TEST(TypeSystem, DecompLookupsMethod) {
   dk.size = 4;
   dk.sign_extend = false;
   dk.is_store = false;
-  dk.reg_kind = RegKind::GPR_64;
+  dk.reg_kind = RegClass::GPR_64;
   input.deref = dk;
   auto result = ts.reverse_field_lookup(input);
 
@@ -373,7 +373,7 @@ TEST(TypeSystem, DecompLookupsMethod) {
   dk.size = 4;
   dk.sign_extend = false;
   dk.is_store = false;
-  dk.reg_kind = RegKind::GPR_64;
+  dk.reg_kind = RegClass::GPR_64;
   input.deref = dk;
   result = ts.reverse_field_lookup(input);
 

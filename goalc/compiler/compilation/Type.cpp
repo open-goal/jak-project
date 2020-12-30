@@ -65,7 +65,7 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
     MemLoadInfo info;
     info.size = 4;
     info.sign_extend = false;
-    info.reg = RegKind::GPR_64;
+    info.reg = RegClass::GPR_64;
     env->emit(std::make_unique<IR_LoadConstOffset>(runtime_type, -4, object, info));
   } else {
     // can't look up at runtime
@@ -174,8 +174,8 @@ Val* Compiler::generate_inspector_for_type(const goos::Object& form, Env* env, T
   method_env->set_segment(DEBUG_SEGMENT);
 
   // Create a register which will hold the input to the inspect method
-  auto input = method_env->make_ireg(structured_type->get_name(), emitter::RegKind::GPR);
-  // "Constraint" this register to be the register that the function argument is passed in
+  auto input = method_env->make_gpr(structured_type->get_name());
+  // "Constrain" this register to be the register that the function argument is passed in
   IRegConstraint constraint;
   constraint.instr_idx = 0;         // constraint at the start of the function
   constraint.ireg = input->ireg();  // constrain this register
@@ -326,7 +326,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
-    auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, emitter::RegKind::GPR);
+    auto ireg = new_func_env->make_gpr(lambda.params.at(i).type);
     ireg->mark_as_settable();
     constr.ireg = ireg->ireg();
     constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
@@ -338,7 +338,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   place->func = new_func_env.get();
 
   // nasty function block env setup
-  auto return_reg = new_func_env->make_ireg(get_none()->type(), emitter::RegKind::GPR);
+  auto return_reg = new_func_env->make_gpr(get_none()->type());
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());

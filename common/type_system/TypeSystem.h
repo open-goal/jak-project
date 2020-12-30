@@ -36,7 +36,7 @@ struct DerefInfo {
   bool can_deref = false;
   bool mem_deref = false;
   bool sign_extend = false;
-  RegKind reg = RegKind::INVALID;
+  RegClass reg = RegClass::INVALID;
   int stride = -1;
   int load_size = -1;
   TypeSpec result_type;
@@ -68,7 +68,7 @@ struct ReverseDerefInfo {
 struct ReverseDerefInputInfo {
   int offset = -1;
   bool mem_deref = false;
-  RegKind reg = RegKind::INVALID;
+  RegClass reg = RegClass::INVALID;
   int load_size = -1;
   bool sign_extend = false;
   TypeSpec input_type;
@@ -81,7 +81,7 @@ struct DerefKind {
   bool is_store = false;     // when true, the sign extension shouldn't matter
   int size = -1;             // how many bytes
   bool sign_extend = false;  // for loads only (4 bytes and under), do we sign extend?
-  RegKind reg_kind = RegKind::INVALID;
+  RegClass reg_kind = RegClass::INVALID;
 };
 
 struct FieldReverseLookupInput {
@@ -239,7 +239,7 @@ class TypeSystem {
                                     int size,
                                     bool boxed = false,
                                     bool sign_extend = false,
-                                    RegKind reg = RegKind::GPR_64);
+                                    RegClass reg = RegClass::GPR_64);
   void builtin_structure_inherit(StructureType* st);
 
   enum ForwardDeclareKind { TYPE, STRUCTURE, BASIC };

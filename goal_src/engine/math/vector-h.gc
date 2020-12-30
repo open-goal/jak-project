@@ -268,7 +268,7 @@
 (deftype vector4s-3 (structure)
   ((data   float 12 :offset-assert 0) ;; guess
    (quad   uint128 3  :offset 0)
-   (vector vector4w 3  :offset 0)     ;; guess
+   (vector vector 3 :inline :offset 0)     ;; guess
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -315,6 +315,7 @@
   :flag-assert         #x900000010
   )
 
+; todo
 ; (deftype isphere (vec4s)
 ;   ()
 ;   :method-count-assert 9
@@ -417,8 +418,6 @@
   :flag-assert         #x90000000c
   )
 
-;; todo dot, dot-vu, 4-dot, 4-dot-vu, +!, -!, zero!, reset!, copy!
-
 (defun vector-dot ((a vector) (b vector))
   "Take the dot product of two vectors.
    Only does the x, y, z compoments.
@@ -459,6 +458,81 @@
    Originally implemented using VU macro ops"
    (declare (inline))
    (vector4-dot a b)
+  )
+
+(defun vector+! ((dst vector) (a vector) (b vector))
+  "Set dst = a + b. The w component of dst is set to 0."
+  (declare (inline))
+  (rlet ((vf0 :class vf :reset-here #t)
+         (vf1 :class vf :reset-here #t)
+         (vf2 :class vf :reset-here #t)
+         (vf3 :class vf :reset-here #t))
+        ; load vectors
+        (.lvf vf2 a)
+        (.lvf vf3 b)
+        ; set vf0 to zero
+        (.xor.vf vf0 vf0 vf0)
+        ; add
+        (.add.vf vf1 vf2 vf3)
+        ; set w = 0
+        (.blend.vf vf1 vf1 vf0 #b1000)
+        ; store
+        (.svf dst vf1)
+        )
+  dst
+  )
+
+(defun vector-! ((dst vector) (a vector) (b vector))
+  "Set dst = a - b. The w componenent of dst is set to 0."
+  (declare (inline))
+  (rlet ((vf0 :class vf :reset-here #t)
+         (vf1 :class vf :reset-here #t)
+         (vf2 :class vf :reset-here #t)
+         (vf3 :class vf :reset-here #t))
+        ; load vectors
+        (.lvf vf2 a)
+        (.lvf vf3 b)
+        ; set vf0 to zero
+        (.xor.vf vf0 vf0 vf0)
+        ; subtract
+        (.sub.vf vf1 vf2 vf3)
+        ; set w = 0
+        (.blend.vf vf1 vf1 vf0 #b1000)
+        ; store
+        (.svf dst vf1)
+        )
+  dst
+  )
+
+(defun vector-zero! ((dest vector))
+  "Set xyzw to 0."
+  (declare (inline))
+  (rlet ((vf1 :class vf :reset-here #t))
+        ; set vf1 = 0
+        (.xor.vf vf1 vf1 vf1)
+        ; store the 0
+        (.svf dest vf1)
+        )
+  dest
+  )
+
+(defun vector-reset! ((dst vector))
+  "Set vector to 0,0,0,1."
+  (declare (inline))
+  (vector-zero! dst)
+  (set! (-> dst w) 1.0)
+  dst
+  )
+
+(defun vector-copy! ((dst vector) (src vector))
+  "Copy vector src to dst. Copies the entire quadword (xyzw).
+   The vectors must be aligned."
+  (declare (inline))
+  (rlet ((vf1 :class vf :reset-here #t))
+        (.lvf vf1 src)
+        (.svf dst vf1)
+        )
+  dst
   )
 
 (define *zero-vector* (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))

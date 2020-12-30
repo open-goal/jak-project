@@ -46,7 +46,7 @@ Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {
   } else if (is_float(ts)) {
     auto fe = get_parent_env_of_type<FunctionEnv>(env);
     auto result = fe->make_gpr(m_ts.make_typespec("int"));
-    env->emit(std::make_unique<IR_FloatToInt>(result, in->to_xmm(env)));
+    env->emit(std::make_unique<IR_FloatToInt>(result, in->to_fpr(env)));
     return result;
   } else if (is_integer(ts)) {
     return in;
@@ -84,7 +84,7 @@ Val* Compiler::number_to_float(const goos::Object& form, Val* in, Env* env) {
     return in;
   } else if (is_integer(ts)) {
     auto fe = get_parent_env_of_type<FunctionEnv>(env);
-    auto result = fe->make_xmm(m_ts.make_typespec("float"));
+    auto result = fe->make_fpr(m_ts.make_typespec("float"));
     env->emit(std::make_unique<IR_IntToFloat>(result, in->to_gpr(env)));
     return result;
   }
@@ -132,14 +132,14 @@ Val* Compiler::compile_add(const goos::Object& form, const goos::Object& rest, E
     }
 
     case MATH_FLOAT: {
-      auto result = env->make_xmm(first_type);
-      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+      auto result = env->make_fpr(first_type);
+      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_fpr(env)));
 
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::ADD_SS, result,
             to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
-                ->to_xmm(env)));
+                ->to_fpr(env)));
       }
       return result;
     }
@@ -178,14 +178,14 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
       return result;
     }
     case MATH_FLOAT: {
-      auto result = env->make_xmm(first_type);
-      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+      auto result = env->make_fpr(first_type);
+      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_fpr(env)));
 
       for (size_t i = 1; i < args.unnamed.size(); i++) {
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::MUL_SS, result,
             to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
-                ->to_xmm(env)));
+                ->to_fpr(env)));
       }
       return result;
     }
@@ -210,14 +210,14 @@ Val* Compiler::compile_fmin(const goos::Object& form, const goos::Object& rest, 
   if (get_math_mode(first_val->type()) != MATH_FLOAT) {
     throw_compiler_error(form, "Must use floats in fmin");
   }
-  auto result = env->make_xmm(first_val->type());
-  env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+  auto result = env->make_fpr(first_val->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first_val->to_fpr(env)));
   for (size_t i = 1; i < args.unnamed.size(); i++) {
     auto val = compile_error_guard(args.unnamed.at(i), env);
     if (get_math_mode(val->type()) != MATH_FLOAT) {
       throw_compiler_error(form, "Must use floats in fmin");
     }
-    env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MIN_SS, result, val->to_xmm(env)));
+    env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MIN_SS, result, val->to_fpr(env)));
   }
   return result;
 }
@@ -233,14 +233,14 @@ Val* Compiler::compile_fmax(const goos::Object& form, const goos::Object& rest, 
   if (get_math_mode(first_val->type()) != MATH_FLOAT) {
     throw_compiler_error(form, "Must use floats in fmax");
   }
-  auto result = env->make_xmm(first_val->type());
-  env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+  auto result = env->make_fpr(first_val->type());
+  env->emit(std::make_unique<IR_RegSet>(result, first_val->to_fpr(env)));
   for (size_t i = 1; i < args.unnamed.size(); i++) {
     auto val = compile_error_guard(args.unnamed.at(i), env);
     if (get_math_mode(val->type()) != MATH_FLOAT) {
       throw_compiler_error(form, "Must use floats in fmax");
     }
-    env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MAX_SS, result, val->to_xmm(env)));
+    env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MAX_SS, result, val->to_fpr(env)));
   }
   return result;
 }
@@ -316,23 +316,23 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
     case MATH_FLOAT:
       if (args.unnamed.size() == 1) {
         auto result =
-            compile_float(0, env, get_parent_env_of_type<FunctionEnv>(env)->segment)->to_xmm(env);
+            compile_float(0, env, get_parent_env_of_type<FunctionEnv>(env)->segment)->to_fpr(env);
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::SUB_SS, result,
             to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                ->to_xmm(env)));
+                ->to_fpr(env)));
         return result;
       } else {
-        auto result = env->make_xmm(first_type);
+        auto result = env->make_fpr(first_type);
         env->emit(std::make_unique<IR_RegSet>(
             result, to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
-                        ->to_xmm(env)));
+                        ->to_fpr(env)));
 
         for (size_t i = 1; i < args.unnamed.size(); i++) {
           env->emit(std::make_unique<IR_FloatMath>(
               FloatMathKind::SUB_SS, result,
               to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
-                  ->to_xmm(env)));
+                  ->to_fpr(env)));
         }
         return result;
       }
@@ -360,7 +360,7 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
     case MATH_INT: {
       auto fe = get_parent_env_of_type<FunctionEnv>(env);
       auto first_thing = first_val->to_gpr(env);
-      auto result = env->make_ireg(first_type, emitter::RegKind::GPR);
+      auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_thing));
 
       IRegConstraint result_rax_constraint;
@@ -377,12 +377,12 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
     }
 
     case MATH_FLOAT: {
-      auto result = env->make_xmm(first_type);
-      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_xmm(env)));
+      auto result = env->make_fpr(first_type);
+      env->emit(std::make_unique<IR_RegSet>(result, first_val->to_fpr(env)));
       env->emit(std::make_unique<IR_FloatMath>(
           FloatMathKind::DIV_SS, result,
           to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
-              ->to_xmm(env)));
+              ->to_fpr(env)));
       return result;
     }
 

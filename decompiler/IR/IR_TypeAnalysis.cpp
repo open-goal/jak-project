@@ -65,12 +65,12 @@ bool get_as_reg_offset(const IR* ir, RegOffset* out) {
   return false;
 }
 
-RegKind get_reg_kind(const Register& r) {
+RegClass get_reg_kind(const Register& r) {
   switch (r.get_kind()) {
     case Reg::GPR:
-      return RegKind::GPR_64;
+      return RegClass::GPR_64;
     case Reg::FPR:
-      return RegKind::FLOAT;
+      return RegClass::FLOAT;
     default:
       assert(false);
   }

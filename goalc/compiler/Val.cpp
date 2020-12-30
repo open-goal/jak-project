@@ -9,7 +9,7 @@
 RegVal* Val::to_gpr(Env* fe) {
   // TODO - handle 128-bit stuff here!
   auto rv = to_reg(fe);
-  if (rv->ireg().kind == emitter::RegKind::GPR) {
+  if (rv->ireg().reg_class == RegClass::GPR_64) {
     return rv;
   } else {
     auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
@@ -19,14 +19,14 @@ RegVal* Val::to_gpr(Env* fe) {
 }
 
 /*!
- * Fallback to_xmm if a more optimized one is not provided.
+ * Fallback to_fpr if a more optimized one is not provided.
  */
-RegVal* Val::to_xmm(Env* fe) {
+RegVal* Val::to_fpr(Env* fe) {
   auto rv = to_reg(fe);
-  if (rv->ireg().kind == emitter::RegKind::XMM) {
+  if (rv->ireg().reg_class == RegClass::FLOAT) {
     return rv;
   } else {
-    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+    auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
     fe->emit(std::make_unique<IR_RegSet>(re, rv));
     return re;
   }
@@ -39,7 +39,7 @@ RegVal* RegVal::to_reg(Env* fe) {
 
 RegVal* RegVal::to_gpr(Env* fe) {
   (void)fe;
-  if (m_ireg.kind == emitter::RegKind::GPR) {
+  if (m_ireg.reg_class == RegClass::GPR_64) {
     return this;
   } else {
     auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
@@ -48,12 +48,12 @@ RegVal* RegVal::to_gpr(Env* fe) {
   }
 }
 
-RegVal* RegVal::to_xmm(Env* fe) {
+RegVal* RegVal::to_fpr(Env* fe) {
   (void)fe;
-  if (m_ireg.kind == emitter::RegKind::XMM) {
+  if (m_ireg.reg_class == RegClass::FLOAT) {
     return this;
   } else {
-    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+    auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
     fe->emit(std::make_unique<IR_RegSet>(re, this));
     return re;
   }
@@ -104,15 +104,20 @@ RegVal* InlinedLambdaVal::to_reg(Env* fe) {
 }
 
 RegVal* FloatConstantVal::to_reg(Env* fe) {
-  auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+  auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
   fe->emit(std::make_unique<IR_StaticVarLoad>(re, m_value));
   return re;
 }
 
 RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
-  fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
-  fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+  if (offset == 0) {
+    fe->emit_ir<IR_RegSet>(re, base->to_gpr(fe));
+  } else {
+    fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
+    fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+  }
+
   return re;
 }
 
@@ -139,16 +144,16 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
   }
 }
 
-RegVal* MemoryDerefVal::to_xmm(Env* fe) {
+RegVal* MemoryDerefVal::to_fpr(Env* fe) {
   // todo, support better loads/stores from the stack
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
   if (base_as_co) {
-    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+    auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
     fe->emit(std::make_unique<IR_LoadConstOffset>(re, base_as_co->offset,
                                                   base_as_co->base->to_gpr(fe), info));
     return re;
   } else {
-    auto re = fe->make_xmm(coerce_to_reg_type(m_ts));
+    auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
     auto addr = base->to_gpr(fe);
     fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));
     return re;
@@ -157,7 +162,7 @@ RegVal* MemoryDerefVal::to_xmm(Env* fe) {
 
 RegVal* AliasVal::to_reg(Env* fe) {
   auto as_old_type = base->to_reg(fe);
-  auto result = fe->make_ireg(m_ts, as_old_type->ireg().kind);
+  auto result = fe->make_ireg(m_ts, as_old_type->ireg().reg_class);
   fe->emit(std::make_unique<IR_RegSet>(result, as_old_type));
   return result;
 }
@@ -174,7 +179,7 @@ RegVal* PairEntryVal::to_reg(Env* fe) {
   int offset = is_car ? -2 : 2;
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
   MemLoadInfo info;
-  info.reg = RegKind::GPR_64;
+  info.reg = RegClass::GPR_64;
   info.sign_extend = true;
   info.size = 4;
   fe->emit(std::make_unique<IR_LoadConstOffset>(re, offset, base->to_gpr(fe), info));
@@ -197,7 +202,7 @@ RegVal* BitFieldVal::to_reg(Env* env) {
   auto parent_reg = m_parent->to_gpr(env);
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto result = fe->make_ireg(coerce_to_reg_type(m_ts), emitter::RegKind::GPR);
+  auto result = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::GPR_64);
   env->emit(std::make_unique<IR_RegSet>(result, parent_reg));
 
   int start_bit = m_offset;

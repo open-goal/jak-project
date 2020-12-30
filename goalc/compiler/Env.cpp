@@ -18,8 +18,8 @@ void Env::emit(std::unique_ptr<IR> ir) {
 /*!
  * Allocate an IRegister with the given type.
  */
-RegVal* Env::make_ireg(TypeSpec ts, emitter::RegKind kind) {
-  return m_parent->make_ireg(std::move(ts), kind);
+RegVal* Env::make_ireg(TypeSpec ts, RegClass reg_class) {
+  return m_parent->make_ireg(std::move(ts), reg_class);
 }
 
 /*!
@@ -41,11 +41,11 @@ BlockEnv* Env::find_block(const std::string& name) {
 }
 
 RegVal* Env::make_gpr(const TypeSpec& ts) {
-  return make_ireg(coerce_to_reg_type(ts), emitter::RegKind::GPR);
+  return make_ireg(coerce_to_reg_type(ts), RegClass::GPR_64);
 }
 
-RegVal* Env::make_xmm(const TypeSpec& ts) {
-  return make_ireg(coerce_to_reg_type(ts), emitter::RegKind::XMM);
+RegVal* Env::make_fpr(const TypeSpec& ts) {
+  return make_ireg(coerce_to_reg_type(ts), RegClass::FLOAT);
 }
 
 std::unordered_map<std::string, Label>& Env::get_label_map() {
@@ -77,9 +77,9 @@ void GlobalEnv::emit(std::unique_ptr<IR> ir) {
 /*!
  * Allocate an IRegister with the given type.
  */
-RegVal* GlobalEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
+RegVal* GlobalEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
   (void)ts;
-  (void)kind;
+  (void)reg_class;
   throw std::runtime_error("cannot alloc reg in GlobalEnv");
 }
 
@@ -231,13 +231,13 @@ void FunctionEnv::resolve_gotos() {
   }
 }
 
-RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
+RegVal* FunctionEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
   IRegister ireg;
-  ireg.kind = kind;
+  ireg.reg_class = reg_class;
   ireg.id = m_iregs.size();
   auto rv = std::make_unique<RegVal>(ireg, coerce_to_reg_type(ts));
   m_iregs.push_back(std::move(rv));
-  assert(kind != emitter::RegKind::INVALID);
+  assert(reg_class != RegClass::INVALID);
   return m_iregs.back().get();
 }
 

@@ -65,6 +65,11 @@ class Compiler {
   Val* compile_get_symbol_value(const goos::Object& form, const std::string& name, Env* env);
   Val* compile_function_or_method_call(const goos::Object& form, Env* env);
 
+  Val* compile_asm_vf_math3(const goos::Object& form,
+                            const goos::Object& rest,
+                            IR_VFMath3Asm::Kind kind,
+                            Env* env);
+
   Val* get_field_of_structure(const StructureType* type,
                               Val* object,
                               const std::string& field_name,
@@ -112,7 +117,7 @@ class Compiler {
 
   TypeSpec parse_typespec(const goos::Object& src);
   bool is_local_symbol(const goos::Object& obj, Env* env);
-  emitter::RegKind get_preferred_reg_kind(const TypeSpec& ts);
+  emitter::HWRegKind get_preferred_reg_kind(const TypeSpec& ts);
   Val* compile_real_function_call(const goos::Object& form,
                                   RegVal* function,
                                   const std::vector<RegVal*>& args,
@@ -281,6 +286,13 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
   // Atoms
 
   // Block

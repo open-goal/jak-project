@@ -121,7 +121,6 @@ class IGen {
 
   // todo - GPR64 -> XMM64 (zext)
   // todo - XMM -> GPR64
-  // todo - XMM128 - XMM128
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   GOAL Loads and Stores
@@ -706,6 +705,17 @@ class IGen {
     return instr;
   }
 
+  static Instruction store_goal_vf(Register addr, Register value, Register off, s64 offset) {
+    if (offset == 0) {
+      return storevf_gpr64_plus_gpr64(value, addr, off);
+    } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return storevf_gpr64_plus_gpr64_plus_s8(value, addr, off, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return storevf_gpr64_plus_gpr64_plus_s32(value, addr, off, offset);
+    }
+    assert(false);
+  }
+
   static Instruction store_goal_gpr(Register addr,
                                     Register value,
                                     Register off,
@@ -754,6 +764,18 @@ class IGen {
         }
       default:
         assert(false);
+    }
+  }
+
+  static Instruction load_goal_vf(Register dst, Register addr, Register off, int offset) {
+    if (offset == 0) {
+      return loadvf_gpr64_plus_gpr64(dst, addr, off);
+    } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return loadvf_gpr64_plus_gpr64_plus_s8(dst, addr, off, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return loadvf_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
+    } else {
+      assert(false);
     }
   }
 
@@ -1819,6 +1841,203 @@ class IGen {
     Instruction i(0);
     i.is_null = true;
     return i;
+  }
+
+  /////////////////////////////
+  // AVX (VF - Vector Float) //
+  /////////////////////////////
+  static Instruction mov_vf_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+
+    if (src.hw_id() >= 8 && dst.hw_id() < 8) {
+      // in this case, we can use the 0x29 encoding, which swaps src and dst, in order to use the
+      // 2 byte VEX prefix, where the 0x28 encoding would require an extra byte.
+      // compilers/assemblers seem to prefer 0x28, unless 0x29 would save you a byte.
+      Instruction instr(0x29);
+      instr.set_vex_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, VEX3::LeadingBytes::P_0F, false);
+      return instr;
+    } else {
+      Instruction instr(0x28);
+      instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, VEX3::LeadingBytes::P_0F, false);
+      return instr;
+    }
+  }
+
+  static Instruction loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
+    assert(dst.is_xmm());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    Instruction instr(0x28);
+    instr.set_vex_modrm_and_rex_for_reg_plus_reg_addr(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      VEX3::LeadingBytes::P_0F, false);
+    return instr;
+  }
+
+  static Instruction loadvf_gpr64_plus_gpr64_plus_s8(Register dst,
+                                                     Register addr1,
+                                                     Register addr2,
+                                                     s64 offset) {
+    assert(dst.is_xmm());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x28);
+    instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s8(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                         offset, VEX3::LeadingBytes::P_0F, false);
+    return instr;
+  }
+
+  static Instruction loadvf_gpr64_plus_gpr64_plus_s32(Register dst,
+                                                      Register addr1,
+                                                      Register addr2,
+                                                      s64 offset) {
+    assert(dst.is_xmm());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x28);
+    instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s32(dst.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                          offset, VEX3::LeadingBytes::P_0F, false);
+    return instr;
+  }
+
+  static Instruction storevf_gpr64_plus_gpr64(Register value, Register addr1, Register addr2) {
+    assert(value.is_xmm());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    Instruction instr(0x29);
+    instr.set_vex_modrm_and_rex_for_reg_plus_reg_addr(value.hw_id(), addr1.hw_id(), addr2.hw_id(),
+                                                      VEX3::LeadingBytes::P_0F, false);
+    return instr;
+  }
+
+  static Instruction storevf_gpr64_plus_gpr64_plus_s8(Register value,
+                                                      Register addr1,
+                                                      Register addr2,
+                                                      s64 offset) {
+    assert(value.is_xmm());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x29);
+    instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s8(
+        value.hw_id(), addr1.hw_id(), addr2.hw_id(), offset, VEX3::LeadingBytes::P_0F, false);
+    return instr;
+  }
+
+  static Instruction storevf_gpr64_plus_gpr64_plus_s32(Register value,
+                                                       Register addr1,
+                                                       Register addr2,
+                                                       s64 offset) {
+    assert(value.is_xmm());
+    assert(addr1.is_gpr());
+    assert(addr2.is_gpr());
+    assert(addr1 != addr2);
+    assert(addr1 != RSP);
+    assert(addr2 != RSP);
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x29);
+    instr.set_vex_modrm_and_rex_for_reg_plus_reg_plus_s32(
+        value.hw_id(), addr1.hw_id(), addr2.hw_id(), offset, VEX3::LeadingBytes::P_0F, false);
+    return instr;
+  }
+
+  static Instruction loadvf_rip_plus_s32(Register dest, s64 offset) {
+    assert(dest.is_xmm());
+    assert(offset >= INT32_MIN);
+    assert(offset <= INT32_MAX);
+    Instruction instr(0x28);
+    instr.set_vex_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset);
+    return instr;
+  }
+
+  // todo, rip relative loads and stores.
+
+  static Instruction mul_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x59);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    assert(dx < 4);
+    assert(dy < 4);
+    assert(dz < 4);
+    assert(dw < 4);
+    u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
+    // we use the AVX "VEX" encoding here. This is a three-operand form, but we just set both source
+    // to the same register. It seems like this is one byte longer but is faster maybe?
+    Instruction instr(0xc6);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
+    instr.set(Imm(1, imm));
+    return instr;
+
+    // SSE encoding version:
+    //    Instruction instr(0x0f);
+    //    instr.set_op2(0xc6);
+    //    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    //    instr.set(Imm(1, imm));
+    //    return instr;
+  }
+
+  static Instruction xor_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x57);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction sub_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5c);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction add_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x58);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
+    assert(!(mask & 0b11110000));
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x0c);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
+                                src1.hw_id(), false, VexPrefix::P_66);
+    instr.set(Imm(1, mask));
+    return instr;
   }
 };
 }  // namespace emitter

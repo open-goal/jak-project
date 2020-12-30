@@ -13,6 +13,7 @@ add_executable(goalc-test
         test_type_system.cpp
         test_CodeTester.cpp
         test_emitter.cpp
+        test_emitter_avx.cpp
         test_common_util.cpp
         test_pretty_print.cpp
         test_zydis.cpp

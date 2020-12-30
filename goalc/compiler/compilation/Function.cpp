@@ -153,7 +153,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     for (u32 i = 0; i < lambda.params.size(); i++) {
       IRegConstraint constr;
       constr.instr_idx = 0;  // constraint at function start
-      auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, emitter::RegKind::GPR);
+      auto ireg = new_func_env->make_gpr(lambda.params.at(i).type);
       ireg->mark_as_settable();
       constr.ireg = ireg->ireg();
       constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
@@ -165,7 +165,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     place->func = new_func_env.get();
 
     // nasty function block env setup
-    auto return_reg = new_func_env->make_ireg(get_none()->type(), emitter::RegKind::GPR);
+    auto return_reg = new_func_env->make_gpr(get_none()->type());
     auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
     func_block_env->return_value = return_reg;
     func_block_env->end_label = Label(new_func_env.get());
@@ -357,7 +357,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // note, inlined functions will get a more specific type if possible
       // todo, is this right?
       auto type = eval_args.at(i)->type();
-      auto copy = env->make_ireg(type, get_preferred_reg_kind(type));
+      auto copy = env->make_ireg(type, m_ts.lookup_type(type)->get_preferred_reg_class());
       env->emit(std::make_unique<IR_RegSet>(copy, eval_args.at(i)));
       copy->mark_as_settable();
       lexical_env->vars[head_as_lambda->lambda.params.at(i).name] = copy;
@@ -368,8 +368,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     RegVal* result_reg_if_return_from = nullptr;
     if (auto_inline || got_inlined_lambda) {
       inlined_block_env = fe->alloc_env<BlockEnv>(inlined_compile_env, "#f");
-      result_reg_if_return_from =
-          inlined_compile_env->make_ireg(get_none()->type(), emitter::RegKind::GPR);
+      result_reg_if_return_from = inlined_compile_env->make_gpr(get_none()->type());
       inlined_block_env->return_value = result_reg_if_return_from;
       inlined_block_env->end_label = Label(fe);
       inlined_compile_env = inlined_block_env;
@@ -474,7 +473,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     return_ts = function->type().last_arg();
   }
 
-  auto return_reg = env->make_ireg(return_ts, emitter::RegKind::GPR);
+  auto return_reg = env->make_gpr(return_ts);
 
   // check arg count:
   if (function->type().arg_count() && !is_varargs_function(function->type())) {
@@ -501,7 +500,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   // set args (introducing a move here makes coloring more likely to be possible)
   std::vector<RegVal*> arg_outs;
   for (auto& arg : args) {
-    arg_outs.push_back(env->make_ireg(arg->type(), emitter::RegKind::GPR));
+    arg_outs.push_back(env->make_gpr(arg->type()));
     arg_outs.back()->mark_as_settable();
     env->emit(std::make_unique<IR_RegSet>(arg_outs.back(), arg));
   }

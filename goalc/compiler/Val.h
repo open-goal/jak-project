@@ -40,7 +40,7 @@ class Val {
     throw std::runtime_error("to_reg called on invalid Val: " + print());
   }
   virtual RegVal* to_gpr(Env* fe);
-  virtual RegVal* to_xmm(Env* fe);
+  virtual RegVal* to_fpr(Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
@@ -74,7 +74,7 @@ class RegVal : public Val {
   std::string print() const override { return m_ireg.to_string(); };
   RegVal* to_reg(Env* fe) override;
   RegVal* to_gpr(Env* fe) override;
-  RegVal* to_xmm(Env* fe) override;
+  RegVal* to_fpr(Env* fe) override;
   void set_rlet_constraint(emitter::Register reg);
   const std::optional<emitter::Register>& rlet_constraint() const;
 
@@ -157,7 +157,7 @@ struct MemLoadInfo {
     reg = di.reg;
   }
 
-  RegKind reg = RegKind::INVALID;
+  RegClass reg = RegClass::INVALID;
   bool sign_extend = false;
   int size = -1;
 };
@@ -207,7 +207,7 @@ class MemoryDerefVal : public Val {
       : Val(std::move(ts)), base(_base), info(_info) {}
   std::string print() const override { return "[" + base->print() + "]"; }
   RegVal* to_reg(Env* fe) override;
-  RegVal* to_xmm(Env* fe) override;
+  RegVal* to_fpr(Env* fe) override;
   Val* base = nullptr;
   MemLoadInfo info;
 };

@@ -31,13 +31,13 @@ class Env {
   explicit Env(Env* parent) : m_parent(parent) {}
   virtual std::string print() = 0;
   virtual void emit(std::unique_ptr<IR> ir);
-  virtual RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind);
+  virtual RegVal* make_ireg(TypeSpec ts, RegClass reg_class);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
   virtual RegVal* lexical_lookup(goos::Object sym);
   virtual BlockEnv* find_block(const std::string& name);
   virtual std::unordered_map<std::string, Label>& get_label_map();
   RegVal* make_gpr(const TypeSpec& ts);
-  RegVal* make_xmm(const TypeSpec& ts);
+  RegVal* make_fpr(const TypeSpec& ts);
   virtual ~Env() = default;
   Env* parent() { return m_parent; }
 
@@ -58,7 +58,7 @@ class GlobalEnv : public Env {
   GlobalEnv();
   std::string print() override;
   void emit(std::unique_ptr<IR> ir) override;
-  RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind) override;
+  RegVal* make_ireg(TypeSpec ts, RegClass reg_class) override;
   void constrain_reg(IRegConstraint constraint) override;
   RegVal* lexical_lookup(goos::Object sym) override;
   BlockEnv* find_block(const std::string& name) override;
@@ -159,7 +159,7 @@ class FunctionEnv : public DeclareEnv {
   void set_segment(int seg) { segment = seg; }
   void emit(std::unique_ptr<IR> ir) override;
   void finish();
-  RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind) override;
+  RegVal* make_ireg(TypeSpec ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
   int max_vars() const { return m_iregs.size(); }
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }

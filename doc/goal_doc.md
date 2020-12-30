@@ -1169,7 +1169,7 @@ Not implemented well yet.
   body...
   )
 ```
-Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr` or `xmm`) and the compiler will pick a GPR or XMM for you.
+Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr`, a normal 64-bit integer register; `fpr`, a 32-bit single precision float; or  `vf`, and 128-bit floating point vector register) and the compiler will pick a GPR or XMM for you.
 
 If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you in the prologue and restore it in the epilogue.
 If you pick a special register like `rsp`, it won't be backed up.  
@@ -1188,17 +1188,17 @@ Here is an example of using an `rlet` to access registers:
 ```
 
 ## General assembly forms
-In general, assembly forms have a name that begins with a `.`. They all evaluate to `none` and copy the form of an x86-64 instruction. For example `(.sub dst src)`. A destination must be a settable register (ok if it's spilled). So you can't do something like `(.sub (-> obj field) x)`. Instead, do `(set! temp (-> obj field))`, `(.sub temp x)`, `(set! (-> obj field) temp)`.   The sources can be any expression.
+In general, assembly forms have a name that begins with a `.`. They all evaluate to `none` and copy the form of an x86-64 instruction. For example `(.sub dst src)`. A destination must be a settable register (ok if it's spilled). So you can't do something like `(.sub (-> obj field) x)`. Instead, do `(set! temp (-> obj field))`, `(.sub temp x)`, `(set! (-> obj field) temp)`.   The sources can be any expression, or a register. This allows you to mix high-level code with assembly easily, like `(.mov rax (-> obj field))` or `(.push (+ 1 (-> obj field)))`.
 
 By default, assembly forms work with the coloring system. This means that assembly and high level expression can be mixed together without clobbering each other. It also means use of callee-saved registers will cause them to be backed up/restored in the function prologue and epilogue.  Use of weird registers like `r15`, `r14`, and `rsp` works as you would expect with the coloring system. 
  
-But you can also request to skip this with `:color #f` option, like `(.push my-reg-var :color #f)`. Be very careful with this. The `:color #f` option will only work with register variables from `rlet` which have a manually specified register. It will entirely bypass the coloring system and use this register. Use of this with other GOAL code is extremely dangerous and should be done very carefully or avoided.
+But you can also request to skip this with `:color #f` option, like `(.push my-reg-var :color #f)`. Be very careful with this. The `:color #f` option will only work with register variables from `rlet` which have a manually specified register. It will entirely bypass the coloring system and use this register. Use of this near high level GOAL variables is extremely dangerous and should be done very carefully or avoided, as the GOAL compiler will not know that you could be modifying its registers.  In a form with `:color #f`, you cannot use higher level code or variables - all variables must be defined in `rlet`s. This is because higher level expressions and variables cannot be used without the coloring system.
 
 ## `.sub`
 ```lisp
 (.sub dest src [:color #t|#f])
 ```
-x86-64 subtraction. If coloring is on (the default), the `dest` must be a settable register (`rlet` var, `let` var, function argument, ...). It can't be a place like a symbol, field, stack variable, etc.  If coloring is off, both `src` and `dest` must be registers defined and constrained in an enclosing `rlet`.
+x86-64 subtraction (64-bit). If coloring is on (the default), the `dest` must be a settable register (`rlet` var, `let` var, function argument, ...). It can't be a place like a symbol, field, stack variable, etc.  If coloring is off, both `src` and `dest` must be registers defined and constrained in an enclosing `rlet`.
 
 Example:
 ```
@@ -1219,27 +1219,88 @@ Example:
   )
 ```
 
+## `.add`
+```lisp
+(.add dest src [:color #t|#f])
+```
+Addition (64-bit). Similar to subtraction.
+
+## `.jr`
+```lisp
+(.jr addres-reg [:color #t|#f])
+```
+Jump-register. Jumps to the address given. The address is treated as a 64-bit pointer, not a GOAL pointer.
+
+## `.load-sym`
+```lisp
+(.load-sym dest symbol-name [:sext #t|#f] [:color #t|#f])
+```
+Load the value of a symbol into a register.  By default, it will look at the type of the symbol to determine if it should be sign extended or not. You can override this with the `:sext` option if needed. The symbol must be known to the type system.
+
 ## `.push`
 ```lisp
 (.push src [:color #t|#f])
 ```
 
-The x86-64 push instruction. Does a 64-bit GPR.  The `src` can be any expression if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
+The x86-64 push instruction. Does a 64-bit GPR.  The `src` can be any expression that can be put in a gpr if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
 
 ## `.pop`
 ```lisp
 (.pop dst [:color #t|#f])
 ```
 
-The x86-64 pop instruction.  Does a 64-bit GPR. The `dst` can be any settable register if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
+The x86-64 pop instruction.  Does a 64-bit GPR. The `dst` can be any expression which evaluates to a settable register if color is on. Otherwise it must be a register defined and constrained in an enclosing `rlet`.
 
 ## `.ret`
 ```lisp
 (.ret [:color #t|#f])
 ```
 
-The x86-64 ret instruction. The color option does nothing. This is not recognized as a control flow instruction by the coloring system.
+The x86-64 ret instruction. The color option does nothing. This is not recognized as a control flow instruction by the coloring system. It does not touch the return register `rax`.
 
+## `.mov`
+```lisp
+(.mov dst src [:color #t|#f])
+```
+Move between two registers. The `dst` should be a register (either `rlet` or `let` variable), and the `src` can be a register or any expression.  The following moves are supported:
+- `gpr` to `gpr`
+- `fpr` to `fpr` (only moves lower 32-bits of the xmms, uses `movss`)
+- `vf` to `vf` (moves all 128-bits of the xmms, uses `vmovaps`)
+- `gpr` to `fpr` (only moves 32-bits, uses `movd`)
+- `fpr` to `gpr` (only moves 32-bits, upper 32-bits are zero, uses `movd`)
+This code generation is identical to using a `(set! dst src)` form.
+  
+## `.lvf`
+```lisp
+(.lvf dst-reg src-loc [:color #t|#f])
+```
+Load a vector float register from `src-loc`. The `dst-reg` must be a vector float register. The `src-loc` can be a gpr containing a GOAL pointer or expression which gives a GOAL pointer. There is no type checking on the `src-loc` so be careful. The load uses `vmovaps`, so the source must be 16-byte aligned. 
+
+If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, the constant offset will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`.
+
+If the source is an immediate `(new 'static ...)` form that results in a statically allocated variable, it will use `RIP` relative addressing (32-bit immediate) form. This means that the code:
+```lisp
+(.lvf vf1 (new 'static 'vector :x 1.2 :y 2.3 :z 3.4 :w 5.6))
+```
+will be just a single instruction to do a `vmovaps xmm1, [rip + XXX]`.
+
+##`.svf`
+```lisp
+(.svf dst-loc src-reg [:color #t|#f])
+```
+Store a vector float. Works similarly to the `lvf` form, but there is no optimized case for storing into a static because this isn't allowed in GOAL.
+
+## Three operand vector float operations.
+```lisp
+(.<op-name>.vf dst src0 src1 [:color #t|#f])
+```
+All the three operand forms work similarly. You can do something like `(.add.vf vf1 vf2 vf3)`. All operations use the similarly named `v<op-name>ps` instruction, xmm128 VEX encoding. We support `xor`, `sub`, and `add` so far.
+
+## `.blend.vf`
+```lisp
+(.blend.vf dst src0 src1 mask [:color #t|#f])
+```
+Wrapper around `vblendps` (VEX xmm128 version) instruction. The `mask` must evaluate to a constant integer at compile time. The integer must be in the range of 0-15. 
 
 # Compiler Forms - Unsorted
 

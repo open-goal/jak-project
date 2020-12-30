@@ -23,6 +23,12 @@ static const std::unordered_map<
         {".add", &Compiler::compile_asm_add},
         {".load-sym", &Compiler::compile_asm_load_sym},
         {".mov", &Compiler::compile_asm_mov},
+        {".lvf", &Compiler::compile_asm_lvf},
+        {".svf", &Compiler::compile_asm_svf},
+        {".xor.vf", &Compiler::compile_asm_xor_vf},
+        {".sub.vf", &Compiler::compile_asm_sub_vf},
+        {".add.vf", &Compiler::compile_asm_add_vf},
+        {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
