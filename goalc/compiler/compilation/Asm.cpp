@@ -63,9 +63,10 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
       auto& class_name = def_args.named.at("class").as_symbol()->name;
       if (class_name == "gpr") {
         register_class = RegClass::GPR_64;
-        // todo remove xmm
-      } else if (class_name == "xmm" || class_name == "fpr") {
+      } else if (class_name == "fpr") {
         register_class = RegClass::FLOAT;
+      } else if (class_name == "vf") {
+        register_class = RegClass::VECTOR_FLOAT;
       } else {
         throw_compiler_error(o, "Register class {} is unknown.", class_name);
       }
@@ -232,11 +233,73 @@ Val* Compiler::compile_asm_mov(const goos::Object& form, const goos::Object& res
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
   }
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot .mov this. Got a {}.", dest->print());
   }
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
   env->emit_ir<IR_RegSetAsm>(color, dest, src);
+  return get_none();
+}
+
+/*!
+ * Load a vector float from memory. Does an aligned load.
+ */
+Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(form, "Cannot .lvf into this. Got a {}.", dest->print());
+  }
+  auto src = compile_error_guard(args.unnamed.at(1), env);
+  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
+  MemLoadInfo info;
+  info.sign_extend = false;
+  info.size = 16;
+  info.reg = RegClass::VECTOR_FLOAT;
+  if (as_co) {
+    // can do a clever offset here
+    env->emit_ir<IR_LoadConstOffset>(dest, as_co->offset, as_co->base->to_gpr(env), info, color);
+  } else {
+    env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color);
+  }
+  return get_none();
+}
+
+/*!
+ * Store a vector float into memory. Does an aligned load.
+ */
+Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+
+  if (!src->settable() || src->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(form, "Cannot .svf from this. Got a {}.", dest->print());
+  }
+
+  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(dest);
+  MemLoadInfo info;
+  info.sign_extend = false;
+  info.size = 16;
+  info.reg = RegClass::VECTOR_FLOAT;
+  if (as_co) {
+    // can do a clever offset here
+    env->emit_ir<IR_StoreConstOffset>(src, as_co->offset, as_co->base->to_gpr(env), 16, color);
+  } else {
+    env->emit_ir<IR_StoreConstOffset>(src, 0, dest->to_gpr(env), 16, color);
+  }
   return get_none();
 }

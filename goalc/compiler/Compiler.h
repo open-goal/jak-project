@@ -233,6 +233,8 @@ class Compiler {
                                        int offset,
                                        Env* env);
 
+
+
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
@@ -281,6 +283,8 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env);
   // Atoms
 
   // Block

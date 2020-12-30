@@ -111,8 +111,13 @@ RegVal* FloatConstantVal::to_reg(Env* fe) {
 
 RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
-  fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
-  fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+  if (offset == 0) {
+    fe->emit_ir<IR_RegSet>(re, base->to_gpr(fe));
+  } else {
+    fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
+    fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+  }
+
   return re;
 }
 

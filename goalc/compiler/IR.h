@@ -274,38 +274,6 @@ class IR_ConditionalBranch : public IR {
   bool m_resolved = false;
 };
 
-class IR_LoadConstOffset : public IR {
- public:
-  IR_LoadConstOffset(const RegVal* dest, int offset, const RegVal* base, MemLoadInfo info);
-  std::string print() override;
-  RegAllocInstr to_rai() override;
-  void do_codegen(emitter::ObjectGenerator* gen,
-                  const AllocationResult& allocs,
-                  emitter::IR_Record irec) override;
-
- private:
-  const RegVal* m_dest = nullptr;
-  int m_offset = 0;
-  const RegVal* m_base = nullptr;
-  MemLoadInfo m_info;
-};
-
-class IR_StoreConstOffset : public IR {
- public:
-  IR_StoreConstOffset(const RegVal* value, int offset, const RegVal* base, int size);
-  std::string print() override;
-  RegAllocInstr to_rai() override;
-  void do_codegen(emitter::ObjectGenerator* gen,
-                  const AllocationResult& allocs,
-                  emitter::IR_Record irec) override;
-
- private:
-  const RegVal* m_value = nullptr;
-  int m_offset = 0;
-  const RegVal* m_base = nullptr;
-  int m_size = 0;
-};
-
 class IR_Null : public IR {
  public:
   IR_Null() = default;
@@ -378,6 +346,46 @@ class IR_Asm : public IR {
 
  protected:
   bool m_use_coloring;
+};
+
+class IR_LoadConstOffset : public IR_Asm {
+ public:
+  IR_LoadConstOffset(const RegVal* dest,
+                     int offset,
+                     const RegVal* base,
+                     MemLoadInfo info,
+                     bool use_coloring = true);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  MemLoadInfo m_info;
+};
+
+class IR_StoreConstOffset : public IR_Asm {
+ public:
+  IR_StoreConstOffset(const RegVal* value,
+                      int offset,
+                      const RegVal* base,
+                      int size,
+                      bool use_coloring = true);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_value = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  int m_size = 0;
 };
 
 class IR_AsmRet : public IR_Asm {

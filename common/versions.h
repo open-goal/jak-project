@@ -13,7 +13,7 @@
 namespace versions {
 // language version (OpenGOAL)
 constexpr s32 GOAL_VERSION_MAJOR = 0;
-constexpr s32 GOAL_VERSION_MINOR = 4;
+constexpr s32 GOAL_VERSION_MINOR = 5;
 
 // these versions are from the game
 constexpr u32 ART_FILE_VERSION = 6;

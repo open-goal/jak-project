@@ -64,6 +64,49 @@ void load_constant(u64 value,
     }
   }
 }
+
+void regset_common(emitter::ObjectGenerator* gen,
+                   const AllocationResult& allocs,
+                   emitter::IR_Record irec,
+                   const RegVal* dst,
+                   const RegVal* src,
+                   bool use_coloring) {
+  auto src_reg = use_coloring ? get_reg(src, allocs, irec) : get_no_color_reg(src);
+  auto dst_reg = use_coloring ? get_reg(dst, allocs, irec) : get_no_color_reg(dst);
+  auto src_class = src->ireg().reg_class;
+  auto dst_class = dst->ireg().reg_class;
+
+  if (src_class == RegClass::GPR_64 && dst_class == RegClass::GPR_64) {
+    if (src_reg == dst_reg) {
+      // eliminate move
+      gen->add_instr(IGen::null(), irec);
+    } else {
+      gen->add_instr(IGen::mov_gpr64_gpr64(dst_reg, src_reg), irec);
+    }
+  } else if (src_class == RegClass::FLOAT && dst_class == RegClass::FLOAT) {
+    if (src_reg == dst_reg) {
+      // eliminate move
+      gen->add_instr(IGen::null(), irec);
+    } else {
+      gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
+    }
+  } else if (src_class == RegClass::VECTOR_FLOAT && dst_class == RegClass::VECTOR_FLOAT) {
+    if (src_reg == dst_reg) {
+      // eliminate move
+      gen->add_instr(IGen::null(), irec);
+    } else {
+      gen->add_instr(IGen::mov_vf_vf(dst_reg, src_reg), irec);
+    }
+  } else if (src_class == RegClass::FLOAT && dst_class == RegClass::GPR_64) {
+    // xmm 1x -> gpr
+    gen->add_instr(IGen::movd_gpr32_xmm32(dst_reg, src_reg), irec);
+  } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
+    // gpr -> xmm 1x
+    gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
+  } else {
+    assert(false);  // unhandled move.
+  }
+}
 }  // namespace
 
 ///////////
@@ -242,22 +285,7 @@ RegAllocInstr IR_RegSet::to_rai() {
 void IR_RegSet::do_codegen(emitter::ObjectGenerator* gen,
                            const AllocationResult& allocs,
                            emitter::IR_Record irec) {
-  auto val_reg = get_reg(m_src, allocs, irec);
-  auto dest_reg = get_reg(m_dest, allocs, irec);
-
-  if (val_reg == dest_reg) {
-    gen->add_instr(IGen::null(), irec);
-  } else if (val_reg.is_gpr() && dest_reg.is_gpr()) {
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
-  } else if (val_reg.is_xmm() && dest_reg.is_gpr()) {
-    gen->add_instr(IGen::movd_gpr32_xmm32(dest_reg, val_reg), irec);
-  } else if (val_reg.is_gpr() && dest_reg.is_xmm()) {
-    gen->add_instr(IGen::movd_xmm32_gpr32(dest_reg, val_reg), irec);
-  } else if (val_reg.is_xmm() && dest_reg.is_xmm()) {
-    gen->add_instr(IGen::mov_xmm32_xmm32(dest_reg, val_reg), irec);
-  } else {
-    assert(false);
-  }
+  regset_common(gen, allocs, irec, m_dest, m_src, true);
 }
 
 std::string IR_RegSet::print() {
@@ -766,8 +794,9 @@ void IR_ConditionalBranch::do_codegen(emitter::ObjectGenerator* gen,
 IR_LoadConstOffset::IR_LoadConstOffset(const RegVal* dest,
                                        int offset,
                                        const RegVal* base,
-                                       MemLoadInfo info)
-    : m_dest(dest), m_offset(offset), m_base(base), m_info(info) {}
+                                       MemLoadInfo info,
+                                       bool use_coloring)
+    : IR_Asm(use_coloring), m_dest(dest), m_offset(offset), m_base(base), m_info(info) {}
 
 std::string IR_LoadConstOffset::print() {
   return fmt::format("mov {}, [{} + {}]", m_dest->print(), m_base->print(), m_offset);
@@ -783,22 +812,22 @@ RegAllocInstr IR_LoadConstOffset::to_rai() {
 void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
                                     const AllocationResult& allocs,
                                     emitter::IR_Record irec) {
+  auto dest_reg = m_use_coloring ? get_reg(m_dest, allocs, irec) : get_no_color_reg(m_dest);
+  auto base_reg = m_use_coloring ? get_reg(m_base, allocs, irec) : get_no_color_reg(m_base);
+
   if (m_dest->ireg().reg_class == RegClass::GPR_64) {
-    gen->add_instr(IGen::load_goal_gpr(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
-                                       emitter::gRegInfo.get_offset_reg(), m_offset, m_info.size,
-                                       m_info.sign_extend),
+    gen->add_instr(IGen::load_goal_gpr(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(),
+                                       m_offset, m_info.size, m_info.sign_extend),
                    irec);
   } else if (m_dest->ireg().reg_class == RegClass::FLOAT && m_info.size == 4 &&
              m_info.sign_extend == false && m_info.reg == RegClass::FLOAT) {
     gen->add_instr(
-        IGen::load_goal_xmm32(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
-                              emitter::gRegInfo.get_offset_reg(), m_offset),
+        IGen::load_goal_xmm32(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
   } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT && m_info.size == 16 &&
              m_info.sign_extend == false && m_info.reg == RegClass::VECTOR_FLOAT) {
-    gen->add_instr(IGen::load_goal_vf(get_reg(m_dest, allocs, irec), get_reg(m_base, allocs, irec),
-                                      emitter::gRegInfo.get_offset_reg(), m_offset),
-                   irec);
+    gen->add_instr(
+        IGen::load_goal_vf(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset), irec);
   } else {
     throw std::runtime_error("IR_LoadConstOffset::do_codegen not supported");
   }
@@ -810,8 +839,9 @@ void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
 IR_StoreConstOffset::IR_StoreConstOffset(const RegVal* value,
                                          int offset,
                                          const RegVal* base,
-                                         int size)
-    : m_value(value), m_offset(offset), m_base(base), m_size(size) {}
+                                         int size,
+                                         bool use_coloring)
+    : IR_Asm(use_coloring), m_value(value), m_offset(offset), m_base(base), m_size(size) {}
 
 std::string IR_StoreConstOffset::print() {
   return fmt::format("move [{} + {}], {}", m_base->print(), m_offset, m_value->print());
@@ -827,15 +857,20 @@ RegAllocInstr IR_StoreConstOffset::to_rai() {
 void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
                                      const AllocationResult& allocs,
                                      emitter::IR_Record irec) {
+  auto base_reg = m_use_coloring ? get_reg(m_base, allocs, irec) : get_no_color_reg(m_base);
+  auto value_reg = m_use_coloring ? get_reg(m_value, allocs, irec) : get_no_color_reg(m_value);
+
   if (m_value->ireg().reg_class == RegClass::GPR_64) {
-    gen->add_instr(
-        IGen::store_goal_gpr(get_reg(m_base, allocs, irec), get_reg(m_value, allocs, irec),
-                             emitter::gRegInfo.get_offset_reg(), m_offset, m_size),
-        irec);
+    gen->add_instr(IGen::store_goal_gpr(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(),
+                                        m_offset, m_size),
+                   irec);
   } else if (m_value->ireg().reg_class == RegClass::FLOAT && m_size == 4) {
     gen->add_instr(
-        IGen::store_goal_xmm32(get_reg(m_base, allocs, irec), get_reg(m_value, allocs, irec),
-                               emitter::gRegInfo.get_offset_reg(), m_offset),
+        IGen::store_goal_xmm32(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
+        irec);
+  } else if (m_value->ireg().reg_class == RegClass::VECTOR_FLOAT && m_size == 16) {
+    gen->add_instr(
+        IGen::store_goal_vf(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
   } else {
     throw std::runtime_error("IR_StoreConstOffset::do_codegen can't handle this");
@@ -1208,20 +1243,5 @@ RegAllocInstr IR_RegSetAsm::to_rai() {
 void IR_RegSetAsm::do_codegen(emitter::ObjectGenerator* gen,
                               const AllocationResult& allocs,
                               emitter::IR_Record irec) {
-  auto val_reg = m_use_coloring ? get_reg(m_src, allocs, irec) : get_no_color_reg(m_src);
-  auto dest_reg = m_use_coloring ? get_reg(m_dst, allocs, irec) : get_no_color_reg(m_dst);
-
-  if (val_reg == dest_reg) {
-    gen->add_instr(IGen::null(), irec);
-  } else if (val_reg.is_gpr() && dest_reg.is_gpr()) {
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
-  } else if (val_reg.is_xmm() && dest_reg.is_gpr()) {
-    gen->add_instr(IGen::movd_gpr32_xmm32(dest_reg, val_reg), irec);
-  } else if (val_reg.is_gpr() && dest_reg.is_xmm()) {
-    gen->add_instr(IGen::movd_xmm32_gpr32(dest_reg, val_reg), irec);
-  } else if (val_reg.is_xmm() && dest_reg.is_xmm()) {
-    gen->add_instr(IGen::mov_xmm32_xmm32(dest_reg, val_reg), irec);
-  } else {
-    assert(false);
-  }
+  regset_common(gen, allocs, irec, m_dst, m_src, m_use_coloring);
 }

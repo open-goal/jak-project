@@ -1169,7 +1169,7 @@ Not implemented well yet.
   body...
   )
 ```
-Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr` or `xmm`) and the compiler will pick a GPR or XMM for you.
+Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr`, a normal 64-bit integer register; `fpr`, a 32-bit single precision float; or  `vf`, and 128-bit floating point vector register) and the compiler will pick a GPR or XMM for you.
 
 If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you in the prologue and restore it in the epilogue.
 If you pick a special register like `rsp`, it won't be backed up.  
