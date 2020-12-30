@@ -809,6 +809,35 @@ struct Instruction {
     }
   }
 
+  void set_vex_modrm_and_rex_for_rip_plus_s32(uint8_t reg,
+                                              s32 offset,
+                                              VEX3::LeadingBytes lb = VEX3::LeadingBytes::P_0F,
+                                              bool rex_w = false) {
+    bool rex_r = false;
+
+    if (reg >= 8) {
+      reg -= 8;
+      rex_r = true;
+    }
+
+    ModRM modrm;
+    modrm.mod = 0;
+    modrm.reg_op = reg;
+    modrm.rm = 5;  // use the RIP addressing mode
+    set(modrm);
+
+    if (rex_w || lb != VEX3::LeadingBytes::P_0F) {
+      // need three byte version
+      set(VEX3(rex_w, rex_r, false, false, lb));
+    } else {
+      assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
+      assert(!rex_w);
+      set(VEX2(rex_r));
+    }
+
+    set_disp(Imm(4, offset));
+  }
+
   /*!
    * Set up modrm and rex for the commonly used 32-bit immediate displacement indexing mode.
    */

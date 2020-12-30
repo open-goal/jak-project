@@ -185,7 +185,6 @@ TEST(EmitterAVX, AddVF) {
             "C5E058DBC4C16058DDC59058DBC4C11058DDC56058EBC4416058EDC51058EBC4411058ED");
 }
 
-
 TEST(EmitterAVX, BlendVF) {
   CodeTester tester;
   tester.init_code_buffer(1024);
@@ -201,4 +200,12 @@ TEST(EmitterAVX, BlendVF) {
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "C4E3610CDB03C4C3610CDD03C4E3110CDB03C4C3110CDD03C463610CEB03C443610CED03C463110CEB03C4"
             "43110CED03");
+}
+
+TEST(EmitterAVX, RIP) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::loadvf_rip_plus_s32(XMM0 + 3, -123));
+  tester.emit(IGen::loadvf_rip_plus_s32(XMM0 + 13, -123));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5F8281D85FFFFFFC578282D85FFFFFF");
 }

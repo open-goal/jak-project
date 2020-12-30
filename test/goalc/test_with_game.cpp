@@ -353,6 +353,9 @@ TEST_F(WithGameTests, VFSimpleMath) {
   runner.run_static_test(env, testCategory, "test-basic-vector-math.gc", {"54.0000\n0\n"});
 }
 
+TEST_F(WithGameTests, VFLoadStatic) {
+  runner.run_static_test(env, testCategory, "test-load-static-vector.gc", {"5.3000\n0\n"});
+}
 
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;

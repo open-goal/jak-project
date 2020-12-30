@@ -684,6 +684,11 @@ void IR_StaticVarLoad::do_codegen(emitter::ObjectGenerator* gen,
 
     auto instr = gen->add_instr(IGen::static_load_xmm32(get_reg(m_dest, allocs, irec), 0), irec);
     gen->link_instruction_static(instr, m_src->rec, 0);
+  } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT) {
+    // we don't check the load info intentionally because we want to allow loading an entire
+    // vector structure.
+    auto instr = gen->add_instr(IGen::loadvf_rip_plus_s32(get_reg(m_dest, allocs, irec), 0), irec);
+    gen->link_instruction_static(instr, m_src->rec, 0);
   } else {
     assert(false);
   }

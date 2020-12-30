@@ -259,6 +259,7 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
   }
   auto src = compile_error_guard(args.unnamed.at(1), env);
   auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
+  auto as_sv = dynamic_cast<StaticVal*>(src);
   MemLoadInfo info;
   info.sign_extend = false;
   info.size = 16;
@@ -266,6 +267,11 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
   if (as_co) {
     // can do a clever offset here
     env->emit_ir<IR_LoadConstOffset>(dest, as_co->offset, as_co->base->to_gpr(env), info, color);
+  } else if (as_sv) {
+    if (!color) {
+      throw std::runtime_error("no color nyi for static loads");
+    }
+    env->emit_ir<IR_StaticVarLoad>(dest, as_sv->obj);
   } else {
     env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color);
   }

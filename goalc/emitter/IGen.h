@@ -1958,6 +1958,15 @@ class IGen {
     return instr;
   }
 
+  static Instruction loadvf_rip_plus_s32(Register dest, s64 offset) {
+    assert(dest.is_xmm());
+    assert(offset >= INT32_MIN);
+    assert(offset <= INT32_MAX);
+    Instruction instr(0x28);
+    instr.set_vex_modrm_and_rex_for_rip_plus_s32(dest.hw_id(), offset);
+    return instr;
+  }
+
   // todo, rip relative loads and stores.
 
   static Instruction mul_vf(Register dst, Register src1, Register src2) {

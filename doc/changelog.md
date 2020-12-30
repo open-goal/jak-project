@@ -93,4 +93,9 @@
 
 ## V0.5
 - Breaking change: the register class `xmm` for a single float was renamed to `fpr` to distinguish it from other uses of `xmm` registers.
+- Breaking change: the message format for reset and shutdown messages sent between the listener and runtime has changed.
 - Improved code-generation quality where accessing a field or similar with an offset of zero from a base register.
+- The listener now uses message IDs to more robustly handle the situation where a response messages comes, but is extremely late, or if some sent messages are skipped.
+- Fixed bug where references to the debug segment using RIP-relative links were not set to zero by the linker when the debug segment isn't loaded.
+- The `rlet` form now supports 128-bit vector float registers with the `vf` register class.
+- Added support for "vector float" assembly operations, including `lvf`, `svf`, `xor`, `sub`, `add`, and `blend`.
