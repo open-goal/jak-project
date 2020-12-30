@@ -349,6 +349,11 @@ TEST_F(WithGameTests, VFLoadAndStore) {
   runner.run_static_test(env, testCategory, "test-vf-load-and-store.gc", {"2.0000\n0\n"});
 }
 
+TEST_F(WithGameTests, VFSimpleMath) {
+  runner.run_static_test(env, testCategory, "test-basic-vector-math.gc", {"54.0000\n0\n"});
+}
+
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

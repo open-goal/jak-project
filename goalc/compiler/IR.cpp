@@ -41,6 +41,12 @@ Register get_no_color_reg(const RegVal* rv) {
   return rv->rlet_constraint().value();
 }
 
+Register get_reg_asm(const RegVal* rv,
+                     const AllocationResult& allocs,
+                     emitter::IR_Record irec,
+                     bool use_coloring) {
+  return use_coloring ? get_reg(rv, allocs, irec) : get_no_color_reg(rv);
+}
 void load_constant(u64 value,
                    emitter::ObjectGenerator* gen,
                    emitter::IR_Record irec,
@@ -1244,4 +1250,94 @@ void IR_RegSetAsm::do_codegen(emitter::ObjectGenerator* gen,
                               const AllocationResult& allocs,
                               emitter::IR_Record irec) {
   regset_common(gen, allocs, irec, m_dst, m_src, m_use_coloring);
+}
+
+///////////////////////
+// AsmVF3
+///////////////////////
+
+IR_VFMath3Asm::IR_VFMath3Asm(bool use_color,
+                             const RegVal* dst,
+                             const RegVal* src1,
+                             const RegVal* src2,
+                             Kind kind)
+    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_kind(kind) {}
+
+std::string IR_VFMath3Asm::print() {
+  switch (m_kind) {
+    case Kind::XOR:
+      return fmt::format(".xor.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print());
+    case Kind::SUB:
+      return fmt::format(".sub.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print());
+    case Kind::ADD:
+      return fmt::format(".add.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print());
+    default:
+      assert(false);
+  }
+}
+
+RegAllocInstr IR_VFMath3Asm::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src1->ireg());
+    rai.read.push_back(m_src2->ireg());
+  }
+  return rai;
+}
+
+void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src1 = get_reg_asm(m_src1, allocs, irec, m_use_coloring);
+  auto src2 = get_reg_asm(m_src2, allocs, irec, m_use_coloring);
+
+  switch (m_kind) {
+    case Kind::XOR:
+      gen->add_instr(IGen::xor_vf(dst, src1, src2), irec);
+      break;
+    case Kind::SUB:
+      gen->add_instr(IGen::sub_vf(dst, src1, src2), irec);
+      break;
+    case Kind::ADD:
+      gen->add_instr(IGen::add_vf(dst, src1, src2), irec);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+IR_BlendVF::IR_BlendVF(bool use_color,
+                       const RegVal* dst,
+                       const RegVal* src1,
+                       const RegVal* src2,
+                       u8 mask)
+    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_mask(mask) {}
+
+std::string IR_BlendVF::print() {
+  return fmt::format(".blend.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                     m_src1->print(), m_src2->print(), m_mask);
+}
+
+RegAllocInstr IR_BlendVF::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src1->ireg());
+    rai.read.push_back(m_src2->ireg());
+  }
+  return rai;
+}
+
+void IR_BlendVF::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src1 = get_reg_asm(m_src1, allocs, irec, m_use_coloring);
+  auto src2 = get_reg_asm(m_src2, allocs, irec, m_use_coloring);
+  gen->add_instr(IGen::blend_vf(dst, src1, src2, m_mask), irec);
 }

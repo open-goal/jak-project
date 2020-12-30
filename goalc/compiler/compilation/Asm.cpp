@@ -303,3 +303,96 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   }
   return get_none();
 }
+
+Val* Compiler::compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR, env);
+}
+
+Val* Compiler::compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB, env);
+}
+
+Val* Compiler::compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD, env);
+}
+
+Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid destination register for a vector float 3-arg math form. Got a {}.",
+        dest->print());
+  }
+
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  if (src1->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid first source register for a vector float 3-arg math form. Got a {}.",
+        src1->print());
+  }
+
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  if (src2->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid second source register for a vector float 3-arg math form. Got a {}.",
+        src2->print());
+  }
+
+  int64_t mask;
+  if (!try_getting_constant_integer(args.unnamed.at(3), &mask, env)) {
+    throw_compiler_error(form,
+                         "The value {} is invalid for a blend mask, it could not be evaluated as a "
+                         "constant integer.",
+                         args.unnamed.at(3).print());
+  }
+
+  if (mask < 0 || mask > 15) {
+    throw_compiler_error(form, "The value {} is out of range for a blend mask.", mask);
+  }
+  env->emit_ir<IR_BlendVF>(color, dest, src1, src2, mask);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
+                                    const goos::Object& rest,
+                                    IR_VFMath3Asm::Kind kind,
+                                    Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid destination register for a vector float 3-arg math form. Got a {}.",
+        dest->print());
+  }
+
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  if (src1->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid first source register for a vector float 3-arg math form. Got a {}.",
+        src1->print());
+  }
+
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  if (src2->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid second source register for a vector float 3-arg math form. Got a {}.",
+        src2->print());
+  }
+
+  env->emit_ir<IR_VFMath3Asm>(color, dest, src1, src2, kind);
+
+  return get_none();
+}

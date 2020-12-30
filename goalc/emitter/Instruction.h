@@ -54,6 +54,8 @@ struct REX {
   uint8_t operator()() const { return (1 << 6) | (W << 3) | (R << 2) | (X << 1) | (B << 0); }
 };
 
+enum class VexPrefix : u8 { P_NONE = 0, P_66 = 1, P_F3 = 2, P_F2 = 3 };
+
 /*!
  * The "VEX" 3-byte format for AVX instructions
  */
@@ -61,7 +63,7 @@ struct VEX3 {
   bool W, R, X, B;
   enum class LeadingBytes : u8 { P_INVALID = 0, P_0F = 1, P_0F_38 = 2, P_0F_3A = 3 } leading_bytes;
   u8 reg_id;
-  enum class Prefix : u8 { P_NONE = 0, P_66 = 1, P_F3 = 2, P_F2 = 3 } prefix;
+  VexPrefix prefix;
   bool L;
 
   u8 emit(u8 byte) const {
@@ -92,7 +94,7 @@ struct VEX3 {
        bool b,
        LeadingBytes _leading_bytes,
        u8 _reg_id = 0,
-       Prefix _prefix = Prefix::P_NONE,
+       VexPrefix _prefix = VexPrefix::P_NONE,
        bool l = false)
       : W(w),
         R(r),
@@ -107,7 +109,7 @@ struct VEX3 {
 struct VEX2 {
   bool R;
   u8 reg_id;
-  enum class Prefix : u8 { P_NONE = 0, P_66 = 1, P_F3 = 2, P_F2 = 3 } prefix;
+  VexPrefix prefix;
   bool L;
 
   u8 emit(u8 byte) const {
@@ -125,7 +127,7 @@ struct VEX2 {
     }
   }
 
-  VEX2(bool r, u8 _reg_id = 0, Prefix _prefix = Prefix::P_NONE, bool l = false)
+  VEX2(bool r, u8 _reg_id = 0, VexPrefix _prefix = VexPrefix::P_NONE, bool l = false)
       : R(r), reg_id(_reg_id), prefix(_prefix), L(l) {}
 };
 
@@ -279,7 +281,8 @@ struct Instruction {
                              uint8_t rm,
                              VEX3::LeadingBytes lb,
                              uint8_t vex_reg = 0,
-                             bool rex_w = false) {
+                             bool rex_w = false,
+                             VexPrefix prefix = VexPrefix::P_NONE) {
     bool rex_b = false, rex_r = false;
 
     if (rm >= 8) {
@@ -300,12 +303,12 @@ struct Instruction {
     set(modrm);
     if (rex_b || rex_w || lb != VEX3::LeadingBytes::P_0F) {
       // need three byte version
-      set(VEX3(rex_w, rex_r, false, rex_b, lb, vex_reg));
+      set(VEX3(rex_w, rex_r, false, rex_b, lb, vex_reg, prefix));
     } else {
       assert(lb == VEX3::LeadingBytes::P_0F);  // vex2 implies 0x0f
       assert(!rex_b);
       assert(!rex_w);
-      set(VEX2(rex_r, vex_reg));
+      set(VEX2(rex_r, vex_reg, prefix));
     }
   }
 
