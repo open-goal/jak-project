@@ -2,6 +2,7 @@
 #include "IR.h"
 #include "goalc/emitter/IGen.h"
 #include "third-party/fmt/core.h"
+#include "common/symbols.h"
 
 using namespace emitter;
 
@@ -202,10 +203,19 @@ void IR_LoadSymbolPointer::do_codegen(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
   auto dest_reg = get_reg(m_dest, allocs, irec);
-  // todo, could be single lea opcode
-  gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
-  auto add = gen->add_instr(IGen::add_gpr64_imm32s(dest_reg, 0x0afecafe), irec);
-  gen->link_instruction_symbol_ptr(add, m_name);
+  if (m_name == "#f") {
+    static_assert(FIX_SYM_FALSE == 0, "false symbol location");
+    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+  } else if (m_name == "#t") {
+    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(), FIX_SYM_TRUE), irec);
+  } else if (m_name == "_empty_") {
+    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(), FIX_SYM_EMPTY_PAIR),
+                   irec);
+  } else {
+    auto instr =
+        gen->add_instr(IGen::lea_reg_plus_off32(dest_reg, gRegInfo.get_st_reg(), 0x0afecafe), irec);
+    gen->link_instruction_symbol_ptr(instr, m_name);
+  }
 }
 
 /////////////////////

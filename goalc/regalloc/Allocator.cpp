@@ -526,12 +526,12 @@ bool assignment_ok_at(int var,
       if (move_eliminator) {
         if (enable_fancy_coloring) {
           if (lr.dies_next_at_instr(idx) && other_lr.becomes_live_at_instr(idx) &&
-              in.instructions.at(idx).is_move) {
+              (allow_read_write_same_reg || in.instructions.at(idx).is_move)) {
             allowed_by_move_eliminator = true;
           }
 
           if (lr.becomes_live_at_instr(idx) && other_lr.dies_next_at_instr(idx) &&
-              in.instructions.at(idx).is_move) {
+              (allow_read_write_same_reg || in.instructions.at(idx).is_move)) {
             allowed_by_move_eliminator = true;
           }
         } else {
@@ -822,15 +822,15 @@ bool do_allocation_for_var(int var,
     auto& first_instr = in.instructions.at(lr.min);
     auto& last_instr = in.instructions.at(lr.max);
 
-    if (first_instr.is_move) {
-      auto& possible_coloring = cache->live_ranges.at(first_instr.read.front().id).get(lr.min);
+    if (!colored && last_instr.is_move) {
+      auto& possible_coloring = cache->live_ranges.at(last_instr.write.front().id).get(lr.max);
       if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
         colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
       }
     }
 
-    if (!colored && last_instr.is_move) {
-      auto& possible_coloring = cache->live_ranges.at(last_instr.write.front().id).get(lr.max);
+    if (!colored && first_instr.is_move) {
+      auto& possible_coloring = cache->live_ranges.at(first_instr.read.front().id).get(lr.min);
       if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
         colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
       }
