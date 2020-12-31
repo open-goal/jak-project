@@ -103,3 +103,4 @@
 - Improved back up and restore of xmm registers
 - Fixed an off-by-one in move eliminator (previous version was correct, but did not generate as good code). Complicated functions are 2 to 10% smaller.
 - Improved getting a stack address.
+- Improved getting the value of `#f`, `#t`, and `()`.
