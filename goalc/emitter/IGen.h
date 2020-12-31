@@ -966,6 +966,36 @@ class IGen {
     return instr;
   }
 
+  static Instruction lea_reg_plus_off32(Register dest, Register base, s64 offset) {
+    assert(dest.is_gpr());
+    assert(base.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8d);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(dest.hw_id(), 2, base.hw_id(), true);
+    instr.set(Imm(4, offset));
+    return instr;
+  }
+
+  static Instruction lea_reg_plus_off8(Register dest, Register base, s64 offset) {
+    assert(dest.is_gpr());
+    assert(base.is_gpr());
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x8d);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(dest.hw_id(), 1, base.hw_id(), true);
+    instr.set(Imm(1, offset));
+    return instr;
+  }
+
+  static Instruction lea_reg_plus_off(Register dest, Register base, s64 offset) {
+    if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return lea_reg_plus_off8(dest, base, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return lea_reg_plus_off32(dest, base, offset);
+    } else {
+      assert(false);
+    }
+  }
+
   static Instruction store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 offset) {
     assert(xmm_value.is_xmm());
     assert(base.is_gpr());

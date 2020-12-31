@@ -435,12 +435,12 @@ bool can_var_be_assigned(int var,
         if (move_eliminator) {
           if (enable_fancy_coloring) {
             if (lr.dies_next_at_instr(instr) && other_lr.becomes_live_at_instr(instr) &&
-                in.instructions.at(instr).is_move) {
+                (allow_read_write_same_reg || in.instructions.at(instr).is_move)) {
               allowed_by_move_eliminator = true;
             }
 
             if (lr.becomes_live_at_instr(instr) && other_lr.dies_next_at_instr(instr) &&
-                in.instructions.at(instr).is_move) {
+                (allow_read_write_same_reg || in.instructions.at(instr).is_move)) {
               allowed_by_move_eliminator = true;
             }
           } else {
@@ -456,7 +456,7 @@ bool can_var_be_assigned(int var,
         }
 
         if (!allowed_by_move_eliminator) {
-          if (debug_trace >= 2) {
+          if (debug_trace >= 1) {
             printf("at idx %d, %s conflicts\n", instr, other_lr.print_assignment().c_str());
           }
 
@@ -470,7 +470,7 @@ bool can_var_be_assigned(int var,
   for (int instr = lr.min + 1; instr <= lr.max - 1; instr++) {
     for (auto clobber : in.instructions.at(instr).clobber) {
       if (ass.occupies_reg(clobber)) {
-        if (debug_trace >= 2) {
+        if (debug_trace >= 1) {
           printf("at idx %d clobber\n", instr);
         }
 
@@ -482,7 +482,7 @@ bool can_var_be_assigned(int var,
   for (int instr = lr.min; instr <= lr.max; instr++) {
     for (auto exclusive : in.instructions.at(instr).exclude) {
       if (ass.occupies_reg(exclusive)) {
-        if (debug_trace >= 2) {
+        if (debug_trace >= 1) {
           printf("at idx %d exclusive conflict\n", instr);
         }
 
@@ -495,7 +495,7 @@ bool can_var_be_assigned(int var,
   for (int instr = lr.min; instr <= lr.max; instr++) {
     if (lr.has_constraint && lr.assignment.at(instr - lr.min).is_assigned()) {
       if (!(ass.occupies_same_reg(lr.assignment.at(instr - lr.min)))) {
-        if (debug_trace >= 2) {
+        if (debug_trace >= 1) {
           printf("at idx %d self bad (%s) (%s)\n", instr,
                  lr.assignment.at(instr - lr.min).to_string().c_str(), ass.to_string().c_str());
         }

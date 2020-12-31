@@ -1002,12 +1002,15 @@ void IR_GetStackAddr::do_codegen(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_dest, allocs, irec);
   int offset = GPR_SIZE * allocs.get_slot_for_var(m_slot);
 
-  // dest = offset
-  load_constant(offset, gen, irec, dest_reg);
-  // dest = offset + RSP
-  gen->add_instr(IGen::add_gpr64_gpr64(dest_reg, RSP), irec);
-  // dest = offset + RSP - offset
-  gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
+  if (offset == 0) {
+    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, RSP), irec);
+    gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
+  } else {
+    // dest = offset + RSP
+    gen->add_instr(IGen::lea_reg_plus_off(dest_reg, RSP, offset), irec);
+    // dest = offset + RSP - offset
+    gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
+  }
 }
 
 ///////////////////////
