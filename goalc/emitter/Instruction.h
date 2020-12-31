@@ -839,9 +839,9 @@ struct Instruction {
   }
 
   /*!
-   * Set up modrm and rex for the commonly used 32-bit immediate displacement indexing mode.
+   * Set up modrm and rex for the commonly used immediate displacement indexing mode.
    */
-  void set_modrm_rex_sib_for_reg_reg_disp32(uint8_t reg, uint8_t mod, uint8_t rm, bool rex_w) {
+  void set_modrm_rex_sib_for_reg_reg_disp(uint8_t reg, uint8_t mod, uint8_t rm, bool rex_w) {
     ModRM modrm;
 
     bool rex_r = false;

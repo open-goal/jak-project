@@ -12,6 +12,7 @@ struct StackOp {
   struct Op {
     int slot = -1;
     emitter::Register reg;
+    RegClass reg_class = RegClass::INVALID;
     bool load = false;   // load from reg before instruction?
     bool store = false;  // store into reg after instruction?
   };

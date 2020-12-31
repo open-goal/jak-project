@@ -668,6 +668,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
   for (int instr = lr.min; instr <= lr.max; instr++) {
     //    bonus_instructions.at(instr).clear();
     StackOp::Op bonus;
+    bonus.reg_class = cache->iregs.at(var).reg_class;
 
     // we may have a constaint in here
     auto& current_assignment = lr.assignment.at(instr - lr.min);
