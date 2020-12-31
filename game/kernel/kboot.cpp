@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "common/common_types.h"
+#include "common/util/Timer.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
 #include "kmachine.h"
@@ -146,6 +147,7 @@ void KernelCheckAndDispatch() {
     // dispatch the kernel
     //(**kernel_dispatcher)();
 
+    Timer kernel_dispatch_timer;
     if (MasterUseKernel) {
       // use the GOAL kernel.
       call_goal_on_stack(Ptr<Function>(kernel_dispatcher->value), goal_stack, s7.offset,
@@ -162,6 +164,11 @@ void KernelCheckAndDispatch() {
 #endif
         ListenerFunction->value = s7.offset;
       }
+    }
+
+    auto time_ms = kernel_dispatch_timer.getMs();
+    if (time_ms > 3) {
+      printf("Kernel dispatch time: %.3f ms\n", time_ms);
     }
 
     ClearPending();

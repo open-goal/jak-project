@@ -62,6 +62,8 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
  * Generates prologues / epilogues.
  */
 void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
+  bool use_new_xmms = true;
+
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   // todo, extra alignment settings
 
@@ -71,13 +73,44 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   // compute how much stack we will use
   int stack_offset = 0;
 
-  // back up xmms (currently not aligned)
+  // count how many xmm's we have to backup
+  int n_xmm_backups = 0;
   for (auto& saved_reg : allocs.used_saved_regs) {
     if (saved_reg.is_xmm()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE), InstructionInfo::PROLOGUE);
-      m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(RSP, saved_reg),
+      n_xmm_backups++;
+    }
+  }
+
+  // only for new xmms. if n == 0, we don't use this at all.
+  int xmm_backup_stack_offset = 8 + XMM_SIZE * n_xmm_backups;
+
+  if (use_new_xmms) {
+    if (n_xmm_backups > 0) {
+      // offset the stack
+      stack_offset += xmm_backup_stack_offset;
+      m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm(RSP, xmm_backup_stack_offset),
                             InstructionInfo::PROLOGUE);
-      stack_offset += XMM_SIZE;
+      // back up xmms
+      int i = 0;
+      for (auto& saved_reg : allocs.used_saved_regs) {
+        if (saved_reg.is_xmm()) {
+          int offset = i * XMM_SIZE;
+          m_gen.add_instr_no_ir(f_rec, IGen::store128_xmm128_reg_offset(RSP, saved_reg, offset),
+                                InstructionInfo::PROLOGUE);
+          i++;
+        }
+      }
+    }
+  } else {
+    // back up xmms (currently not aligned)
+    for (auto& saved_reg : allocs.used_saved_regs) {
+      if (saved_reg.is_xmm()) {
+        m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE),
+                              InstructionInfo::PROLOGUE);
+        m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(RSP, saved_reg),
+                              InstructionInfo::PROLOGUE);
+        stack_offset += XMM_SIZE;
+      }
     }
   }
 
@@ -132,9 +165,15 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     auto& bonus = allocs.stack_ops.at(ir_idx);
     for (auto& op : bonus.ops) {
       if (op.load) {
-        if (op.reg.is_gpr()) {
+        if (op.reg.is_gpr() && op.reg_class == RegClass::GPR_64) {
+          // todo, s8 or 0 offset if possible?
           m_gen.add_instr(IGen::load64_gpr64_plus_s32(
                               op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, RSP),
+                          i_rec);
+        } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
+          // load xmm32 off of the stack
+          m_gen.add_instr(IGen::load_reg_offset_xmm32(
+                              op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
           assert(false);
@@ -148,9 +187,15 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     // store things back on the stack if needed.
     for (auto& op : bonus.ops) {
       if (op.store) {
-        if (op.reg.is_gpr()) {
+        if (op.reg.is_gpr() && op.reg_class == RegClass::GPR_64) {
+          // todo, s8 or 0 offset if possible?
           m_gen.add_instr(IGen::store64_gpr64_plus_s32(
                               RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, op.reg),
+                          i_rec);
+        } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
+          // store xmm32 on the stack
+          m_gen.add_instr(IGen::store_reg_offset_xmm32(
+                              RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
           assert(false);
@@ -180,12 +225,31 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     }
   }
 
-  for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
-    auto& saved_reg = allocs.used_saved_regs.at(i);
-    if (saved_reg.is_xmm()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(saved_reg, RSP),
+  if (use_new_xmms) {
+    if (n_xmm_backups > 0) {
+      int j = n_xmm_backups;
+      for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
+        auto& saved_reg = allocs.used_saved_regs.at(i);
+        if (saved_reg.is_xmm()) {
+          j--;
+          int offset = j * XMM_SIZE;
+          m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_reg_offset(saved_reg, RSP, offset),
+                                InstructionInfo::EPILOGUE);
+        }
+      }
+      assert(j == 0);
+      m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm(RSP, xmm_backup_stack_offset),
                             InstructionInfo::EPILOGUE);
-      m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(RSP, XMM_SIZE), InstructionInfo::EPILOGUE);
+    }
+  } else {
+    for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
+      auto& saved_reg = allocs.used_saved_regs.at(i);
+      if (saved_reg.is_xmm()) {
+        m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(saved_reg, RSP),
+                              InstructionInfo::EPILOGUE);
+        m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(RSP, XMM_SIZE),
+                              InstructionInfo::EPILOGUE);
+      }
     }
   }
 

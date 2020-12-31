@@ -12,6 +12,7 @@ struct StackOp {
   struct Op {
     int slot = -1;
     emitter::Register reg;
+    RegClass reg_class = RegClass::INVALID;
     bool load = false;   // load from reg before instruction?
     bool store = false;  // store into reg after instruction?
   };
@@ -46,6 +47,8 @@ constexpr bool enable_fancy_coloring = true;
 
 // will attempt to allocate in a way to reduce the number of moves.
 constexpr bool move_eliminator = true;
+
+constexpr bool allow_read_write_same_reg = true;
 
 // Indication of where a variable is live and what assignment it has at each point in the range.
 struct LiveInfo {

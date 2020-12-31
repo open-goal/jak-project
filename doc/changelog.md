@@ -99,3 +99,8 @@
 - Fixed bug where references to the debug segment using RIP-relative links were not set to zero by the linker when the debug segment isn't loaded.
 - The `rlet` form now supports 128-bit vector float registers with the `vf` register class.
 - Added support for "vector float" assembly operations, including `lvf`, `svf`, `xor`, `sub`, `add`, and `blend`.
+- Added the ability to spill floating point variables to the stack if there aren't enough registers.
+- Improved back up and restore of xmm registers
+- Fixed an off-by-one in move eliminator (previous version was correct, but did not generate as good code). Complicated functions are 2 to 10% smaller.
+- Improved getting a stack address.
+- Improved getting the value of `#f`, `#t`, and `()`.

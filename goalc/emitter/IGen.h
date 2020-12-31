@@ -966,6 +966,62 @@ class IGen {
     return instr;
   }
 
+  static Instruction lea_reg_plus_off32(Register dest, Register base, s64 offset) {
+    assert(dest.is_gpr());
+    assert(base.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x8d);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(dest.hw_id(), 2, base.hw_id(), true);
+    instr.set(Imm(4, offset));
+    return instr;
+  }
+
+  static Instruction lea_reg_plus_off8(Register dest, Register base, s64 offset) {
+    assert(dest.is_gpr());
+    assert(base.is_gpr());
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x8d);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(dest.hw_id(), 1, base.hw_id(), true);
+    instr.set(Imm(1, offset));
+    return instr;
+  }
+
+  static Instruction lea_reg_plus_off(Register dest, Register base, s64 offset) {
+    if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return lea_reg_plus_off8(dest, base, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return lea_reg_plus_off32(dest, base, offset);
+    } else {
+      assert(false);
+    }
+  }
+
+  static Instruction store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 offset) {
+    assert(xmm_value.is_xmm());
+    assert(base.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x11);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_value.hw_id(), 2, base.hw_id(), false);
+    instr.set(Imm(4, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, s64 offset) {
+    assert(xmm_value.is_xmm());
+    assert(base.is_gpr());
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x11);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_value.hw_id(), 1, base.hw_id(), false);
+    instr.set(Imm(1, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
   static Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
                                                             Register addr1,
                                                             Register addr2,
@@ -981,6 +1037,32 @@ class IGen {
     instr.set_modrm_and_rex_for_reg_plus_reg_plus_s32(xmm_dest.hw_id(), addr1.hw_id(),
                                                       addr2.hw_id(), offset, false);
 
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 offset) {
+    assert(xmm_dest.is_xmm());
+    assert(base.is_gpr());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x10);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_dest.hw_id(), 2, base.hw_id(), false);
+    instr.set(Imm(4, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction load32_xmm32_gpr64_plus_s8(Register xmm_dest, Register base, s64 offset) {
+    assert(xmm_dest.is_xmm());
+    assert(base.is_gpr());
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x10);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_dest.hw_id(), 1, base.hw_id(), false);
+    instr.set(Imm(1, offset));
     instr.swap_op0_rex();
     return instr;
   }
@@ -1009,6 +1091,30 @@ class IGen {
     }
   }
 
+  static Instruction store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset) {
+    assert(base.is_gpr());
+    assert(xmm_value.is_xmm());
+    if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return store32_xmm32_gpr64_plus_s8(base, xmm_value, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return store32_xmm32_gpr64_plus_s32(base, xmm_value, offset);
+    } else {
+      assert(false);
+    }
+  }
+
+  static Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset) {
+    assert(base.is_gpr());
+    assert(xmm_dest.is_xmm());
+    if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return load32_xmm32_gpr64_plus_s8(xmm_dest, base, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return load32_xmm32_gpr64_plus_s32(xmm_dest, base, offset);
+    } else {
+      assert(false);
+    }
+  }
+
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   LOADS n' STORES - XMM128
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1019,8 +1125,8 @@ class IGen {
   static Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
     assert(gpr_addr.is_gpr());
     assert(xmm_value.is_xmm());
-    // Instruction instr(0x66);
-    Instruction instr(0xf3);
+    Instruction instr(0x66);
+    //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x7f);
     instr.set_modrm_and_rex_for_reg_addr(xmm_value.hw_id(), gpr_addr.hw_id(), false);
@@ -1028,16 +1134,96 @@ class IGen {
     return instr;
   }
 
+  static Instruction store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64 offset) {
+    assert(gpr_addr.is_gpr());
+    assert(xmm_value.is_xmm());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x66);
+    //    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x7f);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_value.hw_id(), 2, gpr_addr.hw_id(), false);
+    instr.set(Imm(4, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 offset) {
+    assert(gpr_addr.is_gpr());
+    assert(xmm_value.is_xmm());
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x66);
+    //    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x7f);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_value.hw_id(), 1, gpr_addr.hw_id(), false);
+    instr.set(Imm(1, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
   static Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
     assert(gpr_addr.is_gpr());
     assert(xmm_dest.is_xmm());
-    // Instruction instr(0x66);
-    Instruction instr(0xf3);
+    Instruction instr(0x66);
+    //    Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x6f);
     instr.set_modrm_and_rex_for_reg_addr(xmm_dest.hw_id(), gpr_addr.hw_id(), false);
     instr.swap_op0_rex();
     return instr;
+  }
+
+  static Instruction load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 offset) {
+    assert(gpr_addr.is_gpr());
+    assert(xmm_dest.is_xmm());
+    assert(offset >= INT32_MIN && offset <= INT32_MAX);
+    Instruction instr(0x66);
+    //    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x6f);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_dest.hw_id(), 2, gpr_addr.hw_id(), false);
+    instr.set(Imm(4, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction load128_xmm128_gpr64_s8(Register xmm_dest, Register gpr_addr, s64 offset) {
+    assert(gpr_addr.is_gpr());
+    assert(xmm_dest.is_xmm());
+    assert(offset >= INT8_MIN && offset <= INT8_MAX);
+    Instruction instr(0x66);
+    //    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x6f);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(xmm_dest.hw_id(), 1, gpr_addr.hw_id(), false);
+    instr.set(Imm(1, offset));
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  static Instruction load128_xmm128_reg_offset(Register xmm_dest, Register base, s64 offset) {
+    if (offset == 0) {
+      return load128_xmm128_gpr64(xmm_dest, base);
+    } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return load128_xmm128_gpr64_s8(xmm_dest, base, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return load128_xmm128_gpr64_s32(xmm_dest, base, offset);
+    } else {
+      assert(false);
+    }
+  }
+
+  static Instruction store128_xmm128_reg_offset(Register base, Register xmm_val, s64 offset) {
+    if (offset == 0) {
+      return store128_gpr64_xmm128(base, xmm_val);
+    } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
+      return store128_gpr64_xmm128_s8(base, xmm_val, offset);
+    } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
+      return store128_gpr64_xmm128_s32(base, xmm_val, offset);
+    } else {
+      assert(false);
+    }
   }
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1231,7 +1417,7 @@ class IGen {
     assert(dst_reg.is_gpr());
     assert(src_reg.is_gpr());
     Instruction instr(0x8b);
-    instr.set_modrm_rex_sib_for_reg_reg_disp32(dst_reg.hw_id(), 2, src_reg.hw_id(), true);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(dst_reg.hw_id(), 2, src_reg.hw_id(), true);
     instr.set_disp(Imm(4, offset));
     return instr;
   }
@@ -1243,7 +1429,7 @@ class IGen {
     assert(addr.is_gpr());
     assert(value.is_gpr());
     Instruction instr(0x89);
-    instr.set_modrm_rex_sib_for_reg_reg_disp32(value.hw_id(), 2, addr.hw_id(), true);
+    instr.set_modrm_rex_sib_for_reg_reg_disp(value.hw_id(), 2, addr.hw_id(), true);
     instr.set_disp(Imm(4, offset));
     return instr;
   }
