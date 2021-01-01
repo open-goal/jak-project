@@ -2,6 +2,9 @@
 #include "goalc/compiler/IR.h"
 #include "common/goos/ParseHelpers.h"
 
+/*!
+ * Parse arguments into a goos::Arguments format.
+ */
 goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& rest) {
   goos::Arguments args;
 
@@ -12,6 +15,10 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
   return args;
 }
 
+/*!
+ * Check arguments in a goos::Arguments format (named and unnamed) and throw a compiler error if it
+ * fails.
+ */
 void Compiler::va_check(
     const goos::Object& form,
     const goos::Arguments& args,
@@ -24,6 +31,10 @@ void Compiler::va_check(
   }
 }
 
+/*!
+ * Iterate through elements of a goos list and apply the given function. Throw compiler error if the
+ * list is invalid.
+ */
 void Compiler::for_each_in_list(const goos::Object& list,
                                 const std::function<void(const goos::Object&)>& f) {
   const goos::Object* iter = &list;
@@ -38,14 +49,24 @@ void Compiler::for_each_in_list(const goos::Object& list,
   }
 }
 
+/*!
+ * Convert a goos::Object that's a string to a std::string. Must be a string.
+ */
 std::string Compiler::as_string(const goos::Object& o) {
   return o.as_string()->data;
 }
 
+/*!
+ * Convert a goos::Object that's a symbol to a std::string. Must be a string.
+ */
 std::string Compiler::symbol_string(const goos::Object& o) {
   return o.as_symbol()->name;
 }
 
+/*!
+ * Convert a single quoted symbol into a std::string. Like 'hi -> "hi". Error if not a quoted
+ * symbol.
+ */
 std::string Compiler::quoted_sym_as_string(const goos::Object& o) {
   auto args = get_va(o, o);
   va_check(o, args, {{goos::ObjectType::SYMBOL}, {goos::ObjectType::SYMBOL}}, {});
@@ -55,6 +76,9 @@ std::string Compiler::quoted_sym_as_string(const goos::Object& o) {
   return symbol_string(args.unnamed.at(1));
 }
 
+/*!
+ * Get a thing that's quoted. Error if the thing isn't quoted.
+ */
 goos::Object Compiler::unquote(const goos::Object& o) {
   auto args = get_va(o, o);
   va_check(o, args, {{goos::ObjectType::SYMBOL}, {}}, {});
@@ -64,6 +88,9 @@ goos::Object Compiler::unquote(const goos::Object& o) {
   return args.unnamed.at(1);
 }
 
+/*!
+ * Determine if o is a quoted symbol like 'test.
+ */
 bool Compiler::is_quoted_sym(const goos::Object& o) {
   if (o.is_pair()) {
     auto car = pair_car(o);
@@ -254,5 +281,28 @@ std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
       }
       return result;
     }
+  }
+}
+
+void Compiler::compile_constant_product(RegVal* dest, RegVal* src, int stride, Env* env) {
+  // todo - support imul with an imm.
+  assert(stride);
+
+  bool is_power_of_two = (stride & (stride - 1)) == 0;
+  if (stride == 1) {
+    env->emit_ir<IR_RegSet>(dest, src);
+  } else if (is_power_of_two) {
+    for (int i = 0; i < 16; i++) {
+      if (stride == (1 << i)) {
+        env->emit_ir<IR_RegSet>(dest, src);
+        env->emit_ir<IR_IntegerMath>(IntegerMathKind::SHL_64, dest, i);
+        return;
+      }
+    }
+    assert(false);
+  } else {
+    // get the multiplier
+    env->emit_ir<IR_LoadConstant64>(dest, stride);
+    env->emit_ir<IR_IntegerMath>(IntegerMathKind::IMUL_32, dest, src);
   }
 }

@@ -104,3 +104,6 @@
 - Fixed an off-by-one in move eliminator (previous version was correct, but did not generate as good code). Complicated functions are 2 to 10% smaller.
 - Improved getting a stack address.
 - Improved getting the value of `#f`, `#t`, and `()`.
+- Accessing a constant field of an array now constant propagates the memory offset like field access and avoids a runtime multiply.
+- Fixed a bug where loading or storing a `vf` register from a memory location + constant offset would cause the compiler to throw an error.
+- Accessing array elements uses more efficient indexing for power-of-two element sizes.

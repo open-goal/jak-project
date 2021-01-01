@@ -237,6 +237,7 @@ class Compiler {
                                        StaticStructure* structure,
                                        int offset,
                                        Env* env);
+  void compile_constant_product(RegVal* dest, RegVal* src, int stride, Env* env);
 
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
