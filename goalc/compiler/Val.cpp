@@ -109,13 +109,33 @@ RegVal* FloatConstantVal::to_reg(Env* fe) {
   return re;
 }
 
+namespace {
+/*!
+ * Constant propagate nested MemoryOffsetConstantVal's to get a single base + offset.
+ */
+Val* get_constant_offset_and_base(MemoryOffsetConstantVal* in, int64_t* offset_out) {
+  Val* next_base = in->base;
+  s64 total_offset = in->offset;
+  while (dynamic_cast<MemoryOffsetConstantVal*>(next_base)) {
+    auto bac = dynamic_cast<MemoryOffsetConstantVal*>(next_base);
+    total_offset += bac->offset;
+    next_base = bac->base;
+  }
+  *offset_out = total_offset;
+  return next_base;
+}
+}  // namespace
+
 RegVal* MemoryOffsetConstantVal::to_reg(Env* fe) {
   auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
-  if (offset == 0) {
-    fe->emit_ir<IR_RegSet>(re, base->to_gpr(fe));
+  s64 final_offset;
+  auto final_base = get_constant_offset_and_base(this, &final_offset);
+
+  if (final_offset == 0) {
+    fe->emit_ir<IR_RegSet>(re, final_base->to_gpr(fe));
   } else {
-    fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(offset)));
-    fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, base->to_gpr(fe)));
+    fe->emit(std::make_unique<IR_LoadConstant64>(re, int64_t(final_offset)));
+    fe->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, re, final_base->to_gpr(fe)));
   }
 
   return re;
@@ -129,35 +149,31 @@ RegVal* MemoryOffsetVal::to_reg(Env* fe) {
 }
 
 RegVal* MemoryDerefVal::to_reg(Env* fe) {
-  // todo, support better loads/stores from the stack
+  auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
   if (base_as_co) {
-    auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
-    fe->emit(std::make_unique<IR_LoadConstOffset>(re, base_as_co->offset,
-                                                  base_as_co->base->to_gpr(fe), info));
-    return re;
+    s64 offset;
+    auto final_base = get_constant_offset_and_base(base_as_co, &offset);
+    fe->emit_ir<IR_LoadConstOffset>(re, offset, final_base->to_gpr(fe), info);
   } else {
-    auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
     auto addr = base->to_gpr(fe);
     fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));
-    return re;
   }
+  return re;
 }
 
 RegVal* MemoryDerefVal::to_fpr(Env* fe) {
-  // todo, support better loads/stores from the stack
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
+  auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
   if (base_as_co) {
-    auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
-    fe->emit(std::make_unique<IR_LoadConstOffset>(re, base_as_co->offset,
-                                                  base_as_co->base->to_gpr(fe), info));
-    return re;
+    s64 offset;
+    auto final_base = get_constant_offset_and_base(base_as_co, &offset);
+    fe->emit_ir<IR_LoadConstOffset>(re, offset, final_base->to_gpr(fe), info);
   } else {
-    auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
     auto addr = base->to_gpr(fe);
     fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));
-    return re;
   }
+  return re;
 }
 
 RegVal* AliasVal::to_reg(Env* fe) {

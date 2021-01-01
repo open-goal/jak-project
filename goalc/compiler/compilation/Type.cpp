@@ -498,28 +498,44 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       }
     }
 
-    auto index_value = compile_error_guard(field_obj, env)->to_gpr(env);
-    if (!is_integer(index_value->type())) {
-      throw_compiler_error(form, "Cannot use -> with {}.", field_obj.print());
+    int64_t constant_index_value;
+    RegVal* index_value = nullptr;
+
+    bool has_constant_idx = try_getting_constant_integer(field_obj, &constant_index_value, env);
+    if (!has_constant_idx) {
+      index_value = compile_error_guard(field_obj, env)->to_gpr(env);
+      if (!is_integer(index_value->type())) {
+        throw_compiler_error(form, "Cannot use -> with {}.", field_obj.print());
+      }
     }
 
     if (result->type().base_type() == "inline-array") {
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
       assert(di.can_deref);
-      auto offset = compile_integer(di.stride, env)->to_gpr(env);
-      // todo, check for integer and avoid runtime multiply
-      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
-      result = fe->alloc_val<MemoryOffsetVal>(di.result_type, result, offset);
+      if (has_constant_idx) {
+        result = fe->alloc_val<MemoryOffsetConstantVal>(di.result_type, result,
+                                                        di.stride * constant_index_value);
+      } else {
+        // todo - use shifts if possible?
+        RegVal* offset = fe->make_gpr(TypeSpec("int"));
+        compile_constant_product(offset, index_value, di.stride, env);
+        result = fe->alloc_val<MemoryOffsetVal>(di.result_type, result, offset);
+      }
     } else if (result->type().base_type() == "pointer") {
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
       assert(di.mem_deref);
       assert(di.can_deref);
-      auto offset = compile_integer(di.stride, env)->to_gpr(env);
-      // todo, check for integer and avoid runtime multiply
-      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, offset, index_value));
-      auto loc = fe->alloc_val<MemoryOffsetVal>(result->type(), result, offset);
+      Val* loc = nullptr;
+      if (has_constant_idx) {
+        loc = fe->alloc_val<MemoryOffsetConstantVal>(result->type(), result,
+                                                     constant_index_value * di.stride);
+      } else {
+        RegVal* offset = fe->make_gpr(TypeSpec("int"));
+        compile_constant_product(offset, index_value, di.stride, env);
+        loc = fe->alloc_val<MemoryOffsetVal>(result->type(), result, offset);
+      }
       result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
       result->mark_as_settable();
     } else if (result->type().base_type() == "array") {
@@ -537,15 +553,22 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       assert(base_type == result->type().get_single_arg());
       assert(di.mem_deref);
       assert(di.can_deref);
-      // the total offset is 12 + stride * idx
-      auto offset = compile_integer(ARRAY_DATA_OFFSET, env)->to_gpr(env);
-      auto stride = compile_integer(di.stride, env)->to_gpr(env);
-      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::IMUL_32, stride, index_value));
-      env->emit_ir<IR_IntegerMath>(IntegerMathKind::ADD_64, offset, stride);
-      // offset now contains the total offset.
+      Val* loc = nullptr;
 
-      // create a location to deref (so we can do address-of and get this), with pointer type
-      auto loc = fe->alloc_val<MemoryOffsetVal>(loc_type, result, offset);
+      if (has_constant_idx) {
+        loc = fe->alloc_val<MemoryOffsetConstantVal>(
+            loc_type, result, ARRAY_DATA_OFFSET + di.stride * constant_index_value);
+      } else {
+        // the total offset is 12 + stride * idx
+        auto arr_off = compile_integer(ARRAY_DATA_OFFSET, env)->to_gpr(env);
+        RegVal* offset = fe->make_gpr(TypeSpec("int"));
+        compile_constant_product(offset, index_value, di.stride, env);
+        env->emit_ir<IR_IntegerMath>(IntegerMathKind::ADD_64, offset, arr_off);
+
+        // create a location to deref (so we can do address-of and get this), with pointer type
+        loc = fe->alloc_val<MemoryOffsetVal>(loc_type, result, offset);
+      }
+
       // and result type.
       result = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
       // array values should be settable

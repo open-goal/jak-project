@@ -304,7 +304,6 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   info.reg = RegClass::VECTOR_FLOAT;
   if (as_co) {
     // can do a clever offset here
-    assert(false);
     env->emit_ir<IR_StoreConstOffset>(src, as_co->offset, as_co->base->to_gpr(env), 16, color);
   } else {
     env->emit_ir<IR_StoreConstOffset>(src, 0, dest->to_gpr(env), 16, color);
