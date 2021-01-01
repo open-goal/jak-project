@@ -5,6 +5,8 @@
 
 // hack to print out reverse deref paths on loads to help with debugging load stuff.
 bool enable_hack_load_path_print = false;
+// hack to print (begin x) as x to make debug output easier to read.
+bool inline_single_begins = true;
 
 std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
   (void)file;
@@ -32,7 +34,8 @@ std::string IR::print(const LinkedObjectFile& file) const {
 }
 
 namespace {
-void add_regs_to_str(const std::vector<Register>& regs, std::string& str) {
+template <typename T>
+void add_regs_to_str(const T& regs, std::string& str) {
   bool first = true;
   for (auto& reg : regs) {
     if (first) {
@@ -74,6 +77,11 @@ std::string IR_Atomic::print_with_reguse(const LinkedObjectFile& file) const {
   if (!clobber_regs.empty()) {
     result += "clobber: [";
     add_regs_to_str(clobber_regs, result);
+    result += "] ";
+  }
+  if (!consumed.empty()) {
+    result += "consumed: [";
+    add_regs_to_str(consumed, result);
     result += "] ";
   }
   return result;
@@ -998,6 +1006,9 @@ void IR_Breakpoint_Atomic::get_children(std::vector<std::shared_ptr<IR>>* output
 }
 
 goos::Object IR_Begin::to_form(const LinkedObjectFile& file) const {
+  if (forms.size() == 1 && inline_single_begins) {
+    return forms.front()->to_form(file);
+  }
   std::vector<goos::Object> list;
   list.push_back(pretty_print::to_symbol("begin"));
   for (auto& x : forms) {

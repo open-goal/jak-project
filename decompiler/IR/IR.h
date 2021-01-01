@@ -367,6 +367,14 @@ class IR_IntegerConstant : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override {
+    (void)consume;
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 struct BranchDelay {
@@ -479,15 +487,26 @@ class IR_Branch_Atomic : public virtual IR_Branch, public IR_Atomic {
 
 class IR_Compare : public virtual IR {
  public:
-  explicit IR_Compare(Condition _condition) : condition(std::move(_condition)) {}
+  explicit IR_Compare(Condition _condition, IR_Atomic* _root_op)
+      : condition(std::move(_condition)), root_op(_root_op) {}
 
   Condition condition;
+
+  // the basic op that the comparison comes from. If the condition is "ALWAYS", this may be null.
+  // if this is the source of an IR_Set_Atomic, this may also be null. This should only be used
+  // from IR_Compare's expression_stack, when the IR_Compare is being used as a branch condition,
+  // and not as a literal #f/#t that's being assigned.
+  IR_Atomic* root_op = nullptr;
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_Nop : public virtual IR {
@@ -550,6 +569,7 @@ class IR_UntilLoop : public virtual IR {
       : condition(std::move(_condition)), body(std::move(_body)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
   std::shared_ptr<IR> condition, body;
 };
 
@@ -609,6 +629,7 @@ class IR_ShortCircuit : public virtual IR {
   explicit IR_ShortCircuit(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_Ash : public virtual IR {

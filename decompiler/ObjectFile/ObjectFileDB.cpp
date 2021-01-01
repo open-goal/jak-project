@@ -570,7 +570,7 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
     if (obj.linked_data.has_any_functions()) {
       auto file_text = obj.linked_data.print_type_analysis_debug();
       auto file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_db.asm");
+          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_dbt.asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -1095,17 +1095,20 @@ void ObjectFileDB::analyze_expressions() {
   Timer timer;
   int attempts = 0;
   int success = 0;
+  bool had_failure = false;
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
+
     // register usage
     func.run_reg_usage();
-
-    if (func.attempted_type_analysis) {
+    if (!had_failure && func.attempted_type_analysis) {
       attempts++;
+      spdlog::info("Analyze {}", func.guessed_name.to_string());
       if (func.build_expression(data.linked_data)) {
         success++;
       } else {
         func.warnings.append(";; Expression analysis failed.\n");
+        had_failure = true;
       }
     }
   });

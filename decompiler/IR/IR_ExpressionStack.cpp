@@ -15,19 +15,21 @@ bool IR_Set_Atomic::expression_stack(ExpressionStack& stack, LinkedObjectFile& f
       // first, we update our source to substitute in more complicated expressions.
       auto src_as_reg = dynamic_cast<IR_Register*>(src.get());
       if (src_as_reg) {
-        // an annoying special case.
+        // we're reading a register. Let's find out if it's safe to directly copy it's value.
         if (consumed.find(src_as_reg->reg) != consumed.end()) {
-          // we consume it.
+          // yep. Let's read it off of the stack.
           src = stack.get(src_as_reg->reg);
         }
       } else {
+        // our source is some expression. we need to make sure the expression is up-to-date.
         src->update_from_stack(consumed, stack, file);
       }
 
       // next, we tell the stack the value of the register we just set
       auto dest_reg = dynamic_cast<IR_Register*>(dst.get());
       assert(dest_reg);
-      stack.set(dest_reg->reg, src);
+      // sequence point if not a register -> register set.
+      stack.set(dest_reg->reg, src, !src_as_reg);
       return true;
     }
 
@@ -62,7 +64,7 @@ bool IR_Set::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
       // next, we tell the stack the value of the register we just set
       auto dest_reg = dynamic_cast<IR_Register*>(dst.get());
       assert(dest_reg);
-      stack.set(dest_reg->reg, src);
+      stack.set(dest_reg->reg, src, !src_as_reg);
       return true;
     }
 
@@ -90,8 +92,15 @@ bool IR_Call_Atomic::expression_stack(ExpressionStack& stack, LinkedObjectFile& 
 
   auto return_type = call_type.get_arg(call_type.arg_count() - 1);
   // bleh...
-  stack.set(Register(Reg::GPR, Reg::V0), std::make_shared<IR_Call_Atomic>(*this));
+  stack.set(Register(Reg::GPR, Reg::V0), std::make_shared<IR_Call_Atomic>(*this), true);
 
+  return true;
+}
+
+bool IR_UntilLoop::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)stack;
+  (void)file;
+  stack.add_no_set(std::make_shared<IR_UntilLoop>(*this), true);
   return true;
 }
 
@@ -110,6 +119,76 @@ void update_from_stack_helper(std::shared_ptr<IR>* ir,
   }
 }
 }  // namespace
+
+bool IR_Compare::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  if (condition.kind != Condition::ALWAYS) {
+    assert(root_op);
+    //  auto consumed = root_op->get_consumed(file);
+    auto& consumed = root_op->consumed;
+    switch (condition.num_args()) {
+      case 0:
+        break;
+      case 1:
+        update_from_stack_helper(&condition.src0, consumed, stack, file);
+        break;
+      case 2:
+        update_from_stack_helper(&condition.src0, consumed, stack, file);
+        update_from_stack_helper(&condition.src1, consumed, stack, file);
+        break;
+      default:
+        assert(false);
+    }
+  }
+
+  stack.add_no_set(std::make_shared<IR_Compare>(*this), true);
+  return true;
+}
+
+bool IR_Compare::update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                                   ExpressionStack& stack,
+                                   LinkedObjectFile& file) {
+  if (condition.kind != Condition::ALWAYS) {
+    switch (condition.num_args()) {
+      case 0:
+        break;
+      case 1:
+        update_from_stack_helper(&condition.src0, consume, stack, file);
+        break;
+      case 2:
+        update_from_stack_helper(&condition.src0, consume, stack, file);
+        update_from_stack_helper(&condition.src1, consume, stack, file);
+        break;
+      default:
+        assert(false);
+    }
+  }
+  return true;
+}
+
+bool IR_ShortCircuit::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  // this one is weird. All forms but the last implicitly set final_destination.
+  // the last form should somewhere set final_destination, but due to tricky coloring we
+  // can't identify this 100% of the time.
+  // so we settle for something like:
+  // (set! result (or <clause-a> ... (begin (blah) (set! result x) (blah))))
+  // in the future, we may want to handle this a little bit better, at least in the obvious cases.
+
+  assert(final_result);
+  auto dest_reg = dynamic_cast<IR_Register*>(final_result.get());
+  auto last_entry_as_set = dynamic_cast<IR_Set*>(entries.back().condition.get());
+  if (last_entry_as_set) {
+    auto sd = last_entry_as_set->dst;
+    auto sd_as_reg = dynamic_cast<IR_Register*>(sd.get());
+    if (sd_as_reg && sd_as_reg->reg == dest_reg->reg) {
+      entries.back().condition = last_entry_as_set->src;
+      stack.set(dest_reg->reg, std::make_shared<IR_ShortCircuit>(*this), true);
+      return true;
+    }
+  }
+
+  throw std::runtime_error("Last entry in short circuit was bad: " +
+                           entries.back().condition->print(file));
+}
 
 bool IR_Load::update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
                                 ExpressionStack& stack,
@@ -132,7 +211,7 @@ bool IR_FloatMath2::update_from_stack(const std::unordered_set<Register, Registe
                                       ExpressionStack& stack,
                                       LinkedObjectFile& file) {
   if (kind == DIV) {
-    for (auto reg : {&arg1, &arg0}) {
+    for (auto reg : {&arg0, &arg1}) {
       auto as_reg = dynamic_cast<IR_Register*>(reg->get());
       if (as_reg) {
         if (consume.find(as_reg->reg) != consume.end()) {
