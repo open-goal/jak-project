@@ -150,8 +150,8 @@ bool IR_Compare::expression_stack(ExpressionStack& stack, LinkedObjectFile& file
         update_from_stack_helper(&condition.src0, consumed, stack, file);
         break;
       case 2:
-        update_from_stack_helper(&condition.src0, consumed, stack, file);
         update_from_stack_helper(&condition.src1, consumed, stack, file);
+        update_from_stack_helper(&condition.src0, consumed, stack, file);
         break;
       default:
         assert(false);
@@ -317,7 +317,7 @@ bool IR_FloatMath2::update_from_stack(const std::unordered_set<Register, Registe
                                       ExpressionStack& stack,
                                       LinkedObjectFile& file) {
   if (kind == DIV) {
-    for (auto reg : {&arg0, &arg1}) {
+    for (auto reg : {&arg1, &arg0}) {
       auto as_reg = dynamic_cast<IR_Register*>(reg->get());
       if (as_reg) {
         if (consume.find(as_reg->reg) != consume.end()) {
@@ -328,7 +328,7 @@ bool IR_FloatMath2::update_from_stack(const std::unordered_set<Register, Registe
       }
     }
   } else {
-    for (auto reg : {&arg0, &arg1}) {
+    for (auto reg : {&arg1, &arg0}) {
       auto as_reg = dynamic_cast<IR_Register*>(reg->get());
       if (as_reg) {
         if (consume.find(as_reg->reg) != consume.end()) {
