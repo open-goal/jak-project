@@ -208,6 +208,14 @@ class IR_EmptyPair : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override {
+    (void)consume;
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 class IR_StaticAddress : public virtual IR {
@@ -507,6 +515,7 @@ class IR_Compare : public virtual IR {
   bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
                          ExpressionStack& stack,
                          LinkedObjectFile& file) override;
+  std::unordered_set<Register, Register::hash> get_consumed(LinkedObjectFile& file) override;
 };
 
 class IR_Nop : public virtual IR {
@@ -514,6 +523,7 @@ class IR_Nop : public virtual IR {
   IR_Nop() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_Nop_Atomic : public IR_Nop, public IR_Atomic {
@@ -542,6 +552,11 @@ class IR_Breakpoint_Atomic : public virtual IR_Atomic {
   void propagate_types(const TypeState& input,
                        const LinkedObjectFile& file,
                        DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override {
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 class IR_Begin : public virtual IR {
@@ -561,6 +576,7 @@ class IR_WhileLoop : public virtual IR {
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::shared_ptr<IR> condition, body;
   bool cleaned = false;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_UntilLoop : public virtual IR {
@@ -586,6 +602,7 @@ class IR_CondWithElse : public virtual IR {
       : entries(std::move(_entries)), else_ir(std::move(_else_ir)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 // this one doesn't have an else statement. Will return false if none of the cases are taken.
@@ -595,13 +612,16 @@ class IR_Cond : public virtual IR {
     std::shared_ptr<IR> condition = nullptr;
     std::shared_ptr<IR> body = nullptr;
     std::shared_ptr<IR> false_destination = nullptr;
+    std::shared_ptr<IR> original_condition_branch = nullptr;
     bool cleaned = false;
   };
   Register final_destination;
+  bool used_as_value = false;
   std::vector<Entry> entries;
   explicit IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 // this will work on pairs, bintegers, or basics
@@ -612,6 +632,10 @@ class IR_GetRuntimeType : public virtual IR {
       : object(std::move(_object)), clobber(std::move(_clobber)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  std::unordered_set<Register, Register::hash> get_consumed(LinkedObjectFile& file) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_ShortCircuit : public virtual IR {
@@ -619,9 +643,7 @@ class IR_ShortCircuit : public virtual IR {
   struct Entry {
     std::shared_ptr<IR> condition = nullptr;
     // in the case where there's no else, each delay slot will write #f to the "output" register.
-    // this can be with an or <output>, s7, r0.
-    // however, in the case where the comparison is a beq s7, <output>, LXXX, there is no need!
-    // so it seems like it is omitted?
+    // this can be with an or <output>, s7, r0
     std::shared_ptr<IR> output = nullptr;
     bool is_output_trick = false;
     bool cleaned = false;
@@ -680,6 +702,7 @@ class IR_AsmOp : public virtual IR {
   IR_AsmOp(std::string _name) : name(std::move(_name)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_AsmOp_Atomic : public virtual IR_AsmOp, public IR_Atomic {

@@ -1749,13 +1749,23 @@ std::shared_ptr<IR_Atomic> try_slt(Instruction& i0, Instruction& i1, Instruction
     if (i2.get_src(1).get_reg() != clobber_reg) {
       return nullptr;  // TODO!
     }
-    auto op = make_set_atomic(
-        IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
-        std::make_shared<IR_Compare>(Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx),
-                                               make_reg(src1_reg, idx), make_reg(clobber_reg, idx)),
-                                     nullptr));
-    op->update_reginfo_self<IR_Compare>(1, 2, 1);
-    return op;
+    if (src1_reg == make_gpr(Reg::R0)) {
+      auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                                std::make_shared<IR_Compare>(
+                                    Condition(Condition::GEQ_ZERO_SIGNED, make_reg(src0_reg, idx),
+                                              nullptr, make_reg(clobber_reg, idx)),
+                                    nullptr));
+      op->update_reginfo_self<IR_Compare>(1, 1, 1);
+      return op;
+    } else {
+      auto op = make_set_atomic(IR_Set_Atomic::REG_64, make_reg(dst_reg, idx),
+                                std::make_shared<IR_Compare>(
+                                    Condition(Condition::GEQ_SIGNED, make_reg(src0_reg, idx),
+                                              make_reg(src1_reg, idx), make_reg(clobber_reg, idx)),
+                                    nullptr));
+      op->update_reginfo_self<IR_Compare>(1, 2, 1);
+      return op;
+    }
   }
   return nullptr;
 }

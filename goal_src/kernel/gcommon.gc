@@ -253,14 +253,15 @@
 
 (defun type-type? ((a type) (b type))
   "is a a type (or child type) of type b?"
-  (until (eq? a object)
-         ;; it's not clear why a might be zero?
-         ;; perhaps if the type system is not yet initialized fully for the type?
-         (if (or (eq? a b) (zero? a))
-             (return-from #f #t)
-             )
-         (set! a (-> a parent))
-         )
+  (let ((object-type object))
+    (until (or (eq? (set! a (-> a parent)) object-type)
+               (zero? a)
+               )
+           (if (eq? a b)
+               (return-from #f #t)
+               )
+           )
+    )
   #f
   )
 

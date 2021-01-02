@@ -33,6 +33,24 @@ bool IR_Set_Atomic::expression_stack(ExpressionStack& stack, LinkedObjectFile& f
       return true;
     }
 
+    case IR_Set::STORE:
+    case IR_Set::SYM_STORE:
+    {
+      auto src_as_reg = dynamic_cast<IR_Register*>(src.get());
+      if (src_as_reg) {
+        // we're reading a register. Let's find out if it's safe to directly copy it's value.
+        if (consumed.find(src_as_reg->reg) != consumed.end()) {
+          // yep. Let's read it off of the stack.
+          src = stack.get(src_as_reg->reg);
+        }
+      } else {
+        // our source is some expression. we need to make sure the expression is up-to-date.
+        src->update_from_stack(consumed, stack, file);
+      }
+      stack.add_no_set(std::make_shared<IR_Set_Atomic>(*this), true);
+      return true;
+    }
+
     break;
     default:
       throw std::runtime_error("IR_Set_Atomic::expression_stack NYI for " + print(file));
@@ -83,6 +101,7 @@ bool IR_Call_Atomic::expression_stack(ExpressionStack& stack, LinkedObjectFile& 
   const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3};
   int nargs = int(call_type.arg_count()) - 1;
+//  printf("%s\n", stack.print(file).c_str());
   // get all arguments.
   for (int i = nargs; i-- > 0;) {
     args.push_back(stack.get(Register(Reg::GPR, arg_regs[i])));
@@ -155,8 +174,8 @@ bool IR_Compare::update_from_stack(const std::unordered_set<Register, Register::
         update_from_stack_helper(&condition.src0, consume, stack, file);
         break;
       case 2:
-        update_from_stack_helper(&condition.src0, consume, stack, file);
         update_from_stack_helper(&condition.src1, consume, stack, file);
+        update_from_stack_helper(&condition.src0, consume, stack, file);
         break;
       default:
         assert(false);
@@ -178,6 +197,8 @@ bool IR_ShortCircuit::expression_stack(ExpressionStack& stack, LinkedObjectFile&
 
   if (used_as_value.value()) {
     auto dest_reg = dynamic_cast<IR_Register*>(final_result.get());
+
+    // try as a set
     auto last_entry_as_set = dynamic_cast<IR_Set*>(entries.back().condition.get());
     if (last_entry_as_set) {
       auto sd = last_entry_as_set->dst;
@@ -189,12 +210,71 @@ bool IR_ShortCircuit::expression_stack(ExpressionStack& stack, LinkedObjectFile&
       }
     }
 
-    throw std::runtime_error("Last entry in short circuit was bad: " +
-                             entries.back().condition->print(file));
+    // try as the last thing in a begin.
+    auto last_entry_as_begin = dynamic_cast<IR_Begin*>(entries.back().condition.get());
+    if (last_entry_as_begin) {
+      last_entry_as_set = dynamic_cast<IR_Set*>(last_entry_as_begin->forms.back().get());
+      if (last_entry_as_set) {
+        auto sd = last_entry_as_set->dst;
+        auto sd_as_reg = dynamic_cast<IR_Register*>(sd.get());
+        if (sd_as_reg && sd_as_reg->reg == dest_reg->reg) {
+          entries.back().condition = last_entry_as_set->src;
+          stack.set(dest_reg->reg, std::make_shared<IR_ShortCircuit>(*this), true);
+          return true;
+        }
+      }
+    }
+
+    // nope. if we have something like (and x (if a b c)), we may need to explictly add an
+    // evaluation of the if's result.
+    auto new_last_entry = std::make_shared<IR_Begin>();
+    new_last_entry->forms.push_back(entries.back().condition);
+    new_last_entry->forms.push_back(std::make_shared<IR_Register>(dest_reg->reg, -1));
+    entries.back().condition = new_last_entry;
+
+    stack.set(dest_reg->reg, std::make_shared<IR_ShortCircuit>(*this), true);
+    return true;
+
+//    throw std::runtime_error("Last entry in short circuit was bad: " +
+//                             entries.back().condition->print(file));
   } else {
-    throw std::runtime_error("SC unused value case not yet implemented. " +
-                             entries.back().condition->print(file));
+    stack.add_no_set(std::make_shared<IR_ShortCircuit>(*this), true);
+    return true;
   }
+}
+
+bool IR_Cond::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  if (used_as_value) {
+    throw std::runtime_error("IR_Cond used as value case not yet implemented.");
+  } else {
+    (void)file;
+    stack.add_no_set(std::make_shared<IR_Cond>(*this), true);
+    return true;
+  }
+}
+
+bool IR_WhileLoop::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)file;
+  // while loops are never "used by value" yet, but this is okay because they don't
+  // do any tricks in delay slots like IR_Cond's do.
+  stack.add_no_set(std::make_shared<IR_WhileLoop>(*this), true);
+  return true;
+}
+
+bool IR_AsmOp::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)file;
+  // we only fall back to asm ops if we don't understand the GOAL code, or if the original code
+  // used inline assembly. In these cases, we create a sequence point here.
+  stack.add_no_set(std::make_shared<IR_AsmOp>(*this), true);
+  return true;
+}
+
+bool IR_CondWithElse::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)file;
+  // cond with else are never "used by value" yet, but this is okay because they don't
+  // do any tricks in delay slots like IR_Cond's do.
+  stack.add_no_set(std::make_shared<IR_CondWithElse>(*this), true);
+  return true;
 }
 
 bool IR_Load::update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
@@ -306,5 +386,28 @@ bool IR_IntMath1::update_from_stack(const std::unordered_set<Register, Register:
                                     ExpressionStack& stack,
                                     LinkedObjectFile& file) {
   update_from_stack_helper(&arg, consume, stack, file);
+  return true;
+}
+
+bool IR_GetRuntimeType::update_from_stack(const std::unordered_set<Register, Register::hash>& consume, ExpressionStack& stack, LinkedObjectFile& file) {
+  update_from_stack_helper(&object, consume, stack, file);
+  return true;
+}
+
+std::unordered_set<Register, Register::hash> IR_GetRuntimeType::get_consumed(LinkedObjectFile& file) {
+  // todo, this can actually consume stuff.
+  (void)file;
+  return {};
+}
+
+std::unordered_set<Register, Register::hash> IR_Compare::get_consumed(LinkedObjectFile& file) {
+  // todo, this can actually consume stuff.
+  (void)file;
+  return {};
+}
+
+bool IR_Nop::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)stack;
+  (void)file;
   return true;
 }

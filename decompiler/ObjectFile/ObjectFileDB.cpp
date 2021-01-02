@@ -861,9 +861,9 @@ void ObjectFileDB::analyze_functions() {
   // Main Pass over each function...
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     total_functions++;
-    //    if (func.guessed_name.to_string() != "name=") {
-    //      return;
-    //    }
+    //        if (func.guessed_name.to_string() != "sort") {
+    //          return;
+    //        }
     //          printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
     //                 data.to_unique_name().c_str());
 
@@ -1105,7 +1105,7 @@ void ObjectFileDB::analyze_expressions() {
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
 
-    if (!had_failure && func.attempted_type_analysis) {
+    if (/*!had_failure &&*/ func.attempted_type_analysis) {
       attempts++;
       spdlog::info("Analyze {}", func.guessed_name.to_string());
       if (func.build_expression(data.linked_data)) {

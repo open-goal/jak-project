@@ -156,6 +156,7 @@ void clean_up_until_loop(IR_UntilLoop* ir) {
   assert(condition_branch.first->branch_delay.kind == BranchDelay::NOP);
   auto replacement =
       std::make_shared<IR_Compare>(condition_branch.first->condition, condition_branch.first);
+  replacement->condition.invert();
   *(condition_branch.second) = replacement;
 }
 
@@ -491,6 +492,22 @@ void clean_up_cond_no_else_final(IR_Cond* cne, LinkedObjectFile& file) {
       assert(false);
     }
   }
+
+  auto last_branch =
+      dynamic_cast<IR_Branch_Atomic*>(cne->entries.back().original_condition_branch.get());
+  assert(last_branch);
+  cne->used_as_value = last_branch->written_and_unused.find(cne->final_destination) ==
+                       last_branch->written_and_unused.end();
+
+  // check that all other delay slot writes are unused.
+  for (size_t i = 0; i < cne->entries.size() - 1; i++) {
+    auto branch =
+        dynamic_cast<IR_Branch_Atomic*>(cne->entries.at(i).original_condition_branch.get());
+    auto reg = dynamic_cast<IR_Register*>(cne->entries.at(i).false_destination.get());
+    assert(reg);
+    assert(branch);
+    assert(branch->written_and_unused.find(reg->reg) != branch->written_and_unused.end());
+  }
 }
 
 /*!
@@ -529,6 +546,8 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
         e.false_destination = jump_to_next.first->branch_delay.destination;
         assert(e.false_destination);
       }
+
+      e.original_condition_branch = *jump_to_next.second;
 
       auto replacement =
           std::make_shared<IR_Compare>(jump_to_next.first->condition, jump_to_next.first);
