@@ -55,7 +55,7 @@ class IR {
 class IR_Atomic : public virtual IR {
  public:
   std::vector<Register> read_regs, write_regs, clobber_regs;
-  std::unordered_set<Register, Register::hash> consumed;
+  std::unordered_set<Register, Register::hash> consumed, written_and_unused;
   bool reg_info_set = false;
 
   TypeState end_types;  // types at the end of this instruction
@@ -597,6 +597,7 @@ class IR_Cond : public virtual IR {
     std::shared_ptr<IR> false_destination = nullptr;
     bool cleaned = false;
   };
+  Register final_destination;
   std::vector<Entry> entries;
   explicit IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
@@ -617,15 +618,21 @@ class IR_ShortCircuit : public virtual IR {
  public:
   struct Entry {
     std::shared_ptr<IR> condition = nullptr;
-    std::shared_ptr<IR> output = nullptr;  // where the delay slot writes to.
+    // in the case where there's no else, each delay slot will write #f to the "output" register.
+    // this can be with an or <output>, s7, r0.
+    // however, in the case where the comparison is a beq s7, <output>, LXXX, there is no need!
+    // so it seems like it is omitted?
+    std::shared_ptr<IR> output = nullptr;
+    bool is_output_trick = false;
     bool cleaned = false;
   };
 
   enum Kind { UNKNOWN, AND, OR } kind = UNKNOWN;
 
   std::shared_ptr<IR> final_result = nullptr;  // the register that the final result goes in.
-
   std::vector<Entry> entries;
+  std::optional<bool> used_as_value = std::nullopt;
+
   explicit IR_ShortCircuit(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;

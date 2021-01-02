@@ -174,20 +174,27 @@ bool IR_ShortCircuit::expression_stack(ExpressionStack& stack, LinkedObjectFile&
   // in the future, we may want to handle this a little bit better, at least in the obvious cases.
 
   assert(final_result);
-  auto dest_reg = dynamic_cast<IR_Register*>(final_result.get());
-  auto last_entry_as_set = dynamic_cast<IR_Set*>(entries.back().condition.get());
-  if (last_entry_as_set) {
-    auto sd = last_entry_as_set->dst;
-    auto sd_as_reg = dynamic_cast<IR_Register*>(sd.get());
-    if (sd_as_reg && sd_as_reg->reg == dest_reg->reg) {
-      entries.back().condition = last_entry_as_set->src;
-      stack.set(dest_reg->reg, std::make_shared<IR_ShortCircuit>(*this), true);
-      return true;
-    }
-  }
+  assert(used_as_value.has_value());
 
-  throw std::runtime_error("Last entry in short circuit was bad: " +
-                           entries.back().condition->print(file));
+  if (used_as_value.value()) {
+    auto dest_reg = dynamic_cast<IR_Register*>(final_result.get());
+    auto last_entry_as_set = dynamic_cast<IR_Set*>(entries.back().condition.get());
+    if (last_entry_as_set) {
+      auto sd = last_entry_as_set->dst;
+      auto sd_as_reg = dynamic_cast<IR_Register*>(sd.get());
+      if (sd_as_reg && sd_as_reg->reg == dest_reg->reg) {
+        entries.back().condition = last_entry_as_set->src;
+        stack.set(dest_reg->reg, std::make_shared<IR_ShortCircuit>(*this), true);
+        return true;
+      }
+    }
+
+    throw std::runtime_error("Last entry in short circuit was bad: " +
+                             entries.back().condition->print(file));
+  } else {
+    throw std::runtime_error("SC unused value case not yet implemented. " +
+                             entries.back().condition->print(file));
+  }
 }
 
 bool IR_Load::update_from_stack(const std::unordered_set<Register, Register::hash>& consume,

@@ -17,6 +17,7 @@ bool expressionize_begin(IR_Begin* begin, LinkedObjectFile& file) {
 
 bool Function::build_expression(LinkedObjectFile& file) {
   if (!ir) {
+    printf("build_expression on %s failed due to no IR.\n", guessed_name.to_string().c_str());
     return false;
   }
 

@@ -279,16 +279,31 @@ bool try_clean_up_sc_as_and(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFi
 
   ir->kind = IR_ShortCircuit::AND;
   ir->final_result = ir_dest;
+  auto* dest_reg = dynamic_cast<IR_Register*>(ir_dest.get());
+  assert(dest_reg);
+
+  bool live_out_result = false;
 
   // now get rid of the branches
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(&ir->entries.at(i).condition);
     assert(branch.first);
+
+    if (i == 0) {
+      live_out_result = (branch.first->written_and_unused.find(dest_reg->reg) ==
+                         branch.first->written_and_unused.end());
+    } else {
+      bool this_live_out = (branch.first->written_and_unused.find(dest_reg->reg) ==
+                            branch.first->written_and_unused.end());
+      assert(live_out_result == this_live_out);
+    }
+
     auto replacement = std::make_shared<IR_Compare>(branch.first->condition, branch.first);
     replacement->condition.invert();
     *(branch.second) = replacement;
   }
 
+  ir->used_as_value = live_out_result;
   return true;
 }
 
@@ -321,14 +336,27 @@ bool try_clean_up_sc_as_or(std::shared_ptr<IR_ShortCircuit>& ir, LinkedObjectFil
 
   ir->kind = IR_ShortCircuit::OR;
   ir->final_result = ir_dest;
+  auto* dest_reg = dynamic_cast<IR_Register*>(ir_dest.get());
+  assert(dest_reg);
+
+  bool live_out_result = false;
 
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(&ir->entries.at(i).condition);
     assert(branch.first);
+    if (i == 0) {
+      live_out_result = (branch.first->written_and_unused.find(dest_reg->reg) ==
+                         branch.first->written_and_unused.end());
+    } else {
+      bool this_live_out = (branch.first->written_and_unused.find(dest_reg->reg) ==
+                            branch.first->written_and_unused.end());
+      assert(live_out_result == this_live_out);
+    }
     auto replacement = std::make_shared<IR_Compare>(branch.first->condition, branch.first);
     *(branch.second) = replacement;
   }
 
+  ir->used_as_value = live_out_result;
   return true;
 }
 
@@ -450,6 +478,21 @@ void convert_cond_no_else_to_compare(std::shared_ptr<IR>* ir) {
   }
 }
 
+void clean_up_cond_no_else_final(IR_Cond* cne, LinkedObjectFile& file) {
+  (void)cne;
+  (void)file;
+  for (size_t idx = 0; idx < cne->entries.size(); idx++) {
+    auto& entry = cne->entries.at(idx);
+    if (entry.false_destination != nullptr) {
+      auto* fr = dynamic_cast<IR_Register*>(entry.false_destination.get());
+      assert(fr);
+      cne->final_destination = fr->reg;
+    } else {
+      assert(false);
+    }
+  }
+}
+
 /*!
  * Replace internal branches inside a CondNoElse IR.
  * If possible will simplify the entire expression into a comparison operation if possible.
@@ -508,6 +551,36 @@ void clean_up_cond_no_else(std::shared_ptr<IR>* ir, LinkedObjectFile& file) {
       }
     }
   }
+
+  //    bool has_any_falses = false;
+  //    Register false_reg;
+  //    for (size_t idx = 0; idx < cne->entries.size(); idx++) {
+  //      auto& entry = cne->entries.at(idx);
+  //      if (idx == 0) {
+  //        has_any_falses = entry.false_destination != nullptr;
+  //        if (has_any_falses) {
+  //          auto* as_reg = dynamic_cast<IR_Register*>(entry.false_destination.get());
+  //          assert(as_reg);
+  //          false_reg = as_reg->reg;
+  //        }
+  //      } else {
+  //        if (has_any_falses) {
+  //          if (idx == cne->entries.size() - 1) {
+  //            assert(entry.false_destination == nullptr);
+  //          } else {
+  //            auto* as_reg = dynamic_cast<IR_Register*>(entry.false_destination.get());
+  //            assert(as_reg);
+  //            assert(as_reg->reg == false_reg);
+  //          }
+  //        } else {
+  //          if (entry.false_destination != nullptr) {
+  //            printf("BAD set of %s\n", entry.false_destination->print(file).c_str());
+  //            printf("%s\n", entry.condition->print(file).c_str());
+  //          }
+  //          assert(entry.false_destination == nullptr);
+  //        }
+  //      }
+  //    }
 }
 
 /*!
@@ -624,12 +697,18 @@ std::shared_ptr<IR> try_sc_as_abs(Function& f, LinkedObjectFile& file, ShortCirc
     return nullptr;
   }
 
-  // todo, seems possible to be a single op instead of a begin here.
   auto b0_ptr = cfg_to_ir(f, file, b0);
   auto b0_ir = dynamic_cast<IR_Begin*>(b0_ptr.get());
 
-  auto branch_sp = b0_ir->forms.back();
-  auto branch = dynamic_cast<IR_Branch*>(branch_sp.get());
+  IR_Branch* branch = nullptr;
+  std::shared_ptr<IR> branch_sp = nullptr;
+  if (b0_ir) {
+    branch_sp = b0_ir->forms.back();
+  } else {
+    branch_sp = b0_ptr;
+  }
+  branch = dynamic_cast<IR_Branch*>(branch_sp.get());
+
   if (!branch) {
     return nullptr;
   }
@@ -1009,7 +1088,8 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
       return fancy_compact_result;
     }
 
-    if (dynamic_cast<IR_Cond*>(else_ir.get())) {
+    // this case is disabled because I _think_ it is now properly handled elsewhere.
+    if (false && dynamic_cast<IR_Cond*>(else_ir.get())) {
       auto extra_cond = dynamic_cast<IR_Cond*>(else_ir.get());
       std::vector<IR_Cond::Entry> entries;
       for (auto& x : cvtx->entries) {
@@ -1052,6 +1132,10 @@ std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx) 
     auto as_abs = try_sc_as_abs(f, file, svtx);
     if (as_abs) {
       return as_abs;
+    }
+
+    if (svtx->entries.size() == 1) {
+      throw std::runtime_error("Weird short circuit form.");
     }
     // now try as a normal and/or
     std::vector<IR_ShortCircuit::Entry> entries;
@@ -1163,6 +1247,11 @@ std::shared_ptr<IR> build_cfg_ir(Function& function,
       auto as_begin = dynamic_cast<IR_Begin*>(child.get());
       if (as_begin) {
         clean_up_while_loops(as_begin, file);
+      }
+
+      auto as_cond_no_else = dynamic_cast<IR_Cond*>(child.get());
+      if (as_cond_no_else) {
+        clean_up_cond_no_else_final(as_cond_no_else, file);
       }
     }
     return ir;

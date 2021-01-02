@@ -76,10 +76,13 @@ class CfgVtx {
   std::vector<CfgVtx*> pred;      // all vertices which have us as succ_branch or succ_ft
   int uid = -1;
 
+  enum class DelaySlotKind { NO_BRANCH, SET_REG_FALSE, SET_REG_TRUE, NOP, OTHER };
+
   struct {
     bool has_branch = false;     // does the block end in a branch (any kind)?
     bool branch_likely = false;  // does the block end in a likely branch?
     bool branch_always = false;  // does the branch always get taken?
+    DelaySlotKind kind = DelaySlotKind::NO_BRANCH;
   } end_branch;
 
   // each child class of CfgVtx will define its own children.

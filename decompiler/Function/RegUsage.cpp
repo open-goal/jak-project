@@ -160,6 +160,14 @@ void Function::run_reg_usage() {
           }
         }
       }
+
+      for (auto reg : op->write_regs) {
+        if (!block.op_has_reg_live_out(i, reg)) {
+          // we wrote it, but it is immediately dead. this is nice to know for things like
+          // "is this if/and/or expression used as a value?"
+          op->written_and_unused.insert(reg);
+        }
+      }
     }
   }
 }

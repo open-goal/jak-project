@@ -44,17 +44,11 @@ void ExpressionStack::add_no_set(std::shared_ptr<IR> value, bool sequence_point)
   m_stack.push_back(entry);
 }
 
+/*!
+ * "Remove" an entry from the stack. Cannot cross a sequence point.
+ * Internally, the entry is still stored. It is just flagged with display=false.
+ */
 std::shared_ptr<IR> ExpressionStack::get(Register reg) {
-  // see if the stack top is this register...
-  //  if (!display_stack_empty()) {
-  //    auto& top = get_display_stack_top();
-  //    if (top.destination == reg) {
-  //      // yep. We can compact!
-  //      top.display = false;
-  //      return top.source;
-  //    }
-  //  }
-
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.display) {
@@ -73,6 +67,10 @@ std::shared_ptr<IR> ExpressionStack::get(Register reg) {
   return std::make_shared<IR_Register>(reg, -1);
 }
 
+/*!
+ * Convert the stack into a sequence of compacted expressions.
+ * This is final result of the expression compaction algorithm.
+ */
 std::vector<std::shared_ptr<IR>> ExpressionStack::get_result() {
   std::vector<std::shared_ptr<IR>> result;
 

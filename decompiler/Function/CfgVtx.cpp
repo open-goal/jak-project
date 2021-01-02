@@ -259,18 +259,6 @@ goos::Object ShortCircuit::to_form() {
   return pretty_print::build_list(forms);
 }
 
-/*
-goos::Object IfElseVtx::to_form() {
-  std::vector<goos::Object> forms = {pretty_print::to_symbol("if"), condition->to_form(),
-                                              true_case->to_form(), false_case->to_form()};
-  return pretty_print::build_list(forms);
-}
-
-std::string IfElseVtx::to_string() {
-  return "if_else";  // todo - something nicer
-}
-*/
-
 std::string GotoEnd::to_string() {
   return "goto_end" + std::to_string(uid);
 }
@@ -1248,12 +1236,13 @@ bool ControlFlowGraph::find_cond_w_else() {
     //        printf("cwe try %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
 
     // first condition should have the _option_ to fall through to first body
-    if (c0->succ_ft != b0) {
+    if (c0->succ_ft != b0 || c0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
       return true;
     }
 
     // first body MUST unconditionally jump to else
-    if (b0->succ_ft || b0->end_branch.branch_likely) {
+    if (b0->succ_ft || b0->end_branch.branch_likely ||
+        b0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
       return true;
     }
 
@@ -1307,12 +1296,14 @@ bool ControlFlowGraph::find_cond_w_else() {
         // we're done!
         // check the prev_condition, prev_body blocks properly go to the else/end_block
         // prev_condition should jump to else:
-        if (prev_condition->succ_branch != else_block || prev_condition->end_branch.branch_likely) {
+        if (prev_condition->succ_branch != else_block || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
           return true;
         }
 
         // prev_body should jump to end
-        if (prev_body->succ_branch != end_block) {
+        if (prev_body->succ_branch != end_block ||
+            prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
           return true;
         }
 
@@ -1335,7 +1326,12 @@ bool ControlFlowGraph::find_cond_w_else() {
         }
 
         // how to get to cond
-        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely) {
+        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          return true;
+        }
+
+        if (prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
           return true;
         }
 
@@ -1402,14 +1398,17 @@ bool ControlFlowGraph::find_cond_w_else() {
   return found;
 }
 
+#define printf(format, ...) ;
+
 bool ControlFlowGraph::find_cond_n_else() {
   bool found = false;
 
   for_each_top_level_vtx([&](CfgVtx* vtx) {
+    printf("Try CNE on %s\n", vtx->to_string().c_str());
     auto* c0 = vtx;       // first condition
     auto* b0 = c0->next;  // first body
     if (!b0) {
-      //      printf("reject 0\n");
+      printf("reject 0\n");
       return true;
     }
 
@@ -1417,15 +1416,16 @@ bool ControlFlowGraph::find_cond_n_else() {
 
     // first condition should have the _option_ to fall through to first body
     if (c0->succ_ft != b0) {
-      //      printf("reject 1\n");
+      printf("reject 1\n");
       return true;
     }
 
     // first body MUST unconditionally jump to end
     bool single_case = false;
     if (b0->end_branch.has_branch) {
-      if (b0->succ_ft || b0->end_branch.branch_likely) {
-        //        printf("reject 2A\n");
+      if (b0->succ_ft || b0->end_branch.branch_likely ||
+          b0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+        printf("reject 2A\n");
         return true;
       }
       assert(b0->end_branch.has_branch);
@@ -1436,25 +1436,27 @@ bool ControlFlowGraph::find_cond_n_else() {
     }
 
     if (b0->pred.size() != 1) {
-      //      printf("reject 3\n");
+      printf("reject 3\n");
       return true;
     }
 
     // TODO - check what's in the delay slot!
     auto* end_block = single_case ? b0->succ_ft : b0->succ_branch;
     if (!end_block) {
-      //      printf("reject 4");
+      printf("reject 4");
       return true;
     }
 
     if (!is_found_after(end_block, b0)) {
-      //      printf("reject 5");
+      printf("reject 5");
       return true;
     }
 
     std::vector<CondNoElse::Entry> entries = {{c0, b0}};
     auto* prev_condition = c0;
     auto* prev_body = b0;
+    printf("add default entry %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
+    printf("end_block = %s\n", end_block->to_string().c_str());
 
     // loop to try to grab all the cases up to the else, or reject if the inside is not sufficiently
     // compact or if this is not actually a cond with else Note, we are responsible for checking the
@@ -1466,68 +1468,105 @@ bool ControlFlowGraph::find_cond_n_else() {
         // we're done!
         // check the prev_condition, prev_body blocks properly go to the else/end_block
         // prev_condition should jump to else:
-        if (prev_condition->succ_branch != end_block || prev_condition->end_branch.branch_likely) {
-          //          printf("reject 6\n");
+        // note - a GOAL branching NOT will be recognized as a single case COND with no else.
+        // but the branch will be a register set true
+        if (prev_condition->succ_branch != end_block || prev_condition->end_branch.branch_likely ||
+            (prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_FALSE &&
+             prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_TRUE)) {
+          printf("reject 6\n");
           return true;
         }
 
-        // prev_body should jump to end
-        if (!single_case && prev_body->succ_branch != end_block) {
-          //          printf("reject 7\n");
+        // if we are a not, we can have only one case. (I think).
+        if (prev_condition->end_branch.kind == CfgVtx::DelaySlotKind::SET_REG_TRUE &&
+            entries.size() > 1) {
+          return true;
+        }
+
+        // prev_body should fall through to end todo - this was wrong?
+        if (prev_body->succ_ft != end_block) {
+          printf("reject 7\n");
           return true;
         }
 
         break;
       } else {
+        // need to check pc->c
+        // need to check pb->e
+        // need to check c->b
         auto* c = next;
         auto* b = c->next;
+        printf("add next entry %s %s\n", c->to_string().c_str(), b->to_string().c_str());
         if (!c || !b) {
-          //          printf("reject 8\n");
+          printf("reject 8\n");
           return true;
         };
         // attempt to add another
         //        printf("  e %s %s\n", c->to_string().c_str(), b->to_string().c_str());
 
         if (c->pred.size() != 1) {
-          //          printf("reject 9\n");
+          printf("reject 9\n");
           return true;
         }
 
         if (b->pred.size() != 1) {
-          //          printf("reject 10\n");
+          printf("reject 10 body %s\n", b->to_string().c_str());
           return true;
         }
 
-        // how to get to cond
-        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely) {
-          //          printf("reject 11\n");
+        // how to get to cond (pc->c)
+        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_FALSE) {
+          printf("reject 11\n");
           return true;
         }
 
+        // (c->b)
         if (c->succ_ft != b) {
-          //          printf("reject 12\n");
+          printf("reject 12\n");
           return true;  // condition should have the option to fall through if matched
         }
 
-        // TODO - check what's in the delay slot!
-        if (c->end_branch.branch_likely) {
-          //          printf("reject 13\n");
+        if (c->end_branch.branch_likely ||
+            c->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_FALSE) {
+          printf("reject 13\n");
           return true;  // otherwise should go to next with a non-likely branch
         }
 
-        if (b->succ_ft || b->end_branch.branch_likely) {
-          //          printf("reject 14\n");
+        if (prev_body->succ_ft || prev_body->end_branch.branch_likely ||
+            prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          printf("reject 14 on b %s %d %d %d\n", prev_body->to_string().c_str(),
+                 !!prev_body->succ_ft, prev_body->end_branch.branch_likely,
+                 prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP);
           return true;  // body should go straight to else
         }
 
-        if (b->succ_branch != end_block) {
-          //          printf("reject 14\n");
+        if (prev_body->succ_branch != end_block) {
+          printf("reject 15\n");
           return true;
         }
 
         entries.emplace_back(c, b);
         prev_body = b;
         prev_condition = c;
+      }
+    }
+
+    // let's try to detect if this is an incomplete one.
+    if (c0->prev) {
+      if (c0->prev->succ_ft == nullptr && c0->prev->succ_branch == end_block &&
+          c0->prev->end_branch.kind == CfgVtx::DelaySlotKind::NOP &&
+          !c0->prev->end_branch.branch_likely) {
+        // the previous body looks suspicious.
+        for (auto pred : c0->pred) {
+          // also check that we have the body skip to avoid false positives when the entire body of
+          // a while loop is wrapped in a CNE with a single case.
+          if (pred->succ_branch == c0 &&
+              pred->end_branch.kind == CfgVtx::DelaySlotKind::SET_REG_FALSE) {
+            printf("Suspisious reject\n");
+            return true;
+          }
+        }
       }
     }
 
@@ -1576,6 +1615,7 @@ bool ControlFlowGraph::find_cond_n_else() {
 
   return found;
 }
+#undef printf
 
 bool ControlFlowGraph::find_short_circuits() {
   bool found = false;
@@ -1625,7 +1665,7 @@ bool ControlFlowGraph::find_short_circuits() {
       // check fallthrough to next
       if (!next->succ_ft) {
         //        printf("reject 5\n");
-        return false;
+        return true;
       }
 
       assert(next->succ_ft == next->next);  // bonus check
@@ -1741,6 +1781,19 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
   }
 }
 
+CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
+  if (is_nop(i)) {
+    return CfgVtx::DelaySlotKind::NOP;
+  } else if (is_gpr_3(i, InstructionKind::OR, {}, Register(Reg::GPR, Reg::S7),
+                      Register(Reg::GPR, Reg::R0))) {
+    return CfgVtx::DelaySlotKind::SET_REG_FALSE;
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+    return CfgVtx::DelaySlotKind::SET_REG_TRUE;
+  } else {
+    return CfgVtx::DelaySlotKind::OTHER;
+  }
+}
+
 /*!
  * Build and resolve a Control Flow Graph as much as possible.
  */
@@ -1774,10 +1827,12 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
       int idx = b.end_word - 2;
       assert(idx >= b.start_word);
       auto& branch_candidate = func.instructions.at(idx);
+      auto& delay_slot_candidate = func.instructions.at(idx + 1);
 
       if (is_branch(branch_candidate, {})) {
         blocks.at(i)->end_branch.has_branch = true;
         blocks.at(i)->end_branch.branch_likely = is_branch(branch_candidate, true);
+        blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate);
         bool branch_always = is_always_branch(branch_candidate);
 
         // need to find block target
@@ -1827,15 +1882,17 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
   while (changed) {
     changed = false;
     // note - we should prioritize finding short-circuiting expressions.
-    //    printf("%s\n", cfg->to_dot().c_str());
-    //    printf("%s\n", cfg->to_form()->toStringPretty().c_str());
+    //        printf("%s\n", cfg->to_dot().c_str());
+    //    printf("%s\n", cfg->to_form().print().c_str());
 
-    changed = changed || cfg->find_cond_n_else();
+    // todo - should we lower the priority of the conds?
+
     changed = changed || cfg->find_cond_w_else();
 
     changed = changed || cfg->find_while_loop_top_level();
     changed = changed || cfg->find_seq_top_level();
     changed = changed || cfg->find_short_circuits();
+    changed = changed || cfg->find_cond_n_else();
 
     if (!changed) {
       changed = changed || cfg->find_goto_end();
