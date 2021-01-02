@@ -289,6 +289,9 @@ class IR_FloatMath1 : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_IntMath2 : public virtual IR {
@@ -542,6 +545,11 @@ class IR_Suspend_Atomic : public virtual IR, public IR_Atomic {
   void propagate_types(const TypeState& input,
                        const LinkedObjectFile& file,
                        DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override {
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 class IR_Breakpoint_Atomic : public virtual IR_Atomic {
@@ -725,6 +733,9 @@ class IR_CMoveF : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_AsmReg : public virtual IR {
