@@ -55,7 +55,7 @@ class IR {
 class IR_Atomic : public virtual IR {
  public:
   std::vector<Register> read_regs, write_regs, clobber_regs;
-  std::unordered_set<Register, Register::hash> consumed;
+  std::unordered_set<Register, Register::hash> consumed, written_and_unused;
   bool reg_info_set = false;
 
   TypeState end_types;  // types at the end of this instruction
@@ -208,6 +208,14 @@ class IR_EmptyPair : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override {
+    (void)consume;
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 class IR_StaticAddress : public virtual IR {
@@ -281,6 +289,9 @@ class IR_FloatMath1 : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_IntMath2 : public virtual IR {
@@ -367,6 +378,14 @@ class IR_IntegerConstant : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override {
+    (void)consume;
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 struct BranchDelay {
@@ -479,15 +498,27 @@ class IR_Branch_Atomic : public virtual IR_Branch, public IR_Atomic {
 
 class IR_Compare : public virtual IR {
  public:
-  explicit IR_Compare(Condition _condition) : condition(std::move(_condition)) {}
+  explicit IR_Compare(Condition _condition, IR_Atomic* _root_op)
+      : condition(std::move(_condition)), root_op(_root_op) {}
 
   Condition condition;
+
+  // the basic op that the comparison comes from. If the condition is "ALWAYS", this may be null.
+  // if this is the source of an IR_Set_Atomic, this may also be null. This should only be used
+  // from IR_Compare's expression_stack, when the IR_Compare is being used as a branch condition,
+  // and not as a literal #f/#t that's being assigned.
+  IR_Atomic* root_op = nullptr;
 
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
+  std::unordered_set<Register, Register::hash> get_consumed(LinkedObjectFile& file) override;
 };
 
 class IR_Nop : public virtual IR {
@@ -495,6 +526,7 @@ class IR_Nop : public virtual IR {
   IR_Nop() = default;
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_Nop_Atomic : public IR_Nop, public IR_Atomic {
@@ -513,6 +545,11 @@ class IR_Suspend_Atomic : public virtual IR, public IR_Atomic {
   void propagate_types(const TypeState& input,
                        const LinkedObjectFile& file,
                        DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override {
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 class IR_Breakpoint_Atomic : public virtual IR_Atomic {
@@ -523,6 +560,11 @@ class IR_Breakpoint_Atomic : public virtual IR_Atomic {
   void propagate_types(const TypeState& input,
                        const LinkedObjectFile& file,
                        DecompilerTypeSystem& dts) override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override {
+    (void)stack;
+    (void)file;
+    return true;
+  }
 };
 
 class IR_Begin : public virtual IR {
@@ -542,6 +584,7 @@ class IR_WhileLoop : public virtual IR {
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
   std::shared_ptr<IR> condition, body;
   bool cleaned = false;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_UntilLoop : public virtual IR {
@@ -550,6 +593,7 @@ class IR_UntilLoop : public virtual IR {
       : condition(std::move(_condition)), body(std::move(_body)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
   std::shared_ptr<IR> condition, body;
 };
 
@@ -566,6 +610,7 @@ class IR_CondWithElse : public virtual IR {
       : entries(std::move(_entries)), else_ir(std::move(_else_ir)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 // this one doesn't have an else statement. Will return false if none of the cases are taken.
@@ -575,12 +620,16 @@ class IR_Cond : public virtual IR {
     std::shared_ptr<IR> condition = nullptr;
     std::shared_ptr<IR> body = nullptr;
     std::shared_ptr<IR> false_destination = nullptr;
+    std::shared_ptr<IR> original_condition_branch = nullptr;
     bool cleaned = false;
   };
+  Register final_destination;
+  bool used_as_value = false;
   std::vector<Entry> entries;
   explicit IR_Cond(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 // this will work on pairs, bintegers, or basics
@@ -591,24 +640,33 @@ class IR_GetRuntimeType : public virtual IR {
       : object(std::move(_object)), clobber(std::move(_clobber)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  std::unordered_set<Register, Register::hash> get_consumed(LinkedObjectFile& file) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_ShortCircuit : public virtual IR {
  public:
   struct Entry {
     std::shared_ptr<IR> condition = nullptr;
-    std::shared_ptr<IR> output = nullptr;  // where the delay slot writes to.
+    // in the case where there's no else, each delay slot will write #f to the "output" register.
+    // this can be with an or <output>, s7, r0
+    std::shared_ptr<IR> output = nullptr;
+    bool is_output_trick = false;
     bool cleaned = false;
   };
 
   enum Kind { UNKNOWN, AND, OR } kind = UNKNOWN;
 
   std::shared_ptr<IR> final_result = nullptr;  // the register that the final result goes in.
-
   std::vector<Entry> entries;
+  std::optional<bool> used_as_value = std::nullopt;
+
   explicit IR_ShortCircuit(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_Ash : public virtual IR {
@@ -652,6 +710,7 @@ class IR_AsmOp : public virtual IR {
   IR_AsmOp(std::string _name) : name(std::move(_name)) {}
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
+  bool expression_stack(ExpressionStack& stack, LinkedObjectFile& file) override;
 };
 
 class IR_AsmOp_Atomic : public virtual IR_AsmOp, public IR_Atomic {
@@ -674,6 +733,9 @@ class IR_CMoveF : public virtual IR {
   TP_Type get_expression_type(const TypeState& input,
                               const LinkedObjectFile& file,
                               DecompilerTypeSystem& dts) override;
+  bool update_from_stack(const std::unordered_set<Register, Register::hash>& consume,
+                         ExpressionStack& stack,
+                         LinkedObjectFile& file) override;
 };
 
 class IR_AsmReg : public virtual IR {

@@ -9,6 +9,7 @@ bool expressionize_begin(IR_Begin* begin, LinkedObjectFile& file) {
   for (auto& op : begin->forms) {
     op->expression_stack(stack, file);
   }
+  //  printf("%s\n", stack.print(file).c_str());
   begin->forms = stack.get_result();
   return true;
 }
@@ -16,6 +17,7 @@ bool expressionize_begin(IR_Begin* begin, LinkedObjectFile& file) {
 
 bool Function::build_expression(LinkedObjectFile& file) {
   if (!ir) {
+    printf("build_expression on %s failed due to no IR.\n", guessed_name.to_string().c_str());
     return false;
   }
 
@@ -41,9 +43,11 @@ bool Function::build_expression(LinkedObjectFile& file) {
 
     // turn each begin into an expression
     for (auto b : all_begins) {
+      //      printf("BEFORE:\n%s\n", b->print(file).c_str());
       if (!expressionize_begin(b, file)) {
         return false;
       }
+      //      printf("AFTER:\n%s\n", b->print(file).c_str());
     }
   } catch (std::exception& e) {
     printf("build_expression failed on %s due to %s\n", guessed_name.to_string().c_str(), e.what());

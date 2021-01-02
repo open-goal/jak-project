@@ -570,7 +570,7 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
     if (obj.linked_data.has_any_functions()) {
       auto file_text = obj.linked_data.print_type_analysis_debug();
       auto file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_db.asm");
+          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_dbt.asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -861,8 +861,11 @@ void ObjectFileDB::analyze_functions() {
   // Main Pass over each function...
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     total_functions++;
-    //      printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
-    //             data.to_unique_name().c_str());
+    //        if (func.guessed_name.to_string() != "sort") {
+    //          return;
+    //        }
+    //          printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
+    //                 data.to_unique_name().c_str());
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
@@ -907,6 +910,8 @@ void ObjectFileDB::analyze_functions() {
       }
 
       // Combine basic ops + CFG to build a nested IR
+      // register usage first, so we can tell if the SC's if's are used by value.
+      func.run_reg_usage();
       func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
       non_asm_funcs++;
       if (func.ir) {
@@ -921,6 +926,7 @@ void ObjectFileDB::analyze_functions() {
       }
 
       // type analysis
+
       if (get_config().function_type_prop) {
         auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
         if (get_config().no_type_analysis_functions_by_name.find(func.guessed_name.to_string()) ==
@@ -1095,17 +1101,18 @@ void ObjectFileDB::analyze_expressions() {
   Timer timer;
   int attempts = 0;
   int success = 0;
+  bool had_failure = false;
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
-    // register usage
-    func.run_reg_usage();
 
-    if (func.attempted_type_analysis) {
+    if (/*!had_failure &&*/ func.attempted_type_analysis) {
       attempts++;
+      spdlog::info("Analyze {}", func.guessed_name.to_string());
       if (func.build_expression(data.linked_data)) {
         success++;
       } else {
         func.warnings.append(";; Expression analysis failed.\n");
+        had_failure = true;
       }
     }
   });
