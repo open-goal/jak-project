@@ -467,11 +467,11 @@ std::string ObjectFileDB::generate_obj_listing() {
       unique_count++;
       all_unique_names.insert(x.to_unique_name());
     }
+    // this check is extremely important. It makes sure we don't have any repeat names. This could
+    // be caused by two files with the same name, in the same DGOs, but different data.
+    assert(int(all_unique_names.size()) == unique_count);
   }
 
-  // this check is extremely important. It makes sure we don't have any repeat names. This could
-  // be caused by two files with the same name, in the same DGOs, but different data.
-  assert(int(all_unique_names.size()) == unique_count);
   result.pop_back();  // kill last new line
   result.pop_back();  // kill last comma
   return result + "]";

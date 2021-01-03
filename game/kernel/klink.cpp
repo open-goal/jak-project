@@ -883,7 +883,7 @@ void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
       // GOAL function is unknown, lets see if its loaded:
       auto sym = find_symbol_from_c("ultimate-memcpy");
       if (sym->value == 0) {
-        return memcpy(dst, src, size);
+        return memmove(dst, src, size);
       }
       gfunc_774.offset = sym->value;
     }
@@ -892,7 +892,7 @@ void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
                              s7.offset, g_ee_main_mem))
         .c();
   } else {
-    return memcpy(dst, src, size);
+    return memmove(dst, src, size);
   }
 }
 

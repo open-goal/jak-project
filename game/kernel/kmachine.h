@@ -12,7 +12,10 @@
 #include "Ptr.h"
 
 //! How much space to leave for the stack when creating the debug heap
-constexpr u32 DEBUG_HEAP_SPACE_FOR_STACK = 0x4000;
+// In the game, it's 16 kB, but we increase it to 64 kB.
+// ASAN builds + fmt / spdlog stuff uses a _ton_ of stack when no optimizations are on and we
+// need more.
+constexpr u32 DEBUG_HEAP_SPACE_FOR_STACK = 0x10000;
 
 //! First free address for the GOAL heap
 constexpr u32 HEAP_START = 0x13fd20;

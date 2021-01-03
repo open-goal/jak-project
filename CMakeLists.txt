@@ -43,6 +43,11 @@ IF (WIN32)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 ENDIF ()
 
+IF (ASAN_BUILD)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+    message(STATUS "Doing ASAN build")
+ENDIF ()
+
 option(CODE_COVERAGE "Enable Code Coverage Compiler Flags" OFF)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 

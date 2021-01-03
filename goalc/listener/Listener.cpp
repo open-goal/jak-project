@@ -295,7 +295,7 @@ void Listener::receive_func() {
           handle_output_message(str_buff);
         }
         rcv_mtx.unlock();
-
+        delete[] str_buff;
       } break;
 
       default:

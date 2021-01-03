@@ -324,16 +324,26 @@ Ptr<Function> make_function_from_c_linux(void* func) {
   auto f = (uint64_t)func;
   auto fp = (u8*)&f;
 
+  int i = 0;
   // we will put the function address in RAX with a movabs rax, imm8
-  mem.c()[0] = 0x48;
-  mem.c()[1] = 0xb8;
-  for (int i = 0; i < 8; i++) {
-    mem.c()[2 + i] = fp[i];
+  mem.c()[i++] = 0x48;
+  mem.c()[i++] = 0xb8;
+  for (int j = 0; j < 8; j++) {
+    mem.c()[i++] = fp[j];
   }
 
-  // jmp rax
-  mem.c()[10] = 0xff;
-  mem.c()[11] = 0xe0;
+  // push r10
+  // push r11
+  // sub rsp, 8
+  // call rax
+  // add rsp, 8
+  // pop r11
+  // pop r10
+  // ret
+  for (auto x : {0x41, 0x52, 0x41, 0x53, 0x48, 0x83, 0xEC, 0x08, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x08,
+                 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
+    mem.c()[i++] = x;
+  }
 
   // the C function's ret will return to the caller of this trampoline.
 

@@ -184,6 +184,7 @@ bool IR_Compare::update_from_stack(const std::unordered_set<Register, Register::
 }
 
 bool IR_ShortCircuit::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
+  (void)file;
   // this one is weird. All forms but the last implicitly set final_destination.
   // the last form should somewhere set final_destination, but due to tricky coloring we
   // can't identify this 100% of the time.
