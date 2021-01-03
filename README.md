@@ -177,4 +177,17 @@ Check out these files for more documentation. Some of it is still in progress
 - `doc/porting_to_x86.md`: Summary of changes we're making to port to x86-64
 - `doc/goos.md`: GOOS macro language
 
-## Tests
+## ASan Build
+The project supports building with Address Sanitizer (https://github.com/google/sanitizers/wiki/AddressSanitizer) in Linux.
+```
+export CXX=clang++
+cmake .. -DASAN_BUILD=TRUE
+```
+You will have to delete the build folder when changing compilers.  When running `cmake`, you should see something like:
+```
+-- The CXX compiler identification is Clang 10.0.0
+...
+-- Doing ASAN build
+```
+
+Then you can run the tests, runtime, and compiler as normal and they will abort if ASan finds an error.

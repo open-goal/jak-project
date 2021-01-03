@@ -104,9 +104,9 @@ std::string DecompilerTypeSystem::dump_symbol_types() {
 void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
   auto kv = type_flags.find(name);
   if (kv != type_flags.end()) {
-    spdlog::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
-                 flags);
     if (kv->second != flags) {
+      spdlog::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
+                   flags);
       spdlog::warn("duplicated type flags that are inconsistent!");
     }
   }
@@ -116,9 +116,9 @@ void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
 void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::string& parent) {
   auto kv = type_parents.find(child);
   if (kv != type_parents.end()) {
-    spdlog::warn("duplicated type parents for {} was {} now {}", child.c_str(), kv->second.c_str(),
-                 parent.c_str());
     if (kv->second != parent) {
+      spdlog::warn("duplicated type parents for {} was {} now {}", child.c_str(),
+                   kv->second.c_str(), parent.c_str());
       throw std::runtime_error("duplicated type parents that are inconsistent!");
     }
   }
