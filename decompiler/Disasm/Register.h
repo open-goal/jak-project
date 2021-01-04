@@ -120,6 +120,9 @@ enum Vi {
   CMSAR1 = 31,
   MAX_COP2 = 32
 };
+
+const extern bool allowed_local_gprs[Reg::MAX_GPR];
+
 }  // namespace Reg
 
 // Representation of a register.  Uses a 32-bit integer internally.

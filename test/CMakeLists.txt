@@ -18,6 +18,7 @@ add_executable(goalc-test
         test_pretty_print.cpp
         test_zydis.cpp
         goalc/test_goal_kernel.cpp
+        decompiler/IR_variable.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
@@ -27,9 +28,9 @@ IF (WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
   # TODO - split out these declarations for platform specific includes
-  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest mman Zydis)
+  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system decomp gtest mman Zydis)
 ELSE()
-  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest Zydis)
+  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system decomp gtest Zydis)
 ENDIF()
 
 if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)

@@ -135,7 +135,7 @@ std::shared_ptr<IR_Atomic> to_asm_automatic(const std::string& str, Instruction&
   }
 
   if (instr.n_src >= 3) {
-    result->src1 = instr_atom_to_ir(instr.get_src(2), idx);
+    result->src2 = instr_atom_to_ir(instr.get_src(2), idx);
   }
 
   result->set_reg_info();

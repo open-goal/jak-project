@@ -1,5 +1,6 @@
-add_executable(decompiler
-        main.cpp
+add_library(
+        decomp
+        SHARED
         ObjectFile/ObjectFileDB.cpp
         Disasm/Instruction.cpp
         Disasm/InstructionDecode.cpp
@@ -16,23 +17,31 @@ add_executable(decompiler
         IR/BasicOpBuilder.cpp
         IR/CfgBuilder.cpp
         IR/IR.cpp
-		Function/TypeInspector.cpp
-		data/tpage.cpp
-		data/game_text.cpp
-		data/StrFileReader.cpp
-		data/game_count.cpp
-		Function/TypeAnalysis.cpp
-		IR/IR_TypeAnalysis.cpp
-		util/TP_Type.cpp
-		Function/RegUsage.cpp
-		Function/ExpressionBuilder.cpp
-		Function/ExpressionStack.cpp
-		IR/IR_ExpressionStack.cpp)
+        Function/TypeInspector.cpp
+        data/tpage.cpp
+        data/game_text.cpp
+        data/StrFileReader.cpp
+        data/game_count.cpp
+        Function/TypeAnalysis.cpp
+        IR/IR_TypeAnalysis.cpp
+        util/TP_Type.cpp
+        Function/RegUsage.cpp
+        Function/ExpressionBuilder.cpp
+        Function/ExpressionStack.cpp
+        IR/IR_ExpressionStack.cpp
+        IR2/AtomicOp.cpp
+		IR2/Env.cpp
+)
+
+add_executable(decompiler
+        main.cpp
+        )
 
 target_link_libraries(decompiler
+		decomp
         goos
         minilzo
         common_util
         type_system
-	spdlog
+        spdlog
         fmt)
