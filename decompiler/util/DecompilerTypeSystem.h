@@ -5,7 +5,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "common/goos/Reader.h"
 
-struct TP_Type;
+class TP_Type;
 struct TypeState;
 
 class DecompilerTypeSystem {

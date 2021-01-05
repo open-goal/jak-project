@@ -115,6 +115,25 @@ bool InstructionAtom::is_link_or_label() const {
   return kind == IMM_SYM || kind == LABEL;
 }
 
+bool InstructionAtom::operator==(const InstructionAtom& other) const {
+  if (kind != other.kind) {
+    return false;
+  }
+  switch (kind) {
+    case REGISTER:
+      return reg == other.reg;
+    case IMM:
+      return imm == other.imm;
+    case LABEL:
+      return label_id == other.label_id;
+    case VU_ACC:
+    case VU_Q:
+      return true;
+    default:
+      assert(false);
+  }
+}
+
 /*!
  * Convert just the name of the opcode to a string, omitting src/dst, but including
  * suffixes (interlock, broadcasts and destination)
@@ -311,4 +330,25 @@ int Instruction::get_label_target() const {
     }
   }
   return result;
+}
+
+bool Instruction::operator==(const Instruction& other) const {
+  if (kind != other.kind || n_src != other.n_src || n_dst != other.n_dst ||
+      cop2_dest != other.cop2_dest || cop2_bc != other.cop2_bc || il != other.il) {
+    return false;
+  }
+
+  for (int i = 0; i < n_dst; i++) {
+    if (dst[i] != other.dst[i]) {
+      return false;
+    }
+  }
+
+  for (int i = 0; i < n_src; i++) {
+    if (src[i] != other.src[i]) {
+      return false;
+    }
+  }
+
+  return true;
 }

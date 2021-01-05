@@ -51,11 +51,13 @@ struct InstructionAtom {
 
   bool is_reg(Register r) const { return kind == REGISTER && reg == r; }
 
+  bool operator==(const InstructionAtom& other) const;
+  bool operator!=(const InstructionAtom& other) const { return !((*this) == other); }
+
  private:
   int32_t imm;
   int label_id;
   Register reg;
-
   std::string sym;
 };
 
@@ -88,6 +90,9 @@ class Instruction {
   const OpcodeInfo& get_info() const;
 
   int get_label_target() const;
+
+  bool operator==(const Instruction& other) const;
+  bool operator!=(const Instruction& other) const { return !((*this) == other); }
 
   // extra fields for some COP2 instructions.
   uint8_t cop2_dest = 0xff;  // 0xff indicates "don't print dest"

@@ -51,6 +51,9 @@ class Variable {
   bool operator==(const Variable& other) const;
   bool operator!=(const Variable& other) const;
 
+  const Register& reg() const { return m_reg; }
+  Mode mode() const { return m_mode; }
+
  private:
   Mode m_mode = Mode::READ;  // do we represent a read or a write?
   Register m_reg;            // the EE register
@@ -68,6 +71,18 @@ class Variable {
  * and can't be nested infinitely. They also have features specific to the AtomicOp system that are
  * not required for full expressions. The full expression system will later convert these into the
  * more complicated expressions.
+ *
+ * The types of AtomicOp are:
+ * ConditionalMoveFalseOp
+ * CallOp
+ * SpecialOp
+ * BranchOp
+ * LoadVarOp
+ * StoreOp
+ * SetVarConditionOp
+ * AsmOp
+ * SetVarExprOp
+ * AsmOp
  */
 class AtomicOp {
  public:
@@ -124,6 +139,10 @@ class SimpleAtom {
   goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
+  const Variable& var() const {
+    assert(is_var());
+    return m_variable;
+  }
   bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; };
   bool is_sym_ptr() const { return m_kind == Kind::SYMBOL_PTR; };
   bool is_sym_val() const { return m_kind == Kind::SYMBOL_VAL; };
@@ -195,6 +214,7 @@ class SimpleExpression {
   SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1);
   goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
   bool operator==(const SimpleExpression& other) const;
+  bool is_identity() const { return m_kind == Kind::IDENTITY; }
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -231,16 +251,19 @@ class SetVarOp : public AtomicOp {
  */
 class AsmOp : public AtomicOp {
  public:
-  AsmOp(const Instruction& instr, int my_idx);
+  AsmOp(Instruction instr, int my_idx);
   goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
 
  private:
   Instruction m_instr;
-  bool m_has_dest = false;
-  int m_n_src = -1;
-  Variable m_dst;
-  Variable m_src[3];
+  std::optional<Variable> m_dst;
+  std::optional<Variable> m_src[3];
 };
 
 /*!
@@ -250,48 +273,235 @@ class AsmOp : public AtomicOp {
  * Sometimes a SetVarConditionOp gets spread across many many instructions, in which case it is
  * not correctly detected here.
  */
-struct Condition {};
-
-/*!
- *
- */
-class SetVarConditonOp : public AtomicOp {
+class IR2_Condition {
  public:
+  enum class Kind {
+    NOT_EQUAL,
+    EQUAL,
+    LESS_THAN_SIGNED,
+    GREATER_THAN_SIGNED,
+    LEQ_SIGNED,
+    GEQ_SIGNED,
+    GREATER_THAN_ZERO_SIGNED,
+    LEQ_ZERO_SIGNED,
+    LESS_THAN_ZERO,
+    GEQ_ZERO_SIGNED,
+    LESS_THAN_UNSIGNED,
+    GREATER_THAN_UNSIGNED,
+    LEQ_UNSIGNED,
+    GEQ_UNSIGNED,
+    ZERO,
+    NONZERO,
+    FALSE,
+    TRUTHY,
+    ALWAYS,
+    NEVER,
+    FLOAT_EQUAL,
+    FLOAT_NOT_EQUAL,
+    FLOAT_LESS_THAN,
+    FLOAT_GEQ,
+    FLOAT_LEQ,
+    FLOAT_GREATER_THAN,
+    INVALID
+  };
+
+  explicit IR2_Condition(Kind kind);
+  IR2_Condition(Kind kind, const SimpleAtom& src0);
+  IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1);
+
+  void invert();
+  bool operator==(const IR2_Condition& other) const;
+  bool operator!=(const IR2_Condition& other) const { return !((*this) == other); }
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
+
  private:
-  Variable m_dst;
-  Condition m_condition;
+  Kind m_kind = Kind::INVALID;
+  SimpleAtom m_src[2];
 };
 
 /*!
- * Store an Argument (or expression?)
+ * Set a variable to a GOAL boolean, based off of a condition.
+ */
+class SetVarConditionOp : public AtomicOp {
+ public:
+  SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
+
+ private:
+  Variable m_dst;
+  IR2_Condition m_condition;
+};
+
+/*!
+ * Store an Atom into a memory location.
+ * Note - this is _not_ considered a set! form because you are not setting the value of a
+ * register which can be expression-compacted.
  */
 class StoreOp : public AtomicOp {
  public:
+  StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
+
  private:
   SimpleExpression m_addr;
-  SimpleExpression m_value;
+  SimpleAtom m_value;
 };
 
 /*!
- * Load a value into a variable
+ * Load a value into a variable.
+ * This is treated as a set! form.
  */
 class LoadVarOp : public AtomicOp {
  public:
+  LoadVarOp(Variable dst, SimpleExpression src, int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
+
  private:
+  Variable m_dst;
+  SimpleExpression m_src;
 };
 
 /*!
- * A function call.
+ * This represents one of the possible instructions that can go in a branch delay slot.
+ * These will be "absorbed" into higher level structures, but for the purpose of printing AtomicOps,
+ * it will be nice to have these print like expressions.
+ *
+ * These are always part of the branch op.
  */
-class CallOp : public AtomicOp {};
+class IR2_BranchDelay {
+ public:
+  enum class Kind {
+    NOP,
+    SET_REG_FALSE,
+    SET_REG_TRUE,
+    SET_REG_REG,
+    SET_BINTEGER,
+    SET_PAIR,
+    DSLLV,
+    NEGATE
+  };
 
-struct BranchDelay {};
+  explicit IR2_BranchDelay(Kind kind);
+  IR2_BranchDelay(Kind kind, Variable var0);
+  IR2_BranchDelay(Kind kind, Variable var0, Variable var1);
+  IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variable var2);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
+  bool operator==(const IR2_BranchDelay& other) const;
 
-class BranchOp : public AtomicOp {};
+ private:
+  std::optional<Variable> m_var[3];
+  Kind m_kind;
+};
 
 /*!
- * NOP, BREAK, SUSPEND
+ * This represents a combination of a condition + a branch + the branch delay slot.
+ * This is considered as a single operation.
  */
-class SpecialOp : public AtomicOp {};
+class BranchOp : public AtomicOp {
+ public:
+  BranchOp(bool likely,
+           IR2_Condition condition,
+           int label,
+           IR2_BranchDelay branch_delay,
+           int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
 
-class ConditionalMoveOp : public AtomicOp {};
+ private:
+  bool m_likely = false;
+  IR2_Condition m_condition;
+  int m_label = -1;
+  IR2_BranchDelay m_branch_delay;
+};
+
+/*!
+ * A "special" op has no arguments.
+ * NOP, BREAK, SUSPEND,
+ */
+class SpecialOp : public AtomicOp {
+ public:
+  enum class Kind {
+    NOP,
+    BREAK,
+    SUSPEND,
+  };
+
+  SpecialOp(Kind kind, int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
+
+ private:
+  Kind m_kind;
+};
+
+/*!
+ * Represents a function call.
+ * This has so many special cases and exceptions that it is separate from SpecialOp.
+ */
+class CallOp : public AtomicOp {
+ public:
+  CallOp(int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
+};
+
+/*!
+ * Unfortunately the original GOAL compiler does something weird when compiling (zero? x) or (not
+ * (zero? x)) when the result needs to be stored in a GOAL boolean (not in a branch condition). It
+ * first does a (set! result #t), then (possibly) a bunch of code to evaluate x, then does a
+ * conditional move (movn/movz).  As a result, we can't recognize this as a Condition in the
+ * AtomicOp pass. Instead we'll recognize it as a (set! result #t) .... (cmove result flag) where
+ * flag is checked to be 0 or not.  It's weird because all of the other similar cases get this
+ * right.
+ *
+ * Note - this isn't considered a variable set.  It's "conditional set" so it needs to be
+ * handled separately. Unfortunately.
+ */
+class ConditionalMoveFalseOp : public AtomicOp {
+ public:
+  ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx);
+  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_variable_set() const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  std::unique_ptr<Expr> get_set_source_as_expr() const override;
+  std::unique_ptr<Expr> get_as_expr() const override;
+
+ private:
+  Variable m_dst, m_src;
+  bool m_on_zero;
+};
