@@ -69,7 +69,7 @@ jobs:
         id: git-vars
 
       - name: Get Package Dependencies
-        run: sudo apt install build-essential cmake ccache gcc g++ lcov make nasm
+        run: sudo apt install build-essential cmake ccache clang gcc g++ lcov make nasm
 
       # # -- SETUP CCACHE - https://cristianadam.eu/20200113/speeding-up-c-plus-plus-github-actions-using-ccache/
       # - name: Prepare ccache timestamp
@@ -89,7 +89,10 @@ jobs:
 
       - name: CMake Generation
         # run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
-        run: cmake -B build -DCODE_COVERAGE=ON
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake -B build -DCODE_COVERAGE=ON -DASAN_BUILD=ON
 
       - name: Build Project
         working-directory: ./build
