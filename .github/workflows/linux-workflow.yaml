@@ -18,9 +18,10 @@ jobs:
       matrix:
         os: [ubuntu-20.04]
         config: [Debug] # TODO - Eventually we need to make a Release Config
+        compiler: [clang, gcc]
         experimental: [false]
 
-    name: ${{ matrix.config }}
+    name: ${{ matrix.config }}-${{ matrix.compiler }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
@@ -53,6 +54,7 @@ jobs:
         run: git submodule update --init --recursive --jobs 2
 
       - name: Prepare Artifact Git Info
+        id: git-vars
         shell: bash
         run: |
           echo "##[set-output name=branch;]${GITHUB_REF#refs/heads/}"
@@ -66,10 +68,9 @@ jobs:
             echo "##[set-output name=short-sha;]$(git rev-parse --short "$GITHUB_SHA")"
           fi
           echo "##[set-output name=artifact-metadata;]${ARTIFACT_NAME}"
-        id: git-vars
 
       - name: Get Package Dependencies
-        run: sudo apt install build-essential cmake ccache gcc g++ lcov make nasm
+        run: sudo apt install build-essential cmake ccache clang gcc g++ lcov make nasm
 
       # # -- SETUP CCACHE - https://cristianadam.eu/20200113/speeding-up-c-plus-plus-github-actions-using-ccache/
       # - name: Prepare ccache timestamp
@@ -87,9 +88,18 @@ jobs:
       #     restore-keys: |
       #       ${{ matrix.config }}-ccache-
 
-      - name: CMake Generation
+      - name:  CMake Generation
         # run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
-        run: cmake -B build -DCODE_COVERAGE=ON
+        run: |
+          if [ "${{ matrix.compiler }}" == 'clang' ]; then
+            export CC=clang
+            export CXX=clang++
+            cmake -B build -DCODE_COVERAGE=ON -DASAN_BUILD=ON
+          else
+            export CC=gcc
+            export CXX=g++
+            cmake -B build -DCODE_COVERAGE=ON
+          fi
 
       - name: Build Project
         working-directory: ./build
@@ -106,9 +116,15 @@ jobs:
         run: make -j4
 
       - name: Run Tests
-        run: ./test_code_coverage.sh
+        run: |
+          if [ "${{ matrix.compiler }}" == 'clang' ]; then
+            ./test.sh
+          else
+            ./test_code_coverage.sh
+          fi
 
       - name: Coveralls
+        if: ${{ matrix.compiler }} != 'clang'
         uses: coverallsapp/github-action@master
         continue-on-error: true # Sometimes Coveralls has intermittent problems, and codecoverage isn't critical to our success
         with:

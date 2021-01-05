@@ -3109,6 +3109,7 @@ TEST(EmitterLoadsAndStores, static_addr) {
   }
 }
 
+#ifdef __linux__
 TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
   CodeTester tester;
   tester.init_code_buffer(512);
@@ -3154,10 +3155,10 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float), 0, 0), 3.45f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float), 0, 0), 1.23f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float), 0, 0), 5.67f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float), 0, 0), 0);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float), 0, 0), 3.45f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float), 0, 0), 1.23f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float), 0, 0), 5.67f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float), 0, 0), 0);
 
         iter++;
       }
@@ -3215,10 +3216,10 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) + 3, 0, 0), 3.45f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) + 3, 0, 0), 1.23f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) + 3, 0, 0), 5.67f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) + 3, 0, 0), 0);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) + 3, 0, 0), 3.45f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) + 3, 0, 0), 1.23f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) + 3, 0, 0), 5.67f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) + 3, 0, 0), 0);
 
         iter++;
       }
@@ -3278,10 +3279,14 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) - offset, 0, 0), 3.45f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) - offset, 0, 0), 1.23f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) - offset, 0, 0), 5.67f);
-        EXPECT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) - offset, 0, 0), 0);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) - offset, 0, 0),
+                        3.45f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) - offset, 0, 0),
+                        1.23f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) - offset, 0, 0),
+                        5.67f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) - offset, 0, 0),
+                        0);
         iter++;
       }
     }
@@ -3352,9 +3357,9 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
 
         // run!
         tester.execute((u64)memory, 12, as_u32(1.234f), 0);
-        EXPECT_EQ(memory[2], 1.23f);
-        EXPECT_EQ(memory[3], 1.234f);
-        EXPECT_EQ(memory[4], 5.67f);
+        EXPECT_FLOAT_EQ(memory[2], 1.23f);
+        EXPECT_FLOAT_EQ(memory[3], 1.234f);
+        EXPECT_FLOAT_EQ(memory[4], 5.67f);
 
         iter++;
       }
@@ -3418,9 +3423,9 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
 
         // run!
         tester.execute((u64)memory, 12 - offset, as_u32(1.234f), 0);
-        EXPECT_EQ(memory[2], 1.23f);
-        EXPECT_EQ(memory[3], 1.234f);
-        EXPECT_EQ(memory[4], 5.67f);
+        EXPECT_FLOAT_EQ(memory[2], 1.23f);
+        EXPECT_FLOAT_EQ(memory[3], 1.234f);
+        EXPECT_FLOAT_EQ(memory[4], 5.67f);
 
         iter++;
       }
@@ -3484,9 +3489,9 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
 
         // run!
         tester.execute((u64)memory, 12 - offset, as_u32(1.234f), 0);
-        EXPECT_EQ(memory[2], 1.23f);
-        EXPECT_EQ(memory[3], 1.234f);
-        EXPECT_EQ(memory[4], 5.67f);
+        EXPECT_FLOAT_EQ(memory[2], 1.23f);
+        EXPECT_FLOAT_EQ(memory[3], 1.234f);
+        EXPECT_FLOAT_EQ(memory[4], 5.67f);
 
         iter++;
       }
@@ -3517,7 +3522,7 @@ TEST(EmitterXmm32, static_load_xmm32) {
                       loc_of_load + load_instr.offset_of_disp());
 
     auto result = tester.execute_ret<float>(0, 0, 0, 0);
-    EXPECT_EQ(result, 1.2345f);
+    EXPECT_FLOAT_EQ(result, 1.2345f);
   }
 }
 
@@ -3542,7 +3547,7 @@ TEST(EmitterXmm32, static_store_xmm32) {
     tester.write<s32>(loc_of_float - loc_of_store - store_instr.length(),
                       loc_of_store + store_instr.offset_of_disp());
     tester.execute(as_u32(-44.567f), 0, 0, 0);
-    EXPECT_EQ(-44.567f, tester.read<float>(loc_of_float));
+    EXPECT_FLOAT_EQ(-44.567f, tester.read<float>(loc_of_float));
   }
 }
 
@@ -3583,7 +3588,7 @@ TEST(EmitterXmm32, mul) {
           tester.emit_pop_all_xmms();
           tester.emit_return();
           auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+          EXPECT_FLOAT_EQ(result, expected);
         }
       }
     }
@@ -3620,7 +3625,7 @@ TEST(EmitterXmm32, div) {
           tester.emit_pop_all_xmms();
           tester.emit_return();
           auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+          EXPECT_FLOAT_EQ(result, expected);
         }
       }
     }
@@ -3656,7 +3661,7 @@ TEST(EmitterXmm32, add) {
           tester.emit_pop_all_xmms();
           tester.emit_return();
           auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+          EXPECT_FLOAT_EQ(result, expected);
         }
       }
     }
@@ -3693,7 +3698,7 @@ TEST(EmitterXmm32, sub) {
           tester.emit_pop_all_xmms();
           tester.emit_return();
           auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+          EXPECT_FLOAT_EQ(result, expected);
         }
       }
     }
@@ -3801,7 +3806,9 @@ TEST(EmitterSlow, xmm32_move) {
       }
     }
   }
+  // todo - finish this test
 }
+#endif
 
 TEST(Emitter, LEA) {
   CodeTester tester;

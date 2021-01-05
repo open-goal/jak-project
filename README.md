@@ -3,16 +3,20 @@
 ![Linux](https://github.com/water111/jak-project/workflows/Linux/badge.svg)
 ![Windows](https://github.com/water111/jak-project/workflows/Windows/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9)](https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade)
 
 ## Table of Contents
 
 <!-- toc -->
 
-- [Project Description](#project-description)
 - [Table of Contents](#table-of-contents)
+- [Project Description](#project-description)
 - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
 - [Getting Started - Windows](#getting-started---windows)
 - [Project Layout](#project-layout)
+- [Directory Layout](#directory-layout)
+- [More Documentation](#more-documentation)
+- [ASan Build](#asan-build)
 <!-- tocstop -->
 ## Project Description
 
