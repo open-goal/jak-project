@@ -187,15 +187,25 @@ _call_goal_asm_win32:
   push r13    ; 88
   push r14    ; 96
   push r15    ; 104
+
+  sub rsp, 16
+  movups [rsp], xmm6
+  sub rsp, 16
+  movups [rsp], xmm7
   
   mov rdi, rcx ;; rdi is GOAL first argument, rcx is windows first argument
   mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
   mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
   mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
-  mov r15, [rsp + 152] ;; symbol table
-  mov r14, [rsp + 144] ;; offset
+  mov r15, [rsp + 184] ;; symbol table
+  mov r14, [rsp + 176] ;; offset
   
   call r13
+
+  movups xmm7, [rsp]
+  add rsp, 16
+  movups xmm6, [rsp]
+  add rsp, 16
   
   pop r15
   pop r14
@@ -234,6 +244,11 @@ _call_goal_on_stack_asm_win32:
   push r14    ; 96
   push r15    ; 104
 
+  sub rsp, 16
+  movups [rsp], xmm6
+  sub rsp, 16
+  movups [rsp], xmm7
+
   ;; stack swap
   mov rsi, rsp
   mov rsp, rcx
@@ -248,6 +263,11 @@ _call_goal_on_stack_asm_win32:
   ;; restore stack
   pop rsi
   mov rsp, rsi
+
+  movups xmm7, [rsp]
+  add rsp, 16
+  movups xmm6, [rsp]
+  add rsp, 16
 
   pop r15
   pop r14
