@@ -621,7 +621,7 @@ goos::Object IR2_Condition::to_form(const LinkedObjectFile* file, const Env* env
 /////////////////////////////
 
 SetVarConditionOp::SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_condition(condition) {}
+    : AtomicOp(my_idx), m_dst(dst), m_condition(std::move(condition)) {}
 
 goos::Object SetVarConditionOp::to_form(const LinkedObjectFile* file, const Env* env) const {
   return pretty_print::build_list(pretty_print::to_symbol("set!"),
@@ -664,7 +664,7 @@ std::unique_ptr<Expr> SetVarConditionOp::get_as_expr() const {
 /////////////////////////////
 
 StoreOp::StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx)
-    : AtomicOp(my_idx), m_addr(addr), m_value(value) {}
+    : AtomicOp(my_idx), m_addr(std::move(addr)), m_value(std::move(value)) {}
 
 goos::Object StoreOp::to_form(const LinkedObjectFile* file, const Env* env) const {
   return pretty_print::build_list(pretty_print::to_symbol("store!"), m_addr.to_form(file, env),
@@ -707,7 +707,7 @@ std::unique_ptr<Expr> StoreOp::get_as_expr() const {
 /////////////////////////////
 
 LoadVarOp::LoadVarOp(Variable dst, SimpleExpression src, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_src(src) {}
+    : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {}
 
 goos::Object LoadVarOp::to_form(const LinkedObjectFile* file, const Env* env) const {
   return pretty_print::build_list(pretty_print::to_symbol("set!"),

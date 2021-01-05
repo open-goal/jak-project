@@ -33,6 +33,15 @@ add_library(
 		IR2/Env.cpp
 )
 
+target_link_libraries(decomp
+		goos
+		minilzo
+		common_util
+		type_system
+		spdlog
+		fmt
+		)
+
 add_executable(decompiler
         main.cpp
         )
