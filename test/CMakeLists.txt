@@ -32,7 +32,7 @@ ELSE()
   target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest Zydis)
 ENDIF()
 
-if(UNIX AND CODE_COVERAGE)
+if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
   setup_target_for_coverage_lcov(NAME goalc-test_coverage

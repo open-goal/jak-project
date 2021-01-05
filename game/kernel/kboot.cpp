@@ -6,6 +6,8 @@
 
 #include <cstring>
 #include <chrono>
+#include <stdio.h>
+#include <stdlib.h>
 #include <thread>
 
 #include "common/common_types.h"
