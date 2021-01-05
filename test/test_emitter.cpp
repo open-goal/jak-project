@@ -3109,6 +3109,7 @@ TEST(EmitterLoadsAndStores, static_addr) {
   }
 }
 
+#ifdef __linux__
 TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
   CodeTester tester;
   tester.init_code_buffer(512);
@@ -3278,10 +3279,14 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) - offset, 0, 0), 3.45f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) - offset, 0, 0), 1.23f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) - offset, 0, 0), 5.67f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) - offset, 0, 0), 0);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) - offset, 0, 0),
+                        3.45f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) - offset, 0, 0),
+                        1.23f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) - offset, 0, 0),
+                        5.67f);
+        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) - offset, 0, 0),
+                        0);
         iter++;
       }
     }
@@ -3727,7 +3732,7 @@ TEST(EmitterXmm32, float_to_int) {
         tester.emit_pop_all_xmms();
         tester.emit_return();
         auto result = tester.execute_ret<s32>(0, 0, 0, 0);
-        EXPECT_FLOAT_EQ(result, expected);
+        EXPECT_EQ(result, expected);
       }
     }
   }
@@ -3756,7 +3761,7 @@ TEST(EmitterXmm32, int_to_float) {
         tester.emit_pop_all_xmms();
         tester.emit_return();
         auto result = tester.execute_ret<float>(0, 0, 0, 0);
-        EXPECT_FLOAT_EQ(result, expected);
+        EXPECT_EQ(result, expected);
       }
     }
   }
@@ -3803,6 +3808,7 @@ TEST(EmitterSlow, xmm32_move) {
   }
   // todo - finish this test
 }
+#endif
 
 TEST(Emitter, LEA) {
   CodeTester tester;

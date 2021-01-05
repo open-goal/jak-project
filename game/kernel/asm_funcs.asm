@@ -134,6 +134,11 @@ _call_goal_on_stack_asm_linux:
   push r14
   push r15
 
+  sub rsp, 16
+  movups [rsp], xmm6
+  sub rsp, 16
+  movups [rsp], xmm7
+
   ;; stash current stack pointer in rsi
   mov rsi, rsp
   ;; switch to new stack
@@ -153,6 +158,11 @@ _call_goal_on_stack_asm_linux:
   ;; get old stack pointer
   pop rsi
   mov rsp, rsi
+
+  movups xmm7, [rsp]
+  add rsp, 16
+  movups xmm6, [rsp]
+  add rsp, 16
 
   ;; retore x86 registers.
   pop r15
@@ -197,8 +207,8 @@ _call_goal_asm_win32:
   mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
   mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
   mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
-  mov r15, [rsp + 152] ;; symbol table
-  mov r14, [rsp + 144] ;; offset
+  mov r15, [rsp + 184] ;; symbol table
+  mov r14, [rsp + 176] ;; offset
   
   call r13
 
