@@ -44,7 +44,7 @@ IF (WIN32)
 ENDIF ()
 
 IF (ASAN_BUILD)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -O1")
     message(STATUS "Doing ASAN build")
 ENDIF ()
 

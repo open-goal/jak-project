@@ -91,14 +91,15 @@ jobs:
       - name:  CMake Generation
         # run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
         run: |
-          if [ ${{ matrix.compiler == 'clang' }} ]; then
+          if [ "${{ matrix.compiler }}" == 'clang' ]; then
             export CC=clang
             export CXX=clang++
+            cmake -B build -DCODE_COVERAGE=ON -DASAN_BUILD=ON
           else
             export CC=gcc
             export CXX=g++
+            cmake -B build -DCODE_COVERAGE=ON
           fi
-          cmake -B build -DCODE_COVERAGE=ON -DASAN_BUILD=ON
 
       - name: Build Project
         working-directory: ./build
@@ -116,7 +117,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          if [ ${{ matrix.compiler == 'clang' }} ]; then
+          if [ "${{ matrix.compiler }}" == 'clang' ]; then
             ./test.sh
           else
             ./test_code_coverage.sh

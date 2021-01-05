@@ -92,32 +92,35 @@ bool attach_and_break(const ThreadID& tid) {
  */
 bool check_stopped(const ThreadID& tid, SignalInfo* out) {
   int status;
-  if (waitpid(tid.id, &status, WNOHANG) < 0) {
+  int rv = waitpid(tid.id, &status, WNOHANG);
+  if (rv < 0) {
     printf("[Debugger] Failed to waitpid: %s.\n", strerror(errno));
     //    assert(false);  // todo, temp because I think we should never hit this.
     return false;
   }
 
-  if (WIFSTOPPED(status)) {
-    auto sig = WSTOPSIG(status);
-    if (out) {
-      switch (sig) {
-        case SIGSEGV:
-          out->kind = SignalInfo::SEGFAULT;
-          break;
-        case SIGFPE:
-          out->kind = SignalInfo::MATH_EXCEPTION;
-          break;
-        case SIGTRAP:
-          out->kind = SignalInfo::BREAK;
-          break;
+  if (rv > 0) {
+    // status has actually changed
+    if (WIFSTOPPED(status)) {
+      auto sig = WSTOPSIG(status);
+      if (out) {
+        switch (sig) {
+          case SIGSEGV:
+            out->kind = SignalInfo::SEGFAULT;
+            break;
+          case SIGFPE:
+            out->kind = SignalInfo::MATH_EXCEPTION;
+            break;
+          case SIGTRAP:
+            out->kind = SignalInfo::BREAK;
+            break;
 
-        default:
-          out->kind = SignalInfo::UNKNOWN;
+          default:
+            out->kind = SignalInfo::UNKNOWN;
+        }
       }
+      return true;
     }
-
-    return true;
   }
 
   return false;
