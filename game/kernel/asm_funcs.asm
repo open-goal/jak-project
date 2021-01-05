@@ -134,11 +134,6 @@ _call_goal_on_stack_asm_linux:
   push r14
   push r15
 
-  sub rsp, 16
-  movups [rsp], xmm6
-  sub rsp, 16
-  movups [rsp], xmm7
-
   ;; stash current stack pointer in rsi
   mov rsi, rsp
   ;; switch to new stack
@@ -158,11 +153,6 @@ _call_goal_on_stack_asm_linux:
   ;; get old stack pointer
   pop rsi
   mov rsp, rsi
-
-  movups xmm7, [rsp]
-  add rsp, 16
-  movups xmm6, [rsp]
-  add rsp, 16
 
   ;; retore x86 registers.
   pop r15

@@ -148,7 +148,6 @@ void KernelCheckAndDispatch() {
     //(**kernel_dispatcher)();
 
     Timer kernel_dispatch_timer;
-    fprintf(stderr, "ENTERING GOAL CODE\n");
     if (MasterUseKernel) {
       // use the GOAL kernel.
       call_goal_on_stack(Ptr<Function>(kernel_dispatcher->value), goal_stack, s7.offset,
@@ -166,7 +165,6 @@ void KernelCheckAndDispatch() {
         ListenerFunction->value = s7.offset;
       }
     }
-    fprintf(stderr, "EXITING GOAL CODE\n");
 
     auto time_ms = kernel_dispatch_timer.getMs();
     if (time_ms > 3) {
@@ -177,7 +175,6 @@ void KernelCheckAndDispatch() {
 
     // if the listener function changed, it means the kernel ran it, so we should notify compiler.
     if (MasterDebug && ListenerFunction->value != old_listener) {
-      fprintf(stderr, "SEND ACK\n");
       SendAck();
     }
 
