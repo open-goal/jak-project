@@ -9,7 +9,6 @@
 #include "Env.h"
 
 namespace decompiler {
-class LinkedObjectFile;
 class Expr;
 
 /*!
@@ -54,6 +53,7 @@ class Variable {
 
   const Register& reg() const { return m_reg; }
   Mode mode() const { return m_mode; }
+  int idx() const { return m_atomic_idx; }
 
  private:
   Mode m_mode = Mode::READ;  // do we represent a read or a write?
@@ -88,7 +88,9 @@ class Variable {
 class AtomicOp {
  public:
   explicit AtomicOp(int my_idx);
-  virtual goos::Object to_form(const LinkedObjectFile* file, const Env* env) const = 0;
+  std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env);
+  virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
+                               const Env* env) const = 0;
   virtual bool operator==(const AtomicOp& other) const = 0;
   bool operator!=(const AtomicOp& other) const;
 
@@ -137,7 +139,7 @@ class SimpleAtom {
   static SimpleAtom make_sym_val(const std::string& name);
   static SimpleAtom make_empty_list();
   static SimpleAtom make_int_constant(s64 value);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
   const Variable& var() const {
@@ -213,7 +215,7 @@ class SimpleExpression {
 
   SimpleExpression(Kind kind, const SimpleAtom& arg0);
   SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   bool operator==(const SimpleExpression& other) const;
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
 
@@ -229,8 +231,11 @@ class SimpleExpression {
 class SetVarOp : public AtomicOp {
  public:
   SetVarOp(const Variable& dst, const SimpleExpression& src, int my_idx)
-      : AtomicOp(my_idx), m_dst(dst), m_src(src) {}
-  virtual goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+      : AtomicOp(my_idx), m_dst(dst), m_src(src) {
+    assert(my_idx == dst.idx());
+  }
+  virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
+                               const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -253,7 +258,7 @@ class SetVarOp : public AtomicOp {
 class AsmOp : public AtomicOp {
  public:
   AsmOp(Instruction instr, int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -313,7 +318,7 @@ class IR2_Condition {
   void invert();
   bool operator==(const IR2_Condition& other) const;
   bool operator!=(const IR2_Condition& other) const { return !((*this) == other); }
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -326,7 +331,7 @@ class IR2_Condition {
 class SetVarConditionOp : public AtomicOp {
  public:
   SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -347,7 +352,7 @@ class SetVarConditionOp : public AtomicOp {
 class StoreOp : public AtomicOp {
  public:
   StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -367,7 +372,7 @@ class StoreOp : public AtomicOp {
 class LoadVarOp : public AtomicOp {
  public:
   LoadVarOp(Variable dst, SimpleExpression src, int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -404,7 +409,7 @@ class IR2_BranchDelay {
   IR2_BranchDelay(Kind kind, Variable var0);
   IR2_BranchDelay(Kind kind, Variable var0, Variable var1);
   IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variable var2);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   bool operator==(const IR2_BranchDelay& other) const;
 
  private:
@@ -423,7 +428,7 @@ class BranchOp : public AtomicOp {
            int label,
            IR2_BranchDelay branch_delay,
            int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -451,7 +456,7 @@ class SpecialOp : public AtomicOp {
   };
 
   SpecialOp(Kind kind, int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -470,7 +475,7 @@ class SpecialOp : public AtomicOp {
 class CallOp : public AtomicOp {
  public:
   CallOp(int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;
@@ -494,7 +499,7 @@ class CallOp : public AtomicOp {
 class ConditionalMoveFalseOp : public AtomicOp {
  public:
   ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx);
-  goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;

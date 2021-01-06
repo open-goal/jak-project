@@ -18,7 +18,7 @@ add_executable(goalc-test
         test_pretty_print.cpp
         test_zydis.cpp
         goalc/test_goal_kernel.cpp
-        decompiler/IR_variable.cpp
+        decompiler/test_AtomicOpBuilder.cpp
         decompiler/test_InstructionParser.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})

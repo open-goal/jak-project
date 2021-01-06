@@ -51,6 +51,9 @@ bool Variable::operator!=(const Variable& other) const {
 /////////////////////////////
 AtomicOp::AtomicOp(int my_idx) : m_my_idx(my_idx) {}
 
+std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) {
+  return pretty_print::to_string(to_form(labels, env));
+}
 bool AtomicOp::operator!=(const AtomicOp& other) const {
   return !((*this) == other);
 }
@@ -92,7 +95,7 @@ SimpleAtom SimpleAtom::make_int_constant(s64 value) {
   return result;
 }
 
-goos::Object SimpleAtom::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   switch (m_kind) {
     case Kind::VARIABLE:
       return pretty_print::to_symbol(m_variable.to_string(env));
@@ -103,7 +106,7 @@ goos::Object SimpleAtom::to_form(const LinkedObjectFile* file, const Env* env) c
     case Kind::SYMBOL_VAL:
       return pretty_print::to_symbol(m_string);
     case Kind::STATIC_ADDRESS:
-      return pretty_print::to_symbol(file->get_label_name(m_int));
+      return pretty_print::to_symbol(labels.at(m_int).name);
     default:
       assert(false);
       return {};
@@ -257,16 +260,17 @@ SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0, const Simp
   assert(get_simple_expression_arg_count(kind) == 2);
 }
 
-goos::Object SimpleExpression::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& labels,
+                                       const Env* env) const {
   std::vector<goos::Object> forms;
   if (m_kind == Kind::IDENTITY) {
     // we are "identity" so just pass through the atom
     assert(args() == 1);
-    return get_arg(0).to_form(file, env);
+    return get_arg(0).to_form(labels, env);
   } else {
     forms.push_back(pretty_print::to_symbol(get_simple_expression_op_name(m_kind)));
     for (int i = 0; i < args(); i++) {
-      forms.push_back(get_arg(i).to_form(file, env));
+      forms.push_back(get_arg(i).to_form(labels, env));
     }
     return pretty_print::build_list(forms);
   }
@@ -289,10 +293,10 @@ bool SimpleExpression::operator==(const SimpleExpression& other) const {
 // SetVarOp
 /////////////////////////////
 
-goos::Object SetVarOp::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object SetVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   return pretty_print::build_list(pretty_print::to_symbol("set!"),
                                   pretty_print::to_symbol(m_dst.to_string(env)),
-                                  m_src.to_form(file, env));
+                                  m_src.to_form(labels, env));
 }
 
 bool SetVarOp::operator==(const AtomicOp& other) const {
@@ -356,7 +360,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
   }
 }
 
-goos::Object AsmOp::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("." + m_instr.op_name_to_string()));
   assert(m_instr.n_dst <= 1);
@@ -367,7 +371,7 @@ goos::Object AsmOp::to_form(const LinkedObjectFile* file, const Env* env) const 
       forms.push_back(pretty_print::to_symbol(m_dst.value().to_string(env)));
     } else {
       // print the atom
-      forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(file->labels)));
+      forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(labels)));
     }
   }
 
@@ -376,7 +380,7 @@ goos::Object AsmOp::to_form(const LinkedObjectFile* file, const Env* env) const 
     if (m_src[i].has_value()) {
       forms.push_back(pretty_print::to_symbol(m_src[i].value().to_string(env)));
     } else {
-      forms.push_back(pretty_print::to_symbol(m_instr.get_src(1).to_string(file->labels)));
+      forms.push_back(pretty_print::to_symbol(m_instr.get_src(1).to_string(labels)));
     }
   }
 
@@ -608,11 +612,12 @@ bool IR2_Condition::operator==(const IR2_Condition& other) const {
   }
 }
 
-goos::Object IR2_Condition::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
+                                    const Env* env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i].to_form(file, env));
+    forms.push_back(m_src[i].to_form(labels, env));
   }
   return pretty_print::build_list(forms);
 }
@@ -624,10 +629,11 @@ goos::Object IR2_Condition::to_form(const LinkedObjectFile* file, const Env* env
 SetVarConditionOp::SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx)
     : AtomicOp(my_idx), m_dst(dst), m_condition(std::move(condition)) {}
 
-goos::Object SetVarConditionOp::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object SetVarConditionOp::to_form(const std::vector<DecompilerLabel>& labels,
+                                        const Env* env) const {
   return pretty_print::build_list(pretty_print::to_symbol("set!"),
                                   pretty_print::to_symbol(m_dst.to_string(env)),
-                                  m_condition.to_form(file, env));
+                                  m_condition.to_form(labels, env));
 }
 
 bool SetVarConditionOp::operator==(const AtomicOp& other) const {
@@ -667,9 +673,9 @@ std::unique_ptr<Expr> SetVarConditionOp::get_as_expr() const {
 StoreOp::StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx)
     : AtomicOp(my_idx), m_addr(std::move(addr)), m_value(std::move(value)) {}
 
-goos::Object StoreOp::to_form(const LinkedObjectFile* file, const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("store!"), m_addr.to_form(file, env),
-                                  m_value.to_form(file, env));
+goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+  return pretty_print::build_list(pretty_print::to_symbol("store!"), m_addr.to_form(labels, env),
+                                  m_value.to_form(labels, env));
 }
 
 bool StoreOp::operator==(const AtomicOp& other) const {
@@ -710,10 +716,10 @@ std::unique_ptr<Expr> StoreOp::get_as_expr() const {
 LoadVarOp::LoadVarOp(Variable dst, SimpleExpression src, int my_idx)
     : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {}
 
-goos::Object LoadVarOp::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   return pretty_print::build_list(pretty_print::to_symbol("set!"),
                                   pretty_print::to_symbol(m_dst.to_string(env)),
-                                  m_src.to_form(file, env));
+                                  m_src.to_form(labels, env));
 }
 
 bool LoadVarOp::operator==(const AtomicOp& other) const {
@@ -780,8 +786,9 @@ IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variab
   m_var[2] = var2;
 }
 
-goos::Object IR2_BranchDelay::to_form(const LinkedObjectFile* file, const Env* env) const {
-  (void)file;
+goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels,
+                                      const Env* env) const {
+  (void)labels;
   switch (m_kind) {
     case Kind::NOP:
       return pretty_print::build_list("nop!");
@@ -842,7 +849,7 @@ BranchOp::BranchOp(bool likely,
       m_label(label),
       m_branch_delay(branch_delay) {}
 
-goos::Object BranchOp::to_form(const LinkedObjectFile* file, const Env* env) const {
+goos::Object BranchOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   std::vector<goos::Object> forms;
 
   if (m_likely) {
@@ -851,9 +858,9 @@ goos::Object BranchOp::to_form(const LinkedObjectFile* file, const Env* env) con
     forms.push_back(pretty_print::to_symbol("b!"));
   }
 
-  forms.push_back(m_condition.to_form(file, env));
-  forms.push_back(pretty_print::to_symbol(file->get_label_name(m_label)));
-  forms.push_back(m_branch_delay.to_form(file, env));
+  forms.push_back(m_condition.to_form(labels, env));
+  forms.push_back(pretty_print::to_symbol(labels.at(m_label).name));
+  forms.push_back(m_branch_delay.to_form(labels, env));
 
   return pretty_print::build_list(forms);
 }
@@ -895,8 +902,8 @@ std::unique_ptr<Expr> BranchOp::get_as_expr() const {
 
 SpecialOp::SpecialOp(Kind kind, int my_idx) : AtomicOp(my_idx), m_kind(kind) {}
 
-goos::Object SpecialOp::to_form(const LinkedObjectFile* file, const Env* env) const {
-  (void)file;
+goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+  (void)labels;
   (void)env;
   switch (m_kind) {
     case Kind::NOP:
@@ -947,8 +954,8 @@ std::unique_ptr<Expr> SpecialOp::get_as_expr() const {
 
 CallOp::CallOp(int my_idx) : AtomicOp(my_idx) {}
 
-goos::Object CallOp::to_form(const LinkedObjectFile* file, const Env* env) const {
-  (void)file;
+goos::Object CallOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+  (void)labels;
   (void)env;
   return pretty_print::build_list("call!");
 }
@@ -990,8 +997,9 @@ std::unique_ptr<Expr> CallOp::get_as_expr() const {
 ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx)
     : AtomicOp(my_idx), m_dst(dst), m_src(src), m_on_zero(on_zero) {}
 
-goos::Object ConditionalMoveFalseOp::to_form(const LinkedObjectFile* file, const Env* env) const {
-  (void)file;
+goos::Object ConditionalMoveFalseOp::to_form(const std::vector<DecompilerLabel>& labels,
+                                             const Env* env) const {
+  (void)labels;
   return pretty_print::build_list(m_on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
                                   m_dst.to_string(env), m_src.to_string(env));
 }
