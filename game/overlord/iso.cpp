@@ -4,7 +4,7 @@
  * This is a huge mess
  */
 
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 #include <assert.h>
 #include <cstring>
 #include <cstdio>
@@ -496,7 +496,7 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           // printf("[Overlord DGO] Got DGO file header for %s with %d objects\n",
           // cmd->dgo_header.name,
           // cmd->dgo_header.object_count);  // added
-          spdlog::info("[Overlord DGO] Got DGO file header for {} with {} objects",
+          lg::info("[Overlord DGO] Got DGO file header for {} with {} objects",
                        cmd->dgo_header.name, cmd->dgo_header.object_count);
           cmd->bytes_processed = 0;
           cmd->objects_loaded = 0;

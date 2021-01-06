@@ -30,9 +30,6 @@ add_executable(decompiler
 		IR/IR_ExpressionStack.cpp)
 
 target_link_libraries(decompiler
-        goos
+		common
         minilzo
-        common_util
-        type_system
-	spdlog
         fmt)
