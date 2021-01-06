@@ -1,17 +1,31 @@
 #pragma once
 
+#include <ctime>
+
+#ifdef __linux__
 #include <sys/time.h>
+#endif
 #include <string>
 #include "third-party/fmt/core.h"
 
 namespace lg {
+
+#ifdef __linux__
+struct LogTime {
+  timeval tv;
+};
+#else
+struct LogTime {
+  time_t tim;
+};
+#endif
 
 // Logging API
 enum class level { trace = 0, debug = 1, info = 2, warn = 3, error = 4, die = 5 };
 
 namespace internal {
 // log implementation stuff, not to be called by the user
-void log_message(level log_level, timeval& now, const char* message);
+void log_message(level log_level, LogTime& now, const char* message);
 }  // namespace internal
 
 void set_file(const std::string& filename);
@@ -24,8 +38,12 @@ void finish();
 
 template <typename... Args>
 void log(level log_level, const std::string& format, Args&&... args) {
-  timeval now;
-  gettimeofday(&now, nullptr);
+  LogTime now;
+#ifdef __linux__
+  gettimeofday(&now.tv, nullptr);
+#else
+  now.tim = time(nullptr);
+#endif
   std::string formatted_message = fmt::format(format, std::forward<Args>(args)...);
   internal::log_message(log_level, now, formatted_message.c_str());
 }

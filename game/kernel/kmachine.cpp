@@ -303,7 +303,7 @@ int InitMachine() {
   u32 global_heap_size = GLOBAL_HEAP_END - HEAP_START;
   float size_mb = ((float)global_heap_size) / (float)(1 << 20);
   lg::info("gkernel: global heap 0x{:08x} to 0x{:08x} (size {:.3f} MB)", HEAP_START,
-               GLOBAL_HEAP_END, size_mb);
+           GLOBAL_HEAP_END, size_mb);
   kinitheap(kglobalheap, Ptr<u8>(HEAP_START), global_heap_size);
 
   // initialize the debug heap, if appropriate
@@ -313,7 +313,7 @@ int InitMachine() {
     float debug_size_mb = ((float)debug_heap_size) / (float)(1 << 20);
     float gap_size_mb = ((float)DEBUG_HEAP_START - GLOBAL_HEAP_END) / (float)(1 << 20);
     lg::info("gkernel: debug heap 0x{:08x} to 0x{:08x} (size {:.3f} MB, gap {:.3f} MB)",
-                 DEBUG_HEAP_START, debug_heap_end, debug_size_mb, gap_size_mb);
+             DEBUG_HEAP_START, debug_heap_end, debug_size_mb, gap_size_mb);
   } else {
     // if no debug, we make the kheapinfo structure NULL so GOAL knows not to use it.
     kdebugheap.offset = 0;

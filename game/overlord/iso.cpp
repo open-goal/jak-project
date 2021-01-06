@@ -497,7 +497,7 @@ u32 RunDGOStateMachine(IsoMessage* _cmd, IsoBufferHeader* buffer) {
           // cmd->dgo_header.name,
           // cmd->dgo_header.object_count);  // added
           lg::info("[Overlord DGO] Got DGO file header for {} with {} objects",
-                       cmd->dgo_header.name, cmd->dgo_header.object_count);
+                   cmd->dgo_header.name, cmd->dgo_header.object_count);
           cmd->bytes_processed = 0;
           cmd->objects_loaded = 0;
           if (cmd->dgo_header.object_count == 1) {

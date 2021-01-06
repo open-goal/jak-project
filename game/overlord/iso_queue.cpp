@@ -180,8 +180,8 @@ u32 QueueMessage(IsoMessage* cmd, int32_t priority, const char* name) {
     gPriStack[priority].cmds[gPriStack[priority].n] = cmd;
     gPriStack[priority].names[gPriStack[priority].n] = name;
     gPriStack[priority].n++;
-    lg::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n,
-                  PRI_STACK_LENGTH, gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
+    lg::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n, PRI_STACK_LENGTH,
+              gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
     DisplayQueue();
   } else {
     lg::warn("[OVERLORD ISO QUEUE] Failed to queue!");

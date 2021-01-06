@@ -1980,7 +1980,7 @@ s32 InitHeapAndSymbol() {
       return -1;
     } else {
       lg::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
-                   (kernel_version >> 3) & 0xffff);
+               (kernel_version >> 3) & 0xffff);
     }
   }
 

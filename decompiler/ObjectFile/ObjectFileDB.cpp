@@ -159,8 +159,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   lg::info("Unique objs: {}", stats.unique_obj_files);
   lg::info("Unique data: {} bytes", stats.unique_obj_bytes);
   lg::info("Total {:.2f} ms ({:.3f} MB/sec, {:.2f} obj/sec)", timer.getMs(),
-               stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
-               stats.total_obj_files / timer.getSeconds());
+           stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
+           stats.total_obj_files / timer.getSeconds());
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -388,8 +388,7 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   if (!dgo_obj_name_map.empty()) {
     auto dgo_kv = dgo_obj_name_map.find(strip_dgo_extension(dgo_name));
     if (dgo_kv == dgo_obj_name_map.end()) {
-      lg::error("Object {} is from DGO {}, but this DGO wasn't in the map.", obj_name,
-                    dgo_name);
+      lg::error("Object {} is from DGO {}, but this DGO wasn't in the map.", obj_name, dgo_name);
       assert(false);
     }
 
@@ -556,7 +555,7 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   lg::info(" Total {} files", total_files);
   lg::info(" Total {:.3f} MB", total_bytes / ((float)(1u << 20u)));
   lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-               total_bytes / ((1u << 20u) * timer.getSeconds()));
+           total_bytes / ((1u << 20u) * timer.getSeconds()));
   // printf("\n");
 }
 
@@ -582,7 +581,7 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
   lg::info(" Total {} files", total_files);
   lg::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
   lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-               total_bytes / ((1u << 20u) * timer.getSeconds()));
+           total_bytes / ((1u << 20u) * timer.getSeconds()));
 }
 
 /*!
@@ -629,7 +628,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   lg::info(" Total {} files", total_files);
   lg::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
   lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-               total_bytes / ((1u << 20u) * timer.getSeconds()));
+           total_bytes / ((1u << 20u) * timer.getSeconds()));
 }
 
 /*!
@@ -655,7 +654,7 @@ void ObjectFileDB::find_code() {
     auto& obj_stats = obj.linked_data.stats;
     if (obj_stats.code_bytes / 4 > obj_stats.decoded_ops) {
       lg::warn("Failed to decode all in {} ({} / {})", obj.to_unique_name().c_str(),
-                   obj_stats.decoded_ops, obj_stats.code_bytes / 4);
+               obj_stats.decoded_ops, obj_stats.code_bytes / 4);
     }
     combined_stats.add(obj.linked_data.stats);
   });
@@ -665,11 +664,11 @@ void ObjectFileDB::find_code() {
   lg::info(" Data {:.3f} MB", combined_stats.data_bytes / (float)(1 << 20));
   lg::info(" Functions: {}", combined_stats.function_count);
   lg::info(" fp uses resolved: {} / {} ({:.3f} %)", combined_stats.n_fp_reg_use_resolved,
-               combined_stats.n_fp_reg_use,
-               100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
+           combined_stats.n_fp_reg_use,
+           100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
   auto total_ops = combined_stats.code_bytes / 4;
   lg::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
-               100.f * (float)combined_stats.decoded_ops / total_ops);
+           100.f * (float)combined_stats.decoded_ops / total_ops);
   lg::info(" Total {:.3f} ms", timer.getMs());
   // printf("\n");
 }
@@ -713,7 +712,7 @@ void ObjectFileDB::process_tpages() {
     }
   });
   lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
-               100.f * float(success) / float(total), timer.getMs());
+           100.f * float(success) / float(total), timer.getMs());
 }
 
 std::string ObjectFileDB::process_game_text() {
@@ -739,7 +738,7 @@ std::string ObjectFileDB::process_game_text() {
   });
 
   lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
-               string_count, char_count, timer.getMs());
+           string_count, char_count, timer.getMs());
 
   return write_game_text(text_by_language_by_id);
 }
@@ -922,7 +921,7 @@ void ObjectFileDB::analyze_functions() {
         resolved_cfg_functions++;
       } else {
         lg::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
-                     data.to_unique_name());
+                 data.to_unique_name());
       }
 
       // type analysis
@@ -937,7 +936,7 @@ void ObjectFileDB::analyze_functions() {
             if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
               if (kv->second.base_type() != "function") {
                 lg::error("Found a function named {} but the symbol has type {}",
-                              func.guessed_name.to_string(), kv->second.print());
+                          func.guessed_name.to_string(), kv->second.print());
                 assert(false);
               }
               // GOOD!
@@ -964,7 +963,7 @@ void ObjectFileDB::analyze_functions() {
               if (info.type.arg_count() >= 1) {
                 if (info.type.base_type() != "function") {
                   lg::error("Found a method named {} but the symbol has type {}",
-                                func.guessed_name.to_string(), info.type.print());
+                            func.guessed_name.to_string(), info.type.print());
                   assert(false);
                 }
                 // GOOD!
@@ -1062,27 +1061,27 @@ void ObjectFileDB::analyze_functions() {
   });
 
   lg::info("Found {} functions ({} with no control flow)", total_functions,
-               total_trivial_cfg_functions);
+           total_trivial_cfg_functions);
   lg::info("Named {}/{} functions ({:.3f}%)", total_named_functions, total_functions,
-               100.f * float(total_named_functions) / float(total_functions));
+           100.f * float(total_named_functions) / float(total_functions));
   lg::info("Excluding {} asm functions", asm_funcs);
   lg::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
   lg::info(" {}/{} functions passed cfg analysis stage ({:.3f}%)", resolved_cfg_functions,
-               non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
+           non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
   int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
   lg::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
-               total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+           total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
   lg::info(" {}/{} basic ops with reginfo ({:.3f}%)", total_reginfo_ops, total_basic_ops,
-               100.f * float(total_reginfo_ops) / float(total_basic_ops));
+           100.f * float(total_reginfo_ops) / float(total_basic_ops));
   lg::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
-               100.f * float(successful_cfg_irs) / float(non_asm_funcs));
+           100.f * float(successful_cfg_irs) / float(non_asm_funcs));
   lg::info(" {}/{} functions attempted type analysis ({:.2f}%)", attempted_type_analysis,
-               non_asm_funcs, 100.f * float(attempted_type_analysis) / float(non_asm_funcs));
+           non_asm_funcs, 100.f * float(attempted_type_analysis) / float(non_asm_funcs));
   lg::info(" {}/{} functions that attempted type analysis succeeded ({:.2f}%)",
-               successful_type_analysis, attempted_type_analysis,
-               100.f * float(successful_type_analysis) / float(attempted_type_analysis));
+           successful_type_analysis, attempted_type_analysis,
+           100.f * float(successful_type_analysis) / float(attempted_type_analysis));
   lg::info(" {}/{} functions passed type analysis ({:.2f}%)", successful_type_analysis,
-               non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
+           non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
   lg::info(
       " {} functions were supposed to do type analysis but either failed or didn't know their "
       "types.\n",
@@ -1118,7 +1117,7 @@ void ObjectFileDB::analyze_expressions() {
   });
 
   lg::info(" {}/{} functions passed expression building ({:.2f}%)\n", success, attempts,
-               100.f * float(success) / float(attempts));
+           100.f * float(success) / float(attempts));
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {

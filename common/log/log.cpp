@@ -31,12 +31,18 @@ const char* log_level_names[] = {"trace", "debug", "info", "warn", "error", "die
 const fmt::color log_colors[] = {fmt::color::gray,   fmt::color::turquoise, fmt::color::light_green,
                                  fmt::color::yellow, fmt::color::red,       fmt::color::hot_pink};
 
-void log_message(level log_level, timeval& now, const char* message) {
+void log_message(level log_level, LogTime& now, const char* message) {
+#ifdef __linux__
   char date_time_buffer[128];
-  time_t now_seconds = now.tv_sec;
-  auto now_milliseconds = now.tv_usec / 1000;
+  time_t now_seconds = now.tv.tv_sec;
+  auto now_milliseconds = now.tv.tv_usec / 1000;
   strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now_seconds));
   std::string date_string = fmt::format("[{}:{:03d}]", date_time_buffer, now_milliseconds);
+#else
+  char date_time_buffer[128];
+  strftime(date_time_buffer, 128, "%Y-%m-%d %H:%M:%S", localtime(&now.tim));
+  std::string date_string = fmt::format("[{}]", date_time_buffer);
+#endif
 
   {
     std::lock_guard<std::mutex> lock(gLogger.mutex);

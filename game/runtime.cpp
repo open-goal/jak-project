@@ -124,7 +124,7 @@ void ee_runner(SystemThreadInterface& iface) {
 
   lg::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
   lg::debug("Main memory size 0x{:x} bytes ({:.3f} MB)", EE_MAIN_MEM_SIZE,
-                (double)EE_MAIN_MEM_SIZE / (1 << 20));
+            (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
   lg::debug("[EE] Initialization complete!");
   iface.initialization_complete();

@@ -106,7 +106,7 @@ void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
   if (kv != type_flags.end()) {
     if (kv->second != flags) {
       lg::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
-                   flags);
+               flags);
       lg::warn("duplicated type flags that are inconsistent!");
     }
   }
@@ -117,8 +117,8 @@ void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::
   auto kv = type_parents.find(child);
   if (kv != type_parents.end()) {
     if (kv->second != parent) {
-      lg::warn("duplicated type parents for {} was {} now {}", child.c_str(),
-                   kv->second.c_str(), parent.c_str());
+      lg::warn("duplicated type parents for {} was {} now {}", child.c_str(), kv->second.c_str(),
+               parent.c_str());
       throw std::runtime_error("duplicated type parents that are inconsistent!");
     }
   }
@@ -152,7 +152,7 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
     if (ts.typecheck(type_spec, skv->second, "", false, false)) {
     } else {
       lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
-                   skv->second.print(), type_spec.print());
+               skv->second.print(), type_spec.print());
       throw std::runtime_error("Type redefinition");
     }
   }
