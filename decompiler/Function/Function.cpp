@@ -94,7 +94,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
         lg::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
                  guessed_name.to_string(), instr.to_string(file.labels));
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file) + "\n";
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
         suspected_asm = true;
         return;
       }

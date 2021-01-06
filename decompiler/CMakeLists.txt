@@ -42,11 +42,8 @@ add_library(
 )
 
 target_link_libraries(decomp
-		goos
 		minilzo
-		common_util
-		type_system
-		spdlog
+		common
 		fmt
 		)
 
@@ -56,9 +53,6 @@ add_executable(decompiler
 
 target_link_libraries(decompiler
 		decomp
-        goos
+        common
         minilzo
-        common_util
-        type_system
-        spdlog
         fmt)

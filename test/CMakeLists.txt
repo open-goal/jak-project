@@ -25,7 +25,7 @@ add_executable(goalc-test
 
 enable_testing()
 
-target_link_libraries(goalc-test common runtime compiler gtest Zydis)
+target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis)
 
 IF (WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
