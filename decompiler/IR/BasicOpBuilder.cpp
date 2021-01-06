@@ -15,6 +15,7 @@
 #include "decompiler/IR/IR.h"
 #include "common/symbols.h"
 
+namespace decompiler {
 namespace {
 
 ///////////////////////////////
@@ -2537,3 +2538,4 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     }
   }
 }
+}  // namespace decompiler

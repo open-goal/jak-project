@@ -9,6 +9,7 @@
 #include <vector>
 #include "common/common_types.h"
 
+namespace decompiler {
 class StrFileReader {
  public:
   explicit StrFileReader(const std::string& file_path);
@@ -19,3 +20,4 @@ class StrFileReader {
  private:
   std::vector<std::vector<u8>> m_chunks;
 };
+}  // namespace decompiler

@@ -2,6 +2,8 @@
 #include "decompiler/Disasm/InstructionParser.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
 
+using namespace decompiler;
+
 TEST(DecompilerInstructionParser, SimpleTest) {
   InstructionParser parser;
   std::vector<std::string> ops = {"daddu a0, a1, a2", "addu r0, t7, s6",  "daddiu r0, at, #t",

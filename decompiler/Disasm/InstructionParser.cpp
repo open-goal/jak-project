@@ -4,6 +4,7 @@
 #include "common/common_types.h"
 #include "InstructionParser.h"
 
+namespace decompiler {
 InstructionParser::InstructionParser() {
   init_opcode_info();
 
@@ -303,3 +304,4 @@ std::string ParsedProgram::print() {
   }
   return result;
 }
+}  // namespace decompiler

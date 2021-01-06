@@ -8,6 +8,7 @@
 #include "TypeInspector.h"
 #include "decompiler/IR/IR.h"
 
+namespace decompiler {
 namespace {
 std::vector<Register> gpr_backups = {make_gpr(Reg::GP), make_gpr(Reg::S5), make_gpr(Reg::S4),
                                      make_gpr(Reg::S3), make_gpr(Reg::S2), make_gpr(Reg::S1),
@@ -745,3 +746,4 @@ BlockTopologicalSort Function::bb_topo_sort() {
 
   return result;
 }
+}  // namespace decompiler

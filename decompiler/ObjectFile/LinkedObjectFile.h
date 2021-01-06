@@ -18,6 +18,7 @@
 #include "decompiler/Function/Function.h"
 #include "common/common_types.h"
 
+namespace decompiler {
 /*!
  * An object file's data with linking information included.
  */
@@ -133,5 +134,6 @@ class LinkedObjectFile {
 
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
+}  // namespace decompiler
 
 #endif  // NEXT_LINKEDOBJECTFILE_H

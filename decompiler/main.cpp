@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
+  using namespace decompiler;
   lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
   lg::set_file_level(lg::level::info);
   lg::set_stdout_level(lg::level::info);
@@ -67,7 +68,7 @@ int main(int argc, char** argv) {
   }
 
   if (get_config().process_game_text) {
-    auto result = db.process_game_text();
+    auto result = db.process_game_text_files();
     file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
   }
 
@@ -76,7 +77,7 @@ int main(int argc, char** argv) {
   }
 
   if (get_config().process_game_count) {
-    auto result = db.process_game_count();
+    auto result = db.process_game_count_file();
     file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
   }
 

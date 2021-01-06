@@ -10,6 +10,7 @@
 #include "Instruction.h"
 #include "DecompilerLabel.h"
 
+namespace decompiler {
 struct ParsedProgram {
   std::vector<DecompilerLabel> labels;
   std::vector<Instruction> instructions;
@@ -25,3 +26,4 @@ class InstructionParser {
  private:
   std::unordered_map<std::string, int> m_opcode_name_lookup;
 };
+}  // namespace decompiler

@@ -6,6 +6,7 @@
 #include "OpcodeInfo.h"
 #include <cassert>
 
+namespace decompiler {
 OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];
 
 namespace {
@@ -510,3 +511,4 @@ OpcodeInfo& OpcodeInfo::dst_vf(FieldType field) {
 OpcodeInfo& OpcodeInfo::dst_vi(FieldType field) {
   return dst(field, DT::VI);
 }
+}  // namespace decompiler

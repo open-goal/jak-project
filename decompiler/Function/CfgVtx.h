@@ -11,6 +11,7 @@ namespace goos {
 class Object;
 }
 
+namespace decompiler {
 /*!
  * In v, find an item equal to old, and replace it with replace.
  * Will throw an error is there is not exactly one thing equal to old.
@@ -351,5 +352,5 @@ class ControlFlowGraph {
 class LinkedObjectFile;
 class Function;
 std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int seg, Function& func);
-
+}  // namespace decompiler
 #endif  // JAK_DISASSEMBLER_CFGVTX_H

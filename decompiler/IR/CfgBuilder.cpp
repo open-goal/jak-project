@@ -7,6 +7,7 @@
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/IR/IR.h"
 
+namespace decompiler {
 namespace {
 
 std::shared_ptr<IR> cfg_to_ir(Function& f, LinkedObjectFile& file, CfgVtx* vtx);
@@ -1278,3 +1279,4 @@ std::shared_ptr<IR> build_cfg_ir(Function& function,
     return nullptr;
   }
 }
+}  // namespace decompiler

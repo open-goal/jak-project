@@ -6,6 +6,7 @@
 #include "common/common_types.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
 
+namespace decompiler {
 class LinkedWordReader {
  public:
   explicit LinkedWordReader(const std::vector<LinkedWord>* words) : m_words(words) {}
@@ -38,3 +39,4 @@ class LinkedWordReader {
   const std::vector<LinkedWord>* m_words = nullptr;
   u32 m_offset = 0;
 };
+}  // namespace decompiler

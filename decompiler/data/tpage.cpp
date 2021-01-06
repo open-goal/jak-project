@@ -20,6 +20,7 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "third-party/fmt/core.h"
 
+namespace decompiler {
 namespace {
 
 /*!
@@ -905,3 +906,4 @@ TPageResultStats process_tpage(ObjectFileData& data) {
   }
   return stats;
 }
+}  // namespace decompiler

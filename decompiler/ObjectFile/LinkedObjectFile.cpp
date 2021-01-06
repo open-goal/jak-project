@@ -16,6 +16,7 @@
 #include "common/log/log.h"
 #include "common/goos/PrettyPrinter.h"
 
+namespace decompiler {
 /*!
  * Set the number of segments in this object file.
  * This can only be done once, and must be done before adding any words.
@@ -1064,3 +1065,4 @@ std::string LinkedObjectFile::get_goal_string_by_label(const DecompilerLabel& la
   assert(0 == (label.offset % 4));
   return get_goal_string(label.target_segment, (label.offset / 4) - 1, false);
 }
+}  // namespace decompiler

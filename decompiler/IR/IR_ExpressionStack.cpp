@@ -2,6 +2,7 @@
 #include "IR.h"
 #include "decompiler/Function/ExpressionStack.h"
 
+namespace decompiler {
 bool IR_Set_Atomic::expression_stack(ExpressionStack& stack, LinkedObjectFile& file) {
   // first determine the type of the set.
   switch (kind) {
@@ -449,3 +450,4 @@ bool IR_FloatMath1::update_from_stack(const std::unordered_set<Register, Registe
   update_from_stack_helper(&arg, consume, stack, file);
   return true;
 }
+}  // namespace decompiler

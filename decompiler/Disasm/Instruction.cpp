@@ -8,6 +8,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include <cassert>
 
+namespace decompiler {
 /*!
  * Convert atom to a string for disassembly.
  */
@@ -352,3 +353,4 @@ bool Instruction::operator==(const Instruction& other) const {
 
   return true;
 }
+}  // namespace decompiler

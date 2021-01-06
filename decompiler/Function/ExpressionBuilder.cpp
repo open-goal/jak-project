@@ -2,6 +2,7 @@
 #include "decompiler/IR/IR.h"
 #include "ExpressionStack.h"
 
+namespace decompiler {
 namespace {
 bool expressionize_begin(IR_Begin* begin, LinkedObjectFile& file) {
   ExpressionStack stack;
@@ -56,3 +57,4 @@ bool Function::build_expression(LinkedObjectFile& file) {
 
   return true;
 }
+}  // namespace decompiler

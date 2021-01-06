@@ -27,6 +27,7 @@
 #include "common/log/log.h"
 #include "third-party/json.hpp"
 
+namespace decompiler {
 namespace {
 std::string strip_dgo_extension(const std::string& x) {
   auto ext = x.substr(x.length() - 4, 4);
@@ -715,7 +716,7 @@ void ObjectFileDB::process_tpages() {
            100.f * float(success) / float(total), timer.getMs());
 }
 
-std::string ObjectFileDB::process_game_text() {
+std::string ObjectFileDB::process_game_text_files() {
   lg::info("- Finding game text...");
   std::string text_string = "COMMON";
   Timer timer;
@@ -727,7 +728,7 @@ std::string ObjectFileDB::process_game_text() {
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(1) == text_string) {
       file_count++;
-      auto statistics = ::process_game_text(data);
+      auto statistics = process_game_text(data);
       string_count += statistics.total_text;
       char_count += statistics.total_chars;
       if (text_by_language_by_id.find(statistics.language) != text_by_language_by_id.end()) {
@@ -743,7 +744,7 @@ std::string ObjectFileDB::process_game_text() {
   return write_game_text(text_by_language_by_id);
 }
 
-std::string ObjectFileDB::process_game_count() {
+std::string ObjectFileDB::process_game_count_file() {
   lg::info("- Finding game count file...");
   bool found = false;
   std::string result;
@@ -752,7 +753,7 @@ std::string ObjectFileDB::process_game_count() {
     if (data.name_in_dgo == "game-cnt") {
       assert(!found);
       found = true;
-      result = write_game_count(::process_game_count(data));
+      result = write_game_count(process_game_count(data));
     }
   });
 
@@ -1126,3 +1127,4 @@ void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
     file_util::write_binary_file(dest, data.data.data(), data.data.size());
   });
 }
+}  // namespace decompiler

@@ -3,6 +3,7 @@
 #include <string>
 #include "decompiler/Disasm/Register.h"
 
+namespace decompiler {
 /*!
  * An "environment" for a single function.
  * This contains data for an entire function, like which registers are live when, the types of
@@ -17,3 +18,4 @@ class Env {
  private:
   bool m_has_local_vars = false;
 };
+}  // namespace decompiler

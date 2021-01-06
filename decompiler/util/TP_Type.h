@@ -5,6 +5,7 @@
 #include "common/common_types.h"
 #include "decompiler/Disasm/Register.h"
 
+namespace decompiler {
 /*!
  * A TP_Type is a specialized typespec used in the type propagation algorithm.
  * It is basically a normal typespec plus some optional information.
@@ -191,3 +192,4 @@ struct TypeState {
     }
   }
 };
+}  // namespace decompiler

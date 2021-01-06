@@ -5,6 +5,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "AtomicOp.h"
 
+namespace decompiler {
 /////////////////////////////
 // VARIABLE
 /////////////////////////////
@@ -1024,3 +1025,4 @@ std::unique_ptr<Expr> ConditionalMoveFalseOp::get_set_source_as_expr() const {
 std::unique_ptr<Expr> ConditionalMoveFalseOp::get_as_expr() const {
   throw std::runtime_error("ConditionalMoveFalseOp::get_as_expr is not yet implemented");
 }
+}  // namespace decompiler

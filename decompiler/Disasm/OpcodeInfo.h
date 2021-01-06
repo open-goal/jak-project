@@ -10,6 +10,7 @@
 
 #include <string>
 
+namespace decompiler {
 enum class InstructionKind {
   UNKNOWN,
 
@@ -349,5 +350,5 @@ struct OpcodeInfo {
 extern OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];
 
 void init_opcode_info();
-
+}  // namespace decompiler
 #endif  // NEXT_OPCODEINFO_H

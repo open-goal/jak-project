@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 
+namespace decompiler {
 // Namespace for register name constants
 namespace Reg {
 enum RegisterKind {
@@ -151,5 +152,5 @@ class Register {
  private:
   uint16_t id = -1;
 };
-
+}  // namespace decompiler
 #endif  // NEXT_REGISTER_H

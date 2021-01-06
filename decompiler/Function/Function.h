@@ -15,6 +15,7 @@
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/config.h"
 
+namespace decompiler {
 class DecompilerTypeSystem;
 class IR_Atomic;
 class IR;
@@ -158,5 +159,5 @@ class Function {
   std::unordered_map<int, int> instruction_to_basic_op;
   std::unordered_map<int, int> basic_op_to_instruction;
 };
-
+}  // namespace decompiler
 #endif  // NEXT_FUNCTION_H

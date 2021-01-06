@@ -13,6 +13,7 @@
 #include "OpcodeInfo.h"
 #include "Register.h"
 
+namespace decompiler {
 struct DecompilerLabel;
 
 constexpr int MAX_INSTRUCTION_SOURCE = 3;
@@ -100,5 +101,5 @@ class Instruction {
   uint8_t cop2_bc = 0xff;    // 0xff indicates "don't print bc"
   uint8_t il = 0xff;         // 0xff indicates "don't print il"
 };
-
+}  // namespace decompiler
 #endif  // NEXT_INSTRUCTION_H

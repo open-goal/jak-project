@@ -11,9 +11,11 @@
 
 #include "LinkedObjectFile.h"
 
+namespace decompiler {
 class DecompilerTypeSystem;
 LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
                                        const std::string& name,
                                        DecompilerTypeSystem& dts);
+}  // namespace decompiler
 
 #endif  // NEXT_LINKEDOBJECTFILECREATION_H

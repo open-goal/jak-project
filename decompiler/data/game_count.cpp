@@ -3,6 +3,7 @@
 #include "game_count.h"
 #include "LinkedWordReader.h"
 
+namespace decompiler {
 GameCountResult process_game_count(ObjectFileData& data) {
   GameCountResult result;
   auto& words = data.linked_data.words_by_seg.at(0);
@@ -38,3 +39,4 @@ std::string write_game_count(const GameCountResult& result) {
                      result.mystery_data[1]);
   return str;
 }
+}  // namespace decompiler

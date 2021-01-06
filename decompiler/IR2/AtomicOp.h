@@ -8,6 +8,7 @@
 #include "decompiler/Disasm/Instruction.h"
 #include "Env.h"
 
+namespace decompiler {
 class LinkedObjectFile;
 class Expr;
 
@@ -505,3 +506,4 @@ class ConditionalMoveFalseOp : public AtomicOp {
   Variable m_dst, m_src;
   bool m_on_zero;
 };
+}  // namespace decompiler

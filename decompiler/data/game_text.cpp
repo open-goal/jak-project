@@ -7,6 +7,7 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "common/goos/Reader.h"
 
+namespace decompiler {
 namespace {
 template <typename T>
 T get_word(const LinkedWord& word) {
@@ -160,3 +161,4 @@ std::string write_game_text(
 
   return result;
 }
+}  // namespace decompiler

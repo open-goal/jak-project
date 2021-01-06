@@ -7,6 +7,7 @@
 #include <cassert>
 #include <stdexcept>
 
+namespace decompiler {
 namespace Reg {
 // register which may hold GOAL local variables
 
@@ -251,3 +252,4 @@ bool Register::operator==(const Register& other) const {
 bool Register::operator!=(const Register& other) const {
   return id != other.id;
 }
+}  // namespace decompiler
