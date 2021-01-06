@@ -1,5 +1,6 @@
 #include <cassert>
 #include <algorithm>
+#include <stdexcept>
 #include "common/common_types.h"
 #include "InstructionParser.h"
 
