@@ -11,6 +11,7 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/Disasm/InstructionMatching.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/IR/IR.h"
 #include "common/symbols.h"
 
@@ -2520,7 +2521,7 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     // everything failed
     if (!result) {
       // temp hack for debug:
-      printf("Instruction -> BasicOp failed on %s\n", i.to_string(*file).c_str());
+      printf("Instruction -> BasicOp failed on %s\n", i.to_string(file->labels).c_str());
       func->add_basic_op(std::make_shared<IR_Failed_Atomic>(), instr, instr + 1);
     } else {
       if (!func->contains_asm_ops && dynamic_cast<IR_AsmOp*>(result.get())) {

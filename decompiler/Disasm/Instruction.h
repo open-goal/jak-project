@@ -9,10 +9,11 @@
 #ifndef NEXT_INSTRUCTION_H
 #define NEXT_INSTRUCTION_H
 
+#include <vector>
 #include "OpcodeInfo.h"
 #include "Register.h"
 
-class LinkedObjectFile;
+struct DecompilerLabel;
 
 constexpr int MAX_INSTRUCTION_SOURCE = 3;
 constexpr int MAX_INTRUCTION_DEST = 1;
@@ -41,7 +42,7 @@ struct InstructionAtom {
   int get_label() const;
   std::string get_sym() const;
 
-  std::string to_string(const LinkedObjectFile& file) const;
+  std::string to_string(const std::vector<DecompilerLabel>& labels) const;
 
   bool is_link_or_label() const;
   bool is_reg() const { return kind == REGISTER; }
@@ -68,7 +69,7 @@ class Instruction {
   InstructionKind kind = InstructionKind::UNKNOWN;
 
   std::string op_name_to_string() const;
-  std::string to_string(const LinkedObjectFile& file) const;
+  std::string to_string(const std::vector<DecompilerLabel>& labels) const;
   bool is_valid() const;
 
   void add_src(InstructionAtom& a);

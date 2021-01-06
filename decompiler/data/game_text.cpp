@@ -17,7 +17,7 @@ T get_word(const LinkedWord& word) {
   return result;
 }
 
-Label get_label(ObjectFileData& data, const LinkedWord& word) {
+DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
   assert(word.kind == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id);
 }

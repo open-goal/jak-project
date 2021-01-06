@@ -111,7 +111,7 @@ class AtomicOp {
   // undesirable when expression stacking.
   virtual std::unique_ptr<Expr> get_as_expr() const = 0;
 
- private:
+ protected:
   int m_my_idx = -1;
 };
 
@@ -229,7 +229,7 @@ class SetVarOp : public AtomicOp {
  public:
   SetVarOp(const Variable& dst, const SimpleExpression& src, int my_idx)
       : AtomicOp(my_idx), m_dst(dst), m_src(src) {}
-  virtual goos::Object to_form(const LinkedObjectFile* file, const Env* env) const = 0;
+  virtual goos::Object to_form(const LinkedObjectFile* file, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
   bool is_sequence_point() const override;

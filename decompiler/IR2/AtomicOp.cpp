@@ -366,7 +366,7 @@ goos::Object AsmOp::to_form(const LinkedObjectFile* file, const Env* env) const 
       forms.push_back(pretty_print::to_symbol(m_dst.value().to_string(env)));
     } else {
       // print the atom
-      forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(*file)));
+      forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(file->labels)));
     }
   }
 
@@ -375,7 +375,7 @@ goos::Object AsmOp::to_form(const LinkedObjectFile* file, const Env* env) const 
     if (m_src[i].has_value()) {
       forms.push_back(pretty_print::to_symbol(m_src[i].value().to_string(env)));
     } else {
-      forms.push_back(pretty_print::to_symbol(m_instr.get_src(1).to_string(*file)));
+      forms.push_back(pretty_print::to_symbol(m_instr.get_src(1).to_string(file->labels)));
     }
   }
 

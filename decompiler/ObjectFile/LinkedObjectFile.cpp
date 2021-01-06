@@ -45,7 +45,7 @@ int LinkedObjectFile::get_label_id_for(int seg, int offset) {
   if (kv == label_per_seg_by_offset.at(seg).end()) {
     // create a new label
     int id = labels.size();
-    Label label;
+    DecompilerLabel label;
     label.target_segment = seg;
     label.offset = offset;
     label.name = "L" + std::to_string(id);
@@ -498,7 +498,7 @@ void LinkedObjectFile::process_fp_relative_links() {
               } break;
 
               default:
-                printf("unknown fp using op: %s\n", instr.to_string(*this).c_str());
+                printf("unknown fp using op: %s\n", instr.to_string(labels).c_str());
                 assert(false);
             }
           }
@@ -544,7 +544,7 @@ std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
         }
         auto& instr = func.instructions.at(i);
         op["id"] = i;
-        op["asm_op"] = instr.to_string(*this);
+        op["asm_op"] = instr.to_string(labels);
 
         if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
           op["basic_op"] = func.get_basic_op_at_instr(i)->print(*this);
@@ -608,7 +608,7 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
     }
 
     auto& instr = func.instructions.at(i);
-    std::string line = "    " + instr.to_string(*this);
+    std::string line = "    " + instr.to_string(labels);
 
     if (write_hex) {
       if (line.length() < 60) {
@@ -1053,14 +1053,14 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
   return result;
 }
 
-u32 LinkedObjectFile::read_data_word(const Label& label) {
+u32 LinkedObjectFile::read_data_word(const DecompilerLabel& label) {
   assert(0 == (label.offset % 4));
   auto& word = words_by_seg.at(label.target_segment).at(label.offset / 4);
   assert(word.kind == LinkedWord::Kind::PLAIN_DATA);
   return word.data;
 }
 
-std::string LinkedObjectFile::get_goal_string_by_label(const Label& label) const {
+std::string LinkedObjectFile::get_goal_string_by_label(const DecompilerLabel& label) const {
   assert(0 == (label.offset % 4));
   return get_goal_string(label.target_segment, (label.offset / 4) - 1, false);
 }
