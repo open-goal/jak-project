@@ -1,6 +1,6 @@
 #include "iso_api.h"
 #include "game/sce/iop.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 
 using namespace iop;
 
@@ -8,8 +8,7 @@ using namespace iop;
  * Load a File to IOP memory (blocking)
  */
 s32 LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
-  // printf("[OVERLORD] LoadISOFileToIOP %s, %d/%d bytes\n", file->name, length, file->size);
-  spdlog::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, file->size);
+  lg::debug("[OVERLORD] LoadISOFileToIOP {}, {}/{} bytes", file->name, length, file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_IOP_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -31,8 +30,7 @@ s32 LoadISOFileToIOP(FileRecord* file, void* addr, uint32_t length) {
  * Load a File to IOP memory (blocking)
  */
 s32 LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
-  // printf("[OVERLORD] LoadISOFileToEE %s, %d/%d bytes\n", file->name, length, file->size);
-  spdlog::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, file->size);
+  lg::debug("[OVERLORD] LoadISOFileToEE {}, {}/{} bytes", file->name, length, file->size);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_CMD_ID;
   cmd.messagebox_to_reply = 0;
@@ -51,7 +49,7 @@ s32 LoadISOFileToEE(FileRecord* file, uint32_t addr, uint32_t length) {
 }
 
 s32 LoadISOFileChunkToEE(FileRecord* file, uint32_t dest_addr, uint32_t length, uint32_t offset) {
-  spdlog::debug("[OVERLORD] LoadISOFileChunkToEE {} : {} offset {}\n", file->name, length, offset);
+  lg::debug("[OVERLORD] LoadISOFileChunkToEE {} : {} offset {}\n", file->name, length, offset);
   IsoCommandLoadSingle cmd;
   cmd.cmd_id = LOAD_TO_EE_OFFSET_CMD_ID;
   cmd.messagebox_to_reply = 0;

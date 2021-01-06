@@ -18,7 +18,7 @@
 #include "tpage.h"
 #include "common/versions.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "third-party/fmt/core.h"
 
 namespace {
 

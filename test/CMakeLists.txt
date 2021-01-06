@@ -23,13 +23,11 @@ add_executable(goalc-test
 
 enable_testing()
 
+target_link_libraries(goalc-test common runtime compiler gtest Zydis)
+
 IF (WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-  # TODO - split out these declarations for platform specific includes
-  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest mman Zydis)
-ELSE()
-  target_link_libraries(goalc-test cross_sockets goos common_util runtime compiler type_system gtest Zydis)
+  target_link_libraries(goalc-test mman)
 ENDIF()
 
 if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)

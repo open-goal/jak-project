@@ -64,28 +64,8 @@ include_directories(./)
 
 include_directories(SYSTEM third-party/inja)
 
-# build spdlog as a shared library to improve compile times
-# adding this as a SYSTEM include suppresses all the terrible warnings in spdlog
-include_directories(SYSTEM third-party/spdlog/include)
-# this makes spdlog generate a shared library that we can link against
-set(SPDLOG_BUILD_SHARED ON CACHE BOOL "a" FORCE)
-# this makes the spdlog includes not use the header only version, making compiling faster
-add_definitions(-DSPDLOG_COMPILED_LIB)
-
-# build goos
-add_subdirectory(common/goos)
-
-# build type_system library for compiler/decompiler
-add_subdirectory(common/type_system)
-
-# build common_util library
-add_subdirectory(common/util)
-
-# build cross platform socket library
-add_subdirectory(common/cross_sockets)
-
-# build cross platform debug library
-add_subdirectory(common/cross_os_debug)
+# build common library
+add_subdirectory(common)
 
 # build decompiler
 add_subdirectory(decompiler)
@@ -107,9 +87,6 @@ add_subdirectory(third-party/minilzo)
 
 # build format library
 add_subdirectory(third-party/fmt)
-
-# build spdlog library
-add_subdirectory(third-party/spdlog)
 
 # build zydis third party library for disassembling x86
 option(ZYDIS_BUILD_TOOLS "" OFF)

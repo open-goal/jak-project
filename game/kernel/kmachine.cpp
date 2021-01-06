@@ -25,7 +25,7 @@
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/stubs.h"
 #include "common/symbols.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 using namespace ee;
 
 /*!
@@ -148,13 +148,13 @@ void InitParms(int argc, const char* const* argv) {
  * DONE, EXACT
  */
 void InitCD() {
-  spdlog::info("Initializing CD drive. This may take a while...");
+  lg::info("Initializing CD drive. This may take a while...");
   sceCdInit(SCECdINIT);
   sceCdMmode(SCECdDVD);
   while (sceCdDiskReady(0) == SCECdNotReady) {
-    spdlog::debug("Drive not ready... insert a disk!");
+    lg::debug("Drive not ready... insert a disk!");
   }
-  spdlog::debug("Disk type {}\n", sceCdGetDiskType());
+  lg::debug("Disk type {}\n", sceCdGetDiskType());
 }
 
 /*!
@@ -172,22 +172,22 @@ void InitIOP() {
 
   if (!reboot) {
     // reboot with development IOP kernel
-    spdlog::debug("Rebooting IOP...");
+    lg::debug("Rebooting IOP...");
     while (!sceSifRebootIop("host0:/usr/local/sce/iop/modules/ioprp221.img")) {
-      spdlog::debug("Failed, retrying");
+      lg::debug("Failed, retrying");
     }
     while (!sceSifSyncIop()) {
-      spdlog::debug("Syncing...");
+      lg::debug("Syncing...");
     }
   } else {
     // reboot with IOP kernel off of the disk
     // reboot with development IOP kernel
-    spdlog::debug("Rebooting IOP...");
+    lg::debug("Rebooting IOP...");
     while (!sceSifRebootIop("cdrom0:\\DRIVERS\\IOPRP221.IMG;1")) {
-      spdlog::debug("Failed, retrying");
+      lg::debug("Failed, retrying");
     }
     while (!sceSifSyncIop()) {
-      spdlog::debug("Syncing...");
+      lg::debug("Syncing...");
     }
   }
 
@@ -238,7 +238,7 @@ void InitIOP() {
 
     sceSifLoadModule("host0:/usr/home/src/989snd10/iop/989ERR.IRX", 0, nullptr);
 
-    spdlog::debug("Initializing CD library...");
+    lg::debug("Initializing CD library...");
     auto rv = sceSifLoadModule("host0:binee/overlord.irx", cmd + len + 1 - overlord_boot_command,
                                overlord_boot_command);
     if (rv < 0) {
@@ -270,7 +270,7 @@ void InitIOP() {
       MsgErr("loading 989snd.irx failed\n");
     }
 
-    spdlog::debug("Initializing CD library in ISO_CD mode...");
+    lg::debug("Initializing CD library in ISO_CD mode...");
     auto rv = sceSifLoadModule("cdrom0:\\\\DRIVERS\\\\OVERLORD.IRX;1",
                                cmd + len + 1 - overlord_boot_command, overlord_boot_command);
     if (rv < 0) {
@@ -281,7 +281,7 @@ void InitIOP() {
   if (rv < 0) {
     MsgErr("MC driver init failed %d\n", rv);
   } else {
-    spdlog::info("InitIOP OK");
+    lg::info("InitIOP OK");
   }
 }
 
@@ -302,8 +302,8 @@ int InitMachine() {
   // initialize the global heap
   u32 global_heap_size = GLOBAL_HEAP_END - HEAP_START;
   float size_mb = ((float)global_heap_size) / (float)(1 << 20);
-  spdlog::info("gkernel: global heap 0x{:08x} to 0x{:08x} (size {:.3f} MB)", HEAP_START,
-               GLOBAL_HEAP_END, size_mb);
+  lg::info("gkernel: global heap 0x{:08x} to 0x{:08x} (size {:.3f} MB)", HEAP_START,
+           GLOBAL_HEAP_END, size_mb);
   kinitheap(kglobalheap, Ptr<u8>(HEAP_START), global_heap_size);
 
   // initialize the debug heap, if appropriate
@@ -312,8 +312,8 @@ int InitMachine() {
     kinitheap(kdebugheap, Ptr<u8>(DEBUG_HEAP_START), debug_heap_size);
     float debug_size_mb = ((float)debug_heap_size) / (float)(1 << 20);
     float gap_size_mb = ((float)DEBUG_HEAP_START - GLOBAL_HEAP_END) / (float)(1 << 20);
-    spdlog::info("gkernel: debug heap 0x{:08x} to 0x{:08x} (size {:.3f} MB, gap {:.3f} MB)",
-                 DEBUG_HEAP_START, debug_heap_end, debug_size_mb, gap_size_mb);
+    lg::info("gkernel: debug heap 0x{:08x} to 0x{:08x} (size {:.3f} MB, gap {:.3f} MB)",
+             DEBUG_HEAP_START, debug_heap_end, debug_size_mb, gap_size_mb);
   } else {
     // if no debug, we make the kheapinfo structure NULL so GOAL knows not to use it.
     kdebugheap.offset = 0;
@@ -338,9 +338,9 @@ int InitMachine() {
     InitGoalProto();
   }
 
-  spdlog::info("InitSound");
+  lg::info("InitSound");
   InitSound();  // do nothing!
-  spdlog::info("InitRPC");
+  lg::info("InitRPC");
   InitRPC();       // connect to IOP
   reset_output();  // reset output buffers
   clear_print();
@@ -350,9 +350,9 @@ int InitMachine() {
     return goal_status;
   }
 
-  spdlog::info("InitListenerConnect");
+  lg::info("InitListenerConnect");
   InitListenerConnect();
-  spdlog::info("InitCheckListener");
+  lg::info("InitCheckListener");
   InitCheckListener();
   Msg(6, "kernel: machine started\n");
   return 0;
@@ -619,7 +619,7 @@ void InitMachineScheme() {
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value);
 
-    spdlog::info("calling fake play~");
+    lg::info("calling fake play~");
     call_goal_function_by_name("play");
   }
 }

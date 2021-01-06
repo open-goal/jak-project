@@ -38,12 +38,13 @@ add_library(compiler
         compiler/Compiler.cpp
         compiler/compilation/Asm.cpp)
 
-add_executable(goalc main.cpp)
+target_link_libraries(compiler common Zydis)
 
 IF (WIN32)
-    target_link_libraries(compiler goos type_system mman common_util spdlog cross_os_debug cross_sockets Zydis)
-ELSE ()
-    target_link_libraries(compiler goos type_system common_util spdlog cross_os_debug cross_sockets Zydis)
+    target_link_libraries(compiler mman)
 ENDIF ()
 
-target_link_libraries(goalc goos compiler type_system)
+add_executable(goalc main.cpp)
+target_link_libraries(goalc common Zydis compiler)
+
+
