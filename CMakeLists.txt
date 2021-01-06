@@ -59,8 +59,6 @@ else()
   message("Code Coverage build is disabled!")
 endif()
 
-add_definitions(-DFMT_SHARED)
-
 # includes relative to top level jak-project folder
 include_directories(./)
 
