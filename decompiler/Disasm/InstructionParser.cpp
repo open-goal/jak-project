@@ -127,7 +127,7 @@ int parse_integer(const std::string& str) {
 
 std::vector<std::string> string_to_lines(const std::string& str) {
   std::vector<std::string> result;
-  std::string::size_type i = 0;
+  std::string::size_type i;
   std::string::size_type start = 0;
   while (true) {
     i = str.find('\n', start);
