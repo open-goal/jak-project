@@ -6,3 +6,4 @@ endif (UNIX)
 
 include_directories(../)
 add_library(fmt SHARED format.cc)
+target_compile_definitions(fmt PRIVATE FMT_EXPORT INTERFACE FMT_SHARED)

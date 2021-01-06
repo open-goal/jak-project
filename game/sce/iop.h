@@ -4,7 +4,6 @@
 #define JAK1_IOP_H
 
 #include "common/common_types.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 #define SMEM_Low (0)
 #define SMEM_High (1)

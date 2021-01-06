@@ -13,7 +13,7 @@
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
 #include "third-party/json.hpp"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 #include "common/goos/PrettyPrinter.h"
 
 /*!
@@ -518,7 +518,7 @@ std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
       auto& func = functions_by_seg.at(seg).at(fi);
       auto fname = func.guessed_name.to_string();
       if (functions_seen.find(fname) != functions_seen.end()) {
-        spdlog::warn(
+        lg::warn(
             "Function {} appears multiple times in the same object file {} - it cannot be uniquely "
             "referenced from config",
             func.guessed_name.to_string(), obj_file_name);

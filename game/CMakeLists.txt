@@ -69,24 +69,17 @@ set(RUNTIME_SOURCE
         overlord/ssound.cpp
         overlord/stream.cpp)
 
-# the runtime should be built without any static/dynamic libraries.
-#add_executable(gk ${RUNTIME_SOURCE} main.cpp)
 
-
-# we also build a runtime library for testing. This version is likely unable to call GOAL code correctly, but
-# can be used to test other things.
+# we build the runtime as a static library.
 add_library(runtime ${RUNTIME_SOURCE})
 
-add_executable(gk main.cpp)
-
+target_link_libraries(runtime common fmt)
 IF (WIN32)
-  # set stuff for windows
-  target_link_libraries(runtime mman cross_sockets common_util spdlog cross_os_debug)
-  target_link_libraries(gk cross_sockets mman common_util runtime spdlog cross_os_debug)
+    target_link_libraries(runtime mman)
 ELSE()
-  # set stuff for other systems
-  target_link_libraries(runtime pthread cross_sockets common_util spdlog cross_os_debug)
-  target_link_libraries(gk cross_sockets pthread common_util runtime spdlog cross_os_debug)
-
+    target_link_libraries(runtime pthread)
 ENDIF()
+
+add_executable(gk main.cpp)
+target_link_libraries(gk runtime)
 

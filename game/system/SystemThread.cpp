@@ -3,7 +3,7 @@
 #endif
 
 #include "SystemThread.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 
 //////////////////////
 // Thread Manager   //
@@ -14,7 +14,7 @@
  */
 SystemThread& SystemThreadManager::create_thread(const std::string& name) {
   if (thread_count >= MAX_SYSTEM_THREADS) {
-    spdlog::critical("Out of System Threads! MAX_SYSTEM_THREADS is ", MAX_SYSTEM_THREADS);
+    lg::die("Out of System Threads! MAX_SYSTEM_THREADS is ", MAX_SYSTEM_THREADS);
     assert(false);
   }
   auto& thread = threads[thread_count];
@@ -51,7 +51,7 @@ void SystemThreadManager::print_stats() {
  */
 void SystemThreadManager::shutdown() {
   for (int i = 0; i < thread_count; i++) {
-    spdlog::debug("# Stop {}", threads[i].name.c_str());
+    lg::debug("# Stop {}", threads[i].name.c_str());
     threads[i].stop();
   }
 }
@@ -61,7 +61,7 @@ void SystemThreadManager::shutdown() {
  */
 void SystemThreadManager::join() {
   for (int i = 0; i < thread_count; i++) {
-    spdlog::debug(" # Join {}", threads[i].name.c_str());
+    lg::debug(" # Join {}", threads[i].name.c_str());
     if (threads[i].running) {
       threads[i].join();
     }
@@ -75,7 +75,7 @@ void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
   SystemThreadInterface iface(thd);
   thd->function(iface);
-  spdlog::debug("[SYSTEM] Thread {} is returning", thd->name.c_str());
+  lg::debug("[SYSTEM] Thread {} is returning", thd->name.c_str());
   return nullptr;
 }
 
@@ -83,7 +83,7 @@ void* bootstrap_thread_func(void* x) {
  * Start a thread and wait for its initialization
  */
 void SystemThread::start(std::function<void(SystemThreadInterface&)> f) {
-  spdlog::debug("# Initialize {}...", name.c_str());
+  lg::debug("# Initialize {}...", name.c_str());
 
   function = f;
   thread = std::thread(bootstrap_thread_func, this);
@@ -121,7 +121,7 @@ void SystemThreadInterface::initialization_complete() {
   std::unique_lock<std::mutex> mlk(thread.initialization_mutex);
   thread.initialization_complete = true;
   thread.initialization_cv.notify_all();
-  spdlog::debug("# {} initialized", thread.name.c_str());
+  lg::debug("# {} initialized", thread.name.c_str());
 }
 
 /*!

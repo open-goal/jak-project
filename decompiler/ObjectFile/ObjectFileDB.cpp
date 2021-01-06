@@ -24,7 +24,7 @@
 #include "decompiler/IR/BasicOpBuilder.h"
 #include "decompiler/IR/CfgBuilder.h"
 #include "decompiler/Function/TypeInspector.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 #include "third-party/json.hpp"
 
 namespace {
@@ -112,32 +112,32 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
                            const std::vector<std::string>& str_files) {
   Timer timer;
 
-  spdlog::info("-Loading types...");
+  lg::info("-Loading types...");
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
   if (!obj_file_name_map_file.empty()) {
-    spdlog::info("-Loading obj name map file...");
+    lg::info("-Loading obj name map file...");
     load_map_file(file_util::read_text_file(file_util::get_file_path({obj_file_name_map_file})));
   } else {
-    spdlog::warn(
+    lg::warn(
         "Not using an obj name map file! The decompiler will automatically generate object file "
         "names and write them to out/objs.txt. It is recommended to reuse this map file to get "
         "consistent naming when doing a partial decompilation.");
   }
 
-  spdlog::info("-Loading DGOs...");
+  lg::info("-Loading DGOs...");
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
   }
 
-  spdlog::info("-Loading plain object files...");
+  lg::info("-Loading plain object files...");
   for (auto& obj : object_files) {
     auto data = file_util::read_binary_file(obj);
     auto name = obj_filename_to_name(obj);
     add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
   }
 
-  spdlog::info("-Loading streaming object files...");
+  lg::info("-Loading streaming object files...");
   for (auto& obj : str_files) {
     StrFileReader reader(obj);
     // name from the file name
@@ -152,15 +152,15 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
     }
   }
 
-  spdlog::info("ObjectFileDB Initialized:");
-  spdlog::info("Total DGOs: {}", int(_dgos.size()));
-  spdlog::info("Total data: {} bytes", stats.total_dgo_bytes);
-  spdlog::info("Total objs: {}", stats.total_obj_files);
-  spdlog::info("Unique objs: {}", stats.unique_obj_files);
-  spdlog::info("Unique data: {} bytes", stats.unique_obj_bytes);
-  spdlog::info("Total {:.2f} ms ({:.3f} MB/sec, {:.2f} obj/sec)", timer.getMs(),
-               stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
-               stats.total_obj_files / timer.getSeconds());
+  lg::info("ObjectFileDB Initialized:");
+  lg::info("Total DGOs: {}", int(_dgos.size()));
+  lg::info("Total data: {} bytes", stats.total_dgo_bytes);
+  lg::info("Total objs: {}", stats.total_obj_files);
+  lg::info("Unique objs: {}", stats.unique_obj_files);
+  lg::info("Unique data: {} bytes", stats.unique_obj_bytes);
+  lg::info("Total {:.2f} ms ({:.3f} MB/sec, {:.2f} obj/sec)", timer.getMs(),
+           stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
+           stats.total_obj_files / timer.getSeconds());
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -180,7 +180,7 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
     for (auto& dgo : dgo_names) {
       auto kv = dgo_obj_name_map[dgo].find(game_name_with_ag);
       if (kv != dgo_obj_name_map[dgo].end()) {
-        spdlog::error("Object {} in dgo {} occurs more than one time.", game_name_with_ag, dgo);
+        lg::error("Object {} in dgo {} occurs more than one time.", game_name_with_ag, dgo);
         assert(false);
       }
       dgo_obj_name_map[dgo][game_name_with_ag] = mapped_name;
@@ -317,7 +317,7 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
     assert_string_empty_after(obj_header.name, 60);
 
     if (std::string(obj_header.name).find("-ag") != std::string::npos) {
-      spdlog::error(
+      lg::error(
           "Object file {} has \"-ag\" in its name. This will break any tools which use this to "
           "detect an art group",
           obj_header.name);
@@ -388,14 +388,13 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   if (!dgo_obj_name_map.empty()) {
     auto dgo_kv = dgo_obj_name_map.find(strip_dgo_extension(dgo_name));
     if (dgo_kv == dgo_obj_name_map.end()) {
-      spdlog::error("Object {} is from DGO {}, but this DGO wasn't in the map.", obj_name,
-                    dgo_name);
+      lg::error("Object {} is from DGO {}, but this DGO wasn't in the map.", obj_name, dgo_name);
       assert(false);
     }
 
     auto name_kv = dgo_kv->second.find(obj_name);
     if (name_kv == dgo_kv->second.end()) {
-      spdlog::error("Object {} from DGO {} wasn't found in the name map.", obj_name, dgo_name);
+      lg::error("Object {} from DGO {} wasn't found in the name map.", obj_name, dgo_name);
       assert(false);
     }
     data.name_from_map = name_kv->second;
@@ -481,7 +480,7 @@ std::string ObjectFileDB::generate_obj_listing() {
  * Process all of the linking data of all objects.
  */
 void ObjectFileDB::process_link_data() {
-  spdlog::info("- Processing Link Data...");
+  lg::info("- Processing Link Data...");
   Timer process_link_timer;
 
   LinkedObjectFile::Stats combined_stats;
@@ -491,26 +490,26 @@ void ObjectFileDB::process_link_data() {
     combined_stats.add(obj.linked_data.stats);
   });
 
-  spdlog::info("Processed Link Data:");
-  spdlog::info(" Code {} bytes", combined_stats.total_code_bytes);
-  spdlog::info(" v2 Code {} bytes", combined_stats.total_v2_code_bytes);
-  spdlog::info(" v2 Link Data {} bytes", combined_stats.total_v2_link_bytes);
-  spdlog::info(" v2 Pointers {}", combined_stats.total_v2_pointers);
-  spdlog::info(" v2 Pointer Seeks {}", combined_stats.total_v2_pointer_seeks);
-  spdlog::info(" v2 Symbols {}", combined_stats.total_v2_symbol_count);
-  spdlog::info(" v2 Symbol Links {}", combined_stats.total_v2_symbol_links);
+  lg::info("Processed Link Data:");
+  lg::info(" Code {} bytes", combined_stats.total_code_bytes);
+  lg::info(" v2 Code {} bytes", combined_stats.total_v2_code_bytes);
+  lg::info(" v2 Link Data {} bytes", combined_stats.total_v2_link_bytes);
+  lg::info(" v2 Pointers {}", combined_stats.total_v2_pointers);
+  lg::info(" v2 Pointer Seeks {}", combined_stats.total_v2_pointer_seeks);
+  lg::info(" v2 Symbols {}", combined_stats.total_v2_symbol_count);
+  lg::info(" v2 Symbol Links {}", combined_stats.total_v2_symbol_links);
 
-  spdlog::info(" v3 Code {} bytes", combined_stats.v3_code_bytes);
-  spdlog::info(" v3 Link Data {} bytes", combined_stats.v3_link_bytes);
-  spdlog::info(" v3 Pointers {}", combined_stats.v3_pointers);
-  spdlog::info("   Split {}", combined_stats.v3_split_pointers);
-  spdlog::info("   Word  {}", combined_stats.v3_word_pointers);
-  spdlog::info(" v3 Pointer Seeks {}", combined_stats.v3_pointer_seeks);
-  spdlog::info(" v3 Symbols {}", combined_stats.v3_symbol_count);
-  spdlog::info(" v3 Offset Symbol Links {}", combined_stats.v3_symbol_link_offset);
-  spdlog::info(" v3 Word Symbol Links {}", combined_stats.v3_symbol_link_word);
+  lg::info(" v3 Code {} bytes", combined_stats.v3_code_bytes);
+  lg::info(" v3 Link Data {} bytes", combined_stats.v3_link_bytes);
+  lg::info(" v3 Pointers {}", combined_stats.v3_pointers);
+  lg::info("   Split {}", combined_stats.v3_split_pointers);
+  lg::info("   Word  {}", combined_stats.v3_word_pointers);
+  lg::info(" v3 Pointer Seeks {}", combined_stats.v3_pointer_seeks);
+  lg::info(" v3 Symbols {}", combined_stats.v3_symbol_count);
+  lg::info(" v3 Offset Symbol Links {}", combined_stats.v3_symbol_link_offset);
+  lg::info(" v3 Word Symbol Links {}", combined_stats.v3_symbol_link_word);
 
-  spdlog::info(" Total {} ms\n", process_link_timer.getMs());
+  lg::info(" Total {} ms\n", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -518,14 +517,14 @@ void ObjectFileDB::process_link_data() {
  * Process all of the labels generated from linking and give them reasonable names.
  */
 void ObjectFileDB::process_labels() {
-  spdlog::info("- Processing Labels...");
+  lg::info("- Processing Labels...");
   Timer process_label_timer;
   uint32_t total = 0;
   for_each_obj([&](ObjectFileData& obj) { total += obj.linked_data.set_ordered_label_names(); });
 
-  spdlog::info("Processed Labels:");
-  spdlog::info(" Total {} labels", total);
-  spdlog::info(" Total {} ms", process_label_timer.getMs());
+  lg::info("Processed Labels:");
+  lg::info(" Total {} labels", total);
+  lg::info(" Total {} ms", process_label_timer.getMs());
   // printf("\n");
 }
 
@@ -534,9 +533,9 @@ void ObjectFileDB::process_labels() {
  */
 void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool dump_v3_only) {
   if (dump_v3_only) {
-    spdlog::info("- Writing object file dumps (v3 only)...");
+    lg::info("- Writing object file dumps (v3 only)...");
   } else {
-    spdlog::info("- Writing object file dumps (all)...");
+    lg::info("- Writing object file dumps (all)...");
   }
 
   Timer timer;
@@ -552,17 +551,17 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
     }
   });
 
-  spdlog::info("Wrote object file dumps:");
-  spdlog::info(" Total {} files", total_files);
-  spdlog::info(" Total {:.3f} MB", total_bytes / ((float)(1u << 20u)));
-  spdlog::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-               total_bytes / ((1u << 20u) * timer.getSeconds()));
+  lg::info("Wrote object file dumps:");
+  lg::info(" Total {} files", total_files);
+  lg::info(" Total {:.3f} MB", total_bytes / ((float)(1u << 20u)));
+  lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
+           total_bytes / ((1u << 20u) * timer.getSeconds()));
   // printf("\n");
 }
 
 void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
                                              const std::string& suffix) {
-  spdlog::info("- Writing debug type analysis...");
+  lg::info("- Writing debug type analysis...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
@@ -578,11 +577,11 @@ void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
     }
   });
 
-  spdlog::info("Wrote functions dumps:");
-  spdlog::info(" Total {} files", total_files);
-  spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
-  spdlog::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-               total_bytes / ((1u << 20u) * timer.getSeconds()));
+  lg::info("Wrote functions dumps:");
+  lg::info(" Total {} files", total_files);
+  lg::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
+  lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
+           total_bytes / ((1u << 20u) * timer.getSeconds()));
 }
 
 /*!
@@ -592,7 +591,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
                                      bool disassemble_objects_without_functions,
                                      bool write_json,
                                      const std::string& file_suffix) {
-  spdlog::info("- Writing functions...");
+  lg::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
@@ -625,18 +624,18 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   file_util::write_text_file(file_util::combine_path(output_dir, "asm_functions.func"),
                              asm_functions);
 
-  spdlog::info("Wrote functions dumps:");
-  spdlog::info(" Total {} files", total_files);
-  spdlog::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
-  spdlog::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-               total_bytes / ((1u << 20u) * timer.getSeconds()));
+  lg::info("Wrote functions dumps:");
+  lg::info(" Total {} files", total_files);
+  lg::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
+  lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
+           total_bytes / ((1u << 20u) * timer.getSeconds()));
 }
 
 /*!
  * Find code/data zones, identify functions, and disassemble
  */
 void ObjectFileDB::find_code() {
-  spdlog::info("- Finding code in object files...");
+  lg::info("- Finding code in object files...");
   LinkedObjectFile::Stats combined_stats;
   Timer timer;
 
@@ -649,28 +648,28 @@ void ObjectFileDB::find_code() {
     if (get_config().game_version == 1 || obj.to_unique_name() != "effect-control-v0") {
       obj.linked_data.process_fp_relative_links();
     } else {
-      spdlog::warn("Skipping process_fp_relative_links in {}", obj.to_unique_name().c_str());
+      lg::warn("Skipping process_fp_relative_links in {}", obj.to_unique_name().c_str());
     }
 
     auto& obj_stats = obj.linked_data.stats;
     if (obj_stats.code_bytes / 4 > obj_stats.decoded_ops) {
-      spdlog::warn("Failed to decode all in {} ({} / {})", obj.to_unique_name().c_str(),
-                   obj_stats.decoded_ops, obj_stats.code_bytes / 4);
+      lg::warn("Failed to decode all in {} ({} / {})", obj.to_unique_name().c_str(),
+               obj_stats.decoded_ops, obj_stats.code_bytes / 4);
     }
     combined_stats.add(obj.linked_data.stats);
   });
 
-  spdlog::info("Found code:");
-  spdlog::info(" Code {:.3f} MB", combined_stats.code_bytes / (float)(1 << 20));
-  spdlog::info(" Data {:.3f} MB", combined_stats.data_bytes / (float)(1 << 20));
-  spdlog::info(" Functions: {}", combined_stats.function_count);
-  spdlog::info(" fp uses resolved: {} / {} ({:.3f} %)", combined_stats.n_fp_reg_use_resolved,
-               combined_stats.n_fp_reg_use,
-               100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
+  lg::info("Found code:");
+  lg::info(" Code {:.3f} MB", combined_stats.code_bytes / (float)(1 << 20));
+  lg::info(" Data {:.3f} MB", combined_stats.data_bytes / (float)(1 << 20));
+  lg::info(" Functions: {}", combined_stats.function_count);
+  lg::info(" fp uses resolved: {} / {} ({:.3f} %)", combined_stats.n_fp_reg_use_resolved,
+           combined_stats.n_fp_reg_use,
+           100.f * (float)combined_stats.n_fp_reg_use_resolved / combined_stats.n_fp_reg_use);
   auto total_ops = combined_stats.code_bytes / 4;
-  spdlog::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
-               100.f * (float)combined_stats.decoded_ops / total_ops);
-  spdlog::info(" Total {:.3f} ms", timer.getMs());
+  lg::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
+           100.f * (float)combined_stats.decoded_ops / total_ops);
+  lg::info(" Total {:.3f} ms", timer.getMs());
   // printf("\n");
 }
 
@@ -679,7 +678,7 @@ void ObjectFileDB::find_code() {
  * Doesn't change any state in ObjectFileDB.
  */
 void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
-  spdlog::info("- Finding scripts in object files...");
+  lg::info("- Finding scripts in object files...");
   Timer timer;
   std::string all_scripts;
 
@@ -696,12 +695,12 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   auto file_name = file_util::combine_path(output_dir, "all_scripts.lisp");
   file_util::write_text_file(file_name, all_scripts);
 
-  spdlog::info("Found scripts:");
-  spdlog::info(" Total {:.3f} ms\n", timer.getMs());
+  lg::info("Found scripts:");
+  lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
 void ObjectFileDB::process_tpages() {
-  spdlog::info("- Finding textures in tpages...");
+  lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
   Timer timer;
@@ -712,12 +711,12 @@ void ObjectFileDB::process_tpages() {
       success += statistics.successful_textures;
     }
   });
-  spdlog::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
-               100.f * float(success) / float(total), timer.getMs());
+  lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
+           100.f * float(success) / float(total), timer.getMs());
 }
 
 std::string ObjectFileDB::process_game_text() {
-  spdlog::info("- Finding game text...");
+  lg::info("- Finding game text...");
   std::string text_string = "COMMON";
   Timer timer;
   int file_count = 0;
@@ -738,14 +737,14 @@ std::string ObjectFileDB::process_game_text() {
     }
   });
 
-  spdlog::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
-               string_count, char_count, timer.getMs());
+  lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
+           string_count, char_count, timer.getMs());
 
   return write_game_text(text_by_language_by_id);
 }
 
 std::string ObjectFileDB::process_game_count() {
-  spdlog::info("- Finding game count file...");
+  lg::info("- Finding game count file...");
   bool found = false;
   std::string result;
 
@@ -758,7 +757,7 @@ std::string ObjectFileDB::process_game_count() {
   });
 
   if (!found) {
-    spdlog::warn("did not find game-cnt file");
+    lg::warn("did not find game-cnt file");
   }
 
   return result;
@@ -768,7 +767,7 @@ std::string ObjectFileDB::process_game_count() {
  * This is the main decompiler routine which runs after we've identified functions.
  */
 void ObjectFileDB::analyze_functions() {
-  spdlog::info("- Analyzing Functions...");
+  lg::info("- Analyzing Functions...");
   Timer timer;
 
   int total_functions = 0;
@@ -777,7 +776,7 @@ void ObjectFileDB::analyze_functions() {
 
   // Step 1 - analyze the "top level" or "login" code for each object file.
   // this will give us type definitions, method definitions, and function definitions...
-  spdlog::info("  - Processing top levels...");
+  lg::info("  - Processing top levels...");
 
   timer.start();
   for_each_obj([&](ObjectFileData& data) {
@@ -921,8 +920,8 @@ void ObjectFileDB::analyze_functions() {
       if (func.cfg->is_fully_resolved()) {
         resolved_cfg_functions++;
       } else {
-        spdlog::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
-                     data.to_unique_name());
+        lg::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
+                 data.to_unique_name());
       }
 
       // type analysis
@@ -936,15 +935,15 @@ void ObjectFileDB::analyze_functions() {
             auto kv = dts.symbol_types.find(func.guessed_name.function_name);
             if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
               if (kv->second.base_type() != "function") {
-                spdlog::error("Found a function named {} but the symbol has type {}",
-                              func.guessed_name.to_string(), kv->second.print());
+                lg::error("Found a function named {} but the symbol has type {}",
+                          func.guessed_name.to_string(), kv->second.print());
                 assert(false);
               }
               // GOOD!
               func.type = kv->second;
               func.attempted_type_analysis = true;
               attempted_type_analysis++;
-              //            spdlog::info("Type Analysis on {} {}", func.guessed_name.to_string(),
+              //            lg::info("Type Analysis on {} {}", func.guessed_name.to_string(),
               //                         kv->second.print());
               if (func.run_type_analysis(kv->second, dts, data.linked_data, hints)) {
                 successful_type_analysis++;
@@ -963,15 +962,15 @@ void ObjectFileDB::analyze_functions() {
                   dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
               if (info.type.arg_count() >= 1) {
                 if (info.type.base_type() != "function") {
-                  spdlog::error("Found a method named {} but the symbol has type {}",
-                                func.guessed_name.to_string(), info.type.print());
+                  lg::error("Found a method named {} but the symbol has type {}",
+                            func.guessed_name.to_string(), info.type.print());
                   assert(false);
                 }
                 // GOOD!
                 func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
                 func.attempted_type_analysis = true;
                 attempted_type_analysis++;
-                //              spdlog::info("Type Analysis on {} {}",
+                //              lg::info("Type Analysis on {} {}",
                 //              func.guessed_name.to_string(),
                 //                           func.type.print());
                 if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
@@ -1061,29 +1060,29 @@ void ObjectFileDB::analyze_functions() {
     //    }
   });
 
-  spdlog::info("Found {} functions ({} with no control flow)", total_functions,
-               total_trivial_cfg_functions);
-  spdlog::info("Named {}/{} functions ({:.3f}%)", total_named_functions, total_functions,
-               100.f * float(total_named_functions) / float(total_functions));
-  spdlog::info("Excluding {} asm functions", asm_funcs);
-  spdlog::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
-  spdlog::info(" {}/{} functions passed cfg analysis stage ({:.3f}%)", resolved_cfg_functions,
-               non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
+  lg::info("Found {} functions ({} with no control flow)", total_functions,
+           total_trivial_cfg_functions);
+  lg::info("Named {}/{} functions ({:.3f}%)", total_named_functions, total_functions,
+           100.f * float(total_named_functions) / float(total_functions));
+  lg::info("Excluding {} asm functions", asm_funcs);
+  lg::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
+  lg::info(" {}/{} functions passed cfg analysis stage ({:.3f}%)", resolved_cfg_functions,
+           non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
   int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
-  spdlog::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
-               total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-  spdlog::info(" {}/{} basic ops with reginfo ({:.3f}%)", total_reginfo_ops, total_basic_ops,
-               100.f * float(total_reginfo_ops) / float(total_basic_ops));
-  spdlog::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
-               100.f * float(successful_cfg_irs) / float(non_asm_funcs));
-  spdlog::info(" {}/{} functions attempted type analysis ({:.2f}%)", attempted_type_analysis,
-               non_asm_funcs, 100.f * float(attempted_type_analysis) / float(non_asm_funcs));
-  spdlog::info(" {}/{} functions that attempted type analysis succeeded ({:.2f}%)",
-               successful_type_analysis, attempted_type_analysis,
-               100.f * float(successful_type_analysis) / float(attempted_type_analysis));
-  spdlog::info(" {}/{} functions passed type analysis ({:.2f}%)", successful_type_analysis,
-               non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
-  spdlog::info(
+  lg::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
+           total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
+  lg::info(" {}/{} basic ops with reginfo ({:.3f}%)", total_reginfo_ops, total_basic_ops,
+           100.f * float(total_reginfo_ops) / float(total_basic_ops));
+  lg::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
+           100.f * float(successful_cfg_irs) / float(non_asm_funcs));
+  lg::info(" {}/{} functions attempted type analysis ({:.2f}%)", attempted_type_analysis,
+           non_asm_funcs, 100.f * float(attempted_type_analysis) / float(non_asm_funcs));
+  lg::info(" {}/{} functions that attempted type analysis succeeded ({:.2f}%)",
+           successful_type_analysis, attempted_type_analysis,
+           100.f * float(successful_type_analysis) / float(attempted_type_analysis));
+  lg::info(" {}/{} functions passed type analysis ({:.2f}%)", successful_type_analysis,
+           non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
+  lg::info(
       " {} functions were supposed to do type analysis but either failed or didn't know their "
       "types.\n",
       bad_type_analysis);
@@ -1097,7 +1096,7 @@ void ObjectFileDB::analyze_functions() {
 }
 
 void ObjectFileDB::analyze_expressions() {
-  spdlog::info("- Analyzing Expressions...");
+  lg::info("- Analyzing Expressions...");
   Timer timer;
   int attempts = 0;
   int success = 0;
@@ -1107,7 +1106,7 @@ void ObjectFileDB::analyze_expressions() {
 
     if (/*!had_failure &&*/ func.attempted_type_analysis) {
       attempts++;
-      spdlog::info("Analyze {}", func.guessed_name.to_string());
+      lg::info("Analyze {}", func.guessed_name.to_string());
       if (func.build_expression(data.linked_data)) {
         success++;
       } else {
@@ -1117,8 +1116,8 @@ void ObjectFileDB::analyze_expressions() {
     }
   });
 
-  spdlog::info(" {}/{} functions passed expression building ({:.2f}%)\n", success, attempts,
-               100.f * float(success) / float(attempts));
+  lg::info(" {}/{} functions passed expression building ({:.2f}%)\n", success, attempts,
+           100.f * float(success) / float(attempts));
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {

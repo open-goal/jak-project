@@ -16,7 +16,7 @@
 #include "isocommon.h"
 #include "overlord.h"
 #include "common/util/FileUtil.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 
 using namespace iop;
 
@@ -199,7 +199,7 @@ uint32_t FS_GetLength(FileRecord* fr) {
  * This is an ISO FS API Function
  */
 LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
-  spdlog::debug("[OVERLORD] FS Open {}", fr->name);
+  lg::debug("[OVERLORD] FS Open {}", fr->name);
   LoadStackEntry* selected = nullptr;
   // find first unused spot on load stack.
   for (uint32_t i = 0; i < MAX_OPEN_FILES; i++) {
@@ -213,7 +213,7 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
       return selected;
     }
   }
-  spdlog::warn("[OVERLORD] Failed to FS Open {}", fr->name);
+  lg::warn("[OVERLORD] Failed to FS Open {}", fr->name);
   ExitIOP();
   return nullptr;
 }
@@ -224,7 +224,7 @@ LoadStackEntry* FS_Open(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
-  spdlog::debug("[OVERLORD] FS_OpenWad {}", fr->name);
+  lg::debug("[OVERLORD] FS_OpenWad {}", fr->name);
   LoadStackEntry* selected = nullptr;
   for (uint32_t i = 0; i < MAX_OPEN_FILES; i++) {
     if (!sLoadStack[i].fr) {
@@ -234,7 +234,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
       return selected;
     }
   }
-  spdlog::warn("[OVERLORD] Failed to FS_OpenWad {}", fr->name);
+  lg::warn("[OVERLORD] Failed to FS_OpenWad {}", fr->name);
   ExitIOP();
   return nullptr;
 }
@@ -244,7 +244,7 @@ LoadStackEntry* FS_OpenWad(FileRecord* fr, int32_t offset) {
  * This is an ISO FS API Function
  */
 void FS_Close(LoadStackEntry* fd) {
-  spdlog::debug("[OVERLORD] FS_Close {}", fd->fr->name);
+  lg::debug("[OVERLORD] FS_Close {}", fd->fr->name);
 
   // close the FD
   fd->fr = nullptr;
@@ -263,7 +263,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   int32_t real_size = len;
   if (len < 0) {
     // not sure what this is about...
-    spdlog::warn("[OVERLORD ISO CD] Negative length warning!");
+    lg::warn("[OVERLORD ISO CD] Negative length warning!");
     real_size = len + 0x7ff;
   }
 
@@ -274,7 +274,7 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
   const char* path = get_file_path(fd->fr);
   FILE* fp = fopen(path, "rb");
   if (!fp) {
-    spdlog::error("[OVERLORD] fake iso could not open the file \"{}\"", path);
+    lg::error("[OVERLORD] fake iso could not open the file \"{}\"", path);
   }
   assert(fp);
   fseek(fp, 0, SEEK_END);

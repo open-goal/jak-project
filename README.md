@@ -165,7 +165,6 @@ The final component is the "runtime", located in `game`. This is the part of the
   - `mman`: Windows library used to emulate `mmap` on Linux
   - `run-clang-format`: Utility to check and enforce code formatting
   - `run-clang-tidy`
-  - `spdlog`: Logging library
   - `zydis`: x86-64 disassembler used in the OpenGOAL debugger
   - `json`: A JSON library
   - `linenoise`: Used for the REPL input. Support history and useful editing shortcuts.

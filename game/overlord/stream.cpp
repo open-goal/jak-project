@@ -5,6 +5,7 @@
  */
 
 #include <cassert>
+#include <cstring>
 #include "stream.h"
 #include "game/sce/iop.h"
 #include "game/common/str_rpc_types.h"

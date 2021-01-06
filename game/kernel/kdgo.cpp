@@ -17,7 +17,7 @@
 #include "game/common/loader_rpc_types.h"
 #include "game/common/play_rpc_types.h"
 #include "game/common/str_rpc_types.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 
 using namespace ee;
 
@@ -192,8 +192,8 @@ void BeginLoadingDGO(const char* name, Ptr<u8> buffer1, Ptr<u8> buffer2, Ptr<u8>
 
   // file name
   strcpy(sMsg[msgID].name, name);
-  spdlog::debug("[Begin Loading DGO RPC] {}, 0x{:x}, 0x{:x}, 0x{:x}", name, buffer1.offset,
-                buffer2.offset, currentHeap.offset);
+  lg::debug("[Begin Loading DGO RPC] {}, 0x{:x}, 0x{:x}, 0x{:x}", name, buffer1.offset,
+            buffer2.offset, currentHeap.offset);
   // this RPC will return once we have loaded the first object file.
   // but we call async, so we don't block here.
   RpcCall(DGO_RPC_CHANNEL, DGO_RPC_LOAD_FNO, true, mess, sizeof(RPC_Dgo_Cmd), mess,
@@ -315,7 +315,7 @@ void load_and_link_dgo(u64 name_gstr, u64 heap_info, u64 flag, u64 buffer_size) 
  * This does not use the mutli-threaded linker and will block until the entire file is done.e
  */
 void load_and_link_dgo_from_c(const char* name, Ptr<kheapinfo> heap, u32 linkFlag, s32 bufferSize) {
-  spdlog::debug("[Load and Link DGO From C] {}", name);
+  lg::debug("[Load and Link DGO From C] {}", name);
   u32 oldShowStall = sShowStallMsg;
 
   // remember where the heap top point is so we can clear temporary allocations
@@ -364,7 +364,7 @@ void load_and_link_dgo_from_c(const char* name, Ptr<kheapinfo> heap, u32 linkFla
 
     char objName[64];
     strcpy(objName, (dgoObj + 4).cast<char>().c());  // name from dgo object header
-    spdlog::debug("[link and exec] {} {}", objName, lastObjectLoaded);
+    lg::debug("[link and exec] {} {}", objName, lastObjectLoaded);
     link_and_exec(obj, objName, objSize, heap, linkFlag);  // link now!
 
     // inform IOP we are done
