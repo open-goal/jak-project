@@ -5,6 +5,7 @@
 #include "CfgVtx.h"
 #include "Function.h"
 
+namespace decompiler {
 /////////////////////////////////////////
 /// CfgVtx
 /////////////////////////////////////////
@@ -1912,3 +1913,4 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
 
   return cfg;
 }
+}  // namespace decompiler

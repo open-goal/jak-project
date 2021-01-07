@@ -14,19 +14,11 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "LinkedWord.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
 #include "common/common_types.h"
 
-/*!
- * A label to a location in this object file.
- * Doesn't have to be word aligned.
- */
-struct Label {
-  std::string name;
-  int target_segment;
-  int offset;  // in bytes
-};
-
+namespace decompiler {
 /*!
  * An object file's data with linking information included.
  */
@@ -69,8 +61,8 @@ class LinkedObjectFile {
                                          const std::string& extra_name);
   std::string print_asm_function_disassembly(const std::string& my_name);
 
-  u32 read_data_word(const Label& label);
-  std::string get_goal_string_by_label(const Label& label) const;
+  u32 read_data_word(const DecompilerLabel& label);
+  std::string get_goal_string_by_label(const DecompilerLabel& label) const;
 
   struct Stats {
     uint32_t total_code_bytes = 0;
@@ -131,7 +123,7 @@ class LinkedObjectFile {
   std::vector<std::vector<LinkedWord>> words_by_seg;
   std::vector<uint32_t> offset_of_data_zone_by_seg;
   std::vector<std::vector<Function>> functions_by_seg;
-  std::vector<Label> labels;
+  std::vector<DecompilerLabel> labels;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);
@@ -142,5 +134,6 @@ class LinkedObjectFile {
 
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
+}  // namespace decompiler
 
 #endif  // NEXT_LINKEDOBJECTFILE_H

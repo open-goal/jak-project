@@ -8,10 +8,12 @@
 #include <vector>
 #include "common/common_types.h"
 
+class Field;
+
+namespace decompiler {
 class Function;
 class DecompilerTypeSystem;
 class LinkedObjectFile;
-class Field;
 
 struct TypeInspectorResult {
   bool success = false;
@@ -34,3 +36,4 @@ TypeInspectorResult inspect_inspect_method(Function& inspect,
                                            const std::string& type_name,
                                            DecompilerTypeSystem& dts,
                                            LinkedObjectFile& file);
+}  // namespace decompiler

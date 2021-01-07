@@ -20,6 +20,7 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "third-party/fmt/core.h"
 
+namespace decompiler {
 namespace {
 
 /*!
@@ -314,7 +315,7 @@ struct Texture {
     u32 packed_info_words[9];
   };
 
-  Label name_label;
+  DecompilerLabel name_label;
   std::string name;
   u32 size;
   float uv_dist;
@@ -342,7 +343,7 @@ struct Texture {
  * Unclear what the segments really are, maybe you could split up big tpages if needed?
  */
 struct TexturePageSegment {
-  Label block_data_label;
+  DecompilerLabel block_data_label;
   u32 size = 0xffffffff;
   u32 dest = 0xffffffff;
   std::string print_debug() const {
@@ -379,10 +380,10 @@ struct FileInfo {
  * GOAL texture-page type.
  */
 struct TexturePage {
-  Label info_label;
+  DecompilerLabel info_label;
   FileInfo info;
 
-  Label name_label;
+  DecompilerLabel name_label;
   std::string name;
 
   u32 id = 0xffffffff;
@@ -392,7 +393,7 @@ struct TexturePage {
   TexturePageSegment segments[3];
   u32 pad[16] = {};
   // data...
-  std::vector<Label> data;
+  std::vector<DecompilerLabel> data;
   std::vector<Texture> textures;
 
   std::string print_debug() const {
@@ -423,7 +424,7 @@ struct TexturePage {
  * Convert a label to the offset (words) in the object segment.
  * If basic is set, gives you a pointer to the beginning of the memory, if the thing is a basic.
  */
-int label_to_word_offset(Label l, bool basic) {
+int label_to_word_offset(DecompilerLabel l, bool basic) {
   assert((l.offset & 3) == 0);
   int result = l.offset / 4;
   if (basic) {
@@ -441,7 +442,7 @@ bool is_type_tag(const LinkedWord& word, const std::string& type) {
   return word.kind == LinkedWord::TYPE_PTR && word.symbol_name == type;
 }
 
-Label get_label(ObjectFileData& data, const LinkedWord& word) {
+DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
   assert(word.kind == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id);
 }
@@ -905,3 +906,4 @@ TPageResultStats process_tpage(ObjectFileData& data) {
   }
   return stats;
 }
+}  // namespace decompiler

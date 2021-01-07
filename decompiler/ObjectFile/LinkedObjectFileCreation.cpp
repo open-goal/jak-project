@@ -11,6 +11,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/link_types.h"
 
+namespace decompiler {
 // There are three link versions:
 // V2 - not really in use anymore, but V4 will resue logic from it (and the game didn't rename the
 // functions) V3 - optimized for code and small stuff. Supports segments (main, debug, top-level) V4
@@ -819,3 +820,4 @@ LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
 
   return result;
 }
+}  // namespace decompiler

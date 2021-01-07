@@ -1,6 +1,7 @@
 #include "third-party/fmt/core.h"
 #include "ExpressionStack.h"
 
+namespace decompiler {
 std::string ExpressionStack::StackEntry::print(LinkedObjectFile& file) {
   return fmt::format("d: {} s: {} | {} <- {}", display, sequence_point,
                      destination.has_value() ? destination.value().to_charp() : "N/A",
@@ -108,3 +109,4 @@ ExpressionStack::StackEntry& ExpressionStack::get_display_stack_top() {
   }
   assert(false);
 }
+}  // namespace decompiler

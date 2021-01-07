@@ -1,6 +1,7 @@
 #include "TP_Type.h"
 #include "third-party/fmt/core.h"
 
+namespace decompiler {
 std::string TypeState::print_gpr_masked(u32 mask) const {
   std::string result;
   for (int i = 0; i < 32; i++) {
@@ -117,3 +118,4 @@ TypeSpec TP_Type::typespec() const {
       assert(false);
   }
 }
+}  // namespace decompiler

@@ -2,6 +2,7 @@
 #include "third-party/json.hpp"
 #include "common/util/FileUtil.h"
 
+namespace decompiler {
 Config gConfig;
 
 Config& get_config() {
@@ -101,3 +102,4 @@ void set_config(const std::string& path_to_config_file) {
     }
   }
 }
+}  // namespace decompiler

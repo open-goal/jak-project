@@ -5,7 +5,8 @@
 #include "decompiler/Disasm/Register.h"
 #include "common/goos/Reader.h"
 
-struct TP_Type;
+namespace decompiler {
+class TP_Type;
 struct TypeState;
 
 class DecompilerTypeSystem {
@@ -54,5 +55,6 @@ class DecompilerTypeSystem {
  private:
   goos::Reader m_reader;
 };
+}  // namespace decompiler
 
 #endif  // JAK_DECOMPILERTYPESYSTEM_H

@@ -5,6 +5,7 @@
 #include "common/log/log.h"
 #include "TP_Type.h"
 
+namespace decompiler {
 DecompilerTypeSystem::DecompilerTypeSystem() {
   ts.add_builtin_types();
 }
@@ -323,3 +324,4 @@ int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) {
     return type.get_format_string_arg_count();
   }
 }
+}  // namespace decompiler

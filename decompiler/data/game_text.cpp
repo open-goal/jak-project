@@ -7,6 +7,7 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "common/goos/Reader.h"
 
+namespace decompiler {
 namespace {
 template <typename T>
 T get_word(const LinkedWord& word) {
@@ -17,7 +18,7 @@ T get_word(const LinkedWord& word) {
   return result;
 }
 
-Label get_label(ObjectFileData& data, const LinkedWord& word) {
+DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
   assert(word.kind == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id);
 }
@@ -160,3 +161,4 @@ std::string write_game_text(
 
   return result;
 }
+}  // namespace decompiler

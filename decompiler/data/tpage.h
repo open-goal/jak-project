@@ -1,5 +1,6 @@
 #pragma once
 
+namespace decompiler {
 struct ObjectFileData;
 
 struct TPageResultStats {
@@ -8,3 +9,4 @@ struct TPageResultStats {
 };
 
 TPageResultStats process_tpage(ObjectFileData& data);
+}  // namespace decompiler

@@ -8,6 +8,7 @@
 #include "common/type_system/deftype.h"
 #include "decompiler/IR/IR.h"
 
+namespace decompiler {
 namespace {
 struct FieldPrint {
   char format = '\0';
@@ -844,3 +845,4 @@ std::string TypeInspectorResult::print_as_deftype() {
 
   return result;
 }
+}  // namespace decompiler

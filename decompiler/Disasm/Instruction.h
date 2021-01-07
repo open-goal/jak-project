@@ -9,10 +9,12 @@
 #ifndef NEXT_INSTRUCTION_H
 #define NEXT_INSTRUCTION_H
 
+#include <vector>
 #include "OpcodeInfo.h"
 #include "Register.h"
 
-class LinkedObjectFile;
+namespace decompiler {
+struct DecompilerLabel;
 
 constexpr int MAX_INSTRUCTION_SOURCE = 3;
 constexpr int MAX_INTRUCTION_DEST = 1;
@@ -41,7 +43,7 @@ struct InstructionAtom {
   int get_label() const;
   std::string get_sym() const;
 
-  std::string to_string(const LinkedObjectFile& file) const;
+  std::string to_string(const std::vector<DecompilerLabel>& labels) const;
 
   bool is_link_or_label() const;
   bool is_reg() const { return kind == REGISTER; }
@@ -51,11 +53,13 @@ struct InstructionAtom {
 
   bool is_reg(Register r) const { return kind == REGISTER && reg == r; }
 
+  bool operator==(const InstructionAtom& other) const;
+  bool operator!=(const InstructionAtom& other) const { return !((*this) == other); }
+
  private:
   int32_t imm;
   int label_id;
   Register reg;
-
   std::string sym;
 };
 
@@ -66,7 +70,7 @@ class Instruction {
   InstructionKind kind = InstructionKind::UNKNOWN;
 
   std::string op_name_to_string() const;
-  std::string to_string(const LinkedObjectFile& file) const;
+  std::string to_string(const std::vector<DecompilerLabel>& labels) const;
   bool is_valid() const;
 
   void add_src(InstructionAtom& a);
@@ -89,10 +93,13 @@ class Instruction {
 
   int get_label_target() const;
 
+  bool operator==(const Instruction& other) const;
+  bool operator!=(const Instruction& other) const { return !((*this) == other); }
+
   // extra fields for some COP2 instructions.
   uint8_t cop2_dest = 0xff;  // 0xff indicates "don't print dest"
   uint8_t cop2_bc = 0xff;    // 0xff indicates "don't print bc"
   uint8_t il = 0xff;         // 0xff indicates "don't print il"
 };
-
+}  // namespace decompiler
 #endif  // NEXT_INSTRUCTION_H

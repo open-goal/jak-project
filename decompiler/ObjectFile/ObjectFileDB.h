@@ -18,6 +18,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
 
+namespace decompiler {
 /*!
  * A "record" which can be used to identify an object file.
  */
@@ -67,8 +68,8 @@ class ObjectFileDB {
   void analyze_functions();
   void process_tpages();
   void analyze_expressions();
-  std::string process_game_count();
-  std::string process_game_text();
+  std::string process_game_count_file();
+  std::string process_game_text_files();
 
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
@@ -148,5 +149,6 @@ class ObjectFileDB {
     uint32_t unique_obj_bytes = 0;
   } stats;
 };
+}  // namespace decompiler
 
 #endif  // JAK2_DISASSEMBLER_OBJECTFILEDB_H

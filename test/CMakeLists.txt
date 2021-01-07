@@ -18,12 +18,14 @@ add_executable(goalc-test
         test_pretty_print.cpp
         test_zydis.cpp
         goalc/test_goal_kernel.cpp
+        decompiler/test_AtomicOpBuilder.cpp
+        decompiler/test_InstructionParser.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
 enable_testing()
 
-target_link_libraries(goalc-test common runtime compiler gtest Zydis)
+target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis)
 
 IF (WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -36,5 +38,5 @@ if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   setup_target_for_coverage_lcov(NAME goalc-test_coverage
                                  EXECUTABLE goalc-test --gtest_color=yes
                                  DEPENDENCIES goalc-test
-                                 EXCLUDE "third-party/*" "/usr/include/*" "decompiler/*")
+                                 EXCLUDE "third-party/*" "/usr/include/*")
 endif()

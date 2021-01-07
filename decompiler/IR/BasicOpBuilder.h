@@ -6,8 +6,10 @@
 
 #pragma once
 
+namespace decompiler {
 class Function;
 struct BasicBlock;
 class LinkedObjectFile;
 
 void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjectFile* file);
+}  // namespace decompiler
