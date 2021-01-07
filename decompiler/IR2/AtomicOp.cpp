@@ -136,6 +136,12 @@ bool SimpleAtom::operator==(const SimpleAtom& other) const {
   }
 }
 
+void SimpleAtom::get_regs(std::vector<Register>* out) const {
+  if (is_var()) {
+    out->push_back(var().reg());
+  }
+}
+
 /////////////////////////////
 // SimpleExpression
 /////////////////////////////
@@ -289,6 +295,12 @@ bool SimpleExpression::operator==(const SimpleExpression& other) const {
   return true;
 }
 
+void SimpleExpression::get_regs(std::vector<Register>* out) const {
+  for (s8 i = 0; i < args(); i++) {
+    get_arg(i).get_regs(out);
+  }
+}
+
 /////////////////////////////
 // SetVarOp
 /////////////////////////////
@@ -336,6 +348,11 @@ std::unique_ptr<Expr> SetVarOp::get_set_source_as_expr() const {
 
 std::unique_ptr<Expr> SetVarOp::get_as_expr() const {
   throw std::runtime_error("get_as_expr NYI for SetVarOp");
+}
+
+void SetVarOp::update_register_info() {
+  m_write_regs.push_back(m_dst.reg());
+  m_src.get_regs(&m_read_regs);
 }
 
 /////////////////////////////
@@ -417,6 +434,18 @@ std::unique_ptr<Expr> AsmOp::get_set_source_as_expr() const {
 
 std::unique_ptr<Expr> AsmOp::get_as_expr() const {
   throw std::runtime_error("AsmOp::get_as_expr is not implemented.");
+}
+
+void AsmOp::update_register_info() {
+  if (m_dst.has_value()) {
+    m_write_regs.push_back(m_dst->reg());
+  }
+
+  for (auto& src : m_src) {
+    if (src.has_value()) {
+      m_read_regs.push_back(src->reg());
+    }
+  }
 }
 
 /////////////////////////////
@@ -583,13 +612,12 @@ IR2_Condition::IR2_Condition(Kind kind) : m_kind(kind) {
   assert(get_condition_num_args(m_kind) == 0);
 }
 
-IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0) : m_kind(kind) {
+IR2_Condition::IR2_Condition(Kind kind, const Variable& src0) : m_kind(kind) {
   m_src[0] = src0;
   assert(get_condition_num_args(m_kind) == 1);
 }
 
-IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1)
-    : m_kind(kind) {
+IR2_Condition::IR2_Condition(Kind kind, const Variable& src0, const Variable& src1) : m_kind(kind) {
   m_src[0] = src0;
   m_src[1] = src1;
   assert(get_condition_num_args(m_kind) == 2);
@@ -614,12 +642,19 @@ bool IR2_Condition::operator==(const IR2_Condition& other) const {
 
 goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
                                     const Env* env) const {
+  (void)labels;
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i].to_form(labels, env));
+    forms.push_back(pretty_print::to_symbol(m_src[i].to_string(env)));
   }
   return pretty_print::build_list(forms);
+}
+
+void IR2_Condition::get_regs(std::vector<Register>* out) const {
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    out->push_back(m_src[i].reg());
+  }
 }
 
 /////////////////////////////
@@ -627,7 +662,7 @@ goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
 /////////////////////////////
 
 SetVarConditionOp::SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_condition(std::move(condition)) {}
+    : AtomicOp(my_idx), m_dst(dst), m_condition(condition) {}
 
 goos::Object SetVarConditionOp::to_form(const std::vector<DecompilerLabel>& labels,
                                         const Env* env) const {
@@ -664,6 +699,11 @@ std::unique_ptr<Expr> SetVarConditionOp::get_set_source_as_expr() const {
 
 std::unique_ptr<Expr> SetVarConditionOp::get_as_expr() const {
   throw std::runtime_error("SetVarConditionOp::get_as_expr is not yet implemented.");
+}
+
+void SetVarConditionOp::update_register_info() {
+  m_write_regs.push_back(m_dst.reg());
+  m_condition.get_regs(&m_read_regs);
 }
 
 /////////////////////////////
@@ -709,6 +749,11 @@ std::unique_ptr<Expr> StoreOp::get_as_expr() const {
   throw std::runtime_error("StoreOp::get_as_expr is not yet implemented");
 }
 
+void StoreOp::update_register_info() {
+  m_addr.get_regs(&m_read_regs);
+  m_value.get_regs(&m_read_regs);
+}
+
 /////////////////////////////
 // LoadVarOp
 /////////////////////////////
@@ -750,6 +795,11 @@ std::unique_ptr<Expr> LoadVarOp::get_set_source_as_expr() const {
 
 std::unique_ptr<Expr> LoadVarOp::get_as_expr() const {
   throw std::runtime_error("LoadVarOp::get_as_expr is not yet implemented");
+}
+
+void LoadVarOp::update_register_info() {
+  m_src.get_regs(&m_read_regs);
+  m_write_regs.push_back(m_dst.reg());
 }
 
 /////////////////////////////
@@ -834,6 +884,31 @@ bool IR2_BranchDelay::operator==(const IR2_BranchDelay& other) const {
   return m_kind == other.m_kind;
 }
 
+void IR2_BranchDelay::get_regs(std::vector<Register>* write, std::vector<Register>* read) const {
+  switch (m_kind) {
+    case Kind::NOP:
+      break;
+    case Kind::SET_REG_FALSE:
+    case Kind::SET_REG_TRUE:
+    case Kind::SET_BINTEGER:
+    case Kind::SET_PAIR:
+      write->push_back(m_var[0]->reg());
+      break;
+    case Kind::SET_REG_REG:
+    case Kind::NEGATE:
+      write->push_back(m_var[0]->reg());
+      read->push_back(m_var[1]->reg());
+      break;
+    case Kind::DSLLV:
+      write->push_back(m_var[0]->reg());
+      read->push_back(m_var[1]->reg());
+      read->push_back(m_var[2]->reg());
+      break;
+    default:
+      assert(false);
+  }
+}
+
 /////////////////////////////
 // BranchOp
 /////////////////////////////
@@ -896,6 +971,11 @@ std::unique_ptr<Expr> BranchOp::get_as_expr() const {
   throw std::runtime_error("BranchOp::get_as_expr is not yet implemented");
 }
 
+void BranchOp::update_register_info() {
+  m_condition.get_regs(&m_read_regs);
+  m_branch_delay.get_regs(&m_write_regs, &m_read_regs);
+}
+
 /////////////////////////////
 // SpecialOp
 /////////////////////////////
@@ -948,6 +1028,8 @@ std::unique_ptr<Expr> SpecialOp::get_as_expr() const {
   throw std::runtime_error("SpecialOp::get_as_expr not yet implemented");
 }
 
+void SpecialOp::update_register_info() {}
+
 /////////////////////////////
 // CallOp
 /////////////////////////////
@@ -988,6 +1070,10 @@ std::unique_ptr<Expr> CallOp::get_set_source_as_expr() const {
 
 std::unique_ptr<Expr> CallOp::get_as_expr() const {
   throw std::runtime_error("CallOp::get_as_expr not yet implemented");
+}
+
+void CallOp::update_register_info() {
+  throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
 }
 
 /////////////////////////////
@@ -1032,5 +1118,10 @@ std::unique_ptr<Expr> ConditionalMoveFalseOp::get_set_source_as_expr() const {
 
 std::unique_ptr<Expr> ConditionalMoveFalseOp::get_as_expr() const {
   throw std::runtime_error("ConditionalMoveFalseOp::get_as_expr is not yet implemented");
+}
+
+void ConditionalMoveFalseOp::update_register_info() {
+  m_write_regs.push_back(m_dst.reg());
+  m_read_regs.push_back(m_src.reg());
 }
 }  // namespace decompiler

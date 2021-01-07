@@ -114,8 +114,25 @@ class AtomicOp {
   // undesirable when expression stacking.
   virtual std::unique_ptr<Expr> get_as_expr() const = 0;
 
+  // figure out what registers are read and written in this AtomicOp and update read_regs,
+  // write_regs, and clobber_regs.  It's expected that these have duplicates if a register appears
+  // in the original instructions multiple times. Ex: "and v0, v1, v1" would end up putting v1 in
+  // read twice.
+  virtual void update_register_info() = 0;
+
+  const std::vector<Register>& read_regs() { return m_read_regs; }
+  const std::vector<Register>& write_regs() { return m_write_regs; }
+  const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
+
  protected:
   int m_my_idx = -1;
+
+  // the register values that are read (at the start of this op)
+  std::vector<Register> m_read_regs;
+  // the registers that have actual values written into them (at the end of this op)
+  std::vector<Register> m_write_regs;
+  // the registers which have junk written into them.
+  std::vector<Register> m_clobber_regs;
 };
 
 /*!
@@ -153,6 +170,7 @@ class SimpleAtom {
   bool is_static_addr() const { return m_kind == Kind::STATIC_ADDRESS; };
   bool operator==(const SimpleAtom& other) const;
   bool operator!=(const SimpleAtom& other) const { return !((*this) == other); }
+  void get_regs(std::vector<Register>* out) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -218,6 +236,7 @@ class SimpleExpression {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   bool operator==(const SimpleExpression& other) const;
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
+  void get_regs(std::vector<Register>* out) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -242,6 +261,7 @@ class SetVarOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   Variable m_dst;
@@ -265,6 +285,7 @@ class AsmOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   Instruction m_instr;
@@ -312,17 +333,18 @@ class IR2_Condition {
   };
 
   explicit IR2_Condition(Kind kind);
-  IR2_Condition(Kind kind, const SimpleAtom& src0);
-  IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1);
+  IR2_Condition(Kind kind, const Variable& src0);
+  IR2_Condition(Kind kind, const Variable& src0, const Variable& src1);
 
   void invert();
   bool operator==(const IR2_Condition& other) const;
   bool operator!=(const IR2_Condition& other) const { return !((*this) == other); }
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
+  void get_regs(std::vector<Register>* out) const;
 
  private:
   Kind m_kind = Kind::INVALID;
-  SimpleAtom m_src[2];
+  Variable m_src[2];
 };
 
 /*!
@@ -338,6 +360,7 @@ class SetVarConditionOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   Variable m_dst;
@@ -359,6 +382,7 @@ class StoreOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   SimpleExpression m_addr;
@@ -379,6 +403,7 @@ class LoadVarOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   Variable m_dst;
@@ -411,6 +436,7 @@ class IR2_BranchDelay {
   IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variable var2);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   bool operator==(const IR2_BranchDelay& other) const;
+  void get_regs(std::vector<Register>* write, std::vector<Register>* read) const;
 
  private:
   std::optional<Variable> m_var[3];
@@ -435,6 +461,7 @@ class BranchOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   bool m_likely = false;
@@ -463,6 +490,7 @@ class SpecialOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   Kind m_kind;
@@ -482,6 +510,7 @@ class CallOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 };
 
 /*!
@@ -506,6 +535,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   Variable get_set_destination() const override;
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
+  void update_register_info() override;
 
  private:
   Variable m_dst, m_src;

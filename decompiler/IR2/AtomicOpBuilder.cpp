@@ -111,6 +111,7 @@ void convert_block_to_atomic_ops(int begin_idx,
       container->instruction_to_basic_op[begin_idx + i] = container->ops.size();
     }
     // add
+    op->update_register_info();
     container->ops.emplace_back(std::move(op));
     instr += length;
   }

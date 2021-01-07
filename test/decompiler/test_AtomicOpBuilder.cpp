@@ -38,4 +38,20 @@ TEST(DecompilerAtomicOpBuilder, Example) {
   // check the we get the right result:
   EXPECT_EQ(container.ops.at(0)->to_string(prg.labels, &env), "(set! v0 (logand v1 a3))");
   EXPECT_EQ(container.ops.at(1)->to_string(prg.labels, &env), "(set! a1 (logand a2 a2))");
+
+  // check that the registers read/written are identified for the first op (and v0, v1, a3)
+  auto& first_op = container.ops.at(0);
+
+  // two registers read (v1 and a3)
+  EXPECT_EQ(first_op->read_regs().size(), 2);
+  // one register written (v0)
+  EXPECT_EQ(first_op->write_regs().size(), 1);
+  // no clobber registers (register which ends up with a garbage value in it)
+  EXPECT_EQ(first_op->clobber_regs().size(), 0);
+
+  // the ordering of the two read registers doesn't matter. It happens to be in the same order
+  // as the opcode here, but it may not always be the case.
+  EXPECT_EQ(first_op->read_regs().at(0).to_string(), "v1");
+  EXPECT_EQ(first_op->read_regs().at(1).to_string(), "a3");
+  EXPECT_EQ(first_op->write_regs().at(0).to_string(), "v0");
 }
