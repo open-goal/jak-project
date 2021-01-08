@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <unordered_set>
+#include "decompiler/IR2/AtomicOpBuilder.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "BasicBlocks.h"
@@ -83,6 +84,8 @@ class Function {
   bool has_basic_ops() { return !basic_ops.empty(); }
   bool instr_starts_basic_op(int idx);
   std::shared_ptr<IR_Atomic> get_basic_op_at_instr(int idx);
+  bool instr_starts_atomic_op(int idx);
+  const AtomicOp& get_atomic_op_at_instr(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
   int get_reginfo_basic_op_count();
@@ -153,6 +156,13 @@ class Function {
 
   bool uses_fp_register = false;
   std::vector<std::shared_ptr<IR_Atomic>> basic_ops;
+
+  struct {
+    bool atomic_ops_attempted = false;
+    bool atomic_ops_succeeded = false;
+    std::shared_ptr<FunctionAtomicOps> atomic_ops = nullptr;
+    Env env;
+  } ir2;
 
  private:
   void check_epilogue(const LinkedObjectFile& file);

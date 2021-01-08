@@ -51,7 +51,7 @@ bool Variable::operator!=(const Variable& other) const {
 /////////////////////////////
 AtomicOp::AtomicOp(int my_idx) : m_my_idx(my_idx) {}
 
-std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) {
+std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   return pretty_print::to_string(to_form(labels, env));
 }
 bool AtomicOp::operator!=(const AtomicOp& other) const {
@@ -91,6 +91,7 @@ SimpleAtom SimpleAtom::make_empty_list() {
 
 SimpleAtom SimpleAtom::make_int_constant(s64 value) {
   SimpleAtom result;
+  result.m_kind = Kind::INTEGER_CONSTANT;
   result.m_int = value;
   return result;
 }
@@ -105,6 +106,8 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
       return pretty_print::to_symbol(fmt::format("'{}", m_string));
     case Kind::SYMBOL_VAL:
       return pretty_print::to_symbol(m_string);
+    case Kind::EMPTY_LIST:
+      return pretty_print::to_symbol("'()");
     case Kind::STATIC_ADDRESS:
       return pretty_print::to_symbol(labels.at(m_int).name);
     default:
@@ -140,6 +143,10 @@ void SimpleAtom::get_regs(std::vector<Register>* out) const {
   if (is_var()) {
     out->push_back(var().reg());
   }
+}
+
+SimpleExpression SimpleAtom::as_expr() const {
+  return SimpleExpression(SimpleExpression::Kind::IDENTITY, *this);
 }
 
 /////////////////////////////
@@ -205,6 +212,10 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "lognot";
     case SimpleExpression::Kind::NEG:
       return "-";
+    case SimpleExpression::Kind::GPR_TO_FPR:
+      return "gpr->fpr";
+    case SimpleExpression::Kind::FPR_TO_GPR:
+      return "fpr->gpr";
     default:
       assert(false);
   }
@@ -245,6 +256,8 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       return 2;
     case SimpleExpression::Kind::NOT:
     case SimpleExpression::Kind::NEG:
+    case SimpleExpression::Kind::GPR_TO_FPR:
+    case SimpleExpression::Kind::FPR_TO_GPR:
       return 1;
     default:
       assert(false);

@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <cassert>
+#include <utility>
 #include "common/goos/Object.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/Disasm/Instruction.h"
@@ -88,7 +89,7 @@ class Variable {
 class AtomicOp {
  public:
   explicit AtomicOp(int my_idx);
-  std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env);
+  std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
                                const Env* env) const = 0;
   virtual bool operator==(const AtomicOp& other) const = 0;
@@ -135,6 +136,8 @@ class AtomicOp {
   std::vector<Register> m_clobber_regs;
 };
 
+class SimpleExpression;
+
 /*!
  * The has a value. In some cases it can be set.
  */
@@ -171,6 +174,7 @@ class SimpleAtom {
   bool operator==(const SimpleAtom& other) const;
   bool operator!=(const SimpleAtom& other) const { return !((*this) == other); }
   void get_regs(std::vector<Register>* out) const;
+  SimpleExpression as_expr() const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -220,7 +224,9 @@ class SimpleExpression {
     RIGHT_SHIFT_LOGIC,
     MUL_UNSIGNED,
     NOT,
-    NEG
+    NEG,
+    GPR_TO_FPR,
+    FPR_TO_GPR
   };
 
   // how many arguments?
@@ -230,7 +236,7 @@ class SimpleExpression {
     return m_args[idx];
   }
   Kind kind() const { return m_kind; }
-
+  SimpleExpression() = default;
   SimpleExpression(Kind kind, const SimpleAtom& arg0);
   SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
@@ -249,8 +255,8 @@ class SimpleExpression {
  */
 class SetVarOp : public AtomicOp {
  public:
-  SetVarOp(const Variable& dst, const SimpleExpression& src, int my_idx)
-      : AtomicOp(my_idx), m_dst(dst), m_src(src) {
+  SetVarOp(const Variable& dst, SimpleExpression src, int my_idx)
+      : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {
     assert(my_idx == dst.idx());
   }
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
