@@ -181,6 +181,17 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
   return std::make_unique<StoreOp>(store_size, is_float, dst, val, idx);
 }
 
+std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
+  switch (i0.kind) {
+    case InstructionKind::POR:
+    case InstructionKind::SLLV:
+    case InstructionKind::PCPYUD:
+      return std::make_unique<AsmOp>(i0, idx);
+    default:
+      return nullptr;
+  }
+}
+
 ////////////////////////
 // Branch Helpers
 ////////////////////////
@@ -548,12 +559,12 @@ std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
   auto dest = i0.get_src(2).get_label();
   IR2_Condition condition;
   if (s1 == rr0()) {
-    condition = IR2_Condition(IR2_Condition::Kind::NONZERO, make_src_var(s0, idx));
+    condition = IR2_Condition(IR2_Condition::Kind::NONZERO, make_src_atom(s0, idx));
   } else if (i0.get_src(0).is_reg(rs7())) {
-    condition = IR2_Condition(IR2_Condition::Kind::TRUTHY, make_src_var(s1, idx));
+    condition = IR2_Condition(IR2_Condition::Kind::TRUTHY, make_src_atom(s1, idx));
   } else {
-    condition =
-        IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_var(s0, idx), make_src_var(s1, idx));
+    condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
+                              make_src_atom(s1, idx));
   }
   return make_branch(condition, i1, likely, dest, idx);
 }
@@ -569,12 +580,12 @@ std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
   if (s0 == rr0() && s1 == rr0()) {
     condition = IR2_Condition(IR2_Condition::Kind::ALWAYS);
   } else if (s1 == rr0()) {
-    condition = IR2_Condition(IR2_Condition::Kind::ZERO, make_src_var(s0, idx));
+    condition = IR2_Condition(IR2_Condition::Kind::ZERO, make_src_atom(s0, idx));
   } else if (i0.get_src(0).is_reg(rs7())) {
-    condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_var(s1, idx));
+    condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_atom(s1, idx));
   } else {
     condition =
-        IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_var(s0, idx), make_src_var(s1, idx));
+        IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
   }
   return make_branch(condition, i1, likely, dest, idx);
 }
@@ -584,7 +595,7 @@ std::unique_ptr<AtomicOp> convert_branch_r1_2(const Instruction& i0,
                                               IR2_Condition::Kind kind,
                                               bool likely,
                                               int idx) {
-  return make_branch(IR2_Condition(kind, make_src_var(i0.get_src(0).get_reg(), idx)), i1, likely,
+  return make_branch(IR2_Condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx)), i1, likely,
                      i0.get_src(1).get_label(), idx);
 }
 
@@ -601,7 +612,7 @@ std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0, const Instruct
     auto kind =
         i1.kind == InstructionKind::MOVN ? IR2_Condition::Kind::ZERO : IR2_Condition::Kind::NONZERO;
     return std::make_unique<SetVarConditionOp>(make_dst_var(dest, idx),
-                                               IR2_Condition(kind, make_src_var(src, idx)), idx);
+                                               IR2_Condition(kind, make_src_atom(src, idx)), idx);
   }
   return nullptr;
 }
@@ -703,6 +714,259 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
       return nullptr;
   }
 }
+
+///////////////////////
+// OP 3 Conversions
+//////////////////////
+
+std::unique_ptr<AtomicOp> convert_lui_3(const Instruction& i0,
+                                        const Instruction& i1,
+                                        const Instruction& i2,
+                                        int idx) {
+  if (i1.kind == InstructionKind::ORI && i0.get_src(0).is_label() && i1.get_src(1).is_label() &&
+      is_gpr_3(i2, InstructionKind::ADDU, {}, rfp(), {})) {
+    // lui temp, <>
+    // ori dst, temp, <>
+    // addu dst, fp, dst
+    assert(i0.get_dst(0).get_reg() == i1.get_src(0).get_reg());      // temp
+    assert(i0.get_src(0).get_label() == i1.get_src(1).get_label());  // labels
+    assert(i2.get_dst(0).get_reg() == i2.get_src(1).get_reg());      // dst
+    assert(i2.get_dst(0).get_reg() == i1.get_dst(0).get_reg());      // dst
+    auto temp = i0.get_dst(0).get_reg();
+    auto dst = i2.get_dst(0).get_reg();
+    auto label = i0.get_src(0).get_label();
+    auto result = std::make_unique<SetVarOp>(make_dst_var(dst, idx),
+                                             SimpleAtom::make_static_address(label).as_expr(), idx);
+    if (dst != temp) {
+      result->add_clobber_reg(temp);
+    }
+    return result;
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_dsubu_3(const Instruction& i0,
+                                          const Instruction& i1,
+                                          const Instruction& i2,
+                                          int idx) {
+  if (i1.kind == InstructionKind::DADDIU &&
+      (i2.kind == InstructionKind::MOVN || i2.kind == InstructionKind::MOVZ)) {
+    // dsubu temp, a, b
+    // daddiu dst, s7, 8
+    // mov{n,z} dst, s7, temp
+    auto temp = i0.get_dst(0).get_reg();
+    auto a = i0.get_src(0).get_reg();
+    auto b = i0.get_src(1).get_reg();
+    auto dest = i1.get_dst(0).get_reg();
+    assert(i1.get_src(0).is_reg(rs7()));
+    assert(i1.get_src(1).is_imm(FIX_SYM_TRUE));
+    assert(i2.get_dst(0).get_reg() == dest);
+    assert(i2.get_src(0).is_reg(rs7()));
+    assert(i2.get_src(1).get_reg() == temp);
+    assert(temp != dest);
+    auto kind = i2.kind == InstructionKind::MOVN ? IR2_Condition::Kind::EQUAL
+                                                 : IR2_Condition::Kind::NOT_EQUAL;
+    auto result = std::make_unique<SetVarConditionOp>(
+        make_dst_var(dest, idx), IR2_Condition(kind, make_src_atom(a, idx), make_src_atom(b, idx)),
+        idx);
+    result->add_clobber_reg(temp);
+    return result;
+  }
+  return nullptr;
+}
+
+void add_clobber_if_unritten(AtomicOp& op, Register clobber) {
+  op.update_register_info();
+  if (std::find(op.write_regs().begin(), op.write_regs().end(), clobber) == op.write_regs().end()) {
+    op.add_clobber_reg(clobber);
+  }
+}
+
+std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
+                                        const Instruction& i1,
+                                        const Instruction& i2,
+                                        bool is_signed,
+                                        int idx) {
+  auto s0 = i0.get_src(0).get_reg();
+  auto s1 = i0.get_src(1).get_reg();
+  std::unique_ptr<AtomicOp> result;
+  if (i1.kind == InstructionKind::BNE || i1.kind == InstructionKind::BEQ) {
+    // assume bne, invert at the end if it's beq
+    // slt temp, a0, a1
+    // bne temp, r0, dest
+    // delay slot
+    auto temp = i0.get_dst(0).get_reg();
+    auto dest = i1.get_src(2).get_label();
+    assert(i1.get_src(0).get_reg() == temp);
+    assert(i1.get_src(1).is_reg(rr0()));
+    auto kind =
+        is_signed ? IR2_Condition::Kind::LESS_THAN_SIGNED : IR2_Condition::Kind::LESS_THAN_UNSIGNED;
+    auto condition = IR2_Condition(kind, make_src_atom(s0, idx), make_src_atom(s1, idx));
+    if (i1.kind == InstructionKind::BEQ) {
+      condition.invert();
+    }
+    result = make_branch(condition, i2, false, dest, idx);
+    add_clobber_if_unritten(*result, temp);
+    return result;
+  } else if (i1.kind == InstructionKind::DADDIU &&
+             (i2.kind == InstructionKind::MOVZ || i2.kind == InstructionKind::MOVN)) {
+    // all this assumes movz. Then at the end we invert it if it's actually a movn
+    // slt temp, a0, a1
+    // daddiu dest, s7, 8
+    // movz dest, s7, temp
+    auto temp = i0.get_dst(0).get_reg();
+    auto dest = i1.get_dst(0).get_reg();
+    assert(i1.get_src(0).is_reg(rs7()));
+    assert(i1.get_src(1).is_imm(FIX_SYM_TRUE));
+    assert(i2.get_dst(0).get_reg() == dest);
+    assert(i2.get_src(0).is_reg(rs7()));
+    assert(i2.get_src(1).get_reg() == temp);
+    assert(temp != dest);
+    IR2_Condition condition;
+    if (s1 == rr0()) {
+      assert(is_signed);
+      // < 0
+      condition = IR2_Condition(IR2_Condition::Kind::LESS_THAN_ZERO, make_src_atom(s0, idx));
+    } else {
+      auto kind = is_signed ? IR2_Condition::Kind::LESS_THAN_SIGNED
+                            : IR2_Condition::Kind::LESS_THAN_UNSIGNED;
+      condition = IR2_Condition(kind, make_src_atom(s0, idx), make_src_atom(s1, idx));
+    }
+    if (i2.kind == InstructionKind::MOVN) {
+      condition.invert();
+    }
+    result = std::make_unique<SetVarConditionOp>(make_dst_var(dest, idx), condition, idx);
+    add_clobber_if_unritten(*result, temp);
+    return result;
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
+                                         const Instruction& i1,
+                                         const Instruction& i2,
+                                         bool is_signed,
+                                         int idx) {
+  auto s0 = i0.get_src(0).get_reg();
+  auto s1 = SimpleAtom::make_int_constant(i0.get_src(1).get_imm());
+  std::unique_ptr<AtomicOp> result;
+  if (i1.kind == InstructionKind::BNE || i1.kind == InstructionKind::BEQ) {
+    // assume bne, invert at the end if it's beq
+    // slt temp, a0, <>
+    // bne temp, r0, dest
+    // delay slot
+    auto temp = i0.get_dst(0).get_reg();
+    auto dest = i1.get_src(2).get_label();
+    assert(i1.get_src(0).get_reg() == temp);
+    assert(i1.get_src(1).is_reg(rr0()));
+    auto kind =
+        is_signed ? IR2_Condition::Kind::LESS_THAN_SIGNED : IR2_Condition::Kind::LESS_THAN_UNSIGNED;
+    auto condition = IR2_Condition(kind, make_src_atom(s0, idx), s1);
+    if (i1.kind == InstructionKind::BEQ) {
+      condition.invert();
+    }
+    result = make_branch(condition, i2, false, dest, idx);
+    add_clobber_if_unritten(*result, temp);
+    return result;
+  } else if (i1.kind == InstructionKind::DADDIU &&
+             (i2.kind == InstructionKind::MOVZ || i2.kind == InstructionKind::MOVN)) {
+    // all this assumes movz. Then at the end we invert it if it's actually a movn
+    // slt temp, a0, <>
+    // daddiu dest, s7, 8
+    // movz dest, s7, temp
+    auto temp = i0.get_dst(0).get_reg();
+    auto dest = i1.get_dst(0).get_reg();
+    assert(i1.get_src(0).is_reg(rs7()));
+    assert(i1.get_src(1).is_imm(FIX_SYM_TRUE));
+    assert(i2.get_dst(0).get_reg() == dest);
+    assert(i2.get_src(0).is_reg(rs7()));
+    assert(i2.get_src(1).get_reg() == temp);
+    assert(temp != dest);
+    IR2_Condition condition;
+
+    auto kind =
+        is_signed ? IR2_Condition::Kind::LESS_THAN_SIGNED : IR2_Condition::Kind::LESS_THAN_UNSIGNED;
+    condition = IR2_Condition(kind, make_src_atom(s0, idx), s1);
+    if (i2.kind == InstructionKind::MOVN) {
+      condition.invert();
+    }
+    result = std::make_unique<SetVarConditionOp>(make_dst_var(dest, idx), condition, idx);
+    add_clobber_if_unritten(*result, temp);
+    return result;
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_fp_branch(const Instruction& i0,
+                                            const Instruction& i1,
+                                            const Instruction& i2,
+                                            IR2_Condition::Kind kind,
+                                            int idx) {
+  if (i1.kind == InstructionKind::BC1T || i1.kind == InstructionKind::BC1F) {
+    IR2_Condition condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx),
+                            make_src_atom(i0.get_src(1).get_reg(), idx));
+    if (i1.kind == InstructionKind::BC1F) {
+      condition.invert();
+    }
+    return make_branch(condition, i2, false, i1.get_src(0).get_label(), idx);
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_3(const Instruction& i0,
+                                    const Instruction& i1,
+                                    const Instruction& i2,
+                                    int idx) {
+  switch (i0.kind) {
+    case InstructionKind::LUI:
+      return convert_lui_3(i0, i1, i2, idx);
+    case InstructionKind::DSUBU:
+      return convert_dsubu_3(i0, i1, i2, idx);
+    case InstructionKind::SLT:
+      return convert_slt_3(i0, i1, i2, true, idx);
+    case InstructionKind::SLTU:
+      return convert_slt_3(i0, i1, i2, false, idx);
+    case InstructionKind::SLTI:
+      return convert_slti_3(i0, i1, i2, true, idx);
+    case InstructionKind::SLTIU:
+      return convert_slti_3(i0, i1, i2, false, idx);
+    case InstructionKind::CEQS:
+      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_EQUAL, idx);
+    case InstructionKind::CLTS:
+      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_LESS_THAN, idx);
+    case InstructionKind::CLES:
+      return convert_fp_branch(i0, i1, i2, IR2_Condition::Kind::FLOAT_LEQ, idx);
+    default:
+      return nullptr;
+  }
+}
+
+// there is no op 4
+
+///////////////////////
+// OP 5 Conversions
+//////////////////////
+
+std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
+                                    const Instruction& i1,
+                                    const Instruction& i2,
+                                    const Instruction& i3,
+                                    const Instruction& i4,
+                                    int idx) {
+  auto s6 = make_gpr(Reg::S6);
+
+  if (i0.kind == InstructionKind::LWU && i0.get_dst(0).is_reg(s6) &&
+      i0.get_src(0).get_imm() == 44 && i0.get_src(1).is_reg(s6) &&
+      i1.kind == InstructionKind::MTLO1 && i1.get_src(0).is_reg(s6) &&
+      i2.kind == InstructionKind::LWU && i2.get_dst(0).is_reg(s6) &&
+      i2.get_src(0).get_imm() == 12 && i2.get_src(1).is_reg(s6) &&
+      i3.kind == InstructionKind::JALR && i3.get_dst(0).is_reg(make_gpr(Reg::RA)) &&
+      i3.get_src(0).is_reg(s6) && i4.kind == InstructionKind::MFLO1 && i4.get_dst(0).is_reg(s6)) {
+    return std::make_unique<SpecialOp>(SpecialOp::Kind::SUSPEND, idx);
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 /*!
@@ -719,62 +983,84 @@ void convert_block_to_atomic_ops(int begin_idx,
                                  FunctionAtomicOps* container) {
   container->block_id_to_first_atomic_op.push_back(container->ops.size());
   for (auto& instr = begin; instr < end;) {
-    // how many instructions can we look at, at most?
-    int n_instr = end - instr;
-    // how many instructions did we use?
-    int length = 0;
-    // what is the index of the atomic op we would add
-    int op_idx = int(container->ops.size());
+    try {
+      // how many instructions can we look at, at most?
+      int n_instr = end - instr;
+      // how many instructions did we use?
+      int length = 0;
+      // what is the index of the atomic op we would add
+      int op_idx = int(container->ops.size());
 
-    bool converted = false;
-    std::unique_ptr<AtomicOp> op;
+      bool converted = false;
+      std::unique_ptr<AtomicOp> op;
 
-    if (n_instr >= 4) {
-      // try 4 instructions
-    }
-
-    if (!converted && n_instr >= 3) {
-      // try 3 instructions
-    }
-
-    if (!converted && n_instr >= 2) {
-      // try 2 instructions
-      op = convert_2(instr[0], instr[1], op_idx);
-      if (op) {
-        converted = true;
-        length = 2;
+      if (n_instr >= 5) {
+        // try 5 instructions
+        op = convert_5(instr[0], instr[1], instr[2], instr[3], instr[4], op_idx);
+        if (op) {
+          converted = true;
+          length = 5;
+        }
       }
-    }
 
-    if (!converted) {
-      // try 1 instruction
-      op = convert_1(*instr, op_idx);
-      if (op) {
-        converted = true;
-        length = 1;
+      if (!converted && n_instr >= 3) {
+        // try 3 instructions
+        op = convert_3(instr[0], instr[1], instr[2], op_idx);
+        if (op) {
+          converted = true;
+          length = 3;
+        }
       }
-    }
 
-    if (!converted) {
-      // try assembly fallback.
-    }
+      if (!converted && n_instr >= 2) {
+        // try 2 instructions
+        op = convert_2(instr[0], instr[1], op_idx);
+        if (op) {
+          converted = true;
+          length = 2;
+        }
+      }
 
-    if (!converted) {
-      // failed!
-      throw std::runtime_error("Failed to convert " + instr->to_string(labels));
-      //      lg::die("Failed to convert instruction {} to an atomic op", instr->to_string(labels));
-    }
+      if (!converted) {
+        // try 1 instruction
+        op = convert_1(*instr, op_idx);
+        if (op) {
+          converted = true;
+          length = 1;
+        }
+      }
 
-    assert(converted && length && op);
-    // add mappings:
-    container->atomic_op_to_instruction[container->ops.size()] = begin_idx;
-    for (int i = 0; i < length; i++) {
-      container->instruction_to_atomic_op[begin_idx + i] = container->ops.size();
+      if (!converted) {
+        // try assembly fallback.
+        op = make_asm_op(*instr, op_idx);
+        if (op) {
+          converted = true;
+          length = 1;
+        }
+      }
+
+      if (!converted) {
+        // failed!
+        throw std::runtime_error("Failed to convert " + instr->to_string(labels));
+        //      lg::die("Failed to convert instruction {} to an atomic op",
+        //      instr->to_string(labels));
+      }
+
+      assert(converted && length && op);
+      // add mappings:
+      container->atomic_op_to_instruction[container->ops.size()] = begin_idx;
+      for (int i = 0; i < length; i++) {
+        container->instruction_to_atomic_op[begin_idx + i] = container->ops.size();
+      }
+      // add
+      op->update_register_info();
+      container->ops.emplace_back(std::move(op));
+      instr += length;
+      begin_idx += length;
+    } catch (std::exception& e) {
+      lg::error("Internal conversion error {} on {}", e.what(), instr->to_string(labels));
+      throw e;
     }
-    // add
-    op->update_register_info();
-    container->ops.emplace_back(std::move(op));
-    instr += length;
   }
   container->block_id_to_end_atomic_op.push_back(container->ops.size());
 }

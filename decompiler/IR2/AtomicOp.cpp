@@ -649,12 +649,13 @@ IR2_Condition::IR2_Condition(Kind kind) : m_kind(kind) {
   assert(get_condition_num_args(m_kind) == 0);
 }
 
-IR2_Condition::IR2_Condition(Kind kind, const Variable& src0) : m_kind(kind) {
+IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0) : m_kind(kind) {
   m_src[0] = src0;
   assert(get_condition_num_args(m_kind) == 1);
 }
 
-IR2_Condition::IR2_Condition(Kind kind, const Variable& src0, const Variable& src1) : m_kind(kind) {
+IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1)
+    : m_kind(kind) {
   m_src[0] = src0;
   m_src[1] = src1;
   assert(get_condition_num_args(m_kind) == 2);
@@ -683,7 +684,7 @@ goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(pretty_print::to_symbol(m_src[i].to_string(env)));
+    forms.push_back(m_src[i].to_form(labels, env));
   }
   if (forms.size() > 1) {
     return pretty_print::build_list(forms);
@@ -694,7 +695,7 @@ goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
 
 void IR2_Condition::get_regs(std::vector<Register>* out) const {
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    out->push_back(m_src[i].reg());
+    m_src[i].get_regs(out);
   }
 }
 

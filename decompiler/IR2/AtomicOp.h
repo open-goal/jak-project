@@ -348,8 +348,8 @@ class IR2_Condition {
 
   IR2_Condition() = default;
   explicit IR2_Condition(Kind kind);
-  IR2_Condition(Kind kind, const Variable& src0);
-  IR2_Condition(Kind kind, const Variable& src0, const Variable& src1);
+  IR2_Condition(Kind kind, const SimpleAtom& src0);
+  IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1);
 
   void invert();
   bool operator==(const IR2_Condition& other) const;
@@ -359,7 +359,7 @@ class IR2_Condition {
 
  private:
   Kind m_kind = Kind::INVALID;
-  Variable m_src[2];
+  SimpleAtom m_src[2];
 };
 
 /*!
@@ -376,6 +376,7 @@ class SetVarConditionOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  void invert() { m_condition.invert(); }
 
  private:
   Variable m_dst;
