@@ -139,7 +139,7 @@ void IR_Set_Atomic::update_reginfo_self<IR_IntMath2>(int n_dest, int n_src, int 
 
 class IR_Store : public virtual IR_Set {
  public:
-  enum Kind { INTEGER, FLOAT } kind;
+  enum class Kind { INTEGER, FLOAT } kind;
   IR_Store(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src, int _size)
       : IR_Set(IR_Set::STORE, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
   int size;
@@ -152,7 +152,7 @@ class IR_Store : public virtual IR_Set {
  */
 class IR_Store_Atomic : public IR_Set_Atomic {
  public:
-  enum Kind { INTEGER, FLOAT } kind;
+  enum class Kind { INTEGER, FLOAT } kind;
   IR_Store_Atomic(Kind _kind, std::shared_ptr<IR> _dst, std::shared_ptr<IR> _src, int _size)
       : IR_Set_Atomic(IR_Set::STORE, std::move(_dst), std::move(_src)), kind(_kind), size(_size) {}
   int size;

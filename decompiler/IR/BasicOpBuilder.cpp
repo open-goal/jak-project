@@ -1009,7 +1009,7 @@ std::shared_ptr<IR_Atomic> try_sw(Instruction& instr, int idx) {
     return op;
   } else if (instr.kind == InstructionKind::SW && instr.get_src(1).is_imm()) {
     if (instr.get_src(1).get_imm() == 0) {
-      auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::INTEGER,
+      auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::Kind::INTEGER,
                                                   make_reg(instr.get_src(2).get_reg(), idx),
                                                   make_reg(instr.get_src(0).get_reg(), idx), 4);
       op->update_reginfo_self(0, 2, 0);
@@ -1027,7 +1027,7 @@ std::shared_ptr<IR_Atomic> try_sw(Instruction& instr, int idx) {
         return op;
       } else {
         auto op = std::make_shared<IR_Store_Atomic>(
-            IR_Store_Atomic::INTEGER,
+            IR_Store_Atomic::Kind::INTEGER,
             std::make_shared<IR_IntMath2>(
                 IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
                 std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -1044,13 +1044,13 @@ std::shared_ptr<IR_Atomic> try_sb(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SB && instr.get_src(1).is_imm()) {
     if (instr.get_src(1).get_imm() == 0) {
       if (instr.get_src(0).is_reg(make_gpr(Reg::R0))) {
-        auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::INTEGER,
+        auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::Kind::INTEGER,
                                                     make_reg(instr.get_src(2).get_reg(), idx),
                                                     std::make_shared<IR_IntegerConstant>(0), 1);
         op->update_reginfo_self(0, 1, 0);
         return op;
       } else {
-        auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::INTEGER,
+        auto op = std::make_shared<IR_Store_Atomic>(IR_Store_Atomic::Kind::INTEGER,
                                                     make_reg(instr.get_src(2).get_reg(), idx),
                                                     make_reg(instr.get_src(0).get_reg(), idx), 1);
         op->update_reginfo_self(0, 2, 0);
@@ -1060,7 +1060,7 @@ std::shared_ptr<IR_Atomic> try_sb(Instruction& instr, int idx) {
     } else {
       if (instr.get_src(0).is_reg(make_gpr(Reg::R0))) {
         auto op = std::make_shared<IR_Store_Atomic>(
-            IR_Store_Atomic::INTEGER,
+            IR_Store_Atomic::Kind::INTEGER,
             std::make_shared<IR_IntMath2>(
                 IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
                 std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -1069,7 +1069,7 @@ std::shared_ptr<IR_Atomic> try_sb(Instruction& instr, int idx) {
         return op;
       } else {
         auto op = std::make_shared<IR_Store_Atomic>(
-            IR_Store_Atomic::INTEGER,
+            IR_Store_Atomic::Kind::INTEGER,
             std::make_shared<IR_IntMath2>(
                 IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
                 std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -1085,7 +1085,7 @@ std::shared_ptr<IR_Atomic> try_sb(Instruction& instr, int idx) {
 std::shared_ptr<IR_Atomic> try_sh(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SH && instr.get_src(1).is_imm()) {
     auto op = std::make_shared<IR_Store_Atomic>(
-        IR_Store_Atomic::INTEGER,
+        IR_Store_Atomic::Kind::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -1099,7 +1099,7 @@ std::shared_ptr<IR_Atomic> try_sh(Instruction& instr, int idx) {
 std::shared_ptr<IR_Atomic> try_sd(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SD && instr.get_src(1).is_imm()) {
     auto op = std::make_shared<IR_Store_Atomic>(
-        IR_Store_Atomic::INTEGER,
+        IR_Store_Atomic::Kind::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -1113,7 +1113,7 @@ std::shared_ptr<IR_Atomic> try_sd(Instruction& instr, int idx) {
 std::shared_ptr<IR_Atomic> try_sq(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SQ && instr.get_src(1).is_imm()) {
     auto op = std::make_shared<IR_Store_Atomic>(
-        IR_Store_Atomic::INTEGER,
+        IR_Store_Atomic::Kind::INTEGER,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
@@ -1127,7 +1127,7 @@ std::shared_ptr<IR_Atomic> try_sq(Instruction& instr, int idx) {
 std::shared_ptr<IR_Atomic> try_swc1(Instruction& instr, int idx) {
   if (instr.kind == InstructionKind::SWC1 && instr.get_src(1).is_imm()) {
     auto op = std::make_shared<IR_Store_Atomic>(
-        IR_Store_Atomic::FLOAT,
+        IR_Store_Atomic::Kind::FLOAT,
         std::make_shared<IR_IntMath2>(
             IR_IntMath2::ADD, make_reg(instr.get_src(2).get_reg(), idx),
             std::make_shared<IR_IntegerConstant>(instr.get_src(1).get_imm())),
