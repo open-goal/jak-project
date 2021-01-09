@@ -434,7 +434,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     if (m_src[i].has_value()) {
       forms.push_back(pretty_print::to_symbol(m_src[i].value().to_string(env)));
     } else {
-      forms.push_back(pretty_print::to_symbol(m_instr.get_src(1).to_string(labels)));
+      forms.push_back(pretty_print::to_symbol(m_instr.get_src(i).to_string(labels)));
     }
   }
 
@@ -538,12 +538,24 @@ std::string get_condition_kind_name(IR2_Condition::Kind kind) {
       return "<=.s";
     case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED:
       return ">0.si";
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED:
+      return ">0.ui";
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED:
       return ">=0.si";
-    case IR2_Condition::Kind::LESS_THAN_ZERO:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED:
       return "<0.si";
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED:
       return "<=0.si";
+    case IR2_Condition::Kind::LEQ_ZERO_UNSIGNED:
+      return "<=0.ui";
+    case IR2_Condition::Kind::IS_PAIR:
+      return "pair?";
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+      return "not-pair?";
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED:
+      return "<0.ui";
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
+      return ">=0.ui";
     default:
       assert(false);
   }
@@ -574,8 +586,14 @@ int get_condition_num_args(IR2_Condition::Kind kind) {
     case IR2_Condition::Kind::TRUTHY:
     case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED:
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED:
-    case IR2_Condition::Kind::LESS_THAN_ZERO:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED:
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED:
+    case IR2_Condition::Kind::IS_PAIR:
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+    case IR2_Condition::Kind::LEQ_ZERO_UNSIGNED:
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED:
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
       return 1;
     case IR2_Condition::Kind::ALWAYS:
     case IR2_Condition::Kind::NEVER:
@@ -603,10 +621,10 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       return IR2_Condition::Kind::LEQ_ZERO_SIGNED;
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED:
       return IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED;
-    case IR2_Condition::Kind::LESS_THAN_ZERO:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED:
       return IR2_Condition::Kind::GEQ_ZERO_SIGNED;
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED:
-      return IR2_Condition::Kind::LESS_THAN_ZERO;
+      return IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED;
     case IR2_Condition::Kind::LESS_THAN_UNSIGNED:
       return IR2_Condition::Kind::GEQ_UNSIGNED;
     case IR2_Condition::Kind::GREATER_THAN_UNSIGNED:
@@ -639,6 +657,18 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       return IR2_Condition::Kind::FLOAT_LEQ;
     case IR2_Condition::Kind::FLOAT_LEQ:
       return IR2_Condition::Kind::FLOAT_GREATER_THAN;
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+      return IR2_Condition::Kind::IS_PAIR;
+    case IR2_Condition::Kind::IS_PAIR:
+      return IR2_Condition::Kind::IS_NOT_PAIR;
+    case IR2_Condition::Kind::LEQ_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED;
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::LEQ_ZERO_UNSIGNED;
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::GEQ_ZERO_UNSIGNED;
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED;
     default:
       assert(false);
   }
@@ -975,7 +1005,7 @@ goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels
       assert(m_var[2].has_value());
       return pretty_print::build_list(
           "set!", m_var[0]->to_string(env),
-          pretty_print::build_list("dsllv", m_var[1]->to_string(env), m_var[2]->to_string(env)));
+          pretty_print::build_list("sll", m_var[1]->to_string(env), m_var[2]->to_string(env)));
     case Kind::NEGATE:
       assert(m_var[0].has_value());
       assert(m_var[1].has_value());
@@ -1101,6 +1131,8 @@ goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, cons
       return pretty_print::build_list("nop!");
     case Kind::BREAK:
       return pretty_print::build_list("break!");
+    case Kind::CRASH:
+      return pretty_print::build_list("crash!");
     case Kind::SUSPEND:
       return pretty_print::build_list("suspend");
     default:

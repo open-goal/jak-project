@@ -324,9 +324,13 @@ class IR2_Condition {
     LEQ_SIGNED,
     GEQ_SIGNED,
     GREATER_THAN_ZERO_SIGNED,
+    GREATER_THAN_ZERO_UNSIGNED,
     LEQ_ZERO_SIGNED,
-    LESS_THAN_ZERO,
+    LEQ_ZERO_UNSIGNED,
+    LESS_THAN_ZERO_SIGNED,
     GEQ_ZERO_SIGNED,
+    LESS_THAN_ZERO_UNSIGNED,
+    GEQ_ZERO_UNSIGNED,
     LESS_THAN_UNSIGNED,
     GREATER_THAN_UNSIGNED,
     LEQ_UNSIGNED,
@@ -343,6 +347,8 @@ class IR2_Condition {
     FLOAT_GEQ,
     FLOAT_LEQ,
     FLOAT_GREATER_THAN,
+    IS_PAIR,
+    IS_NOT_PAIR,
     INVALID
   };
 
@@ -502,6 +508,7 @@ class SpecialOp : public AtomicOp {
   enum class Kind {
     NOP,
     BREAK,
+    CRASH,
     SUSPEND,
   };
 
