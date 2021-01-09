@@ -125,6 +125,8 @@ class AtomicOp {
   const std::vector<Register>& write_regs() { return m_write_regs; }
   const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
 
+  virtual ~AtomicOp() = default;
+
  protected:
   int m_my_idx = -1;
 
@@ -159,6 +161,7 @@ class SimpleAtom {
   static SimpleAtom make_sym_val(const std::string& name);
   static SimpleAtom make_empty_list();
   static SimpleAtom make_int_constant(s64 value);
+  static SimpleAtom make_static_address(int static_label_id);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
@@ -401,7 +404,8 @@ class StoreOp : public AtomicOp {
  */
 class LoadVarOp : public AtomicOp {
  public:
-  LoadVarOp(Variable dst, SimpleExpression src, int my_idx);
+  enum class Kind { UNSIGNED, SIGNED, FLOAT };
+  LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
@@ -412,6 +416,8 @@ class LoadVarOp : public AtomicOp {
   void update_register_info() override;
 
  private:
+  Kind m_kind;
+  int m_size = -1;
   Variable m_dst;
   SimpleExpression m_src;
 };

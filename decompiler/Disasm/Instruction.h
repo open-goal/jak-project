@@ -52,6 +52,7 @@ struct InstructionAtom {
   bool is_sym() const { return kind == IMM_SYM; }
 
   bool is_reg(Register r) const { return kind == REGISTER && reg == r; }
+  bool is_imm(int32_t i) const { return kind == IMM && imm == i; }
 
   bool operator==(const InstructionAtom& other) const;
   bool operator!=(const InstructionAtom& other) const { return !((*this) == other); }

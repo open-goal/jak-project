@@ -96,6 +96,13 @@ SimpleAtom SimpleAtom::make_int_constant(s64 value) {
   return result;
 }
 
+SimpleAtom SimpleAtom::make_static_address(int static_label_id) {
+  SimpleAtom result;
+  result.m_kind = Kind::STATIC_ADDRESS;
+  result.m_int = static_label_id;
+  return result;
+}
+
 goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   switch (m_kind) {
     case Kind::VARIABLE:
@@ -771,13 +778,55 @@ void StoreOp::update_register_info() {
 // LoadVarOp
 /////////////////////////////
 
-LoadVarOp::LoadVarOp(Variable dst, SimpleExpression src, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {}
+LoadVarOp::LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx)
+    : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}
 
 goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("set!"),
-                                  pretty_print::to_symbol(m_dst.to_string(env)),
-                                  m_src.to_form(labels, env));
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"),
+                                     pretty_print::to_symbol(m_dst.to_string(env))};
+
+  switch (m_kind) {
+    case Kind::FLOAT:
+      assert(m_size == 4);
+      forms.push_back(pretty_print::build_list("l.f", m_src.to_form(labels, env)));
+      break;
+    case Kind::UNSIGNED:
+      switch (m_size) {
+        case 1:
+          forms.push_back(pretty_print::build_list("l.bu", m_src.to_form(labels, env)));
+          break;
+        case 2:
+          forms.push_back(pretty_print::build_list("l.hu", m_src.to_form(labels, env)));
+          break;
+        case 4:
+          forms.push_back(pretty_print::build_list("l.wu", m_src.to_form(labels, env)));
+          break;
+        case 8:
+          forms.push_back(pretty_print::build_list("l.d", m_src.to_form(labels, env)));
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    case Kind::SIGNED:
+      switch (m_size) {
+        case 1:
+          forms.push_back(pretty_print::build_list("l.b", m_src.to_form(labels, env)));
+          break;
+        case 2:
+          forms.push_back(pretty_print::build_list("l.h", m_src.to_form(labels, env)));
+          break;
+        case 4:
+          forms.push_back(pretty_print::build_list("l.w", m_src.to_form(labels, env)));
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    default:
+      assert(false);
+  }
+  return pretty_print::build_list(forms);
 }
 
 bool LoadVarOp::operator==(const AtomicOp& other) const {
@@ -1000,11 +1049,11 @@ goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, cons
   (void)env;
   switch (m_kind) {
     case Kind::NOP:
-      return pretty_print::to_symbol("nop!");
+      return pretty_print::build_list("nop!");
     case Kind::BREAK:
-      return pretty_print::to_symbol("break!");
+      return pretty_print::build_list("break!");
     case Kind::SUSPEND:
-      return pretty_print::to_symbol("suspend");
+      return pretty_print::build_list("suspend");
     default:
       assert(false);
   }

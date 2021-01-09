@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "common/log/log.h"
+#include "common/symbols.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
@@ -10,17 +11,9 @@ namespace decompiler {
 
 namespace {
 
-Variable make_dst_var(Register reg, int idx) {
-  return Variable(Variable::Mode::WRITE, reg, idx);
-}
-
-Variable make_src_var(Register reg, int idx) {
-  return Variable(Variable::Mode::READ, reg, idx);
-}
-
-SimpleAtom make_src_atom(Register reg, int idx) {
-  return SimpleAtom::make_var(make_src_var(reg, idx));
-}
+//////////////////////
+// Register Helpers
+//////////////////////
 
 Register rs7() {
   return make_gpr(Reg::S7);
@@ -30,17 +23,55 @@ Register rr0() {
   return make_gpr(Reg::R0);
 }
 
+Register rfp() {
+  return make_gpr(Reg::FP);
+}
+
+/////////////////////////
+// Variable Helpers
+/////////////////////////
+
+Variable make_dst_var(Register reg, int idx) {
+  return Variable(Variable::Mode::WRITE, reg, idx);
+}
+
+Variable make_src_var(Register reg, int idx) {
+  return Variable(Variable::Mode::READ, reg, idx);
+}
+
+Variable make_dst_var(const Instruction& i, int idx) {
+  assert(i.n_dst == 1);
+  return make_dst_var(i.get_dst(0).get_reg(), idx);
+}
+
+////////////////////////
+// Atom Helpers
+////////////////////////
+
+SimpleAtom make_src_atom(Register reg, int idx) {
+  return SimpleAtom::make_var(make_src_var(reg, idx));
+}
+
 SimpleAtom false_sym() {
   return SimpleAtom::make_sym_ptr("#f");
 }
 
-Variable make_dst_var(const Instruction& i, int idx) {
-  return make_dst_var(i.get_dst(0).get_reg(), idx);
-}
+////////////////////////
+// Expression Helpers
+////////////////////////
 
 SimpleExpression make_2reg_expr(const Instruction& instr, SimpleExpression::Kind kind, int idx) {
   auto src0 = make_src_atom(instr.get_src(0).get_reg(), idx);
   auto src1 = make_src_atom(instr.get_src(1).get_reg(), idx);
+  return SimpleExpression(kind, src0, src1);
+}
+
+SimpleExpression make_1reg_1imm_expr(const Instruction& instr,
+                                     SimpleExpression::Kind kind,
+                                     int idx,
+                                     int imm_offset = 0) {
+  auto src0 = make_src_atom(instr.get_src(0).get_reg(), idx);
+  auto src1 = SimpleAtom::make_int_constant(instr.get_src(1).get_imm() + imm_offset);
   return SimpleExpression(kind, src0, src1);
 }
 
@@ -49,28 +80,75 @@ SimpleExpression make_1reg_expr(const Instruction& instr, SimpleExpression::Kind
   return SimpleExpression(kind, src);
 }
 
+SimpleExpression make_reg_plus_int(Register reg, int integer, int idx) {
+  return SimpleExpression(SimpleExpression::Kind::ADD, make_src_atom(reg, idx),
+                          SimpleAtom::make_int_constant(integer));
+}
+
+////////////////////////
+// AtmoicOp Helpers
+////////////////////////
+
 /*!
  * Convert a single instruction in the form instr dest_reg, src_reg, src_reg
  * to an atomic op of (set! dst_reg (op src_reg src_reg))
  * Like daddu a0, a1, a2
  */
-void make_3reg_op(const Instruction& instr,
-                  SimpleExpression::Kind kind,
-                  int idx,
-                  std::unique_ptr<AtomicOp>& result) {
+std::unique_ptr<AtomicOp> make_3reg_op(const Instruction& instr,
+                                       SimpleExpression::Kind kind,
+                                       int idx) {
   auto dst = make_dst_var(instr.get_dst(0).get_reg(), idx);
-  result = std::make_unique<SetVarOp>(dst, make_2reg_expr(instr, kind, idx), idx);
+  return std::make_unique<SetVarOp>(dst, make_2reg_expr(instr, kind, idx), idx);
 }
 
-void make_2reg_op(const Instruction& instr,
-                  SimpleExpression::Kind kind,
-                  int idx,
-                  std::unique_ptr<AtomicOp>& result) {
+std::unique_ptr<AtomicOp> make_2reg_1imm_op(const Instruction& instr,
+                                            SimpleExpression::Kind kind,
+                                            int idx,
+                                            int imm_offset = 0) {
   auto dst = make_dst_var(instr.get_dst(0).get_reg(), idx);
-  result = std::make_unique<SetVarOp>(dst, make_1reg_expr(instr, kind, idx), idx);
+  return std::make_unique<SetVarOp>(dst, make_1reg_1imm_expr(instr, kind, idx, imm_offset), idx);
 }
 
-bool convert_or_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& result) {
+/*!
+ * Convert a single instruction in the form instr dest_reg, src_reg
+ * to an atomic op of (set! dest_reg (op src_reg))
+ */
+std::unique_ptr<AtomicOp> make_2reg_op(const Instruction& instr,
+                                       SimpleExpression::Kind kind,
+                                       int idx) {
+  auto dst = make_dst_var(instr.get_dst(0).get_reg(), idx);
+  return std::make_unique<SetVarOp>(dst, make_1reg_expr(instr, kind, idx), idx);
+}
+
+/*!
+ * Common load helper. Supports fp relative, 0 offset, or integer constant offset
+ */
+std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
+                                             int idx,
+                                             int load_size,
+                                             LoadVarOp::Kind kind) {
+  auto dst = make_dst_var(i0, idx);
+  SimpleExpression src;
+  if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(rfp())) {
+    // it's an FP relative load.
+    src = SimpleAtom::make_static_address(i0.get_src(0).get_label()).as_expr();
+  } else if (i0.get_src(0).is_imm() && i0.get_src(0).get_imm() == 0) {
+    // the offset is 0
+    src = make_src_atom(i0.get_src(1).get_reg(), idx).as_expr();
+  } else if (i0.get_src(0).is_imm()) {
+    // the offset is not 0
+    src = make_reg_plus_int(i0.get_src(1).get_reg(), i0.get_src(0).get_imm(), idx);
+  } else {
+    assert(false);
+  }
+  return std::make_unique<LoadVarOp>(kind, load_size, dst, src, idx);
+}
+
+///////////////////////
+// OP 1 Conversions
+//////////////////////
+
+std::unique_ptr<AtomicOp> convert_or_1(const Instruction& i0, int idx) {
   auto dest = make_dst_var(i0, idx);
   SimpleExpression src;
 
@@ -87,11 +165,10 @@ bool convert_or_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& res
     // actually do a logical OR of two registers: or a0, a1, a2
     src = make_2reg_expr(i0, SimpleExpression::Kind::OR, idx);
   }
-  result = std::make_unique<SetVarOp>(dest, src, idx);
-  return true;
+  return std::make_unique<SetVarOp>(dest, src, idx);
 }
 
-bool convert_ori_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& result) {
+std::unique_ptr<AtomicOp> convert_ori_1(const Instruction& i0, int idx) {
   auto dest = make_dst_var(i0, idx);
   SimpleExpression src;
   if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_imm()) {
@@ -101,47 +178,111 @@ bool convert_ori_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& re
   } else if (i0.get_src(1).is_imm()) {
     // logical or with constant integer
     // ori dst, a0, 1234
-    src = SimpleExpression(SimpleExpression::Kind::OR, make_src_atom(i0.get_src(0).get_reg(), idx),
-                           SimpleAtom::make_int_constant(i0.get_src(1).get_imm()));
+    return make_2reg_1imm_op(i0, SimpleExpression::Kind::OR, idx);
   } else {
-    return false;
+    assert(false);
   }
-  result = std::make_unique<SetVarOp>(dest, src, idx);
-  return true;
+  return std::make_unique<SetVarOp>(dest, src, idx);
 }
 
-bool convert_mtc1_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& result) {
-  // move from gpr to fpr
-  make_2reg_op(i0, SimpleExpression::Kind::GPR_TO_FPR, idx, result);
-  return true;
+std::unique_ptr<AtomicOp> convert_lw_1(const Instruction& i0, int idx) {
+  if (i0.get_dst(0).is_reg(rr0()) && i0.get_src(0).is_imm(2) && i0.get_src(1).is_reg(rr0())) {
+    // lw r0, 2(r0), used to trigger an exception on purpose.
+    return std::make_unique<SpecialOp>(SpecialOp::Kind::BREAK, idx);
+  } else if (i0.get_src(1).is_reg(rs7()) && i0.get_src(0).is_sym()) {
+    // symbol load.
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_sym_val(i0.get_src(0).get_sym()).as_expr(), idx);
+  } else {
+    // fall back to standard loads
+    return make_standard_load(i0, idx, 4, LoadVarOp::Kind::SIGNED);
+  }
 }
 
-bool convert_mfc1_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& result) {
-  // move from fpr to gpr
-  make_2reg_op(i0, SimpleExpression::Kind::FPR_TO_GPR, idx, result);
-  return true;
+std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx) {
+  if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_sym()) {
+    // get symbol pointer
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_sym_ptr(i0.get_src(1).get_sym()).as_expr(), idx);
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(FIX_SYM_EMPTY_PAIR)) {
+    // get empty pair
+    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
+                                      SimpleAtom::make_empty_list().as_expr(), idx);
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(-32768)) {
+    // get pointer to beginning of symbol table (this is a bit of a hack)
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_sym_val("__START-OF-TABLE__").as_expr(), idx);
+  } else if (i0.get_src(0).is_reg(rs7()) && i0.get_src(1).is_imm(FIX_SYM_TRUE)) {
+    // get pointer to beginning of symbol table (this is a bit of a hack)
+    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
+                                      SimpleAtom::make_sym_ptr("#t").as_expr(), idx);
+  } else if (i0.get_src(0).is_reg(rfp()) && i0.get_src(1).is_label()) {
+    // get address of static
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_static_address(i0.get_src(1).get_label()).as_expr(),
+        idx);
+  } else {
+    // fall back to normal add.
+    return make_2reg_1imm_op(i0, SimpleExpression::Kind::ADD, idx);
+  }
 }
 
-bool convert_and_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& result) {
-  // and a0, a1, a2
-  make_3reg_op(i0, SimpleExpression::Kind::AND, idx, result);
-  return true;
-}
-
-bool convert_1(const Instruction& i0, int idx, std::unique_ptr<AtomicOp>& result) {
+std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
   switch (i0.kind) {
     case InstructionKind::OR:
-      return convert_or_1(i0, idx, result);
+      return convert_or_1(i0, idx);
     case InstructionKind::ORI:
-      return convert_ori_1(i0, idx, result);
+      return convert_ori_1(i0, idx);
     case InstructionKind::AND:
-      return convert_and_1(i0, idx, result);
+      return make_3reg_op(i0, SimpleExpression::Kind::AND, idx);
     case InstructionKind::MTC1:
-      return convert_mtc1_1(i0, idx, result);
+      return make_2reg_op(i0, SimpleExpression::Kind::GPR_TO_FPR, idx);
     case InstructionKind::MFC1:
-      return convert_mfc1_1(i0, idx, result);
+      return make_2reg_op(i0, SimpleExpression::Kind::FPR_TO_GPR, idx);
+    case InstructionKind::LWC1:
+      return make_standard_load(i0, idx, 4, LoadVarOp::Kind::FLOAT);
+    case InstructionKind::LB:
+      return make_standard_load(i0, idx, 1, LoadVarOp::Kind::SIGNED);
+    case InstructionKind::LBU:
+      return make_standard_load(i0, idx, 1, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::LHU:
+      return make_standard_load(i0, idx, 2, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::LH:
+      return make_standard_load(i0, idx, 2, LoadVarOp::Kind::SIGNED);
+    case InstructionKind::LWU:
+      return make_standard_load(i0, idx, 4, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::LW:
+      return convert_lw_1(i0, idx);
+    case InstructionKind::LD:
+      return make_standard_load(i0, idx, 8, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::DSLL:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx);
+    case InstructionKind::DSLL32:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx, 32);
+    case InstructionKind::DSRA:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_ARITH, idx);
+    case InstructionKind::DSRA32:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_ARITH, idx, 32);
+    case InstructionKind::DSRL:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_LOGIC, idx);
+    case InstructionKind::DSRL32:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_LOGIC, idx, 32);
+    case InstructionKind::DIVS:
+      return make_3reg_op(i0, SimpleExpression::Kind::DIV_S, idx);
+    case InstructionKind::SUBS:
+      return make_3reg_op(i0, SimpleExpression::Kind::SUB_S, idx);
+    case InstructionKind::ADDS:
+      return make_3reg_op(i0, SimpleExpression::Kind::ADD_S, idx);
+    case InstructionKind::MULS:
+      return make_3reg_op(i0, SimpleExpression::Kind::MUL_S, idx);
+    case InstructionKind::MINS:
+      return make_3reg_op(i0, SimpleExpression::Kind::MIN_S, idx);
+    case InstructionKind::MAXS:
+      return make_3reg_op(i0, SimpleExpression::Kind::MAX_S, idx);
+    case InstructionKind::DADDIU:
+      return convert_daddiu_1(i0, idx);
     default:
-      return false;
+      return nullptr;
   }
 }
 
@@ -185,7 +326,8 @@ void convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted) {
       // try 1 instruction
-      if (convert_1(*instr, op_idx, op)) {
+      op = convert_1(*instr, op_idx);
+      if (op) {
         converted = true;
         length = 1;
       }
