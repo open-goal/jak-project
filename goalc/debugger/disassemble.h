@@ -7,7 +7,7 @@
 
 struct InstructionInfo {
   emitter::Instruction instruction;  //! the actual x86 instruction
-  enum Kind { PROLOGUE, IR, EPILOGUE } kind;
+  enum class Kind { PROLOGUE, IR, EPILOGUE } kind;
   int ir_idx = -1;
   int offset = -1;
 
