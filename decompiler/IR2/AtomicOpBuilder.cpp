@@ -144,6 +144,31 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
   return std::make_unique<LoadVarOp>(kind, load_size, dst, src, idx);
 }
 
+std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
+                                              int idx,
+                                              int store_size,
+                                              bool is_float) {
+  SimpleAtom val;
+  SimpleExpression dst;
+  if (i0.get_src(0).is_reg(rs7())) {
+    assert(!is_float);
+    val = SimpleAtom::make_sym_ptr("#f");
+  } else {
+    val = make_src_atom(i0.get_src(0).get_reg(), idx);
+  }
+
+  auto base_reg = make_src_atom(i0.get_src(2).get_reg(), idx);
+  auto offset = i0.get_src(1).get_imm();
+  if (offset == 0) {
+    dst = base_reg.as_expr();
+  } else {
+    dst = SimpleExpression(SimpleExpression::Kind::ADD, base_reg,
+                           SimpleAtom::make_int_constant(offset));
+  }
+
+  return std::make_unique<StoreOp>(store_size, is_float, dst, val, idx);
+}
+
 ///////////////////////
 // OP 1 Conversions
 //////////////////////
@@ -227,6 +252,87 @@ std::unique_ptr<AtomicOp> convert_daddiu_1(const Instruction& i0, int idx) {
   }
 }
 
+std::unique_ptr<AtomicOp> convert_dsubu_1(const Instruction& i0, int idx) {
+  if (i0.get_src(0).is_reg(rr0())) {
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx),
+        SimpleExpression(SimpleExpression::Kind::NEG, make_src_atom(i0.get_src(1).get_reg(), idx)),
+        idx);
+  } else {
+    // fall back
+    return make_3reg_op(i0, SimpleExpression::Kind::SUB, idx);
+  }
+}
+
+std::unique_ptr<AtomicOp> convert_nor_1(const Instruction& i0, int idx) {
+  if (i0.get_src(1).is_reg(rr0())) {
+    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
+                                      SimpleExpression(SimpleExpression::Kind::LOGNOT,
+                                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
+                                      idx);
+  } else {
+    // fall back
+    return make_3reg_op(i0, SimpleExpression::Kind::NOR, idx);
+  }
+}
+
+std::unique_ptr<AtomicOp> convert_addiu_1(const Instruction& i0, int idx) {
+  // addiu is used to load a constant. sometimes.
+  if (i0.get_src(0).is_reg(rr0())) {
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx), SimpleAtom::make_int_constant(i0.get_src(1).get_imm()).as_expr(),
+        idx);
+  } else {
+    // may be assembly
+    return nullptr;
+  }
+}
+
+std::unique_ptr<AtomicOp> convert_lui_1(const Instruction& i0, int idx) {
+  if (i0.get_src(0).is_imm()) {
+    return std::make_unique<SetVarOp>(
+        make_dst_var(i0, idx),
+        SimpleAtom::make_int_constant(i0.get_src(0).get_imm() << 16).as_expr(), idx);
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_sll_1(const Instruction& i0, int idx) {
+  if (is_nop(i0)) {
+    return std::make_unique<SpecialOp>(SpecialOp::Kind::NOP, idx);
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_sw_1(const Instruction& i0, int idx) {
+  if (i0.get_src(1).is_sym() && i0.get_src(2).is_reg(rs7())) {
+    auto name = i0.get_src(1).get_sym();
+    // store into symbol table!
+    SimpleAtom val;
+    if (i0.get_src(0).is_reg(rs7())) {
+      // store a false
+      val = SimpleAtom::make_sym_ptr("#f");
+    } else {
+      // store a register.
+      val = make_src_atom(i0.get_src(0).get_reg(), idx);
+    }
+    return std::make_unique<StoreOp>(4, false, SimpleAtom::make_sym_val(name).as_expr(), val, idx);
+  } else {
+    return make_standard_store(i0, idx, 4, false);
+  }
+}
+
+// movn or movz
+std::unique_ptr<AtomicOp> convert_cmov_1(const Instruction& i0, int idx) {
+  if (i0.get_src(0).is_reg(rs7())) {
+    return std::make_unique<ConditionalMoveFalseOp>(make_dst_var(i0, idx),
+                                                    make_src_var(i0.get_src(1).get_reg(), idx),
+                                                    i0.kind == InstructionKind::MOVZ, idx);
+  } else {
+    return nullptr;
+  }
+}
+
 std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
   switch (i0.kind) {
     case InstructionKind::OR:
@@ -281,6 +387,59 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
       return make_3reg_op(i0, SimpleExpression::Kind::MAX_S, idx);
     case InstructionKind::DADDIU:
       return convert_daddiu_1(i0, idx);
+    case InstructionKind::DADDU:
+      return make_3reg_op(i0, SimpleExpression::Kind::ADD, idx);
+    case InstructionKind::DSUBU:
+      return convert_dsubu_1(i0, idx);
+    case InstructionKind::MULT3:
+      return make_3reg_op(i0, SimpleExpression::Kind::MUL_SIGNED, idx);
+    case InstructionKind::MULTU3:
+      return make_3reg_op(i0, SimpleExpression::Kind::MUL_UNSIGNED, idx);
+    case InstructionKind::ANDI:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::AND, idx);
+    case InstructionKind::XORI:
+      return make_2reg_1imm_op(i0, SimpleExpression::Kind::XOR, idx);
+    case InstructionKind::NOR:
+      return convert_nor_1(i0, idx);
+    case InstructionKind::XOR:
+      return make_3reg_op(i0, SimpleExpression::Kind::XOR, idx);
+    case InstructionKind::ADDIU:
+      return convert_addiu_1(i0, idx);
+    case InstructionKind::LUI:
+      return convert_lui_1(i0, idx);
+    case InstructionKind::SLL:
+      return convert_sll_1(i0, idx);
+    case InstructionKind::DSRAV:
+      return make_3reg_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_ARITH, idx);
+    case InstructionKind::DSRLV:
+      return make_3reg_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_LOGIC, idx);
+    case InstructionKind::DSLLV:
+      return make_3reg_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx);
+    case InstructionKind::SB:
+      return make_standard_store(i0, idx, 1, false);
+    case InstructionKind::SH:
+      return make_standard_store(i0, idx, 2, false);
+    case InstructionKind::SW:
+      return convert_sw_1(i0, idx);
+    case InstructionKind::SD:
+      return make_standard_store(i0, idx, 8, false);
+    case InstructionKind::SWC1:
+      return make_standard_store(i0, idx, 4, true);
+    case InstructionKind::CVTWS:  // float to int
+      return make_2reg_op(i0, SimpleExpression::Kind::FLOAT_TO_INT, idx);
+    case InstructionKind::CVTSW:  // int to float
+      return make_2reg_op(i0, SimpleExpression::Kind::INT_TO_FLOAT, idx);
+    case InstructionKind::ABSS:
+      return make_2reg_op(i0, SimpleExpression::Kind::ABS_S, idx);
+    case InstructionKind::NEGS:
+      return make_2reg_op(i0, SimpleExpression::Kind::NEG_S, idx);
+    case InstructionKind::SQRTS:
+      return make_2reg_op(i0, SimpleExpression::Kind::SQRT_S, idx);
+    case InstructionKind::MOVS:
+      return make_2reg_op(i0, SimpleExpression::Kind::IDENTITY, idx);
+    case InstructionKind::MOVN:
+    case InstructionKind::MOVZ:
+      return convert_cmov_1(i0, idx);
     default:
       return nullptr;
   }

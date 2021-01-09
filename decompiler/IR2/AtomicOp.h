@@ -226,7 +226,7 @@ class SimpleExpression {
     RIGHT_SHIFT_ARITH,
     RIGHT_SHIFT_LOGIC,
     MUL_UNSIGNED,
-    NOT,
+    LOGNOT,
     NEG,
     GPR_TO_FPR,
     FPR_TO_GPR
@@ -383,7 +383,7 @@ class SetVarConditionOp : public AtomicOp {
  */
 class StoreOp : public AtomicOp {
  public:
-  StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx);
+  StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
@@ -394,6 +394,8 @@ class StoreOp : public AtomicOp {
   void update_register_info() override;
 
  private:
+  int m_size;
+  bool m_is_float;
   SimpleExpression m_addr;
   SimpleAtom m_value;
 };

@@ -215,7 +215,7 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "srl";
     case SimpleExpression::Kind::MUL_UNSIGNED:
       return "*.ui";
-    case SimpleExpression::Kind::NOT:
+    case SimpleExpression::Kind::LOGNOT:
       return "lognot";
     case SimpleExpression::Kind::NEG:
       return "-";
@@ -261,7 +261,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
     case SimpleExpression::Kind::MUL_UNSIGNED:
       return 2;
-    case SimpleExpression::Kind::NOT:
+    case SimpleExpression::Kind::LOGNOT:
     case SimpleExpression::Kind::NEG:
     case SimpleExpression::Kind::GPR_TO_FPR:
     case SimpleExpression::Kind::FPR_TO_GPR:
@@ -730,11 +730,38 @@ void SetVarConditionOp::update_register_info() {
 // StoreOp
 /////////////////////////////
 
-StoreOp::StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx)
-    : AtomicOp(my_idx), m_addr(std::move(addr)), m_value(std::move(value)) {}
+StoreOp::StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx)
+    : AtomicOp(my_idx),
+      m_size(size),
+      m_is_float(is_float),
+      m_addr(std::move(addr)),
+      m_value(std::move(value)) {}
 
 goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("store!"), m_addr.to_form(labels, env),
+  std::string store_name;
+  if (m_is_float) {
+    assert(m_size == 4);
+    store_name = "s.f!";
+  } else {
+    switch (m_size) {
+      case 1:
+        store_name = "s.b!";
+        break;
+      case 2:
+        store_name = "s.h!";
+        break;
+      case 4:
+        store_name = "s.w!";
+        break;
+      case 8:
+        store_name = "s.d!";
+        break;
+      default:
+        assert(false);
+    }
+  }
+
+  return pretty_print::build_list(pretty_print::to_symbol(store_name), m_addr.to_form(labels, env),
                                   m_value.to_form(labels, env));
 }
 
