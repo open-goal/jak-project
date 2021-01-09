@@ -41,7 +41,8 @@ InstructionParser::InstructionParser() {
                  InstructionKind::BNEL,   InstructionKind::BC1FL,  InstructionKind::BC1TL,
                  InstructionKind::BLTZ,   InstructionKind::BGEZ,   InstructionKind::BLEZ,
                  InstructionKind::BGTZ,   InstructionKind::BLTZL,  InstructionKind::BGTZL,
-                 InstructionKind::BGEZL,  InstructionKind::MTC1,   InstructionKind::MFC1}) {
+                 InstructionKind::BGEZL,  InstructionKind::MTC1,   InstructionKind::MFC1,
+                 InstructionKind::MFLO,   InstructionKind::MFHI}) {
     auto& info = gOpcodeInfo[int(i)];
     if (info.defined) {
       m_opcode_name_lookup[info.name] = int(i);

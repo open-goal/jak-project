@@ -1,5 +1,6 @@
 #include <cassert>
 #include <utility>
+#include <stdexcept>
 #include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -14,7 +15,10 @@ Variable::Variable(Mode mode, Register reg, int atomic_idx, bool allow_all)
     : m_mode(mode), m_reg(reg), m_atomic_idx(atomic_idx) {
   // make sure we're using a valid GPR.
   if (reg.get_kind() == Reg::GPR && !allow_all) {
-    assert(Reg::allowed_local_gprs[reg.get_gpr()] || reg.get_gpr() == Reg::S6);
+    if (!(Reg::allowed_local_gprs[reg.get_gpr()] || reg.get_gpr() == Reg::S6)) {
+      throw std::runtime_error("Variable could not be constructed from register " +
+                               reg.to_string());
+    }
   }
 }
 
@@ -223,6 +227,14 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "gpr->fpr";
     case SimpleExpression::Kind::FPR_TO_GPR:
       return "fpr->gpr";
+    case SimpleExpression::Kind::MIN_SIGNED:
+      return "min.si";
+    case SimpleExpression::Kind::MIN_UNSIGNED:
+      return "min.ui";
+    case SimpleExpression::Kind::MAX_SIGNED:
+      return "max.si";
+    case SimpleExpression::Kind::MAX_UNSIGNED:
+      return "max.ui";
     default:
       assert(false);
   }
@@ -266,6 +278,11 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::GPR_TO_FPR:
     case SimpleExpression::Kind::FPR_TO_GPR:
       return 1;
+    case SimpleExpression::Kind::MIN_SIGNED:
+    case SimpleExpression::Kind::MIN_UNSIGNED:
+    case SimpleExpression::Kind::MAX_SIGNED:
+    case SimpleExpression::Kind::MAX_UNSIGNED:
+      return 2;
     default:
       assert(false);
   }
@@ -668,7 +685,11 @@ goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     forms.push_back(pretty_print::to_symbol(m_src[i].to_string(env)));
   }
-  return pretty_print::build_list(forms);
+  if (forms.size() > 1) {
+    return pretty_print::build_list(forms);
+  } else {
+    return forms.front();
+  }
 }
 
 void IR2_Condition::get_regs(std::vector<Register>* out) const {
@@ -1162,7 +1183,8 @@ std::unique_ptr<Expr> CallOp::get_as_expr() const {
 }
 
 void CallOp::update_register_info() {
-  throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
+  // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
+  m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
 }
 
 /////////////////////////////

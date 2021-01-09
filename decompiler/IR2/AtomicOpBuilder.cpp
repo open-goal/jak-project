@@ -27,6 +27,18 @@ Register rfp() {
   return make_gpr(Reg::FP);
 }
 
+Register rra() {
+  return make_gpr(Reg::RA);
+}
+
+Register rt9() {
+  return make_gpr(Reg::T9);
+}
+
+Register rv0() {
+  return make_gpr(Reg::V0);
+}
+
 /////////////////////////
 // Variable Helpers
 /////////////////////////
@@ -139,7 +151,7 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
     // the offset is not 0
     src = make_reg_plus_int(i0.get_src(1).get_reg(), i0.get_src(0).get_imm(), idx);
   } else {
-    assert(false);
+    return nullptr;
   }
   return std::make_unique<LoadVarOp>(kind, load_size, dst, src, idx);
 }
@@ -167,6 +179,55 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
   }
 
   return std::make_unique<StoreOp>(store_size, is_float, dst, val, idx);
+}
+
+////////////////////////
+// Branch Helpers
+////////////////////////
+
+IR2_BranchDelay get_branch_delay(const Instruction& i0, int idx) {
+  if (is_nop(i0)) {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::NOP);
+  } else if (is_gpr_3(i0, InstructionKind::OR, {}, rs7(), rr0())) {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_FALSE, make_dst_var(i0, idx));
+  } else if (is_gpr_3(i0, InstructionKind::OR, {}, {}, rr0())) {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_REG, make_dst_var(i0, idx),
+                           make_src_var(i0.get_src(0).get_reg(), idx));
+  } else if (i0.kind == InstructionKind::DADDIU && i0.get_src(0).is_reg(rs7()) &&
+             i0.get_src(1).is_imm(FIX_SYM_TRUE)) {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_REG_TRUE, make_dst_var(i0, idx));
+  } else if (i0.kind == InstructionKind::LW && i0.get_src(1).is_reg(rs7()) &&
+             i0.get_src(0).is_sym()) {
+    if (i0.get_src(0).is_sym("binteger")) {
+      return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_BINTEGER, make_dst_var(i0, idx));
+    } else if (i0.get_src(0).is_sym("pair")) {
+      return IR2_BranchDelay(IR2_BranchDelay::Kind::SET_PAIR, make_dst_var(i0, idx));
+    } else {
+      return IR2_BranchDelay(IR2_BranchDelay::Kind::UNKNOWN);
+    }
+  } else if (i0.kind == InstructionKind::DSLLV) {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::DSLLV, make_dst_var(i0, idx),
+                           make_src_var(i0.get_src(0).get_reg(), idx),
+                           make_src_var(i0.get_src(1).get_reg(), idx));
+  } else if (is_gpr_3(i0, InstructionKind::DSUBU, {}, rr0(), {})) {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::NEGATE, make_dst_var(i0, idx),
+                           make_src_var(i0.get_src(1).get_reg(), idx));
+  } else {
+    return IR2_BranchDelay(IR2_BranchDelay::Kind::UNKNOWN);
+  }
+}
+
+std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
+                                      const Instruction& delay,
+                                      bool likely,
+                                      int dest_label,
+                                      int my_idx) {
+  auto branch_delay = get_branch_delay(delay, my_idx);
+  if (branch_delay.is_known()) {
+    return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
+  } else {
+    return nullptr;
+  }
 }
 
 ///////////////////////
@@ -205,7 +266,7 @@ std::unique_ptr<AtomicOp> convert_ori_1(const Instruction& i0, int idx) {
     // ori dst, a0, 1234
     return make_2reg_1imm_op(i0, SimpleExpression::Kind::OR, idx);
   } else {
-    assert(false);
+    return nullptr;
   }
   return std::make_unique<SetVarOp>(dest, src, idx);
 }
@@ -445,6 +506,203 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
   }
 }
 
+///////////////////////
+// OP 2 Conversions
+//////////////////////
+
+std::unique_ptr<AtomicOp> convert_division_2(const Instruction& i0,
+                                             const Instruction& i1,
+                                             int idx,
+                                             bool is_signed) {
+  if (i1.kind == InstructionKind::MFLO) {
+    // divide
+    auto src = make_2reg_expr(
+        i0, is_signed ? SimpleExpression::Kind::DIV_SIGNED : SimpleExpression::Kind::DIV_UNSIGNED,
+        idx);
+    return std::make_unique<SetVarOp>(make_dst_var(i1, idx), src, idx);
+  } else if (i1.kind == InstructionKind::MFHI) {
+    // mod
+    auto src = make_2reg_expr(
+        i0, is_signed ? SimpleExpression::Kind::MOD_SIGNED : SimpleExpression::Kind::MOD_UNSIGNED,
+        idx);
+    return std::make_unique<SetVarOp>(make_dst_var(i1, idx), src, idx);
+  } else {
+    return nullptr;
+  }
+}
+
+std::unique_ptr<AtomicOp> convert_jalr_2(const Instruction& i0, const Instruction& i1, int idx) {
+  if (i0.kind == InstructionKind::JALR && i0.get_dst(0).is_reg(rra()) &&
+      i0.get_src(0).is_reg(rt9()) && is_gpr_2_imm_int(i1, InstructionKind::SLL, rv0(), rra(), 0)) {
+    return std::make_unique<CallOp>(idx);
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
+                                        const Instruction& i1,
+                                        int idx,
+                                        bool likely) {
+  auto s0 = i0.get_src(0).get_reg();
+  auto s1 = i0.get_src(1).get_reg();
+  auto dest = i0.get_src(2).get_label();
+  IR2_Condition condition;
+  if (s1 == rr0()) {
+    condition = IR2_Condition(IR2_Condition::Kind::NONZERO, make_src_var(s0, idx));
+  } else if (i0.get_src(0).is_reg(rs7())) {
+    condition = IR2_Condition(IR2_Condition::Kind::TRUTHY, make_src_var(s1, idx));
+  } else {
+    condition =
+        IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_var(s0, idx), make_src_var(s1, idx));
+  }
+  return make_branch(condition, i1, likely, dest, idx);
+}
+
+std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
+                                        const Instruction& i1,
+                                        int idx,
+                                        bool likely) {
+  auto s0 = i0.get_src(0).get_reg();
+  auto s1 = i0.get_src(1).get_reg();
+  auto dest = i0.get_src(2).get_label();
+  IR2_Condition condition;
+  if (s0 == rr0() && s1 == rr0()) {
+    condition = IR2_Condition(IR2_Condition::Kind::ALWAYS);
+  } else if (s1 == rr0()) {
+    condition = IR2_Condition(IR2_Condition::Kind::ZERO, make_src_var(s0, idx));
+  } else if (i0.get_src(0).is_reg(rs7())) {
+    condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_var(s1, idx));
+  } else {
+    condition =
+        IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_var(s0, idx), make_src_var(s1, idx));
+  }
+  return make_branch(condition, i1, likely, dest, idx);
+}
+
+std::unique_ptr<AtomicOp> convert_branch_r1_2(const Instruction& i0,
+                                              const Instruction& i1,
+                                              IR2_Condition::Kind kind,
+                                              bool likely,
+                                              int idx) {
+  return make_branch(IR2_Condition(kind, make_src_var(i0.get_src(0).get_reg(), idx)), i1, likely,
+                     i0.get_src(1).get_label(), idx);
+}
+
+std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0, const Instruction& i1, int idx) {
+  // daddiu dest, s7, 8
+  // mov{n,z} dest, s7, src
+  if (i1.kind == InstructionKind::MOVN || i1.kind == InstructionKind::MOVZ) {
+    auto dest = i0.get_dst(0).get_reg();
+    auto src = i1.get_src(1).get_reg();
+    assert(i0.get_src(0).is_reg(rs7()));
+    assert(i0.get_src(1).is_imm(8));
+    assert(i1.get_dst(0).is_reg(dest));
+    assert(i1.get_src(0).is_reg(rs7()));
+    auto kind =
+        i1.kind == InstructionKind::MOVN ? IR2_Condition::Kind::ZERO : IR2_Condition::Kind::NONZERO;
+    return std::make_unique<SetVarConditionOp>(make_dst_var(dest, idx),
+                                               IR2_Condition(kind, make_src_var(src, idx)), idx);
+  }
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_lui_2(const Instruction& i0, const Instruction& i1, int idx) {
+  if (i1.kind == InstructionKind::ORI) {
+    // lui temp, <>
+    // ori dst, temp, <>
+    // possibly temp = dst.
+    auto temp = i0.get_dst(0).get_reg();
+    if (i1.get_src(0).get_reg() != temp) {
+      return nullptr;
+    }
+    auto dst = i1.get_dst(0).get_reg();
+
+    SimpleAtom src;
+    if (i0.get_src(0).is_imm() && i1.get_src(1).is_imm()) {
+      src = SimpleAtom::make_int_constant(s64(i1.get_src(1).get_imm()) +
+                                          (s64(i0.get_src(0).get_imm()) << 16));
+    } else if (i0.get_src(0).is_label() && i1.get_src(1).is_label()) {
+      auto label = i0.get_src(0).get_label();
+      assert(label == i1.get_src(1).get_label());
+      src = SimpleAtom::make_static_address(label);
+    }
+
+    auto result = std::make_unique<SetVarOp>(make_dst_var(dst, idx), src.as_expr(), idx);
+    if (temp != dst) {
+      result->add_clobber_reg(temp);
+    }
+    return result;
+  }
+
+  return nullptr;
+}
+
+std::unique_ptr<AtomicOp> convert_slt_2(const Instruction& i0,
+                                        const Instruction& i1,
+                                        int idx,
+                                        bool is_signed) {
+  // this is to do a min or max.
+  // possibly due to a GOAL compiler bug, the output always goes in left and there is always
+  // a clobbered register. Likely there was a swapped register allocation setup here.
+  // it doesn't generate wrong code, just not optimal.
+  // slt temp, left, right
+  // mov{n,z} left, right, temp
+  auto temp = i0.get_dst(0).get_reg();
+  auto left = i0.get_src(0).get_reg();
+  auto right = i0.get_src(1).get_reg();
+  assert(temp != left);
+  assert(temp != right);
+  assert(left != right);
+  std::unique_ptr<AtomicOp> result;
+  SimpleExpression::Kind kind;
+  if (is_gpr_3(i1, InstructionKind::MOVZ, left, right, temp)) {
+    kind = is_signed ? SimpleExpression::Kind::MIN_SIGNED : SimpleExpression::Kind::MIN_UNSIGNED;
+  } else if (is_gpr_3(i1, InstructionKind::MOVN, left, right, temp)) {
+    kind = is_signed ? SimpleExpression::Kind::MAX_SIGNED : SimpleExpression::Kind::MAX_UNSIGNED;
+  } else {
+    return nullptr;
+  }
+  result = std::make_unique<SetVarOp>(
+      make_dst_var(left, idx),
+      SimpleExpression(kind, make_src_atom(left, idx), make_src_atom(right, idx)), idx);
+  result->add_clobber_reg(temp);
+  return result;
+}
+
+std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1, int idx) {
+  switch (i0.kind) {
+    case InstructionKind::DIV:
+      return convert_division_2(i0, i1, idx, true);
+    case InstructionKind::DIVU:
+      return convert_division_2(i0, i1, idx, false);
+    case InstructionKind::JALR:
+      return convert_jalr_2(i0, i1, idx);
+    case InstructionKind::BNE:
+      return convert_bne_2(i0, i1, idx, false);
+    case InstructionKind::BNEL:
+      return convert_bne_2(i0, i1, idx, true);
+    case InstructionKind::BEQ:
+      return convert_beq_2(i0, i1, idx, false);
+    case InstructionKind::BEQL:
+      return convert_beq_2(i0, i1, idx, true);
+    case InstructionKind::BGTZL:
+      return convert_branch_r1_2(i0, i1, IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED, true, idx);
+    case InstructionKind::BGEZL:
+      return convert_branch_r1_2(i0, i1, IR2_Condition::Kind::GEQ_ZERO_SIGNED, true, idx);
+    case InstructionKind::BLTZL:
+      return convert_branch_r1_2(i0, i1, IR2_Condition::Kind::LESS_THAN_ZERO, true, idx);
+    case InstructionKind::DADDIU:
+      return convert_daddiu_2(i0, i1, idx);
+    case InstructionKind::LUI:
+      return convert_lui_2(i0, i1, idx);
+    case InstructionKind::SLT:
+      return convert_slt_2(i0, i1, idx, true);
+    case InstructionKind::SLTU:
+      return convert_slt_2(i0, i1, idx, false);
+    default:
+      return nullptr;
+  }
+}
 }  // namespace
 
 /*!
@@ -481,6 +739,11 @@ void convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted && n_instr >= 2) {
       // try 2 instructions
+      op = convert_2(instr[0], instr[1], op_idx);
+      if (op) {
+        converted = true;
+        length = 2;
+      }
     }
 
     if (!converted) {

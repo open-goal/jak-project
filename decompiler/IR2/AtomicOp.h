@@ -124,6 +124,7 @@ class AtomicOp {
   const std::vector<Register>& read_regs() { return m_read_regs; }
   const std::vector<Register>& write_regs() { return m_write_regs; }
   const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
+  void add_clobber_reg(Register r) { m_clobber_regs.push_back(r); }
 
   virtual ~AtomicOp() = default;
 
@@ -229,7 +230,11 @@ class SimpleExpression {
     LOGNOT,
     NEG,
     GPR_TO_FPR,
-    FPR_TO_GPR
+    FPR_TO_GPR,
+    MIN_SIGNED,
+    MAX_SIGNED,
+    MIN_UNSIGNED,
+    MAX_UNSIGNED
   };
 
   // how many arguments?
@@ -341,6 +346,7 @@ class IR2_Condition {
     INVALID
   };
 
+  IR2_Condition() = default;
   explicit IR2_Condition(Kind kind);
   IR2_Condition(Kind kind, const Variable& src0);
   IR2_Condition(Kind kind, const Variable& src0, const Variable& src1);
@@ -441,7 +447,8 @@ class IR2_BranchDelay {
     SET_BINTEGER,
     SET_PAIR,
     DSLLV,
-    NEGATE
+    NEGATE,
+    UNKNOWN
   };
 
   explicit IR2_BranchDelay(Kind kind);
@@ -451,10 +458,11 @@ class IR2_BranchDelay {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   bool operator==(const IR2_BranchDelay& other) const;
   void get_regs(std::vector<Register>* write, std::vector<Register>* read) const;
+  bool is_known() const { return m_kind != Kind::UNKNOWN; }
 
  private:
   std::optional<Variable> m_var[3];
-  Kind m_kind;
+  Kind m_kind = Kind::UNKNOWN;
 };
 
 /*!
