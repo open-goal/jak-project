@@ -1,4 +1,3 @@
-import os
 import re
 
 # Quick and dirty script to generate decompiler test cases from text file format

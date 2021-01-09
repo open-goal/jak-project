@@ -190,7 +190,7 @@ TEST(DecompilerAtomicOpBuilder, DSLL32) {
 }
 
 TEST(DecompilerAtomicOpBuilder, DSLLV) {
-  test_case(assembly_from_list({"dsllv a1, a2, a3"}), {"(set! a1 (sll a2 a3))"}, {{"a1"}},
+  test_case(assembly_from_list({"dsllv a1, a2, a3"}), {"(set! a1 (shl a2 a3))"}, {{"a1"}},
             {{"a2", "a3"}}, {{}});
 }
 
@@ -321,7 +321,7 @@ TEST(DecompilerAtomicOpBuilder, MIN_S) {
 }
 
 TEST(DecompilerAtomicOpBuilder, MOVN) {
-  test_case(assembly_from_list({"movn a1, s7, a2"}), {"(cmove-#f-zero a1 a2)"}, {{"a1"}}, {{"a2"}},
+  test_case(assembly_from_list({"movn a1, s7, a2"}), {"(cmove-#f-nonzero a1 a2)"}, {{"a1"}}, {{"a2"}},
             {{}});
 }
 
