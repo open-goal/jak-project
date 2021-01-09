@@ -4,6 +4,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 
+namespace decompiler {
 /*!
  * Find all basic blocks in a function.
  * All delay slot instructions are grouped with the branch instruction.
@@ -49,3 +50,4 @@ std::vector<BasicBlock> find_blocks_in_function(const LinkedObjectFile& file,
 
   return basic_blocks;
 }
+}  // namespace decompiler

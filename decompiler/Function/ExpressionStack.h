@@ -6,6 +6,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/TP_Type.h"
 
+namespace decompiler {
 /*!
  * An ExpressionStack is used to track partial expressions when rebuilding the tree structure of
  * GOAL code. Linear sequences of operations are added onto the expression stack.
@@ -34,3 +35,4 @@ class ExpressionStack {
   bool display_stack_empty();
   StackEntry& get_display_stack_top();
 };
+}  // namespace decompiler

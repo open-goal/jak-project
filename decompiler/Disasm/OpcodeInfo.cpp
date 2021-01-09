@@ -6,7 +6,12 @@
 #include "OpcodeInfo.h"
 #include <cassert>
 
+namespace decompiler {
 OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];
+
+namespace {
+bool opcodes_initialized = false;
+}
 
 typedef InstructionKind IK;
 typedef FieldType FT;
@@ -130,6 +135,9 @@ static OpcodeInfo& cd_dacc_svfs_svft(OpcodeInfo& info) {
 }
 
 void init_opcode_info() {
+  if (opcodes_initialized) {
+    return;
+  }
   gOpcodeInfo[0].name = ";; ??????";
 
   // RT, RS, SIMM
@@ -444,6 +452,7 @@ void init_opcode_info() {
   // for the UNKNOWN op which shouldn't be valid.
   total_count--;
   assert(total_count == valid_count);
+  opcodes_initialized = true;
 }
 
 void OpcodeInfo::step(DecodeStep& s) {
@@ -502,3 +511,4 @@ OpcodeInfo& OpcodeInfo::dst_vf(FieldType field) {
 OpcodeInfo& OpcodeInfo::dst_vi(FieldType field) {
   return dst(field, DT::VI);
 }
+}  // namespace decompiler

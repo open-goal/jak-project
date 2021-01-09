@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include "decompiler/Disasm/Register.h"
 
+namespace decompiler {
 struct TypeHint {
   Register reg;
   std::string type_name;
@@ -46,5 +47,6 @@ struct Config {
 
 Config& get_config();
 void set_config(const std::string& path_to_config_file);
+}  // namespace decompiler
 
 #endif  // JAK2_DISASSEMBLER_CONFIG_H

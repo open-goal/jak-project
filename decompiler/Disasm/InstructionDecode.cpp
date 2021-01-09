@@ -8,6 +8,7 @@
 #include <cassert>
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
+namespace decompiler {
 // utility class to extract fields of an opcode.
 struct OpcodeFields {
   OpcodeFields(uint32_t _data) : data(_data) {}
@@ -1171,3 +1172,4 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
 
   return i;
 }
+}  // namespace decompiler

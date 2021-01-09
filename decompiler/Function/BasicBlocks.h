@@ -7,6 +7,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
 
+namespace decompiler {
 class LinkedObjectFile;
 class Function;
 
@@ -48,3 +49,4 @@ struct BlockTopologicalSort {
 std::vector<BasicBlock> find_blocks_in_function(const LinkedObjectFile& file,
                                                 int seg,
                                                 const Function& func);
+}  // namespace decompiler

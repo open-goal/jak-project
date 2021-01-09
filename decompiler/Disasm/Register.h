@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 
+namespace decompiler {
 // Namespace for register name constants
 namespace Reg {
 enum RegisterKind {
@@ -120,6 +121,9 @@ enum Vi {
   CMSAR1 = 31,
   MAX_COP2 = 32
 };
+
+const extern bool allowed_local_gprs[Reg::MAX_GPR];
+
 }  // namespace Reg
 
 // Representation of a register.  Uses a 32-bit integer internally.
@@ -148,5 +152,5 @@ class Register {
  private:
   uint16_t id = -1;
 };
-
+}  // namespace decompiler
 #endif  // NEXT_REGISTER_H

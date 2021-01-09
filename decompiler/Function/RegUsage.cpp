@@ -1,6 +1,7 @@
 #include "Function.h"
 #include "decompiler/IR/IR.h"
 
+namespace decompiler {
 namespace {
 bool in_set(RegSet& set, const Register& obj) {
   return set.find(obj) != set.end();
@@ -171,3 +172,4 @@ void Function::run_reg_usage() {
     }
   }
 }
+}  // namespace decompiler

@@ -3,6 +3,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "third-party/fmt/core.h"
 
+namespace decompiler {
 // hack to print out reverse deref paths on loads to help with debugging load stuff.
 bool enable_hack_load_path_print = false;
 // hack to print (begin x) as x to make debug output easier to read.
@@ -1274,3 +1275,4 @@ void IR_Break::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(return_code);
   output->push_back(dead_code);
 }
+}  // namespace decompiler

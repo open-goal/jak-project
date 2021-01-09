@@ -2,18 +2,17 @@
 #include <string>
 #include <vector>
 #include "ObjectFile/ObjectFileDB.h"
+#include "common/log/log.h"
 #include "config.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
-#include "third-party/spdlog/include/spdlog/sinks/basic_file_sink.h"
 #include "common/util/FileUtil.h"
 
 int main(int argc, char** argv) {
-  spdlog::info("Beginning disassembly. This may take a few minutes...");
-
-  spdlog::set_level(spdlog::level::debug);
-  //  auto lu = spdlog::basic_logger_mt("GOAL Decompiler", "logs/decompiler.log");
-  //  spdlog::set_default_logger(lu);
-  spdlog::flush_on(spdlog::level::info);
+  using namespace decompiler;
+  lg::set_file(file_util::get_file_path({"log/decompiler.txt"}));
+  lg::set_file_level(lg::level::info);
+  lg::set_stdout_level(lg::level::info);
+  lg::set_flush_level(lg::level::info);
+  lg::initialize();
 
   file_util::init_crc();
   init_opcode_info();
@@ -69,7 +68,7 @@ int main(int argc, char** argv) {
   }
 
   if (get_config().process_game_text) {
-    auto result = db.process_game_text();
+    auto result = db.process_game_text_files();
     file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
   }
 
@@ -78,7 +77,7 @@ int main(int argc, char** argv) {
   }
 
   if (get_config().process_game_count) {
-    auto result = db.process_game_count();
+    auto result = db.process_game_count_file();
     file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
   }
 
@@ -98,6 +97,6 @@ int main(int argc, char** argv) {
 
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
-  spdlog::info("Disassembly has completed successfully.");
+  lg::info("Disassembly has completed successfully.");
   return 0;
 }

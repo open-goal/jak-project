@@ -2,9 +2,10 @@
 #include "common/goos/Reader.h"
 #include "common/type_system/deftype.h"
 #include "decompiler/Disasm/Register.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 #include "TP_Type.h"
 
+namespace decompiler {
 DecompilerTypeSystem::DecompilerTypeSystem() {
   ts.add_builtin_types();
 }
@@ -105,9 +106,9 @@ void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {
   auto kv = type_flags.find(name);
   if (kv != type_flags.end()) {
     if (kv->second != flags) {
-      spdlog::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
-                   flags);
-      spdlog::warn("duplicated type flags that are inconsistent!");
+      lg::warn("duplicated type flags for {}, was 0x{:x}, now 0x{:x}", name.c_str(), kv->second,
+               flags);
+      lg::warn("duplicated type flags that are inconsistent!");
     }
   }
   type_flags[name] = flags;
@@ -117,8 +118,8 @@ void DecompilerTypeSystem::add_type_parent(const std::string& child, const std::
   auto kv = type_parents.find(child);
   if (kv != type_parents.end()) {
     if (kv->second != parent) {
-      spdlog::warn("duplicated type parents for {} was {} now {}", child.c_str(),
-                   kv->second.c_str(), parent.c_str());
+      lg::warn("duplicated type parents for {} was {} now {}", child.c_str(), kv->second.c_str(),
+               parent.c_str());
       throw std::runtime_error("duplicated type parents that are inconsistent!");
     }
   }
@@ -151,8 +152,8 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   } else {
     if (ts.typecheck(type_spec, skv->second, "", false, false)) {
     } else {
-      spdlog::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
-                   skv->second.print(), type_spec.print());
+      lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
+               skv->second.print(), type_spec.print());
       throw std::runtime_error("Type redefinition");
     }
   }
@@ -323,3 +324,4 @@ int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) {
     return type.get_format_string_arg_count();
   }
 }
+}  // namespace decompiler

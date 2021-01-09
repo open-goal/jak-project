@@ -5,6 +5,7 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
+namespace decompiler {
 namespace {
 // bool is_plain_type(const TP_Type& type, const TypeSpec& ts) {
 //  return type.as_typespec() == ts;
@@ -946,3 +947,4 @@ TP_Type IR_CMoveF::get_expression_type(const TypeState& input,
   (void)dts;
   return TP_Type::make_from_typespec(TypeSpec("symbol"));
 }
+}  // namespace decompiler

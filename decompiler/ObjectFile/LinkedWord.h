@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 
+namespace decompiler {
 class LinkedWord {
  public:
   explicit LinkedWord(uint32_t _data) : data(_data) {}
@@ -31,5 +32,6 @@ class LinkedWord {
   int label_id = -1;
   std::string symbol_name;
 };
+}  // namespace decompiler
 
 #endif  // JAK2_DISASSEMBLER_LINKEDWORD_H

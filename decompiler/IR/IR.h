@@ -11,13 +11,14 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
 
-class LinkedObjectFile;
-class DecompilerTypeSystem;
-class ExpressionStack;
-
 namespace goos {
 class Object;
 }
+
+namespace decompiler {
+class LinkedObjectFile;
+class DecompilerTypeSystem;
+class ExpressionStack;
 
 class IR {
  public:
@@ -765,5 +766,5 @@ class IR_Break : public virtual IR {
   goos::Object to_form(const LinkedObjectFile& file) const override;
   void get_children(std::vector<std::shared_ptr<IR>>* output) const override;
 };
-
+}  // namespace decompiler
 #endif  // JAK_IR_H

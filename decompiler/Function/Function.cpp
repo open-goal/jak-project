@@ -1,13 +1,14 @@
 #include <cassert>
 #include <vector>
 #include "Function.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "TypeInspector.h"
 #include "decompiler/IR/IR.h"
 
+namespace decompiler {
 namespace {
 std::vector<Register> gpr_backups = {make_gpr(Reg::GP), make_gpr(Reg::S5), make_gpr(Reg::S4),
                                      make_gpr(Reg::S3), make_gpr(Reg::S2), make_gpr(Reg::S1),
@@ -70,8 +71,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing stack pointer on the stack is done by some ASM kernel functions
       if (instr.kind == InstructionKind::SW && instr.get_src(0).get_reg() == make_gpr(Reg::SP)) {
         printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
-               guessed_name.to_string().c_str(), instr.to_string(file).c_str());
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file) + "\n";
+               guessed_name.to_string().c_str(), instr.to_string(file.labels).c_str());
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
         suspected_asm = true;
         return;
       }
@@ -92,9 +93,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
       // support
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
-        spdlog::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
-                     guessed_name.to_string(), instr.to_string(file));
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file) + "\n";
+        lg::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
+                 guessed_name.to_string(), instr.to_string(file.labels));
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
         suspected_asm = true;
         return;
       }
@@ -164,9 +165,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           suspected_asm = true;
           printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
                  guessed_name.to_string().c_str(),
-                 instructions.at(idx + i).to_string(file).c_str());
+                 instructions.at(idx + i).to_string(file.labels).c_str());
           warnings += ";; Suspected asm function due to stack store: " +
-                      instructions.at(idx + i).to_string(file) + "\n";
+                      instructions.at(idx + i).to_string(file.labels) + "\n";
           return;
         }
       }
@@ -194,9 +195,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             suspected_asm = true;
             printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
                    guessed_name.to_string().c_str(),
-                   instructions.at(idx + i).to_string(file).c_str());
+                   instructions.at(idx + i).to_string(file.labels).c_str());
             warnings += ";; Suspected asm function due to stack store: " +
-                        instructions.at(idx + i).to_string(file) + "\n";
+                        instructions.at(idx + i).to_string(file.labels) + "\n";
             return;
           }
         }
@@ -643,7 +644,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
         // done!
         //        fmt::print("Got type {} parent {}\n", type_name, parent_type);
         dts.add_type_parent(type_name, parent_type);
-        Label flag_label = file.labels.at(label_idx);
+        DecompilerLabel flag_label = file.labels.at(label_idx);
         u64 word = file.read_data_word(flag_label);
         flag_label.offset += 4;
         u64 word2 = file.read_data_word(flag_label);
@@ -745,3 +746,4 @@ BlockTopologicalSort Function::bb_topo_sort() {
 
   return result;
 }
+}  // namespace decompiler

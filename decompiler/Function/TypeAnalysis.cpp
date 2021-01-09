@@ -3,6 +3,7 @@
 #include "third-party/fmt/core.h"
 #include "decompiler/config.h"
 
+namespace decompiler {
 namespace {
 TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   TypeState result;
@@ -133,3 +134,4 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
 
   return true;
 }
+}  // namespace decompiler

@@ -2,6 +2,7 @@
 #include <string>
 #include <unordered_map>
 
+namespace decompiler {
 struct ObjectFileData;
 
 struct GameTextResult {
@@ -14,3 +15,4 @@ struct GameTextResult {
 GameTextResult process_game_text(ObjectFileData& data);
 std::string write_game_text(
     const std::unordered_map<int, std::unordered_map<int, std::string>>& data);
+}  // namespace decompiler

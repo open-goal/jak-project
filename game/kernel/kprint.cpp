@@ -349,7 +349,7 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
       value = (char)rounder;
     } else if (!(ru32 >> 31)) {  // sign bit
       value = 0;
-      assert(false);  // not sure what happens here.
+      // assert(false);  // not sure what happens here.
     } else {
       value = -1;  // happens on NaN's
     }
@@ -396,7 +396,7 @@ s32 cvt_float(float x, s32 precision, s32* lead_char, char* buff_start, char* bu
           value = (char)next_int;
         } else if (!(ru32 >> 0x1f)) {
           value = 0;
-          assert(false);  // not sure what happens here.
+          // assert(false);  // not sure what happens here.
         } else {
           value = -1;  // happens on NaN's
         }

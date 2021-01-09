@@ -6,6 +6,7 @@
 #include <cassert>
 #include "InstructionMatching.h"
 
+namespace decompiler {
 /*!
  * Check if the given instruction stores a GPR with the specified parameters.
  */
@@ -348,3 +349,4 @@ bool is_always_branch(const Instruction& instr) {
 
   return false;
 }
+}  // namespace decompiler

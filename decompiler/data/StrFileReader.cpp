@@ -10,6 +10,7 @@
 #include "game/common/str_rpc_types.h"
 #include "StrFileReader.h"
 
+namespace decompiler {
 StrFileReader::StrFileReader(const std::string& file_path) {
   auto data = file_util::read_binary_file(file_path);
   assert(data.size() >= SECTOR_SIZE);      // must have at least the header sector
@@ -179,3 +180,4 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
 
   return result;
 }
+}  // namespace decompiler

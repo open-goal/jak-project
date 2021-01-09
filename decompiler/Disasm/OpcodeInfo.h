@@ -10,6 +10,7 @@
 
 #include <string>
 
+namespace decompiler {
 enum class InstructionKind {
   UNKNOWN,
 
@@ -342,12 +343,12 @@ struct OpcodeInfo {
   OpcodeInfo& dst_vf(FieldType field);
   OpcodeInfo& dst_vi(FieldType field);
 
-  uint8_t step_count;
+  uint8_t step_count = 0;
   DecodeStep steps[MAX_DECODE_STEPS];
 };
 
 extern OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];
 
 void init_opcode_info();
-
+}  // namespace decompiler
 #endif  // NEXT_OPCODEINFO_H

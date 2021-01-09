@@ -5,83 +5,7 @@
 #include "common/common_types.h"
 #include "decompiler/Disasm/Register.h"
 
-// struct TP_Type {
-//  enum Kind {
-//    OBJECT_OF_TYPE,
-//    TYPE_OBJECT,
-//    FALSE,
-//    NONE,
-//    PRODUCT,
-//    OBJ_PLUS_PRODUCT,
-//    PARTIAL_METHOD_TABLE_ACCESS,  // type + method_number * 4
-//    METHOD_NEW_OF_OBJECT,
-//    STRING
-//  } kind = NONE;
-//  // in the case that we are type_object, just store the type name in a single arg ts.
-//  TypeSpec ts;
-//  int multiplier;
-//  std::string str_data;
-//
-//  TP_Type() = default;
-//  explicit TP_Type(const TypeSpec& _ts) {
-//    kind = OBJECT_OF_TYPE;
-//    ts = _ts;
-//  }
-//
-//  TP_Type simplify() const;
-//  std::string print() const;
-//
-//  bool is_object_of_type() const { return kind == TYPE_OBJECT || ts == TypeSpec("type"); }
-//
-//  TypeSpec as_typespec() const {
-//    switch (kind) {
-//      case OBJECT_OF_TYPE:
-//        return ts;
-//      case TYPE_OBJECT:
-//        return TypeSpec("type");
-//      case FALSE:
-//        return TypeSpec("symbol");
-//      case NONE:
-//        return TypeSpec("none");
-//      case PRODUCT:
-//      case METHOD_NEW_OF_OBJECT:
-//        return ts;
-//      default:
-//        assert(false);
-//    }
-//  }
-//
-//  static TP_Type make_partial_method_table_access(TypeSpec ts) {
-//    TP_Type result;
-//    result.kind = PARTIAL_METHOD_TABLE_ACCESS;
-//    result.ts = std::move(ts);
-//    return result;
-//  }
-//
-//  static TP_Type make_type_object(const std::string& name) {
-//    TP_Type result;
-//    result.kind = TYPE_OBJECT;
-//    result.ts = TypeSpec(name);
-//    return result;
-//  }
-//
-//  static TP_Type make_string_object(const std::string& str) {
-//    TP_Type result;
-//    result.kind = STRING;
-//    result.ts = TypeSpec("string");
-//    result.str_data = str;
-//    return result;
-//  }
-//
-//  static TP_Type make_none() {
-//    TP_Type result;
-//    result.kind = NONE;
-//    return result;
-//  }
-//
-//  bool operator==(const TP_Type& other) const;
-//};
-
+namespace decompiler {
 /*!
  * A TP_Type is a specialized typespec used in the type propagation algorithm.
  * It is basically a normal typespec plus some optional information.
@@ -268,3 +192,4 @@ struct TypeState {
     }
   }
 };
+}  // namespace decompiler

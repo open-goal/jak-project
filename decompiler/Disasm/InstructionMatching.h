@@ -11,6 +11,7 @@
 #include "Instruction.h"
 #include "decompiler/util/MatchParam.h"
 
+namespace decompiler {
 bool is_no_link_gpr_store(const Instruction& instr,
                           MatchParam<int> size,
                           MatchParam<Register> src,
@@ -56,5 +57,5 @@ Register make_fpr(int fpr);
 
 bool is_branch(const Instruction& instr, MatchParam<bool> likely);
 bool is_always_branch(const Instruction& instr);
-
+}  // namespace decompiler
 #endif  // JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H

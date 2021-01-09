@@ -20,7 +20,7 @@
 #include "common/symbols.h"
 #include "common/versions.h"
 #include "common/goal_constants.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -1979,10 +1979,8 @@ s32 InitHeapAndSymbol() {
           (kernel_version >> 3) & 0xffff);
       return -1;
     } else {
-      spdlog::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
-                   (kernel_version >> 3) & 0xffff);
-      // printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
-      //       (kernel_version >> 3) & 0xffff);
+      lg::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
+               (kernel_version >> 3) & 0xffff);
     }
   }
 
