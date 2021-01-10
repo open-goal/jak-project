@@ -243,7 +243,7 @@ void init_opcode_info() {
 
   // weird moves
   def(IK::MFC1, "mfc1").dst_gpr(FT::RT).src_fpr(FT::FS);  // Move Word from Floating Point
-  def(IK::MTC1, "mtc1").src_gpr(FT::RT).dst_fpr(FT::FS);  // Move Word to Floating Point
+  def(IK::MTC1, "mtc1").dst_fpr(FT::FS).src_gpr(FT::RT);  // Move Word to Floating Point
   def(IK::MTC0, "mtc0")
       .src_gpr(FT::RT)
       .dst(FT::RD, DT::COP0);  // Move to System Control Coprocessor

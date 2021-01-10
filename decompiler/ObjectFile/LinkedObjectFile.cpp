@@ -989,7 +989,7 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 /*!
  * Is the thing pointed to a string?
  */
-bool LinkedObjectFile::is_string(int seg, int byte_idx) {
+bool LinkedObjectFile::is_string(int seg, int byte_idx) const {
   if (byte_idx % 4) {
     return false;  // must be aligned pointer.
   }

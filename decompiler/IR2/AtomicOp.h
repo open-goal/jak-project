@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include <cassert>
+#include <utility>
 #include "common/goos/Object.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/Disasm/Instruction.h"
@@ -88,7 +89,7 @@ class Variable {
 class AtomicOp {
  public:
   explicit AtomicOp(int my_idx);
-  std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env);
+  std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
                                const Env* env) const = 0;
   virtual bool operator==(const AtomicOp& other) const = 0;
@@ -123,6 +124,9 @@ class AtomicOp {
   const std::vector<Register>& read_regs() { return m_read_regs; }
   const std::vector<Register>& write_regs() { return m_write_regs; }
   const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
+  void add_clobber_reg(Register r) { m_clobber_regs.push_back(r); }
+
+  virtual ~AtomicOp() = default;
 
  protected:
   int m_my_idx = -1;
@@ -134,6 +138,8 @@ class AtomicOp {
   // the registers which have junk written into them.
   std::vector<Register> m_clobber_regs;
 };
+
+class SimpleExpression;
 
 /*!
  * The has a value. In some cases it can be set.
@@ -156,6 +162,7 @@ class SimpleAtom {
   static SimpleAtom make_sym_val(const std::string& name);
   static SimpleAtom make_empty_list();
   static SimpleAtom make_int_constant(s64 value);
+  static SimpleAtom make_static_address(int static_label_id);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
@@ -171,6 +178,7 @@ class SimpleAtom {
   bool operator==(const SimpleAtom& other) const;
   bool operator!=(const SimpleAtom& other) const { return !((*this) == other); }
   void get_regs(std::vector<Register>* out) const;
+  SimpleExpression as_expr() const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -219,8 +227,14 @@ class SimpleExpression {
     RIGHT_SHIFT_ARITH,
     RIGHT_SHIFT_LOGIC,
     MUL_UNSIGNED,
-    NOT,
-    NEG
+    LOGNOT,
+    NEG,
+    GPR_TO_FPR,
+    FPR_TO_GPR,
+    MIN_SIGNED,
+    MAX_SIGNED,
+    MIN_UNSIGNED,
+    MAX_UNSIGNED
   };
 
   // how many arguments?
@@ -230,7 +244,7 @@ class SimpleExpression {
     return m_args[idx];
   }
   Kind kind() const { return m_kind; }
-
+  SimpleExpression() = default;
   SimpleExpression(Kind kind, const SimpleAtom& arg0);
   SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
@@ -249,8 +263,8 @@ class SimpleExpression {
  */
 class SetVarOp : public AtomicOp {
  public:
-  SetVarOp(const Variable& dst, const SimpleExpression& src, int my_idx)
-      : AtomicOp(my_idx), m_dst(dst), m_src(src) {
+  SetVarOp(const Variable& dst, SimpleExpression src, int my_idx)
+      : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {
     assert(my_idx == dst.idx());
   }
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
@@ -310,9 +324,13 @@ class IR2_Condition {
     LEQ_SIGNED,
     GEQ_SIGNED,
     GREATER_THAN_ZERO_SIGNED,
+    GREATER_THAN_ZERO_UNSIGNED,
     LEQ_ZERO_SIGNED,
-    LESS_THAN_ZERO,
+    LEQ_ZERO_UNSIGNED,
+    LESS_THAN_ZERO_SIGNED,
     GEQ_ZERO_SIGNED,
+    LESS_THAN_ZERO_UNSIGNED,
+    GEQ_ZERO_UNSIGNED,
     LESS_THAN_UNSIGNED,
     GREATER_THAN_UNSIGNED,
     LEQ_UNSIGNED,
@@ -329,12 +347,15 @@ class IR2_Condition {
     FLOAT_GEQ,
     FLOAT_LEQ,
     FLOAT_GREATER_THAN,
+    IS_PAIR,
+    IS_NOT_PAIR,
     INVALID
   };
 
+  IR2_Condition() = default;
   explicit IR2_Condition(Kind kind);
-  IR2_Condition(Kind kind, const Variable& src0);
-  IR2_Condition(Kind kind, const Variable& src0, const Variable& src1);
+  IR2_Condition(Kind kind, const SimpleAtom& src0);
+  IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1);
 
   void invert();
   bool operator==(const IR2_Condition& other) const;
@@ -344,7 +365,7 @@ class IR2_Condition {
 
  private:
   Kind m_kind = Kind::INVALID;
-  Variable m_src[2];
+  SimpleAtom m_src[2];
 };
 
 /*!
@@ -361,6 +382,7 @@ class SetVarConditionOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  void invert() { m_condition.invert(); }
 
  private:
   Variable m_dst;
@@ -374,7 +396,7 @@ class SetVarConditionOp : public AtomicOp {
  */
 class StoreOp : public AtomicOp {
  public:
-  StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx);
+  StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
@@ -385,6 +407,8 @@ class StoreOp : public AtomicOp {
   void update_register_info() override;
 
  private:
+  int m_size;
+  bool m_is_float;
   SimpleExpression m_addr;
   SimpleAtom m_value;
 };
@@ -395,7 +419,8 @@ class StoreOp : public AtomicOp {
  */
 class LoadVarOp : public AtomicOp {
  public:
-  LoadVarOp(Variable dst, SimpleExpression src, int my_idx);
+  enum class Kind { UNSIGNED, SIGNED, FLOAT };
+  LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_variable_set() const override;
@@ -406,6 +431,8 @@ class LoadVarOp : public AtomicOp {
   void update_register_info() override;
 
  private:
+  Kind m_kind;
+  int m_size = -1;
   Variable m_dst;
   SimpleExpression m_src;
 };
@@ -427,7 +454,8 @@ class IR2_BranchDelay {
     SET_BINTEGER,
     SET_PAIR,
     DSLLV,
-    NEGATE
+    NEGATE,
+    UNKNOWN
   };
 
   explicit IR2_BranchDelay(Kind kind);
@@ -437,10 +465,11 @@ class IR2_BranchDelay {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   bool operator==(const IR2_BranchDelay& other) const;
   void get_regs(std::vector<Register>* write, std::vector<Register>* read) const;
+  bool is_known() const { return m_kind != Kind::UNKNOWN; }
 
  private:
   std::optional<Variable> m_var[3];
-  Kind m_kind;
+  Kind m_kind = Kind::UNKNOWN;
 };
 
 /*!
@@ -479,6 +508,7 @@ class SpecialOp : public AtomicOp {
   enum class Kind {
     NOP,
     BREAK,
+    CRASH,
     SUSPEND,
   };
 

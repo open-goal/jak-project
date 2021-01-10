@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  // collect all files to process
   set_config(argv[1]);
   std::string in_folder = argv[2];
   std::string out_folder = argv[3];
@@ -39,6 +40,8 @@ int main(int argc, char** argv) {
     strs.push_back(file_util::combine_path(in_folder, str_name));
   }
 
+  // build file database
+  lg::info("Setting up object file DB...");
   ObjectFileDB db(dgos, get_config().obj_file_name_map_file, objs, strs);
   file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
                              db.generate_dgo_listing());
@@ -51,20 +54,42 @@ int main(int argc, char** argv) {
     db.dump_raw_objects(path);
   }
 
+  // process files (basic)
   db.process_link_data();
   db.find_code();
   db.process_labels();
 
+  // IR1 or IR2 function analysis
+  if (get_config().run_ir2) {
+    db.analyze_functions_ir2(out_folder);
+  } else {
+    if (get_config().analyze_functions) {
+      db.analyze_functions_ir1();
+    }
+
+    if (get_config().write_disassembly) {
+      db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions,
+                           get_config().write_func_json);
+      db.write_debug_type_analysis(out_folder);
+    }
+
+    if (get_config().analyze_expressions) {
+      db.analyze_expressions();
+      db.write_disassembly(out_folder, false, false, "_expr");
+    }
+  }
+
+  // common IR1 and IR2 function stuff:
+  file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
+                             db.dts.dump_symbol_types());
+
+  // data stuff
   if (get_config().write_scripts) {
     db.find_and_write_scripts(out_folder);
   }
 
   if (get_config().write_hexdump) {
     db.write_object_file_words(out_folder, get_config().write_hexdump_on_v3_only);
-  }
-
-  if (get_config().analyze_functions) {
-    db.analyze_functions();
   }
 
   if (get_config().process_game_text) {
@@ -81,22 +106,9 @@ int main(int argc, char** argv) {
     file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
   }
 
-  if (get_config().write_disassembly) {
-    db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions,
-                         get_config().write_func_json);
-    db.write_debug_type_analysis(out_folder);
-  }
-
-  if (get_config().analyze_expressions) {
-    db.analyze_expressions();
-    db.write_disassembly(out_folder, false, false, "_expr");
-  }
-
   // todo print type summary
   // printf("%s\n", get_type_info().get_summary().c_str());
 
-  file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
-                             db.dts.dump_symbol_types());
   lg::info("Disassembly has completed successfully.");
   return 0;
 }
