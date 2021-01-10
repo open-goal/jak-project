@@ -155,6 +155,11 @@ void ObjectFileDB::ir2_basic_block_pass() {
     if (!func.suspected_asm) {
       // find the prologue/epilogue so they can be excluded from basic blocks.
       func.analyze_prologue(data.linked_data);
+    } else {
+      // manually exclude the type tag from the basic block.
+      assert(func.basic_blocks.front().start_word == 0);
+      assert(func.basic_blocks.front().end_word >= 1);
+      func.basic_blocks.front().start_word = 1;
     }
 
     if (!func.suspected_asm) {
@@ -251,7 +256,7 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         attempted_functions++;
         // try type analysis here.
         auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
-        if (func.run_type_analysis(ts, dts, data.linked_data, hints, true)) {
+        if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints)) {
           successful_functions++;
         } else {
           func.warnings.append(";; Type analysis failed\n");
@@ -342,14 +347,16 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   bool print_atomics = func.ir2.atomic_ops_succeeded;
   // print each instruction in the function.
   bool in_delay_slot = false;
+  int total_instructions_printed = 0;
+  int last_instr_printed = 0;
 
-  for (int i = 1; i < func.end_word - func.start_word; i++) {
+  std::string line;
+  auto print_instr_start = [&](int i) {
     // check for a label to print
     auto label_id = data.linked_data.get_label_at(seg, (func.start_word + i) * 4);
     if (label_id != -1) {
       result += data.linked_data.labels.at(label_id).name + ":\n";
     }
-
     // check for no misaligned labels in code segments.
     for (int j = 1; j < 4; j++) {
       assert(data.linked_data.get_label_at(seg, (func.start_word + i) * 4 + j) == -1);
@@ -357,36 +364,13 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
 
     // print the assembly instruction
     auto& instr = func.instructions.at(i);
-    std::string line = "    " + instr.to_string(data.linked_data.labels);
+    line = "    " + instr.to_string(data.linked_data.labels);
+  };
 
-    //    printf("%d inst %s\n", print_atomics, instr.to_string(data.linked_data.labels).c_str());
-
-    bool printed_comment = false;
-
-    // print atomic op
-    if (print_atomics && func.instr_starts_atomic_op(i)) {
-      if (line.length() < 30) {
-        line.append(30 - line.length(), ' ');
-      }
-      line +=
-          " ;; " + func.get_atomic_op_at_instr(i).to_string(data.linked_data.labels, &func.ir2.env);
-      printed_comment = true;
-    }
-
-    // print linked strings
-    for (int iidx = 0; iidx < instr.n_src; iidx++) {
-      if (instr.get_src(iidx).is_label()) {
-        auto lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
-        if (data.linked_data.is_string(lab.target_segment, lab.offset)) {
-          if (!printed_comment) {
-            line += " ;; ";
-            printed_comment = true;
-          }
-          line += " " + data.linked_data.get_goal_string(lab.target_segment, lab.offset / 4 - 1);
-        }
-      }
-    }
-    result += line + "\n";
+  auto print_instr_end = [&](int i) {
+    auto& instr = func.instructions.at(i);
+    result += line;
+    result += "\n";
 
     // print delay slot gap
     if (in_delay_slot) {
@@ -398,9 +382,70 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
     if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
       in_delay_slot = true;
     }
+    total_instructions_printed++;
+    assert(last_instr_printed + 1 == i);
+    last_instr_printed = i;
+  };
+
+  // first, print the prologue. we start at word 1 because word 0 is the type tag
+  for (int i = 1; i < func.basic_blocks.front().start_word; i++) {
+    print_instr_start(i);
+    print_instr_end(i);
   }
+
+  // next, print each basic block
+  int end_idx = func.basic_blocks.front().start_word;
+  for (int i = 0; i < int(func.basic_blocks.size()); i++) {
+    // block number
+    result += "B" + std::to_string(i) + ":\n";
+    auto& block = func.basic_blocks.at(i);
+
+    for (int j = block.start_word; j < block.end_word; j++) {
+      print_instr_start(j);
+      bool printed_comment = false;
+
+      // print atomic op
+      if (print_atomics && func.instr_starts_atomic_op(j)) {
+        if (line.length() < 30) {
+          line.append(30 - line.length(), ' ');
+        }
+        line += " ;; " +
+                func.get_atomic_op_at_instr(j).to_string(data.linked_data.labels, &func.ir2.env);
+        printed_comment = true;
+
+        if (func.ir2.env.has_type_analysis()) {
+          if (line.length() < 60) {
+            line.append(60 - line.length(), ' ');
+          }
+        }
+      }
+      auto& instr = func.instructions.at(j);
+      // print linked strings
+      for (int iidx = 0; iidx < instr.n_src; iidx++) {
+        if (instr.get_src(iidx).is_label()) {
+          auto lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
+          if (data.linked_data.is_string(lab.target_segment, lab.offset)) {
+            if (!printed_comment) {
+              line += " ;; ";
+              printed_comment = true;
+            }
+            line += " " + data.linked_data.get_goal_string(lab.target_segment, lab.offset / 4 - 1);
+          }
+        }
+      }
+      print_instr_end(j);
+    }
+    end_idx = block.end_word;
+  }
+
+  for (int i = end_idx; i < func.end_word - func.start_word; i++) {
+    print_instr_start(i);
+    print_instr_end(i);
+  }
+
   result += "\n";
 
+  assert(total_instructions_printed == (func.end_word - func.start_word - 1));
   return result;
 }
 
