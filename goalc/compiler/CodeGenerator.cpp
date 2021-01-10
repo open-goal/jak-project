@@ -89,14 +89,14 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
       // offset the stack
       stack_offset += xmm_backup_stack_offset;
       m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm(RSP, xmm_backup_stack_offset),
-                            InstructionInfo::PROLOGUE);
+                            InstructionInfo::Kind::PROLOGUE);
       // back up xmms
       int i = 0;
       for (auto& saved_reg : allocs.used_saved_regs) {
         if (saved_reg.is_xmm()) {
           int offset = i * XMM_SIZE;
           m_gen.add_instr_no_ir(f_rec, IGen::store128_xmm128_reg_offset(RSP, saved_reg, offset),
-                                InstructionInfo::PROLOGUE);
+                                InstructionInfo::Kind::PROLOGUE);
           i++;
         }
       }
@@ -106,9 +106,9 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     for (auto& saved_reg : allocs.used_saved_regs) {
       if (saved_reg.is_xmm()) {
         m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE),
-                              InstructionInfo::PROLOGUE);
+                              InstructionInfo::Kind::PROLOGUE);
         m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(RSP, saved_reg),
-                              InstructionInfo::PROLOGUE);
+                              InstructionInfo::Kind::PROLOGUE);
         stack_offset += XMM_SIZE;
       }
     }
@@ -117,7 +117,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   // back up gprs
   for (auto& saved_reg : allocs.used_saved_regs) {
     if (saved_reg.is_gpr()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(saved_reg), InstructionInfo::PROLOGUE);
+      m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(saved_reg), InstructionInfo::Kind::PROLOGUE);
       stack_offset += GPR_SIZE;
     }
   }
@@ -141,7 +141,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
         // otherwise to an extra push, and remember so we can do an extra pop later on.
         bonus_push = true;
         m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(ri.get_saved_gpr(0)),
-                              InstructionInfo::PROLOGUE);
+                              InstructionInfo::Kind::PROLOGUE);
       }
       stack_offset += 8;
     }
@@ -151,7 +151,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     // do manual stack offset.
     if (manually_added_stack_offset) {
       m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm(RSP, manually_added_stack_offset),
-                            InstructionInfo::PROLOGUE);
+                            InstructionInfo::Kind::PROLOGUE);
     }
   }
 
@@ -209,19 +209,20 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
       env->needs_aligned_stack()) {
     if (manually_added_stack_offset) {
       m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm(RSP, manually_added_stack_offset),
-                            InstructionInfo::EPILOGUE);
+                            InstructionInfo::Kind::EPILOGUE);
     }
 
     if (bonus_push) {
       assert(!manually_added_stack_offset);
-      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(ri.get_saved_gpr(0)), InstructionInfo::EPILOGUE);
+      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(ri.get_saved_gpr(0)),
+                            InstructionInfo::Kind::EPILOGUE);
     }
   }
 
   for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
     auto& saved_reg = allocs.used_saved_regs.at(i);
     if (saved_reg.is_gpr()) {
-      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(saved_reg), InstructionInfo::EPILOGUE);
+      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(saved_reg), InstructionInfo::Kind::EPILOGUE);
     }
   }
 
@@ -234,26 +235,26 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
           j--;
           int offset = j * XMM_SIZE;
           m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_reg_offset(saved_reg, RSP, offset),
-                                InstructionInfo::EPILOGUE);
+                                InstructionInfo::Kind::EPILOGUE);
         }
       }
       assert(j == 0);
       m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm(RSP, xmm_backup_stack_offset),
-                            InstructionInfo::EPILOGUE);
+                            InstructionInfo::Kind::EPILOGUE);
     }
   } else {
     for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
       auto& saved_reg = allocs.used_saved_regs.at(i);
       if (saved_reg.is_xmm()) {
         m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(saved_reg, RSP),
-                              InstructionInfo::EPILOGUE);
+                              InstructionInfo::Kind::EPILOGUE);
         m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(RSP, XMM_SIZE),
-                              InstructionInfo::EPILOGUE);
+                              InstructionInfo::Kind::EPILOGUE);
       }
     }
   }
 
-  m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::EPILOGUE);
+  m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::Kind::EPILOGUE);
 }
 
 void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
