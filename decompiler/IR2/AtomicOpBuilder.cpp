@@ -1037,10 +1037,15 @@ std::unique_ptr<AtomicOp> convert_dsubu_3(const Instruction& i0,
   return nullptr;
 }
 
-void add_clobber_if_unritten(AtomicOp& op, Register clobber) {
+void add_clobber_if_unwritten(AtomicOp& op, Register clobber) {
   op.update_register_info();
+  std::vector<Register> clobber_regs = op.clobber_regs();
   if (std::find(op.write_regs().begin(), op.write_regs().end(), clobber) == op.write_regs().end()) {
-    op.add_clobber_reg(clobber);
+    clobber_regs.push_back(clobber);
+  }
+  op.clear_register_info();
+  for (auto& reg : clobber_regs) {
+    op.add_clobber_reg(reg);
   }
 }
 
@@ -1082,7 +1087,7 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
       condition.invert();
     }
     result = make_branch(condition, i2, false, dest, idx);
-    add_clobber_if_unritten(*result, temp);
+    add_clobber_if_unwritten(*result, temp);
     return result;
   } else if (i1.kind == InstructionKind::DADDIU &&
              (i2.kind == InstructionKind::MOVZ || i2.kind == InstructionKind::MOVN)) {
@@ -1117,7 +1122,7 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
       condition.invert();
     }
     result = std::make_unique<SetVarConditionOp>(make_dst_var(dest, idx), condition, idx);
-    add_clobber_if_unritten(*result, temp);
+    add_clobber_if_unwritten(*result, temp);
     return result;
   }
   return nullptr;
@@ -1147,7 +1152,7 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
       condition.invert();
     }
     result = make_branch(condition, i2, false, dest, idx);
-    add_clobber_if_unritten(*result, temp);
+    add_clobber_if_unwritten(*result, temp);
     return result;
   } else if (i1.kind == InstructionKind::DADDIU &&
              (i2.kind == InstructionKind::MOVZ || i2.kind == InstructionKind::MOVN)) {
@@ -1172,7 +1177,7 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
       condition.invert();
     }
     result = std::make_unique<SetVarConditionOp>(make_dst_var(dest, idx), condition, idx);
-    add_clobber_if_unritten(*result, temp);
+    add_clobber_if_unwritten(*result, temp);
     return result;
   }
   return nullptr;
