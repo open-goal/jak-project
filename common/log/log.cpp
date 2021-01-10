@@ -4,6 +4,9 @@
 #include <mutex>
 #include "third-party/fmt/color.h"
 #include "log.h"
+#ifdef _WIN32  // see lg::initialize
+#include <Windows.h>
+#endif
 
 namespace lg {
 struct Logger {
@@ -98,6 +101,24 @@ void set_max_debug_levels() {
 
 void initialize() {
   assert(!gLogger.initialized);
+
+#ifdef _WIN32
+  // Always enable VIRTUAL_TERMINAL_PROCESSING, this console mode allows the console (stdout) to
+  // support ANSI colors in the outputted text, which are used by the logging tool.
+  // This mode may not be enabled by default, and changing that involves modifying the registry,
+  // so it seems like a better solution would be enabling it ourselves.
+
+  // Get handle to stdout
+  HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  // get current stdout mode
+  DWORD modeStdOut;
+  GetConsoleMode(hStdOut, &modeStdOut);
+  // enable VIRTUAL_TERMINAL_PROCESSING. As a bitwise OR it will not do anything if it is
+  // already set
+  modeStdOut |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  SetConsoleMode(hStdOut, modeStdOut);
+#endif
+
   gLogger.initialized = true;
 }
 

@@ -8,26 +8,40 @@ content = [x.strip() for x in content]
 
 test_cases = {}
 
+# TODO - there is a bug in this code if we add test-cases with multiple lists of registers.
+# currently, its going to split too much breaking fragile assumptions.  Fix when required
+
 for case in content:
+  if not case:
+    continue
+
   args = re.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", case)
-  assembly_lines = args[0].replace("\"", "").strip().split("\\n")
-  main_instruction = assembly_lines[0].split(" ")[0]
-  if re.match("^L\d*:\s*$", main_instruction):
-    main_instruction = assembly_lines[1].strip().split(" ")[0]
-  main_instruction = main_instruction.upper().replace(".", "_")
+  assembly_lines = args[0].replace("\\n\"", "").replace("\"", "").strip().split("\\n")
+
+  instruction_summary = ""
+  instructions = []
+  for line in assembly_lines:
+    if not re.match("^L\d*:\s*$", line):
+      instructions.append(line.strip().split(" ")[0].upper().replace(".", ""))
+  instruction_summary = "_".join(instructions)
+
   assembly_lines = "{{{}}}".format(", ".join(["\"{}\"".format(x.replace("\\n", "").strip()) for x in assembly_lines]))
   output_lines = args[1].replace("\\n", "").strip()
-  write_regs = "{{{}}}".format(args[2].replace("\\n", "").strip().replace(" ", "\",\""))
-  read_regs = "{{{}}}".format(args[3].replace("\\n", "").strip().replace(" ", "\",\""))
-  clob_regs = "{{{}}}".format(args[4].replace("\\n", "").strip().replace(" ", "\",\""))
+  write_regs = "{{{}}}".format(args[2].replace("\\n", "").strip().replace("\"\"", "").replace(" ", "\",\""))
+  read_regs = "{{{}}}".format(args[3].replace("\\n", "").strip().replace("\"\"", "").replace(" ", "\",\""))
+  clob_regs = "{{{}}}".format(args[4].replace("\\n", "").strip().replace("\"\"", "").replace(" ", "\",\""))
 
   test_case = "test_case(assembly_from_list({}), {}, {}, {}, {});".format(assembly_lines, output_lines, write_regs, read_regs, clob_regs);
 
-  if main_instruction in test_cases:
-    test_cases[main_instruction].append(test_case)
+  if instruction_summary in test_cases:
+    test_cases[instruction_summary].append(test_case)
   else:
-    test_cases[main_instruction] = []
-    test_cases[main_instruction].append(test_case)
+    test_cases[instruction_summary] = []
+    test_cases[instruction_summary].append(test_case)
+
+import os
+if os.path.exists("test-cases.cpp"):
+  os.remove("test-cases.cpp")
 
 with open("test-cases.cpp", "a") as f:
   instructions = test_cases.keys()

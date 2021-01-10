@@ -145,7 +145,7 @@ TEST(DecompilerAtomicOpBuilder, Example) {
             {{"v1", "a3"}, {"a2", "a2"}}, {{}, {}});
 }
 
-TEST(DecompilerAtomicOpBuilder, ABS_S) {
+TEST(DecompilerAtomicOpBuilder, ABSS) {
   test_case(assembly_from_list({"abs.s f1, f2"}), {"(set! f1 (abs.s f2))"}, {{"f1"}}, {{"f2"}},
             {{}});
 }
@@ -154,7 +154,7 @@ TEST(DecompilerAtomicOpBuilder, ADDIU) {
   test_case(assembly_from_list({"addiu a1, r0, 12"}), {"(set! a1 12)"}, {{"a1"}}, {{}}, {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, ADD_S) {
+TEST(DecompilerAtomicOpBuilder, ADDS) {
   test_case(assembly_from_list({"add.s f1, f2, f3"}), {"(set! f1 (+.s f2 f3))"}, {{"f1"}},
             {{"f2", "f3"}}, {{}});
 }
@@ -169,12 +169,127 @@ TEST(DecompilerAtomicOpBuilder, ANDI) {
             {{"a2"}}, {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, CVT_S_W) {
+TEST(DecompilerAtomicOpBuilder, BEQL_SLL) {
+  test_case(assembly_from_list({"L100:", "beql a0, a1, L100", "sll r0, r0, 0"}),
+            {"(bl! (= a0 a1) L100 (nop!))"}, {{}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql r0, r0, L100", "sll r0, r0, 0"}),
+            {"(bl! #t L100 (nop!))"}, {{}}, {{}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql a0, r0, L100", "sll r0, r0, 0"}),
+            {"(bl! (zero? a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql s7, a0, L100", "sll r0, r0, 0"}),
+            {"(bl! (not a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BEQ_SLL) {
+  test_case(assembly_from_list({"L100:", "beq a0, a1, L100", "sll r0, r0, 0"}),
+            {"(b! (= a0 a1) L100 (nop!))"}, {{}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beq r0, r0, L100", "sll r0, r0, 0"}),
+            {"(b! #t L100 (nop!))"}, {{}}, {{}}, {{}});
+  test_case(assembly_from_list({"L100:", "beq a0, r0, L100", "sll r0, r0, 0"}),
+            {"(b! (zero? a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beq s7, a0, L100", "sll r0, r0, 0"}),
+            {"(b! (not a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BGEZL_SLL) {
+  test_case(assembly_from_list({"L100:", "bgezl a0, L100", "sll r0, r0, 0"}),
+            {"(bl! (>=0.si a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BGTZL_SLL) {
+  test_case(assembly_from_list({"L100:", "bgtzl a0, L100", "sll r0, r0, 0"}),
+            {"(bl! (>0.si a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BLTZL_SLL) {
+  test_case(assembly_from_list({"L100:", "bltzl a0, L100", "sll r0, r0, 0"}),
+            {"(bl! (<0.si a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNEL_SLL) {
+  test_case(assembly_from_list({"L100:", "bnel a1, a2, L100", "sll r0, r0, 0"}),
+            {"(bl! (!= a1 a2) L100 (nop!))"}, {{}}, {{"a1", "a2"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bnel a1, r0, L100", "sll r0, r0, 0"}),
+            {"(bl! (nonzero? a1) L100 (nop!))"}, {{}}, {{"a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bnel s7, a1, L100", "sll r0, r0, 0"}),
+            {"(bl! (truthy a1) L100 (nop!))"}, {{}}, {{"a1"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNE_DADDIU) {
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "daddiu a3, s7, 8"}),
+            {"(b! (!= a1 a2) L100 (set! a3 #t))"}, {{"a3"}}, {{"a1", "a2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNE_DSLLV) {
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "dsllv a3, t0, t1"}),
+            {"(b! (!= a1 a2) L100 (set! a3 (sll t0 t1)))"}, {{"a3"}}, {{"a1", "a2", "t0", "t1"}},
+            {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNE_DSUBU) {
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "dsubu a3, r0, t1"}),
+            {"(b! (!= a1 a2) L100 (set! a3 (- t1)))"}, {{"a3"}}, {{"a1", "a2", "t1"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNE_LW) {
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "lw a3, pair(s7)"}),
+            {"(b! (!= a1 a2) L100 (set! a3 pair))"}, {{"a3"}}, {{"a1", "a2"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "lw a3, binteger(s7)"}),
+            {"(b! (!= a1 a2) L100 (set! a3 binteger))"}, {{"a3"}}, {{"a1", "a2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNE_OR) {
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "or a3, s7, r0"}),
+            {"(b! (!= a1 a2) L100 (set! a3 #f))"}, {{"a3"}}, {{"a1", "a2"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "or a3, t0, r0"}),
+            {"(b! (!= a1 a2) L100 (set! a3 t0))"}, {{"a3"}}, {{"a1", "a2", "t0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, BNE_SLL) {
+  test_case(assembly_from_list({"L100:", "bne a1, a2, L100", "sll r0, r0, 0"}),
+            {"(b! (!= a1 a2) L100 (nop!))"}, {{}}, {{"a1", "a2"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bne a1, r0, L100", "sll r0, r0, 0"}),
+            {"(b! (nonzero? a1) L100 (nop!))"}, {{}}, {{"a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bne s7, a1, L100", "sll r0, r0, 0"}),
+            {"(b! (truthy a1) L100 (nop!))"}, {{}}, {{"a1"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CEQS_BC1F_SLL) {
+  test_case(assembly_from_list({"L100:", "c.eq.s f1, f2", "bc1f L100", "sll r0, r0, 0"}),
+            {"(b! (!=.s f1 f2) L100 (nop!))"}, {{}}, {{"f1", "f2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CEQS_BC1T_SLL) {
+  test_case(assembly_from_list({"L100:", "c.eq.s f1, f2", "bc1t L100", "sll r0, r0, 0"}),
+            {"(b! (=.s f1 f2) L100 (nop!))"}, {{}}, {{"f1", "f2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CLES_BC1F_SLL) {
+  test_case(assembly_from_list({"L100:", "c.le.s f1, f2", "bc1f L100", "sll r0, r0, 0"}),
+            {"(b! (>.s f1 f2) L100 (nop!))"}, {{}}, {{"f1", "f2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CLES_BC1T_SLL) {
+  test_case(assembly_from_list({"L100:", "c.le.s f1, f2", "bc1t L100", "sll r0, r0, 0"}),
+            {"(b! (<=.s f1 f2) L100 (nop!))"}, {{}}, {{"f1", "f2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CLTS_BC1F_SLL) {
+  test_case(assembly_from_list({"L100:", "c.lt.s f1, f2", "bc1f L100", "sll r0, r0, 0"}),
+            {"(b! (>=.s f1 f2) L100 (nop!))"}, {{}}, {{"f1", "f2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CLTS_BC1T_SLL) {
+  test_case(assembly_from_list({"L100:", "c.lt.s f1, f2", "bc1t L100", "sll r0, r0, 0"}),
+            {"(b! (<.s f1 f2) L100 (nop!))"}, {{}}, {{"f1", "f2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, CVTSW) {
   test_case(assembly_from_list({"cvt.s.w f1, f2"}), {"(set! f1 (i2f f2))"}, {{"f1"}}, {{"f2"}},
             {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, CVT_W_S) {
+TEST(DecompilerAtomicOpBuilder, CVTWS) {
   test_case(assembly_from_list({"cvt.w.s f1, f2"}), {"(set! f1 (f2i f2))"}, {{"f1"}}, {{"f2"}},
             {{}});
 }
@@ -191,28 +306,66 @@ TEST(DecompilerAtomicOpBuilder, DADDIU) {
             {{"a2"}}, {{}});
 }
 
+TEST(DecompilerAtomicOpBuilder, DADDIU_MOVN) {
+  test_case(assembly_from_list({"daddiu a1, s7, 8", "movn a1, s7, a0"}), {"(set! a1 (zero? a0))"},
+            {{"a1"}}, {{"a0"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, DADDIU_MOVZ) {
+  test_case(assembly_from_list({"daddiu a1, s7, 8", "movz a1, s7, a0"}),
+            {"(set! a1 (nonzero? a0))"}, {{"a1"}}, {{"a0"}}, {{}});
+}
+
 TEST(DecompilerAtomicOpBuilder, DADDU) {
   test_case(assembly_from_list({"daddu a1, a2, a3"}), {"(set! a1 (+ a2 a3))"}, {{"a1"}},
             {{"a2", "a3"}}, {{}});
+  test_case(assembly_from_list({"daddu v1, r0, v0"}), {"(set! v1 (+ v0 0))"}, {{"v1"}}, {{"v0"}},
+            {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, DIV_S) {
+TEST(DecompilerAtomicOpBuilder, DIVS) {
   test_case(assembly_from_list({"div.s f1, f2, f3"}), {"(set! f1 (/.s f2 f3))"}, {{"f1"}},
             {{"f2", "f3"}}, {{}});
 }
 
+TEST(DecompilerAtomicOpBuilder, DIVU_MFHI) {
+  test_case(assembly_from_list({"divu a1, a2", "mfhi a3"}), {"(set! a3 (mod.ui a1 a2))"}, {{"a3"}},
+            {{"a1", "a2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, DIVU_MFLO) {
+  test_case(assembly_from_list({"divu a1, a2", "mflo a3"}), {"(set! a3 (/.ui a1 a2))"}, {{"a3"}},
+            {{"a1", "a2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, DIV_MFHI) {
+  test_case(assembly_from_list({"div a1, a2", "mfhi a3"}), {"(set! a3 (mod.si a1 a2))"}, {{"a3"}},
+            {{"a1", "a2"}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, DIV_MFLO) {
+  test_case(assembly_from_list({"div a1, a2", "mflo a3"}), {"(set! a3 (/.si a1 a2))"}, {{"a3"}},
+            {{"a1", "a2"}}, {{}});
+}
+
 TEST(DecompilerAtomicOpBuilder, DSLL) {
-  test_case(assembly_from_list({"dsll a2, a3, 3"}), {"(set! a2 (shl a3 3))"}, {{"a2"}}, {{"a3"}},
+  test_case(assembly_from_list({"dsll a2, a3, 3"}), {"(set! a2 (sll a3 3))"}, {{"a2"}}, {{"a3"}},
             {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, DSLL32) {
-  test_case(assembly_from_list({"dsll32 a2, a3, 3"}), {"(set! a2 (shl a3 35))"}, {{"a2"}}, {{"a3"}},
+  test_case(assembly_from_list({"dsll32 a2, a3, 3"}), {"(set! a2 (sll a3 35))"}, {{"a2"}}, {{"a3"}},
             {{}});
 }
 
+TEST(DecompilerAtomicOpBuilder, DSLL32_SLT_BEQ_SLL) {
+  test_case(assembly_from_list({"L100:", "dsll32 v1, s4, 30", "slt v1, v1, r0", "beq v1, r0, L100",
+                                "sll r0, r0, 0"}),
+            {"(b! (not-pair? s4) L100 (nop!))"}, {{}}, {{"s4"}}, {{"v1"}});
+}
+
 TEST(DecompilerAtomicOpBuilder, DSLLV) {
-  test_case(assembly_from_list({"dsllv a1, a2, a3"}), {"(set! a1 (shl a2 a3))"}, {{"a1"}},
+  test_case(assembly_from_list({"dsllv a1, a2, a3"}), {"(set! a1 (sll a2 a3))"}, {{"a1"}},
             {{"a2", "a3"}}, {{}});
 }
 
@@ -250,6 +403,21 @@ TEST(DecompilerAtomicOpBuilder, DSUBU) {
   test_case(assembly_from_list({"dsubu a1, a2, a3"}), {"(set! a1 (- a2 a3))"}, {{"a1"}},
             {{"a2", "a3"}}, {{}});
   test_case(assembly_from_list({"dsubu a1, r0, a3"}), {"(set! a1 (- a3))"}, {{"a1"}}, {{"a3"}},
+            {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, DSUBU_DADDIU_MOVN) {
+  test_case(assembly_from_list({"dsubu a0, a1, a2", "daddiu t0, s7, 8", "movn t0, s7, a0"}),
+            {"(set! t0 (= a1 a2))"}, {{"t0"}}, {{"a1", "a2"}}, {{"a0"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, DSUBU_DADDIU_MOVZ) {
+  test_case(assembly_from_list({"dsubu a0, a1, a2", "daddiu t0, s7, 8", "movz t0, s7, a0"}),
+            {"(set! t0 (!= a1 a2))"}, {{"t0"}}, {{"a1", "a2"}}, {{"a0"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, JALR_SLL) {
+  test_case(assembly_from_list({"jalr ra, t9", "sll v0, ra, 0"}), {"(call!)"}, {{}}, {{"t9"}},
             {{}});
 }
 
@@ -299,6 +467,24 @@ TEST(DecompilerAtomicOpBuilder, LUI) {
   test_case(assembly_from_list({"lui a3, 2"}), {"(set! a3 131072)"}, {{"a3"}}, {{}}, {{}});
 }
 
+TEST(DecompilerAtomicOpBuilder, LUI_ORI) {
+  test_case(assembly_from_list({"L100:", "lui a0, 2", "ori a1, a0, 3"}), {"(set! a1 131075)"},
+            {{"a1"}}, {{}}, {{"a0"}});
+  test_case(assembly_from_list({"L100:", "lui a0, 2", "ori a0, a0, 3"}), {"(set! a0 131075)"},
+            {{"a0"}}, {{}}, {{}});
+  test_case(assembly_from_list({"L100:", "lui a0, L100", "ori a1, a0, L100"}), {"(set! a1 L100)"},
+            {{"a1"}}, {{}}, {{"a0"}});
+  test_case(assembly_from_list({"L100:", "lui a0, L100", "ori a0, a0, L100"}), {"(set! a0 L100)"},
+            {{"a0"}}, {{}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, LUI_ORI_ADDU) {
+  test_case(assembly_from_list({"L100:", "lui a0, L100", "ori a1, a0, L100", "addu a1, fp, a1"}),
+            {"(set! a1 L100)"}, {{"a1"}}, {{}}, {{"a0"}});
+  test_case(assembly_from_list({"L100:", "lui a1, L100", "ori a1, a1, L100", "addu a1, fp, a1"}),
+            {"(set! a1 L100)"}, {{"a1"}}, {{}}, {{}});
+}
+
 TEST(DecompilerAtomicOpBuilder, LW) {
   test_case(assembly_from_list({"lw r0, 2(r0)"}), {"(break!)"}, {{}}, {{}}, {{}});
   test_case(assembly_from_list({"lw a2, test(s7)"}), {"(set! a2 test)"}, {{"a2"}}, {{}}, {{}});
@@ -327,7 +513,7 @@ TEST(DecompilerAtomicOpBuilder, LWU) {
             {{"a3"}}, {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, MAX_S) {
+TEST(DecompilerAtomicOpBuilder, MAXS) {
   test_case(assembly_from_list({"max.s f1, f2, f3"}), {"(set! f1 (max.s f2 f3))"}, {{"f1"}},
             {{"f2", "f3"}}, {{}});
 }
@@ -337,7 +523,7 @@ TEST(DecompilerAtomicOpBuilder, MFC1) {
             {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, MIN_S) {
+TEST(DecompilerAtomicOpBuilder, MINS) {
   test_case(assembly_from_list({"min.s f1, f2, f3"}), {"(set! f1 (min.s f2 f3))"}, {{"f1"}},
             {{"f2", "f3"}}, {{}});
 }
@@ -347,18 +533,24 @@ TEST(DecompilerAtomicOpBuilder, MOVN) {
             {{"a2"}}, {{}});
 }
 
+TEST(DecompilerAtomicOpBuilder, MOVS) {
+  test_case(assembly_from_list({"mov.s f1, f2"}), {"(set! f1 f2)"}, {{"f1"}}, {{"f2"}}, {{}});
+}
+
 TEST(DecompilerAtomicOpBuilder, MOVZ) {
   test_case(assembly_from_list({"movz a1, s7, a2"}), {"(cmove-#f-zero a1 a2)"}, {{"a1"}}, {{"a2"}},
             {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, MOV_S) {
-  test_case(assembly_from_list({"mov.s f1, f2"}), {"(set! f1 f2)"}, {{"f1"}}, {{"f2"}}, {{}});
-}
-
 TEST(DecompilerAtomicOpBuilder, MTC1) {
   test_case(assembly_from_list({"mtc1 f3, a1"}), {"(set! f3 (gpr->fpr a1))"}, {{"f3"}}, {{"a1"}},
             {{}});
+  test_case(assembly_from_list({"mtc1 f3, r0"}), {"(set! f3 0)"}, {{"f3"}}, {{}}, {{}});
+}
+
+TEST(DecompilerAtomicOpBuilder, MULS) {
+  test_case(assembly_from_list({"mul.s f1, f2, f3"}), {"(set! f1 (*.s f2 f3))"}, {{"f1"}},
+            {{"f2", "f3"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, MULT3) {
@@ -371,12 +563,7 @@ TEST(DecompilerAtomicOpBuilder, MULTU3) {
             {{"a2", "a3"}}, {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, MUL_S) {
-  test_case(assembly_from_list({"mul.s f1, f2, f3"}), {"(set! f1 (*.s f2 f3))"}, {{"f1"}},
-            {{"f2", "f3"}}, {{}});
-}
-
-TEST(DecompilerAtomicOpBuilder, NEG_S) {
+TEST(DecompilerAtomicOpBuilder, NEGS) {
   test_case(assembly_from_list({"neg.s f1, f2"}), {"(set! f1 (neg.s f2))"}, {{"f1"}}, {{"f2"}},
             {{}});
 }
@@ -430,12 +617,138 @@ TEST(DecompilerAtomicOpBuilder, SLL) {
   test_case(assembly_from_list({"sll r0, r0, 0"}), {"(nop!)"}, {{}}, {{}}, {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, SQRT_S) {
+TEST(DecompilerAtomicOpBuilder, SLTIU_BEQ_OR) {
+  test_case(assembly_from_list({"L100:", "sltiu a3, a0, 12", "beq a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (>=.ui a0 12) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "sltiu a3, a0, 12", "beq a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (>=.ui a0 12) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTIU_BNE_OR) {
+  test_case(assembly_from_list({"L100:", "sltiu a3, a0, 12", "bne a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (<.ui a0 12) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "sltiu a3, a0, 12", "bne a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (<.ui a0 12) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTIU_DADDIU_MOVN) {
+  test_case(assembly_from_list({"sltiu a3, a0, 12", "daddiu a2, s7, 8", "movn a2, s7, a3"}),
+            {"(set! a2 (>=.ui a0 12))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTIU_DADDIU_MOVZ) {
+  test_case(assembly_from_list({"sltiu a3, a0, 12", "daddiu a2, s7, 8", "movz a2, s7, a3"}),
+            {"(set! a2 (<.ui a0 12))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTI_BEQ_OR) {
+  test_case(assembly_from_list({"L100:", "slti a3, a0, 12", "beq a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (>=.si a0 12) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "slti a3, a0, 12", "beq a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (>=.si a0 12) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTI_BNE_OR) {
+  test_case(assembly_from_list({"L100:", "slti a3, a0, 12", "bne a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (<.si a0 12) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "slti a3, a0, 12", "bne a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (<.si a0 12) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTI_DADDIU_MOVN) {
+  test_case(assembly_from_list({"slti a3, a0, 12", "daddiu a2, s7, 8", "movn a2, s7, a3"}),
+            {"(set! a2 (>=.si a0 12))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTI_DADDIU_MOVZ) {
+  test_case(assembly_from_list({"slti a3, a0, 12", "daddiu a2, s7, 8", "movz a2, s7, a3"}),
+            {"(set! a2 (<.si a0 12))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTU_BEQ_OR) {
+  test_case(assembly_from_list({"L100:", "sltu a3, a0, a1", "beq a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (>=.ui a0 a1) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "sltu a3, a0, a1", "beq a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (>=.ui a0 a1) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTU_BNE_OR) {
+  test_case(assembly_from_list({"L100:", "sltu a3, a0, a1", "bne a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (<.ui a0 a1) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "sltu a3, a0, a1", "bne a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (<.ui a0 a1) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTU_DADDIU_MOVN) {
+  test_case(assembly_from_list({"sltu a3, a0, a1", "daddiu a2, s7, 8", "movn a2, s7, a3"}),
+            {"(set! a2 (>=.ui a0 a1))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTU_DADDIU_MOVZ) {
+  test_case(assembly_from_list({"sltu a3, a0, a1", "daddiu a2, s7, 8", "movz a2, s7, a3"}),
+            {"(set! a2 (<.ui a0 a1))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTU_MOVN) {
+  test_case(assembly_from_list({"sltu a0, a1, a2", "movn a1, a2, a0"}),
+            {"(set! a1 (max.ui a1 a2))"}, {{"a1"}}, {{"a1", "a2"}}, {{"a0"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLTU_MOVZ) {
+  test_case(assembly_from_list({"sltu a0, a1, a2", "movz a1, a2, a0"}),
+            {"(set! a1 (min.ui a1 a2))"}, {{"a1"}}, {{"a1", "a2"}}, {{"a0"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLT_BEQ_OR) {
+  test_case(assembly_from_list({"L100:", "slt a3, a0, a1", "beq a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (>=.si a0 a1) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "slt a3, a0, a1", "beq a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (>=.si a0 a1) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+  test_case(assembly_from_list({"L100:", "slt v1, s2, r0", "beq v1, r0, L100", "or v1, s7, r0"}),
+            {"(b! (>=0.si s2) L100 (set! v1 #f))"}, {{"v1"}}, {{"s2"}}, {{}});
+  test_case(assembly_from_list({"L100:", "slt v1, s2, r0", "beq v1, r0, L100", "or v0, s7, r0"}),
+            {"(b! (>=0.si s2) L100 (set! v0 #f))"}, {{"v0"}}, {{"s2"}}, {{"v1"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLT_BNE_OR) {
+  test_case(assembly_from_list({"L100:", "slt a3, a0, a1", "bne a3, r0, L100", "or a3, s7, r0"}),
+            {"(b! (<.si a0 a1) L100 (set! a3 #f))"}, {{"a3"}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "slt a3, a0, a1", "bne a3, r0, L100", "or a2, s7, r0"}),
+            {"(b! (<.si a0 a1) L100 (set! a2 #f))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLT_DADDIU_MOVN) {
+  test_case(assembly_from_list({"slt a3, a0, a1", "daddiu a2, s7, 8", "movn a2, s7, a3"}),
+            {"(set! a2 (>=.si a0 a1))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+  test_case(assembly_from_list({"slt a3, a0, r0", "daddiu a2, s7, 8", "movn a2, s7, a3"}),
+            {"(set! a2 (>=0.si a0))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLT_DADDIU_MOVZ) {
+  test_case(assembly_from_list({"slt a3, a0, a1", "daddiu a2, s7, 8", "movz a2, s7, a3"}),
+            {"(set! a2 (<.si a0 a1))"}, {{"a2"}}, {{"a0", "a1"}}, {{"a3"}});
+  test_case(assembly_from_list({"slt a3, a0, r0", "daddiu a2, s7, 8", "movz a2, s7, a3"}),
+            {"(set! a2 (<0.si a0))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+  test_case(assembly_from_list({"slt a3, r0, a0", "daddiu a2, s7, 8", "movz a2, s7, a3"}),
+            {"(set! a2 (>0.si a0))"}, {{"a2"}}, {{"a0"}}, {{"a3"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLT_MOVN) {
+  test_case(assembly_from_list({"slt a0, a1, a2", "movn a1, a2, a0"}), {"(set! a1 (max.si a1 a2))"},
+            {{"a1"}}, {{"a1", "a2"}}, {{"a0"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SLT_MOVZ) {
+  test_case(assembly_from_list({"slt a0, a1, a2", "movz a1, a2, a0"}), {"(set! a1 (min.si a1 a2))"},
+            {{"a1"}}, {{"a1", "a2"}}, {{"a0"}});
+}
+
+TEST(DecompilerAtomicOpBuilder, SQRTS) {
   test_case(assembly_from_list({"sqrt.s f1, f2"}), {"(set! f1 (sqrt.s f2))"}, {{"f1"}}, {{"f2"}},
             {{}});
 }
 
-TEST(DecompilerAtomicOpBuilder, SUB_S) {
+TEST(DecompilerAtomicOpBuilder, SUBS) {
   test_case(assembly_from_list({"sub.s f1, f2, f3"}), {"(set! f1 (-.s f2 f3))"}, {{"f1"}},
             {{"f2", "f3"}}, {{}});
 }
@@ -448,6 +761,9 @@ TEST(DecompilerAtomicOpBuilder, SW) {
   test_case(assembly_from_list({"sw a1, 0(a3)"}), {"(s.w! a3 a1)"}, {{}}, {{"a1", "a3"}}, {{}});
   test_case(assembly_from_list({"sw s7, 2(a3)"}), {"(s.w! (+ a3 2) '#f)"}, {{}}, {{"a3"}}, {{}});
   test_case(assembly_from_list({"sw s7, 0(a3)"}), {"(s.w! a3 '#f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sw r0, test(s7)"}), {"(s.w! test 0)"}, {{}}, {{}}, {{}});
+  test_case(assembly_from_list({"sw r0, 2(a3)"}), {"(s.w! (+ a3 2) 0)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sw r0, 0(a3)"}), {"(s.w! a3 0)"}, {{}}, {{"a3"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, SWC1) {
