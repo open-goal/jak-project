@@ -4,7 +4,7 @@
 #include <mutex>
 #include "third-party/fmt/color.h"
 #include "log.h"
-#ifdef _WIN32 // see lg::initialize
+#ifdef _WIN32  // see lg::initialize
 #include <Windows.h>
 #endif
 
