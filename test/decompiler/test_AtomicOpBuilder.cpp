@@ -54,7 +54,7 @@ void test_case(std::string assembly_lines,
   Env env;
 
   // check the we get the right result:
-  for (int i = 0; i < container.ops.size(); i++) {
+  for (size_t i = 0; i < container.ops.size(); i++) {
     const auto& op = container.ops.at(i);
     EXPECT_EQ(op->to_string(prg.labels, &env), output_lines.at(i));
 
@@ -62,7 +62,7 @@ void test_case(std::string assembly_lines,
 
     // check write registers
     EXPECT_EQ(op->write_regs().size(), write_regs.at(i).size());
-    for (int j = 0; j < op->write_regs().size(); j++) {
+    for (size_t j = 0; j < op->write_regs().size(); j++) {
       const std::string expected_reg = op->write_regs().at(j).to_string();
       // the ordering of the registers doesn't matter. It could happen to be in the same order
       // as the opcode here, but it may not always be the case.
@@ -75,12 +75,13 @@ void test_case(std::string assembly_lines,
           break;
         }
       }
-      EXPECT_TRUE(found, fmt::format("Unable to find expected WRITE register - {}", expected_reg));
+      EXPECT_TRUE(found) << fmt::format("Unable to find expected WRITE register - {}",
+                                        expected_reg);
     }
 
     // check read registers
     EXPECT_EQ(op->read_regs().size(), read_regs.at(i).size());
-    for (int j = 0; j < op->read_regs().size(); j++) {
+    for (size_t j = 0; j < op->read_regs().size(); j++) {
       const std::string expected_reg = op->read_regs().at(j).to_string();
       // the ordering of the registers doesn't matter. It could happen to be in the same order
       // as the opcode here, but it may not always be the case.
@@ -93,12 +94,12 @@ void test_case(std::string assembly_lines,
           break;
         }
       }
-      EXPECT_TRUE(found, fmt::format("Unable to find expected READ register - {}", expected_reg));
+      EXPECT_TRUE(found) << fmt::format("Unable to find expected READ register - {}", expected_reg);
     }
 
     // check clobbered registers
     EXPECT_EQ(op->clobber_regs().size(), clobbered_regs.at(i).size());
-    for (int j = 0; j < op->clobber_regs().size(); j++) {
+    for (size_t j = 0; j < op->clobber_regs().size(); j++) {
       const std::string expected_reg = op->clobber_regs().at(j).to_string();
       // the ordering of the registers doesn't matter. It could happen to be in the same order
       // as the opcode here, but it may not always be the case.
@@ -111,8 +112,8 @@ void test_case(std::string assembly_lines,
           break;
         }
       }
-      EXPECT_TRUE(found,
-                  fmt::format("Unable to find expected CLOBBERED register - {}", expected_reg));
+      EXPECT_TRUE(found) << fmt::format("Unable to find expected CLOBBERED register - {}",
+                                        expected_reg);
     }
   }
 }
@@ -321,8 +322,8 @@ TEST(DecompilerAtomicOpBuilder, MIN_S) {
 }
 
 TEST(DecompilerAtomicOpBuilder, MOVN) {
-  test_case(assembly_from_list({"movn a1, s7, a2"}), {"(cmove-#f-nonzero a1 a2)"}, {{"a1"}}, {{"a2"}},
-            {{}});
+  test_case(assembly_from_list({"movn a1, s7, a2"}), {"(cmove-#f-nonzero a1 a2)"}, {{"a1"}},
+            {{"a2"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, MOVZ) {
