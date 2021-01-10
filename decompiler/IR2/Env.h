@@ -23,7 +23,7 @@ class Env {
    * Get the types in registers _after_ the given operation has completed.
    */
   const TypeState& get_types_after_op(int atomic_op_id) const {
-    assert(m_has_local_vars);
+    assert(m_has_types);
     return m_op_end_types.at(atomic_op_id);
   }
 
@@ -32,7 +32,7 @@ class Env {
    * have occurred.
    */
   const TypeState& get_types_at_block_entry(int block_id) const {
-    assert(m_has_local_vars);
+    assert(m_has_types);
     return m_block_init_types.at(block_id);
   }
 

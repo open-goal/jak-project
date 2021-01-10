@@ -334,6 +334,40 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
   return result;
 }
 
+namespace {
+void append_commented(std::string& line,
+                      bool& has_comment,
+                      const std::string& to_append,
+                      int offset = 0) {
+  // minimum length before comment appears.
+  constexpr int pre_comment_length = 30;
+  // if comment overflows, how much to indent the next one
+  constexpr int overflow_indent = 30;
+
+  // pad, and add comment
+  if (!has_comment) {
+    if (line.length() < pre_comment_length) {
+      line.append(pre_comment_length - line.length(), ' ');
+    }
+    line += ";; ";
+    line += to_append;
+    has_comment = true;
+  } else {
+    if (std::max(int(line.length()), offset) + to_append.length() > 120) {
+      line += "\n";
+      line.append(overflow_indent, ' ');
+      line += ";; ";
+    } else {
+      if (int(line.length()) < offset) {
+        line.append(offset - line.length(), ' ');
+      }
+      line += " ";
+    }
+    line += to_append;
+  }
+}
+}  // namespace
+
 std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function& func, int seg) {
   std::string result;
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
@@ -395,45 +429,52 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
 
   // next, print each basic block
   int end_idx = func.basic_blocks.front().start_word;
-  for (int i = 0; i < int(func.basic_blocks.size()); i++) {
+  for (int block_id = 0; block_id < int(func.basic_blocks.size()); block_id++) {
     // block number
-    result += "B" + std::to_string(i) + ":\n";
-    auto& block = func.basic_blocks.at(i);
+    result += "B" + std::to_string(block_id) + ":\n";
+    auto& block = func.basic_blocks.at(block_id);
 
-    for (int j = block.start_word; j < block.end_word; j++) {
-      print_instr_start(j);
+    const TypeState* init_types = nullptr;
+    if (func.ir2.env.has_type_analysis()) {
+      init_types = &func.ir2.env.get_types_at_block_entry(block_id);
+    }
+
+    for (int instr_id = block.start_word; instr_id < block.end_word; instr_id++) {
+      print_instr_start(instr_id);
       bool printed_comment = false;
 
       // print atomic op
-      if (print_atomics && func.instr_starts_atomic_op(j)) {
-        if (line.length() < 30) {
-          line.append(30 - line.length(), ' ');
-        }
-        line += " ;; " +
-                func.get_atomic_op_at_instr(j).to_string(data.linked_data.labels, &func.ir2.env);
-        printed_comment = true;
+      int op_id = -1;
+      if (print_atomics && func.instr_starts_atomic_op(instr_id)) {
+        auto& op = func.get_atomic_op_at_instr(instr_id);
+        op_id = func.ir2.atomic_ops->instruction_to_atomic_op.at(instr_id);
+        append_commented(line, printed_comment,
+                         op.to_string(data.linked_data.labels, &func.ir2.env));
 
         if (func.ir2.env.has_type_analysis()) {
-          if (line.length() < 60) {
-            line.append(60 - line.length(), ' ');
-          }
+          append_commented(
+              line, printed_comment,
+              op.reg_type_info_as_string(*init_types, func.ir2.env.get_types_after_op(op_id)), 50);
         }
       }
-      auto& instr = func.instructions.at(j);
+      auto& instr = func.instructions.at(instr_id);
       // print linked strings
       for (int iidx = 0; iidx < instr.n_src; iidx++) {
         if (instr.get_src(iidx).is_label()) {
           auto lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
           if (data.linked_data.is_string(lab.target_segment, lab.offset)) {
-            if (!printed_comment) {
-              line += " ;; ";
-              printed_comment = true;
-            }
-            line += " " + data.linked_data.get_goal_string(lab.target_segment, lab.offset / 4 - 1);
+            append_commented(
+                line, printed_comment,
+                data.linked_data.get_goal_string(lab.target_segment, lab.offset / 4 - 1));
           }
         }
       }
-      print_instr_end(j);
+      print_instr_end(instr_id);
+
+      if (print_atomics && func.ir2.env.has_type_analysis() &&
+          func.instr_starts_atomic_op(instr_id)) {
+        init_types = &func.ir2.env.get_types_after_op(op_id);
+      }
     }
     end_idx = block.end_word;
   }

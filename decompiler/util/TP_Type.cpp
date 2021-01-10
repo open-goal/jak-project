@@ -2,6 +2,16 @@
 #include "third-party/fmt/core.h"
 
 namespace decompiler {
+u32 regs_to_gpr_mask(const std::vector<Register>& regs) {
+  u32 result = 0;
+  for (const auto& reg : regs) {
+    if (reg.get_kind() == Reg::GPR) {
+      result |= (1 << reg.get_gpr());
+    }
+  }
+  return result;
+}
+
 std::string TypeState::print_gpr_masked(u32 mask) const {
   std::string result;
   for (int i = 0; i < 32; i++) {

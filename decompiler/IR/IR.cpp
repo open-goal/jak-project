@@ -47,16 +47,6 @@ void add_regs_to_str(const T& regs, std::string& str) {
     str.append(reg.to_charp());
   }
 }
-
-u32 regs_to_gpr_mask(const std::vector<Register>& regs) {
-  u32 result = 0;
-  for (const auto& reg : regs) {
-    if (reg.get_kind() == Reg::GPR) {
-      result |= (1 << reg.get_gpr());
-    }
-  }
-  return result;
-}
 }  // namespace
 
 std::string IR_Atomic::print_with_reguse(const LinkedObjectFile& file) const {

@@ -223,6 +223,8 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
                             my_type.last_arg().print());
   }
 
+  ir2.env.set_types(block_init_types, op_types);
+
   return true;
 }
 }  // namespace decompiler

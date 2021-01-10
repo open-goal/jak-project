@@ -192,4 +192,6 @@ struct TypeState {
     }
   }
 };
+
+u32 regs_to_gpr_mask(const std::vector<Register>& regs);
 }  // namespace decompiler
