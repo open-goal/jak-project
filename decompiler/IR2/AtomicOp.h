@@ -125,6 +125,11 @@ class AtomicOp {
   const std::vector<Register>& write_regs() { return m_write_regs; }
   const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
   void add_clobber_reg(Register r) { m_clobber_regs.push_back(r); }
+  void clear_register_info() {
+    m_read_regs.clear();
+    m_write_regs.clear();
+    m_clobber_regs.clear();
+  }
 
   virtual ~AtomicOp() = default;
 
