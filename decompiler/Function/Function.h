@@ -92,7 +92,8 @@ class Function {
   bool run_type_analysis(const TypeSpec& my_type,
                          DecompilerTypeSystem& dts,
                          LinkedObjectFile& file,
-                         const std::unordered_map<int, std::vector<TypeHint>>& hints);
+                         const std::unordered_map<int, std::vector<TypeHint>>& hints,
+                         bool run_ir2 = false);
   void run_reg_usage();
   bool build_expression(LinkedObjectFile& file);
   BlockTopologicalSort bb_topo_sort();

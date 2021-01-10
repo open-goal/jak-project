@@ -24,10 +24,19 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_basic_block_pass();
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass();
+  lg::info("Running type analysis...");
+  ir2_type_analysis_pass();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
 
+/*!
+ * Analyze the top level function of each object.
+ * - Find global function definitions
+ * - Find type definitions
+ * - Find method definitions
+ * - Warn for non-unique function names.
+ */
 void ObjectFileDB::ir2_top_level_pass() {
   Timer timer;
   int total_functions = 0;
@@ -97,6 +106,7 @@ void ObjectFileDB::ir2_top_level_pass() {
     }
   });
 
+  // we remember duplicates like this so we can warn on all occurances of the duplicate name
   for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
     auto name = func.guessed_name.to_string();
@@ -115,6 +125,12 @@ void ObjectFileDB::ir2_top_level_pass() {
   lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
+/*!
+ * Initial Function Analysis Pass to build the control flow graph.
+ * - Find basic blocks
+ * - Analyze prologue and epilogue
+ * - Build control flow graph
+ */
 void ObjectFileDB::ir2_basic_block_pass() {
   Timer timer;
   // Main Pass over each function...
@@ -162,6 +178,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
     }
 
     if (func.suspected_asm) {
+      func.warnings.append(";; Assembly Function\n");
       suspected_asm++;
     }
   });
@@ -178,6 +195,10 @@ void ObjectFileDB::ir2_basic_block_pass() {
            100.f * inspect_methods / total_functions);
 }
 
+/*!
+ * Conversion of MIPS instructions into AtomicOps. The AtomicOps represent what we
+ * think are IR of the original GOAL compiler.
+ */
 void ObjectFileDB::ir2_atomic_op_pass() {
   Timer timer;
   int total_functions = 0;
@@ -197,6 +218,7 @@ void ObjectFileDB::ir2_atomic_op_pass() {
       } catch (std::exception& e) {
         lg::warn("Function {} from {} could not be converted to atomic ops: {}",
                  func.guessed_name.to_string(), data.to_unique_name(), e.what());
+        func.warnings.append(";; Failed to convert to atomic ops\n");
       }
     }
   });
@@ -205,6 +227,44 @@ void ObjectFileDB::ir2_atomic_op_pass() {
            successful, attempted, total_functions, timer.getMs());
   lg::info("{:.2f}% were attempted, {:.2f}% of attempted succeeded\n",
            100.f * attempted / total_functions, 100.f * successful / attempted);
+}
+
+/*!
+ * Analyze registers and determine the type in each register at each instruction.
+ * - Figure out the type of each function, from configs.
+ * - Propagate types.
+ */
+void ObjectFileDB::ir2_type_analysis_pass() {
+  Timer timer;
+  int total_functions = 0;
+  int non_asm_functions = 0;
+  int attempted_functions = 0;
+  int successful_functions = 0;
+
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    total_functions++;
+    if (!func.suspected_asm) {
+      non_asm_functions++;
+      TypeSpec ts;
+      if (lookup_function_type(func.guessed_name, data.to_unique_name(), &ts)) {
+        attempted_functions++;
+        // try type analysis here.
+        auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
+        if (func.run_type_analysis(ts, dts, data.linked_data, hints, true)) {
+          successful_functions++;
+        } else {
+          func.warnings.append(";; Type analysis failed\n");
+        }
+      } else {
+        // lg::warn("Function {} didn't know its type", func.guessed_name.to_string());
+        func.warnings.append(";; Type of function is unknown\n");
+      }
+    }
+  });
+
+  lg::info("{}/{}/{}/{} (success/attempted/non-asm/total) in {:.2f} ms", successful_functions,
+           attempted_functions, non_asm_functions, total_functions, timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
@@ -342,6 +402,68 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   result += "\n";
 
   return result;
+}
+
+/*!
+ * Try to look up the type of a function. Looks at the decompiler type info, the hints files,
+ * and other GOAL rules.
+ */
+bool ObjectFileDB::lookup_function_type(const FunctionName& name,
+                                        const std::string& obj_name,
+                                        TypeSpec* result) {
+  auto& cfg = get_config();
+
+  // don't return function types that are explictly flagged as bad in config.
+  if (cfg.no_type_analysis_functions_by_name.find(name.to_string()) !=
+      cfg.no_type_analysis_functions_by_name.end()) {
+    return false;
+  }
+
+  if (name.kind == FunctionName::FunctionKind::GLOBAL) {
+    // global GOAL function.
+    auto kv = dts.symbol_types.find(name.function_name);
+    if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+      if (kv->second.base_type() != "function") {
+        lg::die("Found a function named {} but the symbol has type {}", name.to_string(),
+                kv->second.print());
+      }
+      // good, found a global function with full type information.
+      *result = kv->second;
+      return true;
+    }
+  } else if (name.kind == FunctionName::FunctionKind::METHOD) {
+    MethodInfo info;
+
+    if (dts.ts.try_lookup_method(name.type_name, name.method_id, &info)) {
+      if (info.type.arg_count() >= 1) {
+        if (info.type.base_type() != "function") {
+          lg::die("Found a method named {} but the symbol has type {}", name.to_string(),
+                  info.type.print());
+        }
+        // substitute the _type_ for the correct type.
+        *result = info.type.substitute_for_method_call(name.type_name);
+        return true;
+      }
+    }
+
+  } else if (name.kind == FunctionName::FunctionKind::TOP_LEVEL_INIT) {
+    *result = dts.ts.make_function_typespec({}, "none");
+    return true;
+  } else if (name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+    // try looking up the object
+    const auto& map = get_config().anon_function_types_by_obj_by_id;
+    auto obj_kv = map.find(obj_name);
+    if (obj_kv != map.end()) {
+      auto func_kv = obj_kv->second.find(name.get_anon_id());
+      if (func_kv != obj_kv->second.end()) {
+        *result = dts.parse_type_spec(func_kv->second);
+        return true;
+      }
+    }
+  } else {
+    assert(false);
+  }
+  return false;
 }
 
 }  // namespace decompiler

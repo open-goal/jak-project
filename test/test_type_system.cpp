@@ -196,6 +196,12 @@ TEST(TypeSystem, AddMethodAndLookupMethod) {
   EXPECT_EQ(ts.lookup_method("basic", "test-method-1").defined_in_type, "structure");
   EXPECT_EQ(ts.lookup_method("basic", "test-method-1").type.print(), "(function integer string)");
   EXPECT_EQ(ts.lookup_method("basic", "test-method-1").name, "test-method-1");
+
+  auto id = ts.lookup_method("basic", "test-method-1").id;
+  MethodInfo info;
+  EXPECT_TRUE(ts.try_lookup_method("basic", id, &info));
+  EXPECT_FALSE(ts.try_lookup_method("not-a-real-type-name", id, &info));
+  EXPECT_FALSE(ts.try_lookup_method("basic", id * 2, &info));
 }
 
 TEST(TypeSystem, NewMethod) {

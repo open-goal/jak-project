@@ -47,7 +47,11 @@ void try_apply_hints(int idx,
 bool Function::run_type_analysis(const TypeSpec& my_type,
                                  DecompilerTypeSystem& dts,
                                  LinkedObjectFile& file,
-                                 const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+                                 const std::unordered_map<int, std::vector<TypeHint>>& hints,
+                                 bool run_ir2) {
+  if (run_ir2) {
+    return false;
+  }
   // STEP 0 - setup settings
   dts.type_prop_settings.reset();
   if (get_config().pair_functions_by_name.find(guessed_name.to_string()) !=
