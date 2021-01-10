@@ -14,18 +14,18 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
     auto reg_type = f_ts.get_arg(i);
-    result.gpr_types[reg_id] = TP_Type::make_from_typespec(reg_type);
+    result.gpr_types[reg_id] = TP_Type::make_from_ts(reg_type);
   }
 
   // todo, more specific process types for behaviors.
-  result.gpr_types[Reg::S6] = TP_Type::make_from_typespec(TypeSpec("process"));
+  result.gpr_types[Reg::S6] = TP_Type::make_from_ts(TypeSpec("process"));
   return result;
 }
 
 void apply_hints(const std::vector<TypeHint>& hints, TypeState* state, DecompilerTypeSystem& dts) {
   for (auto& hint : hints) {
     try {
-      state->get(hint.reg) = TP_Type::make_from_typespec(dts.parse_type_spec(hint.type_name));
+      state->get(hint.reg) = TP_Type::make_from_ts(dts.parse_type_spec(hint.type_name));
     } catch (std::exception& e) {
       printf("failed to parse hint: %s\n", e.what());
       assert(false);
@@ -92,7 +92,7 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
           try_apply_hints(op_id, hints, init_types, dts);
         }
 
-        // while the implementation of propagate_types is in progress, it may throw
+        // while the implementation of propagate_types_internal is in progress, it may throw
         // for unimplemented cases.  Eventually this try/catch should be removed.
         try {
           op->propagate_types(*init_types, file, dts);
@@ -183,11 +183,12 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
           try_apply_hints(op_id, hints, init_types, dts);
         }
 
-        // while the implementation of propagate_types is in progress, it may throw
+        auto& op = aop->ops.at(op_id);
+
+        // while the implementation of propagate_types_internal is in progress, it may throw
         // for unimplemented cases.  Eventually this try/catch should be removed.
         try {
-          // TODO
-          //          op->propagate_types(*init_types, file, dts);
+          op_types.at(op_id) = op->propagate_types(*init_types, ir2.env, dts);
         } catch (std::runtime_error& e) {
           fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
           warnings += ";; Type prop attempted and failed.\n";

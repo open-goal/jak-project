@@ -11,6 +11,7 @@
 
 namespace decompiler {
 class Expr;
+class DecompilerTypeSystem;
 
 /*!
  * A "Variable" represents a register at a given instruction index.
@@ -84,7 +85,6 @@ class Variable {
  * SetVarConditionOp
  * AsmOp
  * SetVarExprOp
- * AsmOp
  */
 class AtomicOp {
  public:
@@ -123,6 +123,10 @@ class AtomicOp {
   // read twice.
   virtual void update_register_info() = 0;
 
+  TypeState propagate_types(const TypeState& input,
+                            const Env& env,
+                            DecompilerTypeSystem& dts) const;
+
   const std::vector<Register>& read_regs() { return m_read_regs; }
   const std::vector<Register>& write_regs() { return m_write_regs; }
   const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
@@ -137,6 +141,12 @@ class AtomicOp {
 
  protected:
   int m_my_idx = -1;
+
+  // given the input types of all registers, figure out the output types.
+  virtual TypeState propagate_types_internal(const TypeState& input,
+                                             const Env& env,
+                                             DecompilerTypeSystem& dts) const = 0;
+  void clobber_temps();
 
   // the register values that are read (at the start of this op)
   std::vector<Register> m_read_regs;
@@ -186,6 +196,7 @@ class SimpleAtom {
   bool operator!=(const SimpleAtom& other) const { return !((*this) == other); }
   void get_regs(std::vector<Register>* out) const;
   SimpleExpression as_expr() const;
+  TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -258,6 +269,7 @@ class SimpleExpression {
   bool operator==(const SimpleExpression& other) const;
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
   void get_regs(std::vector<Register>* out) const;
+  TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -283,6 +295,9 @@ class SetVarOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   Variable m_dst;
@@ -307,6 +322,9 @@ class AsmOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   Instruction m_instr;
@@ -390,6 +408,9 @@ class SetVarConditionOp : public AtomicOp {
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
   void invert() { m_condition.invert(); }
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   Variable m_dst;
@@ -412,6 +433,9 @@ class StoreOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   int m_size;
@@ -436,6 +460,9 @@ class LoadVarOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   Kind m_kind;
@@ -473,6 +500,9 @@ class IR2_BranchDelay {
   bool operator==(const IR2_BranchDelay& other) const;
   void get_regs(std::vector<Register>* write, std::vector<Register>* read) const;
   bool is_known() const { return m_kind != Kind::UNKNOWN; }
+  TypeState propagate_types(const TypeState& input,
+                            const Env& env,
+                            DecompilerTypeSystem& dts) const;
 
  private:
   std::optional<Variable> m_var[3];
@@ -498,6 +528,9 @@ class BranchOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   bool m_likely = false;
@@ -528,6 +561,9 @@ class SpecialOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   Kind m_kind;
@@ -548,6 +584,9 @@ class CallOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 };
 
 /*!
@@ -573,6 +612,9 @@ class ConditionalMoveFalseOp : public AtomicOp {
   std::unique_ptr<Expr> get_set_source_as_expr() const override;
   std::unique_ptr<Expr> get_as_expr() const override;
   void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) const override;
 
  private:
   Variable m_dst, m_src;

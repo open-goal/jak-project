@@ -7,6 +7,8 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
+class LinkedObjectFile;
+
 /*!
  * An "environment" for a single function.
  * This contains data for an entire function, like which registers are live when, the types of
@@ -38,6 +40,7 @@ class Env {
 
   void set_types(const std::vector<TypeState>& block_init_types,
                  const std::vector<TypeState>& op_end_types);
+  LinkedObjectFile* file = nullptr;
 
  private:
   bool m_has_local_vars = false;

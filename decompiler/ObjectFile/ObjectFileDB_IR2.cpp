@@ -143,6 +143,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
 
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     total_functions++;
+    func.ir2.env.file = &data.linked_data;
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
