@@ -349,12 +349,12 @@ TEST(DecompilerAtomicOpBuilder, DIV_MFLO) {
 }
 
 TEST(DecompilerAtomicOpBuilder, DSLL) {
-  test_case(assembly_from_list({"dsll a2, a3, 3"}), {"(set! a2 (shl a3 3))"}, {{"a2"}}, {{"a3"}},
+  test_case(assembly_from_list({"dsll a2, a3, 3"}), {"(set! a2 (sll a3 3))"}, {{"a2"}}, {{"a3"}},
             {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, DSLL32) {
-  test_case(assembly_from_list({"dsll32 a2, a3, 3"}), {"(set! a2 (shl a3 35))"}, {{"a2"}}, {{"a3"}},
+  test_case(assembly_from_list({"dsll32 a2, a3, 3"}), {"(set! a2 (sll a3 35))"}, {{"a2"}}, {{"a3"}},
             {{}});
 }
 
