@@ -198,11 +198,11 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::DIV_SIGNED:
       return "/.si";
     case SimpleExpression::Kind::MOD_SIGNED:
-      return "%.si";
+      return "mod.si";
     case SimpleExpression::Kind::DIV_UNSIGNED:
       return "/.ui";
     case SimpleExpression::Kind::MOD_UNSIGNED:
-      return "%.ui";
+      return "mod.ui";
     case SimpleExpression::Kind::OR:
       return "logior";
     case SimpleExpression::Kind::AND:
@@ -212,7 +212,7 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::XOR:
       return "logxor";
     case SimpleExpression::Kind::LEFT_SHIFT:
-      return "shl";
+      return "sll";
     case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
       return "sra";
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
