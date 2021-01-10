@@ -15,7 +15,7 @@ struct FunctionAtomicOps {
   std::vector<std::unique_ptr<AtomicOp>> ops;
 
   // mappings from instructions to atomic ops and back
-  std::unordered_map<int, int> instruction_to_basic_op;
+  std::unordered_map<int, int> instruction_to_atomic_op;
   std::unordered_map<int, int> atomic_op_to_instruction;
 
   // map from basic block to the index of the first op

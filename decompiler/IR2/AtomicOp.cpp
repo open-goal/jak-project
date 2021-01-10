@@ -1,5 +1,6 @@
 #include <cassert>
 #include <utility>
+#include <stdexcept>
 #include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -14,7 +15,10 @@ Variable::Variable(Mode mode, Register reg, int atomic_idx, bool allow_all)
     : m_mode(mode), m_reg(reg), m_atomic_idx(atomic_idx) {
   // make sure we're using a valid GPR.
   if (reg.get_kind() == Reg::GPR && !allow_all) {
-    assert(Reg::allowed_local_gprs[reg.get_gpr()] || reg.get_gpr() == Reg::S6);
+    if (!(Reg::allowed_local_gprs[reg.get_gpr()] || reg.get_gpr() == Reg::S6)) {
+      throw std::runtime_error("Variable could not be constructed from register " +
+                               reg.to_string());
+    }
   }
 }
 
@@ -51,7 +55,7 @@ bool Variable::operator!=(const Variable& other) const {
 /////////////////////////////
 AtomicOp::AtomicOp(int my_idx) : m_my_idx(my_idx) {}
 
-std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) {
+std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   return pretty_print::to_string(to_form(labels, env));
 }
 bool AtomicOp::operator!=(const AtomicOp& other) const {
@@ -91,7 +95,15 @@ SimpleAtom SimpleAtom::make_empty_list() {
 
 SimpleAtom SimpleAtom::make_int_constant(s64 value) {
   SimpleAtom result;
+  result.m_kind = Kind::INTEGER_CONSTANT;
   result.m_int = value;
+  return result;
+}
+
+SimpleAtom SimpleAtom::make_static_address(int static_label_id) {
+  SimpleAtom result;
+  result.m_kind = Kind::STATIC_ADDRESS;
+  result.m_int = static_label_id;
   return result;
 }
 
@@ -105,6 +117,8 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
       return pretty_print::to_symbol(fmt::format("'{}", m_string));
     case Kind::SYMBOL_VAL:
       return pretty_print::to_symbol(m_string);
+    case Kind::EMPTY_LIST:
+      return pretty_print::to_symbol("'()");
     case Kind::STATIC_ADDRESS:
       return pretty_print::to_symbol(labels.at(m_int).name);
     default:
@@ -140,6 +154,10 @@ void SimpleAtom::get_regs(std::vector<Register>* out) const {
   if (is_var()) {
     out->push_back(var().reg());
   }
+}
+
+SimpleExpression SimpleAtom::as_expr() const {
+  return SimpleExpression(SimpleExpression::Kind::IDENTITY, *this);
 }
 
 /////////////////////////////
@@ -201,10 +219,22 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "srl";
     case SimpleExpression::Kind::MUL_UNSIGNED:
       return "*.ui";
-    case SimpleExpression::Kind::NOT:
+    case SimpleExpression::Kind::LOGNOT:
       return "lognot";
     case SimpleExpression::Kind::NEG:
       return "-";
+    case SimpleExpression::Kind::GPR_TO_FPR:
+      return "gpr->fpr";
+    case SimpleExpression::Kind::FPR_TO_GPR:
+      return "fpr->gpr";
+    case SimpleExpression::Kind::MIN_SIGNED:
+      return "min.si";
+    case SimpleExpression::Kind::MIN_UNSIGNED:
+      return "min.ui";
+    case SimpleExpression::Kind::MAX_SIGNED:
+      return "max.si";
+    case SimpleExpression::Kind::MAX_UNSIGNED:
+      return "max.ui";
     default:
       assert(false);
   }
@@ -243,9 +273,16 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
     case SimpleExpression::Kind::MUL_UNSIGNED:
       return 2;
-    case SimpleExpression::Kind::NOT:
+    case SimpleExpression::Kind::LOGNOT:
     case SimpleExpression::Kind::NEG:
+    case SimpleExpression::Kind::GPR_TO_FPR:
+    case SimpleExpression::Kind::FPR_TO_GPR:
       return 1;
+    case SimpleExpression::Kind::MIN_SIGNED:
+    case SimpleExpression::Kind::MIN_UNSIGNED:
+    case SimpleExpression::Kind::MAX_SIGNED:
+    case SimpleExpression::Kind::MAX_UNSIGNED:
+      return 2;
     default:
       assert(false);
   }
@@ -397,7 +434,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     if (m_src[i].has_value()) {
       forms.push_back(pretty_print::to_symbol(m_src[i].value().to_string(env)));
     } else {
-      forms.push_back(pretty_print::to_symbol(m_instr.get_src(1).to_string(labels)));
+      forms.push_back(pretty_print::to_symbol(m_instr.get_src(i).to_string(labels)));
     }
   }
 
@@ -501,12 +538,24 @@ std::string get_condition_kind_name(IR2_Condition::Kind kind) {
       return "<=.s";
     case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED:
       return ">0.si";
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED:
+      return ">0.ui";
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED:
       return ">=0.si";
-    case IR2_Condition::Kind::LESS_THAN_ZERO:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED:
       return "<0.si";
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED:
       return "<=0.si";
+    case IR2_Condition::Kind::LEQ_ZERO_UNSIGNED:
+      return "<=0.ui";
+    case IR2_Condition::Kind::IS_PAIR:
+      return "pair?";
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+      return "not-pair?";
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED:
+      return "<0.ui";
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
+      return ">=0.ui";
     default:
       assert(false);
   }
@@ -537,8 +586,14 @@ int get_condition_num_args(IR2_Condition::Kind kind) {
     case IR2_Condition::Kind::TRUTHY:
     case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED:
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED:
-    case IR2_Condition::Kind::LESS_THAN_ZERO:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED:
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED:
+    case IR2_Condition::Kind::IS_PAIR:
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+    case IR2_Condition::Kind::LEQ_ZERO_UNSIGNED:
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED:
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
       return 1;
     case IR2_Condition::Kind::ALWAYS:
     case IR2_Condition::Kind::NEVER:
@@ -566,10 +621,10 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       return IR2_Condition::Kind::LEQ_ZERO_SIGNED;
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED:
       return IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED;
-    case IR2_Condition::Kind::LESS_THAN_ZERO:
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED:
       return IR2_Condition::Kind::GEQ_ZERO_SIGNED;
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED:
-      return IR2_Condition::Kind::LESS_THAN_ZERO;
+      return IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED;
     case IR2_Condition::Kind::LESS_THAN_UNSIGNED:
       return IR2_Condition::Kind::GEQ_UNSIGNED;
     case IR2_Condition::Kind::GREATER_THAN_UNSIGNED:
@@ -602,6 +657,18 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       return IR2_Condition::Kind::FLOAT_LEQ;
     case IR2_Condition::Kind::FLOAT_LEQ:
       return IR2_Condition::Kind::FLOAT_GREATER_THAN;
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+      return IR2_Condition::Kind::IS_PAIR;
+    case IR2_Condition::Kind::IS_PAIR:
+      return IR2_Condition::Kind::IS_NOT_PAIR;
+    case IR2_Condition::Kind::LEQ_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED;
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::LEQ_ZERO_UNSIGNED;
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::GEQ_ZERO_UNSIGNED;
+    case IR2_Condition::Kind::GEQ_ZERO_UNSIGNED:
+      return IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED;
     default:
       assert(false);
   }
@@ -612,12 +679,13 @@ IR2_Condition::IR2_Condition(Kind kind) : m_kind(kind) {
   assert(get_condition_num_args(m_kind) == 0);
 }
 
-IR2_Condition::IR2_Condition(Kind kind, const Variable& src0) : m_kind(kind) {
+IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0) : m_kind(kind) {
   m_src[0] = src0;
   assert(get_condition_num_args(m_kind) == 1);
 }
 
-IR2_Condition::IR2_Condition(Kind kind, const Variable& src0, const Variable& src1) : m_kind(kind) {
+IR2_Condition::IR2_Condition(Kind kind, const SimpleAtom& src0, const SimpleAtom& src1)
+    : m_kind(kind) {
   m_src[0] = src0;
   m_src[1] = src1;
   assert(get_condition_num_args(m_kind) == 2);
@@ -646,14 +714,18 @@ goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(pretty_print::to_symbol(m_src[i].to_string(env)));
+    forms.push_back(m_src[i].to_form(labels, env));
   }
-  return pretty_print::build_list(forms);
+  if (forms.size() > 1) {
+    return pretty_print::build_list(forms);
+  } else {
+    return forms.front();
+  }
 }
 
 void IR2_Condition::get_regs(std::vector<Register>* out) const {
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    out->push_back(m_src[i].reg());
+    m_src[i].get_regs(out);
   }
 }
 
@@ -710,11 +782,38 @@ void SetVarConditionOp::update_register_info() {
 // StoreOp
 /////////////////////////////
 
-StoreOp::StoreOp(SimpleExpression addr, SimpleAtom value, int my_idx)
-    : AtomicOp(my_idx), m_addr(std::move(addr)), m_value(std::move(value)) {}
+StoreOp::StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx)
+    : AtomicOp(my_idx),
+      m_size(size),
+      m_is_float(is_float),
+      m_addr(std::move(addr)),
+      m_value(std::move(value)) {}
 
 goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("store!"), m_addr.to_form(labels, env),
+  std::string store_name;
+  if (m_is_float) {
+    assert(m_size == 4);
+    store_name = "s.f!";
+  } else {
+    switch (m_size) {
+      case 1:
+        store_name = "s.b!";
+        break;
+      case 2:
+        store_name = "s.h!";
+        break;
+      case 4:
+        store_name = "s.w!";
+        break;
+      case 8:
+        store_name = "s.d!";
+        break;
+      default:
+        assert(false);
+    }
+  }
+
+  return pretty_print::build_list(pretty_print::to_symbol(store_name), m_addr.to_form(labels, env),
                                   m_value.to_form(labels, env));
 }
 
@@ -758,13 +857,55 @@ void StoreOp::update_register_info() {
 // LoadVarOp
 /////////////////////////////
 
-LoadVarOp::LoadVarOp(Variable dst, SimpleExpression src, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {}
+LoadVarOp::LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx)
+    : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}
 
 goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("set!"),
-                                  pretty_print::to_symbol(m_dst.to_string(env)),
-                                  m_src.to_form(labels, env));
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"),
+                                     pretty_print::to_symbol(m_dst.to_string(env))};
+
+  switch (m_kind) {
+    case Kind::FLOAT:
+      assert(m_size == 4);
+      forms.push_back(pretty_print::build_list("l.f", m_src.to_form(labels, env)));
+      break;
+    case Kind::UNSIGNED:
+      switch (m_size) {
+        case 1:
+          forms.push_back(pretty_print::build_list("l.bu", m_src.to_form(labels, env)));
+          break;
+        case 2:
+          forms.push_back(pretty_print::build_list("l.hu", m_src.to_form(labels, env)));
+          break;
+        case 4:
+          forms.push_back(pretty_print::build_list("l.wu", m_src.to_form(labels, env)));
+          break;
+        case 8:
+          forms.push_back(pretty_print::build_list("l.d", m_src.to_form(labels, env)));
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    case Kind::SIGNED:
+      switch (m_size) {
+        case 1:
+          forms.push_back(pretty_print::build_list("l.b", m_src.to_form(labels, env)));
+          break;
+        case 2:
+          forms.push_back(pretty_print::build_list("l.h", m_src.to_form(labels, env)));
+          break;
+        case 4:
+          forms.push_back(pretty_print::build_list("l.w", m_src.to_form(labels, env)));
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    default:
+      assert(false);
+  }
+  return pretty_print::build_list(forms);
 }
 
 bool LoadVarOp::operator==(const AtomicOp& other) const {
@@ -864,7 +1005,7 @@ goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels
       assert(m_var[2].has_value());
       return pretty_print::build_list(
           "set!", m_var[0]->to_string(env),
-          pretty_print::build_list("dsllv", m_var[1]->to_string(env), m_var[2]->to_string(env)));
+          pretty_print::build_list("sll", m_var[1]->to_string(env), m_var[2]->to_string(env)));
     case Kind::NEGATE:
       assert(m_var[0].has_value());
       assert(m_var[1].has_value());
@@ -987,11 +1128,13 @@ goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, cons
   (void)env;
   switch (m_kind) {
     case Kind::NOP:
-      return pretty_print::to_symbol("nop!");
+      return pretty_print::build_list("nop!");
     case Kind::BREAK:
-      return pretty_print::to_symbol("break!");
+      return pretty_print::build_list("break!");
+    case Kind::CRASH:
+      return pretty_print::build_list("crash!");
     case Kind::SUSPEND:
-      return pretty_print::to_symbol("suspend");
+      return pretty_print::build_list("suspend");
     default:
       assert(false);
   }
@@ -1073,7 +1216,8 @@ std::unique_ptr<Expr> CallOp::get_as_expr() const {
 }
 
 void CallOp::update_register_info() {
-  throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
+  // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
+  m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
 }
 
 /////////////////////////////

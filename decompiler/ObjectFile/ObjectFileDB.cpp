@@ -126,19 +126,19 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
         "consistent naming when doing a partial decompilation.");
   }
 
-  lg::info("-Loading DGOs...");
+  lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
     get_objs_from_dgo(dgo);
   }
 
-  lg::info("-Loading plain object files...");
+  lg::info("-Loading {} plain object files...", object_files.size());
   for (auto& obj : object_files) {
     auto data = file_util::read_binary_file(obj);
     auto name = obj_filename_to_name(obj);
     add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
   }
 
-  lg::info("-Loading streaming object files...");
+  lg::info("-Loading {} streaming object files...", str_files.size());
   for (auto& obj : str_files) {
     StrFileReader reader(obj);
     // name from the file name
@@ -153,15 +153,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
     }
   }
 
-  lg::info("ObjectFileDB Initialized:");
-  lg::info("Total DGOs: {}", int(_dgos.size()));
-  lg::info("Total data: {} bytes", stats.total_dgo_bytes);
-  lg::info("Total objs: {}", stats.total_obj_files);
-  lg::info("Unique objs: {}", stats.unique_obj_files);
-  lg::info("Unique data: {} bytes", stats.unique_obj_bytes);
-  lg::info("Total {:.2f} ms ({:.3f} MB/sec, {:.2f} obj/sec)", timer.getMs(),
-           stats.total_dgo_bytes / ((1u << 20u) * timer.getSeconds()),
-           stats.total_obj_files / timer.getSeconds());
+  lg::info("ObjectFileDB Initialized\n");
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -481,7 +473,7 @@ std::string ObjectFileDB::generate_obj_listing() {
  * Process all of the linking data of all objects.
  */
 void ObjectFileDB::process_link_data() {
-  lg::info("- Processing Link Data...");
+  lg::info("Processing Link Data...");
   Timer process_link_timer;
 
   LinkedObjectFile::Stats combined_stats;
@@ -491,25 +483,7 @@ void ObjectFileDB::process_link_data() {
     combined_stats.add(obj.linked_data.stats);
   });
 
-  lg::info("Processed Link Data:");
-  lg::info(" Code {} bytes", combined_stats.total_code_bytes);
-  lg::info(" v2 Code {} bytes", combined_stats.total_v2_code_bytes);
-  lg::info(" v2 Link Data {} bytes", combined_stats.total_v2_link_bytes);
-  lg::info(" v2 Pointers {}", combined_stats.total_v2_pointers);
-  lg::info(" v2 Pointer Seeks {}", combined_stats.total_v2_pointer_seeks);
-  lg::info(" v2 Symbols {}", combined_stats.total_v2_symbol_count);
-  lg::info(" v2 Symbol Links {}", combined_stats.total_v2_symbol_links);
-
-  lg::info(" v3 Code {} bytes", combined_stats.v3_code_bytes);
-  lg::info(" v3 Link Data {} bytes", combined_stats.v3_link_bytes);
-  lg::info(" v3 Pointers {}", combined_stats.v3_pointers);
-  lg::info("   Split {}", combined_stats.v3_split_pointers);
-  lg::info("   Word  {}", combined_stats.v3_word_pointers);
-  lg::info(" v3 Pointer Seeks {}", combined_stats.v3_pointer_seeks);
-  lg::info(" v3 Symbols {}", combined_stats.v3_symbol_count);
-  lg::info(" v3 Offset Symbol Links {}", combined_stats.v3_symbol_link_offset);
-  lg::info(" v3 Word Symbol Links {}", combined_stats.v3_symbol_link_word);
-
+  lg::info("Processed Link Data");
   lg::info(" Total {} ms\n", process_link_timer.getMs());
   // printf("\n");
 }
@@ -518,15 +492,14 @@ void ObjectFileDB::process_link_data() {
  * Process all of the labels generated from linking and give them reasonable names.
  */
 void ObjectFileDB::process_labels() {
-  lg::info("- Processing Labels...");
+  lg::info("Processing Labels...");
   Timer process_label_timer;
   uint32_t total = 0;
   for_each_obj([&](ObjectFileData& obj) { total += obj.linked_data.set_ordered_label_names(); });
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {} ms", process_label_timer.getMs());
-  // printf("\n");
+  lg::info(" Total {} ms\n", process_label_timer.getMs());
 }
 
 /*!
@@ -636,7 +609,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
  * Find code/data zones, identify functions, and disassemble
  */
 void ObjectFileDB::find_code() {
-  lg::info("- Finding code in object files...");
+  lg::info("Finding code in object files...");
   LinkedObjectFile::Stats combined_stats;
   Timer timer;
 
@@ -670,8 +643,7 @@ void ObjectFileDB::find_code() {
   auto total_ops = combined_stats.code_bytes / 4;
   lg::info(" Decoded {} / {} ({:.3f} %)", combined_stats.decoded_ops, total_ops,
            100.f * (float)combined_stats.decoded_ops / total_ops);
-  lg::info(" Total {:.3f} ms", timer.getMs());
-  // printf("\n");
+  lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
 /*!
@@ -767,7 +739,7 @@ std::string ObjectFileDB::process_game_count_file() {
 /*!
  * This is the main decompiler routine which runs after we've identified functions.
  */
-void ObjectFileDB::analyze_functions() {
+void ObjectFileDB::analyze_functions_ir1() {
   lg::info("- Analyzing Functions...");
   Timer timer;
 

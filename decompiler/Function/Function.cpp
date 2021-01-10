@@ -684,6 +684,19 @@ std::shared_ptr<IR_Atomic> Function::get_basic_op_at_instr(int idx) {
   return basic_ops.at(instruction_to_basic_op.at(idx));
 }
 
+bool Function::instr_starts_atomic_op(int idx) {
+  auto op = ir2.atomic_ops->instruction_to_atomic_op.find(idx);
+  if (op != ir2.atomic_ops->instruction_to_atomic_op.end()) {
+    auto start_instr = ir2.atomic_ops->atomic_op_to_instruction.at(op->second);
+    return start_instr == idx;
+  }
+  return false;
+}
+
+const AtomicOp& Function::get_atomic_op_at_instr(int idx) {
+  return *ir2.atomic_ops->ops.at(ir2.atomic_ops->instruction_to_atomic_op.at(idx));
+}
+
 int Function::get_basic_op_count() {
   return basic_ops.size();
 }

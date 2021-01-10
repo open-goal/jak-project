@@ -43,6 +43,7 @@ struct Config {
       type_hints_by_function_by_idx;
   std::unordered_map<std::string, std::unordered_map<int, std::string>>
       anon_function_types_by_obj_by_id;
+  bool run_ir2 = false;
 };
 
 Config& get_config();

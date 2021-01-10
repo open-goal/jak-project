@@ -65,7 +65,15 @@ class ObjectFileDB {
                          const std::string& file_suffix = "");
 
   void write_debug_type_analysis(const std::string& output_dir, const std::string& suffix = "");
-  void analyze_functions();
+  void analyze_functions_ir1();
+  void analyze_functions_ir2(const std::string& output_dir);
+  void ir2_top_level_pass();
+  void ir2_basic_block_pass();
+  void ir2_atomic_op_pass();
+  void ir2_write_results(const std::string& output_dir);
+  std::string ir2_to_file(ObjectFileData& data);
+  std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
+
   void process_tpages();
   void analyze_expressions();
   std::string process_game_count_file();

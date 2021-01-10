@@ -35,6 +35,7 @@ add_library(
 		ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
 		ObjectFile/ObjectFileDB.cpp
+		ObjectFile/ObjectFileDB_IR2.cpp
 
         util/DecompilerTypeSystem.cpp
 		util/TP_Type.cpp

@@ -41,7 +41,8 @@ InstructionParser::InstructionParser() {
                  InstructionKind::BNEL,   InstructionKind::BC1FL,  InstructionKind::BC1TL,
                  InstructionKind::BLTZ,   InstructionKind::BGEZ,   InstructionKind::BLEZ,
                  InstructionKind::BGTZ,   InstructionKind::BLTZL,  InstructionKind::BGTZL,
-                 InstructionKind::BGEZL}) {
+                 InstructionKind::BGEZL,  InstructionKind::MTC1,   InstructionKind::MFC1,
+                 InstructionKind::MFLO,   InstructionKind::MFHI}) {
     auto& info = gOpcodeInfo[int(i)];
     if (info.defined) {
       m_opcode_name_lookup[info.name] = int(i);
@@ -206,6 +207,18 @@ Instruction InstructionParser::parse_single_instruction(
         if (is_integer(atom_str)) {
           auto amt = parse_integer(atom_str);
           atom.set_imm(amt);
+        } else if (!atom_str.empty() && atom_str.front() == 'L') {
+          bool found_label = false;
+          for (size_t id = 0; id < labels.size(); id++) {
+            if (labels[id].name == atom_str) {
+              found_label = true;
+              atom.set_label(id);
+              break;
+            }
+          }
+          if (!found_label) {
+            atom.set_sym(atom_str);
+          }
         } else {
           atom.set_sym(atom_str);
         }
