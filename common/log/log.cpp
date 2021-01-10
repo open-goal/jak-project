@@ -101,6 +101,7 @@ void set_max_debug_levels() {
 
 void initialize() {
   assert(!gLogger.initialized);
+
 #ifdef _WIN32
   // Always enable VIRTUAL_TERMINAL_PROCESSING, this console mode allows the console (stdout) to
   // support ANSI colors in the outputted text, which are used by the logging tool.
@@ -117,6 +118,7 @@ void initialize() {
   modeStdOut |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   SetConsoleMode(hStdOut, modeStdOut);
 #endif
+
   gLogger.initialized = true;
 }
 
