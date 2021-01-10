@@ -118,6 +118,27 @@ void test_case(std::string assembly_lines,
   }
 }
 
+TEST(DecompilerAtomicOpBuilder, RegUseDuplication) {
+  auto assembly =
+      assembly_from_list({"L100:", "sltiu a3, a0, 12", "beq a3, r0, L100", "or a3, s7, r0"});
+
+  InstructionParser parser;
+  ParsedProgram prg = parser.parse_program(assembly);
+  EXPECT_EQ(prg.print(), assembly);
+  FunctionAtomicOps container;
+  convert_block_to_atomic_ops(0, prg.instructions.begin(), prg.instructions.end(), prg.labels,
+                              &container);
+  ASSERT_EQ(1, container.ops.size());
+  auto& op = container.ops.at(0);
+  for (const auto& reg_group : {op->read_regs(), op->write_regs(), op->clobber_regs()}) {
+    std::unordered_set<Register, Register::hash> unique_regs;
+    for (auto& reg : reg_group) {
+      unique_regs.insert(reg);
+    }
+    EXPECT_EQ(unique_regs.size(), reg_group.size());
+  }
+}
+
 TEST(DecompilerAtomicOpBuilder, Example) {
   test_case(assembly_from_list({"and v0, v1, a3", "and a1, a2, a2"}),
             {"(set! v0 (logand v1 a3))", "(set! a1 (logand a2 a2))"}, {{"v0"}, {"a1"}},
