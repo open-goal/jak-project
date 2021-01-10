@@ -275,10 +275,10 @@ void IR_Set_Atomic::update_reginfo_regreg() {
 goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
   std::string store_operator;
   switch (kind) {
-    case FLOAT:
+    case Kind::FLOAT:
       store_operator = "s.f";
       break;
-    case INTEGER:
+    case Kind::INTEGER:
       switch (size) {
         case 1:
           store_operator = "s.b";
@@ -310,10 +310,10 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
 goos::Object IR_Store_Atomic::to_form(const LinkedObjectFile& file) const {
   std::string store_operator;
   switch (kind) {
-    case FLOAT:
+    case Kind::FLOAT:
       store_operator = "s.f";
       break;
-    case INTEGER:
+    case Kind::INTEGER:
       switch (size) {
         case 1:
           store_operator = "s.b";

@@ -113,7 +113,7 @@ std::string disassemble_x86_function(u8* data,
 
       if (current_instruction_idx >= 0 && current_instruction_idx < int(x86_instructions.size())) {
         const auto& debug_instr = x86_instructions.at(current_instruction_idx);
-        if (debug_instr.kind == InstructionInfo::IR && debug_instr.ir_idx != current_ir_idx) {
+        if (debug_instr.kind == InstructionInfo::Kind::IR && debug_instr.ir_idx != current_ir_idx) {
           current_ir_idx = debug_instr.ir_idx;
           print_ir = true;
         }
