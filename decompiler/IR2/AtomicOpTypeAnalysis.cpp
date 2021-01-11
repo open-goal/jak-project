@@ -414,6 +414,8 @@ TypeState SetVarOp::propagate_types_internal(const TypeState& input,
 TypeState AsmOp::propagate_types_internal(const TypeState& input,
                                           const Env& env,
                                           DecompilerTypeSystem& dts) {
+  (void)env;
+  (void)dts;
   TypeState result = input;
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
@@ -427,6 +429,8 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
 TypeState SetVarConditionOp::propagate_types_internal(const TypeState& input,
                                                       const Env& env,
                                                       DecompilerTypeSystem& dts) {
+  (void)env;
+  (void)dts;
   TypeState result = input;
   result.get(m_dst.reg()) = TP_Type::make_from_ts("symbol");
   return result;
@@ -661,6 +665,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
                                            const Env& env,
                                            DecompilerTypeSystem& dts) {
   (void)dts;
+  (void)env;
   const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3};
 
