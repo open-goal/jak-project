@@ -123,9 +123,7 @@ class AtomicOp {
   // read twice.
   virtual void update_register_info() = 0;
 
-  TypeState propagate_types(const TypeState& input,
-                            const Env& env,
-                            DecompilerTypeSystem& dts) const;
+  TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
 
   const std::vector<Register>& read_regs() { return m_read_regs; }
   const std::vector<Register>& write_regs() { return m_write_regs; }
@@ -145,7 +143,7 @@ class AtomicOp {
   // given the input types of all registers, figure out the output types.
   virtual TypeState propagate_types_internal(const TypeState& input,
                                              const Env& env,
-                                             DecompilerTypeSystem& dts) const = 0;
+                                             DecompilerTypeSystem& dts) = 0;
   void clobber_temps();
 
   // the register values that are read (at the start of this op)
@@ -186,6 +184,10 @@ class SimpleAtom {
   const Variable& var() const {
     assert(is_var());
     return m_variable;
+  }
+  s64 get_int() const {
+    assert(is_int());
+    return m_int;
   }
   bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; };
   bool is_sym_ptr() const { return m_kind == Kind::SYMBOL_PTR; };
@@ -270,6 +272,12 @@ class SimpleExpression {
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
   void get_regs(std::vector<Register>* out) const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
+  TP_Type get_type_int2(const TypeState& input,
+                        const Env& env,
+                        const DecompilerTypeSystem& dts) const;
+  TP_Type get_type_int1(const TypeState& input,
+                        const Env& env,
+                        const DecompilerTypeSystem& dts) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -297,7 +305,7 @@ class SetVarOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   Variable m_dst;
@@ -324,7 +332,7 @@ class AsmOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   Instruction m_instr;
@@ -410,7 +418,7 @@ class SetVarConditionOp : public AtomicOp {
   void invert() { m_condition.invert(); }
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   Variable m_dst;
@@ -435,7 +443,7 @@ class StoreOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   int m_size;
@@ -462,7 +470,8 @@ class LoadVarOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
+  TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
 
  private:
   Kind m_kind;
@@ -530,7 +539,7 @@ class BranchOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   bool m_likely = false;
@@ -563,7 +572,7 @@ class SpecialOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   Kind m_kind;
@@ -586,7 +595,11 @@ class CallOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
+
+ protected:
+  TypeSpec m_call_type;
+  bool m_call_type_set = false;
 };
 
 /*!
@@ -614,7 +627,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
-                                     DecompilerTypeSystem& dts) const override;
+                                     DecompilerTypeSystem& dts) override;
 
  private:
   Variable m_dst, m_src;

@@ -139,6 +139,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
                                      DecompilerTypeSystem& dts,
                                      LinkedObjectFile& file,
                                      const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+  (void)file;
   // STEP 0 - set decompiler type system settings for this function. In config we can manually
   // specify some settings for type propagation to reduce the strictness of type propagation.
   dts.type_prop_settings.reset();
@@ -192,6 +193,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
         } catch (std::runtime_error& e) {
           fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
           warnings += ";; Type prop attempted and failed.\n";
+          ir2.env.set_types(block_init_types, op_types);
           return false;
         }
 
