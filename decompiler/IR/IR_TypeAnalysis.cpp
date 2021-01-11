@@ -163,13 +163,13 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     // but for now, this is probably good enough.
     if (kind == FLOAT) {
       // loading static data with a FLOAT kind load (lwc1), assume result is a float.
-      return TP_Type::make_from_typespec(dts.ts.make_typespec("float"));
+      return TP_Type::make_from_ts(dts.ts.make_typespec("float"));
     }
 
     if (size == 8) {
       // 8 byte integer constants are always loaded from a static pool
       // this could technically hide loading a different type from inside of a static basic.
-      return TP_Type::make_from_typespec(dts.ts.make_typespec("uint"));
+      return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
     }
   }
 
@@ -191,7 +191,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         // remember that we're an object new.
         return TP_Type::make_object_new(method_type);
       }
-      return TP_Type::make_from_typespec(method_type);
+      return TP_Type::make_from_ts(method_type);
     }
 
     if (input_type.kind == TP_Type::Kind::TYPESPEC && input_type.typespec() == TypeSpec("type") &&
@@ -201,7 +201,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       auto method_info = dts.ts.lookup_method("object", method_id);
       if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
         // this can get us the wrong thing for `new` methods.  And maybe relocate?
-        return TP_Type::make_from_typespec(method_info.type.substitute_for_method_call("object"));
+        return TP_Type::make_from_ts(method_info.type.substitute_for_method_call("object"));
       }
     }
 
@@ -217,7 +217,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
             case 2:
             case 4:
             case 8:
-              return TP_Type::make_from_typespec(TypeSpec("uint"));
+              return TP_Type::make_from_ts(TypeSpec("uint"));
             default:
               break;
           }
@@ -228,13 +228,13 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
             case 2:
             case 4:
             case 8:
-              return TP_Type::make_from_typespec(TypeSpec("int"));
+              return TP_Type::make_from_ts(TypeSpec("int"));
             default:
               break;
           }
           break;
         case FLOAT:
-          return TP_Type::make_from_typespec(TypeSpec("float"));
+          return TP_Type::make_from_ts(TypeSpec("float"));
         default:
           assert(false);
       }
@@ -260,7 +260,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         for (auto& x : rd.tokens) {
           load_path.push_back(x.print());
         }
-        return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       }
     }
 
@@ -290,7 +290,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
     if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
       // access method vtable. The input is type + (4 * method), and the 16 is the offset
       // of method 0.
-      return TP_Type::make_from_typespec(TypeSpec("function"));
+      return TP_Type::make_from_ts(TypeSpec("function"));
     }
     // Assume we're accessing a field of an object.
     FieldReverseLookupInput rd_in;
@@ -320,7 +320,7 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
       for (auto& x : rd.tokens) {
         load_path.push_back(x.print());
       }
-      return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
+      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
     }
 
     // rd failed, try as pair.
@@ -334,10 +334,10 @@ TP_Type IR_Load::get_expression_type(const TypeState& input,
         // we can do.
         if (ro.offset == 2) {
           // cdr = another pair.
-          return TP_Type::make_from_typespec(TypeSpec("pair"));
+          return TP_Type::make_from_ts(TypeSpec("pair"));
         } else if (ro.offset == -2) {
           // car = some object.
-          return TP_Type::make_from_typespec(TypeSpec("object"));
+          return TP_Type::make_from_ts(TypeSpec("object"));
         }
       }
     }
@@ -362,7 +362,7 @@ TP_Type IR_FloatMath2::get_expression_type(const TypeState& input,
     case SUB:
     case MIN:
     case MAX:
-      return TP_Type::make_from_typespec(dts.ts.make_typespec("float"));
+      return TP_Type::make_from_ts(dts.ts.make_typespec("float"));
     default:
       assert(false);
   }
@@ -377,12 +377,12 @@ TP_Type IR_FloatMath1::get_expression_type(const TypeState& input,
   // FLOAT_TO_INT, INT_TO_FLOAT, ABS, NEG, SQRT
   switch (kind) {
     case FLOAT_TO_INT:
-      return TP_Type::make_from_typespec(TypeSpec("int"));
+      return TP_Type::make_from_ts(TypeSpec("int"));
     case INT_TO_FLOAT:
     case ABS:
     case NEG:
     case SQRT:
-      return TP_Type::make_from_typespec(TypeSpec("float"));
+      return TP_Type::make_from_ts(TypeSpec("float"));
     default:
       assert(false);
   }
@@ -429,7 +429,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
     // both are the same type and both are int/uint, so we assume that we're doing integer math.
     // we strip off any weird things like multiplication or integer constant.
-    return TP_Type::make_from_typespec(arg0_type.typespec());
+    return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
   if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
@@ -437,20 +437,20 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     // but we use arg1's if arg0 is an integer constant
     // in either case, strip off weird stuff.
     if (arg0_type.is_integer_constant() && !arg1_type.is_integer_constant()) {
-      return TP_Type::make_from_typespec(arg1_type.typespec());
+      return TP_Type::make_from_ts(arg1_type.typespec());
     }
-    return TP_Type::make_from_typespec(arg0_type.typespec());
+    return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
   if (tc(dts, TypeSpec("binteger"), arg0_type) && is_int_or_uint(dts, arg1_type)) {
-    return TP_Type::make_from_typespec(TypeSpec("binteger"));
+    return TP_Type::make_from_ts(TypeSpec("binteger"));
   }
 
   // special cases for non-integers
   if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair")) &&
       (arg1_type.is_integer_constant(62) || arg1_type.is_integer_constant(61))) {
     // boxed object tag trick.
-    return TP_Type::make_from_typespec(TypeSpec("int"));
+    return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
   //
@@ -513,7 +513,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
 
     if (rd.success) {
       // todo, load path.
-      return TP_Type::make_from_typespec(coerce_to_reg_type(rd.result_type));
+      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
     }
   }
   //
@@ -538,13 +538,13 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   if (kind == ADD && arg0_type.typespec().base_type() == "pointer" &&
       tc(dts, TypeSpec("integer"), arg1_type)) {
     // plain pointer plus integer = plain pointer
-    return TP_Type::make_from_typespec(TypeSpec("pointer"));
+    return TP_Type::make_from_ts(TypeSpec("pointer"));
   }
 
   if (kind == ADD && arg1_type.typespec().base_type() == "pointer" &&
       tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
-    return TP_Type::make_from_typespec(TypeSpec("pointer"));
+    return TP_Type::make_from_ts(TypeSpec("pointer"));
   }
 
   if (tc(dts, TypeSpec("structure"), arg1_type) && !dynamic_cast<IR_IntegerConstant*>(arg0.get()) &&
@@ -552,7 +552,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
     if (arg1_type.typespec() == TypeSpec("symbol") &&
         arg0_type.is_integer_constant(SYM_INFO_OFFSET + POINTER_SIZE)) {
       // symbol -> GOAL String
-      return TP_Type::make_from_typespec(dts.ts.make_pointer_typespec("string"));
+      return TP_Type::make_from_ts(dts.ts.make_pointer_typespec("string"));
     } else {
       // byte access of offset array field trick.
       // arg1 holds a structure.
@@ -563,7 +563,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
 
   if (kind == AND) {
     // base case for and. Just get an integer.
-    return TP_Type::make_from_typespec(TypeSpec("int"));
+    return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
   //
@@ -587,7 +587,7 @@ TP_Type IR_IntMath2::get_expression_type(const TypeState& input,
   //
   if (kind == SUB && tc(dts, TypeSpec("pointer"), arg0_type) &&
       tc(dts, TypeSpec("pointer"), arg1_type)) {
-    return TP_Type::make_from_typespec(TypeSpec("int"));
+    return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
   throw std::runtime_error(
@@ -610,9 +610,9 @@ void BranchDelay::type_prop(TypeState& output,
       auto src = dynamic_cast<IR_Register*>(source.get());
       assert(src);
       if (tc(dts, TypeSpec("uint"), output.get(src->reg))) {
-        output.get(dst->reg) = TP_Type::make_from_typespec(TypeSpec("uint"));
+        output.get(dst->reg) = TP_Type::make_from_ts(TypeSpec("uint"));
       } else if (tc(dts, TypeSpec("int"), output.get(src->reg))) {
-        output.get(dst->reg) = TP_Type::make_from_typespec(TypeSpec("int"));
+        output.get(dst->reg) = TP_Type::make_from_ts(TypeSpec("int"));
       } else {
         throw std::runtime_error("BranchDelay::type_prop DSLLV for src " +
                                  output.get(src->reg).print());
@@ -622,7 +622,7 @@ void BranchDelay::type_prop(TypeState& output,
       auto dst = dynamic_cast<IR_Register*>(destination.get());
       assert(dst);
       // to match the behavior in IntMath1, assume signed when negating.
-      output.get(dst->reg) = TP_Type::make_from_typespec(TypeSpec("int"));
+      output.get(dst->reg) = TP_Type::make_from_ts(TypeSpec("int"));
     } break;
     case SET_REG_FALSE: {
       auto dst = dynamic_cast<IR_Register*>(destination.get());
@@ -640,7 +640,7 @@ void BranchDelay::type_prop(TypeState& output,
     case SET_REG_TRUE: {
       auto dst = dynamic_cast<IR_Register*>(destination.get());
       assert(dst);
-      output.get(dst->reg) = TP_Type::make_from_typespec(TypeSpec("symbol"));
+      output.get(dst->reg) = TP_Type::make_from_ts(TypeSpec("symbol"));
     } break;
 
     case SET_BINTEGER: {
@@ -682,14 +682,14 @@ TP_Type IR_IntMath1::get_expression_type(const TypeState& input,
     switch (kind) {
       case NEG:
         // if we negate a thing, let's just make it a signed integer.
-        return TP_Type::make_from_typespec(TypeSpec("int"));
+        return TP_Type::make_from_ts(TypeSpec("int"));
       case ABS:
         // if we take the absolute value of a thing, just make it signed.
-        return TP_Type::make_from_typespec(TypeSpec("int"));
+        return TP_Type::make_from_ts(TypeSpec("int"));
       case NOT:
         // otherwise, make it int/uint as needed (this works because we check is_int_or_uint
         // above)
-        return TP_Type::make_from_typespec(arg_type.typespec());
+        return TP_Type::make_from_ts(arg_type.typespec());
     }
   }
 
@@ -709,7 +709,7 @@ TP_Type IR_SymbolValue::get_expression_type(const TypeState& input,
     // another annoying special case. We have a fake symbol called __START-OF-TABLE__
     // which actually means that you get the first address in the symbol table.
     // it's not really a linked symbol, but the basic op builder represents it as one.
-    return TP_Type::make_from_typespec(TypeSpec("pointer"));
+    return TP_Type::make_from_ts(TypeSpec("pointer"));
   }
 
   // look up the type of the symbol
@@ -724,7 +724,7 @@ TP_Type IR_SymbolValue::get_expression_type(const TypeState& input,
   }
 
   // otherwise, just return a normal typespec
-  return TP_Type::make_from_typespec(type->second);
+  return TP_Type::make_from_ts(type->second);
 }
 
 TP_Type IR_Symbol::get_expression_type(const TypeState& input,
@@ -737,7 +737,7 @@ TP_Type IR_Symbol::get_expression_type(const TypeState& input,
     return TP_Type::make_false();
   }
 
-  return TP_Type::make_from_typespec(TypeSpec("symbol"));
+  return TP_Type::make_from_ts(TypeSpec("symbol"));
 }
 
 TP_Type IR_IntegerConstant::get_expression_type(const TypeState& input,
@@ -756,7 +756,7 @@ TP_Type IR_Compare::get_expression_type(const TypeState& input,
   (void)file;
   (void)dts;
   // really a boolean.
-  return TP_Type::make_from_typespec(TypeSpec("symbol"));
+  return TP_Type::make_from_ts(TypeSpec("symbol"));
 }
 
 void IR_Nop_Atomic::propagate_types(const TypeState& input,
@@ -792,7 +792,7 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
       !dts.type_prop_settings.current_method_type.empty()) {
     // calling object new method. Set the result to a new object of our type
     end_types.get(Register(Reg::GPR, Reg::V0)) =
-        TP_Type::make_from_typespec(dts.type_prop_settings.current_method_type);
+        TP_Type::make_from_ts(dts.type_prop_settings.current_method_type);
     // update the call type
     call_type = in_tp.get_method_new_object_typespec();
     call_type.get_arg(call_type.arg_count() - 1) =
@@ -837,7 +837,7 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
       call_type = format_call_type;
       call_type_set = true;
 
-      end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_typespec(in_type.last_arg());
+      end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
 
       // we can also update register usage here.
       read_regs.clear();
@@ -858,7 +858,7 @@ void IR_Call_Atomic::propagate_types(const TypeState& input,
   call_type = in_type;
   call_type_set = true;
 
-  end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_typespec(in_type.last_arg());
+  end_types.get(Register(Reg::GPR, Reg::V0)) = TP_Type::make_from_ts(in_type.last_arg());
 
   // we can also update register usage here.
   read_regs.clear();
@@ -897,11 +897,11 @@ TP_Type IR_StaticAddress::get_expression_type(const TypeState& input,
         return TP_Type::make_from_string(file.get_goal_string_by_label(label));
       } else {
         // otherwise, some other static basic.
-        return TP_Type::make_from_typespec(TypeSpec(word.symbol_name));
+        return TP_Type::make_from_ts(TypeSpec(word.symbol_name));
       }
     }
   } else if ((label.offset & 7) == PAIR_OFFSET) {
-    return TP_Type::make_from_typespec(TypeSpec("pair"));
+    return TP_Type::make_from_ts(TypeSpec("pair"));
   }
 
   throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
@@ -916,7 +916,7 @@ void IR_AsmOp_Atomic::propagate_types(const TypeState& input,
   end_types = input;
   if (dst_reg) {
     if (name == "daddu") {
-      end_types.get(dst_reg->reg) = TP_Type::make_from_typespec(TypeSpec("uint"));
+      end_types.get(dst_reg->reg) = TP_Type::make_from_ts(TypeSpec("uint"));
     }
   }
 }
@@ -936,7 +936,7 @@ TP_Type IR_EmptyPair::get_expression_type(const TypeState& input,
   (void)file;
   (void)dts;
   // GOAL's empty pair is actually a pair type, containing the empty pair as the car and cdr
-  return TP_Type::make_from_typespec(TypeSpec("pair"));
+  return TP_Type::make_from_ts(TypeSpec("pair"));
 }
 
 TP_Type IR_CMoveF::get_expression_type(const TypeState& input,
@@ -945,6 +945,6 @@ TP_Type IR_CMoveF::get_expression_type(const TypeState& input,
   (void)input;
   (void)file;
   (void)dts;
-  return TP_Type::make_from_typespec(TypeSpec("symbol"));
+  return TP_Type::make_from_ts(TypeSpec("symbol"));
 }
 }  // namespace decompiler

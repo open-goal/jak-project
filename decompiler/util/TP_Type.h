@@ -61,12 +61,14 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_from_typespec(const TypeSpec& ts) {
+  static TP_Type make_from_ts(const TypeSpec& ts) {
     TP_Type result;
     result.kind = Kind::TYPESPEC;
     result.m_ts = ts;
     return result;
   }
+
+  static TP_Type make_from_ts(const std::string& ts) { return make_from_ts(TypeSpec(ts)); }
 
   static TP_Type make_from_string(const std::string& str) {
     TP_Type result;
@@ -192,4 +194,6 @@ struct TypeState {
     }
   }
 };
+
+u32 regs_to_gpr_mask(const std::vector<Register>& regs);
 }  // namespace decompiler

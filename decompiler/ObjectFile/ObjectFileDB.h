@@ -70,6 +70,7 @@ class ObjectFileDB {
   void ir2_top_level_pass();
   void ir2_basic_block_pass();
   void ir2_atomic_op_pass();
+  void ir2_type_analysis_pass();
   void ir2_write_results(const std::string& output_dir);
   std::string ir2_to_file(ObjectFileData& data);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
@@ -82,6 +83,10 @@ class ObjectFileDB {
   ObjectFileData& lookup_record(const ObjectFileRecord& rec);
   DecompilerTypeSystem dts;
   std::string all_type_defs;
+
+  bool lookup_function_type(const FunctionName& name,
+                            const std::string& obj_name,
+                            TypeSpec* result);
 
  private:
   void load_map_file(const std::string& map_data);

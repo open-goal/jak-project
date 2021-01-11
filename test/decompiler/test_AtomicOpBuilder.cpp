@@ -418,7 +418,8 @@ TEST(DecompilerAtomicOpBuilder, DSUBU_DADDIU_MOVZ) {
 
 TEST(DecompilerAtomicOpBuilder, JALR_SLL) {
   test_case(assembly_from_list({"jalr ra, t9", "sll v0, ra, 0"}), {"(call!)"}, {{}}, {{"t9"}},
-            {{}});
+            {{"a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9",
+              "at", "v1"}});
 }
 
 TEST(DecompilerAtomicOpBuilder, LB) {

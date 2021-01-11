@@ -30,6 +30,7 @@ add_library(
 
         IR2/AtomicOp.cpp
         IR2/AtomicOpBuilder.cpp
+        IR2/AtomicOpTypeAnalysis.cpp
         IR2/Env.cpp
 
         ObjectFile/LinkedObjectFile.cpp

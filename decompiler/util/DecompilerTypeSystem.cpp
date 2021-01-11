@@ -199,7 +199,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
   if (existing.kind == add.kind) {
     switch (existing.kind) {
       case TP_Type::Kind::TYPESPEC: {
-        auto new_result = TP_Type::make_from_typespec(coerce_to_reg_type(ts.lowest_common_ancestor(
+        auto new_result = TP_Type::make_from_ts(coerce_to_reg_type(ts.lowest_common_ancestor(
             existing.get_objects_typespec(), add.get_objects_typespec())));
         *changed = (new_result != existing);
         return new_result;
@@ -214,15 +214,15 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
       case TP_Type::Kind::PRODUCT_WITH_CONSTANT:
         // we know they are different.
         *changed = true;
-        return TP_Type::make_from_typespec(TypeSpec("int"));
+        return TP_Type::make_from_ts(TypeSpec("int"));
       case TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
         *changed = true;
         // todo - there might be cases where we need to LCA the base types??
-        return TP_Type::make_from_typespec(TypeSpec("object"));
+        return TP_Type::make_from_ts(TypeSpec("object"));
       case TP_Type::Kind::OBJECT_NEW_METHOD:
         *changed = true;
         // this case should never happen I think.
-        return TP_Type::make_from_typespec(TypeSpec("function"));
+        return TP_Type::make_from_ts(TypeSpec("function"));
       case TP_Type::Kind::STRING_CONSTANT: {
         auto existing_count = get_format_arg_count(existing.get_string());
         auto added_count = get_format_arg_count(add.get_string());
@@ -230,19 +230,19 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
         if (added_count == existing_count) {
           return TP_Type::make_from_format_string(existing_count);
         } else {
-          return TP_Type::make_from_typespec(TypeSpec("string"));
+          return TP_Type::make_from_ts(TypeSpec("string"));
         }
       }
       case TP_Type::Kind::INTEGER_CONSTANT:
         *changed = true;
-        return TP_Type::make_from_typespec(TypeSpec("int"));
+        return TP_Type::make_from_ts(TypeSpec("int"));
       case TP_Type::Kind::FORMAT_STRING:
         if (existing.get_format_string_arg_count() == add.get_format_string_arg_count()) {
           *changed = false;
           return existing;
         } else {
           *changed = true;
-          return TP_Type::make_from_typespec(TypeSpec("string"));
+          return TP_Type::make_from_ts(TypeSpec("string"));
         }
 
       case TP_Type::Kind::FALSE_AS_NULL:
@@ -261,7 +261,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
       if (existing_count == add_count) {
         result_type = TP_Type::make_from_format_string(existing_count);
       } else {
-        result_type = TP_Type::make_from_typespec(TypeSpec("string"));
+        result_type = TP_Type::make_from_ts(TypeSpec("string"));
       }
 
       *changed = (result_type != existing);
@@ -269,7 +269,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add
     }
 
     // otherwise, as an absolute fallback, convert both to TypeSpecs and do TypeSpec LCA
-    auto new_result = TP_Type::make_from_typespec(
+    auto new_result = TP_Type::make_from_ts(
         coerce_to_reg_type(ts.lowest_common_ancestor(existing.typespec(), add.typespec())));
     *changed = (new_result != existing);
     return new_result;

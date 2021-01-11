@@ -24,10 +24,19 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_basic_block_pass();
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass();
+  lg::info("Running type analysis...");
+  ir2_type_analysis_pass();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
 
+/*!
+ * Analyze the top level function of each object.
+ * - Find global function definitions
+ * - Find type definitions
+ * - Find method definitions
+ * - Warn for non-unique function names.
+ */
 void ObjectFileDB::ir2_top_level_pass() {
   Timer timer;
   int total_functions = 0;
@@ -97,6 +106,7 @@ void ObjectFileDB::ir2_top_level_pass() {
     }
   });
 
+  // we remember duplicates like this so we can warn on all occurances of the duplicate name
   for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
     auto name = func.guessed_name.to_string();
@@ -115,6 +125,12 @@ void ObjectFileDB::ir2_top_level_pass() {
   lg::info("{:4d} logins  {:.2f}%\n", total_top_levels, 100.f * total_top_levels / total_functions);
 }
 
+/*!
+ * Initial Function Analysis Pass to build the control flow graph.
+ * - Find basic blocks
+ * - Analyze prologue and epilogue
+ * - Build control flow graph
+ */
 void ObjectFileDB::ir2_basic_block_pass() {
   Timer timer;
   // Main Pass over each function...
@@ -127,6 +143,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
 
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     total_functions++;
+    func.ir2.env.file = &data.linked_data;
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
@@ -139,6 +156,11 @@ void ObjectFileDB::ir2_basic_block_pass() {
     if (!func.suspected_asm) {
       // find the prologue/epilogue so they can be excluded from basic blocks.
       func.analyze_prologue(data.linked_data);
+    } else {
+      // manually exclude the type tag from the basic block.
+      assert(func.basic_blocks.front().start_word == 0);
+      assert(func.basic_blocks.front().end_word >= 1);
+      func.basic_blocks.front().start_word = 1;
     }
 
     if (!func.suspected_asm) {
@@ -162,6 +184,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
     }
 
     if (func.suspected_asm) {
+      func.warnings.append(";; Assembly Function\n");
       suspected_asm++;
     }
   });
@@ -178,6 +201,10 @@ void ObjectFileDB::ir2_basic_block_pass() {
            100.f * inspect_methods / total_functions);
 }
 
+/*!
+ * Conversion of MIPS instructions into AtomicOps. The AtomicOps represent what we
+ * think are IR of the original GOAL compiler.
+ */
 void ObjectFileDB::ir2_atomic_op_pass() {
   Timer timer;
   int total_functions = 0;
@@ -197,6 +224,7 @@ void ObjectFileDB::ir2_atomic_op_pass() {
       } catch (std::exception& e) {
         lg::warn("Function {} from {} could not be converted to atomic ops: {}",
                  func.guessed_name.to_string(), data.to_unique_name(), e.what());
+        func.warnings.append(";; Failed to convert to atomic ops\n");
       }
     }
   });
@@ -205,6 +233,44 @@ void ObjectFileDB::ir2_atomic_op_pass() {
            successful, attempted, total_functions, timer.getMs());
   lg::info("{:.2f}% were attempted, {:.2f}% of attempted succeeded\n",
            100.f * attempted / total_functions, 100.f * successful / attempted);
+}
+
+/*!
+ * Analyze registers and determine the type in each register at each instruction.
+ * - Figure out the type of each function, from configs.
+ * - Propagate types.
+ */
+void ObjectFileDB::ir2_type_analysis_pass() {
+  Timer timer;
+  int total_functions = 0;
+  int non_asm_functions = 0;
+  int attempted_functions = 0;
+  int successful_functions = 0;
+
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    total_functions++;
+    if (!func.suspected_asm) {
+      non_asm_functions++;
+      TypeSpec ts;
+      if (lookup_function_type(func.guessed_name, data.to_unique_name(), &ts)) {
+        attempted_functions++;
+        // try type analysis here.
+        auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
+        if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints)) {
+          successful_functions++;
+        } else {
+          func.warnings.append(";; Type analysis failed\n");
+        }
+      } else {
+        // lg::warn("Function {} didn't know its type", func.guessed_name.to_string());
+        func.warnings.append(";; Type of function is unknown\n");
+      }
+    }
+  });
+
+  lg::info("{}/{}/{}/{} (success/attempted/non-asm/total) in {:.2f} ms", successful_functions,
+           attempted_functions, non_asm_functions, total_functions, timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
@@ -269,6 +335,40 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
   return result;
 }
 
+namespace {
+void append_commented(std::string& line,
+                      bool& has_comment,
+                      const std::string& to_append,
+                      int offset = 0) {
+  // minimum length before comment appears.
+  constexpr int pre_comment_length = 30;
+  // if comment overflows, how much to indent the next one
+  constexpr int overflow_indent = 30;
+
+  // pad, and add comment
+  if (!has_comment) {
+    if (line.length() < pre_comment_length) {
+      line.append(pre_comment_length - line.length(), ' ');
+    }
+    line += ";; ";
+    line += to_append;
+    has_comment = true;
+  } else {
+    if (std::max(int(line.length()), offset) + to_append.length() > 120) {
+      line += "\n";
+      line.append(overflow_indent, ' ');
+      line += ";; ";
+    } else {
+      if (int(line.length()) < offset) {
+        line.append(offset - line.length(), ' ');
+      }
+      line += " ";
+    }
+    line += to_append;
+  }
+}
+}  // namespace
+
 std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function& func, int seg) {
   std::string result;
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
@@ -282,14 +382,16 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   bool print_atomics = func.ir2.atomic_ops_succeeded;
   // print each instruction in the function.
   bool in_delay_slot = false;
+  int total_instructions_printed = 0;
+  int last_instr_printed = 0;
 
-  for (int i = 1; i < func.end_word - func.start_word; i++) {
+  std::string line;
+  auto print_instr_start = [&](int i) {
     // check for a label to print
     auto label_id = data.linked_data.get_label_at(seg, (func.start_word + i) * 4);
     if (label_id != -1) {
       result += data.linked_data.labels.at(label_id).name + ":\n";
     }
-
     // check for no misaligned labels in code segments.
     for (int j = 1; j < 4; j++) {
       assert(data.linked_data.get_label_at(seg, (func.start_word + i) * 4 + j) == -1);
@@ -297,36 +399,13 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
 
     // print the assembly instruction
     auto& instr = func.instructions.at(i);
-    std::string line = "    " + instr.to_string(data.linked_data.labels);
+    line = "    " + instr.to_string(data.linked_data.labels);
+  };
 
-    //    printf("%d inst %s\n", print_atomics, instr.to_string(data.linked_data.labels).c_str());
-
-    bool printed_comment = false;
-
-    // print atomic op
-    if (print_atomics && func.instr_starts_atomic_op(i)) {
-      if (line.length() < 30) {
-        line.append(30 - line.length(), ' ');
-      }
-      line +=
-          " ;; " + func.get_atomic_op_at_instr(i).to_string(data.linked_data.labels, &func.ir2.env);
-      printed_comment = true;
-    }
-
-    // print linked strings
-    for (int iidx = 0; iidx < instr.n_src; iidx++) {
-      if (instr.get_src(iidx).is_label()) {
-        auto lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
-        if (data.linked_data.is_string(lab.target_segment, lab.offset)) {
-          if (!printed_comment) {
-            line += " ;; ";
-            printed_comment = true;
-          }
-          line += " " + data.linked_data.get_goal_string(lab.target_segment, lab.offset / 4 - 1);
-        }
-      }
-    }
-    result += line + "\n";
+  auto print_instr_end = [&](int i) {
+    auto& instr = func.instructions.at(i);
+    result += line;
+    result += "\n";
 
     // print delay slot gap
     if (in_delay_slot) {
@@ -338,10 +417,140 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
     if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
       in_delay_slot = true;
     }
+    total_instructions_printed++;
+    assert(last_instr_printed + 1 == i);
+    last_instr_printed = i;
+  };
+
+  // first, print the prologue. we start at word 1 because word 0 is the type tag
+  for (int i = 1; i < func.basic_blocks.front().start_word; i++) {
+    print_instr_start(i);
+    print_instr_end(i);
   }
+
+  // next, print each basic block
+  int end_idx = func.basic_blocks.front().start_word;
+  for (int block_id = 0; block_id < int(func.basic_blocks.size()); block_id++) {
+    // block number
+    result += "B" + std::to_string(block_id) + ":\n";
+    auto& block = func.basic_blocks.at(block_id);
+
+    const TypeState* init_types = nullptr;
+    if (func.ir2.env.has_type_analysis()) {
+      init_types = &func.ir2.env.get_types_at_block_entry(block_id);
+    }
+
+    for (int instr_id = block.start_word; instr_id < block.end_word; instr_id++) {
+      print_instr_start(instr_id);
+      bool printed_comment = false;
+
+      // print atomic op
+      int op_id = -1;
+      if (print_atomics && func.instr_starts_atomic_op(instr_id)) {
+        auto& op = func.get_atomic_op_at_instr(instr_id);
+        op_id = func.ir2.atomic_ops->instruction_to_atomic_op.at(instr_id);
+        append_commented(line, printed_comment,
+                         op.to_string(data.linked_data.labels, &func.ir2.env));
+
+        if (func.ir2.env.has_type_analysis()) {
+          append_commented(
+              line, printed_comment,
+              op.reg_type_info_as_string(*init_types, func.ir2.env.get_types_after_op(op_id)), 50);
+        }
+      }
+      auto& instr = func.instructions.at(instr_id);
+      // print linked strings
+      for (int iidx = 0; iidx < instr.n_src; iidx++) {
+        if (instr.get_src(iidx).is_label()) {
+          auto lab = data.linked_data.labels.at(instr.get_src(iidx).get_label());
+          if (data.linked_data.is_string(lab.target_segment, lab.offset)) {
+            append_commented(
+                line, printed_comment,
+                data.linked_data.get_goal_string(lab.target_segment, lab.offset / 4 - 1));
+          }
+        }
+      }
+      print_instr_end(instr_id);
+
+      if (print_atomics && func.ir2.env.has_type_analysis() &&
+          func.instr_starts_atomic_op(instr_id)) {
+        init_types = &func.ir2.env.get_types_after_op(op_id);
+      }
+    }
+    end_idx = block.end_word;
+  }
+
+  for (int i = end_idx; i < func.end_word - func.start_word; i++) {
+    print_instr_start(i);
+    print_instr_end(i);
+  }
+
   result += "\n";
 
+  assert(total_instructions_printed == (func.end_word - func.start_word - 1));
   return result;
+}
+
+/*!
+ * Try to look up the type of a function. Looks at the decompiler type info, the hints files,
+ * and other GOAL rules.
+ */
+bool ObjectFileDB::lookup_function_type(const FunctionName& name,
+                                        const std::string& obj_name,
+                                        TypeSpec* result) {
+  auto& cfg = get_config();
+
+  // don't return function types that are explictly flagged as bad in config.
+  if (cfg.no_type_analysis_functions_by_name.find(name.to_string()) !=
+      cfg.no_type_analysis_functions_by_name.end()) {
+    return false;
+  }
+
+  if (name.kind == FunctionName::FunctionKind::GLOBAL) {
+    // global GOAL function.
+    auto kv = dts.symbol_types.find(name.function_name);
+    if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
+      if (kv->second.base_type() != "function") {
+        lg::die("Found a function named {} but the symbol has type {}", name.to_string(),
+                kv->second.print());
+      }
+      // good, found a global function with full type information.
+      *result = kv->second;
+      return true;
+    }
+  } else if (name.kind == FunctionName::FunctionKind::METHOD) {
+    MethodInfo info;
+
+    if (dts.ts.try_lookup_method(name.type_name, name.method_id, &info)) {
+      if (info.type.arg_count() >= 1) {
+        if (info.type.base_type() != "function") {
+          lg::die("Found a method named {} but the symbol has type {}", name.to_string(),
+                  info.type.print());
+        }
+        // substitute the _type_ for the correct type.
+        *result = info.type.substitute_for_method_call(name.type_name);
+        return true;
+      }
+    }
+
+  } else if (name.kind == FunctionName::FunctionKind::TOP_LEVEL_INIT) {
+    *result = dts.ts.make_function_typespec({}, "none");
+    return true;
+  } else if (name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+    // try looking up the object
+    const auto& map = get_config().anon_function_types_by_obj_by_id;
+    auto obj_kv = map.find(obj_name);
+    if (obj_kv != map.end()) {
+      auto func_kv = obj_kv->second.find(name.get_anon_id());
+      if (func_kv != obj_kv->second.end()) {
+        *result = dts.parse_type_spec(func_kv->second);
+        return true;
+      }
+    }
+  } else {
+    assert(false);
+  }
+  return false;
 }
 
 }  // namespace decompiler

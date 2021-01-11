@@ -14,18 +14,18 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
     auto reg_type = f_ts.get_arg(i);
-    result.gpr_types[reg_id] = TP_Type::make_from_typespec(reg_type);
+    result.gpr_types[reg_id] = TP_Type::make_from_ts(reg_type);
   }
 
   // todo, more specific process types for behaviors.
-  result.gpr_types[Reg::S6] = TP_Type::make_from_typespec(TypeSpec("process"));
+  result.gpr_types[Reg::S6] = TP_Type::make_from_ts(TypeSpec("process"));
   return result;
 }
 
 void apply_hints(const std::vector<TypeHint>& hints, TypeState* state, DecompilerTypeSystem& dts) {
   for (auto& hint : hints) {
     try {
-      state->get(hint.reg) = TP_Type::make_from_typespec(dts.parse_type_spec(hint.type_name));
+      state->get(hint.reg) = TP_Type::make_from_ts(dts.parse_type_spec(hint.type_name));
     } catch (std::exception& e) {
       printf("failed to parse hint: %s\n", e.what());
       assert(false);
@@ -92,7 +92,7 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
           try_apply_hints(op_id, hints, init_types, dts);
         }
 
-        // while the implementation of propagate_types is in progress, it may throw
+        // while the implementation of propagate_types_internal is in progress, it may throw
         // for unimplemented cases.  Eventually this try/catch should be removed.
         try {
           op->propagate_types(*init_types, file, dts);
@@ -131,6 +131,102 @@ bool Function::run_type_analysis(const TypeSpec& my_type,
     warnings += fmt::format(";; return type mismatch {} vs {}.  ", last_type.print(),
                             my_type.last_arg().print());
   }
+
+  return true;
+}
+
+bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
+                                     DecompilerTypeSystem& dts,
+                                     LinkedObjectFile& file,
+                                     const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+  (void)file;
+  // STEP 0 - set decompiler type system settings for this function. In config we can manually
+  // specify some settings for type propagation to reduce the strictness of type propagation.
+  dts.type_prop_settings.reset();
+  if (get_config().pair_functions_by_name.find(guessed_name.to_string()) !=
+      get_config().pair_functions_by_name.end()) {
+    dts.type_prop_settings.allow_pair = true;
+  }
+
+  if (guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    dts.type_prop_settings.current_method_type = guessed_name.type_name;
+  }
+
+  std::vector<TypeState> block_init_types, op_types;
+  block_init_types.resize(basic_blocks.size());
+  op_types.resize(ir2.atomic_ops->ops.size());
+  auto& aop = ir2.atomic_ops;
+
+  // STEP 1 - topologocial sort the blocks. This gives us an order where we:
+  // - never visit unreachable blocks (we can't type propagate these)
+  // - always visit at least one predecessor of a block before that block
+  auto order = bb_topo_sort();
+  assert(!order.vist_order.empty());
+  assert(order.vist_order.front() == 0);
+
+  // STEP 2 - initialize type state for the first block to the function argument types.
+  block_init_types.at(0) = construct_initial_typestate(my_type);
+  // and add hints from config
+  try_apply_hints(0, hints, &block_init_types.at(0), dts);
+
+  // STEP 3 - propagate types until the result stops changing
+  bool run_again = true;
+  while (run_again) {
+    run_again = false;
+    // do each block in the topological sort order:
+    for (auto block_id : order.vist_order) {
+      auto& block = basic_blocks.at(block_id);
+      TypeState* init_types = &block_init_types.at(block_id);
+      for (int op_id = aop->block_id_to_first_atomic_op.at(block_id);
+           op_id < aop->block_id_to_end_atomic_op.at(block_id); op_id++) {
+        // apply type hints only if we are not the first op.
+        if (op_id != aop->block_id_to_first_atomic_op.at(block_id)) {
+          try_apply_hints(op_id, hints, init_types, dts);
+        }
+
+        auto& op = aop->ops.at(op_id);
+
+        // while the implementation of propagate_types_internal is in progress, it may throw
+        // for unimplemented cases.  Eventually this try/catch should be removed.
+        try {
+          op_types.at(op_id) = op->propagate_types(*init_types, ir2.env, dts);
+        } catch (std::runtime_error& e) {
+          fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
+          warnings += ";; Type prop attempted and failed.\n";
+          ir2.env.set_types(block_init_types, op_types);
+          return false;
+        }
+
+        // todo, set run again??
+
+        // for the next op...
+        init_types = &op_types.at(op_id);
+      }
+
+      // propagate the types: for each possible succ
+      for (auto succ_block_id : {block.succ_ft, block.succ_branch}) {
+        if (succ_block_id != -1) {
+          // apply hint
+          try_apply_hints(aop->block_id_to_first_atomic_op.at(succ_block_id), hints, init_types,
+                          dts);
+
+          // set types to LCA (current, new)
+          if (dts.tp_lca(&block_init_types.at(succ_block_id), *init_types)) {
+            // if something changed, run again!
+            run_again = true;
+          }
+        }
+      }
+    }
+  }
+
+  auto last_type = op_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
+  if (last_type != my_type.last_arg()) {
+    warnings += fmt::format(";; return type mismatch {} vs {}.  ", last_type.print(),
+                            my_type.last_arg().print());
+  }
+
+  ir2.env.set_types(block_init_types, op_types);
 
   return true;
 }

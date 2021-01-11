@@ -62,6 +62,16 @@ bool AtomicOp::operator!=(const AtomicOp& other) const {
   return !((*this) == other);
 }
 
+/*!
+ * Add GOAL temp registers to the clobber list.
+ */
+void AtomicOp::clobber_temps() {
+  for (auto clobber : {Reg::V1, Reg::AT, Reg::A0, Reg::A1, Reg::A2, Reg::A3, Reg::T0, Reg::T1,
+                       Reg::T2, Reg::T3, Reg::T4, Reg::T5, Reg::T6, Reg::T7, Reg::T8, Reg::T9}) {
+    m_clobber_regs.push_back(Register(Reg::GPR, clobber));
+  }
+}
+
 /////////////////////////////
 // SimpleAtom
 /////////////////////////////
@@ -1171,7 +1181,23 @@ std::unique_ptr<Expr> SpecialOp::get_as_expr() const {
   throw std::runtime_error("SpecialOp::get_as_expr not yet implemented");
 }
 
-void SpecialOp::update_register_info() {}
+void SpecialOp::update_register_info() {
+  switch (m_kind) {
+    case Kind::NOP:
+    case Kind::BREAK:
+    case Kind::CRASH:
+      return;
+    case Kind::SUSPEND:
+      // todo - confirm this is true.
+      // the suspend operation is written in a way where it doesn't use temporaries to make the call
+      // but the actual suspend operation doesn't seem to preserve temporaries. Maybe the plan was
+      // to save temp registers at some point, but they later gave up on this?
+      clobber_temps();
+      return;
+    default:
+      assert(false);
+  }
+}
 
 /////////////////////////////
 // CallOp
@@ -1218,6 +1244,7 @@ std::unique_ptr<Expr> CallOp::get_as_expr() const {
 void CallOp::update_register_info() {
   // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
   m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
+  clobber_temps();
 }
 
 /////////////////////////////
