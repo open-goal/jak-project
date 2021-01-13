@@ -8,6 +8,7 @@
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/TypeInspector.h"
+#include "decompiler/IR2/reg_usage.h"
 
 namespace decompiler {
 
@@ -26,6 +27,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_atomic_op_pass();
   lg::info("Running type analysis...");
   ir2_type_analysis_pass();
+  lg::info("Register usage analysis...");
+  ir2_register_usage_pass();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -239,6 +242,7 @@ void ObjectFileDB::ir2_atomic_op_pass() {
  * Analyze registers and determine the type in each register at each instruction.
  * - Figure out the type of each function, from configs.
  * - Propagate types.
+ * - NOTE: this will update register info usage more accurately for functions.
  */
 void ObjectFileDB::ir2_type_analysis_pass() {
   Timer timer;
@@ -259,6 +263,7 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
         if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints)) {
           successful_functions++;
+          func.ir2.has_type_info = true;
         } else {
           func.warnings.append(";; Type analysis failed\n");
         }
@@ -271,6 +276,25 @@ void ObjectFileDB::ir2_type_analysis_pass() {
 
   lg::info("{}/{}/{}/{} (success/attempted/non-asm/total) in {:.2f} ms", successful_functions,
            attempted_functions, non_asm_functions, total_functions, timer.getMs());
+}
+
+void ObjectFileDB::ir2_register_usage_pass() {
+  Timer timer;
+
+  int total_funcs = 0, analyzed_funcs = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    total_funcs++;
+    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
+      analyzed_funcs++;
+      func.ir2.reg_use = analyze_ir2_register_usage(func);
+      func.ir2.has_reg_use = true;
+    }
+  });
+
+  lg::info("{}/{} functions had register usage analyzed in {:.2f} ms", analyzed_funcs, total_funcs,
+           timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
@@ -456,6 +480,17 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
           append_commented(
               line, printed_comment,
               op.reg_type_info_as_string(*init_types, func.ir2.env.get_types_after_op(op_id)), 50);
+        }
+
+        if (func.ir2.has_reg_use) {
+          std::string regs;
+          for (auto r : func.ir2.reg_use.op.at(op_id).consumes) {
+            regs += r.to_charp();
+            regs += ' ';
+          }
+          if (!regs.empty()) {
+            append_commented(line, printed_comment, "cs: " + regs, 50);
+          }
         }
       }
       auto& instr = func.instructions.at(instr_id);

@@ -1,4 +1,4 @@
-#include "TypeAnalysis.h"
+#include "decompiler/Function/Function.h"
 #include "decompiler/IR/IR.h"
 #include "third-party/fmt/core.h"
 #include "decompiler/config.h"
