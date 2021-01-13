@@ -6,12 +6,12 @@
 #include "CfgVtx.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
+// for RegSet:
+#include "decompiler/IR2/reg_usage.h"
 
 namespace decompiler {
 class LinkedObjectFile;
 class Function;
-
-using RegSet = std::unordered_set<Register, Register::hash>;
 
 struct BasicBlock {
   int start_word;

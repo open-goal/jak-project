@@ -165,6 +165,9 @@ class Function {
     bool atomic_ops_attempted = false;
     bool atomic_ops_succeeded = false;
     std::shared_ptr<FunctionAtomicOps> atomic_ops = nullptr;
+    bool has_reg_use = false;
+    RegUsageInfo reg_use;
+    bool has_type_info = false;
     Env env;
   } ir2;
 

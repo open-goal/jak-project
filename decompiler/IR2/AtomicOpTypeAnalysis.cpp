@@ -54,18 +54,17 @@ std::string AtomicOp::reg_type_info_as_string(const TypeState& init_types,
 
   auto read_mask = regs_to_gpr_mask(m_read_regs);
   auto write_mask = regs_to_gpr_mask(m_write_regs);
-  auto clobber_mask = regs_to_gpr_mask(m_clobber_regs);
 
   result += fmt::format("[{}] -> [{}]", init_types.print_gpr_masked(read_mask),
                         end_types.print_gpr_masked(write_mask));
-
-  if (clobber_mask) {
-    result += "cl: ";
-    for (auto& reg : m_clobber_regs) {
-      result += reg.to_string();
-      result += ' ';
-    }
-  }
+  //  auto clobber_mask = regs_to_gpr_mask(m_clobber_regs);
+  //  if (clobber_mask) {
+  //    result += "cl: ";
+  //    for (auto& reg : m_clobber_regs) {
+  //      result += reg.to_string();
+  //      result += ' ';
+  //    }
+  //  }
 
   return result;
 }
