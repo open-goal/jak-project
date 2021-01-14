@@ -58,6 +58,11 @@ AtomicOp::AtomicOp(int my_idx) : m_my_idx(my_idx) {}
 std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   return pretty_print::to_string(to_form(labels, env));
 }
+
+std::string AtomicOp::to_string(const Env& env) const {
+  return to_string(env.file->labels, &env);
+}
+
 bool AtomicOp::operator!=(const AtomicOp& other) const {
   return !((*this) == other);
 }

@@ -90,6 +90,7 @@ class AtomicOp {
  public:
   explicit AtomicOp(int my_idx);
   std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const;
+  std::string to_string(const Env& env) const;
   std::string reg_type_info_as_string(const TypeState& init_types,
                                       const TypeState& end_types) const;
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,

@@ -33,6 +33,7 @@ add_library(
         IR2/AtomicOpTypeAnalysis.cpp
         IR2/Env.cpp
         IR2/reg_usage.cpp
+        IR2/variable_naming.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp

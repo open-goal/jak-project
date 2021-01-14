@@ -19,6 +19,8 @@ struct RegUsageInfo {
     RegSet live, dead, consumes, written_and_unused;
   };
 
+  int block_count() const { return int(block.size()); }
+
   std::vector<PerBlock> block;
   std::vector<PerOp> op;
 

@@ -9,6 +9,7 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "decompiler/IR2/reg_usage.h"
+#include "decompiler/IR2/variable_naming.h"
 
 namespace decompiler {
 
@@ -29,6 +30,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_type_analysis_pass();
   lg::info("Register usage analysis...");
   ir2_register_usage_pass();
+  lg::info("Variable analysis...");
+  ir2_variable_pass();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -295,6 +298,17 @@ void ObjectFileDB::ir2_register_usage_pass() {
 
   lg::info("{}/{} functions had register usage analyzed in {:.2f} ms", analyzed_funcs, total_funcs,
            timer.getMs());
+}
+
+void ObjectFileDB::ir2_variable_pass() {
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    // TODO
+    if (func.guessed_name.to_string() == "(method 14 dead-pool-heap)") {
+      (void)segment_id;
+      (void)data;
+      run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops);
+    }
+  });
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
