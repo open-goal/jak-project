@@ -32,12 +32,13 @@ struct FunctionAtomicOps {
  * @param end       : the end of the instructions for the block
  * @param labels    : label names for the function, used for error prints on failed conversions
  * @param container : the container to add to
+ * @return the last op (non-inclusive)
  */
-void convert_block_to_atomic_ops(int begin_idx,
-                                 std::vector<Instruction>::const_iterator begin,
-                                 std::vector<Instruction>::const_iterator end,
-                                 const std::vector<DecompilerLabel>& labels,
-                                 FunctionAtomicOps* container);
+int convert_block_to_atomic_ops(int begin_idx,
+                                std::vector<Instruction>::const_iterator begin,
+                                std::vector<Instruction>::const_iterator end,
+                                const std::vector<DecompilerLabel>& labels,
+                                FunctionAtomicOps* container);
 
 /*!
  * Convert an entire function to AtomicOps

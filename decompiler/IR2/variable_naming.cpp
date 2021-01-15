@@ -1,3 +1,4 @@
+#include <set>
 #include "variable_naming.h"
 #include "reg_usage.h"
 #include "decompiler/Function/Function.h"
@@ -62,6 +63,23 @@ std::string VarMapSSA::to_string(const VarSSA& var) const {
 bool VarMapSSA::same(const VarSSA& var_a, const VarSSA& var_b) const {
   return var_a.m_reg == var_b.m_reg &&
          m_entries.at(var_a.m_entry_id).var_id == m_entries.at(var_b.m_entry_id).var_id;
+}
+
+int VarMapSSA::var_id(const VarSSA& var) {
+  return m_entries.at(var.m_entry_id).var_id;
+}
+
+void VarMapSSA::remap_reg(Register reg, const std::unordered_map<int, int>& remap) {
+  for (auto& entry : m_entries) {
+    if (entry.reg == reg) {
+      auto kv = remap.find(entry.var_id);
+      if (kv == remap.end()) {
+        entry.var_id = INT32_MIN;
+      } else {
+        entry.var_id = kv->second;
+      }
+    }
+  }
 }
 
 std::string SSA::Phi::print(const VarMapSSA& var_map) const {
@@ -154,6 +172,12 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     const auto& block = function.basic_blocks.at(block_id);
     int start_op = ops.block_id_to_first_atomic_op.at(block_id);
     int end_op = ops.block_id_to_end_atomic_op.at(block_id);
+    if (start_op == end_op) {
+      if (block_id + 1 == rui.block_count()) {
+        continue;
+      }
+      throw std::runtime_error("Zero size blocks not yet supported");
+    }
 
     // local map: current register names.
     std::unordered_map<Register, VarSSA, Register::hash> current_regs;
@@ -234,7 +258,6 @@ bool SSA::simplify() {
   for (auto& block : blocks) {
     auto it = block.phis.begin();
     while (it != block.phis.end()) {
-      fmt::print("Consider {}\n", it->second.print(map));
       // first case: all sources are the same as the destination.
       bool remove = true;
       auto& dst = it->second.dest;
@@ -270,13 +293,13 @@ bool SSA::simplify() {
 
         if (remove) {
           assert(v_j.has_value());
-          map.merge(v_i, *v_j);
+          map.merge(*v_j, v_i);
+          // map.merge(v_i, *v_j);
         }
       }
 
       if (remove) {
         changed = true;
-        fmt::print("  remove {}\n", it->second.print(map));
         it = block.phis.erase(it);
       } else {
         it++;
@@ -297,58 +320,96 @@ void SSA::merge_all_phis() {
   }
 }
 
+void SSA::remap() {
+  std::unordered_map<Register, std::set<int>, Register::hash> used_vars;
+  for (auto& block : blocks) {
+    assert(block.phis.empty());
+    for (auto& instr : block.ins) {
+      if (instr.dst.has_value()) {
+        used_vars[instr.dst->reg()].insert(map.var_id(*instr.dst));
+      }
+      for (auto& src : instr.src) {
+        used_vars[src.reg()].insert(map.var_id(src));
+      }
+    }
+  }
+
+  for (auto& reg_vars : used_vars) {
+    std::unordered_map<int, int> var_remap;
+    int i = 0;
+    for (auto var_id : reg_vars.second) {
+      var_remap[var_id] = i++;
+    }
+    map.remap_reg(reg_vars.first, var_remap);
+  }
+}
+
 void run_variable_renaming(const Function& function,
                            const RegUsageInfo& rui,
-                           const FunctionAtomicOps& ops) {
-  std::string debug_in;
-  for (int block_id = 0; block_id < rui.block_count(); block_id++) {
-    auto& block_info = rui.block.at(block_id);
-    //    const auto& block = function.basic_blocks.at(block_id);
-    int start_op = ops.block_id_to_first_atomic_op.at(block_id);
-    int end_op = ops.block_id_to_end_atomic_op.at(block_id);
+                           const FunctionAtomicOps& ops,
+                           bool debug_prints) {
+  if (debug_prints) {
+    std::string debug_in;
+    for (int block_id = 0; block_id < rui.block_count(); block_id++) {
+      auto& block_info = rui.block.at(block_id);
+      //    const auto& block = function.basic_blocks.at(block_id);
+      int start_op = ops.block_id_to_first_atomic_op.at(block_id);
+      int end_op = ops.block_id_to_end_atomic_op.at(block_id);
 
-    debug_in += fmt::format("Block {}\n", block_id);
-    debug_in += fmt::format(" use: {}\n", reg_to_string(block_info.use));
-    debug_in += fmt::format(" in : {}\n", reg_to_string(block_info.input));
-    debug_in += "pred: ";
-    for (auto p : function.basic_blocks.at(block_id).pred) {
-      debug_in += std::to_string(p);
-      debug_in += ' ';
-    }
-    debug_in += '\n';
-
-    for (int op_id = start_op; op_id < end_op; op_id++) {
-      debug_in +=
-          fmt::format(" [{:03d}]   {} : ", op_id, ops.ops.at(op_id)->to_string(function.ir2.env));
-      auto& op_info = rui.op.at(op_id);
-      for (auto reg : op_info.live) {
-        debug_in += reg.to_charp();
+      debug_in += fmt::format("Block {}\n", block_id);
+      debug_in += fmt::format(" use: {}\n", reg_to_string(block_info.use));
+      debug_in += fmt::format(" in : {}\n", reg_to_string(block_info.input));
+      debug_in += "pred: ";
+      for (auto p : function.basic_blocks.at(block_id).pred) {
+        debug_in += std::to_string(p);
         debug_in += ' ';
       }
       debug_in += '\n';
+
+      for (int op_id = start_op; op_id < end_op; op_id++) {
+        debug_in +=
+            fmt::format(" [{:03d}]   {} : ", op_id, ops.ops.at(op_id)->to_string(function.ir2.env));
+        auto& op_info = rui.op.at(op_id);
+        for (auto reg : op_info.live) {
+          debug_in += reg.to_charp();
+          debug_in += ' ';
+        }
+        debug_in += '\n';
+      }
+
+      debug_in += fmt::format(" def: {}\n", reg_to_string(block_info.defs));
+      debug_in += fmt::format(" out: {}\n\n", reg_to_string(block_info.output));
     }
 
-    debug_in += fmt::format(" def: {}\n", reg_to_string(block_info.defs));
-    debug_in += fmt::format(" out: {}\n\n", reg_to_string(block_info.output));
+    fmt::print("{}", debug_in);
   }
-
-  fmt::print("{}", debug_in);
 
   // Create and convert to SSA
   auto ssa = make_rc_ssa(function, rui, ops);
-  fmt::print("{}", ssa.print());
 
-  // eliminate PHIs
+  if (debug_prints) {
+    fmt::print("{}", ssa.print());
+  }
+
+  // eliminate PHIs that are stupid.
   while (ssa.simplify()) {
   }
-  fmt::print("{}", ssa.print());
+  if (debug_prints) {
+    fmt::print("{}", ssa.print());
+  }
 
-  // Merge bad phis
+  // Merge phis to return to executable code.
   ssa.merge_all_phis();
-  fmt::print("{}", ssa.print());
+  if (debug_prints) {
+    fmt::print("{}", ssa.print());
+  }
 
   // merge same vars
 
   // do rename
+  ssa.remap();
+  if (debug_prints) {
+    fmt::print("{}", ssa.print());
+  }
 }
 }  // namespace decompiler

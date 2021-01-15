@@ -11,7 +11,7 @@ namespace decompiler {
 
 class Function;
 struct RegUsageInfo;
-class FunctionAtomicOps;
+struct FunctionAtomicOps;
 
 /*!
  * An SSA variable in the variable analysis pass.  Can be converted into a register again.
@@ -47,6 +47,8 @@ class VarMapSSA {
   void merge(const VarSSA& var_a, const VarSSA& var_b);
   std::string to_string(const VarSSA& var) const;
   bool same(const VarSSA& var_a, const VarSSA& var_b) const;
+  int var_id(const VarSSA& var);
+  void remap_reg(Register reg, const std::unordered_map<int, int>& remap);
 
  private:
   int get_next_var_id(Register reg);
@@ -98,12 +100,14 @@ struct SSA {
 
   bool simplify();
   void merge_all_phis();
+  void remap();
 
   std::string print() const;
 };
 
 void run_variable_renaming(const Function& function,
                            const RegUsageInfo& rui,
-                           const FunctionAtomicOps& ops);
+                           const FunctionAtomicOps& ops,
+                           bool debug_prints = false);
 
 }  // namespace decompiler
