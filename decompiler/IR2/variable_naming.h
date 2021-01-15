@@ -10,7 +10,7 @@
 namespace decompiler {
 
 class Function;
-class RegUsageInfo;
+struct RegUsageInfo;
 class FunctionAtomicOps;
 
 /*!
@@ -37,7 +37,7 @@ class VarSSA {
  * All ID's for normal variables are > 0.
  * Negative/0 ID's correspond to block ending variables (set with remap_to_final_for_block).
  * The ID is -block_id. It is printed as B{ID}.
- * Use merge(var, var) to make two variables have the same ID. The one with the lower ID wins.
+ * Use merge(var, var) to make two variables have the same ID. A wins.
  */
 class VarMapSSA {
  public:
@@ -46,6 +46,7 @@ class VarMapSSA {
   VarSSA allocate_init_phi(Register reg, int block_id);
   void merge(const VarSSA& var_a, const VarSSA& var_b);
   std::string to_string(const VarSSA& var) const;
+  bool same(const VarSSA& var_a, const VarSSA& var_b) const;
 
  private:
   int get_next_var_id(Register reg);
@@ -94,6 +95,9 @@ struct SSA {
   Phi& get_phi(int block, Register dest_reg);
   VarSSA get_phi_dest(int block, Register dest_reg);
   void add_phi(int block, Register dest_reg, const VarSSA& src_var);
+
+  bool simplify();
+  void merge_all_phis();
 
   std::string print() const;
 };
