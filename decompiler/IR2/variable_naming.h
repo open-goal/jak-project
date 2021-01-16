@@ -22,6 +22,7 @@
 #include <cassert>
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/TP_Type.h"
+#include "decompiler/IR2/Env.h"
 
 namespace decompiler {
 
@@ -116,20 +117,15 @@ struct SSA {
     std::string print(const VarMapSSA& var_map) const;
   };
 
-  struct VarInfo {
-    VarInfo() = default;
-    std::string name();
-    TP_Type type;
-    Register reg;
-    int id = -1;
-    bool initialized = false;
-  };
-
   explicit SSA(int n_blocks) { blocks.resize(n_blocks); }
   VarMapSSA map;
   std::vector<Block> blocks;
-  std::unordered_map<Register, std::vector<VarInfo>, Register::hash> program_read_vars;
-  std::unordered_map<Register, std::vector<VarInfo>, Register::hash> program_write_vars;
+
+  // in terms of reg, var_id
+  std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>
+      program_read_vars;
+  std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>
+      program_write_vars;
 
   Phi& get_phi(int block, Register dest_reg);
   VarSSA get_phi_dest(int block, Register dest_reg);
@@ -139,16 +135,14 @@ struct SSA {
   void merge_all_phis();
   void remap();
   void make_vars(const Function& function, const DecompilerTypeSystem& dts);
-  std::unordered_map<Register, std::vector<std::string>, Register::hash> get_read_var_names();
-  std::unordered_map<Register, std::vector<std::string>, Register::hash> get_write_var_names();
-
+  VariableNames get_vars();
   std::string print() const;
 };
 
-void run_variable_renaming(Function& function,
-                           const RegUsageInfo& rui,
-                           const FunctionAtomicOps& ops,
-                           const DecompilerTypeSystem& dts,
-                           bool debug_prints = false);
+std::optional<VariableNames> run_variable_renaming(const Function& function,
+                                                   const RegUsageInfo& rui,
+                                                   const FunctionAtomicOps& ops,
+                                                   const DecompilerTypeSystem& dts,
+                                                   bool debug_prints = false);
 
 }  // namespace decompiler

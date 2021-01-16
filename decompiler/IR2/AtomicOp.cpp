@@ -11,7 +11,7 @@ namespace decompiler {
 // VARIABLE
 /////////////////////////////
 
-Variable::Variable(Mode mode, Register reg, int atomic_idx, bool allow_all)
+Variable::Variable(VariableMode mode, Register reg, int atomic_idx, bool allow_all)
     : m_mode(mode), m_reg(reg), m_atomic_idx(atomic_idx) {
   // make sure we're using a valid GPR.
   if (reg.get_kind() == Reg::GPR && !allow_all) {
@@ -28,12 +28,12 @@ std::string Variable::to_string(const Env* env, Print mode) const {
       return m_reg.to_string();
     case Print::FULL:
       return fmt::format("{}-{:03d}-{}", m_reg.to_charp(), m_atomic_idx,
-                         m_mode == Mode::READ ? 'r' : 'w');
+                         m_mode == VariableMode::READ ? 'r' : 'w');
     case Print::AS_VARIABLE:
-      return env->get_variable_name(m_reg, m_atomic_idx, m_mode == Mode::READ);
+      return env->get_variable_name(m_reg, m_atomic_idx, m_mode);
     case Print::AUTOMATIC:
       if (env->has_local_vars()) {
-        return env->get_variable_name(m_reg, m_atomic_idx, m_mode == Mode::READ);
+        return env->get_variable_name(m_reg, m_atomic_idx, m_mode);
       } else {
         return m_reg.to_string();
       }
@@ -418,7 +418,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     if (dst.is_reg()) {
       auto reg = dst.get_reg();
       if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
-        m_dst = Variable(Variable::Mode::WRITE, reg, my_idx, true);
+        m_dst = Variable(VariableMode::WRITE, reg, my_idx, true);
       }
     }
   }
@@ -429,7 +429,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     if (src.is_reg()) {
       auto reg = src.get_reg();
       if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
-        m_src[i] = Variable(Variable::Mode::READ, reg, my_idx, true);
+        m_src[i] = Variable(VariableMode::READ, reg, my_idx, true);
       }
     }
   }
@@ -975,14 +975,14 @@ IR2_BranchDelay::IR2_BranchDelay(Kind kind) : m_kind(kind) {
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0) : m_kind(kind) {
   assert(m_kind == Kind::SET_REG_FALSE || m_kind == Kind::SET_REG_TRUE ||
          m_kind == Kind::SET_BINTEGER || m_kind == Kind::SET_PAIR);
-  assert(var0.mode() == Variable::Mode::WRITE);
+  assert(var0.mode() == VariableMode::WRITE);
   m_var[0] = var0;
 }
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1) : m_kind(kind) {
   assert(m_kind == Kind::NEGATE || m_kind == Kind::SET_REG_REG);
-  assert(var0.mode() == Variable::Mode::WRITE);
-  assert(var1.mode() == Variable::Mode::READ);
+  assert(var0.mode() == VariableMode::WRITE);
+  assert(var1.mode() == VariableMode::READ);
   m_var[0] = var0;
   m_var[1] = var1;
 }
@@ -990,9 +990,9 @@ IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1) : m_ki
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variable var2)
     : m_kind(kind) {
   assert(m_kind == Kind::DSLLV);
-  assert(var0.mode() == Variable::Mode::WRITE);
-  assert(var1.mode() == Variable::Mode::READ);
-  assert(var2.mode() == Variable::Mode::READ);
+  assert(var0.mode() == VariableMode::WRITE);
+  assert(var1.mode() == VariableMode::READ);
+  assert(var2.mode() == VariableMode::READ);
   m_var[0] = var0;
   m_var[1] = var1;
   m_var[2] = var2;

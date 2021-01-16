@@ -44,11 +44,11 @@ Register rv0() {
 /////////////////////////
 
 Variable make_dst_var(Register reg, int idx) {
-  return Variable(Variable::Mode::WRITE, reg, idx);
+  return Variable(VariableMode::WRITE, reg, idx);
 }
 
 Variable make_src_var(Register reg, int idx) {
-  return Variable(Variable::Mode::READ, reg, idx);
+  return Variable(VariableMode::READ, reg, idx);
 }
 
 Variable make_dst_var(const Instruction& i, int idx) {

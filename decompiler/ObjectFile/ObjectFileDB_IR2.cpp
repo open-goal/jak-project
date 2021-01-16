@@ -310,8 +310,11 @@ void ObjectFileDB::ir2_variable_pass() {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       try {
         attempted++;
-        run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops, dts);
-        successful++;
+        auto result = run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops, dts);
+        if (result.has_value()) {
+          successful++;
+          func.ir2.env.set_local_vars(*result);
+        }
       } catch (const std::exception& e) {
         lg::warn("variable pass failed on {}: {}", func.guessed_name.to_string(), e.what());
       }
@@ -425,6 +428,10 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   result += func.prologue.to_string(2) + "\n";
   if (!func.warnings.empty()) {
     result += ";;Warnings:\n" + func.warnings + "\n";
+  }
+
+  if (func.ir2.env.has_local_vars()) {
+    result += func.ir2.env.print_local_var_types();
   }
 
   bool print_atomics = func.ir2.atomic_ops_succeeded;

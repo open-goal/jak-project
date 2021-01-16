@@ -404,7 +404,7 @@ void SSA::remap() {
 }
 
 namespace {
-void update_var_info(SSA::VarInfo* info,
+void update_var_info(VariableNames::VarInfo* info,
                      Register reg,
                      const TypeState& ts,
                      int var_id,
@@ -422,10 +422,6 @@ void update_var_info(SSA::VarInfo* info,
   }
 }
 }  // namespace
-
-std::string SSA::VarInfo::name() {
-  return fmt::format("var-{}-{}-{}", type.typespec().print(), reg.to_charp(), id);
-}
 
 void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
@@ -452,49 +448,47 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   }
 }
 
-std::unordered_map<Register, std::vector<std::string>, Register::hash> SSA::get_read_var_names() {
-  std::unordered_map<Register, std::vector<std::string>, Register::hash> result;
-  for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
-    const auto& block = blocks.at(block_id);
-    for (auto& instr : block.ins) {
-      auto op_id = instr.op_id;
-      for (auto& src : instr.src) {
-        auto& info = program_read_vars.at(src.reg()).at(map.var_id(src));
-        auto& names = result[src.reg()];
-        if (int(names.size()) <= op_id) {
-          names.resize(op_id + 1);
-        }
-        names.at(op_id) = info.name();
-      }
-    }
-  }
-  return result;
-}
+VariableNames SSA::get_vars() {
+  VariableNames result;
+  result.read_vars = program_read_vars;
+  result.write_vars = program_write_vars;
 
-std::unordered_map<Register, std::vector<std::string>, Register::hash> SSA::get_write_var_names() {
-  std::unordered_map<Register, std::vector<std::string>, Register::hash> result;
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
       if (instr.dst.has_value()) {
-        auto& info = program_write_vars.at(instr.dst->reg()).at(map.var_id(*instr.dst));
-        auto& names = result[instr.dst->reg()];
-        if (int(names.size()) <= op_id) {
-          names.resize(op_id + 1);
+        auto& ids = result.write_opid_to_varid[instr.dst->reg()];
+        if (int(ids.size()) <= op_id) {
+          ids.resize(op_id + 1);
         }
-        names.at(op_id) = info.name();
+        ids.at(op_id) = map.var_id(*instr.dst);
       }
     }
   }
+
+  for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
+    const auto& block = blocks.at(block_id);
+    for (auto& instr : block.ins) {
+      auto op_id = instr.op_id;
+      for (auto& src : instr.src) {
+        auto& ids = result.read_opid_to_varid[src.reg()];
+        if (int(ids.size()) <= op_id) {
+          ids.resize(op_id + 1);
+        }
+        ids.at(op_id) = map.var_id(src);
+      }
+    }
+  }
+
   return result;
 }
 
-void run_variable_renaming(Function& function,
-                           const RegUsageInfo& rui,
-                           const FunctionAtomicOps& ops,
-                           const DecompilerTypeSystem& dts,
-                           bool debug_prints) {
+std::optional<VariableNames> run_variable_renaming(const Function& function,
+                                                   const RegUsageInfo& rui,
+                                                   const FunctionAtomicOps& ops,
+                                                   const DecompilerTypeSystem& dts,
+                                                   bool debug_prints) {
   if (debug_prints) {
     std::string debug_in;
     for (int block_id = 0; block_id < rui.block_count(); block_id++) {
@@ -562,7 +556,9 @@ void run_variable_renaming(Function& function,
   if (function.ir2.env.has_type_analysis()) {
     // make vars
     ssa.make_vars(function, dts);
-    function.ir2.env.set_local_vars(ssa.get_read_var_names(), ssa.get_write_var_names());
+    return ssa.get_vars();
+  } else {
+    return std::nullopt;
   }
 }
 }  // namespace decompiler
