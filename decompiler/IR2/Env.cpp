@@ -2,10 +2,12 @@
 #include "Env.h"
 
 namespace decompiler {
-std::string Env::get_variable_name(Register reg, int atomic_idx) const {
-  (void)reg;
-  (void)atomic_idx;
-  throw std::runtime_error("Env::get_variable_name not yet implemented.");
+std::string Env::get_variable_name(Register reg, int atomic_idx, bool is_read) const {
+  if (is_read) {
+    return m_read_vars.at(reg).at(atomic_idx);
+  } else {
+    return m_write_vars.at(reg).at(atomic_idx);
+  }
 }
 
 /*!

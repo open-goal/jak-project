@@ -310,7 +310,7 @@ void ObjectFileDB::ir2_variable_pass() {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       try {
         attempted++;
-        run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops);
+        run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops, dts);
         successful++;
       } catch (const std::exception& e) {
         lg::warn("variable pass failed on {}: {}", func.guessed_name.to_string(), e.what());

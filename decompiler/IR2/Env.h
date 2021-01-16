@@ -19,7 +19,7 @@ class Env {
  public:
   bool has_local_vars() const { return m_has_local_vars; }
   bool has_type_analysis() const { return m_has_types; }
-  std::string get_variable_name(Register reg, int atomic_idx) const;
+  std::string get_variable_name(Register reg, int atomic_idx, bool is_read) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -40,6 +40,14 @@ class Env {
 
   void set_types(const std::vector<TypeState>& block_init_types,
                  const std::vector<TypeState>& op_end_types);
+
+  void set_local_vars(
+      const std::unordered_map<Register, std::vector<std::string>, Register::hash>& reads,
+      const std::unordered_map<Register, std::vector<std::string>, Register::hash>& writes) {
+    m_read_vars = reads;
+    m_write_vars = writes;
+    m_has_local_vars = true;
+  }
   LinkedObjectFile* file = nullptr;
 
  private:
@@ -47,5 +55,7 @@ class Env {
   bool m_has_types = false;
   std::vector<TypeState> m_block_init_types;
   std::vector<TypeState> m_op_end_types;
+  std::unordered_map<Register, std::vector<std::string>, Register::hash> m_read_vars;
+  std::unordered_map<Register, std::vector<std::string>, Register::hash> m_write_vars;
 };
 }  // namespace decompiler

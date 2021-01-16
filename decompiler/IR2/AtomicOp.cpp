@@ -30,10 +30,10 @@ std::string Variable::to_string(const Env* env, Print mode) const {
       return fmt::format("{}-{:03d}-{}", m_reg.to_charp(), m_atomic_idx,
                          m_mode == Mode::READ ? 'r' : 'w');
     case Print::AS_VARIABLE:
-      return env->get_variable_name(m_reg, m_atomic_idx);
+      return env->get_variable_name(m_reg, m_atomic_idx, m_mode == Mode::READ);
     case Print::AUTOMATIC:
       if (env->has_local_vars()) {
-        return env->get_variable_name(m_reg, m_atomic_idx);
+        return env->get_variable_name(m_reg, m_atomic_idx, m_mode == Mode::READ);
       } else {
         return m_reg.to_string();
       }
@@ -416,7 +416,10 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
   if (m_instr.n_dst == 1) {
     auto& dst = m_instr.get_dst(0);
     if (dst.is_reg()) {
-      m_dst = Variable(Variable::Mode::WRITE, dst.get_reg(), my_idx, true);
+      auto reg = dst.get_reg();
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+        m_dst = Variable(Variable::Mode::WRITE, reg, my_idx, true);
+      }
     }
   }
 
@@ -424,7 +427,10 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
   for (int i = 0; i < m_instr.n_src; i++) {
     auto& src = m_instr.get_src(i);
     if (src.is_reg()) {
-      m_src[i] = Variable(Variable::Mode::READ, src.get_reg(), my_idx, true);
+      auto reg = src.get_reg();
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+        m_src[i] = Variable(Variable::Mode::READ, reg, my_idx, true);
+      }
     }
   }
 }

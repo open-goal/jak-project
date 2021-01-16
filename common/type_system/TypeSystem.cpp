@@ -1083,7 +1083,7 @@ bool TypeSystem::typecheck_base_types(const std::string& expected,
 /*!
  * Get a path from type to object.
  */
-std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) {
+std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) const {
   auto parent = lookup_type(type)->get_parent();
   std::vector<std::string> path = {type};
   path.push_back(parent);
@@ -1101,7 +1101,7 @@ std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) {
 /*!
  * Lowest common ancestor of two base types.
  */
-std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
+std::string TypeSystem::lca_base(const std::string& a, const std::string& b) const {
   if (a == b) {
     return a;
   }
@@ -1137,7 +1137,7 @@ std::string TypeSystem::lca_base(const std::string& a, const std::string& b) {
  * In a situation like lca("(a b)", "(c d)"), the result will be
  * (lca(a, b) lca(b, d)).
  */
-TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) {
+TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) const {
   auto result = make_typespec(lca_base(a.base_type(), b.base_type()));
   if (result == TypeSpec("function") && a.m_arguments.size() == 2 && b.m_arguments.size() == 2 &&
       (a.m_arguments.at(0) == TypeSpec("_varargs_") ||
@@ -1154,14 +1154,14 @@ TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b
   return result;
 }
 
-TypeSpec TypeSystem::lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) {
+TypeSpec TypeSystem::lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) const {
   return coerce_to_reg_type(lowest_common_ancestor(a, b));
 }
 
 /*!
  * Lowest common ancestor of multiple (or at least one) type.
  */
-TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) {
+TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) const {
   assert(!types.empty());
   if (types.size() == 1) {
     return types.front();

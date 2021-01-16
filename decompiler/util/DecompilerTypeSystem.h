@@ -38,11 +38,10 @@ class DecompilerTypeSystem {
   std::string dump_symbol_types();
   std::string lookup_parent_from_inspects(const std::string& child) const;
   bool lookup_flags(const std::string& type, u64* dest) const;
-  TP_Type tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed);
-  TP_Type tp_lca_no_simplify(const TP_Type& existing, const TP_Type& add, bool* changed);
+  TP_Type tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) const;
   bool tp_lca(TypeState* combined, const TypeState& add);
-  int get_format_arg_count(const std::string& str);
-  int get_format_arg_count(const TP_Type& type);
+  int get_format_arg_count(const std::string& str) const;
+  int get_format_arg_count(const TP_Type& type) const;
   struct {
     bool allow_pair;
     std::string current_method_type;
