@@ -7,6 +7,7 @@
 #include "common/goos/Object.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/Disasm/Instruction.h"
+#include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
 
 namespace decompiler {
@@ -33,13 +34,8 @@ class DecompilerTypeSystem;
  */
 class Variable {
  public:
-  enum class Mode : u8 {
-    READ,  // represents value of the variable at the beginning of the instruction
-    WRITE  // represents value of the variable at the end of the instruction
-  };
-
   Variable() = default;
-  Variable(Mode mode, Register reg, int atomic_idx, bool allow_all = false);
+  Variable(VariableMode mode, Register reg, int atomic_idx, bool allow_all = false);
 
   enum class Print {
     AS_REG,       // print as a PS2 register name
@@ -54,13 +50,13 @@ class Variable {
   bool operator!=(const Variable& other) const;
 
   const Register& reg() const { return m_reg; }
-  Mode mode() const { return m_mode; }
+  VariableMode mode() const { return m_mode; }
   int idx() const { return m_atomic_idx; }
 
  private:
-  Mode m_mode = Mode::READ;  // do we represent a read or a write?
-  Register m_reg;            // the EE register
-  int m_atomic_idx = -1;     // the index in the function's list of AtomicOps
+  VariableMode m_mode = VariableMode::READ;  // do we represent a read or a write?
+  Register m_reg;                            // the EE register
+  int m_atomic_idx = -1;                     // the index in the function's list of AtomicOps
 };
 
 /*!
@@ -90,6 +86,7 @@ class AtomicOp {
  public:
   explicit AtomicOp(int my_idx);
   std::string to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const;
+  std::string to_string(const Env& env) const;
   std::string reg_type_info_as_string(const TypeState& init_types,
                                       const TypeState& end_types) const;
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,

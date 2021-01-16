@@ -5,9 +5,34 @@
 #include <cassert>
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/IR2/IR2_common.h"
 
 namespace decompiler {
 class LinkedObjectFile;
+
+struct VariableNames {
+  struct VarInfo {
+    VarInfo() = default;
+    std::string name() const { return fmt::format("{}-{}", reg.to_charp(), id); }
+    TP_Type type;
+    Register reg;
+    int id = -1;
+    bool initialized = false;
+  };
+
+  std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash> read_vars,
+      write_vars;
+  std::unordered_map<Register, std::vector<int>, Register::hash> read_opid_to_varid,
+      write_opid_to_varid;
+
+  const VarInfo& lookup(Register reg, int op_id, VariableMode mode) const {
+    if (mode == VariableMode::READ) {
+      return read_vars.at(reg).at(read_opid_to_varid.at(reg).at(op_id));
+    } else {
+      return write_vars.at(reg).at(write_opid_to_varid.at(reg).at(op_id));
+    }
+  }
+};
 
 /*!
  * An "environment" for a single function.
@@ -19,7 +44,7 @@ class Env {
  public:
   bool has_local_vars() const { return m_has_local_vars; }
   bool has_type_analysis() const { return m_has_types; }
-  std::string get_variable_name(Register reg, int atomic_idx) const;
+  std::string get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -40,6 +65,14 @@ class Env {
 
   void set_types(const std::vector<TypeState>& block_init_types,
                  const std::vector<TypeState>& op_end_types);
+
+  void set_local_vars(const VariableNames& names) {
+    m_var_names = names;
+    m_has_local_vars = true;
+  }
+
+  std::string print_local_var_types() const;
+
   LinkedObjectFile* file = nullptr;
 
  private:
@@ -47,5 +80,6 @@ class Env {
   bool m_has_types = false;
   std::vector<TypeState> m_block_init_types;
   std::vector<TypeState> m_op_end_types;
+  VariableNames m_var_names;
 };
 }  // namespace decompiler

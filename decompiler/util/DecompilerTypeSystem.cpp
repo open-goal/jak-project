@@ -162,7 +162,9 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
 /*!
  * Compute the least common ancestor of two TP Types.
  */
-TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing, const TP_Type& add, bool* changed) {
+TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
+                                     const TP_Type& add,
+                                     bool* changed) const {
   // starting from most vague to most specific
 
   // simplist case, no difference.
@@ -302,7 +304,7 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
   return result;
 }
 
-int DecompilerTypeSystem::get_format_arg_count(const std::string& str) {
+int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
@@ -317,7 +319,7 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) {
   return arg_count;
 }
 
-int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) {
+int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) const {
   if (type.is_constant_string()) {
     return get_format_arg_count(type.get_string());
   } else {

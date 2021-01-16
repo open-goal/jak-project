@@ -44,11 +44,11 @@ Register rv0() {
 /////////////////////////
 
 Variable make_dst_var(Register reg, int idx) {
-  return Variable(Variable::Mode::WRITE, reg, idx);
+  return Variable(VariableMode::WRITE, reg, idx);
 }
 
 Variable make_src_var(Register reg, int idx) {
-  return Variable(Variable::Mode::READ, reg, idx);
+  return Variable(VariableMode::READ, reg, idx);
 }
 
 Variable make_dst_var(const Instruction& i, int idx) {
@@ -1309,11 +1309,11 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
  * @param end       : the end of the instructions for the block
  * @param container : the container to add to
  */
-void convert_block_to_atomic_ops(int begin_idx,
-                                 std::vector<Instruction>::const_iterator begin,
-                                 std::vector<Instruction>::const_iterator end,
-                                 const std::vector<DecompilerLabel>& labels,
-                                 FunctionAtomicOps* container) {
+int convert_block_to_atomic_ops(int begin_idx,
+                                std::vector<Instruction>::const_iterator begin,
+                                std::vector<Instruction>::const_iterator end,
+                                const std::vector<DecompilerLabel>& labels,
+                                FunctionAtomicOps* container) {
   container->block_id_to_first_atomic_op.push_back(container->ops.size());
   for (auto& instr = begin; instr < end;) {
     // how many instructions can we look at, at most?
@@ -1400,21 +1400,23 @@ void convert_block_to_atomic_ops(int begin_idx,
     begin_idx += length;
   }
   container->block_id_to_end_atomic_op.push_back(container->ops.size());
+  return int(container->ops.size());
 }
 
 FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
                                                  const std::vector<DecompilerLabel>& labels) {
   FunctionAtomicOps result;
 
+  int last_op = 0;
   for (const auto& block : func.basic_blocks) {
     // we should only consider the blocks which actually have instructions:
     if (block.end_word > block.start_word) {
       auto begin = func.instructions.begin() + block.start_word;
       auto end = func.instructions.begin() + block.end_word;
-      convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result);
+      last_op = convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result);
     } else {
-      result.block_id_to_first_atomic_op.push_back(-1);
-      result.block_id_to_end_atomic_op.push_back(-1);
+      result.block_id_to_first_atomic_op.push_back(last_op);
+      result.block_id_to_end_atomic_op.push_back(last_op);
     }
   }
 

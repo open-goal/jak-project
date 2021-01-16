@@ -9,6 +9,7 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "decompiler/IR2/reg_usage.h"
+#include "decompiler/IR2/variable_naming.h"
 
 namespace decompiler {
 
@@ -29,6 +30,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_type_analysis_pass();
   lg::info("Register usage analysis...");
   ir2_register_usage_pass();
+  lg::info("Variable analysis...");
+  ir2_variable_pass();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -274,7 +277,7 @@ void ObjectFileDB::ir2_type_analysis_pass() {
     }
   });
 
-  lg::info("{}/{}/{}/{} (success/attempted/non-asm/total) in {:.2f} ms", successful_functions,
+  lg::info("{}/{}/{}/{} (success/attempted/non-asm/total) in {:.2f} ms\n", successful_functions,
            attempted_functions, non_asm_functions, total_functions, timer.getMs());
 }
 
@@ -293,8 +296,32 @@ void ObjectFileDB::ir2_register_usage_pass() {
     }
   });
 
-  lg::info("{}/{} functions had register usage analyzed in {:.2f} ms", analyzed_funcs, total_funcs,
-           timer.getMs());
+  lg::info("{}/{} functions had register usage analyzed in {:.2f} ms\n", analyzed_funcs,
+           total_funcs, timer.getMs());
+}
+
+void ObjectFileDB::ir2_variable_pass() {
+  Timer timer;
+  int attempted = 0;
+  int successful = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
+      try {
+        attempted++;
+        auto result = run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops, dts);
+        if (result.has_value()) {
+          successful++;
+          func.ir2.env.set_local_vars(*result);
+        }
+      } catch (const std::exception& e) {
+        lg::warn("variable pass failed on {}: {}", func.guessed_name.to_string(), e.what());
+      }
+    }
+  });
+  lg::info("{}/{} functions out of attempted passed variable pass in {:.2f} ms\n", successful,
+           attempted, timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
@@ -401,6 +428,10 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   result += func.prologue.to_string(2) + "\n";
   if (!func.warnings.empty()) {
     result += ";;Warnings:\n" + func.warnings + "\n";
+  }
+
+  if (func.ir2.env.has_local_vars()) {
+    result += func.ir2.env.print_local_var_types();
   }
 
   bool print_atomics = func.ir2.atomic_ops_succeeded;

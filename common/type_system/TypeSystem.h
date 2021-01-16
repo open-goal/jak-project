@@ -174,7 +174,7 @@ class TypeSystem {
                  const std::string& error_source_name = "",
                  bool print_on_error = true,
                  bool throw_on_error = true) const;
-  std::vector<std::string> get_path_up_tree(const std::string& type);
+  std::vector<std::string> get_path_up_tree(const std::string& type) const;
   int get_next_method_id(Type* type);
 
   bool is_bitfield_type(const std::string& type_name) const;
@@ -197,9 +197,9 @@ class TypeSystem {
     return result;
   }
 
-  TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b);
-  TypeSpec lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b);
-  TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types);
+  TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) const;
+  TypeSpec lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) const;
+  TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types) const;
 
  private:
   bool reverse_deref(const ReverseDerefInputInfo& input,
@@ -226,7 +226,7 @@ class TypeSystem {
                                 std::vector<FieldReverseLookupOutput::Token>* path,
                                 bool* addr_of,
                                 TypeSpec* result_type) const;
-  std::string lca_base(const std::string& a, const std::string& b);
+  std::string lca_base(const std::string& a, const std::string& b) const;
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_size_in_type(const Field& field) const;
   int get_alignment_in_type(const Field& field);

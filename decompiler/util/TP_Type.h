@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cassert>
+#include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/common_types.h"
 #include "decompiler/Disasm/Register.h"
@@ -190,6 +191,7 @@ struct TypeState {
       case Reg::FPR:
         return fpr_types[r.get_fpr()];
       default:
+        lg::die("Cannot use register {} with TypeState.", r.to_charp());
         assert(false);
     }
   }
