@@ -69,6 +69,7 @@ class VarMapSSA {
   VarSSA allocate(Register reg);
   VarSSA allocate_init_phi(Register reg, int block_id);
   void merge(const VarSSA& var_a, const VarSSA& var_b);
+  void merge_to_first(const VarSSA& var_a, const VarSSA& var_b);
   std::string to_string(const VarSSA& var) const;
   bool same(const VarSSA& var_a, const VarSSA& var_b) const;
   int var_id(const VarSSA& var);

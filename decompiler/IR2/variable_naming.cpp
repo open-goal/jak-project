@@ -69,6 +69,13 @@ void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
   }
 }
 
+void VarMapSSA::merge_to_first(const VarSSA& var_a, const VarSSA& var_b) {
+  auto& a = m_entries.at(var_a.m_entry_id);
+  auto& b = m_entries.at(var_b.m_entry_id);
+  assert(a.reg == b.reg);
+  b.var_id = a.var_id;
+}
+
 std::string VarMapSSA::to_string(const VarSSA& var) const {
   auto var_id = m_entries.at(var.m_entry_id).var_id;
   if (var_id > 0) {
@@ -370,7 +377,7 @@ void SSA::merge_all_phis() {
   for (auto& block : blocks) {
     for (auto& phi : block.phis) {
       for (auto& src : phi.second.sources) {
-        map.merge(phi.second.dest, src);
+        map.merge_to_first(phi.second.dest, src);
       }
     }
     block.phis.clear();
@@ -522,21 +529,21 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
       debug_in += fmt::format(" out: {}\n\n", reg_to_string(block_info.output));
     }
 
-    fmt::print("{}", debug_in);
+    fmt::print("Debug Input\n{}\n----------------------------------\n", debug_in);
   }
 
   // Create and convert to SSA
   auto ssa = make_rc_ssa(function, rui, ops);
 
   if (debug_prints) {
-    fmt::print("{}", ssa.print());
+    fmt::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
   }
 
   // eliminate PHIs that are stupid.
   while (ssa.simplify()) {
   }
   if (debug_prints) {
-    fmt::print("{}", ssa.print());
+    fmt::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
   }
 
   // Merge phis to return to executable code.
