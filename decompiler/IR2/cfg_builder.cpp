@@ -1,3 +1,8 @@
+/*!
+ * @file cfg_builder.cpp
+ * Initial conversion from Control Flow Graph to IR2 Form.
+ */
+
 #include "cfg_builder.h"
 #include "decompiler/util/MatchParam.h"
 
@@ -7,15 +12,15 @@ namespace {
 Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx);
 
 /*!
- * If it's a sequence with a branch as the last thing, return a pointer to the branch element
- * and also a pointer to the vector which holds the branch operation in its last slot.
+ * If it's a form containing multiple elements, return a pointer to the branch element and the end
+ * and also a pointer to the Form containing the branch element.
  * Otherwise returns nullptr.  Useful to modify or remove branches found at the end of blocks,
  * and inline things into the begin they were found in.
  */
 std::pair<BranchElement*, Form*> get_condition_branch_as_vector(Form* in) {
-  // I am pretty sure that we'll never have to "dig" deeper to find the branch.
-  // but in case I'm wrong, we explictly return the Form* we're found in. If I'm wrong,
-  // this can be fixed here, rather than refactoring the whole thing.
+  // With the current Form setup, we'll never have to dig deper to find the branch.
+  // so we can just return the input as the Form*.
+  //  If this changes, this can be fixed here, rather than refactoring the whole thing.
   if (in->size() > 1) {
     auto irb = dynamic_cast<BranchElement*>(in->back());
     assert(irb);
@@ -249,7 +254,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitEl
         bool this_live_out = (branch_info.written_and_unused.find(ir_dest.reg()) ==
                               branch_info.written_and_unused.end());
         if (live_out_result != this_live_out) {
-          lg::error("Bad live out result on {}. At 0 was {} now at {} is {]",
+          lg::error("Bad live out result on {}. At 0 was {} now at {} is {}",
                     func.guessed_name.to_string(), live_out_result, i, this_live_out);
         }
         assert(live_out_result == this_live_out);
@@ -838,6 +843,9 @@ Form* try_sc_as_type_of(FormPool& pool, const Function& f, const ShortCircuit* v
   }
 
   auto b0_ptr = cfg_to_ir(pool, f, b0);  // should be begin.
+  if (b0_ptr->size() <= 1) {
+    return nullptr;
+  }
 
   auto b1_ptr = cfg_to_ir(pool, f, b1);
   auto b1_ir = dynamic_cast<BranchElement*>(b1_ptr->try_as_single_element());
@@ -1190,17 +1198,15 @@ void clean_up_while_loops(FormPool& pool, Form* sequence) {
 
 void build_initial_forms(Function& function) {
   auto& cfg = function.cfg;
-  auto& pool = function.ir2.form_pool;
-
   if (!cfg->is_fully_resolved()) {
     return;
   }
 
   try {
+    auto& pool = function.ir2.form_pool;
     auto top_level = function.cfg->get_single_top_level();
     std::vector<FormElement*> top_level_elts;
     insert_cfg_into_list(pool, function, top_level, &top_level_elts);
-    // todo
     auto result = pool.alloc_sequence_form(nullptr, top_level_elts);
 
     result->apply_form([&](Form* form) { clean_up_while_loops(pool, form); });
@@ -1211,8 +1217,6 @@ void build_initial_forms(Function& function) {
         clean_up_cond_no_else_final(function, as_cne);
       }
     });
-
-    // todo cleanup.
 
     function.ir2.top_form = result;
   } catch (std::runtime_error& e) {

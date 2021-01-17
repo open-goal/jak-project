@@ -311,7 +311,7 @@ void ObjectFileDB::ir2_variable_pass() {
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
     (void)data;
-    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
+    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded && func.ir2.env.has_type_analysis()) {
       try {
         attempted++;
         auto result = run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops, dts);
@@ -337,7 +337,7 @@ void ObjectFileDB::ir2_cfg_build_pass() {
     (void)segment_id;
     (void)data;
     total++;
-    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
+    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded && func.cfg->is_fully_resolved()) {
       attempted++;
       build_initial_forms(func);
     }

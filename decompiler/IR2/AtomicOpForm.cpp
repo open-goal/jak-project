@@ -47,17 +47,22 @@ FormElement* SpecialOp::get_as_form(FormPool& pool) const {
 
 FormElement* CallOp::get_as_form(FormPool& pool) const {
   auto call = pool.alloc_element<FunctionCallElement>(this);
-  if (m_write_regs.empty()) {
+  if (m_write_regs.empty() && m_call_type_set == true) {
     return call;
-  } else if (m_write_regs.size() == 1) {
-    throw std::runtime_error("CallOp::get_as_expr not yet implemented");
+  } else if (m_write_regs.size() == 1 || !m_call_type_set) {
+    // this is a little scary in the case that type analysis doesn't run and relies on the fact
+    // that CallOp falls back to writing v0 in the case where the function type isn't known.
+    Variable out_var(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), m_my_idx);
+    return pool.alloc_element<SetVarElement>(out_var, pool.alloc_single_form(nullptr, call), true);
   } else {
     throw std::runtime_error("CallOp::get_as_expr not yet implemented");
   }
 }
 
 FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool) const {
-  throw std::runtime_error("ConditionalMoveFalseOp::get_as_expr is not yet implemented");
+  auto source =
+      pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(m_src));
+  return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, source, m_on_zero);
 }
 
 }  // namespace decompiler

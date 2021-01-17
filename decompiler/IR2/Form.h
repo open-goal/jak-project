@@ -303,6 +303,17 @@ class TypeOfElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
 };
 
+class ConditionalMoveFalseElement : public FormElement {
+ public:
+  Variable dest;
+  Form* source = nullptr;
+  bool on_zero = false;
+  ConditionalMoveFalseElement(Variable _dest, Form* _source, bool _on_zero);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:

@@ -565,10 +565,7 @@ AshElement::AshElement(Form* _shift_amount,
                        Form* _value,
                        std::optional<Variable> _clobber,
                        bool _is_signed)
-    : shift_amount(_shift_amount),
-      value(_value),
-      clobber(std::move(_clobber)),
-      is_signed(_is_signed) {
+    : shift_amount(_shift_amount), value(_value), clobber(_clobber), is_signed(_is_signed) {
   _shift_amount->parent_element = this;
   _value->parent_element = this;
 }
@@ -609,5 +606,30 @@ void TypeOfElement::apply(const std::function<void(FormElement*)>& f) {
 
 void TypeOfElement::apply_form(const std::function<void(Form*)>& f) {
   value->apply_form(f);
+}
+
+/////////////////////////////
+// ConditionalMoveFalseElement
+/////////////////////////////
+
+ConditionalMoveFalseElement::ConditionalMoveFalseElement(Variable _dest,
+                                                         Form* _source,
+                                                         bool _on_zero)
+    : dest(_dest), source(_source), on_zero(_on_zero) {
+  source->parent_element = this;
+}
+
+goos::Object ConditionalMoveFalseElement::to_form(const Env& env) const {
+  return pretty_print::build_list(on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
+                                  dest.to_string(&env), source->to_form(env));
+}
+
+void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  source->apply(f);
+}
+
+void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>& f) {
+  source->apply_form(f);
 }
 }  // namespace decompiler

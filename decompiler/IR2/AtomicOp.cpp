@@ -1157,6 +1157,10 @@ Variable CallOp::get_set_destination() const {
 void CallOp::update_register_info() {
   // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
   m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
+  // if the type analysis succeeds, it will remove this if the function doesn't return a value.
+  // but, in the case we want to keep running without type information, we may need a
+  // renamed variable here, so we add this.
+  m_write_regs.push_back(Register(Reg::GPR, Reg::V0));
   clobber_temps();
 }
 
