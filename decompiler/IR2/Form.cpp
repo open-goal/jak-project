@@ -42,9 +42,16 @@ void Form::inline_forms(std::vector<goos::Object>& forms, const Env& env) const 
   }
 }
 
-void Form::apply(const std::function<void(FormElement*)>& f) const {
+void Form::apply(const std::function<void(FormElement*)>& f) {
   for (auto& x : m_elements) {
     x->apply(f);
+  }
+}
+
+void Form::apply_form(const std::function<void(Form*)>& f) {
+  f(this);
+  for (auto& x : m_elements) {
+    x->apply_form(f);
   }
 }
 
@@ -61,6 +68,8 @@ goos::Object SimpleExpressionElement::to_form(const Env& env) const {
 void SimpleExpressionElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
+
+void SimpleExpressionElement::apply_form(const std::function<void(Form*)>&) {}
 
 bool SimpleExpressionElement::is_sequence_point() const {
   throw std::runtime_error("Should not check if a SimpleExpressionElement is a sequence point");
@@ -84,6 +93,10 @@ void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
   m_src->apply(f);
 }
 
+void SetVarElement::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+}
+
 bool SetVarElement::is_sequence_point() const {
   return m_is_sequence_point;
 }
@@ -101,6 +114,8 @@ goos::Object AtomicOpElement::to_form(const Env& env) const {
 void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
+
+void AtomicOpElement::apply_form(const std::function<void(Form*)>&) {}
 
 /////////////////////////////
 // ConditionElement
@@ -132,6 +147,19 @@ goos::Object ConditionElement::to_form(const Env& env) const {
 
 void ConditionElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
+  for (int i = 0; i < 2; i++) {
+    if (m_src[i]) {
+      m_src[i]->apply(f);
+    }
+  }
+}
+
+void ConditionElement::apply_form(const std::function<void(Form*)>& f) {
+  for (int i = 0; i < 2; i++) {
+    if (m_src[i]) {
+      m_src[i]->apply_form(f);
+    }
+  }
 }
 
 void ConditionElement::invert() {
@@ -151,6 +179,8 @@ goos::Object StoreElement::to_form(const Env& env) const {
 void StoreElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
+
+void StoreElement::apply_form(const std::function<void(Form*)>&) {}
 
 /////////////////////////////
 // LoadSourceElement
@@ -202,6 +232,10 @@ void LoadSourceElement::apply(const std::function<void(FormElement*)>& f) {
   m_addr->apply(f);
 }
 
+void LoadSourceElement::apply_form(const std::function<void(Form*)>& f) {
+  m_addr->apply_form(f);
+}
+
 /////////////////////////////
 // SimpleAtomElement
 /////////////////////////////
@@ -215,6 +249,8 @@ goos::Object SimpleAtomElement::to_form(const Env& env) const {
 void SimpleAtomElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
+
+void SimpleAtomElement::apply_form(const std::function<void(Form*)>&) {}
 
 /////////////////////////////
 // FunctionCallElement
@@ -230,6 +266,8 @@ void FunctionCallElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
 
+void FunctionCallElement::apply_form(const std::function<void(Form*)>&) {}
+
 /////////////////////////////
 // BranchElement
 /////////////////////////////
@@ -243,6 +281,8 @@ goos::Object BranchElement::to_form(const Env& env) const {
 void BranchElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
+
+void BranchElement::apply_form(const std::function<void(Form*)>&) {}
 
 /////////////////////////////
 // ReturnElement
@@ -262,6 +302,11 @@ void ReturnElement::apply(const std::function<void(FormElement*)>& f) {
   dead_code->apply(f);
 }
 
+void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
+  return_code->apply_form(f);
+  dead_code->apply_form(f);
+}
+
 /////////////////////////////
 // BreakElement
 /////////////////////////////
@@ -278,6 +323,11 @@ void BreakElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   return_code->apply(f);
   dead_code->apply(f);
+}
+
+void BreakElement::apply_form(const std::function<void(Form*)>& f) {
+  return_code->apply_form(f);
+  dead_code->apply_form(f);
 }
 
 /////////////////////////////
@@ -321,6 +371,14 @@ void CondWithElseElement::apply(const std::function<void(FormElement*)>& f) {
   else_ir->apply(f);
 }
 
+void CondWithElseElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& entry : entries) {
+    entry.condition->apply_form(f);
+    entry.body->apply_form(f);
+  }
+  else_ir->apply_form(f);
+}
+
 /////////////////////////////
 // EmptyElement
 /////////////////////////////
@@ -333,4 +391,223 @@ void EmptyElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
 
+void EmptyElement::apply_form(const std::function<void(Form*)>&) {}
+
+/////////////////////////////
+// WhileElement
+/////////////////////////////
+
+void WhileElement::apply(const std::function<void(FormElement*)>& f) {
+  // note - this is done in program order, rather than print order. Not sure if this makes sense.
+  f(this);
+  body->apply(f);
+  condition->apply(f);
+}
+
+goos::Object WhileElement::to_form(const Env& env) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("while"));
+  list.push_back(condition->to_form(env));
+  body->inline_forms(list, env);
+  return pretty_print::build_list(list);
+}
+
+void WhileElement::apply_form(const std::function<void(Form*)>& f) {
+  body->apply_form(f);
+  condition->apply_form(f);
+}
+
+/////////////////////////////
+// UntilElement
+/////////////////////////////
+
+void UntilElement::apply(const std::function<void(FormElement*)>& f) {
+  // note - this is done in program order, rather than print order. Not sure if this makes sense.
+  f(this);
+  body->apply(f);
+  condition->apply(f);
+}
+
+goos::Object UntilElement::to_form(const Env& env) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("until"));
+  list.push_back(condition->to_form(env));
+  body->inline_forms(list, env);
+  return pretty_print::build_list(list);
+}
+
+void UntilElement::apply_form(const std::function<void(Form*)>& f) {
+  body->apply_form(f);
+  condition->apply_form(f);
+}
+
+/////////////////////////////
+// ShortCircuitElement
+/////////////////////////////
+
+void ShortCircuitElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& x : entries) {
+    x.condition->apply(f);
+    //    if (x.output) {
+    //      // not sure about this...
+    //      x.output->apply(f);
+    //    }
+  }
+}
+
+void ShortCircuitElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& x : entries) {
+    x.condition->apply_form(f);
+    //    if (x.output) {
+    //      // not sure about this...
+    //      x.output->apply(f);
+    //    }
+  }
+}
+
+goos::Object ShortCircuitElement::to_form(const Env& env) const {
+  std::vector<goos::Object> forms;
+  switch (kind) {
+    case UNKNOWN:
+      forms.push_back(pretty_print::to_symbol("unknown-sc"));
+      break;
+    case AND:
+      forms.push_back(pretty_print::to_symbol("and"));
+      break;
+    case OR:
+      forms.push_back(pretty_print::to_symbol("or"));
+      break;
+    default:
+      assert(false);
+  }
+  for (auto& x : entries) {
+    forms.push_back(x.condition->to_form(env));
+  }
+  return pretty_print::build_list(forms);
+}
+
+/////////////////////////////
+// ShortCircuitElement
+/////////////////////////////
+
+goos::Object CondNoElseElement::to_form(const Env& env) const {
+  if (entries.size() == 1 && entries.front().body->is_single_element()) {
+    // print as an if statement if we can put the body in a single form.
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("if"));
+    list.push_back(entries.front().condition->to_form(env));
+    list.push_back(entries.front().body->to_form(env));
+    return pretty_print::build_list(list);
+  } else if (entries.size() == 1) {
+    // turn into a when if the body requires multiple forms
+    // todo check to see if the condition starts with a NOT and this can be simplified to an
+    // unless.
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("when"));
+    list.push_back(entries.front().condition->to_form(env));
+    entries.front().body->inline_forms(list, env);
+    return pretty_print::build_list(list);
+  } else {
+    std::vector<goos::Object> list;
+    list.push_back(pretty_print::to_symbol("cond"));
+    for (auto& e : entries) {
+      std::vector<goos::Object> entry;
+      entry.push_back(e.condition->to_form(env));
+      entries.front().body->inline_forms(list, env);
+      list.push_back(pretty_print::build_list(entry));
+    }
+    return pretty_print::build_list(list);
+  }
+}
+
+void CondNoElseElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& e : entries) {
+    e.condition->apply(f);
+    e.body->apply(f);
+  }
+}
+
+void CondNoElseElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& e : entries) {
+    e.condition->apply_form(f);
+    e.body->apply_form(f);
+  }
+}
+
+/////////////////////////////
+// AbsElement
+/////////////////////////////
+
+AbsElement::AbsElement(Form* _source) : source(_source) {
+  source->parent_element = this;
+}
+
+goos::Object AbsElement::to_form(const Env& env) const {
+  return pretty_print::build_list("abs", source->to_form(env));
+}
+
+void AbsElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  source->apply(f);
+}
+
+void AbsElement::apply_form(const std::function<void(Form*)>& f) {
+  source->apply_form(f);
+}
+
+/////////////////////////////
+// AshElement
+/////////////////////////////
+
+AshElement::AshElement(Form* _shift_amount,
+                       Form* _value,
+                       std::optional<Variable> _clobber,
+                       bool _is_signed)
+    : shift_amount(_shift_amount),
+      value(_value),
+      clobber(std::move(_clobber)),
+      is_signed(_is_signed) {
+  _shift_amount->parent_element = this;
+  _value->parent_element = this;
+}
+
+goos::Object AshElement::to_form(const Env& env) const {
+  return pretty_print::build_list(pretty_print::to_symbol(is_signed ? "ash.si" : "ash.ui"),
+                                  value->to_form(env), shift_amount->to_form(env));
+}
+
+void AshElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  shift_amount->apply(f);
+  value->apply(f);
+}
+
+void AshElement::apply_form(const std::function<void(Form*)>& f) {
+  shift_amount->apply_form(f);
+  value->apply_form(f);
+}
+
+/////////////////////////////
+// TypeOfElement
+/////////////////////////////
+
+TypeOfElement::TypeOfElement(Form* _value, std::optional<Variable> _clobber)
+    : value(_value), clobber(_clobber) {
+  value->parent_element = this;
+}
+
+goos::Object TypeOfElement::to_form(const Env& env) const {
+  return pretty_print::build_list("type-of", value->to_form(env));
+}
+
+void TypeOfElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  value->apply(f);
+}
+
+void TypeOfElement::apply_form(const std::function<void(Form*)>& f) {
+  value->apply_form(f);
+}
 }  // namespace decompiler

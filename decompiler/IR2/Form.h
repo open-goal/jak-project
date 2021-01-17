@@ -23,6 +23,7 @@ class FormElement {
   virtual goos::Object to_form(const Env& env) const = 0;
   virtual ~FormElement() = default;
   virtual void apply(const std::function<void(FormElement*)>& f) = 0;
+  virtual void apply_form(const std::function<void(Form*)>& f) = 0;
   virtual bool is_sequence_point() const { return true; }
 
  protected:
@@ -39,7 +40,9 @@ class SimpleExpressionElement : public FormElement {
 
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
+  const SimpleExpression& expr() const { return m_expr; }
 
  private:
   SimpleExpression m_expr;
@@ -56,6 +59,7 @@ class StoreElement : public FormElement {
 
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 
  private:
   // todo - we may eventually want to use a different representation for more
@@ -72,6 +76,10 @@ class LoadSourceElement : public FormElement {
   LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  int size() const { return m_size; }
+  LoadVarOp::Kind kind() const { return m_kind; }
+  const Form* location() const { return m_addr; }
 
  private:
   Form* m_addr = nullptr;
@@ -84,6 +92,7 @@ class SimpleAtomElement : public FormElement {
   explicit SimpleAtomElement(const SimpleAtom& var);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 
  private:
   SimpleAtom m_atom;
@@ -97,7 +106,10 @@ class SetVarElement : public FormElement {
   SetVarElement(const Variable& var, Form* value, bool is_sequence_point);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
+  const Variable& dst() const { return m_dst; }
+  const Form* src() const { return m_src; }
 
  private:
   Variable m_dst;
@@ -110,6 +122,7 @@ class AtomicOpElement : public FormElement {
   explicit AtomicOpElement(const AtomicOp* op);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 
  private:
   const AtomicOp* m_op;
@@ -120,6 +133,7 @@ class ConditionElement : public FormElement {
   ConditionElement(IR2_Condition::Kind kind, Form* src0, Form* src1);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
   void invert();
 
  private:
@@ -132,6 +146,7 @@ class FunctionCallElement : public FormElement {
   explicit FunctionCallElement(const CallOp* op);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 
  private:
   const CallOp* m_op;
@@ -142,6 +157,7 @@ class BranchElement : public FormElement {
   explicit BranchElement(const BranchOp* op);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
   const BranchOp* op() const { return m_op; }
 
  private:
@@ -156,6 +172,7 @@ class ReturnElement : public FormElement {
       : return_code(_return_code), dead_code(_dead_code) {}
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 };
 
 class BreakElement : public FormElement {
@@ -166,6 +183,7 @@ class BreakElement : public FormElement {
       : return_code(_return_code), dead_code(_dead_code) {}
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 };
 
 class CondWithElseElement : public FormElement {
@@ -181,6 +199,7 @@ class CondWithElseElement : public FormElement {
       : entries(std::move(_entries)), else_ir(_else_ir) {}
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 };
 
 class EmptyElement : public FormElement {
@@ -188,6 +207,100 @@ class EmptyElement : public FormElement {
   EmptyElement() = default;
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+};
+
+class WhileElement : public FormElement {
+ public:
+  WhileElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {}
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  Form* condition = nullptr;
+  Form* body = nullptr;
+  bool cleaned = false;
+};
+
+class UntilElement : public FormElement {
+ public:
+  UntilElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {}
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  Form* condition = nullptr;
+  Form* body = nullptr;
+};
+
+class ShortCircuitElement : public FormElement {
+ public:
+  struct Entry {
+    Form* condition = nullptr;
+    // in the case where there's no else, each delay slot will write #f to the "output" register.
+    // this can be with an or <output>, s7, r0
+    Form* output = nullptr;
+    bool is_output_trick = false;
+    bool cleaned = false;
+  };
+
+  enum Kind { UNKNOWN, AND, OR } kind = UNKNOWN;
+
+  Variable final_result;
+  std::vector<Entry> entries;
+  std::optional<bool> used_as_value = std::nullopt;
+
+  explicit ShortCircuitElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+};
+
+class CondNoElseElement : public FormElement {
+ public:
+  struct Entry {
+    Form* condition = nullptr;
+    Form* body = nullptr;
+    std::optional<Variable> false_destination;
+    FormElement* original_condition_branch = nullptr;
+    bool cleaned = false;
+  };
+  Register final_destination;
+  bool used_as_value = false;
+  std::vector<Entry> entries;
+  explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+};
+
+class AbsElement : public FormElement {
+ public:
+  explicit AbsElement(Form* _source);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  Form* source = nullptr;
+};
+
+class AshElement : public FormElement {
+ public:
+  Form* shift_amount = nullptr;
+  Form* value = nullptr;
+  std::optional<Variable> clobber;
+  bool is_signed = true;
+  AshElement(Form* _shift_amount, Form* _value, std::optional<Variable> _clobber, bool _is_signed);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+};
+
+class TypeOfElement : public FormElement {
+ public:
+  Form* value;
+  std::optional<Variable> clobber;
+  TypeOfElement(Form* _value, std::optional<Variable> _clobber);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
 };
 
 /*!
@@ -198,6 +311,7 @@ class EmptyElement : public FormElement {
  */
 class Form {
  public:
+  Form() = default;
   Form(FormElement* parent, FormElement* single_child)
       : parent_element(parent), m_elements({single_child}) {
     single_child->parent_form = this;
@@ -210,8 +324,15 @@ class Form {
     }
   }
 
+  FormElement* try_as_single_element() const {
+    if (is_single_element()) {
+      return m_elements.front();
+    }
+    return nullptr;
+  }
   bool is_single_element() const { return m_elements.size() == 1; }
   FormElement* operator[](int idx) { return m_elements.at(idx); }
+  FormElement* at(int idx) { return m_elements.at(idx); }
   const FormElement* operator[](int idx) const { return m_elements.at(idx); }
   int size() const { return int(m_elements.size()); }
   FormElement* back() const {
@@ -229,9 +350,15 @@ class Form {
     m_elements.pop_back();
   }
 
+  const std::vector<FormElement*>& elts() const { return m_elements; }
+  std::vector<FormElement*>& elts() { return m_elements; }
+
+  void push_back(FormElement* elt) { m_elements.push_back(elt); }
+
   goos::Object to_form(const Env& env) const;
   void inline_forms(std::vector<goos::Object>& forms, const Env& env) const;
-  void apply(const std::function<void(FormElement*)>& f) const;
+  void apply(const std::function<void(FormElement*)>& f);
+  void apply_form(const std::function<void(Form*)>& f);
   FormElement* parent_element = nullptr;
 
  private:
@@ -275,6 +402,12 @@ class FormPool {
 
   Form* acquire(std::unique_ptr<Form> form_ptr) {
     Form* form = form_ptr.release();
+    m_forms.push_back(form);
+    return form;
+  }
+
+  Form* alloc_empty_form() {
+    Form* form = new Form;
     m_forms.push_back(form);
     return form;
   }

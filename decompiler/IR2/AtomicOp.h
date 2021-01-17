@@ -116,6 +116,7 @@ class AtomicOp {
 
   TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
 
+  int op_id() const { return m_my_idx; }
   const std::vector<Register>& read_regs() { return m_read_regs; }
   const std::vector<Register>& write_regs() { return m_write_regs; }
   const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
@@ -190,6 +191,10 @@ class SimpleAtom {
   void get_regs(std::vector<Register>* out) const;
   SimpleExpression as_expr() const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
+  const std::string& get_str() const {
+    assert(is_sym_ptr() || is_sym_val());
+    return m_string;
+  }
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -275,6 +280,8 @@ class SimpleExpression {
   SimpleAtom m_args[2];
   s8 n_args = -1;
 };
+
+int get_simple_expression_arg_count(SimpleExpression::Kind kind);
 
 /*!
  * Set a variable equal to a Simple Expression
@@ -501,6 +508,11 @@ class IR2_BranchDelay {
                             const Env& env,
                             DecompilerTypeSystem& dts) const;
   Kind kind() const { return m_kind; }
+  const Variable& var(int idx) const {
+    assert(idx < 3);
+    assert(m_var[idx].has_value());
+    return m_var[idx].value();
+  }
 
  private:
   std::optional<Variable> m_var[3];
@@ -529,6 +541,7 @@ class BranchOp : public AtomicOp {
                                      DecompilerTypeSystem& dts) override;
   const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
   const IR2_Condition& condition() const { return m_condition; }
+  bool likely() const { return m_likely; }
 
  private:
   bool m_likely = false;

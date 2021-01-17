@@ -254,6 +254,7 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       assert(false);
   }
 }
+}  // namespace
 
 int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
   switch (kind) {
@@ -302,7 +303,6 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       assert(false);
   }
 }
-}  // namespace
 
 SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0) : n_args(1) {
   m_args[0] = arg0;
