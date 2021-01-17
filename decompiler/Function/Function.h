@@ -8,13 +8,14 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <unordered_set>
-#include "decompiler/IR2/AtomicOpBuilder.h"
+#include "decompiler/IR2/atomic_op_builder.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/config.h"
+#include "decompiler/IR2/Form.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
@@ -169,6 +170,8 @@ class Function {
     RegUsageInfo reg_use;
     bool has_type_info = false;
     Env env;
+    FormPool form_pool;
+    Form* top_form = nullptr;
   } ir2;
 
  private:

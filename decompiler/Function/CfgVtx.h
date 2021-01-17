@@ -65,8 +65,8 @@ void replace_exactly_one_in(std::vector<T>& v, T old, T replace) {
  */
 class CfgVtx {
  public:
-  virtual std::string to_string() = 0;  // convert to a single line string for debugging
-  virtual goos::Object to_form() = 0;   // recursive print as LISP form.
+  virtual std::string to_string() const = 0;  // convert to a single line string for debugging
+  virtual goos::Object to_form() const = 0;   // recursive print as LISP form.
   virtual ~CfgVtx() = default;
 
   CfgVtx* parent = nullptr;       // parent structure, or nullptr if top level
@@ -132,8 +132,8 @@ class CfgVtx {
 class EntryVtx : public CfgVtx {
  public:
   EntryVtx() = default;
-  goos::Object to_form() override;
-  std::string to_string() override;
+  goos::Object to_form() const override;
+  std::string to_string() const override;
 };
 
 /*!
@@ -141,8 +141,8 @@ class EntryVtx : public CfgVtx {
  */
 class ExitVtx : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
 };
 
 /*!
@@ -151,8 +151,8 @@ class ExitVtx : public CfgVtx {
 class BlockVtx : public CfgVtx {
  public:
   explicit BlockVtx(int id) : block_id(id) {}
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
   int block_id = -1;                 // which block are we?
   bool is_early_exit_block = false;  // are we an empty block at the end for early exits to jump to?
 };
@@ -163,8 +163,8 @@ class BlockVtx : public CfgVtx {
  */
 class SequenceVtx : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
   std::vector<CfgVtx*> seq;
 };
 
@@ -175,8 +175,8 @@ class SequenceVtx : public CfgVtx {
  */
 class CondWithElse : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
 
   struct Entry {
     Entry() = default;
@@ -196,8 +196,8 @@ class CondWithElse : public CfgVtx {
  */
 class CondNoElse : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
 
   struct Entry {
     Entry() = default;
@@ -211,8 +211,8 @@ class CondNoElse : public CfgVtx {
 
 class WhileLoop : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
 
   CfgVtx* condition = nullptr;
   CfgVtx* body = nullptr;
@@ -220,8 +220,8 @@ class WhileLoop : public CfgVtx {
 
 class UntilLoop : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
 
   CfgVtx* condition = nullptr;
   CfgVtx* body = nullptr;
@@ -229,38 +229,38 @@ class UntilLoop : public CfgVtx {
 
 class UntilLoop_single : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
 
   CfgVtx* block = nullptr;
 };
 
 class ShortCircuit : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
   std::vector<CfgVtx*> entries;
 };
 
 class InfiniteLoopBlock : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
   CfgVtx* block;
 };
 
 class GotoEnd : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
   CfgVtx* body = nullptr;
   CfgVtx* unreachable_block = nullptr;
 };
 
 class Break : public CfgVtx {
  public:
-  std::string to_string() override;
-  goos::Object to_form() override;
+  std::string to_string() const override;
+  goos::Object to_form() const override;
   int dest_block = -1;
   CfgVtx* body = nullptr;
   CfgVtx* unreachable_block = nullptr;

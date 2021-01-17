@@ -254,6 +254,7 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       assert(false);
   }
 }
+}  // namespace
 
 int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
   switch (kind) {
@@ -302,7 +303,6 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       assert(false);
   }
 }
-}  // namespace
 
 SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0) : n_args(1) {
   m_args[0] = arg0;
@@ -372,10 +372,6 @@ bool SetVarOp::operator==(const AtomicOp& other) const {
   return m_dst == po->m_dst && m_src == po->m_src;
 }
 
-bool SetVarOp::is_variable_set() const {
-  return true;
-}
-
 bool SetVarOp::is_sequence_point() const {
   if (m_src.is_identity()) {
     auto& atom = m_src.get_arg(0);
@@ -392,14 +388,6 @@ bool SetVarOp::is_sequence_point() const {
 
 Variable SetVarOp::get_set_destination() const {
   return m_dst;
-}
-
-std::unique_ptr<Expr> SetVarOp::get_set_source_as_expr() const {
-  throw std::runtime_error("get_set_source_as_expr NYI for SetVarOp");
-}
-
-std::unique_ptr<Expr> SetVarOp::get_as_expr() const {
-  throw std::runtime_error("get_as_expr NYI for SetVarOp");
 }
 
 void SetVarOp::update_register_info() {
@@ -474,24 +462,12 @@ bool AsmOp::operator==(const AtomicOp& other) const {
          (m_src[1] == po->m_src[1]) && (m_src[2] == po->m_src[2]);
 }
 
-bool AsmOp::is_variable_set() const {
-  return false;
-}
-
 bool AsmOp::is_sequence_point() const {
   return true;
 }
 
 Variable AsmOp::get_set_destination() const {
   throw std::runtime_error("AsmOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> AsmOp::get_set_source_as_expr() const {
-  throw std::runtime_error("AsmOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> AsmOp::get_as_expr() const {
-  throw std::runtime_error("AsmOp::get_as_expr is not implemented.");
 }
 
 void AsmOp::update_register_info() {
@@ -510,7 +486,6 @@ void AsmOp::update_register_info() {
 // Condition
 /////////////////////////////
 
-namespace {
 std::string get_condition_kind_name(IR2_Condition::Kind kind) {
   switch (kind) {
     case IR2_Condition::Kind::NOT_EQUAL:
@@ -694,7 +669,6 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       assert(false);
   }
 }
-}  // namespace
 
 IR2_Condition::IR2_Condition(Kind kind) : m_kind(kind) {
   assert(get_condition_num_args(m_kind) == 0);
@@ -774,24 +748,12 @@ bool SetVarConditionOp::operator==(const AtomicOp& other) const {
   return m_dst == po->m_dst && m_condition == po->m_condition;
 }
 
-bool SetVarConditionOp::is_variable_set() const {
-  return true;
-}
-
 bool SetVarConditionOp::is_sequence_point() const {
   return true;
 }
 
 Variable SetVarConditionOp::get_set_destination() const {
   return m_dst;
-}
-
-std::unique_ptr<Expr> SetVarConditionOp::get_set_source_as_expr() const {
-  throw std::runtime_error("SetVarConditionOp::get_source_as_expr is not yet implemented.");
-}
-
-std::unique_ptr<Expr> SetVarConditionOp::get_as_expr() const {
-  throw std::runtime_error("SetVarConditionOp::get_as_expr is not yet implemented.");
 }
 
 void SetVarConditionOp::update_register_info() {
@@ -849,24 +811,12 @@ bool StoreOp::operator==(const AtomicOp& other) const {
   return m_addr == po->m_addr && m_value == po->m_value;
 }
 
-bool StoreOp::is_variable_set() const {
-  return false;
-}
-
 bool StoreOp::is_sequence_point() const {
   return true;
 }
 
 Variable StoreOp::get_set_destination() const {
   throw std::runtime_error("StoreOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> StoreOp::get_set_source_as_expr() const {
-  throw std::runtime_error("StoreOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> StoreOp::get_as_expr() const {
-  throw std::runtime_error("StoreOp::get_as_expr is not yet implemented");
 }
 
 void StoreOp::update_register_info() {
@@ -939,24 +889,12 @@ bool LoadVarOp::operator==(const AtomicOp& other) const {
   return m_dst == po->m_dst && m_src == po->m_src;
 }
 
-bool LoadVarOp::is_variable_set() const {
-  return true;
-}
-
 bool LoadVarOp::is_sequence_point() const {
   return true;
 }
 
 Variable LoadVarOp::get_set_destination() const {
   return m_dst;
-}
-
-std::unique_ptr<Expr> LoadVarOp::get_set_source_as_expr() const {
-  throw std::runtime_error("LoadVarOp::get_set_source_as_expr is not yet implemented");
-}
-
-std::unique_ptr<Expr> LoadVarOp::get_as_expr() const {
-  throw std::runtime_error("LoadVarOp::get_as_expr is not yet implemented");
 }
 
 void LoadVarOp::update_register_info() {
@@ -1113,24 +1051,12 @@ bool BranchOp::operator==(const AtomicOp& other) const {
          m_branch_delay == po->m_branch_delay;
 }
 
-bool BranchOp::is_variable_set() const {
-  return false;
-}
-
 bool BranchOp::is_sequence_point() const {
   return true;
 }
 
 Variable BranchOp::get_set_destination() const {
   throw std::runtime_error("BranchOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> BranchOp::get_set_source_as_expr() const {
-  throw std::runtime_error("BranchOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> BranchOp::get_as_expr() const {
-  throw std::runtime_error("BranchOp::get_as_expr is not yet implemented");
 }
 
 void BranchOp::update_register_info() {
@@ -1172,24 +1098,12 @@ bool SpecialOp::operator==(const AtomicOp& other) const {
   return m_kind == po->m_kind;
 }
 
-bool SpecialOp::is_variable_set() const {
-  return false;
-}
-
 bool SpecialOp::is_sequence_point() const {
   return true;
 }
 
 Variable SpecialOp::get_set_destination() const {
   throw std::runtime_error("SpecialOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> SpecialOp::get_set_source_as_expr() const {
-  throw std::runtime_error("SpecialOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> SpecialOp::get_as_expr() const {
-  throw std::runtime_error("SpecialOp::get_as_expr not yet implemented");
 }
 
 void SpecialOp::update_register_info() {
@@ -1232,10 +1146,6 @@ bool CallOp::operator==(const AtomicOp& other) const {
   return true;
 }
 
-bool CallOp::is_variable_set() const {
-  return false;
-}
-
 bool CallOp::is_sequence_point() const {
   return true;
 }
@@ -1244,17 +1154,13 @@ Variable CallOp::get_set_destination() const {
   throw std::runtime_error("CallOp cannot be treated as a set! operation");
 }
 
-std::unique_ptr<Expr> CallOp::get_set_source_as_expr() const {
-  throw std::runtime_error("CallOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> CallOp::get_as_expr() const {
-  throw std::runtime_error("CallOp::get_as_expr not yet implemented");
-}
-
 void CallOp::update_register_info() {
   // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
   m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
+  // if the type analysis succeeds, it will remove this if the function doesn't return a value.
+  // but, in the case we want to keep running without type information, we may need a
+  // renamed variable here, so we add this.
+  m_write_regs.push_back(Register(Reg::GPR, Reg::V0));
   clobber_temps();
 }
 
@@ -1282,24 +1188,12 @@ bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
   return m_dst == po->m_dst && m_src == po->m_src && m_on_zero == po->m_on_zero;
 }
 
-bool ConditionalMoveFalseOp::is_variable_set() const {
-  return false;
-}
-
 bool ConditionalMoveFalseOp::is_sequence_point() const {
   return true;
 }
 
 Variable ConditionalMoveFalseOp::get_set_destination() const {
   throw std::runtime_error("ConditionalMoveFalseOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> ConditionalMoveFalseOp::get_set_source_as_expr() const {
-  throw std::runtime_error("ConditionalMoveFalseOp cannot be treated as a set! operation");
-}
-
-std::unique_ptr<Expr> ConditionalMoveFalseOp::get_as_expr() const {
-  throw std::runtime_error("ConditionalMoveFalseOp::get_as_expr is not yet implemented");
 }
 
 void ConditionalMoveFalseOp::update_register_info() {

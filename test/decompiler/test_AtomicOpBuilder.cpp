@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "decompiler/IR2/AtomicOp.h"
-#include "decompiler/IR2/AtomicOpBuilder.h"
+#include "decompiler/IR2/atomic_op_builder.h"
 #include "decompiler/Disasm/InstructionParser.h"
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
@@ -67,7 +67,7 @@ void test_case(std::string assembly_lines,
       // the ordering of the registers doesn't matter. It could happen to be in the same order
       // as the opcode here, but it may not always be the case.
       bool found = false;
-      for (const std::string reg : write_regs.at(i)) {
+      for (const std::string& reg : write_regs.at(i)) {
         // TODO - is there a potential bug here in the event that either list has duplicate
         // registers?
         if (reg == expected_reg) {
@@ -86,7 +86,7 @@ void test_case(std::string assembly_lines,
       // the ordering of the registers doesn't matter. It could happen to be in the same order
       // as the opcode here, but it may not always be the case.
       bool found = false;
-      for (const std::string reg : read_regs.at(i)) {
+      for (const std::string& reg : read_regs.at(i)) {
         // TODO - is there a potential bug here in the event that either list has duplicate
         // registers?
         if (reg == expected_reg) {
@@ -104,7 +104,7 @@ void test_case(std::string assembly_lines,
       // the ordering of the registers doesn't matter. It could happen to be in the same order
       // as the opcode here, but it may not always be the case.
       bool found = false;
-      for (const std::string reg : clobbered_regs.at(i)) {
+      for (const std::string& reg : clobbered_regs.at(i)) {
         // TODO - is there a potential bug here in the event that either list has duplicate
         // registers?
         if (reg == expected_reg) {
@@ -417,7 +417,7 @@ TEST(DecompilerAtomicOpBuilder, DSUBU_DADDIU_MOVZ) {
 }
 
 TEST(DecompilerAtomicOpBuilder, JALR_SLL) {
-  test_case(assembly_from_list({"jalr ra, t9", "sll v0, ra, 0"}), {"(call!)"}, {{}}, {{"t9"}},
+  test_case(assembly_from_list({"jalr ra, t9", "sll v0, ra, 0"}), {"(call!)"}, {{"v0"}}, {{"t9"}},
             {{"a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9",
               "at", "v1"}});
 }

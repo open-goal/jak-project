@@ -748,6 +748,11 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
   }
 
+  m_write_regs.clear();
+  if (in_type.last_arg() != TypeSpec("none")) {
+    m_write_regs.emplace_back(Reg::GPR, Reg::V0);
+  }
+
   return end_types;
 }
 
