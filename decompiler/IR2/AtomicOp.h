@@ -11,7 +11,9 @@
 #include "Env.h"
 
 namespace decompiler {
-class Expr;
+class FormElement;
+class ConditionElement;
+class FormPool;
 class DecompilerTypeSystem;
 
 /*!
@@ -94,10 +96,6 @@ class AtomicOp {
   virtual bool operator==(const AtomicOp& other) const = 0;
   bool operator!=(const AtomicOp& other) const;
 
-  // determine if this is a (set! <var> thing) form. These will be handled differently in expression
-  // building.
-  virtual bool is_variable_set() const = 0;
-
   // determine if this is a GOAL "sequence point".
   // non-sequence point instructions may be out of order from the point of view of the expression
   // stack.
@@ -106,13 +104,9 @@ class AtomicOp {
   // get the variable being set by this operation. Only call this if is_variable_set returns true.
   virtual Variable get_set_destination() const = 0;
 
-  // get the value of the variable being set, as an expression. Only call this if is_variable_set
-  // returns true.
-  virtual std::unique_ptr<Expr> get_set_source_as_expr() const = 0;
-
   // convert me to an expression. If I'm a set!, this will produce a (set! x y), which may be
   // undesirable when expression stacking.
-  virtual std::unique_ptr<Expr> get_as_expr() const = 0;
+  virtual FormElement* get_as_form(FormPool& pool) const = 0;
 
   // figure out what registers are read and written in this AtomicOp and update read_regs,
   // write_regs, and clobber_regs.  It's expected that these have duplicates if a register appears
@@ -294,11 +288,9 @@ class SetVarOp : public AtomicOp {
   virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
                                const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -321,11 +313,9 @@ class AsmOp : public AtomicOp {
   AsmOp(Instruction instr, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -392,11 +382,18 @@ class IR2_Condition {
   bool operator!=(const IR2_Condition& other) const { return !((*this) == other); }
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
   void get_regs(std::vector<Register>* out) const;
+  Kind kind() const { return m_kind; }
+  const SimpleAtom& src(int i) const { return m_src[i]; }
+  ConditionElement* get_as_form(FormPool& pool) const;
 
  private:
   Kind m_kind = Kind::INVALID;
   SimpleAtom m_src[2];
 };
+
+std::string get_condition_kind_name(IR2_Condition::Kind kind);
+int get_condition_num_args(IR2_Condition::Kind kind);
+IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind);
 
 /*!
  * Set a variable to a GOAL boolean, based off of a condition.
@@ -406,11 +403,9 @@ class SetVarConditionOp : public AtomicOp {
   SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   void invert() { m_condition.invert(); }
   TypeState propagate_types_internal(const TypeState& input,
@@ -432,11 +427,9 @@ class StoreOp : public AtomicOp {
   StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -459,11 +452,9 @@ class LoadVarOp : public AtomicOp {
   LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -509,6 +500,7 @@ class IR2_BranchDelay {
   TypeState propagate_types(const TypeState& input,
                             const Env& env,
                             DecompilerTypeSystem& dts) const;
+  Kind kind() const { return m_kind; }
 
  private:
   std::optional<Variable> m_var[3];
@@ -528,15 +520,15 @@ class BranchOp : public AtomicOp {
            int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
+  const IR2_Condition& condition() const { return m_condition; }
 
  private:
   bool m_likely = false;
@@ -561,11 +553,9 @@ class SpecialOp : public AtomicOp {
   SpecialOp(Kind kind, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -584,11 +574,9 @@ class CallOp : public AtomicOp {
   CallOp(int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -616,11 +604,9 @@ class ConditionalMoveFalseOp : public AtomicOp {
   ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
-  bool is_variable_set() const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  std::unique_ptr<Expr> get_set_source_as_expr() const override;
-  std::unique_ptr<Expr> get_as_expr() const override;
+  FormElement* get_as_form(FormPool& pool) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,

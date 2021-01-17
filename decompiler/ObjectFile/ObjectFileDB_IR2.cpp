@@ -10,6 +10,8 @@
 #include "decompiler/Function/TypeInspector.h"
 #include "decompiler/IR2/reg_usage.h"
 #include "decompiler/IR2/variable_naming.h"
+#include "decompiler/IR2/cfg_builder.h"
+#include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
 
@@ -32,6 +34,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_register_usage_pass();
   lg::info("Variable analysis...");
   ir2_variable_pass();
+  lg::info("Initial conversion to Form...");
+  ir2_cfg_build_pass();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -324,6 +328,28 @@ void ObjectFileDB::ir2_variable_pass() {
            attempted, timer.getMs());
 }
 
+void ObjectFileDB::ir2_cfg_build_pass() {
+  Timer timer;
+  int total = 0;
+  int attempted = 0;
+  int successful = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    total++;
+    if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
+      attempted++;
+      build_initial_forms(func);
+    }
+
+    if (func.ir2.top_form) {
+      successful++;
+    }
+  });
+
+  lg::info("{}/{}/{} cfg build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
+}
+
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
   Timer timer;
   lg::info("Writing IR2 results to file...");
@@ -358,6 +384,11 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
     // functions
     for (auto& func : data.linked_data.functions_by_seg.at(seg)) {
       result += ir2_function_to_string(data, func, seg);
+      if (func.ir2.top_form) {
+        result += '\n';
+        result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+        result += '\n';
+      }
     }
 
     // print data

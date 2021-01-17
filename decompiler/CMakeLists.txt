@@ -28,10 +28,13 @@ add_library(
         IR/IR_ExpressionStack.cpp
         IR/IR_TypeAnalysis.cpp
 
+        IR2/atomic_op_builder.cpp
         IR2/AtomicOp.cpp
-        IR2/AtomicOpBuilder.cpp
+        IR2/AtomicOpForm.cpp
         IR2/AtomicOpTypeAnalysis.cpp
+        IR2/cfg_builder.cpp
         IR2/Env.cpp
+        IR2/Form.cpp
         IR2/reg_usage.cpp
         IR2/variable_naming.cpp
 

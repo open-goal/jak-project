@@ -134,7 +134,7 @@ std::string CfgVtx::links_to_string() {
 /// VERTICES
 /////////////////////////////////////////
 
-std::string BlockVtx::to_string() {
+std::string BlockVtx::to_string() const {
   if (is_early_exit_block) {
     return "Block (EA) " + std::to_string(block_id);
   } else {
@@ -142,11 +142,11 @@ std::string BlockVtx::to_string() {
   }
 }
 
-goos::Object BlockVtx::to_form() {
+goos::Object BlockVtx::to_form() const {
   return pretty_print::to_symbol("b" + std::to_string(block_id));
 }
 
-std::string SequenceVtx::to_string() {
+std::string SequenceVtx::to_string() const {
   assert(!seq.empty());
   // todo - this is not a great way to print it. Maybe sequences should have an ID or name?
   std::string result =
@@ -154,7 +154,7 @@ std::string SequenceVtx::to_string() {
   return result;
 }
 
-goos::Object SequenceVtx::to_form() {
+goos::Object SequenceVtx::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("seq"));
   for (auto* x : seq) {
@@ -163,27 +163,27 @@ goos::Object SequenceVtx::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string EntryVtx::to_string() {
+std::string EntryVtx::to_string() const {
   return "ENTRY";
 }
 
-goos::Object EntryVtx::to_form() {
+goos::Object EntryVtx::to_form() const {
   return pretty_print::to_symbol("entry");
 }
 
-std::string ExitVtx::to_string() {
+std::string ExitVtx::to_string() const {
   return "EXIT";
 }
 
-goos::Object ExitVtx::to_form() {
+goos::Object ExitVtx::to_form() const {
   return pretty_print::to_symbol("exit");
 }
 
-std::string CondWithElse::to_string() {
+std::string CondWithElse::to_string() const {
   return "CONDWE" + std::to_string(uid);
 }
 
-goos::Object CondWithElse::to_form() {
+goos::Object CondWithElse::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("cond"));
   for (const auto& x : entries) {
@@ -195,11 +195,11 @@ goos::Object CondWithElse::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string CondNoElse::to_string() {
+std::string CondNoElse::to_string() const {
   return "CONDNE" + std::to_string(uid);
 }
 
-goos::Object CondNoElse::to_form() {
+goos::Object CondNoElse::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("cond"));
   for (const auto& x : entries) {
@@ -209,49 +209,49 @@ goos::Object CondNoElse::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string WhileLoop::to_string() {
+std::string WhileLoop::to_string() const {
   return "WHL" + std::to_string(uid);
 }
 
-goos::Object WhileLoop::to_form() {
+goos::Object WhileLoop::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("while"), condition->to_form(),
                                      body->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string UntilLoop::to_string() {
+std::string UntilLoop::to_string() const {
   return "UNTL" + std::to_string(uid);
 }
 
-goos::Object UntilLoop::to_form() {
+goos::Object UntilLoop::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("until"), condition->to_form(),
                                      body->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string UntilLoop_single::to_string() {
+std::string UntilLoop_single::to_string() const {
   return "UNTLS" + std::to_string(uid);
 }
 
-goos::Object UntilLoop_single::to_form() {
+goos::Object UntilLoop_single::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("until1"), block->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string InfiniteLoopBlock::to_string() {
+std::string InfiniteLoopBlock::to_string() const {
   return "INFL" + std::to_string(uid);
 }
 
-goos::Object InfiniteLoopBlock::to_form() {
+goos::Object InfiniteLoopBlock::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("inf-loop"), block->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string ShortCircuit::to_string() {
+std::string ShortCircuit::to_string() const {
   return "SC" + std::to_string(uid);
 }
 
-goos::Object ShortCircuit::to_form() {
+goos::Object ShortCircuit::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("sc"));
   for (const auto& x : entries) {
@@ -260,21 +260,21 @@ goos::Object ShortCircuit::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string GotoEnd::to_string() {
+std::string GotoEnd::to_string() const {
   return "goto_end" + std::to_string(uid);
 }
 
-goos::Object GotoEnd::to_form() {
+goos::Object GotoEnd::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("return-from-function"),
                                      body->to_form(), unreachable_block->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string Break::to_string() {
+std::string Break::to_string() const {
   return "goto" + std::to_string(uid);
 }
 
-goos::Object Break::to_form() {
+goos::Object Break::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("break"),
                                      pretty_print::to_symbol(std::to_string(dest_block)),
                                      body->to_form(), unreachable_block->to_form()};
