@@ -78,7 +78,11 @@ class DecompilerRegressionTest : public ::testing::Test {
   std::unique_ptr<TestData> make_function(
       const std::string& code,
       const TypeSpec& function_type,
+      bool allow_pairs = false,
       const std::vector<std::pair<std::string, std::string>>& strings = {}) {
+    dts->type_prop_settings.locked = true;
+    dts->type_prop_settings.reset();
+    dts->type_prop_settings.allow_pair = allow_pairs;
     auto program = parser->parse_program(code);
     //  printf("prg:\n%s\n\n", program.print().c_str());
     auto test = std::make_unique<TestData>(program.instructions.size());
@@ -127,9 +131,10 @@ class DecompilerRegressionTest : public ::testing::Test {
   void test(const std::string& code,
             const std::string& type,
             const std::string& expected,
+            bool allow_pairs = false,
             const std::vector<std::pair<std::string, std::string>>& strings = {}) {
     auto ts = dts->parse_type_spec(type);
-    auto test = make_function(code, ts, strings);
+    auto test = make_function(code, ts, allow_pairs, strings);
     auto expected_form =
         pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
     auto actual_form =
@@ -157,7 +162,7 @@ TEST_F(DecompilerRegressionTest, StringTest) {
       "L101:\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
-  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}),
+  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), false,
                             {{"L100", "testing-string"}, {"L101", "testing-string-2"}});
 
   EXPECT_EQ(test->file.get_goal_string_by_label(test->file.get_label_by_name("L100")),
@@ -329,7 +334,7 @@ TEST_F(DecompilerRegressionTest, FormatString) {
       "  (set! v0-0 (call!))\n"
       "  (set! v0-1 gp-0)\n"
       "  )";
-  test(func, type, expected, {{"L343", "~f"}});
+  test(func, type, expected, false, {{"L343", "~f"}});
 }
 
 TEST_F(DecompilerRegressionTest, WhileLoop) {
@@ -437,4 +442,276 @@ TEST_F(DecompilerRegressionTest, Or) {
       "  (set! v0-1 '#f)\n"
       "  )";
   test(func, type, expected);
+}
+
+TEST_F(DecompilerRegressionTest, DynamicMethodAccess) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L275:\n"
+      "    dsll v1, a1, 2\n"
+      "    daddu v1, v1, a0\n"
+      "    lwu v1, 16(v1)\n"
+
+      "L276:\n"
+      "    lw a2, object(s7)\n"
+      "    bne a0, a2, L277\n"
+      "    or a2, s7, r0\n"
+
+      "    lw v1, nothing(s7)\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L279\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+
+      "L277:\n"
+      "    lwu a0, 4(a0)\n"
+      "    dsll a2, a1, 2\n"
+      "    daddu a2, a2, a0\n"
+      "    lwu v0, 16(a2)\n"
+      "    bne v0, r0, L278\n"
+      "    or a2, s7, r0\n"
+
+      "    lw v1, nothing(s7)\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L279\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+
+      "L278:\n"
+      "    beq v0, v1, L276\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+
+      "L279:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function type int function)";
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 (sll a1-0 2))\n"
+      "  (set! v1-1 (+ v1-0 a0-0))\n"
+      "  (set! v1-2 (l.wu (+ v1-1 16)))\n"  // get the method of the given type.
+      "  (until\n"
+      "   (!= v0-1 v1-2)\n"  // actually goes after the body, so it's fine to refer to v0-1/v1-2
+      "   (if\n"
+      "    (begin\n"
+      "     (if\n"
+      "      (begin (set! a2-0 object) (= a0-0 a2-0))\n"  // if we reached the top
+      "      (return ((begin (set! v1-3 nothing) (set! v0-0 v1-3))) ((set! v1-2 0)))\n"  // return
+                                                                                         // nothing.
+      "      )\n"
+      "     (set! a0-0 (l.wu (+ a0-0 4)))\n"  // get next parent type
+      "     (set! a2-2 (sll a1-0 2))\n"       // fancy access
+      "     (set! a2-3 (+ a2-2 a0-0))\n"
+      "     (set! v0-1 (l.wu (+ a2-3 16)))\n"  // get method (in v0-1, the same var as loop
+                                               // condition)
+      "     (zero? v0-1)\n"                    // is it defined?
+      "     )\n"
+      "    (return ((begin (set! v1-4 nothing) (set! v0-2 v1-4))) ((set! v1-2 0)))\n"  // also
+                                                                                       // return
+                                                                                       // nothing.
+      "    )\n"
+      "   )\n"
+      "  (set! v1-5 '#f)\n"
+      "  )";
+  test(func, type, expected);
+}
+
+TEST_F(DecompilerRegressionTest, SimpleLoopMergeCheck) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L272:\n"
+      "    addiu v1, r0, 0\n"
+      "    beq r0, r0, L274\n"
+      "    sll r0, r0, 0\n"
+
+      "L273:\n"
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n"
+      "    lw a0, 2(a0)\n"
+      "    daddiu v1, v1, 1\n"
+
+      "L274:\n"
+      "    slt a2, v1, a1\n"
+      "    bne a2, r0, L273\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    lw v0, -2(a0)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function pair int)";
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 0)\n"
+      "  (while\n"
+      "   (<.si v1-0 a1-0)\n"
+      "   (nop!)\n"
+      "   (nop!)\n"
+      "   (set! a0-0 (l.w (+ a0-0 2)))\n"  // should have merged
+      "   (set! v1-0 (+ v1-0 1))\n"        // also should have merged
+      "   )\n"
+      "  (set! v1-1 '#f)\n"
+      "  (set! v1-2 '#f)\n"
+      "  (set! v0-0 (l.w (+ a0-0 -2)))\n"
+      "  )";
+  test(func, type, expected, true);
+}
+
+TEST_F(DecompilerRegressionTest, And) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L266:\n"
+      "    daddiu v1, s7, -10\n"
+      "    bne a0, v1, L267\n"
+      "    sll r0, r0, 0\n"
+
+      "    addiu v0, r0, 0\n"
+      "    beq r0, r0, L271\n"
+      "    sll r0, r0, 0\n"
+
+      "L267:\n"
+      "    lw v1, 2(a0)\n"
+      "    addiu v0, r0, 1\n"
+      "    beq r0, r0, L269\n"
+      "    sll r0, r0, 0\n"
+
+      "L268:\n"
+      "    daddiu v0, v0, 1\n"
+      "    lw v1, 2(v1)\n"
+
+      "L269:\n"
+      "    daddiu a0, s7, -10\n"
+      "    dsubu a0, v1, a0\n"
+      "    daddiu a1, s7, 8\n"
+      "    movz a1, s7, a0\n"
+      "    beql s7, a1, L270\n"
+      "    or a0, a1, r0\n"
+
+      "    dsll32 a0, v1, 30\n"
+      "    slt a1, a0, r0\n"
+      "    daddiu a0, s7, 8\n"
+      "    movz a0, s7, a1\n"
+
+      "L270:\n"
+      "    bne s7, a0, L268\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+
+      "L271:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function pair int)";
+  std::string expected =
+      "(cond\n"
+      "  ((begin (set! v1-0 '()) (= a0-0 v1-0)) (set! v0-0 0))\n"  // should be a case, not a return
+      "  (else\n"
+      "   (set! v1-1 (l.w (+ a0-0 2)))\n"  // v1-1 iteration.
+      "   (set! v0-1 1)\n"                 // v0-1 count
+      "   (while\n"
+      "    (begin\n"
+      "     (and\n"
+      "      (begin (set! a0-1 '()) (set! a1-0 (!= v1-1 a0-1)) (truthy a1-0))\n"  // check v1-1
+      "      (begin (set! a0-3 (sll v1-1 62)) (set! a0-2 (<0.si a0-3)))\n"        // check v1-1
+      "      )\n"
+      "     (truthy a0-2)\n"  // this variable doesn't appear, but is set by the and.
+      "     )\n"
+      "    (set! v0-1 (+ v0-1 1))\n"        // merged (and the result)
+      "    (set! v1-1 (l.w (+ v1-1 2)))\n"  // also merged.
+      "    )\n"
+      "   (set! v1-2 '#f)\n"  // while's false, I think.
+      "   )\n"
+      "  )";
+  test(func, type, expected, true);
+}
+
+TEST_F(DecompilerRegressionTest, FunctionCall) {
+  // nmember
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L252:\n"
+      "    daddiu sp, sp, -48\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s5, 16(sp)\n"
+      "    sq gp, 32(sp)\n"
+
+      "    or s5, a0, r0\n"
+      "    or gp, a1, r0\n"
+      "    beq r0, r0, L254\n"
+      "    sll r0, r0, 0\n"
+
+      "L253:\n"
+      "    lw gp, 2(gp)\n"
+
+      "L254:\n"
+      "    daddiu v1, s7, -10\n"
+      "    dsubu v1, gp, v1\n"
+      "    daddiu a0, s7, 8\n"
+      "    movn a0, s7, v1\n"
+      "    bnel s7, a0, L255\n"
+      "    or v1, a0, r0\n"
+
+      "    lw t9, name=(s7)\n"
+      "    lw a0, -2(gp)\n"
+      "    or a1, s5, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+
+      "L255:\n"
+      "    beq s7, v1, L253\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    daddiu v1, s7, -10\n"
+      "    beq gp, v1, L256\n"
+      "    or v0, s7, r0\n"
+
+      "    or v0, gp, r0\n"
+
+      "L256:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 32(sp)\n"
+      "    lq s5, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 48";
+  std::string type = "(function basic object object)";
+  std::string expected =
+      "(if\n"  // this if needs regrouping.
+      "  (begin\n"
+      "   (set! s5-0 a0-0)\n"  // s5-0 is the thing to check
+      "   (set! gp-0 a1-0)\n"  // gp-0 is the list
+      "   (while\n"
+      "    (begin\n"
+      "     (or\n"
+      "      (begin (set! v1-0 '()) (set! a0-1 (= gp-0 v1-0)) (truthy a0-1))\n"  // got empty list.
+      "      (begin\n"
+      "       (set! t9-0 name=)\n"
+      "       (set! a0-2 (l.w (+ gp-0 -2)))\n"
+      "       (set! a1-1 s5-0)\n"
+      "       (set! v0-0 (call!))\n"
+      "       (set! v1-1 v0-0)\n"  // name match
+      "       )\n"
+      "      )\n"
+      "     (not v1-1)\n"  // no name match AND no empty list.
+      "     )\n"
+      "    (set! gp-0 (l.w (+ gp-0 2)))\n"  // get next (merged)
+      "    )\n"
+      "   (set! v1-2 '#f)\n"  // while loop thing
+      "   (set! v1-3 '())\n"  //
+      "   (!= gp-0 v1-3)\n"   // IF CONDITION
+      "   )\n"
+      "  (set! v0-2 gp-0)\n"  // not empty, so return the result
+      "  )";                  // the (set! v0 #f) from the if is added later.
+  test(func, type, expected, true);
 }
