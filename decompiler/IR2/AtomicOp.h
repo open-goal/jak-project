@@ -199,7 +199,7 @@ class SimpleAtom {
  private:
   Kind m_kind = Kind::INVALID;
   std::string m_string;  // for symbol ptr and symbol val
-  s64 m_int = 0;         // for integer constant and static address label id
+  s64 m_int = -1;        // for integer constant and static address label id
   Variable m_variable;
 };
 
