@@ -79,10 +79,12 @@ class DecompilerRegressionTest : public ::testing::Test {
       const std::string& code,
       const TypeSpec& function_type,
       bool allow_pairs = false,
+      const std::string& method_name = "",
       const std::vector<std::pair<std::string, std::string>>& strings = {}) {
     dts->type_prop_settings.locked = true;
     dts->type_prop_settings.reset();
     dts->type_prop_settings.allow_pair = allow_pairs;
+    dts->type_prop_settings.current_method_type = method_name;
     auto program = parser->parse_program(code);
     //  printf("prg:\n%s\n\n", program.print().c_str());
     auto test = std::make_unique<TestData>(program.instructions.size());
@@ -132,9 +134,10 @@ class DecompilerRegressionTest : public ::testing::Test {
             const std::string& type,
             const std::string& expected,
             bool allow_pairs = false,
+            const std::string& method_name = "",
             const std::vector<std::pair<std::string, std::string>>& strings = {}) {
     auto ts = dts->parse_type_spec(type);
-    auto test = make_function(code, ts, allow_pairs, strings);
+    auto test = make_function(code, ts, allow_pairs, method_name, strings);
     auto expected_form =
         pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
     auto actual_form =
@@ -162,7 +165,7 @@ TEST_F(DecompilerRegressionTest, StringTest) {
       "L101:\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
-  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), false,
+  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), false, "",
                             {{"L100", "testing-string"}, {"L101", "testing-string-2"}});
 
   EXPECT_EQ(test->file.get_goal_string_by_label(test->file.get_label_by_name("L100")),
@@ -334,7 +337,7 @@ TEST_F(DecompilerRegressionTest, FormatString) {
       "  (set! v0-0 (call!))\n"
       "  (set! v0-1 gp-0)\n"
       "  )";
-  test(func, type, expected, false, {{"L343", "~f"}});
+  test(func, type, expected, false, "", {{"L343", "~f"}});
 }
 
 TEST_F(DecompilerRegressionTest, WhileLoop) {
@@ -714,4 +717,309 @@ TEST_F(DecompilerRegressionTest, FunctionCall) {
       "  (set! v0-2 gp-0)\n"  // not empty, so return the result
       "  )";                  // the (set! v0 #f) from the if is added later.
   test(func, type, expected, true);
+}
+
+TEST_F(DecompilerRegressionTest, NestedAndOr) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L200:\n"
+      "    daddiu sp, sp, -112\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s1, 16(sp)\n"
+      "    sq s2, 32(sp)\n"
+      "    sq s3, 48(sp)\n"
+      "    sq s4, 64(sp)\n"
+      "    sq s5, 80(sp)\n"
+      "    sq gp, 96(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or s5, a1, r0\n"
+      "    addiu s4, r0, -1\n"
+      "    beq r0, r0, L208\n"
+      "    sll r0, r0, 0\n"
+
+      "L201:\n"
+      "    addiu s4, r0, 0\n"
+      "    or s3, gp, r0\n"
+      "    beq r0, r0, L206\n"
+      "    sll r0, r0, 0\n"
+
+      "L202:\n"
+      "    lw s2, -2(s3)\n"
+      "    lw v1, 2(s3)\n"
+      "    lw s1, -2(v1)\n"
+      "    or t9, s5, r0\n"
+      "    or a0, s2, r0\n"
+      "    or a1, s1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    beql s7, v1, L203\n"
+      "    daddiu a0, s7, 8\n"
+
+      "    slt a1, r0, v1\n"
+      "    daddiu a0, s7, 8\n"
+      "    movz a0, s7, a1\n"
+
+      "L203:\n"
+      "    beql s7, a0, L204\n"
+      "    or v1, a0, r0\n"
+
+      "    daddiu a0, s7, #t\n"
+      "    dsubu a0, v1, a0\n"
+      "    daddiu v1, s7, 8\n"
+      "    movz v1, s7, a0\n"
+
+      "L204:\n"
+      "    beq s7, v1, L205\n"
+      "    or v1, s7, r0\n"
+
+      "    daddiu s4, s4, 1\n"
+      "    sw s1, -2(s3)\n"
+      "    lw v1, 2(s3)\n"
+      "    sw s2, -2(v1)\n"
+      "    or v1, s2, r0\n"
+
+      "L205:\n"
+      "    lw s3, 2(s3)\n"
+
+      "L206:\n"
+      "    lw v1, 2(s3)\n"
+      "    daddiu a0, s7, -10\n"
+      "    dsubu v1, v1, a0\n"
+      "    daddiu a0, s7, 8\n"
+      "    movn a0, s7, v1\n"
+      "    bnel s7, a0, L207\n"
+      "    or v1, a0, r0\n"
+
+      "    lw v1, 2(s3)\n"
+      "    dsll32 v1, v1, 30\n"
+      "    slt a0, v1, r0\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a0\n"
+
+      "L207:\n"
+      "    beq s7, v1, L202\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+
+      "L208:\n"
+      "    bne s4, r0, L201\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 96(sp)\n"
+      "    lq s5, 80(sp)\n"
+      "    lq s4, 64(sp)\n"
+      "    lq s3, 48(sp)\n"
+      "    lq s2, 32(sp)\n"
+      "    lq s1, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 112";
+  std::string type = "(function object (function object object object) object)";
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a0-0)\n"  // gp-0 = list
+      "  (set! s5-0 a1-0)\n"  // s5-0 = func
+      "  (set! s4-0 -1)\n"    // s4-0 = flag
+      "  (while\n"
+      "   (nonzero? s4-0)\n"   // there is stuff to do...
+      "   (set! s4-0 0)\n"     // flag = 0
+      "   (set! s3-0 gp-0)\n"  // s3 = list-iter
+      "   (while\n"
+      "    (begin\n"
+      "     (or\n"
+      "      (begin\n"
+      "       (set! v1-6 (l.w (+ s3-0 2)))\n"  // s3-0 = cdr
+      "       (set! a0-4 '())\n"
+      "       (set! a0-5 (= v1-6 a0-4))\n"
+      "       (truthy a0-5)\n"  // cdr = empty list (sets v1-7 secretly)
+      "       )\n"
+      "      (begin\n"
+      "       (set! v1-8 (l.w (+ s3-0 2)))\n"
+      "       (set! v1-9 (sll v1-8 62))\n"
+      "       (set! v1-7 (>=0.si v1-9))\n"  // car is not a list.
+      "       )\n"
+      "      )\n"
+      "     (not v1-7)\n"  // while we still have an iterable list...
+      "     )\n"
+      "    (when\n"
+      "     (begin\n"
+      "      (and\n"
+      "       (begin\n"
+      "        (or\n"
+      "         (begin\n"
+      "          (set! s2-0 (l.w (+ s3-0 -2)))\n"  // s2 = car
+      "          (set! v1-0 (l.w (+ s3-0 2)))\n"
+      "          (set! s1-0 (l.w (+ v1-0 -2)))\n"  // s1 = cadr
+      "          (set! t9-0 s5-0)\n"               // func
+      "          (set! a0-1 s2-0)\n"               // car
+      "          (set! a1-1 s1-0)\n"               // cadr
+      "          (set! v0-0 (call!))\n"            // compare!
+      "          (set! v1-1 v0-0)\n"
+      "          (not v1-1)\n"  // result is false (secretly sets a0-2)
+      "          )\n"
+      "         (set! a0-2 (>0.si v1-1))\n"  // >0
+      "         )\n"
+      "        (truthy a0-2)\n"  // false or >0
+      "        )\n"
+      "       (begin (set! a0-3 '#t) (set! v1-2 (!= v1-2 a0-3)))\n"  // not #t
+      "       )\n"
+      "      (truthy v1-2)\n"  // (and (or false >0) (not #t))
+      "      )\n"
+      "     (set! s4-0 (+ s4-0 1))\n"        // increment, merge
+      "     (s.w! (+ s3-0 -2) s1-0)\n"       // set iter's car to cadr
+      "     (set! v1-4 (l.w (+ s3-0 2)))\n"  // current cdr
+      "     (s.w! (+ v1-4 -2) s2-0)\n"       // set cadr
+      "     (set! v1-5 s2-0)\n"              // iteration thing?
+      "     )\n"
+      "    (set! s3-0 (l.w (+ s3-0 2)))\n"  // increment!
+      "    )\n"
+      "   (set! v1-10 '#f)\n"
+      "   (set! v1-11 '#f)\n"
+      "   )\n"
+      "  (set! v1-12 '#f)\n"
+      "  (set! v0-1 gp-0)\n"
+      "  )";
+  test(func, type, expected, true);
+}
+
+TEST_F(DecompilerRegressionTest, NewMethod) {
+  // inline-array-class new
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L198:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a2, r0\n"
+      "    lw v1, object(s7)\n"
+      "    lwu t9, 16(v1)\n"
+      "    or v1, a1, r0\n"
+      "    lhu a2, 8(a1)\n"
+      "    lhu a1, 12(a1)\n"
+      "    multu3 a1, gp, a1\n"
+      "    daddu a2, a2, a1\n"
+      "    or a1, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq v0, r0, L199\n"
+      "    or v1, s7, r0\n"
+
+      "    sw gp, 0(v0)\n"
+      "    sw gp, 4(v0)\n"
+
+      "L199:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function symbol type int inline-array-class)";
+  std::string expected =
+      "(when\n"
+      "  (begin\n"
+      "   (set! gp-0 a2-0)\n"  // gp-0 is size
+      "   (set! v1-0 object)\n"
+      "   (set! t9-0 (l.wu (+ v1-0 16)))\n"  // object new
+      "   (set! v1-1 a1-0)\n"                // ?
+      "   (set! a2-1 (l.hu (+ a1-0 8)))\n"   // math
+      "   (set! a1-1 (l.hu (+ a1-0 12)))\n"
+      "   (set! a1-2 (*.ui gp-0 a1-1))\n"
+      "   (set! a2-2 (+ a2-1 a1-2))\n"
+      "   (set! a1-3 v1-1)\n"  // size!
+      "   (set! v0-0 (call!))\n"
+      "   (nonzero? v0-0)\n"  // only if we got memory...
+      "   )\n"
+      "  (s.w! v0-0 gp-0)\n"  // store size
+      "  (s.w! (+ v0-0 4) gp-0)\n"
+      "  )";
+  test(func, type, expected, false, "inline-array-class");
+}
+
+TEST_F(DecompilerRegressionTest, Recursive) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L65:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    addiu v1, r0, 1\n"
+      "    bne gp, v1, L66\n"
+      "    sll r0, r0, 0\n"
+
+      "    addiu v0, r0, 1\n"
+      "    beq r0, r0, L67\n"
+      "    sll r0, r0, 0\n"
+
+      "L66:\n"
+      "    lw t9, fact(s7)\n"
+      "    daddiu a0, gp, -1\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    mult3 v0, gp, v0\n"
+      "L67:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function int int)";
+  std::string expected =
+      "(cond\n"
+      "  ((begin (set! gp-0 a0-0) (set! v1-0 1) (= gp-0 v1-0)) (set! v0-0 1))\n"  // base
+      "  (else\n"
+      "   (set! t9-0 fact)\n"  // recurse!
+      "   (set! a0-1 (+ gp-0 -1))\n"
+      "   (set! v0-1 (call!))\n"
+      "   (set! v0-2 (*.si gp-0 v0-1))\n"  // not quite a tail call...
+      "   )\n"
+      "  )";
+  test(func, type, expected, false);
+}
+
+TEST_F(DecompilerRegressionTest, TypeOf) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "L63:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+
+      "    dsll32 v1, a0, 29\n"
+      "    beql v1, r0, L64\n"
+      "    lw v1, binteger(s7)\n"
+
+      "    bgtzl v1, L64\n"
+      "    lw v1, pair(s7)\n"
+
+      "    lwu v1, -4(a0)\n"
+
+      "L64:\n"
+      "    lwu t9, 24(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function object object)";
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-1 (type-of a0-0))\n"
+      "  (set! t9-0 (l.wu (+ v1-1 24)))\n"  // print method.
+      "  (set! v0-0 (call!))\n"
+      "  )";
+  test(func, type, expected, false);
 }
