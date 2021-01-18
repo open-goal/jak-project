@@ -41,12 +41,13 @@ enum ListenerToTargetMsgKind : u16 {
   LTT_MSG_PRINT = 6,          //! Print an object
   LTT_MSG_PRINT_SYMBOLS = 7,  //! Print all symbols
   LTT_MSG_RESET = 8,          //! Reset the game
-  LTT_MSG_CODE = 9            //! Send code to patch into the game
+  LTT_MSG_CODE = 9,           //! Send code to patch into the game
+  // below here are added
+  LTT_MSG_SHUTDOWN = 10  //! Shut down the runtime.
 };
 
 /*!
  * The full header of a listener message, including the Deci2Header
- * TODO - there are other copies of this somewhere
  */
 struct ListenerMessageHeader {
   Deci2Header deci2_header;  //! The header used for DECI2 communication
@@ -57,9 +58,11 @@ struct ListenerMessageHeader {
 
   u16 u6;        //! Unknown
   u32 msg_size;  //! Size of data after this header
-  u64 u8;        //! Unknown
+  u64 msg_id;    //! Message ID number, target echoes this back.
 };
 
-constexpr int DECI2_PORT = 8112;  // TODO - is this a good choise?
+constexpr int DECI2_PORT = 8112;  // TODO - is this a good choice?
+
+constexpr u16 DECI2_PROTOCOL = 0xe042;
 
 #endif  // JAK1_LISTENER_COMMON_H

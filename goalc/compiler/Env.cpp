@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include "third-party/fmt/core.h"
 #include "Env.h"
 #include "IR.h"
 
@@ -17,8 +18,8 @@ void Env::emit(std::unique_ptr<IR> ir) {
 /*!
  * Allocate an IRegister with the given type.
  */
-RegVal* Env::make_ireg(TypeSpec ts, emitter::RegKind kind) {
-  return m_parent->make_ireg(std::move(ts), kind);
+RegVal* Env::make_ireg(TypeSpec ts, RegClass reg_class) {
+  return m_parent->make_ireg(std::move(ts), reg_class);
 }
 
 /*!
@@ -40,11 +41,11 @@ BlockEnv* Env::find_block(const std::string& name) {
 }
 
 RegVal* Env::make_gpr(const TypeSpec& ts) {
-  return make_ireg(coerce_to_reg_type(ts), emitter::RegKind::GPR);
+  return make_ireg(coerce_to_reg_type(ts), RegClass::GPR_64);
 }
 
-RegVal* Env::make_xmm(const TypeSpec& ts) {
-  return make_ireg(coerce_to_reg_type(ts), emitter::RegKind::XMM);
+RegVal* Env::make_fpr(const TypeSpec& ts) {
+  return make_ireg(coerce_to_reg_type(ts), RegClass::FLOAT);
 }
 
 std::unordered_map<std::string, Label>& Env::get_label_map() {
@@ -76,9 +77,9 @@ void GlobalEnv::emit(std::unique_ptr<IR> ir) {
 /*!
  * Allocate an IRegister with the given type.
  */
-RegVal* GlobalEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
+RegVal* GlobalEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
   (void)ts;
-  (void)kind;
+  (void)reg_class;
   throw std::runtime_error("cannot alloc reg in GlobalEnv");
 }
 
@@ -158,6 +159,7 @@ std::string FileEnv::print() {
 void FileEnv::add_function(std::unique_ptr<FunctionEnv> fe) {
   assert(fe->idx_in_file == -1);
   fe->idx_in_file = m_functions.size();
+  assert(!fe->name().empty());
   m_functions.push_back(std::move(fe));
 }
 
@@ -229,13 +231,13 @@ void FunctionEnv::resolve_gotos() {
   }
 }
 
-RegVal* FunctionEnv::make_ireg(TypeSpec ts, emitter::RegKind kind) {
+RegVal* FunctionEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
   IRegister ireg;
-  ireg.kind = kind;
+  ireg.reg_class = reg_class;
   ireg.id = m_iregs.size();
   auto rv = std::make_unique<RegVal>(ireg, coerce_to_reg_type(ts));
   m_iregs.push_back(std::move(rv));
-  assert(kind != emitter::RegKind::INVALID);
+  assert(reg_class != RegClass::INVALID);
   return m_iregs.back().get();
 }
 
@@ -245,6 +247,11 @@ std::unordered_map<std::string, Label>& FunctionEnv::get_label_map() {
 
 std::unordered_map<std::string, Label>& LabelEnv::get_label_map() {
   return m_labels;
+}
+
+BlockEnv* LabelEnv::find_block(const std::string& name) {
+  (void)name;
+  return nullptr;
 }
 
 RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
@@ -258,6 +265,37 @@ RegVal* FunctionEnv::lexical_lookup(goos::Object sym) {
   }
 
   return kv->second;
+}
+
+StackVarAddrVal* FunctionEnv::allocate_stack_variable(const TypeSpec& ts, int size_bytes) {
+  require_aligned_stack();
+  int slots_used = (size_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
+  auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
+  m_stack_var_slots_used += slots_used;
+  return result;
+}
+
+StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts,
+                                                              int size_bytes,
+                                                              int align_bytes) {
+  require_aligned_stack();
+  assert(align_bytes <= 16);
+  int align_slots = (align_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
+  while (m_stack_var_slots_used % align_slots) {
+    m_stack_var_slots_used++;
+  }
+
+  // we align our size too. The stack versions of the default new methods in kscheme.cpp round up
+  // to 16 bytes and memset this size, which can cause issues if we make this size only 8 byte
+  // aligned.
+  while (size_bytes % align_bytes) {
+    size_bytes++;
+  }
+
+  int slots_used = (size_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
+  auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
+  m_stack_var_slots_used += slots_used;
+  return result;
 }
 
 ///////////////////

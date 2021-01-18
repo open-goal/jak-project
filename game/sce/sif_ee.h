@@ -49,5 +49,32 @@ s32 sceSifCallRpc(sceSifClientData* bd,
 s32 sceSifCheckStatRpc(sceSifRpcData* bd);
 s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode);
 
+#ifndef SCE_SEEK_SET
+#define SCE_SEEK_SET (0)
+#endif
+#ifndef SCE_SEEK_CUR
+#define SCE_SEEK_CUR (1)
+#endif
+#ifndef SCE_SEEK_END
+#define SCE_SEEK_END (2)
+#endif
+
+#define SCE_RDONLY 0x0001
+#define SCE_WRONLY 0x0002
+#define SCE_RDWR 0x0003
+#define SCE_NBLOCK 0x0010
+#define SCE_APPEND 0x0100
+#define SCE_CREAT 0x0200
+#define SCE_TRUNC 0x0400
+#define SCE_EXCL 0x0800
+#define SCE_NOBUF 0x4000
+#define SCE_NOWAIT 0x8000
+
+s32 sceOpen(const char* filename, s32 flag);
+s32 sceClose(s32 fd);
+s32 sceRead(s32 fd, void* buf, s32 nbyte);
+s32 sceWrite(s32 fd, const void* buf, s32 nbyte);
+s32 sceLseek(s32 fd, s32 offset, s32 where);
+
 }  // namespace ee
 #endif  // JAK1_SIF_EE_H

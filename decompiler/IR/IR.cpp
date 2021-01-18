@@ -1,5 +1,13 @@
 #include "IR.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "common/goos/PrettyPrinter.h"
+#include "third-party/fmt/core.h"
+
+namespace decompiler {
+// hack to print out reverse deref paths on loads to help with debugging load stuff.
+bool enable_hack_load_path_print = false;
+// hack to print (begin x) as x to make debug output easier to read.
+bool inline_single_begins = true;
 
 std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
   (void)file;
@@ -24,6 +32,79 @@ std::vector<std::shared_ptr<IR>> IR::get_all_ir(LinkedObjectFile& file) const {
 
 std::string IR::print(const LinkedObjectFile& file) const {
   return pretty_print::to_string(to_form(file));
+}
+
+namespace {
+template <typename T>
+void add_regs_to_str(const T& regs, std::string& str) {
+  bool first = true;
+  for (auto& reg : regs) {
+    if (first) {
+      first = false;
+    } else {
+      str.push_back(' ');
+    }
+    str.append(reg.to_charp());
+  }
+}
+}  // namespace
+
+std::string IR_Atomic::print_with_reguse(const LinkedObjectFile& file) const {
+  std::string result = print(file);
+  if (result.length() < 40) {
+    result.append(40 - result.length(), ' ');
+  }
+  result += " ;;";
+  if (!write_regs.empty()) {
+    result += "write: [";
+    add_regs_to_str(write_regs, result);
+    result += "] ";
+  }
+  if (!read_regs.empty()) {
+    result += "read: [";
+    add_regs_to_str(read_regs, result);
+    result += "] ";
+  }
+  if (!clobber_regs.empty()) {
+    result += "clobber: [";
+    add_regs_to_str(clobber_regs, result);
+    result += "] ";
+  }
+  if (!consumed.empty()) {
+    result += "consumed: [";
+    add_regs_to_str(consumed, result);
+    result += "] ";
+  }
+  return result;
+}
+
+std::string IR_Atomic::print_with_types(const TypeState& init_types,
+                                        const LinkedObjectFile& file) const {
+  std::string result;
+
+  for (auto& warning : warnings) {
+    result += ";; warn: " + warning + "\n";
+  }
+  result += print(file);
+  if (result.length() < 40) {
+    result.append(40 - result.length(), ' ');
+  }
+  result += " ;; ";
+
+  auto read_mask = regs_to_gpr_mask(read_regs);
+  auto write_mask = regs_to_gpr_mask(write_regs);
+
+  result += fmt::format("[{}] -> [{}]", init_types.print_gpr_masked(read_mask),
+                        end_types.print_gpr_masked(write_mask));
+
+  if (!consumed.empty()) {
+    result += "c:";
+    for (auto x : consumed) {
+      result += " ";
+      result += x.to_charp();
+    }
+  }
+  return result;
 }
 
 goos::Object IR_Failed::to_form(const LinkedObjectFile& file) const {
@@ -56,13 +137,138 @@ void IR_Set::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(src);
 }
 
+template <>
+void IR_Set_Atomic::update_reginfo_self<IR_IntMath2>(int n_dest, int n_src, int n_clobber) {
+  auto dst_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_as_reg) {
+    write_regs.push_back(dst_as_reg->reg);
+  }
+
+  auto src_as = dynamic_cast<IR_IntMath2*>(src.get());
+  assert(src_as);
+
+  for (auto& x : {src_as->arg0, src_as->arg1}) {
+    auto reg = dynamic_cast<IR_Register*>(x.get());
+    if (reg) {
+      read_regs.push_back(reg->reg);
+    }
+  }
+
+  assert(int(write_regs.size()) == n_dest);
+  assert(int(read_regs.size()) == n_src);
+  assert(int(clobber_regs.size()) == n_clobber);
+  reg_info_set = true;
+}
+
+template <>
+void IR_Set_Atomic::update_reginfo_self<IR_IntMath1>(int n_dest, int n_src, int n_clobber) {
+  auto dst_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_as_reg) {
+    write_regs.push_back(dst_as_reg->reg);
+  }
+
+  auto src_as = dynamic_cast<IR_IntMath1*>(src.get());
+  assert(src_as);
+
+  auto reg = dynamic_cast<IR_Register*>(src_as->arg.get());
+  if (reg) {
+    read_regs.push_back(reg->reg);
+  }
+
+  assert(int(write_regs.size()) == n_dest);
+  assert(int(read_regs.size()) == n_src);
+  assert(int(clobber_regs.size()) == n_clobber);
+  reg_info_set = true;
+}
+
+template <>
+void IR_Set_Atomic::update_reginfo_self<IR_Load>(int n_dest, int n_src, int n_clobber) {
+  auto dst_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_as_reg) {
+    write_regs.push_back(dst_as_reg->reg);
+  }
+
+  auto src_as = dynamic_cast<IR_Load*>(src.get());
+  assert(src_as);
+
+  // try to get the source as a register
+  auto reg = dynamic_cast<IR_Register*>(src_as->location.get());
+  if (reg) {
+    read_regs.push_back(reg->reg);
+  }
+
+  // or as math with a register
+  auto math = dynamic_cast<IR_IntMath2*>(src_as->location.get());
+  if (math) {
+    for (auto& x : {math->arg0, math->arg1}) {
+      auto math_reg = dynamic_cast<IR_Register*>(x.get());
+      if (math_reg) {
+        read_regs.push_back(math_reg->reg);
+      }
+    }
+  }
+
+  assert(int(write_regs.size()) == n_dest);
+  assert(int(read_regs.size()) == n_src);
+  assert(int(clobber_regs.size()) == n_clobber);
+  reg_info_set = true;
+}
+
+template <>
+void IR_Set_Atomic::update_reginfo_self<IR_Compare>(int n_dest, int n_src, int n_clobber) {
+  auto dst_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_as_reg) {
+    write_regs.push_back(dst_as_reg->reg);
+  }
+
+  auto src_as_cmp = dynamic_cast<IR_Compare*>(src.get());
+  assert(src_as_cmp);
+  for (auto& x : {src_as_cmp->condition.src0, src_as_cmp->condition.src1}) {
+    auto as_reg = dynamic_cast<IR_Register*>(x.get());
+    if (as_reg) {
+      read_regs.push_back(as_reg->reg);
+    }
+  }
+
+  auto as_reg = dynamic_cast<IR_Register*>(src_as_cmp->condition.clobber.get());
+  if (as_reg) {
+    clobber_regs.push_back(as_reg->reg);
+  }
+
+  assert(int(write_regs.size()) == n_dest);
+  assert(int(read_regs.size()) == n_src);
+  assert(int(clobber_regs.size()) == n_clobber);
+  reg_info_set = true;
+}
+
+/*!
+ * Set the register info, assuming this is a register to register set.
+ */
+void IR_Set_Atomic::update_reginfo_regreg() {
+  auto dst_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_as_reg) {
+    write_regs.push_back(dst_as_reg->reg);
+  }
+
+  auto src_as = dynamic_cast<IR_Register*>(src.get());
+
+  if (src_as) {
+    read_regs.push_back(src_as->reg);
+  }
+
+  assert(int(write_regs.size()) == 1);
+  assert(int(read_regs.size()) == 1);
+  assert(int(clobber_regs.size()) == 0);
+  reg_info_set = true;
+}
+
 goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
   std::string store_operator;
   switch (kind) {
-    case FLOAT:
+    case Kind::FLOAT:
       store_operator = "s.f";
       break;
-    case INTEGER:
+    case Kind::INTEGER:
       switch (size) {
         case 1:
           store_operator = "s.b";
@@ -91,6 +297,69 @@ goos::Object IR_Store::to_form(const LinkedObjectFile& file) const {
                                   src->to_form(file));
 }
 
+goos::Object IR_Store_Atomic::to_form(const LinkedObjectFile& file) const {
+  std::string store_operator;
+  switch (kind) {
+    case Kind::FLOAT:
+      store_operator = "s.f";
+      break;
+    case Kind::INTEGER:
+      switch (size) {
+        case 1:
+          store_operator = "s.b";
+          break;
+        case 2:
+          store_operator = "s.h";
+          break;
+        case 4:
+          store_operator = "s.w";
+          break;
+        case 8:
+          store_operator = "s.d";
+          break;
+        case 16:
+          store_operator = "s.q";
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    default:
+      assert(false);
+  }
+
+  return pretty_print::build_list(pretty_print::to_symbol(store_operator), dst->to_form(file),
+                                  src->to_form(file));
+}
+
+void IR_Store_Atomic::update_reginfo_self(int n_dest, int n_src, int n_clobber) {
+  auto src_reg = dynamic_cast<IR_Register*>(src.get());
+  if (src_reg) {
+    read_regs.push_back(src_reg->reg);
+  }
+
+  auto dst_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_reg) {
+    read_regs.push_back(dst_reg->reg);
+  }
+
+  // or as math with a register
+  auto math = dynamic_cast<IR_IntMath2*>(dst.get());
+  if (math) {
+    for (auto& x : {math->arg0, math->arg1}) {
+      auto math_reg = dynamic_cast<IR_Register*>(x.get());
+      if (math_reg) {
+        read_regs.push_back(math_reg->reg);
+      }
+    }
+  }
+
+  assert(int(write_regs.size()) == n_dest);
+  assert(int(read_regs.size()) == n_src);
+  assert(int(clobber_regs.size()) == n_clobber);
+  reg_info_set = true;
+}
+
 goos::Object IR_Symbol::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::to_symbol("'" + name);
@@ -109,6 +378,15 @@ void IR_SymbolValue::get_children(std::vector<std::shared_ptr<IR>>* output) cons
   (void)output;
 }
 
+goos::Object IR_EmptyPair::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::to_symbol("'()");
+}
+
+void IR_EmptyPair::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
 goos::Object IR_StaticAddress::to_form(const LinkedObjectFile& file) const {
   // return pretty_print::build_list(pretty_print::to_symbol("&"), file.get_label_name(label_id));
   return pretty_print::to_symbol(file.get_label_name(label_id));
@@ -119,6 +397,19 @@ void IR_StaticAddress::get_children(std::vector<std::shared_ptr<IR>>* output) co
 }
 
 goos::Object IR_Load::to_form(const LinkedObjectFile& file) const {
+  if (load_path_set && enable_hack_load_path_print) {
+    std::vector<goos::Object> list;
+    if (load_path_addr_of) {
+      list.push_back(pretty_print::to_symbol("&->"));
+    } else {
+      list.push_back(pretty_print::to_symbol("->"));
+    }
+    list.push_back(load_path_base->to_form(file));
+    for (auto& x : load_path) {
+      list.push_back(pretty_print::to_symbol(x));
+    }
+    return pretty_print::build_list(list);
+  }
   std::string load_operator;
   switch (kind) {
     case FLOAT:
@@ -283,6 +574,9 @@ goos::Object IR_IntMath1::to_form(const LinkedObjectFile& file) const {
     case ABS:
       math_operator = "abs.si";
       break;
+    case NEG:
+      math_operator = "-.i";
+      break;
     default:
       assert(false);
   }
@@ -319,7 +613,18 @@ goos::Object IR_FloatMath1::to_form(const LinkedObjectFile& file) const {
 
 goos::Object IR_Call::to_form(const LinkedObjectFile& file) const {
   (void)file;
-  return pretty_print::build_list("call!");
+  std::vector<goos::Object> result;
+  result.push_back(pretty_print::to_symbol("call!"));
+
+  if (call_type_set) {
+    result.push_back(pretty_print::to_symbol(":arg-count"));
+    result.push_back(pretty_print::to_symbol(std::to_string(call_type.arg_count() - 1)));
+  }
+
+  for (auto& x : args) {
+    result.push_back(x->to_form(file));
+  }
+  return pretty_print::build_list(result);
 }
 
 void IR_Call::get_children(std::vector<std::shared_ptr<IR>>* output) const {
@@ -634,6 +939,33 @@ void IR_Branch::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   branch_delay.get_children(output);
 }
 
+void IR_Branch_Atomic::update_reginfo_self(int n_dest, int n_src, int n_clobber) {
+  // first, grab from condition
+  for (auto& x : {condition.src0, condition.src1}) {
+    auto as_reg = dynamic_cast<IR_Register*>(x.get());
+    if (as_reg) {
+      read_regs.push_back(as_reg->reg);
+    }
+  }
+
+  auto as_reg = dynamic_cast<IR_Register*>(condition.clobber.get());
+  if (as_reg) {
+    clobber_regs.push_back(as_reg->reg);
+  }
+  assert(int(write_regs.size()) == n_dest);
+  assert(int(read_regs.size()) == n_src);
+  assert(int(clobber_regs.size()) == n_clobber);
+
+  // copy from branch delay
+  read_regs.insert(read_regs.end(), branch_delay.read_regs.begin(), branch_delay.read_regs.end());
+  write_regs.insert(write_regs.end(), branch_delay.write_regs.begin(),
+                    branch_delay.write_regs.end());
+  clobber_regs.insert(clobber_regs.end(), branch_delay.clobber_regs.begin(),
+                      branch_delay.clobber_regs.end());
+
+  reg_info_set = true;
+}
+
 goos::Object IR_Compare::to_form(const LinkedObjectFile& file) const {
   return condition.to_form(file);
 }
@@ -642,7 +974,7 @@ void IR_Compare::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   condition.get_children(output);
 }
 
-goos::Object IR_Suspend::to_form(const LinkedObjectFile& file) const {
+goos::Object IR_Suspend_Atomic::to_form(const LinkedObjectFile& file) const {
   (void)file;
   return pretty_print::build_list("suspend!");
 }
@@ -651,11 +983,23 @@ void IR_Nop::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
 }
 
-void IR_Suspend::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+void IR_Suspend_Atomic::get_children(std::vector<std::shared_ptr<IR>>* output) const {
+  (void)output;
+}
+
+goos::Object IR_Breakpoint_Atomic::to_form(const LinkedObjectFile& file) const {
+  (void)file;
+  return pretty_print::build_list("breakpoint!");
+}
+
+void IR_Breakpoint_Atomic::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   (void)output;
 }
 
 goos::Object IR_Begin::to_form(const LinkedObjectFile& file) const {
+  if (forms.size() == 1 && inline_single_begins) {
+    return forms.front()->to_form(file);
+  }
   std::vector<goos::Object> list;
   list.push_back(pretty_print::to_symbol("begin"));
   for (auto& x : forms) {
@@ -854,6 +1198,22 @@ void IR_AsmOp::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   }
 }
 
+void IR_AsmOp_Atomic::set_reg_info() {
+  auto dst_as_reg = dynamic_cast<IR_Register*>(dst.get());
+  if (dst_as_reg) {
+    write_regs.push_back(dst_as_reg->reg);
+  }
+
+  for (auto& x : {src0, src1, src2}) {
+    auto src_as_reg = dynamic_cast<IR_Register*>(x.get());
+    if (src_as_reg) {
+      read_regs.push_back(src_as_reg->reg);
+    }
+  }
+
+  reg_info_set = true;
+}
+
 goos::Object IR_CMoveF::to_form(const LinkedObjectFile& file) const {
   return pretty_print::build_list(
       pretty_print::to_symbol(on_zero ? "cmove-false-on-zero" : "cmove-false-on-nonzero"),
@@ -905,3 +1265,4 @@ void IR_Break::get_children(std::vector<std::shared_ptr<IR>>* output) const {
   output->push_back(return_code);
   output->push_back(dead_code);
 }
+}  // namespace decompiler

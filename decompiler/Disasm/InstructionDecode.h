@@ -11,9 +11,10 @@
 
 #include "Instruction.h"
 
+namespace decompiler {
 class LinkedWord;
 class LinkedObjectFile;
 
 Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg_id, int word_id);
-
+}  // namespace decompiler
 #endif  // NEXT_INSTRUCTIONDECODE_H

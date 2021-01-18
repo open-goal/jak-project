@@ -23,20 +23,20 @@ u32 ReceiveToBuffer(char* buff) {
 
   // if we received less than the size of the message header, we either got nothing, or there was an
   // error
-  if (protoBlock.last_receive_size < (int)sizeof(GoalMessageHeader)) {
+  if (protoBlock.last_receive_size < (int)sizeof(ListenerMessageHeader)) {
     return -1;
   }
 
   // FlushCache(0);
-  GoalMessageHeader* gbuff = protoBlock.receive_buffer;
+  ListenerMessageHeader* gbuff = protoBlock.receive_buffer;
   u32 msg_size = gbuff->msg_size;
 
   // check it's our protocol
-  if (gbuff->deci2_hdr.proto == DECI2_PROTOCOL) {
+  if (gbuff->deci2_header.proto == DECI2_PROTOCOL) {
     // null terminate
-    ((u8*)gbuff)[sizeof(GoalMessageHeader) + msg_size] = '\0';
+    ((u8*)gbuff)[sizeof(ListenerMessageHeader) + msg_size] = '\0';
     // copy stuff to block
-    protoBlock.msg_kind = gbuff->msg_kind;
+    protoBlock.msg_kind = u32(gbuff->msg_kind);
     protoBlock.msg_id = gbuff->msg_id;
     // and mark message as received!
     protoBlock.last_receive_size = -1;
@@ -44,7 +44,7 @@ u32 ReceiveToBuffer(char* buff) {
     // not our protocol, something has gone wrong.
     MsgErr("dkernel: got a bad packet to goal proto (goal #x%lx bytes %d %d %d %ld %d)\n",
            (int64_t)protoBlock.receive_buffer, protoBlock.last_receive_size,
-           protoBlock.receive_buffer->msg_kind, protoBlock.receive_buffer->u6,
+           u32(protoBlock.receive_buffer->msg_kind), protoBlock.receive_buffer->u6,
            protoBlock.receive_buffer->msg_id, msg_size);
     protoBlock.last_receive_size = -1;
     return -1;
@@ -68,7 +68,7 @@ s32 SendFromBuffer(char* buff, s32 size) {
  */
 void InitListenerConnect() {
   if (MasterDebug) {
-    kstrcpy(AckBufArea + sizeof(GoalMessageHeader), "ack");
+    kstrcpy(AckBufArea + sizeof(ListenerMessageHeader), "ack");
   }
 }
 
@@ -90,14 +90,14 @@ Ptr<char> WaitForMessageAndAck() {
   if (!MasterDebug) {
     MessCount = -1;
   } else {
-    MessCount = ReceiveToBuffer((char*)MessBufArea.c() + sizeof(GoalMessageHeader));
+    MessCount = ReceiveToBuffer((char*)MessBufArea.c() + sizeof(ListenerMessageHeader));
   }
 
   if (MessCount < 0) {
     return Ptr<char>(0);
   }
 
-  return MessBufArea.cast<char>() + sizeof(GoalMessageHeader);
+  return MessBufArea.cast<char>() + sizeof(ListenerMessageHeader);
 }
 
 /*!

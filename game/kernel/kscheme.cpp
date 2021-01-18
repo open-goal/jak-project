@@ -7,6 +7,7 @@
 #include <cassert>
 #include "kscheme.h"
 #include "common/common_types.h"
+#include "common/goal_constants.h"
 #include "kmachine.h"
 #include "klisten.h"
 #include "kmalloc.h"
@@ -19,7 +20,7 @@
 #include "common/symbols.h"
 #include "common/versions.h"
 #include "common/goal_constants.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
+#include "common/log/log.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -125,9 +126,7 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
  * completely defined.
  */
 u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
-  if (size <= 0) {
-    throw std::runtime_error("got <= 0 size allocation in alloc_from_heap!");
-  }
+  assert(size > 0);
 
   // align to 16 bytes (part one)
   s32 alignedSize = size + 0xf;
@@ -164,7 +163,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
 
     return kmalloc(*Ptr<Ptr<kheapinfo>>(heapSymbol), size, KMALLOC_MEMSET, gstr->data()).offset;
   } else if (heapOffset == FIX_SYM_PROCESS_TYPE) {
-    throw std::runtime_error("this type of process allocation is not supported yet!\n");
+    assert(false);  // nyi
     // allocate on current process heap
     //    Ptr start = *ptr<Ptr>(getS6() + 0x4c + 8);
     //    Ptr heapEnd = *ptr<Ptr>(getS6() + 0x4c + 4);
@@ -180,7 +179,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
     //      alignedSize); return 0;
     //    }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
-    throw std::runtime_error("this type of scratchpad allocation is not used!\n");
+    assert(false);  // nyi, I think unused.
   } else {
     memset(Ptr<u8>(heapSymbol).c(), 0, (size_t)alignedSize);  // treat it as a stack address
     return heapSymbol;
@@ -314,6 +313,10 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
+/*!
+ * This creates an OpenGOAL function from a C++ function. Only 6 arguments can be accepted.
+ * But calling this function is very fast and doesn't use the stack.
+ */
 Ptr<Function> make_function_from_c_linux(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(
@@ -321,16 +324,26 @@ Ptr<Function> make_function_from_c_linux(void* func) {
   auto f = (uint64_t)func;
   auto fp = (u8*)&f;
 
+  int i = 0;
   // we will put the function address in RAX with a movabs rax, imm8
-  mem.c()[0] = 0x48;
-  mem.c()[1] = 0xb8;
-  for (int i = 0; i < 8; i++) {
-    mem.c()[2 + i] = fp[i];
+  mem.c()[i++] = 0x48;
+  mem.c()[i++] = 0xb8;
+  for (int j = 0; j < 8; j++) {
+    mem.c()[i++] = fp[j];
   }
 
-  // jmp rax
-  mem.c()[10] = 0xff;
-  mem.c()[11] = 0xe0;
+  // push r10
+  // push r11
+  // sub rsp, 8
+  // call rax
+  // add rsp, 8
+  // pop r11
+  // pop r10
+  // ret
+  for (auto x : {0x41, 0x52, 0x41, 0x53, 0x48, 0x83, 0xEC, 0x08, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x08,
+                 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
+    mem.c()[i++] = x;
+  }
 
   // the C function's ret will return to the caller of this trampoline.
 
@@ -392,16 +405,59 @@ ret
   return mem.cast<Function>();
 }
 
+extern "C" {
+void _stack_call_linux();
+void _stack_call_win32();
+}
+
+Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
+  // allocate a function object on the global heap
+  auto mem = Ptr<u8>(
+      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40));
+  auto f = (uint64_t)func;
+  auto target_function = (u8*)&f;
+  auto trampoline_function_addr = _stack_call_linux;
+  auto trampoline = (u8*)&trampoline_function_addr;
+
+  // movabs rax, target_function
+  int offset = 0;
+  mem.c()[offset++] = 0x48;
+  mem.c()[offset++] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[offset++] = target_function[i];
+  }
+
+  // push rax
+  mem.c()[offset++] = 0x50;
+
+  // movabs rax, trampoline
+  mem.c()[offset++] = 0x48;
+  mem.c()[offset++] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[offset++] = trampoline[i];
+  }
+
+  // jmp rax
+  mem.c()[offset++] = 0xff;
+  mem.c()[offset++] = 0xe0;
+
+  // CacheFlush(mem, 0x34);
+
+  return mem.cast<Function>();
+}
+
 /*!
  * Create a GOAL function from a C function.  This calls a windows function, but doesn't scramble
  * the argument order.  It's supposed to be used with _format_win32 which assumes GOAL order.
  */
-Ptr<Function> make_function_for_format_from_c_win32(void* func) {
+Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
   // allocate a function object on the global heap
   auto mem = Ptr<u8>(
       alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
   auto f = (uint64_t)func;
   auto fp = (u8*)&f;
+  auto trampoline_function_addr = _stack_call_win32;
+  auto trampoline = (u8*)&trampoline_function_addr;
 
   int i = 0;
   // we will put the function address in RAX with a movabs rax, imm8
@@ -411,13 +467,20 @@ Ptr<Function> make_function_for_format_from_c_win32(void* func) {
     mem.c()[i++] = fp[j];
   }
 
+  // push rax
+  mem.c()[i++] = 0x50;
+
+  // we will put the function address in RAX with a movabs rax, imm8
+  mem.c()[i++] = 0x48;
+  mem.c()[i++] = 0xb8;
+  for (int j = 0; j < 8; j++) {
+    mem.c()[i++] = trampoline[j];
+  }
+
   /*
-   * sub rsp, 40
-   * call rax
-   * add rsp, 40
-   * ret
+   * jmp rax
    */
-  for (auto x : {0x48, 0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0xC3}) {
+  for (auto x : {0xFF, 0xE0}) {
     mem.c()[i++] = x;
   }
 
@@ -435,6 +498,14 @@ Ptr<Function> make_function_from_c(void* func) {
   return make_function_from_c_linux(func);
 #elif _WIN32
   return make_function_from_c_win32(func);
+#endif
+}
+
+Ptr<Function> make_stack_arg_function_from_c(void* func) {
+#ifdef __linux__
+  return make_stack_arg_function_from_c_linux(func);
+#elif _WIN32
+  return make_stack_arg_function_from_c_win32(func);
 #endif
 }
 
@@ -470,6 +541,8 @@ Ptr<Function> make_zero_func() {
  * Given a C function and a name, create a GOAL function and store it in the symbol with the given
  * name. This effectively creates a global GOAL function with the given name which calls the given C
  * function.
+ *
+ * This work on both Linux and Windows, but only supports up to 6 arguments.
  */
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f) {
   auto sym = intern_from_c(name);
@@ -479,12 +552,12 @@ Ptr<Function> make_function_symbol_from_c(const char* name, void* f) {
 }
 
 /*!
- * Given a C function and a name, create a GOAL function and store it in the symbol with the given
- * name. This is designed for _format_win32, which is special because it takes 8 arguments.
+ * Like make_function_symbol_from_c, but all 8 GOAL arguments are put into an array on the stack.
+ * The address of this array is passed as the first and only argument to f.
  */
-Ptr<Function> make_format_function_symbol_from_c_win32(const char* name, void* f) {
+Ptr<Function> make_stack_arg_function_symbol_from_c(const char* name, void* f) {
   auto sym = intern_from_c(name);
-  auto func = make_function_for_format_from_c_win32(f);
+  auto func = make_stack_arg_function_from_c(f);
   sym->value = func.offset;
   return func;
 }
@@ -826,6 +899,7 @@ u64 new_type(u32 symbol, u32 parent, u64 flags) {
 
   // BUG! This uses the child method count, but should probably use the parent method count.
   for (u32 i = 0; i < n_methods; i++) {
+    // for (u32 i = 0; i < Ptr<Type>(parent)->num_methods; i++) {
     child_slots[i] = parent_slots[i];
   }
 
@@ -996,13 +1070,21 @@ extern "C" {
 // defined in asm_funcs.asm
 #ifdef __linux__
 uint64_t _call_goal_asm_linux(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
+uint64_t _call_goal_on_stack_asm_linux(u64 rsp,
+                                       u64 u0,
+                                       u64 u1,
+                                       void* fptr,
+                                       void* st_ptr,
+                                       void* offset);
 #elif _WIN32
 uint64_t _call_goal_asm_win32(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
+uint64_t _call_goal_on_stack_asm_win32(u64 rsp, void* fptr, void* st_ptr, void* offset);
 #endif
 }
 
 /*!
  * Wrapper around _call_goal_asm for calling a GOAL function from C.
+ * Calls from the parent stack.
  */
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
   // auto st_ptr = (void*)((uint8_t*)(offset) + st); updated for the new compiler!
@@ -1013,6 +1095,20 @@ u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
   return _call_goal_asm_linux(a, b, c, fptr, st_ptr, offset);
 #elif _WIN32
   return _call_goal_asm_win32(a, b, c, fptr, st_ptr, offset);
+#endif
+}
+
+/*!
+ * Wrapper around _call_goal_asm_on_stack for switching stacks and calling a GOAL function there.
+ */
+u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset) {
+  void* st_ptr = (void*)st;
+
+  void* fptr = f.c();
+#ifdef __linux__
+  return _call_goal_on_stack_asm_linux(rsp, 0, 0, fptr, st_ptr, offset);
+#elif _WIN32
+  return _call_goal_on_stack_asm_win32(rsp, fptr, st_ptr, offset);
 #endif
 }
 
@@ -1034,9 +1130,8 @@ u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
               (*type_tag).offset);
     }
   }
-  // throw std::runtime_error("call_method_of_type failed!\n");
   printf("[ERROR] call_method_of_type failed!\n");
-  printf("type is %s\n", info(type->symbol)->str->data());
+  assert(false);
   return arg;
 }
 
@@ -1072,7 +1167,8 @@ u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32
               (*type_tag).offset);
     }
   }
-  throw std::runtime_error("call_method_of_type failed!\n");
+  printf("[ERROR] call_method_of_type_arg2 failed!\n");
+  assert(false);
   return arg;
 }
 
@@ -1564,15 +1660,6 @@ s32 test_function(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
   return arg0 + 2 * arg1 + 3 * arg2 + 4 * arg3;
 }
 
-extern "C" {
-// defined in asm_funcs. It calls format_impl and sets up arguments correctly.
-#ifdef __linux__
-void _format_linux();
-#elif _WIN32
-void _format_win32();
-#endif
-}
-
 /*!
  * Initializes the GOAL Heap, GOAL Symbol Table, GOAL Funcdamental Types, loads the GOAL kernel,
  * exports Machine functions, loads the game engine, and calls "play" to initialize the engine.
@@ -1822,11 +1909,7 @@ s32 InitHeapAndSymbol() {
   make_function_symbol_from_c("load", (void*)load);
   make_function_symbol_from_c("loado", (void*)loado);
   make_function_symbol_from_c("unload", (void*)unload);
-#ifdef __linux__
-  make_function_symbol_from_c("_format", (void*)_format_linux);
-#elif _WIN32
-  make_format_function_symbol_from_c_win32("_format", (void*)_format_win32);
-#endif
+  make_stack_arg_function_symbol_from_c("_format", (void*)format_impl);
 
   // allocations
   make_function_symbol_from_c("malloc", (void*)alloc_heap_memory);
@@ -1896,10 +1979,8 @@ s32 InitHeapAndSymbol() {
           (kernel_version >> 3) & 0xffff);
       return -1;
     } else {
-      spdlog::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
-                   (kernel_version >> 3) & 0xffff);
-      // printf("Got correct kernel version %d.%d\n", kernel_version >> 0x13,
-      //       (kernel_version >> 3) & 0xffff);
+      lg::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
+               (kernel_version >> 3) & 0xffff);
     }
   }
 

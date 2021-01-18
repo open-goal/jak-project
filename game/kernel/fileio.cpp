@@ -7,9 +7,10 @@
 #include <cassert>
 #include <cstring>
 #include <cstdio>
-#include "game/sce/stubs.h"
+#include "game/sce/sif_ee.h"
 #include "fileio.h"
 #include "kprint.h"
+#include "common/versions.h"
 
 namespace {
 // buffer for file paths.  This might be static char buffer[512]. Maybe 633 is the line number?
@@ -254,6 +255,8 @@ char* DecodeFileName(const char* name) {
       result = MakeFileName(CODE_FILE_TYPE, name + 6, 0);
     } else if (!strncmp(name, "$RES/", 5)) {
       result = MakeFileName(RES_FILE_TYPE, name + 5, 0);
+    } else if (!strncmp(name, "$ISO/", 5)) {
+      result = MakeFileName(ISO_FILE_TYPE, name + 5, 0);
     } else {
       printf("[ERROR] DecodeFileName: UNKNOWN FILE NAME %s\n", name);
       result = nullptr;
@@ -274,6 +277,7 @@ char* DecodeFileName(const char* name) {
  * DONE, Had unused int, char*, and MakeFileNameInfo params.
  */
 char* MakeFileName(int type, const char* name, int new_string) {
+  using namespace versions;
   // start with network filesystem
   kstrcpy(buffer_633, "host:");
   char* buf = strend(buffer_633);
@@ -376,6 +380,8 @@ char* MakeFileName(int type, const char* name, int new_string) {
     // REFPLANT? no idea
     static char nextDir[] = "/";
     sprintf(buf, "%sconfig_data/refplant/%s", nextDir, name);
+  } else if (type == ISO_FILE_TYPE) {
+    sprintf(buffer_633, "/out/iso/%s", name);
   } else {
     printf("UNKNOWN FILE TYPE %d\n", type);
   }

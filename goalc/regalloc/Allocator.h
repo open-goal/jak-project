@@ -4,19 +4,17 @@
 #define JAK_ALLOCATOR_H
 
 #include <vector>
-#include <set>
+#include "IRegSet.h"
 #include <unordered_map>
 #include "IRegister.h"
 #include "allocate.h"
-#include "LiveInfo.h"
-#include "StackOp.h"
 
 struct RegAllocBasicBlock {
   std::vector<int> instr_idx;
   std::vector<int> succ;
   std::vector<int> pred;
-  std::vector<std::set<int>> live, dead;
-  std::set<int> use, defs, input, output;
+  std::vector<IRegSet> live, dead;
+  IRegSet use, defs, input, output;
   bool is_entry = false;
   bool is_exit = false;
   int idx = -1;
@@ -25,8 +23,8 @@ struct RegAllocBasicBlock {
                                  const std::vector<RegAllocInstr>& instructions);
   void analyze_liveliness_phase3(std::vector<RegAllocBasicBlock>& blocks,
                                  const std::vector<RegAllocInstr>& instructions);
-  std::string print(const std::vector<RegAllocInstr>& insts) const;
-  std::string print_summary() const;
+  std::string print(const std::vector<RegAllocInstr>& insts);
+  std::string print_summary();
 };
 
 struct RegAllocCache {
@@ -39,6 +37,9 @@ struct RegAllocCache {
   std::unordered_map<int, int> var_to_stack_slot;
   int current_stack_slot = 0;
   bool used_stack = false;
+  bool is_asm_func = false;
+
+  std::vector<std::vector<int>> live_ranges_by_instr;
 };
 
 void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in);

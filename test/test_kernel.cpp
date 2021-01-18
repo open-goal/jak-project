@@ -334,7 +334,7 @@ TEST(Kernel, PrintBuffer) {
   clear_print();
   cprintf("test!\n");
 
-  std::string result = PrintBufArea.cast<char>().c() + sizeof(GoalMessageHeader);
+  std::string result = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
   EXPECT_EQ(result, "test!\n");
 
   delete[] mem;

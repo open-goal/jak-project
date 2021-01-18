@@ -1103,7 +1103,7 @@ def make_file(root, path, name, name_in_dgo, dgos, version):
 	os.makedirs(os.path.join(root, path), exist_ok=True)
 	if version == 3:
 		filename = name + ".gc"
-		text = """;-*-Lisp-*-
+		text = """;;-*-Lisp-*-
 (in-package goal)
 
 ;; name: {}
@@ -1113,7 +1113,7 @@ def make_file(root, path, name, name_in_dgo, dgos, version):
 """.format(filename, name_in_dgo, dgo_names_string(dgos))
 	elif version == 4:
 		filename = name + ".gd"
-		text = """;-*-Lisp-*-
+		text = """;;-*-Lisp-*-
 ;; GOAL Data Description File
 
 ;; name: {}

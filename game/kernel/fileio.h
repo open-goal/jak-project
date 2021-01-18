@@ -42,15 +42,11 @@ enum GoalFileType {
   CNT_FILE_TYPE = 0x3a,
   RES_FILE_TYPE = 0x3b,
   REFPLANT_FILE_TYPE = 0x301,
+  // added this, allows access directly to out/iso from fileio.
+  ISO_FILE_TYPE = 0x302
 };
 
 constexpr char FOLDER_PREFIX[] = "";
-
-constexpr u32 ART_FILE_VERSION = 6;
-constexpr u32 LEVEL_FILE_VERSION = 30;
-constexpr u32 DGO_FILE_VERSION = 1;
-constexpr u32 RES_FILE_VERSION = 1;
-constexpr u32 TX_PAGE_VERSION = 7;
 
 char* strend(char* str);
 u32 ReadHufWord(u8** loc_ptr);

@@ -8,7 +8,7 @@
 #ifndef JAK_PTR_H
 #define JAK_PTR_H
 
-#include <stdexcept>
+#include <cassert>
 #include "game/runtime.h"
 #include "common/common_types.h"
 
@@ -36,25 +36,19 @@ struct Ptr {
   explicit Ptr(u32 v) { offset = v; }
 
   /*!
-   * Dereference a pointer. Will throw if you do this on a null pointer.
+   * Dereference a pointer. Will error if you do this on a null pointer.
    */
   T* operator->() {
-    if (offset) {
-      return (T*)(g_ee_main_mem + offset);
-    } else {
-      throw std::runtime_error("Ptr null dereference!");
-    }
+    assert(offset);
+    return (T*)(g_ee_main_mem + offset);
   }
 
   /*!
-   * Dereference a pointer. Will throw if you do this on a null pointer.
+   * Dereference a pointer. Will error if you do this on a null pointer.
    */
   T& operator*() {
-    if (offset) {
-      return *(T*)(g_ee_main_mem + offset);
-    } else {
-      throw std::runtime_error("Ptr null dereference!");
-    }
+    assert(offset);
+    return *(T*)(g_ee_main_mem + offset);
   }
 
   // pointer math

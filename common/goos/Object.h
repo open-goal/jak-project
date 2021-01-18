@@ -40,9 +40,6 @@
  *
  */
 
-#ifndef JAK1_OBJECT_H
-#define JAK1_OBJECT_H
-
 #include <string>
 #include <cassert>
 #include <memory>
@@ -285,7 +282,22 @@ class Object {
     return integer_obj.value;
   }
 
+  const IntType& as_int() const {
+    if (type != ObjectType::INTEGER) {
+      throw std::runtime_error("as_int called on a " + object_type_to_string(type) + " " + print());
+    }
+    return integer_obj.value;
+  }
+
   FloatType& as_float() {
+    if (type != ObjectType::FLOAT) {
+      throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +
+                               print());
+    }
+    return float_obj.value;
+  }
+
+  const FloatType& as_float() const {
     if (type != ObjectType::FLOAT) {
       throw std::runtime_error("as_float called on a " + object_type_to_string(type) + " " +
                                print());
@@ -625,5 +637,3 @@ class ArrayObject : public HeapObject {
 Object build_list(const std::vector<Object>& objects);
 
 }  // namespace goos
-
-#endif  // JAK1_OBJECT_H

@@ -5,12 +5,22 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <stdexcept>
+#include <unordered_set>
+#include "decompiler/IR2/atomic_op_builder.h"
 #include "decompiler/Disasm/Instruction.h"
+#include "decompiler/Disasm/Register.h"
 #include "BasicBlocks.h"
 #include "CfgVtx.h"
-#include "decompiler/IR/IR.h"
+#include "common/type_system/TypeSpec.h"
+#include "decompiler/config.h"
+#include "decompiler/IR2/Form.h"
 
+namespace decompiler {
 class DecompilerTypeSystem;
+class IR_Atomic;
+class IR;
 
 struct FunctionName {
   enum class FunctionKind {
@@ -25,6 +35,9 @@ struct FunctionName {
   int method_id = -1;         // only applicable for METHOD
   int unique_id = -1;
 
+  int id_in_object = -1;
+  std::string object_name;
+
   std::string to_string() const {
     switch (kind) {
       case FunctionKind::GLOBAL:
@@ -34,10 +47,15 @@ struct FunctionName {
       case FunctionKind::TOP_LEVEL_INIT:
         return "(top-level-login)";
       case FunctionKind::UNIDENTIFIED:
-        return "(anon-function " + std::to_string(unique_id) + ")";
+        return "(anon-function " + std::to_string(id_in_object) + " " + object_name + ")";
       default:
         throw std::runtime_error("Unsupported FunctionKind");
     }
+  }
+
+  int get_anon_id() const {
+    assert(kind == FunctionKind::UNIDENTIFIED);
+    return id_in_object;
   }
 
   bool empty() const { return kind == FunctionKind::UNIDENTIFIED; }
@@ -54,10 +72,6 @@ struct FunctionName {
     type_name = std::move(tn);
     method_id = id;
   }
-
-  bool expected_unique() const {
-    return kind == FunctionKind::GLOBAL || kind == FunctionKind::METHOD;
-  }
 };
 
 class Function {
@@ -65,13 +79,30 @@ class Function {
   Function(int _start_word, int _end_word);
   void analyze_prologue(const LinkedObjectFile& file);
   void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
-  void find_method_defs(LinkedObjectFile& file);
-  void add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr);
+  void find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
+  void find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
+  void add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr);
   bool has_basic_ops() { return !basic_ops.empty(); }
   bool instr_starts_basic_op(int idx);
-  std::shared_ptr<IR> get_basic_op_at_instr(int idx);
+  std::shared_ptr<IR_Atomic> get_basic_op_at_instr(int idx);
+  bool instr_starts_atomic_op(int idx);
+  const AtomicOp& get_atomic_op_at_instr(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
+  int get_reginfo_basic_op_count();
+  bool run_type_analysis(const TypeSpec& my_type,
+                         DecompilerTypeSystem& dts,
+                         LinkedObjectFile& file,
+                         const std::unordered_map<int, std::vector<TypeHint>>& hints);
+  bool run_type_analysis_ir2(const TypeSpec& my_type,
+                             DecompilerTypeSystem& dts,
+                             LinkedObjectFile& file,
+                             const std::unordered_map<int, std::vector<TypeHint>>& hints);
+  void run_reg_usage();
+  bool build_expression(LinkedObjectFile& file);
+  BlockTopologicalSort bb_topo_sort();
+
+  TypeSpec type;
 
   std::shared_ptr<IR> ir = nullptr;
 
@@ -82,6 +113,8 @@ class Function {
   FunctionName guessed_name;
 
   bool suspected_asm = false;
+  bool is_inspect_method = false;
+  std::string method_of_type;
 
   std::vector<Instruction> instructions;
   std::vector<BasicBlock> basic_blocks;
@@ -95,6 +128,8 @@ class Function {
 
   std::string warnings;
   bool contains_asm_ops = false;
+
+  bool attempted_type_analysis = false;
 
   struct Prologue {
     bool decoded = false;  // have we removed the prologue from basic blocks?
@@ -125,12 +160,24 @@ class Function {
   } prologue;
 
   bool uses_fp_register = false;
+  std::vector<std::shared_ptr<IR_Atomic>> basic_ops;
+
+  struct {
+    bool atomic_ops_attempted = false;
+    bool atomic_ops_succeeded = false;
+    std::shared_ptr<FunctionAtomicOps> atomic_ops = nullptr;
+    bool has_reg_use = false;
+    RegUsageInfo reg_use;
+    bool has_type_info = false;
+    Env env;
+    FormPool form_pool;
+    Form* top_form = nullptr;
+  } ir2;
 
  private:
   void check_epilogue(const LinkedObjectFile& file);
-  std::vector<std::shared_ptr<IR>> basic_ops;
   std::unordered_map<int, int> instruction_to_basic_op;
   std::unordered_map<int, int> basic_op_to_instruction;
 };
-
+}  // namespace decompiler
 #endif  // NEXT_FUNCTION_H

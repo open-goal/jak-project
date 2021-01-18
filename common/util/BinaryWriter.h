@@ -1,7 +1,9 @@
 #pragma once
 
-#ifndef JAK_BINARYWRITER_H
-#define JAK_BINARYWRITER_H
+/*!
+ * @file BinaryWriter.h
+ * Write raw data like a stream.
+ */
 
 #include <cassert>
 #include <stdexcept>
@@ -72,5 +74,3 @@ class BinaryWriter {
  private:
   std::vector<uint8_t> data;
 };
-
-#endif  // JAK_BINARYWRITER_H

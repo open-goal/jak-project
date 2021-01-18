@@ -68,3 +68,29 @@ TEST_F(VariableTests, Let) {
   runner.run_static_test(env, testCategory, "let-star.static.gc", {"30\n"});
   runner.run_static_test(env, testCategory, "mlet.static.gc", {"10\n"});
 }
+
+TEST_F(VariableTests, StackVars) {
+  runner.run_static_test(env, testCategory, "stack-ints.gc", {"12\n"});
+  runner.run_static_test(env, testCategory, "stack-ints-2.gc", {"1\n"});
+}
+
+TEST_F(VariableTests, Bitfields) {
+  runner.run_static_test(env, testCategory, "bitfield-enums.gc", {"5\n"});
+  runner.run_static_test(env, testCategory, "integer-enums.gc", {"11\n"});
+}
+
+TEST_F(VariableTests, InlineAsm) {
+  runner.run_static_test(env, testCategory, "inline-asm.static.gc", {"1\n"});
+}
+
+TEST_F(VariableTests, StaticBitfieldField) {
+  runner.run_static_test(env, testCategory, "static-bitfield-field.gc", {"22\n"});
+}
+
+TEST_F(VariableTests, StackArrayAlignment) {
+  runner.run_static_test(env, testCategory, "stack-array-align.gc", {"3\n"});
+}
+
+TEST_F(VariableTests, StackStructureAlignment) {
+  runner.run_static_test(env, testCategory, "stack-structure-align.gc", {"1234\n"});
+}

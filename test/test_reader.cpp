@@ -171,6 +171,28 @@ TEST(GoosReader, String) {
   EXPECT_ANY_THROW(reader.read_from_string("\"\\w\""));  // "\w" invalid escape
 }
 
+TEST(GoosReader, StringWithNumberEscapes) {
+  Reader reader;
+
+  // build a weird test string
+  std::string str;
+  for (int i = 1; i < 256; i++) {
+    str.push_back(i);
+  }
+
+  // create a readable string:
+  std::string readable = "\"";
+  readable += goos::get_readable_string(str.data());
+  readable.push_back('"');
+
+  EXPECT_TRUE(check_first_string(reader.read_from_string(readable), str));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c1\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\cag\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c-1\""));
+  EXPECT_ANY_THROW(reader.read_from_string("\"\\c-2\""));
+}
+
 TEST(GoosReader, Symbol) {
   std::vector<std::string> test_symbols = {
       "test", "test-two", "__werid-sym__", "-a", "-", "/", "*", "+", "a", "#f"};
@@ -316,16 +338,19 @@ TEST(GoosReader, TopLevel) {
 
 TEST(GoosReader, FromFile) {
   Reader reader;
-  auto result = reader.read_from_file({"test", "test_reader_file0.gc"}).print();
+  auto result = reader.read_from_file({"test", "test_data", "test_reader_file0.gc"}).print();
   EXPECT_TRUE(result == "(top-level (1 2 3 4))");
 }
 
 TEST(GoosReader, TextDb) {
   // very specific to this particular test file, but whatever.
   Reader reader;
-  auto result =
-      reader.read_from_file({"test", "test_reader_file0.gc"}).as_pair()->cdr.as_pair()->car;
-  std::string expected = "text from " + file_util::get_file_path({"test", "test_reader_file0.gc"}) +
+  auto result = reader.read_from_file({"test", "test_data", "test_reader_file0.gc"})
+                    .as_pair()
+                    ->cdr.as_pair()
+                    ->car;
+  std::string expected = "text from " +
+                         file_util::get_file_path({"test", "test_data", "test_reader_file0.gc"}) +
                          ", line: 5\n(1 2 3 4)\n";
   EXPECT_EQ(expected, reader.db.get_info_for(result));
 }

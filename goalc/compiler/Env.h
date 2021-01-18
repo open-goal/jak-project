@@ -31,16 +31,20 @@ class Env {
   explicit Env(Env* parent) : m_parent(parent) {}
   virtual std::string print() = 0;
   virtual void emit(std::unique_ptr<IR> ir);
-  virtual RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind);
+  virtual RegVal* make_ireg(TypeSpec ts, RegClass reg_class);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
   virtual RegVal* lexical_lookup(goos::Object sym);
   virtual BlockEnv* find_block(const std::string& name);
   virtual std::unordered_map<std::string, Label>& get_label_map();
   RegVal* make_gpr(const TypeSpec& ts);
-  RegVal* make_xmm(const TypeSpec& ts);
+  RegVal* make_fpr(const TypeSpec& ts);
   virtual ~Env() = default;
-
   Env* parent() { return m_parent; }
+
+  template <typename IR_Type, typename... Args>
+  void emit_ir(Args&&... args) {
+    emit(std::make_unique<IR_Type>(std::forward<Args>(args)...));
+  }
 
  protected:
   Env* m_parent = nullptr;
@@ -54,7 +58,7 @@ class GlobalEnv : public Env {
   GlobalEnv();
   std::string print() override;
   void emit(std::unique_ptr<IR> ir) override;
-  RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind) override;
+  RegVal* make_ireg(TypeSpec ts, RegClass reg_class) override;
   void constrain_reg(IRegConstraint constraint) override;
   RegVal* lexical_lookup(goos::Object sym) override;
   BlockEnv* find_block(const std::string& name) override;
@@ -92,10 +96,14 @@ class FileEnv : public Env {
   void debug_print_tl();
   const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
   const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
+  std::string get_anon_function_name() {
+    return "anon-function-" + std::to_string(m_anon_func_counter++);
+  }
   const FunctionEnv& top_level_function() {
     assert(m_top_level_func);
     return *m_top_level_func;
   }
+  const std::string& name() { return m_name; }
 
   bool is_empty();
   ~FileEnv() = default;
@@ -105,6 +113,7 @@ class FileEnv : public Env {
   std::vector<std::unique_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
   std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
+  int m_anon_func_counter = 0;
 
   // statics
   FunctionEnv* m_top_level_func = nullptr;
@@ -124,6 +133,7 @@ class DeclareEnv : public Env {
     bool inline_by_default = false;  // if a function, inline when possible?
     bool save_code = true;           // if a function, should we save the code?
     bool allow_inline = false;       // should we allow the user to use this an inline function
+    bool print_asm = false;          // should we print out the asm for this function?
   } settings;
 };
 
@@ -149,23 +159,27 @@ class FunctionEnv : public DeclareEnv {
   void set_segment(int seg) { segment = seg; }
   void emit(std::unique_ptr<IR> ir) override;
   void finish();
-  RegVal* make_ireg(TypeSpec ts, emitter::RegKind kind) override;
+  RegVal* make_ireg(TypeSpec ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
   int max_vars() const { return m_iregs.size(); }
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
   void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
   RegVal* lexical_lookup(goos::Object sym) override;
-
   const AllocationResult& alloc_result() { return m_regalloc_result; }
-
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
   void require_aligned_stack() { m_aligned_stack_required = true; }
-
   Label* alloc_unnamed_label() {
     m_unnamed_labels.emplace_back(std::make_unique<Label>());
     return m_unnamed_labels.back().get();
   }
+  const std::string& name() const { return m_name; }
+
+  StackVarAddrVal* allocate_stack_variable(const TypeSpec& ts, int size_bytes);
+  StackVarAddrVal* allocate_aligned_stack_variable(const TypeSpec& ts,
+                                                   int size_bytes,
+                                                   int align_bytes);
+  int stack_slots_used_for_stack_vars() const { return m_stack_var_slots_used; }
 
   int idx_in_file = -1;
 
@@ -186,6 +200,8 @@ class FunctionEnv : public DeclareEnv {
   int segment = -1;
   std::string method_of_type_name = "#f";
   bool is_asm_func = false;
+  bool asm_func_saved_regs = false;
+  TypeSpec asm_func_return_type;
   std::vector<UnresolvedGoto> unresolved_gotos;
   std::vector<UnresolvedConditionalGoto> unresolved_cond_gotos;
   std::unordered_map<std::string, RegVal*> params;
@@ -202,7 +218,7 @@ class FunctionEnv : public DeclareEnv {
   AllocationResult m_regalloc_result;
 
   bool m_aligned_stack_required = false;
-
+  int m_stack_var_slots_used = 0;
   std::unordered_map<std::string, Label> m_labels;
   std::vector<std::unique_ptr<Label>> m_unnamed_labels;
 };
@@ -232,6 +248,7 @@ class LabelEnv : public Env {
   explicit LabelEnv(Env* parent) : Env(parent) {}
   std::string print() override { return "labelenv"; }
   std::unordered_map<std::string, Label>& get_label_map() override;
+  BlockEnv* find_block(const std::string& name) override;
 
  protected:
   std::unordered_map<std::string, Label> m_labels;

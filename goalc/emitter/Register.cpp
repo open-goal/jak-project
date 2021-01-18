@@ -57,6 +57,10 @@ RegisterInfo RegisterInfo::make_register_info() {
   info.m_xmm_alloc_order = {XMM0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6, XMM7,
                             XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14};
 
+  // these should only be temp registers!
+  info.m_gpr_temp_only_alloc_order = {RAX, RCX, RDX, RSI, RDI, R8, R9};
+  info.m_xmm_temp_only_alloc_order = {XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7};
+
   info.m_gpr_spill_temp_alloc_order = {RAX, RCX, RDX, RBX, RBP, RSI,
                                        RDI, R8,  R9,  R10, R11, R12};  // arbitrary
   info.m_xmm_spill_temp_alloc_order = {XMM0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6,  XMM7,
@@ -66,14 +70,27 @@ RegisterInfo RegisterInfo::make_register_info() {
 
 RegisterInfo gRegInfo = RegisterInfo::make_register_info();
 
-std::string to_string(RegKind kind) {
+std::string to_string(HWRegKind kind) {
   switch (kind) {
-    case RegKind::GPR:
+    case HWRegKind::GPR:
       return "gpr";
-    case RegKind::XMM:
+    case HWRegKind::XMM:
       return "xmm";
     default:
-      throw std::runtime_error("Unsupported RegKind");
+      throw std::runtime_error("Unsupported HWRegKind");
+  }
+}
+
+HWRegKind reg_class_to_hw(RegClass reg_class) {
+  switch (reg_class) {
+    case RegClass::VECTOR_FLOAT:
+    case RegClass::FLOAT:
+    case RegClass::INT_128:
+      return HWRegKind::XMM;
+    case RegClass::GPR_64:
+      return HWRegKind::GPR;
+    default:
+      assert(false);
   }
 }
 

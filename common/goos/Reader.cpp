@@ -12,8 +12,44 @@
 #include "Reader.h"
 #include "third-party/linenoise.h"
 #include "common/util/FileUtil.h"
+#include "third-party/fmt/core.h"
 
 namespace goos {
+
+namespace {
+/*!
+ * Is this a valid character to start a decimal integer number?
+ */
+bool decimal_start(char c) {
+  return (c >= '0' && c <= '9') || c == '-';
+}
+
+/*!
+ * Is this a valid character to start a floating point number?
+ */
+bool float_start(char c) {
+  return (c >= '0' && c <= '9') || c == '-' || c == '.';
+}
+
+/*!
+ * Is this a valid character for a hex number?
+ */
+bool hex_char(char c) {
+  return !((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F'));
+}
+
+/*!
+ * Does the given string contain c?
+ */
+bool str_contains(const std::string& str, char c) {
+  for (auto& x : str) {
+    if (x == c) {
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace
 
 /*!
  * Advance a TextStream through any comments or whitespace.
@@ -464,6 +500,7 @@ bool Reader::try_token_as_symbol(const Token& tok, Object& obj) {
 /*!
  * Read a string and escape. Start on the first char after the first double quote.
  * Supported escapes are \n, \t, \\ and work like they do in C.
+ * An arbitrary character can be entered as \c12 where the "12" is hexadecimal.
  */
 bool Reader::read_string(TextStream& stream, Object& obj) {
   bool got_close_quote = false;
@@ -493,6 +530,24 @@ bool Reader::read_string(TextStream& stream, Object& obj) {
       } else if (stream.peek() == '"') {
         stream.read();
         str.push_back('"');
+      } else if (stream.peek() == 'c') {
+        stream.read();
+        if (!stream.text_remains(2)) {
+          throw_reader_error(stream, "incomplete string escape code", -1);
+        }
+        auto first = stream.read();
+        auto second = stream.read();
+        if (!hex_char(first) || !hex_char(second)) {
+          throw_reader_error(stream, "invalid character escape hex number", -3);
+        }
+        char hex_num[3] = {first, second, '\0'};
+        std::size_t end = 0;
+        auto value = std::stoul(hex_num, &end, 16);
+        if (end != 2) {
+          throw_reader_error(stream, "invalid character escape", -2);
+        }
+        assert(value < 256);
+        str.push_back(char(value));
       } else {
         throw_reader_error(stream, "unknown string escape code", -1);
       }
@@ -503,34 +558,6 @@ bool Reader::read_string(TextStream& stream, Object& obj) {
 
   return got_close_quote;
 }
-
-namespace {
-/*!
- * Is this a valid character to start a decimal integer number?
- */
-bool decimal_start(char c) {
-  return (c >= '0' && c <= '9') || c == '-';
-}
-
-/*!
- * Is this a valid character to start a floating point number?
- */
-bool float_start(char c) {
-  return (c >= '0' && c <= '9') || c == '-' || c == '.';
-}
-
-/*!
- * Does the given string contain c?
- */
-bool str_contains(const std::string& str, char c) {
-  for (auto& x : str) {
-    if (x == c) {
-      return true;
-    }
-  }
-  return false;
-}
-}  // namespace
 
 /*!
  * Try decoding as a float.  Must have a "." in it.
@@ -604,7 +631,7 @@ bool Reader::try_token_as_hex(const Token& tok, Object& obj) {
     // it means that the number is too big or too small, and we should error
     for (size_t offset = 2; offset < tok.text.size(); offset++) {
       char c = tok.text.at(offset);
-      if ((c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F')) {
+      if (!hex_char(c)) {
         return false;
       }
     }
@@ -696,5 +723,30 @@ void Reader::throw_reader_error(TextStream& here, const std::string& err, int se
  */
 std::string Reader::get_source_dir() {
   return file_util::get_project_path();
+}
+
+/*!
+ * Convert any string into one that can be read.
+ * Unprintable characters become escape sequences, including tab and newline.
+ */
+std::string get_readable_string(const char* in) {
+  std::string result;
+  while (*in) {
+    if (file_util::is_printable_char(*in) && *in != '\\' && *in != '"') {
+      result.push_back(*in);
+    } else if (*in == '\n') {
+      result += "\\n";
+    } else if (*in == '\t') {
+      result += "\\t";
+    } else if (*in == '\\') {
+      result += "\\\\";
+    } else if (*in == '"') {
+      result += "\\\"";
+    } else {
+      result += fmt::format("\\c{:02x}", uint8_t(*in));
+    }
+    in++;
+  }
+  return result;
 }
 }  // namespace goos

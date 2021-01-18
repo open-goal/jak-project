@@ -9,17 +9,20 @@
 #define JAK_REGISTER_H
 
 #include <cassert>
-#include <functional>
 #include <array>
 #include <vector>
 #include <string>
 #include "common/common_types.h"
+#include "common/goal_constants.h"
 
 namespace emitter {
 
-enum class RegKind : u8 { GPR, XMM, INVALID };
+enum class HWRegKind : u8 { GPR, XMM, INVALID };
+HWRegKind reg_class_to_hw(RegClass reg_class);
+std::string to_string(HWRegKind kind);
 
-std::string to_string(RegKind kind);
+constexpr int GPR_SIZE = 8;
+constexpr int XMM_SIZE = 16;
 
 // registers by name
 enum X86_REG : s8 {
@@ -120,29 +123,19 @@ class RegisterInfo {
   };
 
   const Info& get_info(Register r) const { return m_info.at(r.id()); }
-
   Register get_arg_reg(int id) const { return m_arg_regs.at(id); }
-
   Register get_saved_gpr(int id) const { return m_saved_gprs.at(id); }
-
   Register get_saved_xmm(int id) const { return m_saved_xmms.at(id); }
-
   Register get_process_reg() const { return R13; }
-
   Register get_st_reg() const { return R14; }
-
   Register get_offset_reg() const { return R15; }
-
   Register get_ret_reg() const { return RAX; }
-
   const std::vector<Register>& get_gpr_alloc_order() { return m_gpr_alloc_order; }
-
   const std::vector<Register>& get_xmm_alloc_order() { return m_xmm_alloc_order; }
-
+  const std::vector<Register>& get_gpr_temp_alloc_order() { return m_gpr_temp_only_alloc_order; }
+  const std::vector<Register>& get_xmm_temp_alloc_order() { return m_xmm_temp_only_alloc_order; }
   const std::vector<Register>& get_gpr_spill_alloc_order() { return m_gpr_spill_temp_alloc_order; }
-
   const std::vector<Register>& get_xmm_spill_alloc_order() { return m_xmm_spill_temp_alloc_order; }
-
   const std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS>& get_all_saved() { return m_saved_all; }
 
  private:
@@ -154,6 +147,8 @@ class RegisterInfo {
   std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS> m_saved_all;
   std::vector<Register> m_gpr_alloc_order;
   std::vector<Register> m_xmm_alloc_order;
+  std::vector<Register> m_gpr_temp_only_alloc_order;
+  std::vector<Register> m_xmm_temp_only_alloc_order;
   std::vector<Register> m_gpr_spill_temp_alloc_order;
   std::vector<Register> m_xmm_spill_temp_alloc_order;
 };

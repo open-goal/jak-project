@@ -17,6 +17,12 @@
   `(asm-file ,file :color :write)
   )
 
+;; compile, color, save, and disassemble a file.
+;; make "debug".
+(defmacro md (file)
+  `(asm-file ,file :color :write :disassemble)
+  )
+
 ;; compile, color, load and save a file
 (defmacro ml (file)
   `(asm-file ,file :color :load :write)
@@ -26,10 +32,26 @@
   `(asm-file ,file :color :write)
   )
 
+
+(defmacro build-kernel ()
+  `(begin
+     ,@(apply make-build-command all-kernel-goal-files)
+     (build-dgos "goal_src/build/kernel_dgos.txt")
+     )
+  )
+
 (defmacro build-game ()
   `(begin
+     (build-kernel)
      ,@(apply make-build-command all-goal-files)
-     (build-dgos "goal_src/build/dgos.txt")
+     (build-dgos "goal_src/build/game_dgos.txt")
+     )
+  )
+
+(defmacro build-data ()
+  `(begin
+     (asm-data-file game-text "assets/game_text.txt")
+     (asm-data-file game-count "assets/game_count.txt")
      )
   )
 
@@ -41,11 +63,15 @@
      )
   )
 
+(defmacro tc ()
+  `(m "decompiler/config/all-types.gc")
+  )
+
 (defmacro e ()
   `(:exit)
   )
 
-(defmacro db ()
+(defmacro dbc ()
   `(begin
     (set-config! print-ir #t)
     (set-config! print-regalloc #t)
@@ -98,6 +124,37 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; DEBUGGER MACROS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro db (&rest args)
+  `(:pm 1 ,@args)
+  )
+
+(defmacro dh (&rest args)
+  `(:pm 2 ,@args)
+  )
+
+(defmacro dw (&rest args)
+  `(:pm 4 ,@args)
+  )
+
+(defmacro dd (&rest args)
+  `(:pm 8 ,@args)
+  )
+
+(defmacro df (&rest args)
+  `(:pm 4 ,@args :print-mode float)
+  )
+
+(defmacro segfault ()
+  `(-> (the (pointer int) 0))
+  )
+
+(defmacro fpe ()
+  `(/ 0 0)
+  )
 
 ;;;;;;;;;;;;;;;;;;;
 ;; GOAL Syntax
@@ -131,6 +188,26 @@
     )
   )
 
+;; Define a new function, but only if we're debugging.
+;; TODO - should place the function in the debug segment!
+(defmacro defun-debug (name bindings &rest body)
+  `(if *debug-segment*
+       ,(if (and
+             (> (length body) 1)      ;; more than one thing in function
+             (string? (first body))   ;; first thing is a string
+             )
+           ;; then it's a docstring and we ignore it.
+           `(define ,name (lambda :name ,name :segment debug ,bindings ,@(cdr body)))
+           ;; otherwise don't ignore it.
+           `(define ,name (lambda :name ,name :segment debug ,bindings ,@body))
+           )
+       
+       ;; function not loaded, set function to the nothing function.
+       ;; we don't typecheck this.
+       (define :no-typecheck #t ,name nothing)
+       )
+  )
+
 (defmacro while (test &rest body)
   (with-gensyms (reloop test-exit)
     `(begin
@@ -161,6 +238,15 @@
             (+1! ,(first var))
             )
      ,@(cddr var)
+     )
+  )
+
+(defmacro countdown (var &rest body)
+  `(let ((,(first var) ,(second var)))
+     (while (!= ,(first var) 0)
+       (set! ,(first var) (- ,(first var) 1))
+       ,@body
+       )
      )
   )
 
@@ -292,6 +378,10 @@
   `(eq? ,thing 0)
   )
 
+(defmacro nonzero? (thing)
+  `(neq? ,thing 0)
+  )
+
 (defmacro &+! (val amount)
   `(set! ,val (&+ ,val ,amount))
   )
@@ -311,6 +401,9 @@
   `(logand #xfffffff0 (+ (the-as integer ,value) 15))
   )
 
+(defmacro align64 (value)
+  `(logand -64 (+ (the-as int ,value) 63))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TYPE STUFF
@@ -369,7 +462,7 @@
 (defmacro object-new (&rest sz)
   (if (null? sz)
     `(the ,(current-method-type) ((method object new) allocation type-to-make (the int (-> type-to-make size))))
-    `(the ,(current-method-type)((method object new) allocation type-to-make ,@sz))
+    `(the ,(current-method-type) ((method object new) allocation type-to-make ,@sz))
     )
   )
 

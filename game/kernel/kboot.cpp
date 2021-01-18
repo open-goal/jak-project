@@ -6,9 +6,12 @@
 
 #include <cstring>
 #include <chrono>
+#include <stdio.h>
+#include <stdlib.h>
 #include <thread>
 
 #include "common/common_types.h"
+#include "common/util/Timer.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
 #include "kmachine.h"
@@ -132,6 +135,8 @@ s32 goal_main(int argc, const char* const* argv) {
  * Main loop to dispatch the GOAL kernel.
  */
 void KernelCheckAndDispatch() {
+  u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
+
   while (!MasterExit) {
     // try to get a message from the listener, and process it if needed
     Ptr<char> new_message = WaitForMessageAndAck();
@@ -144,20 +149,16 @@ void KernelCheckAndDispatch() {
     // dispatch the kernel
     //(**kernel_dispatcher)();
 
-    // todo remove. this is added while KERNEL.CGO is broken.
+    Timer kernel_dispatch_timer;
     if (MasterUseKernel) {
-      call_goal(Ptr<Function>(kernel_dispatcher->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+      // use the GOAL kernel.
+      call_goal_on_stack(Ptr<Function>(kernel_dispatcher->value), goal_stack, s7.offset,
+                         g_ee_main_mem);
     } else {
+      // use a hack to just run the listener function if there's no GOAL kernel.
       if (ListenerFunction->value != s7.offset) {
-        //        fprintf(stderr, "Running Listener Function:\n");
-        //        auto cptr = Ptr<u8>(ListenerFunction->value).c();
-        //        for (int i = 0; i < 40; i++) {
-        //          fprintf(stderr, "%x ", cptr[i]);
-        //        }
-        //        fprintf(stderr, "\n");
-        auto result =
-            call_goal(Ptr<Function>(ListenerFunction->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-//        fprintf(stderr, "result of listener function: %lld\n", result);
+        auto result = call_goal_on_stack(Ptr<Function>(ListenerFunction->value), goal_stack,
+                                         s7.offset, g_ee_main_mem);
 #ifdef __linux__
         cprintf("%ld\n", result);
 #else
@@ -165,6 +166,11 @@ void KernelCheckAndDispatch() {
 #endif
         ListenerFunction->value = s7.offset;
       }
+    }
+
+    auto time_ms = kernel_dispatch_timer.getMs();
+    if (time_ms > 3) {
+      printf("Kernel dispatch time: %.3f ms\n", time_ms);
     }
 
     ClearPending();
@@ -183,5 +189,5 @@ void KernelCheckAndDispatch() {
  * DONE, EXACT
  */
 void KernelShutdown() {
-  MasterExit = 1;  // GOAL Kernel Dispatch loop will stop now.
+  MasterExit = 2;  // GOAL Kernel Dispatch loop will stop now.
 }

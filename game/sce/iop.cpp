@@ -203,12 +203,14 @@ s32 CreateSema(SemaParam* param) {
 
 s32 WaitSema(s32 sema) {
   (void)sema;
-  throw std::runtime_error("NYI");
+  assert(false);  // nyi
+  return 0;
 }
 
 s32 SignalSema(s32 sema) {
   (void)sema;
-  throw std::runtime_error("NYI");
+  assert(false);  // nyi
+  return 0;
 }
 
 s32 WakeupThread(s32 thid) {

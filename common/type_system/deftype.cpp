@@ -1,3 +1,9 @@
+/*!
+ * @file deftype.cpp
+ * Parser for the GOAL "deftype" form.
+ * This is used both in the compiler and in the decompiler for the type definition file.
+ */
+
 #include "deftype.h"
 #include "third-party/fmt/core.h"
 
@@ -130,7 +136,44 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   }
 }
 
-void declare_method(StructureType* type, TypeSystem* type_system, const goos::Object& def) {
+void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Object& def) {
+  auto rest = &def;
+
+  auto name = symbol_string(car(rest));
+  rest = cdr(rest);
+
+  auto type = parse_typespec(ts, car(rest));
+  rest = cdr(rest);
+
+  int offset_override = -1;
+  int size_override = -1;
+
+  if (!rest->is_empty_list()) {
+    while (!rest->is_empty_list()) {
+      auto opt_name = symbol_string(car(rest));
+      rest = cdr(rest);
+
+      if (opt_name == ":offset") {
+        offset_override = get_int(car(rest));
+        rest = cdr(rest);
+      } else if (opt_name == ":size") {
+        size_override = get_int(car(rest));
+        rest = cdr(rest);
+      } else {
+        throw std::runtime_error("Invalid option in field specification: " + opt_name);
+      }
+    }
+  }
+
+  if (offset_override == -1) {
+    throw std::runtime_error("Bitfield type must manually specify offsets always");
+  }
+
+  // it's fine if the size is -1, that means it'll just use the type's size.
+  ts->add_field_to_bitfield(bitfield_type, name, type, offset_override, size_override);
+}
+
+void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
     // (name args return-type [id])
@@ -149,22 +192,22 @@ void declare_method(StructureType* type, TypeSystem* type_system, const goos::Ob
       }
     }
 
-    std::vector<std::string> arg_types;
+    TypeSpec function_typespec("function");
+
     for_each_in_list(args, [&](const goos::Object& o) {
       if (o.is_symbol()) {
-        arg_types.emplace_back(symbol_string(o));
+        function_typespec.add_arg(parse_typespec(type_system, o));
       } else {
         auto next = cdr(&o);
-        arg_types.emplace_back(symbol_string(car(next)));
+        function_typespec.add_arg(parse_typespec(type_system, car(next)));
         if (!cdr(next)->is_empty_list()) {
           throw std::runtime_error("too many things in method def arg type: " + def.print());
         };
       }
     });
+    function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->add_method(
-        type, method_name,
-        type_system->make_function_typespec(arg_types, symbol_string(return_type)));
+    auto info = type_system->add_method(type, method_name, function_typespec);
 
     // check the method assert
     if (id != -1) {
@@ -178,11 +221,17 @@ void declare_method(StructureType* type, TypeSystem* type_system, const goos::Ob
   });
 }
 
-TypeFlags parse_structure_def(StructureType* type,
-                              TypeSystem* ts,
-                              const goos::Object& fields,
-                              const goos::Object& options) {
-  (void)options;
+struct StructureDefResult {
+  TypeFlags flags;
+  bool generate_runtime_type = true;
+  bool pack_me = false;
+};
+
+StructureDefResult parse_structure_def(StructureType* type,
+                                       TypeSystem* ts,
+                                       const goos::Object& fields,
+                                       const goos::Object& options) {
+  StructureDefResult result;
   for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o); });
   TypeFlags flags;
   flags.heap_base = 0;
@@ -229,6 +278,107 @@ TypeFlags parse_structure_def(StructureType* type,
         flag_assert = get_int(car(rest));
         flag_assert_set = true;
         rest = cdr(rest);
+      } else if (opt_name == ":no-runtime-type") {
+        result.generate_runtime_type = false;
+      } else if (opt_name == ":pack-me") {
+        result.pack_me = true;
+      } else if (opt_name == ":heap-base") {
+        u16 hb = get_int(car(rest));
+        rest = cdr(rest);
+        flags.heap_base = hb;
+      }
+
+      else {
+        throw std::runtime_error("Invalid option in field specification: " + opt_name);
+      }
+    }
+  }
+
+  if (size_assert != -1 && flags.size != u16(size_assert)) {
+    throw std::runtime_error("Type " + type->get_name() + " came out to size " +
+                             std::to_string(int(flags.size)) + " but size-assert was set to " +
+                             std::to_string(size_assert));
+  }
+
+  flags.methods = ts->get_next_method_id(type);
+
+  if (method_count_assert != -1 && flags.methods != u16(method_count_assert)) {
+    throw std::runtime_error(
+        "Type " + type->get_name() + " has " + std::to_string(int(flags.methods)) +
+        " methods, but method-count-assert was set to " + std::to_string(method_count_assert));
+  }
+
+  if (flag_assert_set && (flags.flag != flag_assert)) {
+    throw std::runtime_error(
+        fmt::format("Type {} has flag 0x{:x} but flag-assert was set to 0x{:x}", type->get_name(),
+                    flags.flag, flag_assert));
+  }
+
+  result.flags = flags;
+  return result;
+}
+
+struct BitFieldTypeDefResult {
+  TypeFlags flags;
+  bool generate_runtime_type = true;
+};
+
+BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
+                                              TypeSystem* ts,
+                                              const goos::Object& fields,
+                                              const goos::Object& options) {
+  BitFieldTypeDefResult result;
+  for_each_in_list(fields, [&](const goos::Object& o) { add_bitfield(type, ts, o); });
+  TypeFlags flags;
+  flags.heap_base = 0;
+  flags.size = type->get_size_in_memory();
+  flags.pad = 0;
+
+  auto* rest = &options;
+  int size_assert = -1;
+  int method_count_assert = -1;
+  uint64_t flag_assert = 0;
+  bool flag_assert_set = false;
+  while (!rest->is_empty_list()) {
+    if (car(rest).is_pair()) {
+      auto opt_list = &car(rest);
+      auto& first = car(opt_list);
+      opt_list = cdr(opt_list);
+
+      if (symbol_string(first) == ":methods") {
+        declare_method(type, ts, *opt_list);
+      } else {
+        throw std::runtime_error("Invalid option list in field specification: " +
+                                 car(rest).print());
+      }
+
+      rest = cdr(rest);
+    } else {
+      auto opt_name = symbol_string(car(rest));
+      rest = cdr(rest);
+
+      if (opt_name == ":size-assert") {
+        size_assert = get_int(car(rest));
+        if (size_assert == -1) {
+          throw std::runtime_error("Cannot use -1 as size-assert");
+        }
+        rest = cdr(rest);
+      } else if (opt_name == ":method-count-assert") {
+        method_count_assert = get_int(car(rest));
+        if (method_count_assert == -1) {
+          throw std::runtime_error("Cannot use -1 as method_count_assert");
+        }
+        rest = cdr(rest);
+      } else if (opt_name == ":flag-assert") {
+        flag_assert = get_int(car(rest));
+        flag_assert_set = true;
+        rest = cdr(rest);
+      } else if (opt_name == ":no-runtime-type") {
+        result.generate_runtime_type = false;
+      } else if (opt_name == ":heap-base") {
+        u16 hb = get_int(car(rest));
+        rest = cdr(rest);
+        flags.heap_base = hb;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -255,7 +405,8 @@ TypeFlags parse_structure_def(StructureType* type,
                     flags.flag, flag_assert));
   }
 
-  return flags;
+  result.flags = flags;
+  return result;
 }
 
 }  // namespace
@@ -303,17 +454,38 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
-    result.flags = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    ts->forward_declare_type_as_basic(name);
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    result.flags = sr.flags;
+    result.create_runtime_type = sr.generate_runtime_type;
+    if (sr.pack_me) {
+      fmt::print("[TypeSystem] :pack-me was set on {}, which is a basic and cannot be packed.",
+                 name);
+      throw std::runtime_error("invalid pack option on basic");
+    }
     ts->add_type(name, std::move(new_type));
   } else if (is_type("structure", parent_type, ts)) {
     auto new_type = std::make_unique<StructureType>(parent_type_name, name);
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
-    result.flags = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    ts->forward_declare_type_as_structure(name);
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    result.flags = sr.flags;
+    result.create_runtime_type = sr.generate_runtime_type;
+    if (sr.pack_me) {
+      new_type->set_pack(true);
+    }
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
-    throw std::runtime_error("Creating a child type of integer is not supported yet.");
+    auto pto = ts->lookup_type(parent_type);
+    assert(pto);
+    auto new_type = std::make_unique<BitFieldType>(
+        parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
+    auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);
+    result.flags = sr.flags;
+    result.create_runtime_type = sr.generate_runtime_type;
+    ts->add_type(name, std::move(new_type));
   } else {
     throw std::runtime_error("Creating a child type from " + parent_type.print() +
                              " is not allowed or not supported yet.");

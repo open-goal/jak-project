@@ -1,5 +1,10 @@
 #pragma once
 
+/*!
+ * @file Type.h
+ * Representation of a GOAL type in the type system.
+ */
+
 #ifndef JAK_TYPE_H
 #define JAK_TYPE_H
 
@@ -39,7 +44,7 @@ class Type {
   virtual int get_size_in_memory() const = 0;
 
   // if we have no other information, what kind of register should we load into?
-  virtual RegKind get_preferred_reg_kind() const = 0;
+  virtual RegClass get_preferred_reg_class() const = 0;
 
   // get the "offset" applied to boxed objects
   virtual int get_offset() const = 0;
@@ -64,6 +69,7 @@ class Type {
   std::string get_parent() const;
   void set_runtime_type(std::string name);
   bool get_my_method(const std::string& name, MethodInfo* out) const;
+  bool get_my_method(int id, MethodInfo* out) const;
   bool get_my_last_method(MethodInfo* out) const;
   bool get_my_new_method(MethodInfo* out) const;
   const MethodInfo& add_method(const MethodInfo& info);
@@ -100,7 +106,7 @@ class NullType : public Type {
   bool get_load_signed() const override;
   int get_size_in_memory() const override;
   int get_inline_array_alignment() const override;
-  RegKind get_preferred_reg_kind() const override;
+  RegClass get_preferred_reg_class() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
   std::string print() const override;
@@ -119,12 +125,12 @@ class ValueType : public Type {
             bool is_boxed,
             int size,
             bool sign_extend,
-            RegKind reg);
+            RegClass reg);
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
   int get_size_in_memory() const override;
-  RegKind get_preferred_reg_kind() const override;
+  RegClass get_preferred_reg_class() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
   int get_inline_array_alignment() const override;
@@ -140,7 +146,7 @@ class ValueType : public Type {
   int m_size = -1;
   int m_offset = 0;
   bool m_sign_extend = false;
-  RegKind m_reg_kind = RegKind::INVALID;
+  RegClass m_reg_kind = RegClass::INVALID;
 };
 
 /*!
@@ -153,7 +159,7 @@ class ReferenceType : public Type {
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
-  RegKind get_preferred_reg_kind() const override;
+  RegClass get_preferred_reg_class() const override;
   std::string print() const override;
   ~ReferenceType() = default;
 };
@@ -162,17 +168,18 @@ class Field {
  public:
   Field() = default;
   Field(std::string name, TypeSpec ts);
+  Field(std::string name, TypeSpec ts, int offset);
   void set_dynamic();
   void set_array(int size);
   void set_inline();
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
-
   bool is_inline() const { return m_inline; }
-
   bool is_array() const { return m_array; }
-
   bool is_dynamic() const { return m_dynamic; }
+  const std::string& name() const { return m_name; }
+  int offset() const { return m_offset; }
+  bool operator==(const Field& other) const;
 
   int alignment() const {
     assert(m_alignment != -1);
@@ -184,17 +191,11 @@ class Field {
     return m_array_size;
   }
 
-  const std::string& name() const { return m_name; }
-
-  int offset() const { return m_offset; }
-
-  bool operator==(const Field& other) const;
-
  private:
   friend class TypeSystem;
   void set_alignment(int alignment) { m_alignment = alignment; }
-
   void set_offset(int offset) { m_offset = offset; }
+
   std::string m_name;
   TypeSpec m_type;
   int m_offset = -1;
@@ -224,6 +225,7 @@ class StructureType : public ReferenceType {
   bool lookup_field(const std::string& name, Field* out);
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
+  void set_pack(bool pack) { m_pack = pack; }
 
  protected:
   friend class TypeSystem;
@@ -252,8 +254,34 @@ class BasicType : public StructureType {
   ~BasicType() = default;
 };
 
-class BitField {};
+class BitField {
+ public:
+  BitField() = default;
+  BitField(TypeSpec type, std::string name, int offset, int size);
+  const std::string name() const { return m_name; }
+  int offset() const { return m_offset; }
+  int size() const { return m_size; }
+  const TypeSpec& type() const { return m_type; }
+  bool operator==(const BitField& other) const;
+  std::string print() const;
 
-class BitFieldType : ValueType {};
+ private:
+  TypeSpec m_type;
+  std::string m_name;
+  int m_offset = -1;  // in bits
+  int m_size = -1;    // in bits.
+};
+
+class BitFieldType : public ValueType {
+ public:
+  BitFieldType(std::string parent, std::string name, int size, bool sign_extend);
+  bool lookup_field(const std::string& name, BitField* out) const;
+  std::string print() const override;
+  bool operator==(const Type& other) const override;
+
+ private:
+  friend class TypeSystem;
+  std::vector<BitField> m_fields;
+};
 
 #endif  // JAK_TYPE_H

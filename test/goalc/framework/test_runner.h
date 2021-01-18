@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "inja.hpp"
 #include "goalc/compiler/Compiler.h"
@@ -26,12 +27,12 @@ struct CompilerTestRunner {
                        std::string& testCategory,
                        const std::string& test_file,
                        const std::vector<std::string>& expected,
-                       MatchParam<int> truncate = {});
+                       std::optional<int> truncate = {});
 
   void run_test(const std::string& test_category,
                 const std::string& test_file,
                 const std::vector<std::string>& expected,
-                MatchParam<int> truncate = {});
+                std::optional<int> truncate = {});
 
   void run_always_pass(const std::string& test_category, const std::string& test_file);
 
@@ -40,6 +41,7 @@ struct CompilerTestRunner {
 
 void runtime_no_kernel();
 void runtime_with_kernel();
+void runtime_with_kernel_no_debug_segment();
 
 void createDirIfAbsent(const std::string& path);
 std::string getTemplateDir(const std::string& category);

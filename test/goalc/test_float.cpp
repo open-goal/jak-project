@@ -75,3 +75,8 @@ TEST_F(FloatTests, Functions) {
       env, testCategory, "nested-float-functions.static.gc",
       {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
 }
+
+TEST_F(FloatTests, MinMax) {
+  runner.run_static_test(env, testCategory, "float-max.static.gc", {"3.70\n0\n"});
+  runner.run_static_test(env, testCategory, "float-min.static.gc", {"-1.20\n0\n"});
+}

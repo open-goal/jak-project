@@ -1,6 +1,8 @@
 #include "gtest/gtest.h"
 #include "common/type_system/TypeSystem.h"
-#include "third-party/fmt/core.h"
+#include "common/goos/Reader.h"
+#include "common/type_system/deftype.h"
+#include "common/goos/ParseHelpers.h"
 
 TEST(TypeSystem, Construction) {
   // test that we can add all builtin types without any type errors
@@ -126,7 +128,7 @@ TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
   EXPECT_TRUE(info.can_deref);
   EXPECT_TRUE(info.mem_deref);
   EXPECT_FALSE(info.sign_extend);  // it's a memory address being loaded
-  EXPECT_EQ(info.reg, RegKind::GPR_64);
+  EXPECT_EQ(info.reg, RegClass::GPR_64);
   EXPECT_EQ(info.stride, 4);
   EXPECT_EQ(info.result_type.print(), "(function string symbol int32)");
   EXPECT_EQ(info.load_size, 4);
@@ -139,7 +141,7 @@ TEST(TypeSystem, DerefInfoNoLoadInfoOrStride) {
   EXPECT_EQ(info.load_size, 8);
   EXPECT_EQ(info.stride, 8);
   EXPECT_EQ(info.sign_extend, true);
-  EXPECT_EQ(info.reg, RegKind::GPR_64);
+  EXPECT_EQ(info.reg, RegClass::GPR_64);
   EXPECT_EQ(info.result_type.print(), "int64");
 
   // test inline-array (won't work because type is dynamically sized)
@@ -194,6 +196,12 @@ TEST(TypeSystem, AddMethodAndLookupMethod) {
   EXPECT_EQ(ts.lookup_method("basic", "test-method-1").defined_in_type, "structure");
   EXPECT_EQ(ts.lookup_method("basic", "test-method-1").type.print(), "(function integer string)");
   EXPECT_EQ(ts.lookup_method("basic", "test-method-1").name, "test-method-1");
+
+  auto id = ts.lookup_method("basic", "test-method-1").id;
+  MethodInfo info;
+  EXPECT_TRUE(ts.try_lookup_method("basic", id, &info));
+  EXPECT_FALSE(ts.try_lookup_method("not-a-real-type-name", id, &info));
+  EXPECT_FALSE(ts.try_lookup_method("basic", id * 2, &info));
 }
 
 TEST(TypeSystem, NewMethod) {
@@ -314,6 +322,129 @@ TEST(TypeSystem, lca) {
                                       ts.make_pointer_typespec("string"))
                 .print(),
             "(pointer object)");
+}
+
+TEST(TypeSystem, DecompLookupsTypeOfBasic) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+
+  auto string_type = ts.make_typespec("string");
+  FieldReverseLookupInput input;
+  input.stride = 0;
+  input.base_type = string_type;
+  input.offset = -4;
+  DerefKind dk;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegClass::GPR_64;
+  input.deref = dk;
+  auto result = ts.reverse_field_lookup(input);
+
+  EXPECT_TRUE(result.success);
+  EXPECT_FALSE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_typespec("type"));
+  EXPECT_EQ(result.tokens.size(), 1);
+  EXPECT_EQ(result.tokens.at(0).name, "type");
+}
+
+TEST(TypeSystem, DecompLookupsMethod) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+
+  auto type_type = ts.make_typespec("type");
+
+  FieldReverseLookupInput input;
+  input.stride = 0;
+  input.base_type = type_type;
+  input.offset = 16;
+  DerefKind dk;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegClass::GPR_64;
+  input.deref = dk;
+  auto result = ts.reverse_field_lookup(input);
+
+  EXPECT_TRUE(result.success);
+  EXPECT_FALSE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_typespec("function"));
+  EXPECT_EQ(result.tokens.size(), 2);
+  EXPECT_EQ(result.tokens.at(0).name, "method-table");
+  EXPECT_EQ(result.tokens.at(1).idx, 0);
+
+  input.stride = 0;
+  input.base_type = type_type;
+  input.offset = 24;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegClass::GPR_64;
+  input.deref = dk;
+  result = ts.reverse_field_lookup(input);
+
+  EXPECT_TRUE(result.success);
+  EXPECT_FALSE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_typespec("function"));
+  EXPECT_EQ(result.tokens.size(), 2);
+  EXPECT_EQ(result.tokens.at(0).name, "method-table");
+  EXPECT_EQ(result.tokens.at(1).idx, 2);
+
+  input.stride = 0;
+  input.base_type = type_type;
+  input.offset = 24;
+  input.deref = std::nullopt;
+  result = ts.reverse_field_lookup(input);
+
+  EXPECT_TRUE(result.success);
+  EXPECT_TRUE(result.addr_of);
+  EXPECT_TRUE(result.result_type == ts.make_pointer_typespec("function"));
+  EXPECT_EQ(result.tokens.size(), 2);
+  EXPECT_EQ(result.tokens.at(0).name, "method-table");
+  EXPECT_EQ(result.tokens.at(1).idx, 2);
+}
+
+TEST(Deftype, deftype) {
+  TypeSystem ts;
+  ts.add_builtin_types();
+  std::string input =
+      "(deftype my-type (basic) ((f1 int64) (f2 string) (f3 int8) (f4 type :inline)))";
+  goos::Reader reader;
+  auto in = reader.read_from_string(input).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
+  auto result = parse_deftype(in, &ts);
+
+  auto& f = dynamic_cast<StructureType*>(ts.lookup_type(result.type))->fields();
+  EXPECT_EQ(f.size(), 5);
+
+  auto& tf = f.at(0);
+  EXPECT_EQ(tf.name(), "type");
+  EXPECT_EQ(tf.offset(), 0);
+  EXPECT_EQ(tf.type().print(), "type");
+  EXPECT_EQ(tf.is_inline(), false);
+
+  auto& f1 = f.at(1);
+  EXPECT_EQ(f1.name(), "f1");
+  EXPECT_EQ(f1.offset(), 8);
+  EXPECT_EQ(f1.type().print(), "int64");
+  EXPECT_EQ(f1.is_inline(), false);
+
+  auto& f2 = f.at(2);
+  EXPECT_EQ(f2.name(), "f2");
+  EXPECT_EQ(f2.offset(), 16);
+  EXPECT_EQ(f2.type().print(), "string");
+  EXPECT_EQ(f2.is_inline(), false);
+
+  auto& f3 = f.at(3);
+  EXPECT_EQ(f3.name(), "f3");
+  EXPECT_EQ(f3.offset(), 20);
+  EXPECT_EQ(f3.type().print(), "int8");
+  EXPECT_EQ(f3.is_inline(), false);
+
+  auto& f4 = f.at(4);
+  EXPECT_EQ(f4.name(), "f4");
+  EXPECT_EQ(f4.offset(), 32);
+  EXPECT_EQ(f4.type().print(), "type");
+  EXPECT_EQ(f4.is_inline(), true);
 }
 
 // TODO - a big test to make sure all the builtin types are what we expect.

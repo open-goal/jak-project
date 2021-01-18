@@ -1,10 +1,14 @@
 #include <cassert>
 #include <vector>
 #include "Function.h"
+#include "common/log/log.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "TypeInspector.h"
+#include "decompiler/IR/IR.h"
 
+namespace decompiler {
 namespace {
 std::vector<Register> gpr_backups = {make_gpr(Reg::GP), make_gpr(Reg::S5), make_gpr(Reg::S4),
                                      make_gpr(Reg::S3), make_gpr(Reg::S2), make_gpr(Reg::S1),
@@ -67,8 +71,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing stack pointer on the stack is done by some ASM kernel functions
       if (instr.kind == InstructionKind::SW && instr.get_src(0).get_reg() == make_gpr(Reg::SP)) {
         printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
-               guessed_name.to_string().c_str(), instr.to_string(file).c_str());
-        warnings += "Flagged as ASM function because of " + instr.to_string(file) + "\n";
+               guessed_name.to_string().c_str(), instr.to_string(file.labels).c_str());
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
         suspected_asm = true;
         return;
       }
@@ -89,9 +93,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
       // support
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
-        printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
-               guessed_name.to_string().c_str(), instr.to_string(file).c_str());
-        warnings += "Flagged as ASM function because of " + instr.to_string(file) + "\n";
+        lg::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
+                 guessed_name.to_string(), instr.to_string(file.labels));
+        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
         suspected_asm = true;
         return;
       }
@@ -131,7 +135,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             "[Warning] %s Stack Zeroing Detected in Function::analyze_prologue, prologue may be "
             "wrong\n",
             guessed_name.to_string().c_str());
-        warnings += "Stack Zeroing Detected, prologue may be wrong\n";
+        warnings += ";; Stack Zeroing Detected, prologue may be wrong\n";
         expect_nothing_after_gprs = true;
         break;
       }
@@ -143,7 +147,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         printf(
             "[Warning] %s Suspected ASM function because register $a0 was stored on the stack!\n",
             guessed_name.to_string().c_str());
-        warnings += "a0 on stack detected, flagging as asm\n";
+        warnings += ";; a0 on stack detected, flagging as asm\n";
         return;
       }
 
@@ -161,9 +165,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           suspected_asm = true;
           printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
                  guessed_name.to_string().c_str(),
-                 instructions.at(idx + i).to_string(file).c_str());
-          warnings += "Suspected asm function due to stack store: " +
-                      instructions.at(idx + i).to_string(file) + "\n";
+                 instructions.at(idx + i).to_string(file.labels).c_str());
+          warnings += ";; Suspected asm function due to stack store: " +
+                      instructions.at(idx + i).to_string(file.labels) + "\n";
           return;
         }
       }
@@ -191,9 +195,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
             suspected_asm = true;
             printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
                    guessed_name.to_string().c_str(),
-                   instructions.at(idx + i).to_string(file).c_str());
-            warnings += "Suspected asm function due to stack store: " +
-                        instructions.at(idx + i).to_string(file) + "\n";
+                   instructions.at(idx + i).to_string(file.labels).c_str());
+            warnings += ";; Suspected asm function due to stack store: " +
+                        instructions.at(idx + i).to_string(file.labels) + "\n";
             return;
           }
         }
@@ -353,7 +357,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
           "[Warning] %s Double Return Epilogue Hack!  This is probably an ASM function in "
           "disguise\n",
           guessed_name.to_string().c_str());
-      warnings += "Double Return Epilogue - this is probably an ASM function\n";
+      warnings += ";; Double Return Epilogue - this is probably an ASM function\n";
     }
     // delay slot should be daddiu sp, sp, offset
     assert(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),
@@ -473,7 +477,8 @@ void Function::find_global_function_defs(LinkedObjectFile& file, DecompilerTypeS
  * Look through this function to find calls to method-set! which define methods.
  * Updates the guessed_name of the function and updates type_info.
  */
-void Function::find_method_defs(LinkedObjectFile& file) {
+void Function::find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts) {
+  (void)dts;
   int state = 0;
   int label_id = -1;
   int method_id = -1;
@@ -545,6 +550,11 @@ void Function::find_method_defs(LinkedObjectFile& file) {
         auto& func = file.get_function_at_label(label_id);
         assert(func.guessed_name.empty());
         func.guessed_name.set_as_method(type_name, method_id);
+        func.method_of_type = type_name;
+        if (method_id == GOAL_INSPECT_METHOD) {
+          func.is_inspect_method = true;
+        }
+
         state = 0;
         continue;
       }
@@ -552,7 +562,105 @@ void Function::find_method_defs(LinkedObjectFile& file) {
   }
 }
 
-void Function::add_basic_op(std::shared_ptr<IR> op, int start_instr, int end_instr) {
+void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts) {
+  int state = 0;
+  Register temp_reg;
+  std::string type_name;
+  std::string parent_type;
+  int label_idx = -1;
+
+  for (const auto& instr : instructions) {
+    // look for lw xx, type(s7)
+    if (instr.kind == InstructionKind::LW && instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
+        instr.get_src(0).get_sym() == "type" && instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+      state = 1;
+      temp_reg = instr.get_dst(0).get_reg();
+      continue;
+    }
+
+    if (state == 1) {
+      // look for lwu t9, 16, v1
+      if (instr.kind == InstructionKind::LWU && instr.get_dst(0).get_reg() == make_gpr(Reg::T9) &&
+          instr.get_src(0).get_imm() == 16 && instr.get_src(1).get_reg() == temp_reg) {
+        state = 2;
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 2) {
+      // look for daddiu a0, s7, name-of-type
+      if (instr.kind == InstructionKind::DADDIU &&
+          instr.get_dst(0).get_reg() == make_gpr(Reg::A0) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::S7) && instr.get_src(1).is_sym()) {
+        state = 3;
+        type_name = instr.get_src(1).get_sym();
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 3) {
+      // look for lw a1, parent-type(s7)
+      if (instr.kind == InstructionKind::LW && instr.get_dst(0).get_reg() == make_gpr(Reg::A1) &&
+          instr.get_src(0).kind == InstructionAtom::IMM_SYM &&
+          instr.get_src(1).get_reg() == make_gpr(Reg::S7)) {
+        state = 4;
+        parent_type = instr.get_src(0).get_sym();
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 4) {
+      // look for ld a2, LXX(fp)
+      if (instr.kind == InstructionKind::LD && instr.get_dst(0).get_reg() == make_gpr(Reg::A2) &&
+          instr.get_src(0).is_label() && instr.get_src(1).get_reg() == make_gpr(Reg::FP)) {
+        state = 5;
+        label_idx = instr.get_src(0).get_label();
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 5) {
+      if (instr.kind == InstructionKind::JALR && instr.get_dst(0).get_reg() == make_gpr(Reg::RA) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::T9)) {
+        state = 6;
+        continue;
+      } else {
+        state = 0;
+      }
+    }
+
+    if (state == 6) {
+      // look for sll v0, ra, 0
+      if (instr.kind == InstructionKind::SLL && instr.get_dst(0).get_reg() == make_gpr(Reg::V0) &&
+          instr.get_src(0).get_reg() == make_gpr(Reg::RA) && instr.get_src(1).get_imm() == 0) {
+        // done!
+        //        fmt::print("Got type {} parent {}\n", type_name, parent_type);
+        dts.add_type_parent(type_name, parent_type);
+        DecompilerLabel flag_label = file.labels.at(label_idx);
+        u64 word = file.read_data_word(flag_label);
+        flag_label.offset += 4;
+        u64 word2 = file.read_data_word(flag_label);
+        word |= (word2 << 32);
+        dts.add_type_flags(type_name, word);
+        //        fmt::print("Flags are 0x{:x}\n", word);
+        state = 0;
+        continue;
+      }
+    } else {
+      state = 0;
+    }
+  }
+}
+
+void Function::add_basic_op(std::shared_ptr<IR_Atomic> op, int start_instr, int end_instr) {
   op->is_basic_op = true;
   assert(end_instr > start_instr);
 
@@ -572,8 +680,21 @@ bool Function::instr_starts_basic_op(int idx) {
   return false;
 }
 
-std::shared_ptr<IR> Function::get_basic_op_at_instr(int idx) {
+std::shared_ptr<IR_Atomic> Function::get_basic_op_at_instr(int idx) {
   return basic_ops.at(instruction_to_basic_op.at(idx));
+}
+
+bool Function::instr_starts_atomic_op(int idx) {
+  auto op = ir2.atomic_ops->instruction_to_atomic_op.find(idx);
+  if (op != ir2.atomic_ops->instruction_to_atomic_op.end()) {
+    auto start_instr = ir2.atomic_ops->atomic_op_to_instruction.at(op->second);
+    return start_instr == idx;
+  }
+  return false;
+}
+
+const AtomicOp& Function::get_atomic_op_at_instr(int idx) {
+  return *ir2.atomic_ops->ops.at(ir2.atomic_ops->instruction_to_atomic_op.at(idx));
 }
 
 int Function::get_basic_op_count() {
@@ -589,3 +710,53 @@ int Function::get_failed_basic_op_count() {
   }
   return count;
 }
+
+int Function::get_reginfo_basic_op_count() {
+  int count = 0;
+  for (auto& x : basic_ops) {
+    if (x->reg_info_set) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/*!
+ * Topological sort of basic blocks.
+ * Returns a valid ordering + a list of blocks that you can't reach and therefore
+ * aren't in the ordering.
+ */
+BlockTopologicalSort Function::bb_topo_sort() {
+  BlockTopologicalSort result;
+  std::unordered_set<int> visit_set;
+  std::vector<int> visit_queue;
+  if (basic_blocks.empty()) {
+    assert(false);
+  }
+
+  visit_queue.push_back(0);
+
+  while (!visit_queue.empty()) {
+    // let's visit the most recently added:
+    auto to_visit = visit_queue.back();
+    visit_queue.pop_back();
+    result.vist_order.push_back(to_visit);
+
+    auto& block = basic_blocks.at(to_visit);
+    for (auto next : {block.succ_branch, block.succ_ft}) {
+      if (next != -1 && visit_set.find(next) == visit_set.end()) {
+        visit_set.insert(next);
+        visit_queue.push_back(next);
+      }
+    }
+  }
+
+  for (int i = 0; i < int(basic_blocks.size()); i++) {
+    if (visit_set.find(i) == visit_set.end()) {
+      result.unreachable.insert(i);
+    }
+  }
+
+  return result;
+}
+}  // namespace decompiler

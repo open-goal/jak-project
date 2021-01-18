@@ -14,19 +14,11 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "LinkedWord.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
-#include "common/goos/PrettyPrinter.h"
+#include "common/common_types.h"
 
-/*!
- * A label to a location in this object file.
- * Doesn't have to be word aligned.
- */
-struct Label {
-  std::string name;
-  int target_segment;
-  int offset;  // in bytes
-};
-
+namespace decompiler {
 /*!
  * An object file's data with linking information included.
  */
@@ -59,8 +51,20 @@ class LinkedObjectFile {
   void process_fp_relative_links();
   std::string print_scripts();
   std::string print_disassembly();
+  std::string print_type_analysis_debug();
   bool has_any_functions();
   void append_word_to_string(std::string& dest, const LinkedWord& word) const;
+  std::string to_asm_json(const std::string& obj_file_name);
+  std::string print_function_disassembly(Function& func,
+                                         int seg,
+                                         bool write_hex,
+                                         const std::string& extra_name);
+  std::string print_asm_function_disassembly(const std::string& my_name);
+
+  u32 read_data_word(const DecompilerLabel& label);
+  std::string get_goal_string_by_label(const DecompilerLabel& label) const;
+  std::string get_goal_string(int seg, int word_idx, bool with_quotes = true) const;
+  bool is_string(int seg, int byte_idx) const;
 
   struct Stats {
     uint32_t total_code_bytes = 0;
@@ -121,16 +125,15 @@ class LinkedObjectFile {
   std::vector<std::vector<LinkedWord>> words_by_seg;
   std::vector<uint32_t> offset_of_data_zone_by_seg;
   std::vector<std::vector<Function>> functions_by_seg;
-  std::vector<Label> labels;
+  std::vector<DecompilerLabel> labels;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);
   goos::Object to_form_script_object(int seg, int byte_idx, std::vector<bool>& seen);
   bool is_empty_list(int seg, int byte_idx);
-  bool is_string(int seg, int byte_idx);
-  std::string get_goal_string(int seg, int word_idx);
 
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
+}  // namespace decompiler
 
 #endif  // NEXT_LINKEDOBJECTFILE_H

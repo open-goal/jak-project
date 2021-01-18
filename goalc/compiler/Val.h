@@ -11,7 +11,7 @@
 #include <utility>
 #include <string>
 #include <stdexcept>
-#include "third-party/fmt/core.h"
+#include <optional>
 #include "common/type_system/TypeSystem.h"
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
@@ -40,12 +40,13 @@ class Val {
     throw std::runtime_error("to_reg called on invalid Val: " + print());
   }
   virtual RegVal* to_gpr(Env* fe);
-  virtual RegVal* to_xmm(Env* fe);
+  virtual RegVal* to_fpr(Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
   bool settable() const { return m_is_settable; }
   void mark_as_settable() { m_is_settable = true; }
+  virtual ~Val() = default;
 
  protected:
   TypeSpec m_ts;
@@ -73,10 +74,13 @@ class RegVal : public Val {
   std::string print() const override { return m_ireg.to_string(); };
   RegVal* to_reg(Env* fe) override;
   RegVal* to_gpr(Env* fe) override;
-  RegVal* to_xmm(Env* fe) override;
+  RegVal* to_fpr(Env* fe) override;
+  void set_rlet_constraint(emitter::Register reg);
+  const std::optional<emitter::Register>& rlet_constraint() const;
 
  protected:
   IRegister m_ireg;
+  std::optional<emitter::Register> m_rlet_constraint = std::nullopt;
 };
 
 /*!
@@ -86,6 +90,7 @@ class RegVal : public Val {
 class SymbolVal : public Val {
  public:
   SymbolVal(std::string name, TypeSpec ts) : Val(std::move(ts)), m_name(std::move(name)) {
+    // this is for define, which looks at the SymbolVal and not the SymbolValueVal.
     mark_as_settable();
   }
   const std::string& name() const { return m_name; }
@@ -99,10 +104,14 @@ class SymbolVal : public Val {
 class SymbolValueVal : public Val {
  public:
   SymbolValueVal(const SymbolVal* sym, TypeSpec ts, bool sext)
-      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {}
+      : Val(std::move(ts)), m_sym(sym), m_sext(sext) {
+    // this is for set, which looks at the Symbol's Value.
+    mark_as_settable();
+  }
   const std::string& name() const { return m_sym->name(); }
   std::string print() const override { return "[<" + name() + ">]"; }
   RegVal* to_reg(Env* fe) override;
+  const SymbolVal* sym() const { return m_sym; }
 
  protected:
   const SymbolVal* m_sym = nullptr;
@@ -148,9 +157,26 @@ struct MemLoadInfo {
     reg = di.reg;
   }
 
-  RegKind reg = RegKind::INVALID;
+  RegClass reg = RegClass::INVALID;
   bool sign_extend = false;
   int size = -1;
+};
+
+/*!
+ * A spot on the stack.
+ */
+class StackVarAddrVal : public Val {
+ public:
+  StackVarAddrVal(TypeSpec ts, int slot, int slot_count)
+      : Val(std::move(ts)), m_slot(slot), m_slot_count(slot_count) {}
+  int slot() const { return m_slot; }
+  int slot_count() const { return m_slot_count; }
+  std::string print() const override { return "stack-" + std::to_string(m_slot); }
+
+  RegVal* to_reg(Env* fe) override;
+
+ private:
+  int m_slot, m_slot_count;
 };
 
 class MemoryOffsetConstantVal : public Val {
@@ -175,15 +201,13 @@ class MemoryOffsetVal : public Val {
   Val* offset = nullptr;
 };
 
-// MemOffConstant
-// MemOffVar
-
 class MemoryDerefVal : public Val {
  public:
   MemoryDerefVal(TypeSpec ts, Val* _base, MemLoadInfo _info)
       : Val(std::move(ts)), base(_base), info(_info) {}
   std::string print() const override { return "[" + base->print() + "]"; }
   RegVal* to_reg(Env* fe) override;
+  RegVal* to_fpr(Env* fe) override;
   Val* base = nullptr;
   MemLoadInfo info;
 };
@@ -225,8 +249,29 @@ class FloatConstantVal : public Val {
  protected:
   StaticFloat* m_value = nullptr;
 };
-// IntegerConstant
-// FloatConstant
-// Bitfield
+
+class BitFieldVal : public Val {
+ public:
+  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend)
+      : Val(std::move(ts)),
+        m_parent(parent),
+        m_offset(offset),
+        m_size(size),
+        m_sign_extend(sign_extend) {
+    m_is_settable = parent->settable();
+  }
+  std::string print() const override;
+  RegVal* to_reg(Env* env) override;
+  int offset() const { return m_offset; }
+  int size() const { return m_size; }
+  bool sext() const { return m_sign_extend; }
+  Val* parent() { return m_parent; }
+
+ protected:
+  Val* m_parent = nullptr;
+  int m_offset = -1;
+  int m_size = -1;
+  bool m_sign_extend = false;
+};
 
 #endif  // JAK_VAL_H

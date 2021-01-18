@@ -2,16 +2,13 @@
 
 /*!
  * @file Interpreter.h
- * The GOOS Interpreter
+ * The GOOS Interpreter and implementation of special and "built-in forms"
  */
 
-#ifndef JAK1_INTERPRETER_H
-#define JAK1_INTERPRETER_H
-
 #include <memory>
+#include <optional>
 #include "Object.h"
 #include "Reader.h"
-#include "common/util/MatchParam.h"
 
 namespace goos {
 class Interpreter {
@@ -55,8 +52,8 @@ class Interpreter {
   void vararg_check(
       const Object& form,
       const Arguments& args,
-      const std::vector<MatchParam<ObjectType>>& unnamed,
-      const std::unordered_map<std::string, std::pair<bool, MatchParam<ObjectType>>>& named);
+      const std::vector<std::optional<ObjectType>>& unnamed,
+      const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named);
 
   Object eval_pair(const Object& o, const std::shared_ptr<EnvironmentObject>& env);
   void eval_args(Arguments* args, const std::shared_ptr<EnvironmentObject>& env);
@@ -237,5 +234,3 @@ class Interpreter {
   std::unordered_map<std::string, ObjectType> string_to_type;
 };
 }  // namespace goos
-
-#endif  // JAK1_INTERPRETER_H

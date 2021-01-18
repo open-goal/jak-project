@@ -8,17 +8,18 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include <cassert>
 
+namespace decompiler {
 /*!
  * Convert atom to a string for disassembly.
  */
-std::string InstructionAtom::to_string(const LinkedObjectFile& file) const {
+std::string InstructionAtom::to_string(const std::vector<DecompilerLabel>& labels) const {
   switch (kind) {
     case REGISTER:
       return reg.to_string();
     case IMM:
       return std::to_string(imm);
     case LABEL:
-      return file.get_label_name(label_id);
+      return labels.at(label_id).name;
     case VU_ACC:
       return "acc";
     case VU_Q:
@@ -115,6 +116,25 @@ bool InstructionAtom::is_link_or_label() const {
   return kind == IMM_SYM || kind == LABEL;
 }
 
+bool InstructionAtom::operator==(const InstructionAtom& other) const {
+  if (kind != other.kind) {
+    return false;
+  }
+  switch (kind) {
+    case REGISTER:
+      return reg == other.reg;
+    case IMM:
+      return imm == other.imm;
+    case LABEL:
+      return label_id == other.label_id;
+    case VU_ACC:
+    case VU_Q:
+      return true;
+    default:
+      assert(false);
+  }
+}
+
 /*!
  * Convert just the name of the opcode to a string, omitting src/dst, but including
  * suffixes (interlock, broadcasts and destination)
@@ -169,7 +189,7 @@ std::string Instruction::op_name_to_string() const {
 /*!
  * Convert entire instruction to a string.
  */
-std::string Instruction::to_string(const LinkedObjectFile& file) const {
+std::string Instruction::to_string(const std::vector<DecompilerLabel>& labels) const {
   auto& info = gOpcodeInfo[(int)kind];
   auto result = op_name_to_string();
 
@@ -178,33 +198,33 @@ std::string Instruction::to_string(const LinkedObjectFile& file) const {
     assert(n_dst == 0);
     assert(n_src == 3);
     result += " ";
-    result += src[0].to_string(file);
+    result += src[0].to_string(labels);
     result += ", ";
-    result += src[1].to_string(file);
+    result += src[1].to_string(labels);
     result += "(";
-    result += src[2].to_string(file);
+    result += src[2].to_string(labels);
     result += ")";
   } else if (info.is_load) {
     assert(n_dst == 1);
     assert(n_src == 2);
     result += " ";
-    result += dst[0].to_string(file);
+    result += dst[0].to_string(labels);
     result += ", ";
-    result += src[0].to_string(file);
+    result += src[0].to_string(labels);
     result += "(";
-    result += src[1].to_string(file);
+    result += src[1].to_string(labels);
     result += ")";
   } else {
     // for instructions that aren't a store or load, the dest/sources are comma separated.
     bool end_comma = false;
 
     for (uint8_t i = 0; i < n_dst; i++) {
-      result += " " + dst[i].to_string(file) + ",";
+      result += " " + dst[i].to_string(labels) + ",";
       end_comma = true;
     }
 
     for (uint8_t i = 0; i < n_src; i++) {
-      result += " " + src[i].to_string(file) + ",";
+      result += " " + src[i].to_string(labels) + ",";
       end_comma = true;
     }
 
@@ -312,3 +332,25 @@ int Instruction::get_label_target() const {
   }
   return result;
 }
+
+bool Instruction::operator==(const Instruction& other) const {
+  if (kind != other.kind || n_src != other.n_src || n_dst != other.n_dst ||
+      cop2_dest != other.cop2_dest || cop2_bc != other.cop2_bc || il != other.il) {
+    return false;
+  }
+
+  for (int i = 0; i < n_dst; i++) {
+    if (dst[i] != other.dst[i]) {
+      return false;
+    }
+  }
+
+  for (int i = 0; i < n_src; i++) {
+    if (src[i] != other.src[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}  // namespace decompiler

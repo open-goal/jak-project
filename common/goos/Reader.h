@@ -11,9 +11,6 @@
  * launching the compiler or the compiler test.
  */
 
-#ifndef JAK1_READER_H
-#define JAK1_READER_H
-
 #include <memory>
 #include <cassert>
 #include <utility>
@@ -101,6 +98,6 @@ class Reader {
 
   std::unordered_map<std::string, std::string> reader_macros;
 };
-}  // namespace goos
 
-#endif  // JAK1_READER_H
+std::string get_readable_string(const char* in);
+}  // namespace goos
