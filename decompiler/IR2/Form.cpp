@@ -383,7 +383,7 @@ void CondWithElseElement::apply_form(const std::function<void(Form*)>& f) {
 // EmptyElement
 /////////////////////////////
 
-goos::Object EmptyElement::to_form(const Env& env) const {
+goos::Object EmptyElement::to_form(const Env&) const {
   return pretty_print::build_list("empty");
 }
 

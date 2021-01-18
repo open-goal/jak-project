@@ -43,6 +43,7 @@ class DecompilerTypeSystem {
   int get_format_arg_count(const std::string& str) const;
   int get_format_arg_count(const TP_Type& type) const;
   struct {
+    bool locked = false;
     bool allow_pair;
     std::string current_method_type;
     void reset() {

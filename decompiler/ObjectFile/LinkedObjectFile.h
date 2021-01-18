@@ -62,6 +62,7 @@ class LinkedObjectFile {
   std::string print_asm_function_disassembly(const std::string& my_name);
 
   u32 read_data_word(const DecompilerLabel& label);
+  const DecompilerLabel& get_label_by_name(const std::string& name) const;
   std::string get_goal_string_by_label(const DecompilerLabel& label) const;
   std::string get_goal_string(int seg, int word_idx, bool with_quotes = true) const;
   bool is_string(int seg, int byte_idx) const;

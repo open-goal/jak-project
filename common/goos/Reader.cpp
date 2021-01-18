@@ -159,13 +159,13 @@ Object Reader::read_from_stdin(const std::string& prompt_name) {
 /*!
  * Read a string.
  */
-Object Reader::read_from_string(const std::string& str) {
+Object Reader::read_from_string(const std::string& str, bool add_top_level) {
   // create text fragment and add to the DB
   auto textFrag = std::make_shared<ProgramString>(str);
   db.insert(textFrag);
 
   // perform read
-  auto result = internal_read(textFrag);
+  auto result = internal_read(textFrag, add_top_level);
   db.link(result, textFrag, 0);
   return result;
 }
@@ -185,7 +185,7 @@ Object Reader::read_from_file(const std::vector<std::string>& file_path) {
 /*!
  * Common read for a SourceText
  */
-Object Reader::internal_read(std::shared_ptr<SourceText> text) {
+Object Reader::internal_read(std::shared_ptr<SourceText> text, bool add_top_level) {
   // first create stream
   TextStream ts(text);
 
@@ -194,7 +194,11 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text) {
 
   // read list!
   auto objs = read_list(ts, false);
-  return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
+  if (add_top_level) {
+    return PairObject::make_new(SymbolObject::make_new(symbolTable, "top-level"), objs);
+  } else {
+    return objs;
+  }
 }
 
 /*!

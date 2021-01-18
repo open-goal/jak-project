@@ -1065,4 +1065,13 @@ std::string LinkedObjectFile::get_goal_string_by_label(const DecompilerLabel& la
   assert(0 == (label.offset % 4));
   return get_goal_string(label.target_segment, (label.offset / 4) - 1, false);
 }
+
+const DecompilerLabel& LinkedObjectFile::get_label_by_name(const std::string& name) const {
+  for (auto& label : labels) {
+    if (label.name == name) {
+      return label;
+    }
+  }
+  throw std::runtime_error("Can't find label " + name);
+}
 }  // namespace decompiler

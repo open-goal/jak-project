@@ -74,6 +74,7 @@ class VarMapSSA {
   bool same(const VarSSA& var_a, const VarSSA& var_b) const;
   int var_id(const VarSSA& var);
   void remap_reg(Register reg, const std::unordered_map<int, int>& remap);
+  void debug_print_map() const;
 
  private:
   int get_next_var_id(Register reg);

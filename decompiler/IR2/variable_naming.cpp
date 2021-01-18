@@ -60,19 +60,49 @@ int VarMapSSA::get_next_var_id(Register reg) {
  */
 void VarMapSSA::merge(const VarSSA& var_a, const VarSSA& var_b) {
   auto& a = m_entries.at(var_a.m_entry_id);
-  auto& b = m_entries.at(var_b.m_entry_id);
+  auto b = m_entries.at(var_b.m_entry_id);
   assert(a.reg == b.reg);
   if (b.var_id == 0) {
+    //    fmt::print("Merge {} <- {}\n", to_string(var_b), to_string(var_a));
+
+    for (auto& entry : m_entries) {
+      if (entry.var_id == a.var_id && entry.reg == a.reg) {
+        entry.var_id = b.var_id;
+      }
+    }
     a.var_id = b.var_id;
   } else {
+    //    fmt::print("Merge {} <- {}\n", to_string(var_a), to_string(var_b));
+
+    for (auto& entry : m_entries) {
+      if (entry.var_id == b.var_id && entry.reg == b.reg) {
+        entry.var_id = a.var_id;
+      }
+    }
     b.var_id = a.var_id;
   }
 }
 
+/*!
+ * Make all Bs A.
+ */
 void VarMapSSA::merge_to_first(const VarSSA& var_a, const VarSSA& var_b) {
   auto& a = m_entries.at(var_a.m_entry_id);
-  auto& b = m_entries.at(var_b.m_entry_id);
+  auto b = m_entries.at(var_b.m_entry_id);
+
+  //  fmt::print("Merge-to-first {} <- {}\n", to_string(var_a), to_string(var_b));
   assert(a.reg == b.reg);
+
+  //  for (auto& entry : m_entries) {
+  for (size_t i = 0; i < m_entries.size(); i++) {
+    auto& entry = m_entries.at(i);
+    if (entry.var_id == b.var_id && entry.reg == b.reg) {
+      //      fmt::print("remap extra {} var_id from {} to {}\n", i, entry.var_id, a.var_id);
+      entry.var_id = a.var_id;
+    } else {
+      //      fmt::print("no remap at {} (prev is {} {})\n", i, entry.reg.to_charp(), entry.var_id);
+    }
+  }
   b.var_id = a.var_id;
 }
 
@@ -114,6 +144,12 @@ void VarMapSSA::remap_reg(Register reg, const std::unordered_map<int, int>& rema
         entry.var_id = kv->second;
       }
     }
+  }
+}
+
+void VarMapSSA::debug_print_map() const {
+  for (auto& entry : m_entries) {
+    fmt::print("[{:02d}] {} {}\n", entry.entry_id, entry.reg.to_charp(), entry.var_id);
   }
 }
 
@@ -177,6 +213,7 @@ SSA::Phi& SSA::get_phi(int block, Register dest_reg) {
   auto& phi_map = blocks.at(block).phis;
   auto kv = phi_map.find(dest_reg);
   if (kv == phi_map.end()) {
+    //    printf("Allocate new get_phi for %s B%d\n", dest_reg.to_charp(), block);
     auto dest_var = map.allocate_init_phi(dest_reg, block);
     phi_map.insert(std::make_pair(dest_reg, dest_var));
   }
@@ -385,7 +422,18 @@ void SSA::merge_all_phis() {
 }
 
 void SSA::remap() {
-  std::unordered_map<Register, std::set<int>, Register::hash> used_vars;
+  // this keeps the order of variable assignments in the instruction order, not var_id order.
+  struct VarIdRecord {
+    std::unordered_set<int> set;
+    std::vector<int> order;
+    void insert(int x) {
+      if (set.find(x) == set.end()) {
+        set.insert(x);
+        order.push_back(x);
+      }
+    }
+  };
+  std::unordered_map<Register, VarIdRecord, Register::hash> used_vars;
   for (auto& block : blocks) {
     assert(block.phis.empty());
     for (auto& instr : block.ins) {
@@ -401,7 +449,7 @@ void SSA::remap() {
   for (auto& reg_vars : used_vars) {
     std::unordered_map<int, int> var_remap;
     int i = 0;
-    for (auto var_id : reg_vars.second) {
+    for (auto var_id : reg_vars.second.order) {
       var_remap[var_id] = i++;
     }
     map.remap_reg(reg_vars.first, var_remap);
@@ -547,9 +595,16 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   }
 
   // Merge phis to return to executable code.
+  if (debug_prints) {
+    ssa.map.debug_print_map();
+  }
+
   ssa.merge_all_phis();
   if (debug_prints) {
     fmt::print("{}", ssa.print());
+  }
+  if (debug_prints) {
+    ssa.map.debug_print_map();
   }
 
   // merge same vars (decided this made things worse)
