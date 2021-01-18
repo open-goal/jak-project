@@ -4,7 +4,7 @@
 
 ;; GOAL Runtime assembly functions. These exist only in the x86 version of GOAL.
 
-SECTION .TEXT
+SECTION .text
 
 ;; this function pushes all 8 OpenGOAL registers into a stack array.
 ;; then it calls the function pointed to by rax with a pointer to this array.
