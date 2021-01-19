@@ -217,7 +217,6 @@ void Deci2Server::run() {
     printf("[DECI2] Warning: no handler for this message, ignoring...\n");
     unlock();
     return;
-    //    throw std::runtime_error("no handler!");
   }
 
   auto& driver = d2_drivers[handler];

@@ -1,11 +1,10 @@
-add_subdirectory(listener)
-
 add_library(compiler
         SHARED
         emitter/CodeTester.cpp
         emitter/ObjectFileData.cpp
         emitter/ObjectGenerator.cpp
         emitter/Register.cpp
+        debugger/disassemble.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp
@@ -19,23 +18,33 @@ add_library(compiler
         compiler/compilation/Macro.cpp
         compiler/compilation/Math.cpp
         compiler/compilation/Define.cpp
+        compiler/compilation/Debug.cpp
         compiler/compilation/Function.cpp
         compiler/compilation/ControlFlow.cpp
         compiler/compilation/Type.cpp
+        compiler/compilation/Static.cpp
         compiler/Util.cpp
-        logger/Logger.cpp
+        data_compiler/game_text.cpp
+        data_compiler/DataObjectGenerator.cpp
+        data_compiler/game_count.cpp
+        debugger/Debugger.cpp
+        debugger/DebugInfo.cpp
+        listener/Listener.cpp
+        listener/MemoryMap.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
-        compiler/Compiler.cpp)
+        regalloc/allocate_common.cpp
+        compiler/Compiler.cpp
+        compiler/compilation/Asm.cpp)
 
-add_executable(goalc main.cpp)
+target_link_libraries(compiler common Zydis)
 
 IF (WIN32)
-    target_link_libraries(compiler goos type_system listener mman common_util)
-
-ELSE ()
-    target_link_libraries(compiler goos type_system listener common_util)
+    target_link_libraries(compiler mman)
 ENDIF ()
 
-target_link_libraries(goalc goos compiler type_system)
+add_executable(goalc main.cpp)
+target_link_libraries(goalc common Zydis compiler)
+
+

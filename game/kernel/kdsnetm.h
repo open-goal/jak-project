@@ -12,20 +12,10 @@
 #include "Ptr.h"
 #include "common/listener_common.h"
 
-struct GoalMessageHeader {
-  Deci2Header deci2_hdr;
-  u16 msg_kind;
-  u16 u6;
-  u32 msg_size;
-  u64 msg_id;
-};
-
-constexpr u16 DECI2_PROTOCOL = 0xe042;
-
 struct GoalProtoBlock {
   s32 socket = 0;
-  GoalMessageHeader* send_buffer = nullptr;
-  GoalMessageHeader* receive_buffer = nullptr;
+  ListenerMessageHeader* send_buffer = nullptr;
+  ListenerMessageHeader* receive_buffer = nullptr;
   u8* send_ptr = nullptr;
   s32 send_remaining = 0;
   s32 send_status =
@@ -78,7 +68,7 @@ void GoalProtoHandler(int event, int param, void* data);
  * DONE, original version used an uncached address and had a FlushCache call, which were both
  * removed
  */
-s32 SendFromBufferD(s32 p1, u64 p2, char* data, s32 size);
+s32 SendFromBufferD(s32 p1, u64 msg_id, char* data, s32 size);
 
 /*!
  * Print GOAL Protocol status

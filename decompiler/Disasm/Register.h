@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 
+namespace decompiler {
 // Namespace for register name constants
 namespace Reg {
 enum RegisterKind {
@@ -120,6 +121,9 @@ enum Vi {
   CMSAR1 = 31,
   MAX_COP2 = 32
 };
+
+const extern bool allowed_local_gprs[Reg::MAX_GPR];
+
 }  // namespace Reg
 
 // Representation of a register.  Uses a 32-bit integer internally.
@@ -127,6 +131,7 @@ class Register {
  public:
   Register() = default;
   Register(Reg::RegisterKind kind, uint32_t num);
+  Register(const std::string& name);
   const char* to_charp() const;
   std::string to_string() const;
   Reg::RegisterKind get_kind() const;
@@ -139,9 +144,14 @@ class Register {
 
   bool operator==(const Register& other) const;
   bool operator!=(const Register& other) const;
+  bool operator<(const Register& other) { return id < other.id; }
+
+  struct hash {
+    auto operator()(const Register& x) const { return std::hash<uint16_t>()(x.id); }
+  };
 
  private:
   uint16_t id = -1;
 };
-
+}  // namespace decompiler
 #endif  // NEXT_REGISTER_H

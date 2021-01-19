@@ -9,6 +9,7 @@
 #define JAK_KSCHEME_H
 
 #include "common/common_types.h"
+#include "common/goal_constants.h"
 #include "kmachine.h"
 #include "kmalloc.h"
 
@@ -19,9 +20,6 @@ extern Ptr<u32> s7;
 extern Ptr<u32> SymbolTable2;
 extern Ptr<u32> LastSymbol;
 
-constexpr s32 GOAL_MAX_SYMBOLS = 0x2000;
-
-constexpr s32 SYM_INFO_OFFSET = 0xff34;
 constexpr u32 EMPTY_HASH = 0x8454B6E6;
 constexpr u32 OFFSET_MASK = 7;
 constexpr u32 CRC_POLY = 0x04c11db7;
@@ -91,6 +89,7 @@ u64 inspect_pair(u32 obj);
 u64 inspect_binteger(u64 obj);
 s32 InitHeapAndSymbol();
 u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset);
+u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset);
 void print_symbol_table();
 u64 make_string_from_c(const char* c_str);
 Ptr<Symbol> find_symbol_from_c(const char* name);
@@ -102,7 +101,9 @@ u64 load(u32 file_name_in, u32 heap_in);
 u64 loado(u32 file_name_in, u32 heap_in);
 u64 unload(u32 name);
 Ptr<Function> make_function_symbol_from_c(const char* name, void* f);
+Ptr<Function> make_stack_arg_function_symbol_from_c(const char* name, void* f);
 u64 call_goal_function_by_name(const char* name);
+u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32 a2);
 Ptr<Type> alloc_and_init_type(Ptr<Symbol> sym, u32 method_count);
 Ptr<Symbol> set_fixed_symbol(u32 offset, const char* name, u32 value);
 

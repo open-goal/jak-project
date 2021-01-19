@@ -3,11 +3,14 @@
  * Compiler implementation for forms which actually control the compiler.
  */
 
+#include <filesystem>
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "common/util/Timer.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
+#include "goalc/data_compiler/game_text.h"
+#include "goalc/data_compiler/game_count.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -17,6 +20,11 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   (void)env;
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
+
+  if (m_debugger.is_attached()) {
+    m_debugger.detach();
+  }
+
   if (m_listener.is_connected()) {
     m_listener.send_reset(false);
   }
@@ -36,7 +44,25 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
       m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
     });
   } catch (std::runtime_error& e) {
-    throw_compile_error(form, std::string("seval error: ") + e.what());
+    throw_compiler_error(form, "Error while evaluating GOOS: ", e.what());
+  }
+  return get_none();
+}
+
+/*!
+ * Compile a "data file"
+ */
+Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::STRING}, {});
+  auto kind = symbol_string(args.unnamed.at(0));
+  if (kind == "game-text") {
+    compile_game_text(as_string(args.unnamed.at(1)));
+  } else if (kind == "game-count") {
+    compile_game_count(as_string(args.unnamed.at(1)));
+  } else {
+    throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }
   return get_none();
 }
@@ -53,6 +79,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   bool color = false;
   bool write = false;
   bool no_code = false;
+  bool disassemble = false;
 
   std::vector<std::pair<std::string, float>> timing;
   Timer total_timer;
@@ -71,8 +98,10 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
         write = true;
       } else if (setting == ":no-code") {
         no_code = true;
+      } else if (setting == ":disassemble") {
+        disassemble = true;
       } else {
-        throw_compile_error(form, "invalid option " + setting + " in asm-file form");
+        throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
     }
     i++;
@@ -107,7 +136,14 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 
     // code/object file generation
     Timer codegen_timer;
-    auto data = codegen_object_file(obj_file);
+    std::vector<u8> data;
+    std::string disasm;
+    if (disassemble) {
+      codegen_and_disassemble_object_file(obj_file, &data, &disasm);
+      printf("%s\n", disasm.c_str());
+    } else {
+      data = codegen_object_file(obj_file);
+    }
     timing.emplace_back("codegen", codegen_timer.getMs());
 
     // send to target
@@ -115,14 +151,15 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       if (m_listener.is_connected()) {
         m_listener.send_code(data);
       } else {
-        printf("WARNING - couldn't load because listener isn't connected\n");  // todo spdlog warn
+        printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
       }
     }
 
     // save file
     if (write) {
-      auto output_name = m_goos.reader.get_source_dir() + "/data/" + obj_file_name + ".o";
-      file_util::write_binary_file(output_name, (void*)data.data(), data.size());
+      file_util::create_dir_if_needed(file_util::get_file_path({"out", "obj"}));
+      file_util::write_binary_file(file_util::get_file_path({"out", "obj", obj_file_name + ".o"}),
+                                   (void*)data.data(), data.size());
     }
   } else {
     if (load) {
@@ -132,13 +169,17 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     if (write) {
       printf("WARNING - couldn't write because coloring is not enabled\n");
     }
+
+    if (disassemble) {
+      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
+    }
   }
 
   if (m_settings.print_timing) {
     printf("F: %36s ", obj_file_name.c_str());
     timing.emplace_back("total", total_timer.getMs());
     for (auto& e : timing) {
-      printf(" %12s %4.2f", e.first.c_str(), e.second / 1000.f);
+      printf(" %12s %4.0f", e.first.c_str(), e.second);
     }
     printf("\n");
   }
@@ -162,18 +203,18 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (o.is_string()) {
       if (got_ip) {
-        throw_compile_error(form, "got multiple strings!");
+        throw_compiler_error(form, "listen-to-target can only use 1 IP address");
       }
       got_ip = true;
       ip = o.as_string()->data;
     } else if (o.is_int()) {
       if (got_port) {
-        throw_compile_error(form, "got multiple ports!");
+        throw_compiler_error(form, "listen-to-target can only use 1 port number");
       }
       got_port = true;
       port = o.integer_obj.value;
     } else {
-      throw_compile_error(form, "invalid argument to listen-to-target");
+      throw_compiler_error(form, "invalid argument to listen-to-target: \"{}\"", o.print());
     }
   });
 
@@ -193,7 +234,7 @@ Val* Compiler::compile_reset_target(const goos::Object& form, const goos::Object
     if (o.is_symbol() && symbol_string(o) == ":shutdown") {
       shutdown = true;
     } else {
-      throw_compile_error(form, "invalid argument to reset-target");
+      throw_compiler_error(form, "invalid argument to reset-target: \"{}\"", o.print());
     }
   });
   m_listener.send_reset(shutdown);
@@ -267,8 +308,13 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
       DgoDescription::DgoEntry o;
       o.file_name = as_string(e_arg.unnamed.at(0));
       o.name_in_dgo = as_string(e_arg.unnamed.at(1));
-      if (o.file_name.substr(o.file_name.length() - 3) != ".go") {  // kill v2's for now.
+      if (o.file_name.substr(o.file_name.length() - 3) != ".go") {
         desc.entries.push_back(o);
+      } else {
+        // allow data objects to be missing.
+        if (std::filesystem::exists(file_util::get_file_path({"out", "obj", o.file_name}))) {
+          desc.entries.push_back(o);
+        }
       }
     });
 

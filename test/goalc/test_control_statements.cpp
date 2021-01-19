@@ -56,11 +56,6 @@ GoalTest::CompilerTestRunner ControlStatementTests::runner;
 
 TEST_F(ControlStatementTests, ConditionalCompilation) {
   runner.run_static_test(env, testCategory, "conditional-compilation.static.gc", {"3\n"});
-  // TODO - test-conditional-compilation-2.gc
-  // these numbers match the game's memory layout for where the symbol table lives.
-  // it's probably not 100% needed to get this exactly, but it's a good sign that the global
-  // heap lives in the right spot because there should be no divergence in memory layout when its
-  // built.  This also checks that #t, #f get "hashed" to the correct spot.
 }
 
 TEST_F(ControlStatementTests, Blocks) {

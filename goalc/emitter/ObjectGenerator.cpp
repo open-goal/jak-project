@@ -14,6 +14,7 @@
  */
 
 #include "ObjectGenerator.h"
+#include "goalc/debugger/DebugInfo.h"
 #include "common/goal_constants.h"
 #include "common/versions.h"
 
@@ -43,16 +44,26 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
         insert_data<u8>(seg, 0xae);
       }
 
+      // add debug info for the function start
+      function.debug->offset_in_seg = m_data_by_seg.at(seg).size();
+      function.debug->seg = seg;
+
       // insert instructions!
-      for (const auto& instr : function.instructions) {
+
+      for (size_t instr_idx = 0; instr_idx < function.instructions.size(); instr_idx++) {
+        const auto& instr = function.instructions[instr_idx];
         u8 temp[128];
         auto count = instr.emit(temp);
         assert(count < 128);
         function.instruction_to_byte_in_data.push_back(data.size());
+        function.debug->instructions.at(instr_idx).offset =
+            data.size() - function.debug->offset_in_seg;
         for (int i = 0; i < count; i++) {
           insert_data<u8>(seg, temp[i]);
         }
       }
+
+      function.debug->length = m_data_by_seg.at(seg).size() - function.debug->offset_in_seg;
     }
   }
 
@@ -74,10 +85,12 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
   // step 3, cleaning up things now that we know the memory layout
   for (int seg = N_SEG; seg-- > 0;) {
     handle_temp_static_type_links(seg);
+    handle_temp_static_sym_links(seg);
     handle_temp_jump_links(seg);
     handle_temp_instr_sym_links(seg);
     handle_temp_rip_func_links(seg);
     handle_temp_rip_data_links(seg);
+    handle_temp_static_ptr_links(seg);
   }
 
   // actual linking?
@@ -97,12 +110,16 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
  * Add a new function to seg, and return a FunctionRecord which can be used to specify this
  * new function.
  */
-FunctionRecord ObjectGenerator::add_function_to_seg(int seg, int min_align) {
+FunctionRecord ObjectGenerator::add_function_to_seg(int seg,
+                                                    FunctionDebugInfo* debug,
+                                                    int min_align) {
   FunctionRecord rec;
   rec.seg = seg;
   rec.func_id = int(m_function_data_by_seg.at(seg).size());
+  rec.debug = debug;
   m_function_data_by_seg.at(seg).emplace_back();
   m_function_data_by_seg.at(seg).back().min_align = min_align;
+  m_function_data_by_seg.at(seg).back().debug = debug;
   m_all_function_records.push_back(rec);
   return rec;
 }
@@ -116,13 +133,15 @@ FunctionRecord ObjectGenerator::get_existing_function_record(int f_idx) {
  * actual Instructions. These Instructions can be added with add_instruction.  The IR_Record
  * can be used as a label for jump targets.
  */
-IR_Record ObjectGenerator::add_ir(const FunctionRecord& func) {
+IR_Record ObjectGenerator::add_ir(const FunctionRecord& func, const std::string& debug_print) {
   IR_Record rec;
   rec.seg = func.seg;
   rec.func_id = func.func_id;
   auto& func_data = m_function_data_by_seg.at(rec.seg).at(rec.func_id);
   rec.ir_id = int(func_data.ir_to_instruction.size());
   func_data.ir_to_instruction.push_back(int(func_data.instructions.size()));
+  assert(int(func.debug->irs.size()) == rec.ir_id);
+  func.debug->irs.push_back(debug_print);
   return rec;
 }
 
@@ -161,12 +180,18 @@ InstructionRecord ObjectGenerator::add_instr(Instruction inst, IR_Record ir) {
   rec.ir_id = ir.ir_id;
   auto& func_data = m_function_data_by_seg.at(rec.seg).at(rec.func_id);
   rec.instr_id = int(func_data.instructions.size());
-  func_data.instructions.push_back(inst);
+  func_data.instructions.emplace_back(inst);
+  auto debug = m_function_data_by_seg.at(ir.seg).at(ir.func_id).debug;
+  debug->instructions.emplace_back(inst, InstructionInfo::Kind::IR, ir.ir_id);
   return rec;
 }
 
-void ObjectGenerator::add_instr_no_ir(FunctionRecord func, Instruction inst) {
-  m_function_data_by_seg.at(func.seg).at(func.func_id).instructions.push_back(inst);
+void ObjectGenerator::add_instr_no_ir(FunctionRecord func,
+                                      Instruction inst,
+                                      InstructionInfo::Kind kind) {
+  auto info = InstructionInfo(inst, kind);
+  m_function_data_by_seg.at(func.seg).at(func.func_id).instructions.emplace_back(inst);
+  func.debug->instructions.push_back(info);
 }
 
 /*!
@@ -240,6 +265,23 @@ void ObjectGenerator::link_static_symbol_ptr(StaticRecord rec,
   m_static_sym_temp_links_by_seg.at(rec.seg)[name].push_back({rec, offset});
 }
 
+/*!
+ * Insert a pointer to other static data. This patching will happen during runtime linking.
+ * The source and destination must be in the same segment.
+ */
+void ObjectGenerator::link_static_pointer(const StaticRecord& source,
+                                          int source_offset,
+                                          const StaticRecord& dest,
+                                          int dest_offset) {
+  StaticPointerLink link;
+  link.source = source;
+  link.dest = dest;
+  link.offset_in_source = source_offset;
+  link.offset_in_dest = dest_offset;
+  assert(link.source.seg == link.dest.seg);
+  m_static_temp_ptr_links_by_seg.at(source.seg).push_back(link);
+}
+
 void ObjectGenerator::link_instruction_static(const InstructionRecord& instr,
                                               const StaticRecord& target_static,
                                               int offset) {
@@ -282,6 +324,21 @@ void ObjectGenerator::handle_temp_static_sym_links(int seg) {
       int total_offset = static_object.location + link.offset;
       m_sym_links_by_seg.at(seg)[sym_name].push_back(total_offset);
     }
+  }
+}
+
+/*!
+ * m_static_temp_ptr_links_by_seg -> m_pointer_links_by_seg
+ */
+void ObjectGenerator::handle_temp_static_ptr_links(int seg) {
+  for (const auto& link : m_static_temp_ptr_links_by_seg.at(seg)) {
+    const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
+    const auto& dest_object = m_static_data_by_seg.at(seg).at(link.dest.static_id);
+    PointerLink result_link;
+    result_link.segment = seg;
+    result_link.source = source_object.location + link.offset_in_source;
+    result_link.dest = dest_object.location + link.offset_in_dest;
+    m_pointer_links_by_seg.at(seg).push_back(result_link);
   }
 }
 
@@ -420,6 +477,17 @@ void ObjectGenerator::emit_link_symbol(int seg) {
   }
 }
 
+void ObjectGenerator::emit_link_ptr(int seg) {
+  auto& out = m_link_by_seg.at(seg);
+  for (auto& rec : m_pointer_links_by_seg.at(seg)) {
+    out.push_back(LINK_PTR);
+    assert(rec.dest >= 0);
+    assert(rec.source >= 0);
+    push_data<u32>(rec.source, out);
+    push_data<u32>(rec.dest, out);
+  }
+}
+
 void ObjectGenerator::emit_link_rip(int seg) {
   auto& out = m_link_by_seg.at(seg);
   for (auto& rec : m_rip_links_by_seg.at(seg)) {
@@ -452,6 +520,7 @@ void ObjectGenerator::emit_link_table(int seg) {
   emit_link_symbol(seg);
   emit_link_type_pointer(seg);
   emit_link_rip(seg);
+  emit_link_ptr(seg);
   m_link_by_seg.at(seg).push_back(LINK_TABLE_END);
 }
 

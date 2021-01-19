@@ -1,9 +1,11 @@
 #include <cassert>
+#include "common/goos/PrettyPrinter.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "CfgVtx.h"
 #include "Function.h"
 
+namespace decompiler {
 /////////////////////////////////////////
 /// CfgVtx
 /////////////////////////////////////////
@@ -132,7 +134,7 @@ std::string CfgVtx::links_to_string() {
 /// VERTICES
 /////////////////////////////////////////
 
-std::string BlockVtx::to_string() {
+std::string BlockVtx::to_string() const {
   if (is_early_exit_block) {
     return "Block (EA) " + std::to_string(block_id);
   } else {
@@ -140,11 +142,11 @@ std::string BlockVtx::to_string() {
   }
 }
 
-goos::Object BlockVtx::to_form() {
+goos::Object BlockVtx::to_form() const {
   return pretty_print::to_symbol("b" + std::to_string(block_id));
 }
 
-std::string SequenceVtx::to_string() {
+std::string SequenceVtx::to_string() const {
   assert(!seq.empty());
   // todo - this is not a great way to print it. Maybe sequences should have an ID or name?
   std::string result =
@@ -152,7 +154,7 @@ std::string SequenceVtx::to_string() {
   return result;
 }
 
-goos::Object SequenceVtx::to_form() {
+goos::Object SequenceVtx::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("seq"));
   for (auto* x : seq) {
@@ -161,27 +163,27 @@ goos::Object SequenceVtx::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string EntryVtx::to_string() {
+std::string EntryVtx::to_string() const {
   return "ENTRY";
 }
 
-goos::Object EntryVtx::to_form() {
+goos::Object EntryVtx::to_form() const {
   return pretty_print::to_symbol("entry");
 }
 
-std::string ExitVtx::to_string() {
+std::string ExitVtx::to_string() const {
   return "EXIT";
 }
 
-goos::Object ExitVtx::to_form() {
+goos::Object ExitVtx::to_form() const {
   return pretty_print::to_symbol("exit");
 }
 
-std::string CondWithElse::to_string() {
+std::string CondWithElse::to_string() const {
   return "CONDWE" + std::to_string(uid);
 }
 
-goos::Object CondWithElse::to_form() {
+goos::Object CondWithElse::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("cond"));
   for (const auto& x : entries) {
@@ -193,11 +195,11 @@ goos::Object CondWithElse::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string CondNoElse::to_string() {
+std::string CondNoElse::to_string() const {
   return "CONDNE" + std::to_string(uid);
 }
 
-goos::Object CondNoElse::to_form() {
+goos::Object CondNoElse::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("cond"));
   for (const auto& x : entries) {
@@ -207,49 +209,49 @@ goos::Object CondNoElse::to_form() {
   return pretty_print::build_list(forms);
 }
 
-std::string WhileLoop::to_string() {
+std::string WhileLoop::to_string() const {
   return "WHL" + std::to_string(uid);
 }
 
-goos::Object WhileLoop::to_form() {
+goos::Object WhileLoop::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("while"), condition->to_form(),
                                      body->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string UntilLoop::to_string() {
+std::string UntilLoop::to_string() const {
   return "UNTL" + std::to_string(uid);
 }
 
-goos::Object UntilLoop::to_form() {
+goos::Object UntilLoop::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("until"), condition->to_form(),
                                      body->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string UntilLoop_single::to_string() {
+std::string UntilLoop_single::to_string() const {
   return "UNTLS" + std::to_string(uid);
 }
 
-goos::Object UntilLoop_single::to_form() {
+goos::Object UntilLoop_single::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("until1"), block->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string InfiniteLoopBlock::to_string() {
+std::string InfiniteLoopBlock::to_string() const {
   return "INFL" + std::to_string(uid);
 }
 
-goos::Object InfiniteLoopBlock::to_form() {
+goos::Object InfiniteLoopBlock::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("inf-loop"), block->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string ShortCircuit::to_string() {
+std::string ShortCircuit::to_string() const {
   return "SC" + std::to_string(uid);
 }
 
-goos::Object ShortCircuit::to_form() {
+goos::Object ShortCircuit::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("sc"));
   for (const auto& x : entries) {
@@ -258,33 +260,21 @@ goos::Object ShortCircuit::to_form() {
   return pretty_print::build_list(forms);
 }
 
-/*
-goos::Object IfElseVtx::to_form() {
-  std::vector<goos::Object> forms = {pretty_print::to_symbol("if"), condition->to_form(),
-                                              true_case->to_form(), false_case->to_form()};
-  return pretty_print::build_list(forms);
-}
-
-std::string IfElseVtx::to_string() {
-  return "if_else";  // todo - something nicer
-}
-*/
-
-std::string GotoEnd::to_string() {
+std::string GotoEnd::to_string() const {
   return "goto_end" + std::to_string(uid);
 }
 
-goos::Object GotoEnd::to_form() {
+goos::Object GotoEnd::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("return-from-function"),
                                      body->to_form(), unreachable_block->to_form()};
   return pretty_print::build_list(forms);
 }
 
-std::string Break::to_string() {
+std::string Break::to_string() const {
   return "goto" + std::to_string(uid);
 }
 
-goos::Object Break::to_form() {
+goos::Object Break::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("break"),
                                      pretty_print::to_symbol(std::to_string(dest_block)),
                                      body->to_form(), unreachable_block->to_form()};
@@ -1247,12 +1237,13 @@ bool ControlFlowGraph::find_cond_w_else() {
     //        printf("cwe try %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
 
     // first condition should have the _option_ to fall through to first body
-    if (c0->succ_ft != b0) {
+    if (c0->succ_ft != b0 || c0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
       return true;
     }
 
     // first body MUST unconditionally jump to else
-    if (b0->succ_ft || b0->end_branch.branch_likely) {
+    if (b0->succ_ft || b0->end_branch.branch_likely ||
+        b0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
       return true;
     }
 
@@ -1306,12 +1297,14 @@ bool ControlFlowGraph::find_cond_w_else() {
         // we're done!
         // check the prev_condition, prev_body blocks properly go to the else/end_block
         // prev_condition should jump to else:
-        if (prev_condition->succ_branch != else_block || prev_condition->end_branch.branch_likely) {
+        if (prev_condition->succ_branch != else_block || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
           return true;
         }
 
         // prev_body should jump to end
-        if (prev_body->succ_branch != end_block) {
+        if (prev_body->succ_branch != end_block ||
+            prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
           return true;
         }
 
@@ -1334,7 +1327,12 @@ bool ControlFlowGraph::find_cond_w_else() {
         }
 
         // how to get to cond
-        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely) {
+        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          return true;
+        }
+
+        if (prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
           return true;
         }
 
@@ -1401,14 +1399,17 @@ bool ControlFlowGraph::find_cond_w_else() {
   return found;
 }
 
+#define printf(format, ...) ;
+
 bool ControlFlowGraph::find_cond_n_else() {
   bool found = false;
 
   for_each_top_level_vtx([&](CfgVtx* vtx) {
+    printf("Try CNE on %s\n", vtx->to_string().c_str());
     auto* c0 = vtx;       // first condition
     auto* b0 = c0->next;  // first body
     if (!b0) {
-      //      printf("reject 0\n");
+      printf("reject 0\n");
       return true;
     }
 
@@ -1416,15 +1417,16 @@ bool ControlFlowGraph::find_cond_n_else() {
 
     // first condition should have the _option_ to fall through to first body
     if (c0->succ_ft != b0) {
-      //      printf("reject 1\n");
+      printf("reject 1\n");
       return true;
     }
 
     // first body MUST unconditionally jump to end
     bool single_case = false;
     if (b0->end_branch.has_branch) {
-      if (b0->succ_ft || b0->end_branch.branch_likely) {
-        //        printf("reject 2A\n");
+      if (b0->succ_ft || b0->end_branch.branch_likely ||
+          b0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+        printf("reject 2A\n");
         return true;
       }
       assert(b0->end_branch.has_branch);
@@ -1435,25 +1437,27 @@ bool ControlFlowGraph::find_cond_n_else() {
     }
 
     if (b0->pred.size() != 1) {
-      //      printf("reject 3\n");
+      printf("reject 3\n");
       return true;
     }
 
     // TODO - check what's in the delay slot!
     auto* end_block = single_case ? b0->succ_ft : b0->succ_branch;
     if (!end_block) {
-      //      printf("reject 4");
+      printf("reject 4");
       return true;
     }
 
     if (!is_found_after(end_block, b0)) {
-      //      printf("reject 5");
+      printf("reject 5");
       return true;
     }
 
     std::vector<CondNoElse::Entry> entries = {{c0, b0}};
     auto* prev_condition = c0;
     auto* prev_body = b0;
+    printf("add default entry %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
+    printf("end_block = %s\n", end_block->to_string().c_str());
 
     // loop to try to grab all the cases up to the else, or reject if the inside is not sufficiently
     // compact or if this is not actually a cond with else Note, we are responsible for checking the
@@ -1465,68 +1469,105 @@ bool ControlFlowGraph::find_cond_n_else() {
         // we're done!
         // check the prev_condition, prev_body blocks properly go to the else/end_block
         // prev_condition should jump to else:
-        if (prev_condition->succ_branch != end_block || prev_condition->end_branch.branch_likely) {
-          //          printf("reject 6\n");
+        // note - a GOAL branching NOT will be recognized as a single case COND with no else.
+        // but the branch will be a register set true
+        if (prev_condition->succ_branch != end_block || prev_condition->end_branch.branch_likely ||
+            (prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_FALSE &&
+             prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_TRUE)) {
+          printf("reject 6\n");
           return true;
         }
 
-        // prev_body should jump to end
-        if (!single_case && prev_body->succ_branch != end_block) {
-          //          printf("reject 7\n");
+        // if we are a not, we can have only one case. (I think).
+        if (prev_condition->end_branch.kind == CfgVtx::DelaySlotKind::SET_REG_TRUE &&
+            entries.size() > 1) {
+          return true;
+        }
+
+        // prev_body should fall through to end todo - this was wrong?
+        if (prev_body->succ_ft != end_block) {
+          printf("reject 7\n");
           return true;
         }
 
         break;
       } else {
+        // need to check pc->c
+        // need to check pb->e
+        // need to check c->b
         auto* c = next;
         auto* b = c->next;
+        printf("add next entry %s %s\n", c->to_string().c_str(), b->to_string().c_str());
         if (!c || !b) {
-          //          printf("reject 8\n");
+          printf("reject 8\n");
           return true;
         };
         // attempt to add another
         //        printf("  e %s %s\n", c->to_string().c_str(), b->to_string().c_str());
 
         if (c->pred.size() != 1) {
-          //          printf("reject 9\n");
+          printf("reject 9\n");
           return true;
         }
 
         if (b->pred.size() != 1) {
-          //          printf("reject 10\n");
+          printf("reject 10 body %s\n", b->to_string().c_str());
           return true;
         }
 
-        // how to get to cond
-        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely) {
-          //          printf("reject 11\n");
+        // how to get to cond (pc->c)
+        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_FALSE) {
+          printf("reject 11\n");
           return true;
         }
 
+        // (c->b)
         if (c->succ_ft != b) {
-          //          printf("reject 12\n");
+          printf("reject 12\n");
           return true;  // condition should have the option to fall through if matched
         }
 
-        // TODO - check what's in the delay slot!
-        if (c->end_branch.branch_likely) {
-          //          printf("reject 13\n");
+        if (c->end_branch.branch_likely ||
+            c->end_branch.kind != CfgVtx::DelaySlotKind::SET_REG_FALSE) {
+          printf("reject 13\n");
           return true;  // otherwise should go to next with a non-likely branch
         }
 
-        if (b->succ_ft || b->end_branch.branch_likely) {
-          //          printf("reject 14\n");
+        if (prev_body->succ_ft || prev_body->end_branch.branch_likely ||
+            prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          printf("reject 14 on b %s %d %d %d\n", prev_body->to_string().c_str(),
+                 !!prev_body->succ_ft, prev_body->end_branch.branch_likely,
+                 prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP);
           return true;  // body should go straight to else
         }
 
-        if (b->succ_branch != end_block) {
-          //          printf("reject 14\n");
+        if (prev_body->succ_branch != end_block) {
+          printf("reject 15\n");
           return true;
         }
 
         entries.emplace_back(c, b);
         prev_body = b;
         prev_condition = c;
+      }
+    }
+
+    // let's try to detect if this is an incomplete one.
+    if (c0->prev) {
+      if (c0->prev->succ_ft == nullptr && c0->prev->succ_branch == end_block &&
+          c0->prev->end_branch.kind == CfgVtx::DelaySlotKind::NOP &&
+          !c0->prev->end_branch.branch_likely) {
+        // the previous body looks suspicious.
+        for (auto pred : c0->pred) {
+          // also check that we have the body skip to avoid false positives when the entire body of
+          // a while loop is wrapped in a CNE with a single case.
+          if (pred->succ_branch == c0 &&
+              pred->end_branch.kind == CfgVtx::DelaySlotKind::SET_REG_FALSE) {
+            printf("Suspisious reject\n");
+            return true;
+          }
+        }
       }
     }
 
@@ -1575,6 +1616,7 @@ bool ControlFlowGraph::find_cond_n_else() {
 
   return found;
 }
+#undef printf
 
 bool ControlFlowGraph::find_short_circuits() {
   bool found = false;
@@ -1624,7 +1666,7 @@ bool ControlFlowGraph::find_short_circuits() {
       // check fallthrough to next
       if (!next->succ_ft) {
         //        printf("reject 5\n");
-        return false;
+        return true;
       }
 
       assert(next->succ_ft == next->next);  // bonus check
@@ -1692,31 +1734,41 @@ const std::vector<BlockVtx*>& ControlFlowGraph::create_blocks(int count) {
 /*!
  * Setup pred/succ for a block which falls through to the next.
  */
-void ControlFlowGraph::link_fall_through(BlockVtx* first, BlockVtx* second) {
+void ControlFlowGraph::link_fall_through(BlockVtx* first,
+                                         BlockVtx* second,
+                                         std::vector<BasicBlock>& blocks) {
   assert(!first->succ_ft);  // don't want to overwrite something by accident.
   // can only fall through to the next code in memory.
   assert(first->next == second);
   assert(second->prev == first);
   first->succ_ft = second;
+  assert(blocks.at(first->block_id).succ_ft == -1);
+  blocks.at(first->block_id).succ_ft = second->block_id;
 
   if (!second->has_pred(first)) {
     // if a block can block fall through and branch to the same block, we want to avoid adding
     // it as a pred twice. This is rare, but does happen and makes sense with likely branches
     // which only run the delay slot when taken.
     second->pred.push_back(first);
+    blocks.at(second->block_id).pred.push_back(first->block_id);
   }
 }
 
 /*!
  * Setup pred/succ for a block which branches to second.
  */
-void ControlFlowGraph::link_branch(BlockVtx* first, BlockVtx* second) {
+void ControlFlowGraph::link_branch(BlockVtx* first,
+                                   BlockVtx* second,
+                                   std::vector<BasicBlock>& blocks) {
   assert(!first->succ_branch);
-
   first->succ_branch = second;
+  assert(blocks.at(first->block_id).succ_branch == -1);
+  blocks.at(first->block_id).succ_branch = second->block_id;
+
   if (!second->has_pred(first)) {
     // see comment in link_fall_through
     second->pred.push_back(first);
+    blocks.at(second->block_id).pred.push_back(first->block_id);
   }
 }
 
@@ -1727,6 +1779,19 @@ void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
   if (block.start_word == block.end_word) {
     b->is_early_exit_block = true;
     assert(!b->end_branch.has_branch);
+  }
+}
+
+CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
+  if (is_nop(i)) {
+    return CfgVtx::DelaySlotKind::NOP;
+  } else if (is_gpr_3(i, InstructionKind::OR, {}, Register(Reg::GPR, Reg::S7),
+                      Register(Reg::GPR, Reg::R0))) {
+    return CfgVtx::DelaySlotKind::SET_REG_FALSE;
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+    return CfgVtx::DelaySlotKind::SET_REG_TRUE;
+  } else {
+    return CfgVtx::DelaySlotKind::OTHER;
   }
 }
 
@@ -1756,17 +1821,19 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
     if (b.end_word - b.start_word < 2) {
       // there's no room for a branch here, fall through to the end
       if (not_last) {
-        cfg->link_fall_through(blocks.at(i), blocks.at(i + 1));
+        cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
       }
     } else {
       // might be a branch
       int idx = b.end_word - 2;
       assert(idx >= b.start_word);
       auto& branch_candidate = func.instructions.at(idx);
+      auto& delay_slot_candidate = func.instructions.at(idx + 1);
 
       if (is_branch(branch_candidate, {})) {
         blocks.at(i)->end_branch.has_branch = true;
         blocks.at(i)->end_branch.branch_likely = is_branch(branch_candidate, true);
+        blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate);
         bool branch_always = is_always_branch(branch_candidate);
 
         // need to find block target
@@ -1790,7 +1857,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
         }
 
         assert(block_target != -1);
-        cfg->link_branch(blocks.at(i), blocks.at(block_target));
+        cfg->link_branch(blocks.at(i), blocks.at(block_target), func.basic_blocks);
 
         if (branch_always) {
           // don't continue to the next one
@@ -1798,13 +1865,13 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
         } else {
           // not an always branch
           if (not_last) {
-            cfg->link_fall_through(blocks.at(i), blocks.at(i + 1));
+            cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
           }
         }
       } else {
         // not a branch at all
         if (not_last) {
-          cfg->link_fall_through(blocks.at(i), blocks.at(i + 1));
+          cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
         }
       }
     }
@@ -1816,15 +1883,17 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
   while (changed) {
     changed = false;
     // note - we should prioritize finding short-circuiting expressions.
-    //    printf("%s\n", cfg->to_dot().c_str());
-    //    printf("%s\n", cfg->to_form()->toStringPretty().c_str());
+    //        printf("%s\n", cfg->to_dot().c_str());
+    //    printf("%s\n", cfg->to_form().print().c_str());
 
-    changed = changed || cfg->find_cond_n_else();
+    // todo - should we lower the priority of the conds?
+
     changed = changed || cfg->find_cond_w_else();
 
     changed = changed || cfg->find_while_loop_top_level();
     changed = changed || cfg->find_seq_top_level();
     changed = changed || cfg->find_short_circuits();
+    changed = changed || cfg->find_cond_n_else();
 
     if (!changed) {
       changed = changed || cfg->find_goto_end();
@@ -1839,8 +1908,9 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
   }
 
   if (!cfg->is_fully_resolved()) {
-    func.warnings += "Failed to fully resolve CFG\n";
+    func.warnings += ";; Failed to fully resolve CFG\n";
   }
 
   return cfg;
 }
+}  // namespace decompiler

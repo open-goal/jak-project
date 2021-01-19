@@ -1,5 +1,6 @@
 
 #include "test_runner.h"
+#include "third-party/fmt/core.h"
 
 #include <string>
 
@@ -37,7 +38,7 @@ void CompilerTestRunner::run_static_test(inja::Environment& env,
                                          std::string& testCategory,
                                          const std::string& test_file,
                                          const std::vector<std::string>& expected,
-                                         MatchParam<int> truncate) {
+                                         std::optional<int> truncate) {
   env.write(test_file, {}, test_file);
   run_test(testCategory, test_file, expected, truncate);
 }
@@ -45,12 +46,13 @@ void CompilerTestRunner::run_static_test(inja::Environment& env,
 void CompilerTestRunner::run_test(const std::string& test_category,
                                   const std::string& test_file,
                                   const std::vector<std::string>& expected,
-                                  MatchParam<int> truncate) {
+                                  std::optional<int> truncate) {
   fprintf(stderr, "Testing %s\n", test_file.c_str());
-  auto result = c->run_test("test/goalc/source_generated/" + test_category + "/" + test_file);
-  if (!truncate.is_wildcard) {
+  auto result =
+      c->run_test_from_file("test/goalc/source_generated/" + test_category + "/" + test_file);
+  if (truncate.has_value()) {
     for (auto& x : result) {
-      x = x.substr(0, truncate.value);
+      x = x.substr(0, truncate.value());
     }
   }
 
@@ -84,7 +86,7 @@ void CompilerTestRunner::run_test(const std::string& test_category,
 
 void CompilerTestRunner::run_always_pass(const std::string& test_category,
                                          const std::string& test_file) {
-  c->run_test("test/goalc/source_generated/" + test_category + "/" + test_file);
+  c->run_test_from_file("test/goalc/source_generated/" + test_category + "/" + test_file);
   tests.push_back({{}, {}, test_file, true});
 }
 
@@ -97,6 +99,12 @@ void runtime_no_kernel() {
 void runtime_with_kernel() {
   constexpr int argc = 3;
   const char* argv[argc] = {"", "-fakeiso", "-debug"};
+  exec_runtime(argc, const_cast<char**>(argv));
+}
+
+void runtime_with_kernel_no_debug_segment() {
+  constexpr int argc = 3;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 

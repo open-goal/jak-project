@@ -44,7 +44,7 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   rest = &pair_cdr(*rest);
 
   if (!rest->is_pair()) {
-    throw_compile_error(form, "Block form has an empty or invalid body");
+    throw_compiler_error(form, "Block form has an empty or invalid body");
   }
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
@@ -84,14 +84,16 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   auto return_type = m_ts.lowest_common_ancestor(return_types);
   block_env->return_value->set_type(coerce_to_reg_type(return_type));
 
-  // an IR to move the result of the block into the block's return register (if no return-from's are
-  // taken)
-  auto ir_move_rv = std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(fe));
+  if (!dynamic_cast<None*>(result)) {
+    // an IR to move the result of the block into the block's return register (if no return-from's
+    // are taken)
+    auto ir_move_rv = std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(fe));
 
-  // note - one drawback of doing this single pass is that a block always evaluates to a gpr.
-  // so we may have an unneeded xmm -> gpr move that could have been an xmm -> xmm that could have
-  // been eliminated.
-  env->emit(std::move(ir_move_rv));
+    // note - one drawback of doing this single pass is that a block always evaluates to a gpr.
+    // so we may have an unneeded xmm -> gpr move that could have been an xmm -> xmm that could have
+    // been eliminated.
+    env->emit(std::move(ir_move_rv));
+  }
 
   // now we know the end of the block, so we set the label index to be on whatever comes after the
   // return move. functions always end with a "null" IR and "null" instruction, so this is safe.
@@ -119,8 +121,8 @@ Val* Compiler::compile_return_from(const goos::Object& form, const goos::Object&
   // find block to return from
   auto block = dynamic_cast<BlockEnv*>(env->find_block(block_name));
   if (!block) {
-    throw_compile_error(form,
-                        "The return-from form was unable to find a block named " + block_name);
+    throw_compiler_error(form, "The return-from form was unable to find a block named {}.",
+                         block_name);
   }
 
   // move result into return register
@@ -155,8 +157,8 @@ Val* Compiler::compile_label(const goos::Object& form, const goos::Object& rest,
   auto& labels = env->get_label_map();
   auto kv = labels.find(label_name);
   if (kv != labels.end()) {
-    throw_compile_error(
-        form, "There are two labels named " + label_name + " in the same label environment");
+    throw_compiler_error(form, "There are two labels named \"{}\" in the same label environment",
+                         label_name);
   }
 
   // make a label pointing to the end of the current function env. safe because we'll always add

@@ -16,6 +16,7 @@
 #include <cstring>
 #include <thread>
 
+#include "common/log/log.h"
 #include "runtime.h"
 #include "system/SystemThread.h"
 #include "sce/libcdvd_ee.h"
@@ -44,6 +45,10 @@
 #include "game/overlord/iso_cd.h"
 #include "game/overlord/overlord.h"
 #include "game/overlord/srpc.h"
+#include "game/overlord/stream.h"
+
+#include "common/goal_constants.h"
+#include "common/cross_os_debug/xdbg.h"
 
 u8* g_ee_main_mem = nullptr;
 
@@ -68,21 +73,21 @@ void deci2_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
 
   // in our own thread, wait for the EE to register the first protocol driver
-  spdlog::debug("[DECI2] Waiting for EE to register protos");
+  lg::debug("[DECI2] Waiting for EE to register protos");
   server.wait_for_protos_ready();
   // then allow the server to accept connections
   if (!server.init()) {
-    throw std::runtime_error("DECI2 server init failed");
+    assert(false);
   }
 
-  spdlog::debug("[DECI2] Waiting for listener...");
-  // spdlog::debug("[DECI2] Waiting for listener..."); --> disabled temporarily, some weird race
+  lg::debug("[DECI2] Waiting for listener...");
+  // lg::debug("[DECI2] Waiting for listener..."); --> disabled temporarily, some weird race
   // condition?
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
     if (server.check_for_listener()) {
       if (!saw_listener) {
-        spdlog::debug("[DECI2] Connected!");
+        lg::debug("[DECI2] Connected!");
       }
       saw_listener = true;
       // we have a listener, run!
@@ -95,13 +100,6 @@ void deci2_runner(SystemThreadInterface& iface) {
 }
 
 // EE System
-constexpr int EE_MAIN_MEM_SIZE = 128 * (1 << 20);  // 128 MB, same as PS2 TOOL
-constexpr u64 EE_MAIN_MEM_MAP = 0x2000000000;      // intentionally > 32-bit to catch pointer bugs
-
-// when true, attempt to map the EE memory in the low 2 GB of RAM
-// this allows us to use EE pointers as real pointers.  However, this might not always work,
-// so this should be used only for debugging.
-constexpr bool EE_MEM_LOW_MAP = false;
 
 /*!
  * SystemThread Function for the EE (PS2 Main CPU)
@@ -119,25 +117,25 @@ void ee_runner(SystemThreadInterface& iface) {
   }
 
   if (g_ee_main_mem == (u8*)(-1)) {
-    spdlog::debug("Failed to initialize main memory! {}", strerror(errno));
+    lg::debug("Failed to initialize main memory! {}", strerror(errno));
     iface.initialization_complete();
     return;
   }
 
-  spdlog::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
-  spdlog::debug("Main memory size 0x{} bytes ({} MB)", EE_MAIN_MEM_SIZE,
-                (double)EE_MAIN_MEM_SIZE / (1 << 20));
+  lg::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
+  lg::debug("Main memory size 0x{:x} bytes ({:.3f} MB)", EE_MAIN_MEM_SIZE,
+            (double)EE_MAIN_MEM_SIZE / (1 << 20));
 
-  spdlog::debug("[EE] Initialization complete!");
+  lg::debug("[EE] Initialization complete!");
   iface.initialization_complete();
 
-  spdlog::debug("[EE] Run!");
+  lg::debug("[EE] Run!");
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
 
   // prevent access to the first 1 MB of memory.
   // On the PS2 this is the kernel and can't be accessed either.
   // this may not work well on systems with a page size > 1 MB.
-  mprotect((void*)g_ee_main_mem, 1024 * 1024, PROT_NONE);
+  mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
   fileio_init_globals();
   kboot_init_globals();
   kdgo_init_globals();
@@ -152,8 +150,11 @@ void ee_runner(SystemThreadInterface& iface) {
   kmemcard_init_globals();
   kprint_init_globals();
 
+  // Added for OpenGOAL's debugger
+  xdbg::allow_debugging();
+
   goal_main(g_argc, g_argv);
-  spdlog::debug("[EE] Done!");
+  lg::debug("[EE] Done!");
 
   //  // kill the IOP todo
   iop::LIBRARY_kill();
@@ -169,7 +170,7 @@ void ee_runner(SystemThreadInterface& iface) {
  */
 void iop_runner(SystemThreadInterface& iface) {
   IOP iop;
-  spdlog::debug("[IOP] Restart!");
+  lg::debug("[IOP] Restart!");
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
   iop::LIBRARY_register(&iop);
@@ -188,16 +189,16 @@ void iop_runner(SystemThreadInterface& iface) {
   // soundcommon
   srpc_init_globals();
   // ssound
-  // stream
+  stream_init_globals();
 
   iface.initialization_complete();
 
-  spdlog::debug("[IOP] Wait for OVERLORD to start...");
+  lg::debug("[IOP] Wait for OVERLORD to start...");
   iop.wait_for_overlord_start_cmd();
   if (iop.status == IOP_OVERLORD_INIT) {
-    spdlog::debug("[IOP] Run!");
+    lg::debug("[IOP] Run!");
   } else {
-    spdlog::debug("[IOP] Shutdown!");
+    lg::debug("[IOP] Shutdown!");
     return;
   }
 
@@ -259,6 +260,6 @@ u32 exec_runtime(int argc, char** argv) {
 
   // join and exit
   tm.join();
-  spdlog::info("GOAL Runtime Shutdown (code {})", MasterExit);
+  lg::info("GOAL Runtime Shutdown (code {})", MasterExit);
   return MasterExit;
 }

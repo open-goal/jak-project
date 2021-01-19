@@ -3,18 +3,18 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Set default compile flags for GCC
 # optimization level can be set here. Note that game/ overwrites this for building game C++ code.
-if(CMAKE_COMPILER_IS_GNUCXX)
+if(UNIX)
     message(STATUS "GCC detected, adding compile flags")
-    set(CMAKE_CXX_FLAGS 
-        "${CMAKE_CXX_FLAGS} \
-        -ggdb \
+    set(CMAKE_CXX_FLAGS
+            "${CMAKE_CXX_FLAGS} \
         -Wall \
-				-Winit-self \
+        -Winit-self \
+        -ggdb \
         -Wextra \
-        -Wcast-align \
+        -Wno-cast-align \
         -Wcast-qual \
         -Wdisabled-optimization \
-        -Wformat=2 \
+        -Wformat \
         -Wmissing-include-dirs \
         -Woverloaded-virtual \
         -Wredundant-decls \
@@ -22,7 +22,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
         -Wsign-promo")
 else()
 		set(CMAKE_CXX_FLAGS "/EHsc")
-endif(CMAKE_COMPILER_IS_GNUCXX)
+endif(UNIX)
 
 enable_language(ASM_NASM)
 set(CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_NASM_SOURCE_FILE_EXTENSIONS} asm)
@@ -69,24 +69,17 @@ set(RUNTIME_SOURCE
         overlord/ssound.cpp
         overlord/stream.cpp)
 
-# the runtime should be built without any static/dynamic libraries.
-#add_executable(gk ${RUNTIME_SOURCE} main.cpp)
 
-
-# we also build a runtime library for testing. This version is likely unable to call GOAL code correctly, but
-# can be used to test other things.
+# we build the runtime as a static library.
 add_library(runtime ${RUNTIME_SOURCE})
 
-add_executable(gk main.cpp)
-
+target_link_libraries(runtime common fmt)
 IF (WIN32)
-  # set stuff for windows
-  target_link_libraries(runtime mman cross_sockets common_util spdlog)
-  target_link_libraries(gk cross_sockets mman common_util runtime spdlog)
+    target_link_libraries(runtime mman)
 ELSE()
-  # set stuff for other systems
-  target_link_libraries(runtime pthread cross_sockets common_util spdlog)
-  target_link_libraries(gk cross_sockets pthread common_util runtime spdlog)
-
+    target_link_libraries(runtime pthread)
 ENDIF()
+
+add_executable(gk main.cpp)
+target_link_libraries(gk runtime)
 

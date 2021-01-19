@@ -1,6 +1,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cassert>
+#include "common/log/log.h"
 #include "game/sce/iop.h"
 #include "iso_queue.h"
 #include "isocommon.h"
@@ -179,11 +180,11 @@ u32 QueueMessage(IsoMessage* cmd, int32_t priority, const char* name) {
     gPriStack[priority].cmds[gPriStack[priority].n] = cmd;
     gPriStack[priority].names[gPriStack[priority].n] = name;
     gPriStack[priority].n++;
-    spdlog::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n,
-                  PRI_STACK_LENGTH, gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
+    lg::debug("[OVERLORD] Queue {} ({}/{}), {}", priority, gPriStack[priority].n, PRI_STACK_LENGTH,
+              gPriStack[priority].names[gPriStack[priority].n - 1].c_str());
     DisplayQueue();
   } else {
-    spdlog::warn("[OVERLORD ISO QUEUE] Failed to queue!");
+    lg::warn("[OVERLORD ISO QUEUE] Failed to queue!");
     cmd->status = CMD_STATUS_FAILED_TO_QUEUE;
     ReturnMessage(cmd);
   }
@@ -209,7 +210,7 @@ void UnqueueMessage(IsoMessage* cmd) {
       }
     }
   }
-  spdlog::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
+  lg::warn("[OVERLORD ISO QUEUE] Failed to unqueue!");
 
 found:
   assert(gPriStack[pri].cmds[idx] == cmd);

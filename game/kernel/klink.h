@@ -39,6 +39,14 @@ struct link_control {
   uint32_t m_state;
   uint32_t m_segment_process;
   uint32_t m_version;
+  int m_heap_gap;
+  Ptr<uint8_t> m_original_object_location;
+  Ptr<u8> m_reloc_ptr;
+  Ptr<u8> m_base_ptr;
+  Ptr<u8> m_loc_ptr;
+  int m_table_toggle;
+
+  bool m_opengoal;
   void begin(Ptr<uint8_t> object_file,
              const char* name,
              int32_t size,
@@ -46,6 +54,7 @@ struct link_control {
              uint32_t flags);
   uint32_t work();
   uint32_t work_v3();
+  uint32_t work_v2();
   void finish();
 
   void reset() {
@@ -66,11 +75,13 @@ struct link_control {
   }
 };
 
+// only used in OpenGOAL
 struct SegmentInfo {
   uint32_t offset;
   uint32_t size;
 };
 
+// only used in OpenGOAL
 struct ObjectFileHeader {
   uint16_t goal_version_major;
   uint16_t goal_version_minor;

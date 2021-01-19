@@ -5,6 +5,8 @@
  */
 
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include "klisten.h"
 #include "kboot.h"
 #include "kprint.h"
@@ -49,7 +51,7 @@ void InitListener() {
       new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE).cast<u32>()),
                make_string_from_c("kernel"), kernel_packages->value);
   //  if(MasterDebug) {
-  //    SendFromBufferD(MSG_ACK, 0, AckBufArea + sizeof(GoalMessageHeader), 0);
+  //    SendFromBufferD(MSG_ACK, 0, AckBufArea + sizeof(ListenerMessageHeader), 0);
   //  }
 }
 
@@ -60,15 +62,15 @@ void ClearPending() {
   if (!MasterDebug) {
     // if we aren't debugging print the print buffer to stdout.
     if (PrintPending.offset != 0) {
-      auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(GoalMessageHeader));
+      auto size = strlen(PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       if (size > 0) {
-        printf("%s", PrintBufArea.cast<char>().c() + sizeof(GoalMessageHeader));
+        printf("%s", PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader));
       }
     }
   } else {
     if (ListenerStatus) {
       if (OutputPending.offset != 0) {
-        Ptr<char> msg = OutputBufArea.cast<char>() + sizeof(GoalMessageHeader);
+        Ptr<char> msg = OutputBufArea.cast<char>() + sizeof(ListenerMessageHeader);
         auto size = strlen(msg.c());
         // note - if size is ever greater than 2^16 this will cause an issue.
         SendFromBuffer(msg.c(), size);
@@ -76,7 +78,7 @@ void ClearPending() {
       }
 
       if (PrintPending.offset != 0) {
-        char* msg = PrintBufArea.cast<char>().c() + sizeof(GoalMessageHeader);
+        char* msg = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
         auto size = strlen(msg);
         while (size > 0) {
           // sends larger than 64 kB are broken by the GoalProtoBuffer thing, so they are split
@@ -104,8 +106,8 @@ void ClearPending() {
 void SendAck() {
   if (MasterDebug) {
     SendFromBufferD(u16(ListenerMessageKind::MSG_ACK), protoBlock.msg_id,
-                    AckBufArea + sizeof(GoalMessageHeader),
-                    strlen(AckBufArea + sizeof(GoalMessageHeader)));
+                    AckBufArea + sizeof(ListenerMessageHeader),
+                    strlen(AckBufArea + sizeof(ListenerMessageHeader)));
   }
 }
 
@@ -133,9 +135,9 @@ void ProcessListenerMessage(Ptr<char> msg) {
       break;
     case LTT_MSG_RESET:
       MasterExit = 1;
-      if (protoBlock.msg_id == UINT64_MAX) {
-        MasterExit = 2;
-      }
+      break;
+    case LTT_MSG_SHUTDOWN:
+      MasterExit = 2;
       break;
     case LTT_MSG_CODE: {
       auto buffer = kmalloc(kdebugheap, MessCount, 0, "listener-link-block");
@@ -147,8 +149,11 @@ void ProcessListenerMessage(Ptr<char> msg) {
       // getting squashed.
 
       // this setup allows listener function execution to clean up after itself.
-      ListenerFunction->value =
-          link_and_exec(buffer, "*listener*", 0, kdebugheap, LINK_FLAG_FORCE_DEBUG).offset;
+
+      // we have added the LINK_FLAG_OUTPUT_LOAD
+      ListenerFunction->value = link_and_exec(buffer, "*listener*", 0, kdebugheap,
+                                              LINK_FLAG_FORCE_DEBUG | LINK_FLAG_OUTPUT_LOAD)
+                                    .offset;
       return;  // don't ack yet, this will happen after the function runs.
     } break;
     default:

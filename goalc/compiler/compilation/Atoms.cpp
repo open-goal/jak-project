@@ -13,13 +13,22 @@ static const std::unordered_map<
     std::string,
     Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
     goal_forms = {
-        //        // inline asm
-        //        {".ret", &Compiler::compile_asm},
-        //        {".push", &Compiler::compile_asm},
-        //        {".pop", &Compiler::compile_asm},
-        //        {".jmp", &Compiler::compile_asm},
-        //        {".sub", &Compiler::compile_asm},
-        //        {".ret-reg", &Compiler::compile_asm},
+        // inline asm
+        {".ret", &Compiler::compile_asm_ret},
+        {".push", &Compiler::compile_asm_push},
+        {".pop", &Compiler::compile_asm_pop},
+        {"rlet", &Compiler::compile_rlet},
+        {".jr", &Compiler::compile_asm_jr},
+        {".sub", &Compiler::compile_asm_sub},
+        {".add", &Compiler::compile_asm_add},
+        {".load-sym", &Compiler::compile_asm_load_sym},
+        {".mov", &Compiler::compile_asm_mov},
+        {".lvf", &Compiler::compile_asm_lvf},
+        {".svf", &Compiler::compile_asm_svf},
+        {".xor.vf", &Compiler::compile_asm_xor_vf},
+        {".sub.vf", &Compiler::compile_asm_sub_vf},
+        {".add.vf", &Compiler::compile_asm_add_vf},
+        {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
@@ -33,6 +42,7 @@ static const std::unordered_map<
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
         {"asm-file", &Compiler::compile_asm_file},
+        {"asm-data-file", &Compiler::compile_asm_data_file},
         {"listen-to-target", &Compiler::compile_listen_to_target},
         {"reset-target", &Compiler::compile_reset_target},
         {":status", &Compiler::compile_poke},
@@ -52,10 +62,22 @@ static const std::unordered_map<
         {"define-extern", &Compiler::compile_define_extern},
         {"set!", &Compiler::compile_set},
 
+        // DEBUGGING
+        {"dbs", &Compiler::compile_dbs},
+        {"dbg", &Compiler::compile_dbg},
+        {":cont", &Compiler::compile_cont},
+        {":break", &Compiler::compile_break},
+        {":dump-all-mem", &Compiler::compile_dump_all},
+        {":pm", &Compiler::compile_pm},
+        {":di", &Compiler::compile_di},
+        {":disasm", &Compiler::compile_disasm},
+        {":bp", &Compiler::compile_bp},
+        {":ubp", &Compiler::compile_ubp},
+
         // TYPE
         {"deftype", &Compiler::compile_deftype},
         {"defmethod", &Compiler::compile_defmethod},
-        //        {"defenum", &Compiler::compile_defenum},
+        {"defenum", &Compiler::compile_defenum},
         {"->", &Compiler::compile_deref},
         {"&", &Compiler::compile_addr_of},
         {"the-as", &Compiler::compile_the_as},
@@ -65,19 +87,20 @@ static const std::unordered_map<
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
         {"method", &Compiler::compile_method},
+        {"declare-type", &Compiler::compile_declare_type},
+        {"none", &Compiler::compile_none},
 
         // LAMBDA
         {"lambda", &Compiler::compile_lambda},
         {"declare", &Compiler::compile_declare},
         {"inline", &Compiler::compile_inline},
         //        {"with-inline", &Compiler::compile_with_inline},
-        //        {"rlet", &Compiler::compile_rlet},
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
 
         // MACRO
         {"quote", &Compiler::compile_quote},
         {"mlet", &Compiler::compile_mlet},
-        //        {"defconstant", &Compiler::compile_defconstant},
+        {"defconstant", &Compiler::compile_defconstant},
 
         // OBJECT
         //        {"current-method-type", &Compiler::compile_current_method_type},
@@ -86,13 +109,14 @@ static const std::unordered_map<
         {"+", &Compiler::compile_add},
         {"-", &Compiler::compile_sub},
         {"*", &Compiler::compile_mul},
+        {"imul64", &Compiler::compile_imul64},
         {"/", &Compiler::compile_div},
         {"shlv", &Compiler::compile_shlv},
         {"shrv", &Compiler::compile_shrv},
         {"sarv", &Compiler::compile_sarv},
-        //        {"shl", &Compiler::compile_shl},
-        //        {"shr", &Compiler::compile_shr},
-        //        {"sar", &Compiler::compile_sar},
+        {"shl", &Compiler::compile_shl},
+        {"shr", &Compiler::compile_shr},
+        {"sar", &Compiler::compile_sar},
         {"mod", &Compiler::compile_mod},
         {"logior", &Compiler::compile_logior},
         {"logxor", &Compiler::compile_logxor},
@@ -101,12 +125,15 @@ static const std::unordered_map<
         {"=", &Compiler::compile_condition_as_bool},
         {"!=", &Compiler::compile_condition_as_bool},
         {"eq?", &Compiler::compile_condition_as_bool},
+        {"neq?", &Compiler::compile_condition_as_bool},
         {"not", &Compiler::compile_condition_as_bool},
         {"<=", &Compiler::compile_condition_as_bool},
         {">=", &Compiler::compile_condition_as_bool},
         {"<", &Compiler::compile_condition_as_bool},
         {">", &Compiler::compile_condition_as_bool},
         {"&+", &Compiler::compile_pointer_add},
+        {"fmax", &Compiler::compile_fmax},
+        {"fmin", &Compiler::compile_fmin},
 
         // BUILDER (build-dgo/build-cgo?)
         {"build-dgos", &Compiler::compile_build_dgo},
@@ -124,6 +151,8 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
       return compile_pair(code, env);
     case goos::ObjectType::INTEGER:
       return compile_integer(code, env);
+    case goos::ObjectType::CHAR:
+      return compile_char(code, env);
     case goos::ObjectType::SYMBOL:
       return compile_symbol(code, env);
     case goos::ObjectType::STRING:
@@ -131,7 +160,7 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
     case goos::ObjectType::FLOAT:
       return compile_float(code, env);
     default:
-      ice("Don't know how to compile " + code.print());
+      throw_compiler_error(code, "Cannot compile {}.", code.print());
   }
   return get_none();
 }
@@ -140,7 +169,6 @@ Val* Compiler::compile(const goos::Object& code, Env* env) {
  * Compile a pair/list.
  * Can be a compiler form, function call (possibly inlined), method call, immediate application of a
  * lambda, or a goos macro.
- * TODO - enums.
  */
 Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
   auto pair = code.as_pair();
@@ -161,7 +189,10 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
       return compile_goos_macro(code, macro_obj, rest, env);
     }
 
-    // try as an enum (not yet implemented)
+    auto enum_kv = m_enums.find(head_sym->name);
+    if (enum_kv != m_enums.end()) {
+      return compile_enum_lookup(code, enum_kv->second, rest, env);
+    }
   }
 
   // if none of the above cases worked, then treat it like a function/method call.
@@ -177,6 +208,11 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
 Val* Compiler::compile_integer(const goos::Object& code, Env* env) {
   assert(code.is_int());
   return compile_integer(code.integer_obj.value, env);
+}
+
+Val* Compiler::compile_char(const goos::Object& code, Env* env) {
+  assert(code.is_char());
+  return compile_integer(uint8_t(code.char_obj.value), env);
 }
 
 /*!
@@ -203,10 +239,13 @@ SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
  * Will throw a compilation error if the symbol wasn't previously defined.
  * TODO - determine sign extension behavior when loading symbol values.
  */
-Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
+Val* Compiler::compile_get_symbol_value(const goos::Object& form,
+                                        const std::string& name,
+                                        Env* env) {
   auto existing_symbol = m_symbol_types.find(name);
   if (existing_symbol == m_symbol_types.end()) {
-    throw std::runtime_error("The symbol " + name + " was not defined");
+    throw_compiler_error(
+        form, "The symbol {} was looked up as a global variable, but it does not exist.", name);
   }
 
   auto ts = existing_symbol->second;
@@ -223,9 +262,10 @@ Val* Compiler::compile_get_symbol_value(const std::string& name, Env* env) {
 Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   auto name = symbol_string(form);
 
-  // special case to get "nothing", used as a return value when nothing should be returned.
-  if (name == "none") {
-    return get_none();
+  // optimization to look these up as symbol objects, not getting the value of a symbol.
+  // so you don't have to type '#f, '#t everywhere to get the best performance.
+  if (name == "#t" || name == "#f") {
+    return compile_get_sym_obj(name, env);
   }
 
   // see if the symbol is defined in any enclosing symbol macro envs (mlet's).
@@ -251,9 +291,9 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   if (global_constant != m_global_constants.end()) {
     // check there is no symbol with the same name
     if (existing_symbol != m_symbol_types.end()) {
-      throw_compile_error(form,
-                          "symbol is both a runtime symbol and a global constant.  Something is "
-                          "likely very wrong.");
+      throw_compiler_error(form,
+                           "Ambiguous symbol: {} is both a global variable and a constant and it "
+                           "is not clear which should be used here.");
     }
 
     // got a global constant
@@ -261,15 +301,18 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   }
 
   // none of those, so get a global symbol.
-  return compile_get_symbol_value(name, env);
+  return compile_get_symbol_value(form, name, env);
 }
 
 /*!
  * Compile a string constant. The constant is placed in the same segment as the parent function.
  */
 Val* Compiler::compile_string(const goos::Object& form, Env* env) {
-  return compile_string(form.as_string()->data, env,
-                        get_parent_env_of_type<FunctionEnv>(env)->segment);
+  auto segment = get_parent_env_of_type<FunctionEnv>(env)->segment;
+  if (segment == TOP_LEVEL_SEGMENT) {
+    segment = MAIN_SEGMENT;
+  }
+  return compile_string(form.as_string()->data, env, segment);
 }
 
 /*!
@@ -290,9 +333,12 @@ Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
  * of the code, at least in Jak 1.
  */
 Val* Compiler::compile_float(const goos::Object& code, Env* env) {
+  auto segment = get_parent_env_of_type<FunctionEnv>(env)->segment;
+  if (segment == TOP_LEVEL_SEGMENT) {
+    segment = MAIN_SEGMENT;
+  }
   assert(code.is_float());
-  return compile_float(code.float_obj.value, env,
-                       get_parent_env_of_type<FunctionEnv>(env)->segment);
+  return compile_float(code.float_obj.value, env, segment);
 }
 
 /*!
@@ -311,13 +357,33 @@ Val* Compiler::compile_float(float value, Env* env, int seg) {
 
 Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
+  if (args.unnamed.size() < 2 || !args.named.empty()) {
+    throw_compiler_error(form, "&+ must be used with at least two arguments.");
+  }
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  typecheck(form, m_ts.make_typespec("pointer"), first->type(), "&+ first argument");
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
+
+  bool ok_type = false;
+  for (auto& type : {"pointer", "structure", "inline-array"}) {
+    if (m_ts.typecheck(m_ts.make_typespec(type), first->type(), "", false, false)) {
+      ok_type = true;
+      break;
+    }
+  }
+
+  if (!ok_type) {
+    throw_compiler_error(
+        form, "&+ was used with a {}, which is not a pointer, structure, or inline-array.",
+        first->type().print());
+  }
+
   auto result = env->make_gpr(first->type());
   env->emit(std::make_unique<IR_RegSet>(result, first));
-  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
+
+  for (size_t i = 1; i < args.unnamed.size(); i++) {
+    auto second = compile_error_guard(args.unnamed.at(i), env)->to_gpr(env);
+    typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
+  }
+
   return result;
 }

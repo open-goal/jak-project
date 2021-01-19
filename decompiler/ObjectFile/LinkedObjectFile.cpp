@@ -2,14 +2,21 @@
  * @file LinkedObjectFile.cpp
  * An object file's data with linking information included.
  */
-#include "LinkedObjectFile.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <numeric>
+#include "decompiler/IR/IR.h"
+#include "third-party/fmt/core.h"
+#include "LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
+#include "third-party/json.hpp"
+#include "common/log/log.h"
+#include "common/goos/PrettyPrinter.h"
 
+namespace decompiler {
 /*!
  * Set the number of segments in this object file.
  * This can only be done once, and must be done before adding any words.
@@ -39,7 +46,7 @@ int LinkedObjectFile::get_label_id_for(int seg, int offset) {
   if (kv == label_per_seg_by_offset.at(seg).end()) {
     // create a new label
     int id = labels.size();
-    Label label;
+    DecompilerLabel label;
     label.target_segment = seg;
     label.offset = offset;
     label.name = "L" + std::to_string(id);
@@ -492,7 +499,7 @@ void LinkedObjectFile::process_fp_relative_links() {
               } break;
 
               default:
-                printf("unknown fp using op: %s\n", instr.to_string(*this).c_str());
+                printf("unknown fp using op: %s\n", instr.to_string(labels).c_str());
                 assert(false);
             }
           }
@@ -500,6 +507,222 @@ void LinkedObjectFile::process_fp_relative_links() {
       }
     }
   }
+}
+
+std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
+  nlohmann::json data;
+  std::vector<nlohmann::json::object_t> functions;
+
+  std::unordered_map<std::string, int> functions_seen;
+  for (int seg = segments; seg-- > 0;) {
+    for (size_t fi = functions_by_seg.at(seg).size(); fi--;) {
+      auto& func = functions_by_seg.at(seg).at(fi);
+      auto fname = func.guessed_name.to_string();
+      if (functions_seen.find(fname) != functions_seen.end()) {
+        lg::warn(
+            "Function {} appears multiple times in the same object file {} - it cannot be uniquely "
+            "referenced from config",
+            func.guessed_name.to_string(), obj_file_name);
+        functions_seen[fname]++;
+        fname += "-v" + std::to_string(functions_seen[fname]);
+      } else {
+        functions_seen[fname] = 0;
+      }
+
+      nlohmann::json::object_t f;
+      f["name"] = fname;
+      f["type"] = func.type.print();
+      f["segment"] = seg;
+      f["warnings"] = func.warnings;
+      f["parent_object"] = obj_file_name;
+      std::vector<nlohmann::json::object_t> ops;
+
+      for (int i = 1; i < func.end_word - func.start_word; i++) {
+        nlohmann::json::object_t op;
+        auto label_id = get_label_at(seg, (func.start_word + i) * 4);
+        if (label_id != -1) {
+          op["label"] = labels.at(label_id).name;
+        }
+        auto& instr = func.instructions.at(i);
+        op["id"] = i;
+        op["asm_op"] = instr.to_string(labels);
+
+        if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
+          op["basic_op"] = func.get_basic_op_at_instr(i)->print(*this);
+          //          if (func.has_typemaps()) {
+          //            auto& tm = func.get_typemap_by_instr_idx(i);
+          //            auto& json_type_map = op["type_map"];
+          //            for (auto& kv : tm) {
+          //              json_type_map[kv.first.to_charp()] = kv.second.print();
+          //            }
+          //          }
+        }
+
+        for (int iidx = 0; iidx < instr.n_src; iidx++) {
+          if (instr.get_src(iidx).is_label()) {
+            auto lab = labels.at(instr.get_src(iidx).get_label());
+            if (is_string(lab.target_segment, lab.offset)) {
+              op["referenced_string"] = get_goal_string(lab.target_segment, lab.offset / 4 - 1);
+            }
+          }
+        }
+
+        ops.push_back(op);
+      }
+      f["asm"] = ops;
+      functions.push_back(f);
+    }
+  }
+  data["functions"] = functions;
+  return data.dump();
+}
+
+std::string LinkedObjectFile::print_function_disassembly(Function& func,
+                                                         int seg,
+                                                         bool write_hex,
+                                                         const std::string& extra_name) {
+  std::string result;
+  result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+  result += "; .function " + func.guessed_name.to_string() + " " + extra_name + "\n";
+  result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+  result += func.prologue.to_string(2) + "\n";
+  if (!func.warnings.empty()) {
+    result += ";;Warnings:\n" + func.warnings + "\n";
+  }
+
+  // print each instruction in the function.
+  bool in_delay_slot = false;
+
+  for (int i = 1; i < func.end_word - func.start_word; i++) {
+    auto label_id = get_label_at(seg, (func.start_word + i) * 4);
+    if (label_id != -1) {
+      result += labels.at(label_id).name + ":\n";
+    }
+
+    for (int j = 1; j < 4; j++) {
+      //          assert(get_label_at(seg, (func.start_word + i)*4 + j) == -1);
+      if (get_label_at(seg, (func.start_word + i) * 4 + j) != -1) {
+        result += "BAD OFFSET LABEL: ";
+        result += labels.at(get_label_at(seg, (func.start_word + i) * 4 + j)).name + "\n";
+        assert(false);
+      }
+    }
+
+    auto& instr = func.instructions.at(i);
+    std::string line = "    " + instr.to_string(labels);
+
+    if (write_hex) {
+      if (line.length() < 60) {
+        line.append(60 - line.length(), ' ');
+      }
+      result += line;
+      result += " ;;";
+      auto& word = words_by_seg[seg].at(func.start_word + i);
+      append_word_to_string(result, word);
+    } else {
+      // print basic op stuff
+      if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
+        if (line.length() < 30) {
+          line.append(30 - line.length(), ' ');
+        }
+        line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
+        for (int iidx = 0; iidx < instr.n_src; iidx++) {
+          if (instr.get_src(iidx).is_label()) {
+            auto lab = labels.at(instr.get_src(iidx).get_label());
+            if (is_string(lab.target_segment, lab.offset)) {
+              line += " " + get_goal_string(lab.target_segment, lab.offset / 4 - 1);
+            }
+          }
+        }
+      }
+      result += line + "\n";
+    }
+
+    if (in_delay_slot) {
+      result += "\n";
+      in_delay_slot = false;
+    }
+
+    if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
+      in_delay_slot = true;
+    }
+  }
+  result += "\n";
+  //
+  //      int bid = 0;
+  //      for(auto& bblock : func.basic_blocks) {
+  //        result += "BLOCK " + std::to_string(bid++)+ "\n";
+  //        for(int i = bblock.start_word; i < bblock.end_word; i++) {
+  //          if(i >= 0 && i < func.instructions.size()) {
+  //            result += func.instructions.at(i).to_string(*this) + "\n";
+  //          } else {
+  //            result += "BAD BBLOCK INSTR ID " + std::to_string(i);
+  //          }
+  //        }
+  //      }
+
+  // hack
+  if (func.cfg && !func.cfg->is_fully_resolved()) {
+    result += func.cfg->to_dot();
+    result += "\n";
+  }
+  if (func.cfg) {
+    result += func.cfg->to_form_string() + "\n";
+
+    // To debug block stuff.
+    /*
+    int bid = 0;
+    for(auto& block : func.basic_blocks) {
+      in_delay_slot = false;
+      result += "B" + std::to_string(bid++) + "\n";
+      for(auto i = block.start_word; i < block.end_word; i++) {
+        auto label_id = get_label_at(seg, (func.start_word + i) * 4);
+        if (label_id != -1) {
+          result += labels.at(label_id).name + ":\n";
+        }
+        auto& instr = func.instructions.at(i);
+        result += "    " + instr.to_string(*this) + "\n";
+        if (in_delay_slot) {
+          result += "\n";
+          in_delay_slot = false;
+        }
+
+        if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
+          in_delay_slot = true;
+        }
+      }
+    }
+     */
+  }
+
+  if (func.ir) {
+    result += ";; ir\n";
+    result += func.ir->print(*this);
+  }
+
+  result += "\n\n\n";
+  return result;
+}
+
+std::string LinkedObjectFile::print_asm_function_disassembly(const std::string& my_name) {
+  std::string result;
+  for (int seg = segments; seg-- > 0;) {
+    bool got_in_seg = false;
+    for (auto& func : functions_by_seg.at(seg)) {
+      if (func.suspected_asm) {
+        if (!got_in_seg) {
+          result += ";------------------------------------------\n;  ";
+          result += segment_names[seg];
+          result += " of " + my_name;
+          result += "\n;------------------------------------------\n\n";
+          got_in_seg = true;
+        }
+        result += print_function_disassembly(func, seg, false, my_name);
+      }
+    }
+  }
+
+  return result;
 }
 
 /*!
@@ -518,116 +741,7 @@ std::string LinkedObjectFile::print_disassembly() {
 
     // functions
     for (auto& func : functions_by_seg.at(seg)) {
-      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-      result += "; .function " + func.guessed_name.to_string() + "\n";
-      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-      result += func.prologue.to_string(2) + "\n";
-      if (!func.warnings.empty()) {
-        result += "Warnings: " + func.warnings + "\n";
-      }
-
-      // print each instruction in the function.
-      bool in_delay_slot = false;
-
-      for (int i = 1; i < func.end_word - func.start_word; i++) {
-        auto label_id = get_label_at(seg, (func.start_word + i) * 4);
-        if (label_id != -1) {
-          result += labels.at(label_id).name + ":\n";
-        }
-
-        for (int j = 1; j < 4; j++) {
-          //          assert(get_label_at(seg, (func.start_word + i)*4 + j) == -1);
-          if (get_label_at(seg, (func.start_word + i) * 4 + j) != -1) {
-            result += "BAD OFFSET LABEL: ";
-            result += labels.at(get_label_at(seg, (func.start_word + i) * 4 + j)).name + "\n";
-            assert(false);
-          }
-        }
-
-        auto& instr = func.instructions.at(i);
-        std::string line = "    " + instr.to_string(*this);
-
-        if (write_hex) {
-          if (line.length() < 60) {
-            line.append(60 - line.length(), ' ');
-          }
-          result += line;
-          result += " ;;";
-          auto& word = words_by_seg[seg].at(func.start_word + i);
-          append_word_to_string(result, word);
-        } else {
-          if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
-            if (line.length() < 40) {
-              line.append(40 - line.length(), ' ');
-            }
-            line += ";; " + func.get_basic_op_at_instr(i)->print(*this);
-          }
-          result += line + "\n";
-        }
-
-        if (in_delay_slot) {
-          result += "\n";
-          in_delay_slot = false;
-        }
-
-        if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
-          in_delay_slot = true;
-        }
-      }
-      result += "\n";
-      //
-      //      int bid = 0;
-      //      for(auto& bblock : func.basic_blocks) {
-      //        result += "BLOCK " + std::to_string(bid++)+ "\n";
-      //        for(int i = bblock.start_word; i < bblock.end_word; i++) {
-      //          if(i >= 0 && i < func.instructions.size()) {
-      //            result += func.instructions.at(i).to_string(*this) + "\n";
-      //          } else {
-      //            result += "BAD BBLOCK INSTR ID " + std::to_string(i);
-      //          }
-      //        }
-      //      }
-
-      // hack
-      if (func.cfg && !func.cfg->is_fully_resolved()) {
-        result += func.cfg->to_dot();
-        result += "\n";
-      }
-      if (func.cfg) {
-        result += func.cfg->to_form_string() + "\n";
-
-        // To debug block stuff.
-        /*
-        int bid = 0;
-        for(auto& block : func.basic_blocks) {
-          in_delay_slot = false;
-          result += "B" + std::to_string(bid++) + "\n";
-          for(auto i = block.start_word; i < block.end_word; i++) {
-            auto label_id = get_label_at(seg, (func.start_word + i) * 4);
-            if (label_id != -1) {
-              result += labels.at(label_id).name + ":\n";
-            }
-            auto& instr = func.instructions.at(i);
-            result += "    " + instr.to_string(*this) + "\n";
-            if (in_delay_slot) {
-              result += "\n";
-              in_delay_slot = false;
-            }
-
-            if (gOpcodeInfo[(int)instr.kind].has_delay_slot) {
-              in_delay_slot = true;
-            }
-          }
-        }
-         */
-      }
-
-      if (func.ir) {
-        result += ";; ir\n";
-        result += func.ir->print(*this);
-      }
-
-      result += "\n\n\n";
+      result += print_function_disassembly(func, seg, write_hex, "");
     }
 
     // print data
@@ -655,16 +769,89 @@ std::string LinkedObjectFile::print_disassembly() {
   return result;
 }
 
+std::string LinkedObjectFile::print_type_analysis_debug() {
+  std::string result;
+
+  assert(segments <= 3);
+  for (int seg = segments; seg-- > 0;) {
+    // segment header
+    result += ";------------------------------------------\n;  ";
+    result += segment_names[seg];
+    result += "\n;------------------------------------------\n\n";
+
+    // functions
+    for (auto& func : functions_by_seg.at(seg)) {
+      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+      result += "; .function " + func.guessed_name.to_string() + "\n";
+      result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+      if (!func.warnings.empty()) {
+        result += ";; WARNING:\n" + func.warnings + "\n";
+      }
+
+      for (auto& block : func.basic_blocks) {
+        result += "\n";
+        if (!block.label_name.empty()) {
+          result += block.label_name + ":\n";
+        }
+
+        TypeState* init_types = &block.init_types;
+        for (int i = block.start_basic_op; i < block.end_basic_op; i++) {
+          result += "  ";
+          // result += func.basic_ops.at(i)->print_with_reguse(*this);
+          // result += func.basic_ops.at(i)->print(*this);
+          if (func.attempted_type_analysis) {
+            result += fmt::format("[{:3d}] ", i);
+            auto& op = func.basic_ops.at(i);
+            result += op->print_with_types(*init_types, *this);
+
+            // temporary debug load path print
+            auto op_as_set = dynamic_cast<IR_Set_Atomic*>(op.get());
+            if (op_as_set) {
+              auto op_as_load = dynamic_cast<IR_Load*>(op_as_set->src.get());
+              if (op_as_load && op_as_load->load_path_set) {
+                if (op_as_load->load_path_addr_of) {
+                  result += " (&->";
+                } else {
+                  result += " (->";
+                }
+                result += ' ';
+                result += op_as_load->load_path_base->print(*this);
+                for (auto& tok : op_as_load->load_path) {
+                  result += ' ';
+                  result += tok;
+                }
+                result += ')';
+              }
+            }
+
+            result += "\n";
+            init_types = &func.basic_ops.at(i)->end_types;
+          } else {
+            result += fmt::format("[{:3d}] ", i);
+            result += func.basic_ops.at(i)->print(*this);
+            result += "\n";
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 /*!
  * Hacky way to get a GOAL string object
  */
-std::string LinkedObjectFile::get_goal_string(int seg, int word_idx) {
-  std::string result = "\"";
+std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_quotes) const {
+  std::string result;
+  if (with_quotes) {
+    result += "\"";
+  }
   // next should be the size
   if (word_idx + 1 >= int(words_by_seg[seg].size())) {
     return "invalid string!\n";
   }
-  LinkedWord& size_word = words_by_seg[seg].at(word_idx + 1);
+  const LinkedWord& size_word = words_by_seg[seg].at(word_idx + 1);
   if (size_word.kind != LinkedWord::PLAIN_DATA) {
     // sometimes an array of string pointer triggers this!
     return "invalid string!\n";
@@ -682,8 +869,12 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx) {
     char cword[4];
     memcpy(cword, &word.data, 4);
     result += cword[byte_offset];
+    assert(result.back() != 0);
   }
-  return result + "\"";
+  if (with_quotes) {
+    result += "\"";
+  }
+  return result;
 }
 
 /*!
@@ -798,7 +989,7 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 /*!
  * Is the thing pointed to a string?
  */
-bool LinkedObjectFile::is_string(int seg, int byte_idx) {
+bool LinkedObjectFile::is_string(int seg, int byte_idx) const {
   if (byte_idx % 4) {
     return false;  // must be aligned pointer.
   }
@@ -862,3 +1053,25 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
 
   return result;
 }
+
+u32 LinkedObjectFile::read_data_word(const DecompilerLabel& label) {
+  assert(0 == (label.offset % 4));
+  auto& word = words_by_seg.at(label.target_segment).at(label.offset / 4);
+  assert(word.kind == LinkedWord::Kind::PLAIN_DATA);
+  return word.data;
+}
+
+std::string LinkedObjectFile::get_goal_string_by_label(const DecompilerLabel& label) const {
+  assert(0 == (label.offset % 4));
+  return get_goal_string(label.target_segment, (label.offset / 4) - 1, false);
+}
+
+const DecompilerLabel& LinkedObjectFile::get_label_by_name(const std::string& name) const {
+  for (auto& label : labels) {
+    if (label.name == name) {
+      return label;
+    }
+  }
+  throw std::runtime_error("Can't find label " + name);
+}
+}  // namespace decompiler

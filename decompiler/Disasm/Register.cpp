@@ -7,6 +7,24 @@
 #include <cassert>
 #include <stdexcept>
 
+namespace decompiler {
+namespace Reg {
+// register which may hold GOAL local variables
+
+// clang-format off
+const bool allowed_local_gprs[Reg::MAX_GPR] = {
+    false /*R0*/, false /*AT*/, true /*V0*/,  true /*V1*/,
+    true /*A0*/,  true /*A1*/,  true /*A2*/,  true /*A3*/,
+    true /*T0*/,  true /*T1*/,  true /*T2*/,  true /*T3*/,
+    true /*T4*/,  true /*T5*/,  true /*T6*/,  true /*T7*/,
+    true /*S0*/,  true /*S1*/,  true /*S2*/,  true /*S3*/,
+    true /*S4*/,  true /*S5*/,  false /*S6*/, false /*S7*/,
+    true /*T8*/,  true /*T9*/,  false /*K0*/, false /*K1*/,
+    true /*GP*/,  true /*SP*/,  false /*FP*/, false /*RA*/
+};
+// clang-format on
+}  // namespace Reg
+
 ////////////////////////////
 // Register Name Constants
 ////////////////////////////
@@ -107,6 +125,26 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
     default:
       assert(false);
   }
+}
+
+Register::Register(const std::string& name) {
+  // first try gprs,
+  for (int i = 0; i < Reg::MAX_GPR; i++) {
+    if (name == gpr_names[i]) {
+      id = (Reg::GPR << 8) | i;
+      return;
+    }
+  }
+
+  // next fprs
+  for (int i = 0; i < 32; i++) {
+    if (name == fpr_names[i]) {
+      id = (Reg::FPR << 8) | i;
+      return;
+    }
+  }
+
+  throw std::runtime_error("Unknown register name: " + name);
 }
 
 /*!
@@ -214,3 +252,4 @@ bool Register::operator==(const Register& other) const {
 bool Register::operator!=(const Register& other) const {
   return id != other.id;
 }
+}  // namespace decompiler

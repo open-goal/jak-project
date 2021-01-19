@@ -15,9 +15,7 @@
 #include <vector>
 #include "goalc/emitter/Register.h"
 #include "IRegister.h"
-#include "StackOp.h"
-#include "Assignment.h"
-#include "LiveInfo.h"
+#include "allocate_common.h"
 
 /*!
  * Information about an instruction needed for register allocation.
@@ -70,9 +68,24 @@ struct AllocationResult {
   std::vector<std::vector<Assignment>> assignment;  // variable, instruction
   std::vector<LiveInfo> ass_as_ranges;              // another format, maybe easier?
   std::vector<emitter::Register> used_saved_regs;   // which saved regs get clobbered?
-  int stack_slots = 0;                              // how many space on the stack do we need?
-  std::vector<StackOp> stack_ops;                   // additional instructions to spill/restore
+  int stack_slots_for_spills = 0;                   // how many space on the stack do we need?
+  int stack_slots_for_vars = 0;
+  std::vector<StackOp> stack_ops;  // additional instructions to spill/restore
   bool needs_aligned_stack_for_spills = false;
+
+  // we put the variables before the spills so the variables are 16-byte aligned.
+
+  int total_stack_slots() const { return stack_slots_for_spills + stack_slots_for_vars; }
+
+  int get_slot_for_var(int slot) const {
+    assert(slot < stack_slots_for_vars);
+    return slot;
+  }
+
+  int get_slot_for_spill(int slot) const {
+    assert(slot < stack_slots_for_spills);
+    return slot + stack_slots_for_vars;
+  }
 };
 
 /*!
@@ -83,6 +96,8 @@ struct AllocationInput {
   std::vector<IRegConstraint> constraints;           // all register constraints
   int max_vars = -1;                                 // maximum register id.
   std::vector<std::string> debug_instruction_names;  // optional, for debug prints
+  int stack_slots_for_stack_vars = 0;
+  bool is_asm_function = false;
 
   struct {
     bool print_input = false;

@@ -10,6 +10,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <cassert>
 #include "common/common_types.h"
 
 class IOP_Kernel;
@@ -98,8 +99,7 @@ class IOP_Kernel {
    * Resume the kernel.
    */
   void returnToKernel() {
-    if (_currentThread < 0)
-      throw std::runtime_error("tried to return to kernel not in a thread");
+    assert(_currentThread >= 0);  // must be in a thread
     threads[_currentThread].returnToKernel();
   }
 
@@ -126,15 +126,16 @@ class IOP_Kernel {
       // total hack - returning this value causes the ISO thread to error out and quit.
       return -0x1a9;
     }
-    //    printf("poll %d %ld\n", mbx, mbxs.size());
-    if (mbx >= (s32)mbxs.size())
-      throw std::runtime_error("invalid PollMbx");
+
+    assert(mbx < (s32)mbxs.size());
     s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
     if (gotSomething) {
       void* thing = mbxs[mbx].front();
-      //      printf("pop from msgbox %d %p\n", mbx, thing);
-      if (msg)
+
+      if (msg) {
         *msg = thing;
+      }
+
       mbxs[mbx].pop();
     }
 
@@ -145,11 +146,8 @@ class IOP_Kernel {
    * Push something into a mbx
    */
   s32 SendMbx(s32 mbx, void* value) {
-    if (mbx >= (s32)mbxs.size())
-      throw std::runtime_error("invalid SendMbx");
+    assert(mbx < (s32)mbxs.size());
     mbxs[mbx].push(value);
-    //    printf("push into messagebox %d %p\n", mbx, value);
-    //    printf("mbx size %ld\n", mbxs.size());
     return 0;
   }
 

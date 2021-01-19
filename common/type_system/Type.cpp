@@ -1,22 +1,26 @@
+/*!
+ * @file Type.cpp
+ * Representation of a GOAL type in the type system.
+ */
+
 #include <stdexcept>
 #include <cassert>
 #include <third-party/fmt/core.h>
 #include "Type.h"
-#include "type_util.h"
 
 namespace {
-std::string reg_kind_to_string(RegKind kind) {
+std::string reg_kind_to_string(RegClass kind) {
   switch (kind) {
-    case RegKind::GPR_64:
+    case RegClass::GPR_64:
       return "gpr64";
-    case RegKind::INT_128:
+    case RegClass::INT_128:
       return "int128";
-    case RegKind::FLOAT:
+    case RegClass::FLOAT:
       return "float";
-    case RegKind::FLOAT_4X:
+    case RegClass::VECTOR_FLOAT:
       return "float-4x";
     default:
-      throw std::runtime_error("Unsupported RegKind");
+      throw std::runtime_error("Unsupported HWRegKind");
   }
 }
 
@@ -39,6 +43,8 @@ std::string MethodInfo::print_one_line() const {
 }
 
 Field::Field(std::string name, TypeSpec ts) : m_name(std::move(name)), m_type(std::move(ts)) {}
+Field::Field(std::string name, TypeSpec ts, int offset)
+    : m_name(std::move(name)), m_type(std::move(ts)), m_offset(offset) {}
 
 /*!
  * Print a one line description of a field.
@@ -160,6 +166,21 @@ bool Type::get_my_method(const std::string& name, MethodInfo* out) const {
 }
 
 /*!
+ * Get a method that is defined specifically in this type by id. Returns if it was found or not.
+ */
+bool Type::get_my_method(int id, MethodInfo* out) const {
+  assert(id > 0);  // 0 is new, should use explicit new method functions instead.
+  for (auto& x : m_methods) {
+    if (x.id == id) {
+      *out = x;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/*!
  * Get the last method defined specifically for this type. Returns if there were any methods
  * defined specifically for this type or not.
  */
@@ -247,8 +268,8 @@ int NullType::get_size_in_memory() const {
   throw std::runtime_error("get_size_in_memory called on NullType");
 }
 
-RegKind NullType::get_preferred_reg_kind() const {
-  throw std::runtime_error("get_preferred_reg_kind called on NullType");
+RegClass NullType::get_preferred_reg_class() const {
+  throw std::runtime_error("get_preferred_reg_class called on NullType");
 }
 
 int NullType::get_offset() const {
@@ -285,7 +306,7 @@ ValueType::ValueType(std::string parent,
                      bool is_boxed,
                      int size,
                      bool sign_extend,
-                     RegKind reg)
+                     RegClass reg)
     : Type(std::move(parent), std::move(name), is_boxed),
       m_size(size),
       m_sign_extend(sign_extend),
@@ -318,7 +339,7 @@ int ValueType::get_size_in_memory() const {
 /*!
  * The type of register that this value likes to be loaded into.
  */
-RegKind ValueType::get_preferred_reg_kind() const {
+RegClass ValueType::get_preferred_reg_class() const {
   return m_reg_kind;
 }
 
@@ -426,8 +447,8 @@ int ReferenceType::get_load_size() const {
 /*!
  * Pointers go in GPRs
  */
-RegKind ReferenceType::get_preferred_reg_kind() const {
-  return RegKind::GPR_64;
+RegClass ReferenceType::get_preferred_reg_class() const {
+  return RegClass::GPR_64;
 }
 
 std::string ReferenceType::print() const {
@@ -479,6 +500,15 @@ bool StructureType::operator==(const Type& other) const {
          m_size_in_mem == p_other->m_size_in_mem &&
          m_pack == p_other->m_pack;
   // clang-format on
+}
+
+bool BitFieldType::operator==(const Type& other) const {
+  if (typeid(*this) != typeid(other)) {
+    return false;
+  }
+
+  auto* p_other = dynamic_cast<const BitFieldType*>(&other);
+  return other.is_equal(*this) && m_fields == p_other->m_fields;
 }
 
 int StructureType::get_size_in_memory() const {
@@ -547,4 +577,44 @@ std::string BasicType::print() const {
 
 int BasicType::get_offset() const {
   return BASIC_OFFSET;
+}
+
+/////////////////
+// Bitfield
+/////////////////
+
+BitField::BitField(TypeSpec type, std::string name, int offset, int size)
+    : m_type(std::move(type)), m_name(std::move(name)), m_offset(offset), m_size(size) {}
+
+bool BitField::operator==(const BitField& other) const {
+  return m_type == other.m_type && m_name == other.m_name && m_offset == other.m_offset &&
+         other.m_size == m_size;
+}
+
+BitFieldType::BitFieldType(std::string parent, std::string name, int size, bool sign_extend)
+    : ValueType(std::move(parent), std::move(name), false, size, sign_extend, RegClass::GPR_64) {}
+
+bool BitFieldType::lookup_field(const std::string& name, BitField* out) const {
+  for (auto& field : m_fields) {
+    if (field.name() == name) {
+      *out = field;
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string BitField::print() const {
+  return fmt::format("[{} {}] sz {} off {}", name(), type().print(), size(), offset());
+}
+
+std::string BitFieldType::print() const {
+  std::string result;
+  result += fmt::format("Parent type: {}\nFields:\n", get_parent());
+  for (auto& field : m_fields) {
+    result += fmt::format("  {}\n", field.print());
+  }
+  result += fmt::format("Mem size: {}, load size: {}, signed {}, align {}\n", get_size_in_memory(),
+                        get_load_size(), get_load_signed(), get_in_memory_alignment());
+  return result;
 }

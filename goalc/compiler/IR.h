@@ -20,6 +20,7 @@ class IR {
     (void)constraints;
     (void)my_id;
   }
+  virtual ~IR() = default;
 };
 
 // class IR_Set : public IR {
@@ -193,6 +194,7 @@ enum class IntegerMathKind {
   ADD_64,
   SUB_64,
   IMUL_32,
+  IMUL_64,
   IDIV_32,
   SHLV_64,
   SARV_64,
@@ -210,6 +212,7 @@ enum class IntegerMathKind {
 class IR_IntegerMath : public IR {
  public:
   IR_IntegerMath(IntegerMathKind kind, RegVal* dest, RegVal* arg);
+  IR_IntegerMath(IntegerMathKind kind, RegVal* dest, u8 shift_amount);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -220,10 +223,11 @@ class IR_IntegerMath : public IR {
  protected:
   IntegerMathKind m_kind;
   RegVal* m_dest;
-  RegVal* m_arg;
+  RegVal* m_arg = nullptr;
+  u8 m_shift_amount = 0;
 };
 
-enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS };
+enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS, MIN_SS, MAX_SS };
 
 class IR_FloatMath : public IR {
  public:
@@ -270,38 +274,6 @@ class IR_ConditionalBranch : public IR {
   bool m_resolved = false;
 };
 
-class IR_LoadConstOffset : public IR {
- public:
-  IR_LoadConstOffset(const RegVal* dest, int offset, const RegVal* base, MemLoadInfo info);
-  std::string print() override;
-  RegAllocInstr to_rai() override;
-  void do_codegen(emitter::ObjectGenerator* gen,
-                  const AllocationResult& allocs,
-                  emitter::IR_Record irec) override;
-
- private:
-  const RegVal* m_dest = nullptr;
-  int m_offset = 0;
-  const RegVal* m_base = nullptr;
-  MemLoadInfo m_info;
-};
-
-class IR_StoreConstOffset : public IR {
- public:
-  IR_StoreConstOffset(const RegVal* value, int offset, const RegVal* base, int size);
-  std::string print() override;
-  RegAllocInstr to_rai() override;
-  void do_codegen(emitter::ObjectGenerator* gen,
-                  const AllocationResult& allocs,
-                  emitter::IR_Record irec) override;
-
- private:
-  const RegVal* m_value = nullptr;
-  int m_offset = 0;
-  const RegVal* m_base = nullptr;
-  int m_size = 0;
-};
-
 class IR_Null : public IR {
  public:
   IR_Null() = default;
@@ -312,9 +284,9 @@ class IR_Null : public IR {
                   emitter::IR_Record irec) override;
 };
 
-class IR_FunctionStart : public IR {
+class IR_ValueReset : public IR {
  public:
-  IR_FunctionStart(std::vector<RegVal*> args);
+  IR_ValueReset(std::vector<RegVal*> args);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -353,4 +325,209 @@ class IR_IntToFloat : public IR {
   const RegVal* m_src = nullptr;
 };
 
+class IR_GetStackAddr : public IR {
+ public:
+  IR_GetStackAddr(const RegVal* dest, int slot);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  int m_slot = -1;
+};
+
+class IR_Asm : public IR {
+ public:
+  explicit IR_Asm(bool use_coloring);
+  std::string get_color_suffix_string();
+
+ protected:
+  bool m_use_coloring;
+};
+
+class IR_LoadConstOffset : public IR_Asm {
+ public:
+  IR_LoadConstOffset(const RegVal* dest,
+                     int offset,
+                     const RegVal* base,
+                     MemLoadInfo info,
+                     bool use_coloring = true);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dest = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  MemLoadInfo m_info;
+};
+
+class IR_StoreConstOffset : public IR_Asm {
+ public:
+  IR_StoreConstOffset(const RegVal* value,
+                      int offset,
+                      const RegVal* base,
+                      int size,
+                      bool use_coloring = true);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_value = nullptr;
+  int m_offset = 0;
+  const RegVal* m_base = nullptr;
+  int m_size = 0;
+};
+
+class IR_AsmRet : public IR_Asm {
+ public:
+  IR_AsmRet(bool use_coloring);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
+class IR_AsmPush : public IR_Asm {
+ public:
+  IR_AsmPush(bool use_coloring, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_src = nullptr;
+};
+
+class IR_AsmPop : public IR_Asm {
+ public:
+  IR_AsmPop(bool use_coloring, const RegVal* dst);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+};
+
+class IR_AsmSub : public IR_Asm {
+ public:
+  IR_AsmSub(bool use_coloring, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_AsmAdd : public IR_Asm {
+ public:
+  IR_AsmAdd(bool use_coloring, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ private:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_GetSymbolValueAsm : public IR_Asm {
+ public:
+  IR_GetSymbolValueAsm(bool use_coloring, const RegVal* dest, std::string sym_name, bool sext);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  std::string m_sym_name;
+  bool m_sext = false;
+};
+
+class IR_JumpReg : public IR_Asm {
+ public:
+  IR_JumpReg(bool use_coloring, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_src = nullptr;
+};
+
+class IR_RegSetAsm : public IR_Asm {
+ public:
+  IR_RegSetAsm(bool use_color, const RegVal* dst, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+};
+
+class IR_VFMath3Asm : public IR_Asm {
+ public:
+  enum class Kind { XOR, SUB, ADD };
+  IR_VFMath3Asm(bool use_color,
+                const RegVal* dst,
+                const RegVal* src1,
+                const RegVal* src2,
+                Kind kind);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src1 = nullptr;
+  const RegVal* m_src2 = nullptr;
+  Kind m_kind;
+};
+
+class IR_BlendVF : public IR_Asm {
+ public:
+  IR_BlendVF(bool use_color, const RegVal* dst, const RegVal* src1, const RegVal* src2, u8 mask);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src1 = nullptr;
+  const RegVal* m_src2 = nullptr;
+  u8 m_mask = 0xff;
+};
 #endif  // JAK_IR_H

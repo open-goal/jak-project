@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 
@@ -48,7 +49,7 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
  */
 Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest, Env* env) {
   if (!rest.is_pair()) {
-    throw_compile_error(form, "#cond must have at least one clause, which must be a form");
+    throw_compiler_error(form, "#cond must have at least one clause, which must be a form");
   }
   Val* result = nullptr;
 
@@ -57,7 +58,7 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
     if (lst.is_pair()) {
       Object current_case = lst.as_pair()->car;
       if (!current_case.is_pair()) {
-        throw_compile_error(lst, "Bad case in #cond");
+        throw_compiler_error(lst, "Bad case in #cond");
       }
 
       // check condition:
@@ -84,7 +85,7 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
     } else if (lst.is_empty_list()) {
       return get_none();
     } else {
-      throw_compile_error(form, "malformed #cond");
+      throw_compiler_error(form, "malformed #cond");
     }
   }
 }
@@ -105,23 +106,23 @@ Val* Compiler::compile_quote(const goos::Object& form, const goos::Object& rest,
       empty_pair->set_type(m_ts.make_typespec("pair"));
       return empty_pair;
     }
-      // todo...
+    case goos::ObjectType::PAIR:
+      return compile_static_pair(thing, env);
     default:
-      throw_compile_error(form, "Can't quote this");
+      throw_compiler_error(form, "Quote is not yet implemented for {}.", thing.print());
   }
   return get_none();
 }
 
-/*!
- * Compile defglobalconstant forms, which define a constant in both GOOS and GOAL.
- */
-Val* Compiler::compile_defglobalconstant(const goos::Object& form,
-                                         const goos::Object& _rest,
-                                         Env* env) {
+Val* Compiler::compile_define_constant(const goos::Object& form,
+                                       const goos::Object& _rest,
+                                       Env* env,
+                                       bool goos,
+                                       bool goal) {
   auto rest = &_rest;
   (void)env;
   if (!rest->is_pair()) {
-    throw_compile_error(form, "invalid defglobalconstant");
+    throw_compiler_error(form, "invalid constant definition");
   }
 
   auto sym = pair_car(*rest).as_symbol();
@@ -130,16 +131,42 @@ Val* Compiler::compile_defglobalconstant(const goos::Object& form,
 
   rest = &rest->as_pair()->cdr;
   if (!rest->is_empty_list()) {
-    throw_compile_error(form, "invalid defglobalconstant");
+    throw_compiler_error(form, "invalid constant definition");
   }
 
   // GOAL constant
-  m_global_constants[sym] = value;
+  if (goal) {
+    if (m_symbol_types.find(sym->name) != m_symbol_types.end()) {
+      throw_compiler_error(form,
+                           "Cannot define {} as a constant because "
+                           "it is already the name of a symbol of type {}",
+                           sym->name, m_symbol_types.at(sym->name).print());
+    }
+    m_global_constants[sym] = value;
+  }
 
   // GOOS constant
-  m_goos.global_environment.as_env()->vars[sym] = value;
+  if (goos) {
+    m_goos.global_environment.as_env()->vars[sym] = value;
+  }
 
   return get_none();
+}
+
+/*!
+ * Compile defglobalconstant forms, which define a constant in both GOOS and GOAL.
+ */
+Val* Compiler::compile_defglobalconstant(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env) {
+  return compile_define_constant(form, rest, env, true, true);
+}
+
+/*!
+ * Compile a defconstant form, which defines a constant that is only in GOAL.
+ */
+Val* Compiler::compile_defconstant(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_define_constant(form, rest, env, false, true);
 }
 
 /*!
