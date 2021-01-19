@@ -1,7 +1,6 @@
 #include "config.h"
 #include "third-party/json.hpp"
 #include "common/util/FileUtil.h"
-#include "third-party/spdlog/include/spdlog/spdlog.h"
 
 namespace decompiler {
 Config gConfig;
