@@ -147,7 +147,7 @@ The DMAC is a sophisticated DMA controller. It runs separately from the EE and c
 The VU1 takes the role of vertex shaders. It can be programmed, but only in assembly, and it is extremely challenging and confusing. It has an extremely small memory (16 kB), but this memory is extremely fast. It's role is usually to do vertex transformations and lighting, then generate a list of commands to send to the GS.  The `XGKICK` instruction on VU1 is used to send data from the VU1 memory to the GS.
 
 The GS is the actual GPU. It has VRAM and receives commands from a few different places, including:
-- VU1 `XGICK`s stuff to it directly, bypassing the main bus used by DMAC/CPU memory access. This is called PATH 1 and is most commonly used in Jak 1.
+- VU1 `XGKICK`s stuff to it directly, bypassing the main bus used by DMAC/CPU memory access. This is called PATH 1 and is most commonly used in Jak 1.
 - When DMAing stuff to VU1, it first goes through a thing called VIF1 which can "unpack" data.  There is a special command that you can give to VIF1 which tells it to "send data directly to the GS".
 - DMA sends data directly from EE main memory to GS (Path 3), unused by Jak 1
 

@@ -2,7 +2,7 @@ Type System
 --------------
 This document explains the GOAL type system.  The GOAL type system supports runtime typing, single inheritance, virtual methods, and dynamically sized structures. 
  
- Everything in GOAL has a type at compile time.  A subset of compile-time types are also available in the runtime as objects with the same name as the type.  For example, there is a `string` type, and a runtime there is a global object named `string` which is an object of type `type` containing information about the `string` type.
+ Everything in GOAL has a type at compile time.  A subset of compile-time types are also available in the runtime as objects with the same name as the type.  For example, there is a `string` type, and at runtime there is a global object named `string` which is an object of type `type` containing information about the `string` type.
   
   Some objects have runtime type information, and others don't.  Objects which have runtime type information can have their type identified at runtime, and are called "boxed objects".  Objects without runtime type information are called "unboxed objects".  An unboxed object cannot reliably be detected as a unboxed object - you can't write a function that takes an arbitrary object and tells you if its boxed or not.  However, boxed objects can always be recognized as boxed.
   
@@ -82,7 +82,7 @@ There are many combinations of reference/value, dynamic/not-dynamic, inline/not-
 
 Bonus ones, for where the array is stored _outside_ of the type:
 - A dynamically typed GOAL array, stored outside your type (think `std::vector`): use `(name (array your-type))`
-- A dynamically type GOAL array, stored inside your type: Not allowed, `array` is dynamic!
+- A dynamically typed GOAL array, stored inside your type: Not allowed, `array` is dynamic!
 - An array of value types, stored outside your type: use `(name (pointer your-type))`
 - An array of references (C++ array of pointers), stored outside your type: use `(name (pointer your-ref-type))`
 - An array of objects of reference type (C++ array of structs), stored outside your type: use `(name (inline-array your-ref-type))`
@@ -151,7 +151,7 @@ The first is to allow children to specialize methods and have their own child ty
 Then, if you created a child class of `square` called `rectangle` (this is a terrible way to use inheritance, but it's just an example), and overrode the `is-same-shape` method, you would have to have arguments that are `square`s, which blocks you from accessing `rectangle`-specific fields.  The solution is to define the original method with type `_type_` for the first two arguments.  Then, the method defined for `rectangle` also will have arguments of type `_type_`, which will expand to `rectangle`. 
 
 
-The second use is for a return value.  For example, the `print` and `inspect` methods both return the object that is passed to them, which will always be the same type as the argument passed in.  If `print` was define as `(function object object)`, then `(print my-square)` would lose the information that the return object is a `square`.  If `print` is a `(function _type_ _type)`, the type system will know that `(print my-square)` will return a `square`.
+The second use is for a return value.  For example, the `print` and `inspect` methods both return the object that is passed to them, which will always be the same type as the argument passed in.  If `print` was define as `(function object object)`, then `(print my-square)` would lose the information that the return object is a `square`.  If `print` is a `(function _type_ _type_)`, the type system will know that `(print my-square)` will return a `square`.
 
 Inline Array Class
 --------------------
