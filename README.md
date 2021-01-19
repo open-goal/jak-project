@@ -56,6 +56,28 @@ Run Tests
 ./test.sh
 ```
 
+## Getting Started - Linux (Arch)
+
+Install Packages and Init Repository
+
+```bash
+sudo pacman -S gcc make cmake base-devel g++ nasm
+git submodule update --init --recursive
+```
+
+Compile
+
+```bash
+mkdir build && cd build && cmake .. && make -j
+```
+
+Run Tests
+
+```bash
+./test.sh
+```
+
+
 ## Getting Started - Windows
 
 Install Visual Studio 2019 and get the C++ and CMake tools via the Visual Studio Installer
