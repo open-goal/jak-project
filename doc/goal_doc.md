@@ -1284,7 +1284,7 @@ If the source is an immediate `(new 'static ...)` form that results in a statica
 ```
 will be just a single instruction to do a `vmovaps xmm1, [rip + XXX]`.
 
-##`.svf`
+## `.svf`
 ```lisp
 (.svf dst-loc src-reg [:color #t|#f])
 ```
