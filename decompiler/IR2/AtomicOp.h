@@ -570,8 +570,8 @@ class CallOp : public AtomicOp {
   bool m_call_type_set = false;
 
   std::vector<Variable> m_arg_vars;
-  Variable m_return_var;
   Variable m_function_var;
+  Variable m_return_var;
 };
 
 /*!

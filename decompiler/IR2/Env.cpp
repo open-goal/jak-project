@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <unordered_set>
+#include <algorithm>
 #include "Env.h"
 #include "Form.h"
 

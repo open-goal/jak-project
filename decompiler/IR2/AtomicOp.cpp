@@ -1192,10 +1192,10 @@ void SpecialOp::collect_vars(VariableSet&) const {}
 // CallOp
 /////////////////////////////
 
-CallOp::CallOp(int my_idx) : AtomicOp(my_idx) {
-  m_function_var = Variable(VariableMode::READ, Register(Reg::GPR, Reg::T9), my_idx);
-  m_return_var = Variable(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), my_idx);
-}
+CallOp::CallOp(int my_idx)
+    : AtomicOp(my_idx),
+      m_function_var(VariableMode::READ, Register(Reg::GPR, Reg::T9), my_idx),
+      m_return_var(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), my_idx) {}
 
 goos::Object CallOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   (void)labels;
