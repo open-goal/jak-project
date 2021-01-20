@@ -567,7 +567,7 @@ goos::Object ShortCircuitElement::to_form(const Env& env) const {
 }
 
 void ShortCircuitElement::collect_vars(VariableSet& vars) const {
-  vars.insert(final_result); // todo - this might be unused.
+  vars.insert(final_result);  // todo - this might be unused.
   for (auto& entry : entries) {
     entry.condition->collect_vars(vars);
   }

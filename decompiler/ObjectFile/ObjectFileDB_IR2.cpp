@@ -461,7 +461,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   }
 
   if (func.ir2.env.has_local_vars()) {
-    result += func.ir2.env.print_local_var_types();
+    result += func.ir2.env.print_local_var_types(func.ir2.top_form);
   }
 
   bool print_atomics = func.ir2.atomic_ops_succeeded;

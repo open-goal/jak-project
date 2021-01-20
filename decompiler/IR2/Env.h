@@ -10,17 +10,18 @@
 
 namespace decompiler {
 class LinkedObjectFile;
+class Form;
 
 struct VariableNames {
   struct VarInfo {
     VarInfo() = default;
-    std::string name() const { return fmt::format("{}-{}", reg.to_charp(), id); }
+    std::string name() const { return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id); }
     TP_Type type;
-    Register reg;
-    int id = -1;
+    RegId reg_id;
     bool initialized = false;
   };
 
+  // todo - this is kind of gross.
   std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash> read_vars,
       write_vars;
   std::unordered_map<Register, std::vector<int>, Register::hash> read_opid_to_varid,
@@ -84,7 +85,10 @@ class Env {
     m_has_local_vars = true;
   }
 
-  std::string print_local_var_types() const;
+  std::string print_local_var_types(const Form* top_level_form) const;
+
+  std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
+  RegId get_ssa_var(const Variable& var) const;
 
   LinkedObjectFile* file = nullptr;
 
