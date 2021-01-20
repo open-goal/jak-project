@@ -107,17 +107,12 @@ class DecompilerRegressionTest : public ::testing::Test {
     test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
     test->func.ir2.atomic_ops_succeeded = true;
 
-    if (test->func.run_type_analysis_ir2(function_type, *dts, test->file, {})) {
-      test->func.ir2.has_type_info = true;
-    } else {
-      EXPECT_TRUE(false);
-    }
+    EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, {}));
 
-    test->func.ir2.reg_use = analyze_ir2_register_usage(test->func);
-    test->func.ir2.has_reg_use = true;
+    test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
 
-    auto result =
-        run_variable_renaming(test->func, test->func.ir2.reg_use, *test->func.ir2.atomic_ops, *dts);
+    auto result = run_variable_renaming(test->func, test->func.ir2.env.reg_use(),
+                                        *test->func.ir2.atomic_ops, *dts);
     if (result.has_value()) {
       test->func.ir2.env.set_local_vars(*result);
     } else {
@@ -126,6 +121,10 @@ class DecompilerRegressionTest : public ::testing::Test {
 
     build_initial_forms(test->func);
     EXPECT_TRUE(test->func.ir2.top_form);
+
+    // for now, just test that this can at least be called.
+    VariableSet vars;
+    test->func.ir2.top_form->collect_vars(vars);
 
     return test;
   }
@@ -334,7 +333,7 @@ TEST_F(DecompilerRegressionTest, FormatString) {
       "  (set! a1-0 L343)\n"
       "  (set! f0-0 (l.f gp-0))\n"
       "  (set! a2-0 (fpr->gpr f0-0))\n"
-      "  (set! v0-0 (call!))\n"
+      "  (set! v0-0 (call! a0-1 a1-0 a2-0))\n"  // #t, "~f", the float
       "  (set! v0-1 gp-0)\n"
       "  )";
   test(func, type, expected, false, "", {{"L343", "~f"}});
@@ -702,7 +701,7 @@ TEST_F(DecompilerRegressionTest, FunctionCall) {
       "       (set! t9-0 name=)\n"
       "       (set! a0-2 (l.w (+ gp-0 -2)))\n"
       "       (set! a1-1 s5-0)\n"
-      "       (set! v0-0 (call!))\n"
+      "       (set! v0-0 (call! a0-2 a1-1))\n"
       "       (set! v1-1 v0-0)\n"  // name match
       "       )\n"
       "      )\n"
@@ -861,7 +860,7 @@ TEST_F(DecompilerRegressionTest, NestedAndOr) {
       "          (set! t9-0 s5-0)\n"               // func
       "          (set! a0-1 s2-0)\n"               // car
       "          (set! a1-1 s1-0)\n"               // cadr
-      "          (set! v0-0 (call!))\n"            // compare!
+      "          (set! v0-0 (call! a0-1 a1-1))\n"  // compare!
       "          (set! v1-1 v0-0)\n"
       "          (not v1-1)\n"  // result is false (secretly sets a0-2)
       "          )\n"
@@ -982,7 +981,7 @@ TEST_F(DecompilerRegressionTest, Recursive) {
       "  (else\n"
       "   (set! t9-0 fact)\n"  // recurse!
       "   (set! a0-1 (+ gp-0 -1))\n"
-      "   (set! v0-1 (call!))\n"
+      "   (set! v0-1 (call! a0-1))\n"
       "   (set! v0-2 (*.si gp-0 v0-1))\n"  // not quite a tail call...
       "   )\n"
       "  )";
@@ -1019,7 +1018,7 @@ TEST_F(DecompilerRegressionTest, TypeOf) {
       "(begin\n"
       "  (set! v1-1 (type-of a0-0))\n"
       "  (set! t9-0 (l.wu (+ v1-1 24)))\n"  // print method.
-      "  (set! v0-0 (call!))\n"
+      "  (set! v0-0 (call! a0-0))\n"
       "  )";
   test(func, type, expected, false);
 }

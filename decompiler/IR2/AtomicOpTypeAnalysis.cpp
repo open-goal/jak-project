@@ -724,9 +724,11 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
       // we can also update register usage here.
       m_read_regs.clear();
+      m_arg_vars.clear();
       m_read_regs.emplace_back(Reg::GPR, Reg::T9);
       for (int i = 0; i < arg_count; i++) {
         m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+        m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
       }
 
       return end_types;
@@ -742,10 +744,12 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
   // we can also update register usage here.
   m_read_regs.clear();
+  m_arg_vars.clear();
   m_read_regs.emplace_back(Reg::GPR, Reg::T9);
 
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+    m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
   }
 
   m_write_regs.clear();
