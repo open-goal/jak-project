@@ -17,51 +17,6 @@ class FormPool;
 class DecompilerTypeSystem;
 
 /*!
- * A "Variable" represents a register at a given instruction index.
- * The register can either be a GOAL local variable or a GOAL register used in inline assembly.
- * Because OpenGOAL's registers don't one-to-one map to GOAL registers, GOAL "inline assembly
- * registers" will become OpenGOAL variables, and are treated similarly to variables in
- * decompilation.
- *
- * In the earlier parts of decompilation, this just behaves like a register in all cases.
- * But in later parts registers can be mapped to real local variables with types. A variable can
- * look itself up in an environment to determine what "local variable" it is.
- *
- * Note: a variable is _not_ allowed to be R0, AT, S7, K0, K1, FP, or RA by default, as these
- * can never hold normal GOAL locals.  Inline assembly may use these, but you must set the allow_all
- * flag to true in the constructor of Variable to indicate this is what you really want.
- *
- * Note: access to the process pointer (s6) is handled as a variable. As a result, you may always
- * use s6 as a variable.
- */
-class Variable {
- public:
-  Variable() = default;
-  Variable(VariableMode mode, Register reg, int atomic_idx, bool allow_all = false);
-
-  enum class Print {
-    AS_REG,       // print as a PS2 register name
-    FULL,         // print as a register name, plus an index, plus read or write
-    AS_VARIABLE,  // print local variable name, error if impossible
-    AUTOMATIC,    // print as variable, but if that's not possible print as reg.
-  };
-
-  std::string to_string(const Env* env, Print mode = Print::AUTOMATIC) const;
-
-  bool operator==(const Variable& other) const;
-  bool operator!=(const Variable& other) const;
-
-  const Register& reg() const { return m_reg; }
-  VariableMode mode() const { return m_mode; }
-  int idx() const { return m_atomic_idx; }
-
- private:
-  VariableMode m_mode = VariableMode::READ;  // do we represent a read or a write?
-  Register m_reg;                            // the EE register
-  int m_atomic_idx = -1;                     // the index in the function's list of AtomicOps
-};
-
-/*!
  * An atomic operation represents a single operation from the point of view of the IR2 system.
  * Each IR2 op is one or more instructions.
  * Each function can be represented as a list of AtomicOps. These are stored in exactly the same
@@ -113,6 +68,8 @@ class AtomicOp {
   // in the original instructions multiple times. Ex: "and v0, v1, v1" would end up putting v1 in
   // read twice.
   virtual void update_register_info() = 0;
+
+  virtual void collect_vars(VariableSet& vars) const = 0;
 
   TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
 
@@ -171,6 +128,7 @@ class SimpleAtom {
   static SimpleAtom make_int_constant(s64 value);
   static SimpleAtom make_static_address(int static_label_id);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const;
+  void collect_vars(VariableSet& vars) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
   const Variable& var() const {
@@ -274,6 +232,7 @@ class SimpleExpression {
   TP_Type get_type_int1(const TypeState& input,
                         const Env& env,
                         const DecompilerTypeSystem& dts) const;
+  void collect_vars(VariableSet& vars) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -302,6 +261,7 @@ class SetVarOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   Variable m_dst;
@@ -327,6 +287,7 @@ class AsmOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   Instruction m_instr;
@@ -392,6 +353,7 @@ class IR2_Condition {
   Kind kind() const { return m_kind; }
   const SimpleAtom& src(int i) const { return m_src[i]; }
   ConditionElement* get_as_form(FormPool& pool) const;
+  void collect_vars(VariableSet& vars) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -418,6 +380,7 @@ class SetVarConditionOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   Variable m_dst;
@@ -441,6 +404,7 @@ class StoreOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   int m_size;
@@ -467,6 +431,7 @@ class LoadVarOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   Kind m_kind;
@@ -507,6 +472,7 @@ class IR2_BranchDelay {
   TypeState propagate_types(const TypeState& input,
                             const Env& env,
                             DecompilerTypeSystem& dts) const;
+  void collect_vars(VariableSet& vars) const;
   Kind kind() const { return m_kind; }
   const Variable& var(int idx) const {
     assert(idx < 3);
@@ -539,8 +505,10 @@ class BranchOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
   const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
   const IR2_Condition& condition() const { return m_condition; }
+  ConditionElement* get_condition_as_form(FormPool& pool) const;
   bool likely() const { return m_likely; }
 
  private:
@@ -573,6 +541,7 @@ class SpecialOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   Kind m_kind;
@@ -594,10 +563,15 @@ class CallOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  protected:
   TypeSpec m_call_type;
   bool m_call_type_set = false;
+
+  std::vector<Variable> m_arg_vars;
+  Variable m_function_var;
+  Variable m_return_var;
 };
 
 /*!
@@ -624,6 +598,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   Variable m_dst, m_src;

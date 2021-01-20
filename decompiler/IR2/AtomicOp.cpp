@@ -142,6 +142,12 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
   }
 }
 
+void SimpleAtom::collect_vars(VariableSet& vars) const {
+  if (is_var()) {
+    vars.insert(var());
+  }
+}
+
 bool SimpleAtom::operator==(const SimpleAtom& other) const {
   if (other.m_kind != m_kind) {
     return false;
@@ -353,6 +359,12 @@ void SimpleExpression::get_regs(std::vector<Register>* out) const {
   }
 }
 
+void SimpleExpression::collect_vars(VariableSet& vars) const {
+  for (int i = 0; i < args(); i++) {
+    get_arg(i).collect_vars(vars);
+  }
+}
+
 /////////////////////////////
 // SetVarOp
 /////////////////////////////
@@ -393,6 +405,11 @@ Variable SetVarOp::get_set_destination() const {
 void SetVarOp::update_register_info() {
   m_write_regs.push_back(m_dst.reg());
   m_src.get_regs(&m_read_regs);
+}
+
+void SetVarOp::collect_vars(VariableSet& vars) const {
+  vars.insert(m_dst);
+  m_src.collect_vars(vars);
 }
 
 /////////////////////////////
@@ -482,6 +499,17 @@ void AsmOp::update_register_info() {
   }
 }
 
+void AsmOp::collect_vars(VariableSet& vars) const {
+  if (m_dst.has_value()) {
+    vars.insert(*m_dst);
+  }
+
+  for (auto& x : m_src) {
+    if (x.has_value()) {
+      vars.insert(*x);
+    }
+  }
+}
 /////////////////////////////
 // Condition
 /////////////////////////////
@@ -724,6 +752,12 @@ void IR2_Condition::get_regs(std::vector<Register>* out) const {
   }
 }
 
+void IR2_Condition::collect_vars(VariableSet& vars) const {
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    m_src[i].collect_vars(vars);
+  }
+}
+
 /////////////////////////////
 // SetVarConditionOp
 /////////////////////////////
@@ -759,6 +793,11 @@ Variable SetVarConditionOp::get_set_destination() const {
 void SetVarConditionOp::update_register_info() {
   m_write_regs.push_back(m_dst.reg());
   m_condition.get_regs(&m_read_regs);
+}
+
+void SetVarConditionOp::collect_vars(VariableSet& vars) const {
+  vars.insert(m_dst);
+  m_condition.collect_vars(vars);
 }
 
 /////////////////////////////
@@ -822,6 +861,11 @@ Variable StoreOp::get_set_destination() const {
 void StoreOp::update_register_info() {
   m_addr.get_regs(&m_read_regs);
   m_value.get_regs(&m_read_regs);
+}
+
+void StoreOp::collect_vars(VariableSet& vars) const {
+  m_addr.collect_vars(vars);
+  m_value.collect_vars(vars);
 }
 
 /////////////////////////////
@@ -900,6 +944,11 @@ Variable LoadVarOp::get_set_destination() const {
 void LoadVarOp::update_register_info() {
   m_src.get_regs(&m_read_regs);
   m_write_regs.push_back(m_dst.reg());
+}
+
+void LoadVarOp::collect_vars(VariableSet& vars) const {
+  vars.insert(m_dst);
+  m_src.collect_vars(vars);
 }
 
 /////////////////////////////
@@ -1009,6 +1058,14 @@ void IR2_BranchDelay::get_regs(std::vector<Register>* write, std::vector<Registe
   }
 }
 
+void IR2_BranchDelay::collect_vars(VariableSet& vars) const {
+  for (auto& x : m_var) {
+    if (x.has_value()) {
+      vars.insert(*x);
+    }
+  }
+}
+
 /////////////////////////////
 // BranchOp
 /////////////////////////////
@@ -1062,6 +1119,11 @@ Variable BranchOp::get_set_destination() const {
 void BranchOp::update_register_info() {
   m_condition.get_regs(&m_read_regs);
   m_branch_delay.get_regs(&m_write_regs, &m_read_regs);
+}
+
+void BranchOp::collect_vars(VariableSet& vars) const {
+  m_condition.collect_vars(vars);
+  m_branch_delay.collect_vars(vars);
 }
 
 /////////////////////////////
@@ -1124,16 +1186,26 @@ void SpecialOp::update_register_info() {
   }
 }
 
+void SpecialOp::collect_vars(VariableSet&) const {}
+
 /////////////////////////////
 // CallOp
 /////////////////////////////
 
-CallOp::CallOp(int my_idx) : AtomicOp(my_idx) {}
+CallOp::CallOp(int my_idx)
+    : AtomicOp(my_idx),
+      m_function_var(VariableMode::READ, Register(Reg::GPR, Reg::T9), my_idx),
+      m_return_var(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), my_idx) {}
 
 goos::Object CallOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
   (void)labels;
   (void)env;
-  return pretty_print::build_list("call!");
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("call!"));
+  for (auto& x : m_arg_vars) {
+    forms.push_back(pretty_print::to_symbol(x.to_string(env)));
+  }
+  return pretty_print::build_list(forms);
 }
 
 bool CallOp::operator==(const AtomicOp& other) const {
@@ -1162,6 +1234,15 @@ void CallOp::update_register_info() {
   // renamed variable here, so we add this.
   m_write_regs.push_back(Register(Reg::GPR, Reg::V0));
   clobber_temps();
+}
+
+void CallOp::collect_vars(VariableSet& vars) const {
+  vars.insert(m_function_var);
+  for (auto& e : m_arg_vars) {
+    vars.insert(e);
+  }
+
+  vars.insert(m_return_var);
 }
 
 /////////////////////////////
@@ -1199,5 +1280,10 @@ Variable ConditionalMoveFalseOp::get_set_destination() const {
 void ConditionalMoveFalseOp::update_register_info() {
   m_write_regs.push_back(m_dst.reg());
   m_read_regs.push_back(m_src.reg());
+}
+
+void ConditionalMoveFalseOp::collect_vars(VariableSet& vars) const {
+  vars.insert(m_dst);
+  vars.insert(m_src);
 }
 }  // namespace decompiler

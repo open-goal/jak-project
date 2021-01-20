@@ -270,7 +270,6 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
         if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints)) {
           successful_functions++;
-          func.ir2.has_type_info = true;
         } else {
           func.warnings.append(";; Type analysis failed\n");
         }
@@ -295,8 +294,7 @@ void ObjectFileDB::ir2_register_usage_pass() {
     total_funcs++;
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       analyzed_funcs++;
-      func.ir2.reg_use = analyze_ir2_register_usage(func);
-      func.ir2.has_reg_use = true;
+      func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
     }
   });
 
@@ -314,7 +312,8 @@ void ObjectFileDB::ir2_variable_pass() {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded && func.ir2.env.has_type_analysis()) {
       try {
         attempted++;
-        auto result = run_variable_renaming(func, func.ir2.reg_use, *func.ir2.atomic_ops, dts);
+        auto result =
+            run_variable_renaming(func, func.ir2.env.reg_use(), *func.ir2.atomic_ops, dts);
         if (result.has_value()) {
           successful++;
           func.ir2.env.set_local_vars(*result);
@@ -462,7 +461,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   }
 
   if (func.ir2.env.has_local_vars()) {
-    result += func.ir2.env.print_local_var_types();
+    result += func.ir2.env.print_local_var_types(func.ir2.top_form);
   }
 
   bool print_atomics = func.ir2.atomic_ops_succeeded;
@@ -544,9 +543,9 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
               op.reg_type_info_as_string(*init_types, func.ir2.env.get_types_after_op(op_id)), 50);
         }
 
-        if (func.ir2.has_reg_use) {
+        if (func.ir2.env.has_reg_use()) {
           std::string regs;
-          for (auto r : func.ir2.reg_use.op.at(op_id).consumes) {
+          for (auto r : func.ir2.env.reg_use().op.at(op_id).consumes) {
             regs += r.to_charp();
             regs += ' ';
           }

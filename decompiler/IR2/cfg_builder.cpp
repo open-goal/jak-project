@@ -72,7 +72,7 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir) {
     assert(jump_to_next.first);
     assert(jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
     // patch the branch to next with a condition.
-    auto replacement = jump_to_next.first->op()->condition().get_as_form(pool);
+    auto replacement = jump_to_next.first->op()->get_condition_as_form(pool);
     replacement->invert();
     *(jump_to_next.second) = replacement;
 
@@ -106,7 +106,7 @@ void clean_up_until_loop(FormPool& pool, UntilElement* ir) {
   auto condition_branch = get_condition_branch(ir->condition);
   assert(condition_branch.first);
   assert(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-  auto replacement = condition_branch.first->op()->condition().get_as_form(pool);
+  auto replacement = condition_branch.first->op()->get_condition_as_form(pool);
   replacement->invert();
   *(condition_branch.second) = replacement;
 }
@@ -244,8 +244,8 @@ bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitEl
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
 
-    if (func.ir2.has_reg_use) {
-      auto& branch_info = func.ir2.reg_use.op.at(branch.first->op()->op_id());
+    if (func.ir2.env.has_reg_use()) {
+      auto& branch_info = func.ir2.env.reg_use().op.at(branch.first->op()->op_id());
 
       if (i == 0) {
         live_out_result = (branch_info.written_and_unused.find(ir_dest.reg()) ==
@@ -261,7 +261,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitEl
       }
     }
 
-    auto replacement = branch.first->op()->condition().get_as_form(pool);
+    auto replacement = branch.first->op()->get_condition_as_form(pool);
     replacement->invert();
     *(branch.second) = replacement;
   }
@@ -304,8 +304,8 @@ bool try_clean_up_sc_as_or(FormPool& pool, const Function& func, ShortCircuitEle
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
 
-    if (func.ir2.has_reg_use) {
-      auto& branch_info = func.ir2.reg_use.op.at(branch.first->op()->op_id());
+    if (func.ir2.env.has_reg_use()) {
+      auto& branch_info = func.ir2.env.reg_use().op.at(branch.first->op()->op_id());
 
       if (i == 0) {
         live_out_result = (branch_info.written_and_unused.find(ir_dest.reg()) ==
@@ -317,7 +317,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, const Function& func, ShortCircuitEle
       }
     }
 
-    auto replacement = branch.first->op()->condition().get_as_form(pool);
+    auto replacement = branch.first->op()->get_condition_as_form(pool);
     *(branch.second) = replacement;
   }
 
@@ -442,7 +442,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
 
   auto condition_as_single =
       dynamic_cast<BranchElement*>(cne->entries.front().condition->try_as_single_element());
-  auto condition_replacement = condition.first->op()->condition().get_as_form(pool);
+  auto condition_replacement = condition.first->op()->get_condition_as_form(pool);
   auto crf = pool.alloc_single_form(nullptr, condition_replacement);
   auto replacement = pool.alloc_element<SetVarElement>(dst, crf, true);
   replacement->parent_form = cne->parent_form;
@@ -490,17 +490,17 @@ void clean_up_cond_no_else_final(const Function& func, CondNoElseElement* cne) {
   auto last_branch = dynamic_cast<BranchElement*>(cne->entries.back().original_condition_branch);
   assert(last_branch);
 
-  if (func.ir2.has_reg_use) {
-    auto& last_branch_info = func.ir2.reg_use.op.at(last_branch->op()->op_id());
+  if (func.ir2.env.has_reg_use()) {
+    auto& last_branch_info = func.ir2.env.reg_use().op.at(last_branch->op()->op_id());
     cne->used_as_value = last_branch_info.written_and_unused.find(cne->final_destination) ==
                          last_branch_info.written_and_unused.end();
   }
 
   // check that all other delay slot writes are unused.
   for (size_t i = 0; i < cne->entries.size() - 1; i++) {
-    if (func.ir2.has_reg_use) {
+    if (func.ir2.env.has_reg_use()) {
       auto branch = dynamic_cast<BranchElement*>(cne->entries.at(i).original_condition_branch);
-      auto& branch_info_i = func.ir2.reg_use.op.at(branch->op()->op_id());
+      auto& branch_info_i = func.ir2.env.reg_use().op.at(branch->op()->op_id());
       auto reg = cne->entries.at(i).false_destination;
       assert(reg.has_value());
       assert(branch);
@@ -552,7 +552,7 @@ void clean_up_cond_no_else(FormPool& pool,
 
       e.original_condition_branch = *jump_to_next.second;
 
-      auto replacement = jump_to_next.first->op()->condition().get_as_form(pool);
+      auto replacement = jump_to_next.first->op()->get_condition_as_form(pool);
       replacement->invert();
       *(jump_to_next.second) = replacement;
       e.cleaned = true;
@@ -1181,7 +1181,7 @@ void clean_up_while_loops(FormPool& pool, Form* sequence) {
       assert(condition_branch.first);
       assert(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
       // printf("got while condition branch %s\n", condition_branch.first->print(file).c_str());
-      auto replacement = condition_branch.first->op()->condition().get_as_form(pool);
+      auto replacement = condition_branch.first->op()->get_condition_as_form(pool);
 
       *(condition_branch.second) = replacement;
     }

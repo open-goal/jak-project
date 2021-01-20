@@ -1,4 +1,6 @@
 #include "Form.h"
+
+#include <utility>
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/goos/PrettyPrinter.h"
 
@@ -55,11 +57,17 @@ void Form::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
+void Form::collect_vars(VariableSet& vars) const {
+  for (auto e : m_elements) {
+    e->collect_vars(vars);
+  }
+}
+
 /////////////////////////////
 // SimpleExpressionElement
 /////////////////////////////
 
-SimpleExpressionElement::SimpleExpressionElement(const SimpleExpression& expr) : m_expr(expr) {}
+SimpleExpressionElement::SimpleExpressionElement(SimpleExpression expr) : m_expr(std::move(expr)) {}
 
 goos::Object SimpleExpressionElement::to_form(const Env& env) const {
   return m_expr.to_form(env.file->labels, &env);
@@ -75,95 +83,8 @@ bool SimpleExpressionElement::is_sequence_point() const {
   throw std::runtime_error("Should not check if a SimpleExpressionElement is a sequence point");
 }
 
-/////////////////////////////
-// SetVarElement
-/////////////////////////////
-
-SetVarElement::SetVarElement(const Variable& var, Form* value, bool is_sequence_point)
-    : m_dst(var), m_src(value), m_is_sequence_point(is_sequence_point) {
-  value->parent_element = this;
-}
-
-goos::Object SetVarElement::to_form(const Env& env) const {
-  return pretty_print::build_list("set!", m_dst.to_string(&env), m_src->to_form(env));
-}
-
-void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
-  f(this);
-  m_src->apply(f);
-}
-
-void SetVarElement::apply_form(const std::function<void(Form*)>& f) {
-  m_src->apply_form(f);
-}
-
-bool SetVarElement::is_sequence_point() const {
-  return m_is_sequence_point;
-}
-
-/////////////////////////////
-// AtomicOpElement
-/////////////////////////////
-
-AtomicOpElement::AtomicOpElement(const AtomicOp* op) : m_op(op) {}
-
-goos::Object AtomicOpElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
-}
-
-void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
-  f(this);
-}
-
-void AtomicOpElement::apply_form(const std::function<void(Form*)>&) {}
-
-/////////////////////////////
-// ConditionElement
-/////////////////////////////
-
-ConditionElement::ConditionElement(IR2_Condition::Kind kind, Form* src0, Form* src1)
-    : m_kind(kind) {
-  m_src[0] = src0;
-  m_src[1] = src1;
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->parent_element = this;
-    }
-  }
-}
-
-goos::Object ConditionElement::to_form(const Env& env) const {
-  std::vector<goos::Object> forms;
-  forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
-  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i]->to_form(env));
-  }
-  if (forms.size() > 1) {
-    return pretty_print::build_list(forms);
-  } else {
-    return forms.front();
-  }
-}
-
-void ConditionElement::apply(const std::function<void(FormElement*)>& f) {
-  f(this);
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->apply(f);
-    }
-  }
-}
-
-void ConditionElement::apply_form(const std::function<void(Form*)>& f) {
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->apply_form(f);
-    }
-  }
-}
-
-void ConditionElement::invert() {
-  m_kind = get_condition_opposite(m_kind);
+void SimpleExpressionElement::collect_vars(VariableSet& vars) const {
+  m_expr.collect_vars(vars);
 }
 
 /////////////////////////////
@@ -181,6 +102,10 @@ void StoreElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void StoreElement::apply_form(const std::function<void(Form*)>&) {}
+
+void StoreElement::collect_vars(VariableSet& vars) const {
+  return m_op->collect_vars(vars);
+}
 
 /////////////////////////////
 // LoadSourceElement
@@ -236,6 +161,10 @@ void LoadSourceElement::apply_form(const std::function<void(Form*)>& f) {
   m_addr->apply_form(f);
 }
 
+void LoadSourceElement::collect_vars(VariableSet& vars) const {
+  m_addr->collect_vars(vars);
+}
+
 /////////////////////////////
 // SimpleAtomElement
 /////////////////////////////
@@ -251,6 +180,118 @@ void SimpleAtomElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void SimpleAtomElement::apply_form(const std::function<void(Form*)>&) {}
+
+void SimpleAtomElement::collect_vars(VariableSet& vars) const {
+  return m_atom.collect_vars(vars);
+}
+
+/////////////////////////////
+// SetVarElement
+/////////////////////////////
+
+SetVarElement::SetVarElement(const Variable& var, Form* value, bool is_sequence_point)
+    : m_dst(var), m_src(value), m_is_sequence_point(is_sequence_point) {
+  value->parent_element = this;
+}
+
+goos::Object SetVarElement::to_form(const Env& env) const {
+  return pretty_print::build_list("set!", m_dst.to_string(&env), m_src->to_form(env));
+}
+
+void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_src->apply(f);
+}
+
+void SetVarElement::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+}
+
+bool SetVarElement::is_sequence_point() const {
+  return m_is_sequence_point;
+}
+
+void SetVarElement::collect_vars(VariableSet& vars) const {
+  vars.insert(m_dst);
+  m_src->collect_vars(vars);
+}
+
+/////////////////////////////
+// AtomicOpElement
+/////////////////////////////
+
+AtomicOpElement::AtomicOpElement(const AtomicOp* op) : m_op(op) {}
+
+goos::Object AtomicOpElement::to_form(const Env& env) const {
+  return m_op->to_form(env.file->labels, &env);
+}
+
+void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void AtomicOpElement::apply_form(const std::function<void(Form*)>&) {}
+
+void AtomicOpElement::collect_vars(VariableSet& vars) const {
+  m_op->collect_vars(vars);
+}
+
+/////////////////////////////
+// ConditionElement
+/////////////////////////////
+
+ConditionElement::ConditionElement(IR2_Condition::Kind kind, Form* src0, Form* src1)
+    : m_kind(kind) {
+  m_src[0] = src0;
+  m_src[1] = src1;
+  for (int i = 0; i < 2; i++) {
+    if (m_src[i]) {
+      m_src[i]->parent_element = this;
+    }
+  }
+}
+
+goos::Object ConditionElement::to_form(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    forms.push_back(m_src[i]->to_form(env));
+  }
+  if (forms.size() > 1) {
+    return pretty_print::build_list(forms);
+  } else {
+    return forms.front();
+  }
+}
+
+void ConditionElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (int i = 0; i < 2; i++) {
+    if (m_src[i]) {
+      m_src[i]->apply(f);
+    }
+  }
+}
+
+void ConditionElement::apply_form(const std::function<void(Form*)>& f) {
+  for (int i = 0; i < 2; i++) {
+    if (m_src[i]) {
+      m_src[i]->apply_form(f);
+    }
+  }
+}
+
+void ConditionElement::invert() {
+  m_kind = get_condition_opposite(m_kind);
+}
+
+void ConditionElement::collect_vars(VariableSet& vars) const {
+  for (auto src : m_src) {
+    if (src) {
+      src->collect_vars(vars);
+    }
+  }
+}
 
 /////////////////////////////
 // FunctionCallElement
@@ -268,6 +309,10 @@ void FunctionCallElement::apply(const std::function<void(FormElement*)>& f) {
 
 void FunctionCallElement::apply_form(const std::function<void(Form*)>&) {}
 
+void FunctionCallElement::collect_vars(VariableSet& vars) const {
+  return m_op->collect_vars(vars);
+}
+
 /////////////////////////////
 // BranchElement
 /////////////////////////////
@@ -283,6 +328,10 @@ void BranchElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void BranchElement::apply_form(const std::function<void(Form*)>&) {}
+
+void BranchElement::collect_vars(VariableSet& vars) const {
+  return m_op->collect_vars(vars);
+}
 
 /////////////////////////////
 // ReturnElement
@@ -307,6 +356,11 @@ void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
   dead_code->apply_form(f);
 }
 
+void ReturnElement::collect_vars(VariableSet& vars) const {
+  return_code->collect_vars(vars);
+  dead_code->collect_vars(vars);
+}
+
 /////////////////////////////
 // BreakElement
 /////////////////////////////
@@ -328,6 +382,11 @@ void BreakElement::apply(const std::function<void(FormElement*)>& f) {
 void BreakElement::apply_form(const std::function<void(Form*)>& f) {
   return_code->apply_form(f);
   dead_code->apply_form(f);
+}
+
+void BreakElement::collect_vars(VariableSet& vars) const {
+  return_code->collect_vars(vars);
+  dead_code->collect_vars(vars);
 }
 
 /////////////////////////////
@@ -379,6 +438,14 @@ void CondWithElseElement::apply_form(const std::function<void(Form*)>& f) {
   else_ir->apply_form(f);
 }
 
+void CondWithElseElement::collect_vars(VariableSet& vars) const {
+  for (auto& entry : entries) {
+    entry.condition->collect_vars(vars);
+    entry.body->collect_vars(vars);
+  }
+  else_ir->collect_vars(vars);
+}
+
 /////////////////////////////
 // EmptyElement
 /////////////////////////////
@@ -392,6 +459,8 @@ void EmptyElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void EmptyElement::apply_form(const std::function<void(Form*)>&) {}
+
+void EmptyElement::collect_vars(VariableSet&) const {}
 
 /////////////////////////////
 // WhileElement
@@ -417,6 +486,11 @@ void WhileElement::apply_form(const std::function<void(Form*)>& f) {
   condition->apply_form(f);
 }
 
+void WhileElement::collect_vars(VariableSet& vars) const {
+  body->collect_vars(vars);
+  condition->collect_vars(vars);
+}
+
 /////////////////////////////
 // UntilElement
 /////////////////////////////
@@ -439,6 +513,11 @@ goos::Object UntilElement::to_form(const Env& env) const {
 void UntilElement::apply_form(const std::function<void(Form*)>& f) {
   body->apply_form(f);
   condition->apply_form(f);
+}
+
+void UntilElement::collect_vars(VariableSet& vars) const {
+  body->collect_vars(vars);
+  condition->collect_vars(vars);
 }
 
 /////////////////////////////
@@ -487,8 +566,15 @@ goos::Object ShortCircuitElement::to_form(const Env& env) const {
   return pretty_print::build_list(forms);
 }
 
+void ShortCircuitElement::collect_vars(VariableSet& vars) const {
+  vars.insert(final_result);  // todo - this might be unused.
+  for (auto& entry : entries) {
+    entry.condition->collect_vars(vars);
+  }
+}
+
 /////////////////////////////
-// ShortCircuitElement
+// CondNoElseElement
 /////////////////////////////
 
 goos::Object CondNoElseElement::to_form(const Env& env) const {
@@ -536,6 +622,15 @@ void CondNoElseElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
+void CondNoElseElement::collect_vars(VariableSet& vars) const {
+  for (auto& e : entries) {
+    e.condition->collect_vars(vars);
+    e.body->collect_vars(vars);
+    if (e.false_destination.has_value()) {
+      vars.insert(*e.false_destination);
+    }
+  }
+}
 /////////////////////////////
 // AbsElement
 /////////////////////////////
@@ -555,6 +650,10 @@ void AbsElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AbsElement::apply_form(const std::function<void(Form*)>& f) {
   source->apply_form(f);
+}
+
+void AbsElement::collect_vars(VariableSet& vars) const {
+  source->collect_vars(vars);
 }
 
 /////////////////////////////
@@ -586,6 +685,11 @@ void AshElement::apply_form(const std::function<void(Form*)>& f) {
   value->apply_form(f);
 }
 
+void AshElement::collect_vars(VariableSet& vars) const {
+  shift_amount->collect_vars(vars);
+  value->collect_vars(vars);
+}
+
 /////////////////////////////
 // TypeOfElement
 /////////////////////////////
@@ -606,6 +710,10 @@ void TypeOfElement::apply(const std::function<void(FormElement*)>& f) {
 
 void TypeOfElement::apply_form(const std::function<void(Form*)>& f) {
   value->apply_form(f);
+}
+
+void TypeOfElement::collect_vars(VariableSet& vars) const {
+  value->collect_vars(vars);
 }
 
 /////////////////////////////
@@ -631,5 +739,10 @@ void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>&
 
 void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>& f) {
   source->apply_form(f);
+}
+
+void ConditionalMoveFalseElement::collect_vars(VariableSet& vars) const {
+  vars.insert(dest);
+  source->collect_vars(vars);
 }
 }  // namespace decompiler

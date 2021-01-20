@@ -3,6 +3,10 @@
 
 namespace decompiler {
 
+ConditionElement* BranchOp::get_condition_as_form(FormPool& pool) const {
+  return m_condition.get_as_form(pool);
+}
+
 ConditionElement* IR2_Condition::get_as_form(FormPool& pool) const {
   Form* sources[2] = {nullptr, nullptr};
   int n_sources = get_condition_num_args(m_kind);

@@ -6,20 +6,22 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
+#include "decompiler/IR2/reg_usage.h"
 
 namespace decompiler {
 class LinkedObjectFile;
+class Form;
 
 struct VariableNames {
   struct VarInfo {
     VarInfo() = default;
-    std::string name() const { return fmt::format("{}-{}", reg.to_charp(), id); }
+    std::string name() const { return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id); }
     TP_Type type;
-    Register reg;
-    int id = -1;
+    RegId reg_id;
     bool initialized = false;
   };
 
+  // todo - this is kind of gross.
   std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash> read_vars,
       write_vars;
   std::unordered_map<Register, std::vector<int>, Register::hash> read_opid_to_varid,
@@ -44,6 +46,18 @@ class Env {
  public:
   bool has_local_vars() const { return m_has_local_vars; }
   bool has_type_analysis() const { return m_has_types; }
+  bool has_reg_use() const { return m_has_reg_use; }
+
+  void set_reg_use(const RegUsageInfo& info) {
+    m_reg_use = info;
+    m_has_reg_use = true;
+  }
+
+  const RegUsageInfo& reg_use() const {
+    assert(m_has_reg_use);
+    return m_reg_use;
+  }
+
   std::string get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
 
   /*!
@@ -71,15 +85,22 @@ class Env {
     m_has_local_vars = true;
   }
 
-  std::string print_local_var_types() const;
+  std::string print_local_var_types(const Form* top_level_form) const;
+
+  std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
+  RegId get_ssa_var(const Variable& var) const;
 
   LinkedObjectFile* file = nullptr;
 
  private:
+  bool m_has_reg_use = false;
+  RegUsageInfo m_reg_use;
+
   bool m_has_local_vars = false;
+  VariableNames m_var_names;
+
   bool m_has_types = false;
   std::vector<TypeState> m_block_init_types;
   std::vector<TypeState> m_op_end_types;
-  VariableNames m_var_names;
 };
 }  // namespace decompiler

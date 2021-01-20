@@ -465,13 +465,13 @@ void update_var_info(VariableNames::VarInfo* info,
                      int var_id,
                      const DecompilerTypeSystem& dts) {
   if (info->initialized) {
-    assert(info->id == var_id);
-    assert(info->reg == reg);
+    assert(info->reg_id.id == var_id);
+    assert(info->reg_id.reg == reg);
     bool changed;
     info->type = dts.tp_lca(info->type, ts.get(reg), &changed);
   } else {
-    info->id = var_id;
-    info->reg = reg;
+    info->reg_id.id = var_id;
+    info->reg_id.reg = reg;
     info->type = ts.get(reg);
     info->initialized = true;
   }

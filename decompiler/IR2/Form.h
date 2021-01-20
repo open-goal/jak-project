@@ -11,6 +11,7 @@
 namespace decompiler {
 class Form;
 class Env;
+class IR2_Stack;
 
 /*!
  * A "FormElement" represents a single LISP form that's not a begin.
@@ -25,6 +26,15 @@ class FormElement {
   virtual void apply(const std::function<void(FormElement*)>& f) = 0;
   virtual void apply_form(const std::function<void(Form*)>& f) = 0;
   virtual bool is_sequence_point() const { return true; }
+  virtual void collect_vars(VariableSet& vars) const = 0;
+
+  //  // push the result of this operation to the operation stack
+  //  // this is used for the forms that aren't last in a multi-form.
+  //  virtual void push_to_stack(const Env& env, IR2_Stack& stack) = 0;
+  //
+  //  // this is used for the final of a multi-form only.
+  //  // using the current expressions on the stack, simplify myself.
+  //  virtual FormElement* simplify(const Env& env, FormPool& pool, IR2_Stack& stack) = 0;
 
  protected:
   friend class Form;
@@ -36,12 +46,14 @@ class FormElement {
  */
 class SimpleExpressionElement : public FormElement {
  public:
-  explicit SimpleExpressionElement(const SimpleExpression& expr);
+  explicit SimpleExpressionElement(SimpleExpression expr);
 
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
+  void collect_vars(VariableSet& vars) const override;
+
   const SimpleExpression& expr() const { return m_expr; }
 
  private:
@@ -60,6 +72,7 @@ class StoreElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   // todo - we may eventually want to use a different representation for more
@@ -77,6 +90,7 @@ class LoadSourceElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
@@ -87,12 +101,17 @@ class LoadSourceElement : public FormElement {
   LoadVarOp::Kind m_kind;
 };
 
+/*!
+ * Representing an indivisible thing, like an integer constant variable, etc.
+ * Just a wrapper around SimpleAtom.
+ */
 class SimpleAtomElement : public FormElement {
  public:
   explicit SimpleAtomElement(const SimpleAtom& var);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   SimpleAtom m_atom;
@@ -108,6 +127,8 @@ class SetVarElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
+  void collect_vars(VariableSet& vars) const override;
+
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
 
@@ -123,6 +144,7 @@ class AtomicOpElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   const AtomicOp* m_op;
@@ -134,6 +156,7 @@ class ConditionElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
   void invert();
 
  private:
@@ -147,6 +170,7 @@ class FunctionCallElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 
  private:
   const CallOp* m_op;
@@ -158,6 +182,7 @@ class BranchElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
   const BranchOp* op() const { return m_op; }
 
  private:
@@ -173,6 +198,7 @@ class ReturnElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class BreakElement : public FormElement {
@@ -184,6 +210,7 @@ class BreakElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class CondWithElseElement : public FormElement {
@@ -200,6 +227,7 @@ class CondWithElseElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class EmptyElement : public FormElement {
@@ -208,6 +236,7 @@ class EmptyElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class WhileElement : public FormElement {
@@ -216,6 +245,7 @@ class WhileElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
   Form* condition = nullptr;
   Form* body = nullptr;
   bool cleaned = false;
@@ -227,6 +257,7 @@ class UntilElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
   Form* condition = nullptr;
   Form* body = nullptr;
 };
@@ -237,7 +268,7 @@ class ShortCircuitElement : public FormElement {
     Form* condition = nullptr;
     // in the case where there's no else, each delay slot will write #f to the "output" register.
     // this can be with an or <output>, s7, r0
-    Form* output = nullptr;
+    //    Form* output = nullptr; // todo, what? add to collect vars if we need it?
     bool is_output_trick = false;
     bool cleaned = false;
   };
@@ -252,6 +283,7 @@ class ShortCircuitElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class CondNoElseElement : public FormElement {
@@ -270,6 +302,7 @@ class CondNoElseElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class AbsElement : public FormElement {
@@ -278,6 +311,7 @@ class AbsElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
   Form* source = nullptr;
 };
 
@@ -291,6 +325,7 @@ class AshElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class TypeOfElement : public FormElement {
@@ -301,6 +336,7 @@ class TypeOfElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 class ConditionalMoveFalseElement : public FormElement {
@@ -312,6 +348,7 @@ class ConditionalMoveFalseElement : public FormElement {
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
 };
 
 /*!
@@ -328,7 +365,7 @@ class Form {
     single_child->parent_form = this;
   }
 
-  Form(FormElement* parent, const std::vector<FormElement*> sequence)
+  Form(FormElement* parent, const std::vector<FormElement*>& sequence)
       : parent_element(parent), m_elements(sequence) {
     for (auto& x : sequence) {
       x->parent_form = this;
@@ -370,6 +407,8 @@ class Form {
   void inline_forms(std::vector<goos::Object>& forms, const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
+  void collect_vars(VariableSet& vars) const;
+
   FormElement* parent_element = nullptr;
 
  private:
