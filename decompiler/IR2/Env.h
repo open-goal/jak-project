@@ -31,7 +31,12 @@ struct VariableNames {
     if (mode == VariableMode::READ) {
       return read_vars.at(reg).at(read_opid_to_varid.at(reg).at(op_id));
     } else {
-      return write_vars.at(reg).at(write_opid_to_varid.at(reg).at(op_id));
+      auto& one = write_vars.at(reg);
+      auto& two = write_opid_to_varid.at(reg);
+      auto& three = two.at(op_id);
+      auto& four = one.at(three);
+      return four;
+//      return write_vars.at(reg).at(write_opid_to_varid.at(reg).at(op_id));
     }
   }
 };

@@ -15,18 +15,12 @@ add_library(
 
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
-        Function/ExpressionBuilder.cpp
-        Function/ExpressionStack.cpp
         Function/Function.cpp
-        Function/RegUsage.cpp
         Function/TypeAnalysis.cpp
         Function/TypeInspector.cpp
 
         IR/BasicOpBuilder.cpp
-        IR/CfgBuilder.cpp
         IR/IR.cpp
-        IR/IR_ExpressionStack.cpp
-        IR/IR_TypeAnalysis.cpp
 
         IR2/atomic_op_builder.cpp
         IR2/AtomicOp.cpp

@@ -711,16 +711,6 @@ int Function::get_failed_basic_op_count() {
   return count;
 }
 
-int Function::get_reginfo_basic_op_count() {
-  int count = 0;
-  for (auto& x : basic_ops) {
-    if (x->reg_info_set) {
-      count++;
-    }
-  }
-  return count;
-}
-
 /*!
  * Topological sort of basic blocks.
  * Returns a valid ordering + a list of blocks that you can't reach and therefore
