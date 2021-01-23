@@ -1242,7 +1242,9 @@ void CallOp::collect_vars(VariableSet& vars) const {
     vars.insert(e);
   }
 
-  vars.insert(m_return_var);
+  if (m_call_type_set && m_call_type.last_arg() != TypeSpec("none")) {
+    vars.insert(m_return_var);
+  }
 }
 
 /////////////////////////////

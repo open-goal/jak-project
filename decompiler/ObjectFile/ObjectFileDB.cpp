@@ -832,7 +832,6 @@ void ObjectFileDB::analyze_functions_ir1() {
         auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
         all_type_defs += ";; " + data.to_unique_name() + "\n";
         all_type_defs += result.print_as_deftype() + "\n";
-        printf("%s\n", result.print_as_deftype().c_str());
       }
     } else {
       asm_funcs++;
