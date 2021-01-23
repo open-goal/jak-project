@@ -64,7 +64,6 @@ class ObjectFileDB {
                          bool write_json,
                          const std::string& file_suffix = "");
 
-  void write_debug_type_analysis(const std::string& output_dir, const std::string& suffix = "");
   void analyze_functions_ir1();
   void analyze_functions_ir2(const std::string& output_dir);
   void ir2_top_level_pass();
@@ -81,7 +80,6 @@ class ObjectFileDB {
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
 
   void process_tpages();
-  void analyze_expressions();
   std::string process_game_count_file();
   std::string process_game_text_files();
 

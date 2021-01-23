@@ -22,7 +22,6 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/IR/BasicOpBuilder.h"
-#include "decompiler/IR/CfgBuilder.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "common/log/log.h"
 #include "third-party/json.hpp"
@@ -533,31 +532,6 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   // printf("\n");
 }
 
-void ObjectFileDB::write_debug_type_analysis(const std::string& output_dir,
-                                             const std::string& suffix) {
-  lg::info("- Writing debug type analysis...");
-  Timer timer;
-  uint32_t total_bytes = 0, total_files = 0;
-
-  for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.has_any_functions()) {
-      auto file_text = obj.linked_data.print_type_analysis_debug();
-      auto file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + suffix + "_dbt.asm");
-
-      total_bytes += file_text.size();
-      file_util::write_text_file(file_name, file_text);
-      total_files++;
-    }
-  });
-
-  lg::info("Wrote functions dumps:");
-  lg::info(" Total {} files", total_files);
-  lg::info(" Total {} MB", total_bytes / ((float)(1u << 20u)));
-  lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
-           total_bytes / ((1u << 20u) * timer.getSeconds()));
-}
-
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
@@ -744,7 +718,6 @@ void ObjectFileDB::analyze_functions_ir1() {
   Timer timer;
 
   int total_functions = 0;
-  int resolved_cfg_functions = 0;
   const auto& config = get_config();
 
   // Step 1 - analyze the "top level" or "login" code for each object file.
@@ -803,27 +776,13 @@ void ObjectFileDB::analyze_functions_ir1() {
       func.warnings += ";; this function exists in multiple non-identical object files\n";
     }
   });
-  /*
-      for (const auto& kv : duplicated_functions) {
-        printf("Function %s is found in non-identical object files:\n", kv.first.c_str());
-        for (const auto& obj : kv.second) {
-          printf(" %s\n", obj.c_str());
-        }
-      }
-      */
 
   int total_trivial_cfg_functions = 0;
   int total_named_functions = 0;
   int total_basic_ops = 0;
   int total_failed_basic_ops = 0;
-  int total_reginfo_ops = 0;
 
   int asm_funcs = 0;
-  int non_asm_funcs = 0;
-  int successful_cfg_irs = 0;
-  int successful_type_analysis = 0;
-  int attempted_type_analysis = 0;
-  int bad_type_analysis = 0;  // didn't attempt because we didn't know how + attempted but failed
 
   std::map<int, std::vector<std::string>> unresolved_by_length;
 
@@ -833,11 +792,6 @@ void ObjectFileDB::analyze_functions_ir1() {
   // Main Pass over each function...
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     total_functions++;
-    //        if (func.guessed_name.to_string() != "sort") {
-    //          return;
-    //        }
-    //          printf("in %s from %s\n", func.guessed_name.to_string().c_str(),
-    //                 data.to_unique_name().c_str());
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
@@ -872,7 +826,6 @@ void ObjectFileDB::analyze_functions_ir1() {
       }
       total_basic_ops += func.get_basic_op_count();
       total_failed_basic_ops += func.get_failed_basic_op_count();
-      total_reginfo_ops += func.get_reginfo_basic_op_count();
 
       // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
@@ -880,157 +833,10 @@ void ObjectFileDB::analyze_functions_ir1() {
         all_type_defs += ";; " + data.to_unique_name() + "\n";
         all_type_defs += result.print_as_deftype() + "\n";
       }
-
-      // Combine basic ops + CFG to build a nested IR
-      // register usage first, so we can tell if the SC's if's are used by value.
-      func.run_reg_usage();
-      func.ir = build_cfg_ir(func, *func.cfg, data.linked_data);
-      non_asm_funcs++;
-      if (func.ir) {
-        successful_cfg_irs++;
-      }
-
-      if (func.cfg->is_fully_resolved()) {
-        resolved_cfg_functions++;
-      } else {
-        lg::warn("Function {} from {} failed cfg ir", func.guessed_name.to_string(),
-                 data.to_unique_name());
-      }
-
-      // type analysis
-
-      if (get_config().function_type_prop) {
-        auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
-        if (get_config().no_type_analysis_functions_by_name.find(func.guessed_name.to_string()) ==
-            get_config().no_type_analysis_functions_by_name.end()) {
-          if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-            // we're a global named function. This means we're stored in a symbol
-            auto kv = dts.symbol_types.find(func.guessed_name.function_name);
-            if (kv != dts.symbol_types.end() && kv->second.arg_count() >= 1) {
-              if (kv->second.base_type() != "function") {
-                lg::error("Found a function named {} but the symbol has type {}",
-                          func.guessed_name.to_string(), kv->second.print());
-                assert(false);
-              }
-              // GOOD!
-              func.type = kv->second;
-              func.attempted_type_analysis = true;
-              attempted_type_analysis++;
-              //            lg::info("Type Analysis on {} {}", func.guessed_name.to_string(),
-              //                         kv->second.print());
-              if (func.run_type_analysis(kv->second, dts, data.linked_data, hints)) {
-                successful_type_analysis++;
-              } else {
-                // bad, failed.
-                bad_type_analysis++;
-              }
-            } else {
-              // bad, don't know global type
-              bad_type_analysis++;
-            }
-          } else if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-            // it's a method.
-            try {
-              auto info =
-                  dts.ts.lookup_method(func.guessed_name.type_name, func.guessed_name.method_id);
-              if (info.type.arg_count() >= 1) {
-                if (info.type.base_type() != "function") {
-                  lg::error("Found a method named {} but the symbol has type {}",
-                            func.guessed_name.to_string(), info.type.print());
-                  assert(false);
-                }
-                // GOOD!
-                func.type = info.type.substitute_for_method_call(func.guessed_name.type_name);
-                func.attempted_type_analysis = true;
-                attempted_type_analysis++;
-                //              lg::info("Type Analysis on {} {}",
-                //              func.guessed_name.to_string(),
-                //                           func.type.print());
-                if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
-                  successful_type_analysis++;
-                } else {
-                  bad_type_analysis++;
-                }
-              } else {
-                // not enough type info
-                bad_type_analysis++;
-              }
-
-            } catch (std::runtime_error& e) {
-              // failed to lookup method info
-              bad_type_analysis++;
-            }
-          } else if (func.guessed_name.kind == FunctionName::FunctionKind::TOP_LEVEL_INIT) {
-            attempted_type_analysis++;
-            func.type = dts.ts.make_function_typespec({}, "none");
-            func.attempted_type_analysis = true;
-            if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
-              successful_type_analysis++;
-            } else {
-              // failed
-              bad_type_analysis++;
-            }
-          } else if (func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
-            auto obj_name = data.to_unique_name();
-            // try looking up the object
-            const auto& map = get_config().anon_function_types_by_obj_by_id;
-            auto obj_kv = map.find(obj_name);
-            if (obj_kv != map.end()) {
-              auto func_kv = obj_kv->second.find(func.guessed_name.get_anon_id());
-              if (func_kv != obj_kv->second.end()) {
-                attempted_type_analysis++;
-                func.type = dts.parse_type_spec(func_kv->second);
-                func.attempted_type_analysis = true;
-                if (func.run_type_analysis(func.type, dts, data.linked_data, hints)) {
-                  successful_type_analysis++;
-                } else {
-                  // tried, but failed.
-                  bad_type_analysis++;
-                }
-              } else {
-                // no id
-                bad_type_analysis++;
-              }
-            } else {
-              // no object in map
-              bad_type_analysis++;
-            }
-          } else {
-            // unsupported function kind
-            bad_type_analysis++;
-          }
-
-          if (!func.attempted_type_analysis) {
-            func.warnings.append(";; Failed to try type analysis\n");
-          }
-        } else {
-          func.warnings.append(";; Marked as no type analysis in config\n");
-        }
-      }
     } else {
       asm_funcs++;
       func.warnings.append(";; Assembly Function. Analysis passes were not attempted.\n");
     }
-
-    if (func.basic_blocks.size() > 1 && !func.suspected_asm) {
-      if (func.cfg->is_fully_resolved()) {
-      } else {
-        unresolved_by_length[func.end_word - func.start_word].push_back(
-            func.guessed_name.to_string());
-      }
-    }
-
-    if (!func.suspected_asm && func.basic_blocks.size() <= 1) {
-      total_trivial_cfg_functions++;
-    }
-
-    if (!func.guessed_name.empty()) {
-      total_named_functions++;
-    }
-
-    //    if (func.guessed_name.to_string() == "reset-and-call") {
-    //      assert(false);
-    //    }
   });
 
   lg::info("Found {} functions ({} with no control flow)", total_functions,
@@ -1039,58 +845,9 @@ void ObjectFileDB::analyze_functions_ir1() {
            100.f * float(total_named_functions) / float(total_functions));
   lg::info("Excluding {} asm functions", asm_funcs);
   lg::info("Found {} basic blocks in {:.3f} ms", total_basic_blocks, timer.getMs());
-  lg::info(" {}/{} functions passed cfg analysis stage ({:.3f}%)", resolved_cfg_functions,
-           non_asm_funcs, 100.f * float(resolved_cfg_functions) / float(non_asm_funcs));
   int successful_basic_ops = total_basic_ops - total_failed_basic_ops;
   lg::info(" {}/{} basic ops converted successfully ({:.3f}%)", successful_basic_ops,
            total_basic_ops, 100.f * float(successful_basic_ops) / float(total_basic_ops));
-  lg::info(" {}/{} basic ops with reginfo ({:.3f}%)", total_reginfo_ops, total_basic_ops,
-           100.f * float(total_reginfo_ops) / float(total_basic_ops));
-  lg::info(" {}/{} cfgs converted to ir ({:.3f}%)", successful_cfg_irs, non_asm_funcs,
-           100.f * float(successful_cfg_irs) / float(non_asm_funcs));
-  lg::info(" {}/{} functions attempted type analysis ({:.2f}%)", attempted_type_analysis,
-           non_asm_funcs, 100.f * float(attempted_type_analysis) / float(non_asm_funcs));
-  lg::info(" {}/{} functions that attempted type analysis succeeded ({:.2f}%)",
-           successful_type_analysis, attempted_type_analysis,
-           100.f * float(successful_type_analysis) / float(attempted_type_analysis));
-  lg::info(" {}/{} functions passed type analysis ({:.2f}%)", successful_type_analysis,
-           non_asm_funcs, 100.f * float(successful_type_analysis) / float(non_asm_funcs));
-  lg::info(
-      " {} functions were supposed to do type analysis but either failed or didn't know their "
-      "types.\n",
-      bad_type_analysis);
-
-  //    for (auto& kv : unresolved_by_length) {
-  //      printf("LEN %d\n", kv.first);
-  //      for (auto& x : kv.second) {
-  //        printf("  %s\n", x.c_str());
-  //      }
-  //    }
-}
-
-void ObjectFileDB::analyze_expressions() {
-  lg::info("- Analyzing Expressions...");
-  Timer timer;
-  int attempts = 0;
-  int success = 0;
-  bool had_failure = false;
-  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
-    (void)segment_id;
-
-    if (/*!had_failure &&*/ func.attempted_type_analysis) {
-      attempts++;
-      lg::info("Analyze {}", func.guessed_name.to_string());
-      if (func.build_expression(data.linked_data)) {
-        success++;
-      } else {
-        func.warnings.append(";; Expression analysis failed.\n");
-        had_failure = true;
-      }
-    }
-  });
-
-  lg::info(" {}/{} functions passed expression building ({:.2f}%)\n", success, attempts,
-           100.f * float(success) / float(attempts));
 }
 
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
