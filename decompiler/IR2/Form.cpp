@@ -21,6 +21,18 @@ FormPool::~FormPool() {
 }
 
 ///////////////////
+// FormElement
+///////////////////
+
+std::string FormElement::to_string(const Env& env) const {
+  return to_form(env).print();
+}
+
+void FormElement::push_to_stack(const Env& env, FormStack&) {
+  throw std::runtime_error("push_to_stack not implemented for " + to_string(env));
+}
+
+///////////////////
 // Form
 //////////////////
 
@@ -36,6 +48,10 @@ goos::Object Form::to_form(const Env& env) const {
     }
     return pretty_print::build_list(forms);
   }
+}
+
+std::string Form::to_string(const Env& env) const {
+  return to_form(env).print();
 }
 
 void Form::inline_forms(std::vector<goos::Object>& forms, const Env& env) const {

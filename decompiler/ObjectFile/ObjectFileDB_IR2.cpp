@@ -11,6 +11,7 @@
 #include "decompiler/IR2/reg_usage.h"
 #include "decompiler/IR2/variable_naming.h"
 #include "decompiler/IR2/cfg_builder.h"
+#include "decompiler/IR2/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
@@ -34,8 +35,12 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_register_usage_pass();
   lg::info("Variable analysis...");
   ir2_variable_pass();
-  lg::info("Initial conversion to Form...");
+  lg::info("Initial structuring..");
   ir2_cfg_build_pass();
+  lg::info("Storing temporary form result...");
+  ir2_store_current_forms();
+  lg::info("Expression building...");
+  ir2_build_expressions();
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -349,6 +354,45 @@ void ObjectFileDB::ir2_cfg_build_pass() {
   lg::info("{}/{}/{} cfg build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
 }
 
+void ObjectFileDB::ir2_store_current_forms() {
+  Timer timer;
+  int total = 0;
+
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+
+    if (func.ir2.top_form) {
+      total++;
+      func.ir2.debug_form_string =
+          pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+    }
+  });
+
+  lg::info("Stored debug forms for {} functions in {:.2f} ms\n", total, timer.getMs());
+}
+
+void ObjectFileDB::ir2_build_expressions() {
+  Timer timer;
+  int total = 0;
+  int attempted = 0;
+  int successful = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    total++;
+    if (func.ir2.top_form) {
+      attempted++;
+      if (convert_to_expressions(func.ir2.top_form, func.ir2.form_pool, func)) {
+        successful++;
+        func.ir2.print_debug_forms = true;
+      }
+    }
+  });
+
+  lg::info("{}/{}/{} expression build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
+}
+
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
   Timer timer;
   lg::info("Writing IR2 results to file...");
@@ -386,6 +430,12 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
       if (func.ir2.top_form) {
         result += '\n';
         result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+        result += '\n';
+      }
+
+      if (func.ir2.print_debug_forms) {
+        result += '\n';
+        result += func.ir2.debug_form_string;
         result += '\n';
       }
     }

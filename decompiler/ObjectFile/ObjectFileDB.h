@@ -74,6 +74,8 @@ class ObjectFileDB {
   void ir2_register_usage_pass();
   void ir2_variable_pass();
   void ir2_cfg_build_pass();
+  void ir2_store_current_forms();
+  void ir2_build_expressions();
   void ir2_write_results(const std::string& output_dir);
   std::string ir2_to_file(ObjectFileData& data);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
