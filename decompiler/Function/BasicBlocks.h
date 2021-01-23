@@ -7,7 +7,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
 // for RegSet:
-#include "decompiler/IR2/reg_usage.h"
+#include "decompiler/analysis/reg_usage.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -28,15 +28,6 @@ struct BasicBlock {
   std::vector<int> pred;
   int succ_ft = -1;
   int succ_branch = -1;
-
-  std::vector<RegSet> live, dead;
-  RegSet use, defs;
-  RegSet input, output;
-
-  bool op_has_reg_live_out(int basic_op_idx, Register reg) {
-    auto& lv = live.at(basic_op_idx - start_basic_op);
-    return lv.find(reg) != lv.end();
-  }
 
   BasicBlock(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {}
 };

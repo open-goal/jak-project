@@ -6,11 +6,12 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
-#include "decompiler/IR2/reg_usage.h"
+#include "decompiler/analysis/reg_usage.h"
 
 namespace decompiler {
 class LinkedObjectFile;
 class Form;
+struct FunctionAtomicOps;
 
 struct VariableNames {
   struct VarInfo {
@@ -68,6 +69,11 @@ class Env {
     return m_op_end_types.at(atomic_op_id);
   }
 
+  const TypeState& get_types_before_op(int atomic_op_id) const {
+    assert(m_has_types);
+    return *m_op_init_types.at(atomic_op_id);
+  }
+
   /*!
    * Get the types in registers at the beginning of this basic block, before any operations
    * have occurred.
@@ -78,7 +84,8 @@ class Env {
   }
 
   void set_types(const std::vector<TypeState>& block_init_types,
-                 const std::vector<TypeState>& op_end_types);
+                 const std::vector<TypeState>& op_end_types,
+                 const FunctionAtomicOps& atomic_ops);
 
   void set_local_vars(const VariableNames& names) {
     m_var_names = names;
@@ -102,5 +109,6 @@ class Env {
   bool m_has_types = false;
   std::vector<TypeState> m_block_init_types;
   std::vector<TypeState> m_op_end_types;
+  std::vector<TypeState*> m_op_init_types;
 };
 }  // namespace decompiler

@@ -1,6 +1,13 @@
 add_library(
         decomp
         SHARED
+
+        analysis/atomic_op_builder.cpp
+        analysis/cfg_builder.cpp
+        analysis/expression_build.cpp
+        analysis/reg_usage.cpp
+        analysis/variable_naming.cpp
+
         data/game_count.cpp
         data/game_text.cpp
         data/StrFileReader.cpp
@@ -22,17 +29,13 @@ add_library(
         IR/BasicOpBuilder.cpp
         IR/IR.cpp
 
-        IR2/atomic_op_builder.cpp
         IR2/AtomicOp.cpp
         IR2/AtomicOpForm.cpp
         IR2/AtomicOpTypeAnalysis.cpp
-        IR2/cfg_builder.cpp
         IR2/Env.cpp
-        IR2/expression_build.cpp
         IR2/Form.cpp
+        IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
-        IR2/reg_usage.cpp
-        IR2/variable_naming.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp

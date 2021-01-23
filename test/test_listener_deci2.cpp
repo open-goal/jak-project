@@ -58,7 +58,7 @@ TEST(Listener, CheckConnectionStaysAlive) {
   }
 
   EXPECT_TRUE(s.check_for_listener());
-  std::this_thread::sleep_for(std::chrono::seconds(2));  // sorry for making tests slow.
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   EXPECT_TRUE(s.check_for_listener());
   EXPECT_TRUE(l.is_connected());
 }

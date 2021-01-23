@@ -30,7 +30,11 @@ class FormElement {
   std::string to_string(const Env& env) const;
 
   // push the result of this operation to the operation stack
-  virtual void push_to_stack(const Env& env, FormStack& stack);
+  virtual void push_to_stack(const Env& env, FormPool& pool, FormStack& stack);
+  virtual void update_from_stack(const Env& env,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result);
 
  protected:
   friend class Form;
@@ -42,18 +46,45 @@ class FormElement {
  */
 class SimpleExpressionElement : public FormElement {
  public:
-  explicit SimpleExpressionElement(SimpleExpression expr);
+  explicit SimpleExpressionElement(SimpleExpression expr, int my_idx);
 
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
+  //  void push_to_stack(const Env& env, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+
+  void update_from_stack_identity(const Env& env,
+                                  FormPool& pool,
+                                  FormStack& stack,
+                                  std::vector<FormElement*>* result);
+  void update_from_stack_gpr_to_fpr(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_fpr_to_gpr(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_div_s(const Env& env,
+                               FormPool& pool,
+                               FormStack& stack,
+                               std::vector<FormElement*>* result);
+  void update_from_stack_add_i(const Env& env,
+                               FormPool& pool,
+                               FormStack& stack,
+                               std::vector<FormElement*>* result);
 
   const SimpleExpression& expr() const { return m_expr; }
 
  private:
   SimpleExpression m_expr;
+  int m_my_idx;
 };
 
 /*!
@@ -90,6 +121,10 @@ class LoadSourceElement : public FormElement {
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
+  virtual void update_from_stack(const Env& env,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result);
 
  private:
   Form* m_addr = nullptr;
@@ -108,6 +143,7 @@ class SimpleAtomElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  //  void push_to_stack(const Env& env, FormStack& stack) override;
 
  private:
   SimpleAtom m_atom;
@@ -124,6 +160,7 @@ class SetVarElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
@@ -464,36 +501,56 @@ class ConditionalMoveFalseElement : public FormElement {
   void collect_vars(VariableSet& vars) const override;
 };
 
-///*!
-// * A GenericOperator is the head of a GenericElement.
-// * It is used for the final output.
-// */
-// class GenericOperator {
-// public:
-//  enum class Kind {
-//    FIXED_FUNCTION_CALL,
-//    VAR_FUNCTION_CALL,
-//    FIXED_OPERATOR
-//  };
-//
-// private:
-//  // if we're a VAR_FUNCTION_CALL, this should contain the expression to get the function
-//  Form* m_function_val;
-//
-//  //std::string
-//
-//};
-//
-// class GenericElement : public FormElement {
-// public:
-//  goos::Object to_form(const Env& env) const override;
-//  void apply(const std::function<void(FormElement*)>& f) override;
-//  void apply_form(const std::function<void(Form*)>& f) override;
-//  void collect_vars(VariableSet& vars) const override;
-// private:
-//  GenericOperator m_head;
-//  std::vector<Form*> m_elts;
-//};
+std::string fixed_operator_to_string(FixedOperatorKind kind);
+
+/*!
+ * A GenericOperator is the head of a GenericElement.
+ * It is used for the final output.
+ */
+class GenericOperator {
+ public:
+  enum class Kind { FIXED_OPERATOR, INVALID };
+
+  static GenericOperator make_fixed(FixedOperatorKind kind);
+  void collect_vars(VariableSet& vars) const;
+  goos::Object to_form(const Env& env) const;
+  void apply(const std::function<void(FormElement*)>& f);
+  void apply_form(const std::function<void(Form*)>& f);
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
+};
+
+class GenericElement : public FormElement {
+ public:
+  explicit GenericElement(GenericOperator op);
+  GenericElement(GenericOperator op, Form* arg);
+  GenericElement(GenericOperator op, Form* arg0, Form* arg1);
+  GenericElement(GenericOperator op, std::vector<Form*> forms);
+
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+
+ private:
+  GenericOperator m_head;
+  std::vector<Form*> m_elts;
+};
+
+class CastElement : public FormElement {
+ public:
+  explicit CastElement(TypeSpec type, Form* source);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+
+ private:
+  TypeSpec m_type;
+  Form* m_source = nullptr;
+};
 
 /*!
  * A Form is a wrapper around one or more FormElements.
@@ -558,6 +615,8 @@ class Form {
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
   void collect_vars(VariableSet& vars) const;
+
+  void update_children_from_stack(const Env& env, FormPool& pool, FormStack& stack);
 
   FormElement* parent_element = nullptr;
 

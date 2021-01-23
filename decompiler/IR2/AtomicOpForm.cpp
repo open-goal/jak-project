@@ -18,7 +18,7 @@ ConditionElement* IR2_Condition::get_as_form(FormPool& pool) const {
 }
 
 FormElement* SetVarOp::get_as_form(FormPool& pool) const {
-  auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src);
+  auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   return pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
 }
 
@@ -36,7 +36,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool) const {
 }
 
 FormElement* LoadVarOp::get_as_form(FormPool& pool) const {
-  auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src);
+  auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   auto load = pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
   return pool.alloc_element<SetVarElement>(m_dst, load, true);
 }

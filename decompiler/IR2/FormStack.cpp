@@ -53,7 +53,7 @@ Form* FormStack::pop_reg(const Variable& var) {
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      if (entry.destination == var) {
+      if (entry.destination->reg() == var.reg()) {
         entry.active = false;
         assert(entry.source);
         return entry.source;
@@ -87,5 +87,25 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
     }
   }
   return result;
+}
+
+std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool, Register reg) {
+  // first, rewrite as normal.
+  auto default_result = rewrite(pool);
+
+  // try a few different ways to "naturally" rewrite this so the value of the form is the
+  // value in the given register.
+
+  auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
+  if (last_op_as_set && last_op_as_set->dst().reg() == reg) {
+    default_result.pop_back();
+    for (auto form : last_op_as_set->src()->elts()) {
+      form->parent_form = nullptr;  // will get set later, this makes it obvious if I forget.
+      default_result.push_back(form);
+    }
+    return default_result;
+  } else {
+    throw std::runtime_error(fmt::format("Couldn't rewrite form to get result"));
+  }
 }
 }  // namespace decompiler

@@ -121,15 +121,21 @@ class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
   // Per-test-suite set-up.
   // Called before the first test in this test suite.
   static void SetUpTestSuite() {
-    runtime_thread = std::thread((GoalTest::runtime_no_kernel));
-    runner.c = &compiler;
+    runtime_thread = std::make_unique<std::thread>(std::thread((GoalTest::runtime_no_kernel)));
+    compiler = std::make_unique<Compiler>();
+    runner = std::make_unique<GoalTest::CompilerTestRunner>();
+    runner->c = compiler.get();
   }
 
   // Per-test-suite tear-down.
   // Called after the last test in this test suite.
   static void TearDownTestSuite() {
-    compiler.shutdown_target();
-    runtime_thread.join();
+    compiler->shutdown_target();
+    runtime_thread->join();
+
+    runtime_thread.reset();
+    compiler.reset();
+    runner.reset();
   }
 
   // You can define per-test set-up logic as usual.
@@ -142,9 +148,9 @@ class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
   void TearDown() {}
 
   // Common Resources Across all Tests in the Suite
-  static std::thread runtime_thread;
-  static Compiler compiler;
-  static GoalTest::CompilerTestRunner runner;
+  static std::unique_ptr<std::thread> runtime_thread;
+  static std::unique_ptr<Compiler> compiler;
+  static std::unique_ptr<GoalTest::CompilerTestRunner> runner;
 
   // Just to promote better test organization, supports nesting the test files 1 directory deep
   std::string testCategory = "arithmetic";
@@ -154,9 +160,9 @@ class ArithmeticTests : public testing::TestWithParam<IntegerParam> {
 
 // You must initialize the static variables outside of the declaration, or you'll run into
 // unresolved external errors
-std::thread ArithmeticTests::runtime_thread;
-Compiler ArithmeticTests::compiler;
-GoalTest::CompilerTestRunner ArithmeticTests::runner;
+std::unique_ptr<std::thread> ArithmeticTests::runtime_thread;
+std::unique_ptr<Compiler> ArithmeticTests::compiler;
+std::unique_ptr<GoalTest::CompilerTestRunner> ArithmeticTests::runner;
 
 // Finally, we define our generic test, given our custom class that represents our test inputs
 // we can generate the lisp file, and pass along the path to the test runner
@@ -169,7 +175,7 @@ TEST_P(ArithmeticTests, EvalIntegers) {
 
   std::string testFile = "eval-integer-" + std::to_string(param.index) + ".generated.gc";
   env.write("eval-integer.template.gc", data, testFile);
-  runner.run_test(testCategory, testFile, {param.eval()});
+  runner->run_test(testCategory, testFile, {param.eval()});
 }
 
 // ValuesIn, is not the only way to use a parameterized test, but the most applicable for this
@@ -184,65 +190,102 @@ INSTANTIATE_TEST_SUITE_P(EvalIntegers,
                                                             IntegerParam(0), IntegerParam(-0)})));
 
 TEST_F(ArithmeticTests, Addition) {
-  runner.run_static_test(env, testCategory, "add-int-literals.static.gc", {"13\n"});
-  runner.run_static_test(env, testCategory, "add-let.static.gc", {"7\n"});
+  runner->run_static_test(env, testCategory, "add-int-literals.static.gc", {"13\n"});
+  runner->run_static_test(env, testCategory, "add-let.static.gc", {"7\n"});
 }
 
 TEST_F(ArithmeticTests, AddIntegerFunction) {
-  runner.run_static_test(env, testCategory, "add-function.static.gc", {"21\n"});
+  runner->run_static_test(env, testCategory, "add-function.static.gc", {"21\n"});
 }
 
 TEST_F(ArithmeticTests, AddIntegerMultiple) {
-  runner.run_static_test(env, testCategory, "add-int-multiple.static.gc", {"15\n"});
-  runner.run_static_test(env, testCategory, "add-int-multiple-2.static.gc", {"15\n"});
+  runner->run_static_test(env, testCategory, "add-int-multiple.static.gc", {"15\n"});
+  runner->run_static_test(env, testCategory, "add-int-multiple-2.static.gc", {"15\n"});
 }
 
 TEST_F(ArithmeticTests, AddIntegerVariables) {
-  runner.run_static_test(env, testCategory, "add-int-vars.static.gc", {"7\n"});
+  runner->run_static_test(env, testCategory, "add-int-vars.static.gc", {"7\n"});
 }
 
 TEST_F(ArithmeticTests, AshFunction) {
-  runner.run_static_test(env, testCategory, "ash.static.gc", {"18\n"});
+  runner->run_static_test(env, testCategory, "ash.static.gc", {"18\n"});
 }
 
 TEST_F(ArithmeticTests, Division) {
-  runner.run_static_test(env, testCategory, "divide-1.static.gc", {"6\n"});
-  runner.run_static_test(env, testCategory, "divide-2.static.gc", {"7\n"});
+  runner->run_static_test(env, testCategory, "divide-1.static.gc", {"6\n"});
+  runner->run_static_test(env, testCategory, "divide-2.static.gc", {"7\n"});
 }
 
 TEST_F(ArithmeticTests, IntegerSymbol) {
-  runner.run_static_test(env, testCategory, "negative-int-symbol.static.gc", {"-123\n"});
+  runner->run_static_test(env, testCategory, "negative-int-symbol.static.gc", {"-123\n"});
 }
 
 TEST_F(ArithmeticTests, Modulus) {
-  runner.run_static_test(env, testCategory, "mod.static.gc", {"7\n"});
+  runner->run_static_test(env, testCategory, "mod.static.gc", {"7\n"});
 }
 
 TEST_F(ArithmeticTests, Multiplication) {
-  runner.run_static_test(env, testCategory, "multiply.static.gc", {"-12\n"});
-  runner.run_static_test(env, testCategory, "multiply-let.static.gc", {"3\n"});
+  runner->run_static_test(env, testCategory, "multiply.static.gc", {"-12\n"});
+  runner->run_static_test(env, testCategory, "multiply-let.static.gc", {"3\n"});
 }
 
 TEST_F(ArithmeticTests, NestedFunctionCall) {
-  runner.run_static_test(env, testCategory, "nested-function.static.gc", {"10\n"});
+  runner->run_static_test(env, testCategory, "nested-function.static.gc", {"10\n"});
 }
 
 TEST_F(ArithmeticTests, VariableShift) {
-  runner.run_static_test(env, testCategory, "shiftvs.static.gc", {"11\n"});
+  runner->run_static_test(env, testCategory, "shiftvs.static.gc", {"11\n"});
 }
 
 TEST_F(ArithmeticTests, FixedShift) {
   // same math as the variable shift test, just using the fixed shift operators.
-  runner.run_static_test(env, testCategory, "shift-fixed.static.gc", {"11\n"});
+  runner->run_static_test(env, testCategory, "shift-fixed.static.gc", {"11\n"});
 }
 
 TEST_F(ArithmeticTests, Subtraction) {
-  runner.run_static_test(env, testCategory, "subtract-1.static.gc", {"4\n"});
-  runner.run_static_test(env, testCategory, "subtract-2.static.gc", {"4\n"});
-  runner.run_static_test(env, testCategory, "subtract-let.static.gc", {"3\n"});
+  runner->run_static_test(env, testCategory, "subtract-1.static.gc", {"4\n"});
+  runner->run_static_test(env, testCategory, "subtract-2.static.gc", {"4\n"});
+  runner->run_static_test(env, testCategory, "subtract-let.static.gc", {"3\n"});
 }
 
 TEST_F(ArithmeticTests, Multiplication2) {
-  runner.run_static_test(env, testCategory, "multiply32.static.gc", {"-1234478448\n"});
-  runner.run_static_test(env, testCategory, "multiply64.static.gc", {"93270638141856400\n"});
+  runner->run_static_test(env, testCategory, "multiply32.static.gc", {"-1234478448\n"});
+  runner->run_static_test(env, testCategory, "multiply64.static.gc", {"93270638141856400\n"});
+}
+
+TEST_F(ArithmeticTests, Constants) {
+  runner->run_static_test(env, testCategory, "float.static.gc", {"1067316150\n"});
+  runner->run_static_test(env, testCategory, "function-return-float-constant.static.gc",
+                          {"3.14149\n0\n"});
+}
+
+TEST_F(ArithmeticTests, Operations) {
+  runner->run_static_test(env, testCategory, "float-pow.static.gc", {"256\n0\n"});
+  runner->run_static_test(env, testCategory, "float-product.static.gc", {"120.0000\n0\n"});
+}
+
+TEST_F(ArithmeticTests, Symbols) {
+  runner->run_static_test(env, testCategory, "float-in-symbol.static.gc", {"2345.6000\n0\n"});
+}
+
+TEST_F(ArithmeticTests, Functions) {
+  runner->run_static_test(env, testCategory, "float-function.static.gc", {"10.152\n0\n"});
+  runner->run_static_test(
+      env, testCategory, "nested-float-functions.static.gc",
+      {"i 1.4400 3.4000\nr 10.1523\ni 1.2000 10.1523\nr 17.5432\n17.543 10.152\n0\n"});
+}
+
+TEST_F(ArithmeticTests, MinMax) {
+  runner->run_static_test(env, testCategory, "float-max.static.gc", {"3.70\n0\n"});
+  runner->run_static_test(env, testCategory, "float-min.static.gc", {"-1.20\n0\n"});
+}
+
+TEST_F(ArithmeticTests, LogicalOperators) {
+  runner->run_static_test(env, testCategory, "logand.static.gc", {"4\n"});
+  runner->run_static_test(env, testCategory, "logior.static.gc", {"60\n"});
+  runner->run_static_test(env, testCategory, "logxor.static.gc", {"56\n"});
+}
+
+TEST_F(ArithmeticTests, Comparison) {
+  runner->run_static_test(env, testCategory, "signed-int-compare.static.gc", {"12\n"});
 }

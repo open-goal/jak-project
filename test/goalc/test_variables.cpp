@@ -94,3 +94,51 @@ TEST_F(VariableTests, StackArrayAlignment) {
 TEST_F(VariableTests, StackStructureAlignment) {
   runner.run_static_test(env, testCategory, "stack-structure-align.gc", {"1234\n"});
 }
+
+TEST_F(VariableTests, GetSymbol) {
+  runner.run_static_test(env, testCategory, "get-symbol-1.static.gc",
+                         {"1342756\n"});  // 0x147d24 in hex
+  runner.run_static_test(env, testCategory, "get-symbol-2.static.gc",
+                         {"1342764\n"});  // 0x147d2c in hex
+}
+
+TEST_F(VariableTests, Constants) {
+  // TODO - runner.run_static_test(env, testCategory, "string-constant-1.static.gc");
+  std::string expected = "\"test string!\"";
+  runner.run_static_test(env, testCategory, "string-constant-2.static.gc", {expected},
+                         expected.size());
+}
+
+TEST_F(VariableTests, Symbols) {
+  runner.run_static_test(env, testCategory, "quote-symbol.static.gc", {"banana\n0\n"});
+  std::string expected = "test-string";
+  runner.run_static_test(env, testCategory, "string-symbol.static.gc", {expected}, expected.size());
+}
+
+TEST_F(VariableTests, Formatting) {
+  runner.run_static_test(env, testCategory, "format-reg-order.static.gc",
+                         {"test 1 2 3 4 5 6\n0\n"});
+}
+
+TEST_F(VariableTests, DeReference) {
+  runner.run_static_test(env, testCategory, "deref-simple.static.gc", {"structure\n0\n"});
+}
+
+TEST_F(VariableTests, Pointers) {
+  runner.run_static_test(env, testCategory, "pointers.static.gc", {"13\n"});
+}
+
+//  expected =
+//      "test newline\nnewline\ntest tilde ~ \ntest A print boxed-string: \"boxed string!\"\ntest
+//      A " "print symbol: a-symbol\ntest A make boxed object longer:             \"srt\"!\ntest A
+//      " "non-default pad: zzzzzzpad-me\ntest A shorten(4): a23~\ntest A don'tchange(4):
+//      a234\ntest A " "shorten with pad(4): sho~\ntest A a few things \"one thing\" a-second
+//      integer #<compiled " "function @ #x161544>\n";
+//
+//  expected += "test S a string a-symbol another string!\n";
+//  expected += "test C ) ]\n";
+//  expected += "test P (no type) #<compiled function @ #x161544>\n";
+//  expected += "test P (with type) 1447236\n";
+//
+//  // todo, finish format testing.
+//  runner.run_test_from_file("test-format.gc", {expected}, expected.size());

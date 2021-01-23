@@ -18,6 +18,7 @@ class FormStack {
   Form* pop_reg(const Variable& var);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);
+  std::vector<FormElement*> rewrite_to_get_reg(FormPool& pool, Register reg);
   std::string print(const Env& env);
 
  private:
