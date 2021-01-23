@@ -82,6 +82,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.env.file = &test->file;
   test->func.instructions = program.instructions;
   test->func.guessed_name.set_as_global("test-function");
+  test->func.type = function_type;
 
   for (auto& str : strings) {
     test->add_string_at_label(str.first, str.second);
@@ -116,8 +117,13 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.top_form->collect_vars(vars);
 
   if (do_expressions) {
-    EXPECT_TRUE(
-        convert_to_expressions(test->func.ir2.top_form, test->func.ir2.form_pool, test->func));
+    bool success =
+        convert_to_expressions(test->func.ir2.top_form, test->func.ir2.form_pool, test->func);
+
+    EXPECT_TRUE(success);
+    if (!success) {
+      return nullptr;
+    }
   }
 
   return test;
@@ -132,6 +138,7 @@ void FormRegressionTest::test(const std::string& code,
                               const std::vector<std::pair<std::string, std::string>>& strings) {
   auto ts = dts->parse_type_spec(type);
   auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings);
+  ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
   auto actual_form =

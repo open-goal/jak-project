@@ -28,7 +28,7 @@ std::string FormElement::to_string(const Env& env) const {
   return to_form(env).print();
 }
 
-void FormElement::push_to_stack(const Env& env, FormStack&) {
+void FormElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
   throw std::runtime_error("push_to_stack not implemented for " + to_string(env));
 }
 
@@ -83,7 +83,8 @@ void Form::collect_vars(VariableSet& vars) const {
 // SimpleExpressionElement
 /////////////////////////////
 
-SimpleExpressionElement::SimpleExpressionElement(SimpleExpression expr) : m_expr(std::move(expr)) {}
+SimpleExpressionElement::SimpleExpressionElement(SimpleExpression expr, int my_idx)
+    : m_expr(std::move(expr)), m_my_idx(my_idx) {}
 
 goos::Object SimpleExpressionElement::to_form(const Env& env) const {
   return m_expr.to_form(env.file->labels, &env);

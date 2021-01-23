@@ -30,7 +30,11 @@ class FormElement {
   std::string to_string(const Env& env) const;
 
   // push the result of this operation to the operation stack
-  virtual void push_to_stack(const Env& env, FormStack& stack);
+  virtual void push_to_stack(const Env& env, FormPool& pool, FormStack& stack);
+  virtual void update_from_stack(const Env& env,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result);
 
  protected:
   friend class Form;
@@ -42,18 +46,24 @@ class FormElement {
  */
 class SimpleExpressionElement : public FormElement {
  public:
-  explicit SimpleExpressionElement(SimpleExpression expr);
+  explicit SimpleExpressionElement(SimpleExpression expr, int my_idx);
 
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
+  //  void push_to_stack(const Env& env, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 
   const SimpleExpression& expr() const { return m_expr; }
 
  private:
   SimpleExpression m_expr;
+  int m_my_idx;
 };
 
 /*!
@@ -90,6 +100,10 @@ class LoadSourceElement : public FormElement {
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
+  virtual void update_from_stack(const Env& env,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result);
 
  private:
   Form* m_addr = nullptr;
@@ -108,6 +122,7 @@ class SimpleAtomElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  //  void push_to_stack(const Env& env, FormStack& stack) override;
 
  private:
   SimpleAtom m_atom;
@@ -124,6 +139,7 @@ class SetVarElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
@@ -558,6 +574,8 @@ class Form {
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
   void collect_vars(VariableSet& vars) const;
+
+  void update_children_from_stack(const Env& env, FormPool& pool, FormStack& stack);
 
   FormElement* parent_element = nullptr;
 
