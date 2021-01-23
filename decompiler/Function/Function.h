@@ -169,6 +169,8 @@ class Function {
     Env env;
     FormPool form_pool;
     Form* top_form = nullptr;
+    std::string debug_form_string;
+    bool print_debug_forms = false;
   } ir2;
 
  private:

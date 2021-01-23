@@ -34,7 +34,9 @@ add_library(
         IR2/AtomicOpTypeAnalysis.cpp
         IR2/cfg_builder.cpp
         IR2/Env.cpp
+        IR2/expression_build.cpp
         IR2/Form.cpp
+        IR2/FormStack.cpp
         IR2/reg_usage.cpp
         IR2/variable_naming.cpp
 
