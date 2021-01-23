@@ -256,7 +256,7 @@ TEST_F(ArithmeticTests, Multiplication2) {
 TEST_F(ArithmeticTests, Constants) {
   runner->run_static_test(env, testCategory, "float.static.gc", {"1067316150\n"});
   runner->run_static_test(env, testCategory, "function-return-float-constant.static.gc",
-                         {"3.14149\n0\n"});
+                          {"3.14149\n0\n"});
 }
 
 TEST_F(ArithmeticTests, Operations) {

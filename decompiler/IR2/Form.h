@@ -75,6 +75,10 @@ class SimpleExpressionElement : public FormElement {
                                FormPool& pool,
                                FormStack& stack,
                                std::vector<FormElement*>* result);
+  void update_from_stack_add_i(const Env& env,
+                               FormPool& pool,
+                               FormStack& stack,
+                               std::vector<FormElement*>* result);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -533,6 +537,19 @@ class GenericElement : public FormElement {
  private:
   GenericOperator m_head;
   std::vector<Form*> m_elts;
+};
+
+class CastElement : public FormElement {
+ public:
+  explicit CastElement(TypeSpec type, Form* source);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+
+ private:
+  TypeSpec m_type;
+  Form* m_source = nullptr;
 };
 
 /*!

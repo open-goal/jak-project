@@ -128,7 +128,6 @@ TEST_F(VariableTests, Pointers) {
   runner.run_static_test(env, testCategory, "pointers.static.gc", {"13\n"});
 }
 
-
 //  expected =
 //      "test newline\nnewline\ntest tilde ~ \ntest A print boxed-string: \"boxed string!\"\ntest
 //      A " "print symbol: a-symbol\ntest A make boxed object longer:             \"srt\"!\ntest A

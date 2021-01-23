@@ -41,6 +41,16 @@ bool is_float_type(const Env& env, int my_idx, Variable var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
   return type == TypeSpec("float");
 }
+
+bool is_int_type(const Env& env, int my_idx, Variable var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
+  return type == TypeSpec("int");
+}
+
+bool is_uint_type(const Env& env, int my_idx, Variable var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
+  return type == TypeSpec("uint");
+}
 }  // namespace
 
 void Form::update_children_from_stack(const Env& env, FormPool& pool, FormStack& stack) {
@@ -131,6 +141,31 @@ void SimpleExpressionElement::update_from_stack_div_s(const Env& env,
   }
 }
 
+void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
+                                                      FormPool& pool,
+                                                      FormStack& stack,
+                                                      std::vector<FormElement*>* result) {
+  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+  auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
+
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
+  auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+
+  if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), arg0, arg1);
+    result->push_back(new_form);
+  } else {
+    auto cast = pool.alloc_single_element_form<CastElement>(
+        nullptr, TypeSpec(arg0_i ? "int" : "uint"), arg1);
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), arg0, cast);
+    result->push_back(new_form);
+  }
+}
+
 void SimpleExpressionElement::update_from_stack(const Env& env,
                                                 FormPool& pool,
                                                 FormStack& stack,
@@ -139,17 +174,17 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::IDENTITY:
       update_from_stack_identity(env, pool, stack, result);
       break;
-
     case SimpleExpression::Kind::GPR_TO_FPR:
       update_from_stack_gpr_to_fpr(env, pool, stack, result);
       break;
-
     case SimpleExpression::Kind::FPR_TO_GPR:
       update_from_stack_fpr_to_gpr(env, pool, stack, result);
       break;
-
     case SimpleExpression::Kind::DIV_S:
       update_from_stack_div_s(env, pool, stack, result);
+      break;
+    case SimpleExpression::Kind::ADD:
+      update_from_stack_add_i(env, pool, stack, result);
       break;
     default:
       throw std::runtime_error(

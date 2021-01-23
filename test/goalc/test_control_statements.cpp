@@ -172,7 +172,6 @@ TEST_F(ControlStatementTests, ReturnFromTrick) {
   runner->run_static_test(env, testCategory, "return-from-trick.static.gc", {"1\n"});
 }
 
-
 TEST_F(ControlStatementTests, Set) {
   runner->run_static_test(env, testCategory, "set-symbol.static.gc", {"22\n"});
 }

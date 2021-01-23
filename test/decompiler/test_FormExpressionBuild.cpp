@@ -62,7 +62,7 @@ TEST_F(FormRegressionTest, AdditionMixed1) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int uint int)";
-  std::string expected = "(+ a0-0 (the int a1-0))";
+  std::string expected = "(+ a0-0 (the-as int a1-0))";
   test_with_expr(func, type, expected);
 }
 
@@ -73,7 +73,7 @@ TEST_F(FormRegressionTest, AdditionMixed2) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function uint int uint)";
-  std::string expected = "(+ a0-0 (the uint a1-0))";
+  std::string expected = "(+ a0-0 (the-as uint a1-0))";
   test_with_expr(func, type, expected);
 }
 

@@ -811,11 +811,13 @@ void GenericOperator::apply_form(const std::function<void(Form*)>&) {
 }
 
 std::string fixed_operator_to_string(FixedOperatorKind kind) {
-  switch(kind) {
+  switch (kind) {
     case FixedOperatorKind::GPR_TO_FPR:
       return "gpr->fpr";
     case FixedOperatorKind::DIVISION:
       return "/";
+    case FixedOperatorKind::ADDITION:
+      return "+";
     default:
       assert(false);
   }
@@ -859,4 +861,26 @@ void GenericElement::collect_vars(VariableSet& vars) const {
   }
 }
 
+/////////////////////////////
+// CastElement
+/////////////////////////////
+
+CastElement::CastElement(TypeSpec type, Form* source) : m_type(std::move(type)), m_source(source) {}
+
+goos::Object CastElement::to_form(const Env& env) const {
+  return pretty_print::build_list("the-as", m_type.print(), m_source->to_form(env));
+}
+
+void CastElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_source->apply(f);
+}
+
+void CastElement::apply_form(const std::function<void(Form*)>& f) {
+  m_source->apply_form(f);
+}
+
+void CastElement::collect_vars(VariableSet& vars) const {
+  m_source->collect_vars(vars);
+}
 }  // namespace decompiler
