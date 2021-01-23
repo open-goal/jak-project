@@ -1,162 +1,9 @@
-#include <memory>
 #include "gtest/gtest.h"
-#include "decompiler/Disasm/InstructionParser.h"
-#include "decompiler/Disasm/DecompilerLabel.h"
-#include "decompiler/Function/Function.h"
-#include "decompiler/ObjectFile/ObjectFileDB.h"
-#include "decompiler/IR2/variable_naming.h"
-#include "decompiler/IR2/cfg_builder.h"
-#include "common/goos/PrettyPrinter.h"
+#include "FormRegressionTest.h"
 
 using namespace decompiler;
 
-class DecompilerRegressionTest : public ::testing::Test {
- protected:
-  static std::unique_ptr<InstructionParser> parser;
-  static std::unique_ptr<DecompilerTypeSystem> dts;
-
-  static void SetUpTestCase() {
-    parser = std::make_unique<InstructionParser>();
-    dts = std::make_unique<DecompilerTypeSystem>();
-    dts->parse_type_defs({"decompiler", "config", "all-types.gc"});
-  }
-
-  static void TearDownTestCase() {
-    parser.reset();
-    dts.reset();
-    parser.reset();
-  }
-
-  struct TestData {
-    explicit TestData(int instrs) : func(0, instrs) {}
-    Function func;
-    LinkedObjectFile file;
-
-    void add_string_at_label(const std::string& label_name, const std::string& data) {
-      // first, align segment 1:
-      while (file.words_by_seg.at(1).size() % 4) {
-        file.words_by_seg.at(1).push_back(LinkedWord(0));
-      }
-
-      // add string type tag:
-      LinkedWord type_tag(0);
-      type_tag.kind = LinkedWord::Kind::TYPE_PTR;
-      type_tag.symbol_name = "string";
-      file.words_by_seg.at(1).push_back(type_tag);
-      int string_start = 4 * int(file.words_by_seg.at(1).size());
-
-      // add size
-      file.words_by_seg.at(1).push_back(LinkedWord(int(data.length())));
-
-      // add string:
-      std::vector<char> bytes;
-      bytes.resize(((data.size() + 1 + 3) / 4) * 4);
-      for (size_t i = 0; i < data.size(); i++) {
-        bytes[i] = data[i];
-      }
-      for (size_t i = 0; i < bytes.size() / 4; i++) {
-        auto word = ((uint32_t*)bytes.data())[i];
-        file.words_by_seg.at(1).push_back(LinkedWord(word));
-      }
-      for (int i = 0; i < 3; i++) {
-        file.words_by_seg.at(1).push_back(LinkedWord(0));
-      }
-      // will be already null terminated.
-
-      for (auto& label : file.labels) {
-        if (label.name == label_name) {
-          label.target_segment = 1;
-          label.offset = string_start;
-          return;
-        }
-      }
-
-      EXPECT_TRUE(false);
-    }
-  };
-
-  std::unique_ptr<TestData> make_function(
-      const std::string& code,
-      const TypeSpec& function_type,
-      bool allow_pairs = false,
-      const std::string& method_name = "",
-      const std::vector<std::pair<std::string, std::string>>& strings = {}) {
-    dts->type_prop_settings.locked = true;
-    dts->type_prop_settings.reset();
-    dts->type_prop_settings.allow_pair = allow_pairs;
-    dts->type_prop_settings.current_method_type = method_name;
-    auto program = parser->parse_program(code);
-    //  printf("prg:\n%s\n\n", program.print().c_str());
-    auto test = std::make_unique<TestData>(program.instructions.size());
-    test->file.words_by_seg.resize(3);
-    test->file.labels = program.labels;
-    test->func.ir2.env.file = &test->file;
-    test->func.instructions = program.instructions;
-    test->func.guessed_name.set_as_global("test-function");
-
-    for (auto& str : strings) {
-      test->add_string_at_label(str.first, str.second);
-    }
-
-    test->func.basic_blocks = find_blocks_in_function(test->file, 0, test->func);
-    test->func.analyze_prologue(test->file);
-    test->func.cfg = build_cfg(test->file, 0, test->func);
-    EXPECT_TRUE(test->func.cfg->is_fully_resolved());
-
-    auto ops = convert_function_to_atomic_ops(test->func, program.labels);
-    test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
-    test->func.ir2.atomic_ops_succeeded = true;
-
-    EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, {}));
-
-    test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
-
-    auto result = run_variable_renaming(test->func, test->func.ir2.env.reg_use(),
-                                        *test->func.ir2.atomic_ops, *dts);
-    if (result.has_value()) {
-      test->func.ir2.env.set_local_vars(*result);
-    } else {
-      EXPECT_TRUE(false);
-    }
-
-    build_initial_forms(test->func);
-    EXPECT_TRUE(test->func.ir2.top_form);
-
-    // for now, just test that this can at least be called.
-    VariableSet vars;
-    test->func.ir2.top_form->collect_vars(vars);
-
-    return test;
-  }
-
-  void test(const std::string& code,
-            const std::string& type,
-            const std::string& expected,
-            bool allow_pairs = false,
-            const std::string& method_name = "",
-            const std::vector<std::pair<std::string, std::string>>& strings = {}) {
-    auto ts = dts->parse_type_spec(type);
-    auto test = make_function(code, ts, allow_pairs, method_name, strings);
-    auto expected_form =
-        pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
-    auto actual_form =
-        pretty_print::get_pretty_printer_reader()
-            .read_from_string(test->func.ir2.top_form->to_form(test->func.ir2.env).print(), false)
-            .as_pair()
-            ->car;
-    if (expected_form != actual_form) {
-      printf("Got:\n%s\n\nExpected\n%s\n", actual_form.print().c_str(),
-             expected_form.print().c_str());
-    }
-
-    EXPECT_TRUE(expected_form == actual_form);
-  }
-};
-
-std::unique_ptr<InstructionParser> DecompilerRegressionTest::parser;
-std::unique_ptr<DecompilerTypeSystem> DecompilerRegressionTest::dts;
-
-TEST_F(DecompilerRegressionTest, StringTest) {
+TEST_F(FormRegressionTest, StringTest) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L100:\n"
@@ -164,7 +11,7 @@ TEST_F(DecompilerRegressionTest, StringTest) {
       "L101:\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
-  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), false, "",
+  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), false, false, "",
                             {{"L100", "testing-string"}, {"L101", "testing-string-2"}});
 
   EXPECT_EQ(test->file.get_goal_string_by_label(test->file.get_label_by_name("L100")),
@@ -173,7 +20,7 @@ TEST_F(DecompilerRegressionTest, StringTest) {
             "testing-string-2");
 }
 
-TEST_F(DecompilerRegressionTest, SimplestTest) {
+TEST_F(FormRegressionTest, SimplestTest) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
@@ -181,10 +28,10 @@ TEST_F(DecompilerRegressionTest, SimplestTest) {
       "    daddu sp, sp, r0";
   std::string type = "(function object object)";
   std::string expected = "(set! v0-0 a0-0)";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, FloatingPointBasic) {
+TEST_F(FormRegressionTest, FloatingPointBasic) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L345:\n"
@@ -206,10 +53,10 @@ TEST_F(DecompilerRegressionTest, FloatingPointBasic) {
       "  (set! f0-1 (/.s f0-0 f1-0))\n"
       "  (set! v0-0 (fpr->gpr f0-1))\n"
       "  )";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, Op3) {
+TEST_F(FormRegressionTest, Op3) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L308:\n"
@@ -218,10 +65,10 @@ TEST_F(DecompilerRegressionTest, Op3) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(set! v0-0 (*.si a0-0 a1-0))";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, Division) {
+TEST_F(FormRegressionTest, Division) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L307:\n"
@@ -231,10 +78,10 @@ TEST_F(DecompilerRegressionTest, Division) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(set! v0-0 (/.si a0-0 a1-0))";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, Ash) {
+TEST_F(FormRegressionTest, Ash) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L305:\n"
@@ -251,10 +98,10 @@ TEST_F(DecompilerRegressionTest, Ash) {
       "    sll r0, r0, 0";
   std::string type = "(function int int int)";
   std::string expected = "(begin (set! v1-0 a0-0) (set! v0-0 (ash.si v1-0 a1-0)))";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, Abs) {
+TEST_F(FormRegressionTest, Abs) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L301:\n"
@@ -267,10 +114,10 @@ TEST_F(DecompilerRegressionTest, Abs) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
   std::string expected = "(begin (set! v0-0 a0-0) (set! v0-1 (abs v0-0)))";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, Min) {
+TEST_F(FormRegressionTest, Min) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
@@ -281,10 +128,10 @@ TEST_F(DecompilerRegressionTest, Min) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(begin (set! v0-0 a0-0) (set! v1-0 a1-0) (set! v0-1 (min.si v0-0 v1-0)))";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, Max) {
+TEST_F(FormRegressionTest, Max) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L299:\n"
@@ -296,10 +143,10 @@ TEST_F(DecompilerRegressionTest, Max) {
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
   std::string expected = "(begin (set! v0-0 a0-0) (set! v1-0 a1-0) (set! v0-1 (max.si v0-0 v1-0)))";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, FormatString) {
+TEST_F(FormRegressionTest, FormatString) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L343:\n"
@@ -336,10 +183,10 @@ TEST_F(DecompilerRegressionTest, FormatString) {
       "  (set! v0-0 (call! a0-1 a1-0 a2-0))\n"  // #t, "~f", the float
       "  (set! v0-1 gp-0)\n"
       "  )";
-  test(func, type, expected, false, "", {{"L343", "~f"}});
+  test_no_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
 
-TEST_F(DecompilerRegressionTest, WhileLoop) {
+TEST_F(FormRegressionTest, WhileLoop) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L285:\n"
@@ -378,11 +225,11 @@ TEST_F(DecompilerRegressionTest, WhileLoop) {
       "   )\n"
       "  (set! v0-1 '#f)\n"
       "  )";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
 // Note - this test looks weird because or's aren't fully processed at this point.
-TEST_F(DecompilerRegressionTest, Or) {
+TEST_F(FormRegressionTest, Or) {
   std::string func =
       "    sll r0, r0, 0\n"
       "L280:\n"
@@ -443,10 +290,10 @@ TEST_F(DecompilerRegressionTest, Or) {
       "   )\n"
       "  (set! v0-1 '#f)\n"
       "  )";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, DynamicMethodAccess) {
+TEST_F(FormRegressionTest, DynamicMethodAccess) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -520,10 +367,10 @@ TEST_F(DecompilerRegressionTest, DynamicMethodAccess) {
       "   )\n"
       "  (set! v1-5 '#f)\n"
       "  )";
-  test(func, type, expected);
+  test_no_expr(func, type, expected);
 }
 
-TEST_F(DecompilerRegressionTest, SimpleLoopMergeCheck) {
+TEST_F(FormRegressionTest, SimpleLoopMergeCheck) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -563,10 +410,10 @@ TEST_F(DecompilerRegressionTest, SimpleLoopMergeCheck) {
       "  (set! v1-2 '#f)\n"
       "  (set! v0-0 (l.w (+ a0-0 -2)))\n"
       "  )";
-  test(func, type, expected, true);
+  test_no_expr(func, type, expected, true);
 }
 
-TEST_F(DecompilerRegressionTest, And) {
+TEST_F(FormRegressionTest, And) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -632,10 +479,10 @@ TEST_F(DecompilerRegressionTest, And) {
       "   (set! v1-2 '#f)\n"  // while's false, I think.
       "   )\n"
       "  )";
-  test(func, type, expected, true);
+  test_no_expr(func, type, expected, true);
 }
 
-TEST_F(DecompilerRegressionTest, FunctionCall) {
+TEST_F(FormRegressionTest, FunctionCall) {
   // nmember
   std::string func =
       "    sll r0, r0, 0\n"
@@ -715,10 +562,10 @@ TEST_F(DecompilerRegressionTest, FunctionCall) {
       "   )\n"
       "  (set! v0-2 gp-0)\n"  // not empty, so return the result
       "  )";                  // the (set! v0 #f) from the if is added later.
-  test(func, type, expected, true);
+  test_no_expr(func, type, expected, true);
 }
 
-TEST_F(DecompilerRegressionTest, NestedAndOr) {
+TEST_F(FormRegressionTest, NestedAndOr) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -886,10 +733,10 @@ TEST_F(DecompilerRegressionTest, NestedAndOr) {
       "  (set! v1-12 '#f)\n"
       "  (set! v0-1 gp-0)\n"
       "  )";
-  test(func, type, expected, true);
+  test_no_expr(func, type, expected, true);
 }
 
-TEST_F(DecompilerRegressionTest, NewMethod) {
+TEST_F(FormRegressionTest, NewMethod) {
   // inline-array-class new
   std::string func =
       "    sll r0, r0, 0\n"
@@ -941,10 +788,10 @@ TEST_F(DecompilerRegressionTest, NewMethod) {
       "  (s.w! v0-0 gp-0)\n"  // store size
       "  (s.w! (+ v0-0 4) gp-0)\n"
       "  )";
-  test(func, type, expected, false, "inline-array-class");
+  test_no_expr(func, type, expected, false, "inline-array-class");
 }
 
-TEST_F(DecompilerRegressionTest, Recursive) {
+TEST_F(FormRegressionTest, Recursive) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -985,10 +832,10 @@ TEST_F(DecompilerRegressionTest, Recursive) {
       "   (set! v0-2 (*.si gp-0 v0-1))\n"  // not quite a tail call...
       "   )\n"
       "  )";
-  test(func, type, expected, false);
+  test_no_expr(func, type, expected, false);
 }
 
-TEST_F(DecompilerRegressionTest, TypeOf) {
+TEST_F(FormRegressionTest, TypeOf) {
   std::string func =
       "    sll r0, r0, 0\n"
 
@@ -1020,5 +867,5 @@ TEST_F(DecompilerRegressionTest, TypeOf) {
       "  (set! t9-0 (l.wu (+ v1-1 24)))\n"  // print method.
       "  (set! v0-0 (call! a0-0))\n"
       "  )";
-  test(func, type, expected, false);
+  test_no_expr(func, type, expected, false);
 }

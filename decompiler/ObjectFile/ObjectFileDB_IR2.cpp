@@ -8,10 +8,10 @@
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/TypeInspector.h"
-#include "decompiler/IR2/reg_usage.h"
-#include "decompiler/IR2/variable_naming.h"
-#include "decompiler/IR2/cfg_builder.h"
-#include "decompiler/IR2/expression_build.h"
+#include "decompiler/analysis/reg_usage.h"
+#include "decompiler/analysis/variable_naming.h"
+#include "decompiler/analysis/cfg_builder.h"
+#include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {

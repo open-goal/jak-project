@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "AtomicOp.h"
+#include "decompiler/IR2/AtomicOp.h"
 
 namespace decompiler {
 class Function;

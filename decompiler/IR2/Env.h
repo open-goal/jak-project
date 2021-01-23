@@ -6,7 +6,7 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
-#include "decompiler/IR2/reg_usage.h"
+#include "decompiler/analysis/reg_usage.h"
 
 namespace decompiler {
 class LinkedObjectFile;

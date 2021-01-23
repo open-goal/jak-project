@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <unordered_set>
-#include "decompiler/IR2/atomic_op_builder.h"
+#include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/Disasm/Register.h"
 #include "BasicBlocks.h"

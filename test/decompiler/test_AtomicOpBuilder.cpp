@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 #include "decompiler/IR2/AtomicOp.h"
-#include "decompiler/IR2/atomic_op_builder.h"
+#include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/Disasm/InstructionParser.h"
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"

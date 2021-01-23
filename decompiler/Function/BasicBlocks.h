@@ -7,7 +7,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/TP_Type.h"
 // for RegSet:
-#include "decompiler/IR2/reg_usage.h"
+#include "decompiler/analysis/reg_usage.h"
 
 namespace decompiler {
 class LinkedObjectFile;
