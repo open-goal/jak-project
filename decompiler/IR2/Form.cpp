@@ -677,34 +677,31 @@ void AbsElement::collect_vars(VariableSet& vars) const {
 // AshElement
 /////////////////////////////
 
-AshElement::AshElement(Form* _shift_amount,
-                       Form* _value,
+AshElement::AshElement(Variable _shift_amount,
+                       Variable _value,
                        std::optional<Variable> _clobber,
-                       bool _is_signed)
-    : shift_amount(_shift_amount), value(_value), clobber(_clobber), is_signed(_is_signed) {
-  _shift_amount->parent_element = this;
-  _value->parent_element = this;
-}
+                       bool _is_signed,
+                       RegSet _consumed)
+    : shift_amount(_shift_amount),
+      value(_value),
+      clobber(_clobber),
+      is_signed(_is_signed),
+      consumed(_consumed) {}
 
 goos::Object AshElement::to_form(const Env& env) const {
   return pretty_print::build_list(pretty_print::to_symbol(is_signed ? "ash.si" : "ash.ui"),
-                                  value->to_form(env), shift_amount->to_form(env));
+                                  value.to_string(&env), shift_amount.to_string(&env));
 }
 
 void AshElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  shift_amount->apply(f);
-  value->apply(f);
 }
 
-void AshElement::apply_form(const std::function<void(Form*)>& f) {
-  shift_amount->apply_form(f);
-  value->apply_form(f);
-}
+void AshElement::apply_form(const std::function<void(Form*)>&) {}
 
 void AshElement::collect_vars(VariableSet& vars) const {
-  shift_amount->collect_vars(vars);
-  value->collect_vars(vars);
+  vars.insert(value);
+  vars.insert(shift_amount);
 }
 
 /////////////////////////////
@@ -818,6 +815,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "/";
     case FixedOperatorKind::ADDITION:
       return "+";
+    case FixedOperatorKind::SUBTRACTION:
+      return "-";
+    case FixedOperatorKind::MULTIPLICATION:
+      return "*";
+    case FixedOperatorKind::ARITH_SHIFT:
+      return "ash";
     default:
       assert(false);
   }

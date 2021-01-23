@@ -118,7 +118,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
 
   if (do_expressions) {
     bool success =
-        convert_to_expressions(test->func.ir2.top_form, test->func.ir2.form_pool, test->func);
+        convert_to_expressions(test->func.ir2.top_form, test->func.ir2.form_pool, test->func, *dts);
 
     EXPECT_TRUE(success);
     if (!success) {

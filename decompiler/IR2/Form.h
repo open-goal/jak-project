@@ -79,6 +79,18 @@ class SimpleExpressionElement : public FormElement {
                                FormPool& pool,
                                FormStack& stack,
                                std::vector<FormElement*>* result);
+  void update_from_stack_sub_i(const Env& env,
+                               FormPool& pool,
+                               FormStack& stack,
+                               std::vector<FormElement*>* result);
+  void update_from_stack_mult_si(const Env& env,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result);
+  void update_from_stack_div_si(const Env& env,
+                                FormPool& pool,
+                                FormStack& stack,
+                                std::vector<FormElement*>* result);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -445,15 +457,23 @@ class AbsElement : public FormElement {
  */
 class AshElement : public FormElement {
  public:
-  Form* shift_amount = nullptr;
-  Form* value = nullptr;
+  Variable shift_amount, value;
   std::optional<Variable> clobber;
   bool is_signed = true;
-  AshElement(Form* _shift_amount, Form* _value, std::optional<Variable> _clobber, bool _is_signed);
+  RegSet consumed;
+  AshElement(Variable _shift_amount,
+             Variable _value,
+             std::optional<Variable> _clobber,
+             bool _is_signed,
+             RegSet _consumed);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 };
 
 /*!

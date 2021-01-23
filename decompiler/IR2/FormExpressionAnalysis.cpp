@@ -7,6 +7,27 @@ namespace {
 
 void update_var_from_stack_helper(int my_idx,
                                   Variable input,
+                                  FormPool& pool,
+                                  FormStack& stack,
+                                  const RegSet& consumes,
+                                  std::vector<FormElement*>* result) {
+  if (consumes.find(input.reg()) != consumes.end()) {
+    // is consumed.
+    auto stack_val = stack.pop_reg(input);
+    if (stack_val) {
+      for (auto x : stack_val->elts()) {
+        result->push_back(x);
+      }
+      return;
+    }
+  }
+  auto elt =
+      pool.alloc_element<SimpleExpressionElement>(SimpleAtom::make_var(input).as_expr(), my_idx);
+  result->push_back(elt);
+}
+
+void update_var_from_stack_helper(int my_idx,
+                                  Variable input,
                                   const Env& env,
                                   FormPool& pool,
                                   FormStack& stack,
@@ -34,6 +55,16 @@ Form* update_var_from_stack_to_form(int my_idx,
                                     FormStack& stack) {
   std::vector<FormElement*> elts;
   update_var_from_stack_helper(my_idx, input, env, pool, stack, &elts);
+  return pool.alloc_sequence_form(nullptr, elts);
+}
+
+Form* update_var_from_stack_to_form(int my_idx,
+                                    Variable input,
+                                    const RegSet& consumes,
+                                    FormPool& pool,
+                                    FormStack& stack) {
+  std::vector<FormElement*> elts;
+  update_var_from_stack_helper(my_idx, input, pool, stack, consumes, &elts);
   return pool.alloc_sequence_form(nullptr, elts);
 }
 
@@ -166,6 +197,77 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   }
 }
 
+void SimpleExpressionElement::update_from_stack_sub_i(const Env& env,
+                                                      FormPool& pool,
+                                                      FormStack& stack,
+                                                      std::vector<FormElement*>* result) {
+  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+  auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
+
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
+  auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+
+  if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::SUBTRACTION), arg0, arg1);
+    result->push_back(new_form);
+  } else {
+    auto cast = pool.alloc_single_element_form<CastElement>(
+        nullptr, TypeSpec(arg0_i ? "int" : "uint"), arg1);
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::SUBTRACTION), arg0, cast);
+    result->push_back(new_form);
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_mult_si(const Env& env,
+                                                        FormPool& pool,
+                                                        FormStack& stack,
+                                                        std::vector<FormElement*>* result) {
+  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
+  auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+
+  if (!arg0_i) {
+    arg0 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg0);
+  }
+
+  if (!arg1_i) {
+    arg1 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg1);
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), arg0, arg1);
+  result->push_back(new_form);
+}
+
+void SimpleExpressionElement::update_from_stack_div_si(const Env& env,
+                                                       FormPool& pool,
+                                                       FormStack& stack,
+                                                       std::vector<FormElement*>* result) {
+  auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+  auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
+
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
+  auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+
+  if (!arg0_i) {
+    arg0 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg0);
+  }
+
+  if (!arg1_i) {
+    arg1 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg1);
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg0, arg1);
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack(const Env& env,
                                                 FormPool& pool,
                                                 FormStack& stack,
@@ -185,6 +287,15 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::ADD:
       update_from_stack_add_i(env, pool, stack, result);
+      break;
+    case SimpleExpression::Kind::SUB:
+      update_from_stack_sub_i(env, pool, stack, result);
+      break;
+    case SimpleExpression::Kind::MUL_SIGNED:
+      update_from_stack_mult_si(env, pool, stack, result);
+      break;
+    case SimpleExpression::Kind::DIV_SIGNED:
+      update_from_stack_div_si(env, pool, stack, result);
       break;
     default:
       throw std::runtime_error(
@@ -210,5 +321,21 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   stack.push_value_to_reg(m_dst, m_src, true);
+}
+
+///////////////////
+// AshElement
+///////////////////
+
+void AshElement::update_from_stack(const Env&,
+                                   FormPool& pool,
+                                   FormStack& stack,
+                                   std::vector<FormElement*>* result) {
+  auto val_form = update_var_from_stack_to_form(value.idx(), value, consumed, pool, stack);
+  auto sa_form =
+      update_var_from_stack_to_form(shift_amount.idx(), shift_amount, consumed, pool, stack);
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::ARITH_SHIFT), val_form, sa_form);
+  result->push_back(new_form);
 }
 }  // namespace decompiler

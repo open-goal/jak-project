@@ -229,6 +229,16 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     case Kind::MUL_SIGNED: {
       if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
         return TP_Type::make_from_product(arg0_type.get_integer_constant());
+      } else if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+        // signed multiply will always return a signed number.
+        return TP_Type::make_from_ts("int");
+      }
+    } break;
+
+    case Kind::DIV_SIGNED: {
+      if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+        // signed division will always return a signed number.
+        return TP_Type::make_from_ts("int");
       }
     } break;
 

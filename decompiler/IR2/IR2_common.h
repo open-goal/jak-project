@@ -86,5 +86,13 @@ class Variable {
 
 using VariableSet = std::unordered_set<Variable, Variable::hash>;
 
-enum class FixedOperatorKind { GPR_TO_FPR, DIVISION, ADDITION, INVALID };
+enum class FixedOperatorKind {
+  GPR_TO_FPR,
+  DIVISION,
+  ADDITION,
+  SUBTRACTION,
+  MULTIPLICATION,
+  ARITH_SHIFT,
+  INVALID
+};
 }  // namespace decompiler

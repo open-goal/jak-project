@@ -799,11 +799,21 @@ Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
   // remove the branch
   b0_ptr->pop_back();
 
+  auto& info = f.ir2.env.reg_use();
+  auto final_op_idx = value_ir.var().idx();
+  RegSet consumed = info.op.at(final_op_idx).consumes;
+  for (auto var : {shift_ir.var(), value_ir.var()}) {
+    if (var.reg() == clobber) {
+      consumed.insert(var.reg());
+    }
+    if (var.reg() == dest_ir.reg()) {
+      consumed.insert(var.reg());
+    }
+  }
+
   // setup
-  auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, value_ir);
-  auto shift_form = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, shift_ir);
-  auto ash_form = pool.alloc_single_element_form<AshElement>(nullptr, shift_form, value_form,
-                                                             clobber_ir, is_arith);
+  auto ash_form = pool.alloc_single_element_form<AshElement>(
+      nullptr, shift_ir.var(), value_ir.var(), clobber_ir, is_arith, consumed);
   auto set_form = pool.alloc_element<SetVarElement>(dest_ir, ash_form, true);
   b0_ptr->push_back(set_form);
 

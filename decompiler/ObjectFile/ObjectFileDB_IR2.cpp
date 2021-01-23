@@ -384,7 +384,7 @@ void ObjectFileDB::ir2_build_expressions() {
     total++;
     if (func.ir2.top_form) {
       attempted++;
-      if (convert_to_expressions(func.ir2.top_form, func.ir2.form_pool, func)) {
+      if (convert_to_expressions(func.ir2.top_form, func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
       }
