@@ -26,6 +26,21 @@ void update_var_from_stack_helper(int my_idx,
       pool.alloc_element<SimpleExpressionElement>(SimpleAtom::make_var(input).as_expr(), my_idx);
   result->push_back(elt);
 }
+
+Form* update_var_from_stack_to_form(int my_idx,
+                                    Variable input,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack) {
+  std::vector<FormElement*> elts;
+  update_var_from_stack_helper(my_idx, input, env, pool, stack, &elts);
+  return pool.alloc_sequence_form(nullptr, elts);
+}
+
+bool is_float_type(const Env& env, int my_idx, Variable var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
+  return type == TypeSpec("float");
+}
 }  // namespace
 
 void Form::update_children_from_stack(const Env& env, FormPool& pool, FormStack& stack) {
@@ -51,23 +66,94 @@ void LoadSourceElement::update_from_stack(const Env& env,
   result->push_back(this);
 }
 
+void SimpleExpressionElement::update_from_stack_identity(const Env& env,
+                                                         FormPool& pool,
+                                                         FormStack& stack,
+                                                         std::vector<FormElement*>* result) {
+  auto& arg = m_expr.get_arg(0);
+  if (arg.is_var()) {
+    update_var_from_stack_helper(m_my_idx, arg.var(), env, pool, stack, result);
+  } else if (arg.is_static_addr()) {
+    // for now, do nothing.
+    result->push_back(this);
+  } else {
+    throw std::runtime_error(
+        fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
+                                                           FormPool& pool,
+                                                           FormStack& stack,
+                                                           std::vector<FormElement*>* result) {
+  auto src = m_expr.get_arg(0);
+  auto src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
+  if (src_type.typespec() == TypeSpec("float")) {
+    // set ourself to identity.
+    m_expr = src.as_expr();
+    // then go again.
+    update_from_stack(env, pool, stack, result);
+  } else {
+    throw std::runtime_error(fmt::format("GPR -> FPR applied to a {}", src_type.print()));
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_fpr_to_gpr(const Env& env,
+                                                           FormPool& pool,
+                                                           FormStack& stack,
+                                                           std::vector<FormElement*>* result) {
+  auto src = m_expr.get_arg(0);
+  auto src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
+  if (src_type.typespec() == TypeSpec("float")) {
+    // set ourself to identity.
+    m_expr = src.as_expr();
+    // then go again.
+    update_from_stack(env, pool, stack, result);
+  } else {
+    throw std::runtime_error(fmt::format("FPR -> GPR applied to a {}", src_type.print()));
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_div_s(const Env& env,
+                                                      FormPool& pool,
+                                                      FormStack& stack,
+                                                      std::vector<FormElement*>* result) {
+  if (is_float_type(env, m_my_idx, m_expr.get_arg(0).var()) &&
+      is_float_type(env, m_my_idx, m_expr.get_arg(1).var())) {
+    // todo - check the order here
+    auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
+    auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg0, arg1);
+    result->push_back(new_form);
+  } else {
+    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
+  }
+}
+
 void SimpleExpressionElement::update_from_stack(const Env& env,
                                                 FormPool& pool,
                                                 FormStack& stack,
                                                 std::vector<FormElement*>* result) {
-  if (m_expr.kind() == SimpleExpression::Kind::IDENTITY) {
-    auto& arg = m_expr.get_arg(0);
-    if (arg.is_var()) {
-      update_var_from_stack_helper(m_my_idx, arg.var(), env, pool, stack, result);
-    } else if (arg.is_static_addr()) {
-      // for now, do nothing.
-    } else {
+  switch (m_expr.kind()) {
+    case SimpleExpression::Kind::IDENTITY:
+      update_from_stack_identity(env, pool, stack, result);
+      break;
+
+    case SimpleExpression::Kind::GPR_TO_FPR:
+      update_from_stack_gpr_to_fpr(env, pool, stack, result);
+      break;
+
+    case SimpleExpression::Kind::FPR_TO_GPR:
+      update_from_stack_fpr_to_gpr(env, pool, stack, result);
+      break;
+
+    case SimpleExpression::Kind::DIV_S:
+      update_from_stack_div_s(env, pool, stack, result);
+      break;
+    default:
       throw std::runtime_error(
           fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));
-    }
-  } else {
-    throw std::runtime_error(
-        fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));
   }
 }
 
@@ -77,6 +163,17 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
 
 void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   m_src->update_children_from_stack(env, pool, stack);
-  stack.push_value_to_reg(m_dst, m_src, false);
+  if (m_src->is_single_element()) {
+    auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
+    if (src_as_se) {
+      if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
+          src_as_se->expr().get_arg(0).is_var()) {
+        stack.push_value_to_reg(m_dst, m_src, false);
+        return;
+      }
+    }
+  }
+
+  stack.push_value_to_reg(m_dst, m_src, true);
 }
 }  // namespace decompiler

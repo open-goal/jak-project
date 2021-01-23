@@ -104,7 +104,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
         } catch (std::runtime_error& e) {
           fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
           warnings += ";; Type prop attempted and failed.\n";
-          ir2.env.set_types(block_init_types, op_types);
+          ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops);
           return false;
         }
 
@@ -137,7 +137,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
                             my_type.last_arg().print());
   }
 
-  ir2.env.set_types(block_init_types, op_types);
+  ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops);
 
   return true;
 }

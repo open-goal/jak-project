@@ -270,6 +270,7 @@ void ObjectFileDB::ir2_type_analysis_pass() {
       non_asm_functions++;
       TypeSpec ts;
       if (lookup_function_type(func.guessed_name, data.to_unique_name(), &ts)) {
+        func.type = ts;
         attempted_functions++;
         // try type analysis here.
         auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];

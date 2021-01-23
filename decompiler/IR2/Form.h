@@ -59,6 +59,23 @@ class SimpleExpressionElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result) override;
 
+  void update_from_stack_identity(const Env& env,
+                                  FormPool& pool,
+                                  FormStack& stack,
+                                  std::vector<FormElement*>* result);
+  void update_from_stack_gpr_to_fpr(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_fpr_to_gpr(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_div_s(const Env& env,
+                               FormPool& pool,
+                               FormStack& stack,
+                               std::vector<FormElement*>* result);
+
   const SimpleExpression& expr() const { return m_expr; }
 
  private:
@@ -480,36 +497,43 @@ class ConditionalMoveFalseElement : public FormElement {
   void collect_vars(VariableSet& vars) const override;
 };
 
-///*!
-// * A GenericOperator is the head of a GenericElement.
-// * It is used for the final output.
-// */
-// class GenericOperator {
-// public:
-//  enum class Kind {
-//    FIXED_FUNCTION_CALL,
-//    VAR_FUNCTION_CALL,
-//    FIXED_OPERATOR
-//  };
-//
-// private:
-//  // if we're a VAR_FUNCTION_CALL, this should contain the expression to get the function
-//  Form* m_function_val;
-//
-//  //std::string
-//
-//};
-//
-// class GenericElement : public FormElement {
-// public:
-//  goos::Object to_form(const Env& env) const override;
-//  void apply(const std::function<void(FormElement*)>& f) override;
-//  void apply_form(const std::function<void(Form*)>& f) override;
-//  void collect_vars(VariableSet& vars) const override;
-// private:
-//  GenericOperator m_head;
-//  std::vector<Form*> m_elts;
-//};
+std::string fixed_operator_to_string(FixedOperatorKind kind);
+
+/*!
+ * A GenericOperator is the head of a GenericElement.
+ * It is used for the final output.
+ */
+class GenericOperator {
+ public:
+  enum class Kind { FIXED_OPERATOR, INVALID };
+
+  static GenericOperator make_fixed(FixedOperatorKind kind);
+  void collect_vars(VariableSet& vars) const;
+  goos::Object to_form(const Env& env) const;
+  void apply(const std::function<void(FormElement*)>& f);
+  void apply_form(const std::function<void(Form*)>& f);
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
+};
+
+class GenericElement : public FormElement {
+ public:
+  explicit GenericElement(GenericOperator op);
+  GenericElement(GenericOperator op, Form* arg);
+  GenericElement(GenericOperator op, Form* arg0, Form* arg1);
+  GenericElement(GenericOperator op, std::vector<Form*> forms);
+
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+
+ private:
+  GenericOperator m_head;
+  std::vector<Form*> m_elts;
+};
 
 /*!
  * A Form is a wrapper around one or more FormElements.

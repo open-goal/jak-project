@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "Env.h"
 #include "Form.h"
+#include "decompiler/analysis/atomic_op_builder.h"
 
 namespace decompiler {
 std::string Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
@@ -13,9 +14,28 @@ std::string Env::get_variable_name(Register reg, int atomic_idx, VariableMode mo
  * Update the Env with the result of the type analysis pass.
  */
 void Env::set_types(const std::vector<TypeState>& block_init_types,
-                    const std::vector<TypeState>& op_end_types) {
+                    const std::vector<TypeState>& op_end_types,
+                    const FunctionAtomicOps& atomic_ops) {
   m_block_init_types = block_init_types;
   m_op_end_types = op_end_types;
+
+  // cache the init types (this ends up being faster)
+  m_op_init_types.resize(op_end_types.size(), nullptr);
+  for (int block_idx = 0; block_idx < int(m_block_init_types.size()); block_idx++) {
+    int first_op = atomic_ops.block_id_to_first_atomic_op.at(block_idx);
+    int end_op = atomic_ops.block_id_to_end_atomic_op.at(block_idx);
+    if (end_op > first_op) {
+      m_op_init_types.at(first_op) = &m_block_init_types.at(block_idx);
+      for (int op_idx = first_op; op_idx < (end_op - 1); op_idx++) {
+        m_op_init_types.at(op_idx + 1) = &m_op_end_types.at(op_idx);
+      }
+    }
+  }
+
+  for (auto x : m_op_init_types) {
+    assert(x);
+  }
+
   m_has_types = true;
 }
 

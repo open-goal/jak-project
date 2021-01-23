@@ -762,4 +762,101 @@ void ConditionalMoveFalseElement::collect_vars(VariableSet& vars) const {
   vars.insert(dest);
   source->collect_vars(vars);
 }
+
+/////////////////////////////
+// GenericElement
+/////////////////////////////
+
+GenericOperator GenericOperator::make_fixed(FixedOperatorKind kind) {
+  GenericOperator op;
+  op.m_kind = Kind::FIXED_OPERATOR;
+  op.m_fixed_kind = kind;
+  return op;
+}
+
+void GenericOperator::collect_vars(VariableSet&) const {
+  switch (m_kind) {
+    case Kind::FIXED_OPERATOR:
+      return;
+    default:
+      assert(false);
+  }
+}
+
+goos::Object GenericOperator::to_form(const Env&) const {
+  switch (m_kind) {
+    case Kind::FIXED_OPERATOR:
+      return pretty_print::to_symbol(fixed_operator_to_string(m_fixed_kind));
+    default:
+      assert(false);
+  }
+}
+
+void GenericOperator::apply(const std::function<void(FormElement*)>&) {
+  switch (m_kind) {
+    case Kind::FIXED_OPERATOR:
+      break;
+    default:
+      assert(false);
+  }
+}
+
+void GenericOperator::apply_form(const std::function<void(Form*)>&) {
+  switch (m_kind) {
+    case Kind::FIXED_OPERATOR:
+      break;
+    default:
+      assert(false);
+  }
+}
+
+std::string fixed_operator_to_string(FixedOperatorKind kind) {
+  switch(kind) {
+    case FixedOperatorKind::GPR_TO_FPR:
+      return "gpr->fpr";
+    case FixedOperatorKind::DIVISION:
+      return "/";
+    default:
+      assert(false);
+  }
+}
+
+GenericElement::GenericElement(GenericOperator op) : m_head(op) {}
+GenericElement::GenericElement(GenericOperator op, Form* arg) : m_head(op), m_elts({arg}) {}
+GenericElement::GenericElement(GenericOperator op, Form* arg0, Form* arg1)
+    : m_head(op), m_elts({arg0, arg1}) {}
+GenericElement::GenericElement(GenericOperator op, std::vector<Form*> forms)
+    : m_head(op), m_elts(std::move(forms)) {}
+
+goos::Object GenericElement::to_form(const Env& env) const {
+  std::vector<goos::Object> result;
+  result.push_back(m_head.to_form(env));
+  for (auto x : m_elts) {
+    result.push_back(x->to_form(env));
+  }
+  return pretty_print::build_list(result);
+}
+
+void GenericElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_head.apply(f);
+  for (auto x : m_elts) {
+    x->apply(f);
+  }
+}
+
+void GenericElement::apply_form(const std::function<void(Form*)>& f) {
+  m_head.apply_form(f);
+  for (auto x : m_elts) {
+    x->apply_form(f);
+  }
+}
+
+void GenericElement::collect_vars(VariableSet& vars) const {
+  m_head.collect_vars(vars);
+  for (auto x : m_elts) {
+    x->collect_vars(vars);
+  }
+}
+
 }  // namespace decompiler
