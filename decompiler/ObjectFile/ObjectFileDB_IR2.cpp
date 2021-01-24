@@ -13,6 +13,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
+#include "decompiler/IR2/Form.h"
 
 namespace decompiler {
 
@@ -37,10 +38,12 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_variable_pass();
   lg::info("Initial structuring..");
   ir2_cfg_build_pass();
-  lg::info("Storing temporary form result...");
-  ir2_store_current_forms();
-  lg::info("Expression building...");
-  ir2_build_expressions();
+  if (get_config().analyze_expressions) {
+    lg::info("Storing temporary form result...");
+    ir2_store_current_forms();
+    lg::info("Expression building...");
+    ir2_build_expressions();
+  }
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -159,6 +162,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
     total_functions++;
     func.ir2.env.file = &data.linked_data;
+    func.ir2.env.dts = &dts;
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
@@ -384,7 +388,7 @@ void ObjectFileDB::ir2_build_expressions() {
     total++;
     if (func.ir2.top_form) {
       attempted++;
-      if (convert_to_expressions(func.ir2.top_form, func.ir2.form_pool, func)) {
+      if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
       }

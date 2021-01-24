@@ -257,22 +257,20 @@ void AtomicOpElement::collect_vars(VariableSet& vars) const {
 // ConditionElement
 /////////////////////////////
 
-ConditionElement::ConditionElement(IR2_Condition::Kind kind, Form* src0, Form* src1)
-    : m_kind(kind) {
+ConditionElement::ConditionElement(IR2_Condition::Kind kind,
+                                   std::optional<SimpleAtom> src0,
+                                   std::optional<SimpleAtom> src1,
+                                   RegSet consumed)
+    : m_kind(kind), m_consumed(std::move(consumed)) {
   m_src[0] = src0;
   m_src[1] = src1;
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->parent_element = this;
-    }
-  }
 }
 
 goos::Object ConditionElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i]->to_form(env));
+    forms.push_back(m_src[i]->to_form(env.file->labels, &env));
   }
   if (forms.size() > 1) {
     return pretty_print::build_list(forms);
@@ -283,20 +281,9 @@ goos::Object ConditionElement::to_form(const Env& env) const {
 
 void ConditionElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->apply(f);
-    }
-  }
 }
 
-void ConditionElement::apply_form(const std::function<void(Form*)>& f) {
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->apply_form(f);
-    }
-  }
-}
+void ConditionElement::apply_form(const std::function<void(Form*)>&) {}
 
 void ConditionElement::invert() {
   m_kind = get_condition_opposite(m_kind);
@@ -304,8 +291,8 @@ void ConditionElement::invert() {
 
 void ConditionElement::collect_vars(VariableSet& vars) const {
   for (auto src : m_src) {
-    if (src) {
-      src->collect_vars(vars);
+    if (src.has_value() && src->is_var()) {
+      vars.insert(src->var());
     }
   }
 }
@@ -652,59 +639,52 @@ void CondNoElseElement::collect_vars(VariableSet& vars) const {
 // AbsElement
 /////////////////////////////
 
-AbsElement::AbsElement(Form* _source) : source(_source) {
-  source->parent_element = this;
-}
+AbsElement::AbsElement(Variable _source, RegSet _consumed)
+    : source(_source), consumed(std::move(_consumed)) {}
 
 goos::Object AbsElement::to_form(const Env& env) const {
-  return pretty_print::build_list("abs", source->to_form(env));
+  return pretty_print::build_list("abs", source.to_string(&env));
 }
 
 void AbsElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  source->apply(f);
 }
 
-void AbsElement::apply_form(const std::function<void(Form*)>& f) {
-  source->apply_form(f);
-}
+void AbsElement::apply_form(const std::function<void(Form*)>&) {}
 
 void AbsElement::collect_vars(VariableSet& vars) const {
-  source->collect_vars(vars);
+  vars.insert(source);
 }
 
 /////////////////////////////
 // AshElement
 /////////////////////////////
 
-AshElement::AshElement(Form* _shift_amount,
-                       Form* _value,
+AshElement::AshElement(Variable _shift_amount,
+                       Variable _value,
                        std::optional<Variable> _clobber,
-                       bool _is_signed)
-    : shift_amount(_shift_amount), value(_value), clobber(_clobber), is_signed(_is_signed) {
-  _shift_amount->parent_element = this;
-  _value->parent_element = this;
-}
+                       bool _is_signed,
+                       RegSet _consumed)
+    : shift_amount(_shift_amount),
+      value(_value),
+      clobber(_clobber),
+      is_signed(_is_signed),
+      consumed(_consumed) {}
 
 goos::Object AshElement::to_form(const Env& env) const {
   return pretty_print::build_list(pretty_print::to_symbol(is_signed ? "ash.si" : "ash.ui"),
-                                  value->to_form(env), shift_amount->to_form(env));
+                                  value.to_string(&env), shift_amount.to_string(&env));
 }
 
 void AshElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  shift_amount->apply(f);
-  value->apply(f);
 }
 
-void AshElement::apply_form(const std::function<void(Form*)>& f) {
-  shift_amount->apply_form(f);
-  value->apply_form(f);
-}
+void AshElement::apply_form(const std::function<void(Form*)>&) {}
 
 void AshElement::collect_vars(VariableSet& vars) const {
-  shift_amount->collect_vars(vars);
-  value->collect_vars(vars);
+  vars.insert(value);
+  vars.insert(shift_amount);
 }
 
 /////////////////////////////
@@ -774,36 +754,66 @@ GenericOperator GenericOperator::make_fixed(FixedOperatorKind kind) {
   return op;
 }
 
-void GenericOperator::collect_vars(VariableSet&) const {
+GenericOperator GenericOperator::make_function(Form* value) {
+  GenericOperator op;
+  op.m_kind = Kind::FUNCTION_EXPR;
+  op.m_function = value;
+  return op;
+}
+
+GenericOperator GenericOperator::make_compare(IR2_Condition::Kind kind) {
+  GenericOperator op;
+  op.m_kind = Kind::CONDITION_OPERATOR;
+  op.m_condition_kind = kind;
+  return op;
+}
+
+void GenericOperator::collect_vars(VariableSet& vars) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
+      return;
+    case Kind::FUNCTION_EXPR:
+      m_function->collect_vars(vars);
       return;
     default:
       assert(false);
   }
 }
 
-goos::Object GenericOperator::to_form(const Env&) const {
+goos::Object GenericOperator::to_form(const Env& env) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
       return pretty_print::to_symbol(fixed_operator_to_string(m_fixed_kind));
+    case Kind::CONDITION_OPERATOR:
+      return pretty_print::to_symbol(get_condition_kind_name(m_condition_kind));
+    case Kind::FUNCTION_EXPR:
+      return m_function->to_form(env);
     default:
       assert(false);
   }
 }
 
-void GenericOperator::apply(const std::function<void(FormElement*)>&) {
+void GenericOperator::apply(const std::function<void(FormElement*)>& f) {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
+      break;
+    case Kind::FUNCTION_EXPR:
+      m_function->apply(f);
       break;
     default:
       assert(false);
   }
 }
 
-void GenericOperator::apply_form(const std::function<void(Form*)>&) {
+void GenericOperator::apply_form(const std::function<void(Form*)>& f) {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
+      break;
+    case Kind::FUNCTION_EXPR:
+      m_function->apply_form(f);
       break;
     default:
       assert(false);
@@ -818,6 +828,32 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "/";
     case FixedOperatorKind::ADDITION:
       return "+";
+    case FixedOperatorKind::SUBTRACTION:
+      return "-";
+    case FixedOperatorKind::MULTIPLICATION:
+      return "*";
+    case FixedOperatorKind::ARITH_SHIFT:
+      return "ash";
+    case FixedOperatorKind::MOD:
+      return "mod";
+    case FixedOperatorKind::ABS:
+      return "abs";
+    case FixedOperatorKind::MIN:
+      return "min";
+    case FixedOperatorKind::MAX:
+      return "max";
+    case FixedOperatorKind::LOGAND:
+      return "logand";
+    case FixedOperatorKind::LOGIOR:
+      return "logior";
+    case FixedOperatorKind::LOGXOR:
+      return "logxor";
+    case FixedOperatorKind::LOGNOR:
+      return "lognor";
+    case FixedOperatorKind::LOGNOT:
+      return "lognot";
+    case FixedOperatorKind::SLL:
+      return "sll";
     default:
       assert(false);
   }
@@ -883,4 +919,119 @@ void CastElement::apply_form(const std::function<void(Form*)>& f) {
 void CastElement::collect_vars(VariableSet& vars) const {
   m_source->collect_vars(vars);
 }
+
+/////////////////////////////
+// DerefElement
+/////////////////////////////
+
+DerefToken DerefToken::make_int_constant(s64 int_constant) {
+  DerefToken x;
+  x.m_kind = Kind::INTEGER_CONSTANT;
+  x.m_int_constant = int_constant;
+  return x;
+}
+
+DerefToken DerefToken::make_int_expr(Form* expr) {
+  DerefToken x;
+  x.m_kind = Kind::INTEGER_EXPRESSION;
+  x.m_expr = expr;
+  return x;
+}
+
+DerefToken DerefToken::make_field_name(const std::string& name) {
+  DerefToken x;
+  x.m_kind = Kind::FIELD_NAME;
+  x.m_name = name;
+  return x;
+}
+
+void DerefToken::collect_vars(VariableSet& vars) const {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->collect_vars(vars);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+goos::Object DerefToken::to_form(const Env& env) const {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+      return pretty_print::to_symbol(fmt::format("{}", m_int_constant));
+    case Kind::INTEGER_EXPRESSION:
+      return m_expr->to_form(env);
+    case Kind::FIELD_NAME:
+      return pretty_print::to_symbol(m_name);
+    default:
+      assert(false);
+  }
+}
+
+void DerefToken::apply(const std::function<void(FormElement*)>& f) {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->apply(f);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+void DerefToken::apply_form(const std::function<void(Form*)>& f) {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->apply_form(f);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
+    : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {}
+
+DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens)
+    : m_base(base), m_is_addr_of(is_addr_of), m_tokens(std::move(tokens)) {}
+
+goos::Object DerefElement::to_form(const Env& env) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol(m_is_addr_of ? "&->" : "->"),
+                                     m_base->to_form(env)};
+  for (auto& tok : m_tokens) {
+    forms.push_back(tok.to_form(env));
+  }
+  return pretty_print::build_list(forms);
+}
+
+void DerefElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_base->apply(f);
+  for (auto& tok : m_tokens) {
+    tok.apply(f);
+  }
+}
+
+void DerefElement::apply_form(const std::function<void(Form*)>& f) {
+  m_base->apply_form(f);
+  for (auto& tok : m_tokens) {
+    tok.apply_form(f);
+  }
+}
+
+void DerefElement::collect_vars(VariableSet& vars) const {
+  m_base->collect_vars(vars);
+  for (auto& tok : m_tokens) {
+    tok.collect_vars(vars);
+  }
+}
+
 }  // namespace decompiler

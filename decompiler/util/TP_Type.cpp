@@ -104,7 +104,7 @@ TypeSpec TP_Type::typespec() const {
     case Kind::UNINITIALIZED:
       return TypeSpec("none");
     case Kind::PRODUCT_WITH_CONSTANT:
-      return TypeSpec("int");
+      return m_ts;
     case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
       // this can be part of an array access, so we don't really know the type.
       // probably not a good idea to try to do anything with this as a typespec

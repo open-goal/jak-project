@@ -15,7 +15,6 @@
 #include "CfgVtx.h"
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/config.h"
-#include "decompiler/IR2/Form.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
@@ -77,6 +76,7 @@ struct FunctionName {
 class Function {
  public:
   Function(int _start_word, int _end_word);
+  ~Function();
   void analyze_prologue(const LinkedObjectFile& file);
   void find_global_function_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
   void find_method_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts);
@@ -161,7 +161,7 @@ class Function {
     bool atomic_ops_succeeded = false;
     std::shared_ptr<FunctionAtomicOps> atomic_ops = nullptr;
     Env env;
-    FormPool form_pool;
+    std::shared_ptr<FormPool> form_pool = nullptr;
     Form* top_form = nullptr;
     std::string debug_form_string;
     bool print_debug_forms = false;

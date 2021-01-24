@@ -104,10 +104,11 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_from_product(int64_t multiplier) {
+  static TP_Type make_from_product(int64_t multiplier, bool is_signed) {
     TP_Type result;
     result.kind = Kind::PRODUCT_WITH_CONSTANT;
     result.m_int = multiplier;
+    result.m_ts = is_signed ? TypeSpec("int") : TypeSpec("uint");
     return result;
   }
 

@@ -61,7 +61,7 @@ class AtomicOp {
 
   // convert me to an expression. If I'm a set!, this will produce a (set! x y), which may be
   // undesirable when expression stacking.
-  virtual FormElement* get_as_form(FormPool& pool) const = 0;
+  virtual FormElement* get_as_form(FormPool& pool, const Env& env) const = 0;
 
   // figure out what registers are read and written in this AtomicOp and update read_regs,
   // write_regs, and clobber_regs.  It's expected that these have duplicates if a register appears
@@ -256,7 +256,7 @@ class SetVarOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -282,7 +282,7 @@ class AsmOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -352,7 +352,7 @@ class IR2_Condition {
   void get_regs(std::vector<Register>* out) const;
   Kind kind() const { return m_kind; }
   const SimpleAtom& src(int i) const { return m_src[i]; }
-  ConditionElement* get_as_form(FormPool& pool) const;
+  ConditionElement* get_as_form(FormPool& pool, const Env& env, int my_idx) const;
   void collect_vars(VariableSet& vars) const;
 
  private:
@@ -374,7 +374,7 @@ class SetVarConditionOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   void invert() { m_condition.invert(); }
   TypeState propagate_types_internal(const TypeState& input,
@@ -399,7 +399,7 @@ class StoreOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -425,7 +425,7 @@ class LoadVarOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -500,7 +500,7 @@ class BranchOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -508,7 +508,7 @@ class BranchOp : public AtomicOp {
   void collect_vars(VariableSet& vars) const override;
   const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
   const IR2_Condition& condition() const { return m_condition; }
-  ConditionElement* get_condition_as_form(FormPool& pool) const;
+  ConditionElement* get_condition_as_form(FormPool& pool, const Env& env) const;
   bool likely() const { return m_likely; }
 
  private:
@@ -536,7 +536,7 @@ class SpecialOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -558,12 +558,14 @@ class CallOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const std::vector<Variable>& arg_vars() const { return m_arg_vars; }
+  Variable function_var() const { return m_function_var; }
 
  protected:
   TypeSpec m_call_type;
@@ -593,7 +595,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -604,4 +606,11 @@ class ConditionalMoveFalseOp : public AtomicOp {
   Variable m_dst, m_src;
   bool m_on_zero;
 };
+
+struct IR2_RegOffset {
+  Register reg;
+  Variable var;
+  int offset;
+};
+bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out);
 }  // namespace decompiler

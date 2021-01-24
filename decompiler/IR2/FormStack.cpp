@@ -89,7 +89,9 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   return result;
 }
 
-std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool, Register reg) {
+std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
+                                                        Register reg,
+                                                        const Env& env) {
   // first, rewrite as normal.
   auto default_result = rewrite(pool);
 
@@ -105,7 +107,8 @@ std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool, Register
     }
     return default_result;
   } else {
-    throw std::runtime_error(fmt::format("Couldn't rewrite form to get result"));
+    throw std::runtime_error(
+        fmt::format("Couldn't rewrite form to get result {}:\n{}\n\n", reg.to_charp(), print(env)));
   }
 }
 }  // namespace decompiler

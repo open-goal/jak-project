@@ -79,6 +79,30 @@ class SimpleExpressionElement : public FormElement {
                                FormPool& pool,
                                FormStack& stack,
                                std::vector<FormElement*>* result);
+  void update_from_stack_mult_si(const Env& env,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result);
+  void update_from_stack_lognot(const Env& env,
+                                FormPool& pool,
+                                FormStack& stack,
+                                std::vector<FormElement*>* result);
+
+  void update_from_stack_force_si_2(const Env& env,
+                                    FixedOperatorKind kind,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_force_ui_2(const Env& env,
+                                    FixedOperatorKind kind,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_copy_first_int_2(const Env& env,
+                                          FixedOperatorKind kind,
+                                          FormPool& pool,
+                                          FormStack& stack,
+                                          std::vector<FormElement*>* result);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -121,10 +145,10 @@ class LoadSourceElement : public FormElement {
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
-  virtual void update_from_stack(const Env& env,
-                                 FormPool& pool,
-                                 FormStack& stack,
-                                 std::vector<FormElement*>* result);
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 
  private:
   Form* m_addr = nullptr;
@@ -197,16 +221,22 @@ class AtomicOpElement : public FormElement {
  */
 class ConditionElement : public FormElement {
  public:
-  ConditionElement(IR2_Condition::Kind kind, Form* src0, Form* src1);
+  ConditionElement(IR2_Condition::Kind kind,
+                   std::optional<SimpleAtom> src0,
+                   std::optional<SimpleAtom> src1,
+                   RegSet consumed);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void invert();
+  const RegSet& consume() const { return m_consumed; }
 
  private:
   IR2_Condition::Kind m_kind;
-  Form* m_src[2] = {nullptr, nullptr};
+  std::optional<SimpleAtom> m_src[2];
+  RegSet m_consumed;
 };
 
 /*!
@@ -219,6 +249,11 @@ class FunctionCallElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
  private:
   const CallOp* m_op;
@@ -255,6 +290,7 @@ class ReturnElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!
@@ -368,6 +404,7 @@ class UntilElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   Form* condition = nullptr;
   Form* body = nullptr;
 };
@@ -423,6 +460,7 @@ class CondNoElseElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!
@@ -430,12 +468,17 @@ class CondNoElseElement : public FormElement {
  */
 class AbsElement : public FormElement {
  public:
-  explicit AbsElement(Form* _source);
+  explicit AbsElement(Variable _source, RegSet _consumed);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
-  Form* source = nullptr;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+  Variable source;
+  RegSet consumed;
 };
 
 /*!
@@ -445,15 +488,23 @@ class AbsElement : public FormElement {
  */
 class AshElement : public FormElement {
  public:
-  Form* shift_amount = nullptr;
-  Form* value = nullptr;
+  Variable shift_amount, value;
   std::optional<Variable> clobber;
   bool is_signed = true;
-  AshElement(Form* _shift_amount, Form* _value, std::optional<Variable> _clobber, bool _is_signed);
+  RegSet consumed;
+  AshElement(Variable _shift_amount,
+             Variable _value,
+             std::optional<Variable> _clobber,
+             bool _is_signed,
+             RegSet _consumed);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 };
 
 /*!
@@ -509,9 +560,11 @@ std::string fixed_operator_to_string(FixedOperatorKind kind);
  */
 class GenericOperator {
  public:
-  enum class Kind { FIXED_OPERATOR, INVALID };
+  enum class Kind { FIXED_OPERATOR, CONDITION_OPERATOR, FUNCTION_EXPR, INVALID };
 
   static GenericOperator make_fixed(FixedOperatorKind kind);
+  static GenericOperator make_function(Form* value);
+  static GenericOperator make_compare(IR2_Condition::Kind kind);
   void collect_vars(VariableSet& vars) const;
   goos::Object to_form(const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
@@ -519,7 +572,9 @@ class GenericOperator {
 
  private:
   Kind m_kind = Kind::INVALID;
+  IR2_Condition::Kind m_condition_kind = IR2_Condition::Kind::INVALID;
   FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
+  Form* m_function = nullptr;
 };
 
 class GenericElement : public FormElement {
@@ -550,6 +605,44 @@ class CastElement : public FormElement {
  private:
   TypeSpec m_type;
   Form* m_source = nullptr;
+};
+
+class DerefToken {
+ public:
+  enum class Kind { INTEGER_CONSTANT, INTEGER_EXPRESSION, FIELD_NAME, INVALID };
+  static DerefToken make_int_constant(s64 int_constant);
+  static DerefToken make_int_expr(Form* expr);
+  static DerefToken make_field_name(const std::string& name);
+
+  void collect_vars(VariableSet& vars) const;
+  goos::Object to_form(const Env& env) const;
+  void apply(const std::function<void(FormElement*)>& f);
+  void apply_form(const std::function<void(Form*)>& f);
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  s64 m_int_constant = -1;
+  std::string m_name;
+  Form* m_expr = nullptr;
+};
+
+class DerefElement : public FormElement {
+ public:
+  DerefElement(Form* base, bool is_addr_of, DerefToken token);
+  DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+
+ private:
+  Form* m_base = nullptr;
+  bool m_is_addr_of = false;
+  std::vector<DerefToken> m_tokens;
 };
 
 /*!
