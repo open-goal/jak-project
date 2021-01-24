@@ -15,27 +15,6 @@ bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
   return tc(dts, TypeSpec("int"), type) || tc(dts, TypeSpec("uint"), type);
 }
 
-struct IR2_RegOffset {
-  Register reg;
-  int offset;
-};
-
-bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {
-  if (expr.kind() == SimpleExpression::Kind::ADD && expr.get_arg(0).is_var() &&
-      expr.get_arg(1).is_int()) {
-    out->reg = expr.get_arg(0).var().reg();
-    out->offset = expr.get_arg(1).get_int();
-    return true;
-  }
-
-  if (expr.is_identity() && expr.get_arg(0).is_var()) {
-    out->reg = expr.get_arg(0).var().reg();
-    out->offset = 0;
-    return true;
-  }
-  return false;
-}
-
 RegClass get_reg_kind(const Register& r) {
   switch (r.get_kind()) {
     case Reg::GPR:

@@ -178,7 +178,7 @@ TEST_F(FormRegressionTest, FormatString) {
       "  (set! t9-0 format)\n"
       "  (set! a0-1 '#t)\n"
       "  (set! a1-0 L343)\n"
-      "  (set! f0-0 (l.f gp-0))\n"
+      "  (set! f0-0 (-> gp-0 data))\n"
       "  (set! a2-0 (fpr->gpr f0-0))\n"
       "  (call! a0-1 a1-0 a2-0)\n"  // #t, "~f", the float
       "  (set! v0-1 gp-0)\n"
@@ -214,10 +214,10 @@ TEST_F(FormRegressionTest, WhileLoop) {
   std::string type = "(function basic type symbol)";
   std::string expected =
       "(begin\n"
-      "  (set! v1-0 (l.wu (+ a0-0 -4)))\n"
+      "  (set! v1-0 (-> a0-0 type))\n"
       "  (set! a0-1 object)\n"
       "  (until\n"
-      "   (begin (set! v1-0 (l.wu (+ v1-0 4))) (= v1-0 a0-1))\n"
+      "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
       "   (if\n"
       "    (= v1-0 a1-0)\n"
       "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
@@ -274,7 +274,7 @@ TEST_F(FormRegressionTest, Or) {
       "   (begin\n"
       "    (or\n"
       "     (begin\n"
-      "      (set! a0-0 (l.wu (+ a0-0 4)))\n"
+      "      (set! a0-0 (-> a0-0 parent))\n"
       "      (set! a3-0 (= a0-0 v1-0))\n"
       "      (truthy a3-0)\n"  // this sets a2-0, the unused result of the OR. it gets a separate
                                // variable because it's not used.
@@ -353,8 +353,8 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "      (return ((begin (set! v1-3 nothing) (set! v0-0 v1-3))) ((set! v1-2 0)))\n"  // return
                                                                                          // nothing.
       "      )\n"
-      "     (set! a0-0 (l.wu (+ a0-0 4)))\n"  // get next parent type
-      "     (set! a2-2 (sll a1-0 2))\n"       // fancy access
+      "     (set! a0-0 (-> a0-0 parent))\n"  // get next parent type
+      "     (set! a2-2 (sll a1-0 2))\n"      // fancy access
       "     (set! a2-3 (+ a2-2 a0-0))\n"
       "     (set! v0-0 (l.wu (+ a2-3 16)))\n"  // get method (in v0-1, the same var as loop
                                                // condition)
@@ -463,8 +463,8 @@ TEST_F(FormRegressionTest, And) {
       "(cond\n"
       "  ((begin (set! v1-0 '()) (= a0-0 v1-0)) (set! v0-0 0))\n"  // should be a case, not a return
       "  (else\n"
-      "   (set! v1-1 (l.w (+ a0-0 2)))\n"  // v1-1 iteration.
-      "   (set! v0-0 1)\n"                 // v0-1 count
+      "   (set! v1-1 (-> a0-0 cdr))\n"  // v1-1 iteration.
+      "   (set! v0-0 1)\n"              // v0-1 count
       "   (while\n"
       "    (begin\n"
       "     (and\n"
@@ -703,7 +703,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "         (begin\n"
       "          (set! s2-0 (l.w (+ s3-0 -2)))\n"  // s2 = car
       "          (set! v1-0 (l.w (+ s3-0 2)))\n"
-      "          (set! s1-0 (l.w (+ v1-0 -2)))\n"  // s1 = cadr
+      "          (set! s1-0 (-> v1-0 car))\n"      // s1 = cadr
       "          (set! t9-0 s5-0)\n"               // func
       "          (set! a0-1 s2-0)\n"               // car
       "          (set! a1-1 s1-0)\n"               // cadr
@@ -775,10 +775,10 @@ TEST_F(FormRegressionTest, NewMethod) {
       "  (begin\n"
       "   (set! gp-0 a2-0)\n"  // gp-0 is size
       "   (set! v1-0 object)\n"
-      "   (set! t9-0 (l.wu (+ v1-0 16)))\n"  // object new
-      "   (set! v1-1 a1-0)\n"                // ?
-      "   (set! a2-1 (l.hu (+ a1-0 8)))\n"   // math
-      "   (set! a1-1 (l.hu (+ a1-0 12)))\n"
+      "   (set! t9-0 (-> v1-0 method-table 0))\n"  // object new
+      "   (set! v1-1 a1-0)\n"                      // ?
+      "   (set! a2-1 (-> a1-0 size))\n"            // math
+      "   (set! a1-1 (-> a1-0 heap-base))\n"
       "   (set! a1-2 (*.ui gp-0 a1-1))\n"
       "   (set! a2-2 (+ a2-1 a1-2))\n"
       "   (set! a1-3 v1-1)\n"  // size!
@@ -864,7 +864,7 @@ TEST_F(FormRegressionTest, TypeOf) {
   std::string expected =
       "(begin\n"
       "  (set! v1-1 (type-of a0-0))\n"
-      "  (set! t9-0 (l.wu (+ v1-1 24)))\n"  // print method.
+      "  (set! t9-0 (-> v1-1 method-table 2))\n"  // print method.
       "  (set! v0-0 (call! a0-0))\n"
       "  )";
   test_no_expr(func, type, expected, false);

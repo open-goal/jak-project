@@ -81,6 +81,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->file.words_by_seg.resize(3);
   test->file.labels = program.labels;
   test->func.ir2.env.file = &test->file;
+  test->func.ir2.env.dts = dts.get();
   test->func.instructions = program.instructions;
   test->func.guessed_name.set_as_global("test-function");
   test->func.type = function_type;
@@ -114,16 +115,18 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   EXPECT_TRUE(test->func.ir2.top_form);
 
   // for now, just test that this can at least be called.
-  VariableSet vars;
-  test->func.ir2.top_form->collect_vars(vars);
+  if (test->func.ir2.top_form) {
+    VariableSet vars;
+    test->func.ir2.top_form->collect_vars(vars);
 
-  if (do_expressions) {
-    bool success = convert_to_expressions(test->func.ir2.top_form, *test->func.ir2.form_pool,
-                                          test->func, *dts);
+    if (do_expressions) {
+      bool success = convert_to_expressions(test->func.ir2.top_form, *test->func.ir2.form_pool,
+                                            test->func, *dts);
 
-    EXPECT_TRUE(success);
-    if (!success) {
-      return nullptr;
+      EXPECT_TRUE(success);
+      if (!success) {
+        return nullptr;
+      }
     }
   }
 
@@ -154,14 +157,15 @@ void FormRegressionTest::test(const std::string& code,
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
+  ASSERT_TRUE(test->func.ir2.top_form);
   auto actual_form =
       pretty_print::get_pretty_printer_reader()
           .read_from_string(test->func.ir2.top_form->to_form(test->func.ir2.env).print(), false)
           .as_pair()
           ->car;
   if (expected_form != actual_form) {
-    printf("Got:\n%s\n\nExpected\n%s\n", actual_form.print().c_str(),
-           expected_form.print().c_str());
+    printf("Got:\n%s\n\nExpected\n%s\n", pretty_print::to_string(actual_form).c_str(),
+           pretty_print::to_string(expected_form).c_str());
   }
 
   EXPECT_TRUE(expected_form == actual_form);

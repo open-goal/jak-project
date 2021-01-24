@@ -11,6 +11,7 @@
 namespace decompiler {
 class LinkedObjectFile;
 class Form;
+class DecompilerTypeSystem;
 struct FunctionAtomicOps;
 
 /*!
@@ -74,6 +75,7 @@ class Env {
   RegId get_ssa_var(const Variable& var) const;
 
   LinkedObjectFile* file = nullptr;
+  DecompilerTypeSystem* dts = nullptr;
 
  private:
   bool m_has_reg_use = false;

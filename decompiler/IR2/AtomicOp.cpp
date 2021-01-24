@@ -1,6 +1,7 @@
 #include <cassert>
 #include <utility>
 #include <stdexcept>
+#include "common/goal_constants.h"
 #include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -1287,5 +1288,23 @@ void ConditionalMoveFalseOp::update_register_info() {
 void ConditionalMoveFalseOp::collect_vars(VariableSet& vars) const {
   vars.insert(m_dst);
   vars.insert(m_src);
+}
+
+bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {
+  if (expr.kind() == SimpleExpression::Kind::ADD && expr.get_arg(0).is_var() &&
+      expr.get_arg(1).is_int()) {
+    out->var = expr.get_arg(0).var();
+    out->reg = expr.get_arg(0).var().reg();
+    out->offset = expr.get_arg(1).get_int();
+    return true;
+  }
+
+  if (expr.is_identity() && expr.get_arg(0).is_var()) {
+    out->var = expr.get_arg(0).var();
+    out->reg = expr.get_arg(0).var().reg();
+    out->offset = 0;
+    return true;
+  }
+  return false;
 }
 }  // namespace decompiler

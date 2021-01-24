@@ -419,4 +419,16 @@ void FunctionCallElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     stack.push_form_element(x, true);
   }
 }
+
+///////////////////
+// FunctionCallElement
+///////////////////
+void DerefElement::update_from_stack(const Env& env,
+                                     FormPool& pool,
+                                     FormStack& stack,
+                                     std::vector<FormElement*>* result) {
+  // todo - update var tokens from stack?
+  m_base->update_children_from_stack(env, pool, stack);
+  result->push_back(this);
+}
 }  // namespace decompiler

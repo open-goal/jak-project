@@ -375,44 +375,33 @@ TEST_F(FormRegressionTest, ExprTrue) {
   test_with_expr(func, type, expected);
 }
 
-// TEST_F(FormRegressionTest, ExprPrintBfloat) {
-//  std::string func =
-//      "    sll r0, r0, 0\n"
-//      "L343:\n"
-//      "    daddiu sp, sp, -32\n"
-//      "    sd ra, 0(sp)\n"
-//      "    sd fp, 8(sp)\n"
-//      "    or fp, t9, r0\n"
-//      "    sq gp, 16(sp)\n"
-//
-//      "    or gp, a0, r0\n"
-//      "    lw t9, format(s7)\n"
-//      "    daddiu a0, s7, #t\n"
-//      "    daddiu a1, fp, L343\n"
-//      "    lwc1 f0, 0(gp)\n"
-//      "    mfc1 a2, f0\n"
-//      "    jalr ra, t9\n"
-//      "    sll v0, ra, 0\n"
-//
-//      "    or v0, gp, r0 \n"
-//      "    ld ra, 0(sp)\n"
-//      "    ld fp, 8(sp)\n"
-//      "    lq gp, 16(sp)\n"
-//      "    jr ra\n"
-//      "    daddiu sp, sp, 32";
-//  std::string type = "(function bfloat bfloat)";
-//
-//  // todo - update this.
-//  std::string expected =
-//      "(begin\n"
-//      "  (set! gp-0 a0-0)\n"
-//      "  (set! t9-0 format)\n"
-//      "  (set! a0-1 '#t)\n"
-//      "  (set! a1-0 L343)\n"
-//      "  (set! f0-0 (l.f gp-0))\n"
-//      "  (set! a2-0 (fpr->gpr f0-0))\n"
-//      "  (set! v0-0 (call! a0-1 a1-0 a2-0))\n"  // #t, "~f", the float
-//      "  (set! v0-1 gp-0)\n"
-//      "  )";
-//  test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
-//}
+TEST_F(FormRegressionTest, ExprPrintBfloat) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L343:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L343\n"
+      "    lwc1 f0, 0(gp)\n"
+      "    mfc1 a2, f0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v0, gp, r0 \n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function bfloat bfloat)";
+
+  std::string expected = "(begin (set! gp-0 a0-0) (format '#t L343 (-> gp-0 data)) gp-0)";
+  test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
+}

@@ -606,4 +606,11 @@ class ConditionalMoveFalseOp : public AtomicOp {
   Variable m_dst, m_src;
   bool m_on_zero;
 };
+
+struct IR2_RegOffset {
+  Register reg;
+  Variable var;
+  int offset;
+};
+bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out);
 }  // namespace decompiler
