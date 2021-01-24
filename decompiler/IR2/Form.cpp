@@ -853,6 +853,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognor";
     case FixedOperatorKind::LOGNOT:
       return "lognot";
+    case FixedOperatorKind::SLL:
+      return "sll";
     default:
       assert(false);
   }

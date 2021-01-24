@@ -405,3 +405,66 @@ TEST_F(FormRegressionTest, ExprPrintBfloat) {
   std::string expected = "(begin (set! gp-0 a0-0) (format '#t L343 (-> gp-0 data)) gp-0)";
   test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
+
+TEST_F(FormRegressionTest, ExprSizeOfType) {
+  std::string func =
+      "L346:\n"  // fake label.
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    ld v1, L346(fp)\n"
+      "    lhu a0, 14(a0)\n"
+      "    dsll a0, a0, 2\n"
+      "    daddiu a0, a0, 43\n"
+      "    and v0, v1, a0 \n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function type uint)";
+
+  std::string expected = "(logand (l.d L346) (+ (sll (-> a0-1 allocated-length) 2) 43))";
+  test_with_expr(func, type, expected, false, "");
+}
+
+// TEST_F(FormRegressionTest, ExprBasicTypeP) {
+//  std::string func =
+//      "    sll r0, r0, 0\n"
+//      "L285:\n"
+//      "    lwu v1, -4(a0)\n"
+//      "    lw a0, object(s7)\n"
+//
+//      "L286:\n"
+//      "    bne v1, a1, L287\n"
+//      "    or a2, s7, r0\n"
+//
+//      "    daddiu v1, s7, #t\n"
+//      "    or v0, v1, r0\n"
+//      "    beq r0, r0, L288\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "    or v1, r0, r0\n"
+//      "L287:\n"
+//      "    lwu v1, 4(v1)\n"
+//      "    bne v1, a0, L286\n"
+//      "    sll r0, r0, 0\n"
+//      "    or v0, s7, r0\n"
+//      "L288:\n"
+//      "    jr ra\n"
+//      "    daddu sp, sp, r0";
+//  std::string type = "(function basic type symbol)";
+//  std::string expected =
+//      "(begin\n"
+//      "  (set! v1-0 (-> a0-0 type))\n"
+//      "  (set! a0-1 object)\n"
+//      "  (until\n"
+//      "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
+//      "   (if\n"
+//      "    (= v1-0 a1-0)\n"
+//      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+//      "    )\n"
+//      "   )\n"
+//      "  (set! v0-0 '#f)\n"
+//      "  )";
+//  test_with_expr(func, type, expected);
+//}

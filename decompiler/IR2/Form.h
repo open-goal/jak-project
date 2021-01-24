@@ -93,6 +93,11 @@ class SimpleExpressionElement : public FormElement {
                                     FormPool& pool,
                                     FormStack& stack,
                                     std::vector<FormElement*>* result);
+  void update_from_stack_force_ui_2(const Env& env,
+                                    FixedOperatorKind kind,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
   void update_from_stack_copy_first_int_2(const Env& env,
                                           FixedOperatorKind kind,
                                           FormPool& pool,
@@ -140,10 +145,10 @@ class LoadSourceElement : public FormElement {
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
-  virtual void update_from_stack(const Env& env,
-                                 FormPool& pool,
-                                 FormStack& stack,
-                                 std::vector<FormElement*>* result);
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 
  private:
   Form* m_addr = nullptr;
@@ -221,6 +226,7 @@ class ConditionElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void invert();
 
  private:
@@ -392,6 +398,7 @@ class UntilElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   Form* condition = nullptr;
   Form* body = nullptr;
 };

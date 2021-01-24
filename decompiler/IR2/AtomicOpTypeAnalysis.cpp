@@ -15,6 +15,10 @@ bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
   return tc(dts, TypeSpec("int"), type) || tc(dts, TypeSpec("uint"), type);
 }
 
+bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
+  return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
+}
+
 RegClass get_reg_kind(const Register& r) {
   switch (r.get_kind()) {
     case Reg::GPR:
@@ -202,13 +206,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       if (m_args[1].is_int() && is_int_or_uint(dts, arg0_type)) {
         assert(m_args[1].get_int() >= 0);
         assert(m_args[1].get_int() < 64);
-        return TP_Type::make_from_product(1ull << m_args[1].get_int());
+        return TP_Type::make_from_product(1ull << m_args[1].get_int(), is_signed(dts, arg0_type));
       }
       break;
 
     case Kind::MUL_SIGNED: {
       if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
-        return TP_Type::make_from_product(arg0_type.get_integer_constant());
+        return TP_Type::make_from_product(arg0_type.get_integer_constant(),
+                                          is_signed(dts, arg0_type));
       } else if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
         // signed multiply will always return a signed number.
         return TP_Type::make_from_ts("int");

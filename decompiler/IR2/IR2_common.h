@@ -104,6 +104,7 @@ enum class FixedOperatorKind {
   LOGXOR,
   LOGNOR,
   LOGNOT,
+  SLL,
   INVALID
 };
 
