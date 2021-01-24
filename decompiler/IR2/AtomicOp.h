@@ -61,7 +61,7 @@ class AtomicOp {
 
   // convert me to an expression. If I'm a set!, this will produce a (set! x y), which may be
   // undesirable when expression stacking.
-  virtual FormElement* get_as_form(FormPool& pool) const = 0;
+  virtual FormElement* get_as_form(FormPool& pool, const Env& env) const = 0;
 
   // figure out what registers are read and written in this AtomicOp and update read_regs,
   // write_regs, and clobber_regs.  It's expected that these have duplicates if a register appears
@@ -256,7 +256,7 @@ class SetVarOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -282,7 +282,7 @@ class AsmOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -374,7 +374,7 @@ class SetVarConditionOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   void invert() { m_condition.invert(); }
   TypeState propagate_types_internal(const TypeState& input,
@@ -399,7 +399,7 @@ class StoreOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -425,7 +425,7 @@ class LoadVarOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -500,7 +500,7 @@ class BranchOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -536,7 +536,7 @@ class SpecialOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -558,7 +558,7 @@ class CallOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -595,7 +595,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   Variable get_set_destination() const override;
-  FormElement* get_as_form(FormPool& pool) const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,

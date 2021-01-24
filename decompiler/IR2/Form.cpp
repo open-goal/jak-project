@@ -918,4 +918,119 @@ void CastElement::apply_form(const std::function<void(Form*)>& f) {
 void CastElement::collect_vars(VariableSet& vars) const {
   m_source->collect_vars(vars);
 }
+
+/////////////////////////////
+// DerefElement
+/////////////////////////////
+
+DerefToken DerefToken::make_int_constant(s64 int_constant) {
+  DerefToken x;
+  x.m_kind = Kind::INTEGER_CONSTANT;
+  x.m_int_constant = int_constant;
+  return x;
+}
+
+DerefToken DerefToken::make_int_expr(Form* expr) {
+  DerefToken x;
+  x.m_kind = Kind::INTEGER_EXPRESSION;
+  x.m_expr = expr;
+  return x;
+}
+
+DerefToken DerefToken::make_field_name(const std::string& name) {
+  DerefToken x;
+  x.m_kind = Kind::FIELD_NAME;
+  x.m_name = name;
+  return x;
+}
+
+void DerefToken::collect_vars(VariableSet& vars) const {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->collect_vars(vars);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+goos::Object DerefToken::to_form(const Env& env) const {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+      return pretty_print::to_symbol(fmt::format("{}", m_int_constant));
+    case Kind::INTEGER_EXPRESSION:
+      return m_expr->to_form(env);
+    case Kind::FIELD_NAME:
+      return pretty_print::to_symbol(m_name);
+    default:
+      assert(false);
+  }
+}
+
+void DerefToken::apply(const std::function<void(FormElement*)>& f) {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->apply(f);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+void DerefToken::apply_form(const std::function<void(Form*)>& f) {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->apply_form(f);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
+    : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {}
+
+DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens)
+    : m_base(base), m_is_addr_of(is_addr_of), m_tokens(std::move(tokens)) {}
+
+goos::Object DerefElement::to_form(const Env& env) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol(m_is_addr_of ? "&->" : "->"),
+                                     m_base->to_form(env)};
+  for (auto& tok : m_tokens) {
+    forms.push_back(tok.to_form(env));
+  }
+  return pretty_print::build_list(forms);
+}
+
+void DerefElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_base->apply(f);
+  for (auto& tok : m_tokens) {
+    tok.apply(f);
+  }
+}
+
+void DerefElement::apply_form(const std::function<void(Form*)>& f) {
+  m_base->apply_form(f);
+  for (auto& tok : m_tokens) {
+    tok.apply_form(f);
+  }
+}
+
+void DerefElement::collect_vars(VariableSet& vars) const {
+  m_base->collect_vars(vars);
+  for (auto& tok : m_tokens) {
+    tok.collect_vars(vars);
+  }
+}
+
 }  // namespace decompiler

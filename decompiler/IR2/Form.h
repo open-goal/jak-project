@@ -242,6 +242,7 @@ class FunctionCallElement : public FormElement {
                          FormPool& pool,
                          FormStack& stack,
                          std::vector<FormElement*>* result) override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
  private:
   const CallOp* m_op;
@@ -588,6 +589,40 @@ class CastElement : public FormElement {
  private:
   TypeSpec m_type;
   Form* m_source = nullptr;
+};
+
+class DerefToken {
+ public:
+  enum class Kind { INTEGER_CONSTANT, INTEGER_EXPRESSION, FIELD_NAME, INVALID };
+  static DerefToken make_int_constant(s64 int_constant);
+  static DerefToken make_int_expr(Form* expr);
+  static DerefToken make_field_name(const std::string& name);
+
+  void collect_vars(VariableSet& vars) const;
+  goos::Object to_form(const Env& env) const;
+  void apply(const std::function<void(FormElement*)>& f);
+  void apply_form(const std::function<void(Form*)>& f);
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  s64 m_int_constant = -1;
+  std::string m_name;
+  Form* m_expr = nullptr;
+};
+
+class DerefElement : public FormElement {
+ public:
+  DerefElement(Form* base, bool is_addr_of, DerefToken token);
+  DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+
+ private:
+  Form* m_base = nullptr;
+  bool m_is_addr_of = false;
+  std::vector<DerefToken> m_tokens;
 };
 
 /*!

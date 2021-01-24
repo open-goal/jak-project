@@ -1012,7 +1012,7 @@ void insert_cfg_into_list(FormPool& pool,
     auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(as_block->block_id);
     auto end_op = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(as_block->block_id);
     for (auto i = start_op; i < end_op; i++) {
-      output->push_back(f.ir2.atomic_ops->ops.at(i)->get_as_form(pool));
+      output->push_back(f.ir2.atomic_ops->ops.at(i)->get_as_form(pool, f.ir2.env));
     }
   } else {
     auto ir = cfg_to_ir(pool, f, vtx);
@@ -1030,7 +1030,7 @@ Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
     auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(bv->block_id);
     auto end_op = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(bv->block_id);
     for (auto i = start_op; i < end_op; i++) {
-      output->push_back(f.ir2.atomic_ops->ops.at(i)->get_as_form(pool));
+      output->push_back(f.ir2.atomic_ops->ops.at(i)->get_as_form(pool, f.ir2.env));
     }
 
     return output;

@@ -127,6 +127,18 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     }
   }
 
+  //  for (int i = 0; i < int(test->func.ir2.atomic_ops->ops.size()); i++) {
+  //    auto& op = test->func.ir2.atomic_ops->ops.at(i);
+  //    auto& info = test->func.ir2.env.reg_use().op.at(i);
+  //    fmt::print("{} - {}:  ", op->to_string(test->func.ir2.env),
+  //               test->func.ir2.env.get_types_after_op(i).print_gpr_masked(
+  //                   regs_to_gpr_mask({Register(Reg::GPR, Reg::V0)})));
+  //    for (auto live : info.live) {
+  //      fmt::print("{} ", live.to_charp());
+  //    }
+  //    fmt::print("\n");
+  //  }
+
   return test;
 }
 

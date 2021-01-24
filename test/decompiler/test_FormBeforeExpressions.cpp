@@ -180,7 +180,7 @@ TEST_F(FormRegressionTest, FormatString) {
       "  (set! a1-0 L343)\n"
       "  (set! f0-0 (l.f gp-0))\n"
       "  (set! a2-0 (fpr->gpr f0-0))\n"
-      "  (set! v0-0 (call! a0-1 a1-0 a2-0))\n"  // #t, "~f", the float
+      "  (call! a0-1 a1-0 a2-0)\n"  // #t, "~f", the float
       "  (set! v0-1 gp-0)\n"
       "  )";
   test_no_expr(func, type, expected, false, "", {{"L343", "~f"}});
@@ -223,7 +223,7 @@ TEST_F(FormRegressionTest, WhileLoop) {
       "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
       "    )\n"
       "   )\n"
-      "  (set! v0-1 '#f)\n"
+      "  (set! v0-0 '#f)\n"
       "  )";
   test_no_expr(func, type, expected);
 }
@@ -288,7 +288,7 @@ TEST_F(FormRegressionTest, Or) {
       "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
       "    )\n"
       "   )\n"
-      "  (set! v0-1 '#f)\n"
+      "  (set! v0-0 '#f)\n"
       "  )";
   test_no_expr(func, type, expected);
 }
@@ -345,7 +345,7 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "  (set! v1-1 (+ v1-0 a0-0))\n"
       "  (set! v1-2 (l.wu (+ v1-1 16)))\n"  // get the method of the given type.
       "  (until\n"
-      "   (!= v0-1 v1-2)\n"  // actually goes after the body, so it's fine to refer to v0-1/v1-2
+      "   (!= v0-0 v1-2)\n"  // actually goes after the body, so it's fine to refer to v1-2
       "   (if\n"
       "    (begin\n"
       "     (if\n"
@@ -356,11 +356,11 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "     (set! a0-0 (l.wu (+ a0-0 4)))\n"  // get next parent type
       "     (set! a2-2 (sll a1-0 2))\n"       // fancy access
       "     (set! a2-3 (+ a2-2 a0-0))\n"
-      "     (set! v0-1 (l.wu (+ a2-3 16)))\n"  // get method (in v0-1, the same var as loop
+      "     (set! v0-0 (l.wu (+ a2-3 16)))\n"  // get method (in v0-1, the same var as loop
                                                // condition)
-      "     (zero? v0-1)\n"                    // is it defined?
+      "     (zero? v0-0)\n"                    // is it defined?
       "     )\n"
-      "    (return ((begin (set! v1-4 nothing) (set! v0-2 v1-4))) ((set! v1-2 0)))\n"  // also
+      "    (return ((begin (set! v1-4 nothing) (set! v0-0 v1-4))) ((set! v1-2 0)))\n"  // also
                                                                                        // return
                                                                                        // nothing.
       "    )\n"
@@ -464,7 +464,7 @@ TEST_F(FormRegressionTest, And) {
       "  ((begin (set! v1-0 '()) (= a0-0 v1-0)) (set! v0-0 0))\n"  // should be a case, not a return
       "  (else\n"
       "   (set! v1-1 (l.w (+ a0-0 2)))\n"  // v1-1 iteration.
-      "   (set! v0-1 1)\n"                 // v0-1 count
+      "   (set! v0-0 1)\n"                 // v0-1 count
       "   (while\n"
       "    (begin\n"
       "     (and\n"
@@ -473,7 +473,7 @@ TEST_F(FormRegressionTest, And) {
       "      )\n"
       "     (truthy a0-2)\n"  // this variable doesn't appear, but is set by the and.
       "     )\n"
-      "    (set! v0-1 (+ v0-1 1))\n"        // merged (and the result)
+      "    (set! v0-0 (+ v0-0 1))\n"        // merged (and the result)
       "    (set! v1-1 (l.w (+ v1-1 2)))\n"  // also merged.
       "    )\n"
       "   (set! v1-2 '#f)\n"  // while's false, I think.
@@ -560,7 +560,7 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "   (set! v1-3 '())\n"  //
       "   (!= gp-0 v1-3)\n"   // IF CONDITION
       "   )\n"
-      "  (set! v0-2 gp-0)\n"  // not empty, so return the result
+      "  (set! v0-1 gp-0)\n"  // not empty, so return the result
       "  )";                  // the (set! v0 #f) from the if is added later.
   test_no_expr(func, type, expected, true);
 }
@@ -829,7 +829,7 @@ TEST_F(FormRegressionTest, Recursive) {
       "   (set! t9-0 fact)\n"  // recurse!
       "   (set! a0-1 (+ gp-0 -1))\n"
       "   (set! v0-1 (call! a0-1))\n"
-      "   (set! v0-2 (*.si gp-0 v0-1))\n"  // not quite a tail call...
+      "   (set! v0-0 (*.si gp-0 v0-1))\n"  // not quite a tail call...
       "   )\n"
       "  )";
   test_no_expr(func, type, expected, false);

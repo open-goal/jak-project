@@ -411,4 +411,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
   auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(func), args);
   result->push_back(new_form);
 }
+
+void FunctionCallElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  std::vector<FormElement*> rewritten;
+  update_from_stack(env, pool, stack, &rewritten);
+  for (auto x : rewritten) {
+    stack.push_form_element(x, true);
+  }
+}
 }  // namespace decompiler
