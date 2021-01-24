@@ -257,22 +257,20 @@ void AtomicOpElement::collect_vars(VariableSet& vars) const {
 // ConditionElement
 /////////////////////////////
 
-ConditionElement::ConditionElement(IR2_Condition::Kind kind, Form* src0, Form* src1)
-    : m_kind(kind) {
+ConditionElement::ConditionElement(IR2_Condition::Kind kind,
+                                   std::optional<SimpleAtom> src0,
+                                   std::optional<SimpleAtom> src1,
+                                   RegSet consumed)
+    : m_kind(kind), m_consumed(std::move(consumed)) {
   m_src[0] = src0;
   m_src[1] = src1;
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->parent_element = this;
-    }
-  }
 }
 
 goos::Object ConditionElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i]->to_form(env));
+    forms.push_back(m_src[i]->to_form(env.file->labels, &env));
   }
   if (forms.size() > 1) {
     return pretty_print::build_list(forms);
@@ -283,20 +281,9 @@ goos::Object ConditionElement::to_form(const Env& env) const {
 
 void ConditionElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->apply(f);
-    }
-  }
 }
 
-void ConditionElement::apply_form(const std::function<void(Form*)>& f) {
-  for (int i = 0; i < 2; i++) {
-    if (m_src[i]) {
-      m_src[i]->apply_form(f);
-    }
-  }
-}
+void ConditionElement::apply_form(const std::function<void(Form*)>&) {}
 
 void ConditionElement::invert() {
   m_kind = get_condition_opposite(m_kind);
@@ -304,8 +291,8 @@ void ConditionElement::invert() {
 
 void ConditionElement::collect_vars(VariableSet& vars) const {
   for (auto src : m_src) {
-    if (src) {
-      src->collect_vars(vars);
+    if (src.has_value() && src->is_var()) {
+      vars.insert(src->var());
     }
   }
 }
@@ -774,9 +761,17 @@ GenericOperator GenericOperator::make_function(Form* value) {
   return op;
 }
 
+GenericOperator GenericOperator::make_compare(IR2_Condition::Kind kind) {
+  GenericOperator op;
+  op.m_kind = Kind::CONDITION_OPERATOR;
+  op.m_condition_kind = kind;
+  return op;
+}
+
 void GenericOperator::collect_vars(VariableSet& vars) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
       return;
     case Kind::FUNCTION_EXPR:
       m_function->collect_vars(vars);
@@ -790,6 +785,8 @@ goos::Object GenericOperator::to_form(const Env& env) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
       return pretty_print::to_symbol(fixed_operator_to_string(m_fixed_kind));
+    case Kind::CONDITION_OPERATOR:
+      return pretty_print::to_symbol(get_condition_kind_name(m_condition_kind));
     case Kind::FUNCTION_EXPR:
       return m_function->to_form(env);
     default:
@@ -800,6 +797,7 @@ goos::Object GenericOperator::to_form(const Env& env) const {
 void GenericOperator::apply(const std::function<void(FormElement*)>& f) {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
       break;
     case Kind::FUNCTION_EXPR:
       m_function->apply(f);
@@ -812,6 +810,7 @@ void GenericOperator::apply(const std::function<void(FormElement*)>& f) {
 void GenericOperator::apply_form(const std::function<void(Form*)>& f) {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
       break;
     case Kind::FUNCTION_EXPR:
       m_function->apply_form(f);

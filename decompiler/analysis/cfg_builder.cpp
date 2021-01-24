@@ -62,7 +62,7 @@ std::pair<BranchElement*, FormElement**> get_condition_branch(Form* in) {
  * compare IR instead of a branch.
  * Doesn't "rebalance" the leading condition because this runs way before expression compaction.
  */
-void clean_up_cond_with_else(FormPool& pool, FormElement* ir) {
+void clean_up_cond_with_else(FormPool& pool, FormElement* ir, const Env& env) {
   auto cwe = dynamic_cast<CondWithElseElement*>(ir);
   assert(cwe);
   for (auto& e : cwe->entries) {
@@ -74,7 +74,7 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir) {
     assert(jump_to_next.first);
     assert(jump_to_next.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
     // patch the branch to next with a condition.
-    auto replacement = jump_to_next.first->op()->get_condition_as_form(pool);
+    auto replacement = jump_to_next.first->op()->get_condition_as_form(pool, env);
     replacement->invert();
     *(jump_to_next.second) = replacement;
 
@@ -104,11 +104,11 @@ void clean_up_cond_with_else(FormPool& pool, FormElement* ir) {
 /*!
  * Replace the branch at the end of an until loop's condition with a condition.
  */
-void clean_up_until_loop(FormPool& pool, UntilElement* ir) {
+void clean_up_until_loop(FormPool& pool, UntilElement* ir, const Env& env) {
   auto condition_branch = get_condition_branch(ir->condition);
   assert(condition_branch.first);
   assert(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
-  auto replacement = condition_branch.first->op()->get_condition_as_form(pool);
+  auto replacement = condition_branch.first->op()->get_condition_as_form(pool, env);
   replacement->invert();
   *(condition_branch.second) = replacement;
 }
@@ -263,7 +263,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitEl
       }
     }
 
-    auto replacement = branch.first->op()->get_condition_as_form(pool);
+    auto replacement = branch.first->op()->get_condition_as_form(pool, func.ir2.env);
     replacement->invert();
     *(branch.second) = replacement;
   }
@@ -319,7 +319,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, const Function& func, ShortCircuitEle
       }
     }
 
-    auto replacement = branch.first->op()->get_condition_as_form(pool);
+    auto replacement = branch.first->op()->get_condition_as_form(pool, func.ir2.env);
     *(branch.second) = replacement;
   }
 
@@ -444,7 +444,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
 
   auto condition_as_single =
       dynamic_cast<BranchElement*>(cne->entries.front().condition->try_as_single_element());
-  auto condition_replacement = condition.first->op()->get_condition_as_form(pool);
+  auto condition_replacement = condition.first->op()->get_condition_as_form(pool, f.ir2.env);
   auto crf = pool.alloc_single_form(nullptr, condition_replacement);
   auto replacement = pool.alloc_element<SetVarElement>(dst, crf, true);
   replacement->parent_form = cne->parent_form;
@@ -554,7 +554,7 @@ void clean_up_cond_no_else(FormPool& pool,
 
       e.original_condition_branch = *jump_to_next.second;
 
-      auto replacement = jump_to_next.first->op()->get_condition_as_form(pool);
+      auto replacement = jump_to_next.first->op()->get_condition_as_form(pool, f.ir2.env);
       replacement->invert();
       *(jump_to_next.second) = replacement;
       e.cleaned = true;
@@ -1050,19 +1050,21 @@ Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
     auto wvtx = dynamic_cast<const UntilLoop*>(vtx);
     auto result = pool.alloc_single_element_form<UntilElement>(
         nullptr, cfg_to_ir(pool, f, wvtx->condition), cfg_to_ir(pool, f, wvtx->body));
-    clean_up_until_loop(pool, dynamic_cast<UntilElement*>(result->try_as_single_element()));
+    clean_up_until_loop(pool, dynamic_cast<UntilElement*>(result->try_as_single_element()),
+                        f.ir2.env);
     return result;
   } else if (dynamic_cast<const UntilLoop_single*>(vtx)) {
     auto wvtx = dynamic_cast<const UntilLoop_single*>(vtx);
     auto empty = pool.alloc_single_element_form<EmptyElement>(nullptr);
     auto result = pool.alloc_single_element_form<UntilElement>(
         nullptr, cfg_to_ir(pool, f, wvtx->block), empty);
-    clean_up_until_loop(pool, dynamic_cast<UntilElement*>(result->try_as_single_element()));
+    clean_up_until_loop(pool, dynamic_cast<UntilElement*>(result->try_as_single_element()),
+                        f.ir2.env);
     return result;
   } else if (dynamic_cast<const InfiniteLoopBlock*>(vtx)) {
     auto wvtx = dynamic_cast<const InfiniteLoopBlock*>(vtx);
     auto condition = pool.alloc_single_element_form<ConditionElement>(
-        nullptr, IR2_Condition::Kind::ALWAYS, nullptr, nullptr);
+        nullptr, IR2_Condition::Kind::ALWAYS, std::nullopt, std::nullopt, RegSet());
     auto result = pool.alloc_single_element_form<WhileElement>(nullptr, condition,
                                                                cfg_to_ir(pool, f, wvtx->block));
     clean_up_infinite_while_loop(pool,
@@ -1108,8 +1110,8 @@ Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
         entries.push_back(std::move(e));
       }
       auto result = pool.alloc_single_element_form<CondWithElseElement>(nullptr, entries, else_ir);
-      clean_up_cond_with_else(pool,
-                              dynamic_cast<CondWithElseElement*>(result->try_as_single_element()));
+      clean_up_cond_with_else(
+          pool, dynamic_cast<CondWithElseElement*>(result->try_as_single_element()), f.ir2.env);
       return result;
     }
   } else if (dynamic_cast<const ShortCircuit*>(vtx)) {
@@ -1178,7 +1180,7 @@ Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
  * has a jump to the condition branch that we need to remove.  This currently happens after all
  * conversion but this may need to be revisited depending on the final order of simplifications.
  */
-void clean_up_while_loops(FormPool& pool, Form* sequence) {
+void clean_up_while_loops(FormPool& pool, Form* sequence, const Env& env) {
   std::vector<size_t> to_remove;  // the list of branches to remove by index in this sequence
   for (int i = 0; i < sequence->size(); i++) {
     auto* form_as_while = dynamic_cast<WhileElement*>(sequence->at(i));
@@ -1200,7 +1202,7 @@ void clean_up_while_loops(FormPool& pool, Form* sequence) {
       assert(condition_branch.first);
       assert(condition_branch.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
       // printf("got while condition branch %s\n", condition_branch.first->print(file).c_str());
-      auto replacement = condition_branch.first->op()->get_condition_as_form(pool);
+      auto replacement = condition_branch.first->op()->get_condition_as_form(pool, env);
 
       *(condition_branch.second) = replacement;
     }
@@ -1228,7 +1230,7 @@ void build_initial_forms(Function& function) {
     insert_cfg_into_list(*pool, function, top_level, &top_level_elts);
     auto result = pool->alloc_sequence_form(nullptr, top_level_elts);
 
-    result->apply_form([&](Form* form) { clean_up_while_loops(*pool, form); });
+    result->apply_form([&](Form* form) { clean_up_while_loops(*pool, form, function.ir2.env); });
 
     result->apply([&](FormElement* form) {
       auto as_cne = dynamic_cast<CondNoElseElement*>(form);

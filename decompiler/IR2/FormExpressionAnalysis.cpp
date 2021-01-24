@@ -502,13 +502,51 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 }
 
 ///////////////////
+// CondNoElseElement
+///////////////////
+void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto& entry : entries) {
+    for (auto form : {entry.condition, entry.body}) {
+      FormStack temp_stack;
+      for (auto& elt : form->elts()) {
+        elt->push_to_stack(env, pool, temp_stack);
+      }
+
+      std::vector<FormElement*> new_entries;
+      if (form == entry.body) {
+        new_entries = temp_stack.rewrite(pool);
+      } else {
+        new_entries = temp_stack.rewrite(pool);
+      }
+
+      form->clear();
+      for (auto e : new_entries) {
+        form->push_back(e);
+      }
+    }
+  }
+
+  stack.push_form_element(this, true);
+}
+
+///////////////////
 // ConditionElement
 ///////////////////
 
-void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  for (auto form : {m_src[0], m_src[1]}) {
-    form->update_children_from_stack(env, pool, stack);
+void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stack) {
+  std::vector<Form*> source_forms;
+
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
+                                                         m_consumed, pool, stack));
   }
+
+  stack.push_form_element(
+      pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms),
+      true);
+}
+
+void ReturnElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   stack.push_form_element(this, true);
 }
 

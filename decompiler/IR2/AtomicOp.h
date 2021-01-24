@@ -352,7 +352,7 @@ class IR2_Condition {
   void get_regs(std::vector<Register>* out) const;
   Kind kind() const { return m_kind; }
   const SimpleAtom& src(int i) const { return m_src[i]; }
-  ConditionElement* get_as_form(FormPool& pool) const;
+  ConditionElement* get_as_form(FormPool& pool, const Env& env, int my_idx) const;
   void collect_vars(VariableSet& vars) const;
 
  private:
@@ -508,7 +508,7 @@ class BranchOp : public AtomicOp {
   void collect_vars(VariableSet& vars) const override;
   const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
   const IR2_Condition& condition() const { return m_condition; }
-  ConditionElement* get_condition_as_form(FormPool& pool) const;
+  ConditionElement* get_condition_as_form(FormPool& pool, const Env& env) const;
   bool likely() const { return m_likely; }
 
  private:

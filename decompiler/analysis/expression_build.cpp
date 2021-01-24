@@ -41,7 +41,7 @@ bool convert_to_expressions(Form* top_level_form,
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
       auto v0 = Register(Reg::GPR, Reg::V0);
-      new_entries = stack.rewrite_to_get_reg(pool, v0);
+      new_entries = stack.rewrite_to_get_reg(pool, v0, f.ir2.env);
       auto reg_return_type = f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(v0);
       if (!dts.ts.typecheck(f.type.last_arg(), reg_return_type.typespec(), "", false, false)) {
         // we need to cast the final value.

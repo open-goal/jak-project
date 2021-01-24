@@ -427,44 +427,45 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
   test_with_expr(func, type, expected, false, "");
 }
 
-// TEST_F(FormRegressionTest, ExprBasicTypeP) {
-//  std::string func =
-//      "    sll r0, r0, 0\n"
-//      "L285:\n"
-//      "    lwu v1, -4(a0)\n"
-//      "    lw a0, object(s7)\n"
-//
-//      "L286:\n"
-//      "    bne v1, a1, L287\n"
-//      "    or a2, s7, r0\n"
-//
-//      "    daddiu v1, s7, #t\n"
-//      "    or v0, v1, r0\n"
-//      "    beq r0, r0, L288\n"
-//      "    sll r0, r0, 0\n"
-//
-//      "    or v1, r0, r0\n"
-//      "L287:\n"
-//      "    lwu v1, 4(v1)\n"
-//      "    bne v1, a0, L286\n"
-//      "    sll r0, r0, 0\n"
-//      "    or v0, s7, r0\n"
-//      "L288:\n"
-//      "    jr ra\n"
-//      "    daddu sp, sp, r0";
-//  std::string type = "(function basic type symbol)";
-//  std::string expected =
-//      "(begin\n"
-//      "  (set! v1-0 (-> a0-0 type))\n"
-//      "  (set! a0-1 object)\n"
-//      "  (until\n"
-//      "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
-//      "   (if\n"
-//      "    (= v1-0 a1-0)\n"
-//      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
-//      "    )\n"
-//      "   )\n"
-//      "  (set! v0-0 '#f)\n"
-//      "  )";
-//  test_with_expr(func, type, expected);
-//}
+TEST_F(FormRegressionTest, ExprBasicTypeP) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L285:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a0, object(s7)\n"
+
+      "L286:\n"
+      "    bne v1, a1, L287\n"
+      "    or a2, s7, r0\n"
+
+      "    daddiu v1, s7, #t\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L288\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+      "L287:\n"
+      "    lwu v1, 4(v1)\n"
+      "    bne v1, a0, L286\n"
+      "    sll r0, r0, 0\n"
+      "    or v0, s7, r0\n"
+      "L288:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function basic type symbol)";
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 (-> a0-0 type))\n"
+      "  (set! a0-1 object)\n"
+      "  (until\n"
+      "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"  // likely using set! as value. we
+                                                                 // don't plan on supporting this.
+      "   (if\n"
+      "    (= v1-0 a1-0)\n"
+      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+      "    )\n"
+      "   )\n"
+      "  '#f\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}

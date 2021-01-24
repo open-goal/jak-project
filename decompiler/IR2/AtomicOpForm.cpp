@@ -30,18 +30,21 @@ DerefToken to_token(FieldReverseLookupOutput::Token in) {
 }
 }  // namespace
 
-ConditionElement* BranchOp::get_condition_as_form(FormPool& pool) const {
-  return m_condition.get_as_form(pool);
+ConditionElement* BranchOp::get_condition_as_form(FormPool& pool, const Env& env) const {
+  return m_condition.get_as_form(pool, env, m_my_idx);
 }
 
-ConditionElement* IR2_Condition::get_as_form(FormPool& pool) const {
-  Form* sources[2] = {nullptr, nullptr};
-  int n_sources = get_condition_num_args(m_kind);
-  for (int i = 0; i < n_sources; i++) {
-    sources[i] = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_src[i]);
+ConditionElement* IR2_Condition::get_as_form(FormPool& pool, const Env& env, int my_idx) const {
+  RegSet consumed;
+  if (env.has_reg_use()) {
+    consumed = env.reg_use().op.at(my_idx).consumes;
   }
 
-  return pool.alloc_element<ConditionElement>(m_kind, sources[0], sources[1]);
+  std::optional<SimpleAtom> vars[2];
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    vars[i] = m_src[i];
+  }
+  return pool.alloc_element<ConditionElement>(m_kind, vars[0], vars[1], consumed);
 }
 
 FormElement* SetVarOp::get_as_form(FormPool& pool, const Env&) const {
@@ -53,9 +56,10 @@ FormElement* AsmOp::get_as_form(FormPool& pool, const Env&) const {
   return pool.alloc_element<AtomicOpElement>(this);
 }
 
-FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env&) const {
+FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) const {
   return pool.alloc_element<SetVarElement>(
-      m_dst, pool.alloc_single_form(nullptr, m_condition.get_as_form(pool)), is_sequence_point());
+      m_dst, pool.alloc_single_form(nullptr, m_condition.get_as_form(pool, env, m_my_idx)),
+      is_sequence_point());
 }
 
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env&) const {
@@ -63,44 +67,46 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env&) const {
 }
 
 FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
-  IR2_RegOffset ro;
-  if (get_as_reg_offset(m_src, &ro)) {
-    auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
+  if (env.has_type_analysis()) {
+    IR2_RegOffset ro;
+    if (get_as_reg_offset(m_src, &ro)) {
+      auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
 
-    // todo basic method
-    // todo structure method
-    // todo pointer
-    // todo product trick
-    // todo type of basic fallback
-    // todo dynamic method id access
+      // todo basic method
+      // todo structure method
+      // todo pointer
+      // todo product trick
+      // todo type of basic fallback
+      // todo dynamic method id access
 
-    // Assume we're accessing a field of an object.
-    FieldReverseLookupInput rd_in;
-    DerefKind dk;
-    dk.is_store = false;
-    dk.reg_kind = get_reg_kind(ro.reg);
-    dk.sign_extend = m_kind == Kind::SIGNED;
-    dk.size = m_size;
-    rd_in.deref = dk;
-    rd_in.base_type = input_type.typespec();
-    rd_in.stride = 0;
-    rd_in.offset = ro.offset;
-    auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+      // Assume we're accessing a field of an object.
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = m_kind == Kind::SIGNED;
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
-    // todo, error here?
+      // todo, error here?
 
-    if (rd.success) {
-      auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
-          nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-      std::vector<DerefToken> tokens;
-      for (auto& x : rd.tokens) {
-        tokens.push_back(to_token(x));
+      if (rd.success) {
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        std::vector<DerefToken> tokens;
+        for (auto& x : rd.tokens) {
+          tokens.push_back(to_token(x));
+        }
+        auto load = pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true);
       }
-      auto load = pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
-      return pool.alloc_element<SetVarElement>(m_dst, load, true);
-    }
 
-    // todo, try as pair
+      // todo, try as pair
+    }
   }
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
