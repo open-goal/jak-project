@@ -5,6 +5,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
+#include "decompiler/IR2/Form.h"
 
 using namespace decompiler;
 
@@ -117,8 +118,8 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.top_form->collect_vars(vars);
 
   if (do_expressions) {
-    bool success =
-        convert_to_expressions(test->func.ir2.top_form, test->func.ir2.form_pool, test->func, *dts);
+    bool success = convert_to_expressions(test->func.ir2.top_form, *test->func.ir2.form_pool,
+                                          test->func, *dts);
 
     EXPECT_TRUE(success);
     if (!success) {

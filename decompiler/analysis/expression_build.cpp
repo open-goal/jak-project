@@ -2,6 +2,7 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 bool convert_to_expressions(Form* top_level_form,
@@ -34,7 +35,7 @@ bool convert_to_expressions(Form* top_level_form,
 
     FormStack stack;
     for (auto& entry : top_level_form->elts()) {
-      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
+      //      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
       entry->push_to_stack(f.ir2.env, pool, stack);
     }
     std::vector<FormElement*> new_entries;

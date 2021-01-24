@@ -5,6 +5,8 @@
 
 #include "cfg_builder.h"
 #include "decompiler/util/MatchParam.h"
+#include "decompiler/Function/Function.h"
+#include "decompiler/IR2/Form.h"
 
 namespace decompiler {
 namespace {
@@ -709,8 +711,15 @@ Form* try_sc_as_abs(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
   // remove the branch
   b0_ptr->pop_back();
   // add the ash
-  auto src_var = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, input);
-  auto src_abs = pool.alloc_single_element_form<AbsElement>(nullptr, src_var);
+  auto& info = f.ir2.env.reg_use();
+  auto final_op_idx = input.var().idx();
+  RegSet consumed = info.op.at(final_op_idx).consumes;
+
+  if (output.reg() == input.var().reg()) {
+    consumed.insert(output.reg());
+  }
+
+  auto src_abs = pool.alloc_single_element_form<AbsElement>(nullptr, input.var(), consumed);
   auto replacement = pool.alloc_element<SetVarElement>(output, src_abs, true);
   b0_ptr->push_back(replacement);
 
@@ -1216,10 +1225,10 @@ void build_initial_forms(Function& function) {
     auto& pool = function.ir2.form_pool;
     auto top_level = function.cfg->get_single_top_level();
     std::vector<FormElement*> top_level_elts;
-    insert_cfg_into_list(pool, function, top_level, &top_level_elts);
-    auto result = pool.alloc_sequence_form(nullptr, top_level_elts);
+    insert_cfg_into_list(*pool, function, top_level, &top_level_elts);
+    auto result = pool->alloc_sequence_form(nullptr, top_level_elts);
 
-    result->apply_form([&](Form* form) { clean_up_while_loops(pool, form); });
+    result->apply_form([&](Form* form) { clean_up_while_loops(*pool, form); });
 
     result->apply([&](FormElement* form) {
       auto as_cne = dynamic_cast<CondNoElseElement*>(form);

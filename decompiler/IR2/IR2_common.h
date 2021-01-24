@@ -2,6 +2,8 @@
 #include <unordered_set>
 #include "common/common_types.h"
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/util/TP_Type.h"
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 enum class VariableMode : u8 {
@@ -93,6 +95,39 @@ enum class FixedOperatorKind {
   SUBTRACTION,
   MULTIPLICATION,
   ARITH_SHIFT,
+  MOD,
+  ABS,
+  MIN,
+  MAX,
+  LOGAND,
+  LOGIOR,
+  LOGXOR,
+  LOGNOR,
+  LOGNOT,
   INVALID
+};
+
+struct VariableNames {
+  struct VarInfo {
+    VarInfo() = default;
+    std::string name() const { return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id); }
+    TP_Type type;
+    RegId reg_id;
+    bool initialized = false;
+  };
+
+  // todo - this is kind of gross.
+  std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash> read_vars,
+      write_vars;
+  std::unordered_map<Register, std::vector<int>, Register::hash> read_opid_to_varid,
+      write_opid_to_varid;
+
+  const VarInfo& lookup(Register reg, int op_id, VariableMode mode) const {
+    if (mode == VariableMode::READ) {
+      return read_vars.at(reg).at(read_opid_to_varid.at(reg).at(op_id));
+    } else {
+      return write_vars.at(reg).at(write_opid_to_varid.at(reg).at(op_id));
+    }
+  }
 };
 }  // namespace decompiler

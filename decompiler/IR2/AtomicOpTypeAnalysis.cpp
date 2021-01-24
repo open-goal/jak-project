@@ -2,6 +2,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/log/log.h"
 #include "AtomicOp.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
@@ -235,7 +236,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
     } break;
 
-    case Kind::DIV_SIGNED: {
+    case Kind::DIV_SIGNED:
+    case Kind::MOD_SIGNED: {
       if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
         // signed division will always return a signed number.
         return TP_Type::make_from_ts("int");

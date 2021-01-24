@@ -2,6 +2,8 @@
 #include "variable_naming.h"
 #include "reg_usage.h"
 #include "decompiler/Function/Function.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/IR2/Env.h"
 #include "third-party/fmt/core.h"
 
 namespace decompiler {

@@ -652,25 +652,21 @@ void CondNoElseElement::collect_vars(VariableSet& vars) const {
 // AbsElement
 /////////////////////////////
 
-AbsElement::AbsElement(Form* _source) : source(_source) {
-  source->parent_element = this;
-}
+AbsElement::AbsElement(Variable _source, RegSet _consumed)
+    : source(_source), consumed(std::move(_consumed)) {}
 
 goos::Object AbsElement::to_form(const Env& env) const {
-  return pretty_print::build_list("abs", source->to_form(env));
+  return pretty_print::build_list("abs", source.to_string(&env));
 }
 
 void AbsElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  source->apply(f);
 }
 
-void AbsElement::apply_form(const std::function<void(Form*)>& f) {
-  source->apply_form(f);
-}
+void AbsElement::apply_form(const std::function<void(Form*)>&) {}
 
 void AbsElement::collect_vars(VariableSet& vars) const {
-  source->collect_vars(vars);
+  vars.insert(source);
 }
 
 /////////////////////////////
@@ -771,36 +767,54 @@ GenericOperator GenericOperator::make_fixed(FixedOperatorKind kind) {
   return op;
 }
 
-void GenericOperator::collect_vars(VariableSet&) const {
+GenericOperator GenericOperator::make_function(Form* value) {
+  GenericOperator op;
+  op.m_kind = Kind::FUNCTION_EXPR;
+  op.m_function = value;
+  return op;
+}
+
+void GenericOperator::collect_vars(VariableSet& vars) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+      return;
+    case Kind::FUNCTION_EXPR:
+      m_function->collect_vars(vars);
       return;
     default:
       assert(false);
   }
 }
 
-goos::Object GenericOperator::to_form(const Env&) const {
+goos::Object GenericOperator::to_form(const Env& env) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
       return pretty_print::to_symbol(fixed_operator_to_string(m_fixed_kind));
+    case Kind::FUNCTION_EXPR:
+      return m_function->to_form(env);
     default:
       assert(false);
   }
 }
 
-void GenericOperator::apply(const std::function<void(FormElement*)>&) {
+void GenericOperator::apply(const std::function<void(FormElement*)>& f) {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+      break;
+    case Kind::FUNCTION_EXPR:
+      m_function->apply(f);
       break;
     default:
       assert(false);
   }
 }
 
-void GenericOperator::apply_form(const std::function<void(Form*)>&) {
+void GenericOperator::apply_form(const std::function<void(Form*)>& f) {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
+      break;
+    case Kind::FUNCTION_EXPR:
+      m_function->apply_form(f);
       break;
     default:
       assert(false);
@@ -821,6 +835,24 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "*";
     case FixedOperatorKind::ARITH_SHIFT:
       return "ash";
+    case FixedOperatorKind::MOD:
+      return "mod";
+    case FixedOperatorKind::ABS:
+      return "abs";
+    case FixedOperatorKind::MIN:
+      return "min";
+    case FixedOperatorKind::MAX:
+      return "max";
+    case FixedOperatorKind::LOGAND:
+      return "logand";
+    case FixedOperatorKind::LOGIOR:
+      return "logior";
+    case FixedOperatorKind::LOGXOR:
+      return "logxor";
+    case FixedOperatorKind::LOGNOR:
+      return "lognor";
+    case FixedOperatorKind::LOGNOT:
+      return "lognot";
     default:
       assert(false);
   }

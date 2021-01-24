@@ -7,6 +7,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "TypeInspector.h"
 #include "decompiler/IR/IR.h"
+#include "decompiler/IR2/Form.h"
 
 namespace decompiler {
 namespace {
@@ -43,7 +44,11 @@ uint32_t align4(uint32_t in) {
 
 }  // namespace
 
-Function::Function(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {}
+Function::Function(int _start_word, int _end_word) : start_word(_start_word), end_word(_end_word) {
+  ir2.form_pool.reset(new FormPool());
+}
+
+Function::~Function() {}
 
 /*!
  * Remove the function prologue from the first basic block and populate this->prologue with info.

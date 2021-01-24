@@ -13,6 +13,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
+#include "decompiler/IR2/Form.h"
 
 namespace decompiler {
 
@@ -384,7 +385,7 @@ void ObjectFileDB::ir2_build_expressions() {
     total++;
     if (func.ir2.top_form) {
       attempted++;
-      if (convert_to_expressions(func.ir2.top_form, func.ir2.form_pool, func, dts)) {
+      if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
       }

@@ -3,9 +3,6 @@
 #include <vector>
 #include <memory>
 
-#include "CfgVtx.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "decompiler/util/TP_Type.h"
 // for RegSet:
 #include "decompiler/analysis/reg_usage.h"
 
@@ -16,7 +13,6 @@ class Function;
 struct BasicBlock {
   int start_word;
   int end_word;
-  TypeState init_types;
 
   // [start, end)
   int start_basic_op = -1;

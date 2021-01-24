@@ -79,18 +79,25 @@ class SimpleExpressionElement : public FormElement {
                                FormPool& pool,
                                FormStack& stack,
                                std::vector<FormElement*>* result);
-  void update_from_stack_sub_i(const Env& env,
-                               FormPool& pool,
-                               FormStack& stack,
-                               std::vector<FormElement*>* result);
   void update_from_stack_mult_si(const Env& env,
                                  FormPool& pool,
                                  FormStack& stack,
                                  std::vector<FormElement*>* result);
-  void update_from_stack_div_si(const Env& env,
+  void update_from_stack_lognot(const Env& env,
                                 FormPool& pool,
                                 FormStack& stack,
                                 std::vector<FormElement*>* result);
+
+  void update_from_stack_force_si_2(const Env& env,
+                                    FixedOperatorKind kind,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result);
+  void update_from_stack_copy_first_int_2(const Env& env,
+                                          FixedOperatorKind kind,
+                                          FormPool& pool,
+                                          FormStack& stack,
+                                          std::vector<FormElement*>* result);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -231,6 +238,10 @@ class FunctionCallElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 
  private:
   const CallOp* m_op;
@@ -442,12 +453,17 @@ class CondNoElseElement : public FormElement {
  */
 class AbsElement : public FormElement {
  public:
-  explicit AbsElement(Form* _source);
+  explicit AbsElement(Variable _source, RegSet _consumed);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
-  Form* source = nullptr;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+  Variable source;
+  RegSet consumed;
 };
 
 /*!
@@ -529,9 +545,10 @@ std::string fixed_operator_to_string(FixedOperatorKind kind);
  */
 class GenericOperator {
  public:
-  enum class Kind { FIXED_OPERATOR, INVALID };
+  enum class Kind { FIXED_OPERATOR, FUNCTION_EXPR, INVALID };
 
   static GenericOperator make_fixed(FixedOperatorKind kind);
+  static GenericOperator make_function(Form* value);
   void collect_vars(VariableSet& vars) const;
   goos::Object to_form(const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
@@ -540,6 +557,7 @@ class GenericOperator {
  private:
   Kind m_kind = Kind::INVALID;
   FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
+  Form* m_function = nullptr;
 };
 
 class GenericElement : public FormElement {

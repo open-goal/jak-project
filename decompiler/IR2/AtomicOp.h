@@ -564,6 +564,8 @@ class CallOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const std::vector<Variable>& arg_vars() const { return m_arg_vars; }
+  Variable function_var() const { return m_function_var; }
 
  protected:
   TypeSpec m_call_type;
