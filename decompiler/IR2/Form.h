@@ -230,6 +230,10 @@ class ConditionElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
   void invert();
   const RegSet& consume() const { return m_consumed; }
 
@@ -436,6 +440,7 @@ class ShortCircuitElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!

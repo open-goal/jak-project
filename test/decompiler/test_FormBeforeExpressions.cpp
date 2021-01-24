@@ -220,7 +220,7 @@ TEST_F(FormRegressionTest, WhileLoop) {
       "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
       "   (if\n"
       "    (= v1-0 a1-0)\n"
-      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+      "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)) (set! v1-0 0))\n"
       "    )\n"
       "   )\n"
       "  (set! v0-0 '#f)\n"
@@ -285,7 +285,7 @@ TEST_F(FormRegressionTest, Or) {
       "    )\n"
       "   (if\n"
       "    (= a0-0 a1-0)\n"
-      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+      "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)) (set! v1-0 0))\n"
       "    )\n"
       "   )\n"
       "  (set! v0-0 '#f)\n"
@@ -350,7 +350,7 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "    (begin\n"
       "     (if\n"
       "      (begin (set! a2-0 object) (= a0-0 a2-0))\n"  // if we reached the top
-      "      (return ((begin (set! v1-3 nothing) (set! v0-0 v1-3))) ((set! v1-2 0)))\n"  // return
+      "      (return (begin (set! v1-3 nothing) (set! v0-0 v1-3)) (set! v1-2 0))\n"  // return
                                                                                          // nothing.
       "      )\n"
       "     (set! a0-0 (-> a0-0 parent))\n"  // get next parent type
@@ -360,7 +360,7 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
                                                // condition)
       "     (zero? v0-0)\n"                    // is it defined?
       "     )\n"
-      "    (return ((begin (set! v1-4 nothing) (set! v0-0 v1-4))) ((set! v1-2 0)))\n"  // also
+      "    (return (begin (set! v1-4 nothing) (set! v0-0 v1-4)) (set! v1-2 0))\n"  // also
                                                                                        // return
                                                                                        // nothing.
       "    )\n"

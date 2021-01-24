@@ -49,11 +49,11 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
   m_stack.push_back(entry);
 }
 
-Form* FormStack::pop_reg(const Variable& var) {
+Form* FormStack::pop_reg(Register reg) {
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      if (entry.destination->reg() == var.reg()) {
+      if (entry.destination->reg() == reg) {
         entry.active = false;
         assert(entry.source);
         return entry.source;
@@ -68,6 +68,10 @@ Form* FormStack::pop_reg(const Variable& var) {
   }
   // we didn't have it...
   return nullptr;
+}
+
+Form* FormStack::pop_reg(const Variable& var) {
+  return pop_reg(var.reg());
 }
 
 std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {

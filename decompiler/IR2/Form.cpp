@@ -344,8 +344,8 @@ void BranchElement::collect_vars(VariableSet& vars) const {
 goos::Object ReturnElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("return"));
-  forms.push_back(pretty_print::build_list(return_code->to_form(env)));
-  forms.push_back(pretty_print::build_list(dead_code->to_form(env)));
+  forms.push_back(return_code->to_form(env));
+  forms.push_back(dead_code->to_form(env));
   return pretty_print::build_list(forms);
 }
 

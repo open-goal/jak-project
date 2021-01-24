@@ -63,6 +63,7 @@ bool convert_to_expressions(Form* top_level_form,
     lg::warn("Expression building failed: {}", e.what());
     return false;
   }
+
   return true;
 }
 }  // namespace decompiler

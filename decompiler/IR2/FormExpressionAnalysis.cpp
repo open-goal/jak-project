@@ -530,6 +530,41 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 }
 
 ///////////////////
+// ShortCircuitElement
+///////////////////
+
+void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  if (!used_as_value.value_or(false)) {
+    throw std::runtime_error(
+        "ShortCircuitElement::push_to_stack not implemented for result not used case.");
+
+    stack.push_form_element(this, true);
+  } else {
+    for (int i = 0; i < int(entries.size()); i++) {
+      auto& entry = entries.at(i);
+      FormStack temp_stack;
+      for (auto& elt : entry.condition->elts()) {
+        elt->push_to_stack(env, pool, temp_stack);
+      }
+
+      std::vector<FormElement*> new_entries;
+      if (i == int(entries.size()) - 1) {
+        new_entries = temp_stack.rewrite_to_get_reg(pool, final_result.reg(), env);
+      } else {
+        new_entries = temp_stack.rewrite(pool);
+      }
+
+      entry.condition->clear();
+      for (auto e : new_entries) {
+        entry.condition->push_back(e);
+      }
+    }
+    assert(used_as_value.has_value());
+    stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
+  }
+}
+
+///////////////////
 // ConditionElement
 ///////////////////
 
@@ -546,7 +581,34 @@ void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stac
       true);
 }
 
-void ReturnElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+void ConditionElement::update_from_stack(const Env&,
+                                         FormPool& pool,
+                                         FormStack& stack,
+                                         std::vector<FormElement*>* result) {
+  std::vector<Form*> source_forms;
+
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
+                                                         m_consumed, pool, stack));
+  }
+
+  result->push_back(
+      pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms));
+}
+
+void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  FormStack temp_stack;
+  for (auto& elt : return_code->elts()) {
+    elt->push_to_stack(env, pool, temp_stack);
+  }
+
+  std::vector<FormElement*> new_entries;
+  new_entries = temp_stack.rewrite_to_get_reg(pool, Register(Reg::GPR, Reg::V0), env);
+
+  return_code->clear();
+  for (auto e : new_entries) {
+    return_code->push_back(e);
+  }
   stack.push_form_element(this, true);
 }
 
