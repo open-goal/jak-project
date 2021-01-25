@@ -1307,4 +1307,47 @@ bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {
   }
   return false;
 }
+
+/////////////////////////////
+// FunctionEndOp
+/////////////////////////////
+
+FunctionEndOp::FunctionEndOp(int my_idx)
+    : AtomicOp(my_idx), m_return_reg(VariableMode::READ, Register(Reg::GPR, Reg::V0), my_idx) {}
+
+goos::Object FunctionEndOp::to_form(const std::vector<DecompilerLabel>&, const Env* env) const {
+  if (m_function_has_return_value) {
+    return pretty_print::build_list("ret-value", m_return_reg.to_string(env));
+  } else {
+    return pretty_print::build_list("ret-none");
+  }
+}
+
+bool FunctionEndOp::operator==(const AtomicOp& other) const {
+  if (typeid(FunctionEndOp) != typeid(other)) {
+    return false;
+  }
+
+  auto po = dynamic_cast<const FunctionEndOp*>(&other);
+  assert(po);
+  return m_function_has_return_value == po->m_function_has_return_value;
+}
+
+bool FunctionEndOp::is_sequence_point() const {
+  return true;
+}
+
+Variable FunctionEndOp::get_set_destination() const {
+  throw std::runtime_error("FunctionEndOp cannot be treated as a set! operation");
+}
+
+void FunctionEndOp::update_register_info() {
+  m_read_regs.push_back(Register(Reg::GPR, Reg::V0));
+}
+
+void FunctionEndOp::collect_vars(VariableSet& vars) const {
+  if (m_function_has_return_value) {
+    vars.insert(m_return_reg);
+  }
+}
 }  // namespace decompiler

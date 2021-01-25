@@ -206,6 +206,8 @@ class AtomicOpElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  const AtomicOp* op() const { return m_op; }
 
  private:
   const AtomicOp* m_op;

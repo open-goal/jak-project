@@ -612,4 +612,13 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_form_element(this, true);
 }
 
+void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
+  auto as_end = dynamic_cast<const FunctionEndOp*>(m_op);
+  if (as_end) {
+    // we don't want to push this to the stack (for now at least)
+    return;
+  }
+  throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
+}
+
 }  // namespace decompiler

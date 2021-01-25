@@ -12,27 +12,14 @@ bool in_set(RegSet& set, const Register& obj) {
   return set.find(obj) != set.end();
 }
 
-void phase1(const FunctionAtomicOps& ops,
-            int block_id,
-            RegUsageInfo* out,
-            bool insert_v0_read_instruction_at_end) {
+void phase1(const FunctionAtomicOps& ops, int block_id, RegUsageInfo* out) {
   int end_op = ops.block_id_to_end_atomic_op.at(block_id);
   int start_op = ops.block_id_to_first_atomic_op.at(block_id);
 
-  int loop_end = end_op;
-  if (insert_v0_read_instruction_at_end) {
-    loop_end++;
-  }
-  for (int i = loop_end; i-- > start_op;) {
-    std::vector<Register> read;
-    std::vector<Register> write;
-    if (i == end_op) {
-      read = {Register(Reg::GPR, Reg::V0)};
-    } else {
-      const auto& instr = ops.ops.at(i);
-      read = instr->read_regs();
-      write = instr->write_regs();
-    }
+  for (int i = end_op; i-- > start_op;) {
+    const auto& instr = ops.ops.at(i);
+    auto read = instr->read_regs();
+    auto write = instr->write_regs();
 
     auto& lv = out->op.at(i).live;
     auto& dd = out->op.at(i).dead;
@@ -114,8 +101,7 @@ bool phase2(const std::vector<BasicBlock>& blocks, int block_id, RegUsageInfo* i
 void phase3(const FunctionAtomicOps& ops,
             const std::vector<BasicBlock>& blocks,
             int block_id,
-            RegUsageInfo* info,
-            bool insert_v0_read_instruction_at_end) {
+            RegUsageInfo* info) {
   RegSet live_local;
   const auto& block_obj = blocks.at(block_id);
   for (auto s : {block_obj.succ_branch, block_obj.succ_ft}) {
@@ -130,12 +116,7 @@ void phase3(const FunctionAtomicOps& ops,
   int end_op = ops.block_id_to_end_atomic_op.at(block_id);
   int start_op = ops.block_id_to_first_atomic_op.at(block_id);
 
-  int loop_end = end_op;
-  if (insert_v0_read_instruction_at_end) {
-    loop_end++;
-  }
-
-  for (int i = loop_end; i-- > start_op;) {
+  for (int i = end_op; i-- > start_op;) {
     auto& lv = info->op.at(i).live;
     auto& dd = info->op.at(i).dead;
 
@@ -149,12 +130,6 @@ void phase3(const FunctionAtomicOps& ops,
     live_local = new_live;
   }
 }
-
-bool should_insert_v0_read(const std::vector<BasicBlock>& blocks, const Function& function, int i) {
-  return i == int(blocks.size()) - 1 && function.type.arg_count() > 0 &&
-         function.type.last_arg() != TypeSpec("none");
-}
-
 }  // namespace
 
 RegUsageInfo analyze_ir2_register_usage(const Function& function) {
@@ -163,7 +138,7 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
   RegUsageInfo result(blocks.size(), ops->ops.size() + 1);
 
   for (int i = 0; i < int(blocks.size()); i++) {
-    phase1(*ops, i, &result, should_insert_v0_read(blocks, function, i));
+    phase1(*ops, i, &result);
   }
 
   bool changed = false;
@@ -177,7 +152,7 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
   } while (changed);
 
   for (int i = 0; i < int(blocks.size()); i++) {
-    phase3(*ops, blocks, i, &result, should_insert_v0_read(blocks, function, i));
+    phase3(*ops, blocks, i, &result);
   }
 
   // we want to know if an op "consumes" a register.

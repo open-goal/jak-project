@@ -150,4 +150,7 @@ FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) con
   return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, source, m_on_zero);
 }
 
+FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
+  return pool.alloc_element<AtomicOpElement>(this);
+}
 }  // namespace decompiler
