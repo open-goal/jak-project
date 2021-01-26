@@ -1407,15 +1407,32 @@ FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
   FunctionAtomicOps result;
 
   int last_op = 0;
-  for (const auto& block : func.basic_blocks) {
+  for (int i = 0; i < int(func.basic_blocks.size()); i++) {
+    const auto& block = func.basic_blocks.at(i);
     // we should only consider the blocks which actually have instructions:
     if (block.end_word > block.start_word) {
       auto begin = func.instructions.begin() + block.start_word;
       auto end = func.instructions.begin() + block.end_word;
       last_op = convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result);
+      if (i == int(func.basic_blocks.size()) - 1) {
+        // we're the last block. insert the function end op.
+        result.ops.push_back(std::make_unique<FunctionEndOp>(int(result.ops.size())));
+        result.ops.back()->update_register_info();
+        // add to block.
+        result.block_id_to_end_atomic_op.back()++;
+      }
     } else {
-      result.block_id_to_first_atomic_op.push_back(last_op);
-      result.block_id_to_end_atomic_op.push_back(last_op);
+      if (i == int(func.basic_blocks.size()) - 1) {
+        // we're the last block. insert the function end op.
+        result.ops.push_back(std::make_unique<FunctionEndOp>(int(result.ops.size())));
+        result.ops.back()->update_register_info();
+        // add block (no longer a zero-size block)
+        result.block_id_to_first_atomic_op.push_back(last_op);
+        result.block_id_to_end_atomic_op.push_back(last_op + 1);
+      } else {
+        result.block_id_to_first_atomic_op.push_back(last_op);
+        result.block_id_to_end_atomic_op.push_back(last_op);
+      }
     }
   }
 

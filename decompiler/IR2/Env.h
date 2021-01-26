@@ -69,6 +69,9 @@ class Env {
     m_has_local_vars = true;
   }
 
+  void set_end_var(Variable var) { m_end_var = var; }
+  const Variable& end_var() const { return m_end_var; }
+
   std::string print_local_var_types(const Form* top_level_form) const;
 
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
@@ -78,6 +81,8 @@ class Env {
   DecompilerTypeSystem* dts = nullptr;
 
  private:
+  Variable m_end_var;
+
   bool m_has_reg_use = false;
   RegUsageInfo m_reg_use;
 

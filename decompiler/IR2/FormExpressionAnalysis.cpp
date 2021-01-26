@@ -1,9 +1,20 @@
 #include "Form.h"
 #include "FormStack.h"
+#include "GenericElementMatcher.h"
+
+/*
+ * TODO
+ * - use var_to_form over expressions for vars
+ * - check out if we can push/pop variables instead of registers?
+ */
 
 namespace decompiler {
 
 namespace {
+
+Form* var_to_form(const Variable& var, FormPool& pool) {
+  return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
+}
 
 void update_var_from_stack_helper(int my_idx,
                                   Variable input,
@@ -530,6 +541,41 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 }
 
 ///////////////////
+// ShortCircuitElement
+///////////////////
+
+void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  if (!used_as_value.value_or(false)) {
+    throw std::runtime_error(
+        "ShortCircuitElement::push_to_stack not implemented for result not used case.");
+
+    stack.push_form_element(this, true);
+  } else {
+    for (int i = 0; i < int(entries.size()); i++) {
+      auto& entry = entries.at(i);
+      FormStack temp_stack;
+      for (auto& elt : entry.condition->elts()) {
+        elt->push_to_stack(env, pool, temp_stack);
+      }
+
+      std::vector<FormElement*> new_entries;
+      if (i == int(entries.size()) - 1) {
+        new_entries = temp_stack.rewrite_to_get_var(pool, final_result, env);
+      } else {
+        new_entries = temp_stack.rewrite(pool);
+      }
+
+      entry.condition->clear();
+      for (auto e : new_entries) {
+        entry.condition->push_back(e);
+      }
+    }
+    assert(used_as_value.has_value());
+    stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
+  }
+}
+
+///////////////////
 // ConditionElement
 ///////////////////
 
@@ -546,8 +592,78 @@ void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stac
       true);
 }
 
-void ReturnElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+void ConditionElement::update_from_stack(const Env&,
+                                         FormPool& pool,
+                                         FormStack& stack,
+                                         std::vector<FormElement*>* result) {
+  std::vector<Form*> source_forms;
+
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
+                                                         m_consumed, pool, stack));
+  }
+
+  result->push_back(
+      pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms));
+}
+
+void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  FormStack temp_stack;
+  for (auto& elt : return_code->elts()) {
+    elt->push_to_stack(env, pool, temp_stack);
+  }
+
+  std::vector<FormElement*> new_entries;
+  new_entries = temp_stack.rewrite_to_get_var(pool, env.end_var(), env);
+
+  return_code->clear();
+  for (auto e : new_entries) {
+    return_code->push_back(e);
+  }
   stack.push_form_element(this, true);
+}
+
+void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
+  auto as_end = dynamic_cast<const FunctionEndOp*>(m_op);
+  if (as_end) {
+    // we don't want to push this to the stack (for now at least)
+    return;
+  }
+  throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
+}
+
+////////////////////////
+// DynamicMethodAccess
+////////////////////////
+
+void DynamicMethodAccess::update_from_stack(const Env& env,
+                                            FormPool& pool,
+                                            FormStack& stack,
+                                            std::vector<FormElement*>* result) {
+  auto new_val = stack.pop_reg(m_source);
+  auto reg0_matcher =
+      Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
+  auto reg1_matcher =
+      Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+
+  // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
+  auto sll_matcher = Matcher::fixed_op(FixedOperatorKind::SLL, {reg0_matcher, Matcher::integer(2)});
+  auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
+  auto match_result = match(matcher, new_val);
+  if (!match_result.matched) {
+    throw std::runtime_error("Couldn't match DynamicMethodAccess values: " +
+                             new_val->to_string(env));
+  }
+
+  auto idx = match_result.maps.regs.at(0);
+  auto base = match_result.maps.regs.at(1);
+  assert(idx.has_value() && base.has_value());
+
+  auto deref = pool.alloc_element<DerefElement>(
+      var_to_form(base.value(), pool), false,
+      std::vector<DerefToken>{DerefToken::make_field_name("methods"),
+                              DerefToken::make_int_expr(var_to_form(idx.value(), pool))});
+  result->push_back(deref);
 }
 
 }  // namespace decompiler

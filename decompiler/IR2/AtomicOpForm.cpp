@@ -77,7 +77,13 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
       // todo pointer
       // todo product trick
       // todo type of basic fallback
-      // todo dynamic method id access
+
+      if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
+        // access method vtable. The input is type + (4 * method), and the 16 is the offset
+        // of method 0.
+        auto load = pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
 
       // Assume we're accessing a field of an object.
       FieldReverseLookupInput rd_in;
@@ -150,4 +156,7 @@ FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) con
   return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, source, m_on_zero);
 }
 
+FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
+  return pool.alloc_element<AtomicOpElement>(this);
+}
 }  // namespace decompiler

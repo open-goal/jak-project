@@ -5,6 +5,31 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
+void clean_up_ifs(Form* top_level_form) {
+  top_level_form->apply([&](FormElement* elt) {
+    auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
+    if (!as_cne) {
+      return;
+    }
+
+    auto top_condition = as_cne->entries.front().condition;
+    if (!top_condition->is_single_element() && elt->parent_form) {
+      auto real_condition = top_condition->back();
+      top_condition->pop_back();
+
+      auto& parent_vector = elt->parent_form->elts();
+      // find us in the parent vector
+      auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                             [&](FormElement* x) { return x == elt; });
+      assert(me != parent_vector.end());
+
+      // now insert the fake condition
+      parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+      top_condition->elts() = {real_condition};
+    }
+  });
+}
+
 bool convert_to_expressions(Form* top_level_form,
                             FormPool& pool,
                             const Function& f,
@@ -40,9 +65,10 @@ bool convert_to_expressions(Form* top_level_form,
     }
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
-      auto v0 = Register(Reg::GPR, Reg::V0);
-      new_entries = stack.rewrite_to_get_reg(pool, v0, f.ir2.env);
-      auto reg_return_type = f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(v0);
+      auto return_var = f.ir2.atomic_ops->end_op().return_var();
+      new_entries = stack.rewrite_to_get_var(pool, return_var, f.ir2.env);
+      auto reg_return_type =
+          f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(return_var.reg());
       if (!dts.ts.typecheck(f.type.last_arg(), reg_return_type.typespec(), "", false, false)) {
         // we need to cast the final value.
         auto to_cast = new_entries.back();
@@ -59,10 +85,15 @@ bool convert_to_expressions(Form* top_level_form,
     for (auto x : new_entries) {
       top_level_form->push_back(x);
     }
+
+    // fix up stuff
+    clean_up_ifs(top_level_form);
+
   } catch (std::exception& e) {
     lg::warn("Expression building failed: {}", e.what());
     return false;
   }
+
   return true;
 }
 }  // namespace decompiler

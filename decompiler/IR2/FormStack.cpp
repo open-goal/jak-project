@@ -49,11 +49,11 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
   m_stack.push_back(entry);
 }
 
-Form* FormStack::pop_reg(const Variable& var) {
+Form* FormStack::pop_reg(Register reg) {
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      if (entry.destination->reg() == var.reg()) {
+      if (entry.destination->reg() == reg) {
         entry.active = false;
         assert(entry.source);
         return entry.source;
@@ -68,6 +68,10 @@ Form* FormStack::pop_reg(const Variable& var) {
   }
   // we didn't have it...
   return nullptr;
+}
+
+Form* FormStack::pop_reg(const Variable& var) {
+  return pop_reg(var.reg());
 }
 
 std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
@@ -89,9 +93,9 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   return result;
 }
 
-std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
-                                                        Register reg,
-                                                        const Env& env) {
+std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
+                                                        const Variable& var,
+                                                        const Env&) {
   // first, rewrite as normal.
   auto default_result = rewrite(pool);
 
@@ -99,7 +103,7 @@ std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
   // value in the given register.
 
   auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
-  if (last_op_as_set && last_op_as_set->dst().reg() == reg) {
+  if (last_op_as_set && last_op_as_set->dst().reg() == var.reg()) {
     default_result.pop_back();
     for (auto form : last_op_as_set->src()->elts()) {
       form->parent_form = nullptr;  // will get set later, this makes it obvious if I forget.
@@ -107,8 +111,8 @@ std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
     }
     return default_result;
   } else {
-    throw std::runtime_error(
-        fmt::format("Couldn't rewrite form to get result {}:\n{}\n\n", reg.to_charp(), print(env)));
+    default_result.push_back(pool.alloc_element<SimpleAtomElement>(SimpleAtom::make_var(var)));
+    return default_result;
   }
 }
 }  // namespace decompiler

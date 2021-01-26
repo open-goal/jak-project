@@ -27,7 +27,7 @@ TEST_F(FormRegressionTest, SimplestTest) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function object object)";
-  std::string expected = "(set! v0-0 a0-0)";
+  std::string expected = "(begin (set! v0-0 a0-0) (ret-value v0-0))";
   test_no_expr(func, type, expected);
 }
 
@@ -52,6 +52,7 @@ TEST_F(FormRegressionTest, FloatingPointBasic) {
       "  (set! f1-0 (gpr->fpr a0-0))\n"
       "  (set! f0-1 (/.s f0-0 f1-0))\n"
       "  (set! v0-0 (fpr->gpr f0-1))\n"
+      "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);
 }
@@ -64,7 +65,7 @@ TEST_F(FormRegressionTest, Op3) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
-  std::string expected = "(set! v0-0 (*.si a0-0 a1-0))";
+  std::string expected = "(begin (set! v0-0 (*.si a0-0 a1-0)) (ret-value v0-0))";
   test_no_expr(func, type, expected);
 }
 
@@ -77,7 +78,7 @@ TEST_F(FormRegressionTest, Division) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
-  std::string expected = "(set! v0-0 (/.si a0-0 a1-0))";
+  std::string expected = "(begin (set! v0-0 (/.si a0-0 a1-0)) (ret-value v0-0))";
   test_no_expr(func, type, expected);
 }
 
@@ -97,7 +98,7 @@ TEST_F(FormRegressionTest, Ash) {
       "    sll r0, r0, 0\n"
       "    sll r0, r0, 0";
   std::string type = "(function int int int)";
-  std::string expected = "(begin (set! v1-0 a0-0) (set! v0-0 (ash.si v1-0 a1-0)))";
+  std::string expected = "(begin (set! v1-0 a0-0) (set! v0-0 (ash.si v1-0 a1-0)) (ret-value v0-0))";
   test_no_expr(func, type, expected);
 }
 
@@ -113,7 +114,7 @@ TEST_F(FormRegressionTest, Abs) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
-  std::string expected = "(begin (set! v0-0 a0-0) (set! v0-1 (abs v0-0)))";
+  std::string expected = "(begin (set! v0-0 a0-0) (set! v0-1 (abs v0-0)) (ret-value v0-1))";
   test_no_expr(func, type, expected);
 }
 
@@ -127,7 +128,13 @@ TEST_F(FormRegressionTest, Min) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
-  std::string expected = "(begin (set! v0-0 a0-0) (set! v1-0 a1-0) (set! v0-1 (min.si v0-0 v1-0)))";
+  std::string expected =
+      "(begin\n"
+      "  (set! v0-0 a0-0)\n"
+      "  (set! v1-0 a1-0)\n"
+      "  (set! v0-1 (min.si v0-0 v1-0))\n"
+      "  (ret-value v0-1)\n"
+      "  )";
   test_no_expr(func, type, expected);
 }
 
@@ -142,7 +149,13 @@ TEST_F(FormRegressionTest, Max) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int int)";
-  std::string expected = "(begin (set! v0-0 a0-0) (set! v1-0 a1-0) (set! v0-1 (max.si v0-0 v1-0)))";
+  std::string expected =
+      "(begin\n"
+      "  (set! v0-0 a0-0)\n"
+      "  (set! v1-0 a1-0)\n"
+      "  (set! v0-1 (max.si v0-0 v1-0))\n"
+      "  (ret-value v0-1)\n"
+      "  )";
   test_no_expr(func, type, expected);
 }
 
@@ -182,6 +195,7 @@ TEST_F(FormRegressionTest, FormatString) {
       "  (set! a2-0 (fpr->gpr f0-0))\n"
       "  (call! a0-1 a1-0 a2-0)\n"  // #t, "~f", the float
       "  (set! v0-1 gp-0)\n"
+      "  (ret-value v0-1)\n"
       "  )";
   test_no_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
@@ -220,10 +234,11 @@ TEST_F(FormRegressionTest, WhileLoop) {
       "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
       "   (if\n"
       "    (= v1-0 a1-0)\n"
-      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+      "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)) (set! v1-0 0))\n"
       "    )\n"
       "   )\n"
       "  (set! v0-0 '#f)\n"
+      "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);
 }
@@ -285,10 +300,11 @@ TEST_F(FormRegressionTest, Or) {
       "    )\n"
       "   (if\n"
       "    (= a0-0 a1-0)\n"
-      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+      "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)) (set! v1-0 0))\n"
       "    )\n"
       "   )\n"
       "  (set! v0-0 '#f)\n"
+      "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);
 }
@@ -343,29 +359,30 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "(begin\n"
       "  (set! v1-0 (sll a1-0 2))\n"
       "  (set! v1-1 (+ v1-0 a0-0))\n"
-      "  (set! v1-2 (l.wu (+ v1-1 16)))\n"  // get the method of the given type.
+      "  (set! v1-2 (dyn-method-access v1-1))\n"  // get the method of the given type.
       "  (until\n"
       "   (!= v0-0 v1-2)\n"  // actually goes after the body, so it's fine to refer to v1-2
       "   (if\n"
       "    (begin\n"
       "     (if\n"
       "      (begin (set! a2-0 object) (= a0-0 a2-0))\n"  // if we reached the top
-      "      (return ((begin (set! v1-3 nothing) (set! v0-0 v1-3))) ((set! v1-2 0)))\n"  // return
-                                                                                         // nothing.
+      "      (return (begin (set! v1-3 nothing) (set! v0-0 v1-3)) (set! v1-2 0))\n"  // return
+                                                                                     // nothing.
       "      )\n"
       "     (set! a0-0 (-> a0-0 parent))\n"  // get next parent type
       "     (set! a2-2 (sll a1-0 2))\n"      // fancy access
       "     (set! a2-3 (+ a2-2 a0-0))\n"
-      "     (set! v0-0 (l.wu (+ a2-3 16)))\n"  // get method (in v0-1, the same var as loop
-                                               // condition)
-      "     (zero? v0-0)\n"                    // is it defined?
+      "     (set! v0-0 (dyn-method-access a2-3))\n"  // get method (in v0-1, the same var as loop
+                                                     // condition)
+      "     (zero? v0-0)\n"                          // is it defined?
       "     )\n"
-      "    (return ((begin (set! v1-4 nothing) (set! v0-0 v1-4))) ((set! v1-2 0)))\n"  // also
-                                                                                       // return
-                                                                                       // nothing.
+      "    (return (begin (set! v1-4 nothing) (set! v0-0 v1-4)) (set! v1-2 0))\n"  // also
+                                                                                   // return
+                                                                                   // nothing.
       "    )\n"
       "   )\n"
       "  (set! v1-5 '#f)\n"
+      "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);
 }
@@ -409,6 +426,7 @@ TEST_F(FormRegressionTest, SimpleLoopMergeCheck) {
       "  (set! v1-1 '#f)\n"
       "  (set! v1-2 '#f)\n"
       "  (set! v0-0 (l.w (+ a0-0 -2)))\n"
+      "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected, true);
 }
@@ -460,6 +478,7 @@ TEST_F(FormRegressionTest, And) {
       "    daddu sp, sp, r0";
   std::string type = "(function pair int)";
   std::string expected =
+      "(begin\n"
       "(cond\n"
       "  ((begin (set! v1-0 '()) (= a0-0 v1-0)) (set! v0-0 0))\n"  // should be a case, not a return
       "  (else\n"
@@ -478,7 +497,8 @@ TEST_F(FormRegressionTest, And) {
       "    )\n"
       "   (set! v1-2 '#f)\n"  // while's false, I think.
       "   )\n"
-      "  )";
+      "  )"
+      "(ret-value v0-0))\n";
   test_no_expr(func, type, expected, true);
 }
 
@@ -536,7 +556,7 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "    daddiu sp, sp, 48";
   std::string type = "(function basic object object)";
   std::string expected =
-      "(if\n"  // this if needs regrouping.
+      "(begin (if\n"  // this if needs regrouping.
       "  (begin\n"
       "   (set! s5-0 a0-0)\n"  // s5-0 is the thing to check
       "   (set! gp-0 a1-0)\n"  // gp-0 is the list
@@ -561,7 +581,8 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "   (!= gp-0 v1-3)\n"   // IF CONDITION
       "   )\n"
       "  (set! v0-1 gp-0)\n"  // not empty, so return the result
-      "  )";                  // the (set! v0 #f) from the if is added later.
+      "  )"                   // the (set! v0 #f) from the if is added later.
+      "  (ret-value v0-1))\n";
   test_no_expr(func, type, expected, true);
 }
 
@@ -732,6 +753,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "   )\n"
       "  (set! v1-12 '#f)\n"
       "  (set! v0-1 gp-0)\n"
+      "  (ret-value v0-1)\n"
       "  )";
   test_no_expr(func, type, expected, true);
 }
@@ -771,7 +793,7 @@ TEST_F(FormRegressionTest, NewMethod) {
       "    daddiu sp, sp, 32";
   std::string type = "(function symbol type int inline-array-class)";
   std::string expected =
-      "(when\n"
+      "(begin (when\n"
       "  (begin\n"
       "   (set! gp-0 a2-0)\n"  // gp-0 is size
       "   (set! v1-0 object)\n"
@@ -787,7 +809,8 @@ TEST_F(FormRegressionTest, NewMethod) {
       "   )\n"
       "  (s.w! v0-0 gp-0)\n"  // store size
       "  (s.w! (+ v0-0 4) gp-0)\n"
-      "  )";
+      "  )"
+      "  (ret-value v0-0))\n";
   test_no_expr(func, type, expected, false, "inline-array-class");
 }
 
@@ -823,7 +846,7 @@ TEST_F(FormRegressionTest, Recursive) {
       "    daddiu sp, sp, 32";
   std::string type = "(function int int)";
   std::string expected =
-      "(cond\n"
+      "(begin (cond\n"
       "  ((begin (set! gp-0 a0-0) (set! v1-0 1) (= gp-0 v1-0)) (set! v0-0 1))\n"  // base
       "  (else\n"
       "   (set! t9-0 fact)\n"  // recurse!
@@ -831,7 +854,8 @@ TEST_F(FormRegressionTest, Recursive) {
       "   (set! v0-1 (call! a0-1))\n"
       "   (set! v0-0 (*.si gp-0 v0-1))\n"  // not quite a tail call...
       "   )\n"
-      "  )";
+      "  )"
+      "  (ret-value v0-0))\n";
   test_no_expr(func, type, expected, false);
 }
 
@@ -866,6 +890,7 @@ TEST_F(FormRegressionTest, TypeOf) {
       "  (set! v1-1 (type-of a0-0))\n"
       "  (set! t9-0 (-> v1-1 method-table 2))\n"  // print method.
       "  (set! v0-0 (call! a0-0))\n"
+      "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected, false);
 }

@@ -773,4 +773,14 @@ TypeState ConditionalMoveFalseOp::propagate_types_internal(const TypeState& inpu
   return result;
 }
 
+TypeState FunctionEndOp::propagate_types_internal(const TypeState& input,
+                                                  const Env&,
+                                                  DecompilerTypeSystem&) {
+  return input;
+}
+
+void FunctionEndOp::mark_function_as_no_return_value() {
+  m_function_has_return_value = false;
+}
+
 }  // namespace decompiler

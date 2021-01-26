@@ -38,6 +38,7 @@ class DecompilerTypeSystem;
  * SetVarConditionOp
  * AsmOp
  * SetVarExprOp
+ * FunctionEndOp
  */
 class AtomicOp {
  public:
@@ -553,7 +554,7 @@ class SpecialOp : public AtomicOp {
  */
 class CallOp : public AtomicOp {
  public:
-  CallOp(int my_idx);
+  explicit CallOp(int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
@@ -612,5 +613,37 @@ struct IR2_RegOffset {
   Variable var;
   int offset;
 };
+
+/*!
+ * An extra operation inserted at the very end of a function.
+ * It "reads" the return register V0.
+ * During type analysis, call "mark_function_as_no_return_value" to update the register info if
+ * we learn that this function does not return a value.
+ */
+class FunctionEndOp : public AtomicOp {
+ public:
+  explicit FunctionEndOp(int my_idx);
+  virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
+                               const Env* env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
+  void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
+  void mark_function_as_no_return_value();
+  const Variable& return_var() const {
+    assert(m_function_has_return_value);
+    return m_return_reg;
+  }
+
+ private:
+  bool m_function_has_return_value = true;
+  Variable m_return_reg;
+};
+
 bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out);
 }  // namespace decompiler

@@ -167,6 +167,7 @@ class SimpleAtomElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  const SimpleAtom& atom() const { return m_atom; }
   //  void push_to_stack(const Env& env, FormStack& stack) override;
 
  private:
@@ -206,6 +207,8 @@ class AtomicOpElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  const AtomicOp* op() const { return m_op; }
 
  private:
   const AtomicOp* m_op;
@@ -230,6 +233,10 @@ class ConditionElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
   void invert();
   const RegSet& consume() const { return m_consumed; }
 
@@ -436,6 +443,7 @@ class ShortCircuitElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!
@@ -569,6 +577,8 @@ class GenericOperator {
   goos::Object to_form(const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
+  bool operator==(const GenericOperator& other) const;
+  bool operator!=(const GenericOperator& other) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -588,6 +598,8 @@ class GenericElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  const GenericOperator& op() const { return m_head; }
+  const std::vector<Form*>& elts() const { return m_elts; }
 
  private:
   GenericOperator m_head;
@@ -601,6 +613,8 @@ class CastElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  const TypeSpec& type() const { return m_type; }
+  const Form* source() const { return m_source; }
 
  private:
   TypeSpec m_type;
@@ -609,7 +623,12 @@ class CastElement : public FormElement {
 
 class DerefToken {
  public:
-  enum class Kind { INTEGER_CONSTANT, INTEGER_EXPRESSION, FIELD_NAME, INVALID };
+  enum class Kind {
+    INTEGER_CONSTANT,
+    INTEGER_EXPRESSION,  // some form which evaluates to an integer index. Not offset, index.
+    FIELD_NAME,
+    INVALID
+  };
   static DerefToken make_int_constant(s64 int_constant);
   static DerefToken make_int_expr(Form* expr);
   static DerefToken make_field_name(const std::string& name);
@@ -643,6 +662,22 @@ class DerefElement : public FormElement {
   Form* m_base = nullptr;
   bool m_is_addr_of = false;
   std::vector<DerefToken> m_tokens;
+};
+
+class DynamicMethodAccess : public FormElement {
+ public:
+  explicit DynamicMethodAccess(Variable source);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+
+ private:
+  Variable m_source;
 };
 
 /*!

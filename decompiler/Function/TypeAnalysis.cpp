@@ -63,6 +63,12 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
     dts.type_prop_settings.current_method_type = guessed_name.type_name;
   }
 
+  if (my_type.last_arg() == TypeSpec("none")) {
+    auto as_end = dynamic_cast<FunctionEndOp*>(ir2.atomic_ops->ops.back().get());
+    assert(as_end);
+    as_end->mark_function_as_no_return_value();
+  }
+
   std::vector<TypeState> block_init_types, op_types;
   block_init_types.resize(basic_blocks.size());
   op_types.resize(ir2.atomic_ops->ops.size());

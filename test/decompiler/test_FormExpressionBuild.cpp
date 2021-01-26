@@ -462,10 +462,129 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
                                                                  // don't plan on supporting this.
       "   (if\n"
       "    (= v1-0 a1-0)\n"
-      "    (return ((begin (set! v1-1 '#t) (set! v0-0 v1-1))) ((set! v1-0 0)))\n"
+      "    (return '#t (set! v1-0 0))\n"
       "    )\n"
       "   )\n"
       "  '#f\n"
       "  )";
   test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprTypeTypep) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L280:\n"
+      "    lw v1, object(s7)\n"
+
+      "L281:\n"
+      "    bne a0, a1, L282\n"
+      "    or a2, s7, r0\n"
+
+      "    daddiu v1, s7, #t\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L284\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+
+      "L282:\n"
+      "    lwu a0, 4(a0)\n"
+      "    dsubu a2, a0, v1\n"
+      "    daddiu a3, s7, 8\n"
+      "    movn a3, s7, a2\n"
+      "    bnel s7, a3, L283\n"
+      "    or a2, a3, r0\n"
+
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, a0\n"
+
+      "L283:\n"
+      "    beq s7, a2, L281\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v0, s7, r0\n"
+
+      "L284:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function type type symbol)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 object)\n"
+      "  (until\n"
+      "   (truthy\n"
+      "    (or\n"
+      "     (begin (set! a0-0 (-> a0-0 parent)) (truthy (= a0-0 v1-0)))\n"  // set! as value.
+      "     (zero? a0-0)\n"
+      "     )\n"
+      "    )\n"
+      "   (if (= a0-0 a1-0) (return '#t (set! v1-0 0)))\n"
+      "   )\n"
+      "  '#f\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "");
+}
+
+TEST_F(FormRegressionTest, ExprFindParentMethod) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L275:\n"
+      "    dsll v1, a1, 2\n"
+      "    daddu v1, v1, a0\n"
+      "    lwu v1, 16(v1)\n"
+
+      "L276:\n"
+      "    lw a2, object(s7)\n"
+      "    bne a0, a2, L277\n"
+      "    or a2, s7, r0\n"
+
+      "    lw v1, nothing(s7)\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L279\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+
+      "L277:\n"
+      "    lwu a0, 4(a0)\n"
+      "    dsll a2, a1, 2\n"
+      "    daddu a2, a2, a0\n"
+
+      "    lwu v0, 16(a2)\n"
+      "    bne v0, r0, L278\n"
+      "    or a2, s7, r0\n"
+
+      "    lw v1, nothing(s7)\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L279\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+
+      "L278:\n"
+      "    beq v0, v1, L276\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+
+      "L279:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function type int function)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-2 (-> a0-0 methods a1-0))\n"
+      "  (until\n"
+      "   (!= v0-0 v1-2)\n"
+      "   (if (= a0-0 object) (return nothing (set! v1-2 0)))\n"
+      "   (set! a0-0 (-> a0-0 parent))\n"
+      "   (set! v0-0 (-> a0-0 methods a1-0))\n"
+      "   (if (zero? v0-0) (return nothing (set! v1-2 0)))\n"
+      "   )\n"
+      "  (set! v1-5 '#f)\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "");
 }
