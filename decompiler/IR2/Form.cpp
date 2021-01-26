@@ -820,6 +820,26 @@ void GenericOperator::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
+bool GenericOperator::operator==(const GenericOperator& other) const {
+  if (m_kind != other.m_kind) {
+    return false;
+  }
+  switch (m_kind) {
+    case Kind::FIXED_OPERATOR:
+      return m_fixed_kind == other.m_fixed_kind;
+    case Kind::CONDITION_OPERATOR:
+      return m_condition_kind == other.m_condition_kind;
+    case Kind::FUNCTION_EXPR:
+      return false;
+    default:
+      assert(false);
+  }
+}
+
+bool GenericOperator::operator!=(const GenericOperator& other) const {
+  return !((*this) == other);
+}
+
 std::string fixed_operator_to_string(FixedOperatorKind kind) {
   switch (kind) {
     case FixedOperatorKind::GPR_TO_FPR:
@@ -1032,6 +1052,26 @@ void DerefElement::collect_vars(VariableSet& vars) const {
   for (auto& tok : m_tokens) {
     tok.collect_vars(vars);
   }
+}
+
+/////////////////////////////
+// DynamicMethodAccess
+/////////////////////////////
+
+DynamicMethodAccess::DynamicMethodAccess(Variable source) : m_source(source) {}
+
+goos::Object DynamicMethodAccess::to_form(const Env& env) const {
+  return pretty_print::build_list("dyn-method-access", m_source.to_string(&env));
+}
+
+void DynamicMethodAccess::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void DynamicMethodAccess::apply_form(const std::function<void(Form*)>&) {}
+
+void DynamicMethodAccess::collect_vars(VariableSet& vars) const {
+  vars.insert(m_source);
 }
 
 }  // namespace decompiler

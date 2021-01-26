@@ -359,7 +359,7 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "(begin\n"
       "  (set! v1-0 (sll a1-0 2))\n"
       "  (set! v1-1 (+ v1-0 a0-0))\n"
-      "  (set! v1-2 (l.wu (+ v1-1 16)))\n"  // get the method of the given type.
+      "  (set! v1-2 (dyn-method-access v1-1))\n"  // get the method of the given type.
       "  (until\n"
       "   (!= v0-0 v1-2)\n"  // actually goes after the body, so it's fine to refer to v1-2
       "   (if\n"
@@ -372,9 +372,9 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
       "     (set! a0-0 (-> a0-0 parent))\n"  // get next parent type
       "     (set! a2-2 (sll a1-0 2))\n"      // fancy access
       "     (set! a2-3 (+ a2-2 a0-0))\n"
-      "     (set! v0-0 (l.wu (+ a2-3 16)))\n"  // get method (in v0-1, the same var as loop
-                                               // condition)
-      "     (zero? v0-0)\n"                    // is it defined?
+      "     (set! v0-0 (dyn-method-access a2-3))\n"  // get method (in v0-1, the same var as loop
+                                                     // condition)
+      "     (zero? v0-0)\n"                          // is it defined?
       "     )\n"
       "    (return (begin (set! v1-4 nothing) (set! v0-0 v1-4)) (set! v1-2 0))\n"  // also
                                                                                    // return

@@ -635,6 +635,10 @@ class FunctionEndOp : public AtomicOp {
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
   void mark_function_as_no_return_value();
+  const Variable& return_var() const {
+    assert(m_function_has_return_value);
+    return m_return_reg;
+  }
 
  private:
   bool m_function_has_return_value = true;

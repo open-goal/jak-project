@@ -774,8 +774,8 @@ TypeState ConditionalMoveFalseOp::propagate_types_internal(const TypeState& inpu
 }
 
 TypeState FunctionEndOp::propagate_types_internal(const TypeState& input,
-                                                  const Env& env,
-                                                  DecompilerTypeSystem& dts) {
+                                                  const Env&,
+                                                  DecompilerTypeSystem&) {
   return input;
 }
 

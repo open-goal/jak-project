@@ -36,6 +36,7 @@ add_library(
         IR2/Form.cpp
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
+        IR2/GenericElementMatcher.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp

@@ -93,9 +93,9 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   return result;
 }
 
-std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
-                                                        Register reg,
-                                                        const Env& env) {
+std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
+                                                        const Variable& var,
+                                                        const Env&) {
   // first, rewrite as normal.
   auto default_result = rewrite(pool);
 
@@ -103,7 +103,7 @@ std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
   // value in the given register.
 
   auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
-  if (last_op_as_set && last_op_as_set->dst().reg() == reg) {
+  if (last_op_as_set && last_op_as_set->dst().reg() == var.reg()) {
     default_result.pop_back();
     for (auto form : last_op_as_set->src()->elts()) {
       form->parent_form = nullptr;  // will get set later, this makes it obvious if I forget.
@@ -111,8 +111,8 @@ std::vector<FormElement*> FormStack::rewrite_to_get_reg(FormPool& pool,
     }
     return default_result;
   } else {
-    throw std::runtime_error(
-        fmt::format("Couldn't rewrite form to get result {}:\n{}\n\n", reg.to_charp(), print(env)));
+    default_result.push_back(pool.alloc_element<SimpleAtomElement>(SimpleAtom::make_var(var)));
+    return default_result;
   }
 }
 }  // namespace decompiler
