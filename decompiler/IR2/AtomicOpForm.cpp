@@ -103,8 +103,18 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
       auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        //        throw std::runtime_error("RD Success in StoreOp::get_as_form");
-        return pool.alloc_element<StoreElement>(this);
+        auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, m_value.as_expr(), m_my_idx);
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        std::vector<DerefToken> tokens;
+        for (auto& x : rd.tokens) {
+          tokens.push_back(to_token(x));
+        }
+        assert(!rd.addr_of);
+        auto addr =
+            pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+        return pool.alloc_element<SetFormFormElement>(addr, val);
       } else {
         return pool.alloc_element<StoreElement>(this);
       }

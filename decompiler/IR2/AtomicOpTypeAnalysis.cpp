@@ -220,6 +220,11 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
     } break;
 
+    case Kind::MUL_UNSIGNED: {
+      // unsigned multiply will always return a unsigned number.
+      return TP_Type::make_from_ts("uint");
+    } break;
+
     case Kind::DIV_SIGNED:
     case Kind::MOD_SIGNED: {
       if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
@@ -677,6 +682,14 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     m_call_type.get_arg(m_call_type.arg_count() - 1) =
         TypeSpec(dts.type_prop_settings.current_method_type);
     m_call_type_set = true;
+
+    m_read_regs.clear();
+    m_arg_vars.clear();
+    m_read_regs.emplace_back(Reg::GPR, Reg::T9);
+    for (int i = 0; i < int(m_call_type.arg_count()) - 1; i++) {
+      m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
+      m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
+    }
     return end_types;
   }
 

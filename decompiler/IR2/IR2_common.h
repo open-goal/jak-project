@@ -108,6 +108,7 @@ enum class FixedOperatorKind {
   CAR,
   CDR,
   NEW,
+  OBJECT_NEW,
   INVALID
 };
 

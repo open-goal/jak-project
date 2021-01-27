@@ -6,21 +6,6 @@
 
 namespace decompiler {
 
-void insert_extras_into_parent(Form* top_condition, Form* parent_form, FormElement* this_elt) {
-  auto real_condition = top_condition->back();
-  top_condition->pop_back();
-
-  auto& parent_vector = parent_form->elts();
-  // find us in the parent vector
-  auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                         [&](FormElement* x) { return x == this_elt; });
-  assert(me != parent_vector.end());
-
-  // now insert the fake condition
-  parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-  top_condition->elts() = {real_condition};
-}
-
 void clean_up_ifs(Form* top_level_form) {
   bool changed = true;
   while (changed) {

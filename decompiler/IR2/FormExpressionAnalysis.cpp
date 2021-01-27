@@ -202,14 +202,14 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
   }
 
-  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
   Form* arg1;
-
   if (arg1_reg) {
     arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
   } else {
     arg1 = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1));
   }
+
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
 
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
     auto new_form = pool.alloc_element<GenericElement>(
@@ -397,6 +397,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::LEFT_SHIFT:
       update_from_stack_force_ui_2(env, FixedOperatorKind::SLL, pool, stack, result);
       break;
+    case SimpleExpression::Kind::MUL_UNSIGNED:
+      update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result);
+      break;
     default:
       throw std::runtime_error(
           fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));
@@ -412,7 +415,6 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
-      const auto& consumes = env.reg_use().op.at(m_dst.idx()).consumes;
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
         stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);
@@ -497,7 +499,13 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto type_1 = match_result.maps.strings.at(type_for_method);
     auto name = match_result.maps.strings.at(method_name);
 
-    if (name == "new") {
+    if (name == "new" && type_1 == "object") {
+      std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+      auto new_op = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::OBJECT_NEW), new_args);
+      result->push_back(new_op);
+      return;
+    } else if (name == "new") {
       constexpr int allocation = 2;
       constexpr int type_for_arg = 3;
       auto alloc_matcher = Matcher::any_quoted_symbol(allocation);
@@ -505,22 +513,26 @@ void FunctionCallElement::update_from_stack(const Env& env,
       matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher),
                                       {alloc_matcher, type_arg_matcher});
       match_result = match(matcher, temp_form);
-      auto alloc = match_result.maps.strings.at(allocation);
-      if (alloc != "global") {
-        throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
-      }
-      auto type_2 = match_result.maps.strings.at(type_for_arg);
-      if (type_1 != type_2) {
-        throw std::runtime_error(
-            fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
-      }
+      if (match_result.matched) {
+        auto alloc = match_result.maps.strings.at(allocation);
+        if (alloc != "global") {
+          throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
+        }
+        auto type_2 = match_result.maps.strings.at(type_for_arg);
+        if (type_1 != type_2) {
+          throw std::runtime_error(
+              fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
+        }
 
-      std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+        std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
 
-      auto new_op = pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
-      result->push_back(new_op);
-      return;
+        auto new_op = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
+        result->push_back(new_op);
+        return;
+      } else {
+        throw std::runtime_error("Failed to match new method");
+      }
     } else {
       throw std::runtime_error("Method call detected, not yet implemented");
     }

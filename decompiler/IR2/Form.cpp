@@ -943,6 +943,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "cdr";
     case FixedOperatorKind::NEW:
       return "new";
+    case FixedOperatorKind::OBJECT_NEW:
+      return "object-new";
     default:
       assert(false);
   }

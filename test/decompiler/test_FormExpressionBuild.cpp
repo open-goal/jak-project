@@ -1569,3 +1569,56 @@ TEST_F(FormRegressionTest, ExprSort) {
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
+
+TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a2, r0\n"
+      "    lw v1, object(s7)\n"
+      "    lwu t9, 16(v1)\n"
+      "    or v1, a1, r0\n"
+      "    lhu a2, 8(a1)\n"
+      "    lhu a1, 12(a1)\n"
+      "    multu3 a1, gp, a1\n"
+      "    daddu a2, a2, a1\n"
+      "    or a1, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq v0, r0, L199\n"
+      "    or v1, s7, r0\n"
+
+      "    sw gp, 0(v0)\n"
+      "    sw gp, 4(v0)\n"
+
+      "L199:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function symbol type int inline-array-class)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a2-0)\n"
+      "  (set!\n"
+      "   v0-0\n"
+      "   (object-new\n"
+      "    a0-0\n"
+      "    a1-0\n"
+      "    (+ (-> a1-0 size) (* (the-as uint gp-0) (-> a1-0 heap-base)))\n"
+      "    )\n"
+      "   )\n"
+      "  (when\n"
+      "   (nonzero? v0-0)\n"
+      "   (set! (-> v0-0 length) gp-0)\n"
+      "   (set! (-> v0-0 allocated-length) gp-0)\n"
+      "   )\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "inline-array-class");
+}
