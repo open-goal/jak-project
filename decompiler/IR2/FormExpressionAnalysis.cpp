@@ -17,6 +17,7 @@ Form* var_to_form(const Variable& var, FormPool& pool) {
 }
 
 void update_var_from_stack_helper(int my_idx,
+                                  const Env&,
                                   Variable input,
                                   FormPool& pool,
                                   FormStack& stack,
@@ -70,12 +71,13 @@ Form* update_var_from_stack_to_form(int my_idx,
 }
 
 Form* update_var_from_stack_to_form(int my_idx,
+                                    const Env& env,
                                     Variable input,
                                     const RegSet& consumes,
                                     FormPool& pool,
                                     FormStack& stack) {
   std::vector<FormElement*> elts;
-  update_var_from_stack_helper(my_idx, input, pool, stack, consumes, &elts);
+  update_var_from_stack_helper(my_idx, env, input, pool, stack, consumes, &elts);
   return pool.alloc_sequence_form(nullptr, elts);
 }
 
@@ -128,7 +130,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   } else if (arg.is_static_addr()) {
     // for now, do nothing.
     result->push_back(this);
-  } else if (arg.is_sym_ptr() || arg.is_sym_val()) {
+  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
     result->push_back(this);
   } else {
     throw std::runtime_error(fmt::format(
@@ -421,17 +423,24 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_value_to_reg(m_dst, m_src, true);
 }
 
+void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // todo - is the order here right?
+  m_src->update_children_from_stack(env, pool, stack);
+  m_dst->update_children_from_stack(env, pool, stack);
+  stack.push_form_element(this, true);
+}
+
 ///////////////////
 // AshElement
 ///////////////////
 
-void AshElement::update_from_stack(const Env&,
+void AshElement::update_from_stack(const Env& env,
                                    FormPool& pool,
                                    FormStack& stack,
                                    std::vector<FormElement*>* result) {
-  auto val_form = update_var_from_stack_to_form(value.idx(), value, consumed, pool, stack);
+  auto val_form = update_var_from_stack_to_form(value.idx(), env, value, consumed, pool, stack);
   auto sa_form =
-      update_var_from_stack_to_form(shift_amount.idx(), shift_amount, consumed, pool, stack);
+      update_var_from_stack_to_form(shift_amount.idx(), env, shift_amount, consumed, pool, stack);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ARITH_SHIFT), val_form, sa_form);
   result->push_back(new_form);
@@ -441,11 +450,12 @@ void AshElement::update_from_stack(const Env&,
 // AbsElement
 ///////////////////
 
-void AbsElement::update_from_stack(const Env&,
+void AbsElement::update_from_stack(const Env& env,
                                    FormPool& pool,
                                    FormStack& stack,
                                    std::vector<FormElement*>* result) {
-  auto source_form = update_var_from_stack_to_form(source.idx(), source, consumed, pool, stack);
+  auto source_form =
+      update_var_from_stack_to_form(source.idx(), env, source, consumed, pool, stack);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ABS), source_form);
   result->push_back(new_form);
@@ -469,6 +479,52 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
   Form* func = update_var_from_stack_to_form(m_op->op_id(), m_op->function_var(), env, pool, stack);
   auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(func), args);
+
+  // detect method calls:
+  // ex: ((-> pair methods-by-name new) (quote global) pair gp-0 a3-0)
+  constexpr int type_for_method = 0;
+  constexpr int method_name = 1;
+
+  auto deref_matcher = Matcher::deref(
+      Matcher::any_symbol(type_for_method), false,
+      {DerefTokenMatcher::string("methods-by-name"), DerefTokenMatcher::any_string(method_name)});
+
+  auto matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher), {});
+  auto temp_form = pool.alloc_single_form(nullptr, new_form);
+  auto match_result = match(matcher, temp_form);
+  if (match_result.matched) {
+    auto type_1 = match_result.maps.strings.at(type_for_method);
+    auto name = match_result.maps.strings.at(method_name);
+
+    if (name == "new") {
+      constexpr int allocation = 2;
+      constexpr int type_for_arg = 3;
+      auto alloc_matcher = Matcher::any_quoted_symbol(allocation);
+      auto type_arg_matcher = Matcher::any_symbol(type_for_arg);
+      matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher),
+                                      {alloc_matcher, type_arg_matcher});
+      match_result = match(matcher, temp_form);
+      auto alloc = match_result.maps.strings.at(allocation);
+      if (alloc != "global") {
+        throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
+      }
+      auto type_2 = match_result.maps.strings.at(type_for_arg);
+      if (type_1 != type_2) {
+        throw std::runtime_error(
+            fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
+      }
+
+      std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+
+      auto new_op = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
+      result->push_back(new_op);
+      return;
+    } else {
+      throw std::runtime_error("Method call detected, not yet implemented");
+    }
+  }
+
   result->push_back(new_form);
 }
 
@@ -512,10 +568,54 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   stack.push_form_element(this, true);
 }
 
+void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto form : {condition, body}) {
+    FormStack temp_stack;
+    for (auto& entry : form->elts()) {
+      entry->push_to_stack(env, pool, temp_stack);
+    }
+    auto new_entries = temp_stack.rewrite(pool);
+    form->clear();
+    for (auto e : new_entries) {
+      form->push_back(e);
+    }
+  }
+  stack.push_form_element(this, true);
+}
+
 ///////////////////
 // CondNoElseElement
 ///////////////////
 void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto& entry : entries) {
+    for (auto form : {entry.condition, entry.body}) {
+      FormStack temp_stack;
+      for (auto& elt : form->elts()) {
+        elt->push_to_stack(env, pool, temp_stack);
+      }
+
+      std::vector<FormElement*> new_entries;
+      if (form == entry.body && used_as_value) {
+        new_entries = temp_stack.rewrite_to_get_var(pool, final_destination, env);
+      } else {
+        new_entries = temp_stack.rewrite(pool);
+      }
+
+      form->clear();
+      for (auto e : new_entries) {
+        form->push_back(e);
+      }
+    }
+  }
+
+  if (used_as_value) {
+    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true);
+  } else {
+    stack.push_form_element(this, true);
+  }
+}
+
+void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
       FormStack temp_stack;
@@ -535,6 +635,18 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         form->push_back(e);
       }
     }
+  }
+
+  FormStack temp_stack;
+  for (auto& elt : else_ir->elts()) {
+    elt->push_to_stack(env, pool, temp_stack);
+  }
+
+  auto new_entries = temp_stack.rewrite(pool);
+
+  else_ir->clear();
+  for (auto e : new_entries) {
+    else_ir->push_back(e);
   }
 
   stack.push_form_element(this, true);
@@ -579,12 +691,12 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 // ConditionElement
 ///////////////////
 
-void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stack) {
+void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   std::vector<Form*> source_forms;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
-                                                         m_consumed, pool, stack));
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), env,
+                                                         m_src[i]->var(), m_consumed, pool, stack));
   }
 
   stack.push_form_element(
@@ -592,16 +704,19 @@ void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stac
       true);
 }
 
-void ConditionElement::update_from_stack(const Env&,
+void ConditionElement::update_from_stack(const Env& env,
                                          FormPool& pool,
                                          FormStack& stack,
                                          std::vector<FormElement*>* result) {
   std::vector<Form*> source_forms;
 
-  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
-                                                         m_consumed, pool, stack));
+  //  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+  for (int i = get_condition_num_args(m_kind); i-- > 0;) {
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), env,
+                                                         m_src[i]->var(), m_consumed, pool, stack));
   }
+
+  std::reverse(source_forms.begin(), source_forms.end());
 
   result->push_back(
       pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms));
@@ -623,13 +738,35 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_form_element(this, true);
 }
 
-void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
+void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack) {
   auto as_end = dynamic_cast<const FunctionEndOp*>(m_op);
   if (as_end) {
     // we don't want to push this to the stack (for now at least)
     return;
   }
+
+  auto as_special = dynamic_cast<const SpecialOp*>(m_op);
+  if (as_special) {
+    if (as_special->kind() == SpecialOp::Kind::NOP) {
+      stack.push_form_element(this, true);
+      return;
+    }
+  }
   throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
+}
+
+void GenericElement::update_from_stack(const Env& env,
+                                       FormPool& pool,
+                                       FormStack& stack,
+                                       std::vector<FormElement*>* result) {
+  if (m_head.m_kind == GenericOperator::Kind::FUNCTION_EXPR) {
+    m_head.m_function->update_children_from_stack(env, pool, stack);
+  }
+
+  for (auto& x : m_elts) {
+    x->update_children_from_stack(env, pool, stack);
+  }
+  result->push_back(this);
 }
 
 ////////////////////////

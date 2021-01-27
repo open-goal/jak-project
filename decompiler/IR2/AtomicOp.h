@@ -543,6 +543,7 @@ class SpecialOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  Kind kind() const { return m_kind; }
 
  private:
   Kind m_kind;

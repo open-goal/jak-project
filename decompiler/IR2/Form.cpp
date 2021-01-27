@@ -61,8 +61,8 @@ void Form::inline_forms(std::vector<goos::Object>& forms, const Env& env) const 
 }
 
 void Form::apply(const std::function<void(FormElement*)>& f) {
-  for (auto& x : m_elements) {
-    x->apply(f);
+  for (size_t i = 0; i < m_elements.size(); i++) {
+    m_elements.at(i)->apply(f);
   }
 }
 
@@ -231,6 +231,37 @@ bool SetVarElement::is_sequence_point() const {
 void SetVarElement::collect_vars(VariableSet& vars) const {
   vars.insert(m_dst);
   m_src->collect_vars(vars);
+}
+
+/////////////////////////////
+// SetFormFormElement
+/////////////////////////////
+
+SetFormFormElement::SetFormFormElement(Form* dst, Form* src) : m_dst(dst), m_src(src) {}
+
+goos::Object SetFormFormElement::to_form(const Env& env) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"), m_dst->to_form(env),
+                                     m_src->to_form(env)};
+  return pretty_print::build_list(forms);
+}
+
+void SetFormFormElement::apply(const std::function<void(FormElement*)>& f) {
+  m_src->apply(f);
+  m_dst->apply(f);
+}
+
+void SetFormFormElement::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+  m_dst->apply_form(f);
+}
+
+bool SetFormFormElement::is_sequence_point() const {
+  return true;
+}
+
+void SetFormFormElement::collect_vars(VariableSet& vars) const {
+  m_src->collect_vars(vars);
+  m_dst->collect_vars(vars);
 }
 
 /////////////////////////////
@@ -874,6 +905,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognot";
     case FixedOperatorKind::SLL:
       return "sll";
+    case FixedOperatorKind::CAR:
+      return "car";
+    case FixedOperatorKind::CDR:
+      return "cdr";
+    case FixedOperatorKind::NEW:
+      return "new";
     default:
       assert(false);
   }

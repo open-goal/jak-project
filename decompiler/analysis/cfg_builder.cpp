@@ -483,7 +483,7 @@ void clean_up_cond_no_else_final(const Function& func, CondNoElseElement* cne) {
     if (entry.false_destination.has_value()) {
       auto fr = entry.false_destination;
       assert(fr.has_value());
-      cne->final_destination = fr->reg();
+      cne->final_destination = *fr;
     } else {
       assert(false);
     }
@@ -494,7 +494,7 @@ void clean_up_cond_no_else_final(const Function& func, CondNoElseElement* cne) {
 
   if (func.ir2.env.has_reg_use()) {
     auto& last_branch_info = func.ir2.env.reg_use().op.at(last_branch->op()->op_id());
-    cne->used_as_value = last_branch_info.written_and_unused.find(cne->final_destination) ==
+    cne->used_as_value = last_branch_info.written_and_unused.find(cne->final_destination.reg()) ==
                          last_branch_info.written_and_unused.end();
   }
 

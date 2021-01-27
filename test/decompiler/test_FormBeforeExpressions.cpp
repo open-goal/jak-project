@@ -420,12 +420,12 @@ TEST_F(FormRegressionTest, SimpleLoopMergeCheck) {
       "   (<.si v1-0 a1-0)\n"
       "   (nop!)\n"
       "   (nop!)\n"
-      "   (set! a0-0 (l.w (+ a0-0 2)))\n"  // should have merged
-      "   (set! v1-0 (+ v1-0 1))\n"        // also should have merged
+      "   (set! a0-0 (cdr a0-0))\n"  // should have merged
+      "   (set! v1-0 (+ v1-0 1))\n"  // also should have merged
       "   )\n"
       "  (set! v1-1 '#f)\n"
       "  (set! v1-2 '#f)\n"
-      "  (set! v0-0 (l.w (+ a0-0 -2)))\n"
+      "  (set! v0-0 (car a0-0))\n"
       "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected, true);
@@ -482,8 +482,8 @@ TEST_F(FormRegressionTest, And) {
       "(cond\n"
       "  ((begin (set! v1-0 '()) (= a0-0 v1-0)) (set! v0-0 0))\n"  // should be a case, not a return
       "  (else\n"
-      "   (set! v1-1 (-> a0-0 cdr))\n"  // v1-1 iteration.
-      "   (set! v0-0 1)\n"              // v0-1 count
+      "   (set! v1-1 (cdr a0-0))\n"  // v1-1 iteration.
+      "   (set! v0-0 1)\n"           // v0-1 count
       "   (while\n"
       "    (begin\n"
       "     (and\n"
@@ -492,8 +492,8 @@ TEST_F(FormRegressionTest, And) {
       "      )\n"
       "     (truthy a0-2)\n"  // this variable doesn't appear, but is set by the and.
       "     )\n"
-      "    (set! v0-0 (+ v0-0 1))\n"        // merged (and the result)
-      "    (set! v1-1 (l.w (+ v1-1 2)))\n"  // also merged.
+      "    (set! v0-0 (+ v0-0 1))\n"  // merged (and the result)
+      "    (set! v1-1 (cdr v1-1))\n"  // also merged.
       "    )\n"
       "   (set! v1-2 '#f)\n"  // while's false, I think.
       "   )\n"
@@ -566,7 +566,7 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "      (begin (set! v1-0 '()) (set! a0-1 (= gp-0 v1-0)) (truthy a0-1))\n"  // got empty list.
       "      (begin\n"
       "       (set! t9-0 name=)\n"
-      "       (set! a0-2 (l.w (+ gp-0 -2)))\n"
+      "       (set! a0-2 (car gp-0))\n"
       "       (set! a1-1 s5-0)\n"
       "       (set! v0-0 (call! a0-2 a1-1))\n"
       "       (set! v1-1 v0-0)\n"  // name match
@@ -574,7 +574,7 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "      )\n"
       "     (not v1-1)\n"  // no name match AND no empty list.
       "     )\n"
-      "    (set! gp-0 (l.w (+ gp-0 2)))\n"  // get next (merged)
+      "    (set! gp-0 (cdr gp-0))\n"  // get next (merged)
       "    )\n"
       "   (set! v1-2 '#f)\n"  // while loop thing
       "   (set! v1-3 '())\n"  //
@@ -703,13 +703,13 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "    (begin\n"
       "     (or\n"
       "      (begin\n"
-      "       (set! v1-6 (l.w (+ s3-0 2)))\n"  // s3-0 = cdr
+      "       (set! v1-6 (cdr s3-0))\n"  // s3-0 = cdr
       "       (set! a0-4 '())\n"
       "       (set! a0-5 (= v1-6 a0-4))\n"
       "       (truthy a0-5)\n"  // cdr = empty list (sets v1-7 secretly)
       "       )\n"
       "      (begin\n"
-      "       (set! v1-8 (l.w (+ s3-0 2)))\n"
+      "       (set! v1-8 (cdr s3-0))\n"
       "       (set! v1-9 (sll v1-8 62))\n"
       "       (set! v1-7 (>=0.si v1-9))\n"  // car is not a list.
       "       )\n"
@@ -722,9 +722,9 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "       (begin\n"
       "        (or\n"
       "         (begin\n"
-      "          (set! s2-0 (l.w (+ s3-0 -2)))\n"  // s2 = car
-      "          (set! v1-0 (l.w (+ s3-0 2)))\n"
-      "          (set! s1-0 (-> v1-0 car))\n"      // s1 = cadr
+      "          (set! s2-0 (car s3-0))\n"  // s2 = car
+      "          (set! v1-0 (cdr s3-0))\n"
+      "          (set! s1-0 (car v1-0))\n"         // s1 = cadr
       "          (set! t9-0 s5-0)\n"               // func
       "          (set! a0-1 s2-0)\n"               // car
       "          (set! a1-1 s1-0)\n"               // cadr
@@ -740,13 +740,13 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "       )\n"
       "      (truthy v1-2)\n"  // (and (or false >0) (not #t))
       "      )\n"
-      "     (set! s4-0 (+ s4-0 1))\n"        // increment, merge
-      "     (s.w! (+ s3-0 -2) s1-0)\n"       // set iter's car to cadr
-      "     (set! v1-4 (l.w (+ s3-0 2)))\n"  // current cdr
-      "     (s.w! (+ v1-4 -2) s2-0)\n"       // set cadr
-      "     (set! v1-5 s2-0)\n"              // iteration thing?
+      "     (set! s4-0 (+ s4-0 1))\n"  // increment, merge
+      "     (set! (car s3-0) s1-0)\n"  // set iter's car to cadr
+      "     (set! v1-4 (cdr s3-0))\n"  // current cdr
+      "     (set! (car v1-4) s2-0)\n"  // set cadr
+      "     (set! v1-5 s2-0)\n"        // iteration thing?
       "     )\n"
-      "    (set! s3-0 (l.w (+ s3-0 2)))\n"  // increment!
+      "    (set! s3-0 (cdr s3-0))\n"  // increment!
       "    )\n"
       "   (set! v1-10 '#f)\n"
       "   (set! v1-11 '#f)\n"
@@ -797,9 +797,9 @@ TEST_F(FormRegressionTest, NewMethod) {
       "  (begin\n"
       "   (set! gp-0 a2-0)\n"  // gp-0 is size
       "   (set! v1-0 object)\n"
-      "   (set! t9-0 (-> v1-0 method-table 0))\n"  // object new
-      "   (set! v1-1 a1-0)\n"                      // ?
-      "   (set! a2-1 (-> a1-0 size))\n"            // math
+      "   (set! t9-0 (-> v1-0 methods-by-name new))\n"  // object new
+      "   (set! v1-1 a1-0)\n"                           // ?
+      "   (set! a2-1 (-> a1-0 size))\n"                 // math
       "   (set! a1-1 (-> a1-0 heap-base))\n"
       "   (set! a1-2 (*.ui gp-0 a1-1))\n"
       "   (set! a2-2 (+ a2-1 a1-2))\n"
@@ -888,7 +888,7 @@ TEST_F(FormRegressionTest, TypeOf) {
   std::string expected =
       "(begin\n"
       "  (set! v1-1 (type-of a0-0))\n"
-      "  (set! t9-0 (-> v1-1 method-table 2))\n"  // print method.
+      "  (set! t9-0 (-> v1-1 methods-by-name print))\n"  // print method.
       "  (set! v0-0 (call! a0-0))\n"
       "  (ret-value v0-0)\n"
       "  )";

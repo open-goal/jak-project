@@ -62,7 +62,54 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
       is_sequence_point());
 }
 
-FormElement* StoreOp::get_as_form(FormPool& pool, const Env&) const {
+FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (env.has_type_analysis()) {
+    IR2_RegOffset ro;
+    if (get_as_reg_offset(m_addr, &ro)) {
+      auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
+
+      if (env.allow_sloppy_pair_typing() && m_size == 4 &&
+          (input_type.typespec() == TypeSpec("object") ||
+           input_type.typespec() == TypeSpec("pair"))) {
+        if (ro.offset == 2) {
+          auto base = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, m_value.as_expr(), m_my_idx);
+          auto addr = pool.alloc_single_element_form<GenericElement>(
+              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), base);
+          auto fr = pool.alloc_element<SetFormFormElement>(addr, val);
+          return fr;
+        } else if (ro.offset == -2) {
+          auto base = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, m_value.as_expr(), m_my_idx);
+          auto addr = pool.alloc_single_element_form<GenericElement>(
+              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), base);
+          return pool.alloc_element<SetFormFormElement>(addr, val);
+        }
+      }
+
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = true;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        //        throw std::runtime_error("RD Success in StoreOp::get_as_form");
+        return pool.alloc_element<StoreElement>(this);
+      } else {
+        return pool.alloc_element<StoreElement>(this);
+      }
+    }
+  }
   return pool.alloc_element<StoreElement>(this);
 }
 
@@ -72,7 +119,22 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     if (get_as_reg_offset(m_src, &ro)) {
       auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
 
-      // todo basic method
+      if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD && ro.offset >= 16 &&
+          (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+        // method get of fixed type
+        auto type_name = input_type.get_type_objects_typespec().base_type();
+        auto method_id = (ro.offset - 16) / 4;
+        auto method_info = env.dts->ts.lookup_method(type_name, method_id);
+
+        std::vector<DerefToken> tokens;
+        tokens.push_back(DerefToken::make_field_name("methods-by-name"));
+        tokens.push_back(DerefToken::make_field_name(method_info.name));
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        auto load = pool.alloc_single_element_form<DerefElement>(nullptr, source, false, tokens);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
+
       // todo structure method
       // todo pointer
       // todo product trick
@@ -83,6 +145,29 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         // of method 0.
         auto load = pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
+
+      if (env.allow_sloppy_pair_typing() && m_kind == Kind::SIGNED && m_size == 4 &&
+          (input_type.typespec() == TypeSpec("object") ||
+           input_type.typespec() == TypeSpec("pair"))) {
+        // these rules are of course not always correct or the most specific, but it's the best
+        // we can do.
+        if (ro.offset == 2) {
+          auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          auto load = pool.alloc_single_element_form<GenericElement>(
+              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), source);
+          // cdr = another pair.
+          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        } else if (ro.offset == -2) {
+          // car = some object.
+          auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          auto load = pool.alloc_single_element_form<GenericElement>(
+              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), source);
+          // cdr = another pair.
+          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        }
       }
 
       // Assume we're accessing a field of an object.
@@ -111,8 +196,6 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);
       }
-
-      // todo, try as pair
     }
   }
 

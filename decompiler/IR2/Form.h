@@ -197,6 +197,26 @@ class SetVarElement : public FormElement {
 };
 
 /*!
+ * Like SetVar, but sets a form to another form.
+ * This is intended to be used with stores.
+ * NOTE: do not use this when SetVarElement could be used instead.
+ */
+class SetFormFormElement : public FormElement {
+ public:
+  SetFormFormElement(Form* dst, Form* src);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  bool is_sequence_point() const override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+
+ private:
+  Form* m_dst = nullptr;
+  Form* m_src = nullptr;
+};
+
+/*!
  * A wrapper around a single AtomicOp.
  * The "important" special AtomicOps have their own Form type, like FuncitonCallElement.
  */
@@ -363,6 +383,7 @@ class CondWithElseElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!
@@ -394,6 +415,7 @@ class WhileElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   Form* condition = nullptr;
   Form* body = nullptr;
   bool cleaned = false;
@@ -460,7 +482,7 @@ class CondNoElseElement : public FormElement {
     FormElement* original_condition_branch = nullptr;
     bool cleaned = false;
   };
-  Register final_destination;
+  Variable final_destination;
   bool used_as_value = false;
   std::vector<Entry> entries;
   explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
@@ -579,8 +601,19 @@ class GenericOperator {
   void apply_form(const std::function<void(Form*)>& f);
   bool operator==(const GenericOperator& other) const;
   bool operator!=(const GenericOperator& other) const;
+  Kind kind() const { return m_kind; }
+  FixedOperatorKind fixed_kind() const {
+    assert(m_kind == Kind::FIXED_OPERATOR);
+    return m_fixed_kind;
+  }
+
+  const Form* func() const {
+    assert(m_kind == Kind::FUNCTION_EXPR);
+    return m_function;
+  }
 
  private:
+  friend class GenericElement;
   Kind m_kind = Kind::INVALID;
   IR2_Condition::Kind m_condition_kind = IR2_Condition::Kind::INVALID;
   FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
@@ -598,6 +631,10 @@ class GenericElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
   const GenericOperator& op() const { return m_head; }
   const std::vector<Form*>& elts() const { return m_elts; }
 
@@ -638,6 +675,12 @@ class DerefToken {
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
 
+  Kind kind() const { return m_kind; }
+  const std::string& field_name() const {
+    assert(m_kind == Kind::FIELD_NAME);
+    return m_name;
+  }
+
  private:
   Kind m_kind = Kind::INVALID;
   s64 m_int_constant = -1;
@@ -657,6 +700,10 @@ class DerefElement : public FormElement {
                          FormPool& pool,
                          FormStack& stack,
                          std::vector<FormElement*>* result) override;
+
+  bool is_addr_of() const { return m_is_addr_of; }
+  const Form* base() const { return m_base; }
+  const std::vector<DerefToken>& tokens() const { return m_tokens; }
 
  private:
   Form* m_base = nullptr;

@@ -77,6 +77,9 @@ class Env {
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
   RegId get_ssa_var(const Variable& var) const;
 
+  bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
+  void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -93,5 +96,7 @@ class Env {
   std::vector<TypeState> m_block_init_types;
   std::vector<TypeState> m_op_end_types;
   std::vector<TypeState*> m_op_init_types;
+
+  bool m_allow_sloppy_pair_typing = false;
 };
 }  // namespace decompiler

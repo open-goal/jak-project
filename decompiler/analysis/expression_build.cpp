@@ -28,6 +28,29 @@ void clean_up_ifs(Form* top_level_form) {
       top_condition->elts() = {real_condition};
     }
   });
+
+  top_level_form->apply([&](FormElement* elt) {
+    auto as_cwe = dynamic_cast<CondWithElseElement*>(elt);
+    if (!as_cwe) {
+      return;
+    }
+
+    auto top_condition = as_cwe->entries.front().condition;
+    if (!top_condition->is_single_element() && elt->parent_form) {
+      auto real_condition = top_condition->back();
+      top_condition->pop_back();
+
+      auto& parent_vector = elt->parent_form->elts();
+      // find us in the parent vector
+      auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                             [&](FormElement* x) { return x == elt; });
+      assert(me != parent_vector.end());
+
+      // now insert the fake condition
+      parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+      top_condition->elts() = {real_condition};
+    }
+  });
 }
 
 bool convert_to_expressions(Form* top_level_form,
