@@ -989,3 +989,98 @@ TEST_F(FormRegressionTest, ExprAssoce) {
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
+
+TEST_F(FormRegressionTest, ExprNassoc) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -48\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s5, 16(sp)\n"
+      "    sq gp, 32(sp)\n"
+
+      "    or s5, a0, r0\n"
+      "    or gp, a1, r0\n"
+      "    beq r0, r0, L238\n"
+      "    sll r0, r0, 0\n"
+
+      "L237:\n"
+      "    lw gp, 2(gp)\n"
+
+      "L238:\n"
+      "    daddiu v1, s7, -10\n"
+      "    dsubu v1, gp, v1\n"
+      "    daddiu a0, s7, 8\n"
+      "    movn a0, s7, v1\n"
+      "    bnel s7, a0, L240\n"
+      "    or v1, a0, r0\n"
+
+      "    lw v1, -2(gp)\n"
+      "    lw a1, -2(v1)\n"
+      "    dsll32 v1, a1, 30\n"
+      "    slt v1, v1, r0\n"
+      "    beq v1, r0, L239\n"
+      "    sll r0, r0, 0\n"
+
+      "    lw t9, nmember(s7)\n"
+      "    or a0, s5, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    beq r0, r0, L240\n"
+      "    sll r0, r0, 0\n"
+
+      "L239:\n"
+      "    lw t9, name=(s7)\n"
+      "    or a0, a1, r0\n"
+      "    or a1, s5, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+
+      "L240:\n"
+      "    beq s7, v1, L237\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    daddiu v1, s7, -10\n"
+      "    beq gp, v1, L241\n"
+      "    or v0, s7, r0\n"
+
+      "    lw v0, -2(gp)\n"
+
+      "L241:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 32(sp)\n"
+      "    lq s5, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 48";
+  std::string type = "(function object object object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! s5-0 a0-0)\n"
+      "  (set! gp-0 a1-0)\n"
+      "  (while\n"
+      "   (not\n"
+      "    (or\n"
+      "     (truthy (= gp-0 '()))\n"
+      "     (begin\n"
+      "      (set! a1-1 (car (car gp-0)))\n"
+      "      (if\n"
+      "       (pair? a1-1)\n"
+      "       (set! v1-1 (nmember s5-0 a1-1))\n"
+      "       (set! v1-1 (name= a1-1 s5-0))\n"
+      "       )\n"
+      "      v1-1\n"
+      "      )\n"
+      "     )\n"
+      "    )\n"
+      "   (set! gp-0 (cdr gp-0))\n"
+      "   )\n"
+      "  (set! v1-3 '#f)\n"
+      "  (if (!= gp-0 '()) (car gp-0))\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
