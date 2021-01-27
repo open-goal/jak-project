@@ -412,9 +412,10 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
+      const auto& consumes = env.reg_use().op.at(m_dst.idx()).consumes;
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
-        stack.push_value_to_reg(m_dst, m_src, false);
+        stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);
         return;
       }
     }
@@ -616,6 +617,35 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 }
 
 void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // first, let's try to detect if all bodies write the same value
+  std::optional<Variable> last_var;
+  bool rewrite_as_set = true;
+
+  // collect all forms which should write the output.
+  std::vector<Form*> write_output_forms;
+  for (const auto& entry : entries) {
+    write_output_forms.push_back(entry.body);
+  }
+  write_output_forms.push_back(else_ir);
+
+  // check all to see if they write the value.
+  for (auto form : write_output_forms) {
+    auto last_in_body = dynamic_cast<SetVarElement*>(form->elts().back());
+    if (last_in_body) {
+      if (last_var.has_value()) {
+        if (last_var->reg() != last_in_body->dst().reg()) {
+          rewrite_as_set = false;
+          break;
+        }
+      }
+      last_var = last_in_body->dst();
+    }
+  }
+
+  if (rewrite_as_set) {
+    assert(last_var.has_value());
+  }
+
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
       FormStack temp_stack;
@@ -624,8 +654,8 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       }
 
       std::vector<FormElement*> new_entries;
-      if (form == entry.body) {
-        new_entries = temp_stack.rewrite(pool);
+      if (form == entry.body && rewrite_as_set) {
+        new_entries = temp_stack.rewrite_to_get_var(pool, *last_var, env);
       } else {
         new_entries = temp_stack.rewrite(pool);
       }
@@ -642,14 +672,23 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     elt->push_to_stack(env, pool, temp_stack);
   }
 
-  auto new_entries = temp_stack.rewrite(pool);
+  std::vector<FormElement*> new_entries;
+  if (rewrite_as_set) {
+    new_entries = temp_stack.rewrite_to_get_var(pool, *last_var, env);
+  } else {
+    new_entries = temp_stack.rewrite(pool);
+  }
 
   else_ir->clear();
   for (auto e : new_entries) {
     else_ir->push_back(e);
   }
 
-  stack.push_form_element(this, true);
+  if (rewrite_as_set) {
+    stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true);
+  } else {
+    stack.push_form_element(this, true);
+  }
 }
 
 ///////////////////

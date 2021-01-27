@@ -291,12 +291,12 @@ TEST_F(FormRegressionTest, Or) {
       "     (begin\n"
       "      (set! a0-0 (-> a0-0 parent))\n"
       "      (set! a3-0 (= a0-0 v1-0))\n"
-      "      (truthy a3-0)\n"  // this sets a2-0, the unused result of the OR. it gets a separate
-                               // variable because it's not used.
+      "      a3-0\n"  // this sets a2-0, the unused result of the OR. it gets a separate
+                      // variable because it's not used.
       "      )\n"
       "     (set! a2-1 (zero? a0-0))\n"  // so this should be a2-1.
       "     )\n"
-      "    (truthy a2-1)\n"
+      "    a2-1\n"
       "    )\n"
       "   (if\n"
       "    (= a0-0 a1-0)\n"
@@ -487,10 +487,10 @@ TEST_F(FormRegressionTest, And) {
       "   (while\n"
       "    (begin\n"
       "     (and\n"
-      "      (begin (set! a0-1 '()) (set! a1-0 (!= v1-1 a0-1)) (truthy a1-0))\n"  // check v1-1
-      "      (begin (set! a0-3 (sll v1-1 62)) (set! a0-2 (<0.si a0-3)))\n"        // check v1-1
+      "      (begin (set! a0-1 '()) (set! a1-0 (!= v1-1 a0-1)) a1-0)\n"     // check v1-1
+      "      (begin (set! a0-3 (sll v1-1 62)) (set! a0-2 (<0.si a0-3)))\n"  // check v1-1
       "      )\n"
-      "     (truthy a0-2)\n"  // this variable doesn't appear, but is set by the and.
+      "     a0-2\n"  // this variable doesn't appear, but is set by the and.
       "     )\n"
       "    (set! v0-0 (+ v0-0 1))\n"  // merged (and the result)
       "    (set! v1-1 (cdr v1-1))\n"  // also merged.
@@ -563,7 +563,7 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "   (while\n"
       "    (begin\n"
       "     (or\n"
-      "      (begin (set! v1-0 '()) (set! a0-1 (= gp-0 v1-0)) (truthy a0-1))\n"  // got empty list.
+      "      (begin (set! v1-0 '()) (set! a0-1 (= gp-0 v1-0)) a0-1)\n"  // got empty list.
       "      (begin\n"
       "       (set! t9-0 name=)\n"
       "       (set! a0-2 (car gp-0))\n"
@@ -706,7 +706,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "       (set! v1-6 (cdr s3-0))\n"  // s3-0 = cdr
       "       (set! a0-4 '())\n"
       "       (set! a0-5 (= v1-6 a0-4))\n"
-      "       (truthy a0-5)\n"  // cdr = empty list (sets v1-7 secretly)
+      "       a0-5\n"  // cdr = empty list (sets v1-7 secretly)
       "       )\n"
       "      (begin\n"
       "       (set! v1-8 (cdr s3-0))\n"
@@ -734,11 +734,11 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "          )\n"
       "         (set! a0-2 (>0.si v1-1))\n"  // >0
       "         )\n"
-      "        (truthy a0-2)\n"  // false or >0
+      "        a0-2\n"  // false or >0
       "        )\n"
       "       (begin (set! a0-3 '#t) (set! v1-2 (!= v1-2 a0-3)))\n"  // not #t
       "       )\n"
-      "      (truthy v1-2)\n"  // (and (or false >0) (not #t))
+      "      v1-2\n"  // (and (or false >0) (not #t))
       "      )\n"
       "     (set! s4-0 (+ s4-0 1))\n"  // increment, merge
       "     (set! (car s3-0) s1-0)\n"  // set iter's car to cadr

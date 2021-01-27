@@ -5,11 +5,13 @@ namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {
   if (destination.has_value()) {
     assert(source && !elt);
-    return fmt::format("d: {} s: {} | {} <- {}", active, sequence_point,
-                       destination.value().reg().to_charp(), source->to_string(env));
+    return fmt::format("d: {} s: {} | {} <- {} f: {}", active, sequence_point,
+                       destination.value().reg().to_charp(), source->to_string(env),
+                       non_seq_source.has_value());
   } else {
     assert(elt && !source);
-    return fmt::format("d: {} s: {} | {}", active, sequence_point, elt->to_string(env));
+    return fmt::format("d: {} s: {} | {} f: {}", active, sequence_point, elt->to_string(env),
+                       non_seq_source.has_value());
   }
 }
 
@@ -28,6 +30,18 @@ void FormStack::push_value_to_reg(Variable var, Form* value, bool sequence_point
   entry.sequence_point = sequence_point;
   entry.destination = var;
   entry.source = value;
+  m_stack.push_back(entry);
+}
+
+void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
+                                        const Variable& src,
+                                        Form* src_as_form) {
+  StackEntry entry;
+  entry.active = true;
+  entry.sequence_point = false;
+  entry.destination = dst;
+  entry.non_seq_source = src;
+  entry.source = src_as_form;
   m_stack.push_back(entry);
 }
 
@@ -56,6 +70,13 @@ Form* FormStack::pop_reg(Register reg) {
       if (entry.destination->reg() == reg) {
         entry.active = false;
         assert(entry.source);
+        if (entry.non_seq_source.has_value()) {
+          assert(entry.sequence_point == false);
+          auto result = pop_reg(entry.non_seq_source->reg());
+          if (result) {
+            return result;
+          }
+        }
         return entry.source;
       } else {
         // we didn't match
