@@ -741,7 +741,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "      (truthy v1-2)\n"  // (and (or false >0) (not #t))
       "      )\n"
       "     (set! s4-0 (+ s4-0 1))\n"   // increment, merge
-      "     (s.w! (+ s3-0 -2) s1-0)\n"  // set iter's car to cadr
+      "     (set! (car s3-0) s1-0)\n"   // set iter's car to cadr
       "     (set! v1-4 (cdr s3-0))\n"   // current cdr
       "     (s.w! (+ v1-4 -2) s2-0)\n"  // set cadr
       "     (set! v1-5 s2-0)\n"         // iteration thing?

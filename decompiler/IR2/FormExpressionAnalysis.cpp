@@ -421,6 +421,13 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_value_to_reg(m_dst, m_src, true);
 }
 
+void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // todo - is the order here right?
+  m_src->update_children_from_stack(env, pool, stack);
+  m_dst->update_children_from_stack(env, pool, stack);
+  stack.push_form_element(this, true);
+}
+
 ///////////////////
 // AshElement
 ///////////////////

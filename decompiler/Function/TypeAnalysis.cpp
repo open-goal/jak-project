@@ -51,11 +51,18 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
   (void)file;
   // STEP 0 - set decompiler type system settings for this function. In config we can manually
   // specify some settings for type propagation to reduce the strictness of type propagation.
+  // TODO - this is kinda hacky so that it works in both unit tests and actual decompilation.
+  // it would be better if this setting came 100% from the IR2 env.
   if (!dts.type_prop_settings.locked) {
     dts.type_prop_settings.reset();
     if (get_config().pair_functions_by_name.find(guessed_name.to_string()) !=
         get_config().pair_functions_by_name.end()) {
       dts.type_prop_settings.allow_pair = true;
+      ir2.env.set_sloppy_pair_typing();
+    }
+  } else {
+    if (dts.type_prop_settings.allow_pair) {
+      ir2.env.set_sloppy_pair_typing();
     }
   }
 

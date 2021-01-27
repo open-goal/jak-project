@@ -62,7 +62,52 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
       is_sequence_point());
 }
 
-FormElement* StoreOp::get_as_form(FormPool& pool, const Env&) const {
+FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (env.has_type_analysis()) {
+    IR2_RegOffset ro;
+    if (get_as_reg_offset(m_addr, &ro)) {
+      auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
+
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = true;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        //        throw std::runtime_error("RD Success in StoreOp::get_as_form");
+        return pool.alloc_element<StoreElement>(this);
+
+      } else {
+        if (env.allow_sloppy_pair_typing() && m_size == 4 &&
+            (input_type.typespec() == TypeSpec("object") ||
+             input_type.typespec() == TypeSpec("pair"))) {
+          if (ro.offset == 2) {
+            auto base = pool.alloc_single_element_form<SimpleExpressionElement>(
+                nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+            auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+                nullptr, m_value.as_expr(), m_my_idx);
+            auto addr = pool.alloc_single_element_form<GenericElement>(
+                nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), base);
+            return pool.alloc_element<SetFormFormElement>(addr, val);
+          } else if (ro.offset == -2) {
+            auto base = pool.alloc_single_element_form<SimpleExpressionElement>(
+                nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+            auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+                nullptr, m_value.as_expr(), m_my_idx);
+            auto addr = pool.alloc_single_element_form<GenericElement>(
+                nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), base);
+            return pool.alloc_element<SetFormFormElement>(addr, val);
+          }
+        }
+      }
+    }
+  }
   return pool.alloc_element<StoreElement>(this);
 }
 
@@ -113,7 +158,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
 
       // todo, try as pair
-      if (m_kind == Kind::SIGNED && m_size == 4 &&
+      if (env.allow_sloppy_pair_typing() && m_kind == Kind::SIGNED && m_size == 4 &&
           (input_type.typespec() == TypeSpec("object") ||
            input_type.typespec() == TypeSpec("pair"))) {
         // these rules are of course not always correct or the most specific, but it's the best

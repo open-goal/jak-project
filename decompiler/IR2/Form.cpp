@@ -234,6 +234,37 @@ void SetVarElement::collect_vars(VariableSet& vars) const {
 }
 
 /////////////////////////////
+// SetFormFormElement
+/////////////////////////////
+
+SetFormFormElement::SetFormFormElement(Form* dst, Form* src) : m_dst(dst), m_src(src) {}
+
+goos::Object SetFormFormElement::to_form(const Env& env) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"), m_dst->to_form(env),
+                                     m_src->to_form(env)};
+  return pretty_print::build_list(forms);
+}
+
+void SetFormFormElement::apply(const std::function<void(FormElement*)>& f) {
+  m_src->apply(f);
+  m_dst->apply(f);
+}
+
+void SetFormFormElement::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+  m_dst->apply_form(f);
+}
+
+bool SetFormFormElement::is_sequence_point() const {
+  return true;
+}
+
+void SetFormFormElement::collect_vars(VariableSet& vars) const {
+  m_src->collect_vars(vars);
+  m_dst->collect_vars(vars);
+}
+
+/////////////////////////////
 // AtomicOpElement
 /////////////////////////////
 

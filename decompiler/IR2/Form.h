@@ -197,6 +197,26 @@ class SetVarElement : public FormElement {
 };
 
 /*!
+ * Like SetVar, but sets a form to another form.
+ * This is intended to be used with stores.
+ * NOTE: do not use this when SetVarElement could be used instead.
+ */
+class SetFormFormElement : public FormElement {
+ public:
+  SetFormFormElement(Form* dst, Form* src);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  bool is_sequence_point() const override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+
+ private:
+  Form* m_dst = nullptr;
+  Form* m_src = nullptr;
+};
+
+/*!
  * A wrapper around a single AtomicOp.
  * The "important" special AtomicOps have their own Form type, like FuncitonCallElement.
  */
