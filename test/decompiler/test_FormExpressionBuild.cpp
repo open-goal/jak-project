@@ -513,11 +513,9 @@ TEST_F(FormRegressionTest, ExprTypeTypep) {
       "(begin\n"
       "  (set! v1-0 object)\n"
       "  (until\n"
-      "   (truthy\n"
-      "    (or\n"
-      "     (begin (set! a0-0 (-> a0-0 parent)) (truthy (= a0-0 v1-0)))\n"  // set! as value.
-      "     (zero? a0-0)\n"
-      "     )\n"
+      "   (begin\n"
+      "    (set! a0-0 (-> a0-0 parent))\n"
+      "    (or (= a0-0 v1-0) (zero? a0-0))\n"
       "    )\n"
       "   (if (= a0-0 a1-0) (return '#t (set! v1-0 0)))\n"
       "   )\n"
@@ -686,9 +684,8 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "    (set! v1-1 (cdr a0-0))\n"
       "    (set! v0-0 1)\n"
       "    (while\n"
-      "     (truthy\n"
-      "      (and (truthy (!= v1-1 '())) "
-      "                   (<0.si (sll (the-as uint v1-1) 62)))\n"
+      "      (and (!= v1-1 '()) "
+      "                   (<0.si (sll (the-as uint v1-1) 62))\n"
       "      )\n"
       "     (set! v0-0 (+ v0-0 1))\n"
       "     (set! v1-1 (cdr v1-1))\n"
@@ -795,7 +792,7 @@ TEST_F(FormRegressionTest, ExprMember) {
       "(begin\n"
       "  (set! v1-0 a1-0)\n"
       "  (while\n"
-      "   (not (or (truthy (= v1-0 '())) (= (car v1-0) a0-0)))\n"
+      "   (not (or (= v1-0 '()) (= (car v1-0) a0-0)))\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
       "  (set! a0-1 '#f)\n"
@@ -860,7 +857,7 @@ TEST_F(FormRegressionTest, ExprNmember) {
       "  (set! s5-0 a0-0)\n"
       "  (set! gp-0 a1-0)\n"
       "  (while\n"
-      "   (not (or (truthy (= gp-0 '())) (name= (car gp-0) s5-0)))\n"
+      "   (not (or (= gp-0 '()) (name= (car gp-0) s5-0)))\n"
       "   (set! gp-0 (cdr gp-0))\n"
       "   )\n"
       "  (set! v1-2 '#f)\n"
@@ -912,7 +909,7 @@ TEST_F(FormRegressionTest, ExprAssoc) {
       "(begin\n"
       "  (set! v1-0 a1-0)\n"
       "  (while\n"
-      "   (not (or (truthy (= v1-0 '())) (= (car (car v1-0)) a0-0)))\n"
+      "   (not (or (= v1-0 '()) (= (car (car v1-0)) a0-0)))\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
       "  (set! a0-1 '#f)\n"
@@ -977,8 +974,8 @@ TEST_F(FormRegressionTest, ExprAssoce) {
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (truthy (= v1-0 '()))\n"
-      "     (truthy (= (car (car v1-0)) a0-0))\n"
+      "     (= v1-0 '())\n"
+      "     (= (car (car v1-0)) a0-0)\n"
       "     (= (car (car v1-0)) 'else)\n"
       "     )\n"
       "    )\n"
@@ -1058,7 +1055,6 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "    daddiu sp, sp, 48";
   std::string type = "(function object object object)";
 
-  // will need fixing if we clean up the set! if thing
   std::string expected =
       "(begin\n"
       "  (set! s5-0 a0-0)\n"
@@ -1066,22 +1062,17 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (truthy (= gp-0 '()))\n"
+      "     (= gp-0 (quote ()))\n"
       "     (begin\n"
       "      (set! a1-1 (car (car gp-0)))\n"
-      "      (if\n"
-      "       (pair? a1-1)\n"
-      "       (set! v1-1 (nmember s5-0 a1-1))\n"
-      "       (set! v1-1 (name= a1-1 s5-0))\n"
-      "       )\n"
-      "      v1-1\n"
+      "      (if (pair? a1-1) (nmember s5-0 a1-1) (name= a1-1 s5-0))\n"
       "      )\n"
       "     )\n"
       "    )\n"
       "   (set! gp-0 (cdr gp-0))\n"
       "   )\n"
-      "  (set! v1-3 '#f)\n"
-      "  (if (!= gp-0 '()) (car gp-0))\n"
+      "  (set! v1-3 (quote #f))\n"
+      "  (if (!= gp-0 (quote ())) (car gp-0))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1172,22 +1163,21 @@ TEST_F(FormRegressionTest, ExprNassoce) {
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (truthy (= gp-0 '()))\n"
+      "     (= gp-0 (quote ()))\n"
       "     (begin\n"
       "      (set! s4-0 (car (car gp-0)))\n"
       "      (if\n"
       "       (pair? s4-0)\n"
-      "       (set! v1-1 (nmember s5-0 s4-0))\n"
-      "       (set! v1-1 (or (truthy (name= s4-0 s5-0)) (= s4-0 'else)))\n"
+      "       (nmember s5-0 s4-0)\n"
+      "       (or (name= s4-0 s5-0) (= s4-0 (quote else)))\n"
       "       )\n"
-      "      v1-1\n"
       "      )\n"
       "     )\n"
       "    )\n"
       "   (set! gp-0 (cdr gp-0))\n"
       "   )\n"
-      "  (set! v1-4 '#f)\n"
-      "  (if (!= gp-0 '()) (car gp-0))\n"
+      "  (set! v1-4 (quote #f))\n"
+      "  (if (!= gp-0 (quote ())) (car gp-0))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1236,25 +1226,16 @@ TEST_F(FormRegressionTest, ExprAppend) {
       "    daddu sp, sp, r0";
   std::string type = "(function object object object)";
 
-  // todo - will be changed by if fix.
   std::string expected =
-      "(begin\n"
-      "  (cond\n"
-      "   ((= a0-0 '()) (set! v0-0 a1-0))\n"
-      "   (else\n"
-      "    (set! v1-1 a0-0)\n"
-      "    (while (!= (cdr v1-1) '()) "
-      "      (nop!) "
-      "      (nop!) "
-      "      (set! v1-1 (cdr v1-1)))\n"
-      "    (set! a2-1 '#f)\n"
-      "    (when (!= v1-1 '()) "
-      "       (set! (cdr v1-1) a1-0) "
-      "       (set! v1-2 a1-0))\n"
-      "    (set! v0-0 a0-0)\n"
-      "    )\n"
+      "(cond\n"
+      "  ((= a0-0 '()) a1-0)\n"
+      "  (else\n"
+      "   (set! v1-1 a0-0)\n"
+      "   (while (!= (cdr v1-1) '()) (nop!) (nop!) (set! v1-1 (cdr v1-1)))\n"
+      "   (set! a2-1 '#f)\n"
+      "   (when (!= v1-1 '()) (set! (cdr v1-1) a1-0) (set! v1-2 a1-0))\n"
+      "   a0-0\n"
       "   )\n"
-      "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1314,25 +1295,24 @@ TEST_F(FormRegressionTest, ExprDelete) {
       "    daddu sp, sp, r0";
   std::string type = "(function object object pair)";
 
-  // todo - will be changed by if fix.
   std::string expected =
-      "(begin\n"
+      "(the-as\n"
+      "  pair\n"
       "  (cond\n"
-      "   ((= a0-0 (car a1-0)) (set! v0-0 (cdr a1-0)))\n"
+      "   ((= a0-0 (car a1-0)) (cdr a1-0))\n"
       "   (else\n"
       "    (set! v1-1 a1-0)\n"
       "    (set! a2-0 (cdr a1-0))\n"
       "    (while\n"
-      "     (not (or (truthy (= a2-0 (quote ()))) (= (car a2-0) a0-0)))\n"
+      "     (not (or (= a2-0 (quote ())) (= (car a2-0) a0-0)))\n"
       "     (set! v1-1 a2-0)\n"
       "     (set! a2-0 (cdr a2-0))\n"
       "     )\n"
       "    (set! a0-1 (quote #f))\n"
       "    (if (!= a2-0 (quote ())) (set! (cdr v1-1) (cdr a2-0)))\n"
-      "    (set! v0-0 a1-0)\n"
+      "    a1-0\n"
       "    )\n"
       "   )\n"
-      "  (the-as pair v0-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1394,25 +1374,24 @@ TEST_F(FormRegressionTest, ExprDeleteCar) {
       "    daddu sp, sp, r0";
   std::string type = "(function object object pair)";
 
-  // todo - will be changed by if fix.
   std::string expected =
-      "(begin\n"
+      "(the-as\n"
+      "  pair\n"
       "  (cond\n"
-      "   ((= a0-0 (car (car a1-0))) (set! v0-0 (cdr a1-0)))\n"
+      "   ((= a0-0 (car (car a1-0))) (cdr a1-0))\n"
       "   (else\n"
       "    (set! v1-2 a1-0)\n"
       "    (set! a2-0 (cdr a1-0))\n"
       "    (while\n"
-      "     (not (or (truthy (= a2-0 (quote ()))) (= (car (car a2-0)) a0-0)))\n"
+      "     (not (or (= a2-0 (quote ())) (= (car (car a2-0)) a0-0)))\n"
       "     (set! v1-2 a2-0)\n"
       "     (set! a2-0 (cdr a2-0))\n"
       "     )\n"
       "    (set! a0-1 (quote #f))\n"
       "    (if (!= a2-0 (quote ())) (set! (cdr v1-2) (cdr a2-0)))\n"
-      "    (set! v0-0 a1-0)\n"
+      "    a1-0\n"
       "    )\n"
       "   )\n"
-      "  (the-as pair v0-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1455,115 +1434,138 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
   test_with_expr(func, type, expected, true, "");
 }
 
-// TEST_F(FormRegressionTest, ExprSort) {
-//  std::string func =
-//      "    sll r0, r0, 0\n"
-//      "    daddiu sp, sp, -112\n"
-//      "    sd ra, 0(sp)\n"
-//      "    sq s1, 16(sp)\n"
-//      "    sq s2, 32(sp)\n"
-//      "    sq s3, 48(sp)\n"
-//      "    sq s4, 64(sp)\n"
-//      "    sq s5, 80(sp)\n"
-//      "    sq gp, 96(sp)\n"
-//
-//      "    or gp, a0, r0\n"
-//      "    or s5, a1, r0\n"
-//      "    addiu s4, r0, -1\n"
-//      "    beq r0, r0, L208\n"
-//      "    sll r0, r0, 0\n"
-//
-//      "L201:\n"
-//      "    addiu s4, r0, 0\n"
-//      "    or s3, gp, r0\n"
-//      "    beq r0, r0, L206\n"
-//      "    sll r0, r0, 0\n"
-//
-//      "L202:\n"
-//      "    lw s2, -2(s3)\n"
-//      "    lw v1, 2(s3)\n"
-//      "    lw s1, -2(v1)\n"
-//      "    or t9, s5, r0\n"
-//      "    or a0, s2, r0\n"
-//      "    or a1, s1, r0\n"
-//      "    jalr ra, t9\n"
-//      "    sll v0, ra, 0\n"
-//
-//      "    or v1, v0, r0\n"
-//      "    beql s7, v1, L203\n"
-//      "    daddiu a0, s7, 8\n"
-//
-//      "    slt a1, r0, v1\n"
-//      "    daddiu a0, s7, 8\n"
-//      "    movz a0, s7, a1\n"
-//
-//      "L203:\n"
-//      "    beql s7, a0, L204\n"
-//      "    or v1, a0, r0\n"
-//
-//      "    daddiu a0, s7, #t\n"
-//      "    dsubu a0, v1, a0\n"
-//      "    daddiu v1, s7, 8\n"
-//      "    movz v1, s7, a0\n"
-//
-//      "L204:\n"
-//      "    beq s7, v1, L205\n"
-//      "    or v1, s7, r0\n"
-//
-//      "    daddiu s4, s4, 1\n"
-//      "    sw s1, -2(s3)\n"
-//      "    lw v1, 2(s3)\n"
-//      "    sw s2, -2(v1)\n"
-//      "    or v1, s2, r0\n"
-//
-//      "L205:\n"
-//      "    lw s3, 2(s3)\n"
-//
-//      "L206:\n"
-//      "    lw v1, 2(s3)\n"
-//      "    daddiu a0, s7, -10\n"
-//      "    dsubu v1, v1, a0\n"
-//      "    daddiu a0, s7, 8\n"
-//      "    movn a0, s7, v1\n"
-//      "    bnel s7, a0, L207\n"
-//      "    or v1, a0, r0\n"
-//
-//      "    lw v1, 2(s3)\n"
-//      "    dsll32 v1, v1, 30\n"
-//      "    slt a0, v1, r0\n"
-//      "    daddiu v1, s7, 8\n"
-//      "    movn v1, s7, a0\n"
-//
-//      "L207:\n"
-//      "    beq s7, v1, L202\n"
-//      "    sll r0, r0, 0\n"
-//
-//      "    or v1, s7, r0\n"
-//      "    or v1, s7, r0\n"
-//
-//      "L208:\n"
-//      "    bne s4, r0, L201\n"
-//      "    sll r0, r0, 0\n"
-//
-//      "    or v1, s7, r0\n"
-//      "    or v0, gp, r0\n"
-//      "    ld ra, 0(sp)\n"
-//      "    lq gp, 96(sp)\n"
-//      "    lq s5, 80(sp)\n"
-//      "    lq s4, 64(sp)\n"
-//      "    lq s3, 48(sp)\n"
-//      "    lq s2, 32(sp)\n"
-//      "    lq s1, 16(sp)\n"
-//      "    jr ra\n"
-//      "    daddiu sp, sp, 112";
-//  std::string type = "(function object (function object object object) object)";
-//
-//  // NOTE - this appears to _not_ be a nested call.
-//  std::string expected =
-//      "(begin\n"
-//      "  (set! gp-0 a0-0)\n"
-//      "  (set! a3-0 (delete-car! (car gp-0) a1-0))\n"
-//      "  (new 'global pair gp-0 a3-0)\n"
-//      "  )";
-//  test_with_expr(func, type, expected, true, "");
-//}
+TEST_F(FormRegressionTest, ExprSort) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -112\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s1, 16(sp)\n"
+      "    sq s2, 32(sp)\n"
+      "    sq s3, 48(sp)\n"
+      "    sq s4, 64(sp)\n"
+      "    sq s5, 80(sp)\n"
+      "    sq gp, 96(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or s5, a1, r0\n"
+      "    addiu s4, r0, -1\n"
+      "    beq r0, r0, L208\n"
+      "    sll r0, r0, 0\n"
+
+      "L201:\n"
+      "    addiu s4, r0, 0\n"
+      "    or s3, gp, r0\n"
+      "    beq r0, r0, L206\n"
+      "    sll r0, r0, 0\n"
+
+      "L202:\n"
+      "    lw s2, -2(s3)\n"
+      "    lw v1, 2(s3)\n"
+      "    lw s1, -2(v1)\n"
+      "    or t9, s5, r0\n"
+      "    or a0, s2, r0\n"
+      "    or a1, s1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    beql s7, v1, L203\n"
+      "    daddiu a0, s7, 8\n"
+
+      "    slt a1, r0, v1\n"
+      "    daddiu a0, s7, 8\n"
+      "    movz a0, s7, a1\n"
+
+      "L203:\n"
+      "    beql s7, a0, L204\n"
+      "    or v1, a0, r0\n"
+
+      "    daddiu a0, s7, #t\n"
+      "    dsubu a0, v1, a0\n"
+      "    daddiu v1, s7, 8\n"
+      "    movz v1, s7, a0\n"
+
+      "L204:\n"
+      "    beq s7, v1, L205\n"
+      "    or v1, s7, r0\n"
+
+      "    daddiu s4, s4, 1\n"
+      "    sw s1, -2(s3)\n"
+      "    lw v1, 2(s3)\n"
+      "    sw s2, -2(v1)\n"
+      "    or v1, s2, r0\n"
+
+      "L205:\n"
+      "    lw s3, 2(s3)\n"
+
+      "L206:\n"
+      "    lw v1, 2(s3)\n"
+      "    daddiu a0, s7, -10\n"
+      "    dsubu v1, v1, a0\n"
+      "    daddiu a0, s7, 8\n"
+      "    movn a0, s7, v1\n"
+      "    bnel s7, a0, L207\n"
+      "    or v1, a0, r0\n"
+
+      "    lw v1, 2(s3)\n"
+      "    dsll32 v1, v1, 30\n"
+      "    slt a0, v1, r0\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a0\n"
+
+      "L207:\n"
+      "    beq s7, v1, L202\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+
+      "L208:\n"
+      "    bne s4, r0, L201\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 96(sp)\n"
+      "    lq s5, 80(sp)\n"
+      "    lq s4, 64(sp)\n"
+      "    lq s3, 48(sp)\n"
+      "    lq s2, 32(sp)\n"
+      "    lq s1, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 112";
+  std::string type = "(function object (function object object object) object)";
+
+  // TODO - this should probably be tested.
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a0-0)\n"
+      "  (set! s5-0 a1-0)\n"
+      "  (set! s4-0 -1)\n"
+      "  (while\n"
+      "   (nonzero? s4-0)\n"
+      "   (set! s4-0 0)\n"
+      "   (set! s3-0 gp-0)\n"
+      "   (while\n"
+      "    (not\n"
+      "     (or (= (cdr s3-0) (quote ())) (>=0.si (sll (the-as uint (cdr s3-0)) 62)))\n"
+      "     )\n"
+      "    (set! v1-1 (s5-0 (car s3-0) (car (cdr s3-0))))\n"
+      "    (when\n"
+      "     (and (or (not v1-1) (>0.si v1-1)) (!= v1-2 (quote #t)))\n"
+      "     (set! s4-0 (+ s4-0 1))\n"
+      "     (set! (car s3-0) s1-0)\n"
+      "     (set! (car (cdr s3-0)) s2-0)\n"
+      "     (set! v1-5 s2-0)\n"
+      "     )\n"
+      "    (set! s3-0 (cdr s3-0))\n"
+      "    )\n"
+      "   (set! v1-10 (quote #f))\n"
+      "   (set! v1-11 (quote #f))\n"
+      "   )\n"
+      "  (set! v1-12 (quote #f))\n"
+      "  gp-0\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}

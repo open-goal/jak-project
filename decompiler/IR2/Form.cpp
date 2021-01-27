@@ -32,6 +32,10 @@ void FormElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
   throw std::runtime_error("push_to_stack not implemented for " + to_string(env));
 }
 
+goos::Object FormElement::to_form_as_condition(const Env& env) const {
+  return to_form(env);
+}
+
 ///////////////////
 // Form
 //////////////////
@@ -46,6 +50,26 @@ goos::Object Form::to_form(const Env& env) const {
     for (auto& x : m_elements) {
       forms.push_back(x->to_form(env));
     }
+    return pretty_print::build_list(forms);
+  }
+}
+
+goos::Object Form::to_form_as_condition(const Env& env) const {
+  assert(!m_elements.empty());
+  if (m_elements.size() == 1) {
+    return m_elements.front()->to_form_as_condition(env);
+  } else {
+    std::vector<goos::Object> forms;
+    forms.push_back(pretty_print::to_symbol("begin"));
+    for (size_t i = 0; i < m_elements.size(); i++) {
+      const auto& x = m_elements.at(i);
+      if (i == m_elements.size() - 1) {
+        forms.push_back(x->to_form_as_condition(env));
+      } else {
+        forms.push_back(x->to_form(env));
+      }
+    }
+
     return pretty_print::build_list(forms);
   }
 }
@@ -310,6 +334,14 @@ goos::Object ConditionElement::to_form(const Env& env) const {
   }
 }
 
+goos::Object ConditionElement::to_form_as_condition(const Env& env) const {
+  if (m_kind == IR2_Condition::Kind::TRUTHY) {
+    return m_src[0]->to_form(env.file->labels, &env);
+  } else {
+    return to_form(env);
+  }
+}
+
 void ConditionElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
@@ -435,7 +467,7 @@ goos::Object CondWithElseElement::to_form(const Env& env) const {
       else_ir->is_single_element()) {
     std::vector<goos::Object> list;
     list.push_back(pretty_print::to_symbol("if"));
-    list.push_back(entries.front().condition->to_form(env));
+    list.push_back(entries.front().condition->to_form_as_condition(env));
     list.push_back(entries.front().body->to_form(env));
     list.push_back(else_ir->to_form(env));
     return pretty_print::build_list(list);
@@ -444,7 +476,7 @@ goos::Object CondWithElseElement::to_form(const Env& env) const {
     list.push_back(pretty_print::to_symbol("cond"));
     for (auto& e : entries) {
       std::vector<goos::Object> entry;
-      entry.push_back(e.condition->to_form(env));
+      entry.push_back(e.condition->to_form_as_condition(env));
       e.body->inline_forms(entry, env);
       list.push_back(pretty_print::build_list(entry));
     }
@@ -511,7 +543,7 @@ void WhileElement::apply(const std::function<void(FormElement*)>& f) {
 goos::Object WhileElement::to_form(const Env& env) const {
   std::vector<goos::Object> list;
   list.push_back(pretty_print::to_symbol("while"));
-  list.push_back(condition->to_form(env));
+  list.push_back(condition->to_form_as_condition(env));
   body->inline_forms(list, env);
   return pretty_print::build_list(list);
 }
@@ -540,7 +572,7 @@ void UntilElement::apply(const std::function<void(FormElement*)>& f) {
 goos::Object UntilElement::to_form(const Env& env) const {
   std::vector<goos::Object> list;
   list.push_back(pretty_print::to_symbol("until"));
-  list.push_back(condition->to_form(env));
+  list.push_back(condition->to_form_as_condition(env));
   body->inline_forms(list, env);
   return pretty_print::build_list(list);
 }
@@ -596,7 +628,7 @@ goos::Object ShortCircuitElement::to_form(const Env& env) const {
       assert(false);
   }
   for (auto& x : entries) {
-    forms.push_back(x.condition->to_form(env));
+    forms.push_back(x.condition->to_form_as_condition(env));
   }
   return pretty_print::build_list(forms);
 }
@@ -617,7 +649,7 @@ goos::Object CondNoElseElement::to_form(const Env& env) const {
     // print as an if statement if we can put the body in a single form.
     std::vector<goos::Object> list;
     list.push_back(pretty_print::to_symbol("if"));
-    list.push_back(entries.front().condition->to_form(env));
+    list.push_back(entries.front().condition->to_form_as_condition(env));
     list.push_back(entries.front().body->to_form(env));
     return pretty_print::build_list(list);
   } else if (entries.size() == 1) {
@@ -626,7 +658,7 @@ goos::Object CondNoElseElement::to_form(const Env& env) const {
     // unless.
     std::vector<goos::Object> list;
     list.push_back(pretty_print::to_symbol("when"));
-    list.push_back(entries.front().condition->to_form(env));
+    list.push_back(entries.front().condition->to_form_as_condition(env));
     entries.front().body->inline_forms(list, env);
     return pretty_print::build_list(list);
   } else {
@@ -634,7 +666,7 @@ goos::Object CondNoElseElement::to_form(const Env& env) const {
     list.push_back(pretty_print::to_symbol("cond"));
     for (auto& e : entries) {
       std::vector<goos::Object> entry;
-      entry.push_back(e.condition->to_form(env));
+      entry.push_back(e.condition->to_form_as_condition(env));
       entries.front().body->inline_forms(list, env);
       list.push_back(pretty_print::build_list(entry));
     }
@@ -924,12 +956,18 @@ GenericElement::GenericElement(GenericOperator op, std::vector<Form*> forms)
     : m_head(op), m_elts(std::move(forms)) {}
 
 goos::Object GenericElement::to_form(const Env& env) const {
-  std::vector<goos::Object> result;
-  result.push_back(m_head.to_form(env));
-  for (auto x : m_elts) {
-    result.push_back(x->to_form(env));
+  if (m_head.kind() == GenericOperator::Kind::CONDITION_OPERATOR &&
+      m_head.condition_kind() == IR2_Condition::Kind::TRUTHY) {
+    assert(m_elts.size() == 1);
+    return m_elts.front()->to_form_as_condition(env);
+  } else {
+    std::vector<goos::Object> result;
+    result.push_back(m_head.to_form(env));
+    for (auto x : m_elts) {
+      result.push_back(x->to_form(env));
+    }
+    return pretty_print::build_list(result);
   }
-  return pretty_print::build_list(result);
 }
 
 void GenericElement::apply(const std::function<void(FormElement*)>& f) {

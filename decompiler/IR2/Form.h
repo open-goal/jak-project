@@ -22,6 +22,7 @@ class FormElement {
   Form* parent_form = nullptr;
 
   virtual goos::Object to_form(const Env& env) const = 0;
+  virtual goos::Object to_form_as_condition(const Env& env) const;
   virtual ~FormElement() = default;
   virtual void apply(const std::function<void(FormElement*)>& f) = 0;
   virtual void apply_form(const std::function<void(Form*)>& f) = 0;
@@ -249,6 +250,7 @@ class ConditionElement : public FormElement {
                    std::optional<SimpleAtom> src1,
                    RegSet consumed);
   goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_as_condition(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -607,6 +609,11 @@ class GenericOperator {
     return m_fixed_kind;
   }
 
+  IR2_Condition::Kind condition_kind() const {
+    assert(m_kind == Kind::CONDITION_OPERATOR);
+    return m_condition_kind;
+  }
+
   const Form* func() const {
     assert(m_kind == Kind::FUNCTION_EXPR);
     return m_function;
@@ -785,6 +792,7 @@ class Form {
   void clear() { m_elements.clear(); }
 
   goos::Object to_form(const Env& env) const;
+  goos::Object to_form_as_condition(const Env& env) const;
   std::string to_string(const Env& env) const;
   void inline_forms(std::vector<goos::Object>& forms, const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);

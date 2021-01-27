@@ -5,52 +5,143 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
+
+void insert_extras_into_parent(Form* top_condition, Form* parent_form, FormElement* this_elt) {
+  auto real_condition = top_condition->back();
+  top_condition->pop_back();
+
+  auto& parent_vector = parent_form->elts();
+  // find us in the parent vector
+  auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                         [&](FormElement* x) { return x == this_elt; });
+  assert(me != parent_vector.end());
+
+  // now insert the fake condition
+  parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+  top_condition->elts() = {real_condition};
+}
+
 void clean_up_ifs(Form* top_level_form) {
-  top_level_form->apply([&](FormElement* elt) {
-    auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
-    if (!as_cne) {
-      return;
-    }
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    top_level_form->apply([&](FormElement* elt) {
+      auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
+      if (!as_cne) {
+        return;
+      }
 
-    auto top_condition = as_cne->entries.front().condition;
-    if (!top_condition->is_single_element() && elt->parent_form) {
-      auto real_condition = top_condition->back();
-      top_condition->pop_back();
+      auto top_condition = as_cne->entries.front().condition;
+      if (!top_condition->is_single_element() && elt->parent_form) {
+        auto real_condition = top_condition->back();
+        top_condition->pop_back();
 
-      auto& parent_vector = elt->parent_form->elts();
-      // find us in the parent vector
-      auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                             [&](FormElement* x) { return x == elt; });
-      assert(me != parent_vector.end());
+        auto& parent_vector = elt->parent_form->elts();
+        // find us in the parent vector
+        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                               [&](FormElement* x) { return x == elt; });
+        assert(me != parent_vector.end());
 
-      // now insert the fake condition
-      parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-      top_condition->elts() = {real_condition};
-    }
-  });
+        // now insert the fake condition
+        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+        top_condition->elts() = {real_condition};
+        changed = true;
+      }
+    });
 
-  top_level_form->apply([&](FormElement* elt) {
-    auto as_cwe = dynamic_cast<CondWithElseElement*>(elt);
-    if (!as_cwe) {
-      return;
-    }
+    top_level_form->apply([&](FormElement* elt) {
+      auto as_cwe = dynamic_cast<CondWithElseElement*>(elt);
+      if (!as_cwe) {
+        return;
+      }
 
-    auto top_condition = as_cwe->entries.front().condition;
-    if (!top_condition->is_single_element() && elt->parent_form) {
-      auto real_condition = top_condition->back();
-      top_condition->pop_back();
+      auto top_condition = as_cwe->entries.front().condition;
+      if (!top_condition->is_single_element() && elt->parent_form) {
+        auto real_condition = top_condition->back();
+        top_condition->pop_back();
 
-      auto& parent_vector = elt->parent_form->elts();
-      // find us in the parent vector
-      auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                             [&](FormElement* x) { return x == elt; });
-      assert(me != parent_vector.end());
+        auto& parent_vector = elt->parent_form->elts();
+        // find us in the parent vector
+        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                               [&](FormElement* x) { return x == elt; });
+        assert(me != parent_vector.end());
 
-      // now insert the fake condition
-      parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-      top_condition->elts() = {real_condition};
-    }
-  });
+        // now insert the fake condition
+        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+        top_condition->elts() = {real_condition};
+        changed = true;
+      }
+    });
+
+    top_level_form->apply([&](FormElement* elt) {
+      auto as_sc = dynamic_cast<ShortCircuitElement*>(elt);
+      if (!as_sc) {
+        return;
+      }
+
+      auto top_condition = as_sc->entries.front().condition;
+      if (!top_condition->is_single_element() && elt->parent_form) {
+        auto real_condition = top_condition->back();
+        top_condition->pop_back();
+
+        auto& parent_vector = elt->parent_form->elts();
+        // find us in the parent vector
+        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                               [&](FormElement* x) { return x == elt; });
+        assert(me != parent_vector.end());
+
+        // now insert the fake condition
+        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+        top_condition->elts() = {real_condition};
+        changed = true;
+      }
+      //      if (!changed) {
+      //        auto as_condition =
+      //        dynamic_cast<GenericElement*>(top_condition->try_as_single_element()); if
+      //        (as_condition) {
+      //          if (as_condition->op().kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
+      //            if (as_condition->op().condition_kind() == IR2_Condition::Kind::TRUTHY) {
+      //              auto to_repack = as_condition->elts().front();
+      //              if (!to_repack->try_as_single_element() && as_condition->parent_form) {
+      //                changed = true;
+      //                insert_extras_into_parent(to_repack, as_condition->parent_form,
+      //                as_condition);
+      //              }
+      //            }
+      //          }
+      //        }
+      //      }
+    });
+
+    top_level_form->apply([&](FormElement* elt) {
+      auto as_ge = dynamic_cast<GenericElement*>(elt);
+      if (!as_ge) {
+        return;
+      }
+
+      if (as_ge->op().kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
+        if (as_ge->op().condition_kind() == IR2_Condition::Kind::TRUTHY) {
+          assert(as_ge->elts().size() == 1);
+          auto top_condition = as_ge->elts().front();
+          if (!top_condition->is_single_element() && elt->parent_form) {
+            auto real_condition = top_condition->back();
+            top_condition->pop_back();
+
+            auto& parent_vector = elt->parent_form->elts();
+            // find us in the parent vector
+            auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
+                                   [&](FormElement* x) { return x == elt; });
+            assert(me != parent_vector.end());
+
+            // now insert the fake condition
+            parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
+            top_condition->elts() = {real_condition};
+            changed = true;
+          }
+        }
+      }
+    });
+  }
 }
 
 bool convert_to_expressions(Form* top_level_form,
