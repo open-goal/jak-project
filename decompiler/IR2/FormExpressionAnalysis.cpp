@@ -17,6 +17,7 @@ Form* var_to_form(const Variable& var, FormPool& pool) {
 }
 
 void update_var_from_stack_helper(int my_idx,
+                                  const Env&,
                                   Variable input,
                                   FormPool& pool,
                                   FormStack& stack,
@@ -70,12 +71,13 @@ Form* update_var_from_stack_to_form(int my_idx,
 }
 
 Form* update_var_from_stack_to_form(int my_idx,
+                                    const Env& env,
                                     Variable input,
                                     const RegSet& consumes,
                                     FormPool& pool,
                                     FormStack& stack) {
   std::vector<FormElement*> elts;
-  update_var_from_stack_helper(my_idx, input, pool, stack, consumes, &elts);
+  update_var_from_stack_helper(my_idx, env, input, pool, stack, consumes, &elts);
   return pool.alloc_sequence_form(nullptr, elts);
 }
 
@@ -432,13 +434,13 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 // AshElement
 ///////////////////
 
-void AshElement::update_from_stack(const Env&,
+void AshElement::update_from_stack(const Env& env,
                                    FormPool& pool,
                                    FormStack& stack,
                                    std::vector<FormElement*>* result) {
-  auto val_form = update_var_from_stack_to_form(value.idx(), value, consumed, pool, stack);
+  auto val_form = update_var_from_stack_to_form(value.idx(), env, value, consumed, pool, stack);
   auto sa_form =
-      update_var_from_stack_to_form(shift_amount.idx(), shift_amount, consumed, pool, stack);
+      update_var_from_stack_to_form(shift_amount.idx(), env, shift_amount, consumed, pool, stack);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ARITH_SHIFT), val_form, sa_form);
   result->push_back(new_form);
@@ -448,11 +450,12 @@ void AshElement::update_from_stack(const Env&,
 // AbsElement
 ///////////////////
 
-void AbsElement::update_from_stack(const Env&,
+void AbsElement::update_from_stack(const Env& env,
                                    FormPool& pool,
                                    FormStack& stack,
                                    std::vector<FormElement*>* result) {
-  auto source_form = update_var_from_stack_to_form(source.idx(), source, consumed, pool, stack);
+  auto source_form =
+      update_var_from_stack_to_form(source.idx(), env, source, consumed, pool, stack);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ABS), source_form);
   result->push_back(new_form);
@@ -688,12 +691,12 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 // ConditionElement
 ///////////////////
 
-void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stack) {
+void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   std::vector<Form*> source_forms;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
-                                                         m_consumed, pool, stack));
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), env,
+                                                         m_src[i]->var(), m_consumed, pool, stack));
   }
 
   stack.push_form_element(
@@ -701,7 +704,7 @@ void ConditionElement::push_to_stack(const Env&, FormPool& pool, FormStack& stac
       true);
 }
 
-void ConditionElement::update_from_stack(const Env&,
+void ConditionElement::update_from_stack(const Env& env,
                                          FormPool& pool,
                                          FormStack& stack,
                                          std::vector<FormElement*>* result) {
@@ -709,8 +712,8 @@ void ConditionElement::update_from_stack(const Env&,
 
   //  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
   for (int i = get_condition_num_args(m_kind); i-- > 0;) {
-    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
-                                                         m_consumed, pool, stack));
+    source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), env,
+                                                         m_src[i]->var(), m_consumed, pool, stack));
   }
 
   std::reverse(source_forms.begin(), source_forms.end());

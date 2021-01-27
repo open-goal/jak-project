@@ -683,7 +683,7 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "  (cond\n"
       "   ((= a0-0 '()) (set! v0-0 0))\n"
       "   (else\n"
-      "    (set! v1-1 (-> a0-0 cdr))\n"
+      "    (set! v1-1 (cdr a0-0))\n"
       "    (set! v0-0 1)\n"
       "    (while\n"
       "     (truthy\n"
@@ -1445,7 +1445,7 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
       "    daddiu sp, sp, 32";
   std::string type = "(function object object pair)";
 
-  // todo - will be changed by if fix.
+  // NOTE - this appears to _not_ be a nested call.
   std::string expected =
       "(begin\n"
       "  (set! gp-0 a0-0)\n"
@@ -1454,3 +1454,116 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
+
+// TEST_F(FormRegressionTest, ExprSort) {
+//  std::string func =
+//      "    sll r0, r0, 0\n"
+//      "    daddiu sp, sp, -112\n"
+//      "    sd ra, 0(sp)\n"
+//      "    sq s1, 16(sp)\n"
+//      "    sq s2, 32(sp)\n"
+//      "    sq s3, 48(sp)\n"
+//      "    sq s4, 64(sp)\n"
+//      "    sq s5, 80(sp)\n"
+//      "    sq gp, 96(sp)\n"
+//
+//      "    or gp, a0, r0\n"
+//      "    or s5, a1, r0\n"
+//      "    addiu s4, r0, -1\n"
+//      "    beq r0, r0, L208\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "L201:\n"
+//      "    addiu s4, r0, 0\n"
+//      "    or s3, gp, r0\n"
+//      "    beq r0, r0, L206\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "L202:\n"
+//      "    lw s2, -2(s3)\n"
+//      "    lw v1, 2(s3)\n"
+//      "    lw s1, -2(v1)\n"
+//      "    or t9, s5, r0\n"
+//      "    or a0, s2, r0\n"
+//      "    or a1, s1, r0\n"
+//      "    jalr ra, t9\n"
+//      "    sll v0, ra, 0\n"
+//
+//      "    or v1, v0, r0\n"
+//      "    beql s7, v1, L203\n"
+//      "    daddiu a0, s7, 8\n"
+//
+//      "    slt a1, r0, v1\n"
+//      "    daddiu a0, s7, 8\n"
+//      "    movz a0, s7, a1\n"
+//
+//      "L203:\n"
+//      "    beql s7, a0, L204\n"
+//      "    or v1, a0, r0\n"
+//
+//      "    daddiu a0, s7, #t\n"
+//      "    dsubu a0, v1, a0\n"
+//      "    daddiu v1, s7, 8\n"
+//      "    movz v1, s7, a0\n"
+//
+//      "L204:\n"
+//      "    beq s7, v1, L205\n"
+//      "    or v1, s7, r0\n"
+//
+//      "    daddiu s4, s4, 1\n"
+//      "    sw s1, -2(s3)\n"
+//      "    lw v1, 2(s3)\n"
+//      "    sw s2, -2(v1)\n"
+//      "    or v1, s2, r0\n"
+//
+//      "L205:\n"
+//      "    lw s3, 2(s3)\n"
+//
+//      "L206:\n"
+//      "    lw v1, 2(s3)\n"
+//      "    daddiu a0, s7, -10\n"
+//      "    dsubu v1, v1, a0\n"
+//      "    daddiu a0, s7, 8\n"
+//      "    movn a0, s7, v1\n"
+//      "    bnel s7, a0, L207\n"
+//      "    or v1, a0, r0\n"
+//
+//      "    lw v1, 2(s3)\n"
+//      "    dsll32 v1, v1, 30\n"
+//      "    slt a0, v1, r0\n"
+//      "    daddiu v1, s7, 8\n"
+//      "    movn v1, s7, a0\n"
+//
+//      "L207:\n"
+//      "    beq s7, v1, L202\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "    or v1, s7, r0\n"
+//      "    or v1, s7, r0\n"
+//
+//      "L208:\n"
+//      "    bne s4, r0, L201\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "    or v1, s7, r0\n"
+//      "    or v0, gp, r0\n"
+//      "    ld ra, 0(sp)\n"
+//      "    lq gp, 96(sp)\n"
+//      "    lq s5, 80(sp)\n"
+//      "    lq s4, 64(sp)\n"
+//      "    lq s3, 48(sp)\n"
+//      "    lq s2, 32(sp)\n"
+//      "    lq s1, 16(sp)\n"
+//      "    jr ra\n"
+//      "    daddiu sp, sp, 112";
+//  std::string type = "(function object (function object object object) object)";
+//
+//  // NOTE - this appears to _not_ be a nested call.
+//  std::string expected =
+//      "(begin\n"
+//      "  (set! gp-0 a0-0)\n"
+//      "  (set! a3-0 (delete-car! (car gp-0) a1-0))\n"
+//      "  (new 'global pair gp-0 a3-0)\n"
+//      "  )";
+//  test_with_expr(func, type, expected, true, "");
+//}
