@@ -117,7 +117,22 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     if (get_as_reg_offset(m_src, &ro)) {
       auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
 
-      // todo basic method
+      if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD && ro.offset >= 16 &&
+          (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+        // method get of fixed type
+        auto type_name = input_type.get_type_objects_typespec().base_type();
+        auto method_id = (ro.offset - 16) / 4;
+        auto method_info = env.dts->ts.lookup_method(type_name, method_id);
+
+        std::vector<DerefToken> tokens;
+        tokens.push_back(DerefToken::make_field_name("methods-by-name"));
+        tokens.push_back(DerefToken::make_field_name(method_info.name));
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        auto load = pool.alloc_single_element_form<DerefElement>(nullptr, source, false, tokens);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
+
       // todo structure method
       // todo pointer
       // todo product trick

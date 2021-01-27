@@ -8,10 +8,18 @@ Matcher Matcher::any_reg(int match_id) {
   return m;
 }
 
-Matcher Matcher::op(GenericOperator op, const std::vector<Matcher>& args) {
+Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;
-  m.m_gen_op = op;
+  m.m_gen_op_matcher = std::make_shared<GenericOpMatcher>(op);
+  m.m_sub_matchers = args;
+  return m;
+}
+
+Matcher Matcher::op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
+  Matcher m;
+  m.m_kind = Kind::GENERIC_OP_WITH_REST;
+  m.m_gen_op_matcher = std::make_shared<GenericOpMatcher>(op);
   m.m_sub_matchers = args;
   return m;
 }
@@ -19,7 +27,7 @@ Matcher Matcher::op(GenericOperator op, const std::vector<Matcher>& args) {
 Matcher Matcher::fixed_op(FixedOperatorKind op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;
-  m.m_gen_op = GenericOperator::make_fixed(op);
+  m.m_gen_op_matcher = std::make_shared<GenericOpMatcher>(GenericOpMatcher::fixed(op));
   m.m_sub_matchers = args;
   return m;
 }
@@ -49,6 +57,31 @@ Matcher Matcher::integer(std::optional<int> value) {
   Matcher m;
   m.m_kind = Kind::INT;
   m.m_int_match = value;
+  return m;
+}
+
+Matcher Matcher::any_quoted_symbol(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_QUOTED_SYMBOL;
+  m.m_string_out_id = match_id;
+  return m;
+}
+
+Matcher Matcher::any_symbol(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_SYMBOL;
+  m.m_string_out_id = match_id;
+  return m;
+}
+
+Matcher Matcher::deref(const Matcher& root,
+                       bool is_addr_of,
+                       const std::vector<DerefTokenMatcher>& tokens) {
+  Matcher m;
+  m.m_kind = Kind::DEREF_OP;
+  m.m_sub_matchers = {root};
+  m.m_deref_is_addr_of = is_addr_of;
+  m.m_token_matchers = tokens;
   return m;
 }
 
@@ -89,11 +122,32 @@ bool Matcher::do_match(const Form* input, MatchResult::Maps* maps_out) const {
     case Kind::GENERIC_OP: {
       auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_element());
       if (as_generic) {
-        if (as_generic->op() != m_gen_op) {
+        if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
           return false;
         }
 
         if (as_generic->elts().size() != m_sub_matchers.size()) {
+          return false;
+        }
+
+        for (size_t i = 0; i < m_sub_matchers.size(); i++) {
+          if (!m_sub_matchers.at(i).do_match(as_generic->elts().at(i), maps_out)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    } break;
+
+    case Kind::GENERIC_OP_WITH_REST: {
+      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_element());
+      if (as_generic) {
+        if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
+          return false;
+        }
+
+        if (as_generic->elts().size() < m_sub_matchers.size()) {
           return false;
         }
 
@@ -149,6 +203,76 @@ bool Matcher::do_match(const Form* input, MatchResult::Maps* maps_out) const {
       }
 
       return false;
+    } break;
+
+    case Kind::ANY_QUOTED_SYMBOL: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_sym_ptr()) {
+          if (m_string_out_id != -1) {
+            maps_out->strings[m_string_out_id] = as_simple_atom->atom().get_str();
+          }
+          return true;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_sym_ptr()) {
+          if (m_string_out_id != -1) {
+            maps_out->strings[m_string_out_id] = atom.get_str();
+          }
+          return true;
+        }
+      }
+      return false;
+    }
+
+    case Kind::ANY_SYMBOL: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_sym_val()) {
+          if (m_string_out_id != -1) {
+            maps_out->strings[m_string_out_id] = as_simple_atom->atom().get_str();
+          }
+          return true;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_sym_val()) {
+          if (m_string_out_id != -1) {
+            maps_out->strings[m_string_out_id] = atom.get_str();
+          }
+          return true;
+        }
+      }
+      return false;
+    }
+
+    case Kind::DEREF_OP: {
+      auto as_deref = dynamic_cast<DerefElement*>(input->try_as_single_element());
+      if (as_deref) {
+        if (as_deref->is_addr_of() != m_deref_is_addr_of) {
+          return false;
+        }
+        if (!m_sub_matchers.at(0).do_match(as_deref->base(), maps_out)) {
+          return false;
+        }
+        if (as_deref->tokens().size() != m_token_matchers.size()) {
+          return false;
+        }
+        for (size_t i = 0; i < as_deref->tokens().size(); i++) {
+          if (!m_token_matchers.at(i).do_match(as_deref->tokens().at(i), maps_out)) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
     }
 
     default:
@@ -165,5 +289,67 @@ MatchResult match(const Matcher& spec, const Form* input) {
   MatchResult result;
   result.matched = spec.do_match(input, &result.maps);
   return result;
+}
+
+DerefTokenMatcher DerefTokenMatcher::string(const std::string& str) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::STRING;
+  result.m_str = str;
+  return result;
+}
+
+DerefTokenMatcher DerefTokenMatcher::any_string(int match_id) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::ANY_STRING;
+  result.m_str_out_id = match_id;
+  return result;
+}
+
+bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* maps_out) const {
+  switch (m_kind) {
+    case Kind::STRING:
+      return input.kind() == DerefToken::Kind::FIELD_NAME && input.field_name() == m_str;
+    case Kind::ANY_STRING:
+      if (input.kind() == DerefToken::Kind::FIELD_NAME) {
+        if (m_str_out_id != -1) {
+          maps_out->strings[m_str_out_id] = input.field_name();
+        }
+        return true;
+      }
+      return false;
+    default:
+      assert(false);
+  }
+}
+
+GenericOpMatcher GenericOpMatcher::fixed(FixedOperatorKind kind) {
+  GenericOpMatcher m;
+  m.m_kind = Kind::FIXED;
+  m.m_fixed_kind = kind;
+  return m;
+}
+
+GenericOpMatcher GenericOpMatcher::func(const Matcher& func_matcher) {
+  GenericOpMatcher m;
+  m.m_kind = Kind::FUNC;
+  m.m_func_matcher = func_matcher;
+  return m;
+}
+
+bool GenericOpMatcher::do_match(const GenericOperator& input, MatchResult::Maps* maps_out) const {
+  switch (m_kind) {
+    case Kind::FIXED:
+      if (input.kind() == GenericOperator::Kind::FIXED_OPERATOR) {
+        return input.fixed_kind() == m_fixed_kind;
+      }
+      return false;
+    case Kind::FUNC:
+      if (input.kind() == GenericOperator::Kind::FUNCTION_EXPR) {
+        return m_func_matcher.do_match(input.func(), maps_out);
+      }
+      return false;
+    default:
+      assert(false);
+  }
 }
 }  // namespace decompiler

@@ -601,6 +601,16 @@ class GenericOperator {
   void apply_form(const std::function<void(Form*)>& f);
   bool operator==(const GenericOperator& other) const;
   bool operator!=(const GenericOperator& other) const;
+  Kind kind() const { return m_kind; }
+  FixedOperatorKind fixed_kind() const {
+    assert(m_kind == Kind::FIXED_OPERATOR);
+    return m_fixed_kind;
+  }
+
+  const Form* func() const {
+    assert(m_kind == Kind::FUNCTION_EXPR);
+    return m_function;
+  }
 
  private:
   friend class GenericElement;
@@ -665,6 +675,12 @@ class DerefToken {
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
 
+  Kind kind() const { return m_kind; }
+  const std::string& field_name() const {
+    assert(m_kind == Kind::FIELD_NAME);
+    return m_name;
+  }
+
  private:
   Kind m_kind = Kind::INVALID;
   s64 m_int_constant = -1;
@@ -684,6 +700,10 @@ class DerefElement : public FormElement {
                          FormPool& pool,
                          FormStack& stack,
                          std::vector<FormElement*>* result) override;
+
+  bool is_addr_of() const { return m_is_addr_of; }
+  const Form* base() const { return m_base; }
+  const std::vector<DerefToken>& tokens() const { return m_tokens; }
 
  private:
   Form* m_base = nullptr;

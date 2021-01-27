@@ -909,6 +909,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "car";
     case FixedOperatorKind::CDR:
       return "cdr";
+    case FixedOperatorKind::NEW:
+      return "new";
     default:
       assert(false);
   }

@@ -107,6 +107,7 @@ enum class FixedOperatorKind {
   SLL,
   CAR,
   CDR,
+  NEW,
   INVALID
 };
 

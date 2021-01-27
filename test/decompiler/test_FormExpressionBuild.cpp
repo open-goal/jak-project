@@ -1416,3 +1416,41 @@ TEST_F(FormRegressionTest, ExprDeleteCar) {
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
+
+TEST_F(FormRegressionTest, ExprInsertCons) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, delete-car!(s7)\n"
+      "    lw a0, -2(gp)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or a3, v0, r0\n"
+      "    lw v1, pair(s7)\n"
+      "    lwu t9, 16(v1)\n"
+      "    daddiu a0, s7, global\n"
+      "    lw a1, pair(s7)\n"
+      "    or a2, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function object object pair)";
+
+  // todo - will be changed by if fix.
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a0-0)\n"
+      "  (set! a3-0 (delete-car! (car gp-0) a1-0))\n"
+      "  (new 'global pair gp-0 a3-0)\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
