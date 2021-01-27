@@ -61,8 +61,8 @@ void Form::inline_forms(std::vector<goos::Object>& forms, const Env& env) const 
 }
 
 void Form::apply(const std::function<void(FormElement*)>& f) {
-  for (auto& x : m_elements) {
-    x->apply(f);
+  for (size_t i = 0; i < m_elements.size(); i++) {
+    m_elements.at(i)->apply(f);
   }
 }
 

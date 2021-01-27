@@ -631,3 +631,361 @@ TEST_F(FormRegressionTest, ExprRef) {
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
+
+TEST_F(FormRegressionTest, ExprPairMethod4) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L266:\n"
+      "    daddiu v1, s7, -10\n"
+      "    bne a0, v1, L267\n"
+      "    sll r0, r0, 0\n"
+
+      "    addiu v0, r0, 0\n"
+      "    beq r0, r0, L271\n"
+      "    sll r0, r0, 0\n"
+
+      "L267:\n"
+      "    lw v1, 2(a0)\n"
+      "    addiu v0, r0, 1\n"
+      "    beq r0, r0, L269\n"
+      "    sll r0, r0, 0\n"
+
+      "L268:\n"
+      "    daddiu v0, v0, 1\n"
+      "    lw v1, 2(v1)\n"
+
+      "L269:\n"
+      "    daddiu a0, s7, -10\n"
+      "    dsubu a0, v1, a0\n"
+      "    daddiu a1, s7, 8\n"
+      "    movz a1, s7, a0\n"
+      "    beql s7, a1, L270\n"
+      "    or a0, a1, r0\n"
+
+      "    dsll32 a0, v1, 30\n"
+      "    slt a1, a0, r0\n"
+      "    daddiu a0, s7, 8\n"
+      "    movz a0, s7, a1\n"
+
+      "L270:\n"
+      "    bne s7, a0, L268\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+
+      "L271:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0\n";
+  std::string type = "(function pair int)";
+
+  std::string expected =
+      "(begin\n"
+      "  (cond\n"
+      "   ((= a0-0 '()) (set! v0-0 0))\n"
+      "   (else\n"
+      "    (set! v1-1 (-> a0-0 cdr))\n"
+      "    (set! v0-0 1)\n"
+      "    (while\n"
+      "     (truthy\n"
+      "      (and (truthy (!= v1-1 '())) "
+      "                   (<0.si (sll (the-as uint v1-1) 62)))\n"
+      "      )\n"
+      "     (set! v0-0 (+ v0-0 1))\n"
+      "     (set! v1-1 (cdr v1-1))\n"
+      "     )\n"
+      "    (set! v1-2 '#f)\n"
+      "    )\n"
+      "   )\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
+
+TEST_F(FormRegressionTest, ExprPairMethod5) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lw v1, pair(s7)\n"
+      "    lhu v0, 8(v1)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function pair uint)";
+
+  std::string expected = "(-> pair size)";
+  test_with_expr(func, type, expected, false, "");
+}
+
+TEST_F(FormRegressionTest, ExprLast) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "    or v0, a0, r0\n"
+      "    beq r0, r0, L264\n"
+      "    sll r0, r0, 0\n"
+
+      "L263:\n"
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n"
+      "    lw v0, 2(v0)\n"
+
+      "L264:\n"
+      "    daddiu v1, s7, -10\n"
+      "    lw a0, 2(v0)\n"
+      "    bne a0, v1, L263\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function object object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v0-0 a0-0)\n"
+      "  (while (!= (cdr v0-0) '())"
+      "     (nop!)\n"
+      "     (nop!)\n"
+      "     (set! v0-0 (cdr v0-0)))\n"
+      "  (set! v1-1 '#f)\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
+
+TEST_F(FormRegressionTest, ExprMember) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L257:\n"
+      "    or v1, a1, r0\n"
+      "    beq r0, r0, L259\n"
+      "    sll r0, r0, 0\n"
+
+      "L258:\n"
+      "    lw v1, 2(v1)\n"
+
+      "L259:\n"
+      "    daddiu a1, s7, -10\n"
+      "    dsubu a1, v1, a1\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, a1\n"
+      "    bnel s7, a2, L260\n"
+      "    or a1, a2, r0\n"
+
+      "    lw a1, -2(v1)\n"
+      "    dsubu a2, a1, a0\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a2\n"
+
+      "L260:\n"
+      "    beq s7, a1, L258\n"
+      "    sll r0, r0, 0\n"
+
+      "    or a0, s7, r0\n"
+      "    daddiu a0, s7, -10\n"
+      "    beq v1, a0, L261\n"
+      "    or v0, s7, r0\n"
+
+      "    or v0, v1, r0\n"
+
+      "L261:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function object object object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 a1-0)\n"
+      "  (while\n"
+      "   (not (or (truthy (= v1-0 '())) (= (car v1-0) a0-0)))\n"
+      "   (set! v1-0 (cdr v1-0))\n"
+      "   )\n"
+      "  (set! a0-1 '#f)\n"
+      "  (if (!= v1-0 '()) v1-0)\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
+
+TEST_F(FormRegressionTest, ExprNmember) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -48\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s5, 16(sp)\n"
+      "    sq gp, 32(sp)\n"
+
+      "    or s5, a0, r0\n"
+      "    or gp, a1, r0\n"
+      "    beq r0, r0, L254\n"
+      "    sll r0, r0, 0\n"
+
+      "L253:\n"
+      "    lw gp, 2(gp)\n"
+
+      "L254:\n"
+      "    daddiu v1, s7, -10\n"
+      "    dsubu v1, gp, v1\n"
+      "    daddiu a0, s7, 8\n"
+      "    movn a0, s7, v1\n"
+      "    bnel s7, a0, L255\n"
+      "    or v1, a0, r0\n"
+
+      "    lw t9, name=(s7)\n"
+      "    lw a0, -2(gp)\n"
+      "    or a1, s5, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+
+      "L255:\n"
+      "    beq s7, v1, L253\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    daddiu v1, s7, -10\n"
+      "    beq gp, v1, L256\n"
+      "    or v0, s7, r0\n"
+
+      "    or v0, gp, r0\n"
+
+      "L256:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 32(sp)\n"
+      "    lq s5, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 48";
+  std::string type = "(function basic object object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! s5-0 a0-0)\n"
+      "  (set! gp-0 a1-0)\n"
+      "  (while\n"
+      "   (not (or (truthy (= gp-0 '())) (name= (car gp-0) s5-0)))\n"
+      "   (set! gp-0 (cdr gp-0))\n"
+      "   )\n"
+      "  (set! v1-2 '#f)\n"
+      "  (if (!= gp-0 '()) gp-0)\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
+
+TEST_F(FormRegressionTest, ExprAssoc) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    or v1, a1, r0\n"
+      "    beq r0, r0, L249\n"
+      "    sll r0, r0, 0\n"
+      "L248:\n"
+      "    lw v1, 2(v1)\n"
+
+      "L249:\n"
+      "    daddiu a1, s7, -10\n"
+      "    dsubu a1, v1, a1\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, a1\n"
+      "    bnel s7, a2, L250\n"
+      "    or a1, a2, r0\n"
+
+      "    lw a1, -2(v1)\n"
+      "    lw a1, -2(a1)\n"
+      "    dsubu a2, a1, a0\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a2\n"
+
+      "L250:\n"
+      "    beq s7, a1, L248\n"
+      "    sll r0, r0, 0\n"
+
+      "    or a0, s7, r0\n"
+      "    daddiu a0, s7, -10\n"
+      "    beq v1, a0, L251\n"
+      "    or v0, s7, r0\n"
+
+      "    lw v0, -2(v1)\n"
+
+      "L251:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function object object object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 a1-0)\n"
+      "  (while\n"
+      "   (not (or (truthy (= v1-0 '())) (= (car (car v1-0)) a0-0)))\n"
+      "   (set! v1-0 (cdr v1-0))\n"
+      "   )\n"
+      "  (set! a0-1 '#f)\n"
+      "  (if (!= v1-0 '()) (car v1-0))\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}
+
+TEST_F(FormRegressionTest, ExprAssoce) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+
+      "    or v1, a1, r0\n"
+      "    beq r0, r0, L244\n"
+      "    sll r0, r0, 0\n"
+
+      "L243:\n"
+      "    lw v1, 2(v1)\n"
+
+      "L244:\n"
+      "    daddiu a1, s7, -10\n"
+      "    dsubu a1, v1, a1\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, a1\n"
+      "    bnel s7, a2, L245\n"
+      "    or a1, a2, r0\n"
+
+      "    lw a1, -2(v1)\n"
+      "    lw a1, -2(a1)\n"
+      "    dsubu a1, a1, a0\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, a1\n"
+      "    bnel s7, a2, L245\n"
+      "    or a1, a2, r0\n"
+
+      "    lw a1, -2(v1)\n"
+      "    lw a1, -2(a1)\n"
+      "    daddiu a2, s7, else\n"
+      "    dsubu a2, a1, a2\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a2\n"
+
+      "L245:\n"
+      "    beq s7, a1, L243\n"
+      "    sll r0, r0, 0\n"
+
+      "    or a0, s7, r0\n"
+      "    daddiu a0, s7, -10\n"
+      "    beq v1, a0, L246\n"
+      "    or v0, s7, r0\n"
+
+      "    lw v0, -2(v1)\n"
+
+      "L246:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function object object object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 a1-0)\n"
+      "  (while\n"
+      "   (not\n"
+      "    (or\n"
+      "     (truthy (= v1-0 '()))\n"
+      "     (truthy (= (car (car v1-0)) a0-0))\n"
+      "     (= (car (car v1-0)) 'else)\n"
+      "     )\n"
+      "    )\n"
+      "   (set! v1-0 (cdr v1-0))\n"
+      "   )\n"
+      "  (set! a0-1 '#f)\n"
+      "  (if (!= v1-0 '()) (car v1-0))\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}

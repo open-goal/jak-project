@@ -128,7 +128,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   } else if (arg.is_static_addr()) {
     // for now, do nothing.
     result->push_back(this);
-  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int()) {
+  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
     result->push_back(this);
   } else {
     throw std::runtime_error(fmt::format(
@@ -539,6 +539,35 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
       }
 
       std::vector<FormElement*> new_entries;
+      if (form == entry.body && used_as_value) {
+        new_entries = temp_stack.rewrite_to_get_var(pool, final_destination, env);
+      } else {
+        new_entries = temp_stack.rewrite(pool);
+      }
+
+      form->clear();
+      for (auto e : new_entries) {
+        form->push_back(e);
+      }
+    }
+  }
+
+  if (used_as_value) {
+    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true);
+  } else {
+    stack.push_form_element(this, true);
+  }
+}
+
+void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto& entry : entries) {
+    for (auto form : {entry.condition, entry.body}) {
+      FormStack temp_stack;
+      for (auto& elt : form->elts()) {
+        elt->push_to_stack(env, pool, temp_stack);
+      }
+
+      std::vector<FormElement*> new_entries;
       if (form == entry.body) {
         new_entries = temp_stack.rewrite(pool);
       } else {
@@ -550,6 +579,18 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         form->push_back(e);
       }
     }
+  }
+
+  FormStack temp_stack;
+  for (auto& elt : else_ir->elts()) {
+    elt->push_to_stack(env, pool, temp_stack);
+  }
+
+  auto new_entries = temp_stack.rewrite(pool);
+
+  else_ir->clear();
+  for (auto e : new_entries) {
+    else_ir->push_back(e);
   }
 
   stack.push_form_element(this, true);
@@ -613,10 +654,13 @@ void ConditionElement::update_from_stack(const Env&,
                                          std::vector<FormElement*>* result) {
   std::vector<Form*> source_forms;
 
-  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+  //  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+  for (int i = get_condition_num_args(m_kind); i-- > 0;) {
     source_forms.push_back(update_var_from_stack_to_form(m_src[i]->var().idx(), m_src[i]->var(),
                                                          m_consumed, pool, stack));
   }
+
+  std::reverse(source_forms.begin(), source_forms.end());
 
   result->push_back(
       pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms));

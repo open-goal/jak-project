@@ -363,6 +363,7 @@ class CondWithElseElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!
@@ -461,7 +462,7 @@ class CondNoElseElement : public FormElement {
     FormElement* original_condition_branch = nullptr;
     bool cleaned = false;
   };
-  Register final_destination;
+  Variable final_destination;
   bool used_as_value = false;
   std::vector<Entry> entries;
   explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
