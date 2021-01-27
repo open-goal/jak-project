@@ -128,7 +128,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   } else if (arg.is_static_addr()) {
     // for now, do nothing.
     result->push_back(this);
-  } else if (arg.is_sym_ptr() || arg.is_sym_val()) {
+  } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int()) {
     result->push_back(this);
   } else {
     throw std::runtime_error(fmt::format(
@@ -512,6 +512,21 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   stack.push_form_element(this, true);
 }
 
+void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto form : {condition, body}) {
+    FormStack temp_stack;
+    for (auto& entry : form->elts()) {
+      entry->push_to_stack(env, pool, temp_stack);
+    }
+    auto new_entries = temp_stack.rewrite(pool);
+    form->clear();
+    for (auto e : new_entries) {
+      form->push_back(e);
+    }
+  }
+  stack.push_form_element(this, true);
+}
+
 ///////////////////
 // CondNoElseElement
 ///////////////////
@@ -623,13 +638,35 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_form_element(this, true);
 }
 
-void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
+void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack) {
   auto as_end = dynamic_cast<const FunctionEndOp*>(m_op);
   if (as_end) {
     // we don't want to push this to the stack (for now at least)
     return;
   }
+
+  auto as_special = dynamic_cast<const SpecialOp*>(m_op);
+  if (as_special) {
+    if (as_special->kind() == SpecialOp::Kind::NOP) {
+      stack.push_form_element(this, true);
+      return;
+    }
+  }
   throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
+}
+
+void GenericElement::update_from_stack(const Env& env,
+                                       FormPool& pool,
+                                       FormStack& stack,
+                                       std::vector<FormElement*>* result) {
+  if (m_head.m_kind == GenericOperator::Kind::FUNCTION_EXPR) {
+    m_head.m_function->update_children_from_stack(env, pool, stack);
+  }
+
+  for (auto& x : m_elts) {
+    x->update_children_from_stack(env, pool, stack);
+  }
+  result->push_back(this);
 }
 
 ////////////////////////

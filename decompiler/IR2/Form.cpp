@@ -874,6 +874,10 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognot";
     case FixedOperatorKind::SLL:
       return "sll";
+    case FixedOperatorKind::CAR:
+      return "car";
+    case FixedOperatorKind::CDR:
+      return "cdr";
     default:
       assert(false);
   }

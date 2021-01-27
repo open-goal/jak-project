@@ -113,6 +113,28 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
 
       // todo, try as pair
+      if (m_kind == Kind::SIGNED && m_size == 4 &&
+          (input_type.typespec() == TypeSpec("object") ||
+           input_type.typespec() == TypeSpec("pair"))) {
+        // these rules are of course not always correct or the most specific, but it's the best
+        // we can do.
+        if (ro.offset == 2) {
+          auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          auto load = pool.alloc_single_element_form<GenericElement>(
+              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), source);
+          // cdr = another pair.
+          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        } else if (ro.offset == -2) {
+          // car = some object.
+          auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          auto load = pool.alloc_single_element_form<GenericElement>(
+              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), source);
+          // cdr = another pair.
+          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        }
+      }
     }
   }
 

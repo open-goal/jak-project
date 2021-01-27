@@ -588,3 +588,46 @@ TEST_F(FormRegressionTest, ExprFindParentMethod) {
       "  )";
   test_with_expr(func, type, expected, false, "");
 }
+
+TEST_F(FormRegressionTest, ExprRef) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L272:\n"
+      "    addiu v1, r0, 0\n"
+      "    beq r0, r0, L274\n"
+      "    sll r0, r0, 0\n"
+
+      "L273:\n"
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n"
+      "    lw a0, 2(a0)\n"
+      "    daddiu v1, v1, 1\n"
+
+      "L274:\n"
+      "    slt a2, v1, a1\n"
+      "    bne a2, r0, L273\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    lw v0, -2(a0)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function object int object)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 0)\n"
+      "  (while\n"
+      "   (<.si v1-0 a1-0)\n"
+      "   (nop!)\n"
+      "   (nop!)\n"
+      "   (set! a0-0 (cdr a0-0))\n"
+      "   (set! v1-0 (+ v1-0 1))\n"
+      "   )\n"
+      "  (set! v1-1 '#f)\n"
+      "  (set! v1-2 '#f)\n"
+      "  (car a0-0)\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "");
+}

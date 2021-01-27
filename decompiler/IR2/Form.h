@@ -394,6 +394,7 @@ class WhileElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   Form* condition = nullptr;
   Form* body = nullptr;
   bool cleaned = false;
@@ -581,6 +582,7 @@ class GenericOperator {
   bool operator!=(const GenericOperator& other) const;
 
  private:
+  friend class GenericElement;
   Kind m_kind = Kind::INVALID;
   IR2_Condition::Kind m_condition_kind = IR2_Condition::Kind::INVALID;
   FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
@@ -598,6 +600,10 @@ class GenericElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
   const GenericOperator& op() const { return m_head; }
   const std::vector<Form*>& elts() const { return m_elts; }
 
