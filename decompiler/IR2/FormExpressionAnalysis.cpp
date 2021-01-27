@@ -490,8 +490,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
   auto temp_form = pool.alloc_single_form(nullptr, new_form);
   auto match_result = match(matcher, temp_form);
   if (match_result.matched) {
-    auto& type_1 = match_result.maps.strings.at(type_for_method);
-    auto& name = match_result.maps.strings.at(method_name);
+    auto type_1 = match_result.maps.strings.at(type_for_method);
+    auto name = match_result.maps.strings.at(method_name);
 
     if (name == "new") {
       constexpr int allocation = 2;
@@ -501,11 +501,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
       matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher),
                                       {alloc_matcher, type_arg_matcher});
       match_result = match(matcher, temp_form);
-      auto& alloc = match_result.maps.strings.at(allocation);
+      auto alloc = match_result.maps.strings.at(allocation);
       if (alloc != "global") {
         throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
       }
-      auto& type_2 = match_result.maps.strings.at(type_for_arg);
+      auto type_2 = match_result.maps.strings.at(type_for_arg);
       if (type_1 != type_2) {
         throw std::runtime_error(
             fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
