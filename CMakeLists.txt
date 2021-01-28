@@ -76,6 +76,9 @@ add_subdirectory(game)
 # build the compiler
 add_subdirectory(goalc)
 
+# build standalone tools
+add_subdirectory(tools)
+
 # build the gtest libraries
 add_subdirectory(third-party/googletest)
 
