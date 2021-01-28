@@ -1,0 +1,37 @@
+#include <cstdio>
+#include "common/versions.h"
+#include "common/util/FileUtil.h"
+#include "common/util/DgoReader.h"
+
+int main(int argc, char** argv) {
+  printf("OpenGOAL version %d.%d\n", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
+  printf("DGO Unpacking Tool\n");
+
+  if (argc < 3) {
+    printf("usage: dgo_unpacker <output path> <dgo files>\n");
+    return 1;
+  }
+
+  std::string out_path = argv[1];
+
+  for (int i = 2; i < argc; i++) {
+    std::string file_name = argv[i];
+    std::string base = file_util::base_name(file_name);
+    printf("Unpacking %s\n", base.c_str());
+    // read the file
+    auto data = file_util::read_binary_file(file_name);
+    // read as a DGO
+    auto dgo = DgoReader(base, data);
+    // write dgo description
+    file_util::write_text_file(file_util::combine_path(out_path, base + ".txt"),
+                               dgo.description_as_json());
+    // write files:
+    for (auto& entry : dgo.entries()) {
+      file_util::write_binary_file(file_util::combine_path(out_path, entry.unique_name),
+                                   (void*)entry.data.data(), entry.data.size());
+    }
+  }
+
+  printf("Done\n");
+  return 0;
+}

@@ -14,6 +14,8 @@ add_library(common
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
+        util/dgo_util.cpp
+        util/DgoReader.cpp
         util/DgoWriter.cpp
         util/FileUtil.cpp
         util/Timer.cpp

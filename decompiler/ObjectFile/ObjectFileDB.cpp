@@ -10,6 +10,8 @@
 #include <set>
 #include <cstring>
 #include <map>
+#include "common/link_types.h"
+#include "common/util/dgo_util.h"
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
@@ -180,62 +182,6 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
   }
 }
 
-// Header for a DGO file
-struct DgoHeader {
-  uint32_t size;
-  char name[60];
-};
-
-namespace {
-/*!
- * Assert false if the char[] has non-null data after the null terminated string.
- * Used to sanity check the sizes of strings in DGO/object file headers.
- */
-void assert_string_empty_after(const char* str, int size) {
-  auto ptr = str;
-  while (*ptr)
-    ptr++;
-  while (ptr - str < size) {
-    assert(!*ptr);
-    ptr++;
-  }
-}
-}  // namespace
-
-namespace {
-std::string get_object_file_name(const std::string& original_name, uint8_t* data, int size) {
-  const char art_group_text[] =
-      "/src/next/data/art-group6/";  // todo, this may change in other games
-  const char suffix[] = "-ag.go";
-
-  int len = int(strlen(art_group_text));
-  for (int start = 0; start < size; start++) {
-    bool failed = false;
-    for (int i = 0; i < len; i++) {
-      if (start + i >= size || data[start + i] != art_group_text[i]) {
-        failed = true;
-        break;
-      }
-    }
-
-    if (!failed) {
-      for (int i = 0; i < int(original_name.length()); i++) {
-        if (start + len + i >= size || data[start + len + i] != original_name[i]) {
-          assert(false);
-        }
-      }
-
-      assert(int(strlen(suffix)) + start + len + int(original_name.length()) < size);
-      assert(!memcmp(data + start + len + original_name.length(), suffix, strlen(suffix) + 1));
-
-      return original_name + "-ag";
-    }
-  }
-
-  return original_name;
-}
-}  // namespace
-
 constexpr int MAX_CHUNK_SIZE = 0x8000;
 /*!
  * Load the objects stored in the given DGO into the ObjectFileDB
@@ -303,9 +249,9 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
   assert_string_empty_after(header.name, 60);
 
   // get all obj files...
-  for (uint32_t i = 0; i < header.size; i++) {
+  for (uint32_t i = 0; i < header.object_count; i++) {
     auto obj_header = reader.read<DgoHeader>();
-    assert(reader.bytes_left() >= obj_header.size);
+    assert(reader.bytes_left() >= obj_header.object_count);
     assert_string_empty_after(obj_header.name, 60);
 
     if (std::string(obj_header.name).find("-ag") != std::string::npos) {
@@ -316,10 +262,10 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
       assert(false);
     }
 
-    auto name = get_object_file_name(obj_header.name, reader.here(), obj_header.size);
+    auto name = get_object_file_name(obj_header.name, reader.here(), obj_header.object_count);
 
-    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.size, dgo_base_name);
-    reader.ffwd(obj_header.size);
+    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name);
+    reader.ffwd(obj_header.object_count);
   }
 
   // check we're at the end
