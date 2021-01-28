@@ -1,6 +1,8 @@
 #include <cassert>
 #include <cstring>
 #include "dgo_util.h"
+#include "common/versions.h"
+#include "third-party/fmt/core.h"
 
 /*!
  * Assert false if the char[] has non-null data after the null terminated string.
@@ -17,11 +19,12 @@ void assert_string_empty_after(const char* str, int size) {
 }
 
 std::string get_object_file_name(const std::string& original_name, u8* data, int size) {
-  const char art_group_text[] =
-      "/src/next/data/art-group6/";  // todo, this may change in other games
-  const char suffix[] = "-ag.go";
+  const std::string art_group_text =
+      fmt::format("/src/next/data/art-group{}/",
+                  versions::ART_FILE_VERSION);  // todo, this may change in other games
+  const std::string suffix = "-ag.go";
 
-  int len = int(strlen(art_group_text));
+  int len = int(art_group_text.length());
   for (int start = 0; start < size; start++) {
     bool failed = false;
     for (int i = 0; i < len; i++) {
@@ -38,8 +41,9 @@ std::string get_object_file_name(const std::string& original_name, u8* data, int
         }
       }
 
-      assert(int(strlen(suffix)) + start + len + int(original_name.length()) < size);
-      assert(!memcmp(data + start + len + original_name.length(), suffix, strlen(suffix) + 1));
+      assert(int(suffix.length()) + start + len + int(original_name.length()) < size);
+      assert(
+          !memcmp(data + start + len + original_name.length(), suffix.data(), suffix.length() + 1));
 
       return original_name + "-ag";
     }
