@@ -187,6 +187,10 @@ class SetVarElement : public FormElement {
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }

@@ -1622,3 +1622,123 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
       "  )";
   test_with_expr(func, type, expected, true, "inline-array-class");
 }
+
+TEST_F(FormRegressionTest, ExprInlineArrayMethod4) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lw v0, 0(a0)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function inline-array-class int)";
+
+  std::string expected = "(-> a0-0 length)";
+  test_with_expr(func, type, expected, true, "inline-array-class");
+}
+
+TEST_F(FormRegressionTest, ExprInlineArrayMethod5) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lwu v1, -4(a0)\n"
+      "    lhu v1, 8(v1)\n"
+      "    lw a1, 4(a0)\n"
+      "    lwu a0, -4(a0)\n"
+      "    lhu a0, 12(a0)\n"
+      "    mult3 a0, a1, a0\n"
+      "    daddu v0, v1, a0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function inline-array-class int)";
+
+  std::string expected =
+      "(the-as int\n"
+      "  (+ (-> a0-0 type size)\n"
+      "     (the-as uint\n"
+      "       (* (-> a0-0 allocated-length)"
+      "          (the-as int (-> a0-0 type heap-base)))\n"
+      "    )\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "inline-array-class");
+}
+
+TEST_F(FormRegressionTest, ExprArrayMethod0) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -112\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s1, 16(sp)\n"
+      "    sq s2, 32(sp)\n"
+      "    sq s3, 48(sp)\n"
+      "    sq s4, 64(sp)\n"
+      "    sq s5, 80(sp)\n"
+      "    sq gp, 96(sp)\n"
+
+      "    or gp, a2, r0\n"
+      "    or s5, a3, r0\n"
+      "    lw v1, object(s7)\n"
+      "    lwu s4, 16(v1)\n"
+      "    or s3, a0, r0\n"
+      "    or s2, a1, r0\n"
+      "    lhu s1, 8(a1)\n"
+      "    lw t9, type-type?(s7)\n"
+      "    or a0, gp, r0\n"
+      "    lw a1, number(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq s7, v0, L194\n"
+      "    sll r0, r0, 0\n"
+
+      "    lhu v1, 8(gp)\n"
+      "    beq r0, r0, L195\n"
+      "    sll r0, r0, 0\n"
+
+      "L194:\n"
+      "    addiu v1, r0, 4\n"
+
+      "L195:\n"
+      "    mult3 v1, s5, v1\n"
+      "    daddu a2, s1, v1\n"
+      "    or t9, s4, r0\n"
+      "    or a0, s3, r0\n"
+      "    or a1, s2, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    sw s5, 4(v0)\n"
+      "    sw s5, 0(v0)\n"
+      "    sw gp, 8(v0)\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 96(sp)\n"
+      "    lq s5, 80(sp)\n"
+      "    lq s4, 64(sp)\n"
+      "    lq s3, 48(sp)\n"
+      "    lq s2, 32(sp)\n"
+      "    lq s1, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 112";
+  std::string type = "(function symbol type type int array)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a2-0)\n"
+      "  (set! s5-0 a3-0)\n"
+      "  (set!\n"
+      "   v0-1\n"
+      "   (object-new\n"
+      "    a0-0\n"
+      "    a1-0\n"
+      "    (+\n"
+      "     (-> a1-0 size)\n"
+      "     (the-as uint (* s5-0 (if (type-type? gp-0 number) (-> gp-0 size) 4)))\n"
+      "     )\n"
+      "    )\n"
+      "   )\n"
+      "  (set! (-> v0-1 allocated-length) s5-0)\n"
+      "  (set! (-> v0-1 length) s5-0)\n"
+      "  (set! (-> v0-1 content-type) gp-0)\n"
+      "  v0-1\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "array");
+}
+

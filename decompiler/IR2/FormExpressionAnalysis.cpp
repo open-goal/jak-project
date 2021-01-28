@@ -1,6 +1,7 @@
 #include "Form.h"
 #include "FormStack.h"
 #include "GenericElementMatcher.h"
+#include "common/goos/PrettyPrinter.h"
 
 /*
  * TODO
@@ -231,8 +232,8 @@ void SimpleExpressionElement::update_from_stack_mult_si(const Env& env,
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
 
-  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
   auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
 
   if (!arg0_i) {
     arg0 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg0);
@@ -255,8 +256,8 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
 
-  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
   auto arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
+  auto arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
 
   if (!arg0_i) {
     arg0 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg0);
@@ -284,7 +285,6 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
     assert(m_expr.get_arg(1).is_int());
   }
 
-  Form* arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
   Form* arg1;
   if (arg1_reg) {
     arg1 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(1).var(), env, pool, stack);
@@ -292,6 +292,7 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
     arg1 = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1));
   }
 
+  Form* arg0 = update_var_from_stack_to_form(m_my_idx, m_expr.get_arg(0).var(), env, pool, stack);
   if (!arg0_u) {
     arg0 = pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("uint"), arg0);
   }
@@ -426,6 +427,14 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_value_to_reg(m_dst, m_src, true);
 }
 
+void SetVarElement::update_from_stack(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result) {
+  m_src->update_children_from_stack(env, pool, stack);
+  result->push_back(this);
+}
+
 void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   // todo - is the order here right?
   m_src->update_children_from_stack(env, pool, stack);
@@ -558,6 +567,13 @@ void DerefElement::update_from_stack(const Env& env,
                                      std::vector<FormElement*>* result) {
   // todo - update var tokens from stack?
   m_base->update_children_from_stack(env, pool, stack);
+  auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
+  if (as_deref) {
+    if (!m_is_addr_of && !as_deref->is_addr_of()) {
+      m_tokens.insert(m_tokens.begin(), as_deref->tokens().begin(), as_deref->tokens().end());
+      m_base = as_deref->m_base;
+    }
+  }
   result->push_back(this);
 }
 
@@ -694,6 +710,21 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   else_ir->clear();
   for (auto e : new_entries) {
     else_ir->push_back(e);
+  }
+
+  auto top_condition = entries.front().condition;
+  if (!top_condition->is_single_element()) {
+    auto real_condition = top_condition->back();
+    top_condition->pop_back();
+    for (auto x : top_condition->elts()) {
+      x->push_to_stack(env, pool, stack);
+      //      std::vector<FormElement*> result;
+      //      x->update_from_stack(env, pool, stack, &result);
+      //      for (auto y : result) {
+      //        stack.push_form_element(y, true);
+      //      }
+    }
+    top_condition->elts() = {real_condition};
   }
 
   if (rewrite_as_set) {
