@@ -1741,4 +1741,3 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
       "  )";
   test_with_expr(func, type, expected, true, "array");
 }
-
