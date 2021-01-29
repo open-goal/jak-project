@@ -1,5 +1,3 @@
-# TODO - probably a more cmakey way to do this
-
 set(GOALC_TEST_CASES
 		"goalc/all_goalc_template_tests.cpp"
 		goalc/test_debugger.cpp
