@@ -280,6 +280,7 @@ class Compiler {
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);
+	Val* compile_asm_fnop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_push(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env);

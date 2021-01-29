@@ -2009,6 +2009,13 @@ class IGen {
     return instr;
   }
 
+	static Instruction nop_vf() {
+    // FNOP
+    Instruction instr(0xd9);
+    instr.set_op2(0xd0);
+		return instr;
+  }
+
   // eventually...
   // sqrt
   // rsqrt

@@ -125,6 +125,18 @@ Val* Compiler::compile_asm_ret(const goos::Object& form, const goos::Object& res
   return get_none();
 }
 
+Val* Compiler::compile_asm_fnop(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  env->emit_ir<IR_AsmFNop>(color);
+  return get_none();
+}
+
 Val* Compiler::compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {{"color", {false, goos::ObjectType::SYMBOL}}});

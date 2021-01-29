@@ -1059,6 +1059,27 @@ void IR_AsmRet::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 ///////////////////////
+// AsmFNop
+///////////////////////
+
+IR_AsmFNop::IR_AsmFNop(bool use_coloring) : IR_Asm(use_coloring) {}
+
+std::string IR_AsmFNop::print() {
+  return fmt::format(".nop.vf{}", get_color_suffix_string());
+}
+
+RegAllocInstr IR_AsmFNop::to_rai() {
+  return {};
+}
+
+void IR_AsmFNop::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  (void)allocs;
+  gen->add_instr(IGen::nop_vf(), irec);
+}
+
+///////////////////////
 // AsmPush
 ///////////////////////
 

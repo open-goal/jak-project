@@ -15,6 +15,7 @@ static const std::unordered_map<
     goal_forms = {
         // inline asm
         {".ret", &Compiler::compile_asm_ret},
+				{".nop.vf", &Compiler::compile_asm_fnop},
         {".push", &Compiler::compile_asm_push},
         {".pop", &Compiler::compile_asm_pop},
         {"rlet", &Compiler::compile_rlet},

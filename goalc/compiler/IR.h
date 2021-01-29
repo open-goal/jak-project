@@ -452,6 +452,16 @@ class IR_AsmAdd : public IR_Asm {
   const RegVal* m_src = nullptr;
 };
 
+class IR_AsmFNop : public IR_Asm {
+ public:
+  IR_AsmFNop(bool use_coloring);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
 class IR_GetSymbolValueAsm : public IR_Asm {
  public:
   IR_GetSymbolValueAsm(bool use_coloring, const RegVal* dest, std::string sym_name, bool sext);
