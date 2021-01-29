@@ -75,9 +75,9 @@ class AtomicOp {
   TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
 
   int op_id() const { return m_my_idx; }
-  const std::vector<Register>& read_regs() { return m_read_regs; }
-  const std::vector<Register>& write_regs() { return m_write_regs; }
-  const std::vector<Register>& clobber_regs() { return m_clobber_regs; }
+  const std::vector<Register>& read_regs() const { return m_read_regs; }
+  const std::vector<Register>& write_regs() const { return m_write_regs; }
+  const std::vector<Register>& clobber_regs() const { return m_clobber_regs; }
   void add_clobber_reg(Register r) { m_clobber_regs.push_back(r); }
   void clear_register_info() {
     m_read_regs.clear();
