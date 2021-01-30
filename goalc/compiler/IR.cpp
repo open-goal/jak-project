@@ -1073,8 +1073,8 @@ RegAllocInstr IR_AsmFNop::to_rai() {
 }
 
 void IR_AsmFNop::do_codegen(emitter::ObjectGenerator* gen,
-                           const AllocationResult& allocs,
-                           emitter::IR_Record irec) {
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
   (void)allocs;
   gen->add_instr(IGen::nop_vf(), irec);
 }
@@ -1313,6 +1313,9 @@ std::string IR_VFMath3Asm::print() {
     case Kind::ADD:
       return fmt::format(".add.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
                          m_src1->print(), m_src2->print());
+    case Kind::MUL:
+      return fmt::format(".mul.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print());
     default:
       assert(false);
   }
@@ -1344,6 +1347,9 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case Kind::ADD:
       gen->add_instr(IGen::add_vf(dst, src1, src2), irec);
+      break;
+    case Kind::MUL:
+      gen->add_instr(IGen::mul_vf(dst, src1, src2), irec);
       break;
     default:
       assert(false);

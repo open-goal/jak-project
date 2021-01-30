@@ -4,6 +4,8 @@
 
 #include <filesystem>
 
+// TODO - https://stackoverflow.com/a/26461698 so i can stop commenting out tests lol
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
 

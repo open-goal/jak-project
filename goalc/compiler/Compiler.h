@@ -293,6 +293,7 @@ class Compiler {
   Val* compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+	Val* compile_asm_mul_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms

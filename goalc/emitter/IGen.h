@@ -2162,15 +2162,6 @@ class IGen {
 
   // todo, rip relative loads and stores.
 
-  static Instruction mul_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
-    Instruction instr(0x59);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
-    return instr;
-  }
-
   static Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
     assert(dst.is_xmm());
     assert(src.is_xmm());
@@ -2216,7 +2207,16 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x58);
+    Instruction instr(0x58); // ADDPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+	static Instruction mul_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x59); // MULPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2226,7 +2226,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x0c);
+    Instruction instr(0x0c); // BLENDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
                                 src1.hw_id(), false, VexPrefix::P_66);
     instr.set(Imm(1, mask));

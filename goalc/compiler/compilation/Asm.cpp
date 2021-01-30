@@ -335,6 +335,10 @@ Val* Compiler::compile_asm_add_vf(const goos::Object& form, const goos::Object& 
   return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD, env);
 }
 
+Val* Compiler::compile_asm_mul_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL, env);
+}
+
 Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});

@@ -1,6 +1,7 @@
 import re
 import os
 import argparse
+import time
 
 parser = argparse.ArgumentParser('pygrep')
 parser.add_argument('-d', '--directory', type=str, required=True, help='root directory to recursively search')
@@ -15,19 +16,32 @@ search_terms = []
 with open(args.search_term_file, "r") as f:
   print("Initializing Search Term File")
   for line in f:
-    line = line.strip()
-    tokens = line.split(":")
-    search_terms.append({
-      "term": tokens[0],
-      "description": tokens[1]
-    })
-    summary_results[tokens[0].lower()] = 0
-    results[tokens[0].lower()] = []
+    token = line.strip()
+    # VU INSTRUCTION ADDITION. Appends all combinations of `dest` to replace `{DEST}`
+    vuDestCombinations = ["x", "xy", "xz", "xw", "xyz", "xyzw", "y", "yz", "yw", "yzw", "z", "zw", "w"]
+    if "{DEST}" in token:
+      for combination in vuDestCombinations:
+        tempToken = token.replace("{DEST}", combination)
+        search_terms.append({
+          "term": tempToken
+        })
+        summary_results[tempToken.lower()] = 0
+        results[tempToken.lower()] = []
+    else:
+      search_terms.append({
+        "term": token
+      })
+      summary_results[token.lower()] = 0
+      results[token.lower()] = []
 
-for search_term in search_terms:
+print("Searching for {} tokens...".format(len(search_terms)))
+
+totalTimeStart = time.time()
+for index, search_term in enumerate(search_terms):
+  start = time.time()
   term = search_term["term"].lower()
-  print("Searching for - {}".format(term))
-  pattern = re.compile(term)
+  print("[{:.2f}%] - Searching for - {}...".format((index/len(search_terms) * 100), term), end="")
+  pattern = re.compile(re.escape(term) + "\s+")
   for path, _, files in os.walk(args.directory):
     for fn in files:
       filepath = os.path.join(path, fn)
@@ -40,6 +54,8 @@ for search_term in search_terms:
                     line)
             summary_results[term] = summary_results[term] + 1
             results[term].append(result.strip())
+  print("Took {:.2f} seconds, Found - {} occurences.".format(time.time() - start, summary_results[term]))
+print("Took {} seconds in total".format(time.time() - totalTimeStart))
 
 if os.path.exists(args.output_file):
   os.remove(args.output_file)

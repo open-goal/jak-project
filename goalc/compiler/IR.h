@@ -506,7 +506,7 @@ class IR_RegSetAsm : public IR_Asm {
 
 class IR_VFMath3Asm : public IR_Asm {
  public:
-  enum class Kind { XOR, SUB, ADD };
+  enum class Kind { XOR, SUB, ADD, MUL };
   IR_VFMath3Asm(bool use_color,
                 const RegVal* dst,
                 const RegVal* src1,
