@@ -15,7 +15,7 @@ static const std::unordered_map<
     goal_forms = {
         // inline asm
         {".ret", &Compiler::compile_asm_ret},
-				{".nop.vf", &Compiler::compile_asm_fnop},
+        {".nop.vf", &Compiler::compile_asm_fnop},
         {".push", &Compiler::compile_asm_push},
         {".pop", &Compiler::compile_asm_pop},
         {"rlet", &Compiler::compile_rlet},
@@ -27,9 +27,12 @@ static const std::unordered_map<
         {".lvf", &Compiler::compile_asm_lvf},
         {".svf", &Compiler::compile_asm_svf},
         {".xor.vf", &Compiler::compile_asm_xor_vf},
+        // TODO - Readability wise, it would probably be nice to have all the varients like
+        // '.sub.xyzw.vf' and so on, but it's not required at this point and needs to be done in a
+        // clever way to avoid lots of duplication
         {".sub.vf", &Compiler::compile_asm_sub_vf},
         {".add.vf", &Compiler::compile_asm_add_vf},
-				{".mul.vf", &Compiler::compile_asm_mul_vf},
+        {".mul.vf", &Compiler::compile_asm_mul_vf},
         {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         // BLOCK FORMS

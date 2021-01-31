@@ -1295,27 +1295,30 @@ void IR_RegSetAsm::do_codegen(emitter::ObjectGenerator* gen,
 // AsmVF3
 ///////////////////////
 
+// TODO - make a varient that doesn't take a mask
+
 IR_VFMath3Asm::IR_VFMath3Asm(bool use_color,
                              const RegVal* dst,
                              const RegVal* src1,
                              const RegVal* src2,
+                             u8 mask,
                              Kind kind)
-    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_kind(kind) {}
+    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_mask(mask), m_kind(kind) {}
 
 std::string IR_VFMath3Asm::print() {
   switch (m_kind) {
     case Kind::XOR:
-      return fmt::format(".xor.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      return fmt::format(".xor.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print(), m_mask);
     case Kind::SUB:
-      return fmt::format(".sub.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      return fmt::format(".sub.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print(), m_mask);
     case Kind::ADD:
-      return fmt::format(".add.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      return fmt::format(".add.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print(), m_mask);
     case Kind::MUL:
-      return fmt::format(".mul.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      return fmt::format(".mul.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                         m_src1->print(), m_src2->print(), m_mask);
     default:
       assert(false);
   }

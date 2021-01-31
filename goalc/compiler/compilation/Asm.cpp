@@ -377,7 +377,8 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
   }
 
   if (mask < 0 || mask > 15) {
-    throw_compiler_error(form, "The value {} is out of range for a blend mask.", mask);
+    throw_compiler_error(form, "The value {} is out of range for a blend mask (0-15 inclusive).",
+                         mask);
   }
   env->emit_ir<IR_BlendVF>(color, dest, src1, src2, mask);
   return get_none();
@@ -388,7 +389,7 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
                                     IR_VFMath3Asm::Kind kind,
                                     Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  va_check(form, args, {{}, {}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
   bool color = true;
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
@@ -415,7 +416,27 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
         src2->print());
   }
 
-  env->emit_ir<IR_VFMath3Asm>(color, dest, src1, src2, kind);
+  int64_t mask;
+  if (!try_getting_constant_integer(args.unnamed.at(3), &mask, env)) {
+    throw_compiler_error(
+        form,
+        "The value {} is invalid for a destination mask, it could not be evaluated as a "
+        "constant integer.",
+        args.unnamed.at(3).print());
+  }
+
+  if (mask < 0 || mask > 15) {
+    throw_compiler_error(
+        form, "The value {} is out of range for a destination mask (0-15 inclusive).", mask);
+  }
+
+  auto temp_reg = env->make_vfr(dest->type());
+
+  // Perform the arithmetic operation on the two vectors into a temporary register
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, mask, kind);
+
+  // Blend the result back into the destination register using the mask
+  env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
 
   return get_none();
 }

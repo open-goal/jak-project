@@ -511,6 +511,7 @@ class IR_VFMath3Asm : public IR_Asm {
                 const RegVal* dst,
                 const RegVal* src1,
                 const RegVal* src2,
+                u8 mask,
                 Kind kind);
   std::string print() override;
   RegAllocInstr to_rai() override;
@@ -522,6 +523,7 @@ class IR_VFMath3Asm : public IR_Asm {
   const RegVal* m_dst = nullptr;
   const RegVal* m_src1 = nullptr;
   const RegVal* m_src2 = nullptr;
+  u8 m_mask = 0xff;
   Kind m_kind;
 };
 

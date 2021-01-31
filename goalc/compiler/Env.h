@@ -38,6 +38,7 @@ class Env {
   virtual std::unordered_map<std::string, Label>& get_label_map();
   RegVal* make_gpr(const TypeSpec& ts);
   RegVal* make_fpr(const TypeSpec& ts);
+  RegVal* make_vfr(const TypeSpec& ts);
   virtual ~Env() = default;
   Env* parent() { return m_parent; }
 
