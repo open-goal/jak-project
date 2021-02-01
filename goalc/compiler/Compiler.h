@@ -373,6 +373,7 @@ class Compiler {
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_inline(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Type
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);

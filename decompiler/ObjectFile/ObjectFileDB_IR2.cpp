@@ -387,7 +387,7 @@ void ObjectFileDB::ir2_build_expressions() {
     (void)segment_id;
     (void)data;
     total++;
-    if (func.ir2.top_form) {
+    if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
       attempted++;
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
@@ -441,6 +441,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
 
       if (func.ir2.print_debug_forms) {
         result += '\n';
+        result += "DEBUG OUTPUT BELOW THIS LINE:\n";
         result += func.ir2.debug_form_string;
         result += '\n';
       }

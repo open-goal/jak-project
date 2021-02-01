@@ -107,3 +107,4 @@
 - Accessing a constant field of an array now constant propagates the memory offset like field access and avoids a runtime multiply.
 - Fixed a bug where loading or storing a `vf` register from a memory location + constant offset would cause the compiler to throw an error.
 - Accessing array elements uses more efficient indexing for power-of-two element sizes.
+- Added a `local-vars` form for declaring a bunch of local variables for the decompiler.

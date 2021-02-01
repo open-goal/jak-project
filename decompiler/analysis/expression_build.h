@@ -7,6 +7,6 @@ class FormPool;
 class DecompilerTypeSystem;
 bool convert_to_expressions(Form* top_level_form,
                             FormPool& pool,
-                            const Function& f,
+                            Function& f,
                             const DecompilerTypeSystem& dts);
 }  // namespace decompiler

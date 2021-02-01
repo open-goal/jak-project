@@ -93,7 +93,7 @@ void clean_up_ifs(Form* top_level_form) {
 
 bool convert_to_expressions(Form* top_level_form,
                             FormPool& pool,
-                            const Function& f,
+                            Function& f,
                             const DecompilerTypeSystem& dts) {
   assert(top_level_form);
 
@@ -156,7 +156,9 @@ bool convert_to_expressions(Form* top_level_form,
     clean_up_ifs(top_level_form);
 
   } catch (std::exception& e) {
-    lg::warn("Expression building failed: {}", e.what());
+    std::string warning = fmt::format("Expression building failed: {}", e.what());
+    lg::warn(warning);
+    f.warnings.append(";; " + warning);
     return false;
   }
 

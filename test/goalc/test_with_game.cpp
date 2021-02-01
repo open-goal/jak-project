@@ -365,6 +365,11 @@ TEST_F(WithGameTests, BoxedArrayIndex) {
   runner.run_static_test(env, testCategory, "test-boxed-array-index.gc", {"18\n0\n"});
 }
 
+TEST_F(WithGameTests, LocalVars) {
+  runner.run_static_test(env, testCategory, "test-local-vars.gc",
+                         {"y is \"test\", x is 12, z is 3.2000\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

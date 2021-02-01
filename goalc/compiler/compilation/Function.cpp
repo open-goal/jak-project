@@ -64,6 +64,44 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
   return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
 }
 
+Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+
+  for_each_in_list(rest, [&](const goos::Object& o) {
+    if (o.is_symbol()) {
+      // if it has no type, assume object.
+      auto name = symbol_string(o);
+      if (fe->params.find(name) != fe->params.end()) {
+        throw_compiler_error(form, "Cannot declare a local named {}, this already exists.", name);
+      }
+      auto ireg = fe->make_ireg(m_ts.make_typespec("object"), RegClass::GPR_64);
+      ireg->mark_as_settable();
+      fe->params[name] = ireg;
+    } else {
+      auto param_args = get_va(o, o);
+      va_check(o, param_args, {goos::ObjectType::SYMBOL, {}}, {});
+      auto name = symbol_string(param_args.unnamed.at(0));
+      auto type = parse_typespec(param_args.unnamed.at(1));
+
+      if (fe->params.find(name) != fe->params.end()) {
+        throw_compiler_error(form, "Cannot declare a local named {}, this already exists.", name);
+      }
+
+      if (type == TypeSpec("float")) {
+        auto ireg = fe->make_ireg(type, RegClass::FLOAT);
+        ireg->mark_as_settable();
+        fe->params[name] = ireg;
+      } else {
+        auto ireg = fe->make_ireg(type, RegClass::GPR_64);
+        ireg->mark_as_settable();
+        fe->params[name] = ireg;
+      }
+    }
+  });
+
+  return get_none();
+}
+
 /*!
  * Compile a lambda. This is used for real lambdas, lets, and defuns. So there are a million
  * confusing special cases...

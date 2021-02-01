@@ -671,6 +671,7 @@ class GenericElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result) override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const GenericOperator& op() const { return m_head; }
   const std::vector<Form*>& elts() const { return m_elts; }
 

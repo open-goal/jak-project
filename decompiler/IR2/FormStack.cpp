@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "FormStack.h"
 #include "Form.h"
 

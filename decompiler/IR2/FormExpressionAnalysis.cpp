@@ -55,7 +55,6 @@ void pop_helper(const std::vector<Variable>& vars,
       pop_barrier_regs.insert(vars.at(j).reg());
     }
 
-    //    pop_result.push_back(stack.pop_reg(submit_regs.at(i)));
     pop_result.push_back(stack.pop_reg(submit_regs.at(i), pop_barrier_regs, env));
   }
   std::reverse(pop_result.begin(), pop_result.end());
@@ -336,6 +335,9 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(
     std::vector<FormElement*>* result) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  if (!m_expr.get_arg(1).is_var()) {
+    throw std::runtime_error("update_from_stack_copy_first_int_2 case not handled");
+  }
   auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
   auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
 
@@ -692,8 +694,8 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
   }
 
-  if (rewrite_as_set) {
-    assert(last_var.has_value());
+  if (!last_var.has_value()) {
+    rewrite_as_set = false;
   }
 
   for (auto& entry : entries) {
@@ -852,6 +854,12 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
       return;
     }
   }
+
+  auto as_asm = dynamic_cast<const AsmOp*>(m_op);
+  if (as_asm) {
+    stack.push_form_element(this, true);
+    return;
+  }
   throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
 }
 
@@ -867,6 +875,12 @@ void GenericElement::update_from_stack(const Env& env,
     x->update_children_from_stack(env, pool, stack);
   }
   result->push_back(this);
+}
+
+void GenericElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  (void)env;
+  (void)pool;
+  stack.push_form_element(this, true);
 }
 
 ////////////////////////

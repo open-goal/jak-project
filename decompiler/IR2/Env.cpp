@@ -112,7 +112,8 @@ std::string Env::print_local_var_types(const Form* top_level_form) const {
   }
 
   constexpr int row_len = 100;
-  int per_row = std::max(1, row_len / max_len);
+  // avoid divide by zero on empty env case.
+  int per_row = max_len ? std::max(1, row_len / max_len) : 1;
   int entry_len = 100 / per_row;
 
   std::string result;
