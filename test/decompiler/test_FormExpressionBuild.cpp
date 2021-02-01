@@ -378,7 +378,6 @@ TEST_F(FormRegressionTest, ExprTrue) {
 TEST_F(FormRegressionTest, ExprPrintBfloat) {
   std::string func =
       "    sll r0, r0, 0\n"
-      "L343:\n"
       "    daddiu sp, sp, -32\n"
       "    sd ra, 0(sp)\n"
       "    sd fp, 8(sp)\n"
@@ -1747,17 +1746,6 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
 TEST_F(FormRegressionTest, ExprArrayMethod3) {
   std::string func =
       "    sll r0, r0, 0\n"
-      "L343:\n"
-      "L342:\n"
-      "L341:\n"
-      "L340:\n"
-      "L339:\n"
-      "L338:\n"
-      "L337:\n"
-      "L336:\n"
-      "L335:\n"
-      "L334:\n"
-      "L333:\n"
       "L130:\n"
       "    daddiu sp, sp, -48\n"
       "    sd ra, 0(sp)\n"

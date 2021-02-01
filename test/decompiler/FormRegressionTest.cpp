@@ -77,7 +77,12 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   dts->type_prop_settings.reset();
   dts->type_prop_settings.allow_pair = allow_pairs;
   dts->type_prop_settings.current_method_type = method_name;
-  auto program = parser->parse_program(code);
+
+  std::vector<std::string> string_label_names;
+  for (auto& x : strings) {
+    string_label_names.push_back(x.first);
+  }
+  auto program = parser->parse_program(code, string_label_names);
   //  printf("prg:\n%s\n\n", program.print().c_str());
   auto test = std::make_unique<TestData>(program.instructions.size());
   test->file.words_by_seg.resize(3);
