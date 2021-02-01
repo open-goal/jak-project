@@ -1389,3 +1389,31 @@ void IR_BlendVF::do_codegen(emitter::ObjectGenerator* gen,
   auto src2 = get_reg_asm(m_src2, allocs, irec, m_use_coloring);
   gen->add_instr(IGen::blend_vf(dst, src1, src2, m_mask), irec);
 }
+
+IR_SplatVF::IR_SplatVF(bool use_color,
+                       const RegVal* dst,
+                       const RegVal* src,
+                       const emitter::Register::XMM_ELEMENT element)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_element(element) {}
+
+std::string IR_SplatVF::print() {
+  return fmt::format(".splat.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                     m_src->print(), m_element);
+}
+
+RegAllocInstr IR_SplatVF::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_SplatVF::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
+  gen->add_instr(IGen::splat_vf(dst, src, m_element), irec);
+}

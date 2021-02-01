@@ -8,6 +8,7 @@
 #include "goalc/regalloc/allocate.h"
 #include "Val.h"
 #include "goalc/emitter/ObjectGenerator.h"
+#include "goalc/emitter/Register.h"
 
 class IR {
  public:
@@ -541,5 +542,23 @@ class IR_BlendVF : public IR_Asm {
   const RegVal* m_src1 = nullptr;
   const RegVal* m_src2 = nullptr;
   u8 m_mask = 0xff;
+};
+
+class IR_SplatVF : public IR_Asm {
+ public:
+  IR_SplatVF(bool use_color,
+             const RegVal* dst,
+             const RegVal* src1,
+             const emitter::Register::XMM_ELEMENT element);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+  const emitter::Register::XMM_ELEMENT m_element = emitter::Register::XMM_ELEMENT::NONE;
 };
 #endif  // JAK_IR_H

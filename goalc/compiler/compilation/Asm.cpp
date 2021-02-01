@@ -324,19 +324,85 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
 }
 
 Val* Compiler::compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR, env);
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR,
+                              emitter::Register::XMM_ELEMENT::NONE, env);
 }
 
 Val* Compiler::compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB, env);
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::XMM_ELEMENT::NONE, env);
+}
+
+// TODO - get rid of duplication
+
+Val* Compiler::compile_asm_subx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::XMM_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_suby_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::XMM_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_subz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::XMM_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_subw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::XMM_ELEMENT::W, env);
 }
 
 Val* Compiler::compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD, env);
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::XMM_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_addx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::XMM_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_addy_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::XMM_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_addz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::XMM_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_addw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::XMM_ELEMENT::W, env);
 }
 
 Val* Compiler::compile_asm_mul_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL, env);
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::XMM_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_mulx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::XMM_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_muly_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::XMM_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_mulz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::XMM_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_mulw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::XMM_ELEMENT::W, env);
 }
 
 Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -387,6 +453,7 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
 Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
                                     const goos::Object& rest,
                                     IR_VFMath3Asm::Kind kind,
+                                    emitter::Register::XMM_ELEMENT broadcastElement,
                                     Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
@@ -431,6 +498,16 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   }
 
   auto temp_reg = env->make_vfr(dest->type());
+
+  // If there is a broadcast register, splat that float across the entire src2 register before
+  // performing the operation For example vaddx.xyzw vf10, vf20, vf30
+  // vf10[x] = vf20[x] + vf30[x]
+  // vf10[y] = vf20[y] + vf30[x]
+  // vf10[z] = vf20[z] + vf30[x]
+  // vf10[w] = vf20[w] + vf30[x]
+  if (broadcastElement != emitter::Register::XMM_ELEMENT::NONE) {
+    env->emit_ir<IR_SplatVF>(color, src2, src2, broadcastElement);
+	}
 
   // Perform the arithmetic operation on the two vectors into a temporary register
   env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, mask, kind);

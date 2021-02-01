@@ -30,9 +30,28 @@ static const std::unordered_map<
         // TODO - Readability wise, it would probably be nice to have all the varients like
         // '.sub.xyzw.vf' and so on, but it's not required at this point and needs to be done in a
         // clever way to avoid lots of duplication
+        //
+        // TODO - difficult to cut down duplication as the map wants a function reference.
+        // ie. - I'd like to just call a function that returns a function, but the path forward
+        // isn't obvious.
         {".sub.vf", &Compiler::compile_asm_sub_vf},
+        {".subx.vf", &Compiler::compile_asm_subx_vf},
+        {".suby.vf", &Compiler::compile_asm_suby_vf},
+        {".subz.vf", &Compiler::compile_asm_subz_vf},
+        {".subw.vf", &Compiler::compile_asm_subw_vf},
+
         {".add.vf", &Compiler::compile_asm_add_vf},
+        {".addx.vf", &Compiler::compile_asm_addx_vf},
+        {".addy.vf", &Compiler::compile_asm_addy_vf},
+        {".addz.vf", &Compiler::compile_asm_addz_vf},
+        {".addw.vf", &Compiler::compile_asm_addw_vf},
+
         {".mul.vf", &Compiler::compile_asm_mul_vf},
+        {".mulx.vf", &Compiler::compile_asm_mulx_vf},
+        {".muly.vf", &Compiler::compile_asm_muly_vf},
+        {".mulz.vf", &Compiler::compile_asm_mulz_vf},
+        {".mulw.vf", &Compiler::compile_asm_mulw_vf},
+
         {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         // BLOCK FORMS

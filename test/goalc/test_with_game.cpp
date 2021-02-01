@@ -353,9 +353,16 @@ TEST_F(WithGameTests, VFSimpleMath) {
   runner.run_static_test(env, testCategory, "test-basic-vector-math.gc", {"54.0000\n0\n"});
 }
 
-TEST_F(WithGameTests, VFMultiplyDraft) {
-	// Interesting rounding error! TODO - anything?
-  runner.run_static_test(env, testCategory, "test-basic-vector-math-multiply.gc", {"(-10.5000, 0.0000, 30.5000, 80.0999)\n0\n"});
+TEST_F(WithGameTests, VFMultiply) {
+  // Interesting rounding error! TODO - fix GOAL format printing to not always round down?
+  runner.run_static_test(env, testCategory, "test-basic-vector-math-multiply.gc",
+                         {"(-10.5000, 0.0000, 30.5000, 80.0999)\n0\n"});
+}
+
+TEST_F(WithGameTests, VFSubtractBroadcast) {
+  // Interesting rounding error! TODO - fix GOAL format printing to not always round down?
+  runner.run_static_test(env, testCategory, "test-basic-vector-math-sub-broadcast.gc",
+                         {"(11.5000, 21.5000, 31.5000, 41.0499)\n0\n"});
 }
 
 TEST_F(WithGameTests, VFLoadStatic) {
