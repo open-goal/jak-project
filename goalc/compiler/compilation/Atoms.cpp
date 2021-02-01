@@ -64,6 +64,7 @@ static const std::unordered_map<
         {".mulz.vf", &Compiler::compile_asm_mulz_vf},
         {".mulw.vf", &Compiler::compile_asm_mulw_vf},
 
+        {".abs.vf", &Compiler::compile_asm_abs_vf},
         {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         // BLOCK FORMS

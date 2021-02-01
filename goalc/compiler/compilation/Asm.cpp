@@ -1,3 +1,4 @@
+#include "..\Compiler.h"
 #include "goalc/compiler/Compiler.h"
 
 namespace {
@@ -453,6 +454,64 @@ Val* Compiler::compile_asm_mulz_vf(const goos::Object& form, const goos::Object&
 Val* Compiler::compile_asm_mulw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
                               emitter::Register::XMM_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid destination register for a vector float 3-arg math form. Got a {}.",
+        dest->print());
+  }
+
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  if (src->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+    throw_compiler_error(
+        form, "Invalid first source register for a vector float 3-arg math form. Got a {}.",
+        src->print());
+  }
+
+  int64_t mask;
+  if (!try_getting_constant_integer(args.unnamed.at(2), &mask, env)) {
+    throw_compiler_error(
+        form,
+        "The value {} is invalid for a destination mask, it could not be evaluated as a "
+        "constant integer.",
+        args.unnamed.at(3).print());
+  }
+
+  if (mask < 0 || mask > 15) {
+    throw_compiler_error(
+        form, "The value {} is out of range for a destination mask (0-15 inclusive).", mask);
+  }
+
+  // There is no single instruction ABS on AVX, so there are a number of ways to do it manually,
+  // this is one of them. For example, assume the original vec = <1, -2, -3, 4>
+
+  // First we clear a temporary register, XOR'ing itself
+  auto temp_reg = env->make_vfr(dest->type());
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, 0b00001111,
+                              IR_VFMath3Asm::Kind::XOR);
+
+  // Next, find the difference between our source operand and 0, use the same temp register, no need
+  // to use another <0, 0, 0, 0> - <1, -2, -3, 4> = <-1, 2, 3, 4>
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, src, 0b00001111, IR_VFMath3Asm::Kind::SUB);
+
+  // Finally, find the maximum between our difference, and the original value
+  // MAX_OF(<-1, 2, 3, 4>, <1, -2, -3, 4>) = <1, 2, 3, 4>
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src, temp_reg, 0b00001111, IR_VFMath3Asm::Kind::MAX);
+
+  // Blend the result back into the destination register using the mask
+  env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+
+  return get_none();
 }
 
 Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
