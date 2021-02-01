@@ -442,8 +442,12 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     if (src_as_se) {
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
-        stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);
-        return;
+        auto var = src_as_se->expr().get_arg(0).var();
+        auto& info = env.reg_use().op.at(var.idx());
+        if (info.consumes.find(var.reg()) != info.consumes.end()) {
+          stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);
+          return;
+        }
       }
     }
   }

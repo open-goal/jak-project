@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <common/goos/Object.h>
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
@@ -72,7 +73,9 @@ class Env {
   void set_end_var(Variable var) { m_end_var = var; }
   const Variable& end_var() const { return m_end_var; }
 
+  std::vector<VariableNames::VarInfo> extract_visible_variables(const Form* top_level_form) const;
   std::string print_local_var_types(const Form* top_level_form) const;
+  goos::Object local_var_type_list(const Form* top_level_form) const;
 
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
   RegId get_ssa_var(const Variable& var) const;

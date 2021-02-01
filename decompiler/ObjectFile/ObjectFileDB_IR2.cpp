@@ -11,6 +11,7 @@
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/cfg_builder.h"
+#include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
@@ -392,6 +393,8 @@ void ObjectFileDB::ir2_build_expressions() {
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
+        //        auto end = final_defun_out(func, func.ir2.env);
+        //        fmt::print("{}\n\n", end);
       }
     }
   });

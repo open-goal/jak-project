@@ -4,6 +4,7 @@
 #include "Env.h"
 #include "Form.h"
 #include "decompiler/analysis/atomic_op_builder.h"
+#include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
 std::string Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
@@ -41,7 +42,11 @@ void Env::set_types(const std::vector<TypeState>& block_init_types,
 
 std::string Env::print_local_var_types(const Form* top_level_form) const {
   assert(has_local_vars());
+  auto var_info = extract_visible_variables(top_level_form);
   std::vector<std::string> entries;
+  for (auto x : var_info) {
+    entries.push_back(fmt::format("{}: {}", x.name(), x.type.typespec().print()));
+  }
 
   if (top_level_form) {
     VariableSet var_set;
@@ -134,6 +139,84 @@ std::string Env::print_local_var_types(const Form* top_level_form) const {
   result += '\n';
 
   return result;
+}
+
+std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
+    const Form* top_level_form) const {
+  assert(has_local_vars());
+  std::vector<VariableNames::VarInfo> entries;
+  if (top_level_form) {
+    VariableSet var_set;
+    top_level_form->collect_vars(var_set);
+
+    // we want to sort them for easier reading:
+    std::vector<std::pair<RegId, Variable>> vars;
+
+    for (auto& x : var_set) {
+      vars.push_back(std::make_pair(get_ssa_var(x), x));
+    }
+
+    std::sort(vars.begin(), vars.end(),
+              [](const std::pair<RegId, Variable>& a, const std::pair<RegId, Variable>& b) {
+                return a.first < b.first;
+              });
+
+    RegId* prev = nullptr;
+    for (auto& x : vars) {
+      // sorted by ssa var and there are likely duplicates of Variables and SSA vars, only print
+      // unique ssa variables.
+      if (prev && x.first == *prev) {
+        continue;
+      }
+      prev = &x.first;
+      auto& map = x.second.mode() == VariableMode::WRITE ? m_var_names.write_vars.at(x.second.reg())
+                                                         : m_var_names.read_vars.at(x.second.reg());
+      auto& info = map.at(x.first.id);
+
+      if (info.initialized) {
+        entries.push_back(info);
+      } else {
+        assert(false);
+      }
+    }
+  } else {
+    std::unordered_map<Register, std::unordered_set<int>, Register::hash> printed;
+
+    for (auto& reg_info : m_var_names.read_vars) {
+      auto& reg_printed = printed[reg_info.first];
+      for (int var_id = 0; var_id < int(reg_info.second.size()); var_id++) {
+        auto& info = reg_info.second.at(var_id);
+        if (info.initialized) {
+          reg_printed.insert(var_id);
+          entries.push_back(info);
+        }
+      }
+    }
+
+    for (auto& reg_info : m_var_names.write_vars) {
+      auto& reg_printed = printed[reg_info.first];
+      for (int var_id = 0; var_id < int(reg_info.second.size()); var_id++) {
+        auto& info = reg_info.second.at(var_id);
+        if (info.initialized) {
+          if (reg_printed.find(var_id) == reg_printed.end()) {
+            entries.push_back(info);
+          }
+        }
+      }
+    }
+  }
+  return entries;
+}
+
+goos::Object Env::local_var_type_list(const Form* top_level_form) const {
+  auto vars = extract_visible_variables(top_level_form);
+
+  std::vector<goos::Object> elts;
+  elts.push_back(pretty_print::to_symbol("local-vars"));
+  for (auto& x : vars) {
+    elts.push_back(pretty_print::build_list(x.name(), x.type.typespec().print()));
+  }
+  return pretty_print::build_list(elts);
 }
 
 std::unordered_set<RegId, RegId::hash> Env::get_ssa_var(const VariableSet& vars) const {
