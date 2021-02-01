@@ -117,7 +117,7 @@ SimpleExpressionElement::SimpleExpressionElement(SimpleExpression expr, int my_i
     : m_expr(std::move(expr)), m_my_idx(my_idx) {}
 
 goos::Object SimpleExpressionElement::to_form(const Env& env) const {
-  return m_expr.to_form(env.file->labels, &env);
+  return m_expr.to_form(env.file->labels, env);
 }
 
 void SimpleExpressionElement::apply(const std::function<void(FormElement*)>& f) {
@@ -145,7 +145,7 @@ void SimpleExpressionElement::get_modified_regs(RegSet& regs) const {
 StoreElement::StoreElement(const StoreOp* op) : m_op(op) {}
 
 goos::Object StoreElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void StoreElement::apply(const std::function<void(FormElement*)>& f) {
@@ -231,7 +231,7 @@ void LoadSourceElement::get_modified_regs(RegSet& regs) const {
 SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom) : m_atom(atom) {}
 
 goos::Object SimpleAtomElement::to_form(const Env& env) const {
-  return m_atom.to_form(env.file->labels, &env);
+  return m_atom.to_form(env.file->labels, env);
 }
 
 void SimpleAtomElement::apply(const std::function<void(FormElement*)>& f) {
@@ -258,7 +258,7 @@ SetVarElement::SetVarElement(const Variable& var, Form* value, bool is_sequence_
 }
 
 goos::Object SetVarElement::to_form(const Env& env) const {
-  return pretty_print::build_list("set!", m_dst.to_string(&env), m_src->to_form(env));
+  return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
 }
 
 void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
@@ -326,7 +326,7 @@ void SetFormFormElement::get_modified_regs(RegSet& regs) const {
 AtomicOpElement::AtomicOpElement(const AtomicOp* op) : m_op(op) {}
 
 goos::Object AtomicOpElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
@@ -366,7 +366,7 @@ goos::Object ConditionElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i]->to_form(env.file->labels, &env));
+    forms.push_back(m_src[i]->to_form(env.file->labels, env));
   }
   if (forms.size() > 1) {
     return pretty_print::build_list(forms);
@@ -377,7 +377,7 @@ goos::Object ConditionElement::to_form(const Env& env) const {
 
 goos::Object ConditionElement::to_form_as_condition(const Env& env) const {
   if (m_kind == IR2_Condition::Kind::TRUTHY) {
-    return m_src[0]->to_form(env.file->labels, &env);
+    return m_src[0]->to_form(env.file->labels, env);
   } else {
     return to_form(env);
   }
@@ -412,7 +412,7 @@ void ConditionElement::get_modified_regs(RegSet& regs) const {
 FunctionCallElement::FunctionCallElement(const CallOp* op) : m_op(op) {}
 
 goos::Object FunctionCallElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void FunctionCallElement::apply(const std::function<void(FormElement*)>& f) {
@@ -442,7 +442,7 @@ void FunctionCallElement::get_modified_regs(RegSet& regs) const {
 BranchElement::BranchElement(const BranchOp* op) : m_op(op) {}
 
 goos::Object BranchElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void BranchElement::apply(const std::function<void(FormElement*)>& f) {
@@ -815,7 +815,7 @@ AbsElement::AbsElement(Variable _source, RegSet _consumed)
     : source(_source), consumed(std::move(_consumed)) {}
 
 goos::Object AbsElement::to_form(const Env& env) const {
-  return pretty_print::build_list("abs", source.to_string(&env));
+  return pretty_print::build_list("abs", source.to_form(env));
 }
 
 void AbsElement::apply(const std::function<void(FormElement*)>& f) {
@@ -847,7 +847,7 @@ AshElement::AshElement(Variable _shift_amount,
 
 goos::Object AshElement::to_form(const Env& env) const {
   return pretty_print::build_list(pretty_print::to_symbol(is_signed ? "ash.si" : "ash.ui"),
-                                  value.to_string(&env), shift_amount.to_string(&env));
+                                  value.to_form(env), shift_amount.to_form(env));
 }
 
 void AshElement::apply(const std::function<void(FormElement*)>& f) {
@@ -903,8 +903,8 @@ ConditionalMoveFalseElement::ConditionalMoveFalseElement(Variable _dest,
 }
 
 goos::Object ConditionalMoveFalseElement::to_form(const Env& env) const {
-  return pretty_print::build_list(on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
-                                  dest.to_string(&env), source->to_form(env));
+  return pretty_print::build_list(on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero", dest.to_form(env),
+                                  source->to_form(env));
 }
 
 void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>& f) {
@@ -1301,7 +1301,7 @@ void DerefElement::get_modified_regs(RegSet& regs) const {
 DynamicMethodAccess::DynamicMethodAccess(Variable source) : m_source(source) {}
 
 goos::Object DynamicMethodAccess::to_form(const Env& env) const {
-  return pretty_print::build_list("dyn-method-access", m_source.to_string(&env));
+  return pretty_print::build_list("dyn-method-access", m_source.to_form(env));
 }
 
 void DynamicMethodAccess::apply(const std::function<void(FormElement*)>& f) {
@@ -1327,7 +1327,7 @@ ArrayFieldAccess::ArrayFieldAccess(Variable source,
 goos::Object ArrayFieldAccess::to_form(const Env& env) const {
   std::vector<goos::Object> elts;
   elts.push_back(pretty_print::to_symbol("dynamic-array-field-access"));
-  elts.push_back(pretty_print::to_symbol(m_source.to_string(&env)));
+  elts.push_back(m_source.to_form(env));
   for (auto& tok : m_deref_tokens) {
     elts.push_back(tok.to_form(env));
   }

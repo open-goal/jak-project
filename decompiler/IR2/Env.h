@@ -37,7 +37,7 @@ class Env {
     return m_reg_use;
   }
 
-  std::string get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
+  goos::Object get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.

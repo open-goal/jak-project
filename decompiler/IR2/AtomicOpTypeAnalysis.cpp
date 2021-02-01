@@ -158,7 +158,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return get_type_int1(input, env, dts);
     default:
       throw std::runtime_error("Simple expression can't get_type: " +
-                               to_form(env.file->labels, &env).print());
+                               to_form(env.file->labels, env).print());
   }
   return {};
 }
@@ -187,7 +187,7 @@ TP_Type SimpleExpression::get_type_int1(const TypeState& input,
   }
 
   throw std::runtime_error("IR_IntMath1::get_expression_type case not handled: " +
-                           to_form(env.file->labels, &env).print() + " " + arg_type.print());
+                           to_form(env.file->labels, env).print() + " " + arg_type.print());
 }
 
 /*!
@@ -335,7 +335,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   throw std::runtime_error(fmt::format("Can't get_type_int2: {}, args {} and {}",
-                                       to_form(env.file->labels, &env).print(), arg0_type.print(),
+                                       to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));
 }
 
@@ -382,7 +382,7 @@ TypeState IR2_BranchDelay::propagate_types(const TypeState& input,
       break;
     default:
       throw std::runtime_error("Unhandled branch delay in type_prop: " +
-                               to_form(env.file->labels, &env).print());
+                               to_form(env.file->labels, env).print());
   }
   return output;
 }
@@ -590,7 +590,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       printf("input type is %s, offset is %d, sign %d size %d\n", rd_in.base_type.print().c_str(),
              rd_in.offset, rd_in.deref.value().sign_extend, rd_in.deref.value().size);
       throw std::runtime_error(fmt::format("Could not get type of load: {}. Reverse Deref Failed.",
-                                           to_form(env.file->labels, &env).print()));
+                                           to_form(env.file->labels, env).print()));
     }
 
     if (rd.success) {
@@ -624,10 +624,10 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   }
 
   throw std::runtime_error(
-      fmt::format("Could not get type of load: {}. ", to_form(env.file->labels, &env).print()));
+      fmt::format("Could not get type of load: {}. ", to_form(env.file->labels, env).print()));
 
   throw std::runtime_error("LoadVarOp can't get_src_type: " +
-                           to_form(env.file->labels, &env).print());
+                           to_form(env.file->labels, env).print());
 }
 
 TypeState LoadVarOp::propagate_types_internal(const TypeState& input,

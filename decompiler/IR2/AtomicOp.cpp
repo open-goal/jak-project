@@ -23,20 +23,20 @@ Variable::Variable(VariableMode mode, Register reg, int atomic_idx, bool allow_a
   }
 }
 
-std::string Variable::to_string(const Env* env, Print mode) const {
+goos::Object Variable::to_form(const Env& env, Print mode) const {
   switch (mode) {
     case Print::AS_REG:
-      return m_reg.to_string();
+      return pretty_print::to_symbol(m_reg.to_string());
     case Print::FULL:
-      return fmt::format("{}-{:03d}-{}", m_reg.to_charp(), m_atomic_idx,
-                         m_mode == VariableMode::READ ? 'r' : 'w');
+      return pretty_print::to_symbol(fmt::format("{}-{:03d}-{}", m_reg.to_charp(), m_atomic_idx,
+                                                 m_mode == VariableMode::READ ? 'r' : 'w'));
     case Print::AS_VARIABLE:
-      return env->get_variable_name(m_reg, m_atomic_idx, m_mode);
+      return env.get_variable_name(m_reg, m_atomic_idx, m_mode);
     case Print::AUTOMATIC:
-      if (env->has_local_vars()) {
-        return env->get_variable_name(m_reg, m_atomic_idx, m_mode);
+      if (env.has_local_vars()) {
+        return env.get_variable_name(m_reg, m_atomic_idx, m_mode);
       } else {
-        return m_reg.to_string();
+        return pretty_print::to_symbol(m_reg.to_string());
       }
     default:
       assert(false);
@@ -56,12 +56,12 @@ bool Variable::operator!=(const Variable& other) const {
 /////////////////////////////
 AtomicOp::AtomicOp(int my_idx) : m_my_idx(my_idx) {}
 
-std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+std::string AtomicOp::to_string(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   return pretty_print::to_string(to_form(labels, env));
 }
 
 std::string AtomicOp::to_string(const Env& env) const {
-  return to_string(env.file->labels, &env);
+  return to_string(env.file->labels, env);
 }
 
 bool AtomicOp::operator!=(const AtomicOp& other) const {
@@ -123,10 +123,10 @@ SimpleAtom SimpleAtom::make_static_address(int static_label_id) {
   return result;
 }
 
-goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   switch (m_kind) {
     case Kind::VARIABLE:
-      return pretty_print::to_symbol(m_variable.to_string(env));
+      return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT:
       return pretty_print::to_symbol(std::to_string(m_int));
     case Kind::SYMBOL_PTR:
@@ -326,7 +326,7 @@ SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0, const Simp
 }
 
 goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& labels,
-                                       const Env* env) const {
+                                       const Env& env) const {
   std::vector<goos::Object> forms;
   if (m_kind == Kind::IDENTITY) {
     // we are "identity" so just pass through the atom
@@ -370,9 +370,8 @@ void SimpleExpression::collect_vars(VariableSet& vars) const {
 // SetVarOp
 /////////////////////////////
 
-goos::Object SetVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("set!"),
-                                  pretty_print::to_symbol(m_dst.to_string(env)),
+goos::Object SetVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
+  return pretty_print::build_list(pretty_print::to_symbol("set!"), m_dst.to_form(env),
                                   m_src.to_form(labels, env));
 }
 
@@ -441,7 +440,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
   }
 }
 
-goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("." + m_instr.op_name_to_string()));
   assert(m_instr.n_dst <= 1);
@@ -449,7 +448,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
   if (m_instr.n_dst == 1) {
     if (m_dst.has_value()) {
       // then print it as a variable
-      forms.push_back(pretty_print::to_symbol(m_dst.value().to_string(env)));
+      forms.push_back(m_dst.value().to_form(env));
     } else {
       // print the atom
       forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(labels)));
@@ -459,7 +458,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
   assert(m_instr.n_src <= 3);
   for (int i = 0; i < m_instr.n_src; i++) {
     if (m_src[i].has_value()) {
-      forms.push_back(pretty_print::to_symbol(m_src[i].value().to_string(env)));
+      forms.push_back(m_src[i].value().to_form(env));
     } else {
       forms.push_back(pretty_print::to_symbol(m_instr.get_src(i).to_string(labels)));
     }
@@ -733,7 +732,7 @@ bool IR2_Condition::operator==(const IR2_Condition& other) const {
 }
 
 goos::Object IR2_Condition::to_form(const std::vector<DecompilerLabel>& labels,
-                                    const Env* env) const {
+                                    const Env& env) const {
   (void)labels;
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
@@ -764,12 +763,11 @@ void IR2_Condition::collect_vars(VariableSet& vars) const {
 /////////////////////////////
 
 SetVarConditionOp::SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_condition(condition) {}
+    : AtomicOp(my_idx), m_dst(dst), m_condition(std::move(condition)) {}
 
 goos::Object SetVarConditionOp::to_form(const std::vector<DecompilerLabel>& labels,
-                                        const Env* env) const {
-  return pretty_print::build_list(pretty_print::to_symbol("set!"),
-                                  pretty_print::to_symbol(m_dst.to_string(env)),
+                                        const Env& env) const {
+  return pretty_print::build_list(pretty_print::to_symbol("set!"), m_dst.to_form(env),
                                   m_condition.to_form(labels, env));
 }
 
@@ -812,7 +810,7 @@ StoreOp::StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom valu
       m_addr(std::move(addr)),
       m_value(std::move(value)) {}
 
-goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   std::string store_name;
   if (m_is_float) {
     assert(m_size == 4);
@@ -876,9 +874,8 @@ void StoreOp::collect_vars(VariableSet& vars) const {
 LoadVarOp::LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx)
     : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}
 
-goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
-  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"),
-                                     pretty_print::to_symbol(m_dst.to_string(env))};
+goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
+  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"), m_dst.to_form(env)};
 
   switch (m_kind) {
     case Kind::FLOAT:
@@ -987,39 +984,39 @@ IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variab
 }
 
 goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels,
-                                      const Env* env) const {
+                                      const Env& env) const {
   (void)labels;
   switch (m_kind) {
     case Kind::NOP:
       return pretty_print::build_list("nop!");
     case Kind::SET_REG_FALSE:
       assert(m_var[0].has_value());
-      return pretty_print::build_list("set!", m_var[0]->to_string(env), "#f");
+      return pretty_print::build_list("set!", m_var[0]->to_form(env), "#f");
     case Kind::SET_REG_TRUE:
       assert(m_var[0].has_value());
-      return pretty_print::build_list("set!", m_var[0]->to_string(env), "#t");
+      return pretty_print::build_list("set!", m_var[0]->to_form(env), "#t");
     case Kind::SET_REG_REG:
       assert(m_var[0].has_value());
       assert(m_var[1].has_value());
-      return pretty_print::build_list("set!", m_var[0]->to_string(env), m_var[1]->to_string(env));
+      return pretty_print::build_list("set!", m_var[0]->to_form(env), m_var[1]->to_form(env));
     case Kind::SET_BINTEGER:
       assert(m_var[0].has_value());
-      return pretty_print::build_list("set!", m_var[0]->to_string(env), "binteger");
+      return pretty_print::build_list("set!", m_var[0]->to_form(env), "binteger");
     case Kind::SET_PAIR:
       assert(m_var[0].has_value());
-      return pretty_print::build_list("set!", m_var[0]->to_string(env), "pair");
+      return pretty_print::build_list("set!", m_var[0]->to_form(env), "pair");
     case Kind::DSLLV:
       assert(m_var[0].has_value());
       assert(m_var[1].has_value());
       assert(m_var[2].has_value());
       return pretty_print::build_list(
-          "set!", m_var[0]->to_string(env),
-          pretty_print::build_list("sll", m_var[1]->to_string(env), m_var[2]->to_string(env)));
+          "set!", m_var[0]->to_form(env),
+          pretty_print::build_list("sll", m_var[1]->to_form(env), m_var[2]->to_form(env)));
     case Kind::NEGATE:
       assert(m_var[0].has_value());
       assert(m_var[1].has_value());
-      return pretty_print::build_list("set!", m_var[0]->to_string(env),
-                                      pretty_print::build_list("-", m_var[1]->to_string(env)));
+      return pretty_print::build_list("set!", m_var[0]->to_form(env),
+                                      pretty_print::build_list("-", m_var[1]->to_form(env)));
     default:
       assert(false);
   }
@@ -1082,7 +1079,7 @@ BranchOp::BranchOp(bool likely,
       m_label(label),
       m_branch_delay(branch_delay) {}
 
-goos::Object BranchOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+goos::Object BranchOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   std::vector<goos::Object> forms;
 
   if (m_likely) {
@@ -1133,7 +1130,7 @@ void BranchOp::collect_vars(VariableSet& vars) const {
 
 SpecialOp::SpecialOp(Kind kind, int my_idx) : AtomicOp(my_idx), m_kind(kind) {}
 
-goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   (void)labels;
   (void)env;
   switch (m_kind) {
@@ -1198,13 +1195,13 @@ CallOp::CallOp(int my_idx)
       m_function_var(VariableMode::READ, Register(Reg::GPR, Reg::T9), my_idx),
       m_return_var(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), my_idx) {}
 
-goos::Object CallOp::to_form(const std::vector<DecompilerLabel>& labels, const Env* env) const {
+goos::Object CallOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   (void)labels;
   (void)env;
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("call!"));
   for (auto& x : m_arg_vars) {
-    forms.push_back(pretty_print::to_symbol(x.to_string(env)));
+    forms.push_back(x.to_form(env));
   }
   return pretty_print::build_list(forms);
 }
@@ -1256,10 +1253,10 @@ ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst, Variable src, bool 
     : AtomicOp(my_idx), m_dst(dst), m_src(src), m_on_zero(on_zero) {}
 
 goos::Object ConditionalMoveFalseOp::to_form(const std::vector<DecompilerLabel>& labels,
-                                             const Env* env) const {
+                                             const Env& env) const {
   (void)labels;
   return pretty_print::build_list(m_on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
-                                  m_dst.to_string(env), m_src.to_string(env));
+                                  m_dst.to_form(env), m_src.to_form(env));
 }
 
 bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
@@ -1315,9 +1312,9 @@ bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {
 FunctionEndOp::FunctionEndOp(int my_idx)
     : AtomicOp(my_idx), m_return_reg(VariableMode::READ, Register(Reg::GPR, Reg::V0), my_idx) {}
 
-goos::Object FunctionEndOp::to_form(const std::vector<DecompilerLabel>&, const Env* env) const {
+goos::Object FunctionEndOp::to_form(const std::vector<DecompilerLabel>&, const Env& env) const {
   if (m_function_has_return_value) {
-    return pretty_print::build_list("ret-value", m_return_reg.to_string(env));
+    return pretty_print::build_list("ret-value", m_return_reg.to_form(env));
   } else {
     return pretty_print::build_list("ret-none");
   }

@@ -7,8 +7,8 @@
 #include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
-std::string Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
-  return m_var_names.lookup(reg, atomic_idx, mode).name();
+goos::Object Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
+  return pretty_print::to_symbol(m_var_names.lookup(reg, atomic_idx, mode).name());
 }
 
 /*!
