@@ -294,6 +294,18 @@ class Compiler {
   Val* compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
+  Val* compile_asm_max_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxy_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_min_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_minx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_miny_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_minz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_minw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_subx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_suby_vf(const goos::Object& form, const goos::Object& rest, Env* env);

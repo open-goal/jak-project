@@ -1306,22 +1306,31 @@ IR_VFMath3Asm::IR_VFMath3Asm(bool use_color,
     : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_mask(mask), m_kind(kind) {}
 
 std::string IR_VFMath3Asm::print() {
+  std::string function = "";
   switch (m_kind) {
     case Kind::XOR:
-      return fmt::format(".xor.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print(), m_mask);
+      function = ".xor.vf";
+      break;
     case Kind::SUB:
-      return fmt::format(".sub.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print(), m_mask);
+      function = ".sub.vf";
+      break;
     case Kind::ADD:
-      return fmt::format(".add.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print(), m_mask);
+      function = ".add.vf";
+      break;
     case Kind::MUL:
-      return fmt::format(".mul.vf{} {}, {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print(), m_mask);
+      function = ".mul.vf";
+      break;
+    case Kind::MAX:
+      function = ".max.vf";
+      break;
+    case Kind::MIN:
+      function = ".min.vf";
+      break;
     default:
       assert(false);
   }
+  return fmt::format("{}{} {}, {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                     m_src1->print(), m_src2->print(), m_mask);
 }
 
 RegAllocInstr IR_VFMath3Asm::to_rai() {
@@ -1353,6 +1362,12 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case Kind::MUL:
       gen->add_instr(IGen::mul_vf(dst, src1, src2), irec);
+      break;
+    case Kind::MAX:
+      gen->add_instr(IGen::max_vf(dst, src1, src2), irec);
+      break;
+    case Kind::MIN:
+      gen->add_instr(IGen::min_vf(dst, src1, src2), irec);
       break;
     default:
       assert(false);

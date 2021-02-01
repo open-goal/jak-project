@@ -365,6 +365,18 @@ TEST_F(WithGameTests, VFSubtractBroadcast) {
                          {"(11.5000, 21.5000, 31.5000, 41.0499)\n0\n"});
 }
 
+TEST_F(WithGameTests, VFMax) {
+  // Interesting rounding error! TODO - fix GOAL format printing to not always round down?
+  runner.run_static_test(env, testCategory, "test-vector-max.gc",
+                         {"(1.0000, 2.4956, 2.4956, 0.0000)\n0\n"});
+}
+
+TEST_F(WithGameTests, VFMinDraft) {
+  // Interesting rounding error! TODO - fix GOAL format printing to not always round down?
+  runner.run_static_test(env, testCategory, "test-vector-min.gc",
+                         {"(1.0000, 2.4956, -2.4956, -100000.0000)\n0\n"});
+}
+
 TEST_F(WithGameTests, VFLoadStatic) {
   runner.run_static_test(env, testCategory, "test-load-static-vector.gc", {"5.3000\n0\n"});
 }

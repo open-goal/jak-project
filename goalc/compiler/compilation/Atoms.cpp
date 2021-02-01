@@ -31,9 +31,21 @@ static const std::unordered_map<
         // '.sub.xyzw.vf' and so on, but it's not required at this point and needs to be done in a
         // clever way to avoid lots of duplication
         //
-        // TODO - difficult to cut down duplication as the map wants a function reference.
+        // TODO - difficult to cut down duplication as the map wants a function _reference_.
         // ie. - I'd like to just call a function that returns a function, but the path forward
-        // isn't obvious.
+        // isn't obvious to me yet.
+        {".max.vf", &Compiler::compile_asm_max_vf},
+        {".maxx.vf", &Compiler::compile_asm_maxx_vf},
+        {".maxy.vf", &Compiler::compile_asm_maxy_vf},
+        {".maxz.vf", &Compiler::compile_asm_maxz_vf},
+        {".maxw.vf", &Compiler::compile_asm_maxw_vf},
+
+        {".min.vf", &Compiler::compile_asm_min_vf},
+        {".minx.vf", &Compiler::compile_asm_minx_vf},
+        {".miny.vf", &Compiler::compile_asm_miny_vf},
+        {".minz.vf", &Compiler::compile_asm_minz_vf},
+        {".minw.vf", &Compiler::compile_asm_minw_vf},
+
         {".sub.vf", &Compiler::compile_asm_sub_vf},
         {".subx.vf", &Compiler::compile_asm_subx_vf},
         {".suby.vf", &Compiler::compile_asm_suby_vf},

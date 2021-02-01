@@ -323,17 +323,67 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   return get_none();
 }
 
+// TODO - get rid of duplication
+
 Val* Compiler::compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR,
                               emitter::Register::XMM_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_max_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::XMM_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_maxx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::XMM_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_maxy_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::XMM_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_maxz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::XMM_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_maxw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::XMM_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_min_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::XMM_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_minx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::XMM_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_miny_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::XMM_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_minz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::XMM_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_minw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::XMM_ELEMENT::W, env);
 }
 
 Val* Compiler::compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
                               emitter::Register::XMM_ELEMENT::NONE, env);
 }
-
-// TODO - get rid of duplication
 
 Val* Compiler::compile_asm_subx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
@@ -507,7 +557,7 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   // vf10[w] = vf20[w] + vf30[x]
   if (broadcastElement != emitter::Register::XMM_ELEMENT::NONE) {
     env->emit_ir<IR_SplatVF>(color, src2, src2, broadcastElement);
-	}
+  }
 
   // Perform the arithmetic operation on the two vectors into a temporary register
   env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, mask, kind);

@@ -2251,7 +2251,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x57);
+    Instruction instr(0x57);  // VXORPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2260,7 +2260,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x5c);
+    Instruction instr(0x5c);  // VSUBPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2269,7 +2269,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x58);  // ADDPS
+    Instruction instr(0x58);  // VADDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2278,7 +2278,25 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x59);  // MULPS
+    Instruction instr(0x59);  // VMULPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction max_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5F);  // VMAXPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction min_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5D);  // VMINPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2288,7 +2306,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x0c);  // BLENDPS
+    Instruction instr(0x0c);  // VBLENDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
                                 src1.hw_id(), false, VexPrefix::P_66);
     instr.set(Imm(1, mask));
