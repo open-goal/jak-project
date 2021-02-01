@@ -404,7 +404,8 @@ MethodInfo TypeSystem::add_new_method(Type* type, const TypeSpec& ts) {
  * Lookup information on a method. Error if it can't be found.  Will check parent types if the
  * given type doesn't specialize the method.
  */
-MethodInfo TypeSystem::lookup_method(const std::string& type_name, const std::string& method_name) {
+MethodInfo TypeSystem::lookup_method(const std::string& type_name,
+                                     const std::string& method_name) const {
   if (method_name == "new") {
     return lookup_new_method(type_name);
   }
@@ -436,7 +437,9 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, const std::st
 /*!
  * Like lookup_method, but won't throw or print an error when things go wrong.
  */
-bool TypeSystem::try_lookup_method(const std::string& type_name, int method_id, MethodInfo* info) {
+bool TypeSystem::try_lookup_method(const std::string& type_name,
+                                   int method_id,
+                                   MethodInfo* info) const {
   auto kv = m_types.find(type_name);
   if (kv == m_types.end()) {
     return false;
@@ -469,7 +472,7 @@ bool TypeSystem::try_lookup_method(const std::string& type_name, int method_id, 
  * Lookup information on a method by ID number. Error if it can't be found.  Will check parent types
  * if the given type doesn't specialize the method.
  */
-MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id) {
+MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id) const {
   if (method_id == GOAL_NEW_METHOD) {
     return lookup_new_method(type_name);
   }
@@ -502,7 +505,7 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id
 /*!
  * Lookup information on a new method and get the most specialized version.
  */
-MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) {
+MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) const {
   MethodInfo info;
 
   // first lookup the type

@@ -47,7 +47,32 @@ ConditionElement* IR2_Condition::get_as_form(FormPool& pool, const Env& env, int
   return pool.alloc_element<ConditionElement>(m_kind, vars[0], vars[1], consumed);
 }
 
-FormElement* SetVarOp::get_as_form(FormPool& pool, const Env&) const {
+FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (env.has_type_analysis() && m_src.args() == 2 && m_src.get_arg(1).is_int() &&
+      m_src.get_arg(0).is_var() && m_src.kind() == SimpleExpression::Kind::ADD) {
+    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
+    if (arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+      // access a field.
+      FieldReverseLookupInput rd_in;
+      rd_in.deref = std::nullopt;
+      rd_in.stride = 0;
+      rd_in.offset = m_src.get_arg(1).get_int();
+      rd_in.base_type = arg0_type.typespec();
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(m_src.get_arg(0).var()).as_expr(), m_my_idx);
+        std::vector<DerefToken> tokens;
+        for (auto& x : rd.tokens) {
+          tokens.push_back(to_token(x));
+        }
+        auto load =
+            pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
+    }
+  }
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   return pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
 }
@@ -155,6 +180,39 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         // of method 0.
         auto load = pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
+
+      if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+        FieldReverseLookupInput rd_in;
+        DerefKind dk;
+        dk.is_store = false;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.sign_extend = m_kind == Kind::SIGNED;
+        dk.size = m_size;
+        rd_in.deref = dk;
+        rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+        rd_in.stride = input_type.get_multiplier();
+        rd_in.offset = ro.offset;
+        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+        if (rd.success) {
+          //        load_path_set = true;
+          //        load_path_addr_of = rd.addr_of;
+          //        load_path_base = ro.reg_ir;
+          //        for (auto& x : rd.tokens) {
+          //          load_path.push_back(x.print());
+          //        }
+          std::vector<DerefToken> tokens;
+          assert(!rd.tokens.empty());
+          for (size_t i = 0; i < rd.tokens.size() - 1; i++) {
+            tokens.push_back(to_token(rd.tokens.at(i)));
+          }
+          assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
+
+          auto load = pool.alloc_single_element_form<ArrayFieldAccess>(nullptr, ro.var, tokens,
+                                                                       input_type.get_multiplier());
+          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        }
       }
 
       if (env.allow_sloppy_pair_typing() && m_kind == Kind::SIGNED && m_size == 4 &&

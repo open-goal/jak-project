@@ -768,6 +768,27 @@ class DynamicMethodAccess : public FormElement {
   Variable m_source;
 };
 
+class ArrayFieldAccess : public FormElement {
+ public:
+  ArrayFieldAccess(Variable source,
+                   const std::vector<DerefToken>& deref_tokens,
+                   int expected_stride);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  Variable m_source;
+  std::vector<DerefToken> m_deref_tokens;
+  int m_expected_stride = -1;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:

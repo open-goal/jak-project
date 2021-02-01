@@ -921,4 +921,79 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
   result->push_back(deref);
 }
 
+////////////////////////
+// ArrayFieldAccess
+////////////////////////
+
+namespace {
+bool is_power_of_two(int in, int* out) {
+  int x = 1;
+  for (int i = 0; i < 32; i++) {
+    if (x == in) {
+      *out = i;
+      return true;
+    }
+    x = x * 2;
+  }
+  return false;
+}
+}  // namespace
+
+void ArrayFieldAccess::update_from_stack(const Env& env,
+                                         FormPool& pool,
+                                         FormStack& stack,
+                                         std::vector<FormElement*>* result) {
+  auto new_val = stack.pop_reg(m_source, {}, env);
+
+  int power_of_two = 0;
+  if (m_expected_stride == 1) {
+    // reg0 is idx
+    auto reg0_matcher =
+        Matcher::match_or({Matcher::any_reg(0), Matcher::cast("int", Matcher::any_reg(0))});
+    // reg1 is base
+    auto reg1_matcher =
+        Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+    auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
+    auto match_result = match(matcher, new_val);
+    if (!match_result.matched) {
+      throw std::runtime_error("Couldn't match ArrayFieldAccess (stride 1) values: " +
+                               new_val->to_string(env));
+    }
+    auto idx = match_result.maps.regs.at(0);
+    auto base = match_result.maps.regs.at(1);
+    assert(idx.has_value() && base.has_value());
+
+    std::vector<DerefToken> tokens = m_deref_tokens;
+    tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+
+    auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
+    result->push_back(deref);
+  } else if (is_power_of_two(m_expected_stride, &power_of_two)) {
+    // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
+    auto reg0_matcher =
+        Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
+    auto reg1_matcher =
+        Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+    auto sll_matcher =
+        Matcher::fixed_op(FixedOperatorKind::SLL, {reg0_matcher, Matcher::integer(power_of_two)});
+    auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
+    auto match_result = match(matcher, new_val);
+    if (!match_result.matched) {
+      throw std::runtime_error("Couldn't match ArrayFieldAccess (stride power of 2) values: " +
+                               new_val->to_string(env));
+    }
+    auto idx = match_result.maps.regs.at(0);
+    auto base = match_result.maps.regs.at(1);
+    assert(idx.has_value() && base.has_value());
+
+    std::vector<DerefToken> tokens = m_deref_tokens;
+    tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+
+    auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
+    result->push_back(deref);
+  } else {
+    throw std::runtime_error("Not power of two case, not yet implemented");
+  }
+}
+
 }  // namespace decompiler

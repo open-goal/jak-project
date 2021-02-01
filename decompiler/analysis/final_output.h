@@ -3,5 +3,5 @@
 #include "decompiler/Function/Function.h"
 
 namespace decompiler {
-std::string final_defun_out(const Function& func, const Env& env);
+std::string final_defun_out(const Function& func, const Env& env, const DecompilerTypeSystem& dts);
 }

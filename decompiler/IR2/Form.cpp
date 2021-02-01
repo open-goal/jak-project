@@ -1315,4 +1315,48 @@ void DynamicMethodAccess::collect_vars(VariableSet& vars) const {
 }
 
 void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
+
+/////////////////////////////
+// DynamicMethodAccess
+/////////////////////////////
+ArrayFieldAccess::ArrayFieldAccess(Variable source,
+                                   const std::vector<DerefToken>& deref_tokens,
+                                   int expected_stride)
+    : m_source(source), m_deref_tokens(deref_tokens), m_expected_stride(expected_stride) {}
+
+goos::Object ArrayFieldAccess::to_form(const Env& env) const {
+  std::vector<goos::Object> elts;
+  elts.push_back(pretty_print::to_symbol("dynamic-array-field-access"));
+  elts.push_back(pretty_print::to_symbol(m_source.to_string(&env)));
+  for (auto& tok : m_deref_tokens) {
+    elts.push_back(tok.to_form(env));
+  }
+  return pretty_print::build_list(elts);
+}
+
+void ArrayFieldAccess::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& tok : m_deref_tokens) {
+    tok.apply(f);
+  }
+}
+
+void ArrayFieldAccess::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& tok : m_deref_tokens) {
+    tok.apply_form(f);
+  }
+}
+
+void ArrayFieldAccess::collect_vars(VariableSet& vars) const {
+  vars.insert(m_source);
+  for (auto& tok : m_deref_tokens) {
+    tok.collect_vars(vars);
+  }
+}
+
+void ArrayFieldAccess::get_modified_regs(RegSet& regs) const {
+  for (auto& tok : m_deref_tokens) {
+    tok.get_modified_regs(regs);
+  }
+}
 }  // namespace decompiler

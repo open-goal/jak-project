@@ -75,7 +75,9 @@ class Env {
 
   std::vector<VariableNames::VarInfo> extract_visible_variables(const Form* top_level_form) const;
   std::string print_local_var_types(const Form* top_level_form) const;
-  goos::Object local_var_type_list(const Form* top_level_form) const;
+  goos::Object local_var_type_list(const Form* top_level_form,
+                                   int nargs_to_ignore,
+                                   int* count_out) const;
 
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
   RegId get_ssa_var(const Variable& var) const;
