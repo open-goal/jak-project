@@ -48,13 +48,15 @@ void pop_helper(const std::vector<Variable>& vars,
     // figure out what var we are:
     auto var_idx = submit_reg_to_var.at(i);
 
-    // anything _less_ than this should be unmodified by the pop
+    // anything _less or equal_ than this should be unmodified by the pop
+    // note - on the actual popped, pop_reg won't consider the destination.
     RegSet pop_barrier_regs;
     for (size_t j = 0; j < var_idx; j++) {
       pop_barrier_regs.insert(vars.at(j).reg());
     }
 
-    pop_result.push_back(stack.pop_reg(submit_regs.at(i)));
+    //    pop_result.push_back(stack.pop_reg(submit_regs.at(i)));
+    pop_result.push_back(stack.pop_reg(submit_regs.at(i), pop_barrier_regs, env));
   }
   std::reverse(pop_result.begin(), pop_result.end());
 
@@ -738,11 +740,6 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     top_condition->pop_back();
     for (auto x : top_condition->elts()) {
       x->push_to_stack(env, pool, stack);
-      //      std::vector<FormElement*> result;
-      //      x->update_from_stack(env, pool, stack, &result);
-      //      for (auto y : result) {
-      //        stack.push_form_element(y, true);
-      //      }
     }
     top_condition->elts() = {real_condition};
   }
@@ -880,7 +877,7 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
                                             FormPool& pool,
                                             FormStack& stack,
                                             std::vector<FormElement*>* result) {
-  auto new_val = stack.pop_reg(m_source);
+  auto new_val = stack.pop_reg(m_source, {}, env);
   auto reg0_matcher =
       Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
   auto reg1_matcher =
