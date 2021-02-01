@@ -8,6 +8,15 @@
 
 namespace decompiler {
 goos::Object Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
+  auto type_kv = m_typehints.find(atomic_idx);
+  if (type_kv != m_typehints.end()) {
+    for (auto& x : type_kv->second) {
+      if (x.reg == reg) {
+        return pretty_print::build_list("the-as", x.type_name,
+                                        m_var_names.lookup(reg, atomic_idx, mode).name());
+      }
+    }
+  }
   return pretty_print::to_symbol(m_var_names.lookup(reg, atomic_idx, mode).name());
 }
 

@@ -8,6 +8,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
+#include "decompiler/config.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -84,6 +85,9 @@ class Env {
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
+  void set_type_hints(const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+    m_typehints = hints;
+  }
 
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
@@ -103,5 +107,7 @@ class Env {
   std::vector<TypeState*> m_op_init_types;
 
   bool m_allow_sloppy_pair_typing = false;
+
+  std::unordered_map<int, std::vector<TypeHint>> m_typehints;
 };
 }  // namespace decompiler
