@@ -155,6 +155,11 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   }
 
   lg::info("ObjectFileDB Initialized\n");
+  if (obj_files_by_name.empty()) {
+    lg::die(
+        "No object files have been added. Check that there are input files and the allowed_objects "
+        "list.");
+  }
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
