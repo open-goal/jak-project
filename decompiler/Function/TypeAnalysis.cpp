@@ -147,7 +147,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
 
   auto last_type = op_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
   if (last_type != my_type.last_arg()) {
-    warnings += fmt::format(";; return type mismatch {} vs {}.  ", last_type.print(),
+    warnings += fmt::format(";; return type mismatch {} vs {}.\n", last_type.print(),
                             my_type.last_arg().print());
   }
 

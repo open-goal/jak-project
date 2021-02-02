@@ -393,7 +393,7 @@ void ObjectFileDB::ir2_build_expressions() {
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
-        //        auto end = final_defun_out(func, func.ir2.env);
+        //        auto end = final_defun_out(func, func.ir2.env, dts);
         //        fmt::print("{}\n\n", end);
       }
     }
@@ -436,15 +436,24 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
     // functions
     for (auto& func : data.linked_data.functions_by_seg.at(seg)) {
       result += ir2_function_to_string(data, func, seg);
-      if (func.ir2.top_form) {
+      if (func.ir2.top_form && func.ir2.env.has_local_vars()) {
         result += '\n';
-        result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+        if (func.ir2.env.has_local_vars()) {
+          if (!func.ir2.print_debug_forms) {
+            result += ";; expression building failed part way through, function may be weird\n";
+          }
+          result += final_defun_out(func, func.ir2.env, dts);
+        } else {
+          result += ";; no variable information\n";
+          result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+        }
+
         result += '\n';
       }
 
       if (func.ir2.print_debug_forms) {
         result += '\n';
-        result += "DEBUG OUTPUT BELOW THIS LINE:\n";
+        result += ";; DEBUG OUTPUT BELOW THIS LINE:\n";
         result += func.ir2.debug_form_string;
         result += '\n';
       }
