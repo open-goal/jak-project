@@ -116,8 +116,7 @@ class SimpleExpressionElement : public FormElement {
 
 /*!
  * Represents storing a value into memory.
- * Because a value can be propagated "into" the source value, this will have to be special cased
- * in expression propagation.
+ * This is only used as a placeholder if AtomicOpForm fails to convert it to something nicer.
  */
 class StoreElement : public FormElement {
  public:
@@ -489,6 +488,10 @@ class ShortCircuitElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
   void get_modified_regs(RegSet& regs) const override;
 };
 
@@ -578,6 +581,10 @@ class TypeOfElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
 };
 
 /*!
@@ -647,6 +654,11 @@ class GenericOperator {
     return m_function;
   }
 
+  Form* func() {
+    assert(m_kind == Kind::FUNCTION_EXPR);
+    return m_function;
+  }
+
  private:
   friend class GenericElement;
   Kind m_kind = Kind::INVALID;
@@ -673,6 +685,7 @@ class GenericElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const GenericOperator& op() const { return m_head; }
+  GenericOperator& op() { return m_head; }
   const std::vector<Form*>& elts() const { return m_elts; }
 
  private:
@@ -688,8 +701,13 @@ class CastElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result) override;
   const TypeSpec& type() const { return m_type; }
   const Form* source() const { return m_source; }
+  Form* source() { return m_source; }
 
  private:
   TypeSpec m_type;
@@ -743,6 +761,7 @@ class DerefElement : public FormElement {
 
   bool is_addr_of() const { return m_is_addr_of; }
   const Form* base() const { return m_base; }
+  Form* base() { return m_base; }
   const std::vector<DerefToken>& tokens() const { return m_tokens; }
 
  private:
@@ -787,6 +806,21 @@ class ArrayFieldAccess : public FormElement {
   Variable m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
+};
+
+class GetMethodElement : public FormElement {
+ public:
+  GetMethodElement(Form* in, std::string name, bool is_object);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  Form* m_in = nullptr;
+  std::string m_name;
+  bool m_is_object = false;
 };
 
 /*!

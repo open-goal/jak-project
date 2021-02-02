@@ -336,7 +336,13 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
   if (!m_expr.get_arg(1).is_var()) {
-    throw std::runtime_error("update_from_stack_copy_first_int_2 case not handled");
+    auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack);
+
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(kind), args.at(0),
+        pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+    result->push_back(new_form);
+    return;
   }
   auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
   auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
@@ -421,6 +427,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::LEFT_SHIFT:
       update_from_stack_force_ui_2(env, FixedOperatorKind::SLL, pool, stack, result);
+      break;
+    case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
+      update_from_stack_force_ui_2(env, FixedOperatorKind::SRL, pool, stack, result);
       break;
     case SimpleExpression::Kind::MUL_UNSIGNED:
       update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result);
@@ -520,58 +529,86 @@ void FunctionCallElement::update_from_stack(const Env& env,
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_function(unstacked.at(0)), arg_forms);
 
-  // detect method calls:
-  // ex: ((-> pair methods-by-name new) (quote global) pair gp-0 a3-0)
-  constexpr int type_for_method = 0;
-  constexpr int method_name = 1;
+  {
+    // detect method calls:
+    // ex: ((-> pair methods-by-name new) (quote global) pair gp-0 a3-0)
+    constexpr int type_for_method = 0;
+    constexpr int method_name = 1;
 
-  auto deref_matcher = Matcher::deref(
-      Matcher::any_symbol(type_for_method), false,
-      {DerefTokenMatcher::string("methods-by-name"), DerefTokenMatcher::any_string(method_name)});
+    auto deref_matcher = Matcher::deref(
+        Matcher::any_symbol(type_for_method), false,
+        {DerefTokenMatcher::string("methods-by-name"), DerefTokenMatcher::any_string(method_name)});
 
-  auto matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher), {});
-  auto temp_form = pool.alloc_single_form(nullptr, new_form);
-  auto match_result = match(matcher, temp_form);
-  if (match_result.matched) {
-    auto type_1 = match_result.maps.strings.at(type_for_method);
-    auto name = match_result.maps.strings.at(method_name);
+    auto matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher), {});
+    auto temp_form = pool.alloc_single_form(nullptr, new_form);
+    auto match_result = match(matcher, temp_form);
+    if (match_result.matched) {
+      auto type_1 = match_result.maps.strings.at(type_for_method);
+      auto name = match_result.maps.strings.at(method_name);
 
-    if (name == "new" && type_1 == "object") {
-      std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
-      auto new_op = pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::OBJECT_NEW), new_args);
-      result->push_back(new_op);
-      return;
-    } else if (name == "new") {
-      constexpr int allocation = 2;
-      constexpr int type_for_arg = 3;
-      auto alloc_matcher = Matcher::any_quoted_symbol(allocation);
-      auto type_arg_matcher = Matcher::any_symbol(type_for_arg);
-      matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher),
-                                      {alloc_matcher, type_arg_matcher});
-      match_result = match(matcher, temp_form);
-      if (match_result.matched) {
-        auto alloc = match_result.maps.strings.at(allocation);
-        if (alloc != "global") {
-          throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
-        }
-        auto type_2 = match_result.maps.strings.at(type_for_arg);
-        if (type_1 != type_2) {
-          throw std::runtime_error(
-              fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
-        }
-
+      if (name == "new" && type_1 == "object") {
         std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
-
         auto new_op = pool.alloc_element<GenericElement>(
-            GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
+            GenericOperator::make_fixed(FixedOperatorKind::OBJECT_NEW), new_args);
         result->push_back(new_op);
         return;
+      } else if (name == "new") {
+        constexpr int allocation = 2;
+        constexpr int type_for_arg = 3;
+        auto alloc_matcher = Matcher::any_quoted_symbol(allocation);
+        auto type_arg_matcher = Matcher::any_symbol(type_for_arg);
+        matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher),
+                                        {alloc_matcher, type_arg_matcher});
+        match_result = match(matcher, temp_form);
+        if (match_result.matched) {
+          auto alloc = match_result.maps.strings.at(allocation);
+          if (alloc != "global") {
+            throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
+          }
+          auto type_2 = match_result.maps.strings.at(type_for_arg);
+          if (type_1 != type_2) {
+            throw std::runtime_error(
+                fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
+          }
+
+          std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+
+          auto new_op = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
+          result->push_back(new_op);
+          return;
+        } else {
+          throw std::runtime_error("Failed to match new method");
+        }
       } else {
-        throw std::runtime_error("Failed to match new method");
+        throw std::runtime_error("Method call detected, not yet implemented");
       }
-    } else {
-      throw std::runtime_error("Method call detected, not yet implemented");
+    }
+  }
+
+  {
+    // detect method calls:
+    // ex: ((-> XXX methods-by-name new) (quote global) pair gp-0 a3-0)
+    constexpr int method_name = 0;
+    constexpr int type_source = 1;
+
+    auto deref_matcher = Matcher::deref(
+        Matcher::any(type_source), false,
+        {DerefTokenMatcher::string("methods-by-name"), DerefTokenMatcher::any_string(method_name)});
+
+    auto matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher), {});
+    auto temp_form = pool.alloc_single_form(nullptr, new_form);
+    auto match_result = match(matcher, temp_form);
+    if (match_result.matched) {
+      auto name = match_result.maps.strings.at(method_name);
+      auto type_source_form = match_result.maps.forms.at(type_source);
+      auto method_op =
+          pool.alloc_single_element_form<GetMethodElement>(nullptr, type_source_form, name, false);
+      auto gop = GenericOperator::make_function(method_op);
+
+      result->push_back(pool.alloc_element<GenericElement>(gop, arg_forms));
+      return;
+      throw std::runtime_error("Method dynamic name " + name);
     }
   }
 
@@ -702,6 +739,16 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     rewrite_as_set = false;
   }
 
+  // determine if set destination is used
+  bool set_unused = false;
+  if (rewrite_as_set) {
+    auto& info = env.reg_use().op.at(last_var->idx());
+    if (info.written_and_unused.find(last_var->reg()) != info.written_and_unused.end()) {
+      set_unused = true;
+    }
+  }
+
+  // process everything.
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
       FormStack temp_stack;
@@ -751,7 +798,11 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   }
 
   if (rewrite_as_set) {
-    stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true);
+    if (set_unused) {
+      stack.push_form_element(this, true);
+    } else {
+      stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true);
+    }
   } else {
     stack.push_form_element(this, true);
   }
@@ -790,6 +841,33 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     assert(used_as_value.has_value());
     stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
   }
+}
+
+void ShortCircuitElement::update_from_stack(const Env& env,
+                                            FormPool& pool,
+                                            FormStack& stack,
+                                            std::vector<FormElement*>* result) {
+  (void)stack;
+  for (int i = 0; i < int(entries.size()); i++) {
+    auto& entry = entries.at(i);
+    FormStack temp_stack;
+    for (auto& elt : entry.condition->elts()) {
+      elt->push_to_stack(env, pool, temp_stack);
+    }
+
+    std::vector<FormElement*> new_entries;
+    if (i == int(entries.size()) - 1) {
+      new_entries = temp_stack.rewrite_to_get_var(pool, final_result, env);
+    } else {
+      new_entries = temp_stack.rewrite(pool);
+    }
+
+    entry.condition->clear();
+    for (auto e : new_entries) {
+      entry.condition->push_back(e);
+    }
+  }
+  result->push_back(this);
 }
 
 ///////////////////
@@ -994,6 +1072,30 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
   } else {
     throw std::runtime_error("Not power of two case, not yet implemented");
   }
+}
+
+////////////////////////
+// CastElement
+////////////////////////
+
+void CastElement::update_from_stack(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result) {
+  m_source->update_children_from_stack(env, pool, stack);
+  result->push_back(this);
+}
+
+////////////////////////
+// TypeOfElement
+////////////////////////
+
+void TypeOfElement::update_from_stack(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result) {
+  value->update_children_from_stack(env, pool, stack);
+  result->push_back(this);
 }
 
 }  // namespace decompiler

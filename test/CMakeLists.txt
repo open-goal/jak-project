@@ -22,6 +22,7 @@ add_executable(goalc-test
         decompiler/test_AtomicOpBuilder.cpp
         decompiler/test_FormBeforeExpressions.cpp
         decompiler/test_FormExpressionBuild.cpp
+        decompiler/test_FormExpressionBuildLong.cpp
         decompiler/test_InstructionParser.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})

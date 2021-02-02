@@ -47,9 +47,10 @@ Matcher Matcher::cast(const std::string& type, Matcher value) {
   return m;
 }
 
-Matcher Matcher::any() {
+Matcher Matcher::any(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY;
+  m.m_form_match = match_id;
   return m;
 }
 
@@ -85,8 +86,13 @@ Matcher Matcher::deref(const Matcher& root,
   return m;
 }
 
-bool Matcher::do_match(const Form* input, MatchResult::Maps* maps_out) const {
+bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
+    case Kind::ANY:
+      if (m_form_match != -1) {
+        maps_out->forms[m_form_match] = input;
+      }
+      return true;
     case Kind::ANY_REG: {
       bool got = false;
       Variable result;
@@ -285,7 +291,7 @@ Matcher Matcher::any_reg_cast_to_int_or_uint(int match_id) {
       {any_reg(match_id), cast("uint", any_reg(match_id)), cast("int", any_reg(match_id))});
 }
 
-MatchResult match(const Matcher& spec, const Form* input) {
+MatchResult match(const Matcher& spec, Form* input) {
   MatchResult result;
   result.matched = spec.do_match(input, &result.maps);
   return result;
@@ -336,7 +342,7 @@ GenericOpMatcher GenericOpMatcher::func(const Matcher& func_matcher) {
   return m;
 }
 
-bool GenericOpMatcher::do_match(const GenericOperator& input, MatchResult::Maps* maps_out) const {
+bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::FIXED:
       if (input.kind() == GenericOperator::Kind::FIXED_OPERATOR) {

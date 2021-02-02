@@ -406,6 +406,8 @@ class StoreOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const SimpleExpression& addr() const { return m_addr; }
+  const SimpleAtom& value() const { return m_value; }
 
  private:
   int m_size;

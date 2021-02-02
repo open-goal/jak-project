@@ -1069,6 +1069,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognot";
     case FixedOperatorKind::SLL:
       return "sll";
+    case FixedOperatorKind::SRL:
+      return "srl";
     case FixedOperatorKind::CAR:
       return "car";
     case FixedOperatorKind::CDR:
@@ -1317,7 +1319,7 @@ void DynamicMethodAccess::collect_vars(VariableSet& vars) const {
 void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
-// DynamicMethodAccess
+// ArrayFieldAccess
 /////////////////////////////
 ArrayFieldAccess::ArrayFieldAccess(Variable source,
                                    const std::vector<DerefToken>& deref_tokens,
@@ -1359,4 +1361,34 @@ void ArrayFieldAccess::get_modified_regs(RegSet& regs) const {
     tok.get_modified_regs(regs);
   }
 }
+
+/////////////////////////////
+// GetMethodElement
+/////////////////////////////
+
+GetMethodElement::GetMethodElement(Form* in, std::string name, bool is_object)
+    : m_in(in), m_name(std::move(name)), m_is_object(is_object) {}
+
+goos::Object GetMethodElement::to_form(const Env& env) const {
+  return pretty_print::build_list(m_is_object ? "method-of-object" : "method-of-type",
+                                  m_in->to_form(env), m_name);
+}
+
+void GetMethodElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_in->apply(f);
+}
+
+void GetMethodElement::apply_form(const std::function<void(Form*)>& f) {
+  m_in->apply_form(f);
+}
+
+void GetMethodElement::collect_vars(VariableSet& vars) const {
+  m_in->collect_vars(vars);
+}
+
+void GetMethodElement::get_modified_regs(RegSet& regs) const {
+  m_in->get_modified_regs(regs);
+}
+
 }  // namespace decompiler

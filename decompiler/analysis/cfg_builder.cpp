@@ -949,7 +949,8 @@ Form* try_sc_as_type_of(FormPool& pool, const Function& f, const ShortCircuit* v
   // remove the shift
   b0_ptr->pop_back();
 
-  auto obj = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, shift->expr().get_arg(0));
+  auto obj = pool.alloc_single_element_form<SimpleExpressionElement>(
+      nullptr, shift->expr().get_arg(0).as_expr(), set_shift->dst().idx());
   auto type_op = pool.alloc_single_element_form<TypeOfElement>(nullptr, obj, clobber);
   auto op = pool.alloc_element<SetVarElement>(else_case->dst(), type_op, true);
   b0_ptr->push_back(op);

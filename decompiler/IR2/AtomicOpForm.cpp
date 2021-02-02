@@ -140,8 +140,36 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         auto addr =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
         return pool.alloc_element<SetFormFormElement>(addr, val);
-      } else {
-        return pool.alloc_element<StoreElement>(this);
+      }
+
+      if (input_type.typespec() == TypeSpec("pointer")) {
+        std::string cast_type;
+        switch (m_size) {
+          case 1:
+            cast_type = "int8";
+            break;
+          case 2:
+            cast_type = "int16";
+            break;
+          case 4:
+            cast_type = "int32";
+            break;
+          case 8:
+            cast_type = "int64";
+            break;
+          default:
+            assert(false);
+        }
+
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        auto cast_source = pool.alloc_single_element_form<CastElement>(
+            nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), source);
+        auto deref = pool.alloc_single_element_form<DerefElement>(nullptr, cast_source, false,
+                                                                  std::vector<DerefToken>());
+        auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, m_value.as_expr(), m_my_idx);
+        return pool.alloc_element<SetFormFormElement>(deref, val);
       }
     }
   }
@@ -171,7 +199,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
 
       // todo structure method
-      // todo pointer
+
       // todo product trick
       // todo type of basic fallback
 
@@ -263,6 +291,39 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         auto load =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);
+      }
+
+      if (input_type.typespec() == TypeSpec("pointer")) {
+        std::string cast_type;
+        switch (m_size) {
+          case 1:
+            cast_type = "int8";
+            break;
+          case 2:
+            cast_type = "int16";
+            break;
+          case 4:
+            cast_type = "int32";
+            break;
+          case 8:
+            cast_type = "int64";
+            break;
+          default:
+            assert(false);
+        }
+        if (m_kind == Kind::UNSIGNED) {
+          cast_type = "u" + cast_type;
+        } else if (m_kind == Kind::FLOAT) {
+          assert(false);  // nyi
+        }
+
+        auto dest = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        auto cast_dest = pool.alloc_single_element_form<CastElement>(
+            nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), dest);
+        auto deref = pool.alloc_single_element_form<DerefElement>(nullptr, cast_dest, false,
+                                                                  std::vector<DerefToken>());
+        return pool.alloc_element<SetVarElement>(m_dst, deref, true);
       }
     }
   }

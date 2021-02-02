@@ -106,6 +106,7 @@ enum class FixedOperatorKind {
   LOGNOR,
   LOGNOT,
   SLL,
+  SRL,
   CAR,
   CDR,
   NEW,

@@ -16,6 +16,7 @@ struct MatchResult {
   struct Maps {
     std::vector<std::optional<Variable>> regs;
     std::unordered_map<int, std::string> strings;
+    std::unordered_map<int, Form*> forms;
   } maps;
 };
 
@@ -27,7 +28,7 @@ class Matcher {
   static Matcher fixed_op(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
-  static Matcher any();
+  static Matcher any(int match_id = -1);
   static Matcher integer(std::optional<int> value);
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
@@ -50,7 +51,7 @@ class Matcher {
     INVALID
   };
 
-  bool do_match(const Form* input, MatchResult::Maps* maps_out) const;
+  bool do_match(Form* input, MatchResult::Maps* maps_out) const;
 
  private:
   std::vector<Matcher> m_sub_matchers;
@@ -60,11 +61,12 @@ class Matcher {
   Kind m_kind = Kind::INVALID;
   int m_reg_out_id = -1;
   int m_string_out_id = -1;
+  int m_form_match = -1;
   std::optional<int> m_int_match;
   std::string m_str;
 };
 
-MatchResult match(const Matcher& spec, const Form* input);
+MatchResult match(const Matcher& spec, Form* input);
 
 class DerefTokenMatcher {
  public:
@@ -88,7 +90,7 @@ class GenericOpMatcher {
 
   enum class Kind { FIXED, FUNC, INVALID };
 
-  bool do_match(const GenericOperator& input, MatchResult::Maps* maps_out) const;
+  bool do_match(GenericOperator& input, MatchResult::Maps* maps_out) const;
 
  private:
   Kind m_kind = Kind::INVALID;
