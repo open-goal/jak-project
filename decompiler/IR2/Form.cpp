@@ -103,6 +103,12 @@ void Form::collect_vars(VariableSet& vars) const {
   }
 }
 
+void Form::get_modified_regs(RegSet& regs) const {
+  for (auto e : m_elements) {
+    e->get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // SimpleExpressionElement
 /////////////////////////////
@@ -111,7 +117,7 @@ SimpleExpressionElement::SimpleExpressionElement(SimpleExpression expr, int my_i
     : m_expr(std::move(expr)), m_my_idx(my_idx) {}
 
 goos::Object SimpleExpressionElement::to_form(const Env& env) const {
-  return m_expr.to_form(env.file->labels, &env);
+  return m_expr.to_form(env.file->labels, env);
 }
 
 void SimpleExpressionElement::apply(const std::function<void(FormElement*)>& f) {
@@ -128,6 +134,10 @@ void SimpleExpressionElement::collect_vars(VariableSet& vars) const {
   m_expr.collect_vars(vars);
 }
 
+void SimpleExpressionElement::get_modified_regs(RegSet& regs) const {
+  (void)regs;
+}
+
 /////////////////////////////
 // StoreElement
 /////////////////////////////
@@ -135,7 +145,7 @@ void SimpleExpressionElement::collect_vars(VariableSet& vars) const {
 StoreElement::StoreElement(const StoreOp* op) : m_op(op) {}
 
 goos::Object StoreElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void StoreElement::apply(const std::function<void(FormElement*)>& f) {
@@ -146,6 +156,10 @@ void StoreElement::apply_form(const std::function<void(Form*)>&) {}
 
 void StoreElement::collect_vars(VariableSet& vars) const {
   return m_op->collect_vars(vars);
+}
+
+void StoreElement::get_modified_regs(RegSet& regs) const {
+  (void)regs;
 }
 
 /////////////////////////////
@@ -206,6 +220,10 @@ void LoadSourceElement::collect_vars(VariableSet& vars) const {
   m_addr->collect_vars(vars);
 }
 
+void LoadSourceElement::get_modified_regs(RegSet& regs) const {
+  m_addr->get_modified_regs(regs);
+}
+
 /////////////////////////////
 // SimpleAtomElement
 /////////////////////////////
@@ -213,7 +231,7 @@ void LoadSourceElement::collect_vars(VariableSet& vars) const {
 SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom) : m_atom(atom) {}
 
 goos::Object SimpleAtomElement::to_form(const Env& env) const {
-  return m_atom.to_form(env.file->labels, &env);
+  return m_atom.to_form(env.file->labels, env);
 }
 
 void SimpleAtomElement::apply(const std::function<void(FormElement*)>& f) {
@@ -226,6 +244,10 @@ void SimpleAtomElement::collect_vars(VariableSet& vars) const {
   return m_atom.collect_vars(vars);
 }
 
+void SimpleAtomElement::get_modified_regs(RegSet& regs) const {
+  (void)regs;
+}
+
 /////////////////////////////
 // SetVarElement
 /////////////////////////////
@@ -236,7 +258,7 @@ SetVarElement::SetVarElement(const Variable& var, Form* value, bool is_sequence_
 }
 
 goos::Object SetVarElement::to_form(const Env& env) const {
-  return pretty_print::build_list("set!", m_dst.to_string(&env), m_src->to_form(env));
+  return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
 }
 
 void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
@@ -255,6 +277,11 @@ bool SetVarElement::is_sequence_point() const {
 void SetVarElement::collect_vars(VariableSet& vars) const {
   vars.insert(m_dst);
   m_src->collect_vars(vars);
+}
+
+void SetVarElement::get_modified_regs(RegSet& regs) const {
+  regs.insert(m_dst.reg());
+  m_src->get_modified_regs(regs);
 }
 
 /////////////////////////////
@@ -288,6 +315,10 @@ void SetFormFormElement::collect_vars(VariableSet& vars) const {
   m_dst->collect_vars(vars);
 }
 
+void SetFormFormElement::get_modified_regs(RegSet& regs) const {
+  (void)regs;
+}
+
 /////////////////////////////
 // AtomicOpElement
 /////////////////////////////
@@ -295,7 +326,7 @@ void SetFormFormElement::collect_vars(VariableSet& vars) const {
 AtomicOpElement::AtomicOpElement(const AtomicOp* op) : m_op(op) {}
 
 goos::Object AtomicOpElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
@@ -306,6 +337,16 @@ void AtomicOpElement::apply_form(const std::function<void(Form*)>&) {}
 
 void AtomicOpElement::collect_vars(VariableSet& vars) const {
   m_op->collect_vars(vars);
+}
+
+void AtomicOpElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
 }
 
 /////////////////////////////
@@ -325,7 +366,7 @@ goos::Object ConditionElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol(get_condition_kind_name(m_kind)));
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    forms.push_back(m_src[i]->to_form(env.file->labels, &env));
+    forms.push_back(m_src[i]->to_form(env.file->labels, env));
   }
   if (forms.size() > 1) {
     return pretty_print::build_list(forms);
@@ -336,7 +377,7 @@ goos::Object ConditionElement::to_form(const Env& env) const {
 
 goos::Object ConditionElement::to_form_as_condition(const Env& env) const {
   if (m_kind == IR2_Condition::Kind::TRUTHY) {
-    return m_src[0]->to_form(env.file->labels, &env);
+    return m_src[0]->to_form(env.file->labels, env);
   } else {
     return to_form(env);
   }
@@ -360,6 +401,10 @@ void ConditionElement::collect_vars(VariableSet& vars) const {
   }
 }
 
+void ConditionElement::get_modified_regs(RegSet& regs) const {
+  (void)regs;
+}
+
 /////////////////////////////
 // FunctionCallElement
 /////////////////////////////
@@ -367,7 +412,7 @@ void ConditionElement::collect_vars(VariableSet& vars) const {
 FunctionCallElement::FunctionCallElement(const CallOp* op) : m_op(op) {}
 
 goos::Object FunctionCallElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void FunctionCallElement::apply(const std::function<void(FormElement*)>& f) {
@@ -380,6 +425,16 @@ void FunctionCallElement::collect_vars(VariableSet& vars) const {
   return m_op->collect_vars(vars);
 }
 
+void FunctionCallElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
 /////////////////////////////
 // BranchElement
 /////////////////////////////
@@ -387,7 +442,7 @@ void FunctionCallElement::collect_vars(VariableSet& vars) const {
 BranchElement::BranchElement(const BranchOp* op) : m_op(op) {}
 
 goos::Object BranchElement::to_form(const Env& env) const {
-  return m_op->to_form(env.file->labels, &env);
+  return m_op->to_form(env.file->labels, env);
 }
 
 void BranchElement::apply(const std::function<void(FormElement*)>& f) {
@@ -398,6 +453,16 @@ void BranchElement::apply_form(const std::function<void(Form*)>&) {}
 
 void BranchElement::collect_vars(VariableSet& vars) const {
   return m_op->collect_vars(vars);
+}
+
+void BranchElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
 }
 
 /////////////////////////////
@@ -428,6 +493,12 @@ void ReturnElement::collect_vars(VariableSet& vars) const {
   dead_code->collect_vars(vars);
 }
 
+void ReturnElement::get_modified_regs(RegSet& regs) const {
+  for (auto x : {return_code, dead_code}) {
+    x->get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // BreakElement
 /////////////////////////////
@@ -454,6 +525,12 @@ void BreakElement::apply_form(const std::function<void(Form*)>& f) {
 void BreakElement::collect_vars(VariableSet& vars) const {
   return_code->collect_vars(vars);
   dead_code->collect_vars(vars);
+}
+
+void BreakElement::get_modified_regs(RegSet& regs) const {
+  for (auto x : {return_code, dead_code}) {
+    x->get_modified_regs(regs);
+  }
 }
 
 /////////////////////////////
@@ -513,6 +590,14 @@ void CondWithElseElement::collect_vars(VariableSet& vars) const {
   else_ir->collect_vars(vars);
 }
 
+void CondWithElseElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : entries) {
+    e.condition->get_modified_regs(regs);
+    e.body->get_modified_regs(regs);
+  }
+  else_ir->get_modified_regs(regs);
+}
+
 /////////////////////////////
 // EmptyElement
 /////////////////////////////
@@ -526,8 +611,8 @@ void EmptyElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void EmptyElement::apply_form(const std::function<void(Form*)>&) {}
-
 void EmptyElement::collect_vars(VariableSet&) const {}
+void EmptyElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
 // WhileElement
@@ -558,6 +643,11 @@ void WhileElement::collect_vars(VariableSet& vars) const {
   condition->collect_vars(vars);
 }
 
+void WhileElement::get_modified_regs(RegSet& regs) const {
+  condition->get_modified_regs(regs);
+  body->get_modified_regs(regs);
+}
+
 /////////////////////////////
 // UntilElement
 /////////////////////////////
@@ -585,6 +675,11 @@ void UntilElement::apply_form(const std::function<void(Form*)>& f) {
 void UntilElement::collect_vars(VariableSet& vars) const {
   body->collect_vars(vars);
   condition->collect_vars(vars);
+}
+
+void UntilElement::get_modified_regs(RegSet& regs) const {
+  condition->get_modified_regs(regs);
+  body->get_modified_regs(regs);
 }
 
 /////////////////////////////
@@ -637,6 +732,12 @@ void ShortCircuitElement::collect_vars(VariableSet& vars) const {
   vars.insert(final_result);  // todo - this might be unused.
   for (auto& entry : entries) {
     entry.condition->collect_vars(vars);
+  }
+}
+
+void ShortCircuitElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : entries) {
+    e.condition->get_modified_regs(regs);
   }
 }
 
@@ -698,6 +799,14 @@ void CondNoElseElement::collect_vars(VariableSet& vars) const {
     }
   }
 }
+
+void CondNoElseElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : entries) {
+    e.condition->get_modified_regs(regs);
+    e.body->get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // AbsElement
 /////////////////////////////
@@ -706,7 +815,7 @@ AbsElement::AbsElement(Variable _source, RegSet _consumed)
     : source(_source), consumed(std::move(_consumed)) {}
 
 goos::Object AbsElement::to_form(const Env& env) const {
-  return pretty_print::build_list("abs", source.to_string(&env));
+  return pretty_print::build_list("abs", source.to_form(env));
 }
 
 void AbsElement::apply(const std::function<void(FormElement*)>& f) {
@@ -718,6 +827,8 @@ void AbsElement::apply_form(const std::function<void(Form*)>&) {}
 void AbsElement::collect_vars(VariableSet& vars) const {
   vars.insert(source);
 }
+
+void AbsElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
 // AshElement
@@ -736,7 +847,7 @@ AshElement::AshElement(Variable _shift_amount,
 
 goos::Object AshElement::to_form(const Env& env) const {
   return pretty_print::build_list(pretty_print::to_symbol(is_signed ? "ash.si" : "ash.ui"),
-                                  value.to_string(&env), shift_amount.to_string(&env));
+                                  value.to_form(env), shift_amount.to_form(env));
 }
 
 void AshElement::apply(const std::function<void(FormElement*)>& f) {
@@ -749,6 +860,8 @@ void AshElement::collect_vars(VariableSet& vars) const {
   vars.insert(value);
   vars.insert(shift_amount);
 }
+
+void AshElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
 // TypeOfElement
@@ -776,6 +889,8 @@ void TypeOfElement::collect_vars(VariableSet& vars) const {
   value->collect_vars(vars);
 }
 
+void TypeOfElement::get_modified_regs(RegSet&) const {}
+
 /////////////////////////////
 // ConditionalMoveFalseElement
 /////////////////////////////
@@ -788,8 +903,8 @@ ConditionalMoveFalseElement::ConditionalMoveFalseElement(Variable _dest,
 }
 
 goos::Object ConditionalMoveFalseElement::to_form(const Env& env) const {
-  return pretty_print::build_list(on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
-                                  dest.to_string(&env), source->to_form(env));
+  return pretty_print::build_list(on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero", dest.to_form(env),
+                                  source->to_form(env));
 }
 
 void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>& f) {
@@ -804,6 +919,10 @@ void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>& f
 void ConditionalMoveFalseElement::collect_vars(VariableSet& vars) const {
   vars.insert(dest);
   source->collect_vars(vars);
+}
+
+void ConditionalMoveFalseElement::get_modified_regs(RegSet& regs) const {
+  regs.insert(dest.reg());
 }
 
 /////////////////////////////
@@ -903,6 +1022,19 @@ bool GenericOperator::operator!=(const GenericOperator& other) const {
   return !((*this) == other);
 }
 
+void GenericOperator::get_modified_regs(RegSet& regs) const {
+  switch (m_kind) {
+    case Kind::FIXED_OPERATOR:
+    case Kind::CONDITION_OPERATOR:
+      break;
+    case Kind::FUNCTION_EXPR:
+      m_function->get_modified_regs(regs);
+      break;
+    default:
+      assert(false);
+  }
+}
+
 std::string fixed_operator_to_string(FixedOperatorKind kind) {
   switch (kind) {
     case FixedOperatorKind::GPR_TO_FPR:
@@ -937,12 +1069,16 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognot";
     case FixedOperatorKind::SLL:
       return "sll";
+    case FixedOperatorKind::SRL:
+      return "srl";
     case FixedOperatorKind::CAR:
       return "car";
     case FixedOperatorKind::CDR:
       return "cdr";
     case FixedOperatorKind::NEW:
       return "new";
+    case FixedOperatorKind::OBJECT_NEW:
+      return "object-new";
     default:
       assert(false);
   }
@@ -992,6 +1128,13 @@ void GenericElement::collect_vars(VariableSet& vars) const {
   }
 }
 
+void GenericElement::get_modified_regs(RegSet& regs) const {
+  m_head.get_modified_regs(regs);
+  for (auto x : m_elts) {
+    x->get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // CastElement
 /////////////////////////////
@@ -1013,6 +1156,10 @@ void CastElement::apply_form(const std::function<void(Form*)>& f) {
 
 void CastElement::collect_vars(VariableSet& vars) const {
   m_source->collect_vars(vars);
+}
+
+void CastElement::get_modified_regs(RegSet& regs) const {
+  m_source->get_modified_regs(regs);
 }
 
 /////////////////////////////
@@ -1092,6 +1239,19 @@ void DerefToken::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
+void DerefToken::get_modified_regs(RegSet& regs) const {
+  switch (m_kind) {
+    case Kind::INTEGER_CONSTANT:
+    case Kind::FIELD_NAME:
+      break;
+    case Kind::INTEGER_EXPRESSION:
+      m_expr->get_modified_regs(regs);
+      break;
+    default:
+      assert(false);
+  }
+}
+
 DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
     : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {}
 
@@ -1129,6 +1289,13 @@ void DerefElement::collect_vars(VariableSet& vars) const {
   }
 }
 
+void DerefElement::get_modified_regs(RegSet& regs) const {
+  m_base->get_modified_regs(regs);
+  for (auto& tok : m_tokens) {
+    tok.get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // DynamicMethodAccess
 /////////////////////////////
@@ -1136,7 +1303,7 @@ void DerefElement::collect_vars(VariableSet& vars) const {
 DynamicMethodAccess::DynamicMethodAccess(Variable source) : m_source(source) {}
 
 goos::Object DynamicMethodAccess::to_form(const Env& env) const {
-  return pretty_print::build_list("dyn-method-access", m_source.to_string(&env));
+  return pretty_print::build_list("dyn-method-access", m_source.to_form(env));
 }
 
 void DynamicMethodAccess::apply(const std::function<void(FormElement*)>& f) {
@@ -1147,6 +1314,81 @@ void DynamicMethodAccess::apply_form(const std::function<void(Form*)>&) {}
 
 void DynamicMethodAccess::collect_vars(VariableSet& vars) const {
   vars.insert(m_source);
+}
+
+void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
+
+/////////////////////////////
+// ArrayFieldAccess
+/////////////////////////////
+ArrayFieldAccess::ArrayFieldAccess(Variable source,
+                                   const std::vector<DerefToken>& deref_tokens,
+                                   int expected_stride)
+    : m_source(source), m_deref_tokens(deref_tokens), m_expected_stride(expected_stride) {}
+
+goos::Object ArrayFieldAccess::to_form(const Env& env) const {
+  std::vector<goos::Object> elts;
+  elts.push_back(pretty_print::to_symbol("dynamic-array-field-access"));
+  elts.push_back(m_source.to_form(env));
+  for (auto& tok : m_deref_tokens) {
+    elts.push_back(tok.to_form(env));
+  }
+  return pretty_print::build_list(elts);
+}
+
+void ArrayFieldAccess::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& tok : m_deref_tokens) {
+    tok.apply(f);
+  }
+}
+
+void ArrayFieldAccess::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& tok : m_deref_tokens) {
+    tok.apply_form(f);
+  }
+}
+
+void ArrayFieldAccess::collect_vars(VariableSet& vars) const {
+  vars.insert(m_source);
+  for (auto& tok : m_deref_tokens) {
+    tok.collect_vars(vars);
+  }
+}
+
+void ArrayFieldAccess::get_modified_regs(RegSet& regs) const {
+  for (auto& tok : m_deref_tokens) {
+    tok.get_modified_regs(regs);
+  }
+}
+
+/////////////////////////////
+// GetMethodElement
+/////////////////////////////
+
+GetMethodElement::GetMethodElement(Form* in, std::string name, bool is_object)
+    : m_in(in), m_name(std::move(name)), m_is_object(is_object) {}
+
+goos::Object GetMethodElement::to_form(const Env& env) const {
+  return pretty_print::build_list(m_is_object ? "method-of-object" : "method-of-type",
+                                  m_in->to_form(env), m_name);
+}
+
+void GetMethodElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_in->apply(f);
+}
+
+void GetMethodElement::apply_form(const std::function<void(Form*)>& f) {
+  m_in->apply_form(f);
+}
+
+void GetMethodElement::collect_vars(VariableSet& vars) const {
+  m_in->collect_vars(vars);
+}
+
+void GetMethodElement::get_modified_regs(RegSet& regs) const {
+  m_in->get_modified_regs(regs);
 }
 
 }  // namespace decompiler

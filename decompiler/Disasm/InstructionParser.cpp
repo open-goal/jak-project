@@ -253,8 +253,17 @@ Instruction InstructionParser::parse_single_instruction(
   return instr;
 }
 
-ParsedProgram InstructionParser::parse_program(const std::string& str) {
+ParsedProgram InstructionParser::parse_program(const std::string& str,
+                                               const std::vector<std::string>& predefined_labels) {
   ParsedProgram program;
+  for (auto& x : predefined_labels) {
+    DecompilerLabel label;
+    label.target_segment = 0;
+    label.offset = 0;
+    label.name = x;
+    program.labels.push_back(label);
+  }
+
   auto lines = string_to_lines(str);
   int byte_offset = 0;
   // first pass

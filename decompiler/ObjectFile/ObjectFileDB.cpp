@@ -155,6 +155,11 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   }
 
   lg::info("ObjectFileDB Initialized\n");
+  if (obj_files_by_name.empty()) {
+    lg::die(
+        "No object files have been added. Check that there are input files and the allowed_objects "
+        "list.");
+  }
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -280,6 +285,12 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     const uint8_t* obj_data,
                                     uint32_t obj_size,
                                     const std::string& dgo_name) {
+  const auto& config = get_config();
+  if (!config.allowed_objects.empty()) {
+    if (config.allowed_objects.find(obj_name) == config.allowed_objects.end()) {
+      return;
+    }
+  }
   stats.total_obj_files++;
   assert(obj_size > 128);
   uint16_t version = *(const uint16_t*)(obj_data + 8);

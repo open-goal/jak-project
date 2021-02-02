@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_set>
 #include "common/common_types.h"
+#include "common/goos/Object.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/TP_Type.h"
 #include "third-party/fmt/core.h"
@@ -65,7 +66,7 @@ class Variable {
     AUTOMATIC,    // print as variable, but if that's not possible print as reg.
   };
 
-  std::string to_string(const Env* env, Print mode = Print::AUTOMATIC) const;
+  goos::Object to_form(const Env& env, Print mode = Print::AUTOMATIC) const;
 
   bool operator==(const Variable& other) const;
   bool operator!=(const Variable& other) const;
@@ -105,9 +106,11 @@ enum class FixedOperatorKind {
   LOGNOR,
   LOGNOT,
   SLL,
+  SRL,
   CAR,
   CDR,
   NEW,
+  OBJECT_NEW,
   INVALID
 };
 

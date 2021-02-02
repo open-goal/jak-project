@@ -895,6 +895,16 @@ Example:
 
 This form will probably get more options in the future.
 
+## `local-vars`
+Declare variables local to a function, without an initial value. This will be used by the decompiler before `let` has been fully implemented.
+```lisp
+(local-vars (name type-spec)...)
+```
+
+The name can be any valid symbol. The scope of the variable is _always_ the function scope. Other scopes inside a function will always hide variables declared with `local-vars`.  The type can be any GOAL typespec. If you use `float`, you get a floating point register, otherwise you get a normal GPR.
+
+It's recommended to avoid using this form.
+
 # Compiler Forms - Macro Forms
 
 ## `#cond`

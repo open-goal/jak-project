@@ -94,6 +94,7 @@ static const std::unordered_map<
         {"lambda", &Compiler::compile_lambda},
         {"declare", &Compiler::compile_declare},
         {"inline", &Compiler::compile_inline},
+        {"local-vars", &Compiler::compile_local_vars},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
 

@@ -37,6 +37,9 @@ goos::Object build_list(const std::vector<std::string>& symbols);
 // and accept mixed arguments!
 
 template <typename... Args>
+goos::Object build_list(const goos::Object& car, Args... rest);
+
+template <typename... Args>
 goos::Object build_list(const std::string& str, Args... rest) {
   return goos::PairObject::make_new(to_symbol(str), build_list(rest...));
 }

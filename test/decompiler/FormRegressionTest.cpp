@@ -6,6 +6,7 @@
 #include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
+#include "third-party/json.hpp"
 
 using namespace decompiler;
 
@@ -70,12 +71,18 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     bool do_expressions,
     bool allow_pairs,
     const std::string& method_name,
-    const std::vector<std::pair<std::string, std::string>>& strings) {
+    const std::vector<std::pair<std::string, std::string>>& strings,
+    const std::unordered_map<int, std::vector<TypeHint>>& hints) {
   dts->type_prop_settings.locked = true;
   dts->type_prop_settings.reset();
   dts->type_prop_settings.allow_pair = allow_pairs;
   dts->type_prop_settings.current_method_type = method_name;
-  auto program = parser->parse_program(code);
+
+  std::vector<std::string> string_label_names;
+  for (auto& x : strings) {
+    string_label_names.push_back(x.first);
+  }
+  auto program = parser->parse_program(code, string_label_names);
   //  printf("prg:\n%s\n\n", program.print().c_str());
   auto test = std::make_unique<TestData>(program.instructions.size());
   test->file.words_by_seg.resize(3);
@@ -100,7 +107,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
 
-  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, {}));
+  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, hints));
 
   test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
 
@@ -152,9 +159,10 @@ void FormRegressionTest::test(const std::string& code,
                               bool do_expressions,
                               bool allow_pairs,
                               const std::string& method_name,
-                              const std::vector<std::pair<std::string, std::string>>& strings) {
+                              const std::vector<std::pair<std::string, std::string>>& strings,
+                              const std::unordered_map<int, std::vector<TypeHint>>& hints) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings);
+  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings, hints);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
@@ -170,6 +178,23 @@ void FormRegressionTest::test(const std::string& code,
   }
 
   EXPECT_TRUE(expected_form == actual_form);
+}
+
+std::unordered_map<int, std::vector<decompiler::TypeHint>> FormRegressionTest::parse_hint_json(
+    const std::string& in) {
+  std::unordered_map<int, std::vector<decompiler::TypeHint>> out;
+  auto hints = nlohmann::json::parse(in);
+  for (auto& hint : hints) {
+    auto idx = hint.at(0).get<int>();
+    for (size_t i = 1; i < hint.size(); i++) {
+      auto& assignment = hint.at(i);
+      TypeHint type_hint;
+      type_hint.reg = Register(assignment.at(0).get<std::string>());
+      type_hint.type_name = assignment.at(1).get<std::string>();
+      out[idx].push_back(type_hint);
+    }
+  }
+  return out;
 }
 
 std::unique_ptr<InstructionParser> FormRegressionTest::parser;

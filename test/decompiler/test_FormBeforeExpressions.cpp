@@ -804,11 +804,11 @@ TEST_F(FormRegressionTest, NewMethod) {
       "   (set! a1-2 (*.ui gp-0 a1-1))\n"
       "   (set! a2-2 (+ a2-1 a1-2))\n"
       "   (set! a1-3 v1-1)\n"  // size!
-      "   (set! v0-0 (call!))\n"
+      "   (set! v0-0 (call! a0-0 a1-3 a2-2))\n"
       "   (nonzero? v0-0)\n"  // only if we got memory...
       "   )\n"
-      "  (s.w! v0-0 gp-0)\n"  // store size
-      "  (s.w! (+ v0-0 4) gp-0)\n"
+      "  (set! (-> v0-0 length) gp-0)\n"  // store size
+      "  (set! (-> v0-0 allocated-length) gp-0)\n"
       "  )"
       "  (ret-value v0-0))\n";
   test_no_expr(func, type, expected, false, "inline-array-class");

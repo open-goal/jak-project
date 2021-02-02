@@ -5,6 +5,7 @@ add_library(
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
+        analysis/final_output.cpp
         analysis/reg_usage.cpp
         analysis/variable_naming.cpp
 

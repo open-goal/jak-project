@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "FormStack.h"
 #include "Form.h"
 
@@ -63,16 +64,35 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
   m_stack.push_back(entry);
 }
 
-Form* FormStack::pop_reg(Register reg) {
+Form* FormStack::pop_reg(const Variable& var, const RegSet& barrier, const Env& env) {
+  return pop_reg(var.reg(), barrier, env);
+}
+
+namespace {
+bool nonempty_intersection(const RegSet& a, const RegSet& b) {
+  // todo - if we ever switch to bit reg sets, this could be a lot faster.
+  std::vector<Register> isect;
+  std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(isect));
+  return !isect.empty();
+}
+}  // namespace
+
+Form* FormStack::pop_reg(Register reg, const RegSet& barrier, const Env& env) {
+  (void)env;  // keep this for easy debugging.
+  RegSet modified;
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
       if (entry.destination->reg() == reg) {
+        entry.source->get_modified_regs(modified);
+        if (nonempty_intersection(modified, barrier)) {
+          return nullptr;
+        }
         entry.active = false;
         assert(entry.source);
         if (entry.non_seq_source.has_value()) {
           assert(entry.sequence_point == false);
-          auto result = pop_reg(entry.non_seq_source->reg());
+          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env);
           if (result) {
             return result;
           }
@@ -84,15 +104,19 @@ Form* FormStack::pop_reg(Register reg) {
           // and it's a sequence point! can't look any more back than this.
           return nullptr;
         }
+        // no match, and not a sequence:
+        if (entry.source) {
+          assert(!entry.elt);
+          entry.source->get_modified_regs(modified);
+        } else {
+          assert(entry.elt);
+          entry.elt->get_modified_regs(modified);
+        }
       }
     }
   }
   // we didn't have it...
   return nullptr;
-}
-
-Form* FormStack::pop_reg(const Variable& var) {
-  return pop_reg(var.reg());
 }
 
 std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {

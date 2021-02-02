@@ -49,6 +49,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
                                      LinkedObjectFile& file,
                                      const std::unordered_map<int, std::vector<TypeHint>>& hints) {
   (void)file;
+  ir2.env.set_type_hints(hints);
   // STEP 0 - set decompiler type system settings for this function. In config we can manually
   // specify some settings for type propagation to reduce the strictness of type propagation.
   // TODO - this is kinda hacky so that it works in both unit tests and actual decompilation.
@@ -146,7 +147,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
 
   auto last_type = op_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
   if (last_type != my_type.last_arg()) {
-    warnings += fmt::format(";; return type mismatch {} vs {}.  ", last_type.print(),
+    warnings += fmt::format(";; return type mismatch {} vs {}.\n", last_type.print(),
                             my_type.last_arg().print());
   }
 
