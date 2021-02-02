@@ -455,7 +455,7 @@ class IR_AsmAdd : public IR_Asm {
 
 class IR_AsmFNop : public IR_Asm {
  public:
-  IR_AsmFNop(bool use_coloring);
+  IR_AsmFNop();
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -549,7 +549,7 @@ class IR_SplatVF : public IR_Asm {
   IR_SplatVF(bool use_color,
              const RegVal* dst,
              const RegVal* src1,
-             const emitter::Register::XMM_ELEMENT element);
+             const emitter::Register::VF_ELEMENT element);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -559,6 +559,6 @@ class IR_SplatVF : public IR_Asm {
  protected:
   const RegVal* m_dst = nullptr;
   const RegVal* m_src = nullptr;
-  const emitter::Register::XMM_ELEMENT m_element = emitter::Register::XMM_ELEMENT::NONE;
+  const emitter::Register::VF_ELEMENT m_element = emitter::Register::VF_ELEMENT::NONE;
 };
 #endif  // JAK_IR_H

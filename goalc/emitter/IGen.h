@@ -2160,12 +2160,7 @@ class IGen {
     return instr;
   }
 
-  // todo, rip relative loads and stores.
-
-  // TODO - rip, i reimplemented this below, which is better? im biased now
-  // personally, i think the shuffle instruction is a pain to work with directly, so id prefer
-  // working with it via helper functions (my splat one for example) so it doesn't really matter to
-  // me
+  // TODO - rip relative loads and stores.
 
   static Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
     assert(dst.is_xmm());
@@ -2175,12 +2170,7 @@ class IGen {
     assert(dz < 4);
     assert(dw < 4);
     u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
-    // we use the AVX "VEX" encoding here. This is a three-operand form, but we just set both source
-    // to the same register. It seems like this is one byte longer but is faster maybe?
-    Instruction instr(0xc6);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
-    instr.set(Imm(1, imm));
-    return instr;
+    return swizzle_vf(dst, src, imm);
 
     // SSE encoding version:
     //    Instruction instr(0x0f);
@@ -2228,24 +2218,22 @@ class IGen {
     splat_vf(xmm1, xmm2, XMM_ELEMENT::X);
     xmm1 = (4, 4, 4, 4)
     */
-  static Instruction splat_vf(Register dst, Register src, Register::XMM_ELEMENT element) {
+  static Instruction splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
     switch (element) {
-      case Register::XMM_ELEMENT::X:  // Least significant element
+      case Register::VF_ELEMENT::X:  // Least significant element
         return swizzle_vf(dst, src, 0b00000000);
         break;
-      case Register::XMM_ELEMENT::Y:
+      case Register::VF_ELEMENT::Y:
         return swizzle_vf(dst, src, 0b01010101);
         break;
-      case Register::XMM_ELEMENT::Z:
+      case Register::VF_ELEMENT::Z:
         return swizzle_vf(dst, src, 0b10101010);
         break;
-      case Register::XMM_ELEMENT::W:  // Most significant element
+      case Register::VF_ELEMENT::W:  // Most significant element
         return swizzle_vf(dst, src, 0b11111111);
         break;
     }
   }
-
-  // TODO - get rid of duplication
 
   static Instruction xor_vf(Register dst, Register src1, Register src2) {
     assert(dst.is_xmm());

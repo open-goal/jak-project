@@ -69,7 +69,7 @@ class Compiler {
   Val* compile_asm_vf_math3(const goos::Object& form,
                             const goos::Object& rest,
                             IR_VFMath3Asm::Kind kind,
-                            emitter::Register::XMM_ELEMENT broadcastElement,
+                            emitter::Register::VF_ELEMENT broadcastElement,
                             Env* env);
 
   Val* get_field_of_structure(const StructureType* type,
@@ -282,7 +282,6 @@ class Compiler {
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ret(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_fnop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_push(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pop(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sub(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -290,6 +289,8 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_nop_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env);

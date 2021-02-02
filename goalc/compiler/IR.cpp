@@ -1062,7 +1062,7 @@ void IR_AsmRet::do_codegen(emitter::ObjectGenerator* gen,
 // AsmFNop
 ///////////////////////
 
-IR_AsmFNop::IR_AsmFNop(bool use_coloring) : IR_Asm(use_coloring) {}
+IR_AsmFNop::IR_AsmFNop() : IR_Asm() {}
 
 std::string IR_AsmFNop::print() {
   return fmt::format(".nop.vf{}", get_color_suffix_string());
@@ -1295,8 +1295,6 @@ void IR_RegSetAsm::do_codegen(emitter::ObjectGenerator* gen,
 // AsmVF3
 ///////////////////////
 
-// TODO - make a varient that doesn't take a mask
-
 IR_VFMath3Asm::IR_VFMath3Asm(bool use_color,
                              const RegVal* dst,
                              const RegVal* src1,
@@ -1329,7 +1327,7 @@ std::string IR_VFMath3Asm::print() {
     default:
       assert(false);
   }
-  return fmt::format("{}{} {}, {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+  return fmt::format("{}{} {}, {}, {}, {:#b}", function, get_color_suffix_string(), m_dst->print(),
                      m_src1->print(), m_src2->print(), m_mask);
 }
 
@@ -1408,7 +1406,7 @@ void IR_BlendVF::do_codegen(emitter::ObjectGenerator* gen,
 IR_SplatVF::IR_SplatVF(bool use_color,
                        const RegVal* dst,
                        const RegVal* src,
-                       const emitter::Register::XMM_ELEMENT element)
+                       const emitter::Register::VF_ELEMENT element)
     : IR_Asm(use_color), m_dst(dst), m_src(src), m_element(element) {}
 
 std::string IR_SplatVF::print() {

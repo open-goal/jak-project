@@ -4,6 +4,14 @@
 
 using namespace emitter;
 
+TEST(EmitterAVX, VF_NOP) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::nop_vf());
+
+  EXPECT_EQ(tester.dump_to_hex_string(true), "D9D0");
+}
+
 TEST(EmitterAVX, MOV_VF) {
   CodeTester tester;
   tester.init_code_buffer(10000);

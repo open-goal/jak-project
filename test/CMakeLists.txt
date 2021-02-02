@@ -4,25 +4,24 @@ include("goalc/CMakeLists.txt")
 
 add_executable(goalc-test
         test_main.cpp
-        # test_reader.cpp
-        # test_goos.cpp
-        # test_listener_deci2.cpp
-        # test_kernel.cpp
-        # all_jak1_symbols.cpp
-        # test_type_system.cpp
-        # test_CodeTester.cpp
-        # test_emitter.cpp
-        # test_emitter_avx.cpp
-        # test_common_util.cpp
-        # test_pretty_print.cpp
-        # test_zydis.cpp
-        # goalc/test_goal_kernel.cpp
-        # decompiler/FormRegressionTest.cpp
-        # decompiler/test_AtomicOpBuilder.cpp
-        # decompiler/test_FormBeforeExpressions.cpp
-        # decompiler/test_FormExpressionBuild.cpp
-        # decompiler/test_InstructionParser.cpp
-				"test_emitter_test.cpp"
+        test_reader.cpp
+        test_goos.cpp
+        test_listener_deci2.cpp
+        test_kernel.cpp
+        all_jak1_symbols.cpp
+        test_type_system.cpp
+        test_CodeTester.cpp
+        test_emitter.cpp
+        test_emitter_avx.cpp
+        test_common_util.cpp
+        test_pretty_print.cpp
+        test_zydis.cpp
+        goalc/test_goal_kernel.cpp
+        decompiler/FormRegressionTest.cpp
+        decompiler/test_AtomicOpBuilder.cpp
+        decompiler/test_FormBeforeExpressions.cpp
+        decompiler/test_FormExpressionBuild.cpp
+        decompiler/test_InstructionParser.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES}
 				)

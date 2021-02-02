@@ -13,9 +13,8 @@ static const std::unordered_map<
     std::string,
     Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
     goal_forms = {
-        // inline asm
+        // INLINE ASM
         {".ret", &Compiler::compile_asm_ret},
-        {".nop.vf", &Compiler::compile_asm_fnop},
         {".push", &Compiler::compile_asm_push},
         {".pop", &Compiler::compile_asm_pop},
         {"rlet", &Compiler::compile_rlet},
@@ -24,16 +23,13 @@ static const std::unordered_map<
         {".add", &Compiler::compile_asm_add},
         {".load-sym", &Compiler::compile_asm_load_sym},
         {".mov", &Compiler::compile_asm_mov},
+
+        // INLINE ASM - VECTOR FLOAT OPERATIONS
+        {".nop.vf", &Compiler::compile_asm_nop_vf},
         {".lvf", &Compiler::compile_asm_lvf},
         {".svf", &Compiler::compile_asm_svf},
         {".xor.vf", &Compiler::compile_asm_xor_vf},
-        // TODO - Readability wise, it would probably be nice to have all the varients like
-        // '.sub.xyzw.vf' and so on, but it's not required at this point and needs to be done in a
-        // clever way to avoid lots of duplication
-        //
-        // TODO - difficult to cut down duplication as the map wants a function _reference_.
-        // ie. - I'd like to just call a function that returns a function, but the path forward
-        // isn't obvious to me yet.
+
         {".max.vf", &Compiler::compile_asm_max_vf},
         {".maxx.vf", &Compiler::compile_asm_maxx_vf},
         {".maxy.vf", &Compiler::compile_asm_maxy_vf},

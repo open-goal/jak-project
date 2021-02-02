@@ -1,26 +1,20 @@
 (defun test-vector-multiply ()
   (let ((vector-0 (new 'stack 'vector))
         (vector-1 (new 'stack 'vector)))
-    (set! (-> vector-0 x) -1.0)
-    (set! (-> vector-0 y) 0.0)
-    (set! (-> vector-0 z) 1.0)
-    (set! (-> vector-0 w) 2.0)
-    
-    (set! (-> vector-1 x) 10.5)
-    (set! (-> vector-1 y) 20.5)
-    (set! (-> vector-1 z) 30.5)
-    (set! (-> vector-1 w) 40.05)
 
-		; TODO - OpenGOAL-lib - add a library function
-		; - part of the "issue" with the current functions is they remove `w` no matter what, makes sense for most vector math,
-		; but maybe we can come up with a better one
-		(rlet ((vf1 :class vf :reset-here #t)
+    (set-vector! vector-0 -1.0 0.0 1.0 2.0)
+    (set-vector! vector-1 10.5 20.5 30.5 40.05)
+
+    ; TODO - OpenGOAL-lib - add a library function
+    ; - part of the "issue" with the current functions is they remove `w` no matter what, makes sense for most vector math,
+    ; but maybe we can come up with a better one
+    (rlet ((vf1 :class vf :reset-here #t)
            (vf2 :class vf :reset-here #t))
-			(.lvf vf1 vector-0)
-			(.lvf vf2 vector-1)
+      (.lvf vf1 vector-0)
+      (.lvf vf2 vector-1)
 
-			(.mul.vf vf1 vf1 vf2 #b1110)
-			(.svf vector-0 vf1))
+      (.mul.vf vf1 vf1 vf2 :mask #b1110)
+      (.svf vector-0 vf1))
 
     ; (-1, 0, 30.5, 80.10)
     (format #t "(~f, ~f, ~f, ~f)~%" (-> vector-0 x) (-> vector-0 y) (-> vector-0 z) (-> vector-0 w))))

@@ -418,6 +418,23 @@
   :flag-assert         #x90000000c
   )
 
+(defmacro set-vector! (v xv yv zv wv)
+  `(begin
+      (set! (-> ,v x) ,xv)
+      (set! (-> ,v y) ,yv)
+      (set! (-> ,v z) ,zv)
+      (set! (-> ,v w) ,wv))
+  )
+
+(defun new-vector ((xv float) (yv float) (zv float) (wv float))
+  "Returns a new vector using the provided components"
+  (let ((v (new 'stack 'vector)))
+    (set! (-> v x) xv)
+    (set! (-> v y) yv)
+    (set! (-> v z) zv)
+    (set! (-> v w) wv)
+    v))
+
 (defun vector-dot ((a vector) (b vector))
   "Take the dot product of two vectors.
    Only does the x, y, z compoments.
@@ -471,11 +488,11 @@
         (.lvf vf2 a)
         (.lvf vf3 b)
         ; set vf0 to zero
-        (.xor.vf vf0 vf0 vf0 #b1111)
+        (.xor.vf vf0 vf0 vf0)
         ; add
-        (.add.vf vf1 vf2 vf3 #b1111)
+        (.add.vf vf1 vf2 vf3)
         ; set w = 0
-        (.blend.vf vf1 vf1 vf0 #b1000)
+        (.blend.vf vf1 vf1 vf0 :mask #b1000)
         ; store
         (.svf dst vf1)
         )
@@ -493,11 +510,11 @@
         (.lvf vf2 a)
         (.lvf vf3 b)
         ; set vf0 to zero
-        (.xor.vf vf0 vf0 vf0 #b1111)
+        (.xor.vf vf0 vf0 vf0)
         ; subtract
-        (.sub.vf vf1 vf2 vf3 #b1111)
+        (.sub.vf vf1 vf2 vf3)
         ; set w = 0
-        (.blend.vf vf1 vf1 vf0 #b1000)
+        (.blend.vf vf1 vf1 vf0 :mask #b1000)
         ; store
         (.svf dst vf1)
         )
@@ -509,7 +526,7 @@
   (declare (inline))
   (rlet ((vf1 :class vf :reset-here #t))
         ; set vf1 = 0
-        (.xor.vf vf1 vf1 vf1 #b1111)
+        (.xor.vf vf1 vf1 vf1)
         ; store the 0
         (.svf dest vf1)
         )
