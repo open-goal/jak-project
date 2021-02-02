@@ -244,13 +244,9 @@ Val* Compiler::compile_asm_mov(const goos::Object& form, const goos::Object& res
 
 Val* Compiler::compile_asm_nop_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {}, {{"color", {false, goos::ObjectType::SYMBOL}}});
-  bool color = true;
-  if (args.has_named("color")) {
-    color = get_true_or_false(form, args.named.at("color"));
-  }
+  va_check(form, args, {}, {});
 
-  env->emit_ir<IR_AsmFNop>(color);
+  env->emit_ir<IR_AsmFNop>();
   return get_none();
 }
 

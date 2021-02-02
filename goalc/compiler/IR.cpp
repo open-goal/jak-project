@@ -1062,10 +1062,10 @@ void IR_AsmRet::do_codegen(emitter::ObjectGenerator* gen,
 // AsmFNop
 ///////////////////////
 
-IR_AsmFNop::IR_AsmFNop() : IR_Asm() {}
+IR_AsmFNop::IR_AsmFNop() : IR_Asm(false) {}
 
 std::string IR_AsmFNop::print() {
-  return fmt::format(".nop.vf{}", get_color_suffix_string());
+  return ".nop.vf";
 }
 
 RegAllocInstr IR_AsmFNop::to_rai() {

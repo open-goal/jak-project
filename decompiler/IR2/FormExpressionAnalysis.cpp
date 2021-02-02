@@ -412,7 +412,8 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
-      const auto& consumes = env.reg_use().op.at(m_dst.idx()).consumes;
+      // TODO - unused, intentional?
+      // const auto& consumes = env.reg_use().op.at(m_dst.idx()).consumes;
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
         stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);

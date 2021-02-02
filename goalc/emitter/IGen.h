@@ -2232,6 +2232,8 @@ class IGen {
       case Register::VF_ELEMENT::W:  // Most significant element
         return swizzle_vf(dst, src, 0b11111111);
         break;
+      default:
+        assert(false);
     }
   }
 
