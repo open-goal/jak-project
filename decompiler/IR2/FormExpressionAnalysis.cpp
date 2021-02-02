@@ -608,7 +608,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
       result->push_back(pool.alloc_element<GenericElement>(gop, arg_forms));
       return;
-      throw std::runtime_error("Method dynamic name " + name);
     }
   }
 

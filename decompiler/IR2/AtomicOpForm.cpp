@@ -25,7 +25,8 @@ DerefToken to_token(FieldReverseLookupOutput::Token in) {
     case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
       return DerefToken::make_int_constant(in.idx);
     default:
-      assert(false);
+      // temp
+      throw std::runtime_error("Cannot convert rd lookup token to deref token");
   }
 }
 }  // namespace
