@@ -322,6 +322,7 @@ class Compiler {
   Val* compile_condition_as_bool(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_when_goto(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cond(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_and_or(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Define
   Val* compile_define(const goos::Object& form, const goos::Object& rest, Env* env);

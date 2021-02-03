@@ -56,6 +56,8 @@ static const std::unordered_map<
         // CONTROL FLOW
         {"cond", &Compiler::compile_cond},
         {"when-goto", &Compiler::compile_when_goto},
+        {"and", &Compiler::compile_and_or},
+        {"or", &Compiler::compile_and_or},
 
         // DEFINITION
         {"define", &Compiler::compile_define},

@@ -116,22 +116,6 @@ class IR_RegSet : public IR {
   const RegVal* m_src = nullptr;
 };
 
-class IR_GotoLabel : public IR {
- public:
-  IR_GotoLabel();
-  void resolve(const Label* dest);
-  explicit IR_GotoLabel(const Label* dest);
-  std::string print() override;
-  RegAllocInstr to_rai() override;
-  void do_codegen(emitter::ObjectGenerator* gen,
-                  const AllocationResult& allocs,
-                  emitter::IR_Record irec) override;
-
- protected:
-  const Label* m_dest = nullptr;
-  bool m_resolved = false;
-};
-
 class IR_FunctionCall : public IR {
  public:
   IR_FunctionCall(const RegVal* func, const RegVal* ret, std::vector<RegVal*> args);
@@ -255,6 +239,22 @@ struct Condition {
   bool is_float = false;
   RegAllocInstr to_rai();
   std::string print() const;
+};
+
+class IR_GotoLabel : public IR {
+ public:
+  IR_GotoLabel();
+  void resolve(const Label* dest);
+  explicit IR_GotoLabel(const Label* dest);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const Label* m_dest = nullptr;
+  bool m_resolved = false;
 };
 
 class IR_ConditionalBranch : public IR {

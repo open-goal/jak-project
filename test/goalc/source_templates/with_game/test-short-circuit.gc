@@ -1,0 +1,33 @@
+(start-test "short-circuit")
+
+(defun dont-call-me ()
+  (segfault)
+  )
+
+(expect-true (= 1 (and 1)))
+(expect-true (= #f (and #f)))
+(expect-true (= 1 (and 2 1)))
+(expect-true (= #f (and 2 #f 1)))
+(expect-true (= #f (and #f 1 1)))
+(expect-true (= #f (and 2 1 #f)))
+
+(expect-true (= 1 (or 1)))
+(expect-true (= #f (or #f)))
+(expect-true (= 2 (or 2 1)))
+(expect-true (= 2 (or 2 #f 1)))
+(expect-true (= 3 (or #f 3 1)))
+(expect-true (= 2 (or 2 1 #f)))
+(expect-true (= 2 (or #f #f #f 2 3 #f)))
+
+(or #f #f 1 (segfault) 2)
+
+(and 1 #f 1 (segfault) 2)
+
+(let ((x (the symbol #f)))
+  ;; type system should allow this because and will return a symbol
+  (set! x (and #t #f))
+  (set! x (or #t #f))
+  ;; (set! x (or 1 #f)) ;; not allowed.
+  )
+
+(finish-test)
