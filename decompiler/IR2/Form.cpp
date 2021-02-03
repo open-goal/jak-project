@@ -1071,6 +1071,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "shl";
     case FixedOperatorKind::SHR:
       return "shr";
+    case FixedOperatorKind::SAR:
+      return "sar";
     case FixedOperatorKind::CAR:
       return "car";
     case FixedOperatorKind::CDR:

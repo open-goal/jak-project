@@ -431,6 +431,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
       update_from_stack_force_ui_2(env, FixedOperatorKind::SHR, pool, stack, result);
       break;
+    case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
+      update_from_stack_force_ui_2(env, FixedOperatorKind::SAR, pool, stack, result);
+      break;
     case SimpleExpression::Kind::MUL_UNSIGNED:
       update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result);
       break;

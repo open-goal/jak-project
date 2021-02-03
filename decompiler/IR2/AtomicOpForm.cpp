@@ -90,6 +90,13 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
 
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
+    if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
+      auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value.as_expr(),
+                                                                         m_my_idx);
+      auto src = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_addr, m_my_idx);
+      return pool.alloc_element<SetFormFormElement>(src, val);
+    }
+
     IR2_RegOffset ro;
     if (get_as_reg_offset(m_addr, &ro)) {
       auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
