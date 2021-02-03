@@ -115,7 +115,11 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     throw_compiler_error(form, "Invalid lambda form");
   }
 
-  auto place = fe->alloc_val<LambdaVal>(get_none()->type());
+  // allocate this lambda from the object file environment. This makes it safe for this to hold
+  // on to references to this as an inlineable function even if the enclosing function fails.
+  // for example, the top-level may (define some-func (lambda...)) and even if top-level fails,
+  // we keep around a reference to some-func to be possibly inlined.
+  auto place = obj_env->alloc_val<LambdaVal>(get_none()->type());
   auto& lambda = place->lambda;
   auto lambda_ts = m_ts.make_typespec("function");
 
