@@ -370,6 +370,11 @@ TEST_F(WithGameTests, LocalVars) {
                          {"y is \"test\", x is 12, z is 3.2000\n0\n"});
 }
 
+TEST_F(WithGameTests, ShortCircuit) {
+  runner.run_static_test(env, testCategory, "test-short-circuit.gc",
+                         get_test_pass_string("short-circuit", 13));
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

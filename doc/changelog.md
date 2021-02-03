@@ -111,3 +111,5 @@
 - Split `method` into `method-of-type` and `method-of-object` to avoid ambiguity
 - Fixed bug where `(-> obj type)` caused a compiler error when `obj` had compile time type of `array` (the fancy boxed array)
 - Fixed use-after-free if the top-level form fails to compile and you continue trying to compile stuff.
+- `and` and `or` are more efficient and the type of the result is more specific: `LCA(symbol, cases...)`
+- `print-type` now fully compiles the argument and returns the result instead of `none`
