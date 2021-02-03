@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     // write files:
     for (auto& entry : dgo.entries()) {
       file_util::write_binary_file(file_util::combine_path(out_path, entry.unique_name),
-                                   (void*)entry.data.data(), entry.data.size());
+                                   (const void*)entry.data.data(), entry.data.size());
     }
   }
 

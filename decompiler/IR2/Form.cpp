@@ -1067,10 +1067,10 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognor";
     case FixedOperatorKind::LOGNOT:
       return "lognot";
-    case FixedOperatorKind::SLL:
-      return "sll";
-    case FixedOperatorKind::SRL:
-      return "srl";
+    case FixedOperatorKind::SHL:
+      return "shl";
+    case FixedOperatorKind::SHR:
+      return "shr";
     case FixedOperatorKind::CAR:
       return "car";
     case FixedOperatorKind::CDR:

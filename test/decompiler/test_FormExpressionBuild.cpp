@@ -422,7 +422,7 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
       "    daddiu sp, sp, 16";
   std::string type = "(function type uint)";
 
-  std::string expected = "(logand (l.d L346) (+ (sll (-> a0-1 allocated-length) 2) 43))";
+  std::string expected = "(logand (l.d L346) (+ (shl (-> a0-1 allocated-length) 2) 43))";
   test_with_expr(func, type, expected, false, "");
 }
 
@@ -684,7 +684,7 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "    (set! v0-0 1)\n"
       "    (while\n"
       "      (and (!= v1-1 '()) "
-      "                   (<0.si (sll (the-as uint v1-1) 62))\n"
+      "                   (<0.si (shl (the-as uint v1-1) 62))\n"
       "      )\n"
       "     (set! v0-0 (+ v0-0 1))\n"
       "     (set! v1-1 (cdr v1-1))\n"
@@ -1548,7 +1548,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "   (set! s3-0 gp-0)\n"
       "   (while\n"
       "    (not\n"
-      "     (or (= (cdr s3-0) (quote ())) (>=0.si (sll (the-as uint (cdr s3-0)) 62)))\n"
+      "     (or (= (cdr s3-0) (quote ())) (>=0.si (shl (the-as uint (cdr s3-0)) 62)))\n"
       "     )\n"
       "    (set! s2-0 (car s3-0))\n"
       "    (set! s1-0 (car (cdr s3-0)))\n"
@@ -2172,7 +2172,7 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "    (format (quote #t) L323)\n"
       "    (format (quote #t) L322)\n"
       "    )\n"
-      "   (set! gp-0 (srl (the-as uint gp-0) 1))\n"
+      "   (set! gp-0 (shr (the-as uint gp-0) 1))\n"
       "   (set! s4-0 (+ s4-0 1))\n"
       "   )\n"
       "  (set! v1-3 (quote #f))\n"

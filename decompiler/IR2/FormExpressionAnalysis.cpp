@@ -426,10 +426,10 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_lognot(env, pool, stack, result);
       break;
     case SimpleExpression::Kind::LEFT_SHIFT:
-      update_from_stack_force_ui_2(env, FixedOperatorKind::SLL, pool, stack, result);
+      update_from_stack_force_ui_2(env, FixedOperatorKind::SHL, pool, stack, result);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
-      update_from_stack_force_ui_2(env, FixedOperatorKind::SRL, pool, stack, result);
+      update_from_stack_force_ui_2(env, FixedOperatorKind::SHR, pool, stack, result);
       break;
     case SimpleExpression::Kind::MUL_UNSIGNED:
       update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result);
@@ -979,7 +979,7 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
       Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
 
   // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
-  auto sll_matcher = Matcher::fixed_op(FixedOperatorKind::SLL, {reg0_matcher, Matcher::integer(2)});
+  auto sll_matcher = Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(2)});
   auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
   auto match_result = match(matcher, new_val);
   if (!match_result.matched) {
@@ -1052,7 +1052,7 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
     auto reg1_matcher =
         Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
     auto sll_matcher =
-        Matcher::fixed_op(FixedOperatorKind::SLL, {reg0_matcher, Matcher::integer(power_of_two)});
+        Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(power_of_two)});
     auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
     auto match_result = match(matcher, new_val);
     if (!match_result.matched) {

@@ -108,3 +108,6 @@
 - Fixed a bug where loading or storing a `vf` register from a memory location + constant offset would cause the compiler to throw an error.
 - Accessing array elements uses more efficient indexing for power-of-two element sizes.
 - Added a `local-vars` form for declaring a bunch of local variables for the decompiler.
+
+## V0.6
+- There is no longer a separate compiler form for variable vs. constant shifts. Instead the compiler will pick the constant shift automatically when possible. The shifts are called `sar`, `shl` and `shr`, like the x86 instructions.
