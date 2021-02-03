@@ -4,6 +4,7 @@
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
+#include "decompiler/analysis/final_output.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 #include "third-party/json.hpp"
@@ -172,6 +173,30 @@ void FormRegressionTest::test(const std::string& code,
           .read_from_string(test->func.ir2.top_form->to_form(test->func.ir2.env).print(), false)
           .as_pair()
           ->car;
+  if (expected_form != actual_form) {
+    printf("Got:\n%s\n\nExpected\n%s\n", pretty_print::to_string(actual_form).c_str(),
+           pretty_print::to_string(expected_form).c_str());
+  }
+
+  EXPECT_TRUE(expected_form == actual_form);
+}
+
+void FormRegressionTest::test_final_function(
+    const std::string& code,
+    const std::string& type,
+    const std::string& expected,
+    bool allow_pairs,
+    const std::vector<std::pair<std::string, std::string>>& strings,
+    const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints) {
+  auto ts = dts->parse_type_spec(type);
+  auto test = make_function(code, ts, true, allow_pairs, "", strings, hints);
+  ASSERT_TRUE(test);
+  auto expected_form =
+      pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
+  ASSERT_TRUE(test->func.ir2.top_form);
+  auto final = final_defun_out(test->func, test->func.ir2.env, *dts);
+  auto actual_form =
+      pretty_print::get_pretty_printer_reader().read_from_string(final, false).as_pair()->car;
   if (expected_form != actual_form) {
     printf("Got:\n%s\n\nExpected\n%s\n", pretty_print::to_string(actual_form).c_str(),
            pretty_print::to_string(expected_form).c_str());

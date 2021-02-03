@@ -469,6 +469,52 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
   test_with_expr(func, type, expected);
 }
 
+TEST_F(FormRegressionTest, FinalBasicTypeP) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L285:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a0, object(s7)\n"
+
+      "L286:\n"
+      "    bne v1, a1, L287\n"
+      "    or a2, s7, r0\n"
+
+      "    daddiu v1, s7, #t\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L288\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+      "L287:\n"
+      "    lwu v1, 4(v1)\n"
+      "    bne v1, a0, L286\n"
+      "    sll r0, r0, 0\n"
+      "    or v0, s7, r0\n"
+      "L288:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function basic type symbol)";
+  std::string expected =
+      "(defun test-function ((a0-0 basic) (a1-0 type))\n"
+      "  (local-vars\n"
+      "   (v1-0 type)\n"
+      "   (a0-1 type)\n"
+      "   (a2-0 symbol)\n"
+      "   )\n"
+      "  (begin\n"
+      "   (set! v1-0 (-> a0-0 type))\n"
+      "   (set! a0-1 object)\n"
+      "   (until\n"
+      "    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
+      "    (if (= v1-0 a1-0) (return (quote #t) (set! v1-0 0)))\n"
+      "    )\n"
+      "   (quote #f)\n"
+      "   )\n"
+      "  )";
+  test_final_function(func, type, expected);
+}
+
 TEST_F(FormRegressionTest, ExprTypeTypep) {
   std::string func =
       "    sll r0, r0, 0\n"
