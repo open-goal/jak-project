@@ -1081,6 +1081,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "new";
     case FixedOperatorKind::OBJECT_NEW:
       return "object-new";
+    case FixedOperatorKind::TYPE_NEW:
+      return "type-new";
     default:
       assert(false);
   }
@@ -1325,8 +1327,12 @@ void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 ArrayFieldAccess::ArrayFieldAccess(Variable source,
                                    const std::vector<DerefToken>& deref_tokens,
-                                   int expected_stride)
-    : m_source(source), m_deref_tokens(deref_tokens), m_expected_stride(expected_stride) {}
+                                   int expected_stride,
+                                   int constant_offset)
+    : m_source(source),
+      m_deref_tokens(deref_tokens),
+      m_expected_stride(expected_stride),
+      m_constant_offset(constant_offset) {}
 
 goos::Object ArrayFieldAccess::to_form(const Env& env) const {
   std::vector<goos::Object> elts;

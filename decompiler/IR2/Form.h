@@ -791,7 +791,8 @@ class ArrayFieldAccess : public FormElement {
  public:
   ArrayFieldAccess(Variable source,
                    const std::vector<DerefToken>& deref_tokens,
-                   int expected_stride);
+                   int expected_stride,
+                   int constant_offset);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -806,6 +807,7 @@ class ArrayFieldAccess : public FormElement {
   Variable m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
+  int m_constant_offset = -1;
 };
 
 class GetMethodElement : public FormElement {

@@ -245,8 +245,10 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           }
           assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
 
-          auto load = pool.alloc_single_element_form<ArrayFieldAccess>(nullptr, ro.var, tokens,
-                                                                       input_type.get_multiplier());
+          // we pass along the register offset because code generation seems to be a bit
+          // different in different cases.
+          auto load = pool.alloc_single_element_form<ArrayFieldAccess>(
+              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
           return pool.alloc_element<SetVarElement>(m_dst, load, true);
         }
       }
