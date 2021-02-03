@@ -422,7 +422,7 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
       "    daddiu sp, sp, 16";
   std::string type = "(function type uint)";
 
-  std::string expected = "(logand (l.d L346) (+ (shl (-> a0-1 allocated-length) 2) 43))";
+  std::string expected = "(logand (l.d L346) (+ (shl (-> a0-0 allocated-length) 2) 43))";
   test_with_expr(func, type, expected, false, "");
 }
 

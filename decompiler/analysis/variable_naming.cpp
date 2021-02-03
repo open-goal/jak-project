@@ -436,6 +436,23 @@ void SSA::remap() {
     }
   };
   std::unordered_map<Register, VarIdRecord, Register::hash> used_vars;
+  // we do this in two passes. the first pass collects only the B0 variables and adds those first,
+  // so these remain index 0 (expected by later decompiler passes)
+  for (auto& block : blocks) {
+    assert(block.phis.empty());
+    for (auto& instr : block.ins) {
+      if (instr.dst.has_value() && map.var_id(*instr.dst) == 0) {
+        used_vars[instr.dst->reg()].insert(map.var_id(*instr.dst));
+      }
+      for (auto& src : instr.src) {
+        if (map.var_id(src) == 0) {
+          used_vars[src.reg()].insert(map.var_id(src));
+        }
+      }
+    }
+  }
+
+  // and the second pass grabs all of them
   for (auto& block : blocks) {
     assert(block.phis.empty());
     for (auto& instr : block.ins) {

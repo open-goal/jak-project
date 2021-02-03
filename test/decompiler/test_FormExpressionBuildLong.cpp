@@ -1946,7 +1946,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "     (else (quote #t))\n"
       "     )\n"
       "    )\n"
-      "   ((and a3-2 (not gp-0)) (quote #t))\n"
+      "   ((and a3-0 (not gp-0)) (quote #t))\n"
       "   (else\n"
       "    (cond\n"
       "     ((= s3-0 structure)\n"
