@@ -86,7 +86,8 @@ static const std::unordered_map<
         {"new", &Compiler::compile_new},
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
-        {"method", &Compiler::compile_method},
+        {"method-of-type", &Compiler::compile_method_of_type},
+        {"method-of-object", &Compiler::compile_method_of_object},
         {"declare-type", &Compiler::compile_declare_type},
         {"none", &Compiler::compile_none},
 
