@@ -1094,7 +1094,7 @@ Print the type of some GOAL expression at compile time.
 ```lisp
 (print-type form)
 ```
-This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is actually executed at runtime. Example:
+This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is compiled fully and used as the result of `print-type`. Example:
 ```lisp
 (print-type "apples")        ;; [TYPE] string
 (print-type (+ 12 1.2))      ;; [TYPE] int
