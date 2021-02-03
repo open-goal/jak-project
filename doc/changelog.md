@@ -108,6 +108,9 @@
 - Fixed a bug where loading or storing a `vf` register from a memory location + constant offset would cause the compiler to throw an error.
 - Accessing array elements uses more efficient indexing for power-of-two element sizes.
 - Added a `local-vars` form for declaring a bunch of local variables for the decompiler.
+- Split `method` into `method-of-type` and `method-of-object` to avoid ambiguity
+- Fixed bug where `(-> obj type)` caused a compiler error when `obj` had compile time type of `array` (the fancy boxed array)
+- Fixed use-after-free if the top-level form fails to compile and you continue trying to compile stuff.
 
 ## V0.6
 - There is no longer a separate compiler form for variable vs. constant shifts. Instead the compiler will pick the constant shift automatically when possible. The shifts are called `sar`, `shl` and `shr`, like the x86 instructions.

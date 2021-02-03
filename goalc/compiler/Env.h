@@ -108,12 +108,20 @@ class FileEnv : public Env {
   bool is_empty();
   ~FileEnv() = default;
 
+  template <typename T, class... Args>
+  T* alloc_val(Args&&... args) {
+    std::unique_ptr<T> new_obj = std::make_unique<T>(std::forward<Args>(args)...);
+    m_vals.push_back(std::move(new_obj));
+    return (T*)m_vals.back().get();
+  }
+
  protected:
   std::string m_name;
   std::vector<std::unique_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
   std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
   int m_anon_func_counter = 0;
+  std::vector<std::unique_ptr<Val>> m_vals;
 
   // statics
   FunctionEnv* m_top_level_func = nullptr;

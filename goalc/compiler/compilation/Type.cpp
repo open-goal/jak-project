@@ -479,7 +479,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // array-indexable and a structure, we treat it like a structure only if the
           // deref thing is one of the field names. Otherwise, array.
           if (field_name == "content-type" || field_name == "length" ||
-              field_name == "allocated-length") {
+              field_name == "allocated-length" || field_name == "type") {
             result = get_field_of_structure(struct_type, result, field_name, env);
             continue;
           }
@@ -904,8 +904,9 @@ Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, E
   return result;
 }
 
-// todo, consider splitting into method-of-object and method-of-type?
-Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest, Env* env) {
+Val* Compiler::compile_method_of_type(const goos::Object& form,
+                                      const goos::Object& rest,
+                                      Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {goos::ObjectType::SYMBOL}}, {});
 
@@ -921,6 +922,19 @@ Val* Compiler::compile_method(const goos::Object& form, const goos::Object& rest
                            "The method form is ambiguous when used on a forward declared type.");
     }
   }
+
+  throw_compiler_error(form, "Cannot get method of type {}: the type is invalid", arg.print());
+  return get_none();
+}
+
+Val* Compiler::compile_method_of_object(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {goos::ObjectType::SYMBOL}}, {});
+
+  auto arg = args.unnamed.at(0);
+  auto method_name = symbol_string(args.unnamed.at(1));
 
   auto obj = compile_error_guard(arg, env)->to_gpr(env);
   return compile_get_method_of_object(form, obj, method_name, env);

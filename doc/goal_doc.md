@@ -1053,12 +1053,19 @@ Bitwise Not
 ## `deftype`
 
 
-## `method`
-Get a method of a type or an object.
-__Warning - I will probably change this in the future.__
+## `method-of-object`
+Get a method of an object.
+
 ```
-(method type method-name)
-(method object method-name)
+(method-of-object object method-name)
+```
+
+This form takes an object and gets the method from it. If the object has runtime type information, will consult the method table at runtime to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
+
+## `method-of-type`
+Get a method of a type or an object.
+```
+(method-of-type type method-name)
 ```
 
 The first form of this takes a type name and method name and returns a GOAL `function` for this method. For example:
@@ -1066,8 +1073,6 @@ The first form of this takes a type name and method name and returns a GOAL `fun
 (method string inspect)
 ```
 will return the `inspect` method of `string`.
-
-The second form of this takes an object and gets the method from it. If the object has runtime type information, will consult the method table to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
 
 ## `car` and `cdr`
 Get element from pair

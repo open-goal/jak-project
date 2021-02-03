@@ -13,15 +13,14 @@ TEST(GameNoDebugSegment, Init) {
   compiler.run_test_from_string("(inspect *kernel-context*)");
 
   // these should be equal, both the fallback inspect method
-  EXPECT_TRUE(compiler.run_test_from_string(
-                  "(print (eq? (method kernel-context inspect) (method cpu-thread inspect))) 0") ==
+  EXPECT_TRUE(compiler.run_test_from_string("(print (eq? (method-of-type kernel-context inspect) "
+                                            "(method-of-type cpu-thread inspect))) 0") ==
               std::vector<std::string>{"#t\n0\n"});
 
   // should be below the debug heap.
-  EXPECT_TRUE(
-      compiler.run_test_from_string(
-          "(print (< (the uint (method kernel-context inspect)) (the uint (-> debug base)))) 0") ==
-      std::vector<std::string>{"#t\n0\n"});
+  EXPECT_TRUE(compiler.run_test_from_string("(print (< (the uint (method-of-type kernel-context "
+                                            "inspect)) (the uint (-> debug base)))) 0") ==
+              std::vector<std::string>{"#t\n0\n"});
 
   // debug segment flag should be disabled.
   EXPECT_TRUE(compiler.run_test_from_string("(print *debug-segment*) 0") ==
