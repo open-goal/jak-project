@@ -655,8 +655,9 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
 Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
-  fmt::print("[TYPE] {}\n", compile(args.unnamed.at(0), env)->type().print());
-  return get_none();
+  auto result = compile(args.unnamed.at(0), env)->to_reg(env);
+  fmt::print("[TYPE] {}\n", result->type().print());
+  return result;
 }
 
 /*!
