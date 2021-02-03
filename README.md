@@ -77,6 +77,26 @@ Run tests:
 ./test.sh
 ```
 
+## Getting Started - Nixpkgs
+
+If your Nix supports flakes:
+
+```sh
+nix develop # development environment
+nix build # package
+nix develop '.#jak-asan-dev' # development environment with Clang
+nix build '.#jak-asan' # package with Clang ASan build
+```
+
+Otherwise, with traditional Nix:
+
+```sh
+nix-shell # development environment
+nix-build # package
+nix-shell -A packages.x86_64-linux.jak-asan-dev # development environment with Clang
+nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
+```
+
 
 ## Getting Started - Windows
 
