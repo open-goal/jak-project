@@ -5,3 +5,5 @@ target_link_libraries(dgo_unpacker common)
 add_executable(dgo_packer
         dgo_packer.cpp)
 target_link_libraries(dgo_packer common)
+
+install(TARGETS dgo_unpacker dgo_packer)

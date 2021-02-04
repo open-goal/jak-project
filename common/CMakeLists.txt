@@ -23,8 +23,10 @@ add_library(common
 
 target_link_libraries(common fmt)
 
-IF(WIN32)
+if(WIN32)
     target_link_libraries(common wsock32 ws2_32)
-ELSE()
+else()
     target_link_libraries(common stdc++fs)
-ENDIF()
+endif()
+
+install(TARGETS common)
