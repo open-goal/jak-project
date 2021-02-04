@@ -37,44 +37,64 @@ We support both Linux and Windows on x86-64.
 
 ## Getting Started - Linux (Ubuntu)
 
-Install Packages and Init Repository
+Install packages and init repository:
 
-```bash
+```sh
 sudo apt install gcc make cmake build-essential g++ nasm clang-format
 git submodule update --init --recursive
 ```
 
-Compile
+Compile:
 
-```bash
-mkdir build && cd build && cmake .. && make -j
+```sh
+cmake -B build && cmake --build build -j 8
 ```
 
-Run Tests
+Run tests:
 
-```bash
+```sh
 ./test.sh
 ```
 
 ## Getting Started - Linux (Arch)
 
-Install Packages and Init Repository
+Install packages and init repository:
 
-```bash
+```sh
 sudo pacman -S gcc make cmake base-devel g++ nasm
 git submodule update --init --recursive
 ```
 
-Compile
+Compile:
 
-```bash
-mkdir build && cd build && cmake .. && make -j
+```sh
+cmake -B build && cmake --build build -j 8
 ```
 
-Run Tests
+Run tests:
 
-```bash
+```sh
 ./test.sh
+```
+
+## Getting Started - Nixpkgs
+
+If your Nix supports flakes:
+
+```sh
+nix develop # development environment
+nix build # package
+nix develop '.#jak-asan-dev' # development environment with Clang
+nix build '.#jak-asan' # package with Clang ASan build
+```
+
+Otherwise, with traditional Nix:
+
+```sh
+nix-shell # development environment
+nix-build # package
+nix-shell -A packages.x86_64-linux.jak-asan-dev # development environment with Clang
+nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 ```
 
 
@@ -86,13 +106,13 @@ On Windows, it's recommended to get Scoop to use as a package manager, making th
 
 Once Scoop is installed, run the following command:
 
-```ps
+```ps1
 scoop install llvm nasm
 ```
 
 Initialize the repository's third-party dependencies:
 
-```bash
+```sh
 git submodule update --init --recursive
 ```
 
@@ -204,7 +224,7 @@ Check out these files for more documentation. Some of it is still in progress
 
 ## ASan Build
 The project supports building with Address Sanitizer (https://github.com/google/sanitizers/wiki/AddressSanitizer) in Linux.
-```
+```sh
 export CXX=clang++
 cmake .. -DASAN_BUILD=TRUE
 ```

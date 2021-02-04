@@ -1,40 +1,39 @@
 set(CMAKE_CXX_STANDARD 17)
 
-include("goalc/CMakeLists.txt")
+include(${CMAKE_CURRENT_LIST_DIR}/goalc/CMakeLists.txt)
 
 add_executable(goalc-test
-        test_main.cpp
-        test_test.cpp
-        test_reader.cpp
-        test_goos.cpp
-        test_listener_deci2.cpp
-        test_kernel.cpp
-        all_jak1_symbols.cpp
-        test_type_system.cpp
-        test_CodeTester.cpp
-        test_emitter.cpp
-        test_emitter_avx.cpp
-        test_common_util.cpp
-        test_pretty_print.cpp
-        test_zydis.cpp
-        goalc/test_goal_kernel.cpp
-        decompiler/FormRegressionTest.cpp
-        decompiler/test_AtomicOpBuilder.cpp
-        decompiler/test_FormBeforeExpressions.cpp
-        decompiler/test_FormExpressionBuild.cpp
-        decompiler/test_FormExpressionBuildLong.cpp
-        decompiler/test_InstructionParser.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_main.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_test.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_reader.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_goos.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_listener_deci2.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_kernel.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/all_jak1_symbols.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_type_system.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_CodeTester.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_avx.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_common_util.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_pretty_print.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_zydis.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/goalc/test_goal_kernel.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/FormRegressionTest.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_AtomicOpBuilder.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormBeforeExpressions.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
-enable_testing()
-
 target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis)
 
-IF (WIN32)
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+if(WIN32)
   target_link_libraries(goalc-test mman)
-ENDIF()
+endif()
+
+gtest_discover_tests(goalc-test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)

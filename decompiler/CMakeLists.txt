@@ -65,3 +65,5 @@ target_link_libraries(decompiler
         common
         minilzo
         fmt)
+
+install(TARGETS decompiler)
