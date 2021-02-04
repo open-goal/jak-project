@@ -113,6 +113,12 @@ enum class FixedOperatorKind {
   NEW,
   OBJECT_NEW,
   TYPE_NEW,
+  LT,
+  GT,
+  LEQ,
+  GEQ,
+  EQ,
+  NEQ,
   INVALID
 };
 

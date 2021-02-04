@@ -1084,6 +1084,19 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "object-new";
     case FixedOperatorKind::TYPE_NEW:
       return "type-new";
+
+    case FixedOperatorKind::LT:
+      return "<";
+    case FixedOperatorKind::GT:
+      return ">";
+    case FixedOperatorKind::LEQ:
+      return "<=";
+    case FixedOperatorKind::GEQ:
+      return ">=";
+    case FixedOperatorKind::EQ:
+      return "=";
+    case FixedOperatorKind::NEQ:
+      return "!=";
     default:
       assert(false);
   }

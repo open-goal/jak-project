@@ -1082,7 +1082,14 @@ void ConditionElement::update_from_stack(const Env& env,
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     vars.push_back(m_src[i]->var());
   }
+
+  if (m_flipped) {
+    std::reverse(vars.begin(), vars.end());
+  }
   source_forms = pop_to_forms(vars, env, pool, stack, allow_side_effects, m_consumed);
+  if (m_flipped) {
+    std::reverse(source_forms.begin(), source_forms.end());
+  }
 
   result->push_back(
       pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms));
