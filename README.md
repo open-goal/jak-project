@@ -61,6 +61,11 @@ Run tests:
 Install packages and init repository:
 
 ```sh
+=======
+Install Packages and Init Repository
+
+```bash
+
 sudo pacman -S gcc make cmake base-devel g++ nasm
 git submodule update --init --recursive
 ```
@@ -96,6 +101,20 @@ nix-build # package
 nix-shell -A packages.x86_64-linux.jak-asan-dev # development environment with Clang
 nix-build -A packages.x86_64-linux.jak-asan # package with Clang ASan build
 ```
+
+=======
+Compile
+
+```bash
+mkdir build && cd build && cmake .. && make -j
+```
+
+Run Tests
+
+```bash
+./test.sh
+```
+
 
 
 ## Getting Started - Windows
