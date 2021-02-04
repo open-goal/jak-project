@@ -576,7 +576,9 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
                                     emitter::Register::VF_ELEMENT broadcastElement,
                                     Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  va_check(
+      form, args, {{}, {}, {}},
+      {{"color", {false, goos::ObjectType::SYMBOL}}, {"mask", {false, goos::ObjectType::INTEGER}}});
   bool color = true;
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
@@ -621,26 +623,37 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
     }
   }
 
-  auto temp_reg = env->make_vfr(dest->type());
-
   // If there is a broadcast register, splat that float across the entire src2 register before
   // performing the operation For example vaddx.xyzw vf10, vf20, vf30
   // vf10[x] = vf20[x] + vf30[x]
   // vf10[y] = vf20[y] + vf30[x]
   // vf10[z] = vf20[z] + vf30[x]
   // vf10[w] = vf20[w] + vf30[x]
+  // TODO - surely i can condense this...(only using a temp register when i have to)
   if (broadcastElement != emitter::Register::VF_ELEMENT::NONE) {
+    auto temp_reg = env->make_vfr(dest->type());
     env->emit_ir<IR_SplatVF>(color, temp_reg, src2, broadcastElement);
-  }
 
-  if (mask == 0b1111) {  // If the entire destination is to be copied, we can optimize out the blend
-    env->emit_ir<IR_VFMath3Asm>(color, dest, src1, temp_reg, mask, kind);
+    // If the entire destination is to be copied, we can optimize out the blend
+    if (mask == 0b1111) {
+      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, temp_reg, mask, kind);
+    } else {
+      // Perform the arithmetic operation on the two vectors into a temporary register
+      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, mask, kind);
+      // Blend the result back into the destination register using the mask
+      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    }
   } else {
-    // Perform the arithmetic operation on the two vectors into a temporary register
-    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, mask, kind);
-
-    // Blend the result back into the destination register using the mask
-    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    // If the entire destination is to be copied, we can optimize out the blend
+    if (mask == 0b1111) {
+      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, src2, mask, kind);
+    } else {
+      auto temp_reg = env->make_vfr(dest->type());
+      // Perform the arithmetic operation on the two vectors into a temporary register
+      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, mask, kind);
+      // Blend the result back into the destination register using the mask
+      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    }
   }
 
   return get_none();

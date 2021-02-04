@@ -18,7 +18,7 @@ with open(args.search_term_file, "r") as f:
   for line in f:
     token = line.strip()
     # VU INSTRUCTION ADDITION. Appends all combinations of `dest` to replace `{DEST}`
-    vuDestCombinations = ["x", "xy", "xz", "xw", "xyz", "xyzw", "y", "yz", "yw", "yzw", "z", "zw", "w"]
+    vuDestCombinations = ["x", "xy", "xz", "xw", "xyz", "xzw", "xyzw", "y", "yz", "yw", "yzw", "z", "zw", "w"]
     if "{DEST}" in token:
       for combination in vuDestCombinations:
         tempToken = token.replace("{DEST}", combination)
