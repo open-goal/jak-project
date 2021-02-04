@@ -45,7 +45,7 @@ ConditionElement* IR2_Condition::get_as_form(FormPool& pool, const Env& env, int
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     vars[i] = m_src[i];
   }
-  return pool.alloc_element<ConditionElement>(m_kind, vars[0], vars[1], consumed);
+  return pool.alloc_element<ConditionElement>(m_kind, vars[0], vars[1], consumed, m_flipped_eval);
 }
 
 FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {

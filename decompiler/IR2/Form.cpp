@@ -356,8 +356,9 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 ConditionElement::ConditionElement(IR2_Condition::Kind kind,
                                    std::optional<SimpleAtom> src0,
                                    std::optional<SimpleAtom> src1,
-                                   RegSet consumed)
-    : m_kind(kind), m_consumed(std::move(consumed)) {
+                                   RegSet consumed,
+                                   bool flipped)
+    : m_kind(kind), m_consumed(std::move(consumed)), m_flipped(flipped) {
   m_src[0] = src0;
   m_src[1] = src1;
 }

@@ -355,10 +355,13 @@ class IR2_Condition {
   const SimpleAtom& src(int i) const { return m_src[i]; }
   ConditionElement* get_as_form(FormPool& pool, const Env& env, int my_idx) const;
   void collect_vars(VariableSet& vars) const;
+  void make_flipped() { m_flipped_eval = true; }
+  bool flipped() const { return m_flipped_eval; }
 
  private:
   Kind m_kind = Kind::INVALID;
   SimpleAtom m_src[2];
+  bool m_flipped_eval = false;
 };
 
 std::string get_condition_kind_name(IR2_Condition::Kind kind);
