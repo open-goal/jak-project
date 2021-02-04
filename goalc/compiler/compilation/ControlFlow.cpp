@@ -4,6 +4,7 @@
  */
 
 #include "goalc/compiler/Compiler.h"
+#include "common/goos/ParseHelpers.h"
 
 /*!
  * Convert an expression into a GoalCondition for use in a conditional branch.
@@ -251,6 +252,75 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
 
   // PATCH END
   end_label->idx = fenv->code().size();
+
+  return result;
+}
+
+Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest, Env* env) {
+  std::string op_name = form.as_pair()->car.as_symbol()->name;
+  bool is_and = false;
+  if (op_name == "and") {
+    is_and = true;
+  } else if (op_name == "or") {
+    is_and = false;
+  } else {
+    throw_compiler_error(form, "compile_and_or got an invalid operation {}", op_name);
+  }
+
+  if (rest.is_empty_list()) {
+    throw_compiler_error(form, "and/or form must have at least one element");
+  }
+
+  auto result = env->make_gpr(m_ts.make_typespec("object"));  // temp type for now.
+  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto end_label = fenv->alloc_unnamed_label();
+  end_label->func = fenv;
+  end_label->idx = -4;  // placeholder
+
+  std::vector<TypeSpec> case_result_types;
+  case_result_types.push_back(TypeSpec("symbol"));  // can always return #f.
+
+  std::vector<IR_ConditionalBranch*> branch_irs;
+  auto n_elts = goos::list_length(rest);
+  int i = 0;
+  for_each_in_list(rest, [&](const goos::Object& o) {
+    // get the result of this case, put it in the main result and remember the type
+    auto temp = compile_error_guard(o, env)->to_gpr(env);
+    case_result_types.push_back(temp->type());
+    env->emit_ir<IR_RegSet>(result, temp);
+
+    // no need check if we are the last element.
+    if (i != n_elts - 1) {
+      // now, check.
+      Condition gc;
+      gc.is_signed = false;
+      gc.is_float = false;
+      gc.a = result;
+      gc.b = compile_get_sym_obj("#f", env)->to_gpr(env);  // todo, optimize
+      if (is_and) {
+        // for and we abort if we get a false:
+        gc.kind = ConditionKind::EQUAL;
+      } else {
+        // for or, we abort when we get truthy
+        gc.kind = ConditionKind::NOT_EQUAL;
+      }
+      // jump to end
+      auto branch = std::make_unique<IR_ConditionalBranch>(gc, Label());
+      branch_irs.push_back(branch.get());
+      env->emit(std::move(branch));
+    }
+    i++;
+  });
+
+  // now patch branches
+  end_label->idx = fenv->code().size();
+  for (auto* br : branch_irs) {
+    br->label = *end_label;
+    br->mark_as_resolved();
+  }
+
+  // and set the result type
+  result->set_type(m_ts.lowest_common_ancestor(case_result_types));
 
   return result;
 }

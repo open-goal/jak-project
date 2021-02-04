@@ -357,6 +357,7 @@ class Compiler {
   Val* compile_condition_as_bool(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_when_goto(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cond(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_and_or(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Define
   Val* compile_define(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -408,6 +409,7 @@ class Compiler {
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_inline(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Type
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -419,7 +421,8 @@ class Compiler {
   Val* compile_new(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_car(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_method(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_method_of_type(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_method_of_object(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_addr_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_none(const goos::Object& form, const goos::Object& rest, Env* env);

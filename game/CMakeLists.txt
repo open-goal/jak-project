@@ -74,12 +74,13 @@ set(RUNTIME_SOURCE
 add_library(runtime ${RUNTIME_SOURCE})
 
 target_link_libraries(runtime common fmt)
-IF (WIN32)
+if(WIN32)
     target_link_libraries(runtime mman)
-ELSE()
+else()
     target_link_libraries(runtime pthread)
-ENDIF()
+endif()
 
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
 
+install(TARGETS gk)

@@ -378,7 +378,6 @@ TEST_F(FormRegressionTest, ExprTrue) {
 TEST_F(FormRegressionTest, ExprPrintBfloat) {
   std::string func =
       "    sll r0, r0, 0\n"
-      "L343:\n"
       "    daddiu sp, sp, -32\n"
       "    sd ra, 0(sp)\n"
       "    sd fp, 8(sp)\n"
@@ -1551,7 +1550,9 @@ TEST_F(FormRegressionTest, ExprSort) {
       "    (not\n"
       "     (or (= (cdr s3-0) (quote ())) (>=0.si (sll (the-as uint (cdr s3-0)) 62)))\n"
       "     )\n"
-      "    (set! v1-1 (s5-0 (car s3-0) (car (cdr s3-0))))\n"
+      "    (set! s2-0 (car s3-0))\n"
+      "    (set! s1-0 (car (cdr s3-0)))\n"
+      "    (set! v1-1 (s5-0 s2-0 s1-0))\n"
       "    (when\n"
       "     (and (or (not v1-1) (>0.si v1-1)) (!= v1-2 (quote #t)))\n"
       "     (set! s4-0 (+ s4-0 1))\n"
@@ -1568,4 +1569,614 @@ TEST_F(FormRegressionTest, ExprSort) {
       "  gp-0\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
+}
+
+TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a2, r0\n"
+      "    lw v1, object(s7)\n"
+      "    lwu t9, 16(v1)\n"
+      "    or v1, a1, r0\n"
+      "    lhu a2, 8(a1)\n"
+      "    lhu a1, 12(a1)\n"
+      "    multu3 a1, gp, a1\n"
+      "    daddu a2, a2, a1\n"
+      "    or a1, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq v0, r0, L199\n"
+      "    or v1, s7, r0\n"
+
+      "    sw gp, 0(v0)\n"
+      "    sw gp, 4(v0)\n"
+
+      "L199:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function symbol type int inline-array-class)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a2-0)\n"
+      "  (set!\n"
+      "   v0-0\n"
+      "   (object-new\n"
+      "    a0-0\n"
+      "    a1-0\n"
+      "    (+ (-> a1-0 size) (* (the-as uint gp-0) (-> a1-0 heap-base)))\n"
+      "    )\n"
+      "   )\n"
+      "  (when\n"
+      "   (nonzero? v0-0)\n"
+      "   (set! (-> v0-0 length) gp-0)\n"
+      "   (set! (-> v0-0 allocated-length) gp-0)\n"
+      "   )\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "inline-array-class");
+}
+
+TEST_F(FormRegressionTest, ExprInlineArrayMethod4) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lw v0, 0(a0)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function inline-array-class int)";
+
+  std::string expected = "(-> a0-0 length)";
+  test_with_expr(func, type, expected, true, "inline-array-class");
+}
+
+TEST_F(FormRegressionTest, ExprInlineArrayMethod5) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lwu v1, -4(a0)\n"
+      "    lhu v1, 8(v1)\n"
+      "    lw a1, 4(a0)\n"
+      "    lwu a0, -4(a0)\n"
+      "    lhu a0, 12(a0)\n"
+      "    mult3 a0, a1, a0\n"
+      "    daddu v0, v1, a0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function inline-array-class int)";
+
+  std::string expected =
+      "(the-as int\n"
+      "  (+ (-> a0-0 type size)\n"
+      "     (the-as uint\n"
+      "       (* (-> a0-0 allocated-length)"
+      "          (the-as int (-> a0-0 type heap-base)))\n"
+      "    )\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "inline-array-class");
+}
+
+TEST_F(FormRegressionTest, ExprArrayMethod0) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -112\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s1, 16(sp)\n"
+      "    sq s2, 32(sp)\n"
+      "    sq s3, 48(sp)\n"
+      "    sq s4, 64(sp)\n"
+      "    sq s5, 80(sp)\n"
+      "    sq gp, 96(sp)\n"
+
+      "    or gp, a2, r0\n"
+      "    or s5, a3, r0\n"
+      "    lw v1, object(s7)\n"
+      "    lwu s4, 16(v1)\n"
+      "    or s3, a0, r0\n"
+      "    or s2, a1, r0\n"
+      "    lhu s1, 8(a1)\n"
+      "    lw t9, type-type?(s7)\n"
+      "    or a0, gp, r0\n"
+      "    lw a1, number(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq s7, v0, L194\n"
+      "    sll r0, r0, 0\n"
+
+      "    lhu v1, 8(gp)\n"
+      "    beq r0, r0, L195\n"
+      "    sll r0, r0, 0\n"
+
+      "L194:\n"
+      "    addiu v1, r0, 4\n"
+
+      "L195:\n"
+      "    mult3 v1, s5, v1\n"
+      "    daddu a2, s1, v1\n"
+      "    or t9, s4, r0\n"
+      "    or a0, s3, r0\n"
+      "    or a1, s2, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    sw s5, 4(v0)\n"
+      "    sw s5, 0(v0)\n"
+      "    sw gp, 8(v0)\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 96(sp)\n"
+      "    lq s5, 80(sp)\n"
+      "    lq s4, 64(sp)\n"
+      "    lq s3, 48(sp)\n"
+      "    lq s2, 32(sp)\n"
+      "    lq s1, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 112";
+  std::string type = "(function symbol type type int array)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a2-0)\n"
+      "  (set! s5-0 a3-0)\n"
+      "  (set!\n"
+      "   v0-1\n"
+      "   (object-new\n"
+      "    a0-0\n"
+      "    a1-0\n"
+      "    (+\n"
+      "     (-> a1-0 size)\n"
+      "     (the-as uint (* s5-0 (if (type-type? gp-0 number) (-> gp-0 size) 4)))\n"
+      "     )\n"
+      "    )\n"
+      "   )\n"
+      "  (set! (-> v0-1 allocated-length) s5-0)\n"
+      "  (set! (-> v0-1 length) s5-0)\n"
+      "  (set! (-> v0-1 content-type) gp-0)\n"
+      "  v0-1\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "array");
+}
+
+TEST_F(FormRegressionTest, ExprArrayMethod4) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L90:\n"
+      "    lw v0, 0(a0)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function array int)";
+
+  std::string expected = "(-> a0-0 length)";
+  test_with_expr(func, type, expected, true, "array");
+}
+
+TEST_F(FormRegressionTest, ExprArrayMethod5) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L87:\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s4, 16(sp)\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+      "    or s4, a0, r0\n"
+      "    lw v1, array(s7)\n"
+      "    lhu gp, 8(v1)\n"
+      "    lw s5, 4(s4)\n"
+      "    lw t9, type-type?(s7)\n"
+      "    lwu a0, 8(s4)\n"
+      "    lw a1, number(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    beq s7, v0, L88\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "    lwu v1, 8(s4)\n"
+      "    lhu v1, 8(v1)\n"
+      "    beq r0, r0, L89\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "L88:\n"
+      "    addiu v1, r0, 4\n"
+      "L89:\n"
+      "    mult3 v1, s5, v1\n"
+      "    daddu v0, gp, v1\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    lq s4, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64";
+  std::string type = "(function array int)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! s4-0 a0-0)\n"
+      "  (the-as\n"
+      "   int\n"
+      "   (+\n"
+      "    (-> array size)\n"
+      "    (the-as\n"
+      "     uint\n"
+      "     (*\n"
+      "      (-> s4-0 allocated-length)\n"
+      "      (if\n"
+      "       (type-type? (-> s4-0 content-type) number)\n"
+      "       (-> s4-0 content-type size)\n"
+      "       4\n"
+      "       )\n"
+      "      )\n"
+      "     )\n"
+      "    )\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, true, "array");
+}
+
+TEST_F(FormRegressionTest, ExprMemCopy) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L84:\n"
+      "    or v0, a0, r0\n"
+      "    addiu v1, r0, 0\n"
+      "    beq r0, r0, L86\n"
+      "    sll r0, r0, 0\n"
+
+      "L85:\n"
+      "    lbu a3, 0(a1)\n"
+      "    sb a3, 0(a0)\n"
+      "    daddiu a0, a0, 1\n"
+      "    daddiu a1, a1, 1\n"
+      "    daddiu v1, v1, 1\n"
+      "L86:\n"
+      "    slt a3, v1, a2\n"
+      "    bne a3, r0, L85\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function pointer pointer int pointer)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v0-0 a0-0)\n"
+      "  (set! v1-0 0)\n"
+      "  (while\n"
+      "   (<.si v1-0 a2-0)\n"
+      "   (set! (-> (the-as (pointer int8) a0-0)) (-> (the-as (pointer uint8) a1-0)))\n"
+      "   (set! a0-0 (+ a0-0 (the-as uint 1)))\n"
+      "   (set! a1-0 (+ a1-0 (the-as uint 1)))\n"
+      "   (set! v1-0 (+ v1-0 1))\n"
+      "   )\n"
+      "  (set! v1-1 (quote #f))\n"
+      "  (set! v1-2 (quote #f))\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprMemSet32) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L75:\n"
+      "    or v0, a0, r0\n"
+      "    addiu v1, r0, 0\n"
+      "    beq r0, r0, L77\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "L76:\n"
+      "    sw a2, 0(a0)\n"
+      "    daddiu a0, a0, 4\n"
+      "    sll r0, r0, 0\n"
+      "    daddiu v1, v1, 1\n"
+      "L77:\n"
+      "    slt a3, v1, a1\n"
+      "    bne a3, r0, L76\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0\n";
+  std::string type = "(function pointer int int pointer)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v0-0 a0-0)\n"
+      "  (set! v1-0 0)\n"
+      "  (while\n"
+      "   (<.si v1-0 a1-0)\n"
+      "   (set! (-> (the-as (pointer int32) a0-0)) a2-0)\n"
+      "   (set! a0-0 (+ a0-0 (the-as uint 4)))\n"
+      "   (nop!)\n"
+      "   (set! v1-0 (+ v1-0 1))\n"
+      "   )\n"
+      "  (set! v1-1 (quote #f))\n"
+      "  (set! v1-2 (quote #f))\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprMemOr) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L72:\n"
+      "    or v0, a0, r0\n"
+      "    addiu v1, r0, 0\n"
+      "    beq r0, r0, L74\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "L73:\n"
+      "    lbu a3, 0(a0)\n"
+      "    lbu t0, 0(a1)\n"
+      "    or a3, a3, t0\n"
+      "    sb a3, 0(a0)\n"
+      "    daddiu a0, a0, 1\n"
+      "    daddiu a1, a1, 1\n"
+      "    daddiu v1, v1, 1\n"
+      "L74:\n"
+      "    slt a3, v1, a2\n"
+      "    bne a3, r0, L73\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function pointer pointer int pointer)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! v0-0 a0-0)\n"
+      "  (set! v1-0 0)\n"
+      "  (while\n"
+      "   (<.si v1-0 a2-0)\n"
+      "   (set!\n"
+      "    (-> (the-as (pointer int8) a0-0))\n"
+      "    (logior\n"
+      "     (-> (the-as (pointer uint8) a0-0))\n"
+      "     (-> (the-as (pointer uint8) a1-0))\n"
+      "     )\n"
+      "    )\n"
+      "   (set! a0-0 (+ a0-0 (the-as uint 1)))\n"
+      "   (set! a1-0 (+ a1-0 (the-as uint 1)))\n"
+      "   (set! v1-0 (+ v1-0 1))\n"
+      "   )\n"
+      "  (set! v1-1 (quote #f))\n"
+      "  (set! v1-2 (quote #f))\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprFact) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L65:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sq gp, 16(sp)\n"
+      "    or gp, a0, r0\n"
+      "    addiu v1, r0, 1\n"
+      "    bne gp, v1, L66\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "    addiu v0, r0, 1\n"
+      "    beq r0, r0, L67\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "L66:\n"
+      "    lw t9, fact(s7)\n"
+      "    daddiu a0, gp, -1\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    mult3 v0, gp, v0\n"
+      "L67:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function int int)";
+
+  std::string expected = "(begin (set! gp-0 a0-0) (if (= gp-0 1) 1 (* gp-0 (fact (+ gp-0 -1)))))";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprPrint) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L63:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+      "    dsll32 v1, a0, 29\n"
+      "    beql v1, r0, L64\n"
+      "    lw v1, binteger(s7)\n"
+      "\n"
+      "    bgtzl v1, L64\n"
+      "    lw v1, pair(s7)\n"
+      "\n"
+      "    lwu v1, -4(a0)\n"
+      "L64:\n"
+      "    lwu t9, 24(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function object object)";
+
+  std::string expected = "((method-of-type (type-of a0-0) print) a0-0)";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprPrintl) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L61:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+      "    or gp, a0, r0\n"
+      "    or a0, gp, r0\n"
+      "    dsll32 v1, a0, 29\n"
+      "    beql v1, r0, L62\n"
+      "    lw v1, binteger(s7)\n"
+      "\n"
+      "    bgtzl v1, L62\n"
+      "    lw v1, pair(s7)\n"
+      "\n"
+      "    lwu v1, -4(a0)\n"
+      "L62:\n"
+      "    lwu t9, 24(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    or v1, v0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L324\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function object object)";
+
+  // todo - I think this is a sign that we're unscrambling method calls in the wrong order.
+  // but I want to wait for a less confusing example before making a change.
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a0-0)\n"
+      "  (set! a0-1 gp-0)\n"
+      "  (set! v1-2 ((method-of-type (type-of a0-1) print) a0-1))\n"
+      "  (format (quote #t) L324)\n"
+      "  gp-0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {{"L324", "~%"}});
+}
+
+TEST_F(FormRegressionTest, ExprInspect) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L59:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+      "    dsll32 v1, a0, 29\n"
+      "    beql v1, r0, L60\n"
+      "    lw v1, binteger(s7)\n"
+      "\n"
+      "    bgtzl v1, L60\n"
+      "    lw v1, pair(s7)\n"
+      "\n"
+      "    lwu v1, -4(a0)\n"
+      "L60:\n"
+      "    lwu t9, 28(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function object object)";
+
+  std::string expected = "((method-of-type (type-of a0-0) inspect) a0-0)";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L54:\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq s4, 16(sp)\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+      "    or gp, a0, r0\n"
+      "    or s5, a1, r0\n"
+      "    addiu s4, r0, 0\n"
+      "    beq r0, r0, L58\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "L55:\n"
+      "    andi v1, gp, 1\n"
+      "    bne v1, r0, L56\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L323\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    or v1, v0, r0\n"
+      "    beq r0, r0, L57\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "L56:\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L322\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    or v1, v0, r0\n"
+      "L57:\n"
+      "    dsrl gp, gp, 1\n"
+      "    daddiu s4, s4, 1\n"
+      "L58:\n"
+      "    slt v1, s4, s5\n"
+      "    bne v1, r0, L55\n"
+      "    sll r0, r0, 0\n"
+      "\n"
+      "    or v1, s7, r0\n"
+      "    or v0, s7, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    lq s4, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64";
+  std::string type = "(function int int symbol)";
+
+  std::string expected =
+      "(begin\n"
+      "  (set! gp-0 a0-0)\n"
+      "  (set! s5-0 a1-0)\n"
+      "  (set! s4-0 0)\n"
+      "  (while\n"
+      "   (<.si s4-0 s5-0)\n"
+      "   (if\n"
+      "    (zero? (logand gp-0 1))\n"
+      "    (format (quote #t) L323)\n"
+      "    (format (quote #t) L322)\n"
+      "    )\n"
+      "   (set! gp-0 (srl (the-as uint gp-0) 1))\n"
+      "   (set! s4-0 (+ s4-0 1))\n"
+      "   )\n"
+      "  (set! v1-3 (quote #f))\n"
+      "  (quote #f)\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
 }

@@ -76,6 +76,11 @@ void set_config(const std::string& path_to_config_file) {
     gConfig.bad_inspect_types.insert(x);
   }
 
+  auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
+  for (const auto& x : allowed) {
+    gConfig.allowed_objects.insert(x);
+  }
+
   auto type_hints_json = read_json_file_from_config(cfg, "type_hints_file");
   for (auto& kv : type_hints_json.items()) {
     auto& function_name = kv.key();

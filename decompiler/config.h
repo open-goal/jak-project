@@ -39,6 +39,7 @@ struct Config {
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_set<std::string> no_type_analysis_functions_by_name;
+  std::unordered_set<std::string> allowed_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeHint>>>
       type_hints_by_function_by_idx;
   std::unordered_map<std::string, std::unordered_map<int, std::string>>

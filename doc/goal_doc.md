@@ -895,6 +895,16 @@ Example:
 
 This form will probably get more options in the future.
 
+## `local-vars`
+Declare variables local to a function, without an initial value. This will be used by the decompiler before `let` has been fully implemented.
+```lisp
+(local-vars (name type-spec)...)
+```
+
+The name can be any valid symbol. The scope of the variable is _always_ the function scope. Other scopes inside a function will always hide variables declared with `local-vars`.  The type can be any GOAL typespec. If you use `float`, you get a floating point register, otherwise you get a normal GPR.
+
+It's recommended to avoid using this form.
+
 # Compiler Forms - Macro Forms
 
 ## `#cond`
@@ -1043,12 +1053,19 @@ Bitwise Not
 ## `deftype`
 
 
-## `method`
-Get a method of a type or an object.
-__Warning - I will probably change this in the future.__
+## `method-of-object`
+Get a method of an object.
+
 ```
-(method type method-name)
-(method object method-name)
+(method-of-object object method-name)
+```
+
+This form takes an object and gets the method from it. If the object has runtime type information, will consult the method table at runtime to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
+
+## `method-of-type`
+Get a method of a type or an object.
+```
+(method-of-type type method-name)
 ```
 
 The first form of this takes a type name and method name and returns a GOAL `function` for this method. For example:
@@ -1056,8 +1073,6 @@ The first form of this takes a type name and method name and returns a GOAL `fun
 (method string inspect)
 ```
 will return the `inspect` method of `string`.
-
-The second form of this takes an object and gets the method from it. If the object has runtime type information, will consult the method table to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
 
 ## `car` and `cdr`
 Get element from pair
@@ -1079,7 +1094,7 @@ Print the type of some GOAL expression at compile time.
 ```lisp
 (print-type form)
 ```
-This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is actually executed at runtime. Example:
+This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is compiled fully and used as the result of `print-type`. Example:
 ```lisp
 (print-type "apples")        ;; [TYPE] string
 (print-type (+ 12 1.2))      ;; [TYPE] int

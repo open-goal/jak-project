@@ -107,3 +107,9 @@
 - Accessing a constant field of an array now constant propagates the memory offset like field access and avoids a runtime multiply.
 - Fixed a bug where loading or storing a `vf` register from a memory location + constant offset would cause the compiler to throw an error.
 - Accessing array elements uses more efficient indexing for power-of-two element sizes.
+- Added a `local-vars` form for declaring a bunch of local variables for the decompiler.
+- Split `method` into `method-of-type` and `method-of-object` to avoid ambiguity
+- Fixed bug where `(-> obj type)` caused a compiler error when `obj` had compile time type of `array` (the fancy boxed array)
+- Fixed use-after-free if the top-level form fails to compile and you continue trying to compile stuff.
+- `and` and `or` are more efficient and the type of the result is more specific: `LCA(symbol, cases...)`
+- `print-type` now fully compiles the argument and returns the result instead of `none`

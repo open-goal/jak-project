@@ -3,24 +3,11 @@
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
 
-void insert_extras_into_parent(Form* top_condition, Form* parent_form, FormElement* this_elt) {
-  auto real_condition = top_condition->back();
-  top_condition->pop_back();
-
-  auto& parent_vector = parent_form->elts();
-  // find us in the parent vector
-  auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                         [&](FormElement* x) { return x == this_elt; });
-  assert(me != parent_vector.end());
-
-  // now insert the fake condition
-  parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-  top_condition->elts() = {real_condition};
-}
-
+// TODO - remove all these and put them in the analysis methods instead.
 void clean_up_ifs(Form* top_level_form) {
   bool changed = true;
   while (changed) {
@@ -32,30 +19,6 @@ void clean_up_ifs(Form* top_level_form) {
       }
 
       auto top_condition = as_cne->entries.front().condition;
-      if (!top_condition->is_single_element() && elt->parent_form) {
-        auto real_condition = top_condition->back();
-        top_condition->pop_back();
-
-        auto& parent_vector = elt->parent_form->elts();
-        // find us in the parent vector
-        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                               [&](FormElement* x) { return x == elt; });
-        assert(me != parent_vector.end());
-
-        // now insert the fake condition
-        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-        top_condition->elts() = {real_condition};
-        changed = true;
-      }
-    });
-
-    top_level_form->apply([&](FormElement* elt) {
-      auto as_cwe = dynamic_cast<CondWithElseElement*>(elt);
-      if (!as_cwe) {
-        return;
-      }
-
-      auto top_condition = as_cwe->entries.front().condition;
       if (!top_condition->is_single_element() && elt->parent_form) {
         auto real_condition = top_condition->back();
         top_condition->pop_back();
@@ -95,22 +58,6 @@ void clean_up_ifs(Form* top_level_form) {
         top_condition->elts() = {real_condition};
         changed = true;
       }
-      //      if (!changed) {
-      //        auto as_condition =
-      //        dynamic_cast<GenericElement*>(top_condition->try_as_single_element()); if
-      //        (as_condition) {
-      //          if (as_condition->op().kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
-      //            if (as_condition->op().condition_kind() == IR2_Condition::Kind::TRUTHY) {
-      //              auto to_repack = as_condition->elts().front();
-      //              if (!to_repack->try_as_single_element() && as_condition->parent_form) {
-      //                changed = true;
-      //                insert_extras_into_parent(to_repack, as_condition->parent_form,
-      //                as_condition);
-      //              }
-      //            }
-      //          }
-      //        }
-      //      }
     });
 
     top_level_form->apply([&](FormElement* elt) {
@@ -146,10 +93,12 @@ void clean_up_ifs(Form* top_level_form) {
 
 bool convert_to_expressions(Form* top_level_form,
                             FormPool& pool,
-                            const Function& f,
+                            Function& f,
                             const DecompilerTypeSystem& dts) {
   assert(top_level_form);
 
+  //  fmt::print("Before anything:\n{}\n",
+  //  pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
   try {
     //    top_level_form->apply_form([&](Form* form) {
     //      if (form == top_level_form || !form->is_single_element()) {
@@ -176,6 +125,7 @@ bool convert_to_expressions(Form* top_level_form,
     for (auto& entry : top_level_form->elts()) {
       //      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
       entry->push_to_stack(f.ir2.env, pool, stack);
+      //      fmt::print("Stack is now:\n{}\n", stack.print(f.ir2.env));
     }
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
@@ -200,11 +150,15 @@ bool convert_to_expressions(Form* top_level_form,
       top_level_form->push_back(x);
     }
 
+    //    fmt::print("Before clean:\n{}\n",
+    //    pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
     // fix up stuff
     clean_up_ifs(top_level_form);
 
   } catch (std::exception& e) {
-    lg::warn("Expression building failed: {}", e.what());
+    std::string warning = fmt::format("Expression building failed: {}", e.what());
+    lg::warn(warning);
+    f.warnings.append(";; " + warning);
     return false;
   }
 

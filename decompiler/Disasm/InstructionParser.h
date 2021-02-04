@@ -21,7 +21,8 @@ class InstructionParser {
  public:
   InstructionParser();
   Instruction parse_single_instruction(std::string str, const std::vector<DecompilerLabel>& labels);
-  ParsedProgram parse_program(const std::string& str);
+  ParsedProgram parse_program(const std::string& str,
+                              const std::vector<std::string>& predefined_labels = {});
 
  private:
   std::unordered_map<std::string, int> m_opcode_name_lookup;

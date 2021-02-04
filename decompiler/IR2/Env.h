@@ -3,10 +3,12 @@
 #include <string>
 #include <vector>
 #include <cassert>
+#include <common/goos/Object.h>
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
+#include "decompiler/config.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -36,7 +38,7 @@ class Env {
     return m_reg_use;
   }
 
-  std::string get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
+  goos::Object get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -72,13 +74,20 @@ class Env {
   void set_end_var(Variable var) { m_end_var = var; }
   const Variable& end_var() const { return m_end_var; }
 
+  std::vector<VariableNames::VarInfo> extract_visible_variables(const Form* top_level_form) const;
   std::string print_local_var_types(const Form* top_level_form) const;
+  goos::Object local_var_type_list(const Form* top_level_form,
+                                   int nargs_to_ignore,
+                                   int* count_out) const;
 
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
   RegId get_ssa_var(const Variable& var) const;
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
+  void set_type_hints(const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+    m_typehints = hints;
+  }
 
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
@@ -98,5 +107,7 @@ class Env {
   std::vector<TypeState*> m_op_init_types;
 
   bool m_allow_sloppy_pair_typing = false;
+
+  std::unordered_map<int, std::vector<TypeHint>> m_typehints;
 };
 }  // namespace decompiler

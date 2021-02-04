@@ -56,7 +56,7 @@ void test_case(std::string assembly_lines,
   // check the we get the right result:
   for (size_t i = 0; i < container.ops.size(); i++) {
     const auto& op = container.ops.at(i);
-    EXPECT_EQ(op->to_string(prg.labels, &env), output_lines.at(i));
+    EXPECT_EQ(op->to_form(prg.labels, env).print(), output_lines.at(i));
 
     // check that the registers read/written are identified for the operation
 

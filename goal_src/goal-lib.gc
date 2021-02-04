@@ -304,47 +304,6 @@
 
 ;; TODO - these work but aren't very efficient.
 
-(defmacro and (&rest args)
-  (with-gensyms (result end)
-    `(begin
-       (let ((,result (the object #f)))
-         ,@(apply (lambda (x)
-                    `(begin
-                      (set! ,result ,x)
-                      (if (eq? ,result #f)
-                        (goto ,end)
-                        )
-                      )
-                    )
-                  args
-                  )
-         (label ,end)
-         ,result
-         )
-       )
-    )
-  )
-
-(defmacro or (&rest args)
-  (with-gensyms (result end)
-    `(begin
-       (let ((,result (the object #f)))
-         ,@(apply (lambda (x)
-                    `(begin
-                       (set! ,result ,x)
-                       (if (not (eq? ,result #f))
-                         (goto ,end)
-                         )
-                       )
-                    )
-                  args
-                  )
-         (label ,end)
-         ,result
-         )
-       )
-    )
-  )
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
@@ -461,8 +420,8 @@
 
 (defmacro object-new (&rest sz)
   (if (null? sz)
-    `(the ,(current-method-type) ((method object new) allocation type-to-make (the int (-> type-to-make size))))
-    `(the ,(current-method-type) ((method object new) allocation type-to-make ,@sz))
+    `(the ,(current-method-type) ((method-of-type object new) allocation type-to-make (the int (-> type-to-make size))))
+    `(the ,(current-method-type) ((method-of-type object new) allocation type-to-make ,@sz))
     )
   )
 
@@ -495,4 +454,17 @@
 
 (defmacro finish-test ()
   `(format #t "Test ~A: ~D Passes~%" *test-name* *test-count*)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Decompiler Macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro <.si (a b)
+  `(< (the-as int ,a) (the-as int ,b))
+  )
+
+(defmacro <0.si (a)
+  `(< (the-as int ,a) (the-as int 0))
   )

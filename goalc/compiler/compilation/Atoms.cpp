@@ -89,6 +89,8 @@ static const std::unordered_map<
         // CONTROL FLOW
         {"cond", &Compiler::compile_cond},
         {"when-goto", &Compiler::compile_when_goto},
+        {"and", &Compiler::compile_and_or},
+        {"or", &Compiler::compile_and_or},
 
         // DEFINITION
         {"define", &Compiler::compile_define},
@@ -119,7 +121,8 @@ static const std::unordered_map<
         {"new", &Compiler::compile_new},
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
-        {"method", &Compiler::compile_method},
+        {"method-of-type", &Compiler::compile_method_of_type},
+        {"method-of-object", &Compiler::compile_method_of_object},
         {"declare-type", &Compiler::compile_declare_type},
         {"none", &Compiler::compile_none},
 
@@ -127,6 +130,7 @@ static const std::unordered_map<
         {"lambda", &Compiler::compile_lambda},
         {"declare", &Compiler::compile_declare},
         {"inline", &Compiler::compile_inline},
+        {"local-vars", &Compiler::compile_local_vars},
         //        {"with-inline", &Compiler::compile_with_inline},
         //        {"get-ra-ptr", &Compiler::compile_get_ra_ptr},
 

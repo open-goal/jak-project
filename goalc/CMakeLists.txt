@@ -40,11 +40,11 @@ add_library(compiler
 
 target_link_libraries(compiler common Zydis)
 
-IF (WIN32)
+if(WIN32)
     target_link_libraries(compiler mman)
-ENDIF ()
+endif()
 
 add_executable(goalc main.cpp)
 target_link_libraries(goalc common Zydis compiler)
 
-
+install(TARGETS goalc)

@@ -147,10 +147,10 @@ class TypeSystem {
                         const TypeSpec& ts,
                         bool allow_new_method = true);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
-  MethodInfo lookup_method(const std::string& type_name, const std::string& method_name);
-  MethodInfo lookup_method(const std::string& type_name, int method_id);
-  bool try_lookup_method(const std::string& type_name, int method_id, MethodInfo* info);
-  MethodInfo lookup_new_method(const std::string& type_name);
+  MethodInfo lookup_method(const std::string& type_name, const std::string& method_name) const;
+  MethodInfo lookup_method(const std::string& type_name, int method_id) const;
+  bool try_lookup_method(const std::string& type_name, int method_id, MethodInfo* info) const;
+  MethodInfo lookup_new_method(const std::string& type_name) const;
   void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
 
   FieldLookupInfo lookup_field_info(const std::string& type_name,

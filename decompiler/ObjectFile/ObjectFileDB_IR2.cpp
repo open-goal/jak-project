@@ -11,6 +11,7 @@
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/cfg_builder.h"
+#include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
@@ -387,11 +388,13 @@ void ObjectFileDB::ir2_build_expressions() {
     (void)segment_id;
     (void)data;
     total++;
-    if (func.ir2.top_form) {
+    if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
       attempted++;
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
+        //        auto end = final_defun_out(func, func.ir2.env, dts);
+        //        fmt::print("{}\n\n", end);
       }
     }
   });
@@ -433,14 +436,24 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
     // functions
     for (auto& func : data.linked_data.functions_by_seg.at(seg)) {
       result += ir2_function_to_string(data, func, seg);
-      if (func.ir2.top_form) {
+      if (func.ir2.top_form && func.ir2.env.has_local_vars()) {
         result += '\n';
-        result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+        if (func.ir2.env.has_local_vars()) {
+          if (!func.ir2.print_debug_forms) {
+            result += ";; expression building failed part way through, function may be weird\n";
+          }
+          result += final_defun_out(func, func.ir2.env, dts);
+        } else {
+          result += ";; no variable information\n";
+          result += pretty_print::to_string(func.ir2.top_form->to_form(func.ir2.env));
+        }
+
         result += '\n';
       }
 
       if (func.ir2.print_debug_forms) {
         result += '\n';
+        result += ";; DEBUG OUTPUT BELOW THIS LINE:\n";
         result += func.ir2.debug_form_string;
         result += '\n';
       }
@@ -591,7 +604,7 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
         auto& op = func.get_atomic_op_at_instr(instr_id);
         op_id = func.ir2.atomic_ops->instruction_to_atomic_op.at(instr_id);
         append_commented(line, printed_comment,
-                         op.to_string(data.linked_data.labels, &func.ir2.env));
+                         op.to_form(data.linked_data.labels, func.ir2.env).print());
 
         if (func.ir2.env.has_type_analysis()) {
           append_commented(

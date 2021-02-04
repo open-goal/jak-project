@@ -334,7 +334,7 @@ TEST_F(WithGameTests, FancyStatic) {
 TEST_F(WithGameTests, IntegerBoxedArray) {
   runner.run_static_test(
       env, testCategory, "test-integer-boxed-array.gc",
-      {"0 0  1 2  2 4  3 6  4 8  5 10  6 12  7 14  8 16  9 18  10 20  11 22  12 40 6\n0\n"});
+      {"0 0  1 2  2 4  3 6  4 8  5 10  6 12  7 14  8 16  9 18  10 20  11 22  12 40 6 array\n0\n"});
 }
 
 TEST_F(WithGameTests, StaticBoxedArray) {
@@ -573,6 +573,16 @@ TEST_F(WithGameTests, XMMSpill) {
 
 TEST_F(WithGameTests, BoxedArrayIndex) {
   runner.run_static_test(env, testCategory, "test-boxed-array-index.gc", {"18\n0\n"});
+}
+
+TEST_F(WithGameTests, LocalVars) {
+  runner.run_static_test(env, testCategory, "test-local-vars.gc",
+                         {"y is \"test\", x is 12, z is 3.2000\n0\n"});
+}
+
+TEST_F(WithGameTests, ShortCircuit) {
+  runner.run_static_test(env, testCategory, "test-short-circuit.gc",
+                         get_test_pass_string("short-circuit", 13));
 }
 
 TEST(TypeConsistency, TypeConsistency) {

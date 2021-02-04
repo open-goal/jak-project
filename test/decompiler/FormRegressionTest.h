@@ -7,6 +7,10 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
+namespace decompiler {
+struct TypeHint;
+}
+
 class FormRegressionTest : public ::testing::Test {
  protected:
   static std::unique_ptr<decompiler::InstructionParser> parser;
@@ -29,7 +33,8 @@ class FormRegressionTest : public ::testing::Test {
       bool do_expressions,
       bool allow_pairs = false,
       const std::string& method_name = "",
-      const std::vector<std::pair<std::string, std::string>>& strings = {});
+      const std::vector<std::pair<std::string, std::string>>& strings = {},
+      const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {});
 
   void test(const std::string& code,
             const std::string& type,
@@ -37,23 +42,29 @@ class FormRegressionTest : public ::testing::Test {
             bool do_expressions,
             bool allow_pairs = false,
             const std::string& method_name = "",
-            const std::vector<std::pair<std::string, std::string>>& strings = {});
+            const std::vector<std::pair<std::string, std::string>>& strings = {},
+            const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {});
 
   void test_no_expr(const std::string& code,
                     const std::string& type,
                     const std::string& expected,
                     bool allow_pairs = false,
                     const std::string& method_name = "",
-                    const std::vector<std::pair<std::string, std::string>>& strings = {}) {
-    test(code, type, expected, false, allow_pairs, method_name, strings);
+                    const std::vector<std::pair<std::string, std::string>>& strings = {},
+                    const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {}) {
+    test(code, type, expected, false, allow_pairs, method_name, strings, hints);
   }
 
-  void test_with_expr(const std::string& code,
-                      const std::string& type,
-                      const std::string& expected,
-                      bool allow_pairs = false,
-                      const std::string& method_name = "",
-                      const std::vector<std::pair<std::string, std::string>>& strings = {}) {
-    test(code, type, expected, true, allow_pairs, method_name, strings);
+  void test_with_expr(
+      const std::string& code,
+      const std::string& type,
+      const std::string& expected,
+      bool allow_pairs = false,
+      const std::string& method_name = "",
+      const std::vector<std::pair<std::string, std::string>>& strings = {},
+      const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {}) {
+    test(code, type, expected, true, allow_pairs, method_name, strings, hints);
   }
+
+  std::unordered_map<int, std::vector<decompiler::TypeHint>> parse_hint_json(const std::string& in);
 };
