@@ -483,10 +483,19 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
   if (!m_expr.get_arg(1).is_var()) {
     auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
 
-    auto new_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(kind), args.at(0),
-        pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
-    result->push_back(new_form);
+    if (!arg0_i && !arg0_u) {
+      auto new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(kind),
+          pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
+          pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+      result->push_back(new_form);
+    } else {
+      auto new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(kind), args.at(0),
+          pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+      result->push_back(new_form);
+    }
+
     return;
   }
   auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
@@ -583,8 +592,8 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_lognot(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::LEFT_SHIFT:
-      update_from_stack_force_ui_2(env, FixedOperatorKind::SHL, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
+                                         allow_side_effects);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
       update_from_stack_force_ui_2(env, FixedOperatorKind::SHR, pool, stack, result,
@@ -1050,12 +1059,106 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 // ConditionElement
 ///////////////////
 
+namespace {
+Form* make_cast(Form* in, const TypeSpec& in_type, const TypeSpec& out_type, FormPool& pool) {
+  if (in_type == out_type) {
+    return in;
+  }
+  return pool.alloc_single_element_form<CastElement>(nullptr, out_type, in);
+}
+
+std::vector<Form*> make_cast(const std::vector<Form*>& in,
+                             const std::vector<TypeSpec>& in_types,
+                             const TypeSpec& out_type,
+                             FormPool& pool) {
+  std::vector<Form*> out;
+  assert(in.size() == in_types.size());
+  for (size_t i = 0; i < in_types.size(); i++) {
+    out.push_back(make_cast(in.at(i), in_types.at(i), out_type, pool));
+  }
+  return out;
+}
+}  // namespace
+
+FormElement* ConditionElement::make_generic(const Env& env,
+                                            FormPool& pool,
+                                            const std::vector<Form*>& source_forms,
+                                            const std::vector<TypeSpec>& types) {
+  switch (m_kind) {
+    case IR2_Condition::Kind::TRUTHY:
+    case IR2_Condition::Kind::ZERO:
+    case IR2_Condition::Kind::NONZERO:
+    case IR2_Condition::Kind::FALSE:
+    case IR2_Condition::Kind::IS_PAIR:
+    case IR2_Condition::Kind::IS_NOT_PAIR:
+      // kind of a hack, we fall back to the old condition operator which is special cased
+      // to print the truthy condition in a nice way. and we use it for other things that don't
+      // require fancy renaming.
+      return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind),
+                                                source_forms);
+    case IR2_Condition::Kind::EQUAL:
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                                source_forms);
+    case IR2_Condition::Kind::NOT_EQUAL:
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                                source_forms);
+
+    case IR2_Condition::Kind::LESS_THAN_SIGNED:
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::LT),
+          make_cast(source_forms, types, TypeSpec("int"), pool));
+    case IR2_Condition::Kind::LESS_THAN_UNSIGNED:
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::LT),
+          make_cast(source_forms, types, TypeSpec("uint"), pool));
+
+    case IR2_Condition::Kind::GEQ_UNSIGNED:
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+          make_cast(source_forms, types, TypeSpec("uint"), pool));
+
+    case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED: {
+      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::GEQ_ZERO_SIGNED: {
+      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED: {
+      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GT),
+                                                casted);
+    }
+
+    default:
+      throw std::runtime_error("ConditionElement::make_generic NYI for kind " +
+                               get_condition_kind_name(m_kind));
+  }
+}
+
 void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   std::vector<Form*> source_forms;
+  std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    vars.push_back(m_src[i]->var());
+    auto& var = m_src[i]->var();
+    vars.push_back(var);
+    source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
   }
   if (m_flipped) {
     std::reverse(vars.begin(), vars.end());
@@ -1066,9 +1169,7 @@ void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
     std::reverse(source_forms.begin(), source_forms.end());
   }
 
-  stack.push_form_element(
-      pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms),
-      true);
+  stack.push_form_element(make_generic(env, pool, source_forms, source_types), true);
 }
 
 void ConditionElement::update_from_stack(const Env& env,
@@ -1077,10 +1178,13 @@ void ConditionElement::update_from_stack(const Env& env,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
   std::vector<Form*> source_forms;
+  std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    vars.push_back(m_src[i]->var());
+    auto& var = m_src[i]->var();
+    vars.push_back(var);
+    source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
   }
 
   if (m_flipped) {
@@ -1091,8 +1195,7 @@ void ConditionElement::update_from_stack(const Env& env,
     std::reverse(source_forms.begin(), source_forms.end());
   }
 
-  result->push_back(
-      pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms));
+  result->push_back(make_generic(env, pool, source_forms, source_types));
 }
 
 void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {

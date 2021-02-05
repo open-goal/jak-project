@@ -289,6 +289,11 @@ class ConditionElement : public FormElement {
   void invert();
   const RegSet& consume() const { return m_consumed; }
 
+  FormElement* make_generic(const Env& env,
+                            FormPool& pool,
+                            const std::vector<Form*>& source_forms,
+                            const std::vector<TypeSpec>& types);
+
  private:
   IR2_Condition::Kind m_kind;
   std::optional<SimpleAtom> m_src[2];
