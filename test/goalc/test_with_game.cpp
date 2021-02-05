@@ -447,10 +447,10 @@ std::vector<VectorFloatTestCase> vectorMathTestCaseGen() {
     cases.push_back(testCase);
     // Re-add each case with each broadcast varient
     for (int j = 0; j < 4; j++) {
-      VectorFloatTestCase testCase = VectorFloatTestCase();
-      testCase.destinationMask = i;
-      testCase.bc = static_cast<emitter::Register::VF_ELEMENT>(j);
-      cases.push_back(testCase);
+      VectorFloatTestCase testCaseBC = VectorFloatTestCase();
+      testCaseBC.destinationMask = i;
+      testCaseBC.bc = static_cast<emitter::Register::VF_ELEMENT>(j);
+      cases.push_back(testCaseBC);
     }
   }
   return cases;
@@ -540,7 +540,12 @@ TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_MAX_XYZW_DEST) {
 // (broadcasting ignored!)
 TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_ABS_DEST) {
   VectorFloatTestCase testCase = GetParam();
-  testCase.operation = [](float x, float y) { return fabs(x); };
+  testCase.operation = [](float x, float y) {
+    // Avoid compiler warnings for unused variable, making a varient that accepts a lambda with only
+    // 1 float is just unnecessary complexity
+    y = 0;
+    return fabs(x);
+  };
 
   nlohmann::json data;
   testCase.setJson(data, ".abs.vf", false);

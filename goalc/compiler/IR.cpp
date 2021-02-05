@@ -1299,9 +1299,8 @@ IR_VFMath3Asm::IR_VFMath3Asm(bool use_color,
                              const RegVal* dst,
                              const RegVal* src1,
                              const RegVal* src2,
-                             u8 mask,
                              Kind kind)
-    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_mask(mask), m_kind(kind) {}
+    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_kind(kind) {}
 
 std::string IR_VFMath3Asm::print() {
   std::string function = "";
@@ -1327,8 +1326,8 @@ std::string IR_VFMath3Asm::print() {
     default:
       assert(false);
   }
-  return fmt::format("{}{} {}, {}, {}, {:#b}", function, get_color_suffix_string(), m_dst->print(),
-                     m_src1->print(), m_src2->print(), m_mask);
+  return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                     m_src1->print(), m_src2->print());
 }
 
 RegAllocInstr IR_VFMath3Asm::to_rai() {

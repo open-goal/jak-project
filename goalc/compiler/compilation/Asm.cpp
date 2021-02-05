@@ -475,17 +475,8 @@ Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& 
 
   u8 mask = 0b1111;
   if (args.has_named("mask")) {
-    try {
-      mask = args.named.at("mask").as_int();
-    } catch (std::exception) {
-      throw_compiler_error(
-          form,
-          "The value {} is invalid for a destination mask, it could not be evaluated as a "
-          "constant integer.",
-          args.named.at("mask").print());
-    }
-
-    if (mask < 0 || mask > 15) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
       throw_compiler_error(
           form, "The value {} is out of range for a destination mask (0-15 inclusive).", mask);
     }
@@ -496,19 +487,18 @@ Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& 
 
   // First we clear a temporary register, XOR'ing itself
   auto temp_reg = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, 0b1111,
-                              IR_VFMath3Asm::Kind::XOR);
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
 
   // Next, find the difference between our source operand and 0, use the same temp register, no need
   // to use another <0, 0, 0, 0> - <1, -2, -3, 4> = <-1, 2, 3, 4>
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, src, 0b1111, IR_VFMath3Asm::Kind::SUB);
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, src, IR_VFMath3Asm::Kind::SUB);
 
   // Finally, find the maximum between our difference, and the original value
   // MAX_OF(<-1, 2, 3, 4>, <1, -2, -3, 4>) = <1, 2, 3, 4>
   if (mask == 0b1111) {  // If the entire destination is to be copied, we can optimize out the blend
-    env->emit_ir<IR_VFMath3Asm>(color, dest, src, temp_reg, 0b1111, IR_VFMath3Asm::Kind::MAX);
+    env->emit_ir<IR_VFMath3Asm>(color, dest, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
   } else {
-    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src, temp_reg, 0b1111, IR_VFMath3Asm::Kind::MAX);
+    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
 
     // Blend the result back into the destination register using the mask
     env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
@@ -550,17 +540,8 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
 
   u8 mask = 0b1111;
   if (args.has_named("mask")) {
-    try {
-      mask = args.named.at("mask").as_int();
-    } catch (std::exception) {
-      throw_compiler_error(
-          form,
-          "The value {} is invalid for a destination mask, it could not be evaluated as a "
-          "constant integer.",
-          args.named.at("mask").print());
-    }
-
-    if (mask < 0 || mask > 15) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
       throw_compiler_error(form, "The value {} is out of range for a blend mask (0-15 inclusive).",
                            mask);
     }
@@ -607,17 +588,8 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
 
   u8 mask = 0b1111;
   if (args.has_named("mask")) {
-    try {
-      mask = args.named.at("mask").as_int();
-    } catch (std::exception) {
-      throw_compiler_error(
-          form,
-          "The value {} is invalid for a destination mask, it could not be evaluated as a "
-          "constant integer.",
-          args.named.at("mask").print());
-    }
-
-    if (mask < 0 || mask > 15) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
       throw_compiler_error(form, "The value {} is out of range for a blend mask (0-15 inclusive).",
                            mask);
     }
@@ -629,28 +601,27 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   // vf10[y] = vf20[y] + vf30[x]
   // vf10[z] = vf20[z] + vf30[x]
   // vf10[w] = vf20[w] + vf30[x]
-  // TODO - surely i can condense this...(only using a temp register when i have to)
   if (broadcastElement != emitter::Register::VF_ELEMENT::NONE) {
     auto temp_reg = env->make_vfr(dest->type());
     env->emit_ir<IR_SplatVF>(color, temp_reg, src2, broadcastElement);
 
     // If the entire destination is to be copied, we can optimize out the blend
     if (mask == 0b1111) {
-      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, temp_reg, mask, kind);
+      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, temp_reg, kind);
     } else {
       // Perform the arithmetic operation on the two vectors into a temporary register
-      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, mask, kind);
+      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, kind);
       // Blend the result back into the destination register using the mask
       env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
     }
   } else {
     // If the entire destination is to be copied, we can optimize out the blend
     if (mask == 0b1111) {
-      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, src2, mask, kind);
+      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, src2, kind);
     } else {
       auto temp_reg = env->make_vfr(dest->type());
       // Perform the arithmetic operation on the two vectors into a temporary register
-      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, mask, kind);
+      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, kind);
       // Blend the result back into the destination register using the mask
       env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
     }
