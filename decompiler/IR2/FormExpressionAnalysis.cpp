@@ -865,6 +865,9 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 // CondNoElseElement
 ///////////////////
 void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  if (already_rewritten) {
+    stack.push_form_element(this, true);
+  }
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
       FormStack temp_stack;
@@ -891,9 +894,13 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
   } else {
     stack.push_form_element(this, true);
   }
+  already_rewritten = true;
 }
 
 void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  if (already_rewritten) {
+    stack.push_form_element(this, true);
+  }
   // first, let's try to detect if all bodies write the same value
   std::optional<Variable> last_var;
   bool rewrite_as_set = true;
@@ -990,6 +997,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   } else {
     stack.push_form_element(this, true);
   }
+  already_rewritten = true;
 }
 
 ///////////////////
@@ -1003,6 +1011,9 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
     stack.push_form_element(this, true);
   } else {
+    if (already_rewritten) {
+      stack.push_form_element(this, true);
+    }
     for (int i = 0; i < int(entries.size()); i++) {
       auto& entry = entries.at(i);
       FormStack temp_stack;
@@ -1024,6 +1035,7 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
     assert(used_as_value.has_value());
     stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
+    already_rewritten = true;
   }
 }
 
@@ -1033,6 +1045,10 @@ void ShortCircuitElement::update_from_stack(const Env& env,
                                             std::vector<FormElement*>* result,
                                             bool) {
   (void)stack;
+  if (already_rewritten) {
+    result->push_back(this);
+    return;
+  }
   for (int i = 0; i < int(entries.size()); i++) {
     auto& entry = entries.at(i);
     FormStack temp_stack;
@@ -1053,6 +1069,7 @@ void ShortCircuitElement::update_from_stack(const Env& env,
     }
   }
   result->push_back(this);
+  already_rewritten = true;
 }
 
 ///////////////////

@@ -417,6 +417,7 @@ class CondWithElseElement : public FormElement {
   };
   std::vector<Entry> entries;
   Form* else_ir = nullptr;
+  bool already_rewritten = false;
   CondWithElseElement(std::vector<Entry> _entries, Form* _else_ir)
       : entries(std::move(_entries)), else_ir(_else_ir) {}
   goos::Object to_form(const Env& env) const override;
@@ -503,6 +504,7 @@ class ShortCircuitElement : public FormElement {
   Variable final_result;
   std::vector<Entry> entries;
   std::optional<bool> used_as_value = std::nullopt;
+  bool already_rewritten = false;
 
   explicit ShortCircuitElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const Env& env) const override;
@@ -534,6 +536,7 @@ class CondNoElseElement : public FormElement {
   };
   Variable final_destination;
   bool used_as_value = false;
+  bool already_rewritten = false;
   std::vector<Entry> entries;
   explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const Env& env) const override;

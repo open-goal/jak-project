@@ -26,6 +26,7 @@ std::string FormStack::print(const Env& env) {
 }
 
 void FormStack::push_value_to_reg(Variable var, Form* value, bool sequence_point) {
+  assert(value);
   StackEntry entry;
   entry.active = true;  // by default, we should display everything!
   entry.sequence_point = sequence_point;
@@ -37,6 +38,7 @@ void FormStack::push_value_to_reg(Variable var, Form* value, bool sequence_point
 void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
                                         const Variable& src,
                                         Form* src_as_form) {
+  assert(src_as_form);
   StackEntry entry;
   entry.active = true;
   entry.sequence_point = false;
@@ -89,7 +91,7 @@ Form* FormStack::pop_reg(Register reg,
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      if (entry.destination->reg() == reg) {
+      if (entry.destination.has_value() && entry.destination->reg() == reg) {
         entry.source->get_modified_regs(modified);
         if (!allow_side_effects && entry.source->has_side_effects()) {
           // the source of the set! has a side effect and that's not allowed, so abort.
@@ -159,7 +161,7 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
 
 std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
                                                         const Variable& var,
-                                                        const Env&) {
+                                                        const Env& env) {
   // first, rewrite as normal.
   auto default_result = rewrite(pool);
 

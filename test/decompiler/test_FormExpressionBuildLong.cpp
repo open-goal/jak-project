@@ -1934,7 +1934,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "    (set! s5-0 t0-0)\n"
       "    (and\n"
       "     (>= (the-as uint gp-0) (the-as uint __START-OF-TABLE__))\n"
-      "     (begin (< (the-as uint gp-0) (the-as uint 134217728)) v1-1)\n"
+      "     (< (the-as uint gp-0) (the-as uint 134217728))\n"
       "     )\n"
       "    )\n"
       "   )\n"
