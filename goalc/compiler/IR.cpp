@@ -1059,6 +1059,27 @@ void IR_AsmRet::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 ///////////////////////
+// AsmFNop
+///////////////////////
+
+IR_AsmFNop::IR_AsmFNop() : IR_Asm(false) {}
+
+std::string IR_AsmFNop::print() {
+  return ".nop.vf";
+}
+
+RegAllocInstr IR_AsmFNop::to_rai() {
+  return {};
+}
+
+void IR_AsmFNop::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  (void)allocs;
+  gen->add_instr(IGen::nop_vf(), irec);
+}
+
+///////////////////////
 // AsmPush
 ///////////////////////
 
@@ -1282,19 +1303,31 @@ IR_VFMath3Asm::IR_VFMath3Asm(bool use_color,
     : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_kind(kind) {}
 
 std::string IR_VFMath3Asm::print() {
+  std::string function = "";
   switch (m_kind) {
     case Kind::XOR:
-      return fmt::format(".xor.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      function = ".xor.vf";
+      break;
     case Kind::SUB:
-      return fmt::format(".sub.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      function = ".sub.vf";
+      break;
     case Kind::ADD:
-      return fmt::format(".add.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
-                         m_src1->print(), m_src2->print());
+      function = ".add.vf";
+      break;
+    case Kind::MUL:
+      function = ".mul.vf";
+      break;
+    case Kind::MAX:
+      function = ".max.vf";
+      break;
+    case Kind::MIN:
+      function = ".min.vf";
+      break;
     default:
       assert(false);
   }
+  return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                     m_src1->print(), m_src2->print());
 }
 
 RegAllocInstr IR_VFMath3Asm::to_rai() {
@@ -1323,6 +1356,15 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case Kind::ADD:
       gen->add_instr(IGen::add_vf(dst, src1, src2), irec);
+      break;
+    case Kind::MUL:
+      gen->add_instr(IGen::mul_vf(dst, src1, src2), irec);
+      break;
+    case Kind::MAX:
+      gen->add_instr(IGen::max_vf(dst, src1, src2), irec);
+      break;
+    case Kind::MIN:
+      gen->add_instr(IGen::min_vf(dst, src1, src2), irec);
       break;
     default:
       assert(false);
@@ -1358,4 +1400,32 @@ void IR_BlendVF::do_codegen(emitter::ObjectGenerator* gen,
   auto src1 = get_reg_asm(m_src1, allocs, irec, m_use_coloring);
   auto src2 = get_reg_asm(m_src2, allocs, irec, m_use_coloring);
   gen->add_instr(IGen::blend_vf(dst, src1, src2, m_mask), irec);
+}
+
+IR_SplatVF::IR_SplatVF(bool use_color,
+                       const RegVal* dst,
+                       const RegVal* src,
+                       const emitter::Register::VF_ELEMENT element)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_element(element) {}
+
+std::string IR_SplatVF::print() {
+  return fmt::format(".splat.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                     m_src->print(), m_element);
+}
+
+RegAllocInstr IR_SplatVF::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_SplatVF::do_codegen(emitter::ObjectGenerator* gen,
+                            const AllocationResult& allocs,
+                            emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
+  gen->add_instr(IGen::splat_vf(dst, src, m_element), irec);
 }

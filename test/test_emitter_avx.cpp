@@ -4,6 +4,13 @@
 
 using namespace emitter;
 
+TEST(EmitterAVX, VF_NOP) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::nop_vf());
+  EXPECT_EQ(tester.dump_to_hex_string(true), "D9D0");
+}
+
 TEST(EmitterAVX, MOV_VF) {
   CodeTester tester;
   tester.init_code_buffer(10000);
@@ -137,6 +144,46 @@ TEST(EmitterAVX, ShuffleVF) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "C5D8C6DC6DC4C108C6DE6DC558C6EC6DC44108C6EE6D");
 }
 
+TEST(EmitterAVX, SplatVF_X) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 4, Register::VF_ELEMENT::X));
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 14, Register::VF_ELEMENT::X));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 4, Register::VF_ELEMENT::X));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 14, Register::VF_ELEMENT::X));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5D8C6DC00C4C108C6DE00C558C6EC00C44108C6EE00");
+}
+
+TEST(EmitterAVX, SplatVF_Y) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 4, Register::VF_ELEMENT::Y));
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 14, Register::VF_ELEMENT::Y));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 4, Register::VF_ELEMENT::Y));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 14, Register::VF_ELEMENT::Y));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5D8C6DC55C4C108C6DE55C558C6EC55C44108C6EE55");
+}
+
+TEST(EmitterAVX, SplatVF_Z) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 4, Register::VF_ELEMENT::Z));
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 14, Register::VF_ELEMENT::Z));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 4, Register::VF_ELEMENT::Z));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 14, Register::VF_ELEMENT::Z));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5D8C6DCAAC4C108C6DEAAC558C6ECAAC44108C6EEAA");
+}
+
+TEST(EmitterAVX, SplatVF_W) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 4, Register::VF_ELEMENT::W));
+  tester.emit(IGen::splat_vf(XMM0 + 3, XMM0 + 14, Register::VF_ELEMENT::W));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 4, Register::VF_ELEMENT::W));
+  tester.emit(IGen::splat_vf(XMM0 + 13, XMM0 + 14, Register::VF_ELEMENT::W));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5D8C6DCFFC4C108C6DEFFC558C6ECFFC44108C6EEFF");
+}
+
 TEST(EmitterAVX, XorVF) {
   CodeTester tester;
   tester.init_code_buffer(1024);
@@ -183,6 +230,38 @@ TEST(EmitterAVX, AddVF) {
 
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "C5E058DBC4C16058DDC59058DBC4C11058DDC56058EBC4416058EDC51058EBC4411058ED");
+}
+
+TEST(EmitterAVX, MaxVF) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::max_vf(XMM0 + 3, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::max_vf(XMM0 + 3, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::max_vf(XMM0 + 3, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::max_vf(XMM0 + 3, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::max_vf(XMM0 + 13, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::max_vf(XMM0 + 13, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::max_vf(XMM0 + 13, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::max_vf(XMM0 + 13, XMM0 + 13, XMM0 + 13));
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "C5E05FDBC4C1605FDDC5905FDBC4C1105FDDC5605FEBC441605FEDC5105FEBC441105FED");
+}
+
+TEST(EmitterAVX, MinVF) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::min_vf(XMM0 + 3, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::min_vf(XMM0 + 3, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::min_vf(XMM0 + 3, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::min_vf(XMM0 + 3, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::min_vf(XMM0 + 13, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::min_vf(XMM0 + 13, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::min_vf(XMM0 + 13, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::min_vf(XMM0 + 13, XMM0 + 13, XMM0 + 13));
+
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "C5E05DDBC4C1605DDDC5905DDBC4C1105DDDC5605DEBC441605DEDC5105DEBC441105DED");
 }
 
 TEST(EmitterAVX, BlendVF) {

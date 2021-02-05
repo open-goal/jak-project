@@ -1,0 +1,25 @@
+(defun test-vector-math ()
+  (let ((vector-in-1 (new 'stack 'vector))
+        {% if twoOperands %}(vector-in-2 (new 'stack 'vector)){% endif %}
+        (vector-out (new 'stack 'vector)))
+
+    (set-vector! vector-in-1 {{ v1x }} {{ v1y }} {{ v1z }} {{ v1w }})
+    {% if twoOperands %}(set-vector! vector-in-2 {{ v2x }} {{ v2y }} {{ v2z }} {{ v2w }}){% endif %}
+    (set-vector! vector-out {{ destx }} {{ desty }} {{ destz }} {{ destw }})
+
+    (rlet ((vf1 :class vf :reset-here #t)
+           {% if twoOperands %}(vf2 :class vf :reset-here #t){% endif %}
+           (vf3 :class vf :reset-here #t))
+
+      (.lvf vf1 vector-in-1)
+      {% if twoOperands %}(.lvf vf2 vector-in-2){% endif %}
+      (.lvf vf3 vector-out)
+    
+      
+      {% if twoOperands %}({{ operation }} vf3 vf1 vf2{% if destinationMask %} :mask #b{{ destinationMask }}{% endif %}){% else %}({{ operation }} vf3 vf1{% if destinationMask %} :mask #b{{ destinationMask }}{% endif %}){% endif %}
+    
+      (.svf vector-out vf3))
+
+    (format #t "(~f, ~f, ~f, ~f)~%" (-> vector-out x) (-> vector-out y) (-> vector-out z) (-> vector-out w))))
+
+(test-vector-math)

@@ -23,6 +23,8 @@ struct CompilerTestRunner {
 
   std::vector<Test> tests;
 
+  std::string test_file_name(std::string templateStr);
+
   void run_static_test(inja::Environment& env,
                        std::string& testCategory,
                        const std::string& test_file,

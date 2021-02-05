@@ -8,6 +8,7 @@
 #include "goalc/regalloc/allocate.h"
 #include "Val.h"
 #include "goalc/emitter/ObjectGenerator.h"
+#include "goalc/emitter/Register.h"
 
 class IR {
  public:
@@ -452,6 +453,16 @@ class IR_AsmAdd : public IR_Asm {
   const RegVal* m_src = nullptr;
 };
 
+class IR_AsmFNop : public IR_Asm {
+ public:
+  IR_AsmFNop();
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
 class IR_GetSymbolValueAsm : public IR_Asm {
  public:
   IR_GetSymbolValueAsm(bool use_coloring, const RegVal* dest, std::string sym_name, bool sext);
@@ -496,7 +507,7 @@ class IR_RegSetAsm : public IR_Asm {
 
 class IR_VFMath3Asm : public IR_Asm {
  public:
-  enum class Kind { XOR, SUB, ADD };
+  enum class Kind { XOR, SUB, ADD, MUL, MAX, MIN };
   IR_VFMath3Asm(bool use_color,
                 const RegVal* dst,
                 const RegVal* src1,
@@ -529,5 +540,23 @@ class IR_BlendVF : public IR_Asm {
   const RegVal* m_src1 = nullptr;
   const RegVal* m_src2 = nullptr;
   u8 m_mask = 0xff;
+};
+
+class IR_SplatVF : public IR_Asm {
+ public:
+  IR_SplatVF(bool use_color,
+             const RegVal* dst,
+             const RegVal* src1,
+             const emitter::Register::VF_ELEMENT element);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+  const emitter::Register::VF_ELEMENT m_element = emitter::Register::VF_ELEMENT::NONE;
 };
 #endif  // JAK_IR_H

@@ -19,12 +19,9 @@
 #include <iostream>
 #include <random>
 #include <filesystem>
+#include <regex>
 
-struct WithGameParam {
-  // TODO - Not Needed Yet
-};
-
-class WithGameTests : public testing::TestWithParam<WithGameParam> {
+class WithGameTests : public ::testing::Test {
  public:
   static void SetUpTestSuite() {
     try {
@@ -344,6 +341,224 @@ TEST_F(WithGameTests, StaticBoxedArray) {
   runner.run_static_test(env, testCategory, "test-static-boxed-array.gc",
                          {"4 asdf \"test\" (a b) 0 object 12 12\n0\n"});
 }
+
+// VECTOR FLOAT TESTS
+
+struct VectorFloatRegister {
+  float x = 0;
+  float y = 0;
+  float z = 0;
+  float w = 0;
+
+  void setJson(nlohmann::json& data, std::string vectorKey) {
+    data[fmt::format("{}x", vectorKey)] = x;
+    data[fmt::format("{}y", vectorKey)] = y;
+    data[fmt::format("{}z", vectorKey)] = z;
+    data[fmt::format("{}w", vectorKey)] = w;
+  }
+
+  float getBroadcastElement(emitter::Register::VF_ELEMENT bc, float defValue) {
+    switch (bc) {
+      case emitter::Register::VF_ELEMENT::X:
+        return x;
+      case emitter::Register::VF_ELEMENT::Y:
+        return y;
+      case emitter::Register::VF_ELEMENT::Z:
+        return z;
+      case emitter::Register::VF_ELEMENT::W:
+        return w;
+      default:
+        return defValue;
+    }
+  }
+
+  std::string toGOALFormat() {
+    std::string answer = fmt::format("({:.4f}, {:.4f}, {:.4f}, {:.4f})", x, y, z, w);
+    // {fmt} formats negative 0 as "-0.000", just going to flip any negative zeros to positives as I
+    // don't think is an OpenGOAL issue
+    return std::regex_replace(answer, std::regex("-0.0000"), "0.0000");
+  }
+};
+
+struct VectorFloatTestCase {
+  VectorFloatRegister input1 = {1.5, -1.5, 0.0, 100.5};
+  VectorFloatRegister input2 = {-5.5, -0.0, 10.0, 7.5};
+  VectorFloatRegister dest = {11, 22, 33, 44};
+
+  int destinationMask = -1;
+  emitter::Register::VF_ELEMENT bc = emitter::Register::VF_ELEMENT::NONE;
+  std::function<float(float, float)> operation;
+
+  VectorFloatRegister getExpectedResult() {
+    VectorFloatRegister expectedResult;
+    expectedResult.x = destinationMask & 0b0001
+                           ? operation(input1.x, input2.getBroadcastElement(bc, input2.x))
+                           : dest.x;
+    expectedResult.y = destinationMask & 0b0010
+                           ? operation(input1.y, input2.getBroadcastElement(bc, input2.y))
+                           : dest.y;
+    expectedResult.z = destinationMask & 0b0100
+                           ? operation(input1.z, input2.getBroadcastElement(bc, input2.z))
+                           : dest.z;
+    expectedResult.w = destinationMask & 0b1000
+                           ? operation(input1.w, input2.getBroadcastElement(bc, input2.w))
+                           : dest.w;
+    return expectedResult;
+  }
+
+  std::string getOperationBroadcast() {
+    switch (bc) {
+      case emitter::Register::VF_ELEMENT::X:
+        return "x";
+      case emitter::Register::VF_ELEMENT::Y:
+        return "y";
+      case emitter::Register::VF_ELEMENT::Z:
+        return "z";
+      case emitter::Register::VF_ELEMENT::W:
+        return "w";
+      default:
+        return "";
+    }
+  }
+
+  void setJson(nlohmann::json& data, std::string func, bool twoOperands = true) {
+    input1.setJson(data, "v1");
+    data["twoOperands"] = twoOperands;
+    if (twoOperands) {
+      input2.setJson(data, "v2");
+    }
+    dest.setJson(data, "dest");
+    data["operation"] = fmt::format(func);
+    if (destinationMask == -1) {
+      data["destinationMask"] = false;
+    } else {
+      data["destinationMask"] = fmt::format("{:b}", destinationMask);
+    }
+  }
+};
+
+std::vector<VectorFloatTestCase> vectorMathTestCaseGen() {
+  std::string test = fmt::format("{:.4f}", -0.0);
+
+  std::vector<VectorFloatTestCase> cases = {};
+  for (int i = 0; i <= 15; i++) {
+    VectorFloatTestCase testCase = VectorFloatTestCase();
+    testCase.destinationMask = i;
+    cases.push_back(testCase);
+    // Re-add each case with each broadcast varient
+    for (int j = 0; j < 4; j++) {
+      VectorFloatTestCase testCaseBC = VectorFloatTestCase();
+      testCaseBC.destinationMask = i;
+      testCaseBC.bc = static_cast<emitter::Register::VF_ELEMENT>(j);
+      cases.push_back(testCaseBC);
+    }
+  }
+  return cases;
+}
+
+class VectorFloatParameterizedTestFixtureWithRunner
+    : public WithGameTests,
+      public ::testing::WithParamInterface<VectorFloatTestCase> {
+ protected:
+  std::string templateFile = "test-vector-math.template.gc";
+};
+
+// NOTE - an excellent article -
+// https://www.sandordargo.com/blog/2019/04/24/parameterized-testing-with-gtest
+
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_ADD_XYZW_DEST) {
+  VectorFloatTestCase testCase = GetParam();
+  testCase.operation = [](float x, float y) { return x + y; };
+
+  nlohmann::json data;
+  testCase.setJson(data, fmt::format(".add{}.vf", testCase.getOperationBroadcast()));
+
+  std::string outFile = runner.test_file_name(
+      fmt::format("vector-math-add{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
+  env.write(templateFile, data, outFile);
+  runner.run_test(testCategory, outFile,
+                  {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
+}
+
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_SUB_XYZW_DEST) {
+  VectorFloatTestCase testCase = GetParam();
+  testCase.operation = [](float x, float y) { return x - y; };
+
+  nlohmann::json data;
+  testCase.setJson(data, fmt::format(".sub{}.vf", testCase.getOperationBroadcast()));
+
+  std::string outFile = runner.test_file_name(
+      fmt::format("vector-math-sub{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
+  env.write(templateFile, data, outFile);
+  runner.run_test(testCategory, outFile,
+                  {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
+}
+
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_MUL_XYZW_DEST) {
+  VectorFloatTestCase testCase = GetParam();
+  testCase.operation = [](float x, float y) { return x * y; };
+
+  nlohmann::json data;
+  testCase.setJson(data, fmt::format(".mul{}.vf", testCase.getOperationBroadcast()));
+
+  std::string outFile = runner.test_file_name(
+      fmt::format("vector-math-mul{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
+  env.write(templateFile, data, outFile);
+  runner.run_test(testCategory, outFile,
+                  {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
+}
+
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_MIN_XYZW_DEST) {
+  VectorFloatTestCase testCase = GetParam();
+  testCase.operation = [](float x, float y) { return fmin(x, y); };
+
+  nlohmann::json data;
+  testCase.setJson(data, fmt::format(".min{}.vf", testCase.getOperationBroadcast()));
+
+  std::string outFile = runner.test_file_name(
+      fmt::format("vector-math-min{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
+  env.write(templateFile, data, outFile);
+  runner.run_test(testCategory, outFile,
+                  {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
+}
+
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_MAX_XYZW_DEST) {
+  VectorFloatTestCase testCase = GetParam();
+  testCase.operation = [](float x, float y) { return fmax(x, y); };
+
+  nlohmann::json data;
+  testCase.setJson(data, fmt::format(".max{}.vf", testCase.getOperationBroadcast()));
+
+  std::string outFile = runner.test_file_name(
+      fmt::format("vector-math-max{}-{{}}.generated.gc", testCase.getOperationBroadcast()));
+  env.write(templateFile, data, outFile);
+  runner.run_test(testCategory, outFile,
+                  {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
+}
+
+// TODO - This test runs more often than the rest, should probably be split into it's own fixture
+// (broadcasting ignored!)
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_ABS_DEST) {
+  VectorFloatTestCase testCase = GetParam();
+  testCase.operation = [](float x, float y) {
+    // Avoid compiler warnings for unused variable, making a varient that accepts a lambda with only
+    // 1 float is just unnecessary complexity
+    y = 0;
+    return fabs(x);
+  };
+
+  nlohmann::json data;
+  testCase.setJson(data, ".abs.vf", false);
+
+  std::string outFile = runner.test_file_name("vector-math-abs-{}.generated.gc");
+  env.write(templateFile, data, outFile);
+  runner.run_test(testCategory, outFile,
+                  {fmt::format("{}\n0\n", testCase.getExpectedResult().toGOALFormat())});
+}
+
+INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
+                         VectorFloatParameterizedTestFixtureWithRunner,
+                         ::testing::ValuesIn(vectorMathTestCaseGen()));
 
 TEST_F(WithGameTests, VFLoadAndStore) {
   runner.run_static_test(env, testCategory, "test-vf-load-and-store.gc", {"2.0000\n0\n"});

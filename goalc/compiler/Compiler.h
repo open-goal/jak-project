@@ -11,6 +11,7 @@
 #include "common/goos/Interpreter.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/debugger/Debugger.h"
+#include "goalc/emitter/Register.h"
 #include "CompilerSettings.h"
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/color.h"
@@ -68,6 +69,7 @@ class Compiler {
   Val* compile_asm_vf_math3(const goos::Object& form,
                             const goos::Object& rest,
                             IR_VFMath3Asm::Kind kind,
+                            emitter::Register::VF_ELEMENT broadcastElement,
                             Env* env);
 
   Val* get_field_of_structure(const StructureType* type,
@@ -287,11 +289,44 @@ class Compiler {
   Val* compile_asm_load_sym(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_jr(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_mov(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_nop_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_max_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxy_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_maxw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_min_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_minx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_miny_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_minz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_minw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_subx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_suby_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_subz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_subw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_addx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_addy_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_addz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_addw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_mul_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_mulx_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_muly_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_mulz_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_mulw_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms

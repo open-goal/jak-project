@@ -1284,7 +1284,14 @@ Move between two registers. The `dst` should be a register (either `rlet` or `le
 - `gpr` to `fpr` (only moves 32-bits, uses `movd`)
 - `fpr` to `gpr` (only moves 32-bits, upper 32-bits are zero, uses `movd`)
 This code generation is identical to using a `(set! dst src)` form.
-  
+
+## `.nop.vf`
+```lisp
+(.nop.vf)
+```
+
+Inserts a `FNOP` assembly instruction, which is fundamentally the same as a `NOP`.
+
 ## `.lvf`
 ```lisp
 (.lvf dst-reg src-loc [:color #t|#f])
@@ -1307,9 +1314,33 @@ Store a vector float. Works similarly to the `lvf` form, but there is no optimiz
 
 ## Three operand vector float operations.
 ```lisp
-(.<op-name>.vf dst src0 src1 [:color #t|#f])
+(.<op-name>[<broadcast-element>].vf dst src0 src1 [:color #t|#f] [:mask #b<0-15>])
 ```
-All the three operand forms work similarly. You can do something like `(.add.vf vf1 vf2 vf3)`. All operations use the similarly named `v<op-name>ps` instruction, xmm128 VEX encoding. We support `xor`, `sub`, and `add` so far.
+All the three operand forms work similarly. You can do something like `(.add.vf vf1 vf2 vf3)`. All operations use the similarly named `v<op-name>ps` instruction, xmm128 VEX encoding. We support the following `op-name`s:
+- `xor`
+- `add`
+- `sub`
+- `mul`
+- `min`
+- `max`
+
+An optional `:mask` value can be provided as a binary number between 0-15 (inclusive).  This determines _which_ of the resulting elements will be committed to the destination vector.  For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed.  Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most.  This aligns with the PS2's VU implementation.
+
+Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.  Take the following for an example: `(vaddx.xyzw vf10, vf20, vf30)`, translates into:
+
+```cpp
+vf10[x] = vf20[x] + vf30[x]
+vf10[y] = vf20[y] + vf30[x]
+vf10[z] = vf20[z] + vf30[x]
+vf10[w] = vf20[w] + vf30[x]
+```
+
+## `.abs.vf`
+```lisp
+(.abs.vf dst src [:color #t|#f] [:mask #b<0-15>])
+```
+
+Calculates the absolute value of the `src` vector, and stores in the `dst` vector.
 
 ## `.blend.vf`
 ```lisp
