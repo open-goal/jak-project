@@ -86,9 +86,6 @@ include(GoogleTest)
 # build tests
 include(test/CMakeLists.txt)
 
-# build minilzo library
-add_subdirectory(third-party/minilzo EXCLUDE_FROM_ALL)
-
 # build lzokay library
 add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 

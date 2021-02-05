@@ -18,7 +18,6 @@
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
-#include "third-party/minilzo/minilzo.h"
 #include "third-party/lzokay/lzokay.hpp"
 #include "common/util/BinaryReader.h"
 #include "common/util/Timer.h"
