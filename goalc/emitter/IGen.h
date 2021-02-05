@@ -2009,6 +2009,13 @@ class IGen {
     return instr;
   }
 
+  static Instruction nop_vf() {
+    // FNOP
+    Instruction instr(0xd9);
+    instr.set_op2(0xd0);
+    return instr;
+  }
+
   // eventually...
   // sqrt
   // rsqrt
@@ -2153,16 +2160,7 @@ class IGen {
     return instr;
   }
 
-  // todo, rip relative loads and stores.
-
-  static Instruction mul_vf(Register dst, Register src1, Register src2) {
-    assert(dst.is_xmm());
-    assert(src1.is_xmm());
-    assert(src2.is_xmm());
-    Instruction instr(0x59);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
-    return instr;
-  }
+  // TODO - rip relative loads and stores.
 
   static Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
     assert(dst.is_xmm());
@@ -2172,12 +2170,7 @@ class IGen {
     assert(dz < 4);
     assert(dw < 4);
     u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
-    // we use the AVX "VEX" encoding here. This is a three-operand form, but we just set both source
-    // to the same register. It seems like this is one byte longer but is faster maybe?
-    Instruction instr(0xc6);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
-    instr.set(Imm(1, imm));
-    return instr;
+    return swizzle_vf(dst, src, imm);
 
     // SSE encoding version:
     //    Instruction instr(0x0f);
@@ -2187,11 +2180,68 @@ class IGen {
     //    return instr;
   }
 
+  /*
+    Generic Swizzle (re-arrangment of packed FPs) operation, the control bytes are quite involved.
+    Here's a brief run-down:
+    - 8-bits / 4 groups of 2 bits
+    - Each group is used to determine which element in `src` gets copied to `dst`'s respective
+    element.
+    - Right to Left, the first 2-bit group controls which `dst` element, gets copied to `src`'s
+    most-significant byte (left-most) and so on. GROUP OPTIONS
+    - 00b - Copy the least-significant element
+    - 01b - Copy the second element (from the right)
+    - 10b - Copy the third element (from the right)
+    - 11b - Copy the most significant element
+    Examples
+    ; xmm1 = (1.5, 2.5, 3.5, 4.5)
+    SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions
+    (1.5, 1.5, 1.5, 1.5) SHUFPS xmm1, xmm1, 0x39 ; Rotate right (4.5, 1.5, 2.5, 3.5)
+    */
+  static Instruction swizzle_vf(Register dst, Register src, u8 controlBytes) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xC6);  // VSHUFPS
+
+    // we use the AVX "VEX" encoding here. This is a three-operand form,
+    // but we just set both source
+    // to the same register. It seems like this is one byte longer but is faster maybe?
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
+    instr.set(Imm(1, controlBytes));
+    return instr;
+  }
+
+  /*
+    Splats a single element in 'src' to all elements in 'dst'
+    For example (pseudocode):
+    xmm1 = (1.5, 2.5, 3.5, 4.5)
+    xmm2 = (1, 2, 3, 4)
+    splat_vf(xmm1, xmm2, XMM_ELEMENT::X);
+    xmm1 = (4, 4, 4, 4)
+    */
+  static Instruction splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
+    switch (element) {
+      case Register::VF_ELEMENT::X:  // Least significant element
+        return swizzle_vf(dst, src, 0b00000000);
+        break;
+      case Register::VF_ELEMENT::Y:
+        return swizzle_vf(dst, src, 0b01010101);
+        break;
+      case Register::VF_ELEMENT::Z:
+        return swizzle_vf(dst, src, 0b10101010);
+        break;
+      case Register::VF_ELEMENT::W:  // Most significant element
+        return swizzle_vf(dst, src, 0b11111111);
+        break;
+      default:
+        assert(false);
+    }
+  }
+
   static Instruction xor_vf(Register dst, Register src1, Register src2) {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x57);
+    Instruction instr(0x57);  // VXORPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2200,7 +2250,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x5c);
+    Instruction instr(0x5c);  // VSUBPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2209,7 +2259,34 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x58);
+    Instruction instr(0x58);  // VADDPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction mul_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x59);  // VMULPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction max_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5F);  // VMAXPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction min_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5D);  // VMINPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2219,7 +2296,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x0c);
+    Instruction instr(0x0c);  // VBLENDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
                                 src1.hw_id(), false, VexPrefix::P_66);
     instr.set(Imm(1, mask));

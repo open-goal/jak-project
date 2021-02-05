@@ -48,6 +48,10 @@ RegVal* Env::make_fpr(const TypeSpec& ts) {
   return make_ireg(coerce_to_reg_type(ts), RegClass::FLOAT);
 }
 
+RegVal* Env::make_vfr(const TypeSpec& ts) {
+  return make_ireg(coerce_to_reg_type(ts), RegClass::VECTOR_FLOAT);
+}
+
 std::unordered_map<std::string, Label>& Env::get_label_map() {
   return parent()->get_label_map();
 }

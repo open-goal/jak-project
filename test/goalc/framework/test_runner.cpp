@@ -34,6 +34,14 @@ std::string escaped_string(const std::string& in) {
   return result;
 }
 
+std::string CompilerTestRunner::test_file_name(std::string templateStr) {
+  const ::testing::TestInfo* const test_info =
+      ::testing::UnitTest::GetInstance()->current_test_info();
+  std::string outFile = fmt::format(templateStr, test_info->name());
+  std::replace(outFile.begin(), outFile.end(), '/', '_');
+  return outFile;
+}
+
 void CompilerTestRunner::run_static_test(inja::Environment& env,
                                          std::string& testCategory,
                                          const std::string& test_file,
