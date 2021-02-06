@@ -161,7 +161,7 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
 
 std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
                                                         const Variable& var,
-                                                        const Env& env) {
+                                                        const Env&) {
   // first, rewrite as normal.
   auto default_result = rewrite(pool);
 

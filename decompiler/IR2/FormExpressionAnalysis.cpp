@@ -1097,7 +1097,7 @@ std::vector<Form*> make_cast(const std::vector<Form*>& in,
 }
 }  // namespace
 
-FormElement* ConditionElement::make_generic(const Env& env,
+FormElement* ConditionElement::make_generic(const Env&,
                                             FormPool& pool,
                                             const std::vector<Form*>& source_forms,
                                             const std::vector<TypeSpec>& types) {

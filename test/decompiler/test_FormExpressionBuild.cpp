@@ -2226,3 +2226,124 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
 }
+
+TEST_F(FormRegressionTest, ExprPrintName) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L136:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+
+      "    bne a0, a1, L137\n"
+      "    or v1, s7, r0\n"
+
+      "    daddiu v0, s7, #t\n"
+      "    beq r0, r0, L143\n"
+      "    sll r0, r0, 0\n"
+
+      "L137:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu v1, v1, a2\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L138\n"
+      "    or v1, a2, r0\n"
+
+      "    lwu v1, -4(a1)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu a2, v1, a2\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a2\n"
+
+      "L138:\n"
+      "    beq s7, v1, L139\n"
+      "    or v1, s7, r0\n"
+
+      "    lw t9, string=(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq r0, r0, L143\n"
+      "    sll r0, r0, 0\n"
+
+      "L139:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu v1, v1, a2\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L140\n"
+      "    or v1, a2, r0\n"
+
+      "    lwu v1, -4(a1)\n"
+      "    lw a2, symbol(s7)\n"
+      "    dsubu a2, v1, a2\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a2\n"
+
+      "L140:\n"
+      "    beq s7, v1, L141\n"
+      "    or v1, s7, r0\n"
+
+      "    lw t9, string=(s7)\n"
+      "    ori v1, r0, 65336\n"
+      "    daddu v1, v1, a1\n"
+      "    lwu a1, 0(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    beq r0, r0, L143\n"
+      "    sll r0, r0, 0\n"
+
+      "L141:\n"
+      "    lwu v1, -4(a1)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu v1, v1, a2\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L142\n"
+      "    or v1, a2, r0\n"
+
+      "    lwu v1, -4(a0)\n"
+      "    lw a2, symbol(s7)\n"
+      "    dsubu a2, v1, a2\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a2\n"
+
+      "L142:\n"
+      "    beq s7, v1, L143\n"
+      "    or v0, s7, r0\n"
+
+      "    lw t9, string=(s7)\n"
+      "    or v1, a1, r0\n"
+      "    ori a1, r0, 65336\n"
+      "    daddu a0, a1, a0\n"
+      "    lwu a1, 0(a0)\n"
+      "    or a0, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "L143:\n"
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function basic basic symbol)";
+
+  std::string expected =
+      "(cond\n"
+      "  ((= a0-0 a1-0) (quote #t))\n"
+      "  ((and (= (-> a0-0 type) string) (= (-> a1-0 type) string))\n"
+      "   (string= a0-0 a1-0)\n"
+      "   )\n"
+      "  ((and (= (-> a0-0 type) string) (= (-> a1-0 type) symbol))\n"
+      "   (string= a0-0 (-> (+ 65336 (the-as int (the-as symbol a1-0))) 0))\n"
+      "   )\n"
+      "  ((and (= (-> a1-0 type) string) (= (-> a0-0 type) symbol))\n"
+      "   (string= a1-0 (-> (+ 65336 (the-as int (the-as symbol a0-0))) 0))\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {},
+                 parse_hint_json("[\t\t[24, [\"a1\", \"symbol\"]],\n"
+                                 "\t\t[39, [\"a0\", \"symbol\"]]]"));
+}

@@ -769,7 +769,7 @@ goos::Object CondNoElseElement::to_form(const Env& env) const {
     for (auto& e : entries) {
       std::vector<goos::Object> entry;
       entry.push_back(e.condition->to_form_as_condition(env));
-      entries.front().body->inline_forms(list, env);
+      e.body->inline_forms(entry, env);
       list.push_back(pretty_print::build_list(entry));
     }
     return pretty_print::build_list(list);
