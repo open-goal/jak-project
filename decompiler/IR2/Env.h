@@ -38,6 +38,11 @@ class Env {
     return m_reg_use;
   }
 
+  RegUsageInfo& reg_use() {
+    assert(m_has_reg_use);
+    return m_reg_use;
+  }
+
   goos::Object get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
 
   /*!

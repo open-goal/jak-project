@@ -114,7 +114,7 @@ TEST_F(FormRegressionTest, Abs) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
-  std::string expected = "(begin (set! v0-0 a0-0) (set! v0-1 (abs v0-0)) (ret-value v0-1))";
+  std::string expected = "(begin (set! v0-0 a0-0) (set! v0-0 (abs v0-0)) (ret-value v0-0))";
   test_no_expr(func, type, expected);
 }
 
@@ -736,7 +736,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "         )\n"
       "        a0-2\n"  // false or >0
       "        )\n"
-      "       (begin (set! a0-3 '#t) (set! v1-2 (!= v1-2 a0-3)))\n"  // not #t
+      "       (begin (set! a0-3 '#t) (set! v1-2 (!= v1-1 a0-3)))\n"  // not #t
       "       )\n"
       "      v1-2\n"  // (and (or false >0) (not #t))
       "      )\n"

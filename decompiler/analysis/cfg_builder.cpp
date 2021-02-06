@@ -11,7 +11,7 @@
 namespace decompiler {
 namespace {
 
-Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx);
+Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx);
 
 /*!
  * If it's a form containing multiple elements, return a pointer to the branch element and the end
@@ -172,21 +172,40 @@ void clean_up_break(FormPool& pool, BreakElement* ir) {
  * Note. a beql s7, x followed by a or y, x, r0 will count as this. I don't know why but
  * GOAL does this on comparisons to false.
  */
-bool delay_slot_sets_false(BranchElement* branch) {
-  if (branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_FALSE) {
+bool delay_slot_sets_false(BranchElement* branch, SetVarOp& delay) {
+  assert(branch->op()->likely());
+  assert(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
+
+  if (delay.src().is_identity() && delay.src().get_arg(0).is_sym_ptr() &&
+      delay.src().get_arg(0).get_str() == "#f") {
     return true;
   }
 
-  if (branch->op()->condition().kind() == IR2_Condition::Kind::FALSE &&
-      branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_REG) {
-    auto& cond = branch->op()->condition();
-    auto& delay = branch->op()->branch_delay();
-    auto cond_reg = cond.src(0).var().reg();
-    auto src_reg = delay.var(1).reg();
-    return cond_reg == src_reg;
+  if (branch->op()->condition().kind() == IR2_Condition::Kind::FALSE) {
+    if (delay.src().is_identity() && delay.src().get_arg(0).is_var()) {
+      auto src_var = delay.src().get_arg(0).var();
+      auto& cond = branch->op()->condition();
+      auto cond_reg = cond.src(0).var().reg();
+      return cond_reg == src_var.reg();
+    }
   }
 
   return false;
+
+  //  if (branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_FALSE) {
+  //    return true;
+  //  }
+  //
+  //  if (branch->op()->condition().kind() == IR2_Condition::Kind::FALSE &&
+  //      branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_REG) {
+  //    auto& cond = branch->op()->condition();
+  //    auto& delay = branch->op()->branch_delay();
+  //    auto cond_reg = cond.src(0).var().reg();
+  //    auto src_reg = delay.var(1).reg();
+  //    return cond_reg == src_reg;
+  //  }
+  //
+  //  return false;
 }
 
 /*!
@@ -194,19 +213,36 @@ bool delay_slot_sets_false(BranchElement* branch) {
  * or form branch?  Either it explicitly sets #t, or it tests the value for being not false,
  * then uses that
  */
-bool delay_slot_sets_truthy(BranchElement* branch) {
-  if (branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_TRUE) {
+bool delay_slot_sets_truthy(BranchElement* branch, SetVarOp& delay) {
+  assert(branch->op()->likely());
+  assert(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
+
+  if (delay.src().is_identity() && delay.src().get_arg(0).is_sym_ptr() &&
+      delay.src().get_arg(0).get_str() == "#t") {
     return true;
   }
 
-  if (branch->op()->condition().kind() == IR2_Condition::Kind::TRUTHY &&
-      branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_REG) {
-    auto& cond = branch->op()->condition();
-    auto& delay = branch->op()->branch_delay();
-    auto cond_reg = cond.src(0).var().reg();
-    auto src_reg = delay.var(1).reg();
-    return cond_reg == src_reg;
+  if (branch->op()->condition().kind() == IR2_Condition::Kind::TRUTHY) {
+    if (delay.src().is_identity() && delay.src().get_arg(0).is_var()) {
+      auto src_var = delay.src().get_arg(0).var();
+      auto& cond = branch->op()->condition();
+      auto cond_reg = cond.src(0).var().reg();
+      return cond_reg == src_var.reg();
+    }
   }
+
+  //  if (branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_TRUE) {
+  //    return true;
+  //  }
+  //
+  //  if (branch->op()->condition().kind() == IR2_Condition::Kind::TRUTHY &&
+  //      branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::SET_REG_REG) {
+  //    auto& cond = branch->op()->condition();
+  //    auto& delay = branch->op()->branch_delay();
+  //    auto cond_reg = cond.src(0).var().reg();
+  //    auto src_reg = delay.var(1).reg();
+  //    return cond_reg == src_reg;
+  //  }
 
   return false;
 }
@@ -214,23 +250,24 @@ bool delay_slot_sets_truthy(BranchElement* branch) {
 /*!
  * Try to convert a short circuit to an and.
  */
-bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitElement* ir) {
+bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   Register destination;
   Variable ir_dest;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
-    if (!delay_slot_sets_false(branch.first)) {
+    assert(ir->entries.at(i).branch_delay.has_value());
+    if (!delay_slot_sets_false(branch.first, *ir->entries.at(i).branch_delay)) {
       return false;
     }
 
     if (i == 0) {
       // first case, remember the destination
-      ir_dest = branch.first->op()->branch_delay().var(0);
+      ir_dest = ir->entries.at(i).branch_delay->dst();
       destination = ir_dest.reg();
     } else {
       // check destination against the first case.
-      if (destination != branch.first->op()->branch_delay().var(0).reg()) {
+      if (destination != ir->entries.at(i).branch_delay->dst().reg()) {
         return false;
       }
     }
@@ -247,7 +284,14 @@ bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitEl
     assert(branch.first);
 
     if (func.ir2.env.has_reg_use()) {
-      auto& branch_info = func.ir2.env.reg_use().op.at(branch.first->op()->op_id());
+      auto delay_id = ir->entries.at(i).branch_delay->dst().idx();
+      auto& delay_info = func.ir2.env.reg_use().op.at(delay_id);
+
+      auto branch_id = branch.first->op()->op_id();
+      auto& branch_info = func.ir2.env.reg_use().op.at(branch_id);
+      for (auto x : delay_info.consumes) {
+        branch_info.consumes.insert(x);
+      }
 
       if (i == 0) {
         live_out_result = (branch_info.written_and_unused.find(ir_dest.reg()) ==
@@ -276,22 +320,23 @@ bool try_clean_up_sc_as_and(FormPool& pool, const Function& func, ShortCircuitEl
  * Try to convert a short circuit to an or.
  * Note - this will convert an and to a very strange or, so always use the try as and first.
  */
-bool try_clean_up_sc_as_or(FormPool& pool, const Function& func, ShortCircuitElement* ir) {
+bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   Register destination;
   Variable ir_dest;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
-    if (!delay_slot_sets_truthy(branch.first)) {
+    assert(ir->entries.at(i).branch_delay.has_value());
+    if (!delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay)) {
       return false;
     }
     if (i == 0) {
       // first case, remember the destination
-      ir_dest = branch.first->op()->branch_delay().var(0);
+      ir_dest = ir->entries.at(i).branch_delay->dst();
       destination = ir_dest.reg();
     } else {
       // check destination against the first case.
-      if (destination != branch.first->op()->branch_delay().var(0).reg()) {
+      if (destination != ir->entries.at(i).branch_delay->dst().reg()) {
         return false;
       }
     }
@@ -307,14 +352,21 @@ bool try_clean_up_sc_as_or(FormPool& pool, const Function& func, ShortCircuitEle
     assert(branch.first);
 
     if (func.ir2.env.has_reg_use()) {
-      auto& branch_info = func.ir2.env.reg_use().op.at(branch.first->op()->op_id());
+      auto delay_id = ir->entries.at(i).branch_delay->dst().idx();
+      auto& delay_info = func.ir2.env.reg_use().op.at(delay_id);
+
+      auto branch_id = branch.first->op()->op_id();
+      auto& branch_info = func.ir2.env.reg_use().op.at(branch_id);
+      for (auto x : delay_info.consumes) {
+        branch_info.consumes.insert(x);
+      }
 
       if (i == 0) {
-        live_out_result = (branch_info.written_and_unused.find(ir_dest.reg()) ==
-                           branch_info.written_and_unused.end());
+        live_out_result = (delay_info.written_and_unused.find(ir_dest.reg()) ==
+                           delay_info.written_and_unused.end());
       } else {
-        bool this_live_out = (branch_info.written_and_unused.find(ir_dest.reg()) ==
-                              branch_info.written_and_unused.end());
+        bool this_live_out = (delay_info.written_and_unused.find(ir_dest.reg()) ==
+                              delay_info.written_and_unused.end());
         assert(live_out_result == this_live_out);
       }
     }
@@ -327,7 +379,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, const Function& func, ShortCircuitEle
   return true;
 }
 
-void clean_up_sc(FormPool& pool, const Function& func, ShortCircuitElement* ir);
+void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir);
 
 /*!
  * A form like (and x (or y z)) will be recognized as a single SC Vertex by the CFG pass.
@@ -338,11 +390,12 @@ void clean_up_sc(FormPool& pool, const Function& func, ShortCircuitElement* ir);
  * (and x (or y (and a b)) c d (or z))
  * will work correctly.  This may require doing more splitting on both sections!
  */
-bool try_splitting_nested_sc(FormPool& pool, const Function& func, ShortCircuitElement* ir) {
+bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   auto first_branch = get_condition_branch(ir->entries.front().condition);
   assert(first_branch.first);
-  bool first_is_and = delay_slot_sets_false(first_branch.first);
-  bool first_is_or = delay_slot_sets_truthy(first_branch.first);
+  assert(ir->entries.front().branch_delay.has_value());
+  bool first_is_and = delay_slot_sets_false(first_branch.first, *ir->entries.front().branch_delay);
+  bool first_is_or = delay_slot_sets_truthy(first_branch.first, *ir->entries.front().branch_delay);
   assert(first_is_and != first_is_or);  // one or the other but not both!
 
   int first_different = -1;  // the index of the first one that's different.
@@ -350,8 +403,9 @@ bool try_splitting_nested_sc(FormPool& pool, const Function& func, ShortCircuitE
   for (int i = 1; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
-    bool is_and = delay_slot_sets_false(branch.first);
-    bool is_or = delay_slot_sets_truthy(branch.first);
+    assert(ir->entries.at(i).branch_delay.has_value());
+    bool is_and = delay_slot_sets_false(branch.first, *ir->entries.at(i).branch_delay);
+    bool is_or = delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay);
     assert(is_and != is_or);
 
     if (first_different == -1) {
@@ -395,7 +449,7 @@ bool try_splitting_nested_sc(FormPool& pool, const Function& func, ShortCircuitE
  * Try to clean up a single short circuit IR. It may get split up into nested IR_ShortCircuits
  * if there is a case like (and a (or b c))
  */
-void clean_up_sc(FormPool& pool, const Function& func, ShortCircuitElement* ir) {
+void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   assert(ir->entries.size() > 1);
   if (!try_clean_up_sc_as_and(pool, func, ir)) {
     if (!try_clean_up_sc_as_or(pool, func, ir)) {
@@ -630,6 +684,98 @@ bool is_op_3(FormElement* ir,
   return true;
 }
 
+bool is_op_3(AtomicOp* op,
+             MatchParam<SimpleExpression::Kind> kind,
+             MatchParam<Register> dst,
+             MatchParam<Register> src0,
+             MatchParam<Register> src1,
+             Register* dst_out = nullptr,
+             Register* src0_out = nullptr,
+             Register* src1_out = nullptr) {
+  // should be a set reg to int math 2 ir
+  auto set = dynamic_cast<SetVarOp*>(op);
+  if (!set) {
+    return false;
+  }
+
+  // destination should be a register
+  auto dest = set->dst();
+  if (dst != dest.reg()) {
+    return false;
+  }
+
+  auto math = set->src();
+  if (kind != math.kind()) {
+    return false;
+  }
+
+  if (get_simple_expression_arg_count(math.kind()) != 2) {
+    return false;
+  }
+
+  auto arg0 = math.get_arg(0);
+  auto arg1 = math.get_arg(1);
+
+  if (!arg0.is_var() || src0 != arg0.var().reg() || !arg1.is_var() || src1 != arg1.var().reg()) {
+    return false;
+  }
+
+  // it's a match!
+  if (dst_out) {
+    *dst_out = dest.reg();
+  }
+
+  if (src0_out) {
+    *src0_out = arg0.var().reg();
+  }
+
+  if (src1_out) {
+    *src1_out = arg1.var().reg();
+  }
+  return true;
+}
+
+bool is_op_2(AtomicOp* op,
+             MatchParam<SimpleExpression::Kind> kind,
+             MatchParam<Register> dst,
+             MatchParam<Register> src0,
+             Register* dst_out = nullptr,
+             Register* src0_out = nullptr) {
+  // should be a set reg to int math 2 ir
+  auto set = dynamic_cast<SetVarOp*>(op);
+  if (!set) {
+    return false;
+  }
+
+  // destination should be a register
+  auto dest = set->dst();
+  if (dst != dest.reg()) {
+    return false;
+  }
+
+  auto math = set->src();
+  if (kind != math.kind()) {
+    return false;
+  }
+
+  auto arg = math.get_arg(0);
+
+  if (!arg.is_var() || src0 != arg.var().reg()) {
+    return false;
+  }
+
+  // it's a match!
+  if (dst_out) {
+    *dst_out = dest.reg();
+  }
+
+  if (src0_out) {
+    *src0_out = arg.var().reg();
+  }
+
+  return true;
+}
+
 bool is_op_2(FormElement* ir,
              MatchParam<SimpleExpression::Kind> kind,
              MatchParam<Register> dst,
@@ -675,17 +821,18 @@ bool is_op_2(FormElement* ir,
  * Try to convert this SC Vertex into an abs (integer).
  * Will return a converted abs IR if successful, or nullptr if its not possible
  */
-Form* try_sc_as_abs(FormPool& pool, const Function& f, const ShortCircuit* vtx) {
+Form* try_sc_as_abs(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   if (vtx->entries.size() != 1) {
     return nullptr;
   }
 
-  auto b0 = dynamic_cast<BlockVtx*>(vtx->entries.at(0));
-  if (!b0) {
+  auto b0_c = vtx->entries.at(0).condition;
+  auto b0_d = dynamic_cast<BlockVtx*>(vtx->entries.at(0).likely_delay);
+  if (!b0_c || !b0_d) {
     return nullptr;
   }
 
-  auto b0_ptr = cfg_to_ir(pool, f, b0);
+  auto b0_ptr = cfg_to_ir(pool, f, b0_c);
   //  auto b0_ir = dynamic_cast<IR_Begin*>(b0_ptr.get());
 
   BranchElement* branch = dynamic_cast<BranchElement*>(b0_ptr->back());
@@ -694,19 +841,27 @@ Form* try_sc_as_abs(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
     return nullptr;
   }
 
+  auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(b0_d->block_id);
+  auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(b0_d->block_id);
+  if (delay_end - delay_start != 1) {
+    return nullptr;
+  }
+  auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
+  auto* delay = dynamic_cast<SetVarOp*>(delay_op.get());
+
   // check the branch instruction
   if (!branch->op()->likely() ||
       branch->op()->condition().kind() != IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED ||
-      branch->op()->branch_delay().kind() != IR2_BranchDelay::Kind::NEGATE) {
+      !is_op_2(delay, SimpleExpression::Kind::NEG, {}, {})) {
     // todo - if there was an abs(unsigned), it would be missed here.
     return nullptr;
   }
 
   auto input = branch->op()->condition().src(0);
-  auto output = branch->op()->branch_delay().var(0);
+  auto output = delay->dst();
 
   assert(input.is_var());
-  assert(input.var().reg() == branch->op()->branch_delay().var(1).reg());
+  assert(input.var().reg() == delay->src().get_arg(0).var().reg());
 
   // remove the branch
   b0_ptr->pop_back();
@@ -731,22 +886,32 @@ Form* try_sc_as_abs(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
  * GOAL's shift function accepts positive/negative numbers to determine the direction
  * of the shift.
  */
-Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) {
+Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   if (vtx->entries.size() != 2) {
     return nullptr;
   }
 
   // todo, I think b0 could possibly be something more complicated, depending on how we order.
-  auto b0 = dynamic_cast<CfgVtx*>(vtx->entries.at(0));
-  auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
-  if (!b0 || !b1) {
+  auto b0_c = vtx->entries.at(0).condition;
+  auto b0_d = dynamic_cast<BlockVtx*>(vtx->entries.at(0).likely_delay);
+  auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1).condition);
+
+  if (!b0_c || !b0_d || !b1 || vtx->entries.at(1).likely_delay) {
     return nullptr;
   }
 
-  auto b0_ptr = cfg_to_ir(pool, f, b0);
+  auto b0_c_ptr = cfg_to_ir(pool, f, b0_c);
   auto b1_ptr = cfg_to_ir(pool, f, b1);
 
-  auto branch = dynamic_cast<BranchElement*>(b0_ptr->back());
+  auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(b0_d->block_id);
+  auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(b0_d->block_id);
+  if (delay_end - delay_start != 1) {
+    return nullptr;
+  }
+  auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
+  auto* delay = dynamic_cast<SetVarOp*>(delay_op.get());
+
+  auto branch = dynamic_cast<BranchElement*>(b0_c_ptr->back());
   if (!branch || b1_ptr->size() != 2) {
     return nullptr;
   }
@@ -754,7 +919,7 @@ Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
   // check the branch instruction
   if (!branch->op()->likely() ||
       branch->op()->condition().kind() != IR2_Condition::Kind::GEQ_ZERO_SIGNED ||
-      branch->op()->branch_delay().kind() != IR2_BranchDelay::Kind::DSLLV) {
+      !is_op_3(delay, SimpleExpression::Kind::LEFT_SHIFT, {}, {}, {})) {
     return nullptr;
   }
 
@@ -768,9 +933,9 @@ Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
 
   auto sa_in = branch->op()->condition().src(0);
   assert(sa_in.is_var());
-  auto result = branch->op()->branch_delay().var(0);
-  auto value_in = branch->op()->branch_delay().var(1);
-  auto sa_in2 = branch->op()->branch_delay().var(2);
+  auto result = delay->dst();
+  auto value_in = delay->src().get_arg(0).var();
+  auto sa_in2 = delay->src().get_arg(1).var();
   assert(sa_in.var().reg() == sa_in2.reg());
 
   auto dsubu_candidate = b1_ptr->at(0);
@@ -798,7 +963,7 @@ Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
     clobber_ir = dsubu_set->dst();
   }
 
-  Variable dest_ir = branch->op()->branch_delay().var(0);
+  Variable dest_ir = result;
   SimpleAtom shift_ir = branch->op()->condition().src(0);
   auto value_ir =
       dynamic_cast<const SimpleExpressionElement*>(dsrav_set->src()->try_as_single_element())
@@ -806,7 +971,7 @@ Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
           .get_arg(0);
 
   // remove the branch
-  b0_ptr->pop_back();
+  b0_c_ptr->pop_back();
 
   auto& info = f.ir2.env.reg_use();
   auto final_op_idx = value_ir.var().idx();
@@ -824,16 +989,32 @@ Form* try_sc_as_ash(FormPool& pool, const Function& f, const ShortCircuit* vtx) 
   auto ash_form = pool.alloc_single_element_form<AshElement>(
       nullptr, shift_ir.var(), value_ir.var(), clobber_ir, is_arith, consumed);
   auto set_form = pool.alloc_element<SetVarElement>(dest_ir, ash_form, true);
-  b0_ptr->push_back(set_form);
+  b0_c_ptr->push_back(set_form);
 
-  return b0_ptr;
+  return b0_c_ptr;
+}
+
+bool is_set_symbol_value(SetVarOp& op, const std::string& name) {
+  return op.src().is_identity() && op.src().get_arg(0).is_sym_val() &&
+         op.src().get_arg(0).get_str() == name;
+}
+
+SetVarOp get_delay_op(const Function& f, const BlockVtx* vtx) {
+  auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(vtx->block_id);
+  auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(vtx->block_id);
+  if (delay_end - delay_start != 1) {
+    assert(false);
+  }
+  auto& delay_op = f.ir2.atomic_ops->ops.at(delay_start);
+  auto* delay = dynamic_cast<SetVarOp*>(delay_op.get());
+  return *delay;
 }
 
 /*!
  * Try to convert a short circuiting expression into a "type-of" expression.
  * We do this before attempting the normal and/or expressions.
  */
-Form* try_sc_as_type_of(FormPool& pool, const Function& f, const ShortCircuit* vtx) {
+Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   // the assembly looks like this:
   /*
          dsll32 v1, a0, 29                   ;; (set! v1 (shl a0 61))
@@ -853,23 +1034,25 @@ Form* try_sc_as_type_of(FormPool& pool, const Function& f, const ShortCircuit* v
     return nullptr;
   }
 
-  auto b0 = dynamic_cast<CfgVtx*>(vtx->entries.at(0));
-  auto b1 = dynamic_cast<BlockVtx*>(vtx->entries.at(1));
-  auto b2 = dynamic_cast<BlockVtx*>(vtx->entries.at(2));
+  auto b0_c = dynamic_cast<CfgVtx*>(vtx->entries.at(0).condition);
+  auto b0_d = dynamic_cast<BlockVtx*>(vtx->entries.at(0).likely_delay);
+  auto b1_c = dynamic_cast<BlockVtx*>(vtx->entries.at(1).condition);
+  auto b1_d = dynamic_cast<BlockVtx*>(vtx->entries.at(1).likely_delay);
+  auto b2_c = dynamic_cast<BlockVtx*>(vtx->entries.at(2).condition);
 
-  if (!b0 || !b1 || !b2) {
+  if (!b0_c || !b0_d || !b1_c || !b1_d || !b2_c || vtx->entries.at(2).likely_delay) {
     return nullptr;
   }
 
-  auto b0_ptr = cfg_to_ir(pool, f, b0);  // should be begin.
+  auto b0_ptr = cfg_to_ir(pool, f, b0_c);  // should be begin.
   if (b0_ptr->size() <= 1) {
     return nullptr;
   }
 
-  auto b1_ptr = cfg_to_ir(pool, f, b1);
+  auto b1_ptr = cfg_to_ir(pool, f, b1_c);
   auto b1_ir = dynamic_cast<BranchElement*>(b1_ptr->try_as_single_element());
 
-  auto b2_ptr = cfg_to_ir(pool, f, b2);
+  auto b2_ptr = cfg_to_ir(pool, f, b2_c);
   auto b2_ir = dynamic_cast<SetVarElement*>(b2_ptr->try_as_single_element());
   if (!b1_ir || !b2_ir) {
     return nullptr;
@@ -896,25 +1079,25 @@ Form* try_sc_as_type_of(FormPool& pool, const Function& f, const ShortCircuit* v
   auto second_branch = b1_ir;
   auto else_case = b2_ir;
 
-  if (!first_branch ||
-      first_branch->op()->branch_delay().kind() != IR2_BranchDelay::Kind::SET_BINTEGER ||
+  auto b0_delay_op = get_delay_op(f, b0_d);
+  if (!first_branch || !is_set_symbol_value(b0_delay_op, "binteger") ||
       first_branch->op()->condition().kind() != IR2_Condition::Kind::ZERO ||
       !first_branch->op()->likely()) {
     return nullptr;
   }
   auto temp_reg = first_branch->op()->condition().src(0).var();
   assert(temp_reg.reg() == temp_reg0.reg());
-  auto dst_reg = first_branch->op()->branch_delay().var(0);
+  auto dst_reg = b0_delay_op.dst();
 
-  if (!second_branch ||
-      second_branch->op()->branch_delay().kind() != IR2_BranchDelay::Kind::SET_PAIR ||
+  auto b1_delay_op = get_delay_op(f, b1_d);
+  if (!second_branch || !is_set_symbol_value(b1_delay_op, "pair") ||
       second_branch->op()->condition().kind() != IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED ||
       !second_branch->op()->likely()) {
     return nullptr;
   }
 
   // check we agree on destination register.
-  auto dst_reg2 = second_branch->op()->branch_delay().var(0);
+  auto dst_reg2 = b1_delay_op.dst();
   assert(dst_reg2.reg() == dst_reg.reg());
 
   // else case is a lwu to grab the type from a basic
@@ -960,7 +1143,7 @@ Form* try_sc_as_type_of(FormPool& pool, const Function& f, const ShortCircuit* v
 }
 
 Form* merge_cond_else_with_sc_cond(FormPool& pool,
-                                   const Function& f,
+                                   Function& f,
                                    const CondWithElse* cwe,
                                    Form* else_ir) {
   if (else_ir->size() != 2) {
@@ -998,7 +1181,7 @@ Form* merge_cond_else_with_sc_cond(FormPool& pool,
 }
 
 void insert_cfg_into_list(FormPool& pool,
-                          const Function& f,
+                          Function& f,
                           const CfgVtx* vtx,
                           std::vector<FormElement*>* output) {
   auto as_sequence = dynamic_cast<const SequenceVtx*>(vtx);
@@ -1023,7 +1206,7 @@ void insert_cfg_into_list(FormPool& pool,
   }
 }
 
-Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
+Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
   if (dynamic_cast<const BlockVtx*>(vtx)) {
     auto* bv = dynamic_cast<const BlockVtx*>(vtx);
 
@@ -1140,7 +1323,19 @@ Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
     std::vector<ShortCircuitElement::Entry> entries;
     for (auto& x : svtx->entries) {
       ShortCircuitElement::Entry e;
-      e.condition = cfg_to_ir(pool, f, x);
+      e.condition = cfg_to_ir(pool, f, x.condition);
+      if (x.likely_delay) {
+        auto delay = dynamic_cast<BlockVtx*>(x.likely_delay);
+        assert(delay);
+        auto delay_start = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(delay->block_id);
+        auto delay_end = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(delay->block_id);
+        assert(delay_end - delay_start == 1);
+        auto& op = f.ir2.atomic_ops->ops.at(delay_start);
+        auto op_as_expr = dynamic_cast<SetVarOp*>(op.get());
+        assert(op_as_expr);
+        e.branch_delay = *op_as_expr;
+      }
+
       entries.push_back(e);
     }
     auto result = pool.alloc_single_element_form<ShortCircuitElement>(nullptr, entries);

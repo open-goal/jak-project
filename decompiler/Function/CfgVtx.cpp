@@ -255,7 +255,11 @@ goos::Object ShortCircuit::to_form() const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("sc"));
   for (const auto& x : entries) {
-    forms.push_back(x->to_form());
+    if (x.likely_delay) {
+      forms.push_back(pretty_print::build_list(x.condition->to_form(), x.likely_delay->to_form()));
+    } else {
+      forms.push_back(x.condition->to_form());
+    }
   }
   return pretty_print::build_list(forms);
 }
@@ -384,105 +388,6 @@ std::string ControlFlowGraph::to_form_string() {
   return pretty_print::to_string(to_form());
 }
 
-// bool ControlFlowGraph::compact_top_level() {
-//  int compact_count = 0;
-//
-//  std::string orig = to_dot();
-//
-//  while (compact_one_in_top_level()) {
-//    compact_count++;
-//  }
-//
-//  if (compact_count) {
-//    printf("%s\nCHANGED TO\n%s\n", orig.c_str(), to_dot().c_str());
-//    return true;
-//  }
-//
-//  return false;
-//}
-//
-// bool ControlFlowGraph::compact_one_in_top_level() {
-//  for (auto* node : m_node_pool) {
-//    if (node->parent_container) {
-//      continue;
-//    }
-//
-//    if (node != entry() && node->succ.size() == 1 && !node->has_succ(exit()) &&
-//        node->succ.front()->pred.size() == 1 && !node->succ.front()->has_succ(node)) {
-//      // can compact!
-//      auto first = node;
-//      auto second = node->succ.front();
-//      assert(second->has_pred(first));
-//
-//      make_sequence(first, second);
-//      return true;
-//    }
-//  }
-//
-//  return false;
-//}
-//
-
-// bool ControlFlowGraph::is_if_else(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2, CfgVtx* b3) {
-//  // check existance
-//  if (!b0 || !b1 || !b2 || !b3)
-//    return false;
-//
-//  // check verts
-//  if (b0->next != b1)
-//    return false;
-//  if (b0->succ_ft != b1)
-//    return false;
-//  if (b0->succ_branch != b2)
-//    return false;
-//  if (b0->end_branch.branch_always)
-//    return false;
-//  if (b0->end_branch.branch_likely)
-//    return false;
-//  assert(b0->end_branch.has_branch);
-//  // b0 prev, pred don't care
-//
-//  if (b1->prev != b0)
-//    return false;
-//  if (!b1->has_pred(b0))
-//    return false;
-//  if (b1->pred.size() != 1)
-//    return false;
-//  if (b1->next != b2)
-//    return false;
-//  if (b1->succ_ft)
-//    return false;
-//  if (b1->succ_branch != b3)
-//    return false;
-//  assert(b1->end_branch.branch_always);
-//  assert(b1->end_branch.has_branch);
-//  if (b1->end_branch.branch_likely)
-//    return false;
-//
-//  if (b2->prev != b1)
-//    return false;
-//  if (!b2->has_pred(b0))
-//    return false;
-//  if (b2->pred.size() != 1)
-//    return false;
-//  if (b2->next != b3)
-//    return false;
-//  if (b2->succ_branch)
-//    return false;
-//  assert(!b2->end_branch.has_branch);
-//  if (b2->succ_ft != b3)
-//    return false;
-//
-//  if (b3->prev != b2)
-//    return false;
-//  if (!b3->has_pred(b2))
-//    return false;
-//  if (!b3->has_pred(b1))
-//    return false;
-//
-//  return true;
-//}
-//
 bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   // todo - check delay slots!
   if (!b0 || !b1 || !b2)
@@ -634,78 +539,6 @@ bool ControlFlowGraph::is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
 
   return true;  // match!
 }
-
-/*
-bool ControlFlowGraph::find_if_else_top_level() {
-  // todo check delay slots
-  // Example:
-  // B0:
-  //  beq s7, v1, B2  ;; inverted branch condition (branch on condition not met)
-  //  sll r0, r0, 0   ;; nop in delay slot
-  // B1:
-  //  true case!
-  //  beq r0, r0, B3  ;; unconditional branch
-  //  sll r0, r0, 0   ;; nop in delay slot
-  // B2:
-  //  false case!     ;; fall through
-  // B3:
-  //  rest of code
-  bool found_one = false;
-  bool needs_work = true;
-  while (needs_work) {
-    needs_work = false;  // until we change something, assume we're done.
-
-    for_each_top_level_vtx([&](CfgVtx* vtx) {
-      // return true means "try again with a different vertex"
-      // return false means "I changed something, bail out so we can start from the beginning
-      // again."
-
-      // attempt to match b0, b1, b2, b3
-      auto* b0 = vtx;
-      auto* b1 = vtx->succ_ft;
-      auto* b2 = vtx->succ_branch;
-      auto* b3 = b2 ? b2->succ_ft : nullptr;
-
-      if (is_if_else(b0, b1, b2, b3)) {
-        needs_work = true;
-
-        // create the new vertex!
-        auto* new_vtx = alloc<IfElseVtx>();
-        new_vtx->condition = b0;
-        new_vtx->true_case = b1;
-        new_vtx->false_case = b2;
-
-        // link new vertex pred
-        for (auto* new_pred : b0->pred) {
-          new_pred->replace_succ_and_check(b0, new_vtx);
-        }
-        new_vtx->pred = b0->pred;
-
-        // link new vertex succ
-        b3->replace_preds_with_and_check({b1, b2}, new_vtx);
-        new_vtx->succ_ft = b3;
-
-        // setup next/prev
-        new_vtx->prev = b0->prev;
-        if (new_vtx->prev) {
-          new_vtx->prev->next = new_vtx;
-        }
-        new_vtx->next = b3;
-        b3->prev = new_vtx;
-
-        b0->parent_claim(new_vtx);
-        b1->parent_claim(new_vtx);
-        b2->parent_claim(new_vtx);
-        found_one = true;
-        return false;
-      } else {
-        return true;  // try again!
-      }
-    });
-  }
-  return found_one;
-}
- */
 
 bool ControlFlowGraph::find_while_loop_top_level() {
   // B0 can start with whatever
@@ -1010,8 +843,10 @@ bool ControlFlowGraph::find_goto_not_end() {
 bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1) {
   if (!b0 || !b1)
     return false;
-  if (b0->next != b1)
+
+  if (b0->next != b1) {
     return false;
+  }
   if (b0->succ_ft != b1) {
     // may unconditionally branch to get to a loop.
     if (b0->succ_branch != b1)
@@ -1034,7 +869,6 @@ bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1) {
     return false;
   if (b1->succ_branch == b0)
     return false;
-
   return true;
 }
 
@@ -1089,12 +923,7 @@ bool ControlFlowGraph::find_seq_top_level() {
     auto* b0 = vtx;
     auto* b1 = vtx->next;
 
-    //    if (b0 && b1) {
-    //      printf("try seq %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
-    //    }
-
     if (is_sequence_of_non_sequences(b0, b1)) {  // todo, avoid nesting sequences.
-      //      printf("make seq type 1 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
 
       auto* new_seq = alloc<SequenceVtx>();
@@ -1622,62 +1451,117 @@ bool ControlFlowGraph::find_short_circuits() {
   bool found = false;
 
   for_each_top_level_vtx([&](CfgVtx* vtx) {
-    std::vector<CfgVtx*> entries = {vtx};
-    auto* end = vtx->succ_branch;
-    auto* next = vtx->next;
-
-    //    printf("try sc @ %s\n", vtx->to_string().c_str());
-    if (!end || !vtx->end_branch.branch_likely || next != vtx->succ_ft) {
-      //      printf("reject 1\n");
+    std::vector<ShortCircuit::Entry> entries;
+    if (!vtx->next) {
       return true;
     }
 
+    // set up the first entry:
+    ShortCircuit::Entry candidate = {vtx, vtx->next};
+    CfgVtx* end = vtx->next->succ_branch;
+
+    //    fmt::print("Starting loop\n");
+
     while (true) {
-      //      printf("loop sc %s, end %s\n", vtx->to_string().c_str(), end->to_string().c_str());
-      if (next == end) {
-        // one entry sc!
-        break;
+      // check candidate:
+      if (!candidate.condition || !candidate.likely_delay || !end) {
+        //        fmt::print("reject begin {} {} {}\n", !!candidate.condition,
+        //        !!candidate.likely_delay,
+        //                   !!end);
+        return true;
       }
 
-      if (next->next == end) {
-        // check 1 pred
-        if (next->pred.size() != 1) {
-          //          printf("reject 2\n");
-          return true;
+      //      fmt::print(" try {} and {} end {}\n", candidate.condition->to_string(),
+      //                 candidate.likely_delay->to_string(), end->to_string());
+
+      if (candidate.condition->next == end) {
+        if (!entries.empty()) {
+          if (candidate.condition->end_branch.has_branch) {
+            // should fall through to the end.
+            return true;
+          }
+          candidate.likely_delay = nullptr;
+          entries.push_back(candidate);
+
+          //          fmt::print("all done!");
+          break;
         }
-        entries.push_back(next);
+      }
 
-        // done!
+      if (!candidate.condition->next || !candidate.condition->succ_branch) {
+        //        fmt::print(" fail 0 {}, {}\n", !!candidate.condition->next,
+        //                   !!candidate.condition->succ_branch);
+        return true;
+      }
+
+      // root -> slot
+      if (!candidate.condition->next ||
+          candidate.condition->next != candidate.condition->succ_branch ||
+          !candidate.condition->end_branch.branch_likely ||
+          candidate.condition->end_branch.kind != CfgVtx::DelaySlotKind::NO_DELAY) {
+        //        fmt::print("  fail 1 {} {} {} {}\n", !candidate.condition->next,
+        //                   candidate.condition->next != candidate.condition->succ_branch,
+        //                   !candidate.condition->end_branch.branch_likely,
+        //                   candidate.condition->end_branch.kind !=
+        //                   CfgVtx::DelaySlotKind::NO_DELAY);
+        //        fmt::print(" fail 1 condition->next {}, condition->succ_branch {}\n",
+        //                   candidate.condition->next->to_string(),
+        //                   candidate.condition->succ_branch->to_string());
+        return true;
+      }
+
+      if (entries.empty() && candidate.likely_delay->next == end) {
+        entries.push_back(candidate);
+
+        //        fmt::print("all don2!");
         break;
       }
 
-      // check 1 pred
-      if (next->pred.size() != 1) {
-        //        printf("reject 3\n");
+      if (candidate.likely_delay->pred.size() != 1 || candidate.likely_delay->succ_ft ||
+          !candidate.likely_delay->succ_branch || !candidate.likely_delay->end_branch.has_branch ||
+          !candidate.likely_delay->end_branch.branch_always ||
+          candidate.likely_delay->end_branch.branch_likely ||
+          candidate.likely_delay->end_branch.kind != CfgVtx::DelaySlotKind::NO_DELAY) {
+        //        fmt::print("  fail 2 {} {} {} {} {} {} {}\n", candidate.likely_delay->pred.size()
+        //        != 1,
+        //                   !!candidate.likely_delay->succ_ft,
+        //                   !candidate.likely_delay->succ_branch,
+        //                   !candidate.likely_delay->end_branch.has_branch,
+        //                   !candidate.likely_delay->end_branch.branch_always,
+        //                   !!candidate.likely_delay->end_branch.branch_likely,
+        //                   candidate.likely_delay->end_branch.kind !=
+        //                   CfgVtx::DelaySlotKind::NO_DELAY);
+        //        fmt::print("delay {} has ft {}\n", candidate.likely_delay->to_string(),
+        //                   candidate.likely_delay->succ_ft->to_string());
         return true;
       }
 
-      // check branch to end
-      if (next->succ_branch != end || !next->end_branch.branch_likely) {
-        //        printf("reject 4\n");
+      // slot -> end
+      if (candidate.likely_delay->succ_branch != end) {
+        //        fmt::print("  fail 3\n");
         return true;
       }
 
-      // check fallthrough to next
-      if (!next->succ_ft) {
-        //        printf("reject 5\n");
+      // root -> next root
+      if (!candidate.condition->next->next ||
+          candidate.condition->next->next != candidate.condition->succ_ft) {
+        //        fmt::print("  fail 4\n");
         return true;
       }
 
-      assert(next->succ_ft == next->next);  // bonus check
-      entries.push_back(next);
-      next = next->succ_ft;
+      // add candidate:
+      entries.push_back(candidate);
+      auto next_root = candidate.condition->next->next;
+      auto next_slot = next_root->next;
+      candidate = {next_root, next_slot};
+
+      // pre next root check
+      if (next_root->pred.size() != 1) {
+        //        fmt::print("  fail 5\n");
+        return true;
+      }
+      //      fmt::print("on to next!\n");
     }
-
-    //    printf("got sc: \n");
-    //    for (auto* x : entries) {
-    //      printf("  %s\n", x->to_string().c_str());
-    //    }
 
     auto new_sc = alloc<ShortCircuit>();
 
@@ -1690,13 +1574,29 @@ bool ControlFlowGraph::find_short_circuits() {
       new_sc->prev->next = new_sc;
     }
 
-    end->replace_preds_with_and_check(entries, new_sc);
+    std::vector<CfgVtx*> end_preds;
+    for (auto& e : entries) {
+      if (e.likely_delay) {
+        end_preds.push_back(e.likely_delay);
+      } else {
+        end_preds.push_back(e.condition);
+      }
+    }
+
+    if (entries.size() == 1) {
+      end_preds.push_back(entries.front().condition);
+    }
+
+    end->replace_preds_with_and_check(end_preds, new_sc);
     new_sc->succ_ft = end;
     new_sc->next = end;
     end->prev = new_sc;
     new_sc->entries = std::move(entries);
-    for (auto* x : new_sc->entries) {
-      x->parent_claim(new_sc);
+    for (auto& x : new_sc->entries) {
+      x.condition->parent_claim(new_sc);
+      if (x.likely_delay) {
+        x.likely_delay->parent_claim(new_sc);
+      }
     }
     found = true;
 
@@ -1772,6 +1672,26 @@ void ControlFlowGraph::link_branch(BlockVtx* first,
   }
 }
 
+void ControlFlowGraph::link_fall_through_likely(BlockVtx* first,
+                                                BlockVtx* second,
+                                                std::vector<BasicBlock>& blocks) {
+  assert(!first->succ_ft);  // don't want to overwrite something by accident.
+  // can only fall through to the next code in memory.
+  assert(first->next->next == second);
+  assert(second->prev->prev == first);
+  first->succ_ft = second;
+  assert(blocks.at(first->block_id).succ_ft == -1);
+  blocks.at(first->block_id).succ_ft = second->block_id;
+
+  if (!second->has_pred(first)) {
+    // if a block can block fall through and branch to the same block, we want to avoid adding
+    // it as a pred twice. This is rare, but does happen and makes sense with likely branches
+    // which only run the delay slot when taken.
+    second->pred.push_back(first);
+    blocks.at(second->block_id).pred.push_back(first->block_id);
+  }
+}
+
 void ControlFlowGraph::flag_early_exit(const std::vector<BasicBlock>& blocks) {
   auto* b = m_blocks.back();
   const auto& block = blocks.at(b->block_id);
@@ -1799,6 +1719,7 @@ CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
  * Build and resolve a Control Flow Graph as much as possible.
  */
 std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int seg, Function& func) {
+  //  fmt::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
   const auto& blocks = cfg->create_blocks(func.basic_blocks.size());
@@ -1816,39 +1737,39 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
   // set up succ / pred
   for (int i = 0; i < int(func.basic_blocks.size()); i++) {
     auto& b = func.basic_blocks[i];
+    if (blocks.at(i)->end_branch.branch_always) {
+      // already set.
+      continue;
+    }
     bool not_last = (i + 1) < int(func.basic_blocks.size());
 
-    if (b.end_word - b.start_word < 2) {
+    if (b.end_word == b.start_word) {
       // there's no room for a branch here, fall through to the end
       if (not_last) {
         cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
       }
     } else {
-      // might be a branch
-      int idx = b.end_word - 2;
-      assert(idx >= b.start_word);
-      auto& branch_candidate = func.instructions.at(idx);
-      auto& delay_slot_candidate = func.instructions.at(idx + 1);
+      // room for at least a likely branch, try that first.
+      int likely_branch_idx = b.end_word - 1;
+      assert(likely_branch_idx >= b.start_word);
+      auto& likely_branch_candidate = func.instructions.at(likely_branch_idx);
 
-      if (is_branch(branch_candidate, {})) {
+      if (is_branch(likely_branch_candidate, true)) {
+        // is a likely branch
         blocks.at(i)->end_branch.has_branch = true;
-        blocks.at(i)->end_branch.branch_likely = is_branch(branch_candidate, true);
-        blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate);
-        bool branch_always = is_always_branch(branch_candidate);
+        blocks.at(i)->end_branch.branch_likely = true;
+        blocks.at(i)->end_branch.kind = CfgVtx::DelaySlotKind::NO_DELAY;
+        bool branch_always = is_always_branch(likely_branch_candidate);
 
         // need to find block target
         int block_target = -1;
-        int label_target = branch_candidate.get_label_target();
+        int label_target = likely_branch_candidate.get_label_target();
         assert(label_target != -1);
         const auto& label = file.labels.at(label_target);
         assert(label.target_segment == seg);
         assert((label.offset % 4) == 0);
         int offset = label.offset / 4 - func.start_word;
         assert(offset >= 0);
-
-        // the order here matters when there are zero size blocks. Unclear what the best answer is.
-        //  i think in end it doesn't actually matter??
-        //        for (int j = 0; j < int(func.basic_blocks.size()); j++) {
         for (int j = int(func.basic_blocks.size()); j-- > 0;) {
           if (func.basic_blocks[j].start_word == offset) {
             block_target = j;
@@ -1857,7 +1778,8 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
         }
 
         assert(block_target != -1);
-        cfg->link_branch(blocks.at(i), blocks.at(block_target), func.basic_blocks);
+        // branch to delay slot
+        cfg->link_branch(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
 
         if (branch_always) {
           // don't continue to the next one
@@ -1865,13 +1787,75 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
         } else {
           // not an always branch
           if (not_last) {
-            cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
+            // don't take the delay slot.
+            cfg->link_fall_through_likely(blocks.at(i), blocks.at(i + 2), func.basic_blocks);
           }
         }
+
+        auto& delay_block = blocks.at(i + 1);
+        delay_block->end_branch.branch_likely = false;
+        delay_block->end_branch.branch_always = true;
+        delay_block->end_branch.has_branch = true;
+        delay_block->end_branch.kind = CfgVtx::DelaySlotKind::NO_DELAY;
+        cfg->link_branch(blocks.at(i + 1), blocks.at(block_target), func.basic_blocks);
+        //        printf("SC block target is %d\n", block_target);
       } else {
-        // not a branch at all
-        if (not_last) {
-          cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
+        if (b.end_word - b.start_word < 2) {
+          // no room for a branch, just fall through
+          if (not_last) {
+            cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
+          }
+        } else {
+          // try as a normal branch.
+          int idx = b.end_word - 2;
+          assert(idx >= b.start_word);
+          auto& branch_candidate = func.instructions.at(idx);
+          auto& delay_slot_candidate = func.instructions.at(idx + 1);
+          if (is_branch(branch_candidate, false)) {
+            blocks.at(i)->end_branch.has_branch = true;
+            blocks.at(i)->end_branch.branch_likely = false;
+            blocks.at(i)->end_branch.kind = get_delay_slot(delay_slot_candidate);
+            bool branch_always = is_always_branch(branch_candidate);
+
+            // need to find block target
+            int block_target = -1;
+            int label_target = branch_candidate.get_label_target();
+            assert(label_target != -1);
+            const auto& label = file.labels.at(label_target);
+            assert(label.target_segment == seg);
+            assert((label.offset % 4) == 0);
+            int offset = label.offset / 4 - func.start_word;
+            assert(offset >= 0);
+
+            // the order here matters when there are zero size blocks. Unclear what the best answer
+            // is.
+            //  i think in end it doesn't actually matter??
+            //        for (int j = 0; j < int(func.basic_blocks.size()); j++) {
+            for (int j = int(func.basic_blocks.size()); j-- > 0;) {
+              if (func.basic_blocks[j].start_word == offset) {
+                block_target = j;
+                break;
+              }
+            }
+
+            assert(block_target != -1);
+            cfg->link_branch(blocks.at(i), blocks.at(block_target), func.basic_blocks);
+
+            if (branch_always) {
+              // don't continue to the next one
+              blocks.at(i)->end_branch.branch_always = true;
+            } else {
+              // not an always branch
+              if (not_last) {
+                cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
+              }
+            }
+          } else {
+            // not a branch.
+            if (not_last) {
+              cfg->link_fall_through(blocks.at(i), blocks.at(i + 1), func.basic_blocks);
+            }
+          }
         }
       }
     }

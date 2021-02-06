@@ -492,6 +492,7 @@ class ShortCircuitElement : public FormElement {
  public:
   struct Entry {
     Form* condition = nullptr;
+    std::optional<SetVarOp> branch_delay;
     // in the case where there's no else, each delay slot will write #f to the "output" register.
     // this can be with an or <output>, s7, r0
     //    Form* output = nullptr; // todo, what? add to collect vars if we need it?

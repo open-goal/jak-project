@@ -263,6 +263,8 @@ class SetVarOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const Variable& dst() const { return m_dst; }
+  const SimpleExpression& src() const { return m_src; }
 
  private:
   Variable m_dst;
@@ -464,6 +466,7 @@ class IR2_BranchDelay {
     SET_PAIR,
     DSLLV,
     NEGATE,
+    NO_DELAY,
     UNKNOWN
   };
 

@@ -379,6 +379,7 @@ TypeState IR2_BranchDelay::propagate_types(const TypeState& input,
       output.get(m_var[0]->reg()) = TP_Type::make_type_object(TypeSpec("pair"));
       break;
     case Kind::NOP:
+    case Kind::NO_DELAY:
       break;
     default:
       throw std::runtime_error("Unhandled branch delay in type_prop: " +
