@@ -418,6 +418,11 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
 
       file_util::write_text_file(file_name, file_text);
+
+      auto file_text_final = ir2_to_file_final(obj);
+      total_bytes += file_text.length();
+      auto file_name_final = file_util::combine_path(output_dir, obj.to_unique_name() + "_final.asm");
+      file_util::write_text_file(file_name_final, file_text_final);
     }
   });
   lg::info("Wrote {} files ({:.2f} MB) in {:.2f} ms\n", total_files, total_bytes / float(1 << 20),
@@ -457,6 +462,61 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
         result += '\n';
         result += ";; DEBUG OUTPUT BELOW THIS LINE:\n";
         result += func.ir2.debug_form_string;
+        result += '\n';
+      }
+    }
+
+    // print data
+    for (size_t i = data.linked_data.offset_of_data_zone_by_seg.at(seg);
+         i < data.linked_data.words_by_seg.at(seg).size(); i++) {
+      for (int j = 0; j < 4; j++) {
+        auto label_id = data.linked_data.get_label_at(seg, i * 4 + j);
+        if (label_id != -1) {
+          result += data.linked_data.labels.at(label_id).name + ":";
+          if (j != 0) {
+            result += " (offset " + std::to_string(j) + ")";
+          }
+          result += "\n";
+        }
+      }
+
+      auto& word = data.linked_data.words_by_seg[seg][i];
+      data.linked_data.append_word_to_string(result, word);
+
+      if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name == "string") {
+        result += "; " + data.linked_data.get_goal_string(seg, i) + "\n";
+      }
+    }
+  }
+
+  return result;
+}
+
+std::string ObjectFileDB::ir2_to_file_final(ObjectFileData& data) {
+  std::string result;
+
+  const char* segment_names[] = {"main segment", "debug segment", "top-level segment"};
+  assert(data.linked_data.segments <= 3);
+  for (int seg = data.linked_data.segments; seg-- > 0;) {
+    // segment header
+    result += ";------------------------------------------\n;  ";
+    result += segment_names[seg];
+    result += "\n;------------------------------------------\n\n";
+
+    // functions
+    for (auto& func : data.linked_data.functions_by_seg.at(seg)) {
+      if (func.ir2.top_form && func.ir2.env.has_local_vars()) {
+        result += '\n';
+        if (func.ir2.env.has_local_vars()) {
+          if (!func.ir2.print_debug_forms) {
+            result += ";; expression building failed part way through, function may be weird\n";
+          } else {
+            result += final_defun_out(func, func.ir2.env, dts);
+          }
+        } else {
+          result += ";; no variable information\n";
+        }
+
         result += '\n';
       }
     }

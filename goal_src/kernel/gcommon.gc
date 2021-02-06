@@ -15,7 +15,7 @@
   )
 
 (defun 1/ ((a0-0 float))
-  (/ (l.f L345) a0-0)
+  (/ 1.0 a0-0)
   )
 
 (defun + ((a0-0 int) (a1-0 int))
@@ -158,7 +158,7 @@
   (local-vars
    (gp-0 bfloat)
    )
-  (begin (set! gp-0 a0-0) (format '#t L343 (-> gp-0 data)) gp-0)
+  (begin (set! gp-0 a0-0) (format '#t "~f" (-> gp-0 data)) gp-0)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -179,7 +179,7 @@
 ;; As a result, we should define an "asize-of" method for type. It's possibly unused and it's wrong.
 
 (defmethod asize-of type ((a0-0 type))
-  (the-as int (logand (l.d L346) (+ (shl (-> a0-0 allocated-length) 2) 43)))
+  (the-as int (logand #xfffffff0 (+ (shl (-> a0-0 allocated-length) 2) 43)))
   )
 
 (defun basic-type? ((a0-0 basic) (a1-0 type))
@@ -193,7 +193,7 @@
    (set! a0-1 object)
    (until
     (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))
-    (if (= v1-0 a1-0) (return '#t (set! v1-0 0)))
+    (if (= v1-0 a1-0) (return '#t))
     )
    '#f
    )
@@ -209,7 +209,7 @@
    (set! v1-0 object)
    (until
     (begin (set! a0-0 (-> a0-0 parent)) (or (= a0-0 v1-0) (zero? a0-0)))
-    (if (= a0-0 a1-0) (return '#t (set! v1-0 0)))
+    (if (= a0-0 a1-0) (return '#t))
     )
    '#f
    )
@@ -224,13 +224,13 @@
    (a2-4 symbol)
    )
   (begin
-   (set! v1-2 (-> a0-0 methods a1-0))
+   (set! v1-2 (-> a0-0 method-table a1-0))
    (until
     (!= v0-0 v1-2)
-    (if (= a0-0 object) (return nothing (set! v1-2 0)))
+    (if (= a0-0 object) (return nothing))
     (set! a0-0 (-> a0-0 parent))
-    (set! v0-0 (-> a0-0 methods a1-0))
-    (if (zero? v0-0) (return nothing (set! v1-2 0)))
+    (set! v0-0 (-> a0-0 method-table a1-0))
+    (if (zero? v0-0) (return nothing))
     )
    (set! v1-5 '#f)
    v0-0
@@ -250,8 +250,6 @@
    (set! v1-0 0)
    (while
     (< v1-0 a1-0)
-    (nop!)
-    (nop!)
     (set! a0-0 (cdr a0-0))
     (set! v1-0 (+ v1-0 1))
     )
@@ -297,7 +295,7 @@
    )
   (begin
    (set! v0-0 a0-0)
-   (while (!= (cdr v0-0) '()) (nop!) (nop!) (set! v0-0 (cdr v0-0)))
+   (while (!= (cdr v0-0) '()) (set! v0-0 (cdr v0-0)))
    (set! v1-1 '#f)
    v0-0
    )
@@ -332,7 +330,7 @@
    (set! s5-0 a0-0)
    (set! gp-0 a1-0)
    (while
-    (not (or (= gp-0 '()) (name= (car gp-0) s5-0)))
+    (not (or (= gp-0 '()) (name= (the basic (car gp-0)) s5-0)))
     (set! gp-0 (cdr gp-0))
     )
    (set! v1-2 '#f)
@@ -394,7 +392,7 @@
       (= gp-0 '())
       (begin
        (set! a1-1 (car (car gp-0)))
-       (if (pair? a1-1) (nmember s5-0 a1-1) (name= a1-1 s5-0))
+       (if (pair? a1-1) (nmember s5-0 a1-1) (name= (the basic a1-1) s5-0))
        )
       )
      )
@@ -426,7 +424,7 @@
        (if
         (pair? s4-0)
         (nmember s5-0 s4-0)
-        (or (name= s4-0 s5-0) (= s4-0 'else))
+        (or (name= (the basic s4-0) s5-0) (= s4-0 'else))
         )
        )
       )
@@ -449,7 +447,7 @@
    ((= a0-0 '()) a1-0)
    (else
     (set! v1-1 a0-0)
-    (while (!= (cdr v1-1) '()) (nop!) (nop!) (set! v1-1 (cdr v1-1)))
+    (while (!= (cdr v1-1) '()) (set! v1-1 (cdr v1-1)))
     (set! a2-1 '#f)
     (when (!= v1-1 '()) (set! (cdr v1-1) a1-0) (set! v1-2 a1-0))
     a0-0
@@ -519,7 +517,7 @@
   (begin
    (set! gp-0 a0-0)
    (set! a3-0 (delete-car! (car gp-0) a1-0))
-   (new 'global pair gp-0 a3-0)
+   (new 'global 'pair gp-0 a3-0)
    )
   )
 
@@ -591,7 +589,7 @@
             )
   )
 
-(defmethod new inline-array-class ((a0-0 symbol) (a1-0 type) (a2-0 int))
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (a2-0 int))
   (local-vars
    (v0-0 inline-array-class)
    (v1-2 symbol)
@@ -602,9 +600,7 @@
    (set!
     v0-0
     (object-new
-     a0-0
-     a1-0
-     (+ (-> a1-0 size) (* (the-as uint gp-0) (-> a1-0 heap-base)))
+     (the int (+ (-> type-to-make size) (* (the-as uint gp-0) (-> type-to-make heap-base))))
      )
     )
    (when
@@ -641,7 +637,7 @@
 ;; unlike inline-array-class, all arrays are type array, but the content-type field stores the element type.
 ;; the stride of an array is 4, unless the element is a number, in which case the stride is the "size"
 
-(defmethod new array ((a0-0 symbol) (a1-0 type) (a2-0 type) (a3-0 int))
+(defmethod new array ((allocation symbol) (type-to-make type) (a2-0 type) (a3-0 int))
   (local-vars
    (v0-1 array)
    (s5-0 int)
@@ -653,11 +649,9 @@
    (set!
     v0-1
     (object-new
-     a0-0
-     a1-0
-     (+
-      (-> a1-0 size)
-      (the-as uint (* s5-0 (if (type-type? gp-0 number) (-> gp-0 size) 4)))
+     (the int (+
+      (-> type-to-make size)
+      (the-as uint (* s5-0 (if (type-type? gp-0 number) (-> gp-0 size) 4))))
       )
      )
     )
@@ -706,7 +700,7 @@
    )
   (begin
    (set! gp-0 a0-0)
-   (format '#t L342)
+   (format '#t "#(")
    (cond
     ((type-type? (-> gp-0 content-type) integer)
      (set! v1-1 (-> gp-0 content-type symbol))
@@ -717,7 +711,7 @@
         (< s5-0 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-0) L341 L340)
+         (if (zero? s5-0) "~D" " ~D")
          (-> (the-as (array int32) gp-0) s5-0)
          )
         (set! s5-0 (+ s5-0 1))
@@ -731,7 +725,7 @@
         (< s5-1 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-1) L341 L340)
+         (if (zero? s5-1) "~D" " ~D")
          (-> (the-as (array uint32) gp-0) s5-1)
          )
         (set! s5-1 (+ s5-1 1))
@@ -745,7 +739,7 @@
         (< s5-2 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-2) L341 L340)
+         (if (zero? s5-2) "~D" " ~D")
          (-> (the-as (array int64) gp-0) s5-2)
          )
         (set! s5-2 (+ s5-2 1))
@@ -759,7 +753,7 @@
         (< s5-3 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-3) L339 L338)
+         (if (zero? s5-3) "#x~X" " #x~X")
          (-> (the-as (array uint64) gp-0) s5-3)
          )
         (set! s5-3 (+ s5-3 1))
@@ -773,7 +767,7 @@
         (< s5-4 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-4) L341 L340)
+         (if (zero? s5-4) "~D" " ~D")
          (-> (the-as (array int8) gp-0) s5-4)
          )
         (set! s5-4 (+ s5-4 1))
@@ -787,7 +781,7 @@
         (< s5-5 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-5) L341 L340)
+         (if (zero? s5-5) "~D" " ~D")
          (-> (the-as (array uint8) gp-0) s5-5)
          )
         (set! s5-5 (+ s5-5 1))
@@ -801,7 +795,7 @@
         (< s5-6 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-6) L341 L340)
+         (if (zero? s5-6) "~D" " ~D")
          (-> (the-as (array int16) gp-0) s5-6)
          )
         (set! s5-6 (+ s5-6 1))
@@ -815,7 +809,7 @@
         (< s5-7 (-> gp-0 length))
         (format
          '#t
-         (if (zero? s5-7) L341 L340)
+         (if (zero? s5-7) "~D" " ~D")
          (-> (the-as (array uint16) gp-0) s5-7)
          )
         (set! s5-7 (+ s5-7 1))
@@ -830,15 +824,18 @@
          (set! s5-8 0)
          (while
           (< s5-8 (-> gp-0 length))
-          (set! t9-10 format)
-          (set! a0-21 '#t)
-          (set! a1-11 (if (zero? s5-8) L339 L338))
-          (set!
-           v1-42
-           (+ (shl s5-8 4) (the-as int (the-as (array uint128) gp-0)))
-           )
-          (.lq a2-8 12 v1-42)
-          (t9-10 a0-21 a1-11 a2-8)
+          ; GOAL never uses 128-bit values in an array, and OpenGOAL doesn't support 128-bit integers yet.
+          ; also this wouldn't properly print the values in GOAL anyway.
+          (format #t "cannot print 128-bit integer array")
+          ; (set! t9-10 format)
+          ; (set! a0-21 '#t)
+          ; (set! a1-11 (if (zero? s5-8) "#x~X" " #x~X"))
+          ; (set!
+          ;  v1-42
+          ;  (+ (shl s5-8 4) (the-as int (the-as (array uint128) gp-0)))
+          ;  )
+          ; (.lq a2-8 12 v1-42)
+          ; (t9-10 a0-21 a1-11 a2-8)
           (set! s5-8 (+ s5-8 1))
           )
          (set! v1-44 '#f)
@@ -850,7 +847,7 @@
           (< s5-9 (-> gp-0 length))
           (format
            '#t
-           (if (zero? s5-9) L341 L340)
+           (if (zero? s5-9) "~D" " ~D")
            (-> (the-as (array int32) gp-0) s5-9)
            )
           (set! s5-9 (+ s5-9 1))
@@ -871,8 +868,8 @@
         (< s5-10 (-> gp-0 length))
         (if
          (zero? s5-10)
-         (format '#t L343 (-> (the-as (array float) gp-0) s5-10))
-         (format '#t L337 (-> (the-as (array float) gp-0) s5-10))
+         (format '#t "~f" (-> (the-as (array float) gp-0) s5-10))
+         (format '#t " ~f" (-> (the-as (array float) gp-0) s5-10))
          )
         (set! s5-10 (+ s5-10 1))
         )
@@ -885,8 +882,8 @@
         (< s5-11 (-> gp-0 length))
         (if
          (zero? s5-11)
-         (format '#t L336 (-> (the-as (array basic) gp-0) s5-11))
-         (format '#t L335 (-> (the-as (array basic) gp-0) s5-11))
+         (format '#t "~A" (-> (the-as (array basic) gp-0) s5-11))
+         (format '#t " ~A" (-> (the-as (array basic) gp-0) s5-11))
          )
         (set! s5-11 (+ s5-11 1))
         )
@@ -896,7 +893,7 @@
       )
      )
     )
-   (format '#t L334)
+   (format '#t ")")
    gp-0
    )
   )
@@ -940,11 +937,11 @@
    )
   (begin
    (set! gp-0 a0-0)
-   (format '#t L333 gp-0 (-> gp-0 type))
-   (format '#t L332 (-> gp-0 allocated-length))
-   (format '#t L331 (-> gp-0 length))
-   (format '#t L330 (-> gp-0 content-type))
-   (format '#t L329 (-> gp-0 allocated-length) (-> gp-0 data))
+   (format '#t "[~8x] ~A~%" gp-0 (-> gp-0 type))
+   (format '#t "~Tallocated-length: ~D~%" (-> gp-0 allocated-length))
+   (format '#t "~Tlength: ~D~%" (-> gp-0 length))
+   (format '#t "~Tcontent-type: ~A~%" (-> gp-0 content-type))
+   (format '#t "~Tdata[~D]: @ #x~X~%" (-> gp-0 allocated-length) (-> gp-0 data))
    (cond
     ((type-type? (-> gp-0 content-type) integer)
      (set! v1-1 (-> gp-0 content-type symbol))
@@ -953,7 +950,7 @@
        (set! s5-0 0)
        (while
         (< s5-0 (-> gp-0 length))
-        (format '#t L328 s5-0 (-> (the-as (array int32) gp-0) s5-0))
+        (format '#t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) gp-0) s5-0))
         (set! s5-0 (+ s5-0 1))
         )
        (set! v1-5 '#f)
@@ -963,7 +960,7 @@
        (set! s5-1 0)
        (while
         (< s5-1 (-> gp-0 length))
-        (format '#t L328 s5-1 (-> (the-as (array uint32) gp-0) s5-1))
+        (format '#t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) gp-0) s5-1))
         (set! s5-1 (+ s5-1 1))
         )
        (set! v1-10 '#f)
@@ -973,7 +970,7 @@
        (set! s5-2 0)
        (while
         (< s5-2 (-> gp-0 length))
-        (format '#t L328 s5-2 (-> (the-as (array int64) gp-0) s5-2))
+        (format '#t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) gp-0) s5-2))
         (set! s5-2 (+ s5-2 1))
         )
        (set! v1-15 '#f)
@@ -983,7 +980,7 @@
        (set! s5-3 0)
        (while
         (< s5-3 (-> gp-0 length))
-        (format '#t L327 s5-3 (-> (the-as (array uint64) gp-0) s5-3))
+        (format '#t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) gp-0) s5-3))
         (set! s5-3 (+ s5-3 1))
         )
        (set! v1-20 '#f)
@@ -993,7 +990,7 @@
        (set! s5-4 0)
        (while
         (< s5-4 (-> gp-0 length))
-        (format '#t L328 s5-4 (-> (the-as (array int8) gp-0) s5-4))
+        (format '#t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) gp-0) s5-4))
         (set! s5-4 (+ s5-4 1))
         )
        (set! v1-24 '#f)
@@ -1003,7 +1000,7 @@
        (set! s5-5 0)
        (while
         (< s5-5 (-> gp-0 length))
-        (format '#t L328 s5-5 (-> (the-as (array int8) gp-0) s5-5))
+        (format '#t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) gp-0) s5-5))
         (set! s5-5 (+ s5-5 1))
         )
        (set! v1-28 '#f)
@@ -1013,7 +1010,7 @@
        (set! s5-6 0)
        (while
         (< s5-6 (-> gp-0 length))
-        (format '#t L328 s5-6 (-> (the-as (array int16) gp-0) s5-6))
+        (format '#t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) gp-0) s5-6))
         (set! s5-6 (+ s5-6 1))
         )
        (set! v1-33 '#f)
@@ -1023,7 +1020,7 @@
        (set! s5-7 0)
        (while
         (< s5-7 (-> gp-0 length))
-        (format '#t L328 s5-7 (-> (the-as (array uint16) gp-0) s5-7))
+        (format '#t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) gp-0) s5-7))
         (set! s5-7 (+ s5-7 1))
         )
        (set! v1-38 '#f)
@@ -1036,13 +1033,16 @@
          (set! s5-8 0)
          (while
           (< s5-8 (-> gp-0 length))
-          (set! t9-14 format)
-          (set! a0-25 '#t)
-          (set! a1-15 L327)
-          (set! a2-13 s5-8)
-          (set! v1-42 (+ (shl s5-8 4) (the-as int gp-0)))
-          (.lq a3-10 12 v1-42)
-          (t9-14 a0-25 a1-15 a2-13 a3-10)
+          ; GOAL never uses 128-bit values in an array, and OpenGOAL doesn't support 128-bit integers yet.
+          ; also this wouldn't properly print the values in GOAL anyway.
+          (format #t "cannot print 128-bit integer array")
+          ; (set! t9-14 format)
+          ; (set! a0-25 '#t)
+          ; (set! a1-15 "~T  [~D] #x~X~%")
+          ; (set! a2-13 s5-8)
+          ; (set! v1-42 (+ (shl s5-8 4) (the-as int gp-0)))
+          ; (.lq a3-10 12 v1-42)
+          ; (t9-14 a0-25 a1-15 a2-13 a3-10)
           (set! s5-8 (+ s5-8 1))
           )
          (set! v1-44 '#f)
@@ -1052,7 +1052,7 @@
          (set! s5-9 0)
          (while
           (< s5-9 (-> gp-0 length))
-          (format '#t L328 s5-9 (-> gp-0 s5-9))
+          (format '#t "~T  [~D] ~D~%" s5-9 (-> (the (array int32) gp-0) s5-9))
           (set! s5-9 (+ s5-9 1))
           )
          (set! v1-49 '#f)
@@ -1069,7 +1069,7 @@
        (set! s5-10 0)
        (while
         (< s5-10 (-> gp-0 length))
-        (format '#t L326 s5-10 (-> gp-0 s5-10))
+        (format '#t "~T  [~D] ~f~%" s5-10 (-> (the (array float) gp-0) s5-10))
         (set! s5-10 (+ s5-10 1))
         )
        (set! v1-55 '#f)
@@ -1079,7 +1079,7 @@
        (set! s5-11 0)
        (while
         (< s5-11 (-> gp-0 length))
-        (format '#t L325 s5-11 (-> gp-0 s5-11))
+        (format '#t "~T  [~D] ~A~%" s5-11 (-> (the (array basic) gp-0) s5-11))
         (set! s5-11 (+ s5-11 1))
         )
        (set! v1-60 '#f)
@@ -1138,9 +1138,9 @@
    (set! v1-0 0)
    (while
     (< v1-0 a2-0)
-    (set! (-> (the-as (pointer int8) a0-0)) (-> (the-as (pointer uint8) a1-0)))
-    (set! a0-0 (+ a0-0 (the-as uint 1)))
-    (set! a1-0 (+ a1-0 (the-as uint 1)))
+    (set! (-> (the-as (pointer uint8) a0-0)) (-> (the-as (pointer uint8) a1-0)))
+    (set! a0-0 (&+ a0-0 (the-as uint 1)))
+    (set! a1-0 (&+ a1-0 (the-as uint 1)))
     (set! v1-0 (+ v1-0 1))
     )
    (set! v1-1 '#f)
@@ -1161,9 +1161,9 @@
    (set! v1-0 0)
    (while
     (< v1-0 a1-0)
+    (format 0 "write to #x~X (~d/~d)~%" a0-0 v1-0 a1-0)
     (set! (-> (the-as (pointer int32) a0-0)) a2-0)
-    (set! a0-0 (+ a0-0 (the-as uint 4)))
-    (nop!)
+    (set! a0-0 (&+ a0-0 (the-as uint 4)))
     (set! v1-0 (+ v1-0 1))
     )
    (set! v1-1 '#f)
@@ -1185,14 +1185,14 @@
    (while
     (< v1-0 a2-0)
     (set!
-     (-> (the-as (pointer int8) a0-0))
+     (-> (the-as (pointer uint8) a0-0))
      (logior
       (-> (the-as (pointer uint8) a0-0))
       (-> (the-as (pointer uint8) a1-0))
       )
      )
-    (set! a0-0 (+ a0-0 (the-as uint 1)))
-    (set! a1-0 (+ a1-0 (the-as uint 1)))
+    (set! a0-0 (&+ a0-0 (the-as uint 1)))
+    (set! a1-0 (&+ a1-0 (the-as uint 1)))
     (set! v1-0 (+ v1-0 1))
     )
    (set! v1-1 '#f)
@@ -1201,6 +1201,7 @@
    )
   )
 
+(define-extern fact (function int int))
 (defun fact ((a0-0 int))
   (local-vars
    (gp-0 int)
@@ -1208,28 +1209,31 @@
   (begin (set! gp-0 a0-0) (if (= gp-0 1) 1 (* gp-0 (fact (+ gp-0 -1)))))
   )
 
-(defun print ((a0-0 object))
-  ((method-of-type (type-of a0-0) print) a0-0)
-  )
+; These slightly change the printing behavior of GOAL, which causes some printing related tests to fail.
+; we should fix the tests to work with these versions.
 
-(defun printl ((a0-0 object))
-  (local-vars
-   (v1-2 object)
-   (a0-1 object)
-   (gp-0 object)
-   )
-  (begin
-   (set! gp-0 a0-0)
-   (set! a0-1 gp-0)
-   (set! v1-2 ((method-of-type (type-of a0-1) print) a0-1))
-   (format '#t L324)
-   gp-0
-   )
-  )
+; (defun print ((a0-0 object))
+;   ((the (function object object) (-> (rtype-of a0-0) method-table 2)) a0-0)
+;   )
 
-(defun inspect ((a0-0 object))
-  ((method-of-type (type-of a0-0) inspect) a0-0)
-  )
+; (defun printl ((a0-0 object))
+;   (local-vars
+;    (v1-2 object)
+;    (a0-1 object)
+;    (gp-0 object)
+;    )
+;   (begin
+;    (set! gp-0 a0-0)
+;    (set! a0-1 gp-0)
+;    (set! v1-2 ((the (function object object) (-> (rtype-of a0-0) method-table 2)) a0-1))
+;    (format '#t "~%")
+;    gp-0
+;    )
+;   )
+
+; (defun inspect ((a0-0 object))
+;   ((the (function object object) (-> (rtype-of a0-0) method-table 2)) a0-0)
+;   )
 
 (defun print-tree-bitmask ((a0-0 int) (a1-0 int))
   (local-vars
@@ -1244,8 +1248,8 @@
    (set! s4-0 0)
    (while
     (< s4-0 s5-0)
-    (if (zero? (logand gp-0 1)) (format '#t L323) (format '#t L322))
-    (set! gp-0 (shr (the-as uint gp-0) 1))
+    (if (zero? (logand gp-0 1)) (format '#t "    ") (format '#t "|   "))
+    (set! gp-0 (the int (shr (the-as uint gp-0) 1)))
     (set! s4-0 (+ s4-0 1))
     )
    (set! v1-3 '#f)
@@ -1253,7 +1257,9 @@
    )
   )
 
-(defun valid? ((a0-0 object) (a1-0 type) (a2-0 basic) (a3-0 basic) (a4-0 object))
+
+(define-extern valid? (function object type basic basic object symbol))
+(defun valid? ((a0-0 object) (a1-0 type) (a2-0 basic) (a3-0 basic) (t0-0 object))
   (local-vars
    (v1-1 symbol)
    (v1-3 symbol)
@@ -1299,7 +1305,9 @@
    (s5-0 object)
    (s7-0 none)
    (gp-0 object)
+   (st uint)
    )
+  (set! st (rlet ((x :reg r14 :type uint)) x))
   (begin
    (set!
     v1-1
@@ -1309,7 +1317,7 @@
      (set! s4-0 a2-0)
      (set! s5-0 t0-0)
      (and
-      (>= (the-as uint gp-0) (the-as uint __START-OF-TABLE__))
+      (>= (the-as uint gp-0) (- st 32768))
       (< (the-as uint gp-0) (the-as uint 134217728))
       )
      )
@@ -1318,10 +1326,10 @@
     ((not s3-0)
      (cond
       ((nonzero? (logand (the-as int gp-0) 3))
-       (if s4-0 (set! v1-4 (format s5-0 L321 gp-0 s4-0)))
+       (if s4-0 (set! v1-4 (format s5-0 "ERROR: object #x~X ~S is not a valid object (misaligned)~%" gp-0 s4-0)))
        '#f
        )
-      ((not v1-1) (if s4-0 (set! v1-6 (format s5-0 L320 gp-0 s4-0))) '#f)
+      ((not v1-1) (if s4-0 (set! v1-6 (format s5-0 "ERROR: object #x~X ~S is not a valid object (bad address)~%" gp-0 s4-0))) '#f)
       (else '#t)
       )
      )
@@ -1331,18 +1339,19 @@
       ((= s3-0 structure)
        (cond
         ((nonzero? (logand (the-as int gp-0) 15))
-         (if s4-0 (set! v1-8 (format s5-0 L319 gp-0 s4-0 s3-0)))
+         (if s4-0 (set! v1-8 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" gp-0 s4-0 s3-0)))
          '#f
          )
         ((or
           (not v1-1)
           (begin
            (set! v1-10 32768)
-           (.daddu v1-11 v1-10 s7-0)
+           ;(.daddu v1-11 v1-10 s7-0)
+           (set! v1-11 (+ v1-10 st))
            (< (the-as uint gp-0) (the-as uint v1-11))
            )
           )
-         (if s4-0 (set! v1-13 (format s5-0 L318 gp-0 s4-0 s3-0)))
+         (if s4-0 (set! v1-13 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" gp-0 s4-0 s3-0)))
          '#f
          )
         (else '#t)
@@ -1351,11 +1360,11 @@
       ((= s3-0 pair)
        (cond
         ((!= (logand (the-as int gp-0) 7) 2)
-         (if s4-0 (set! v1-15 (format s5-0 L319 gp-0 s4-0 s3-0)))
+         (if s4-0 (set! v1-15 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" gp-0 s4-0 s3-0)))
          '#f
          )
         ((not v1-1)
-         (if s4-0 (set! v1-17 (format s5-0 L318 gp-0 s4-0 s3-0)))
+         (if s4-0 (set! v1-17 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" gp-0 s4-0 s3-0)))
          '#f
          )
         (else '#t)
@@ -1364,38 +1373,39 @@
       ((= s3-0 binteger)
        (cond
         ((zero? (logand (the-as int gp-0) 7)) '#t)
-        (else (if s4-0 (set! v1-20 (format s5-0 L319 gp-0 s4-0 s3-0))) '#f)
+        (else (if s4-0 (set! v1-20 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" gp-0 s4-0 s3-0))) '#f)
         )
        )
       ((!= (logand (the-as int gp-0) 7) 4)
-       (if s4-0 (set! v1-22 (format s5-0 L319 gp-0 s4-0 s3-0)))
+       (if s4-0 (set! v1-22 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" gp-0 s4-0 s3-0)))
        '#f
        )
-      ((not v1-1) (if s4-0 (set! v1-24 (format s5-0 L318 gp-0 s4-0 s3-0))) '#f)
-      ((and (= s3-0 type) (!= (type-of gp-0) type))
-       (if s4-0 (set! v1-31 (format s5-0 L317 gp-0 s4-0 s3-0 (type-of gp-0))))
+      ((not v1-1) (if s4-0 (set! v1-24 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" gp-0 s4-0 s3-0))) '#f)
+      ((and (= s3-0 type) (!= (rtype-of gp-0) type))
+       (if s4-0 (set! v1-31 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%" gp-0 s4-0 s3-0 (rtype-of gp-0))))
        '#f
        )
       (else
        (set!
         v1-33
-        (and (!= s3-0 type) (not (valid? (type-of gp-0) type '#f '#t 0)))
+        (and (!= s3-0 type) (not (valid? (rtype-of gp-0) type '#f '#t 0)))
         )
        (cond
         (v1-33
-         (if s4-0 (set! v1-37 (format s5-0 L317 gp-0 s4-0 s3-0 (type-of gp-0))))
+         (if s4-0 (set! v1-37 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%" gp-0 s4-0 s3-0 (rtype-of gp-0))))
          '#f
          )
-        ((not (type-type? (type-of gp-0) s3-0))
-         (if s4-0 (set! v1-41 (format s5-0 L316 gp-0 s4-0 s3-0 (type-of gp-0))))
+        ((not (type-type? (rtype-of gp-0) s3-0))
+         (if s4-0 (set! v1-41 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%" gp-0 s4-0 s3-0 (rtype-of gp-0))))
          '#f
          )
         ((= s3-0 symbol)
          (set! v1-43 32768)
-         (.daddu v1-44 v1-43 s7-0)
+         ; (.daddu v1-44 v1-43 s7-0)
+         (set! v1-44 (+ v1-43 st))
          (cond
           ((>= (the-as uint gp-0) (the-as uint v1-44))
-           (if s4-0 (set! v1-46 (format s5-0 L315 gp-0 s4-0 s3-0)))
+           (if s4-0 (set! v1-46 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%" gp-0 s4-0 s3-0)))
            '#f
            )
           (else '#t)
@@ -1403,10 +1413,11 @@
          )
         ((begin
           (set! v1-47 32768)
-          (.daddu v1-48 v1-47 s7-0)
+          ; (.daddu v1-48 v1-47 s7-0)
+          (set! v1-48 (+ v1-47 st))
           (< (the-as uint gp-0) (the-as uint v1-48))
           )
-         (if s4-0 (set! v1-50 (format s5-0 L314 gp-0 s4-0 s3-0)))
+         (if s4-0 (set! v1-50 (format s5-0 "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%" gp-0 s4-0 s3-0)))
          '#f
          )
         (else '#t)
@@ -1433,7 +1444,7 @@
     (< s4-0 (sar s5-0 2))
     (format
      0
-     L354
+     "~X: ~X ~X ~X ~X~%"
      (+ (+ (shl (shl s4-0 2) 2) 0) (the-as int gp-0))
      (-> gp-0 (shl s4-0 2))
      (-> gp-0 (+ (shl s4-0 2) 1))
