@@ -10,42 +10,28 @@
 
 
 
-(defun identity ((x object))
-  "Function which returns its input. The first function of the game!"
-  x
+(defun identity ((a0-0 object))
+  a0-0
   )
 
-
-(defun 1/ ((x float))
-  "Reciprocal floating point"
-  ;; likely inlined? nothing calls this.
-  (declare (inline))
-  (/ 1. x)
+(defun 1/ ((a0-0 float))
+  (/ (l.f L345) a0-0)
   )
 
-;; these next 4 functions are just function wrappers around the build in add/subtract/multiply/divide.
-;; this will let you use + as an operation on integers and also as a function pointer.
-(defun + ((x int) (y int))
-  "Compute the sum of two integers"
-  (+ x y)
+(defun + ((a0-0 int) (a1-0 int))
+  (+ a0-0 a1-0)
   )
 
-(defun - ((x int) (y int))
-  "Compute the difference of two integers"
-  (- x y)
+(defun - ((a0-0 int) (a1-0 int))
+  (- a0-0 a1-0)
   )
 
-(defun * ((x int) (y int))
-  "Compute the product of two integers"
-  ;; TODO - verify that this matches the PS2 exactly.
-  ;; Uses mult (three operand form) in MIPS
-  (* x y)
+(defun * ((a0-0 int) (a1-0 int))
+  (* a0-0 a1-0)
   )
 
-(defun / ((x int) (y int))
-  "Compute the quotient of two integers"
-  ;; TODO - verify this matches the PS2 exactly
-  (/ x y)
+(defun / ((a0-0 int) (a1-0 int))
+  (/ a0-0 a1-0)
   )
 
 (defun ash ((value int) (shift-amount int))
@@ -76,22 +62,13 @@
       )
   )
 
-(defun mod ((a int) (b int))
-  "Compute mod.  It does what you expect for positive numbers.  For negative numbers, nobody knows what to expect.
-  This is a 32-bit operation.  It uses an idiv on x86 and gets the remainder."
-  
-  ;; The original implementation is div, mfhi
-  ;; todo - verify this is exactly the same as the PS2.
-  (mod a b)
+(defun mod ((a0-0 int) (a1-0 int))
+  (mod a0-0 a1-0)
   )
 
 
-(defun rem ((a int) (b int))
-  "Compute remainder (32-bit).  It is identical to mod. It uses a idiv and gets the remainder"
-  
-  ;; The original implementation is div, mfhi
-  ;; todo - verify this is exactly the same as the PS2.
-  (mod a b)
+(defun rem ((a0-0 int) (a1-0 int))
+  (mod a0-0 a1-0)
   )
 
 (defun abs ((a int))
@@ -132,14 +109,12 @@
   (if (> a b) a b)
   )
 
-(defun logior ((a int) (b int))
-  "Compute the bitwise inclusive-or"
-  (logior a b)
+(defun logior ((a0-0 int) (a1-0 int))
+  (logior a0-0 a1-0)
   )
 
-(defun logand ((a int) (b int))
-  "Compute the bitwise and"
-  (logand a b)
+(defun logand ((a0-0 int) (a1-0 int))
+  (logand a0-0 a1-0)
   )
 
 (defun lognor ((a int) (b int))
@@ -151,38 +126,18 @@
   (lognot (logior a b))
   )
 
-(defun logxor ((a int) (b int))
-  "Compute the logical exclusive-or"
-  (logxor a b)
+(defun logxor ((a0-0 int) (a1-0 int))
+  (logxor a0-0 a1-0)
   )
 
-(defun lognot ((a int))
-  "Compute the bitwise not"
-  (lognot a)
+(defun lognot ((a0-0 int))
+  (lognot a0-0)
   )
 
-(defun false-func ()
-  "Return false"
-  ;; In GOAL, #f is false.  It's a symbol. Each symbol exists as an object, and each symbol has a value
-  ;; The value of the false symbol #f is the false symbol #f.
-  
-  ;; To get the symbol, instead of its value, we use quote.  Writing 'x is equivalent to (quote x)
-  '#f
-  )
+(defun false-func () '#f)
 
-(defun true-func ()
-  "Return true"
-  ;; GOAL consideres anything that's not #f to be true. But there's also an explicit true symbol.
-  '#t
-  )
+(defun true-func () '#t)
 
-;; The C Kernel implements the format function and creates a trampoline function in the GOAL heap which jumps to
-;; format.  (In OpenGOAL, there's actually two trampoline functions, to make the 8 arguments all work.)
-;; For some reason, the C Kernel names this trampoline function _format. We need to set the value of format
-;; _format in order for format to work.
-
-;; I suspect this was to let us define (yet another) function here which set up C-style var args (supported from C Kernel)
-;; or 128-bit arguments (unimplemented in C Kernel), but both of these were never finished.
 (define format _format)
 
 ;; vec4s - this is present in the game as a 128-bit integer child type full of 4 floats.
@@ -193,20 +148,17 @@
 
 (deftype bfloat (basic)
   ((data float :offset-assert 4))
-  (:methods 
-    (print (_type_) _type_ 2)    ;; we will override print later on. This is optional to include
-    (inspect (_type_) _type_ 3)  ;; this is a parent method we won't override. This is also optional to include
-    )
 
   :size-assert 8
   :method-count-assert 9
   :flag-assert #x900000008
   )
 
-(defmethod print bfloat ((obj bfloat))
-  "Override the default print method to print a bfloat like a normal float"
-  (format #t "~f" (-> obj data))
-  obj
+(defmethod print bfloat ((a0-0 bfloat))
+  (local-vars
+   (gp-0 bfloat)
+   )
+  (begin (set! gp-0 a0-0) (format '#t L343 (-> gp-0 data)) gp-0)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -226,278 +178,397 @@
 ;; Some types have more methods than others, so the method table makes "type" a dynamic type.
 ;; As a result, we should define an "asize-of" method for type. It's possibly unused and it's wrong.
 
-(defmethod asize-of type ((obj type))
-  "Get the size in memory of a type"
-  ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always, 
-  ;; but this matches what the runtime does as well. There's no reason that I can see for this,
-  ;; as other basics don't require 16-byte aligned sizes.
-  ;; - this is perhaps accurate back when types where inside of the symbol table? Or before switching to u16's
-  ;; for some of the type values?
-  (align16 (+ 28 (* 4 (-> type allocated-length))))
+(defmethod asize-of type ((a0-0 type))
+  (the-as int (logand (l.d L346) (+ (shl (-> a0-0 allocated-length) 2) 43)))
   )
 
-(defun basic-type? ((obj basic) (input-type type))
-  "Is obj an object of type input-type, or of child type of input-type?
-  Note: checking if a basic is of type object will return #f."
-  (let ((basics-type (-> obj type))
-        (object-type object))
-    (until (eq? (set! basics-type (-> basics-type parent)) object-type)
-           (if (eq? basics-type input-type)
-               ;; return-from #f will return from the function with the value of #t
-               (return-from #f #t)
-               )
-           )
+(defun basic-type? ((a0-0 basic) (a1-0 type))
+  (local-vars
+   (v1-0 type)
+   (a0-1 type)
+   (a2-0 symbol)
+   )
+  (begin
+   (set! v1-0 (-> a0-0 type))
+   (set! a0-1 object)
+   (until
+    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))
+    (if (= v1-0 a1-0) (return '#t (set! v1-0 0)))
     )
-  #f ;; didn't find it, return false
+   '#f
+   )
   )
 
-(defun type-type? ((a type) (b type))
-  "is a a type (or child type) of type b?"
-  (let ((object-type object))
-    (until (or (eq? (set! a (-> a parent)) object-type)
-               (zero? a)
-               )
-           (if (eq? a b)
-               (return-from #f #t)
-               )
-           )
+(defun type-type? ((a0-0 type) (a1-0 type))
+  (local-vars
+   (v1-0 type)
+   (a2-0 symbol)
+   (a2-1 symbol)
+   )
+  (begin
+   (set! v1-0 object)
+   (until
+    (begin (set! a0-0 (-> a0-0 parent)) (or (= a0-0 v1-0) (zero? a0-0)))
+    (if (= a0-0 a1-0) (return '#t (set! v1-0 0)))
     )
-  #f
+   '#f
+   )
   )
 
-(defun find-parent-method ((the-type type) (method-id int))
-  "Find the nearest parent which has a different method, and get that method.
-  Use with extreme caution - if a checked parent has fewer methods than the child, it will
-  access out-of-bounds memory. Returns the nothing function if it gets to the top and
-  the parent has the same type, or if any parent has 0 as a method."
-  (let* ((child-method (-> the-type method-table method-id))
-         (parent-method child-method)
-         )
-    
-    ;; keep looking until we find a different parent method
-    (until (not (eq? parent-method child-method))
-           ;; at the top of the type tree.
-           (if (eq? the-type object)
-               (return-from #f nothing)
-               )
-           
-           (set! the-type (-> the-type parent))
-           (set! parent-method (-> the-type method-table method-id))
-           (if (eq? 0 (the int parent-method))
-               (return-from #f nothing)
-               )
-           )
-    parent-method
+(defun find-parent-method ((a0-0 type) (a1-0 int))
+  (local-vars
+   (v0-0 function)
+   (v1-2 function)
+   (v1-5 symbol)
+   (a2-1 symbol)
+   (a2-4 symbol)
+   )
+  (begin
+   (set! v1-2 (-> a0-0 methods a1-0))
+   (until
+    (!= v0-0 v1-2)
+    (if (= a0-0 object) (return nothing (set! v1-2 0)))
+    (set! a0-0 (-> a0-0 parent))
+    (set! v0-0 (-> a0-0 methods a1-0))
+    (if (zero? v0-0) (return nothing (set! v1-2 0)))
     )
+   (set! v1-5 '#f)
+   v0-0
+   )
   )
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; pair and list
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun ref ((obj object) (idx int))
-  "Get the nth item from a list.  No type checking or range checking is done, so be careful!"
-  (dotimes (i idx (car obj))
-    (set! obj (cdr obj))
+(defun ref ((a0-0 object) (a1-0 int))
+  (local-vars
+   (v1-0 int)
+   (v1-1 symbol)
+   (v1-2 symbol)
+   )
+  (begin
+   (set! v1-0 0)
+   (while
+    (< v1-0 a1-0)
+    (nop!)
+    (nop!)
+    (set! a0-0 (cdr a0-0))
+    (set! v1-0 (+ v1-0 1))
     )
+   (set! v1-1 '#f)
+   (set! v1-2 '#f)
+   (car a0-0)
+   )
   )
 
-(defmethod length pair ((obj pair))
-  "Get the number of elements in a proper list"
-  (if (eq? obj '())
-      (return-from #f 0)
+(defmethod length pair ((a0-0 pair))
+  (local-vars
+   (v0-0 int)
+   (v1-1 object)
+   (v1-2 symbol)
+   (a0-2 symbol)
+   )
+  (begin
+   (cond
+    ((= a0-0 '()) (set! v0-0 0))
+    (else
+     (set! v1-1 (cdr a0-0))
+     (set! v0-0 1)
+     (while
+      (and (!= v1-1 '()) (< (shl (the-as int v1-1) 62) 0))
+      (set! v0-0 (+ v0-0 1))
+      (set! v1-1 (cdr v1-1))
       )
-  
-  (let ((lst (cdr obj))
-        (len 1))
-    (while (and (not (eq? lst '()))
-                (pair? lst)
-                )
-      (+1! len)
-      (set! lst (cdr lst))
-      )
-    len)
+     (set! v1-2 '#f)
+     )
+    )
+   v0-0
+   )
   )
 
-(defmethod asize-of pair ((obj pair))
-  "Get the asize of a pair"
+(defmethod asize-of pair ((a0-0 pair))
   (the-as int (-> pair size))
   )
 
-(defun last ((obj object))
-  "Get the last pair in a list."
-  (while (not (eq? (cdr obj) '()))
-    (set! obj (cdr obj))
-    )
-  obj
+(defun last ((a0-0 object))
+  (local-vars
+   (v0-0 object)
+   (v1-1 symbol)
+   )
+  (begin
+   (set! v0-0 a0-0)
+   (while (!= (cdr v0-0) '()) (nop!) (nop!) (set! v0-0 (cdr v0-0)))
+   (set! v1-1 '#f)
+   v0-0
+   )
   )
 
-(defun member ((obj object) (lst object))
-  "if obj is a member of the list, return the pair containing obj as its car.
-  if not, return #f."
-  (while (and (not (eq? lst '()))
-              (not (eq? (car lst) obj)))
-    (set! lst (cdr lst))
-    )
-  
-  (if (eq? lst '())
-      #f
-      lst
-      )
+(defun member ((a0-0 object) (a1-0 object))
+  (local-vars
+   (v0-0 object)
+   (v1-0 object)
+   (a0-1 symbol)
+   (a1-2 symbol)
+   )
+  (begin
+   (set! v1-0 a1-0)
+   (while (not (or (= v1-0 '()) (= (car v1-0) a0-0))) (set! v1-0 (cdr v1-0)))
+   (set! a0-1 '#f)
+   (if (!= v1-0 '()) v1-0)
+   )
   )
 
 (define-extern name= (function basic basic symbol))
 
-(defun nmember ((obj basic) (lst object))
-  "If obj is a member of the list, return the pair containing obj as its car.
-  If not, return #f.  Use name= (see gstring.gc) to check equality."
-  (while (and (not (eq? lst '()))
-              (not (name= (the basic (car lst)) obj))
-              )
-    (set! lst (cdr lst))
+(defun nmember ((a0-0 basic) (a1-0 object))
+  (local-vars
+   (v0-1 object)
+   (v1-1 symbol)
+   (v1-2 symbol)
+   (s5-0 basic)
+   (gp-0 object)
+   )
+  (begin
+   (set! s5-0 a0-0)
+   (set! gp-0 a1-0)
+   (while
+    (not (or (= gp-0 '()) (name= (car gp-0) s5-0)))
+    (set! gp-0 (cdr gp-0))
     )
-  
-  (if (eq? lst '())
-      #f
-      lst
-      )
+   (set! v1-2 '#f)
+   (if (!= gp-0 '()) gp-0)
+   )
   )
 
-(defun assoc ((item object) (alst object))
-  "Get a pair with car of item from the association list (list of pairs) alst."
-  (while (and (not (null? alst))
-              (not (eq? (caar alst) item)))
-    (set! alst (cdr alst))
+(defun assoc ((a0-0 object) (a1-0 object))
+  (local-vars
+   (v0-0 object)
+   (v1-0 object)
+   (a0-1 symbol)
+   (a1-2 symbol)
+   )
+  (begin
+   (set! v1-0 a1-0)
+   (while
+    (not (or (= v1-0 '()) (= (car (car v1-0)) a0-0)))
+    (set! v1-0 (cdr v1-0))
     )
-  (if (not (null? alst))
-      (car alst)
-      #f
-      )
+   (set! a0-1 '#f)
+   (if (!= v1-0 '()) (car v1-0))
+   )
   )
 
-(defun assoce ((item object) (alst object))
-  "Like assoc, but a pair with car of 'else will match anything"
-  (while (and (not (null? alst))
-              (not (eq? (caar alst) item))
-              (not (eq? (caar alst) 'else))
-              )
-    (set! alst (cdr alst))
+(defun assoce ((a0-0 object) (a1-0 object))
+  (local-vars
+   (v0-0 object)
+   (v1-0 object)
+   (a0-1 symbol)
+   (a1-2 symbol)
+   )
+  (begin
+   (set! v1-0 a1-0)
+   (while
+    (not (or (= v1-0 '()) (= (car (car v1-0)) a0-0) (= (car (car v1-0)) 'else)))
+    (set! v1-0 (cdr v1-0))
     )
-  (if (not (null? alst))
-      (car alst)
-      #f
-      )
+   (set! a0-1 '#f)
+   (if (!= v1-0 '()) (car v1-0))
+   )
   )
 
-;; todo
-;; nassoc
-;; nassce
+(defun nassoc ((a0-0 string) (a1-0 object))
+  (local-vars
+   (v0-2 object)
+   (v1-1 object)
+   (v1-3 symbol)
+   (a1-1 object)
+   (s5-0 string)
+   (gp-0 object)
+   )
+  (begin
+   (set! s5-0 a0-0)
+   (set! gp-0 a1-0)
+   (while
+    (not
+     (or
+      (= gp-0 '())
+      (begin
+       (set! a1-1 (car (car gp-0)))
+       (if (pair? a1-1) (nmember s5-0 a1-1) (name= a1-1 s5-0))
+       )
+      )
+     )
+    (set! gp-0 (cdr gp-0))
+    )
+   (set! v1-3 '#f)
+   (if (!= gp-0 '()) (car gp-0))
+   )
+  )
 
-(defun append! ((front object) (back object))
-  "Append back to front."
-  (if (null? front)
-      (return-from #f back)
-      )
-  
-  (let ((lst front))
-    ;; seek to the end of front
-    (while (not (null? (cdr lst)))
-      (set! lst (cdr lst))
-      )
-    
-    ;; this check seems not needed
-    (if (not (null? lst))
-        (set! (cdr lst) back)
+(defun nassoce ((a0-0 string) (a1-0 object))
+  (local-vars
+   (v0-2 object)
+   (v1-1 object)
+   (v1-4 symbol)
+   (s4-0 object)
+   (s5-0 string)
+   (gp-0 object)
+   )
+  (begin
+   (set! s5-0 a0-0)
+   (set! gp-0 a1-0)
+   (while
+    (not
+     (or
+      (= gp-0 '())
+      (begin
+       (set! s4-0 (car (car gp-0)))
+       (if
+        (pair? s4-0)
+        (nmember s5-0 s4-0)
+        (or (name= s4-0 s5-0) (= s4-0 'else))
         )
-    
-    front
+       )
+      )
+     )
+    (set! gp-0 (cdr gp-0))
     )
+   (set! v1-4 '#f)
+   (if (!= gp-0 '()) (car gp-0))
+   )
   )
 
-(defun delete! ((item object) (lst object))
-  "Delete the first occurance of item from a list and return the list.
-  Does nothing if the item isn't in the list."
-  (if (eq? (car lst) item)
-      (return-from #f (the pair (cdr lst)))
-      )
-  
-  (let ((iter (cdr lst))
-        (rep lst))
-    
-    (while (and (not (null? iter))
-                (not (eq? (car iter) item)))
-      (set! rep iter)
-      (set! iter (cdr iter))
-      )
-    
-    (if (not (null? iter))
-        (set! (cdr rep) (cdr iter))
-        )
+(defun append! ((a0-0 object) (a1-0 object))
+  (local-vars
+   (v1-1 object)
+   (v1-2 object)
+   (a2-1 symbol)
+   (a2-3 symbol)
+   )
+  (cond
+   ((= a0-0 '()) a1-0)
+   (else
+    (set! v1-1 a0-0)
+    (while (!= (cdr v1-1) '()) (nop!) (nop!) (set! v1-1 (cdr v1-1)))
+    (set! a2-1 '#f)
+    (when (!= v1-1 '()) (set! (cdr v1-1) a1-0) (set! v1-2 a1-0))
+    a0-0
     )
-  (the pair lst)
+   )
   )
 
-(defun delete-car! ((item object) (lst object))
-  "Like delete, but will delete if (car item-from-list) is equal to item.  Useful for deleting from association list by key."
-  ;(format #t "call to delete car: ~A ~A~%" item lst)
-  (if (eq? (caar lst) item)
-      (return-from #f (cdr lst))
+(defun delete! ((a0-0 object) (a1-0 object))
+  (local-vars
+   (v1-1 object)
+   (a0-1 symbol)
+   (a0-3 symbol)
+   (a2-0 object)
+   (a3-1 symbol)
+   )
+  (the-as
+   pair
+   (cond
+    ((= a0-0 (car a1-0)) (cdr a1-0))
+    (else
+     (set! v1-1 a1-0)
+     (set! a2-0 (cdr a1-0))
+     (while
+      (not (or (= a2-0 '()) (= (car a2-0) a0-0)))
+      (set! v1-1 a2-0)
+      (set! a2-0 (cdr a2-0))
       )
-  
-  (let ((rep lst)
-        (iter (cdr lst)))
-    (while (and (not (null? iter))
-                (not (eq? (caar iter) item)))
-      (set! rep iter)
-      (set! iter (cdr iter))
-      )
-    
-    (if (not (null? iter))
-        (set! (cdr rep) (cdr iter))
-        )
+     (set! a0-1 '#f)
+     (if (!= a2-0 '()) (set! (cdr v1-1) (cdr a2-0)))
+     a1-0
+     )
     )
-  lst
+   )
   )
 
-(defun insert-cons! ((kv object) (alst object))
-  "Insert key-value pair into an association list.  Also removes the old one if it was there."
-  (cons kv (delete-car! (car kv) alst))
+(defun delete-car! ((a0-0 object) (a1-0 object))
+  (local-vars
+   (v1-2 object)
+   (a0-1 symbol)
+   (a0-3 symbol)
+   (a2-0 object)
+   (a3-1 symbol)
+   )
+  (cond
+   ((= a0-0 (car (car a1-0))) (cdr a1-0))
+   (else
+    (set! v1-2 a1-0)
+    (set! a2-0 (cdr a1-0))
+    (while
+     (not (or (= a2-0 '()) (= (car (car a2-0)) a0-0)))
+     (set! v1-2 a2-0)
+     (set! a2-0 (cdr a2-0))
+     )
+    (set! a0-1 '#f)
+    (if (!= a2-0 '()) (set! (cdr v1-2) (cdr a2-0)))
+    a1-0
+    )
+   )
   )
 
-(defun sort ((lst object) (compare (function object object object)))
-  "Sort the given list in place.  Uses the given comparison function. The comparison function can 
-  either return #t/#f or an integer, in which case the sign of the integer determines lt/gt."
-  ;; in each iteration, we count how many changes we make. Once we make no changes, the list is sorted.
-  (let ((changes -1)) 
-    
-    (while (not (zero? changes)) ;; outer loop
-      (set! changes 0)      ;; reset changes for this iteration
-      (let ((iter lst))     ;; iterate through list
-        (while (and (not (null? (cdr iter)))
-                    (pair? (cdr iter)))
-          ;; L221
-          (let* ((val1 (car iter))        ;; value at iterator
-                 (val2 (car (cdr iter)))  ;; value after iterator
-                 (c-result (compare val1 val2))) ;; run comparison function
-            ;; check if val1 and val2 are in order. The compare function may either return #t
-            ;; or it may return val1 - val2.  There is an issue if val1 - val2 happens to equal #t or #f.
-            (unless (or
-                      (and c-result (<= (the integer c-result) 0)) ;; not #f, and negative, we're sorted!
-                      (eq? c-result #t) ;; explictly return #t, we're sorted!
-                      )
-              ;; these two aren't sorted! so we swap them and increment changes.
-              (+1! changes)
-              (set! (car iter) val2)
-              (set! (car (cdr iter)) val1)
-              )
-            ;; move on to the next thing in the list.
-            (set! iter (cdr iter))
-            )
-          )
-        )
+
+(defun insert-cons! ((a0-0 object) (a1-0 object))
+  (local-vars
+   (a3-0 object)
+   (gp-0 object)
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (set! a3-0 (delete-car! (car gp-0) a1-0))
+   (new 'global pair gp-0 a3-0)
+   )
+  )
+
+(defun sort ((a0-0 object) (a1-0 (function object object object)))
+  (local-vars
+   (v1-1 object)
+   (v1-2 symbol)
+   (v1-3 symbol)
+   (v1-5 object)
+   (v1-7 symbol)
+   (v1-10 symbol)
+   (v1-11 symbol)
+   (v1-12 symbol)
+   (a0-2 symbol)
+   (s1-0 object)
+   (s2-0 object)
+   (s3-0 object)
+   (s4-0 int)
+   (s5-0 (function object object object))
+   (gp-0 object)
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (set! s5-0 a1-0)
+   (set! s4-0 -1)
+   (while
+    (nonzero? s4-0)
+    (set! s4-0 0)
+    (set! s3-0 gp-0)
+    (while
+     (not (or (= (cdr s3-0) '()) (>= (shl (the-as int (cdr s3-0)) 62) 0)))
+     (set! s2-0 (car s3-0))
+     (set! s1-0 (car (cdr s3-0)))
+     (set! v1-1 (s5-0 s2-0 s1-0))
+     (when
+      (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 '#t))
+      (set! s4-0 (+ s4-0 1))
+      (set! (car s3-0) s1-0)
+      (set! (car (cdr s3-0)) s2-0)
+      (set! v1-5 s2-0)
       )
+     (set! s3-0 (cdr s3-0))
+     )
+    (set! v1-10 '#f)
+    (set! v1-11 '#f)
     )
-  lst
+   (set! v1-12 '#f)
+   gp-0
+   )
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -520,30 +591,46 @@
             )
   )
 
-(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (cnt int))
-  "Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
-  of the type-to-make to determine the element size"
-  (let* ((sz (+ (-> type-to-make size) (* (-> type-to-make heap-base) cnt)))
-         (new-object (object-new (the int sz))))
-    ;;(format 0 "create sz ~d at #x~X~%" sz new-object)
-    (unless (zero? new-object)
-      (set! (-> new-object length) cnt)
-      (set! (-> new-object allocated-length) cnt)
-      )
-    new-object
-    )
-  )
-
-(defmethod length inline-array-class ((obj inline-array-class))
-  ;"Get the length of an inline-array"
-  (-> obj length)
-  )
-
-(defmethod asize-of inline-array-class ((obj inline-array-class))
-  ;"Get the size in memory of an inline-array-class"
-  (+ (the-as int (-> obj type size))
-     (* (-> obj allocated-length) (-> obj type heap-base))
+(defmethod new inline-array-class ((a0-0 symbol) (a1-0 type) (a2-0 int))
+  (local-vars
+   (v0-0 inline-array-class)
+   (v1-2 symbol)
+   (gp-0 int)
+   )
+  (begin
+   (set! gp-0 a2-0)
+   (set!
+    v0-0
+    (object-new
+     a0-0
+     a1-0
+     (+ (-> a1-0 size) (* (the-as uint gp-0) (-> a1-0 heap-base)))
      )
+    )
+   (when
+    (nonzero? v0-0)
+    (set! (-> v0-0 length) gp-0)
+    (set! (-> v0-0 allocated-length) gp-0)
+    )
+   v0-0
+   )
+  )
+
+(defmethod length inline-array-class ((a0-0 inline-array-class))
+  (-> a0-0 length)
+  )
+
+(defmethod asize-of inline-array-class ((a0-0 inline-array-class))
+  (the-as
+   int
+   (+
+    (-> a0-0 type size)
+    (the-as
+     uint
+     (* (-> a0-0 allocated-length) (the-as int (-> a0-0 type heap-base)))
+     )
+    )
+   )
   )
 
 
@@ -554,78 +641,808 @@
 ;; unlike inline-array-class, all arrays are type array, but the content-type field stores the element type.
 ;; the stride of an array is 4, unless the element is a number, in which case the stride is the "size"
 
-(defmethod new array ((allocation symbol) (type-to-make type) (content-type type) (size int))
-  "Create a new array. The length and allocated-length are both set to size."
-  (let ((obj (object-new (* size (if (type-type? content-type number)
-                                     (-> content-type size)
-                                     4
-                                     )))))
-    (set! (-> obj length) size)
-    (set! (-> obj allocated-length) size)
-    (set! (-> obj content-type) content-type)
-    obj
+(defmethod new array ((a0-0 symbol) (a1-0 type) (a2-0 type) (a3-0 int))
+  (local-vars
+   (v0-1 array)
+   (s5-0 int)
+   (gp-0 type)
+   )
+  (begin
+   (set! gp-0 a2-0)
+   (set! s5-0 a3-0)
+   (set!
+    v0-1
+    (object-new
+     a0-0
+     a1-0
+     (+
+      (-> a1-0 size)
+      (the-as uint (* s5-0 (if (type-type? gp-0 number) (-> gp-0 size) 4)))
+      )
+     )
     )
+   (set! (-> v0-1 allocated-length) s5-0)
+   (set! (-> v0-1 length) s5-0)
+   (set! (-> v0-1 content-type) gp-0)
+   v0-1
+   )
   )
 
-;; todo array print and array inspect
-
-(defmethod length array ((obj array))
-  "Get the length field of an array."
-  (-> obj length)
+(defmethod print array ((a0-0 array))
+  (local-vars
+   (v1-1 symbol)
+   (v1-5 symbol)
+   (v1-10 symbol)
+   (v1-15 symbol)
+   (v1-20 symbol)
+   (v1-24 symbol)
+   (v1-28 symbol)
+   (v1-33 symbol)
+   (v1-38 symbol)
+   (v1-39 symbol)
+   (v1-40 symbol)
+   (v1-42 object)
+   (v1-44 symbol)
+   (v1-49 symbol)
+   (v1-59 symbol)
+   (v1-68 symbol)
+   (a0-21 symbol)
+   (a1-11 string)
+   (a2-8 int)
+   (s5-0 int)
+   (s5-1 int)
+   (s5-2 int)
+   (s5-3 int)
+   (s5-4 int)
+   (s5-5 int)
+   (s5-6 int)
+   (s5-7 int)
+   (s5-8 int)
+   (s5-9 int)
+   (s5-10 int)
+   (s5-11 int)
+   (t9-10 (function _varargs_ object))
+   (gp-0 array)
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (format '#t L342)
+   (cond
+    ((type-type? (-> gp-0 content-type) integer)
+     (set! v1-1 (-> gp-0 content-type symbol))
+     (cond
+      ((= v1-1 'int32)
+       (set! s5-0 0)
+       (while
+        (< s5-0 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-0) L341 L340)
+         (-> (the-as (array int32) gp-0) s5-0)
+         )
+        (set! s5-0 (+ s5-0 1))
+        )
+       (set! v1-5 '#f)
+       '#f
+       )
+      ((= v1-1 'uint32)
+       (set! s5-1 0)
+       (while
+        (< s5-1 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-1) L341 L340)
+         (-> (the-as (array uint32) gp-0) s5-1)
+         )
+        (set! s5-1 (+ s5-1 1))
+        )
+       (set! v1-10 '#f)
+       '#f
+       )
+      ((= v1-1 'int64)
+       (set! s5-2 0)
+       (while
+        (< s5-2 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-2) L341 L340)
+         (-> (the-as (array int64) gp-0) s5-2)
+         )
+        (set! s5-2 (+ s5-2 1))
+        )
+       (set! v1-15 '#f)
+       '#f
+       )
+      ((= v1-1 'uint64)
+       (set! s5-3 0)
+       (while
+        (< s5-3 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-3) L339 L338)
+         (-> (the-as (array uint64) gp-0) s5-3)
+         )
+        (set! s5-3 (+ s5-3 1))
+        )
+       (set! v1-20 '#f)
+       '#f
+       )
+      ((= v1-1 'int8)
+       (set! s5-4 0)
+       (while
+        (< s5-4 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-4) L341 L340)
+         (-> (the-as (array int8) gp-0) s5-4)
+         )
+        (set! s5-4 (+ s5-4 1))
+        )
+       (set! v1-24 '#f)
+       '#f
+       )
+      ((= v1-1 'uint8)
+       (set! s5-5 0)
+       (while
+        (< s5-5 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-5) L341 L340)
+         (-> (the-as (array uint8) gp-0) s5-5)
+         )
+        (set! s5-5 (+ s5-5 1))
+        )
+       (set! v1-28 '#f)
+       '#f
+       )
+      ((= v1-1 'int16)
+       (set! s5-6 0)
+       (while
+        (< s5-6 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-6) L341 L340)
+         (-> (the-as (array int16) gp-0) s5-6)
+         )
+        (set! s5-6 (+ s5-6 1))
+        )
+       (set! v1-33 '#f)
+       '#f
+       )
+      ((= v1-1 'uint16)
+       (set! s5-7 0)
+       (while
+        (< s5-7 (-> gp-0 length))
+        (format
+         '#t
+         (if (zero? s5-7) L341 L340)
+         (-> (the-as (array uint16) gp-0) s5-7)
+         )
+        (set! s5-7 (+ s5-7 1))
+        )
+       (set! v1-38 '#f)
+       '#f
+       )
+      (else
+       (set! v1-40 (or (= v1-1 'uint128) (= v1-1 'int128)))
+       (cond
+        (v1-40
+         (set! s5-8 0)
+         (while
+          (< s5-8 (-> gp-0 length))
+          (set! t9-10 format)
+          (set! a0-21 '#t)
+          (set! a1-11 (if (zero? s5-8) L339 L338))
+          (set!
+           v1-42
+           (+ (shl s5-8 4) (the-as int (the-as (array uint128) gp-0)))
+           )
+          (.lq a2-8 12 v1-42)
+          (t9-10 a0-21 a1-11 a2-8)
+          (set! s5-8 (+ s5-8 1))
+          )
+         (set! v1-44 '#f)
+         '#f
+         )
+        (else
+         (set! s5-9 0)
+         (while
+          (< s5-9 (-> gp-0 length))
+          (format
+           '#t
+           (if (zero? s5-9) L341 L340)
+           (-> (the-as (array int32) gp-0) s5-9)
+           )
+          (set! s5-9 (+ s5-9 1))
+          )
+         (set! v1-49 '#f)
+         '#f
+         )
+        )
+       v1-39
+       )
+      )
+     )
+    (else
+     (cond
+      ((= (-> gp-0 content-type) float)
+       (set! s5-10 0)
+       (while
+        (< s5-10 (-> gp-0 length))
+        (if
+         (zero? s5-10)
+         (format '#t L343 (-> (the-as (array float) gp-0) s5-10))
+         (format '#t L337 (-> (the-as (array float) gp-0) s5-10))
+         )
+        (set! s5-10 (+ s5-10 1))
+        )
+       (set! v1-59 '#f)
+       '#f
+       )
+      (else
+       (set! s5-11 0)
+       (while
+        (< s5-11 (-> gp-0 length))
+        (if
+         (zero? s5-11)
+         (format '#t L336 (-> (the-as (array basic) gp-0) s5-11))
+         (format '#t L335 (-> (the-as (array basic) gp-0) s5-11))
+         )
+        (set! s5-11 (+ s5-11 1))
+        )
+       (set! v1-68 '#f)
+       '#f
+       )
+      )
+     )
+    )
+   (format '#t L334)
+   gp-0
+   )
   )
 
-(defmethod asize-of array ((obj array))
-  "Get the size in memory of an array."
-  (the int (+ (-> array size) (* (-> obj allocated-length) 
-                                 (if (type-type? (-> obj content-type) number)
-                                     (-> obj content-type size)
-                                     4))))
+(defmethod inspect array ((a0-0 array))
+  (local-vars
+   (v1-1 symbol)
+   (v1-5 symbol)
+   (v1-10 symbol)
+   (v1-15 symbol)
+   (v1-20 symbol)
+   (v1-24 symbol)
+   (v1-28 symbol)
+   (v1-33 symbol)
+   (v1-38 symbol)
+   (v1-39 symbol)
+   (v1-40 symbol)
+   (v1-42 object)
+   (v1-44 symbol)
+   (v1-49 symbol)
+   (v1-55 symbol)
+   (v1-60 symbol)
+   (a0-25 symbol)
+   (a1-15 string)
+   (a2-13 int)
+   (a3-10 int)
+   (s5-0 int)
+   (s5-1 int)
+   (s5-2 int)
+   (s5-3 int)
+   (s5-4 int)
+   (s5-5 int)
+   (s5-6 int)
+   (s5-7 int)
+   (s5-8 int)
+   (s5-9 int)
+   (s5-10 int)
+   (s5-11 int)
+   (t9-14 (function _varargs_ object))
+   (gp-0 array)
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (format '#t L333 gp-0 (-> gp-0 type))
+   (format '#t L332 (-> gp-0 allocated-length))
+   (format '#t L331 (-> gp-0 length))
+   (format '#t L330 (-> gp-0 content-type))
+   (format '#t L329 (-> gp-0 allocated-length) (-> gp-0 data))
+   (cond
+    ((type-type? (-> gp-0 content-type) integer)
+     (set! v1-1 (-> gp-0 content-type symbol))
+     (cond
+      ((= v1-1 'int32)
+       (set! s5-0 0)
+       (while
+        (< s5-0 (-> gp-0 length))
+        (format '#t L328 s5-0 (-> (the-as (array int32) gp-0) s5-0))
+        (set! s5-0 (+ s5-0 1))
+        )
+       (set! v1-5 '#f)
+       '#f
+       )
+      ((= v1-1 'uint32)
+       (set! s5-1 0)
+       (while
+        (< s5-1 (-> gp-0 length))
+        (format '#t L328 s5-1 (-> (the-as (array uint32) gp-0) s5-1))
+        (set! s5-1 (+ s5-1 1))
+        )
+       (set! v1-10 '#f)
+       '#f
+       )
+      ((= v1-1 'int64)
+       (set! s5-2 0)
+       (while
+        (< s5-2 (-> gp-0 length))
+        (format '#t L328 s5-2 (-> (the-as (array int64) gp-0) s5-2))
+        (set! s5-2 (+ s5-2 1))
+        )
+       (set! v1-15 '#f)
+       '#f
+       )
+      ((= v1-1 'uint64)
+       (set! s5-3 0)
+       (while
+        (< s5-3 (-> gp-0 length))
+        (format '#t L327 s5-3 (-> (the-as (array uint64) gp-0) s5-3))
+        (set! s5-3 (+ s5-3 1))
+        )
+       (set! v1-20 '#f)
+       '#f
+       )
+      ((= v1-1 'int8)
+       (set! s5-4 0)
+       (while
+        (< s5-4 (-> gp-0 length))
+        (format '#t L328 s5-4 (-> (the-as (array int8) gp-0) s5-4))
+        (set! s5-4 (+ s5-4 1))
+        )
+       (set! v1-24 '#f)
+       '#f
+       )
+      ((= v1-1 'uint8)
+       (set! s5-5 0)
+       (while
+        (< s5-5 (-> gp-0 length))
+        (format '#t L328 s5-5 (-> (the-as (array int8) gp-0) s5-5))
+        (set! s5-5 (+ s5-5 1))
+        )
+       (set! v1-28 '#f)
+       '#f
+       )
+      ((= v1-1 'int16)
+       (set! s5-6 0)
+       (while
+        (< s5-6 (-> gp-0 length))
+        (format '#t L328 s5-6 (-> (the-as (array int16) gp-0) s5-6))
+        (set! s5-6 (+ s5-6 1))
+        )
+       (set! v1-33 '#f)
+       '#f
+       )
+      ((= v1-1 'uint16)
+       (set! s5-7 0)
+       (while
+        (< s5-7 (-> gp-0 length))
+        (format '#t L328 s5-7 (-> (the-as (array uint16) gp-0) s5-7))
+        (set! s5-7 (+ s5-7 1))
+        )
+       (set! v1-38 '#f)
+       '#f
+       )
+      (else
+       (set! v1-40 (or (= v1-1 'int128) (= v1-1 'uint128)))
+       (cond
+        (v1-40
+         (set! s5-8 0)
+         (while
+          (< s5-8 (-> gp-0 length))
+          (set! t9-14 format)
+          (set! a0-25 '#t)
+          (set! a1-15 L327)
+          (set! a2-13 s5-8)
+          (set! v1-42 (+ (shl s5-8 4) (the-as int gp-0)))
+          (.lq a3-10 12 v1-42)
+          (t9-14 a0-25 a1-15 a2-13 a3-10)
+          (set! s5-8 (+ s5-8 1))
+          )
+         (set! v1-44 '#f)
+         '#f
+         )
+        (else
+         (set! s5-9 0)
+         (while
+          (< s5-9 (-> gp-0 length))
+          (format '#t L328 s5-9 (-> gp-0 s5-9))
+          (set! s5-9 (+ s5-9 1))
+          )
+         (set! v1-49 '#f)
+         '#f
+         )
+        )
+       v1-39
+       )
+      )
+     )
+    (else
+     (cond
+      ((= (-> gp-0 content-type) float)
+       (set! s5-10 0)
+       (while
+        (< s5-10 (-> gp-0 length))
+        (format '#t L326 s5-10 (-> gp-0 s5-10))
+        (set! s5-10 (+ s5-10 1))
+        )
+       (set! v1-55 '#f)
+       '#f
+       )
+      (else
+       (set! s5-11 0)
+       (while
+        (< s5-11 (-> gp-0 length))
+        (format '#t L325 s5-11 (-> gp-0 s5-11))
+        (set! s5-11 (+ s5-11 1))
+        )
+       (set! v1-60 '#f)
+       '#f
+       )
+      )
+     )
+    )
+   gp-0
+   )
   )
 
+(defmethod length array ((a0-0 array))
+  (-> a0-0 length)
+  )
+
+(defmethod asize-of array ((a0-0 array))
+  (local-vars
+   (s4-0 array)
+   )
+  (begin
+   (set! s4-0 a0-0)
+   (the-as
+    int
+    (+
+     (-> array size)
+     (the-as
+      uint
+      (*
+       (-> s4-0 allocated-length)
+       (if
+        (type-type? (-> s4-0 content-type) number)
+        (-> s4-0 content-type size)
+        4
+        )
+       )
+      )
+     )
+    )
+   )
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; memcpy and similar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun mem-copy! ((dst pointer) (src pointer) (size int))
-  "Copy memory from src to dst.  Size is in bytes.  This is not an efficient implementation,
-  however, there are _no restrictions_ on size, alignment etc. Increasing address copy."
-  (let ((i 0)
-        (d (the pointer dst))
-        (s (the pointer src))
+(defun mem-copy! ((a0-0 pointer) (a1-0 pointer) (a2-0 int))
+  (local-vars
+   (v0-0 pointer)
+   (v1-0 int)
+   (v1-1 symbol)
+   (v1-2 symbol)
+   )
+  (begin
+   (set! v0-0 a0-0)
+   (set! v1-0 0)
+   (while
+    (< v1-0 a2-0)
+    (set! (-> (the-as (pointer int8) a0-0)) (-> (the-as (pointer uint8) a1-0)))
+    (set! a0-0 (+ a0-0 (the-as uint 1)))
+    (set! a1-0 (+ a1-0 (the-as uint 1)))
+    (set! v1-0 (+ v1-0 1))
+    )
+   (set! v1-1 '#f)
+   (set! v1-2 '#f)
+   v0-0
+   )
+  )
+
+(defun mem-set32! ((a0-0 pointer) (a1-0 int) (a2-0 int))
+  (local-vars
+   (v0-0 pointer)
+   (v1-0 int)
+   (v1-1 symbol)
+   (v1-2 symbol)
+   )
+  (begin
+   (set! v0-0 a0-0)
+   (set! v1-0 0)
+   (while
+    (< v1-0 a1-0)
+    (set! (-> (the-as (pointer int32) a0-0)) a2-0)
+    (set! a0-0 (+ a0-0 (the-as uint 4)))
+    (nop!)
+    (set! v1-0 (+ v1-0 1))
+    )
+   (set! v1-1 '#f)
+   (set! v1-2 '#f)
+   v0-0
+   )
+  )
+
+(defun mem-or! ((a0-0 pointer) (a1-0 pointer) (a2-0 int))
+  (local-vars
+   (v0-0 pointer)
+   (v1-0 int)
+   (v1-1 symbol)
+   (v1-2 symbol)
+   )
+  (begin
+   (set! v0-0 a0-0)
+   (set! v1-0 0)
+   (while
+    (< v1-0 a2-0)
+    (set!
+     (-> (the-as (pointer int8) a0-0))
+     (logior
+      (-> (the-as (pointer uint8) a0-0))
+      (-> (the-as (pointer uint8) a1-0))
+      )
+     )
+    (set! a0-0 (+ a0-0 (the-as uint 1)))
+    (set! a1-0 (+ a1-0 (the-as uint 1)))
+    (set! v1-0 (+ v1-0 1))
+    )
+   (set! v1-1 '#f)
+   (set! v1-2 '#f)
+   v0-0
+   )
+  )
+
+(defun fact ((a0-0 int))
+  (local-vars
+   (gp-0 int)
+   )
+  (begin (set! gp-0 a0-0) (if (= gp-0 1) 1 (* gp-0 (fact (+ gp-0 -1)))))
+  )
+
+(defun print ((a0-0 object))
+  ((method-of-type (type-of a0-0) print) a0-0)
+  )
+
+(defun printl ((a0-0 object))
+  (local-vars
+   (v1-2 object)
+   (a0-1 object)
+   (gp-0 object)
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (set! a0-1 gp-0)
+   (set! v1-2 ((method-of-type (type-of a0-1) print) a0-1))
+   (format '#t L324)
+   gp-0
+   )
+  )
+
+(defun inspect ((a0-0 object))
+  ((method-of-type (type-of a0-0) inspect) a0-0)
+  )
+
+(defun print-tree-bitmask ((a0-0 int) (a1-0 int))
+  (local-vars
+   (v1-3 symbol)
+   (s4-0 int)
+   (s5-0 int)
+   (gp-0 int)
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (set! s5-0 a1-0)
+   (set! s4-0 0)
+   (while
+    (< s4-0 s5-0)
+    (if (zero? (logand gp-0 1)) (format '#t L323) (format '#t L322))
+    (set! gp-0 (shr (the-as uint gp-0) 1))
+    (set! s4-0 (+ s4-0 1))
+    )
+   (set! v1-3 '#f)
+   '#f
+   )
+  )
+
+(defun valid? ((a0-0 object) (a1-0 type) (a2-0 basic) (a3-0 basic) (a4-0 object))
+  (local-vars
+   (v1-1 symbol)
+   (v1-3 symbol)
+   (v1-4 object)
+   (v1-5 symbol)
+   (v1-6 object)
+   (v1-7 symbol)
+   (v1-8 object)
+   (v1-9 symbol)
+   (v1-10 int)
+   (v1-11 int)
+   (v1-12 symbol)
+   (v1-13 object)
+   (v1-14 symbol)
+   (v1-15 object)
+   (v1-16 symbol)
+   (v1-17 object)
+   (v1-19 symbol)
+   (v1-20 object)
+   (v1-21 symbol)
+   (v1-22 object)
+   (v1-23 symbol)
+   (v1-24 object)
+   (v1-26 symbol)
+   (v1-29 symbol)
+   (v1-31 object)
+   (v1-33 symbol)
+   (v1-35 symbol)
+   (v1-37 object)
+   (v1-39 symbol)
+   (v1-41 object)
+   (v1-43 int)
+   (v1-44 int)
+   (v1-45 symbol)
+   (v1-46 object)
+   (v1-47 int)
+   (v1-48 int)
+   (v1-49 symbol)
+   (v1-50 object)
+   (a0-5 basic)
+   (s3-0 type)
+   (s4-0 basic)
+   (s5-0 object)
+   (s7-0 none)
+   (gp-0 object)
+   )
+  (begin
+   (set!
+    v1-1
+    (begin
+     (set! gp-0 a0-0)
+     (set! s3-0 a1-0)
+     (set! s4-0 a2-0)
+     (set! s5-0 t0-0)
+     (and
+      (>= (the-as uint gp-0) (the-as uint __START-OF-TABLE__))
+      (< (the-as uint gp-0) (the-as uint 134217728))
+      )
+     )
+    )
+   (cond
+    ((not s3-0)
+     (cond
+      ((nonzero? (logand (the-as int gp-0) 3))
+       (if s4-0 (set! v1-4 (format s5-0 L321 gp-0 s4-0)))
+       '#f
+       )
+      ((not v1-1) (if s4-0 (set! v1-6 (format s5-0 L320 gp-0 s4-0))) '#f)
+      (else '#t)
+      )
+     )
+    ((and a3-0 (not gp-0)) '#t)
+    (else
+     (cond
+      ((= s3-0 structure)
+       (cond
+        ((nonzero? (logand (the-as int gp-0) 15))
+         (if s4-0 (set! v1-8 (format s5-0 L319 gp-0 s4-0 s3-0)))
+         '#f
+         )
+        ((or
+          (not v1-1)
+          (begin
+           (set! v1-10 32768)
+           (.daddu v1-11 v1-10 s7-0)
+           (< (the-as uint gp-0) (the-as uint v1-11))
+           )
+          )
+         (if s4-0 (set! v1-13 (format s5-0 L318 gp-0 s4-0 s3-0)))
+         '#f
+         )
+        (else '#t)
         )
-    
-    (while (< i size)
-      (set! (-> (the (pointer uint8) d) 0) (-> (the (pointer uint8) s) 0))
-      (&+! d 1)
-      (&+! s 1)
-      (+1! i)
+       )
+      ((= s3-0 pair)
+       (cond
+        ((!= (logand (the-as int gp-0) 7) 2)
+         (if s4-0 (set! v1-15 (format s5-0 L319 gp-0 s4-0 s3-0)))
+         '#f
+         )
+        ((not v1-1)
+         (if s4-0 (set! v1-17 (format s5-0 L318 gp-0 s4-0 s3-0)))
+         '#f
+         )
+        (else '#t)
+        )
+       )
+      ((= s3-0 binteger)
+       (cond
+        ((zero? (logand (the-as int gp-0) 7)) '#t)
+        (else (if s4-0 (set! v1-20 (format s5-0 L319 gp-0 s4-0 s3-0))) '#f)
+        )
+       )
+      ((!= (logand (the-as int gp-0) 7) 4)
+       (if s4-0 (set! v1-22 (format s5-0 L319 gp-0 s4-0 s3-0)))
+       '#f
+       )
+      ((not v1-1) (if s4-0 (set! v1-24 (format s5-0 L318 gp-0 s4-0 s3-0))) '#f)
+      ((and (= s3-0 type) (!= (type-of gp-0) type))
+       (if s4-0 (set! v1-31 (format s5-0 L317 gp-0 s4-0 s3-0 (type-of gp-0))))
+       '#f
+       )
+      (else
+       (set!
+        v1-33
+        (and (!= s3-0 type) (not (valid? (type-of gp-0) type '#f '#t 0)))
+        )
+       (cond
+        (v1-33
+         (if s4-0 (set! v1-37 (format s5-0 L317 gp-0 s4-0 s3-0 (type-of gp-0))))
+         '#f
+         )
+        ((not (type-type? (type-of gp-0) s3-0))
+         (if s4-0 (set! v1-41 (format s5-0 L316 gp-0 s4-0 s3-0 (type-of gp-0))))
+         '#f
+         )
+        ((= s3-0 symbol)
+         (set! v1-43 32768)
+         (.daddu v1-44 v1-43 s7-0)
+         (cond
+          ((>= (the-as uint gp-0) (the-as uint v1-44))
+           (if s4-0 (set! v1-46 (format s5-0 L315 gp-0 s4-0 s3-0)))
+           '#f
+           )
+          (else '#t)
+          )
+         )
+        ((begin
+          (set! v1-47 32768)
+          (.daddu v1-48 v1-47 s7-0)
+          (< (the-as uint gp-0) (the-as uint v1-48))
+          )
+         (if s4-0 (set! v1-50 (format s5-0 L314 gp-0 s4-0 s3-0)))
+         '#f
+         )
+        (else '#t)
+        )
+       )
       )
+     )
     )
-  dst
+   )
   )
 
-(defun mem-set32! ((dst pointer) (value int) (n int))
-  "Memset a 32-bit value n times.  Total memory filled is 4 * n bytes."
-  (let ((p (the pointer dst))
-        (i 0))
-    (while (< i n)
-      (set! (-> (the (pointer int32) p) 0) value)
-      (&+! p 4)
-      (+1! i)
-      )
+(defun mem-print ((a0-0 (pointer uint32)) (a1-0 int))
+  (local-vars
+   (v1-19 symbol)
+   (s4-0 int)
+   (s5-0 int)
+   (gp-0 (pointer uint32))
+   )
+  (begin
+   (set! gp-0 a0-0)
+   (set! s5-0 a1-0)
+   (set! s4-0 0)
+   (while
+    (< s4-0 (sar s5-0 2))
+    (format
+     0
+     L354
+     (+ (+ (shl (shl s4-0 2) 2) 0) (the-as int gp-0))
+     (-> gp-0 (shl s4-0 2))
+     (-> gp-0 (+ (shl s4-0 2) 1))
+     (-> gp-0 (+ (shl s4-0 2) 2))
+     (-> gp-0 (+ (shl s4-0 2) 3))
+     )
+    (set! s4-0 (+ s4-0 1))
     )
-  dst
-  )
-
-
-(defun print-tree-bitmask ((bitmask int) (len int))
-  "The purpose of this function is unknown"
-  (dotimes (i len #f)
-    (if (zero? (logand bitmask 1))
-      (format #t "    ")
-      (format #t "|   ")
-      )
-    (set! bitmask (ash bitmask -1))
-    )
+   (set! v1-19 '#f)
+   '#f
+   )
   )
