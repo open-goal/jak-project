@@ -18,7 +18,7 @@
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
-#include "third-party/minilzo/minilzo.h"
+#include "third-party/lzokay/lzokay.hpp"
 #include "common/util/BinaryReader.h"
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
@@ -204,13 +204,10 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
   }
 
   if (is_jak2) {
-    if (lzo_init() != LZO_E_OK) {
-      assert(false);
-    }
     BinaryReader compressed_reader(dgo_data);
     // seek past oZlB
     compressed_reader.ffwd(4);
-    auto decompressed_size = compressed_reader.read<uint32_t>();
+    std::size_t decompressed_size = compressed_reader.read<uint32_t>();
     std::vector<uint8_t> decompressed_data;
     decompressed_data.resize(decompressed_size);
     size_t output_offset = 0;
@@ -222,11 +219,11 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
       }
 
       if (chunk_size < MAX_CHUNK_SIZE) {
-        lzo_uint bytes_written;
-        auto lzo_rv =
-            lzo1x_decompress(compressed_reader.here(), chunk_size,
-                             decompressed_data.data() + output_offset, &bytes_written, nullptr);
-        assert(lzo_rv == LZO_E_OK);
+        std::size_t bytes_written = 0;
+        lzokay::EResult ok = lzokay::decompress(
+            compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
+            decompressed_data.size() - output_offset, bytes_written);
+        assert(ok == lzokay::EResult::Success);
         compressed_reader.ffwd(chunk_size);
         output_offset += bytes_written;
       } else {

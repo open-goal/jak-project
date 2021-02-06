@@ -51,7 +51,7 @@ add_library(
 )
 
 target_link_libraries(decomp
-        minilzo
+        lzokay
         common
         fmt
         )
@@ -63,7 +63,7 @@ add_executable(decompiler
 target_link_libraries(decompiler
         decomp
         common
-        minilzo
+        lzokay
         fmt)
 
 install(TARGETS decompiler)
