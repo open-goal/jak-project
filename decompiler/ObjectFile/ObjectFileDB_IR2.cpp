@@ -31,14 +31,14 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_basic_block_pass();
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass();
-  //  lg::info("Running type analysis...");
-  //  ir2_type_analysis_pass();
-  //  lg::info("Register usage analysis...");
-  //  ir2_register_usage_pass();
-  //  lg::info("Variable analysis...");
-  //  ir2_variable_pass();
-  //  lg::info("Initial structuring..");
-  //  ir2_cfg_build_pass();
+  lg::info("Running type analysis...");
+  ir2_type_analysis_pass();
+  lg::info("Register usage analysis...");
+  ir2_register_usage_pass();
+  lg::info("Variable analysis...");
+  ir2_variable_pass();
+  lg::info("Initial structuring..");
+  ir2_cfg_build_pass();
   //  if (get_config().analyze_expressions) {
   //    lg::info("Storing temporary form result...");
   //    ir2_store_current_forms();
@@ -606,7 +606,8 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
         auto& op = func.get_atomic_op_at_instr(instr_id);
         op_id = func.ir2.atomic_ops->instruction_to_atomic_op.at(instr_id);
         append_commented(line, printed_comment,
-                         op.to_form(data.linked_data.labels, func.ir2.env).print());
+                         op.to_form(data.linked_data.labels, func.ir2.env).print() + "[" +
+                             std::to_string(op_id) + "]");
 
         if (func.ir2.env.has_type_analysis()) {
           append_commented(

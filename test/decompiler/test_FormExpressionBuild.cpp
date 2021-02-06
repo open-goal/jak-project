@@ -1600,7 +1600,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "    (set! s1-0 (car (cdr s3-0)))\n"
       "    (set! v1-1 (s5-0 s2-0 s1-0))\n"
       "    (when\n"
-      "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-2 (quote #t)))\n"
+      "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 (quote #t)))\n"
       "     (set! s4-0 (+ s4-0 1))\n"
       "     (set! (car s3-0) s1-0)\n"
       "     (set! (car (cdr s3-0)) s2-0)\n"
@@ -2337,10 +2337,10 @@ TEST_F(FormRegressionTest, ExprPrintName) {
       "   (string= a0-0 a1-0)\n"
       "   )\n"
       "  ((and (= (-> a0-0 type) string) (= (-> a1-0 type) symbol))\n"
-      "   (string= a0-0 (-> (+ 65336 (the-as int (the-as symbol a1-0))) 0))\n"
+      "   (string= a0-0 (-> (+ 65336 (the-as int a1-0)) 0))\n"
       "   )\n"
       "  ((and (= (-> a1-0 type) string) (= (-> a0-0 type) symbol))\n"
-      "   (string= a1-0 (-> (+ 65336 (the-as int (the-as symbol a0-0))) 0))\n"
+      "   (string= a1-0 (-> (+ 65336 (the-as int a0-0)) 0))\n"
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},

@@ -657,7 +657,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod2) {
       "      (quote #f)\n"
       "      )\n"
       "     (else\n"
-      "      (set! v1-40 (or (= v1-1 (quote uint128)) (= v1-40 (quote int128))))\n"
+      "      (set! v1-40 (or (= v1-1 (quote uint128)) (= v1-1 (quote int128))))\n"
       "      (cond\n"
       "       (v1-40\n"
       "        (set! s5-8 0)\n"
@@ -755,12 +755,12 @@ TEST_F(FormRegressionTest, ExprArrayMethod2) {
                                  "\t\t[121, [\"gp\", \"(array uint8)\"]],\n"
                                  "\t\t[141, [\"gp\", \"(array int16)\"]],\n"
                                  "\t\t[161, [\"gp\", \"(array uint16)\"]],\n"
-                                 "\t\t[185, [\"gp\", \"(array uint128)\"]],\n"
-                                 "\t\t[203, [\"gp\", \"(array int32)\"]],\n"
-                                 "\t\t[222, [\"gp\", \"(array float)\"]],\n"
-                                 "\t\t[231, [\"gp\", \"(array float)\"]],\n"
-                                 "\t\t[248, [\"gp\", \"(array basic)\"]],\n"
-                                 "\t\t[257, [\"gp\", \"(array basic)\"]]]"));
+                                 "\t\t[186, [\"gp\", \"(array uint128)\"]],\n"
+                                 "\t\t[204, [\"gp\", \"(array int32)\"]],\n"
+                                 "\t\t[223, [\"gp\", \"(array float)\"]],\n"
+                                 "\t\t[232, [\"gp\", \"(array float)\"]],\n"
+                                 "\t\t[249, [\"gp\", \"(array basic)\"]],\n"
+                                 "\t\t[258, [\"gp\", \"(array basic)\"]]]"));
 }
 
 TEST_F(FormRegressionTest, ExprArrayMethod3) {
@@ -1309,7 +1309,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
       "      (quote #f)\n"
       "      )\n"
       "     (else\n"
-      "      (set! v1-40 (or (= v1-1 (quote int128)) (= v1-40 (quote uint128))))\n"
+      "      (set! v1-40 (or (= v1-1 (quote int128)) (= v1-1 (quote uint128))))\n"
       "      (cond\n"
       "       (v1-40\n"
       "        (set! s5-8 0)\n"
@@ -1393,10 +1393,10 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
                                  "\t\t[132, [\"gp\", \"(array int8)\"]],\n"
                                  "\t\t[150, [\"gp\", \"(array int16)\"]],\n"
                                  "\t\t[168, [\"gp\", \"(array uint16)\"]],\n"
-                                 "\t\t[190, [\"gp\", \"(array uint128)\"]],\n"
-                                 "\t\t[203, [\"gp\", \"(array int32)\"]],\n"
-                                 "\t\t[225, [\"gp\", \"(array float)\"]],\n"
-                                 "\t\t[242, [\"gp\", \"(array basic)\"]]]"));
+                                 "\t\t[191, [\"gp\", \"(array uint128)\"]],\n"
+                                 "\t\t[204, [\"gp\", \"(array int32)\"]],\n"
+                                 "\t\t[226, [\"gp\", \"(array float)\"]],\n"
+                                 "\t\t[243, [\"gp\", \"(array basic)\"]]]"));
 }
 
 TEST_F(FormRegressionTest, ExprValid) {

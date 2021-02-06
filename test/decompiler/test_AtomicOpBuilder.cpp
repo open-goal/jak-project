@@ -170,14 +170,14 @@ TEST(DecompilerAtomicOpBuilder, ANDI) {
 }
 
 TEST(DecompilerAtomicOpBuilder, BEQL_SLL) {
-  test_case(assembly_from_list({"L100:", "beql a0, a1, L100", "sll r0, r0, 0"}),
-            {"(bl! (= a0 a1) L100 (nop!))"}, {{}}, {{"a0", "a1"}}, {{}});
-  test_case(assembly_from_list({"L100:", "beql r0, r0, L100", "sll r0, r0, 0"}),
-            {"(bl! #t L100 (nop!))"}, {{}}, {{}}, {{}});
-  test_case(assembly_from_list({"L100:", "beql a0, r0, L100", "sll r0, r0, 0"}),
-            {"(bl! (zero? a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
-  test_case(assembly_from_list({"L100:", "beql s7, a0, L100", "sll r0, r0, 0"}),
-            {"(bl! (not a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql a0, a1, L100"}),
+            {"(bl! (= a0 a1) L100 (no-delay!))"}, {{}}, {{"a0", "a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql r0, r0, L100"}), {"(bl! #t L100 (no-delay!))"}, {{}},
+            {{}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql a0, r0, L100"}),
+            {"(bl! (zero? a0) L100 (no-delay!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "beql s7, a0, L100"}), {"(bl! (not a0) L100 (no-delay!))"},
+            {{}}, {{"a0"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, BEQ_SLL) {
@@ -192,27 +192,27 @@ TEST(DecompilerAtomicOpBuilder, BEQ_SLL) {
 }
 
 TEST(DecompilerAtomicOpBuilder, BGEZL_SLL) {
-  test_case(assembly_from_list({"L100:", "bgezl a0, L100", "sll r0, r0, 0"}),
-            {"(bl! (>=0.si a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bgezl a0, L100"}), {"(bl! (>=0.si a0) L100 (no-delay!))"},
+            {{}}, {{"a0"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, BGTZL_SLL) {
-  test_case(assembly_from_list({"L100:", "bgtzl a0, L100", "sll r0, r0, 0"}),
-            {"(bl! (>0.si a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bgtzl a0, L100"}), {"(bl! (>0.si a0) L100 (no-delay!))"},
+            {{}}, {{"a0"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, BLTZL_SLL) {
-  test_case(assembly_from_list({"L100:", "bltzl a0, L100", "sll r0, r0, 0"}),
-            {"(bl! (<0.si a0) L100 (nop!))"}, {{}}, {{"a0"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bltzl a0, L100"}), {"(bl! (<0.si a0) L100 (no-delay!))"},
+            {{}}, {{"a0"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, BNEL_SLL) {
-  test_case(assembly_from_list({"L100:", "bnel a1, a2, L100", "sll r0, r0, 0"}),
-            {"(bl! (!= a1 a2) L100 (nop!))"}, {{}}, {{"a1", "a2"}}, {{}});
-  test_case(assembly_from_list({"L100:", "bnel a1, r0, L100", "sll r0, r0, 0"}),
-            {"(bl! (nonzero? a1) L100 (nop!))"}, {{}}, {{"a1"}}, {{}});
-  test_case(assembly_from_list({"L100:", "bnel s7, a1, L100", "sll r0, r0, 0"}),
-            {"(bl! (truthy a1) L100 (nop!))"}, {{}}, {{"a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bnel a1, a2, L100"}),
+            {"(bl! (!= a1 a2) L100 (no-delay!))"}, {{}}, {{"a1", "a2"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bnel a1, r0, L100"}),
+            {"(bl! (nonzero? a1) L100 (no-delay!))"}, {{}}, {{"a1"}}, {{}});
+  test_case(assembly_from_list({"L100:", "bnel s7, a1, L100"}),
+            {"(bl! (truthy a1) L100 (no-delay!))"}, {{}}, {{"a1"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, BNE_DADDIU) {
