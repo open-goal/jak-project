@@ -779,6 +779,7 @@ std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
   } else {
     condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
                               make_src_atom(s1, idx));
+    condition.make_flipped();
   }
   return make_branch(condition, i1, likely, dest, idx);
 }
@@ -809,6 +810,7 @@ std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
   } else {
     condition =
         IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
+    condition.make_flipped();
   }
   return make_branch(condition, i1, likely, dest, idx);
 }

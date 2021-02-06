@@ -1065,7 +1065,7 @@ Form* cfg_to_ir(FormPool& pool, const Function& f, const CfgVtx* vtx) {
   } else if (dynamic_cast<const InfiniteLoopBlock*>(vtx)) {
     auto wvtx = dynamic_cast<const InfiniteLoopBlock*>(vtx);
     auto condition = pool.alloc_single_element_form<ConditionElement>(
-        nullptr, IR2_Condition::Kind::ALWAYS, std::nullopt, std::nullopt, RegSet());
+        nullptr, IR2_Condition::Kind::ALWAYS, std::nullopt, std::nullopt, RegSet(), false);
     auto result = pool.alloc_single_element_form<WhileElement>(nullptr, condition,
                                                                cfg_to_ir(pool, f, wvtx->block));
     clean_up_infinite_while_loop(pool,

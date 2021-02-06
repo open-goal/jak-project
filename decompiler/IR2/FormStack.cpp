@@ -26,6 +26,7 @@ std::string FormStack::print(const Env& env) {
 }
 
 void FormStack::push_value_to_reg(Variable var, Form* value, bool sequence_point) {
+  assert(value);
   StackEntry entry;
   entry.active = true;  // by default, we should display everything!
   entry.sequence_point = sequence_point;
@@ -37,6 +38,7 @@ void FormStack::push_value_to_reg(Variable var, Form* value, bool sequence_point
 void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
                                         const Variable& src,
                                         Form* src_as_form) {
+  assert(src_as_form);
   StackEntry entry;
   entry.active = true;
   entry.sequence_point = false;
@@ -64,8 +66,11 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
   m_stack.push_back(entry);
 }
 
-Form* FormStack::pop_reg(const Variable& var, const RegSet& barrier, const Env& env) {
-  return pop_reg(var.reg(), barrier, env);
+Form* FormStack::pop_reg(const Variable& var,
+                         const RegSet& barrier,
+                         const Env& env,
+                         bool allow_side_effects) {
+  return pop_reg(var.reg(), barrier, env, allow_side_effects);
 }
 
 namespace {
@@ -77,22 +82,30 @@ bool nonempty_intersection(const RegSet& a, const RegSet& b) {
 }
 }  // namespace
 
-Form* FormStack::pop_reg(Register reg, const RegSet& barrier, const Env& env) {
+Form* FormStack::pop_reg(Register reg,
+                         const RegSet& barrier,
+                         const Env& env,
+                         bool allow_side_effects) {
   (void)env;  // keep this for easy debugging.
   RegSet modified;
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      if (entry.destination->reg() == reg) {
+      if (entry.destination.has_value() && entry.destination->reg() == reg) {
         entry.source->get_modified_regs(modified);
+        if (!allow_side_effects && entry.source->has_side_effects()) {
+          // the source of the set! has a side effect and that's not allowed, so abort.
+          return nullptr;
+        }
         if (nonempty_intersection(modified, barrier)) {
+          // violating the barrier registers.
           return nullptr;
         }
         entry.active = false;
         assert(entry.source);
         if (entry.non_seq_source.has_value()) {
           assert(entry.sequence_point == false);
-          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env);
+          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects);
           if (result) {
             return result;
           }
@@ -108,9 +121,17 @@ Form* FormStack::pop_reg(Register reg, const RegSet& barrier, const Env& env) {
         if (entry.source) {
           assert(!entry.elt);
           entry.source->get_modified_regs(modified);
+          if (!allow_side_effects) {
+            // shouldn't allow skipping past a set! (may be too conservative?)
+            return nullptr;
+          }
         } else {
           assert(entry.elt);
           entry.elt->get_modified_regs(modified);
+          if (!allow_side_effects && entry.elt->has_side_effects()) {
+            // shouldn't allow skipping past something with a set! (also may be too conservative?)
+            return nullptr;
+          }
         }
       }
     }

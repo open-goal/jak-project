@@ -105,12 +105,20 @@ enum class FixedOperatorKind {
   LOGXOR,
   LOGNOR,
   LOGNOT,
-  SLL,
-  SRL,
+  SHL,
+  SHR,
+  SAR,
   CAR,
   CDR,
   NEW,
   OBJECT_NEW,
+  TYPE_NEW,
+  LT,
+  GT,
+  LEQ,
+  GEQ,
+  EQ,
+  NEQ,
   INVALID
 };
 

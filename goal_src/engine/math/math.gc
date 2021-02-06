@@ -47,7 +47,7 @@
 
 (defun log2 ((x int))
   "Straight out of Bit Twiddling Hacks graphics.stanford.edu"
-  (- (sarv (the-as integer (the float x)) 23) 127)
+  (- (sar (the-as integer (the float x)) 23) 127)
   )
 
 (defun seek ((x float) (target float) (diff float))
@@ -139,7 +139,7 @@
 (set! (-> *random-generator* seed) #x666EDD1E)
 
 (defmacro sext32-64 (x)
-  `(sarv (shlv ,x 32) 32)
+  `(sar (shl ,x 32) 32)
   )
 
 (defun rand-uint31-gen ((gen random-generator))
@@ -152,17 +152,17 @@
          ;; mult3 v0, v1, a1
          (prod (imul64 16807 sd))
          ;; mfhi v1
-         (hi (shrv prod 32)) ;; sign extend this?
-         (lo (sarv (shlv prod 32) 32))
+         (hi (shr prod 32)) ;; sign extend this?
+         (lo (sar (shl prod 32) 32))
          ;; daddu v1, v1, v1
          (v1 (+ hi hi))
          ;; srl a1, v0, 31
-         (a1 (logand #xffffffff (shrv lo 31)))
+         (a1 (logand #xffffffff (shr lo 31)))
          ;; or v1, v1, a1
          ;; daddu v0, v0 v1
          (result (+ lo (logior v1 a1)))
         )
-    (set! result (shrv (logand #xffffffff (shlv result 1)) 1))
+    (set! result (shr (logand #xffffffff (shl result 1)) 1))
     (set! (-> gen seed) result)
     result
     )

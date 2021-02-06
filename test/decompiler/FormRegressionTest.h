@@ -66,5 +66,13 @@ class FormRegressionTest : public ::testing::Test {
     test(code, type, expected, true, allow_pairs, method_name, strings, hints);
   }
 
+  void test_final_function(
+      const std::string& code,
+      const std::string& type,
+      const std::string& expected,
+      bool allow_pairs = false,
+      const std::vector<std::pair<std::string, std::string>>& strings = {},
+      const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {});
+
   std::unordered_map<int, std::vector<decompiler::TypeHint>> parse_hint_json(const std::string& in);
 };

@@ -16,8 +16,11 @@ class FormStack {
   void push_value_to_reg(Variable var, Form* value, bool sequence_point);
   void push_non_seq_reg_to_reg(const Variable& dst, const Variable& src, Form* src_as_form);
   void push_form_element(FormElement* elt, bool sequence_point);
-  Form* pop_reg(const Variable& var, const RegSet& barrier, const Env& env);
-  Form* pop_reg(Register reg, const RegSet& barrier, const Env& env);
+  Form* pop_reg(const Variable& var,
+                const RegSet& barrier,
+                const Env& env,
+                bool allow_side_effects);
+  Form* pop_reg(Register reg, const RegSet& barrier, const Env& env, bool allow_side_effects);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);
   std::vector<FormElement*> rewrite_to_get_var(FormPool& pool, const Variable& var, const Env& env);

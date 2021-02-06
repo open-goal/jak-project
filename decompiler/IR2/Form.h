@@ -30,13 +30,15 @@ class FormElement {
   virtual void collect_vars(VariableSet& vars) const = 0;
   virtual void get_modified_regs(RegSet& regs) const = 0;
   std::string to_string(const Env& env) const;
+  bool has_side_effects();
 
   // push the result of this operation to the operation stack
   virtual void push_to_stack(const Env& env, FormPool& pool, FormStack& stack);
   virtual void update_from_stack(const Env& env,
                                  FormPool& pool,
                                  FormStack& stack,
-                                 std::vector<FormElement*>* result);
+                                 std::vector<FormElement*>* result,
+                                 bool allow_side_effects);
 
  protected:
   friend class Form;
@@ -59,53 +61,62 @@ class SimpleExpressionElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
-
   void update_from_stack_identity(const Env& env,
                                   FormPool& pool,
                                   FormStack& stack,
-                                  std::vector<FormElement*>* result);
+                                  std::vector<FormElement*>* result,
+                                  bool allow_side_effects);
   void update_from_stack_gpr_to_fpr(const Env& env,
                                     FormPool& pool,
                                     FormStack& stack,
-                                    std::vector<FormElement*>* result);
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
   void update_from_stack_fpr_to_gpr(const Env& env,
                                     FormPool& pool,
                                     FormStack& stack,
-                                    std::vector<FormElement*>* result);
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
   void update_from_stack_div_s(const Env& env,
                                FormPool& pool,
                                FormStack& stack,
-                               std::vector<FormElement*>* result);
+                               std::vector<FormElement*>* result,
+                               bool allow_side_effects);
   void update_from_stack_add_i(const Env& env,
                                FormPool& pool,
                                FormStack& stack,
-                               std::vector<FormElement*>* result);
+                               std::vector<FormElement*>* result,
+                               bool allow_side_effects);
   void update_from_stack_mult_si(const Env& env,
                                  FormPool& pool,
                                  FormStack& stack,
-                                 std::vector<FormElement*>* result);
+                                 std::vector<FormElement*>* result,
+                                 bool allow_side_effects);
   void update_from_stack_lognot(const Env& env,
                                 FormPool& pool,
                                 FormStack& stack,
-                                std::vector<FormElement*>* result);
-
+                                std::vector<FormElement*>* result,
+                                bool allow_side_effects);
   void update_from_stack_force_si_2(const Env& env,
                                     FixedOperatorKind kind,
                                     FormPool& pool,
                                     FormStack& stack,
-                                    std::vector<FormElement*>* result);
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
   void update_from_stack_force_ui_2(const Env& env,
                                     FixedOperatorKind kind,
                                     FormPool& pool,
                                     FormStack& stack,
-                                    std::vector<FormElement*>* result);
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
   void update_from_stack_copy_first_int_2(const Env& env,
                                           FixedOperatorKind kind,
                                           FormPool& pool,
                                           FormStack& stack,
-                                          std::vector<FormElement*>* result);
+                                          std::vector<FormElement*>* result,
+                                          bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -151,7 +162,8 @@ class LoadSourceElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
  private:
@@ -194,7 +206,8 @@ class SetVarElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
   const Variable& dst() const { return m_dst; }
@@ -259,7 +272,8 @@ class ConditionElement : public FormElement {
   ConditionElement(IR2_Condition::Kind kind,
                    std::optional<SimpleAtom> src0,
                    std::optional<SimpleAtom> src1,
-                   RegSet consumed);
+                   RegSet consumed,
+                   bool flipped);
   goos::Object to_form(const Env& env) const override;
   goos::Object to_form_as_condition(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -269,15 +283,22 @@ class ConditionElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
   void invert();
   const RegSet& consume() const { return m_consumed; }
+
+  FormElement* make_generic(const Env& env,
+                            FormPool& pool,
+                            const std::vector<Form*>& source_forms,
+                            const std::vector<TypeSpec>& types);
 
  private:
   IR2_Condition::Kind m_kind;
   std::optional<SimpleAtom> m_src[2];
   RegSet m_consumed;
+  bool m_flipped;
 };
 
 /*!
@@ -293,7 +314,8 @@ class FunctionCallElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
 
@@ -395,6 +417,7 @@ class CondWithElseElement : public FormElement {
   };
   std::vector<Entry> entries;
   Form* else_ir = nullptr;
+  bool already_rewritten = false;
   CondWithElseElement(std::vector<Entry> _entries, Form* _else_ir)
       : entries(std::move(_entries)), else_ir(_else_ir) {}
   goos::Object to_form(const Env& env) const override;
@@ -481,6 +504,7 @@ class ShortCircuitElement : public FormElement {
   Variable final_result;
   std::vector<Entry> entries;
   std::optional<bool> used_as_value = std::nullopt;
+  bool already_rewritten = false;
 
   explicit ShortCircuitElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const Env& env) const override;
@@ -491,7 +515,8 @@ class ShortCircuitElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 };
 
@@ -511,6 +536,7 @@ class CondNoElseElement : public FormElement {
   };
   Variable final_destination;
   bool used_as_value = false;
+  bool already_rewritten = false;
   std::vector<Entry> entries;
   explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
   goos::Object to_form(const Env& env) const override;
@@ -534,7 +560,8 @@ class AbsElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
   Variable source;
   RegSet consumed;
@@ -563,7 +590,8 @@ class AshElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 };
 
@@ -584,7 +612,8 @@ class TypeOfElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
 };
 
 /*!
@@ -681,7 +710,8 @@ class GenericElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const GenericOperator& op() const { return m_head; }
@@ -704,7 +734,8 @@ class CastElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   const TypeSpec& type() const { return m_type; }
   const Form* source() const { return m_source; }
   Form* source() { return m_source; }
@@ -756,7 +787,8 @@ class DerefElement : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
   bool is_addr_of() const { return m_is_addr_of; }
@@ -780,7 +812,8 @@ class DynamicMethodAccess : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
  private:
@@ -791,7 +824,8 @@ class ArrayFieldAccess : public FormElement {
  public:
   ArrayFieldAccess(Variable source,
                    const std::vector<DerefToken>& deref_tokens,
-                   int expected_stride);
+                   int expected_stride,
+                   int constant_offset);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -799,13 +833,15 @@ class ArrayFieldAccess : public FormElement {
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
-                         std::vector<FormElement*>* result) override;
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
  private:
   Variable m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
+  int m_constant_offset = -1;
 };
 
 class GetMethodElement : public FormElement {
@@ -888,7 +924,11 @@ class Form {
   void apply_form(const std::function<void(Form*)>& f);
   void collect_vars(VariableSet& vars) const;
 
-  void update_children_from_stack(const Env& env, FormPool& pool, FormStack& stack);
+  void update_children_from_stack(const Env& env,
+                                  FormPool& pool,
+                                  FormStack& stack,
+                                  bool allow_side_effects);
+  bool has_side_effects();
   void get_modified_regs(RegSet& regs) const;
 
   FormElement* parent_element = nullptr;

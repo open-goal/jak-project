@@ -396,30 +396,6 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
   return get_none();
 }
 
-Val* Compiler::compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(form, first, second, env, IntegerMathKind::SHLV_64);
-}
-
-Val* Compiler::compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(form, first, second, env, IntegerMathKind::SARV_64);
-}
-
-Val* Compiler::compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(form, first, second, env, IntegerMathKind::SHRV_64);
-}
-
 Val* Compiler::compile_variable_shift(const goos::Object& form,
                                       const RegVal* in,
                                       const RegVal* sa,
@@ -449,35 +425,50 @@ Val* Compiler::compile_variable_shift(const goos::Object& form,
 
 Val* Compiler::compile_shl(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto sa = args.unnamed.at(1).as_int();
-  if (sa < 0 || sa > 64) {
-    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+  int64_t constant_sa = -1;
+  if (try_getting_constant_integer(args.unnamed.at(1), &constant_sa, env)) {
+    if (constant_sa < 0 || constant_sa > 64) {
+      throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+    }
+    return compile_fixed_shift(form, first, constant_sa, env, IntegerMathKind::SHL_64);
+  } else {
+    auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+    return compile_variable_shift(form, first, second, env, IntegerMathKind::SHLV_64);
   }
-  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SHL_64);
 }
 
 Val* Compiler::compile_shr(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto sa = args.unnamed.at(1).as_int();
-  if (sa < 0 || sa > 64) {
-    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount");
+  int64_t constant_sa = -1;
+  if (try_getting_constant_integer(args.unnamed.at(1), &constant_sa, env)) {
+    if (constant_sa < 0 || constant_sa > 64) {
+      throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+    }
+    return compile_fixed_shift(form, first, constant_sa, env, IntegerMathKind::SHR_64);
+  } else {
+    auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+    return compile_variable_shift(form, first, second, env, IntegerMathKind::SHRV_64);
   }
-  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SHR_64);
 }
 
 Val* Compiler::compile_sar(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto sa = args.unnamed.at(1).as_int();
-  if (sa < 0 || sa > 64) {
-    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount");
+  int64_t constant_sa = -1;
+  if (try_getting_constant_integer(args.unnamed.at(1), &constant_sa, env)) {
+    if (constant_sa < 0 || constant_sa > 64) {
+      throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+    }
+    return compile_fixed_shift(form, first, constant_sa, env, IntegerMathKind::SAR_64);
+  } else {
+    auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+    return compile_variable_shift(form, first, second, env, IntegerMathKind::SARV_64);
   }
-  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SAR_64);
 }
 
 Val* Compiler::compile_fixed_shift(const goos::Object& form,

@@ -356,8 +356,9 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 ConditionElement::ConditionElement(IR2_Condition::Kind kind,
                                    std::optional<SimpleAtom> src0,
                                    std::optional<SimpleAtom> src1,
-                                   RegSet consumed)
-    : m_kind(kind), m_consumed(std::move(consumed)) {
+                                   RegSet consumed,
+                                   bool flipped)
+    : m_kind(kind), m_consumed(std::move(consumed)), m_flipped(flipped) {
   m_src[0] = src0;
   m_src[1] = src1;
 }
@@ -768,7 +769,7 @@ goos::Object CondNoElseElement::to_form(const Env& env) const {
     for (auto& e : entries) {
       std::vector<goos::Object> entry;
       entry.push_back(e.condition->to_form_as_condition(env));
-      entries.front().body->inline_forms(list, env);
+      e.body->inline_forms(entry, env);
       list.push_back(pretty_print::build_list(entry));
     }
     return pretty_print::build_list(list);
@@ -1067,10 +1068,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "lognor";
     case FixedOperatorKind::LOGNOT:
       return "lognot";
-    case FixedOperatorKind::SLL:
-      return "sll";
-    case FixedOperatorKind::SRL:
-      return "srl";
+    case FixedOperatorKind::SHL:
+      return "shl";
+    case FixedOperatorKind::SHR:
+      return "shr";
+    case FixedOperatorKind::SAR:
+      return "sar";
     case FixedOperatorKind::CAR:
       return "car";
     case FixedOperatorKind::CDR:
@@ -1079,6 +1082,21 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "new";
     case FixedOperatorKind::OBJECT_NEW:
       return "object-new";
+    case FixedOperatorKind::TYPE_NEW:
+      return "type-new";
+
+    case FixedOperatorKind::LT:
+      return "<";
+    case FixedOperatorKind::GT:
+      return ">";
+    case FixedOperatorKind::LEQ:
+      return "<=";
+    case FixedOperatorKind::GEQ:
+      return ">=";
+    case FixedOperatorKind::EQ:
+      return "=";
+    case FixedOperatorKind::NEQ:
+      return "!=";
     default:
       assert(false);
   }
@@ -1323,8 +1341,12 @@ void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 ArrayFieldAccess::ArrayFieldAccess(Variable source,
                                    const std::vector<DerefToken>& deref_tokens,
-                                   int expected_stride)
-    : m_source(source), m_deref_tokens(deref_tokens), m_expected_stride(expected_stride) {}
+                                   int expected_stride,
+                                   int constant_offset)
+    : m_source(source),
+      m_deref_tokens(deref_tokens),
+      m_expected_stride(expected_stride),
+      m_constant_offset(constant_offset) {}
 
 goos::Object ArrayFieldAccess::to_form(const Env& env) const {
   std::vector<goos::Object> elts;

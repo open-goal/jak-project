@@ -45,7 +45,7 @@ ConditionElement* IR2_Condition::get_as_form(FormPool& pool, const Env& env, int
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     vars[i] = m_src[i];
   }
-  return pool.alloc_element<ConditionElement>(m_kind, vars[0], vars[1], consumed);
+  return pool.alloc_element<ConditionElement>(m_kind, vars[0], vars[1], consumed, m_flipped_eval);
 }
 
 FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
@@ -90,6 +90,13 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
 
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
+    if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
+      auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value.as_expr(),
+                                                                         m_my_idx);
+      auto src = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_addr, m_my_idx);
+      return pool.alloc_element<SetFormFormElement>(src, val);
+    }
+
     IR2_RegOffset ro;
     if (get_as_reg_offset(m_addr, &ro)) {
       auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
@@ -238,8 +245,10 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           }
           assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
 
-          auto load = pool.alloc_single_element_form<ArrayFieldAccess>(nullptr, ro.var, tokens,
-                                                                       input_type.get_multiplier());
+          // we pass along the register offset because code generation seems to be a bit
+          // different in different cases.
+          auto load = pool.alloc_single_element_form<ArrayFieldAccess>(
+              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
           return pool.alloc_element<SetVarElement>(m_dst, load, true);
         }
       }

@@ -57,67 +57,6 @@ std::string Env::print_local_var_types(const Form* top_level_form) const {
     entries.push_back(fmt::format("{}: {}", x.name(), x.type.typespec().print()));
   }
 
-  if (top_level_form) {
-    VariableSet var_set;
-    top_level_form->collect_vars(var_set);
-
-    // we want to sort them for easier reading:
-    std::vector<std::pair<RegId, Variable>> vars;
-
-    for (auto& x : var_set) {
-      vars.push_back(std::make_pair(get_ssa_var(x), x));
-    }
-
-    std::sort(vars.begin(), vars.end(),
-              [](const std::pair<RegId, Variable>& a, const std::pair<RegId, Variable>& b) {
-                return a.first < b.first;
-              });
-
-    RegId* prev = nullptr;
-    for (auto& x : vars) {
-      // sorted by ssa var and there are likely duplicates of Variables and SSA vars, only print
-      // unique ssa variables.
-      if (prev && x.first == *prev) {
-        continue;
-      }
-      prev = &x.first;
-      auto& map = x.second.mode() == VariableMode::WRITE ? m_var_names.write_vars.at(x.second.reg())
-                                                         : m_var_names.read_vars.at(x.second.reg());
-      auto& info = map.at(x.first.id);
-
-      if (info.initialized) {
-        entries.push_back(fmt::format("{}: {}", info.name(), info.type.typespec().print()));
-      } else {
-        assert(false);
-      }
-    }
-  } else {
-    std::unordered_map<Register, std::unordered_set<int>, Register::hash> printed;
-
-    for (auto& reg_info : m_var_names.read_vars) {
-      auto& reg_printed = printed[reg_info.first];
-      for (int var_id = 0; var_id < int(reg_info.second.size()); var_id++) {
-        auto& info = reg_info.second.at(var_id);
-        if (info.initialized) {
-          reg_printed.insert(var_id);
-          entries.push_back(fmt::format("{}: {}", info.name(), info.type.typespec().print()));
-        }
-      }
-    }
-
-    for (auto& reg_info : m_var_names.write_vars) {
-      auto& reg_printed = printed[reg_info.first];
-      for (int var_id = 0; var_id < int(reg_info.second.size()); var_id++) {
-        auto& info = reg_info.second.at(var_id);
-        if (info.initialized) {
-          if (reg_printed.find(var_id) == reg_printed.end()) {
-            entries.push_back(fmt::format("{}: {}", info.name(), info.type.typespec().print()));
-          }
-        }
-      }
-    }
-  }
-
   int max_len = 0;
   for (auto& entry : entries) {
     if (int(entry.length()) > max_len) {
@@ -228,7 +167,7 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
   int count = 0;
   for (auto& x : vars) {
     if (x.reg_id.reg.get_kind() == Reg::GPR && x.reg_id.reg.get_gpr() < Reg::A0 + nargs_to_ignore &&
-        x.reg_id.reg.get_gpr() >= Reg::A0) {
+        x.reg_id.reg.get_gpr() >= Reg::A0 && x.reg_id.id == 0) {
       continue;
     }
     count++;

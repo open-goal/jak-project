@@ -70,7 +70,7 @@ bool create_dir_if_needed(const std::string& path) {
   return false;
 }
 
-void write_binary_file(const std::string& name, void* data, size_t size) {
+void write_binary_file(const std::string& name, const void* data, size_t size) {
   FILE* fp = fopen(name.c_str(), "wb");
   if (!fp) {
     throw std::runtime_error("couldn't open file " + name);

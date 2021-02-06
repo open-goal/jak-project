@@ -390,9 +390,6 @@ class Compiler {
   Val* compile_mul(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_imul64(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_div(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_shl(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_sar(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_shr(const goos::Object& form, const goos::Object& rest, Env* env);

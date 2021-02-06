@@ -543,7 +543,7 @@ TEST_P(VectorFloatParameterizedTestFixtureWithRunner, VF_ABS_DEST) {
   testCase.operation = [](float x, float y) {
     // Avoid compiler warnings for unused variable, making a varient that accepts a lambda with only
     // 1 float is just unnecessary complexity
-    y = 0;
+    (void)y;
     return fabs(x);
   };
 
