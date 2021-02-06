@@ -29,22 +29,22 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_top_level_pass();
   lg::info("Processing basic blocks and control flow graph...");
   ir2_basic_block_pass();
-  lg::info("Converting to atomic ops...");
-  ir2_atomic_op_pass();
-  lg::info("Running type analysis...");
-  ir2_type_analysis_pass();
-  lg::info("Register usage analysis...");
-  ir2_register_usage_pass();
-  lg::info("Variable analysis...");
-  ir2_variable_pass();
-  lg::info("Initial structuring..");
-  ir2_cfg_build_pass();
-  if (get_config().analyze_expressions) {
-    lg::info("Storing temporary form result...");
-    ir2_store_current_forms();
-    lg::info("Expression building...");
-    ir2_build_expressions();
-  }
+  //  lg::info("Converting to atomic ops...");
+  //  ir2_atomic_op_pass();
+  //  lg::info("Running type analysis...");
+  //  ir2_type_analysis_pass();
+  //  lg::info("Register usage analysis...");
+  //  ir2_register_usage_pass();
+  //  lg::info("Variable analysis...");
+  //  ir2_variable_pass();
+  //  lg::info("Initial structuring..");
+  //  ir2_cfg_build_pass();
+  //  if (get_config().analyze_expressions) {
+  //    lg::info("Storing temporary form result...");
+  //    ir2_store_current_forms();
+  //    lg::info("Expression building...");
+  //    ir2_build_expressions();
+  //  }
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
@@ -187,12 +187,14 @@ void ObjectFileDB::ir2_basic_block_pass() {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
+      //      if (func.guessed_name.to_string() == "abs") {
       func.cfg = build_cfg(data.linked_data, segment_id, func);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
         failed_to_build_cfg++;
       }
+      //      }
 
       // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
@@ -648,6 +650,16 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   for (int i = end_idx; i < func.end_word - func.start_word; i++) {
     print_instr_start(i);
     print_instr_end(i);
+  }
+
+  if (func.cfg) {
+    result += func.cfg->to_form_string();
+
+    if (!func.cfg->is_fully_resolved()) {
+      result += "\n";
+      result += func.cfg->to_dot();
+      result += "\n";
+    }
   }
 
   result += "\n";
