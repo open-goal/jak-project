@@ -464,6 +464,7 @@ class IR2_BranchDelay {
     SET_PAIR,
     DSLLV,
     NEGATE,
+    NO_DELAY,
     UNKNOWN
   };
 

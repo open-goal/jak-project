@@ -371,12 +371,22 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
                                       bool likely,
                                       int dest_label,
                                       int my_idx) {
+  assert(!likely);
   auto branch_delay = get_branch_delay(delay, my_idx);
   if (branch_delay.is_known()) {
     return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
   } else {
     return nullptr;
   }
+}
+
+std::unique_ptr<AtomicOp> make_branch_no_delay(const IR2_Condition& condition,
+                                               bool likely,
+                                               int dest_label,
+                                               int my_idx) {
+  assert(likely);
+  IR2_BranchDelay delay(IR2_BranchDelay::Kind::NO_DELAY);
+  return std::make_unique<BranchOp>(likely, condition, dest_label, delay, my_idx);
 }
 
 ///////////////////////
@@ -615,6 +625,63 @@ std::unique_ptr<AtomicOp> convert_dsrl32_1(const Instruction& i0, int idx) {
   return make_2reg_1imm_op(i0, SimpleExpression::Kind::RIGHT_SHIFT_LOGIC, idx, 32);
 }
 
+std::unique_ptr<AtomicOp> convert_likely_branch_1(const Instruction& i0,
+                                                  IR2_Condition::Kind kind,
+                                                  bool likely,
+                                                  int idx) {
+  return make_branch_no_delay(IR2_Condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx)),
+                              likely, i0.get_src(1).get_label(), idx);
+}
+
+std::unique_ptr<AtomicOp> convert_beql_1(const Instruction& i0, int idx, bool likely) {
+  auto s0 = i0.get_src(0).get_reg();
+  auto s1 = i0.get_src(1).get_reg();
+  auto dest = i0.get_src(2).get_label();
+  IR2_Condition condition;
+  if (s0 == rr0() && s1 == rr0()) {
+    condition = IR2_Condition(IR2_Condition::Kind::ALWAYS);
+  } else if (s1 == rr0()) {
+    condition = IR2_Condition(IR2_Condition::Kind::ZERO, make_src_atom(s0, idx));
+  } else if (i0.get_src(0).is_reg(rs7())) {
+    if (s1 == rs7()) {
+      // (if #f ...) type code?
+      condition = IR2_Condition(IR2_Condition::Kind::FALSE, SimpleAtom::make_sym_ptr("#f"));
+    } else {
+      condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_atom(s1, idx));
+    }
+  } else if (s1 == rs7()) {
+    // likely a case where somebody wrote (= x #f) or (!= x #f). much rarer than the flipped one
+    condition = IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx),
+                              SimpleAtom::make_sym_ptr("#f"));
+  } else {
+    condition =
+        IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
+    condition.make_flipped();
+  }
+  return make_branch_no_delay(condition, likely, dest, idx);
+}
+
+std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0, int idx, bool likely) {
+  auto s0 = i0.get_src(0).get_reg();
+  auto s1 = i0.get_src(1).get_reg();
+  auto dest = i0.get_src(2).get_label();
+  IR2_Condition condition;
+  if (s1 == rr0()) {
+    condition = IR2_Condition(IR2_Condition::Kind::NONZERO, make_src_atom(s0, idx));
+  } else if (i0.get_src(0).is_reg(rs7())) {
+    condition = IR2_Condition(IR2_Condition::Kind::TRUTHY, make_src_atom(s1, idx));
+  } else if (s1 == rs7()) {
+    // likely a case where somebody wrote (= x #f) or (!= x #f). much rarer than the flipped one
+    condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
+                              SimpleAtom::make_sym_ptr("#f"));
+  } else {
+    condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
+                              make_src_atom(s1, idx));
+    condition.make_flipped();
+  }
+  return make_branch_no_delay(condition, likely, dest, idx);
+}
+
 std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
   switch (i0.kind) {
     case InstructionKind::OR:
@@ -722,6 +789,16 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
     case InstructionKind::MOVN:
     case InstructionKind::MOVZ:
       return convert_cmov_1(i0, idx);
+    case InstructionKind::BGTZL:
+      return convert_likely_branch_1(i0, IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED, true, idx);
+    case InstructionKind::BGEZL:
+      return convert_likely_branch_1(i0, IR2_Condition::Kind::GEQ_ZERO_SIGNED, true, idx);
+    case InstructionKind::BLTZL:
+      return convert_likely_branch_1(i0, IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED, true, idx);
+    case InstructionKind::BEQL:
+      return convert_beql_1(i0, idx, true);
+    case InstructionKind::BNEL:
+      return convert_bnel_1(i0, idx, true);
     default:
       return nullptr;
   }
@@ -813,15 +890,6 @@ std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
     condition.make_flipped();
   }
   return make_branch(condition, i1, likely, dest, idx);
-}
-
-std::unique_ptr<AtomicOp> convert_branch_r1_2(const Instruction& i0,
-                                              const Instruction& i1,
-                                              IR2_Condition::Kind kind,
-                                              bool likely,
-                                              int idx) {
-  return make_branch(IR2_Condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx)), i1, likely,
-                     i0.get_src(1).get_label(), idx);
 }
 
 std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0, const Instruction& i1, int idx) {
@@ -921,18 +989,8 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
       return convert_jalr_2(i0, i1, idx);
     case InstructionKind::BNE:
       return convert_bne_2(i0, i1, idx, false);
-    case InstructionKind::BNEL:
-      return convert_bne_2(i0, i1, idx, true);
     case InstructionKind::BEQ:
       return convert_beq_2(i0, i1, idx, false);
-    case InstructionKind::BEQL:
-      return convert_beq_2(i0, i1, idx, true);
-    case InstructionKind::BGTZL:
-      return convert_branch_r1_2(i0, i1, IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED, true, idx);
-    case InstructionKind::BGEZL:
-      return convert_branch_r1_2(i0, i1, IR2_Condition::Kind::GEQ_ZERO_SIGNED, true, idx);
-    case InstructionKind::BLTZL:
-      return convert_branch_r1_2(i0, i1, IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED, true, idx);
     case InstructionKind::DADDIU:
       return convert_daddiu_2(i0, i1, idx);
     case InstructionKind::LUI:

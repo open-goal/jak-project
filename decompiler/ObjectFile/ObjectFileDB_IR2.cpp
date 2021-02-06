@@ -29,8 +29,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_top_level_pass();
   lg::info("Processing basic blocks and control flow graph...");
   ir2_basic_block_pass();
-  //  lg::info("Converting to atomic ops...");
-  //  ir2_atomic_op_pass();
+  lg::info("Converting to atomic ops...");
+  ir2_atomic_op_pass();
   //  lg::info("Running type analysis...");
   //  ir2_type_analysis_pass();
   //  lg::info("Register usage analysis...");

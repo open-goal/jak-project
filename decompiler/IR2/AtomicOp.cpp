@@ -954,7 +954,7 @@ void LoadVarOp::collect_vars(VariableSet& vars) const {
 /////////////////////////////
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind) : m_kind(kind) {
-  assert(m_kind == Kind::NOP);
+  assert(m_kind == Kind::NOP || m_kind == Kind::NO_DELAY);
 }
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0) : m_kind(kind) {
@@ -989,6 +989,8 @@ goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels
   switch (m_kind) {
     case Kind::NOP:
       return pretty_print::build_list("nop!");
+    case Kind::NO_DELAY:
+      return pretty_print::build_list("no-delay!");
     case Kind::SET_REG_FALSE:
       assert(m_var[0].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env), "#f");
@@ -1034,6 +1036,7 @@ bool IR2_BranchDelay::operator==(const IR2_BranchDelay& other) const {
 void IR2_BranchDelay::get_regs(std::vector<Register>* write, std::vector<Register>* read) const {
   switch (m_kind) {
     case Kind::NOP:
+    case Kind::NO_DELAY:
       break;
     case Kind::SET_REG_FALSE:
     case Kind::SET_REG_TRUE:
