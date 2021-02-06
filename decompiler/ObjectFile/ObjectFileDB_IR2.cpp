@@ -39,12 +39,12 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_variable_pass();
   lg::info("Initial structuring..");
   ir2_cfg_build_pass();
-  //  if (get_config().analyze_expressions) {
-  //    lg::info("Storing temporary form result...");
-  //    ir2_store_current_forms();
-  //    lg::info("Expression building...");
-  //    ir2_build_expressions();
-  //  }
+  if (get_config().analyze_expressions) {
+    lg::info("Storing temporary form result...");
+    ir2_store_current_forms();
+    lg::info("Expression building...");
+    ir2_build_expressions();
+  }
   lg::info("Writing results...");
   ir2_write_results(output_dir);
 }
