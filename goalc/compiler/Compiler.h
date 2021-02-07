@@ -338,6 +338,7 @@ class Compiler {
   Val* compile_return_from(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_label(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_goto(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_nop(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // CompilerControl
   Val* compile_seval(const goos::Object& form, const goos::Object& rest, Env* env);

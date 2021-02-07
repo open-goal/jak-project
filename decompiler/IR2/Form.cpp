@@ -350,6 +350,36 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 }
 
 /////////////////////////////
+// AsmOpElement
+/////////////////////////////
+
+AsmOpElement::AsmOpElement(const AsmOp* op) : m_op(op) {}
+
+goos::Object AsmOpElement::to_form(const Env& env) const {
+  return m_op->to_form(env.file->labels, env);
+}
+
+void AsmOpElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void AsmOpElement::apply_form(const std::function<void(Form*)>&) {}
+
+void AsmOpElement::collect_vars(VariableSet& vars) const {
+  m_op->collect_vars(vars);
+}
+
+void AsmOpElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
+/////////////////////////////
 // ConditionElement
 /////////////////////////////
 
@@ -474,29 +504,38 @@ goos::Object ReturnElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("return"));
   forms.push_back(return_code->to_form(env));
-  forms.push_back(dead_code->to_form(env));
+  if (dead_code) {
+    forms.push_back(dead_code->to_form(env));
+  }
   return pretty_print::build_list(forms);
 }
 
 void ReturnElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   return_code->apply(f);
-  dead_code->apply(f);
+  if (dead_code) {
+    dead_code->apply(f);
+  }
 }
 
 void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
   return_code->apply_form(f);
-  dead_code->apply_form(f);
+  if (dead_code) {
+    dead_code->apply_form(f);
+  }
 }
 
 void ReturnElement::collect_vars(VariableSet& vars) const {
   return_code->collect_vars(vars);
-  dead_code->collect_vars(vars);
+  if (dead_code) {
+    dead_code->collect_vars(vars);
+  }
 }
 
 void ReturnElement::get_modified_regs(RegSet& regs) const {
-  for (auto x : {return_code, dead_code}) {
-    x->get_modified_regs(regs);
+  return_code->get_modified_regs(regs);
+  if (dead_code) {
+    dead_code->get_modified_regs(regs);
   }
 }
 
@@ -874,7 +913,7 @@ TypeOfElement::TypeOfElement(Form* _value, std::optional<Variable> _clobber)
 }
 
 goos::Object TypeOfElement::to_form(const Env& env) const {
-  return pretty_print::build_list("type-of", value->to_form(env));
+  return pretty_print::build_list("rtype-of", value->to_form(env));
 }
 
 void TypeOfElement::apply(const std::function<void(FormElement*)>& f) {
@@ -1048,6 +1087,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "-";
     case FixedOperatorKind::MULTIPLICATION:
       return "*";
+    case FixedOperatorKind::SQRT:
+      return "sqrt";
     case FixedOperatorKind::ARITH_SHIFT:
       return "ash";
     case FixedOperatorKind::MOD:

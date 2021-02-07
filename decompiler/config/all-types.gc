@@ -56,6 +56,10 @@
 (define-extern *enable-method-set* int)
 (define-extern install-debug-handler (function int object symbol))
 
+(define-extern file-stream-open (function file-stream basic basic file-stream))
+(define-extern file-stream-length (function file-stream int))
+(define-extern file-stream-read (function file-stream pointer int int))
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; GCOMMON             ;;;;;;;;;;;;;;;;;;;
@@ -740,6 +744,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
+
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
@@ -914,7 +919,8 @@
   )
 
 (deftype vector (structure)
-  ((data float 4 :offset-assert 0)
+  (
+   (data float 4 :offset-assert 0)
    (x float :offset 0)
    (y float :offset 4)
    (z float :offset 8)
@@ -1793,6 +1799,7 @@
 ;   ;; likely a bitfield type
 ;   )
 
+
 ; ;; dma-h
 (deftype dma-bucket (structure)
   ((tag   uint64  :offset-assert 0)
@@ -2219,24 +2226,109 @@
 
 (define-extern *display* display)
 
-;;;;;;;;;;;;;;;
-;; file-io
-;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; VECTOR              ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-;; todo
-; (deftype file-stream (basic)
-;   ((flags uint32  :offset-assert 4)
-;    (mode  basic   :offset-assert 8)
-;    (name  basic   :offset-assert 12)
-;    (file  uint32  :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x14
-;   :flag-assert         #x900000014
-;   )
+(define-extern sin (function float float))
+(define-extern cos (function float float))
+(define-extern atan (function float float float))
+
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector+float! (function vector vector float vector))
+(define-extern vector*! (function vector vector vector vector))
+(define-extern vector+*! (function vector vector vector float vector))
+(define-extern vector-*! (function vector vector vector float vector))
+(define-extern vector/! (function vector vector vector vector))
+(define-extern vector-float*! (function vector vector float vector))
+(define-extern vector-average! (function vector vector vector vector))
+(define-extern vector+float*! (function vector vector vector float vector))
+(define-extern vector--float*! (function vector vector vector float vector))
+(define-extern vector-float/! (function vector vector float vector))
+(define-extern vector-negate! (function vector vector vector))
+(define-extern vector-negate-in-place! (function vector vector))
+(define-extern vector= (function vector vector symbol))
+(define-extern vector-delta (function vector vector float))
+(define-extern vector-seek! (function vector vector float vector))
+(define-extern vector-seek-2d-xz-smooth! (function vector vector float float vector))
+(define-extern vector-seek-2d-yz-smooth! (function vector vector float float vector))
+(define-extern vector-seek-3d-smooth! (function vector vector float float vector))
+(define-extern seek-with-smooth (function float float float float float float))
+(define-extern vector-identity! (function vector vector))
+(define-extern vector-seconds (function vector vector vector))
+(define-extern vector-seconds! (function vector vector))
+(define-extern vector-v! (function vector vector))
+(define-extern vector-v+! (function vector vector vector vector))
+(define-extern vector-v*float+! (function vector vector vector float vector))
+(define-extern vector-v++! (function vector vector vector))
+(define-extern vector-v*float! (function vector float float vector))
+(define-extern vector-v*float++! (function vector vector float vector))
+(define-extern vector-to-ups! (function vector vector vector))
+(define-extern vector-from-ups! (function vector vector vector))
+(define-extern vector-length (function vector float))
+(define-extern vector-length-squared (function vector float))
+(define-extern vector-xz-length-squared (function vector float))
+(define-extern vector-xz-length (function vector float))
+(define-extern vector-vector-distance (function vector vector float))
+(define-extern vector-vector-distance-squared (function vector vector float))
+(define-extern vector-vector-xz-distance (function vector vector float))
+(define-extern vector-vector-xz-distance-squared (function vector vector float))
+(define-extern vector-normalize! (function vector vector vector))
+(define-extern vector-normalize-ret-len! (function vector float float))
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-xz-normalize! (function vector float vector))
+(define-extern vector-length-max! (function vector float vector))
+(define-extern vector-xz-length-max! (function vector float vector))
+(define-extern vector-rotate-around-y! (function vector vector float vector))
+(define-extern rotate-y<-vector+vector (function vector vector float))
+(define-extern vector-cvt.w.s! (function vector vector vector))
+(define-extern vector-cvt.s.w! (function vector vector vector))
+(define-extern rot-zxy-from-vector! (function vector vector vector))
+(define-extern rot-zyx-from-vector! (function vector vector vector))
+(define-extern vector-lerp! (function vector vector vector))
+(define-extern vector-lerp-clamp! (function vector vector float float vector))
+(define-extern vector4-lerp! (function vector vector vector))
+(define-extern vector4-lerp-clamp! (function vector vector float float vector))
+(define-extern vector-degi (function vector vector vector))
+(define-extern vector-degf (function vector vector vector))
+(define-extern vector-degmod (function vector vector vector))
+(define-extern vector-deg-diff (function vector vector vector vector))
+(define-extern vector-deg-lerp-clamp! function) ;; todo
+(define-extern vector3s-copy! (function vector vector vector))
+(define-extern vector3s+! (function vector vector vector vector))
+(define-extern vector3s*float! (function vector vector float vector))
+(define-extern vector3s-! (function vector vector vector vector))
+(define-extern spheres-overlap? (function vector vector symbol))
+(define-extern sphere<-vector! (function sphere vector sphere))
+(define-extern sphere<-vector+r! (function sphere vector float sphere))
+(define-extern rand-vu-sphere-point! function) ;; todo
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; FILE-IO             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(deftype file-stream (basic)
+  ((flags uint32  :offset-assert 4)
+   (mode  basic   :offset-assert 8)
+   (name  string  :offset-assert 12)
+   (file  uint32  :offset-assert 16)
+   )
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (name string) (mode basic)) _type_)
+    )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(define-extern file-stream-read-string (function file-stream string string))
 
 (deftype file-info (basic)
-  ((file-type      basic   :offset-assert 4)
+  ((file-type      symbol   :offset-assert 4)
    (file-name      basic   :offset-assert 8)
    (major-version  uint32  :offset-assert 12)
    (minor-version  uint32  :offset-assert 16)
@@ -2248,6 +2340,12 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
+(define-extern *file-temp-string* string)
+
+(define-extern make-file-name (function int string int string))
+(define-extern make-vfile-name (function int string string))
+(define-extern file-info-correct-version? (function file-info int int symbol))
 
 ;;;;;;;;;;;;;;;
 ;; loader-h
@@ -31396,14 +31494,11 @@
 (define-extern matrix-translate! function)
 (define-extern matrix-4x4-inverse! function)
 (define-extern matrix-! function)
-(define-extern atan function)
 (define-extern vector-sincos! function)
-(define-extern cos function)
-(define-extern sin function)
 (define-extern trs-matrix-calc! function)
 (define-extern transform-matrix-parent-calc! function)
 (define-extern transform-matrix-calc! function)
-(define-extern vector-identity! function)
+
 (define-extern quaternion-zero! function)
 (define-extern quaternion-set! function)
 (define-extern matrix->quaternion function)
@@ -31457,15 +31552,15 @@
 (define-extern quaternion-i! function)
 (define-extern sincos-rad! function)
 (define-extern vector-sincos-rad! function)
-(define-extern vector-xz-normalize! function)
+
 (define-extern atan-series-rad function)
 (define-extern atan2-rad function)
 (define-extern quaternion-from-two-vectors-max-angle! function)
-(define-extern vector-length function)
+
 (define-extern vector-rad<-vector-deg/2! function)
 (define-extern vector-sin-rad! function)
 (define-extern acos-rad function)
-(define-extern vector-xz-length function)
+
 (define-extern acos function)
 (define-extern quat->eul function)
 (define-extern set-eul! function)
@@ -31514,15 +31609,7 @@
 (define-extern forward-down-nopitch->inv-matrix function)
 (define-extern vector-reflect-flat-above! function)
 (define-extern vector-circle-tangent-new function)
-(define-extern vector-vector-distance-squared function)
-(define-extern vector-cross! function)
-(define-extern vector+float*! function)
-(define-extern vector-normalize! function)
-(define-extern vector-negate! function)
-(define-extern vector-vector-distance function)
-(define-extern vector-normalize-ret-len! function)
-(define-extern vector-normalize-copy! function)
-(define-extern vector-float*! function)
+
 (define-extern coserp function)
 (define-extern sinerp-clamp function)
 ;;(define-extern exp-slead object) ;; unknown type
@@ -31773,72 +31860,9 @@
 ;;(define-extern draw-env object) ;; unknown type
 ;;(define-extern *pre-draw-hook* object) ;; unknown type
 (define-extern set-display function)
-(define-extern vector4-lerp! function)
-(define-extern rotate-y<-vector+vector function)
-(define-extern rot-zxy-from-vector! function)
-(define-extern vector3s-copy! function)
-(define-extern vector-seek-2d-yz-smooth! function)
-(define-extern vector-from-ups! function)
-(define-extern vector-seek-2d-xz-smooth! function)
-(define-extern vector/! function)
-(define-extern rand-vu-sphere-point! function)
-(define-extern vector-vector-xz-distance function)
-(define-extern vector-v*float+! function)
-(define-extern vector-length-max! function)
-(define-extern vector*! function)
-(define-extern vector+*! function)
-(define-extern vector-deg-lerp-clamp! function)
-(define-extern vector-negate-in-place! function)
-(define-extern vector--float*! function)
-(define-extern rot-zyx-from-vector! function)
-(define-extern vector4-lerp-clamp! function)
-(define-extern vector-seconds! function)
-(define-extern vector-degmod function)
-(define-extern vector-v*float++! function)
-(define-extern vector-degi function)
-(define-extern sphere<-vector+r! function)
-(define-extern vector-xz-length-max! function)
-(define-extern vector3s-! function)
-(define-extern vector3s+! function)
-(define-extern vector-average! function)
-(define-extern vector-cvt.w.s! function)
-(define-extern vector-v! function)
-(define-extern vector-degf function)
-(define-extern vector-vector-xz-distance-squared function)
-(define-extern vector-xz-length-squared function)
-(define-extern vector-lerp-clamp! function)
-(define-extern vector-cvt.s.w! function)
-(define-extern vector-to-ups! function)
-(define-extern vector-seek! function)
-(define-extern vector-seconds function)
-(define-extern vector-deg-diff function)
-(define-extern vector-delta function)
-(define-extern vector+float! function)
-(define-extern vector-v+! function)
-(define-extern vector3s*float! function)
-(define-extern spheres-overlap? function)
-(define-extern vector-length-squared function)
-(define-extern vector-lerp! function)
-(define-extern vector-rotate-around-y! function)
-(define-extern vector-*! function)
-(define-extern seek-with-smooth function)
-(define-extern vector-v*float! function)
-(define-extern vector-v++! function)
-(define-extern vector-seek-3d-smooth! function)
-(define-extern sphere<-vector! function)
-(define-extern vector-float/! function)
-(define-extern vector= function)
+
 ;;(define-extern *display* object) ;; unknown type
-(define-extern make-vfile-name function)
-;;(define-extern file-stream object) ;; unknown type
-(define-extern file-info type)
-(define-extern make-file-name function)
-(define-extern file-info-correct-version? function)
-;;(define-extern *file-temp-string* object) ;; unknown type
-(define-extern file-stream-read-string function)
-;;(define-extern file-stream-length object) ;; unknown type
-;;(define-extern file-stream-read object) ;; unknown type
-;;(define-extern file-stream-open object) ;; unknown type
+
 ;;(define-extern load-dir object) ;; unknown type
 ;;(define-extern external-art-buffer object) ;; unknown type
 ;;(define-extern load-dir-art-group object) ;; unknown type
@@ -32085,7 +32109,7 @@
 ;;(define-extern *display-strip-lines* object) ;; unknown type
 ;;(define-extern *display-process-anim* object) ;; unknown type
 ;;(define-extern *display-actor-marks* object) ;; unknown type
-(define-extern *menu-hook* function)
+(define-extern *menu-hook* (function none))
 ;;(define-extern *display-load-boundaries* object) ;; unknown type
 ;;(define-extern *display-water-marks* object) ;; unknown type
 ;;(define-extern *artist-flip-visible* object) ;; unknown type

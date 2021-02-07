@@ -95,6 +95,7 @@ enum class FixedOperatorKind {
   ADDITION,
   SUBTRACTION,
   MULTIPLICATION,
+  SQRT,
   ARITH_SHIFT,
   MOD,
   ABS,
@@ -125,9 +126,15 @@ enum class FixedOperatorKind {
 struct VariableNames {
   struct VarInfo {
     VarInfo() = default;
-    std::string name() const { return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id); }
+    std::string name() const {
+      if (!override_name.empty()) {
+        return override_name;
+      }
+      return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id);
+    }
     TP_Type type;
     RegId reg_id;
+    std::string override_name;
     bool initialized = false;
   };
 

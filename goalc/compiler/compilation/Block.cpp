@@ -186,3 +186,10 @@ Val* Compiler::compile_goto(const goos::Object& form, const goos::Object& rest, 
   env->emit(std::move(ir_goto));
   return get_none();
 }
+
+Val* Compiler::compile_nop(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  env->emit_ir<IR_Nop>();
+  return get_none();
+}

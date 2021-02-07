@@ -425,7 +425,8 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   file_stream->flags = 0;
   printf("****** CALL TO kopen() ******\n");
   char buffer[128];
-  sprintf(buffer, "host:%s", Ptr<String>(name)->data());
+  // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
+  sprintf(buffer, "%s", Ptr<String>(name)->data());
   if (!strcmp(info(Ptr<Symbol>(mode))->str->data(), "read")) {
     file_stream->file = sceOpen(buffer, SCE_RDONLY);
   } else {

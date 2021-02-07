@@ -26,6 +26,7 @@ static const std::unordered_map<
 
         // INLINE ASM - VECTOR FLOAT OPERATIONS
         {".nop.vf", &Compiler::compile_asm_nop_vf},
+        {".nop", &Compiler::compile_nop},
         {".lvf", &Compiler::compile_asm_lvf},
         {".svf", &Compiler::compile_asm_svf},
         {".xor.vf", &Compiler::compile_asm_xor_vf},
@@ -70,6 +71,7 @@ static const std::unordered_map<
         {"return-from", &Compiler::compile_return_from},
         {"label", &Compiler::compile_label},
         {"goto", &Compiler::compile_goto},
+        {"nop!", &Compiler::compile_nop},
 
         // COMPILER CONTROL
         {"gs", &Compiler::compile_gs},
