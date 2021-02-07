@@ -348,9 +348,7 @@ class BranchElement : public FormElement {
 class ReturnElement : public FormElement {
  public:
   Form* return_code = nullptr;
-  Form* dead_code = nullptr;
-  ReturnElement(Form* _return_code, Form* _dead_code)
-      : return_code(_return_code), dead_code(_dead_code) {}
+  ReturnElement(Form* _return_code) : return_code(_return_code) {}
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;

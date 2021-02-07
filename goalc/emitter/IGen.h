@@ -2009,6 +2009,12 @@ class IGen {
     return instr;
   }
 
+  static Instruction nop() {
+    // NOP
+    Instruction instr(0x90);
+    return instr;
+  }
+
   static Instruction nop_vf() {
     // FNOP
     Instruction instr(0xd9);

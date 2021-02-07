@@ -2,6 +2,7 @@
 #include "FormStack.h"
 #include "GenericElementMatcher.h"
 #include "common/goos/PrettyPrinter.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 /*
  * TODO
@@ -702,7 +703,29 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
   auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
   std::vector<Form*> arg_forms;
-  arg_forms.insert(arg_forms.begin(), unstacked.begin() + 1, unstacked.end());
+  TypeSpec function_type;
+  if (env.has_type_analysis()) {
+    function_type =
+        env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg()).typespec();
+  }
+
+  for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
+    auto val = unstacked.at(arg_id + 1);  // first is the function itself.
+    auto& var = all_pop_vars.at(arg_id + 1);
+    if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
+      auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+      auto desired_arg_type = function_type.get_arg(arg_id);
+      if (!env.dts->ts.typecheck(desired_arg_type, actual_arg_type, "", false, false)) {
+        arg_forms.push_back(
+            pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+      } else {
+        arg_forms.push_back(val);
+      }
+    } else {
+      arg_forms.push_back(val);
+    }
+  }
+
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_function(unstacked.at(0)), arg_forms);
 
@@ -1305,7 +1328,7 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
 
   auto deref = pool.alloc_element<DerefElement>(
       var_to_form(base.value(), pool), false,
-      std::vector<DerefToken>{DerefToken::make_field_name("methods"),
+      std::vector<DerefToken>{DerefToken::make_field_name("method-table"),
                               DerefToken::make_int_expr(var_to_form(idx.value(), pool))});
   result->push_back(deref);
 }

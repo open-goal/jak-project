@@ -41,12 +41,12 @@ std::pair<BranchElement*, FormElement**> get_condition_branch(Form* in) {
   BranchElement* condition_branch = dynamic_cast<BranchElement*>(in->back());
   FormElement** condition_branch_location = in->back_ref();
 
-  if (!condition_branch) {
-    auto as_return = dynamic_cast<ReturnElement*>(in->back());
-    if (as_return) {
-      return get_condition_branch(as_return->dead_code);
-    }
-  }
+  //  if (!condition_branch) {
+  //    auto as_return = dynamic_cast<ReturnElement*>(in->back());
+  //    if (as_return) {
+  //      return get_condition_branch(as_return->dead_code);
+  //    }
+  //  }
 
   if (!condition_branch) {
     auto as_break = dynamic_cast<BreakElement*>(in->back());
@@ -1355,8 +1355,18 @@ Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
     return result;
   } else if (dynamic_cast<const GotoEnd*>(vtx)) {
     auto* cvtx = dynamic_cast<const GotoEnd*>(vtx);
-    auto result = pool.alloc_single_element_form<ReturnElement>(
-        nullptr, cfg_to_ir(pool, f, cvtx->body), cfg_to_ir(pool, f, cvtx->unreachable_block));
+
+    // dead code should always be (set! var 0)
+    auto dead_code = cfg_to_ir(pool, f, cvtx->unreachable_block);
+    auto dead = dynamic_cast<SetVarElement*>(dead_code->try_as_single_element());
+    assert(dead);
+    auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
+    assert(src);
+    assert(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+           src->expr().get_arg(0).get_int() == 0);
+
+    auto result =
+        pool.alloc_single_element_form<ReturnElement>(nullptr, cfg_to_ir(pool, f, cvtx->body));
     clean_up_return(pool, dynamic_cast<ReturnElement*>(result->try_as_single_element()));
     return result;
   } else if (dynamic_cast<const Break*>(vtx)) {

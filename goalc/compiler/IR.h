@@ -340,6 +340,16 @@ class IR_GetStackAddr : public IR {
   int m_slot = -1;
 };
 
+class IR_Nop : public IR {
+ public:
+  IR_Nop();
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+};
+
 class IR_Asm : public IR {
  public:
   explicit IR_Asm(bool use_coloring);

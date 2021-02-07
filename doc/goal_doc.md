@@ -574,6 +574,13 @@ if `x` is a match, returns `x` from the function (not shown) immediately.
 
 The `return-from` form is very rarely used to return from a block, but sometimes used to return from a function.
 
+## `return`
+Exit a function early.
+```lisp
+(return value)
+```
+Has the same behavior as `(return-from #f value)`.
+
 ## `label`
 Create a named label for `goto` or `goto-when`.
 ```lisp
@@ -1290,7 +1297,16 @@ This code generation is identical to using a `(set! dst src)` form.
 (.nop.vf)
 ```
 
-Inserts a `FNOP` assembly instruction, which is fundamentally the same as a `NOP`.
+Inserts a `FNOP` assembly instruction, which is fundamentally the same as a `NOP`. It is a 2-byte instruction.
+
+## `.nop` or `(nop!)`
+```lisp
+(.nop)
+;; or
+(nop!)
+```
+
+Inserts a single-byte `nop`.
 
 ## `.lvf`
 ```lisp

@@ -1024,6 +1024,26 @@ void IR_GetStackAddr::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 ///////////////////////
+// Nop
+///////////////////////
+
+IR_Nop::IR_Nop() {}
+
+std::string IR_Nop::print() {
+  return fmt::format("nop");
+}
+
+RegAllocInstr IR_Nop::to_rai() {
+  return {};
+}
+
+void IR_Nop::do_codegen(emitter::ObjectGenerator* gen,
+                        const AllocationResult&,
+                        emitter::IR_Record irec) {
+  gen->add_instr(IGen::nop(), irec);
+}
+
+///////////////////////
 // Asm
 ///////////////////////
 

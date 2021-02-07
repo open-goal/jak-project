@@ -474,30 +474,24 @@ goos::Object ReturnElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("return"));
   forms.push_back(return_code->to_form(env));
-  forms.push_back(dead_code->to_form(env));
   return pretty_print::build_list(forms);
 }
 
 void ReturnElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   return_code->apply(f);
-  dead_code->apply(f);
 }
 
 void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
   return_code->apply_form(f);
-  dead_code->apply_form(f);
 }
 
 void ReturnElement::collect_vars(VariableSet& vars) const {
   return_code->collect_vars(vars);
-  dead_code->collect_vars(vars);
 }
 
 void ReturnElement::get_modified_regs(RegSet& regs) const {
-  for (auto x : {return_code, dead_code}) {
-    x->get_modified_regs(regs);
-  }
+  return_code->get_modified_regs(regs);
 }
 
 /////////////////////////////
@@ -874,7 +868,7 @@ TypeOfElement::TypeOfElement(Form* _value, std::optional<Variable> _clobber)
 }
 
 goos::Object TypeOfElement::to_form(const Env& env) const {
-  return pretty_print::build_list("type-of", value->to_form(env));
+  return pretty_print::build_list("rtype-of", value->to_form(env));
 }
 
 void TypeOfElement::apply(const std::function<void(FormElement*)>& f) {
