@@ -344,11 +344,15 @@ class BranchElement : public FormElement {
 /*!
  * Represents a (return-from #f x) form, which immediately returns from the function.
  * This always has some "dead code" after it that can't be reached, which is the "dead_code".
+ * We store the dead code because it may contain an unreachable jump to the next place that can
+ * be stripped away in later analysis passes. Or they may have written code after the return.
  */
 class ReturnElement : public FormElement {
  public:
   Form* return_code = nullptr;
-  ReturnElement(Form* _return_code) : return_code(_return_code) {}
+  Form* dead_code = nullptr;
+  ReturnElement(Form* _return_code, Form* _dead_code)
+      : return_code(_return_code), dead_code(_dead_code) {}
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -442,6 +446,7 @@ class EmptyElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!

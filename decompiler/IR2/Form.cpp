@@ -474,24 +474,39 @@ goos::Object ReturnElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("return"));
   forms.push_back(return_code->to_form(env));
+  if (dead_code) {
+    forms.push_back(dead_code->to_form(env));
+  }
   return pretty_print::build_list(forms);
 }
 
 void ReturnElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   return_code->apply(f);
+  if (dead_code) {
+    dead_code->apply(f);
+  }
 }
 
 void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
   return_code->apply_form(f);
+  if (dead_code) {
+    dead_code->apply_form(f);
+  }
 }
 
 void ReturnElement::collect_vars(VariableSet& vars) const {
   return_code->collect_vars(vars);
+  if (dead_code) {
+    dead_code->collect_vars(vars);
+  }
 }
 
 void ReturnElement::get_modified_regs(RegSet& regs) const {
   return_code->get_modified_regs(regs);
+  if (dead_code) {
+    dead_code->get_modified_regs(regs);
+  }
 }
 
 /////////////////////////////

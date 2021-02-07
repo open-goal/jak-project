@@ -1473,4 +1473,8 @@ void TypeOfElement::update_from_stack(const Env& env,
   result->push_back(this);
 }
 
+void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  stack.push_form_element(this, true);
+}
+
 }  // namespace decompiler

@@ -56,6 +56,10 @@
 (define-extern *enable-method-set* int)
 (define-extern install-debug-handler (function int object symbol))
 
+(define-extern file-stream-open (function file-stream basic basic file-stream))
+(define-extern file-stream-length (function file-stream int))
+(define-extern file-stream-read (function file-stream pointer int int))
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; GCOMMON             ;;;;;;;;;;;;;;;;;;;
@@ -2219,24 +2223,30 @@
 
 (define-extern *display* display)
 
-;;;;;;;;;;;;;;;
-;; file-io
-;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; FILE-IO             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-;; todo
-; (deftype file-stream (basic)
-;   ((flags uint32  :offset-assert 4)
-;    (mode  basic   :offset-assert 8)
-;    (name  basic   :offset-assert 12)
-;    (file  uint32  :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x14
-;   :flag-assert         #x900000014
-;   )
+(deftype file-stream (basic)
+  ((flags uint32  :offset-assert 4)
+   (mode  basic   :offset-assert 8)
+   (name  string  :offset-assert 12)
+   (file  uint32  :offset-assert 16)
+   )
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (name string) (mode basic)) _type_)
+    )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(define-extern file-stream-read-string (function file-stream string string))
 
 (deftype file-info (basic)
-  ((file-type      basic   :offset-assert 4)
+  ((file-type      symbol   :offset-assert 4)
    (file-name      basic   :offset-assert 8)
    (major-version  uint32  :offset-assert 12)
    (minor-version  uint32  :offset-assert 16)
@@ -2248,6 +2258,12 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
+(define-extern *file-temp-string* string)
+
+(define-extern make-file-name (function int string int string))
+(define-extern make-vfile-name (function int string string))
+(define-extern file-info-correct-version? (function file-info int int symbol))
 
 ;;;;;;;;;;;;;;;
 ;; loader-h
@@ -31829,16 +31845,7 @@
 (define-extern vector-float/! function)
 (define-extern vector= function)
 ;;(define-extern *display* object) ;; unknown type
-(define-extern make-vfile-name function)
-;;(define-extern file-stream object) ;; unknown type
-(define-extern file-info type)
-(define-extern make-file-name function)
-(define-extern file-info-correct-version? function)
-;;(define-extern *file-temp-string* object) ;; unknown type
-(define-extern file-stream-read-string function)
-;;(define-extern file-stream-length object) ;; unknown type
-;;(define-extern file-stream-read object) ;; unknown type
-;;(define-extern file-stream-open object) ;; unknown type
+
 ;;(define-extern load-dir object) ;; unknown type
 ;;(define-extern external-art-buffer object) ;; unknown type
 ;;(define-extern load-dir-art-group object) ;; unknown type

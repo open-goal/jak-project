@@ -820,7 +820,13 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(connectable_type, "prev1", make_typespec("connectable"));
 
   // todo
-  (void)file_stream_type;
+  builtin_structure_inherit(file_stream_type);
+  add_field_to_type(file_stream_type, "flags", make_typespec("uint32"));
+  add_field_to_type(file_stream_type, "mode", make_typespec("basic"));
+  add_field_to_type(file_stream_type, "name", make_typespec("string"));
+  add_field_to_type(file_stream_type, "file", make_typespec("uint32"));
+  add_method(file_stream_type, "new",
+             make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"));
 }
 
 /*!

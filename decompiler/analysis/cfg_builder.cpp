@@ -41,12 +41,12 @@ std::pair<BranchElement*, FormElement**> get_condition_branch(Form* in) {
   BranchElement* condition_branch = dynamic_cast<BranchElement*>(in->back());
   FormElement** condition_branch_location = in->back_ref();
 
-  //  if (!condition_branch) {
-  //    auto as_return = dynamic_cast<ReturnElement*>(in->back());
-  //    if (as_return) {
-  //      return get_condition_branch(as_return->dead_code);
-  //    }
-  //  }
+  if (!condition_branch) {
+    auto as_return = dynamic_cast<ReturnElement*>(in->back());
+    if (as_return) {
+      return get_condition_branch(as_return->dead_code);
+    }
+  }
 
   if (!condition_branch) {
     auto as_break = dynamic_cast<BreakElement*>(in->back());
@@ -148,6 +148,30 @@ void clean_up_return(FormPool& pool, ReturnElement* ir) {
   } else {
     *(jump_to_end.second) = pool.alloc_element<EmptyElement>();
   }
+}
+
+void clean_up_return_final(const Function& f, ReturnElement* ir) {
+  SetVarElement* dead = dynamic_cast<SetVarElement*>(ir->dead_code->try_as_single_element());
+  if (!dead) {
+    dead = dynamic_cast<SetVarElement*>(ir->dead_code->elts().front());
+    for (int i = 1; i < ir->dead_code->size(); i++) {
+      if (!dynamic_cast<EmptyElement*>(ir->dead_code->at(i))) {
+        dead = nullptr;
+        break;
+      }
+    }
+  }
+
+  if (!dead) {
+    lg::error("failed to recognize dead code after return, got {}",
+              ir->dead_code->to_string(f.ir2.env));
+  }
+  assert(dead);
+  auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
+  assert(src);
+  assert(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+         src->expr().get_arg(0).get_int() == 0);
+  ir->dead_code = nullptr;
 }
 
 /*!
@@ -1358,15 +1382,19 @@ Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
 
     // dead code should always be (set! var 0)
     auto dead_code = cfg_to_ir(pool, f, cvtx->unreachable_block);
-    auto dead = dynamic_cast<SetVarElement*>(dead_code->try_as_single_element());
-    assert(dead);
-    auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
-    assert(src);
-    assert(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
-           src->expr().get_arg(0).get_int() == 0);
+    //    auto dead = dynamic_cast<SetVarElement*>(dead_code->try_as_single_element());
+    //    if (!dead) {
+    //      lg::error("failed to recognize dead code after return, got {}",
+    //      dead_code->to_string(f.ir2.env));
+    //    }
+    //    assert(dead);
+    //    auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
+    //    assert(src);
+    //    assert(src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+    //           src->expr().get_arg(0).get_int() == 0);
 
-    auto result =
-        pool.alloc_single_element_form<ReturnElement>(nullptr, cfg_to_ir(pool, f, cvtx->body));
+    auto result = pool.alloc_single_element_form<ReturnElement>(
+        nullptr, cfg_to_ir(pool, f, cvtx->body), dead_code);
     clean_up_return(pool, dynamic_cast<ReturnElement*>(result->try_as_single_element()));
     return result;
   } else if (dynamic_cast<const Break*>(vtx)) {
@@ -1442,6 +1470,11 @@ void build_initial_forms(Function& function) {
       auto as_cne = dynamic_cast<CondNoElseElement*>(form);
       if (as_cne) {
         clean_up_cond_no_else_final(function, as_cne);
+      }
+
+      auto as_return = dynamic_cast<ReturnElement*>(form);
+      if (as_return) {
+        clean_up_return_final(function, as_return);
       }
     });
 
