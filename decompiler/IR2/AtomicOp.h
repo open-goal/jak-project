@@ -291,6 +291,7 @@ class AsmOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const Instruction& instruction() const { return m_instr; }
 
  private:
   Instruction m_instr;

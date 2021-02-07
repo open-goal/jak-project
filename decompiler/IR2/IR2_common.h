@@ -95,6 +95,7 @@ enum class FixedOperatorKind {
   ADDITION,
   SUBTRACTION,
   MULTIPLICATION,
+  SQRT,
   ARITH_SHIFT,
   MOD,
   ABS,

@@ -79,7 +79,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
 }
 
 FormElement* AsmOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AsmOpElement>(this);
 }
 
 FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) const {

@@ -84,6 +84,18 @@ class SimpleExpressionElement : public FormElement {
                                FormStack& stack,
                                std::vector<FormElement*>* result,
                                bool allow_side_effects);
+  void update_from_stack_float_2(const Env& env,
+                                 FixedOperatorKind kind,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result,
+                                 bool allow_side_effects);
+  void update_from_stack_float_1(const Env& env,
+                                 FixedOperatorKind kind,
+                                 FormPool& pool,
+                                 FormStack& stack,
+                                 std::vector<FormElement*>* result,
+                                 bool allow_side_effects);
   void update_from_stack_add_i(const Env& env,
                                FormPool& pool,
                                FormStack& stack,
@@ -257,6 +269,24 @@ class AtomicOpElement : public FormElement {
 
  private:
   const AtomicOp* m_op;
+};
+
+/*!
+ * A wrapper around a single AsmOp
+ */
+class AsmOpElement : public FormElement {
+ public:
+  explicit AsmOpElement(const AsmOp* op);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+  const AsmOp* op() const { return m_op; }
+
+ private:
+  const AsmOp* m_op;
 };
 
 /*!
@@ -649,6 +679,7 @@ class ConditionalMoveFalseElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 std::string fixed_operator_to_string(FixedOperatorKind kind);

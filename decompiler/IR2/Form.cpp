@@ -350,6 +350,36 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 }
 
 /////////////////////////////
+// AsmOpElement
+/////////////////////////////
+
+AsmOpElement::AsmOpElement(const AsmOp* op) : m_op(op) {}
+
+goos::Object AsmOpElement::to_form(const Env& env) const {
+  return m_op->to_form(env.file->labels, env);
+}
+
+void AsmOpElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void AsmOpElement::apply_form(const std::function<void(Form*)>&) {}
+
+void AsmOpElement::collect_vars(VariableSet& vars) const {
+  m_op->collect_vars(vars);
+}
+
+void AsmOpElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
+/////////////////////////////
 // ConditionElement
 /////////////////////////////
 
@@ -1057,6 +1087,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "-";
     case FixedOperatorKind::MULTIPLICATION:
       return "*";
+    case FixedOperatorKind::SQRT:
+      return "sqrt";
     case FixedOperatorKind::ARITH_SHIFT:
       return "ash";
     case FixedOperatorKind::MOD:

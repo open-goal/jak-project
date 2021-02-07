@@ -336,6 +336,42 @@ void SimpleExpressionElement::update_from_stack_div_s(const Env& env,
   }
 }
 
+void SimpleExpressionElement::update_from_stack_float_2(const Env& env,
+                                                        FixedOperatorKind kind,
+                                                        FormPool& pool,
+                                                        FormStack& stack,
+                                                        std::vector<FormElement*>* result,
+                                                        bool allow_side_effects) {
+  if (is_float_type(env, m_my_idx, m_expr.get_arg(0).var()) &&
+      is_float_type(env, m_my_idx, m_expr.get_arg(1).var())) {
+    // todo - check the order here
+
+    auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                             allow_side_effects);
+    auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
+                                                       args.at(0), args.at(1));
+    result->push_back(new_form);
+  } else {
+    throw std::runtime_error(fmt::format("Floating point math attempted on invalid types."));
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_float_1(const Env& env,
+                                                        FixedOperatorKind kind,
+                                                        FormPool& pool,
+                                                        FormStack& stack,
+                                                        std::vector<FormElement*>* result,
+                                                        bool allow_side_effects) {
+  if (is_float_type(env, m_my_idx, m_expr.get_arg(0).var())) {
+    auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
+    auto new_form =
+        pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0));
+    result->push_back(new_form);
+  } else {
+    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
+  }
+}
+
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormPool& pool,
                                                       FormStack& stack,
@@ -546,6 +582,30 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::DIV_S:
       update_from_stack_div_s(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::SUB_S:
+      update_from_stack_float_2(env, FixedOperatorKind::SUBTRACTION, pool, stack, result,
+                                allow_side_effects);
+      break;
+    case SimpleExpression::Kind::MUL_S:
+      update_from_stack_float_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result,
+                                allow_side_effects);
+      break;
+    case SimpleExpression::Kind::ADD_S:
+      update_from_stack_float_2(env, FixedOperatorKind::ADDITION, pool, stack, result,
+                                allow_side_effects);
+      break;
+    case SimpleExpression::Kind::SQRT_S:
+      update_from_stack_float_1(env, FixedOperatorKind::SQRT, pool, stack, result,
+                                allow_side_effects);
+      break;
+    case SimpleExpression::Kind::ABS_S:
+      update_from_stack_float_1(env, FixedOperatorKind::ABS, pool, stack, result,
+                                allow_side_effects);
+      break;
+    case SimpleExpression::Kind::NEG_S:
+      update_from_stack_float_1(env, FixedOperatorKind::SUBTRACTION, pool, stack, result,
+                                allow_side_effects);
       break;
     case SimpleExpression::Kind::ADD:
       update_from_stack_add_i(env, pool, stack, result, allow_side_effects);
@@ -1184,6 +1244,30 @@ FormElement* ConditionElement::make_generic(const Env&,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::FLOAT_NOT_EQUAL: {
+      auto casted = make_cast(source_forms, types, TypeSpec("float"), pool);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::FLOAT_LEQ: {
+      auto casted = make_cast(source_forms, types, TypeSpec("float"), pool);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LEQ),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::FLOAT_LESS_THAN: {
+      auto casted = make_cast(source_forms, types, TypeSpec("float"), pool);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::FLOAT_GEQ: {
+      auto casted = make_cast(source_forms, types, TypeSpec("float"), pool);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+                                                casted);
+    }
+
     default:
       throw std::runtime_error("ConditionElement::make_generic NYI for kind " +
                                get_condition_kind_name(m_kind));
@@ -1275,6 +1359,10 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
     return;
   }
   throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
+}
+
+void AsmOpElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  stack.push_form_element(this, true);
 }
 
 void GenericElement::update_from_stack(const Env& env,
@@ -1473,7 +1561,15 @@ void TypeOfElement::update_from_stack(const Env& env,
   result->push_back(this);
 }
 
+////////////////////////
+// EmptyElement
+////////////////////////
+
 void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  stack.push_form_element(this, true);
+}
+
+void ConditionalMoveFalseElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   stack.push_form_element(this, true);
 }
 
