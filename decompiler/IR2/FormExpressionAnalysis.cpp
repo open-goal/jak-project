@@ -1250,6 +1250,12 @@ FormElement* ConditionElement::make_generic(const Env&,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::FLOAT_EQUAL: {
+      auto casted = make_cast(source_forms, types, TypeSpec("float"), pool);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                                casted);
+    }
+
     case IR2_Condition::Kind::FLOAT_LEQ: {
       auto casted = make_cast(source_forms, types, TypeSpec("float"), pool);
       return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LEQ),
