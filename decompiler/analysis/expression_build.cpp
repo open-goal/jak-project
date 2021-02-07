@@ -8,7 +8,7 @@
 namespace decompiler {
 
 // TODO - remove all these and put them in the analysis methods instead.
-void clean_up_ifs(Form* top_level_form) {
+void clean_up_ifs(Form* top_level_form, const Env&) {
   bool changed = true;
   while (changed) {
     changed = false;
@@ -30,6 +30,9 @@ void clean_up_ifs(Form* top_level_form) {
         assert(me != parent_vector.end());
 
         // now insert the fake condition
+        for (auto& x : top_condition->elts()) {
+          x->parent_form = elt->parent_form;
+        }
         parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
         top_condition->elts() = {real_condition};
         changed = true;
@@ -54,6 +57,9 @@ void clean_up_ifs(Form* top_level_form) {
         assert(me != parent_vector.end());
 
         // now insert the fake condition
+        for (auto& x : top_condition->elts()) {
+          x->parent_form = elt->parent_form;
+        }
         parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
         top_condition->elts() = {real_condition};
         changed = true;
@@ -81,6 +87,9 @@ void clean_up_ifs(Form* top_level_form) {
             assert(me != parent_vector.end());
 
             // now insert the fake condition
+            for (auto& x : top_condition->elts()) {
+              x->parent_form = elt->parent_form;
+            }
             parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
             top_condition->elts() = {real_condition};
             changed = true;
@@ -153,7 +162,7 @@ bool convert_to_expressions(Form* top_level_form,
     //    fmt::print("Before clean:\n{}\n",
     //    pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
     // fix up stuff
-    clean_up_ifs(top_level_form);
+    clean_up_ifs(top_level_form, f.ir2.env);
 
   } catch (std::exception& e) {
     std::string warning = fmt::format("Expression building failed: {}", e.what());

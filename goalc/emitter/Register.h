@@ -96,6 +96,13 @@ class Register {
 
   std::string print() const;
 
+  /*
+    Our XMM Registers are 4 packed single-precision floating points
+    In the order (from left->right a.k.a most significant to least significant):
+    W | Z | Y | X
+  */
+  enum class VF_ELEMENT { X, Y, Z, W, NONE };
+
  private:
   s8 m_id = -1;
 };

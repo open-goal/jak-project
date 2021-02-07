@@ -5,3 +5,186 @@
 ;; name in dgo: file-io
 ;; dgos: GAME, ENGINE
 
+;; represents a file that can be read/written, similar to FILE* in C.
+;; NOTE: this is a special type in three ways:
+;;  1). It is used in the C runtime. This must be kept in sync with kmachine.h's FileStream
+;;  2). This type is built-in to the compiler (see TypeSystem.cpp, add_builtin_types)
+;;    It must be kept up to date with that definition as well.
+;;  3). The C runtime constructs this type before anything is loaded. The sizes
+;;     must be kept up to date there as well.
+(deftype file-stream (basic)
+  ((flags uint32  :offset-assert 4)
+   (mode  basic   :offset-assert 8)
+   (name  string  :offset-assert 12)
+   (file  uint32  :offset-assert 16)
+   )
+  (:methods
+    (new ((allocation symbol) (type-to-make type) (name string) (mode basic)) _type_)
+    )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+
+(defmethod new file-stream ((allocation symbol) (type-to-make type) (name string) (mode basic))
+	"Allocate a file-stream and open it."
+	(let ((stream (object-new)))
+		(file-stream-open stream name mode)
+		stream
+		)
+	)
+
+;; we already have a length method for a file-stream defined in C.
+;; just store that in the method table.
+(set! (-> file-stream method-table 4) file-stream-length)
+
+(defun file-stream-read-string ((stream file-stream) (str string))
+	"Fill a string with data from a file stream.
+    Note: this function does not work."
+    ;; makes the length of the string 0.
+	(clear str)
+    ;; so this will read nothing.
+	(file-stream-read stream (-> str data) (length str))
+	str
+	)
+
+
+;; A common file header found in GOAL files.
+(deftype file-info (basic)
+  ((file-type      symbol   :offset-assert 4)
+   (file-name      basic   :offset-assert 8)
+   (major-version  uint32  :offset-assert 12)
+   (minor-version  uint32  :offset-assert 16)
+   (maya-file-name basic   :offset-assert 20)
+   (tool-debug     basic   :offset-assert 24)
+   (mdb-file-name  basic   :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(defmethod print file-info ((obj file-info))
+	"Print information about a file"
+	(format #t "#<~A ~A :version ~D.~D @ #x~X>" 
+		(-> obj type) (-> obj file-name) (-> obj major-version) (-> obj minor-version) obj)
+	obj  
+	)
+
+;; allocate a temporary string
+(define *file-temp-string* (new 'global 'string 128 (the string #f)))
+
+
+(defun make-file-name ((kind int) (name string) (art-group-version int))
+	"Make a file name. Similar to MakeFileName in C.
+	Note: file type enum is different between C and GOAL.
+	File versions should match those in versions.h.
+	Uses a single *file-temp-string* buffer, shared with make-vfile-name."
+
+	(clear *file-temp-string*)
+	(cond
+		((= kind 3) 
+			(format *file-temp-string* "texture-page~D/dir-tpages" 7))
+		((= kind 2) 
+			(format *file-temp-string* "texture-page~D/tpage-~S" 7 name))
+		((zero? kind) 
+			(format *file-temp-string* "level~D/~S-bt" 30 name))
+		((= kind 5) 
+			(format *file-temp-string* "res~D/~S-tx" 1 name))
+		((= kind 4) 
+			(format *file-temp-string* "level~D/~S-vs" 30 name))
+		((= kind 6) 
+			(format *file-temp-string* "~S.VIS" name))
+		((= kind 1)
+			(format *file-temp-string* "art-group~D/~S-ag"
+				(if (> art-group-version 0) art-group-version 6)
+				name
+				)
+			)
+		)
+	*file-temp-string*
+	)
+
+
+
+(defun make-vfile-name ((a0-0 int) (a1-0 string))
+  "Make another type of file name."
+	(local-vars
+		(s5-0 int)
+		(gp-0 string)
+		)
+	(set! s5-0 a0-0)
+	(set! gp-0 a1-0)
+	(clear *file-temp-string*)
+	(cond
+		((zero? s5-0) (format *file-temp-string* "$LEVEL/~S" gp-0))
+		((= s5-0 1) (format *file-temp-string* "$ART_GROUP/~S" gp-0))
+		)
+	*file-temp-string*
+	)
+
+(defun file-info-correct-version? ((info file-info) (kind int) (version int))
+  "Check if the file info is valid. If you call this with version = 0,
+  it will pick the right version for the kind automatically."
+  (local-vars
+   (v1-0 int)
+   (v1-1 int)
+   (expected-kind string)
+   (expected-version int)
+   )
+
+   ;; figure out the expected major version
+   (set! expected-version 
+    (cond
+     ((zero? version)  ;; version not specified.
+      (set! v1-0 kind)
+      (cond
+       ((or (zero? (+ v1-0 -2)) (zero? (+ v1-0 -3))) 7) ;; textures.
+       ((zero? v1-0) 30) ;; level
+       ((= v1-0 1) 6) ;; art-group
+       )
+      )
+     (else version) ;; version was specified
+     )
+    )
+   
+   ;; figure out the expected kind
+   (set! expected-kind
+    (begin
+     (set! v1-1 kind)
+     (cond ((= v1-1 2) "texture-page") 
+           ((zero? v1-1) "bsp-header") 
+           ((= v1-1 1) "art-group"))
+     )
+    )
+   
+   ;; check:
+   (cond
+     ;; first, check the name is right:
+     ;; not clear why we dereference the symbol like this.
+    ((not (name= (the-as basic (-> info file-type value)) expected-kind))
+     
+     (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" 
+             (-> info file-name) (-> info file-type) expected-kind)
+     ;; FAIL
+     '#f
+     )
+    
+    ;; check versions (only major)
+    ((!= expected-version (-> info major-version))
+     (format
+      0
+      "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
+      (-> info file-name)
+      (-> info major-version)
+      (-> info minor-version)
+      expected-version
+      )
+     '#f
+     )
+    
+    ;; both tests pass!
+    (else '#t)
+    )
+   )

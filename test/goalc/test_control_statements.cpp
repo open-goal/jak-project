@@ -100,12 +100,10 @@ TEST_F(ControlStatementTests, ReturnValue) {
 
 TEST_F(ControlStatementTests, Calling) {
   runner->run_static_test(env, testCategory, "nested-call.static.gc", {"2\n"});
-  runner->run_static_test(env, testCategory, "inline-call.static.gc", {"44\n"});
   runner->run_static_test(env, testCategory, "simple-call.static.gc", {"30\n"});
 }
 
 TEST_F(ControlStatementTests, Anonymous) {
-  runner->run_static_test(env, testCategory, "declare-inline.static.gc", {"32\n"});
   runner->run_static_test(env, testCategory, "lambda-1.static.gc", {"2\n"});
 }
 
@@ -125,6 +123,7 @@ TEST_F(ControlStatementTests, InlineIsInline) {
     }
   }
   EXPECT_TRUE(got_mult);
+  runner->run_static_test(env, testCategory, "declare-inline.static.gc", {"32\n"});
 }
 
 TEST_F(ControlStatementTests, AllowInline) {
@@ -146,6 +145,7 @@ TEST_F(ControlStatementTests, AllowInline) {
   }
   EXPECT_EQ(got_mult, 1);
   EXPECT_EQ(got_call, 1);
+  runner->run_static_test(env, testCategory, "inline-call.static.gc", {"44\n"});
 }
 
 TEST_F(ControlStatementTests, ReturnNone) {

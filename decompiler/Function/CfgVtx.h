@@ -77,7 +77,7 @@ class CfgVtx {
   std::vector<CfgVtx*> pred;      // all vertices which have us as succ_branch or succ_ft
   int uid = -1;
 
-  enum class DelaySlotKind { NO_BRANCH, SET_REG_FALSE, SET_REG_TRUE, NOP, OTHER };
+  enum class DelaySlotKind { NO_BRANCH, SET_REG_FALSE, SET_REG_TRUE, NOP, OTHER, NO_DELAY };
 
   struct {
     bool has_branch = false;     // does the block end in a branch (any kind)?
@@ -239,7 +239,11 @@ class ShortCircuit : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
-  std::vector<CfgVtx*> entries;
+  struct Entry {
+    CfgVtx* condition = nullptr;
+    CfgVtx* likely_delay = nullptr;  // will be nullptr on last case
+  };
+  std::vector<Entry> entries;
 };
 
 class InfiniteLoopBlock : public CfgVtx {
@@ -287,6 +291,7 @@ class ControlFlowGraph {
 
   const std::vector<BlockVtx*>& create_blocks(int count);
   void link_fall_through(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
+  void link_fall_through_likely(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   void link_branch(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   bool find_cond_w_else();
   bool find_cond_n_else();

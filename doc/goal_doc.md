@@ -574,6 +574,13 @@ if `x` is a match, returns `x` from the function (not shown) immediately.
 
 The `return-from` form is very rarely used to return from a block, but sometimes used to return from a function.
 
+## `return`
+Exit a function early.
+```lisp
+(return value)
+```
+Has the same behavior as `(return-from #f value)`.
+
 ## `label`
 Create a named label for `goto` or `goto-when`.
 ```lisp
@@ -1053,12 +1060,19 @@ Bitwise Not
 ## `deftype`
 
 
-## `method`
-Get a method of a type or an object.
-__Warning - I will probably change this in the future.__
+## `method-of-object`
+Get a method of an object.
+
 ```
-(method type method-name)
-(method object method-name)
+(method-of-object object method-name)
+```
+
+This form takes an object and gets the method from it. If the object has runtime type information, will consult the method table at runtime to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
+
+## `method-of-type`
+Get a method of a type or an object.
+```
+(method-of-type type method-name)
 ```
 
 The first form of this takes a type name and method name and returns a GOAL `function` for this method. For example:
@@ -1066,8 +1080,6 @@ The first form of this takes a type name and method name and returns a GOAL `fun
 (method string inspect)
 ```
 will return the `inspect` method of `string`.
-
-The second form of this takes an object and gets the method from it. If the object has runtime type information, will consult the method table to get a possibly more specific method than what is available at compile time. This uses the same lookup logic as method calling - see the section on method calls for more information.
 
 ## `car` and `cdr`
 Get element from pair
@@ -1089,7 +1101,7 @@ Print the type of some GOAL expression at compile time.
 ```lisp
 (print-type form)
 ```
-This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is actually executed at runtime. Example:
+This is mainly used to debug the compiler or figure out why some code is failing a type check. The thing inside is compiled fully and used as the result of `print-type`. Example:
 ```lisp
 (print-type "apples")        ;; [TYPE] string
 (print-type (+ 12 1.2))      ;; [TYPE] int
@@ -1279,7 +1291,23 @@ Move between two registers. The `dst` should be a register (either `rlet` or `le
 - `gpr` to `fpr` (only moves 32-bits, uses `movd`)
 - `fpr` to `gpr` (only moves 32-bits, upper 32-bits are zero, uses `movd`)
 This code generation is identical to using a `(set! dst src)` form.
-  
+
+## `.nop.vf`
+```lisp
+(.nop.vf)
+```
+
+Inserts a `FNOP` assembly instruction, which is fundamentally the same as a `NOP`. It is a 2-byte instruction.
+
+## `.nop` or `(nop!)`
+```lisp
+(.nop)
+;; or
+(nop!)
+```
+
+Inserts a single-byte `nop`.
+
 ## `.lvf`
 ```lisp
 (.lvf dst-reg src-loc [:color #t|#f])
@@ -1302,9 +1330,33 @@ Store a vector float. Works similarly to the `lvf` form, but there is no optimiz
 
 ## Three operand vector float operations.
 ```lisp
-(.<op-name>.vf dst src0 src1 [:color #t|#f])
+(.<op-name>[<broadcast-element>].vf dst src0 src1 [:color #t|#f] [:mask #b<0-15>])
 ```
-All the three operand forms work similarly. You can do something like `(.add.vf vf1 vf2 vf3)`. All operations use the similarly named `v<op-name>ps` instruction, xmm128 VEX encoding. We support `xor`, `sub`, and `add` so far.
+All the three operand forms work similarly. You can do something like `(.add.vf vf1 vf2 vf3)`. All operations use the similarly named `v<op-name>ps` instruction, xmm128 VEX encoding. We support the following `op-name`s:
+- `xor`
+- `add`
+- `sub`
+- `mul`
+- `min`
+- `max`
+
+An optional `:mask` value can be provided as a binary number between 0-15 (inclusive).  This determines _which_ of the resulting elements will be committed to the destination vector.  For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed.  Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most.  This aligns with the PS2's VU implementation.
+
+Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.  Take the following for an example: `(vaddx.xyzw vf10, vf20, vf30)`, translates into:
+
+```cpp
+vf10[x] = vf20[x] + vf30[x]
+vf10[y] = vf20[y] + vf30[x]
+vf10[z] = vf20[z] + vf30[x]
+vf10[w] = vf20[w] + vf30[x]
+```
+
+## `.abs.vf`
+```lisp
+(.abs.vf dst src [:color #t|#f] [:mask #b<0-15>])
+```
+
+Calculates the absolute value of the `src` vector, and stores in the `dst` vector.
 
 ## `.blend.vf`
 ```lisp

@@ -422,7 +422,7 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
       "    daddiu sp, sp, 16";
   std::string type = "(function type uint)";
 
-  std::string expected = "(logand (l.d L346) (+ (sll (-> a0-1 allocated-length) 2) 43))";
+  std::string expected = "(logand (l.d L346) (+ (shl (-> a0-0 allocated-length) 2) 43))";
   test_with_expr(func, type, expected, false, "");
 }
 
@@ -461,12 +461,58 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
                                                                  // don't plan on supporting this.
       "   (if\n"
       "    (= v1-0 a1-0)\n"
-      "    (return '#t (set! v1-0 0))\n"
+      "    (return '#t)\n"
       "    )\n"
       "   )\n"
       "  '#f\n"
       "  )";
   test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, FinalBasicTypeP) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L285:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a0, object(s7)\n"
+
+      "L286:\n"
+      "    bne v1, a1, L287\n"
+      "    or a2, s7, r0\n"
+
+      "    daddiu v1, s7, #t\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L288\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+      "L287:\n"
+      "    lwu v1, 4(v1)\n"
+      "    bne v1, a0, L286\n"
+      "    sll r0, r0, 0\n"
+      "    or v0, s7, r0\n"
+      "L288:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function basic type symbol)";
+  std::string expected =
+      "(defun test-function ((a0-0 basic) (a1-0 type))\n"
+      "  (local-vars\n"
+      "   (v1-0 type)\n"
+      "   (a0-1 type)\n"
+      "   (a2-0 symbol)\n"
+      "   )\n"
+      "  (begin\n"
+      "   (set! v1-0 (-> a0-0 type))\n"
+      "   (set! a0-1 object)\n"
+      "   (until\n"
+      "    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
+      "    (if (= v1-0 a1-0) (return (quote #t)))\n"
+      "    )\n"
+      "   (quote #f)\n"
+      "   )\n"
+      "  )";
+  test_final_function(func, type, expected);
 }
 
 TEST_F(FormRegressionTest, ExprTypeTypep) {
@@ -516,7 +562,7 @@ TEST_F(FormRegressionTest, ExprTypeTypep) {
       "    (set! a0-0 (-> a0-0 parent))\n"
       "    (or (= a0-0 v1-0) (zero? a0-0))\n"
       "    )\n"
-      "   (if (= a0-0 a1-0) (return '#t (set! v1-0 0)))\n"
+      "   (if (= a0-0 a1-0) (return '#t))\n"
       "   )\n"
       "  '#f\n"
       "  )";
@@ -572,13 +618,13 @@ TEST_F(FormRegressionTest, ExprFindParentMethod) {
 
   std::string expected =
       "(begin\n"
-      "  (set! v1-2 (-> a0-0 methods a1-0))\n"
+      "  (set! v1-2 (-> a0-0 method-table a1-0))\n"
       "  (until\n"
       "   (!= v0-0 v1-2)\n"
-      "   (if (= a0-0 object) (return nothing (set! v1-2 0)))\n"
+      "   (if (= a0-0 object) (return nothing))\n"
       "   (set! a0-0 (-> a0-0 parent))\n"
-      "   (set! v0-0 (-> a0-0 methods a1-0))\n"
-      "   (if (zero? v0-0) (return nothing (set! v1-2 0)))\n"
+      "   (set! v0-0 (-> a0-0 method-table a1-0))\n"
+      "   (if (zero? v0-0) (return nothing))\n"
       "   )\n"
       "  (set! v1-5 '#f)\n"
       "  v0-0\n"
@@ -616,7 +662,7 @@ TEST_F(FormRegressionTest, ExprRef) {
       "(begin\n"
       "  (set! v1-0 0)\n"
       "  (while\n"
-      "   (<.si v1-0 a1-0)\n"
+      "   (< v1-0 a1-0)\n"
       "   (nop!)\n"
       "   (nop!)\n"
       "   (set! a0-0 (cdr a0-0))\n"
@@ -684,7 +730,7 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "    (set! v0-0 1)\n"
       "    (while\n"
       "      (and (!= v1-1 '()) "
-      "                   (<0.si (sll (the-as uint v1-1) 62))\n"
+      "                   (< (shl (the-as int v1-1) 62) 0)\n"
       "      )\n"
       "     (set! v0-0 (+ v0-0 1))\n"
       "     (set! v1-1 (cdr v1-1))\n"
@@ -856,7 +902,7 @@ TEST_F(FormRegressionTest, ExprNmember) {
       "  (set! s5-0 a0-0)\n"
       "  (set! gp-0 a1-0)\n"
       "  (while\n"
-      "   (not (or (= gp-0 '()) (name= (car gp-0) s5-0)))\n"
+      "   (not (or (= gp-0 '()) (name= (the-as basic (car gp-0)) s5-0)))\n"
       "   (set! gp-0 (cdr gp-0))\n"
       "   )\n"
       "  (set! v1-2 '#f)\n"
@@ -1064,7 +1110,11 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "     (= gp-0 (quote ()))\n"
       "     (begin\n"
       "      (set! a1-1 (car (car gp-0)))\n"
-      "      (if (pair? a1-1) (nmember s5-0 a1-1) (name= a1-1 s5-0))\n"
+      "      (if "
+      "       (pair? a1-1)\n"
+      "       (nmember (the-as basic s5-0) a1-1)\n"
+      "       (name= (the-as basic a1-1) (the-as basic s5-0))"
+      "      )\n"
       "      )\n"
       "     )\n"
       "    )\n"
@@ -1167,8 +1217,11 @@ TEST_F(FormRegressionTest, ExprNassoce) {
       "      (set! s4-0 (car (car gp-0)))\n"
       "      (if\n"
       "       (pair? s4-0)\n"
-      "       (nmember s5-0 s4-0)\n"
-      "       (or (name= s4-0 s5-0) (= s4-0 (quote else)))\n"
+      "       (nmember (the-as basic s5-0) s4-0)\n"
+      "       (or\n"
+      "        (name= (the-as basic s4-0) (the-as basic s5-0))\n"
+      "        (= s4-0 (quote else))\n"
+      "        )\n"
       "       )\n"
       "      )\n"
       "     )\n"
@@ -1548,13 +1601,13 @@ TEST_F(FormRegressionTest, ExprSort) {
       "   (set! s3-0 gp-0)\n"
       "   (while\n"
       "    (not\n"
-      "     (or (= (cdr s3-0) (quote ())) (>=0.si (sll (the-as uint (cdr s3-0)) 62)))\n"
+      "     (or (= (cdr s3-0) (quote ())) (>= (shl (the-as int (cdr s3-0)) 62) 0))\n"
       "     )\n"
       "    (set! s2-0 (car s3-0))\n"
       "    (set! s1-0 (car (cdr s3-0)))\n"
       "    (set! v1-1 (s5-0 s2-0 s1-0))\n"
       "    (when\n"
-      "     (and (or (not v1-1) (>0.si v1-1)) (!= v1-2 (quote #t)))\n"
+      "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 (quote #t)))\n"
       "     (set! s4-0 (+ s4-0 1))\n"
       "     (set! (car s3-0) s1-0)\n"
       "     (set! (car (cdr s3-0)) s2-0)\n"
@@ -1851,7 +1904,7 @@ TEST_F(FormRegressionTest, ExprMemCopy) {
       "  (set! v0-0 a0-0)\n"
       "  (set! v1-0 0)\n"
       "  (while\n"
-      "   (<.si v1-0 a2-0)\n"
+      "   (< v1-0 a2-0)\n"
       "   (set! (-> (the-as (pointer int8) a0-0)) (-> (the-as (pointer uint8) a1-0)))\n"
       "   (set! a0-0 (+ a0-0 (the-as uint 1)))\n"
       "   (set! a1-0 (+ a1-0 (the-as uint 1)))\n"
@@ -1894,7 +1947,7 @@ TEST_F(FormRegressionTest, ExprMemSet32) {
       "  (set! v0-0 a0-0)\n"
       "  (set! v1-0 0)\n"
       "  (while\n"
-      "   (<.si v1-0 a1-0)\n"
+      "   (< v1-0 a1-0)\n"
       "   (set! (-> (the-as (pointer int32) a0-0)) a2-0)\n"
       "   (set! a0-0 (+ a0-0 (the-as uint 4)))\n"
       "   (nop!)\n"
@@ -1940,7 +1993,7 @@ TEST_F(FormRegressionTest, ExprMemOr) {
       "  (set! v0-0 a0-0)\n"
       "  (set! v1-0 0)\n"
       "  (while\n"
-      "   (<.si v1-0 a2-0)\n"
+      "   (< v1-0 a2-0)\n"
       "   (set!\n"
       "    (-> (the-as (pointer int8) a0-0))\n"
       "    (logior\n"
@@ -2017,7 +2070,7 @@ TEST_F(FormRegressionTest, ExprPrint) {
       "    daddiu sp, sp, 16";
   std::string type = "(function object object)";
 
-  std::string expected = "((method-of-type (type-of a0-0) print) a0-0)";
+  std::string expected = "((method-of-type (rtype-of a0-0) print) a0-0)";
   test_with_expr(func, type, expected);
 }
 
@@ -2066,7 +2119,7 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "(begin\n"
       "  (set! gp-0 a0-0)\n"
       "  (set! a0-1 gp-0)\n"
-      "  (set! v1-2 ((method-of-type (type-of a0-1) print) a0-1))\n"
+      "  (set! v1-2 ((method-of-type (rtype-of a0-1) print) a0-1))\n"
       "  (format (quote #t) L324)\n"
       "  gp-0\n"
       "  )";
@@ -2097,7 +2150,7 @@ TEST_F(FormRegressionTest, ExprInspect) {
       "    daddiu sp, sp, 16";
   std::string type = "(function object object)";
 
-  std::string expected = "((method-of-type (type-of a0-0) inspect) a0-0)";
+  std::string expected = "((method-of-type (rtype-of a0-0) inspect) a0-0)";
   test_with_expr(func, type, expected);
 }
 
@@ -2166,17 +2219,138 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "  (set! s5-0 a1-0)\n"
       "  (set! s4-0 0)\n"
       "  (while\n"
-      "   (<.si s4-0 s5-0)\n"
+      "   (< s4-0 s5-0)\n"
       "   (if\n"
       "    (zero? (logand gp-0 1))\n"
       "    (format (quote #t) L323)\n"
       "    (format (quote #t) L322)\n"
       "    )\n"
-      "   (set! gp-0 (srl (the-as uint gp-0) 1))\n"
+      "   (set! gp-0 (shr (the-as uint gp-0) 1))\n"
       "   (set! s4-0 (+ s4-0 1))\n"
       "   )\n"
       "  (set! v1-3 (quote #f))\n"
       "  (quote #f)\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
+}
+
+TEST_F(FormRegressionTest, ExprPrintName) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L136:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+
+      "    bne a0, a1, L137\n"
+      "    or v1, s7, r0\n"
+
+      "    daddiu v0, s7, #t\n"
+      "    beq r0, r0, L143\n"
+      "    sll r0, r0, 0\n"
+
+      "L137:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu v1, v1, a2\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L138\n"
+      "    or v1, a2, r0\n"
+
+      "    lwu v1, -4(a1)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu a2, v1, a2\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a2\n"
+
+      "L138:\n"
+      "    beq s7, v1, L139\n"
+      "    or v1, s7, r0\n"
+
+      "    lw t9, string=(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    beq r0, r0, L143\n"
+      "    sll r0, r0, 0\n"
+
+      "L139:\n"
+      "    lwu v1, -4(a0)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu v1, v1, a2\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L140\n"
+      "    or v1, a2, r0\n"
+
+      "    lwu v1, -4(a1)\n"
+      "    lw a2, symbol(s7)\n"
+      "    dsubu a2, v1, a2\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a2\n"
+
+      "L140:\n"
+      "    beq s7, v1, L141\n"
+      "    or v1, s7, r0\n"
+
+      "    lw t9, string=(s7)\n"
+      "    ori v1, r0, 65336\n"
+      "    daddu v1, v1, a1\n"
+      "    lwu a1, 0(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    beq r0, r0, L143\n"
+      "    sll r0, r0, 0\n"
+
+      "L141:\n"
+      "    lwu v1, -4(a1)\n"
+      "    lw a2, string(s7)\n"
+      "    dsubu v1, v1, a2\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L142\n"
+      "    or v1, a2, r0\n"
+
+      "    lwu v1, -4(a0)\n"
+      "    lw a2, symbol(s7)\n"
+      "    dsubu a2, v1, a2\n"
+      "    daddiu v1, s7, 8\n"
+      "    movn v1, s7, a2\n"
+
+      "L142:\n"
+      "    beq s7, v1, L143\n"
+      "    or v0, s7, r0\n"
+
+      "    lw t9, string=(s7)\n"
+      "    or v1, a1, r0\n"
+      "    ori a1, r0, 65336\n"
+      "    daddu a0, a1, a0\n"
+      "    lwu a1, 0(a0)\n"
+      "    or a0, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "L143:\n"
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function basic basic symbol)";
+
+  std::string expected =
+      "(cond\n"
+      "  ((= a0-0 a1-0) (quote #t))\n"
+      "  ((and (= (-> a0-0 type) string) (= (-> a1-0 type) string))\n"
+      "   (string= (the-as string a0-0) (the-as string a1-0))\n"
+      "   )\n"
+      "  ((and (= (-> a0-0 type) string) (= (-> a1-0 type) symbol))\n"
+      "   (string= (the-as string a0-0) (-> (+ 65336 (the-as int a1-0)) 0))\n"
+      "   )\n"
+      "  ((and (= (-> a1-0 type) string) (= (-> a0-0 type) symbol))\n"
+      "   (string= (the-as string a1-0) (-> (+ 65336 (the-as int a0-0)) 0))\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {},
+                 parse_hint_json("[\t\t[24, [\"a1\", \"symbol\"]],\n"
+                                 "\t\t[39, [\"a0\", \"symbol\"]]]"));
 }

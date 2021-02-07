@@ -263,6 +263,8 @@ class SetVarOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const Variable& dst() const { return m_dst; }
+  const SimpleExpression& src() const { return m_src; }
 
  private:
   Variable m_dst;
@@ -289,6 +291,7 @@ class AsmOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(VariableSet& vars) const override;
+  const Instruction& instruction() const { return m_instr; }
 
  private:
   Instruction m_instr;
@@ -355,10 +358,13 @@ class IR2_Condition {
   const SimpleAtom& src(int i) const { return m_src[i]; }
   ConditionElement* get_as_form(FormPool& pool, const Env& env, int my_idx) const;
   void collect_vars(VariableSet& vars) const;
+  void make_flipped() { m_flipped_eval = true; }
+  bool flipped() const { return m_flipped_eval; }
 
  private:
   Kind m_kind = Kind::INVALID;
   SimpleAtom m_src[2];
+  bool m_flipped_eval = false;
 };
 
 std::string get_condition_kind_name(IR2_Condition::Kind kind);
@@ -461,6 +467,7 @@ class IR2_BranchDelay {
     SET_PAIR,
     DSLLV,
     NEGATE,
+    NO_DELAY,
     UNKNOWN
   };
 

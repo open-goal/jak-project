@@ -222,8 +222,8 @@
     
     ;; set up our suspend/resume hooks. By default just use the thread's methods.
     ;; but something else could install a different hook if needed.
-    (set! (-> obj suspend-hook) (method obj thread-suspend))
-    (set! (-> obj resume-hook) (method obj thread-resume))
+    (set! (-> obj suspend-hook) (method-of-object obj thread-suspend))
+    (set! (-> obj resume-hook) (method-of-object obj thread-resume))
     
     ;; remember how much space we have for the backup stack.
     (set! (-> obj stack-size) stack-size)
@@ -848,7 +848,7 @@
     (dotimes (i count)
       ;; create each process
       (let ((old-bro (-> obj child))
-            (next ((method process new) allocation process 'dead stack-size)))
+            (next ((method-of-type process new) allocation process 'dead stack-size)))
         (set! (-> obj child) (as-ppointer next))
         (set! (-> next parent) (as-ppointer obj))
         (set! (-> next pool) obj)
@@ -1145,7 +1145,7 @@
          ;; get the gap
          (set! proc (the process (gap-location obj insert)))
          ;; and allocate! The method new does the offset for us.
-         (set! proc ((method process new) (the symbol proc) process 'process stack-size))
+         (set! proc ((method-of-type process new) (the symbol proc) process 'process stack-size))
          
          ;; update our rec to contain this process.
          (set! (-> rec process) proc)

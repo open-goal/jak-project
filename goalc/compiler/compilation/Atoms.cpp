@@ -13,7 +13,7 @@ static const std::unordered_map<
     std::string,
     Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
     goal_forms = {
-        // inline asm
+        // INLINE ASM
         {".ret", &Compiler::compile_asm_ret},
         {".push", &Compiler::compile_asm_push},
         {".pop", &Compiler::compile_asm_pop},
@@ -23,11 +23,45 @@ static const std::unordered_map<
         {".add", &Compiler::compile_asm_add},
         {".load-sym", &Compiler::compile_asm_load_sym},
         {".mov", &Compiler::compile_asm_mov},
+
+        // INLINE ASM - VECTOR FLOAT OPERATIONS
+        {".nop.vf", &Compiler::compile_asm_nop_vf},
+        {".nop", &Compiler::compile_nop},
         {".lvf", &Compiler::compile_asm_lvf},
         {".svf", &Compiler::compile_asm_svf},
         {".xor.vf", &Compiler::compile_asm_xor_vf},
+
+        {".max.vf", &Compiler::compile_asm_max_vf},
+        {".maxx.vf", &Compiler::compile_asm_maxx_vf},
+        {".maxy.vf", &Compiler::compile_asm_maxy_vf},
+        {".maxz.vf", &Compiler::compile_asm_maxz_vf},
+        {".maxw.vf", &Compiler::compile_asm_maxw_vf},
+
+        {".min.vf", &Compiler::compile_asm_min_vf},
+        {".minx.vf", &Compiler::compile_asm_minx_vf},
+        {".miny.vf", &Compiler::compile_asm_miny_vf},
+        {".minz.vf", &Compiler::compile_asm_minz_vf},
+        {".minw.vf", &Compiler::compile_asm_minw_vf},
+
         {".sub.vf", &Compiler::compile_asm_sub_vf},
+        {".subx.vf", &Compiler::compile_asm_subx_vf},
+        {".suby.vf", &Compiler::compile_asm_suby_vf},
+        {".subz.vf", &Compiler::compile_asm_subz_vf},
+        {".subw.vf", &Compiler::compile_asm_subw_vf},
+
         {".add.vf", &Compiler::compile_asm_add_vf},
+        {".addx.vf", &Compiler::compile_asm_addx_vf},
+        {".addy.vf", &Compiler::compile_asm_addy_vf},
+        {".addz.vf", &Compiler::compile_asm_addz_vf},
+        {".addw.vf", &Compiler::compile_asm_addw_vf},
+
+        {".mul.vf", &Compiler::compile_asm_mul_vf},
+        {".mulx.vf", &Compiler::compile_asm_mulx_vf},
+        {".muly.vf", &Compiler::compile_asm_muly_vf},
+        {".mulz.vf", &Compiler::compile_asm_mulz_vf},
+        {".mulw.vf", &Compiler::compile_asm_mulw_vf},
+
+        {".abs.vf", &Compiler::compile_asm_abs_vf},
         {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         // BLOCK FORMS
@@ -37,6 +71,7 @@ static const std::unordered_map<
         {"return-from", &Compiler::compile_return_from},
         {"label", &Compiler::compile_label},
         {"goto", &Compiler::compile_goto},
+        {"nop!", &Compiler::compile_nop},
 
         // COMPILER CONTROL
         {"gs", &Compiler::compile_gs},
@@ -56,6 +91,8 @@ static const std::unordered_map<
         // CONTROL FLOW
         {"cond", &Compiler::compile_cond},
         {"when-goto", &Compiler::compile_when_goto},
+        {"and", &Compiler::compile_and_or},
+        {"or", &Compiler::compile_and_or},
 
         // DEFINITION
         {"define", &Compiler::compile_define},
@@ -86,7 +123,8 @@ static const std::unordered_map<
         {"new", &Compiler::compile_new},
         {"car", &Compiler::compile_car},
         {"cdr", &Compiler::compile_cdr},
-        {"method", &Compiler::compile_method},
+        {"method-of-type", &Compiler::compile_method_of_type},
+        {"method-of-object", &Compiler::compile_method_of_object},
         {"declare-type", &Compiler::compile_declare_type},
         {"none", &Compiler::compile_none},
 
@@ -112,9 +150,6 @@ static const std::unordered_map<
         {"*", &Compiler::compile_mul},
         {"imul64", &Compiler::compile_imul64},
         {"/", &Compiler::compile_div},
-        {"shlv", &Compiler::compile_shlv},
-        {"shrv", &Compiler::compile_shrv},
-        {"sarv", &Compiler::compile_sarv},
         {"shl", &Compiler::compile_shl},
         {"shr", &Compiler::compile_shr},
         {"sar", &Compiler::compile_sar},

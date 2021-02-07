@@ -187,12 +187,14 @@ void ObjectFileDB::ir2_basic_block_pass() {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
+      //      if (func.guessed_name.to_string() == "abs") {
       func.cfg = build_cfg(data.linked_data, segment_id, func);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
         failed_to_build_cfg++;
       }
+      //      }
 
       // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
@@ -604,7 +606,8 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
         auto& op = func.get_atomic_op_at_instr(instr_id);
         op_id = func.ir2.atomic_ops->instruction_to_atomic_op.at(instr_id);
         append_commented(line, printed_comment,
-                         op.to_form(data.linked_data.labels, func.ir2.env).print());
+                         op.to_form(data.linked_data.labels, func.ir2.env).print() + "[" +
+                             std::to_string(op_id) + "]");
 
         if (func.ir2.env.has_type_analysis()) {
           append_commented(
@@ -648,6 +651,16 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   for (int i = end_idx; i < func.end_word - func.start_word; i++) {
     print_instr_start(i);
     print_instr_end(i);
+  }
+
+  if (func.cfg) {
+    result += func.cfg->to_form_string();
+
+    if (!func.cfg->is_fully_resolved()) {
+      result += "\n";
+      result += func.cfg->to_dot();
+      result += "\n";
+    }
   }
 
   result += "\n";

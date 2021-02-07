@@ -91,7 +91,7 @@ class ObjectFileDB {
                             const std::string& obj_name,
                             TypeSpec* result);
 
- private:
+ public:
   void load_map_file(const std::string& map_data);
   void get_objs_from_dgo(const std::string& filename);
   void add_obj_from_dgo(const std::string& obj_name,
