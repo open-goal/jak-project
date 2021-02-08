@@ -238,6 +238,10 @@ void Form::update_children_from_stack(const Env& env,
     }
   }
 
+  for (auto& x : new_elts) {
+    x->parent_form = this;
+  }
+
   m_elements = new_elts;
 }
 
@@ -679,7 +683,14 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
 ///////////////////
 
 void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
+  assert(m_src->parent_element == this);
   m_src->update_children_from_stack(env, pool, stack, true);
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
@@ -696,6 +707,9 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   stack.push_value_to_reg(m_dst, m_src, true);
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
 }
 
 void SetVarElement::update_from_stack(const Env& env,
@@ -704,6 +718,9 @@ void SetVarElement::update_from_stack(const Env& env,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects) {
   m_src->update_children_from_stack(env, pool, stack, allow_side_effects);
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
   result->push_back(this);
 }
 

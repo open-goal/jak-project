@@ -288,7 +288,10 @@ void SetVarElement::get_modified_regs(RegSet& regs) const {
 // SetFormFormElement
 /////////////////////////////
 
-SetFormFormElement::SetFormFormElement(Form* dst, Form* src) : m_dst(dst), m_src(src) {}
+SetFormFormElement::SetFormFormElement(Form* dst, Form* src) : m_dst(dst), m_src(src) {
+  m_dst->parent_element = this;
+  m_src->parent_element = this;
+}
 
 goos::Object SetFormFormElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"), m_dst->to_form(env),
@@ -1143,12 +1146,40 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
   }
 }
 
-GenericElement::GenericElement(GenericOperator op) : m_head(op) {}
-GenericElement::GenericElement(GenericOperator op, Form* arg) : m_head(op), m_elts({arg}) {}
+GenericElement::GenericElement(GenericOperator op) : m_head(op) {
+  if (op.kind() == GenericOperator::Kind::FUNCTION_EXPR) {
+    op.m_function->parent_element = this;
+  }
+}
+
+GenericElement::GenericElement(GenericOperator op, Form* arg) : m_head(op), m_elts({arg}) {
+  if (op.kind() == GenericOperator::Kind::FUNCTION_EXPR) {
+    op.m_function->parent_element = this;
+  }
+  for (auto x : m_elts) {
+    x->parent_element = this;
+  }
+}
+
 GenericElement::GenericElement(GenericOperator op, Form* arg0, Form* arg1)
-    : m_head(op), m_elts({arg0, arg1}) {}
+    : m_head(op), m_elts({arg0, arg1}) {
+  if (op.kind() == GenericOperator::Kind::FUNCTION_EXPR) {
+    op.m_function->parent_element = this;
+  }
+  for (auto x : m_elts) {
+    x->parent_element = this;
+  }
+}
+
 GenericElement::GenericElement(GenericOperator op, std::vector<Form*> forms)
-    : m_head(op), m_elts(std::move(forms)) {}
+    : m_head(op), m_elts(std::move(forms)) {
+  if (op.kind() == GenericOperator::Kind::FUNCTION_EXPR) {
+    op.m_function->parent_element = this;
+  }
+  for (auto x : m_elts) {
+    x->parent_element = this;
+  }
+}
 
 goos::Object GenericElement::to_form(const Env& env) const {
   if (m_head.kind() == GenericOperator::Kind::CONDITION_OPERATOR &&
@@ -1198,7 +1229,9 @@ void GenericElement::get_modified_regs(RegSet& regs) const {
 // CastElement
 /////////////////////////////
 
-CastElement::CastElement(TypeSpec type, Form* source) : m_type(std::move(type)), m_source(source) {}
+CastElement::CastElement(TypeSpec type, Form* source) : m_type(std::move(type)), m_source(source) {
+  source->parent_element = this;
+}
 
 goos::Object CastElement::to_form(const Env& env) const {
   return pretty_print::build_list("the-as", m_type.print(), m_source->to_form(env));
@@ -1312,10 +1345,24 @@ void DerefToken::get_modified_regs(RegSet& regs) const {
 }
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
-    : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {}
+    : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {
+  m_base->parent_element = this;
+  for (auto& x : m_tokens) {
+    if (x.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      x.expr()->parent_element = this;
+    }
+  }
+}
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens)
-    : m_base(base), m_is_addr_of(is_addr_of), m_tokens(std::move(tokens)) {}
+    : m_base(base), m_is_addr_of(is_addr_of), m_tokens(std::move(tokens)) {
+  m_base->parent_element = this;
+  for (auto& x : m_tokens) {
+    if (x.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      x.expr()->parent_element = this;
+    }
+  }
+}
 
 goos::Object DerefElement::to_form(const Env& env) const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol(m_is_addr_of ? "&->" : "->"),
@@ -1430,7 +1477,9 @@ void ArrayFieldAccess::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 
 GetMethodElement::GetMethodElement(Form* in, std::string name, bool is_object)
-    : m_in(in), m_name(std::move(name)), m_is_object(is_object) {}
+    : m_in(in), m_name(std::move(name)), m_is_object(is_object) {
+  in->parent_element = this;
+}
 
 goos::Object GetMethodElement::to_form(const Env& env) const {
   return pretty_print::build_list(m_is_object ? "method-of-object" : "method-of-type",

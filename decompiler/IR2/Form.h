@@ -804,6 +804,11 @@ class DerefToken {
     return m_name;
   }
 
+  Form* expr() {
+    assert(m_kind == Kind::INTEGER_EXPRESSION);
+    return m_expr;
+  }
+
  private:
   Kind m_kind = Kind::INVALID;
   s64 m_int_constant = -1;

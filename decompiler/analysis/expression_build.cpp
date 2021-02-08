@@ -11,6 +11,9 @@ namespace decompiler {
 void clean_up_ifs(Form* top_level_form, const Env&) {
   bool changed = true;
   while (changed) {
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     changed = false;
     top_level_form->apply([&](FormElement* elt) {
       auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
@@ -39,6 +42,9 @@ void clean_up_ifs(Form* top_level_form, const Env&) {
       }
     });
 
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     top_level_form->apply([&](FormElement* elt) {
       auto as_sc = dynamic_cast<ShortCircuitElement*>(elt);
       if (!as_sc) {
@@ -66,6 +72,9 @@ void clean_up_ifs(Form* top_level_form, const Env&) {
       }
     });
 
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     top_level_form->apply([&](FormElement* elt) {
       auto as_ge = dynamic_cast<GenericElement*>(elt);
       if (!as_ge) {
@@ -159,8 +168,9 @@ bool convert_to_expressions(Form* top_level_form,
       top_level_form->push_back(x);
     }
 
-    //    fmt::print("Before clean:\n{}\n",
-    //    pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     // fix up stuff
     clean_up_ifs(top_level_form, f.ir2.env);
 
