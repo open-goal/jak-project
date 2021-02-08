@@ -40,6 +40,8 @@ int main(int argc, char** argv) {
     strs.push_back(file_util::combine_path(in_folder, str_name));
   }
 
+  file_util::create_dir_if_needed(out_folder);
+
   // build file database
   lg::info("Setting up object file DB...");
   ObjectFileDB db(dgos, get_config().obj_file_name_map_file, objs, strs);
