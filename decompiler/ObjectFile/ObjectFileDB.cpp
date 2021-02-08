@@ -417,8 +417,10 @@ std::string ObjectFileDB::generate_obj_listing() {
     assert(int(all_unique_names.size()) == unique_count);
   }
 
-  result.pop_back();  // kill last new line
-  result.pop_back();  // kill last comma
+  if (result.length() >= 2) {
+    result.pop_back();  // kill last new line
+    result.pop_back();  // kill last comma
+  }
   return result + "]";
 }
 
