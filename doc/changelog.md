@@ -116,3 +116,4 @@
 
 ## V0.6
 - There is no longer a separate compiler form for variable vs. constant shifts. Instead the compiler will pick the constant shift automatically when possible. The shifts are called `sar`, `shl` and `shr`, like the x86 instructions.
+- Static type reference link data now has the correct number of methods. This prevents errors like `dkernel: trying to redefine a type 'game-info' with 29 methods when it had 12, try restarting` when you did not actually redefine the number of methods.

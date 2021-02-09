@@ -846,7 +846,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         match_result = match(matcher, temp_form);
         if (match_result.matched) {
           auto alloc = match_result.maps.strings.at(allocation);
-          if (alloc != "global") {
+          if (alloc != "global" && alloc != "debug") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);

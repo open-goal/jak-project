@@ -16,6 +16,7 @@
 #include "goalc/debugger/DebugInfo.h"
 
 struct FunctionDebugInfo;
+class TypeSystem;
 
 namespace emitter {
 
@@ -58,7 +59,7 @@ struct StaticRecord {
 class ObjectGenerator {
  public:
   ObjectGenerator() = default;
-  ObjectFileData generate_data_v3();
+  ObjectFileData generate_data_v3(const TypeSystem* ts);
 
   FunctionRecord add_function_to_seg(int seg,
                                      FunctionDebugInfo* debug,
@@ -96,8 +97,8 @@ class ObjectGenerator {
   void handle_temp_rip_func_links(int seg);
   void handle_temp_static_ptr_links(int seg);
 
-  void emit_link_table(int seg);
-  void emit_link_type_pointer(int seg);
+  void emit_link_table(int seg, const TypeSystem* ts);
+  void emit_link_type_pointer(int seg, const TypeSystem* ts);
   void emit_link_symbol(int seg);
   void emit_link_rip(int seg);
   void emit_link_ptr(int seg);

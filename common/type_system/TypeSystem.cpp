@@ -843,7 +843,7 @@ std::string TypeSystem::print_all_type_information() const {
 /*!
  * Get the next free method ID of a type.
  */
-int TypeSystem::get_next_method_id(Type* type) {
+int TypeSystem::get_next_method_id(Type* type) const {
   MethodInfo info;
 
   while (true) {

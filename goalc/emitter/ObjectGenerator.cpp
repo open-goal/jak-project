@@ -17,13 +17,15 @@
 #include "goalc/debugger/DebugInfo.h"
 #include "common/goal_constants.h"
 #include "common/versions.h"
+#include "common/type_system/TypeSystem.h"
+#include "third-party/fmt/core.h"
 
 namespace emitter {
 
 /*!
  * Build an object file with the v3 format.
  */
-ObjectFileData ObjectGenerator::generate_data_v3() {
+ObjectFileData ObjectGenerator::generate_data_v3(const TypeSystem* ts) {
   ObjectFileData out;
 
   // do functions (step 2, part 1)
@@ -95,7 +97,7 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
 
   // actual linking?
   for (int seg = N_SEG; seg-- > 0;) {
-    emit_link_table(seg);
+    emit_link_table(seg, ts);
   }
 
   // emit header
@@ -430,7 +432,7 @@ uint32_t push_data(const T& data, std::vector<u8>& v) {
 }
 }  // namespace
 
-void ObjectGenerator::emit_link_type_pointer(int seg) {
+void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
   auto& out = m_link_by_seg.at(seg);
   for (auto& rec : m_type_ptr_links_by_seg.at(seg)) {
     u32 size = rec.second.size();
@@ -448,7 +450,7 @@ void ObjectGenerator::emit_link_type_pointer(int seg) {
     out.push_back(0);
 
     // method count
-    out.push_back(0);  // todo!
+    out.push_back(ts->get_next_method_id(ts->lookup_type(rec.first)));
 
     // number of links
     push_data<u32>(size, out);
@@ -516,9 +518,9 @@ void ObjectGenerator::emit_link_rip(int seg) {
   }
 }
 
-void ObjectGenerator::emit_link_table(int seg) {
+void ObjectGenerator::emit_link_table(int seg, const TypeSystem* ts) {
   emit_link_symbol(seg);
-  emit_link_type_pointer(seg);
+  emit_link_type_pointer(seg, ts);
   emit_link_rip(seg);
   emit_link_ptr(seg);
   m_link_by_seg.at(seg).push_back(LINK_TABLE_END);

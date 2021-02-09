@@ -175,7 +175,7 @@ class TypeSystem {
                  bool print_on_error = true,
                  bool throw_on_error = true) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
-  int get_next_method_id(Type* type);
+  int get_next_method_id(Type* type) const;
 
   bool is_bitfield_type(const std::string& type_name) const;
   void add_field_to_bitfield(BitFieldType* type,
