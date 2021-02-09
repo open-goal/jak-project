@@ -185,6 +185,16 @@ bool convert_to_expressions(Form* top_level_form,
     f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
   }
 
+  // strip out coloring moves
+  for (auto it = top_level_form->elts().begin(); it != top_level_form->elts().end();) {
+    auto as_x = dynamic_cast<SetVarElement*>(*it);
+    if (as_x && as_x->is_eliminated_coloring_move()) {
+      it = top_level_form->elts().erase(it);
+    } else {
+      it++;
+    }
+  }
+
   return true;
 }
 }  // namespace decompiler

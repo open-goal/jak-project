@@ -699,14 +699,15 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
         auto var = src_as_se->expr().get_arg(0).var();
         auto& info = env.reg_use().op.at(var.idx());
         if (info.consumes.find(var.reg()) != info.consumes.end()) {
-          stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);
+          stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
+                                        m_is_eliminated_coloring_move);
           return;
         }
       }
     }
   }
 
-  stack.push_value_to_reg(m_dst, m_src, true);
+  stack.push_value_to_reg(m_dst, m_src, true, m_is_eliminated_coloring_move);
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }

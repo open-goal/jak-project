@@ -187,14 +187,14 @@ TEST_F(FormRegressionTest, FormatString) {
   std::string type = "(function bfloat bfloat)";
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 a0-0)\n"
+      "  (set! a0-0 a0-0)\n"
       "  (set! t9-0 format)\n"
       "  (set! a0-1 '#t)\n"
       "  (set! a1-0 L343)\n"
-      "  (set! f0-0 (-> gp-0 data))\n"
+      "  (set! f0-0 (-> a0-0 data))\n"
       "  (set! a2-0 (fpr->gpr f0-0))\n"
       "  (call! a0-1 a1-0 a2-0)\n"  // #t, "~f", the float
-      "  (set! v0-1 gp-0)\n"
+      "  (set! v0-1 a0-0)\n"
       "  (ret-value v0-1)\n"
       "  )";
   test_no_expr(func, type, expected, false, "", {{"L343", "~f"}});
@@ -558,29 +558,29 @@ TEST_F(FormRegressionTest, FunctionCall) {
   std::string expected =
       "(begin (if\n"  // this if needs regrouping.
       "  (begin\n"
-      "   (set! s5-0 a0-0)\n"  // s5-0 is the thing to check
-      "   (set! gp-0 a1-0)\n"  // gp-0 is the list
+      "   (set! a0-0 a0-0)\n"  // s5-0 is the thing to check
+      "   (set! a1-0 a1-0)\n"  // gp-0 is the list
       "   (while\n"
       "    (begin\n"
       "     (or\n"
-      "      (begin (set! v1-0 '()) (set! a0-1 (= gp-0 v1-0)) a0-1)\n"  // got empty list.
+      "      (begin (set! v1-0 '()) (set! a0-1 (= a1-0 v1-0)) a0-1)\n"  // got empty list.
       "      (begin\n"
       "       (set! t9-0 name=)\n"
-      "       (set! a0-2 (car gp-0))\n"
-      "       (set! a1-1 s5-0)\n"
+      "       (set! a0-2 (car a1-0))\n"
+      "       (set! a1-1 a0-0)\n"
       "       (set! v0-0 (call! a0-2 a1-1))\n"
       "       (set! v1-1 v0-0)\n"  // name match
       "       )\n"
       "      )\n"
       "     (not v1-1)\n"  // no name match AND no empty list.
       "     )\n"
-      "    (set! gp-0 (cdr gp-0))\n"  // get next (merged)
+      "    (set! a1-0 (cdr a1-0))\n"  // get next (merged)
       "    )\n"
       "   (set! v1-2 '#f)\n"  // while loop thing
       "   (set! v1-3 '())\n"  //
-      "   (!= gp-0 v1-3)\n"   // IF CONDITION
+      "   (!= a1-0 v1-3)\n"   // IF CONDITION
       "   )\n"
-      "  (set! v0-1 gp-0)\n"  // not empty, so return the result
+      "  (set! v0-1 a1-0)\n"  // not empty, so return the result
       "  )"                   // the (set! v0 #f) from the if is added later.
       "  (ret-value v0-1))\n";
   test_no_expr(func, type, expected, true);
@@ -692,13 +692,13 @@ TEST_F(FormRegressionTest, NestedAndOr) {
   std::string type = "(function object (function object object object) object)";
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 a0-0)\n"  // gp-0 = list
-      "  (set! s5-0 a1-0)\n"  // s5-0 = func
+      "  (set! a0-0 a0-0)\n"  // gp-0 = list
+      "  (set! a1-0 a1-0)\n"  // s5-0 = func
       "  (set! s4-0 -1)\n"    // s4-0 = flag
       "  (while\n"
       "   (nonzero? s4-0)\n"   // there is stuff to do...
       "   (set! s4-0 0)\n"     // flag = 0
-      "   (set! s3-0 gp-0)\n"  // s3 = list-iter
+      "   (set! s3-0 a0-0)\n"  // s3 = list-iter
       "   (while\n"
       "    (begin\n"
       "     (or\n"
@@ -725,7 +725,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "          (set! s2-0 (car s3-0))\n"  // s2 = car
       "          (set! v1-0 (cdr s3-0))\n"
       "          (set! s1-0 (car v1-0))\n"         // s1 = cadr
-      "          (set! t9-0 s5-0)\n"               // func
+      "          (set! t9-0 a1-0)\n"               // func
       "          (set! a0-1 s2-0)\n"               // car
       "          (set! a1-1 s1-0)\n"               // cadr
       "          (set! v0-0 (call! a0-1 a1-1))\n"  // compare!
@@ -752,7 +752,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "   (set! v1-11 '#f)\n"
       "   )\n"
       "  (set! v1-12 '#f)\n"
-      "  (set! v0-1 gp-0)\n"
+      "  (set! v0-1 a0-0)\n"
       "  (ret-value v0-1)\n"
       "  )";
   test_no_expr(func, type, expected, true);
@@ -795,20 +795,20 @@ TEST_F(FormRegressionTest, NewMethod) {
   std::string expected =
       "(begin (when\n"
       "  (begin\n"
-      "   (set! gp-0 a2-0)\n"  // gp-0 is size
+      "   (set! a2-0 a2-0)\n"  // gp-0 is size
       "   (set! v1-0 object)\n"
       "   (set! t9-0 (-> v1-0 methods-by-name new))\n"  // object new
       "   (set! v1-1 a1-0)\n"                           // ?
       "   (set! a2-1 (-> a1-0 size))\n"                 // math
       "   (set! a1-1 (-> a1-0 heap-base))\n"
-      "   (set! a1-2 (*.ui gp-0 a1-1))\n"
+      "   (set! a1-2 (*.ui a2-0 a1-1))\n"
       "   (set! a2-2 (+ a2-1 a1-2))\n"
       "   (set! a1-3 v1-1)\n"  // size!
       "   (set! v0-0 (call! a0-0 a1-3 a2-2))\n"
       "   (nonzero? v0-0)\n"  // only if we got memory...
       "   )\n"
-      "  (set! (-> v0-0 length) gp-0)\n"  // store size
-      "  (set! (-> v0-0 allocated-length) gp-0)\n"
+      "  (set! (-> v0-0 length) a2-0)\n"  // store size
+      "  (set! (-> v0-0 allocated-length) a2-0)\n"
       "  )"
       "  (ret-value v0-0))\n";
   test_no_expr(func, type, expected, false, "inline-array-class");
@@ -847,12 +847,12 @@ TEST_F(FormRegressionTest, Recursive) {
   std::string type = "(function int int)";
   std::string expected =
       "(begin (cond\n"
-      "  ((begin (set! gp-0 a0-0) (set! v1-0 1) (= gp-0 v1-0)) (set! v0-0 1))\n"  // base
+      "  ((begin (set! a0-0 a0-0) (set! v1-0 1) (= a0-0 v1-0)) (set! v0-0 1))\n"  // base
       "  (else\n"
       "   (set! t9-0 fact)\n"  // recurse!
-      "   (set! a0-1 (+ gp-0 -1))\n"
+      "   (set! a0-1 (+ a0-0 -1))\n"
       "   (set! v0-1 (call! a0-1))\n"
-      "   (set! v0-0 (*.si gp-0 v0-1))\n"  // not quite a tail call...
+      "   (set! v0-0 (*.si a0-0 v0-1))\n"  // not quite a tail call...
       "   )\n"
       "  )"
       "  (ret-value v0-0))\n";

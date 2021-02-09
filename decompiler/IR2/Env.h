@@ -96,6 +96,12 @@ class Env {
 
   void set_remap_for_function(int nargs);
 
+  bool op_id_is_eliminated_coloring_move(int op_id) const {
+    assert(has_local_vars());
+    return m_var_names.eliminated_move_op_ids.find(op_id) !=
+           m_var_names.eliminated_move_op_ids.end();
+  }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 

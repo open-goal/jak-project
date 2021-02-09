@@ -401,7 +401,7 @@ TEST_F(FormRegressionTest, ExprPrintBfloat) {
       "    daddiu sp, sp, 32";
   std::string type = "(function bfloat bfloat)";
 
-  std::string expected = "(begin (set! gp-0 arg0) (format '#t L343 (-> gp-0 data)) gp-0)";
+  std::string expected = "(begin (format (quote #t) L343 (-> arg0 data)) arg0)";
   test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
 
@@ -502,7 +502,6 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
       "   (a0-1 type)\n"
       "   (a2-0 symbol)\n"
       "   )\n"
-      "  (begin\n"
       "   (set! v1-0 (-> arg0 type))\n"
       "   (set! a0-1 object)\n"
       "   (until\n"
@@ -510,7 +509,6 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
       "    (if (= v1-0 arg1) (return (quote #t)))\n"
       "    )\n"
       "   (quote #f)\n"
-      "   )\n"
       "  )";
   test_final_function(func, type, expected);
 }
@@ -899,14 +897,12 @@ TEST_F(FormRegressionTest, ExprNmember) {
 
   std::string expected =
       "(begin\n"
-      "  (set! s5-0 arg0)\n"
-      "  (set! gp-0 arg1)\n"
       "  (while\n"
-      "   (not (or (= gp-0 '()) (name= (the-as basic (car gp-0)) s5-0)))\n"
-      "   (set! gp-0 (cdr gp-0))\n"
+      "   (not (or (= arg1 '()) (name= (the-as basic (car arg1)) arg0)))\n"
+      "   (set! arg1 (cdr arg1))\n"
       "   )\n"
       "  (set! v1-2 '#f)\n"
-      "  (if (!= gp-0 '()) gp-0)\n"
+      "  (if (!= arg1 '()) arg1)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1102,26 +1098,24 @@ TEST_F(FormRegressionTest, ExprNassoc) {
 
   std::string expected =
       "(begin\n"
-      "  (set! s5-0 arg0)\n"
-      "  (set! gp-0 arg1)\n"
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (= gp-0 (quote ()))\n"
+      "     (= arg1 (quote ()))\n"
       "     (begin\n"
-      "      (set! a1-1 (car (car gp-0)))\n"
+      "      (set! a1-1 (car (car arg1)))\n"
       "      (if "
       "       (pair? a1-1)\n"
-      "       (nmember (the-as basic s5-0) a1-1)\n"
-      "       (name= (the-as basic a1-1) (the-as basic s5-0))"
+      "       (nmember (the-as basic arg0) a1-1)\n"
+      "       (name= (the-as basic a1-1) (the-as basic arg0))"
       "      )\n"
       "      )\n"
       "     )\n"
       "    )\n"
-      "   (set! gp-0 (cdr gp-0))\n"
+      "   (set! arg1 (cdr arg1))\n"
       "   )\n"
       "  (set! v1-3 (quote #f))\n"
-      "  (if (!= gp-0 (quote ())) (car gp-0))\n"
+      "  (if (!= arg1 (quote ())) (car arg1))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1207,29 +1201,27 @@ TEST_F(FormRegressionTest, ExprNassoce) {
   // will need fixing if we clean up the set! if thing
   std::string expected =
       "(begin\n"
-      "  (set! s5-0 arg0)\n"
-      "  (set! gp-0 arg1)\n"
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (= gp-0 (quote ()))\n"
+      "     (= arg1 (quote ()))\n"
       "     (begin\n"
-      "      (set! s4-0 (car (car gp-0)))\n"
+      "      (set! s4-0 (car (car arg1)))\n"
       "      (if\n"
       "       (pair? s4-0)\n"
-      "       (nmember (the-as basic s5-0) s4-0)\n"
+      "       (nmember (the-as basic arg0) s4-0)\n"
       "       (or\n"
-      "        (name= (the-as basic s4-0) (the-as basic s5-0))\n"
+      "        (name= (the-as basic s4-0) (the-as basic arg0))\n"
       "        (= s4-0 (quote else))\n"
       "        )\n"
       "       )\n"
       "      )\n"
       "     )\n"
       "    )\n"
-      "   (set! gp-0 (cdr gp-0))\n"
+      "   (set! arg1 (cdr arg1))\n"
       "   )\n"
       "  (set! v1-4 (quote #f))\n"
-      "  (if (!= gp-0 (quote ())) (car gp-0))\n"
+      "  (if (!= arg1 (quote ())) (car arg1))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1479,9 +1471,8 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
   // NOTE - this appears to _not_ be a nested call.
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 arg0)\n"
-      "  (set! a3-0 (delete-car! (car gp-0) arg1))\n"
-      "  (new 'global pair gp-0 a3-0)\n"
+      "  (set! a3-0 (delete-car! (car arg0) arg1))\n"
+      "  (new 'global pair arg0 a3-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1592,20 +1583,18 @@ TEST_F(FormRegressionTest, ExprSort) {
   // TODO - this should probably be tested.
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 arg0)\n"
-      "  (set! s5-0 arg1)\n"
       "  (set! s4-0 -1)\n"
       "  (while\n"
       "   (nonzero? s4-0)\n"
       "   (set! s4-0 0)\n"
-      "   (set! s3-0 gp-0)\n"
+      "   (set! s3-0 arg0)\n"
       "   (while\n"
       "    (not\n"
       "     (or (= (cdr s3-0) (quote ())) (>= (shl (the-as int (cdr s3-0)) 62) 0))\n"
       "     )\n"
       "    (set! s2-0 (car s3-0))\n"
       "    (set! s1-0 (car (cdr s3-0)))\n"
-      "    (set! v1-1 (s5-0 s2-0 s1-0))\n"
+      "    (set! v1-1 (arg1 s2-0 s1-0))\n"
       "    (when\n"
       "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 (quote #t)))\n"
       "     (set! s4-0 (+ s4-0 1))\n"
@@ -1619,7 +1608,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "   (set! v1-11 (quote #f))\n"
       "   )\n"
       "  (set! v1-12 (quote #f))\n"
-      "  gp-0\n"
+      "  arg0\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1658,19 +1647,18 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
 
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 arg2)\n"
       "  (set!\n"
       "   v0-0\n"
       "   (object-new\n"
       "    arg0\n"
       "    arg1\n"
-      "    (+ (-> arg1 size) (* (the-as uint gp-0) (-> arg1 heap-base)))\n"
+      "    (+ (-> arg1 size) (* (the-as uint arg2) (-> arg1 heap-base)))\n"
       "    )\n"
       "   )\n"
       "  (when\n"
       "   (nonzero? v0-0)\n"
-      "   (set! (-> v0-0 length) gp-0)\n"
-      "   (set! (-> v0-0 allocated-length) gp-0)\n"
+      "   (set! (-> v0-0 length) arg2)\n"
+      "   (set! (-> v0-0 allocated-length) arg2)\n"
       "   )\n"
       "  v0-0\n"
       "  )";
@@ -1775,8 +1763,6 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
 
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 arg2)\n"
-      "  (set! s5-0 arg3)\n"
       "  (set!\n"
       "   v0-1\n"
       "   (object-new\n"
@@ -1784,13 +1770,13 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
       "    arg1\n"
       "    (+\n"
       "     (-> arg1 size)\n"
-      "     (the-as uint (* s5-0 (if (type-type? gp-0 number) (-> gp-0 size) 4)))\n"
+      "     (the-as uint (* arg3 (if (type-type? arg2 number) (-> arg2 size) 4)))\n"
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (set! (-> v0-1 allocated-length) s5-0)\n"
-      "  (set! (-> v0-1 length) s5-0)\n"
-      "  (set! (-> v0-1 content-type) gp-0)\n"
+      "  (set! (-> v0-1 allocated-length) arg3)\n"
+      "  (set! (-> v0-1 length) arg3)\n"
+      "  (set! (-> v0-1 content-type) arg2)\n"
       "  v0-1\n"
       "  )";
   test_with_expr(func, type, expected, true, "array");
@@ -1850,8 +1836,6 @@ TEST_F(FormRegressionTest, ExprArrayMethod5) {
   std::string type = "(function array int)";
 
   std::string expected =
-      "(begin\n"
-      "  (set! s4-0 arg0)\n"
       "  (the-as\n"
       "   int\n"
       "   (+\n"
@@ -1859,16 +1843,15 @@ TEST_F(FormRegressionTest, ExprArrayMethod5) {
       "    (the-as\n"
       "     uint\n"
       "     (*\n"
-      "      (-> s4-0 allocated-length)\n"
+      "      (-> arg0 allocated-length)\n"
       "      (if\n"
-      "       (type-type? (-> s4-0 content-type) number)\n"
-      "       (-> s4-0 content-type size)\n"
+      "       (type-type? (-> arg0 content-type) number)\n"
+      "       (-> arg0 content-type size)\n"
       "       4\n"
       "       )\n"
       "      )\n"
       "     )\n"
       "    )\n"
-      "   )\n"
       "  )";
   test_with_expr(func, type, expected, true, "array");
 }
@@ -2042,7 +2025,7 @@ TEST_F(FormRegressionTest, ExprFact) {
       "    daddiu sp, sp, 32";
   std::string type = "(function int int)";
 
-  std::string expected = "(begin (set! gp-0 arg0) (if (= gp-0 1) 1 (* gp-0 (fact (+ gp-0 -1)))))";
+  std::string expected = "(if (= arg0 1) 1 (* arg0 (fact (+ arg0 -1))))";
   test_with_expr(func, type, expected);
 }
 
@@ -2117,11 +2100,10 @@ TEST_F(FormRegressionTest, ExprPrintl) {
   // but I want to wait for a less confusing example before making a change.
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 arg0)\n"
-      "  (set! a0-1 gp-0)\n"
+      "  (set! a0-1 arg0)\n"
       "  (set! v1-2 ((method-of-type (rtype-of a0-1) print) a0-1))\n"
       "  (format (quote #t) L324)\n"
-      "  gp-0\n"
+      "  arg0\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L324", "~%"}});
 }
@@ -2215,17 +2197,15 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
 
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 arg0)\n"
-      "  (set! s5-0 arg1)\n"
       "  (set! s4-0 0)\n"
       "  (while\n"
-      "   (< s4-0 s5-0)\n"
+      "   (< s4-0 arg1)\n"
       "   (if\n"
-      "    (zero? (logand gp-0 1))\n"
+      "    (zero? (logand arg0 1))\n"
       "    (format (quote #t) L323)\n"
       "    (format (quote #t) L322)\n"
       "    )\n"
-      "   (set! gp-0 (shr (the-as uint gp-0) 1))\n"
+      "   (set! arg0 (shr (the-as uint arg0) 1))\n"
       "   (set! s4-0 (+ s4-0 1))\n"
       "   )\n"
       "  (set! v1-3 (quote #f))\n"

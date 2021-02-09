@@ -76,8 +76,16 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
     }
   }
+
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
-  return pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
+  auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
+  if (m_src.kind() == SimpleExpression::Kind::IDENTITY) {
+    if (env.has_local_vars() && env.op_id_is_eliminated_coloring_move(m_my_idx)) {
+      result->eliminate_as_coloring_move();
+    }
+  }
+
+  return result;
 }
 
 FormElement* AsmOp::get_as_form(FormPool& pool, const Env&) const {

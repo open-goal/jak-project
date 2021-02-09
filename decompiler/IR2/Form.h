@@ -225,11 +225,14 @@ class SetVarElement : public FormElement {
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
   Form* src() { return m_src; }
+  bool is_eliminated_coloring_move() const { return m_is_eliminated_coloring_move; }
+  void eliminate_as_coloring_move() { m_is_eliminated_coloring_move = true; }
 
  private:
   Variable m_dst;
   Form* m_src = nullptr;
   bool m_is_sequence_point = true;
+  bool m_is_eliminated_coloring_move = false;
 };
 
 /*!

@@ -22,7 +22,8 @@ void append(goos::Object& _in, const goos::Object& add) {
 }  // namespace
 
 std::string final_defun_out(const Function& func, const Env& env, const DecompilerTypeSystem& dts) {
-  auto code_body = func.ir2.top_form->to_form(env);
+  std::vector<goos::Object> inline_body;
+  func.ir2.top_form->inline_forms(inline_body, env);
 
   int var_count = 0;
   auto var_dec = env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1, &var_count);
@@ -46,7 +47,7 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
       append(top_form, pretty_print::build_list(var_dec));
     }
 
-    append(top_form, pretty_print::build_list(code_body));
+    append(top_form, pretty_print::build_list(inline_body));
     return pretty_print::to_string(top_form);
   }
 
@@ -64,7 +65,7 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
       append(top_form, pretty_print::build_list(var_dec));
     }
 
-    append(top_form, pretty_print::build_list(code_body));
+    append(top_form, pretty_print::build_list(inline_body));
     return pretty_print::to_string(top_form);
   }
 
@@ -78,7 +79,7 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
       append(top_form, pretty_print::build_list(var_dec));
     }
 
-    append(top_form, pretty_print::build_list(code_body));
+    append(top_form, pretty_print::build_list(inline_body));
     return pretty_print::to_string(top_form);
   }
   return "nyi";
