@@ -1279,10 +1279,17 @@ DerefToken DerefToken::make_field_name(const std::string& name) {
   return x;
 }
 
+DerefToken DerefToken::make_expr_placeholder() {
+  DerefToken x;
+  x.m_kind = Kind::EXPRESSION_PLACEHOLDER;
+  return x;
+}
+
 void DerefToken::collect_vars(VariableSet& vars) const {
   switch (m_kind) {
     case Kind::INTEGER_CONSTANT:
     case Kind::FIELD_NAME:
+    case Kind::EXPRESSION_PLACEHOLDER:
       break;
     case Kind::INTEGER_EXPRESSION:
       m_expr->collect_vars(vars);
@@ -1300,6 +1307,8 @@ goos::Object DerefToken::to_form(const Env& env) const {
       return m_expr->to_form(env);
     case Kind::FIELD_NAME:
       return pretty_print::to_symbol(m_name);
+    case Kind::EXPRESSION_PLACEHOLDER:
+      return pretty_print::to_symbol("PLACEHOLDER");
     default:
       assert(false);
   }
@@ -1309,6 +1318,7 @@ void DerefToken::apply(const std::function<void(FormElement*)>& f) {
   switch (m_kind) {
     case Kind::INTEGER_CONSTANT:
     case Kind::FIELD_NAME:
+    case Kind::EXPRESSION_PLACEHOLDER:
       break;
     case Kind::INTEGER_EXPRESSION:
       m_expr->apply(f);
@@ -1322,6 +1332,7 @@ void DerefToken::apply_form(const std::function<void(Form*)>& f) {
   switch (m_kind) {
     case Kind::INTEGER_CONSTANT:
     case Kind::FIELD_NAME:
+    case Kind::EXPRESSION_PLACEHOLDER:
       break;
     case Kind::INTEGER_EXPRESSION:
       m_expr->apply_form(f);
@@ -1335,6 +1346,7 @@ void DerefToken::get_modified_regs(RegSet& regs) const {
   switch (m_kind) {
     case Kind::INTEGER_CONSTANT:
     case Kind::FIELD_NAME:
+    case Kind::EXPRESSION_PLACEHOLDER:
       break;
     case Kind::INTEGER_EXPRESSION:
       m_expr->get_modified_regs(regs);

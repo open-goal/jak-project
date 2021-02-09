@@ -24,6 +24,8 @@ DerefToken to_token(FieldReverseLookupOutput::Token in) {
       return DerefToken::make_field_name(in.name);
     case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
       return DerefToken::make_int_constant(in.idx);
+    case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
+      return DerefToken::make_expr_placeholder();
     default:
       // temp
       throw std::runtime_error("Cannot convert rd lookup token to deref token");
@@ -240,10 +242,10 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           //        }
           std::vector<DerefToken> tokens;
           assert(!rd.tokens.empty());
-          for (size_t i = 0; i < rd.tokens.size() - 1; i++) {
+          for (size_t i = 0; i < rd.tokens.size(); i++) {
             tokens.push_back(to_token(rd.tokens.at(i)));
           }
-          assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
+          //assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.

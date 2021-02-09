@@ -792,11 +792,13 @@ class DerefToken {
     INTEGER_CONSTANT,
     INTEGER_EXPRESSION,  // some form which evaluates to an integer index. Not offset, index.
     FIELD_NAME,
+    EXPRESSION_PLACEHOLDER,
     INVALID
   };
   static DerefToken make_int_constant(s64 int_constant);
   static DerefToken make_int_expr(Form* expr);
   static DerefToken make_field_name(const std::string& name);
+  static DerefToken make_expr_placeholder();
 
   void collect_vars(VariableSet& vars) const;
   goos::Object to_form(const Env& env) const;

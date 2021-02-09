@@ -1498,7 +1498,12 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       assert(idx && base);
 
       std::vector<DerefToken> tokens = m_deref_tokens;
-      tokens.push_back(DerefToken::make_int_expr(idx));
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+      //      tokens.push_back(DerefToken::make_int_expr(idx));
 
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
@@ -1524,7 +1529,12 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       assert(idx.has_value() && base.has_value());
 
       std::vector<DerefToken> tokens = m_deref_tokens;
-      tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(var_to_form(idx.value(), pool));
+        }
+      }
+      // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
 
       auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
       result->push_back(deref);
@@ -1532,25 +1542,37 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
       // (+ gp-0 (the-as uint (shl (the-as uint (shl (the-as uint s4-0) 2)) 2)))
       auto reg0_matcher =
-          Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
+          Matcher::match_or({Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
-          Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+          Matcher::match_or({Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
       auto sll_matcher =
           Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(power_of_two)});
+      sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
+      // TODO - figure out why it sometimes happens the other way.
       if (!match_result.matched) {
-        throw std::runtime_error("Couldn't match ArrayFieldAccess (stride power of 2) values: " +
-                                 new_val->to_string(env));
+        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg1_matcher, sll_matcher});
+        match_result = match(matcher, new_val);
+        if (!match_result.matched) {
+          throw std::runtime_error("Couldn't match ArrayFieldAccess (stride power of 2) values: " +
+                                   new_val->to_string(env));
+        }
       }
-      auto idx = match_result.maps.regs.at(0);
-      auto base = match_result.maps.regs.at(1);
-      assert(idx.has_value() && base.has_value());
+      auto idx = match_result.maps.forms.at(0);
+      auto base = match_result.maps.forms.at(1);
+
+      assert(idx && base);
 
       std::vector<DerefToken> tokens = m_deref_tokens;
-      tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+      // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
 
-      auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
       throw std::runtime_error("Not power of two case, not yet implemented (offset)");
