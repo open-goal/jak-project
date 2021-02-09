@@ -802,6 +802,7 @@ TypeState FunctionEndOp::propagate_types_internal(const TypeState& input,
 }
 
 void FunctionEndOp::mark_function_as_no_return_value() {
+  m_read_regs.clear();
   m_function_has_return_value = false;
 }
 
