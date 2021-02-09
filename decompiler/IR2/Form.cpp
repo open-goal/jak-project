@@ -1229,12 +1229,14 @@ void GenericElement::get_modified_regs(RegSet& regs) const {
 // CastElement
 /////////////////////////////
 
-CastElement::CastElement(TypeSpec type, Form* source) : m_type(std::move(type)), m_source(source) {
+CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
+    : m_type(std::move(type)), m_source(source), m_numeric(numeric) {
   source->parent_element = this;
 }
 
 goos::Object CastElement::to_form(const Env& env) const {
-  return pretty_print::build_list("the-as", m_type.print(), m_source->to_form(env));
+  return pretty_print::build_list(m_numeric ? "the" : "the-as", m_type.print(),
+                                  m_source->to_form(env));
 }
 
 void CastElement::apply(const std::function<void(FormElement*)>& f) {
@@ -1514,5 +1516,20 @@ void GetMethodElement::collect_vars(VariableSet& vars) const {
 void GetMethodElement::get_modified_regs(RegSet& regs) const {
   m_in->get_modified_regs(regs);
 }
+
+/////////////////////////////
+// StringConstantElement
+/////////////////////////////
+
+StringConstantElement::StringConstantElement(const std::string& value) : m_value(value) {}
+
+goos::Object StringConstantElement::to_form(const Env&) const {
+  return goos::StringObject::make_new(m_value);
+}
+
+void StringConstantElement::apply(const std::function<void(FormElement*)>&) {}
+void StringConstantElement::apply_form(const std::function<void(Form*)>&) {}
+void StringConstantElement::collect_vars(VariableSet&) const {}
+void StringConstantElement::get_modified_regs(RegSet&) const {}
 
 }  // namespace decompiler

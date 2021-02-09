@@ -401,7 +401,7 @@ TEST_F(FormRegressionTest, ExprPrintBfloat) {
       "    daddiu sp, sp, 32";
   std::string type = "(function bfloat bfloat)";
 
-  std::string expected = "(begin (format (quote #t) L343 (-> arg0 data)) arg0)";
+  std::string expected = "(begin (format (quote #t) \"~f\" (-> arg0 data)) arg0)";
   test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
 
@@ -1472,7 +1472,7 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
   std::string expected =
       "(begin\n"
       "  (set! a3-0 (delete-car! (car arg0) arg1))\n"
-      "  (new 'global pair arg0 a3-0)\n"
+      "  (new 'global 'pair arg0 a3-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1652,7 +1652,7 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod0) {
       "   (object-new\n"
       "    arg0\n"
       "    arg1\n"
-      "    (+ (-> arg1 size) (* (the-as uint arg2) (-> arg1 heap-base)))\n"
+      "    (the-as int (+ (-> arg1 size) (* (the-as uint arg2) (-> arg1 heap-base))))\n"
       "    )\n"
       "   )\n"
       "  (when\n"
@@ -1768,9 +1768,12 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
       "   (object-new\n"
       "    arg0\n"
       "    arg1\n"
-      "    (+\n"
-      "     (-> arg1 size)\n"
-      "     (the-as uint (* arg3 (if (type-type? arg2 number) (-> arg2 size) 4)))\n"
+      "    (the-as\n"
+      "     int\n"
+      "     (+\n"
+      "      (-> arg1 size)\n"
+      "      (the-as uint (* arg3 (if (type-type? arg2 number) (-> arg2 size) 4)))\n"
+      "      )\n"
       "     )\n"
       "    )\n"
       "   )\n"
@@ -2102,7 +2105,7 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "(begin\n"
       "  (set! a0-1 arg0)\n"
       "  (set! v1-2 ((method-of-type (rtype-of a0-1) print) a0-1))\n"
-      "  (format (quote #t) L324)\n"
+      "  (format (quote #t) \"~%\")\n"
       "  arg0\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L324", "~%"}});
@@ -2202,8 +2205,8 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "   (< s4-0 arg1)\n"
       "   (if\n"
       "    (zero? (logand arg0 1))\n"
-      "    (format (quote #t) L323)\n"
-      "    (format (quote #t) L322)\n"
+      "    (format (quote #t) \"    \")\n"
+      "    (format (quote #t) \"|   \")\n"
       "    )\n"
       "   (set! arg0 (shr (the-as uint arg0) 1))\n"
       "   (set! s4-0 (+ s4-0 1))\n"
@@ -2348,5 +2351,35 @@ TEST_F(FormRegressionTest, ExprProfileBarMethod9) {
   std::string type = "(function profile-bar int uint)";
 
   std::string expected = "(-> arg0 data (+ (-> arg0 profile-frame-count) -2) time-stamp)";
+  test_with_expr(func, type, expected, false, "");
+}
+
+TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L20:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+
+      "    lw t9, stopwatch-elapsed-ticks(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "\n"
+      "    or v1, v0, r0\n"
+      "    lwc1 f0, L20(fp)\n"
+      "    mtc1 f1, v1\n"
+      "    cvt.s.w f1, f1\n"
+      "    mul.s f0, f0, f1\n"
+      "    mfc1 v0, f0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function stopwatch float)";
+
+  std::string expected =
+      "(begin (set! v1-0 (stopwatch-elapsed-ticks arg0)) (* (l.f L20) (the float v1-0)))";
   test_with_expr(func, type, expected, false, "");
 }

@@ -31,8 +31,10 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
   std::vector<goos::Object> argument_elts;
   assert(func.type.arg_count() >= 1);
   for (size_t i = 0; i < func.type.arg_count() - 1; i++) {
+    auto reg = Register(Reg::GPR, Reg::A0 + i);
+    auto name = fmt::format("{}-0", reg.to_charp());
     argument_elts.push_back(
-        pretty_print::build_list(fmt::format("arg{}", i), func.type.get_arg(i).print()));
+        pretty_print::build_list(env.remapped_name(name), func.type.get_arg(i).print()));
   }
   auto arguments = pretty_print::build_list(argument_elts);
 

@@ -95,6 +95,9 @@ class Env {
   }
 
   void set_remap_for_function(int nargs);
+  void set_remap_for_method(int nargs);
+  void set_remap_for_new_method(int nargs);
+  const std::string& remapped_name(const std::string& name) const;
 
   bool op_id_is_eliminated_coloring_move(int op_id) const {
     assert(has_local_vars());

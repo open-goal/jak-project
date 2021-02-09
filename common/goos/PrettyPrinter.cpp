@@ -472,10 +472,6 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
           breakList(pool, node->paren, parent_type_dec);
         }
       }
-
-      if (name.at(0) == '"') {
-        insertNewlineAfter(pool, node, 0);
-      }
     }
   }
 }

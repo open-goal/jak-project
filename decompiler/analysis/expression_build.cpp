@@ -183,6 +183,12 @@ bool convert_to_expressions(Form* top_level_form,
 
   if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
     f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
+  } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
+      f.ir2.env.set_remap_for_new_method(f.type.arg_count() - 1);
+    } else {
+      f.ir2.env.set_remap_for_method(f.type.arg_count() - 1);
+    }
   }
 
   // strip out coloring moves

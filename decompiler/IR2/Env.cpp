@@ -18,6 +18,40 @@ void Env::set_remap_for_function(int nargs) {
   }
 }
 
+void Env::set_remap_for_new_method(int nargs) {
+  m_var_remap["a0-0"] = "allocation";
+  m_var_remap["a1-0"] = "type-to-make";
+  for (int i = 2; i < nargs; i++) {
+    std::string var_name;
+    var_name.push_back(i >= 4 ? 't' : 'a');
+    var_name.push_back('0' + (i % 4));
+    var_name.push_back('-');
+    var_name.push_back('0');
+    m_var_remap[var_name] = ("arg" + std::to_string(i - 2));
+  }
+}
+
+void Env::set_remap_for_method(int nargs) {
+  m_var_remap["a0-0"] = "obj";
+  for (int i = 1; i < nargs; i++) {
+    std::string var_name;
+    var_name.push_back(i >= 4 ? 't' : 'a');
+    var_name.push_back('0' + (i % 4));
+    var_name.push_back('-');
+    var_name.push_back('0');
+    m_var_remap[var_name] = ("arg" + std::to_string(i - 1));
+  }
+}
+
+const std::string& Env::remapped_name(const std::string& name) const {
+  auto kv = m_var_remap.find(name);
+  if (kv != m_var_remap.end()) {
+    return kv->second;
+  } else {
+    return name;
+  }
+}
+
 goos::Object Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
   std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
   auto remapped = m_var_remap.find(lookup_name);

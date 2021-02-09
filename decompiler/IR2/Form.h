@@ -123,6 +123,11 @@ class SimpleExpressionElement : public FormElement {
                                     FormStack& stack,
                                     std::vector<FormElement*>* result,
                                     bool allow_side_effects);
+  void update_from_stack_int_to_float(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
   void update_from_stack_copy_first_int_2(const Env& env,
                                           FixedOperatorKind kind,
                                           FormPool& pool,
@@ -769,7 +774,7 @@ class GenericElement : public FormElement {
 
 class CastElement : public FormElement {
  public:
-  explicit CastElement(TypeSpec type, Form* source);
+  explicit CastElement(TypeSpec type, Form* source, bool numeric = false);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -787,6 +792,7 @@ class CastElement : public FormElement {
  private:
   TypeSpec m_type;
   Form* m_source = nullptr;
+  bool m_numeric = false;  // if true, use the. otherwise the-as
 };
 
 class DerefToken {
@@ -908,6 +914,19 @@ class GetMethodElement : public FormElement {
   Form* m_in = nullptr;
   std::string m_name;
   bool m_is_object = false;
+};
+
+class StringConstantElement : public FormElement {
+ public:
+  StringConstantElement(const std::string& value);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  std::string m_value;
 };
 
 /*!
