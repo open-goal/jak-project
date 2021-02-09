@@ -5,3 +5,111 @@
 ;; name in dgo: timer
 ;; dgos: GAME, ENGINE
 
+(defun timer-reset ((timer timer-bank))
+  "Reset a timer's counter to zero"
+  (.sync.l)
+  (set! (-> timer count) 0)
+  (.sync.l)
+  )
+
+(defun timer-count ((timer timer-bank))
+  "Return a timer's counter value"
+  (.sync.l)
+  (set! v0 (-> timer count))
+  (.sync.l)
+  v0
+  )
+
+(defconstant COP0_STATUS_IE #x1) ;; cop0 status register "interrupt enable" flag
+(defun disable-irq ()
+  "Disable all interrupts"
+  (set! v1 (lognot COP0_STATUS_IE))
+  (.mfc0 v0 Status)
+  (set! v0 (logand v0 v1)) ;; should v1 be replaced by (lognot #x1) directly?
+  (.mtc0 Status v0)
+  (.sync.p)
+  )
+
+(defun enable-irq ()
+  "Enable all interrupts"
+  (.mfc0 v0 Status)
+  (set! v0 (logior v0 COP0_STATUS_IE))
+  (.mtc0 Status v0)
+  (.sync.p)
+  )
+
+
+(defun stopwatch-init ((obj stopwatch))
+  "Init a stopwatch"
+  (set! (-> obj begin-level) 0)
+  (set! (-> obj prev-time-elapsed) 0)
+  )
+
+
+(defun stopwatch-reset ((obj stopwatch))
+  "Restart a stopwatch's times"
+  (set! (-> obj prev-time-elapsed) 0)
+  (when (> (-> obj begin-level) 0)
+    (.mfc0 v1 Count)
+	(set! (-> stopwach start-time) v1)
+	)
+  )
+
+(defun stopwatch-start ((obj stopwatch))
+  "Start a stopwatch from scratch"
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 1)
+    (.mfc0 v1 Count)
+	(set! (-> obj start-time) v1)
+	)
+  )
+
+(defun stopwatch-stop ((obj stopwatch))
+  "Fully stop a stopwatch and save its elapsed time"
+  (when (> (-> obj begin-level) 0)
+    (set! (-> obj begin-level) 0)
+	(.mfc0 a1 Count) ; wrong register? a typo in a rlet? who knows.
+	(+! (-> obj prev-time-elapsed) (- a1 (-> obj start-time)))
+	)
+  )
+
+(defun stopwatch-begin ((obj stopwatch))
+  "Begin a stopwatch layer. Starts the stopwatch if it has not yet begun"
+  (when (zero? (-> obj begin-level))
+    (.mfc0 v1 Count)
+	(set! (-> obj start-time) v1)
+	)
+  (+! (-> obj begin-level) 1)
+  )
+
+;; NOTE : there is no guard against ending a stopwatch too many times!
+(defun stopwatch-end ((obj stopwatch))
+  "End a stopwatch layer. Stops the stopwatch if it has ended as many times as it has begun"
+  (+! (-> obj begin-level) -1)
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 0)
+	(.mfc0 v1 Count)
+	(+! (-> obj prev-time-elapsed) (- v1 (-> obj start-time)))
+	)
+  )
+
+(defun stopwatch-elapsed-ticks ((obj stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch"
+  (set! v0 (-> obj prev-time-elapsed))
+  (when (> (-> obj begin-level) 0)
+    (.mfc0 v1 Count)
+	(+! v0 (- v1 (-> obj start-time)))
+	;(set! v1 v0) ;; ??
+	)
+  v0
+  )
+
+(defconstant EE_SECONDS_PER_TICK (/ 1.0 3000000)) ;; 300MHz is a "decent enough" estimate
+(defmacro cpu-ticks-to-seconds (ticks)
+  `(* ,EE_SECONDS_PER_TICK ,ticks)
+  )
+(defun stopwatch-elapsed-seconds ((obj stopwatch))
+  "Returns the elapsed time so far (in seconds) of a stopwatch"
+  (cpu-ticks-to-seconds (stopwatch-elapsed-ticks obj))
+  )
+
