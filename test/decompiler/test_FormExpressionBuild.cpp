@@ -2363,7 +2363,7 @@ TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
       "    sd fp, 8(sp)\n"
       "    or fp, t9, r0\n"
 
-      "    lw t9, stopwatch-elapsed-ticks(s7)\n"
+      "    lw t9, abs(s7)\n"
       "    jalr ra, t9\n"
       "    sll v0, ra, 0\n"
       "\n"
@@ -2377,9 +2377,8 @@ TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
       "    ld fp, 8(sp)\n"
       "    jr ra\n"
       "    daddiu sp, sp, 16";
-  std::string type = "(function stopwatch float)";
+  std::string type = "(function int float)";
 
-  std::string expected =
-      "(begin (set! v1-0 (stopwatch-elapsed-ticks arg0)) (* (l.f L20) (the float v1-0)))";
+  std::string expected = "(begin (set! v1-0 (abs arg0)) (* (l.f L20) (the float v1-0)))";
   test_with_expr(func, type, expected, false, "");
 }
