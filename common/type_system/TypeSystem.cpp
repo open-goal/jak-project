@@ -1551,7 +1551,6 @@ std::string TypeSystem::generate_deftype(const Type* type) const {
         methods_string.push_back(' ');
       }
     }
-    methods_string.append(") ");
     methods_string.append(fmt::format(
         ") {} {})\n    ", info.type.get_arg(info.type.arg_count() - 1).print(), info.id));
   }
