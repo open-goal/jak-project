@@ -26,4 +26,3 @@ class CodeGenerator {
   FileEnv* m_fe = nullptr;
   DebugInfo* m_debug_info = nullptr;
 };
-

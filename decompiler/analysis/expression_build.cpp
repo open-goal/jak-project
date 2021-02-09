@@ -181,6 +181,10 @@ bool convert_to_expressions(Form* top_level_form,
     return false;
   }
 
+  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+    f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
+  }
+
   return true;
 }
 }  // namespace decompiler

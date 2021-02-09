@@ -7,17 +7,32 @@
 #include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
+void Env::set_remap_for_function(int nargs) {
+  for (int i = 0; i < nargs; i++) {
+    std::string var_name;
+    var_name.push_back(i >= 4 ? 't' : 'a');
+    var_name.push_back('0' + (i % 4));
+    var_name.push_back('-');
+    var_name.push_back('0');
+    m_var_remap[var_name] = ("arg" + std::to_string(i));
+  }
+}
+
 goos::Object Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
+  std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
+  auto remapped = m_var_remap.find(lookup_name);
+  if (remapped != m_var_remap.end()) {
+    lookup_name = remapped->second;
+  }
   auto type_kv = m_typehints.find(atomic_idx);
   if (type_kv != m_typehints.end()) {
     for (auto& x : type_kv->second) {
       if (x.reg == reg) {
-        return pretty_print::build_list("the-as", x.type_name,
-                                        m_var_names.lookup(reg, atomic_idx, mode).name());
+        return pretty_print::build_list("the-as", x.type_name, lookup_name);
       }
     }
   }
-  return pretty_print::to_symbol(m_var_names.lookup(reg, atomic_idx, mode).name());
+  return pretty_print::to_symbol(lookup_name);
 }
 
 /*!
@@ -171,7 +186,13 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
       continue;
     }
     count++;
-    elts.push_back(pretty_print::build_list(x.name(), x.type.typespec().print()));
+    std::string lookup_name = x.name();
+    auto remapped = m_var_remap.find(lookup_name);
+    if (remapped != m_var_remap.end()) {
+      lookup_name = remapped->second;
+    }
+
+    elts.push_back(pretty_print::build_list(lookup_name, x.type.typespec().print()));
   }
   if (count_out) {
     *count_out = count;

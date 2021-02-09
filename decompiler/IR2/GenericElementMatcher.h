@@ -17,14 +17,17 @@ struct MatchResult {
     std::vector<std::optional<Variable>> regs;
     std::unordered_map<int, std::string> strings;
     std::unordered_map<int, Form*> forms;
+    std::unordered_map<int, int> label;
   } maps;
 };
 
 class Matcher {
  public:
   static Matcher any_reg(int match_id = -1);
+  static Matcher any_label(int match_id = -1);
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
   static Matcher op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args);
+  static Matcher set(const Matcher& dst, const Matcher& src);
   static Matcher fixed_op(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
@@ -33,6 +36,7 @@ class Matcher {
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
   static Matcher any_symbol(int match_id = -1);
+  static Matcher symbol(const std::string& name);
   static Matcher deref(const Matcher& root,
                        bool is_addr_of,
                        const std::vector<DerefTokenMatcher>& tokens);
@@ -48,6 +52,9 @@ class Matcher {
     ANY_QUOTED_SYMBOL,
     ANY_SYMBOL,
     DEREF_OP,
+    SET,
+    ANY_LABEL,
+    SYMBOL,
     INVALID
   };
 
@@ -62,6 +69,7 @@ class Matcher {
   int m_reg_out_id = -1;
   int m_string_out_id = -1;
   int m_form_match = -1;
+  int m_label_out_id = -1;
   std::optional<int> m_int_match;
   std::string m_str;
 };

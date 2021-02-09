@@ -94,6 +94,8 @@ class Env {
     m_typehints = hints;
   }
 
+  void set_remap_for_function(int nargs);
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -114,5 +116,6 @@ class Env {
   bool m_allow_sloppy_pair_typing = false;
 
   std::unordered_map<int, std::vector<TypeHint>> m_typehints;
+  std::unordered_map<std::string, std::string> m_var_remap;
 };
 }  // namespace decompiler

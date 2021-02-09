@@ -224,6 +224,7 @@ class SetVarElement : public FormElement {
 
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
+  Form* src() { return m_src; }
 
  private:
   Variable m_dst;
@@ -246,6 +247,11 @@ class SetFormFormElement : public FormElement {
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+
+  const Form* src() const { return m_src; }
+  const Form* dst() const { return m_dst; }
+  Form* src() { return m_src; }
+  Form* dst() { return m_dst; }
 
  private:
   Form* m_dst = nullptr;
