@@ -538,7 +538,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod2) {
 
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 a0-0)\n"
+      "  (set! gp-0 arg0)\n"
       "  (format (quote #t) L342)\n"
       "  (cond\n"
       "   ((type-type? (-> gp-0 content-type) integer)\n"
@@ -1218,7 +1218,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
 
   std::string expected =
       "(begin\n"
-      "  (set! gp-0 a0-0)\n"
+      "  (set! gp-0 arg0)\n"
       "  (format (quote #t) L333 gp-0 (-> gp-0 type))\n"
       "  (format (quote #t) L332 (-> gp-0 allocated-length))\n"
       "  (format (quote #t) L331 (-> gp-0 length))\n"
@@ -1928,10 +1928,10 @@ TEST_F(FormRegressionTest, ExprValid) {
       "  (set!\n"
       "   v1-1\n"
       "   (begin\n"
-      "    (set! gp-0 a0-0)\n"
-      "    (set! s3-0 a1-0)\n"
-      "    (set! s4-0 a2-0)\n"
-      "    (set! s5-0 t0-0)\n"
+      "    (set! gp-0 arg0)\n"
+      "    (set! s3-0 arg1)\n"
+      "    (set! s4-0 arg2)\n"
+      "    (set! s5-0 arg4)\n"
       "    (and\n"
       "     (>= (the-as uint gp-0) (the-as uint __START-OF-TABLE__))\n"
       "     (< (the-as uint gp-0) (the-as uint 134217728))\n"
@@ -1949,7 +1949,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "     (else (quote #t))\n"
       "     )\n"
       "    )\n"
-      "   ((and a3-0 (not gp-0)) (quote #t))\n"
+      "   ((and arg3 (not gp-0)) (quote #t))\n"
       "   (else\n"
       "    (cond\n"
       "     ((= s3-0 structure)\n"

@@ -1544,7 +1544,8 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       auto reg0_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
-          Matcher::match_or({Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
+          Matcher::match_or({Matcher::cast("uint", Matcher::any(1)),
+                             Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
       auto sll_matcher =
           Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(power_of_two)});
       sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});

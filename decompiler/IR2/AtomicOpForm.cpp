@@ -234,18 +234,11 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
         if (rd.success) {
-          //        load_path_set = true;
-          //        load_path_addr_of = rd.addr_of;
-          //        load_path_base = ro.reg_ir;
-          //        for (auto& x : rd.tokens) {
-          //          load_path.push_back(x.print());
-          //        }
           std::vector<DerefToken> tokens;
           assert(!rd.tokens.empty());
-          for (size_t i = 0; i < rd.tokens.size(); i++) {
-            tokens.push_back(to_token(rd.tokens.at(i)));
+          for (auto& token : rd.tokens) {
+            tokens.push_back(to_token(token));
           }
-          //assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.

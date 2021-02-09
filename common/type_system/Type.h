@@ -80,6 +80,16 @@ class Type {
 
   virtual ~Type() = default;
 
+  const std::vector<MethodInfo>& get_methods_defined_for_type() const { return m_methods; }
+
+  const MethodInfo* get_new_method_defined_for_type() const {
+    if (m_new_method_info_defined) {
+      return &m_new_method_info;
+    } else {
+      return nullptr;
+    }
+  }
+
  protected:
   Type(std::string parent, std::string name, bool is_boxed);
 
@@ -238,12 +248,14 @@ class StructureType : public ReferenceType {
   }
 
   void set_dynamic() { m_dynamic = true; }
+  size_t first_unique_field_idx() const { return m_idx_of_first_unique_field; }
 
   std::vector<Field> m_fields;
   bool m_dynamic = false;
   int m_size_in_mem = 0;
   bool m_pack = false;
   int m_offset = 0;
+  size_t m_idx_of_first_unique_field = 0;
 };
 
 class BasicType : public StructureType {

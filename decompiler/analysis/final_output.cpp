@@ -179,8 +179,10 @@ std::string write_from_top_level(const Function& top_level,
     if (!something_matched) {
       auto deftype_match_result = match(deftype_matcher, &f);
       if (deftype_match_result.matched) {
-        result += fmt::format(";; TODO: insert definition for type {} here!\n\n",
-                              deftype_match_result.maps.strings.at(type_name));
+        auto& name = deftype_match_result.maps.strings.at(type_name);
+        result += fmt::format(";; definition of type {}\n", name);
+        result += dts.ts.generate_deftype(dts.ts.lookup_type(name));
+        result += "\n\n";
         something_matched = true;
       }
     }
