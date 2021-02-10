@@ -500,7 +500,6 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
       "  (local-vars\n"
       "   (v1-0 type)\n"
       "   (a0-1 type)\n"
-      "   (a2-0 symbol)\n"
       "   )\n"
       "   (set! v1-0 (-> arg0 type))\n"
       "   (set! a0-1 object)\n"
