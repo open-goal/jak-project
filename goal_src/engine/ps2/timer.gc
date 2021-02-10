@@ -5,3 +5,152 @@
 ;; name in dgo: timer
 ;; dgos: GAME, ENGINE
 
+;; Sneakily disable these instructions for readibility (remove this later)
+;; SYNC is an EE instruction that waits for various memory access to be completed
+;; (this might not be necessary for x86_64)
+(defmacro .sync.l () `(none))
+(defmacro .sync.p () `(none))
+;; Copies the contents of a cop0 (system control) register to a gpr
+(defmacro .mfc0 (dest src) `(none))
+;; Copies the contents of a gpr to a cop0 (system control) register
+(defmacro .mtc0 (dest src) `(none))
+
+
+(defun timer-reset ((timer timer-bank))
+  "Reset a timer's counter to zero"
+  (.sync.l)
+  (set! (-> timer count) 0)
+  (.sync.l)
+  )
+
+(defun timer-count ((timer timer-bank))
+  "Return a timer's counter value"
+  (.sync.l)
+  (let ((count (-> timer count)))
+    (.sync.l)
+    count
+    )
+  )
+
+;; cop0 status register "interrupt enable" flag
+;; if cop0 status is needed anywhere else, move this elsewhere
+(defconstant COP0_STATUS_IE (the-as uint #x1))
+
+(defun disable-irq ()
+  "Disable all interrupts"
+  (rlet ((status :class gpr :type uint))
+    (let ((status-mask (lognot COP0_STATUS_IE)))
+      (.mfc0 status Status)
+      (logand! status status-mask) ;; should status-mask be replaced directly?
+      (.mtc0 Status status)
+      (.sync.p)
+      )
+    )
+  )
+
+(defun enable-irq ()
+  "Enable all interrupts"
+  (rlet ((status :class gpr :type uint))
+    (.mfc0 status Status)
+    (logior! status COP0_STATUS_IE)
+    (.mtc0 Status status)
+    (.sync.p)
+    )
+  )
+
+
+(defun stopwatch-init ((obj stopwatch))
+  "Init a stopwatch"
+  (set! (-> obj begin-level) 0)
+  (set! (-> obj prev-time-elapsed) 0)
+  (none)
+  )
+
+
+(defun stopwatch-reset ((obj stopwatch))
+  "Restart a stopwatch's times"
+  (set! (-> obj prev-time-elapsed) 0)
+  (when (> (-> obj begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (set! (-> obj start-time) count)
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-start ((obj stopwatch))
+  "Start a stopwatch from scratch"
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 1)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (set! (-> obj start-time) count)
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-stop ((obj stopwatch))
+  "Fully stop a stopwatch and save its elapsed time"
+  (when (> (-> obj begin-level) 0)
+    (set! (-> obj begin-level) 0)
+    (let ((count 0))
+      (let ((count 0))
+        (.mfc0 count Count) ; wrong register? a typo in a rlet? who knows.
+        (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
+        )
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-begin ((obj stopwatch))
+  "Begin a stopwatch layer. Starts the stopwatch if it has not yet begun"
+  (when (zero? (-> obj begin-level))
+    (let ((count 0))
+      (.mfc0 count Count)
+      (set! (-> obj start-time) count)
+      )
+    )
+  (+! (-> obj begin-level) 1)
+  (none)
+  )
+
+;; NOTE : there is no guard against ending a stopwatch too many times!
+(defun stopwatch-end ((obj stopwatch))
+  "End a stopwatch layer. Stops the stopwatch if it has ended as many times as it has begun"
+  (+! (-> obj begin-level) -1)
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-elapsed-ticks ((obj stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch"
+  (let ((elapsed (-> obj prev-time-elapsed)))
+    (when (> (-> obj begin-level) 0)
+      (let ((count 0))
+        (.mfc0 count Count)
+        (+! elapsed (- count (-> obj start-time)))
+        ;(set! count elapsed) ;; ??
+        )
+      )
+    elapsed
+    )
+  )
+
+(defglobalconstant EE_SECONDS_PER_TICK (/ 1.0 3000000)) ;; 300MHz is a "decent enough" estimate
+(defmacro cpu-ticks-to-seconds (ticks)
+  `(* ,EE_SECONDS_PER_TICK ,ticks)
+  )
+(defun stopwatch-elapsed-seconds ((obj stopwatch))
+  "Returns the elapsed time so far (in seconds) of a stopwatch"
+  (cpu-ticks-to-seconds (stopwatch-elapsed-ticks obj))
+  )
+
