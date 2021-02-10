@@ -179,7 +179,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     debug_info->clear();
     CodeGenerator gen(env, debug_info);
     bool ok = true;
-    auto result = gen.run();
+    auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
       if (f->settings.print_asm) {
         fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
@@ -198,7 +198,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
   CodeGenerator gen(env, debug_info);
-  *data_out = gen.run();
+  *data_out = gen.run(&m_ts);
   bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok);
   return ok;

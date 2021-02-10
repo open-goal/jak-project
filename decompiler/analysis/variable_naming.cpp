@@ -241,6 +241,25 @@ void SSA::add_source_to_phi(int block, Register dest_reg, const VarSSA& src_var)
 
 namespace {
 
+bool is_arg_reg(Register r) {
+  if (r.get_kind() == Reg::GPR) {
+    return r.get_gpr() >= Reg::A0 && r.get_gpr() <= Reg::T3;
+  } else {
+    return false;
+  }
+}
+
+bool is_saved_reg(Register r) {
+  if (r.get_kind() == Reg::GPR) {
+    if (r.get_gpr() == Reg::GP) {
+      return true;
+    }
+    return r.get_gpr() >= Reg::S0 && r.get_gpr() <= Reg::S6;
+  } else {
+    return false;
+  }
+}
+
 /*!
  * Create a "really crude" SSA, as described in
  * "Aycock and Horspool Simple Generation of Static Single-Assignment Form"
@@ -252,6 +271,8 @@ namespace {
  */
 SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const FunctionAtomicOps& ops) {
   SSA ssa(rui.block_count());
+
+  bool got_not_arg_coloring = false;
   for (int block_id = 0; block_id < rui.block_count(); block_id++) {
     const auto& block = function.basic_blocks.at(block_id);
     int start_op = ops.block_id_to_first_atomic_op.at(block_id);
@@ -298,6 +319,27 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     for (int op_id = start_op; op_id < end_op; op_id++) {
       const auto& op = ops.ops.at(op_id);
       SSA::Ins ssa_i(op_id);
+
+      if (block_id == 0 && !got_not_arg_coloring) {
+        auto as_set = dynamic_cast<const SetVarOp*>(op.get());
+        if (as_set) {
+          if (as_set->src().is_identity() && as_set->src().get_arg(0).is_var()) {
+            auto src = as_set->src().get_arg(0).var().reg();
+            auto dst = as_set->dst().reg();
+            if (is_arg_reg(src) && is_saved_reg(dst) &&
+                rui.op.at(op_id).consumes.find(src) != rui.op.at(op_id).consumes.end()) {
+              ssa_i.is_arg_coloring_move = true;
+            } else {
+              got_not_arg_coloring = true;
+            }
+          } else {
+            got_not_arg_coloring = true;
+          }
+        } else {
+          got_not_arg_coloring = true;
+        }
+      }
+
       // todo - verify no duplicates here?
       assert(op->write_regs().size() <= 1);
       // reads:
@@ -522,6 +564,22 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   }
 }
 
+void remap_color_move(
+    std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& mapping,
+    const RegId& old_var,
+    const RegId& new_var) {
+  auto old_kv = mapping.find(old_var.reg);
+  if (old_kv == mapping.end()) {
+    return;
+  }
+
+  if (int(old_kv->second.size()) <= old_var.id) {
+    return;
+  }
+
+  old_kv->second.at(old_var.id).reg_id = new_var;
+}
+
 VariableNames SSA::get_vars() {
   VariableNames result;
   result.read_vars = program_read_vars;
@@ -552,6 +610,21 @@ VariableNames SSA::get_vars() {
         }
         ids.at(op_id) = map.var_id(src);
       }
+    }
+  }
+
+  for (auto& instr : blocks.at(0).ins) {
+    if (instr.is_arg_coloring_move) {
+      result.eliminated_move_op_ids.insert(instr.op_id);
+      assert(instr.dst.has_value());
+      assert(instr.src.size() == 1);
+      RegId new_regid, old_regid;
+      new_regid.reg = instr.src.at(0).reg();
+      new_regid.id = map.var_id(instr.src.at(0));
+      old_regid.reg = instr.dst->reg();
+      old_regid.id = map.var_id(*instr.dst);
+      remap_color_move(result.read_vars, old_regid, new_regid);
+      remap_color_move(result.write_vars, old_regid, new_regid);
     }
   }
 

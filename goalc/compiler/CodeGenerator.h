@@ -7,18 +7,16 @@
 
 #pragma once
 
-#ifndef JAK_CODEGENERATOR_H
-#define JAK_CODEGENERATOR_H
-
 #include "Env.h"
 #include "goalc/emitter/ObjectGenerator.h"
 
 class DebugInfo;
+class TypeSystem;
 
 class CodeGenerator {
  public:
   CodeGenerator(FileEnv* env, DebugInfo* debug_info);
-  std::vector<u8> run();
+  std::vector<u8> run(const TypeSystem* ts);
 
  private:
   void do_function(FunctionEnv* env, int f_idx);
@@ -28,5 +26,3 @@ class CodeGenerator {
   FileEnv* m_fe = nullptr;
   DebugInfo* m_debug_info = nullptr;
 };
-
-#endif  // JAK_CODEGENERATOR_H

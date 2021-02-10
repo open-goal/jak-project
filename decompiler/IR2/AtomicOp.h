@@ -132,10 +132,17 @@ class SimpleAtom {
   void collect_vars(VariableSet& vars) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
+  bool is_label() const { return m_kind == Kind::STATIC_ADDRESS; }
   const Variable& var() const {
     assert(is_var());
     return m_variable;
   }
+
+  int label() const {
+    assert(is_label());
+    return m_int;
+  }
+
   s64 get_int() const {
     assert(is_int());
     return m_int;

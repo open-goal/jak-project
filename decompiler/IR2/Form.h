@@ -123,6 +123,11 @@ class SimpleExpressionElement : public FormElement {
                                     FormStack& stack,
                                     std::vector<FormElement*>* result,
                                     bool allow_side_effects);
+  void update_from_stack_int_to_float(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
   void update_from_stack_copy_first_int_2(const Env& env,
                                           FixedOperatorKind kind,
                                           FormPool& pool,
@@ -224,11 +229,15 @@ class SetVarElement : public FormElement {
 
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
+  Form* src() { return m_src; }
+  bool is_eliminated_coloring_move() const { return m_is_eliminated_coloring_move; }
+  void eliminate_as_coloring_move() { m_is_eliminated_coloring_move = true; }
 
  private:
   Variable m_dst;
   Form* m_src = nullptr;
   bool m_is_sequence_point = true;
+  bool m_is_eliminated_coloring_move = false;
 };
 
 /*!
@@ -246,6 +255,11 @@ class SetFormFormElement : public FormElement {
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+
+  const Form* src() const { return m_src; }
+  const Form* dst() const { return m_dst; }
+  Form* src() { return m_src; }
+  Form* dst() { return m_dst; }
 
  private:
   Form* m_dst = nullptr;
@@ -760,7 +774,7 @@ class GenericElement : public FormElement {
 
 class CastElement : public FormElement {
  public:
-  explicit CastElement(TypeSpec type, Form* source);
+  explicit CastElement(TypeSpec type, Form* source, bool numeric = false);
   goos::Object to_form(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -778,6 +792,7 @@ class CastElement : public FormElement {
  private:
   TypeSpec m_type;
   Form* m_source = nullptr;
+  bool m_numeric = false;  // if true, use the. otherwise the-as
 };
 
 class DerefToken {
@@ -786,11 +801,13 @@ class DerefToken {
     INTEGER_CONSTANT,
     INTEGER_EXPRESSION,  // some form which evaluates to an integer index. Not offset, index.
     FIELD_NAME,
+    EXPRESSION_PLACEHOLDER,
     INVALID
   };
   static DerefToken make_int_constant(s64 int_constant);
   static DerefToken make_int_expr(Form* expr);
   static DerefToken make_field_name(const std::string& name);
+  static DerefToken make_expr_placeholder();
 
   void collect_vars(VariableSet& vars) const;
   goos::Object to_form(const Env& env) const;
@@ -802,6 +819,11 @@ class DerefToken {
   const std::string& field_name() const {
     assert(m_kind == Kind::FIELD_NAME);
     return m_name;
+  }
+
+  Form* expr() {
+    assert(m_kind == Kind::INTEGER_EXPRESSION);
+    return m_expr;
   }
 
  private:
@@ -892,6 +914,19 @@ class GetMethodElement : public FormElement {
   Form* m_in = nullptr;
   std::string m_name;
   bool m_is_object = false;
+};
+
+class StringConstantElement : public FormElement {
+ public:
+  StringConstantElement(const std::string& value);
+  goos::Object to_form(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  std::string m_value;
 };
 
 /*!

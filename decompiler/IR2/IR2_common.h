@@ -126,15 +126,9 @@ enum class FixedOperatorKind {
 struct VariableNames {
   struct VarInfo {
     VarInfo() = default;
-    std::string name() const {
-      if (!override_name.empty()) {
-        return override_name;
-      }
-      return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id);
-    }
+    std::string name() const { return fmt::format("{}-{}", reg_id.reg.to_charp(), reg_id.id); }
     TP_Type type;
     RegId reg_id;
-    std::string override_name;
     bool initialized = false;
   };
 
@@ -143,6 +137,8 @@ struct VariableNames {
       write_vars;
   std::unordered_map<Register, std::vector<int>, Register::hash> read_opid_to_varid,
       write_opid_to_varid;
+
+  std::unordered_set<int> eliminated_move_op_ids;
 
   const VarInfo& lookup(Register reg, int op_id, VariableMode mode) const {
     if (mode == VariableMode::READ) {

@@ -3,6 +3,7 @@
  * This runs the IR2 analysis passes.
  */
 
+#include <common/link_types.h>
 #include "ObjectFileDB.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
@@ -416,8 +417,11 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
       auto file_text = ir2_to_file(obj);
       total_bytes += file_text.length();
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
-
       file_util::write_text_file(file_name, file_text);
+
+      auto final = ir2_final_out(obj);
+      auto final_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_disasm.gc");
+      file_util::write_text_file(final_name, final);
     }
   });
   lg::info("Wrote {} files ({:.2f} MB) in {:.2f} ms\n", total_files, total_bytes / float(1 << 20),
@@ -729,6 +733,21 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
     assert(false);
   }
   return false;
+}
+
+std::string ObjectFileDB::ir2_final_out(ObjectFileData& data) {
+  if (data.obj_version == 3) {
+    std::string result;
+    result += ";;-*-Lisp-*-\n";
+    result += "(in-package goal)\n\n";
+    assert(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
+    auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
+    result += write_from_top_level(top_level, dts, data.linked_data);
+    result += "\n\n";
+    return result;
+  } else {
+    return ";; not a code file.";
+  }
 }
 
 }  // namespace decompiler

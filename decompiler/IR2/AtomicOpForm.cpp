@@ -24,6 +24,8 @@ DerefToken to_token(FieldReverseLookupOutput::Token in) {
       return DerefToken::make_field_name(in.name);
     case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
       return DerefToken::make_int_constant(in.idx);
+    case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
+      return DerefToken::make_expr_placeholder();
     default:
       // temp
       throw std::runtime_error("Cannot convert rd lookup token to deref token");
@@ -74,8 +76,16 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
     }
   }
+
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
-  return pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
+  auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
+  if (m_src.kind() == SimpleExpression::Kind::IDENTITY) {
+    if (env.has_local_vars() && env.op_id_is_eliminated_coloring_move(m_my_idx)) {
+      result->eliminate_as_coloring_move();
+    }
+  }
+
+  return result;
 }
 
 FormElement* AsmOp::get_as_form(FormPool& pool, const Env&) const {
@@ -232,18 +242,11 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
         if (rd.success) {
-          //        load_path_set = true;
-          //        load_path_addr_of = rd.addr_of;
-          //        load_path_base = ro.reg_ir;
-          //        for (auto& x : rd.tokens) {
-          //          load_path.push_back(x.print());
-          //        }
           std::vector<DerefToken> tokens;
           assert(!rd.tokens.empty());
-          for (size_t i = 0; i < rd.tokens.size() - 1; i++) {
-            tokens.push_back(to_token(rd.tokens.at(i)));
+          for (auto& token : rd.tokens) {
+            tokens.push_back(to_token(token));
           }
-          assert(rd.tokens.back().kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX);
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.

@@ -347,7 +347,7 @@
 (defmethod new process-tree ((allocation symbol) (type-to-make type) (name basic))
   "Create a process-tree node"
   ;; allocate
-  (let ((obj (object-new)))
+  (let ((obj (object-new allocation type-to-make)))
     (set! (-> obj name) name)
     (set! (-> obj mask) (process-mask process-tree))
     (set! (-> obj parent) #f)
@@ -376,7 +376,7 @@
   "Allocate a new process.
   The process stack is initially set to the entire process memory."
   (let ((obj (if (eq? (-> allocation type) symbol)
-                 (object-new (the int (+ (-> process size) stack-size))) ;; symbol, allocate on heap
+                 (object-new allocation type-to-make (the int (+ (-> process size) stack-size))) ;; symbol, allocate on heap
                  (the process (&+ allocation *gtype-basic-offset*)))))   ;; treat as address.
     
     ;; initialize
@@ -833,7 +833,7 @@
 
 (defmethod new dead-pool ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic))
   "Create a pool of count dead processes, each with a fixed size stack-size"
-  (let ((obj (object-new)))
+  (let ((obj (object-new allocation type-to-make)))
     ;; setup process naming
     (set! (-> obj name) name)
     (set! (-> obj mask) (process-mask process-tree))
@@ -912,7 +912,7 @@
 
 (defmethod new dead-pool-heap ((allocation symbol) (type-to-make type) (name basic) (allocated-length int) (heap-size int))
   "Create a new dead pool heap. It will support allocated-length processes and have a total heap size of heap-size"
-  (let ((obj (object-new (+ (the int (-> type-to-make size))
+  (let ((obj (object-new allocation type-to-make (+ (the int (-> type-to-make size))
                             (align16 (* allocated-length 12))
                             heap-size))))
     (set! (-> obj name) name)

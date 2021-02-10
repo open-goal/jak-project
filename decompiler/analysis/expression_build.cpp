@@ -11,6 +11,9 @@ namespace decompiler {
 void clean_up_ifs(Form* top_level_form, const Env&) {
   bool changed = true;
   while (changed) {
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     changed = false;
     top_level_form->apply([&](FormElement* elt) {
       auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
@@ -39,6 +42,9 @@ void clean_up_ifs(Form* top_level_form, const Env&) {
       }
     });
 
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     top_level_form->apply([&](FormElement* elt) {
       auto as_sc = dynamic_cast<ShortCircuitElement*>(elt);
       if (!as_sc) {
@@ -66,6 +72,9 @@ void clean_up_ifs(Form* top_level_form, const Env&) {
       }
     });
 
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     top_level_form->apply([&](FormElement* elt) {
       auto as_ge = dynamic_cast<GenericElement*>(elt);
       if (!as_ge) {
@@ -159,8 +168,9 @@ bool convert_to_expressions(Form* top_level_form,
       top_level_form->push_back(x);
     }
 
-    //    fmt::print("Before clean:\n{}\n",
-    //    pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
     // fix up stuff
     clean_up_ifs(top_level_form, f.ir2.env);
 
@@ -169,6 +179,36 @@ bool convert_to_expressions(Form* top_level_form,
     lg::warn(warning);
     f.warnings.append(";; " + warning);
     return false;
+  }
+
+  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+    f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
+  } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
+      f.ir2.env.set_remap_for_new_method(f.type.arg_count() - 1);
+    } else {
+      f.ir2.env.set_remap_for_method(f.type.arg_count() - 1);
+    }
+  }
+
+  auto config_map = get_config().function_arg_names.find(f.guessed_name.to_string());
+  if (config_map != get_config().function_arg_names.end()) {
+    std::unordered_map<std::string, std::string> map2;
+    auto var_map = get_config().function_var_names.find(f.guessed_name.to_string());
+    if (var_map != get_config().function_var_names.end()) {
+      map2 = var_map->second;
+    }
+    f.ir2.env.map_args_from_config(config_map->second, map2);
+  }
+
+  // strip out coloring moves
+  for (auto it = top_level_form->elts().begin(); it != top_level_form->elts().end();) {
+    auto as_x = dynamic_cast<SetVarElement*>(*it);
+    if (as_x && as_x->is_eliminated_coloring_move()) {
+      it = top_level_form->elts().erase(it);
+    } else {
+      it++;
+    }
   }
 
   return true;
