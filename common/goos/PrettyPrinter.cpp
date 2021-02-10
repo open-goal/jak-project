@@ -440,15 +440,24 @@ void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* 
   auto* rp = leftParen->paren;
   assert(rp->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
 
-  for (auto* n = first_elt; n && n != rp; n = n->next) {
+  bool breaking = false;
+  for (auto* n = leftParen->next; n && n != rp; n = n->next) {
+    if (n == first_elt) {
+      breaking = true;
+    }
     if (!n->is_line_separator) {
       if (n->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
         n = n->paren;
         assert(n->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
-        insertNewlineAfter(pool, n, 0);
+        if (breaking) {
+          insertNewlineAfter(pool, n, 0);
+        }
+
       } else if (n->tok->kind != FormToken::TokenKind::WHITESPACE) {
         assert(n->tok->kind != FormToken::TokenKind::CLOSE_PAREN);
-        insertNewlineAfter(pool, n, 0);
+        if (breaking) {
+          insertNewlineAfter(pool, n, 0);
+        }
       }
     }
   }

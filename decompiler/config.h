@@ -44,6 +44,8 @@ struct Config {
       type_hints_by_function_by_idx;
   std::unordered_map<std::string, std::unordered_map<int, std::string>>
       anon_function_types_by_obj_by_id;
+  std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>> function_var_names;
   bool run_ir2 = false;
 };
 

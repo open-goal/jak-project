@@ -43,6 +43,22 @@ void Env::set_remap_for_method(int nargs) {
   }
 }
 
+void Env::map_args_from_config(const std::vector<std::string>& args_names,
+                               const std::unordered_map<std::string, std::string>& var_names) {
+  for (size_t i = 0; i < args_names.size(); i++) {
+    std::string var_name;
+    var_name.push_back(i >= 4 ? 't' : 'a');
+    var_name.push_back('0' + (i % 4));
+    var_name.push_back('-');
+    var_name.push_back('0');
+    m_var_remap[var_name] = args_names[i];
+  }
+
+  for (auto& x : var_names) {
+    m_var_remap[x.first] = x.second;
+  }
+}
+
 const std::string& Env::remapped_name(const std::string& name) const {
   auto kv = m_var_remap.find(name);
   if (kv != m_var_remap.end()) {

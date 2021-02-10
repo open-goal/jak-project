@@ -772,7 +772,7 @@ goos::Object ShortCircuitElement::to_form(const Env& env) const {
 }
 
 void ShortCircuitElement::collect_vars(VariableSet& vars) const {
-  vars.insert(final_result);  // todo - this might be unused.
+  //  vars.insert(final_result);  // todo - this might be unused.
   for (auto& entry : entries) {
     entry.condition->collect_vars(vars);
   }
@@ -837,9 +837,6 @@ void CondNoElseElement::collect_vars(VariableSet& vars) const {
   for (auto& e : entries) {
     e.condition->collect_vars(vars);
     e.body->collect_vars(vars);
-    if (e.false_destination.has_value()) {
-      vars.insert(*e.false_destination);
-    }
   }
 }
 
