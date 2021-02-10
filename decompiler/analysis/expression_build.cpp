@@ -199,6 +199,11 @@ bool convert_to_expressions(Form* top_level_form,
       map2 = var_map->second;
     }
     f.ir2.env.map_args_from_config(config_map->second, map2);
+  } else {
+    auto var_map = get_config().function_var_names.find(f.guessed_name.to_string());
+    if (var_map != get_config().function_var_names.end()) {
+      f.ir2.env.map_args_from_config({}, var_map->second);
+    }
   }
 
   // strip out coloring moves

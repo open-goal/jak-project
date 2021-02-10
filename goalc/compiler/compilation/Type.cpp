@@ -479,7 +479,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // array-indexable and a structure, we treat it like a structure only if the
           // deref thing is one of the field names. Otherwise, array.
           if (field_name == "content-type" || field_name == "length" ||
-              field_name == "allocated-length" || field_name == "type") {
+              field_name == "allocated-length" || field_name == "type" || field_name == "data") {
             result = get_field_of_structure(struct_type, result, field_name, env);
             continue;
           }
