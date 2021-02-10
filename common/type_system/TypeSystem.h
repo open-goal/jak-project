@@ -18,6 +18,18 @@
 #include "TypeSpec.h"
 #include "Type.h"
 
+struct TypeFlags {
+  union {
+    uint64_t flag = 0;
+    struct {
+      uint16_t size;
+      uint16_t heap_base;
+      uint16_t methods;
+      uint16_t pad;
+    };
+  };
+};
+
 struct FieldLookupInfo {
   Field field;
   TypeSpec type;
@@ -153,6 +165,8 @@ class TypeSystem {
   MethodInfo lookup_new_method(const std::string& type_name) const;
   void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
 
+  std::string generate_deftype(const Type* type) const;
+
   FieldLookupInfo lookup_field_info(const std::string& type_name,
                                     const std::string& field_name) const;
   BitfieldLookupInfo lookup_bitfield_info(const std::string& type_name,
@@ -175,7 +189,7 @@ class TypeSystem {
                  bool print_on_error = true,
                  bool throw_on_error = true) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
-  int get_next_method_id(Type* type);
+  int get_next_method_id(const Type* type) const;
 
   bool is_bitfield_type(const std::string& type_name) const;
   void add_field_to_bitfield(BitFieldType* type,

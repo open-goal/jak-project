@@ -13,8 +13,14 @@ class Form;
 class FormStack {
  public:
   FormStack() = default;
-  void push_value_to_reg(Variable var, Form* value, bool sequence_point);
-  void push_non_seq_reg_to_reg(const Variable& dst, const Variable& src, Form* src_as_form);
+  void push_value_to_reg(Variable var,
+                         Form* value,
+                         bool sequence_point,
+                         bool is_eliminated = false);
+  void push_non_seq_reg_to_reg(const Variable& dst,
+                               const Variable& src,
+                               Form* src_as_form,
+                               bool is_elim);
   void push_form_element(FormElement* elt, bool sequence_point);
   Form* pop_reg(const Variable& var,
                 const RegSet& barrier,
@@ -32,6 +38,7 @@ class FormStack {
     std::optional<Variable> destination;  // what register we are setting (or nullopt if no dest.)
     std::optional<Variable> non_seq_source;  // source variable, if we are setting var to var.
     Form* source = nullptr;                  // the value we are setting the register to.
+    bool eliminated_as_coloring_move = false;
 
     FormElement* elt = nullptr;
     bool sequence_point = false;

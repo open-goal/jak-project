@@ -131,10 +131,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return m_args[0].get_type(input, env, dts);
     case Kind::GPR_TO_FPR: {
       const auto& in_type = input.get(get_arg(0).var().reg());
-      if (in_type.typespec() != TypeSpec("float")) {
-        lg::warn("GPR to FPR used on a {}", in_type.print());
-      }
-      return TP_Type::make_from_ts("float");
+      return in_type;
     }
     case Kind::FPR_TO_GPR:
     case Kind::DIV_S:
@@ -144,6 +141,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::SQRT_S:
     case Kind::ABS_S:
     case Kind::NEG_S:
+    case Kind::INT_TO_FLOAT:
       return TP_Type::make_from_ts("float");
     case Kind::ADD:
     case Kind::SUB:
@@ -802,6 +800,7 @@ TypeState FunctionEndOp::propagate_types_internal(const TypeState& input,
 }
 
 void FunctionEndOp::mark_function_as_no_return_value() {
+  m_read_regs.clear();
   m_function_has_return_value = false;
 }
 

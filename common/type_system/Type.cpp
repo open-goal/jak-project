@@ -485,6 +485,7 @@ void StructureType::inherit(StructureType* parent) {
   m_fields = parent->m_fields;
   m_dynamic = parent->m_dynamic;
   m_size_in_mem = parent->m_size_in_mem;
+  m_idx_of_first_unique_field = m_fields.size();
 }
 
 bool StructureType::operator==(const Type& other) const {

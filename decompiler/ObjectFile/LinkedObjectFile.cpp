@@ -101,6 +101,21 @@ Function& LinkedObjectFile::get_function_at_label(int label_id) {
 }
 
 /*!
+ * Get the function starting at this label, or nullptr if there is none.
+ */
+const Function* LinkedObjectFile::try_get_function_at_label(int label_id) const {
+  auto& label = labels.at(label_id);
+  for (auto& func : functions_by_seg.at(label.target_segment)) {
+    // + 4 to skip past type tag to the first word, which is were the label points.
+    if (func.start_word * 4 + 4 == label.offset) {
+      return &func;
+    }
+  }
+
+  return nullptr;
+}
+
+/*!
  * Get the name of the label.
  */
 std::string LinkedObjectFile::get_label_name(int label_id) const {

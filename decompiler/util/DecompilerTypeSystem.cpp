@@ -48,36 +48,42 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
   auto data = cdr(read);
 
   for_each_in_list(data, [&](goos::Object& o) {
-    if (car(o).as_symbol()->name == "define-extern") {
-      auto* rest = &cdr(o);
-      auto sym_name = car(*rest);
-      rest = &cdr(*rest);
-      auto sym_type = car(*rest);
-      if (!cdr(*rest).is_empty_list()) {
-        throw std::runtime_error("malformed define-extern");
-      }
-      add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
+    try {
+      if (car(o).as_symbol()->name == "define-extern") {
+        auto* rest = &cdr(o);
+        auto sym_name = car(*rest);
+        rest = &cdr(*rest);
+        auto sym_type = car(*rest);
+        if (!cdr(*rest).is_empty_list()) {
+          throw std::runtime_error("malformed define-extern");
+        }
+        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
 
-    } else if (car(o).as_symbol()->name == "deftype") {
-      auto dtr = parse_deftype(cdr(o), &ts);
-      add_symbol(dtr.type.base_type(), "type");
-    } else if (car(o).as_symbol()->name == "declare-type") {
-      auto* rest = &cdr(o);
-      auto type_name = car(*rest);
-      rest = &cdr(*rest);
-      auto type_kind = car(*rest);
-      if (!cdr(*rest).is_empty_list()) {
-        throw std::runtime_error("malformed declare-type");
-      }
-      if (type_kind.as_symbol()->name == "basic") {
-        ts.forward_declare_type_as_basic(type_name.as_symbol()->name);
-      } else if (type_kind.as_symbol()->name == "structure") {
-        ts.forward_declare_type_as_structure(type_name.as_symbol()->name);
+      } else if (car(o).as_symbol()->name == "deftype") {
+        auto dtr = parse_deftype(cdr(o), &ts);
+        add_symbol(dtr.type.base_type(), "type");
+      } else if (car(o).as_symbol()->name == "declare-type") {
+        auto* rest = &cdr(o);
+        auto type_name = car(*rest);
+        rest = &cdr(*rest);
+        auto type_kind = car(*rest);
+        if (!cdr(*rest).is_empty_list()) {
+          throw std::runtime_error("malformed declare-type");
+        }
+        if (type_kind.as_symbol()->name == "basic") {
+          ts.forward_declare_type_as_basic(type_name.as_symbol()->name);
+        } else if (type_kind.as_symbol()->name == "structure") {
+          ts.forward_declare_type_as_structure(type_name.as_symbol()->name);
+        } else {
+          throw std::runtime_error("bad declare-type");
+        }
       } else {
-        throw std::runtime_error("bad declare-type");
+        throw std::runtime_error("Decompiler cannot parse " + car(o).print());
       }
-    } else {
-      throw std::runtime_error("Decompiler cannot parse " + car(o).print());
+    } catch (std::exception& e) {
+      auto info = m_reader.db.get_info_for(o);
+      lg::error("Error {} when parsing decompiler type file:\n{}", e.what(), info);
+      throw e;
     }
   });
 }

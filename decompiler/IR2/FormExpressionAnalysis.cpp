@@ -3,6 +3,7 @@
 #include "GenericElementMatcher.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 /*
  * TODO
@@ -238,6 +239,10 @@ void Form::update_children_from_stack(const Env& env,
     }
   }
 
+  for (auto& x : new_elts) {
+    x->parent_form = this;
+  }
+
   m_elements = new_elts;
 }
 
@@ -273,8 +278,14 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
   if (arg.is_var()) {
     pop_helper({arg.var()}, env, pool, stack, {result}, allow_side_effects);
   } else if (arg.is_static_addr()) {
-    // for now, do nothing.
-    result->push_back(this);
+    auto lab = env.file->labels.at(arg.label());
+    if (env.file->is_string(lab.target_segment, lab.offset)) {
+      auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
+      result->push_back(pool.alloc_element<StringConstantElement>(str));
+    } else {
+      result->push_back(this);
+    }
+
   } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
     result->push_back(this);
   } else {
@@ -289,14 +300,27 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
   auto src = m_expr.get_arg(0);
-  auto src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
-  if (src_type.typespec() == TypeSpec("float")) {
-    // set ourself to identity.
-    m_expr = src.as_expr();
-    // then go again.
-    update_from_stack(env, pool, stack, result, allow_side_effects);
+  auto src_type = env.get_types_before_op(src.var().idx()).get(src.var().reg());
+  std::vector<FormElement*> src_fes;
+  if (src.is_var()) {
+    pop_helper({src.var()}, env, pool, stack, {&src_fes}, allow_side_effects);
   } else {
-    throw std::runtime_error(fmt::format("GPR -> FPR applied to a {}", src_type.print()));
+    src_fes = {this};
+  }
+
+  // set ourself to identity.
+  m_expr = src.as_expr();
+
+  if (src_type.typespec() == TypeSpec("float")) {
+    // got a float as an input, we can convert it to an FPR with no effect.
+    for (auto x : src_fes) {
+      result->push_back(x);
+    }
+  } else {
+    // converting something else to an FPR, put an expression around it.
+    result->push_back(pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::GPR_TO_FPR),
+        pool.alloc_sequence_form(nullptr, src_fes)));
   }
 }
 
@@ -565,6 +589,29 @@ void SimpleExpressionElement::update_from_stack_lognot(const Env& env,
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_int_to_float(const Env& env,
+                                                             FormPool& pool,
+                                                             FormStack& stack,
+                                                             std::vector<FormElement*>* result,
+                                                             bool allow_side_effects) {
+  auto var = m_expr.get_arg(0).var();
+  auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
+  // if we convert from a GPR to FPR, then immediately to int to float, we can strip away the
+  // the gpr->fpr operation beacuse it doesn't matter.
+  auto fpr_convert_matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::GPR_TO_FPR), {Matcher::any(0)});
+  auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+  if (type == TypeSpec("int") || type == TypeSpec("uint")) {
+    auto mr = match(fpr_convert_matcher, arg);
+    if (mr.matched) {
+      arg = mr.maps.forms.at(0);
+    }
+    result->push_back(pool.alloc_element<CastElement>(TypeSpec("float"), arg, true));
+  } else {
+    throw std::runtime_error("Used int to float on a " + type.print());
+  }
+}
+
 void SimpleExpressionElement::update_from_stack(const Env& env,
                                                 FormPool& pool,
                                                 FormStack& stack,
@@ -668,6 +715,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result,
                                    allow_side_effects);
       break;
+    case SimpleExpression::Kind::INT_TO_FLOAT:
+      update_from_stack_int_to_float(env, pool, stack, result, allow_side_effects);
+      break;
     default:
       throw std::runtime_error(
           fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));
@@ -679,7 +729,14 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
 ///////////////////
 
 void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
+  assert(m_src->parent_element == this);
   m_src->update_children_from_stack(env, pool, stack, true);
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
@@ -688,14 +745,18 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
         auto var = src_as_se->expr().get_arg(0).var();
         auto& info = env.reg_use().op.at(var.idx());
         if (info.consumes.find(var.reg()) != info.consumes.end()) {
-          stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src);
+          stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
+                                        m_is_eliminated_coloring_move);
           return;
         }
       }
     }
   }
 
-  stack.push_value_to_reg(m_dst, m_src, true);
+  stack.push_value_to_reg(m_dst, m_src, true, m_is_eliminated_coloring_move);
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
 }
 
 void SetVarElement::update_from_stack(const Env& env,
@@ -704,6 +765,9 @@ void SetVarElement::update_from_stack(const Env& env,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects) {
   m_src->update_children_from_stack(env, pool, stack, allow_side_effects);
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
   result->push_back(this);
 }
 
@@ -807,7 +871,24 @@ void FunctionCallElement::update_from_stack(const Env& env,
       auto name = match_result.maps.strings.at(method_name);
 
       if (name == "new" && type_1 == "object") {
+        // calling the new method of object. This is a special case that turns into an (object-new
+        // macro. The arguments are allocation type-to-make and size of type
+        // symbol, type, int.
         std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+
+        // if needed, cast to to correct type.
+        std::vector<TypeSpec> expected_arg_types = {TypeSpec("symbol"), TypeSpec("type"),
+                                                    TypeSpec("int")};
+        assert(new_args.size() >= 3);
+        for (size_t i = 0; i < 3; i++) {
+          auto& var = all_pop_vars.at(i + 1);  // 0 is the function itself.
+          auto arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+          if (!env.dts->ts.typecheck(expected_arg_types.at(i), arg_type, "", false, false)) {
+            new_args.at(i) = pool.alloc_single_element_form<CastElement>(
+                nullptr, expected_arg_types.at(i), new_args.at(i));
+          }
+        }
+
         auto new_op = pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(FixedOperatorKind::OBJECT_NEW), new_args);
         result->push_back(new_op);
@@ -829,7 +910,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         match_result = match(matcher, temp_form);
         if (match_result.matched) {
           auto alloc = match_result.maps.strings.at(allocation);
-          if (alloc != "global") {
+          if (alloc != "global" && alloc != "debug") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);
@@ -838,7 +919,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
                 fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
           }
 
+          auto quoted_type = pool.alloc_single_element_form<SimpleAtomElement>(
+              nullptr, SimpleAtom::make_sym_ptr(type_2));
+
           std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+          new_args.at(1) = quoted_type;
 
           auto new_op = pool.alloc_element<GenericElement>(
               GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
@@ -1481,7 +1566,12 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       assert(idx && base);
 
       std::vector<DerefToken> tokens = m_deref_tokens;
-      tokens.push_back(DerefToken::make_int_expr(idx));
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+      //      tokens.push_back(DerefToken::make_int_expr(idx));
 
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
@@ -1507,7 +1597,12 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       assert(idx.has_value() && base.has_value());
 
       std::vector<DerefToken> tokens = m_deref_tokens;
-      tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(var_to_form(idx.value(), pool));
+        }
+      }
+      // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
 
       auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
       result->push_back(deref);
@@ -1515,25 +1610,38 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
       // (+ gp-0 (the-as uint (shl (the-as uint (shl (the-as uint s4-0) 2)) 2)))
       auto reg0_matcher =
-          Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
+          Matcher::match_or({Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
-          Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+          Matcher::match_or({Matcher::cast("uint", Matcher::any(1)),
+                             Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
       auto sll_matcher =
           Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(power_of_two)});
+      sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
+      // TODO - figure out why it sometimes happens the other way.
       if (!match_result.matched) {
-        throw std::runtime_error("Couldn't match ArrayFieldAccess (stride power of 2) values: " +
-                                 new_val->to_string(env));
+        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg1_matcher, sll_matcher});
+        match_result = match(matcher, new_val);
+        if (!match_result.matched) {
+          throw std::runtime_error("Couldn't match ArrayFieldAccess (stride power of 2) values: " +
+                                   new_val->to_string(env));
+        }
       }
-      auto idx = match_result.maps.regs.at(0);
-      auto base = match_result.maps.regs.at(1);
-      assert(idx.has_value() && base.has_value());
+      auto idx = match_result.maps.forms.at(0);
+      auto base = match_result.maps.forms.at(1);
+
+      assert(idx && base);
 
       std::vector<DerefToken> tokens = m_deref_tokens;
-      tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+      // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
 
-      auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
       throw std::runtime_error("Not power of two case, not yet implemented (offset)");

@@ -1,5 +1,6 @@
 #include "config.h"
 #include "third-party/json.hpp"
+#include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
@@ -105,6 +106,23 @@ void set_config(const std::string& path_to_config_file) {
       auto id = anon_type.at(0).get<int>();
       const auto& type_name = anon_type.at(1).get<std::string>();
       gConfig.anon_function_types_by_obj_by_id[obj_file_name][id] = type_name;
+    }
+  }
+  auto var_names_json = read_json_file_from_config(cfg, "var_names_file");
+  for (auto& kv : var_names_json.items()) {
+    auto& function_name = kv.key();
+    auto arg = kv.value().find("args");
+    if (arg != kv.value().end()) {
+      for (auto& x : arg.value()) {
+        gConfig.function_arg_names[function_name].push_back(x);
+      }
+    }
+
+    auto var = kv.value().find("vars");
+    if (var != kv.value().end()) {
+      for (auto& vkv : var->get<std::unordered_map<std::string, std::string>>()) {
+        gConfig.function_var_names[function_name][vkv.first] = vkv.second;
+      }
     }
   }
 }

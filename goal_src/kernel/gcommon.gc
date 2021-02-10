@@ -8,13 +8,10 @@
 ;; gcommon is the first file compiled and loaded.
 ;; it's expected that this function will mostly be hand-decompiled
 
-
-
 (defun identity ((x object))
   "Function which returns its input. The first function of the game!"
   x
   )
-
 
 (defun 1/ ((x float))
   "Reciprocal floating point"
@@ -52,25 +49,9 @@
   "Arithmetic shift value by shift-amount.  
   A positive shift-amount will shift to the left and a negative will shift to the right.
   "
-  
-  ;; currently the compiler does not support "ash", so this function is also used to implement "ash".
-  ;; in the future, the compiler should be able to use constant propagation to turn constant shifts
-  ;; into x86 constant shifts when possible (which are faster). The GOAL compiler seems to do this.
-  
-  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
-  ;;  (or v1 a0 r0)      ;; likely inserted by register coloring, not entirely needed
-  ;;  (bgezl a1 end)     ;; branch to function end if positive shift (left)...
-  ;;  (dsllv v0 v1 a1)   ;; do left shift in delay slot
-  ;;  
-  ;;  (dsubu a0 r0 a1)   ;; negative shift amount for right shift
-  ;;  (dsrav v0 v1 a0)   ;; do right shift
-  ;;  (label end)
-  
+  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
   (declare (inline))
   (if (> shift-amount 0)
-      ;; these correspond to x86-64 variable shift instructions.
-      ;; the exact behavior of GOAL shifts (signed/unsigned) are unknown so for now shifts must
-      ;; be manually specified.
       (shl value shift-amount)
       (sar value (- shift-amount))
       )
@@ -97,16 +78,9 @@
 (defun abs ((a int))
   "Take the absolute value of an integer"
   
-  ;; short function, good candidate for inlining
   (declare (inline))
   
-  ;; The original implementation was inline assembly, to take advantage of branch delay slots:
-  ;;  (or v0 a0 r0)     ;; move input to output unchanged, for positive case
-  ;;  (bltzl v0 end)    ;; if negative, execute the branch delay slot below...
-  ;;  (dsubu v0 r0 v0)  ;; negate
-  ;;  (label end)
-  
-  
+  ;; OpenGOAL doesn't support abs, so we implement it here.
   (if (> a 0) ;; condition is "a > 0"
       a       ;; true case, return a
       (- a)   ;; false case, return -a. (- a) is like (- 0 a)
@@ -121,7 +95,8 @@
   ;;  (or v1 a1 r0)    ;; move second arg to v1 (likely strange coloring)
   ;;  (slt a0 v0 v1)   ;; compare args
   ;;  (movz v0 v1 a0)  ;; conditional move the second arg to v0 if it's the minimum
-  
+
+  ;; OpenGOAL doesn't support min, so we implement it here.
   (declare (inline))
   (if (> a b) b a)
   )
@@ -129,6 +104,7 @@
 (defun max ((a int) (b int))
   "Compute maximum."
   (declare (inline))
+  ;; OpenGOAL doesn't support max so we implement it here.
   (if (> a b) a b)
   )
 
@@ -145,7 +121,7 @@
 (defun lognor ((a int) (b int))
   "Compute not or."
   ;; Note - MIPS has a 'nor' instruction, but x86 doesn't.
-  ;; the GOAL x86 compiler therefore doesn't have a nor operation,
+  ;; the OpenGOAL x86 compiler therefore doesn't have a nor operation,
   ;; so lognor is implemented by this inline function instead.
   (declare (inline))
   (lognot (logior a b))
@@ -163,16 +139,11 @@
 
 (defun false-func ()
   "Return false"
-  ;; In GOAL, #f is false.  It's a symbol. Each symbol exists as an object, and each symbol has a value
-  ;; The value of the false symbol #f is the false symbol #f.
-  
-  ;; To get the symbol, instead of its value, we use quote.  Writing 'x is equivalent to (quote x)
   '#f
   )
 
 (defun true-func ()
   "Return true"
-  ;; GOAL consideres anything that's not #f to be true. But there's also an explicit true symbol.
   '#t
   )
 
@@ -185,19 +156,25 @@
 ;; or 128-bit arguments (unimplemented in C Kernel), but both of these were never finished.
 (define format _format)
 
-;; vec4s - this is present in the game as a 128-bit integer child type full of 4 floats.
-;; this doesn't seem to be used, and OpenGOAL doesn't support bitfields or 128-bit integers yet, so it is omitted.
-;; I suspect this was unused because putting 4 floats in a 128-bit integer register is not an incredibly useful thing to do
-;; - accessing all of these floats will be very slow.
+;; vec4s - this is present in the game as a 128-bit integer with 4 packed floats.
+;; 128-bit integers seem to be used almost never in GOAL and I suspect they were not
+;; fully implemented in the compiler.  Instead, 128-bit integer code used inline assembly.
+;; OpenGOAL does not support 128-bit integer types, so this is a bit useless.
+;; Note - the actually used vector type stores the vector in memory, not a register.
+;; inline assembly code puts the register in vf registers, not integer registers.
+(deftype vec4s (uint128)
+  ((x float :offset 0)
+   (y float :offset 32)
+   (z float :offset 64)
+   (w float :offset 96))
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-
+;; A "boxed float" type. Simply a float with type information.
 (deftype bfloat (basic)
   ((data float :offset-assert 4))
-  (:methods 
-    (print (_type_) _type_ 2)    ;; we will override print later on. This is optional to include
-    (inspect (_type_) _type_ 3)  ;; this is a parent method we won't override. This is also optional to include
-    )
-
   :size-assert 8
   :method-count-assert 9
   :flag-assert #x900000008
@@ -213,26 +190,13 @@
 ;; Type System
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; The asize-of method should return the total size in memory used by an object.
-; It's used for traversing heaps of basics and copying basics.
-; Most basic/structure types are "fixed size", and their default asize-of method will simply
-; return the "size" field of their type, so you don't have to worry about it.
-; However, some types are dynamic (like a string) and require that you provide your own method.
-; A common approach is to have an "allocated-length" field, then have the asize-of method return
-;  (+ (-> obj type size) (* elem-size (-> obj allocated-length)))
-; asize-of returns the actual size, including the type field, and can have any alignment.
-
-;; A "type" object contains some basic information about a type as well as the list of methods.
-;; Some types have more methods than others, so the method table makes "type" a dynamic type.
-;; As a result, we should define an "asize-of" method for type. It's possibly unused and it's wrong.
-
 (defmethod asize-of type ((obj type))
   "Get the size in memory of a type"
   ;; The 28 is 8 bytes too large. It's also strange that types have a 16-byte aligned size always, 
   ;; but this matches what the runtime does as well. There's no reason that I can see for this,
   ;; as other basics don't require 16-byte aligned sizes.
-  ;; - this is perhaps accurate back when types where inside of the symbol table? Or before switching to u16's
-  ;; for some of the type values?
+  ;; - maybe the 16-byte aligned size was a requirement if types were stored in the symbol table?
+  ;; - maybe types used to be a little bit larger, they made an effort to pack fields tightly.
   (align16 (+ 28 (* 4 (-> type allocated-length))))
   )
 
@@ -243,9 +207,8 @@
         (object-type object))
     (until (eq? (set! basics-type (-> basics-type parent)) object-type)
            (if (eq? basics-type input-type)
-               ;; return-from #f will return from the function with the value of #t
-               (return-from #f #t)
-               )
+               (return #t)
+	       )
            )
     )
   #f ;; didn't find it, return false
@@ -258,8 +221,8 @@
                (zero? a)
                )
            (if (eq? a b)
-               (return-from #f #t)
-               )
+               (return #t)
+	       )
            )
     )
   #f
@@ -279,13 +242,13 @@
            ;; at the top of the type tree.
            (if (eq? the-type object)
                (return-from #f nothing)
-               )
+	       )
            
            (set! the-type (-> the-type parent))
            (set! parent-method (-> the-type method-table method-id))
            (if (eq? 0 (the int parent-method))
                (return-from #f nothing)
-               )
+	       )
            )
     parent-method
     )
@@ -402,17 +365,17 @@
    (set! s5-0 a0-0)
    (set! gp-0 a1-0)
    (while
-    (not
-     (or
-      (= gp-0 '())
-      (begin
-       (set! a1-1 (car (car gp-0)))
-       (if (pair? a1-1) (nmember s5-0 a1-1) (name= (the basic a1-1) s5-0))
-       )
-      )
+       (not
+	(or
+	 (= gp-0 '())
+	 (begin
+	  (set! a1-1 (car (car gp-0)))
+	  (if (pair? a1-1) (nmember s5-0 a1-1) (name= (the basic a1-1) s5-0))
+	  )
+	 )
+	)
+     (set! gp-0 (cdr gp-0))
      )
-    (set! gp-0 (cdr gp-0))
-    )
    (set! v1-3 '#f)
    (if (!= gp-0 '()) (car gp-0))
    )
@@ -431,21 +394,21 @@
    (set! s5-0 a0-0)
    (set! gp-0 a1-0)
    (while
-    (not
-     (or
-      (= gp-0 '())
-      (begin
-       (set! s4-0 (car (car gp-0)))
-       (if
-        (pair? s4-0)
-        (nmember s5-0 s4-0)
-        (or (name= (the basic s4-0) s5-0) (= s4-0 'else))
-        )
-       )
-      )
+       (not
+	(or
+	 (= gp-0 '())
+	 (begin
+	  (set! s4-0 (car (car gp-0)))
+	  (if
+	   (pair? s4-0)
+	   (nmember s5-0 s4-0)
+	   (or (name= (the basic s4-0) s5-0) (= s4-0 'else))
+	   )
+	  )
+	 )
+	)
+     (set! gp-0 (cdr gp-0))
      )
-    (set! gp-0 (cdr gp-0))
-    )
    (set! v1-4 '#f)
    (if (!= gp-0 '()) (car gp-0))
    )
@@ -466,7 +429,7 @@
     ;; this check seems not needed
     (if (not (null? lst))
         (set! (cdr lst) back)
-        )
+	)
     
     front
     )
@@ -490,14 +453,14 @@
     
     (if (not (null? iter))
         (set! (cdr rep) (cdr iter))
-        )
+	)
     )
   (the pair lst)
   )
 
 (defun delete-car! ((item object) (lst object))
   "Like delete, but will delete if (car item-from-list) is equal to item.  Useful for deleting from association list by key."
-  ;(format #t "call to delete car: ~A ~A~%" item lst)
+					;(format #t "call to delete car: ~A ~A~%" item lst)
   (if (eq? (caar lst) item)
       (return-from #f (cdr lst))
       )
@@ -512,7 +475,7 @@
     
     (if (not (null? iter))
         (set! (cdr rep) (cdr iter))
-        )
+	)
     )
   lst
   )
@@ -540,9 +503,9 @@
             ;; check if val1 and val2 are in order. The compare function may either return #t
             ;; or it may return val1 - val2.  There is an issue if val1 - val2 happens to equal #t or #f.
             (unless (or
-                      (and c-result (<= (the integer c-result) 0)) ;; not #f, and negative, we're sorted!
-                      (eq? c-result #t) ;; explictly return #t, we're sorted!
-                      )
+		     (and c-result (<= (the integer c-result) 0)) ;; not #f, and negative, we're sorted!
+		     (eq? c-result #t) ;; explictly return #t, we're sorted!
+		     )
               ;; these two aren't sorted! so we swap them and increment changes.
               (+1! changes)
               (set! (car iter) val2)
@@ -582,7 +545,7 @@
   "Create a new inline-array.  Sets the length, allocated-length to cnt.  Uses the mysterious heap-base field
   of the type-to-make to determine the element size"
   (let* ((sz (+ (-> type-to-make size) (* (-> type-to-make heap-base) cnt)))
-         (new-object (object-new (the int sz))))
+         (new-object (object-new allocation type-to-make (the int sz))))
     ;;(format 0 "create sz ~d at #x~X~%" sz new-object)
     (unless (zero? new-object)
       (set! (-> new-object length) cnt)
@@ -593,12 +556,12 @@
   )
 
 (defmethod length inline-array-class ((obj inline-array-class))
-  ;"Get the length of an inline-array"
+					;"Get the length of an inline-array"
   (-> obj length)
   )
 
 (defmethod asize-of inline-array-class ((obj inline-array-class))
-  ;"Get the size in memory of an inline-array-class"
+					;"Get the size in memory of an inline-array-class"
   (+ (the-as int (-> obj type size))
      (* (-> obj allocated-length) (-> obj type heap-base))
      )
@@ -614,10 +577,10 @@
 
 (defmethod new array ((allocation symbol) (type-to-make type) (content-type type) (size int))
   "Create a new array. The length and allocated-length are both set to size."
-  (let ((obj (object-new (* size (if (type-type? content-type number)
-                                     (-> content-type size)
-                                     4
-                                     )))))
+  (let ((obj (object-new allocation type-to-make (* size (if (type-type? content-type number)
+							     (-> content-type size)
+							     4
+							     )))))
     (set! (-> obj length) size)
     (set! (-> obj allocated-length) size)
     (set! (-> obj content-type) content-type)
@@ -637,7 +600,7 @@
   (the int (+ (-> array size) (* (-> obj allocated-length) 
                                  (if (type-type? (-> obj content-type) number)
                                      (-> obj content-type size)
-                                     4))))
+				     4))))
   )
 
 
@@ -681,9 +644,9 @@
   "The purpose of this function is unknown"
   (dotimes (i len #f)
     (if (zero? (logand bitmask 1))
-      (format #t "    ")
-      (format #t "|   ")
-      )
+	(format #t "    ")
+	(format #t "|   ")
+	)
     (set! bitmask (ash bitmask -1))
     )
   )

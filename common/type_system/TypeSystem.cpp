@@ -10,6 +10,7 @@
 #include <third-party/fmt/core.h>
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
+#include "deftype.h"
 
 TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.
@@ -843,7 +844,7 @@ std::string TypeSystem::print_all_type_information() const {
 /*!
  * Get the next free method ID of a type.
  */
-int TypeSystem::get_next_method_id(Type* type) {
+int TypeSystem::get_next_method_id(const Type* type) const {
   MethodInfo info;
 
   while (true) {
@@ -1437,4 +1438,130 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
   }
   BitField field(field_type, field_name, offset, field_size);
   type->m_fields.push_back(field);
+}
+
+std::string TypeSystem::generate_deftype(const Type* type) const {
+  std::string result;
+
+  auto st = dynamic_cast<const StructureType*>(type);
+  if (!st) {
+    return fmt::format(
+        ";; cannot generate deftype for {}, it is not a structure/basic (parent {})\n",
+        type->get_name(), type->get_parent());
+  }
+
+  result += fmt::format("(deftype {} ({})\n  (", type->get_name(), type->get_parent());
+
+  int longest_field_name = 0;
+  int longest_type_name = 0;
+  int longest_mods = 0;
+
+  std::string inline_string = ":inline";
+  std::string dynamic_string = ":dynamic";
+
+  for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
+    const auto& field = st->fields().at(i);
+    longest_field_name = std::max(longest_field_name, int(field.name().size()));
+    longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
+
+    int mods = 0;
+    // mods are array size, :inline, :dynamic
+    if (field.is_array() && !field.is_dynamic()) {
+      mods += std::to_string(field.array_size()).size();
+    }
+
+    if (field.is_inline()) {
+      if (mods) {
+        mods++;  // space
+      }
+      mods += inline_string.size();
+    }
+
+    if (field.is_dynamic()) {
+      if (mods) {
+        mods++;  // space
+      }
+      mods += dynamic_string.size();
+    }
+    longest_mods = std::max(longest_mods, mods);
+  }
+
+  for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
+    const auto& field = st->fields().at(i);
+    result += "(";
+    result += field.name();
+    result.append(1 + (longest_field_name - int(field.name().size())), ' ');
+    result += field.type().print();
+    result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
+
+    std::string mods;
+    if (field.is_array() && !field.is_dynamic()) {
+      mods += std::to_string(field.array_size());
+      mods += " ";
+    }
+
+    if (field.is_inline()) {
+      mods += inline_string;
+      mods += " ";
+    }
+
+    if (field.is_dynamic()) {
+      mods += dynamic_string;
+      mods += " ";
+    }
+    result.append(mods);
+    result.append(longest_mods - int(mods.size() - 1), ' ');
+
+    result.append(":offset-assert ");
+    result.append(std::to_string(field.offset()));
+    result.append(")\n   ");
+  }
+  result.append(")\n");
+
+  auto method_count = get_next_method_id(type);
+  result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
+  result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
+  TypeFlags flags;
+  flags.heap_base = 0;
+  flags.size = type->get_size_in_memory();
+  flags.pad = 0;
+  flags.methods = method_count;
+
+  result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
+
+  std::string methods_string;
+  auto new_info = type->get_new_method_defined_for_type();
+  if (new_info) {
+    methods_string.append("(new (");
+    for (size_t i = 0; i < new_info->type.arg_count() - 1; i++) {
+      methods_string.append(new_info->type.get_arg(i).print());
+      if (i != new_info->type.arg_count() - 2) {
+        methods_string.push_back(' ');
+      }
+    }
+    methods_string.append(fmt::format(
+        ") {} {})\n    ", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
+  }
+
+  for (auto& info : type->get_methods_defined_for_type()) {
+    methods_string.append(fmt::format("({} (", info.name));
+    for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
+      methods_string.append(info.type.get_arg(i).print());
+      if (i != info.type.arg_count() - 2) {
+        methods_string.push_back(' ');
+      }
+    }
+    methods_string.append(fmt::format(
+        ") {} {})\n    ", info.type.get_arg(info.type.arg_count() - 1).print(), info.id));
+  }
+
+  if (!methods_string.empty()) {
+    result.append("(:methods\n    ");
+    result.append(methods_string);
+    result.append(")\n  ");
+  }
+
+  result.append(")\n");
+
+  return result;
 }

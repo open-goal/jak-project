@@ -20,7 +20,7 @@ CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info)
 /*!
  * Generate an object file.
  */
-std::vector<u8> CodeGenerator::run() {
+std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
   std::unordered_set<std::string> function_names;
 
   // first, add each function to the ObjectGenerator (but don't add any data)
@@ -46,7 +46,7 @@ std::vector<u8> CodeGenerator::run() {
   }
 
   // generate a v3 object. TODO - support for v4 "data" objects.
-  return m_gen.generate_data_v3().to_vector();
+  return m_gen.generate_data_v3(ts).to_vector();
 }
 
 void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {

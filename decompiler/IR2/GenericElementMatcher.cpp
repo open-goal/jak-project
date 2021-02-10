@@ -8,6 +8,13 @@ Matcher Matcher::any_reg(int match_id) {
   return m;
 }
 
+Matcher Matcher::any_label(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_LABEL;
+  m.m_label_out_id = match_id;
+  return m;
+}
+
 Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;
@@ -75,6 +82,13 @@ Matcher Matcher::any_symbol(int match_id) {
   return m;
 }
 
+Matcher Matcher::symbol(const std::string& name) {
+  Matcher m;
+  m.m_kind = Kind::SYMBOL;
+  m.m_str = name;
+  return m;
+}
+
 Matcher Matcher::deref(const Matcher& root,
                        bool is_addr_of,
                        const std::vector<DerefTokenMatcher>& tokens) {
@@ -83,6 +97,13 @@ Matcher Matcher::deref(const Matcher& root,
   m.m_sub_matchers = {root};
   m.m_deref_is_addr_of = is_addr_of;
   m.m_token_matchers = tokens;
+  return m;
+}
+
+Matcher Matcher::set(const Matcher& dst, const Matcher& src) {
+  Matcher m;
+  m.m_kind = Kind::SET;
+  m.m_sub_matchers = {dst, src};
   return m;
 }
 
@@ -118,6 +139,37 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         if (m_reg_out_id != -1) {
           maps_out->regs.resize(std::max(size_t(m_reg_out_id + 1), maps_out->regs.size()));
           maps_out->regs.at(m_reg_out_id) = result;
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } break;
+
+    case Kind::ANY_LABEL: {
+      bool got = false;
+      int result;
+
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_label()) {
+          got = true;
+          result = as_simple_atom->atom().label();
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_label()) {
+          got = true;
+          result = atom.label();
+        }
+      }
+
+      if (got) {
+        if (m_label_out_id != -1) {
+          maps_out->label[m_label_out_id] = result;
         }
         return true;
       } else {
@@ -259,6 +311,24 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     }
 
+    case Kind::SYMBOL: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_sym_val()) {
+          return as_simple_atom->atom().get_str() == m_str;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_sym_val()) {
+          return atom.get_str() == m_str;
+        }
+      }
+      return false;
+    }
+
     case Kind::DEREF_OP: {
       auto as_deref = dynamic_cast<DerefElement*>(input->try_as_single_element());
       if (as_deref) {
@@ -281,8 +351,25 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     }
 
+    case Kind::SET: {
+      auto as_set = dynamic_cast<SetFormFormElement*>(input->try_as_single_element());
+      if (!as_set) {
+        return false;
+      }
+      if (!m_sub_matchers.at(0).do_match(as_set->dst(), maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_set->src(), maps_out)) {
+        return false;
+      } else {
+        return true;
+      }
+    } break;
+
     default:
       assert(false);
+      return false;
   }
 }
 

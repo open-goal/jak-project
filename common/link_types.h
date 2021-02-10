@@ -5,8 +5,7 @@
  * Types used in the linking data, shared between the object file generator and the kernel's linker.
  */
 
-#ifndef JAK1_LINK_TYPES_H
-#define JAK1_LINK_TYPES_H
+#include "common_types.h"
 
 enum LinkKind {
   LINK_TABLE_END = 0,                 //! no more linking data
@@ -52,5 +51,3 @@ struct LinkHeaderV4 {
   uint32_t version;    // always 4
   uint32_t code_size;  // length of object data before link data starts
 };
-
-#endif  // JAK1_LINK_TYPES_H

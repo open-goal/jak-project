@@ -108,6 +108,7 @@ struct SSA {
     std::optional<VarSSA> dst;
     std::vector<VarSSA> src;
     int op_id = -1;
+    bool is_arg_coloring_move = false;
 
     std::string print(const VarMapSSA& var_map) const;
   };

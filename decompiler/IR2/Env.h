@@ -94,6 +94,20 @@ class Env {
     m_typehints = hints;
   }
 
+  void set_remap_for_function(int nargs);
+  void set_remap_for_method(int nargs);
+  void set_remap_for_new_method(int nargs);
+  void map_args_from_config(const std::vector<std::string>& args_names,
+                            const std::unordered_map<std::string, std::string>& var_names);
+
+  const std::string& remapped_name(const std::string& name) const;
+
+  bool op_id_is_eliminated_coloring_move(int op_id) const {
+    assert(has_local_vars());
+    return m_var_names.eliminated_move_op_ids.find(op_id) !=
+           m_var_names.eliminated_move_op_ids.end();
+  }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -114,5 +128,6 @@ class Env {
   bool m_allow_sloppy_pair_typing = false;
 
   std::unordered_map<int, std::vector<TypeHint>> m_typehints;
+  std::unordered_map<std::string, std::string> m_var_remap;
 };
 }  // namespace decompiler

@@ -429,6 +429,40 @@ void insertBreaksAsNeeded(NodePool& pool, PrettyPrinterNode* head, int line_leng
   }
 }
 
+/*!
+ * Break a list across multiple lines. This is how line lengths are decreased.
+ * This does not compute the proper indentation and leaves the list in a bad state.
+ * After this has been called, the entire selection should be reformatted with propagate_pretty
+ */
+void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* first_elt) {
+  assert(!leftParen->is_line_separator);
+  assert(leftParen->tok->kind == FormToken::TokenKind::OPEN_PAREN);
+  auto* rp = leftParen->paren;
+  assert(rp->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+
+  bool breaking = false;
+  for (auto* n = leftParen->next; n && n != rp; n = n->next) {
+    if (n == first_elt) {
+      breaking = true;
+    }
+    if (!n->is_line_separator) {
+      if (n->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+        n = n->paren;
+        assert(n->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+        if (breaking) {
+          insertNewlineAfter(pool, n, 0);
+        }
+
+      } else if (n->tok->kind != FormToken::TokenKind::WHITESPACE) {
+        assert(n->tok->kind != FormToken::TokenKind::CLOSE_PAREN);
+        if (breaking) {
+          insertNewlineAfter(pool, n, 0);
+        }
+      }
+    }
+  }
+}
+
 void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
   for (; node; node = node->next) {
     if (!node->is_line_separator && node->tok->kind == FormToken::TokenKind::STRING) {
@@ -444,11 +478,8 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         auto* parent_type_dec = getNextListOnLine(node);
         if (parent_type_dec) {
           insertNewlineAfter(pool, parent_type_dec->paren, 0);
+          breakList(pool, node->paren, parent_type_dec);
         }
-      }
-
-      if (name.at(0) == '"') {
-        insertNewlineAfter(pool, node, 0);
       }
     }
   }
