@@ -77,11 +77,30 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
     }
   }
 
+  // create element
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
-  if (m_src.kind() == SimpleExpression::Kind::IDENTITY) {
-    if (env.has_local_vars() && env.op_id_is_eliminated_coloring_move(m_my_idx)) {
+
+  // do some analysis to look for coloring moves which are already eliminated,
+  // dead sets, and dead set falses.
+  if (m_src.kind() == SimpleExpression::Kind::IDENTITY && env.has_local_vars() &&
+      env.has_reg_use()) {
+    if (env.op_id_is_eliminated_coloring_move(m_my_idx)) {
       result->eliminate_as_coloring_move();
+    } else if (m_src.get_arg(0).is_var()) {
+      auto& src_var = m_src.get_arg(0).var();
+      auto& ri = env.reg_use().op.at(m_my_idx);
+      if (ri.consumes.find(src_var.reg()) != ri.consumes.end() &&
+          ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
+        result->mark_as_dead_set();
+        // fmt::print("marked {} as dead set\n", to_string(env));
+      }
+    } else if (m_src.get_arg(0).is_sym_ptr() && m_src.get_arg(0).get_str() == "#f") {
+      auto& ri = env.reg_use().op.at(m_my_idx);
+      if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
+        result->mark_as_dead_false();
+        // fmt::print("marked {} as dead set false\n", to_string(env));
+      }
     }
   }
 

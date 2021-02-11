@@ -5,15 +5,14 @@
  * Version numbers for GOAL Language, Kernel, etc...
  */
 
-#ifndef JAK1_VERSIONS_H
-#define JAK1_VERSIONS_H
-
 #include "common/common_types.h"
 
 namespace versions {
 // language version (OpenGOAL)
 constexpr s32 GOAL_VERSION_MAJOR = 0;
 constexpr s32 GOAL_VERSION_MINOR = 6;
+
+constexpr int DECOMPILER_VERSION = 1;
 
 // these versions are from the game
 constexpr u32 ART_FILE_VERSION = 6;
@@ -26,5 +25,3 @@ constexpr u32 TX_PAGE_VERSION = 7;
 // GOAL kernel version (OpenGOAL changes this version from the game's version)
 constexpr int KERNEL_VERSION_MAJOR = 2;
 constexpr int KERNEL_VERSION_MINOR = 0;
-
-#endif  // JAK1_VERSIONS_H

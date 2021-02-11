@@ -7,70 +7,13 @@
 
 namespace decompiler {
 
-// TODO - remove all these and put them in the analysis methods instead.
-void clean_up_ifs(Form* top_level_form, const Env&) {
+/*void clean_up_ifs(Form* top_level_form, const Env&) {
   bool changed = true;
   while (changed) {
     for (auto x : top_level_form->elts()) {
       assert(x->parent_form == top_level_form);
     }
     changed = false;
-    top_level_form->apply([&](FormElement* elt) {
-      auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
-      if (!as_cne) {
-        return;
-      }
-
-      auto top_condition = as_cne->entries.front().condition;
-      if (!top_condition->is_single_element() && elt->parent_form) {
-        auto real_condition = top_condition->back();
-        top_condition->pop_back();
-
-        auto& parent_vector = elt->parent_form->elts();
-        // find us in the parent vector
-        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                               [&](FormElement* x) { return x == elt; });
-        assert(me != parent_vector.end());
-
-        // now insert the fake condition
-        for (auto& x : top_condition->elts()) {
-          x->parent_form = elt->parent_form;
-        }
-        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-        top_condition->elts() = {real_condition};
-        changed = true;
-      }
-    });
-
-    for (auto x : top_level_form->elts()) {
-      assert(x->parent_form == top_level_form);
-    }
-    top_level_form->apply([&](FormElement* elt) {
-      auto as_sc = dynamic_cast<ShortCircuitElement*>(elt);
-      if (!as_sc) {
-        return;
-      }
-
-      auto top_condition = as_sc->entries.front().condition;
-      if (!top_condition->is_single_element() && elt->parent_form) {
-        auto real_condition = top_condition->back();
-        top_condition->pop_back();
-
-        auto& parent_vector = elt->parent_form->elts();
-        // find us in the parent vector
-        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                               [&](FormElement* x) { return x == elt; });
-        assert(me != parent_vector.end());
-
-        // now insert the fake condition
-        for (auto& x : top_condition->elts()) {
-          x->parent_form = elt->parent_form;
-        }
-        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-        top_condition->elts() = {real_condition};
-        changed = true;
-      }
-    });
 
     for (auto x : top_level_form->elts()) {
       assert(x->parent_form == top_level_form);
@@ -107,7 +50,7 @@ void clean_up_ifs(Form* top_level_form, const Env&) {
       }
     });
   }
-}
+}*/
 
 bool convert_to_expressions(Form* top_level_form,
                             FormPool& pool,
@@ -118,27 +61,6 @@ bool convert_to_expressions(Form* top_level_form,
   //  fmt::print("Before anything:\n{}\n",
   //  pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
   try {
-    //    top_level_form->apply_form([&](Form* form) {
-    //      if (form == top_level_form || !form->is_single_element()) {
-    //        FormStack stack;
-    //        for (auto& entry : form->elts()) {
-    //          fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
-    //          entry->push_to_stack(f.ir2.env, pool, stack);
-    //        }
-    //        std::vector<FormElement*> new_entries;
-    //        if (form == top_level_form && f.type.last_arg() != TypeSpec("none")) {
-    //          new_entries = stack.rewrite_to_get_reg(pool, Register(Reg::GPR, Reg::V0));
-    //        } else {
-    //          new_entries = stack.rewrite(pool);
-    //        }
-    //        assert(!new_entries.empty());
-    //        form->clear();
-    //        for (auto x : new_entries) {
-    //          form->push_back(x);
-    //        }
-    //      }
-    //    });
-
     FormStack stack;
     for (auto& entry : top_level_form->elts()) {
       //      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
@@ -172,10 +94,10 @@ bool convert_to_expressions(Form* top_level_form,
       assert(x->parent_form == top_level_form);
     }
     // fix up stuff
-    clean_up_ifs(top_level_form, f.ir2.env);
 
   } catch (std::exception& e) {
-    std::string warning = fmt::format("Expression building failed: {}", e.what());
+    std::string warning =
+        fmt::format("Expression building failed in {}: {}", f.guessed_name.to_string(), e.what());
     lg::warn(warning);
     f.warnings.append(";; " + warning);
     return false;
@@ -203,16 +125,6 @@ bool convert_to_expressions(Form* top_level_form,
     auto var_map = get_config().function_var_names.find(f.guessed_name.to_string());
     if (var_map != get_config().function_var_names.end()) {
       f.ir2.env.map_args_from_config({}, var_map->second);
-    }
-  }
-
-  // strip out coloring moves
-  for (auto it = top_level_form->elts().begin(); it != top_level_form->elts().end();) {
-    auto as_x = dynamic_cast<SetVarElement*>(*it);
-    if (as_x && as_x->is_eliminated_coloring_move()) {
-      it = top_level_form->elts().erase(it);
-    } else {
-      it++;
     }
   }
 
