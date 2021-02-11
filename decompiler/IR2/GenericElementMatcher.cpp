@@ -89,6 +89,15 @@ Matcher Matcher::symbol(const std::string& name) {
   return m;
 }
 
+Matcher Matcher::if_with_else(const Matcher& condition,
+                              const Matcher& true_case,
+                              const Matcher& false_case) {
+  Matcher m;
+  m.m_kind = Kind::IF_WITH_ELSE;
+  m.m_sub_matchers = {condition, true_case, false_case};
+  return m;
+}
+
 Matcher Matcher::deref(const Matcher& root,
                        bool is_addr_of,
                        const std::vector<DerefTokenMatcher>& tokens) {
@@ -367,6 +376,30 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       }
     } break;
 
+    case Kind::IF_WITH_ELSE: {
+      auto as_cond = dynamic_cast<CondWithElseElement*>(input->try_as_single_element());
+      if (!as_cond) {
+        return false;
+      }
+
+      if (as_cond->entries.size() != 1) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(2).do_match(as_cond->else_ir, maps_out)) {
+        return false;
+      }
+      return true;
+    } break;
+
     default:
       assert(false);
       return false;
@@ -429,6 +462,13 @@ GenericOpMatcher GenericOpMatcher::func(const Matcher& func_matcher) {
   return m;
 }
 
+GenericOpMatcher GenericOpMatcher::condition(IR2_Condition::Kind condition) {
+  GenericOpMatcher m;
+  m.m_kind = Kind::CONDITION;
+  m.m_condition_kind = condition;
+  return m;
+}
+
 bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::FIXED:
@@ -441,8 +481,14 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
         return m_func_matcher.do_match(input.func(), maps_out);
       }
       return false;
+    case Kind::CONDITION:
+      if (input.kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
+        return input.condition_kind() == m_condition_kind;
+      }
+      return false;
     default:
       assert(false);
   }
 }
+
 }  // namespace decompiler

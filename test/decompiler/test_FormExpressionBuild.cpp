@@ -2207,7 +2207,7 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "    (format (quote #t) \"    \")\n"
       "    (format (quote #t) \"|   \")\n"
       "    )\n"
-      "   (set! arg0 (shr (the-as uint arg0) 1))\n"
+      "   (set! arg0 (shr arg0 1))\n"
       "   (set! s4-0 (+ s4-0 1))\n"
       "   )\n"
       "  (set! v1-3 (quote #f))\n"

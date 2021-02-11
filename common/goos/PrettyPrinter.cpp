@@ -474,7 +474,7 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
       }
 
-      if (name == "defun" || name == "defmethod") {
+      if (name == "defun" || name == "defmethod" || name == "defun-debug") {
         auto* parent_type_dec = getNextListOnLine(node);
         if (parent_type_dec) {
           insertNewlineAfter(pool, parent_type_dec->paren, 0);

@@ -91,6 +91,10 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
         return TP_Type::make_type_object(TypeSpec(m_string));
       }
 
+      if (type->second == TypeSpec("function")) {
+        lg::warn("Function {} has unknown type", m_string);
+      }
+
       // otherwise, just return a normal typespec
       return TP_Type::make_from_ts(type->second);
     }
