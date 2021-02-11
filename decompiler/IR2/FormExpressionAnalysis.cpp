@@ -746,14 +746,14 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
         auto& info = env.reg_use().op.at(var.idx());
         if (info.consumes.find(var.reg()) != info.consumes.end()) {
           stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
-                                        m_is_eliminated_coloring_move);
+                                        m_var_info);
           return;
         }
       }
     }
   }
 
-  stack.push_value_to_reg(m_dst, m_src, true, m_is_eliminated_coloring_move);
+  stack.push_value_to_reg(m_dst, m_src, true, m_var_info);
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }
@@ -773,8 +773,8 @@ void SetVarElement::update_from_stack(const Env& env,
 
 void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   // todo - is the order here right?
-  m_src->update_children_from_stack(env, pool, stack, false);
   m_dst->update_children_from_stack(env, pool, stack, false);
+  m_src->update_children_from_stack(env, pool, stack, false);
   stack.push_form_element(this, true);
 }
 
@@ -1141,7 +1141,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       }
 
       std::vector<FormElement*> new_entries;
-      if (form == entry.body && rewrite_as_set) {
+      if (form == entry.body && rewrite_as_set && !set_unused) {
         new_entries = temp_stack.rewrite_to_get_var(pool, *last_var, env);
       } else {
         new_entries = temp_stack.rewrite(pool);
@@ -1161,7 +1161,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   }
 
   std::vector<FormElement*> new_entries;
-  if (rewrite_as_set) {
+  if (rewrite_as_set && !set_unused) {
     new_entries = temp_stack.rewrite_to_get_var(pool, *last_var, env);
   } else {
     new_entries = temp_stack.rewrite(pool);
@@ -1405,23 +1405,40 @@ FormElement* ConditionElement::make_generic(const Env&,
 }
 
 void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  std::vector<Form*> source_forms;
+  std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    auto& var = m_src[i]->var();
-    vars.push_back(var);
-    source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    if (m_src[i]->is_var()) {
+      auto& var = m_src[i]->var();
+      vars.push_back(var);
+      source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    } else if (m_src[i]->is_int()) {
+      source_types.push_back(TypeSpec("int"));
+    } else {
+      throw std::runtime_error("Unsupported atom in ConditionElement::push_to_stack");
+    }
   }
   if (m_flipped) {
     std::reverse(vars.begin(), vars.end());
   }
 
-  source_forms = pop_to_forms(vars, env, pool, stack, true, m_consumed);
+  popped_forms = pop_to_forms(vars, env, pool, stack, true, m_consumed);
   if (m_flipped) {
-    std::reverse(source_forms.begin(), source_forms.end());
+    std::reverse(popped_forms.begin(), popped_forms.end());
   }
+
+  int popped_counter = 0;
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    if (m_src[i]->is_var()) {
+      source_forms.push_back(popped_forms.at(popped_counter++));
+    } else {
+      source_forms.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, *m_src[i]));
+    }
+  }
+  assert(popped_counter == int(popped_forms.size()));
+  assert(source_forms.size() == source_types.size());
 
   stack.push_form_element(make_generic(env, pool, source_forms, source_types), true);
 }

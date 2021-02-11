@@ -223,7 +223,10 @@ class SimpleAtomElement : public FormElement {
  */
 class SetVarElement : public FormElement {
  public:
-  SetVarElement(const Variable& var, Form* value, bool is_sequence_point);
+  SetVarElement(const Variable& var,
+                Form* value,
+                bool is_sequence_point,
+                const SetVarInfo& info = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -241,28 +244,23 @@ class SetVarElement : public FormElement {
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
   Form* src() { return m_src; }
-  bool is_eliminated_coloring_move() const { return m_is_eliminated_coloring_move; }
-  void eliminate_as_coloring_move() { m_is_eliminated_coloring_move = true; }
+  bool is_eliminated_coloring_move() const { return m_var_info.is_eliminated_coloring_move; }
+  void eliminate_as_coloring_move() { m_var_info.is_eliminated_coloring_move = true; }
 
-  bool is_dead_set() const { return m_is_dead_set; }
-  void mark_as_dead_set() { m_is_dead_set = true; }
+  bool is_dead_set() const { return m_var_info.is_dead_set; }
+  void mark_as_dead_set() { m_var_info.is_dead_set = true; }
 
-  bool is_dead_false_set() const { return m_is_dead_false; }
-  void mark_as_dead_false() { m_is_dead_false = true; }
+  bool is_dead_false_set() const { return m_var_info.is_dead_false; }
+  void mark_as_dead_false() { m_var_info.is_dead_false = true; }
+
+  const SetVarInfo& info() const { return m_var_info; }
 
  private:
   Variable m_dst;
   Form* m_src = nullptr;
   bool m_is_sequence_point = true;
 
-  // is this a compiler-inserted move at the beginning of a function
-  // that should be eliminated?
-  bool m_is_eliminated_coloring_move = false;
-  // is this a (set! var expr) which consumes the reg for expr,
-  // and var is written and unused?
-  bool m_is_dead_set = false;
-  // is this a (set! var #f) where the value of #f isn't used?
-  bool m_is_dead_false = false;
+  SetVarInfo m_var_info;
 };
 
 /*!

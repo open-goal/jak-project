@@ -7,3 +7,9 @@
 - Remove useless `set!`s sometimes appearing around functions `(set! <a> (some-function ...))` when the result is unused, but moved into a different register.
 - Recognize `(break!)` (GOAL breakpoint)
 - Support `(new 'process ...)`
+
+## Version 2
+- Expressions like `(set! (-> a b) (-> c d))` are much less likely to have fake temporaries.
+- Many more useless `set!`s will be removed
+- Stores into arrays are supported
+- Fixed bug where unused/eliminated temporaries would sometimes be used as the result of a block

@@ -153,6 +153,38 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         }
       }
 
+      if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+        FieldReverseLookupInput rd_in;
+        DerefKind dk;
+        dk.is_store = true;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.size = m_size;
+        rd_in.deref = dk;
+        rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+        rd_in.stride = input_type.get_multiplier();
+        rd_in.offset = ro.offset;
+        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+        if (rd.success) {
+          std::vector<DerefToken> tokens;
+          assert(!rd.tokens.empty());
+          for (auto& token : rd.tokens) {
+            tokens.push_back(to_token(token));
+          }
+
+          // we pass along the register offset because code generation seems to be a bit
+          // different in different cases.
+          auto source = pool.alloc_single_element_form<ArrayFieldAccess>(
+              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
+
+          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, m_value.as_expr(), m_my_idx);
+
+          assert(!rd.addr_of);
+          return pool.alloc_element<SetFormFormElement>(source, val);
+        }
+      }
+
       FieldReverseLookupInput rd_in;
       DerefKind dk;
       dk.is_store = true;

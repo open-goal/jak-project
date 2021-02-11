@@ -274,12 +274,16 @@ void SimpleAtomElement::get_modified_regs(RegSet& regs) const {
 // SetVarElement
 /////////////////////////////
 
-SetVarElement::SetVarElement(const Variable& var, Form* value, bool is_sequence_point)
-    : m_dst(var), m_src(value), m_is_sequence_point(is_sequence_point) {
+SetVarElement::SetVarElement(const Variable& var,
+                             Form* value,
+                             bool is_sequence_point,
+                             const SetVarInfo& info)
+    : m_dst(var), m_src(value), m_is_sequence_point(is_sequence_point), m_var_info(info) {
   value->parent_element = this;
 }
 
 goos::Object SetVarElement::to_form_internal(const Env& env) const {
+  assert(active());
   return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
 }
 

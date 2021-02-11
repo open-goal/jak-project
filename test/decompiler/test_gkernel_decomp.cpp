@@ -106,3 +106,173 @@ TEST_F(FormRegressionTest, ExprUnloadPackage) {
       "  )";
   test_with_expr(func, type, expected, true);
 }
+
+TEST_F(FormRegressionTest, ExprMethod1Thread) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L274:\n"
+      "    lwu v1, 4(a0)\n"
+      "    lwu v1, 40(v1)\n"
+      "    bne a0, v1, L275\n"
+      "    or v1, s7, r0\n"
+
+      "    lw r0, 2(r0)\n"
+      "    addiu v1, r0, 0\n"
+
+      "L275:\n"
+      "    lwu v0, 8(a0)\n"
+      "    lwu v1, 4(a0)\n"
+      "    sw v0, 44(v1)\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function thread none)";
+  std::string expected =
+      "(begin\n"
+      "  (when (= arg0 (-> arg0 process main-thread)) (break!) (set! v1-3 0))\n"
+      "  (set! (-> arg0 process top-thread) (-> arg0 previous))\n"
+      "  )";
+  test_with_expr(func, type, expected, false);
+}
+
+TEST_F(FormRegressionTest, ExprMethod2Thread) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L273:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L343\n"
+      "    lwu a2, -4(gp)\n"
+      "    lwu a3, 0(gp)\n"
+      "    lwu v1, 4(gp)\n"
+      "    lwu t0, 0(v1)\n"
+      "    lwu t1, 20(gp)\n"
+      "    or t2, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function thread thread)";
+  std::string expected =
+      "(begin\n"
+      "  (format\n"
+      "   (quote #t)\n"
+      "   \"#<~A ~S of ~S pc: #x~X @ #x~X>\"\n"
+      "   (-> arg0 type)\n"
+      "   (-> arg0 name)\n"
+      "   (-> arg0 process name)\n"
+      "   (-> arg0 pc)\n"
+      "   arg0\n"
+      "   )\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {{"L343", "#<~A ~S of ~S pc: #x~X @ #x~X>"}});
+}
+
+TEST_F(FormRegressionTest, ExprMethod9Thread) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L268:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+
+      "    lwu a2, 4(a0)\n"
+      "    lwu v1, 40(a2)\n"
+      "    beq a0, v1, L269\n"
+      "    sll r0, r0, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    addiu a0, r0, 0\n"
+      "    daddiu a1, fp, L342\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    beq r0, r0, L272\n"
+      "    sll r0, r0, 0\n"
+
+      "L269:\n"
+      "    lw v1, 32(a0)\n"
+      "    bne v1, a1, L270\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    beq r0, r0, L272\n"
+      "    sll r0, r0, 0\n"
+
+      "L270:\n"
+      "    lw v1, 32(a0)\n"
+      "    daddiu v1, v1, -4\n"
+      "    lwu a3, -4(a0)\n"
+      "    lhu a3, 8(a3)\n"
+      "    daddu v1, v1, a3\n"
+      "    daddu v1, v1, a0\n"
+      "    lwu a3, 84(a2)\n"
+      "    bne a3, v1, L271\n"
+      "    sll r0, r0, 0\n"
+
+      "    daddiu v1, a1, -4\n"
+      "    lwu a3, -4(a0)\n"
+      "    lhu a3, 8(a3)\n"
+      "    daddu v1, v1, a3\n"
+      "    daddu v1, v1, a0\n"
+      "    sw v1, 84(a2)\n"
+      "    sw a1, 32(a0)\n"
+      "    or v1, a1, r0\n"
+      "    beq r0, r0, L272\n"
+      "    sll r0, r0, 0\n"
+
+      "L271:\n"
+      "    lw t9, format(s7)\n"
+      "    addiu a0, r0, 0\n"
+      "    daddiu a1, fp, L341\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+
+      "L272:\n"
+      "    or v0, r0, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function thread int none)";
+  std::string expected =
+      "(begin\n"
+      "  (set! a2-0 (-> arg0 process))\n"
+      "  (cond\n"
+      "   ((!= arg0 (-> a2-0 main-thread)) (format 0 \"1 ~A ~%\" a2-0))\n"
+      "   ((= (-> arg0 stack-size) arg1))\n"
+      "   ((=\n"
+      "     (-> a2-0 heap-cur)\n"
+      "     (+\n"
+      "      (+ (+ (-> arg0 stack-size) -4) (the-as int (-> arg0 type size)))\n"
+      "      (the-as int arg0)\n"
+      "      )\n"
+      "     )\n"
+      "    (set!\n"
+      "     (-> a2-0 heap-cur)\n"
+      "     (+ (+ (+ arg1 -4) (the-as int (-> arg0 type size))) (the-as int arg0))\n"
+      "     )\n"
+      "    (set! (-> arg0 stack-size) arg1)\n"
+      "    )\n"
+      "   (else (format 0 \"2 ~A ~%\" a2-0))\n"
+      "   )\n"
+      "  (set! v0-2 0)\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {{"L342", "1 ~A ~%"}, {"L341", "2 ~A ~%"}});
+}
