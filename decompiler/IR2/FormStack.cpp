@@ -25,21 +25,24 @@ std::string FormStack::print(const Env& env) {
   return result;
 }
 
-void FormStack::push_value_to_reg(Variable var, Form* value, bool sequence_point, bool is_elim) {
+void FormStack::push_value_to_reg(Variable var,
+                                  Form* value,
+                                  bool sequence_point,
+                                  const SetVarInfo& info) {
   assert(value);
   StackEntry entry;
   entry.active = true;  // by default, we should display everything!
   entry.sequence_point = sequence_point;
   entry.destination = var;
   entry.source = value;
-  entry.eliminated_as_coloring_move = is_elim;
+  entry.set_info = info;
   m_stack.push_back(entry);
 }
 
 void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
                                         const Variable& src,
                                         Form* src_as_form,
-                                        bool is_elim) {
+                                        const SetVarInfo& info) {
   assert(src_as_form);
   StackEntry entry;
   entry.active = true;
@@ -47,7 +50,7 @@ void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
   entry.destination = dst;
   entry.non_seq_source = src;
   entry.source = src_as_form;
-  entry.eliminated_as_coloring_move = is_elim;
+  entry.set_info = info;
   m_stack.push_back(entry);
 }
 
@@ -152,10 +155,8 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
     }
 
     if (e.destination.has_value()) {
-      auto elt = pool.alloc_element<SetVarElement>(*e.destination, e.source, e.sequence_point);
-      if (e.eliminated_as_coloring_move) {
-        elt->eliminate_as_coloring_move();
-      }
+      auto elt =
+          pool.alloc_element<SetVarElement>(*e.destination, e.source, e.sequence_point, e.set_info);
       e.source->parent_element = elt;
       result.push_back(elt);
     } else {

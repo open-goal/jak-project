@@ -623,7 +623,6 @@ TEST_F(FormRegressionTest, ExprFindParentMethod) {
       "   (set! v0-0 (-> arg0 method-table arg1))\n"
       "   (if (zero? v0-0) (return nothing))\n"
       "   )\n"
-      "  (set! v1-5 '#f)\n"
       "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected, false, "");
@@ -665,8 +664,6 @@ TEST_F(FormRegressionTest, ExprRef) {
       "   (set! arg0 (cdr arg0))\n"
       "   (set! v1-0 (+ v1-0 1))\n"
       "   )\n"
-      "  (set! v1-1 '#f)\n"
-      "  (set! v1-2 '#f)\n"
       "  (car arg0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -732,7 +729,6 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "     (set! v0-0 (+ v0-0 1))\n"
       "     (set! v1-1 (cdr v1-1))\n"
       "     )\n"
-      "    (set! v1-2 '#f)\n"
       "    )\n"
       "   )\n"
       "  v0-0\n"
@@ -784,7 +780,6 @@ TEST_F(FormRegressionTest, ExprLast) {
       "     (nop!)\n"
       "     (nop!)\n"
       "     (set! v0-0 (cdr v0-0)))\n"
-      "  (set! v1-1 '#f)\n"
       "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -837,7 +832,6 @@ TEST_F(FormRegressionTest, ExprMember) {
       "   (not (or (= v1-0 '()) (= (car v1-0) arg0)))\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
-      "  (set! a0-1 '#f)\n"
       "  (if (!= v1-0 '()) v1-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -900,7 +894,6 @@ TEST_F(FormRegressionTest, ExprNmember) {
       "   (not (or (= arg1 '()) (name= (the-as basic (car arg1)) arg0)))\n"
       "   (set! arg1 (cdr arg1))\n"
       "   )\n"
-      "  (set! v1-2 '#f)\n"
       "  (if (!= arg1 '()) arg1)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -952,7 +945,6 @@ TEST_F(FormRegressionTest, ExprAssoc) {
       "   (not (or (= v1-0 '()) (= (car (car v1-0)) arg0)))\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
-      "  (set! a0-1 '#f)\n"
       "  (if (!= v1-0 '()) (car v1-0))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -1021,7 +1013,6 @@ TEST_F(FormRegressionTest, ExprAssoce) {
       "    )\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
-      "  (set! a0-1 '#f)\n"
       "  (if (!= v1-0 '()) (car v1-0))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -1113,7 +1104,6 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "    )\n"
       "   (set! arg1 (cdr arg1))\n"
       "   )\n"
-      "  (set! v1-3 (quote #f))\n"
       "  (if (!= arg1 (quote ())) (car arg1))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -1219,7 +1209,6 @@ TEST_F(FormRegressionTest, ExprNassoce) {
       "    )\n"
       "   (set! arg1 (cdr arg1))\n"
       "   )\n"
-      "  (set! v1-4 (quote #f))\n"
       "  (if (!= arg1 (quote ())) (car arg1))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -1275,7 +1264,6 @@ TEST_F(FormRegressionTest, ExprAppend) {
       "  (else\n"
       "   (set! v1-1 arg0)\n"
       "   (while (!= (cdr v1-1) '()) (nop!) (nop!) (set! v1-1 (cdr v1-1)))\n"
-      "   (set! a2-1 '#f)\n"
       "   (if (!= v1-1 '()) (set! (cdr v1-1) arg1))\n"
       "   arg0\n"
       "   )\n"
@@ -1351,7 +1339,6 @@ TEST_F(FormRegressionTest, ExprDelete) {
       "     (set! v1-1 a2-0)\n"
       "     (set! a2-0 (cdr a2-0))\n"
       "     )\n"
-      "    (set! a0-1 (quote #f))\n"
       "    (if (!= a2-0 (quote ())) (set! (cdr v1-1) (cdr a2-0)))\n"
       "    arg1\n"
       "    )\n"
@@ -1430,7 +1417,6 @@ TEST_F(FormRegressionTest, ExprDeleteCar) {
       "     (set! v1-2 a2-0)\n"
       "     (set! a2-0 (cdr a2-0))\n"
       "     )\n"
-      "    (set! a0-1 (quote #f))\n"
       "    (if (!= a2-0 (quote ())) (set! (cdr v1-2) (cdr a2-0)))\n"
       "    arg1\n"
       "    )\n"
@@ -1602,10 +1588,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "     )\n"
       "    (set! s3-0 (cdr s3-0))\n"
       "    )\n"
-      "   (set! v1-10 (quote #f))\n"
-      "   (set! v1-11 (quote #f))\n"
       "   )\n"
-      "  (set! v1-12 (quote #f))\n"
       "  arg0\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -1894,8 +1877,6 @@ TEST_F(FormRegressionTest, ExprMemCopy) {
       "   (set! arg1 (+ arg1 (the-as uint 1)))\n"
       "   (set! v1-0 (+ v1-0 1))\n"
       "   )\n"
-      "  (set! v1-1 (quote #f))\n"
-      "  (set! v1-2 (quote #f))\n"
       "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected);
@@ -1937,8 +1918,6 @@ TEST_F(FormRegressionTest, ExprMemSet32) {
       "   (nop!)\n"
       "   (set! v1-0 (+ v1-0 1))\n"
       "   )\n"
-      "  (set! v1-1 (quote #f))\n"
-      "  (set! v1-2 (quote #f))\n"
       "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected);
@@ -1989,8 +1968,6 @@ TEST_F(FormRegressionTest, ExprMemOr) {
       "   (set! arg1 (+ arg1 (the-as uint 1)))\n"
       "   (set! v1-0 (+ v1-0 1))\n"
       "   )\n"
-      "  (set! v1-1 (quote #f))\n"
-      "  (set! v1-2 (quote #f))\n"
       "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected);
@@ -2209,7 +2186,6 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "   (set! arg0 (shr arg0 1))\n"
       "   (set! s4-0 (+ s4-0 1))\n"
       "   )\n"
-      "  (set! v1-3 (quote #f))\n"
       "  (quote #f)\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
