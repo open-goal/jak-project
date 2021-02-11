@@ -187,7 +187,6 @@ TEST_F(FormRegressionTest, FormatString) {
   std::string type = "(function bfloat bfloat)";
   std::string expected =
       "(begin\n"
-      "  (set! a0-0 a0-0)\n"
       "  (set! t9-0 format)\n"
       "  (set! a0-1 '#t)\n"
       "  (set! a1-0 L343)\n"
@@ -381,7 +380,6 @@ TEST_F(FormRegressionTest, DynamicMethodAccess) {
                                                                      // nothing.
       "    )\n"
       "   )\n"
-      "  (set! v1-5 '#f)\n"
       "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);
@@ -423,8 +421,6 @@ TEST_F(FormRegressionTest, SimpleLoopMergeCheck) {
       "   (set! a0-0 (cdr a0-0))\n"  // should have merged
       "   (set! v1-0 (+ v1-0 1))\n"  // also should have merged
       "   )\n"
-      "  (set! v1-1 '#f)\n"
-      "  (set! v1-2 '#f)\n"
       "  (set! v0-0 (car a0-0))\n"
       "  (ret-value v0-0)\n"
       "  )";
@@ -495,7 +491,6 @@ TEST_F(FormRegressionTest, And) {
       "    (set! v0-0 (+ v0-0 1))\n"  // merged (and the result)
       "    (set! v1-1 (cdr v1-1))\n"  // also merged.
       "    )\n"
-      "   (set! v1-2 '#f)\n"  // while's false, I think.
       "   )\n"
       "  )"
       "(ret-value v0-0))\n";
@@ -558,8 +553,6 @@ TEST_F(FormRegressionTest, FunctionCall) {
   std::string expected =
       "(begin (if\n"  // this if needs regrouping.
       "  (begin\n"
-      "   (set! a0-0 a0-0)\n"  // s5-0 is the thing to check
-      "   (set! a1-0 a1-0)\n"  // gp-0 is the list
       "   (while\n"
       "    (begin\n"
       "     (or\n"
@@ -576,7 +569,6 @@ TEST_F(FormRegressionTest, FunctionCall) {
       "     )\n"
       "    (set! a1-0 (cdr a1-0))\n"  // get next (merged)
       "    )\n"
-      "   (set! v1-2 '#f)\n"  // while loop thing
       "   (set! v1-3 '())\n"  //
       "   (!= a1-0 v1-3)\n"   // IF CONDITION
       "   )\n"
@@ -692,9 +684,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
   std::string type = "(function object (function object object object) object)";
   std::string expected =
       "(begin\n"
-      "  (set! a0-0 a0-0)\n"  // gp-0 = list
-      "  (set! a1-0 a1-0)\n"  // s5-0 = func
-      "  (set! s4-0 -1)\n"    // s4-0 = flag
+      "  (set! s4-0 -1)\n"  // s4-0 = flag
       "  (while\n"
       "   (nonzero? s4-0)\n"   // there is stuff to do...
       "   (set! s4-0 0)\n"     // flag = 0
@@ -744,14 +734,10 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "     (set! (car s3-0) s1-0)\n"  // set iter's car to cadr
       "     (set! v1-4 (cdr s3-0))\n"  // current cdr
       "     (set! (car v1-4) s2-0)\n"  // set cadr
-      "     (set! v1-5 s2-0)\n"        // iteration thing?
       "     )\n"
       "    (set! s3-0 (cdr s3-0))\n"  // increment!
       "    )\n"
-      "   (set! v1-10 '#f)\n"
-      "   (set! v1-11 '#f)\n"
       "   )\n"
-      "  (set! v1-12 '#f)\n"
       "  (set! v0-1 a0-0)\n"
       "  (ret-value v0-1)\n"
       "  )";
@@ -795,7 +781,6 @@ TEST_F(FormRegressionTest, NewMethod) {
   std::string expected =
       "(begin (when\n"
       "  (begin\n"
-      "   (set! a2-0 a2-0)\n"  // gp-0 is size
       "   (set! v1-0 object)\n"
       "   (set! t9-0 (-> v1-0 methods-by-name new))\n"  // object new
       "   (set! v1-1 a1-0)\n"                           // ?
@@ -847,7 +832,7 @@ TEST_F(FormRegressionTest, Recursive) {
   std::string type = "(function int int)";
   std::string expected =
       "(begin (cond\n"
-      "  ((begin (set! a0-0 a0-0) (set! v1-0 1) (= a0-0 v1-0)) (set! v0-0 1))\n"  // base
+      "  ((begin (set! v1-0 1) (= a0-0 v1-0)) (set! v0-0 1))\n"  // base
       "  (else\n"
       "   (set! t9-0 fact)\n"  // recurse!
       "   (set! a0-1 (+ a0-0 -1))\n"

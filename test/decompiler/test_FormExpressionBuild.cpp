@@ -1276,7 +1276,7 @@ TEST_F(FormRegressionTest, ExprAppend) {
       "   (set! v1-1 arg0)\n"
       "   (while (!= (cdr v1-1) '()) (nop!) (nop!) (set! v1-1 (cdr v1-1)))\n"
       "   (set! a2-1 '#f)\n"
-      "   (when (!= v1-1 '()) (set! (cdr v1-1) arg1) (set! v1-2 arg1))\n"
+      "   (if (!= v1-1 '()) (set! (cdr v1-1) arg1))\n"
       "   arg0\n"
       "   )\n"
       "  )";
@@ -1471,7 +1471,7 @@ TEST_F(FormRegressionTest, ExprInsertCons) {
   std::string expected =
       "(begin\n"
       "  (set! a3-0 (delete-car! (car arg0) arg1))\n"
-      "  (new 'global 'pair arg0 a3-0)\n"
+      "  (cons arg0 a3-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1599,7 +1599,6 @@ TEST_F(FormRegressionTest, ExprSort) {
       "     (set! s4-0 (+ s4-0 1))\n"
       "     (set! (car s3-0) s1-0)\n"
       "     (set! (car (cdr s3-0)) s2-0)\n"
-      "     (set! v1-5 s2-0)\n"
       "     )\n"
       "    (set! s3-0 (cdr s3-0))\n"
       "    )\n"
@@ -2103,7 +2102,7 @@ TEST_F(FormRegressionTest, ExprPrintl) {
   std::string expected =
       "(begin\n"
       "  (set! a0-1 arg0)\n"
-      "  (set! v1-2 ((method-of-type (rtype-of a0-1) print) a0-1))\n"
+      "  ((method-of-type (rtype-of a0-1) print) a0-1)\n"
       "  (format (quote #t) \"~%\")\n"
       "  arg0\n"
       "  )";

@@ -910,7 +910,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         match_result = match(matcher, temp_form);
         if (match_result.matched) {
           auto alloc = match_result.maps.strings.at(allocation);
-          if (alloc != "global" && alloc != "debug") {
+          if (alloc != "global" && alloc != "debug" && alloc != "process") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);
@@ -922,13 +922,25 @@ void FunctionCallElement::update_from_stack(const Env& env,
           auto quoted_type = pool.alloc_single_element_form<SimpleAtomElement>(
               nullptr, SimpleAtom::make_sym_ptr(type_2));
 
-          std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
-          new_args.at(1) = quoted_type;
+          if (alloc == "global" && type_1 == "pair") {
+            // cons!
+            // (new 'global 'pair a b) -> (cons a b)
+            std::vector<Form*> cons_args = {dynamic_cast<GenericElement*>(new_form)->elts().at(2),
+                                            dynamic_cast<GenericElement*>(new_form)->elts().at(3)};
+            auto cons_op = pool.alloc_element<GenericElement>(
+                GenericOperator::make_fixed(FixedOperatorKind::CONS), cons_args);
+            result->push_back(cons_op);
+            return;
+          } else {
+            // just normal construction on the heap
+            std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+            new_args.at(1) = quoted_type;
 
-          auto new_op = pool.alloc_element<GenericElement>(
-              GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
-          result->push_back(new_op);
-          return;
+            auto new_op = pool.alloc_element<GenericElement>(
+                GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
+            result->push_back(new_op);
+            return;
+          }
         } else {
           throw std::runtime_error("Failed to match new method");
         }
@@ -1035,6 +1047,7 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   if (already_rewritten) {
     stack.push_form_element(this, true);
+    return;
   }
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
@@ -1057,6 +1070,17 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
     }
   }
 
+  // raise expression.
+  auto top_condition = entries.front().condition;
+  if (!top_condition->is_single_element()) {
+    auto real_condition = top_condition->back();
+    top_condition->pop_back();
+    for (auto x : top_condition->elts()) {
+      x->push_to_stack(env, pool, stack);
+    }
+    top_condition->elts() = {real_condition};
+  }
+
   if (used_as_value) {
     stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true);
   } else {
@@ -1068,6 +1092,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   if (already_rewritten) {
     stack.push_form_element(this, true);
+    return;
   }
   // first, let's try to detect if all bodies write the same value
   std::optional<Variable> last_var;
@@ -1129,6 +1154,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
   }
 
+  // process else.
   FormStack temp_stack;
   for (auto& elt : else_ir->elts()) {
     elt->push_to_stack(env, pool, temp_stack);
@@ -1146,6 +1172,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     else_ir->push_back(e);
   }
 
+  // raise expression.
   auto top_condition = entries.front().condition;
   if (!top_condition->is_single_element()) {
     auto real_condition = top_condition->back();
@@ -1181,6 +1208,7 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   } else {
     if (already_rewritten) {
       stack.push_form_element(this, true);
+      return;
     }
     for (int i = 0; i < int(entries.size()); i++) {
       auto& entry = entries.at(i);
@@ -1201,6 +1229,17 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         entry.condition->push_back(e);
       }
     }
+
+    auto top_condition = entries.front().condition;
+    if (!top_condition->is_single_element()) {
+      auto real_condition = top_condition->back();
+      top_condition->pop_back();
+      for (auto x : top_condition->elts()) {
+        x->push_to_stack(env, pool, stack);
+      }
+      top_condition->elts() = {real_condition};
+    }
+
     assert(used_as_value.has_value());
     stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
     already_rewritten = true;
@@ -1438,7 +1477,8 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
 
   auto as_special = dynamic_cast<const SpecialOp*>(m_op);
   if (as_special) {
-    if (as_special->kind() == SpecialOp::Kind::NOP) {
+    if (as_special->kind() == SpecialOp::Kind::NOP ||
+        as_special->kind() == SpecialOp::Kind::BREAK) {
       stack.push_form_element(this, true);
       return;
     }
@@ -1684,6 +1724,22 @@ void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
 }
 
 void ConditionalMoveFalseElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  stack.push_form_element(this, true);
+}
+
+void SimpleAtomElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  stack.push_form_element(this, true);
+}
+
+void SimpleAtomElement::update_from_stack(const Env&,
+                                          FormPool&,
+                                          FormStack&,
+                                          std::vector<FormElement*>* result,
+                                          bool) {
+  result->push_back(this);
+}
+
+void SimpleExpressionElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   stack.push_form_element(this, true);
 }
 

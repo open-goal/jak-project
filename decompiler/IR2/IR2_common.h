@@ -120,6 +120,7 @@ enum class FixedOperatorKind {
   GEQ,
   EQ,
   NEQ,
+  CONS,
   INVALID
 };
 

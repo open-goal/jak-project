@@ -1204,6 +1204,76 @@ Form* merge_cond_else_with_sc_cond(FormPool& pool,
   return result;
 }
 
+namespace {
+template <typename T>
+bool contains(const std::vector<T>& vec, const T& val) {
+  for (auto& x : vec) {
+    if (val == x) {
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace
+
+template <typename T>
+void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T* output) {
+  auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(as_block->block_id);
+  auto end_op = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(as_block->block_id);
+  std::vector<int> add_map;
+  for (auto i = start_op; i < end_op; i++) {
+    // convert to a form.
+    auto op = f.ir2.atomic_ops->ops.at(i)->get_as_form(pool, f.ir2.env);
+    bool add = true;
+
+    // check if we got a set, which we might want to eliminate
+    auto op_as_set = dynamic_cast<SetVarElement*>(op);
+    if (op_as_set) {
+      // check for deadness
+      if (op_as_set->is_dead_set()) {
+        // we want to eliminate, but we should we fix up the register info.
+        add = false;
+        auto consumed_expr =
+            dynamic_cast<SimpleExpressionElement*>(op_as_set->src()->try_as_single_element());
+        assert(consumed_expr);
+        auto& consumed = consumed_expr->expr().get_arg(0).var();
+        for (int j = i; j-- > start_op;) {
+          auto& ri = f.ir2.env.reg_use().op.at(j);
+          auto& ao = f.ir2.atomic_ops->ops.at(j);
+          if (contains(ao->write_regs(), consumed.reg())) {
+            ri.written_and_unused.insert(consumed.reg());
+            //            fmt::print("GOT 3, making {} wau by {}\n", consumed.reg().to_charp(),
+            //                       ao->to_string(f.ir2.env));
+            // HACK - regenerate:
+            if (add_map.at(j - start_op) != -1) {
+              //              fmt::print("regenerating {} to ", output->at(add_map.at(j -
+              //              start_op))->to_string(f.ir2.env));
+              output->at(add_map.at(j - start_op)) =
+                  f.ir2.atomic_ops->ops.at(j)->get_as_form(pool, f.ir2.env);
+              //              fmt::print("{}\n", output->at(add_map.at(j -
+              //              start_op))->to_string(f.ir2.env));
+            }
+            break;
+          }
+
+          if (contains(ao->read_regs(), consumed.reg())) {
+            //            fmt::print("GOT 2, making {} consumed by {}\n", consumed.reg().to_charp(),
+            //                       ao->to_string(f.ir2.env));
+            ri.consumes.insert(consumed.reg());
+            break;
+          }
+        }
+      }
+    }
+    if (add) {
+      add_map.push_back(output->size());
+      output->push_back(op);
+    } else {
+      add_map.push_back(-1);
+    }
+  }
+}
+
 void insert_cfg_into_list(FormPool& pool,
                           Function& f,
                           const CfgVtx* vtx,
@@ -1216,12 +1286,7 @@ void insert_cfg_into_list(FormPool& pool,
       insert_cfg_into_list(pool, f, x, output);
     }
   } else if (as_block) {
-    // inline the ops.
-    auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(as_block->block_id);
-    auto end_op = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(as_block->block_id);
-    for (auto i = start_op; i < end_op; i++) {
-      output->push_back(f.ir2.atomic_ops->ops.at(i)->get_as_form(pool, f.ir2.env));
-    }
+    convert_and_inline(pool, f, as_block, output);
   } else {
     auto ir = cfg_to_ir(pool, f, vtx);
     for (auto x : ir->elts()) {
@@ -1233,16 +1298,9 @@ void insert_cfg_into_list(FormPool& pool,
 Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
   if (dynamic_cast<const BlockVtx*>(vtx)) {
     auto* bv = dynamic_cast<const BlockVtx*>(vtx);
-
     Form* output = pool.alloc_empty_form();
-    auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(bv->block_id);
-    auto end_op = f.ir2.atomic_ops->block_id_to_end_atomic_op.at(bv->block_id);
-    for (auto i = start_op; i < end_op; i++) {
-      output->push_back(f.ir2.atomic_ops->ops.at(i)->get_as_form(pool, f.ir2.env));
-    }
-
+    convert_and_inline(pool, f, bv, output);
     return output;
-
   } else if (dynamic_cast<const SequenceVtx*>(vtx)) {
     auto* sv = dynamic_cast<const SequenceVtx*>(vtx);
     Form* output = pool.alloc_empty_form();
