@@ -8,6 +8,19 @@
 ;; gcommon is the first file compiled and loaded.
 ;; it's expected that this function will mostly be hand-decompiled
 
+
+;; CONSTANTS
+(defconstant NEW_METHOD_ID 0)
+(defconstant DELETE_METHOD_ID 1)
+(defconstant PRINT_METHOD_ID 2)
+(defconstant INSPECT_METHOD_ID 3)
+(defconstant LENGTH_METHOD_ID 4)
+(defconstant ASIZE_METHOD_ID 5)
+(defconstant COPY_METHOD_ID 6)
+(defconstant RELOC_METHOD_ID 7) ;; or login?
+(defconstant MEM_USAGE_METHOD_ID 8)
+
+
 ;; forward declarations.
 (define-extern name= (function basic basic symbol))
 
@@ -1055,33 +1068,287 @@
   )
 
 
-;; TODO - quad-copy!
-;; quad-copy is a totally hand-written optimized assembly memcpy
+(defun quad-copy! ((dst pointer) (src pointer) (qwc int))
+  "Optimized memory copy. The original is pretty clever, but this isn't."
+  (qmem-copy<-! dst src (* qwc 16))
+  0
+  )
 
 ;; we need to forward declare recursive functions so the compiler
 ;; know their return type.
 (define-extern fact (function int int))
-s(defun fact ((x int))
-   (if (= x 1)
-       1
-       (* x (fact (+ x -1))))
-   )
+(defun fact ((x int))
+  (if (= x 1)
+      1
+      (* x (fact (+ x -1))))
+  )
 
 ;; Print utilities.
 (define *print-column* (the binteger 0))
 
-;; TODO print
+(defun print ((obj object))
+  "Print out any boxed object. Does NOT insert a newline."
+  (let ((print-method (-> (rtype-of obj) method-table PRINT_METHOD_ID)))
+    ((the (function object object) print-method) obj)
+    )
+  )
 
-;; TODO printl
+(defun printl ((obj object))
+  "Print out any boxed object and a newline at the end."
+  (let ((print-method (-> (rtype-of obj) method-table PRINT_METHOD_ID)))
+    ((the (function object object) print-method) obj)
+    (format #t "~%")
+    obj)
+  )
 
-;; TODO inspect
+(defun inspect ((obj object))
+  "Inspect any boxed object."
+  (let ((inspect-method (-> (rtype-of obj) method-table INSPECT_METHOD_ID)))
+    ((the (function object object) inspect-method) obj)
+    )
+  )
 
-;; TODO mem-print
+(defun-debug mem-print ((data (pointer uint32)) (word-count int))
+  "Print memory to runtime stdout by quadword.
+   Input count is in 32-bit words"
+  (local-vars (current-qword int))
+  (set! current-qword 0)
+  (while (< current-qword (sar word-count 2))
+   (format 0 "~X: ~X ~X ~X ~X~%"
+    (+ (+ (shl (shl current-qword 2) 2) 0) (the-as int data))
+    (-> data (shl current-qword 2))
+    (-> data (+ (shl current-qword 2) 1))
+    (-> data (+ (shl current-qword 2) 2))
+    (-> data (+ (shl current-qword 2) 3))
+    )
+   (set! current-qword (+ current-qword 1))
+   )
+  '#f
+  )
 
-;; TODO trace-list
+;; not sure what this is.
+(define *trace-list* '())
 
-;; TODO print-tree-bitmask
+(defun print-tree-bitmask ((bits int) (count int))
+  "Print out a single entry for a process tree 'tree' diagram"
+  (local-vars (i int))
+  (set! i 0)
+  (while (< i count)
+    (if (zero? (logand bits 1))
+        (format '#t "    ")
+        (format '#t "|   ")
+        )
+   (set! bits (shr bits 1))
+   (set! i (+ i 1))
+   )
+  '#f
+  )
 
-;; TODO breakpoint-range-set
+(defun breakpoint-range-set! ((a0 uint) (a1 uint) (a2 uint))
+  "Sets some debug register (COP0 Debug, dab, dabm)"
+  (format 0 "breakpoint-range-set! not supported in OpenGOAL~%")
+  0
+  )
 
-;; TODO valid?
+(defmacro start-of-symbol-table ()
+  `(rlet ((st :reg r15 :reset-here #t :type uint))
+         (the uint (- st 32768))
+         )
+  )
+
+(defmacro end-of-symbol-table ()
+  `(rlet ((st :reg r15 :reset-here #t :type uint))
+         (the uint (+ st 32768))
+         )
+  )
+
+;; recursive, so needs to be forward declared with return type.
+(define-extern valid? (function object type basic basic object symbol))
+(defun valid? ((obj object)
+               (expected-type type)
+               (name basic)
+               (allow-false basic)
+               (print-dest object)
+               )
+  "Check if the given object is valid. This will work for structures, pairs, basics, bintegers, symbols, and types.
+   If you set expected-type to #f, it just checks for a 4-byte aligned address that's in GOAL memory.
+   If you're checking a structure, set expected-type to structure. This requires 16-byte alignment
+    Note: packed inline structures in arrays or fields will not pass this check.
+   Otherwise, set it to the type you expect. More specific types will pass.
+
+   If allow-false is #t, a #f will always pass. Otherwise, #f will fail (unless you're looking for a symbol).
+   Use allow-false if you want to allow a 'null' reference.
+
+   The name is only used when printing out an error if the check fails.
+   Use a name of #f to suppress error prints.
+   "
+  (local-vars
+   (in-goal-mem symbol)
+   (v1-33 symbol)
+   )
+
+  ;; first, check if we are even in valid memory. This is the start of the symbol table to the end of RAM.
+  (set! in-goal-mem (and (>= (the-as uint obj) (start-of-symbol-table))
+                         (< (the-as uint obj) #x8000000)
+                         )
+        )
+  (cond
+    ((not expected-type)
+     ;; we didn't get an expected type, just check the alignment and address.
+     (cond
+       ((nonzero? (logand (the-as int obj) 3))
+        ;; alignment is bad!
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" obj name)
+            )
+        '#f
+        )
+       ((not in-goal-mem)
+        ;; address isn't within the memory we expect.
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" obj name)
+            )
+        '#f
+        )
+       ;; otherwise, we're good!
+       (else '#t)
+       )
+     ) ;; end (not expected-type) check
+    ((and allow-false (not obj))
+     ;; we got a false, but its allowed!
+     ;; note that we don't reject falses otherwise, as false is a perfectly valid symbol.
+     '#t)
+    (else
+     (cond
+       ((= expected-type structure)
+        ;; no runtime type info, check alignment (16-bytes for a heap allocated or non-packed structure)
+        (cond
+          ((nonzero? (logand (the-as int obj) 15))
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+               )
+           '#f
+           )
+          ((or (not in-goal-mem) (< (the-as uint obj) (end-of-symbol-table)))
+           ;; structures should never be in the symbol table, they have a slightly stricter allowed memory range.
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+               )
+           '#f
+           )
+          (else '#t)
+          ) ;; end structure check
+        )
+       ((= expected-type pair)
+        ;; pair alignment is 8 bytes + 2.
+        (cond
+          ((!= (logand (the-as int obj) 7) 2)
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+               )
+           '#f
+           )
+          ((not in-goal-mem)
+           ;; the empty pair is in the symbol table, so we allow anything in GOAL memory.
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+               )
+           '#f
+           )
+          ;; pass!
+          (else '#t)
+          )
+        )
+       ((= expected-type binteger)
+        (cond
+          ;; binteger has 0 in the lower 3 bits.
+          ((zero? (logand (the-as int obj) 7))
+           '#t)
+          (else
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+               )
+           '#f
+           )
+          )
+        )
+       ;; now we assume desired type is a basic.
+       ((!= (logand (the-as int obj) 7) 4)
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
+            )
+        '#f
+        )
+       ;; basics can be in the symbol table (basics are symbols...)
+       ((not in-goal-mem)
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" obj name expected-type)
+            )
+        '#f
+        )
+       ((and (= expected-type type) (!= (rtype-of obj) type))
+        ;; special case for type, check the runtime type of the object and be done.
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+                    obj name expected-type (rtype-of obj)
+                    )
+            )
+        '#f
+        )
+       (else
+        ;; otherwise... we want to check and see if the type is actually a type.
+        ;; we use valid? to do this check.
+        ;; avoid infinite recursion by skipping this check if the expected-type is type.
+        (set! v1-33 (and (!= expected-type type)
+                         (not (valid? (rtype-of obj) type '#f '#t 0)
+                              )
+                         )
+              )
+        (cond
+          (v1-33
+           (if name
+               ;; note: print the invalid type as an address in case it's unprintable.
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+                       obj name expected-type (rtype-of obj)
+                       )
+               )
+           '#f
+           )
+          ((not (type-type? (rtype-of obj) expected-type))
+           ;; type check failed.
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
+                       obj name expected-type (rtype-of obj)
+                       )
+               )
+           '#f
+           )
+          ((= expected-type symbol)
+           ;; got a symbol, expecting to be in the symbol table.
+           (cond
+             ((>= (the-as uint obj) (end-of-symbol-table))
+              (if name (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
+                               obj name expected-type
+                               )
+                  )
+              '#f
+              )
+             (else '#t)
+             )
+           )
+          ;; not a symbol, so expecting to be outside st.
+          ((< (the-as uint obj) (end-of-symbol-table))
+           (if name
+               (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
+                       obj name expected-type
+                       )
+               )
+           '#f
+           )
+          (else '#t)
+          )
+        )
+       )
+     )
+    )
+  )

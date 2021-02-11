@@ -40,6 +40,9 @@ class Matcher {
   static Matcher deref(const Matcher& root,
                        bool is_addr_of,
                        const std::vector<DerefTokenMatcher>& tokens);
+  static Matcher if_with_else(const Matcher& condition,
+                              const Matcher& true_case,
+                              const Matcher& false_case);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -55,6 +58,7 @@ class Matcher {
     SET,
     ANY_LABEL,
     SYMBOL,
+    IF_WITH_ELSE,
     INVALID
   };
 
@@ -95,14 +99,16 @@ class GenericOpMatcher {
  public:
   static GenericOpMatcher fixed(FixedOperatorKind kind);
   static GenericOpMatcher func(const Matcher& func_matcher);
+  static GenericOpMatcher condition(IR2_Condition::Kind condition);
 
-  enum class Kind { FIXED, FUNC, INVALID };
+  enum class Kind { FIXED, FUNC, CONDITION, INVALID };
 
   bool do_match(GenericOperator& input, MatchResult::Maps* maps_out) const;
 
  private:
   Kind m_kind = Kind::INVALID;
   FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
+  IR2_Condition::Kind m_condition_kind = IR2_Condition::Kind::INVALID;
   Matcher m_func_matcher;
 };
 
