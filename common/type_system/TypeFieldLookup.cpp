@@ -439,11 +439,9 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
         if (field.is_inline()) {
           expected_offset_into_field = lookup_type(field.type())->get_offset();
         }
-        if (offset_into_field == expected_offset_into_field && !input.deref.has_value()) {
-          // get the inline field.
-          if (input.stride) {
-            continue;
-          }
+        if (offset_into_field == expected_offset_into_field && !input.deref.has_value() &&
+            !input.stride) {
+          // get the inline field exactly
           path->push_back(token);
           *result_type = field_deref.type;
           *addr_of = false;

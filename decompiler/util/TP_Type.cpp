@@ -47,6 +47,8 @@ std::string TP_Type::print() const {
       return fmt::format("<string with {} args>", m_int);
     case Kind::INTEGER_CONSTANT:
       return fmt::format("<integer {}>", m_int);
+    case Kind::INTEGER_CONSTANT_PLUS_VAR:
+      return fmt::format("<integer {} + {}>", m_int, m_ts.print());
     case Kind::DYNAMIC_METHOD_ACCESS:
       return fmt::format("<dynamic-method-access>");
     case Kind::INVALID:
@@ -81,6 +83,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
       return m_int == other.m_int;
     case Kind::FORMAT_STRING:
       return m_int == other.m_int;
+    case Kind::INTEGER_CONSTANT_PLUS_VAR:
+      return m_int == other.m_int && m_ts == other.m_ts;
     case Kind::DYNAMIC_METHOD_ACCESS:
       return true;
     case Kind::INVALID:
@@ -119,6 +123,8 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("string");
     case Kind::INTEGER_CONSTANT:
       return TypeSpec("int");
+    case Kind::INTEGER_CONSTANT_PLUS_VAR:
+      return m_ts;
     case Kind::DYNAMIC_METHOD_ACCESS:
       return TypeSpec("object");
     case Kind::FORMAT_STRING:

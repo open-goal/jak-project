@@ -249,6 +249,11 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         // no need to track the type because we don't know the method index anyway.
         return TP_Type::make_partial_dyanmic_vtable_access();
       }
+
+      if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
+        return TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
+                                                            arg0_type.typespec());
+      }
       break;
 
     default:

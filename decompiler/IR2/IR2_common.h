@@ -121,6 +121,7 @@ enum class FixedOperatorKind {
   EQ,
   NEQ,
   CONS,
+  METHOD_OF_OBJECT,
   INVALID
 };
 

@@ -16,6 +16,7 @@ void Env::set_remap_for_function(int nargs) {
     var_name.push_back('0');
     m_var_remap[var_name] = ("arg" + std::to_string(i));
   }
+  m_var_remap["s6-0"] = "pp";
 }
 
 void Env::set_remap_for_new_method(int nargs) {
@@ -29,6 +30,7 @@ void Env::set_remap_for_new_method(int nargs) {
     var_name.push_back('0');
     m_var_remap[var_name] = ("arg" + std::to_string(i - 2));
   }
+  m_var_remap["s6-0"] = "pp";
 }
 
 void Env::set_remap_for_method(int nargs) {
@@ -41,6 +43,7 @@ void Env::set_remap_for_method(int nargs) {
     var_name.push_back('0');
     m_var_remap[var_name] = ("arg" + std::to_string(i - 1));
   }
+  m_var_remap["s6-0"] = "pp";
 }
 
 void Env::map_args_from_config(const std::vector<std::string>& args_names,

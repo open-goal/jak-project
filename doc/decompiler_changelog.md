@@ -13,3 +13,8 @@
 - Many more useless `set!`s will be removed
 - Stores into arrays are supported
 - Fixed bug where unused/eliminated temporaries would sometimes be used as the result of a block
+
+## Version 3
+- Normal use of the process pointer will now show up as `pp`. Weird use will still be weird.
+- `(method-of-object ...)` will now be recognized
+- Accessing the address of a variable element of an inline array is supported in some cases. More examples are needed before all work. But for example: `(&-> v0-0 stack (-> v0-0 allocated-length))` where `stack` is an `uint8 :dynamic`.

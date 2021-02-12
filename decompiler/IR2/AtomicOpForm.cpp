@@ -17,20 +17,6 @@ RegClass get_reg_kind(const Register& r) {
       assert(false);
   }
 }
-
-DerefToken to_token(FieldReverseLookupOutput::Token in) {
-  switch (in.kind) {
-    case FieldReverseLookupOutput::Token::Kind::FIELD:
-      return DerefToken::make_field_name(in.name);
-    case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
-      return DerefToken::make_int_constant(in.idx);
-    case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
-      return DerefToken::make_expr_placeholder();
-    default:
-      // temp
-      throw std::runtime_error("Cannot convert rd lookup token to deref token");
-  }
-}
 }  // namespace
 
 ConditionElement* BranchOp::get_condition_as_form(FormPool& pool, const Env& env) const {

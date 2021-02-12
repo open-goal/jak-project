@@ -422,6 +422,47 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
   }
 
+  // Look for getting an address inside of an object.
+  // (+ <integer 108 + int> process). array style access with a stride of 1.
+  // in the case, both are vars.
+  if (arg1_reg) {
+    // lookup types.
+    auto arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
+    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
+      // try to see if this is valid, from the type system.
+      FieldReverseLookupInput input;
+      input.offset = arg0_type.get_integer_constant();
+      input.stride = 1;
+      input.base_type = arg1_type.typespec();
+      auto out = env.dts->ts.reverse_field_lookup(input);
+      if (out.success) {
+        // it is. now we have to modify things
+        // first, look for the index
+        auto arg0_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                        {Matcher::any(0), Matcher::integer(input.offset)});
+        auto match_result = match(arg0_matcher, args.at(0));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : out.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match for stride 1 address access with add.");
+        }
+      }
+    }
+  }
+
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
@@ -996,6 +1037,8 @@ void DerefElement::update_from_stack(const Env& env,
                                      bool allow_side_effects) {
   // todo - update var tokens from stack?
   m_base->update_children_from_stack(env, pool, stack, allow_side_effects);
+
+  // merge nested ->'s
   auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
   if (as_deref) {
     if (!m_is_addr_of && !as_deref->is_addr_of()) {
@@ -1003,7 +1046,25 @@ void DerefElement::update_from_stack(const Env& env,
       m_base = as_deref->m_base;
     }
   }
-  result->push_back(this);
+
+  // rewrite access to the method table to use method-of-object
+  // (-> <some-object> type methods-by-name <method-name>)
+  // (method-of-object <some-object> <method-name>)
+  auto get_method_matcher = Matcher::deref(
+      Matcher::any(0), false,
+      {DerefTokenMatcher::string("type"), DerefTokenMatcher::string("methods-by-name"),
+       DerefTokenMatcher::any_string(1)});
+  Form hack_form;
+  hack_form.elts() = {this};
+  auto mr = match(get_method_matcher, &hack_form);
+  if (mr.matched) {
+    auto method_op = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT), mr.maps.forms.at(0),
+        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, mr.maps.strings.at(1)));
+    result->push_back(method_op);
+  } else {
+    result->push_back(this);
+  }
 }
 
 ///////////////////
@@ -1758,6 +1819,14 @@ void SimpleAtomElement::update_from_stack(const Env&,
 
 void SimpleExpressionElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   stack.push_form_element(this, true);
+}
+
+void StringConstantElement::update_from_stack(const Env&,
+                                              FormPool&,
+                                              FormStack&,
+                                              std::vector<FormElement*>* result,
+                                              bool) {
+  result->push_back(this);
 }
 
 }  // namespace decompiler
