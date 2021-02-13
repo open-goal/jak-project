@@ -289,6 +289,8 @@ enum class FieldType {
   IMM5,
   IMM15,
   IL,
+  FS_F,
+  FT_F,
   ZERO
 };
 
@@ -305,6 +307,7 @@ enum class DecodeType {
   VCALLMS_TARGET,
   DEST,
   BC,
+  VF_F,
   VU_Q,
   VU_ACC,
   IL

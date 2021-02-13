@@ -40,11 +40,8 @@ struct OpcodeFields {
   ////////////////
 
   int32_t simm16() { return (int16_t)(data); }
-
   int32_t zimm16() { return (uint16_t)(data); }
-
   uint32_t imm5() { return (data >> 6) & 0x1f; }
-
   uint32_t imm15() { return (data >> 6) & 0b111111111111111; }
 
   ////////////////////
@@ -52,11 +49,8 @@ struct OpcodeFields {
   ////////////////////
 
   uint32_t cop_func() { return (data >> 21) & 0x1f; }
-
   uint32_t ft() { return (data >> 16) & 0x1f; }
-
   uint32_t fs() { return (data >> 11) & 0x1f; }
-
   uint32_t fd() { return (data >> 6) & 0x1f; }
 
   ////////////
@@ -64,16 +58,13 @@ struct OpcodeFields {
   ////////////
 
   uint32_t pcreg() { return (data >> 1) & 0x1f; }
-
   uint32_t syscall() { return (data >> 6) & 0xfffff; }
-
   uint32_t MMI_func() { return (data >> 6) & 0x1f; }
-
   uint32_t lower11() { return (uint32_t)(data & 0x7ff); }
-
   uint32_t lower6() { return (uint32_t)(data & 0b111111); }
-
   uint32_t dest() { return (data >> 21) & 0b1111; }
+  uint32_t fs_f() { return (data >> 21) & 0b11; }
+  uint32_t ft_f() { return (data >> 23) & 0b11; }
 
   uint32_t data;
 };
@@ -1072,6 +1063,12 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
       case FieldType::ZERO:
         value = 0;
         break;
+      case FieldType::FT_F:
+        value = fields.ft_f();
+        break;
+      case FieldType::FS_F:
+        value = fields.fs_f();
+        break;
       default:
         assert(false);
     }
@@ -1111,6 +1108,9 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         break;
       case DecodeType::BRANCH_TARGET:
         atom.set_label(file.get_label_id_for(seg_id, (word_id + value + 1) * 4));
+        break;
+      case DecodeType::VF_F:
+        atom.set_vf_field(value);
         break;
 
         // NOTE - these change a property of the instruction and don't add an atom.
