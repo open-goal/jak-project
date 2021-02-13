@@ -704,6 +704,22 @@
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TYPES-H          ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(deftype time-frame (int64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype part-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; MATH             ;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
@@ -724,27 +740,36 @@
 (define-extern seek (function float float float float))
 (define-extern lerp (function float float float float))
 (define-extern lerp-scale (function float float float float float float))
+(define-extern lerp-clamp (function float float float float))
+(define-extern seekl (function int int int int))
+(define-extern rand-vu-init (function float float))
+(define-extern rand-vu (function float))
+(define-extern rand-vu-nostep (function float))
+(define-extern rand-vu-float-range (function float float float))
+(define-extern rand-vu-percent? (function float symbol))
+(define-extern rand-vu-int-range (function int int int))
+(define-extern rand-vu-int-count (function int int))
 
 ; ;;(define-extern xyzwh object) ;; unknown type
-; (define-extern rand-vu-init function)
-; (define-extern rand-vu-nostep function)
-; (define-extern rand-vu function)
+; 
+; 
+; 
 ; (define-extern lerp function)
 ; (define-extern lerp-scale function)
-; (define-extern rand-vu-int-range function)
-; (define-extern lerp-clamp function)
+; 
+
 ; ;;(define-extern random-generator object) ;; unknown type
 ; (define-extern integral? function)
 ; (define-extern rand-uint31-gen function)
-; (define-extern rand-vu-int-count function)
+; 
 ; (define-extern fractional-part function)
 ; (define-extern seek function)
 ; ;;(define-extern xyzw object) ;; unknown type
-; (define-extern rand-vu-percent? function)
+; 
 ; ;;(define-extern *random-generator* object) ;; unknown type
-; (define-extern rand-vu-float-range function)
+; 
 ; ;;(define-extern rgba object) ;; unknown type
-; (define-extern seekl function)
+; 
 
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
@@ -757,16 +782,18 @@
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
-   (_pad uint8)
+   (_pad             uint8  :offset-assert 12)
+   (bytes            uint8  :dynamic :offset 12)
    )
   :method-count-assert 13
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (new (symbol type int) _type_ 0)
+    (get-bit (_type_ int) symbol 9)
+    (clear-bit (_type_ int) int 10)
+    (set-bit (_type_ int) int 11)
+    (clear (_type_) _type_ 12)
     )
   )
 
@@ -997,6 +1024,9 @@
   )
 
 ;; todo isphere
+(deftype isphere (vec4s)
+  ()
+  )
 
 (deftype box8s (structure)
   ((data   float 8       :offset-assert 0)
@@ -1103,8 +1133,12 @@
 (define-extern *zero-vector* vector)
 
 
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; BOUNDING-BOX-H   ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-;; bounding-box-h
 (deftype bounding-box (structure)
   ((min vector :inline :offset-assert 0)
    (max vector :inline :offset-assert 16)
@@ -1123,7 +1157,6 @@
     )
   )
 
-;; bounding-box-h
 (deftype bounding-box4w (structure)
   ((min vector4w :inline :offset-assert 0)
    (max vector4w :inline :offset-assert 16)
@@ -1133,7 +1166,6 @@
   :flag-assert         #x900000020
   )
 
-;; bounding-box-h
 (deftype bounding-box-both (structure)
   ((box   bounding-box   :inline :offset-assert 0)
    (box4w bounding-box4w :inline :offset-assert 32)
@@ -1143,7 +1175,12 @@
   :flag-assert         #x900000040
   )
 
-;; matrix-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; MATRIX-H         ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype matrix (structure)
   ((data   float 16 :offset-assert 0)
    (vector vector 4  :offset 0)
@@ -1167,7 +1204,6 @@
   :flag-assert         #x900000030
   )
 
-;; guess on signs here
 (deftype matrix4h (structure)
   ((data     int16 16 :offset-assert 0)
    (vector4h vector4h 4  :offset 0)
@@ -1177,6 +1213,13 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; QUATERNION-H     ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype quaternion (structure)
   ((data float 4       :offset-assert 0)
@@ -1192,7 +1235,12 @@
   :flag-assert         #x900000010
   )
 
-;; euler-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; EULER-H          ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype euler-angles (vector)
   ()
   :method-count-assert 9
@@ -1200,7 +1248,12 @@
   :flag-assert         #x900000010
   )
 
-;; transform-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TRANSFORM-H      ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype transform (structure)
   ((trans vector :inline :offset-assert 0)
    (rot   vector :inline :offset-assert 16)
@@ -1211,7 +1264,6 @@
   :flag-assert         #x900000030
   )
 
-;; transform-h
 (deftype trs (basic)
   ((trans vector :inline :offset-assert 16)
    (rot   vector :inline :offset-assert 32)
@@ -1222,7 +1274,12 @@
   :flag-assert         #x900000040
   )
 
-;; geometry-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GEOMETRY-H       ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype curve (structure)
   ((cverts     uint32  :offset-assert 0)
    (num-cverts int32   :offset-assert 4)
@@ -1235,7 +1292,6 @@
   :flag-assert         #x900000014
   )
 
-;; geometry-h
 (deftype border-plane (basic)
   ((name   basic          :offset-assert 4)
    (action basic          :offset-assert 8)
@@ -1252,7 +1308,12 @@
     )
   )
 
-; ;; transformq-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TRANSFORMQ-H     ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype transformq (transform)
   ((quat  quaternion :inline :offset 16)
    )
@@ -1269,8 +1330,6 @@
   :flag-assert         #x900000040
   )
 
-
-;; transformq-h
 (deftype trsqv (trsq)
   ((pause-adjust-distance float             :offset 4) ;; todo meters
    (nav-radius            float             :offset 8) ;; todo meters
@@ -1306,6 +1365,15 @@
     (dummy-27 () none 27)
     )
   )
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; BOUNDING-BOX     ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern box-vector-inside? (function bounding-box vector symbol))
+(define-extern box-vector-enside? (function bounding-box vector symbol))
 
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
@@ -31505,8 +31573,7 @@
 ;;(define-extern trsq object) ;; unknown type
 (define-extern deg-diff function)
 (define-extern vector-y-angle function)
-(define-extern box-vector-inside? function)
-(define-extern box-vector-enside? function)
+
 (define-extern vector3s-rotate*! function)
 (define-extern matrix-inverse-of-rot-trans! function)
 (define-extern matrix-3x3-determinant function)

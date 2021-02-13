@@ -377,6 +377,7 @@ class IR2_Condition {
 std::string get_condition_kind_name(IR2_Condition::Kind kind);
 int get_condition_num_args(IR2_Condition::Kind kind);
 IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind);
+bool condition_uses_float(IR2_Condition::Kind kind);
 
 /*!
  * Set a variable to a GOAL boolean, based off of a condition.

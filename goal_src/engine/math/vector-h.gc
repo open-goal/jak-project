@@ -12,27 +12,96 @@
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
-   (_pad uint8)
+   ;; neither of these show up in the inspect.
+   ;; it seems like there's a single byte of data array
+   ;; included in the type already
+   (_pad uint8 :offset-assert 12)
+   (bytes uint8 :dynamic :offset 12)
    )
   :method-count-assert 13
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    )
+   (new (symbol type int) _type_ 0)
+   (get-bit (_type_ int) symbol 9)
+   (clear-bit (_type_ int) int 10)
+   (set-bit (_type_ int) int 11)
+   (clear (_type_) _type_ 12)
+   )
   )
 
-;; todo new
-;; todo 4
-;; todo 5
-;; todo 9
-;; todo 10
-;; todo 11
-;; todo 12
-;; 
+(defmethod new bit-array ((allocation symbol) (type-to-make type) (length int))
+  "Allocate a new bit-array which can hold length bits.
+   Sets both the length and the allocated-length to this length."
+  (local-vars (obj bit-array))
+  ;; remove one byte, we get one in the type already.
+  (set! obj (object-new allocation type-to-make
+                        (+ (+ (sar (logand -8 (+ length 7)) 3) -1)
+                           (the-as int (-> type-to-make size))
+                           )
+                        )
+        )
+  (set! (-> obj length) length)
+  (set! (-> obj allocated-length) length)
+  obj
+  )
+
+(defmethod length bit-array ((obj bit-array))
+  "Get the length (in bits)"
+  (-> obj length)
+  )
+
+(defmethod asize-of bit-array ((obj bit-array))
+  "Get the size in memory. 
+   It is wrong and says its one bit longer, which is safe."
+  (the-as int
+          (+ (-> obj type size)
+             (the-as uint (sar (logand -8 (+ (-> obj allocated-length) 7)) 3))
+             )
+          )
+  )
+
+(defmethod get-bit bit-array ((obj bit-array) (idx int))
+  "Is the bit at idx set or not?"
+  (local-vars (byte uint))
+  ;; read the byte
+  (set! byte (-> obj bytes (sar idx 3)))
+  (nonzero? (logand byte (the-as uint (ash 1 (logand idx 7)))))
+  )
+
+(defmethod clear-bit bit-array ((obj bit-array) (idx int))
+  "Clear the bit at position idx"
+  (set! (-> obj bytes (sar idx 3))
+        (logand (-> obj bytes (sar idx 3))
+                (the-as uint (lognot (ash 1 (logand idx 7))))
+                )
+        )
+  0
+  )
+
+(defmethod set-bit bit-array ((obj bit-array) (idx int))
+  "Set the bit at position idx"
+  (set! (-> obj bytes (sar idx 3))
+        (logior (-> obj bytes (sar idx 3))
+                (the-as uint (ash 1 (logand idx 7)))
+                )
+        )
+  0
+  )
+
+(defmethod clear bit-array ((obj bit-array))
+  "Set all bits to zero."
+  (local-vars (idx int))
+  (let ((idx (sar (logand -8 (+ (-> obj allocated-length) 7)) 3)))
+    (while (nonzero? idx)
+      (set! idx (+ idx -1))
+      (nop!)
+      (nop!)
+      (set! (-> obj bytes idx) 0)
+      )
+    obj
+    )
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector types (integer)
@@ -315,13 +384,13 @@
   :flag-assert         #x900000010
   )
 
-; todo
-; (deftype isphere (vec4s)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+
+(deftype isphere (vec4s)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 (deftype box8s (structure)
   ((data   float 8       :offset-assert 0)

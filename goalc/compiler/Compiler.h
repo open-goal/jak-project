@@ -140,7 +140,8 @@ class Compiler {
   Val* compile_stack_new(const goos::Object& form,
                          const goos::Object& type,
                          const goos::Object* rest,
-                         Env* env);
+                         Env* env,
+                         bool call_constructor);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;

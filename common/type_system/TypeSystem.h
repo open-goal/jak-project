@@ -54,38 +54,6 @@ struct DerefInfo {
   TypeSpec result_type;
 };
 
-struct ReverseDerefInfo {
-  struct DerefToken {
-    enum Kind { INDEX, FIELD } kind;
-    std::string name;
-    int index;
-    std::string print() const {
-      switch (kind) {
-        case INDEX:
-          return std::to_string(index);
-        case FIELD:
-          return name;
-        default:
-          assert(false);
-      }
-    }
-  };
-
-  TypeSpec result_type;
-  std::vector<DerefToken> deref_path;
-  bool success = false;
-  bool addr_of = false;
-};
-
-struct ReverseDerefInputInfo {
-  int offset = -1;
-  bool mem_deref = false;
-  RegClass reg = RegClass::INVALID;
-  int load_size = -1;
-  bool sign_extend = false;
-  TypeSpec input_type;
-};
-
 /*!
  * A description of a dereference (size + sign extend)
  */
@@ -129,7 +97,6 @@ class TypeSystem {
   std::string get_runtime_type(const TypeSpec& ts);
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
-  ReverseDerefInfo get_reverse_deref_info(const ReverseDerefInputInfo& input) const;
   FieldReverseLookupOutput reverse_field_lookup(const FieldReverseLookupInput& input) const;
 
   bool fully_defined_type_exists(const std::string& name) const;
@@ -216,10 +183,6 @@ class TypeSystem {
   TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types) const;
 
  private:
-  bool reverse_deref(const ReverseDerefInputInfo& input,
-                     std::vector<ReverseDerefInfo::DerefToken>* path,
-                     bool* addr_of,
-                     TypeSpec* result_type) const;
   bool try_reverse_lookup(const FieldReverseLookupInput& input,
                           std::vector<FieldReverseLookupOutput::Token>* path,
                           bool* addr_of,

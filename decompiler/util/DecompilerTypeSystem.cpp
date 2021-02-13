@@ -173,7 +173,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
                                      bool* changed) const {
   // starting from most vague to most specific
 
-  // simplist case, no difference.
+  // simplest case, no difference.
   if (existing == add) {
     *changed = false;
     return existing;
@@ -251,6 +251,18 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         } else {
           *changed = true;
           return TP_Type::make_from_ts(TypeSpec("string"));
+        }
+      case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR:
+        if (existing.get_integer_constant() == add.get_integer_constant()) {
+          auto new_child = TP_Type::make_from_integer_constant_plus_var(
+              existing.get_integer_constant(),
+              coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
+                                                           add.get_objects_typespec())));
+          *changed = (new_child != existing);
+          return new_child;
+        } else {
+          *changed = true;
+          return TP_Type::make_from_ts("int");
         }
 
       case TP_Type::Kind::FALSE_AS_NULL:

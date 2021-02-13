@@ -260,6 +260,17 @@ bool is_saved_reg(Register r) {
   }
 }
 
+bool is_possible_coloring_move(Register dst, Register src) {
+  if (is_arg_reg(src) && is_saved_reg(dst)) {
+    return true;
+  }
+
+  if (dst.get_kind() == Reg::FPR && dst.get_fpr() < 20 && is_arg_reg(src)) {
+    return true;
+  }
+  return false;
+}
+
 /*!
  * Create a "really crude" SSA, as described in
  * "Aycock and Horspool Simple Generation of Static Single-Assignment Form"
@@ -321,22 +332,20 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       SSA::Ins ssa_i(op_id);
 
       if (block_id == 0 && !got_not_arg_coloring) {
+        got_not_arg_coloring = true;
         auto as_set = dynamic_cast<const SetVarOp*>(op.get());
         if (as_set) {
-          if (as_set->src().is_identity() && as_set->src().get_arg(0).is_var()) {
+          if ((as_set->src().kind() == SimpleExpression::Kind::GPR_TO_FPR ||
+               as_set->src().is_identity()) &&
+              as_set->src().get_arg(0).is_var()) {
             auto src = as_set->src().get_arg(0).var().reg();
             auto dst = as_set->dst().reg();
-            if (is_arg_reg(src) && is_saved_reg(dst) &&
+            if (is_possible_coloring_move(dst, src) &&
                 rui.op.at(op_id).consumes.find(src) != rui.op.at(op_id).consumes.end()) {
               ssa_i.is_arg_coloring_move = true;
-            } else {
-              got_not_arg_coloring = true;
+              got_not_arg_coloring = false;
             }
-          } else {
-            got_not_arg_coloring = true;
           }
-        } else {
-          got_not_arg_coloring = true;
         }
       }
 

@@ -101,6 +101,9 @@ enum class FixedOperatorKind {
   ABS,
   MIN,
   MAX,
+  FABS,
+  FMIN,
+  FMAX,
   LOGAND,
   LOGIOR,
   LOGXOR,
@@ -121,6 +124,7 @@ enum class FixedOperatorKind {
   EQ,
   NEQ,
   CONS,
+  METHOD_OF_OBJECT,
   INVALID
 };
 

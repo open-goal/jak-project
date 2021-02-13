@@ -7,6 +7,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/AtomicOp.h"
 #include "common/goos/Object.h"
+#include "common/type_system/TypeSystem.h"
 
 namespace decompiler {
 class Form;
@@ -128,6 +129,11 @@ class SimpleExpressionElement : public FormElement {
                                     std::vector<FormElement*>* result,
                                     bool allow_side_effects);
   void update_from_stack_int_to_float(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
+  void update_from_stack_float_to_int(const Env& env,
                                       FormPool& pool,
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
@@ -856,6 +862,8 @@ class DerefToken {
   Form* m_expr = nullptr;
 };
 
+DerefToken to_token(const FieldReverseLookupOutput::Token& in);
+
 class DerefElement : public FormElement {
  public:
   DerefElement(Form* base, bool is_addr_of, DerefToken token);
@@ -942,6 +950,24 @@ class GetMethodElement : public FormElement {
 class StringConstantElement : public FormElement {
  public:
   StringConstantElement(const std::string& value);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  std::string m_value;
+};
+
+class ConstantTokenElement : public FormElement {
+ public:
+  ConstantTokenElement(const std::string& value);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;

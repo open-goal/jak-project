@@ -3,6 +3,7 @@
 #include <utility>
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/type_system/TypeSystem.h"
 
 namespace decompiler {
 
@@ -1133,6 +1134,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "min";
     case FixedOperatorKind::MAX:
       return "max";
+    case FixedOperatorKind::FABS:
+      return "fabs";
+    case FixedOperatorKind::FMIN:
+      return "fmin";
+    case FixedOperatorKind::FMAX:
+      return "fmax";
     case FixedOperatorKind::LOGAND:
       return "logand";
     case FixedOperatorKind::LOGIOR:
@@ -1173,6 +1180,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "=";
     case FixedOperatorKind::NEQ:
       return "!=";
+    case FixedOperatorKind::METHOD_OF_OBJECT:
+      return "method-of-object";
     default:
       assert(false);
   }
@@ -1390,6 +1399,20 @@ void DerefToken::get_modified_regs(RegSet& regs) const {
   }
 }
 
+DerefToken to_token(const FieldReverseLookupOutput::Token& in) {
+  switch (in.kind) {
+    case FieldReverseLookupOutput::Token::Kind::FIELD:
+      return DerefToken::make_field_name(in.name);
+    case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
+      return DerefToken::make_int_constant(in.idx);
+    case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
+      return DerefToken::make_expr_placeholder();
+    default:
+      // temp
+      throw std::runtime_error("Cannot convert rd lookup token to deref token");
+  }
+}
+
 DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
     : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {
   m_base->parent_element = this;
@@ -1563,5 +1586,19 @@ void StringConstantElement::apply(const std::function<void(FormElement*)>&) {}
 void StringConstantElement::apply_form(const std::function<void(Form*)>&) {}
 void StringConstantElement::collect_vars(VariableSet&) const {}
 void StringConstantElement::get_modified_regs(RegSet&) const {}
+
+/////////////////////////////
+// ConstantTokenElement
+/////////////////////////////
+ConstantTokenElement::ConstantTokenElement(const std::string& value) : m_value(value) {}
+
+goos::Object ConstantTokenElement::to_form_internal(const Env&) const {
+  return pretty_print::to_symbol(m_value);
+}
+
+void ConstantTokenElement::apply(const std::function<void(FormElement*)>&) {}
+void ConstantTokenElement::apply_form(const std::function<void(Form*)>&) {}
+void ConstantTokenElement::collect_vars(VariableSet&) const {}
+void ConstantTokenElement::get_modified_regs(RegSet&) const {}
 
 }  // namespace decompiler

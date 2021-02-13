@@ -21,11 +21,13 @@ class TP_Type {
     UNINITIALIZED,                      // representing data which is uninitialized.
     PRODUCT_WITH_CONSTANT,              // representing: (val * multiplier)
     OBJECT_PLUS_PRODUCT_WITH_CONSTANT,  // address: obj + (val * multiplier)
-    OBJECT_NEW_METHOD,      // the method new of object, as used in an (object-new) or similar.
-    STRING_CONSTANT,        // a string that's part of the string pool
-    FORMAT_STRING,          // a string with a given number of format arguments
-    INTEGER_CONSTANT,       // a constant integer.
-    DYNAMIC_METHOD_ACCESS,  // partial access into a
+    OBJECT_NEW_METHOD,          // the method new of object, as used in an (object-new) or similar.
+    STRING_CONSTANT,            // a string that's part of the string pool
+    FORMAT_STRING,              // a string with a given number of format arguments
+    INTEGER_CONSTANT,           // a constant integer.
+    INTEGER_CONSTANT_PLUS_VAR,  // constant + variable. used in stuff like (&-> obj inline-val-arr
+                                // x)
+    DYNAMIC_METHOD_ACCESS,      // partial access into a
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -104,6 +106,14 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_from_integer_constant_plus_var(int64_t value, const TypeSpec& var_type) {
+    TP_Type result;
+    result.kind = Kind::INTEGER_CONSTANT_PLUS_VAR;
+    result.m_int = value;
+    result.m_ts = var_type;
+    return result;
+  }
+
   static TP_Type make_from_product(int64_t multiplier, bool is_signed) {
     TP_Type result;
     result.kind = Kind::PRODUCT_WITH_CONSTANT;
@@ -134,7 +144,7 @@ class TP_Type {
   }
 
   const TypeSpec& get_objects_typespec() const {
-    assert(kind == Kind::TYPESPEC);
+    assert(kind == Kind::TYPESPEC || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_ts;
   }
 
@@ -159,7 +169,7 @@ class TP_Type {
   }
 
   uint64_t get_integer_constant() const {
-    assert(kind == Kind::INTEGER_CONSTANT);
+    assert(kind == Kind::INTEGER_CONSTANT || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_int;
   }
 
