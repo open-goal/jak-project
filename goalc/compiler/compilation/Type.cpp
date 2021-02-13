@@ -785,7 +785,8 @@ Val* Compiler::compile_static_new(const goos::Object& form,
 Val* Compiler::compile_stack_new(const goos::Object& form,
                                  const goos::Object& type,
                                  const goos::Object* rest,
-                                 Env* env) {
+                                 Env* env,
+                                 bool call_constructor) {
   auto type_of_object = parse_typespec(unquote(type));
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
@@ -841,20 +842,30 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     // allocation
     auto mem = fe->allocate_aligned_stack_variable(type_of_object, ti->get_size_in_memory(), 16)
                    ->to_gpr(env);
-    // the new method actual takes a "symbol" according the type system. So we have to cheat it.
-    mem->set_type(TypeSpec("symbol"));
-    args.push_back(mem);
-    // type
-    args.push_back(compile_get_symbol_value(form, type_of_object.base_type(), env)->to_reg(env));
-    // the other arguments
-    for_each_in_list(*rest, [&](const goos::Object& o) {
-      args.push_back(compile_error_guard(o, env)->to_reg(env));
-    });
+    if (call_constructor) {
+      // the new method actual takes a "symbol" according the type system. So we have to cheat it.
+      mem->set_type(TypeSpec("symbol"));
+      args.push_back(mem);
+      // type
+      args.push_back(compile_get_symbol_value(form, type_of_object.base_type(), env)->to_reg(env));
+      // the other arguments
+      for_each_in_list(*rest, [&](const goos::Object& o) {
+        args.push_back(compile_error_guard(o, env)->to_reg(env));
+      });
 
-    auto new_method = compile_get_method_of_type(form, type_of_object, "new", env);
-    auto new_obj = compile_real_function_call(form, new_method, args, env);
-    new_obj->set_type(type_of_object);
-    return new_obj;
+      auto new_method = compile_get_method_of_type(form, type_of_object, "new", env);
+      auto new_obj = compile_real_function_call(form, new_method, args, env);
+      new_obj->set_type(type_of_object);
+      return new_obj;
+    } else {
+      if (ti->get_offset()) {
+        throw std::runtime_error("Cannot stack allocate with no constructor for a " +
+                                 ti->get_name());
+      } else {
+        mem->set_type(type_of_object);
+        return mem;
+      }
+    }
   }
 }
 
@@ -872,7 +883,9 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     // put in code.
     return compile_static_new(form, type, rest, env);
   } else if (allocation == "stack") {
-    return compile_stack_new(form, type, rest, env);
+    return compile_stack_new(form, type, rest, env, true);
+  } else if (allocation == "stack-no-constructor") {
+    return compile_stack_new(form, type, rest, env, false);
   }
 
   throw_compiler_error(form, "Unsupported new form");

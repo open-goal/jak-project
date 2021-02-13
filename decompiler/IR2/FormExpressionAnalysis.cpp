@@ -1749,7 +1749,7 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::any_reg(0), Matcher::cast("int", Matcher::any_reg(0))});
+          Matcher::match_or({Matcher::any(0), Matcher::cast("int", Matcher::any_reg(0))});
       // reg1 is base
       auto reg1_matcher =
           Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
@@ -1759,14 +1759,14 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
         throw std::runtime_error("Couldn't match ArrayFieldAccess (stride 1) values: " +
                                  new_val->to_string(env));
       }
-      auto idx = match_result.maps.regs.at(0);
+      auto idx = match_result.maps.forms.at(0);
       auto base = match_result.maps.regs.at(1);
-      assert(idx.has_value() && base.has_value());
+      assert(idx && base.has_value());
 
       std::vector<DerefToken> tokens = m_deref_tokens;
       for (auto& x : tokens) {
         if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
-          x = DerefToken::make_int_expr(var_to_form(idx.value(), pool));
+          x = DerefToken::make_int_expr(idx);
         }
       }
       // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));

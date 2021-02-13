@@ -133,8 +133,6 @@
     )
   )
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; integer utility
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -157,22 +155,55 @@
 ;;;; random vu hardware
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; added in OpenGOAL
+(define *_vu-reg-R_* 0)
+
 ;; TODO
 (defun rand-vu-init ((seed float))
-  ;; TODO
-  0.0
+  "Initialize the VU0 random generator"
+  ;; (.ctc2.i R arg0)
+  ;; (.cfc2.i v0 R)
+  (set! *_vu-reg-R_*
+        (logior #x3F800000 (logand (the-as int seed) #x007FFFFF))
+        )
+  (the-as float *_vu-reg-R_*)
   )
 
 (rand-vu-init 1.418091058731079)
 
 ;; rand-vu
 (defun rand-vu ()
-  0.0
+  "Get a random number in [0, 1) and advance the random generator."
+  ;; (.vrget.xyzw vf1) - get current random
+  (let ((current-random *_vu-reg-R_*))
+    ;; here they update the random generate with some junk
+    ;; for now, we don't do this in OpenGOAL.
+    ;; (.vsqrty Q vf1)
+    ;; (.vaddq.x vf2 vf0 Q) ;; you're not allowed to do this!
+    ;; (.vrxorw vf2)
+    
+    ;; and advance
+    ;; (.vrnext.xyzw vf1)
+    (let ((x (logand 1 (shr current-random 4)))
+          (y (logand 1 (shr current-random 22)))
+          )
+      (set! current-random (shl current-random 1))
+      (set! current-random (logxor current-random (logxor x y)))
+      (set! *_vu-reg-R_* (logior #x3f800000 (logand current-random #x7fffff)))
+      )
+    )
+  
+  ;; (.vsubw.xyzw vf1 vf1 vf0)
+  ;; (.qmfc2.i v0 vf1)
+  (- (the-as float *_vu-reg-R_*) 1.0)
   )
 
 ;; rand-vu-nostep
 (defun rand-vu-nostep ()
-  0.0
+  "Get the number currently in the random generator.
+   This will be equal to the last call of (rand-vu)
+   This will not update the random generator"
+  (- (the-as float *_vu-reg-R_*) 1.0)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
