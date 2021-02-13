@@ -904,13 +904,28 @@ void FunctionCallElement::update_from_stack(const Env& env,
   for (size_t i = 0; i < nargs; i++) {
     all_pop_vars.push_back(m_op->arg_vars().at(i));
   }
+
+  TypeSpec function_type;
+  bool is_method = false;
+  auto& tp_type = env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg());
+  if (env.has_type_analysis()) {
+    if (tp_type.kind == TP_Type::Kind::METHOD && all_pop_vars.size() >= 1) {
+      is_method = true;
+    }
+    function_type = tp_type.typespec();
+  }
+
+  assert(is_method == m_op->is_method());
+
+  // if method, don't pop the obj arg.
+  //  Variable method_obj_var;
+  //  if (is_method) {
+  //    method_obj_var = all_pop_vars.at(1);
+  //    all_pop_vars.erase(all_pop_vars.begin() + 1);
+  //  }
+
   auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
   std::vector<Form*> arg_forms;
-  TypeSpec function_type;
-  if (env.has_type_analysis()) {
-    function_type =
-        env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg()).typespec();
-  }
 
   for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
     auto val = unstacked.at(arg_id + 1);  // first is the function itself.
@@ -929,8 +944,39 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
   }
 
-  auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_function(unstacked.at(0)), arg_forms);
+  FormElement* new_form = nullptr;
+  if (is_method) {
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+                               {Matcher::any(0), Matcher::any(1)});
+    auto mr = match(matcher, unstacked.at(0));
+    if (!mr.matched) {
+      throw std::runtime_error("Failed to match method call. Got " +
+                               unstacked.at(0)->to_string(env));
+    }
+
+    auto unsafe = stack.unsafe_peek(Register(Reg::GPR, Reg::A0));
+    if (unsafe) {
+      if (!unsafe->try_as_single_element()) {
+        throw std::runtime_error(
+            fmt::format("Peek got something weird: {}\n", unsafe->to_string(env)));
+      }
+      if (unsafe->try_as_single_element() != mr.maps.forms.at(0)->try_as_single_element()) {
+        throw std::runtime_error(fmt::format("Invalid method call. {} vs {}.",
+                                             unsafe->to_string(env),
+                                             mr.maps.forms.at(0)->to_string(env)));
+      }
+    } else {
+      throw std::runtime_error("Failed to peek for arg0");
+    }
+
+    arg_forms.insert(arg_forms.begin(), unsafe);
+    new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
+
+  } else {
+    new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
+                                                  arg_forms);
+  }
 
   {
     // detect method calls:
@@ -1021,7 +1067,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
             return;
           }
         } else {
-          throw std::runtime_error("Failed to match new method");
+          lg::warn("Got a suspicious new method. This may be fine, but should be uncommon: {}",
+                   temp_form->to_string(env));
+          //          throw std::runtime_error("Failed to match new method: " +
+          //          temp_form->to_string(env));
         }
       } else {
         throw std::runtime_error("Method call detected, not yet implemented");
@@ -1713,7 +1762,8 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       // reg1 is idx
 
       auto reg0_matcher =
-          Matcher::match_or({Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                             Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
       auto sll_matcher =
@@ -1722,10 +1772,14 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
-        fmt::print("power {}\n", power_of_two);
-        throw std::runtime_error(
-            "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
-            new_val->to_string(env));
+        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher});
+        match_result = match(matcher, new_val);
+        if (!match_result.matched) {
+          fmt::print("power {}\n", power_of_two);
+          throw std::runtime_error(
+              "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
+              new_val->to_string(env));
+        }
       }
 
       auto idx = match_result.maps.forms.at(1);
@@ -1875,6 +1929,30 @@ void StringConstantElement::update_from_stack(const Env&,
                                               FormStack&,
                                               std::vector<FormElement*>* result,
                                               bool) {
+  result->push_back(this);
+}
+
+void GetMethodElement::update_from_stack(const Env&,
+                                         FormPool&,
+                                         FormStack&,
+                                         std::vector<FormElement*>* result,
+                                         bool) {
+  result->push_back(this);
+}
+
+void CondNoElseElement::update_from_stack(const Env&,
+                                          FormPool&,
+                                          FormStack&,
+                                          std::vector<FormElement*>* result,
+                                          bool) {
+  result->push_back(this);
+}
+
+void ConstantTokenElement::update_from_stack(const Env&,
+                                             FormPool&,
+                                             FormStack&,
+                                             std::vector<FormElement*>* result,
+                                             bool) {
   result->push_back(this);
 }
 

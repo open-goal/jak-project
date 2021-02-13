@@ -31,6 +31,8 @@ std::string TP_Type::print() const {
       return m_ts.print();
     case Kind::TYPE_OF_TYPE_OR_CHILD:
       return fmt::format("<the type {}>", m_ts.print());
+    case Kind::TYPE_OF_TYPE_NO_VIRTUAL:
+      return fmt::format("<the etype {}>", m_ts.print());
     case Kind::FALSE_AS_NULL:
       return fmt::format("'#f");
     case Kind::UNINITIALIZED:
@@ -51,6 +53,8 @@ std::string TP_Type::print() const {
       return fmt::format("<integer {} + {}>", m_int, m_ts.print());
     case Kind::DYNAMIC_METHOD_ACCESS:
       return fmt::format("<dynamic-method-access>");
+    case Kind::METHOD:
+      return fmt::format("<method {}>", m_ts.print());
     case Kind::INVALID:
     default:
       assert(false);
@@ -66,6 +70,10 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::TYPESPEC:
       return m_ts == other.m_ts;
     case Kind::TYPE_OF_TYPE_OR_CHILD:
+      return m_ts == other.m_ts;
+    case Kind::TYPE_OF_TYPE_NO_VIRTUAL:
+      return m_ts == other.m_ts;
+    case Kind::METHOD:
       return m_ts == other.m_ts;
     case Kind::FALSE_AS_NULL:
       return true;
@@ -102,6 +110,7 @@ TypeSpec TP_Type::typespec() const {
     case Kind::TYPESPEC:
       return m_ts;
     case Kind::TYPE_OF_TYPE_OR_CHILD:
+    case Kind::TYPE_OF_TYPE_NO_VIRTUAL:
       return TypeSpec("type");
     case Kind::FALSE_AS_NULL:
       return TypeSpec("symbol");
@@ -129,6 +138,8 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("object");
     case Kind::FORMAT_STRING:
       return TypeSpec("string");
+    case Kind::METHOD:
+      return m_ts;
     case Kind::INVALID:
     default:
       assert(false);

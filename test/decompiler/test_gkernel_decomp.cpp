@@ -660,93 +660,434 @@ TEST_F(FormRegressionTest, ExprMethod0Process) {
                                  "\t\t[13, [\"v0\", \"process\"]]]"));
 }
 
-// TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
+TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L251:\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s4, 16(sp)\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lwu v1, 76(gp)\n"
+      "    daddiu s5, v1, 4\n"
+      "    beq r0, r0, L253\n"
+      "    sll r0, r0, 0\n"
+
+      "L252:\n"
+      "    or a0, s5, r0\n"
+      "    lwu v1, -4(a0)\n"
+      "    lwu t9, 28(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    addiu s4, r0, -16\n"
+      "    or a0, s5, r0\n"
+      "    lwu v1, -4(a0)\n"
+      "    lwu t9, 36(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    daddiu v1, v1, 15\n"
+      "    and v1, s4, v1\n"
+      "    daddu s5, s5, v1\n"
+
+      "L253:\n"
+      "    lwu v1, 84(gp)\n"
+      "    slt v1, s5, v1\n"
+      "    bne v1, r0, L252\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v0, s7, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    lq s4, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64";
+  std::string type = "(function process symbol)";
+  std::string expected =
+      "(begin\n"
+      "  (set! s5-0 (+ (-> arg0 heap-base) (the-as uint 4)))\n"
+      "  (while\n"
+      "   (< (the-as int s5-0) (the-as int (-> arg0 heap-cur)))\n"
+      "   (inspect (the-as basic s5-0))\n"
+      "   (set!\n"
+      "    (the-as int s5-0)\n"
+      "    (+ (the-as int s5-0) (logand -16 (+ (asize-of s5-0) 15)))\n"
+      "    )\n"
+      "   )\n"
+      "  (quote #f)\n"
+      "  )\n"
+      "";
+  test_with_expr(func, type, expected, false, "", {},
+                 parse_hint_json("[\t\t[4, [\"s5\", \"basic\"]],\n"
+                                 "\t\t[17, [\"s5\", \"int\"]]]"));
+}
+
+// note: skipped method 3 process
+
+TEST_F(FormRegressionTest, ExprMethod5Process) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lw v1, process(s7)\n"
+      "    lhu v1, 8(v1)\n"
+      "    lw a0, 68(a0)\n"
+      "    daddu v0, v1, a0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function process int)";
+  std::string expected =
+      "(the-as int (+ (-> process size) (the-as uint (-> arg0 allocated-length))))";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprMethod2Process) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L317\n"
+      "    lwu a2, -4(gp)\n"
+      "    lwu a3, 0(gp)\n"
+      "    lwu t0, 32(gp)\n"
+      "    lwu v1, 52(gp)\n"
+      "    beq s7, v1, L245\n"
+      "    or t1, s7, r0\n"
+
+      "    lwu v1, 52(gp)\n"
+      "    lwu t1, 0(v1)\n"
+
+      "L245:\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L316\n"
+      "    lwu v1, 44(gp)\n"
+      "    lwu v1, 28(v1)\n"
+      "    lwu a2, 44(gp)\n"
+      "    lwu a2, 24(a2)\n"
+      "    dsubu a2, v1, a2\n"
+      "    lwu v1, 40(gp)\n"
+      "    lw a3, 32(v1)\n"
+      "    lw v1, 68(gp)\n"
+      "    lwu t0, 80(gp)\n"
+      "    lwu t1, 84(gp)\n"
+      "    dsubu t0, t0, t1\n"
+      "    dsubu t0, v1, t0\n"
+      "    lw t1, 68(gp)\n"
+      "    or t2, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function process process)";
+  std::string expected =
+      "(begin\n"
+      "  (format\n"
+      "   (quote #t)\n"
+      "   \"#<~A ~S ~A :state ~S \"\n"
+      "   (-> arg0 type)\n"
+      "   (-> arg0 name)\n"
+      "   (-> arg0 status)\n"
+      "   (if (-> arg0 state) (-> arg0 state name))\n"
+      "   )\n"
+      "  (format\n"
+      "   (quote #t)\n"
+      "   \":stack ~D/~D :heap ~D/~D @ #x~X>\"\n"
+      "   (- (-> arg0 top-thread stack-top) (the-as uint (-> arg0 top-thread sp)))\n"
+      "   (-> arg0 main-thread stack-size)\n"
+      "   (-\n"
+      "    (-> arg0 allocated-length)\n"
+      "    (- (-> arg0 heap-top) (the-as uint (-> arg0 heap-cur)))\n"
+      "    )\n"
+      "   (-> arg0 allocated-length)\n"
+      "   arg0\n"
+      "   )\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "",
+                 {{"L317", "#<~A ~S ~A :state ~S "}, {"L316", ":stack ~D/~D :heap ~D/~D @ #x~X>"}});
+}
+
+TEST_F(FormRegressionTest, ExprMethod0DeadPool) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -112\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s1, 16(sp)\n"
+      "    sq s2, 32(sp)\n"
+      "    sq s3, 48(sp)\n"
+      "    sq s4, 64(sp)\n"
+      "    sq s5, 80(sp)\n"
+      "    sq gp, 96(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or s5, a2, r0\n"
+      "    or s4, a3, r0\n"
+      "    or s2, t0, r0\n"
+      "    lw v1, object(s7)\n"
+      "    lwu t9, 16(v1)\n"
+      "    or a0, gp, r0\n"
+      "    or v1, a1, r0\n"
+      "    lhu a2, 8(a1)\n"
+      "    or a1, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or s3, v0, r0\n"
+      "    sw s2, 0(s3)\n"
+      "    addiu v1, r0, 256\n"
+      "    sw v1, 4(s3)\n"
+      "    sw s7, 8(s3)\n"
+      "    sw s7, 12(s3)\n"
+      "    sw s7, 16(s3)\n"
+      "    sw s3, 24(s3)\n"
+      "    daddiu v1, s3, 24\n"
+      "    sw v1, 20(s3)\n"
+      "    addiu s2, r0, 0\n"
+      "    beq r0, r0, L233\n"
+      "    sll r0, r0, 0\n"
+
+      "L230:\n"
+      "    lwu s1, 16(s3)\n"
+      "    lw v1, process(s7)\n"
+      "    lwu t9, 16(v1)\n"
+      "    or a0, gp, r0\n"
+      "    lw a1, process(s7)\n"
+      "    daddiu a2, s7, dead\n"
+      "    or a3, s4, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    or a0, v1, r0\n"
+      "    beq s7, a0, L231\n"
+      "    or a1, s7, r0\n"
+
+      "    lwu a1, 20(a0)\n"
+
+      "L231:\n"
+      "    sw a1, 16(s3)\n"
+      "    or a0, s3, r0\n"
+      "    beq s7, a0, L232\n"
+      "    or a1, s7, r0\n"
+
+      "    lwu a1, 20(a0)\n"
+
+      "L232:\n"
+      "    sw a1, 8(v1)\n"
+      "    sw s3, 28(v1)\n"
+      "    sw s1, 12(v1)\n"
+      "    daddiu s2, s2, 1\n"
+
+      "L233:\n"
+      "    slt v1, s2, s5\n"
+      "    bne v1, r0, L230\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    or v0, s3, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 96(sp)\n"
+      "    lq s5, 80(sp)\n"
+      "    lq s4, 64(sp)\n"
+      "    lq s3, 48(sp)\n"
+      "    lq s2, 32(sp)\n"
+      "    lq s1, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 112";
+  std::string type = "(function symbol type int int basic dead-pool)";
+  std::string expected =
+      "(begin\n"
+      "  (set! s3-0 (object-new arg0 arg1 (the-as int (-> arg1 size))))\n"
+      "  (set! (-> s3-0 name) arg4)\n"
+      "  (set! (-> s3-0 mask) 256)\n"
+      "  (set! (-> s3-0 parent) (quote #f))\n"
+      "  (set! (-> s3-0 brother) (quote #f))\n"
+      "  (set! (-> s3-0 child) (quote #f))\n"
+      "  (set! (-> s3-0 self) s3-0)\n"
+      "  (set! (-> s3-0 ppointer) (&-> s3-0 self))\n"
+      "  (set! s2-1 0)\n"
+      "  (while\n"
+      "   (< s2-1 arg2)\n"
+      "   (set! s1-0 (-> s3-0 child))\n"
+      "   (set! v1-5 ((method-of-type process new) arg0 process (quote dead) arg3))\n"
+      "   (set! a0-3 v1-5)\n"
+      "   (set! (-> s3-0 child) (if a0-3 (-> a0-3 ppointer)))\n"
+      "   (set! a0-4 s3-0)\n"
+      "   (set! (-> v1-5 parent) (if a0-4 (-> a0-4 ppointer)))\n"
+      "   (set! (-> v1-5 pool) s3-0)\n"
+      "   (set! (-> v1-5 brother) s1-0)\n"
+      "   (set! s2-1 (+ s2-1 1))\n"
+      "   )\n"
+      "  s3-0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "dead-pool");
+}
+
+// TODO - sketchy types, and likely a bug in the game.
+// TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
 //  std::string func =
 //      "    sll r0, r0, 0\n"
-//      "L251:\n"
 //      "    daddiu sp, sp, -64\n"
 //      "    sd ra, 0(sp)\n"
+//      "    sd fp, 8(sp)\n"
+//      "    or fp, t9, r0\n"
 //      "    sq s4, 16(sp)\n"
 //      "    sq s5, 32(sp)\n"
 //      "    sq gp, 48(sp)\n"
 //
-//      "    or gp, a0, r0\n"
-//      "    lwu v1, 76(gp)\n"
-//      "    daddiu s5, v1, 4\n"
-//      "    beq r0, r0, L253\n"
-//      "    sll r0, r0, 0\n"
+//      "    or s5, a0, r0\n"
+//      "    or gp, a1, r0\n"
+//      "    lwu s4, 16(s5)\n"
+//      "    bnel s7, s4, L223\n"
 //
-//      "L252:\n"
-//      "    or a0, s5, r0\n"
+//      "    or v1, s7, r0\n"
+//
+//      "    lw v1, *debug-segment*(s7)\n"
+//      "    beql s7, v1, L223\n"
+//
+//      "    or v1, v1, r0\n"
+//
+//      "    lw v1, *debug-dead-pool*(s7)\n"
+//      "    dsubu a0, s5, v1\n"
+//      "    daddiu v1, s7, 8\n"
+//      "    movz v1, s7, a0\n"
+//
+//      "L223:\n"
+//      "    beq s7, v1, L225\n"
+//      "    or v1, s7, r0\n"
+//
+//      "    lw a0, *debug-dead-pool*(s7)\n"
 //      "    lwu v1, -4(a0)\n"
-//      "    lwu t9, 28(v1)\n"
+//      "    lwu t9, 72(v1)\n"
+//      "    or a1, gp, r0\n"
 //      "    jalr ra, t9\n"
 //      "    sll v0, ra, 0\n"
 //
-//      "    or v1, v0, r0\n"
-//      "    addiu s4, r0, -16\n"
-//      "    or a0, s5, r0\n"
-//      "    lwu v1, -4(a0)\n"
-//      "    lwu t9, 36(v1)\n"
+//      "    or s4, v0, r0\n"
+//      "    beq s7, s4, L225\n"
+//      "    or v1, s7, r0\n"
+//
+//      "    lw t9, format(s7)\n"
+//      "    addiu a0, r0, 0\n"
+//      "    daddiu a1, fp, L315\n"
+//      "    or a2, gp, r0\n"
+//      "    or v1, s4, r0\n"
+//      "    beq s7, v1, L224\n"
+//      "    or a3, s7, r0\n"
+//
+//      "    lwu v1, 0(v1)\n"
+//      "    lwu a3, 24(v1)\n"
+//
+//      "L224:\n"
+//      "    lwu t0, 0(s5)\n"
 //      "    jalr ra, t9\n"
 //      "    sll v0, ra, 0\n"
-//
+//      "\n"
 //      "    or v1, v0, r0\n"
-//      "    daddiu v1, v1, 15\n"
-//      "    and v1, s4, v1\n"
-//      "    daddu s5, s5, v1\n"
 //
-//      "L253:\n"
-//      "    lwu v1, 84(gp)\n"
-//      "    slt v1, s5, v1\n"
-//      "    bne v1, r0, L252\n"
+//      "L225:\n"
+//      "    beq s7, s4, L226\n"
 //      "    sll r0, r0, 0\n"
+//
+//      "    lwu v1, 0(s4)\n"
+//      "    sw gp, -4(v1)\n"
+//      "    lwu v0, 0(s4)\n"
+//      "    beq r0, r0, L228\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "L226:\n"
+//      "    lw t9, format(s7)\n"
+//      "    addiu a0, r0, 0\n"
+//      "    daddiu a1, fp, L314\n"
+//      "    beq s7, s4, L227\n"
+//      "    or a3, s7, r0\n"
+//
+//      "    lwu v1, 0(s4)\n"
+//      "    lwu a3, 24(v1)\n"
+//
+//      "L227:\n"
+//      "    lwu t0, 0(s5)\n"
+//      "    or a2, gp, r0\n"
+//      "    jalr ra, t9\n"
+//      "    sll v0, ra, 0\n"
 //
 //      "    or v0, s7, r0\n"
+//
+//      "L228:\n"
 //      "    ld ra, 0(sp)\n"
+//      "    ld fp, 8(sp)\n"
 //      "    lq gp, 48(sp)\n"
 //      "    lq s5, 32(sp)\n"
 //      "    lq s4, 16(sp)\n"
 //      "    jr ra\n"
 //      "    daddiu sp, sp, 64";
-//  std::string type = "(function process symbol)";
+//  std::string type = "(function dead-pool type int process)";
 //  std::string expected =
 //      "(begin\n"
-//      "  (set!\n"
-//      "   v0-0\n"
-//      "   (if\n"
-//      "    (= (-> arg0 type) symbol)\n"
-//      "    (object-new arg0 arg1 (the-as int (+ (-> process size) (the-as uint arg3))))\n"
-//      "    (+ (the-as int arg0) 4)\n"
+//      "  (set! s4-0 (-> arg0 child))\n"
+//      "  (when\n"
+//      "   (and (not s4-0) *debug-segment* (!= arg0 *debug-dead-pool*))\n"
+//      "   (set! s4-0 (get-process *debug-dead-pool* arg1 arg2))\n"
+//      "   (when\n"
+//      "    s4-0\n"
+//      "    (set! t9-1 format)\n"
+//      "    (set! a0-2 0)\n"
+//      "    (set!\n"
+//      "     a1-2\n"
+//      "     \"WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%\"\n"
+//      "     )\n"
+//      "    (set! a2-1 arg1)\n"
+//      "    (set! v1-6 s4-0)\n"
+//      "    (t9-1 a0-2 a1-2 a2-1 (if v1-6 (-> v1-6 name 6)) (-> arg0 name))\n"
 //      "    )\n"
 //      "   )\n"
-//      "  (set! (-> (the-as process v0-0) name) arg2)\n"
-//      "  (set! (-> v0-0 status) (quote dead))\n"
-//      "  (set! (-> v0-0 pid) 0)\n"
-//      "  (set! (-> v0-0 pool) (quote #f))\n"
-//      "  (set! (-> v0-0 allocated-length) arg3)\n"
-//      "  (set! (-> v0-0 top-thread) (quote #f))\n"
-//      "  (set! (-> v0-0 main-thread) (quote #f))\n"
-//      "  (set! v1-5 (-> v0-0 stack))\n"
-//      "  (set! (-> v0-0 heap-cur) v1-5)\n"
-//      "  (set! (-> v0-0 heap-base) v1-5)\n"
-//      "  (set! (-> v0-0 heap-top) (&-> v0-0 stack (-> v0-0 allocated-length)))\n"
-//      "  (set! (-> v0-0 stack-frame-top) (-> v0-0 heap-top))\n"
-//      "  (set! (-> v0-0 stack-frame-top) (quote #f))\n"
-//      "  (set! (-> v0-0 state) (quote #f))\n"
-//      "  (set! (-> v0-0 next-state) (quote #f))\n"
-//      "  (set! (-> v0-0 entity) (quote #f))\n"
-//      "  (set! (-> v0-0 trans-hook) (quote #f))\n"
-//      "  (set! (-> v0-0 post-hook) (quote #f))\n"
-//      "  (set! (-> v0-0 event-hook) (quote #f))\n"
-//      "  (set! (-> v0-0 parent) (quote #f))\n"
-//      "  (set! (-> v0-0 brother) (quote #f))\n"
-//      "  (set! (-> v0-0 child) (quote #f))\n"
-//      "  (set! (-> v0-0 self) v0-0)\n"
-//      "  (set! (-> v0-0 ppointer) (&-> v0-0 self))\n"
-//      "  v0-0\n"
+//      "  (the-as\n"
+//      "   process\n"
+//      "   (cond\n"
+//      "    (s4-0\n"
+//      "     (set! (-> (the-as (pointer process-tree) s4-0) 0 type) arg1)\n"
+//      "     (-> s4-0 0)\n"
+//      "     )\n"
+//      "    (else\n"
+//      "     (format\n"
+//      "      0\n"
+//      "      \"WARNING: ~A ~A could not be allocated, because ~A was empty.~%\"\n"
+//      "      arg1\n"
+//      "      (if s4-0 (-> s4-0 0 self))\n"
+//      "      (-> arg0 name)\n"
+//      "      )\n"
+//      "     (quote #f)\n"
+//      "     )\n"
+//      "    )\n"
+//      "   )\n"
 //      "  )";
-//  test_with_expr(func, type, expected, false, "", {},
-//                 parse_hint_json("[\t\t[4, [\"s5\", \"basic\"]],\n"
-//                                 "\t\t[17, [\"s5\", \"int\"]]]"));
+//  test_with_expr(
+//      func, type, expected, false, "dead-pool",
+//      {{"L315", "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was
+//      empty.~%"},
+//       {"L314", "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"}},
+//      parse_hint_json("[\t\t[25, [\"v1\", \"(pointer process-tree)\"]],\n"
+//                      "\t\t[30, [\"s4\", \"(pointer process-tree)\"]]]"));
 //}

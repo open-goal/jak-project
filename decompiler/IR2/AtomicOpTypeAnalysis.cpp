@@ -88,7 +88,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
 
       if (type->second == TypeSpec("type")) {
         // if we get a type by symbol, we should remember which type we got it from.
-        return TP_Type::make_type_object(TypeSpec(m_string));
+        return TP_Type::make_type_no_virtual_object(TypeSpec(m_string));
       }
 
       if (type->second == TypeSpec("function")) {
@@ -396,10 +396,10 @@ TypeState IR2_BranchDelay::propagate_types(const TypeState& input,
       output.get(m_var[0]->reg()) = TP_Type::make_from_ts(TypeSpec("symbol"));
       break;
     case Kind::SET_BINTEGER:
-      output.get(m_var[0]->reg()) = TP_Type::make_type_object(TypeSpec("binteger"));
+      output.get(m_var[0]->reg()) = TP_Type::make_type_no_virtual_object(TypeSpec("binteger"));
       break;
     case Kind::SET_PAIR:
-      output.get(m_var[0]->reg()) = TP_Type::make_type_object(TypeSpec("pair"));
+      output.get(m_var[0]->reg()) = TP_Type::make_type_no_virtual_object(TypeSpec("pair"));
       break;
     case Kind::NOP:
     case Kind::NO_DELAY:
@@ -500,8 +500,9 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   if (get_as_reg_offset(m_src, &ro)) {
     auto& input_type = input.get(ro.reg);
 
-    if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD && ro.offset >= 16 &&
-        (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+    if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
+         input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) &&
+        ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
       // method get of fixed type
       auto type_name = input_type.get_type_objects_typespec().base_type();
       auto method_id = (ro.offset - 16) / 4;
@@ -511,7 +512,12 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         // remember that we're an object new.
         return TP_Type::make_object_new(method_type);
       }
-      return TP_Type::make_from_ts(method_type);
+      if (method_id == GOAL_NEW_METHOD ||
+          input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+        return TP_Type::make_from_ts(method_type);
+      } else {
+        return TP_Type::make_method(method_type);
+      }
     }
 
     if (input_type.kind == TP_Type::Kind::TYPESPEC && input_type.typespec() == TypeSpec("type") &&
@@ -594,7 +600,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       //      load_path.push_back("type");
       //      load_path_set = true;
 
-      return TP_Type::make_type_object(input_type.typespec().base_type());
+      return TP_Type::make_type_allow_virtual_object(input_type.typespec().base_type());
     }
 
     if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
@@ -699,6 +705,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3};
 
+  m_is_virtual_method = false;
   TypeState end_types = input;
 
   auto in_tp = input.get(Register(Reg::GPR, Reg::T9));
@@ -789,6 +796,11 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
     m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
+    if (i == 0 && in_tp.kind == TP_Type::Kind::METHOD) {
+      m_read_regs.pop_back();
+      m_arg_vars.pop_back();
+      m_is_virtual_method = true;
+    }
   }
 
   m_write_regs.clear();

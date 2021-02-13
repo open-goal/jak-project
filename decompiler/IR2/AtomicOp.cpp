@@ -428,7 +428,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     }
   }
 
-  assert(m_instr.n_src <= 3);
+  assert(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     auto& src = m_instr.get_src(i);
     if (src.is_reg()) {
@@ -455,7 +455,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
-  assert(m_instr.n_src <= 3);
+  assert(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     if (m_src[i].has_value()) {
       forms.push_back(m_src[i].value().to_form(env));

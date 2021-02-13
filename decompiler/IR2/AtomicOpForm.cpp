@@ -237,8 +237,9 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     if (get_as_reg_offset(m_src, &ro)) {
       auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
 
-      if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD && ro.offset >= 16 &&
-          (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+      if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL ||
+           input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD) &&
+          ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
         // method get of fixed type
         auto type_name = input_type.get_type_objects_typespec().base_type();
         auto method_id = (ro.offset - 16) / 4;

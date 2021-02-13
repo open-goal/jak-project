@@ -15,8 +15,9 @@ namespace decompiler {
 class TP_Type {
  public:
   enum class Kind {
-    TYPESPEC,                           // just a normal typespec
-    TYPE_OF_TYPE_OR_CHILD,              // a type object, of the given type of a child type.
+    TYPESPEC,               // just a normal typespec
+    TYPE_OF_TYPE_OR_CHILD,  // a type object, of the given type of a child type.
+    TYPE_OF_TYPE_NO_VIRTUAL,
     FALSE_AS_NULL,                      // the GOAL "false" object, possibly used as a null.
     UNINITIALIZED,                      // representing data which is uninitialized.
     PRODUCT_WITH_CONSTANT,              // representing: (val * multiplier)
@@ -28,6 +29,7 @@ class TP_Type {
     INTEGER_CONSTANT_PLUS_VAR,  // constant + variable. used in stuff like (&-> obj inline-val-arr
                                 // x)
     DYNAMIC_METHOD_ACCESS,      // partial access into a
+    METHOD,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -73,6 +75,13 @@ class TP_Type {
 
   static TP_Type make_from_ts(const std::string& ts) { return make_from_ts(TypeSpec(ts)); }
 
+  static TP_Type make_method(const TypeSpec& method_type) {
+    TP_Type result;
+    result.kind = Kind::METHOD;
+    result.m_ts = method_type;
+    return result;
+  }
+
   static TP_Type make_from_string(const std::string& str) {
     TP_Type result;
     result.kind = Kind::STRING_CONSTANT;
@@ -80,9 +89,16 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_type_object(const TypeSpec& type) {
+  static TP_Type make_type_allow_virtual_object(const TypeSpec& type) {
     TP_Type result;
     result.kind = Kind::TYPE_OF_TYPE_OR_CHILD;
+    result.m_ts = type;
+    return result;
+  }
+
+  static TP_Type make_type_no_virtual_object(const TypeSpec& type) {
+    TP_Type result;
+    result.kind = Kind::TYPE_OF_TYPE_NO_VIRTUAL;
     result.m_ts = type;
     return result;
   }
@@ -149,7 +165,7 @@ class TP_Type {
   }
 
   const TypeSpec& get_type_objects_typespec() const {
-    assert(kind == Kind::TYPE_OF_TYPE_OR_CHILD);
+    assert(kind == Kind::TYPE_OF_TYPE_OR_CHILD || kind == Kind::TYPE_OF_TYPE_NO_VIRTUAL);
     return m_ts;
   }
 

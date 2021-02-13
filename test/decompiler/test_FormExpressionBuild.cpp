@@ -2053,7 +2053,7 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "    bgtzl v1, L62\n"
       "    lw v1, pair(s7)\n"
       "\n"
-      "    lwu v1, -4(a0)\n"
+      "    lwu v1, -4(a0)\n"  // want to cheat this read.
       "L62:\n"
       "    lwu t9, 24(v1)\n"
       "    jalr ra, t9\n"
