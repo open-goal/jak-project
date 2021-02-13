@@ -213,7 +213,14 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         return new_result;
       }
       case TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD: {
-        auto new_result = TP_Type::make_type_object(ts.lowest_common_ancestor(
+        auto new_result = TP_Type::make_type_allow_virtual_object(ts.lowest_common_ancestor(
+            existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+        *changed = (new_result != existing);
+        return new_result;
+      }
+
+      case TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL: {
+        auto new_result = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
             existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
         *changed = (new_result != existing);
         return new_result;
@@ -265,6 +272,12 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
           return TP_Type::make_from_ts("int");
         }
 
+      case TP_Type::Kind::METHOD:
+        // never allow this to remain method
+        *changed = true;
+        return TP_Type::make_from_ts(
+            ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
       case TP_Type::Kind::DYNAMIC_METHOD_ACCESS:
@@ -284,6 +297,22 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         result_type = TP_Type::make_from_ts(TypeSpec("string"));
       }
 
+      *changed = (result_type != existing);
+      return result_type;
+    }
+
+    if (existing.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&
+        add.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD) {
+      auto result_type = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
+          existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+      *changed = (result_type != existing);
+      return result_type;
+    }
+
+    if (existing.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD &&
+        add.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      auto result_type = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
+          existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
       *changed = (result_type != existing);
       return result_type;
     }

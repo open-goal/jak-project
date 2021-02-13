@@ -146,6 +146,26 @@ Form* FormStack::pop_reg(Register reg,
   return nullptr;
 }
 
+Form* FormStack::unsafe_peek(Register reg) {
+  RegSet modified;
+  for (size_t i = m_stack.size(); i-- > 0;) {
+    auto& entry = m_stack.at(i);
+    if (entry.active) {
+      return nullptr;
+    }
+
+    entry.source->get_modified_regs(modified);
+    if (modified.find(reg) != modified.end()) {
+      return nullptr;
+    }
+
+    if (entry.destination.has_value() && entry.destination->reg() == reg) {
+      return entry.source;
+    }
+  }
+  return nullptr;
+}
+
 std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   std::vector<FormElement*> result;
 

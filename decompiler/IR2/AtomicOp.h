@@ -303,7 +303,7 @@ class AsmOp : public AtomicOp {
  private:
   Instruction m_instr;
   std::optional<Variable> m_dst;
-  std::optional<Variable> m_src[3];
+  std::optional<Variable> m_src[4];
 };
 
 /*!
@@ -585,10 +585,12 @@ class CallOp : public AtomicOp {
   void collect_vars(VariableSet& vars) const override;
   const std::vector<Variable>& arg_vars() const { return m_arg_vars; }
   Variable function_var() const { return m_function_var; }
+  bool is_method() const { return m_is_virtual_method; }
 
  protected:
   TypeSpec m_call_type;
   bool m_call_type_set = false;
+  bool m_is_virtual_method = false;
 
   std::vector<Variable> m_arg_vars;
   Variable m_function_var;
