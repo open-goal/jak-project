@@ -1067,7 +1067,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
             return;
           }
         } else {
-          throw std::runtime_error("Failed to match new method");
+          lg::warn("Got a suspicious new method. This may be fine, but should be uncommon: {}",
+                   temp_form->to_string(env));
+          //          throw std::runtime_error("Failed to match new method: " +
+          //          temp_form->to_string(env));
         }
       } else {
         throw std::runtime_error("Method call detected, not yet implemented");
@@ -1926,6 +1929,30 @@ void StringConstantElement::update_from_stack(const Env&,
                                               FormStack&,
                                               std::vector<FormElement*>* result,
                                               bool) {
+  result->push_back(this);
+}
+
+void GetMethodElement::update_from_stack(const Env&,
+                                         FormPool&,
+                                         FormStack&,
+                                         std::vector<FormElement*>* result,
+                                         bool) {
+  result->push_back(this);
+}
+
+void CondNoElseElement::update_from_stack(const Env&,
+                                          FormPool&,
+                                          FormStack&,
+                                          std::vector<FormElement*>* result,
+                                          bool) {
+  result->push_back(this);
+}
+
+void ConstantTokenElement::update_from_stack(const Env&,
+                                             FormPool&,
+                                             FormStack&,
+                                             std::vector<FormElement*>* result,
+                                             bool) {
   result->push_back(this);
 }
 

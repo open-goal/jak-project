@@ -512,7 +512,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         // remember that we're an object new.
         return TP_Type::make_object_new(method_type);
       }
-      if (method_id == GOAL_NEW_METHOD || input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      if (method_id == GOAL_NEW_METHOD ||
+          input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
         return TP_Type::make_from_ts(method_type);
       } else {
         return TP_Type::make_method(method_type);
