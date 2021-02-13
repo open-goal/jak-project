@@ -1100,6 +1100,27 @@ void IR_AsmFNop::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 ///////////////////////
+// AsmFWait
+///////////////////////
+
+IR_AsmFWait::IR_AsmFWait() : IR_Asm(false) {}
+
+std::string IR_AsmFWait::print() {
+  return ".wait.vf";
+}
+
+RegAllocInstr IR_AsmFWait::to_rai() {
+  return {};
+}
+
+void IR_AsmFWait::do_codegen(emitter::ObjectGenerator* gen,
+                             const AllocationResult& allocs,
+                             emitter::IR_Record irec) {
+  (void)allocs;
+  gen->add_instr(IGen::wait_vf(), irec);
+}
+
+///////////////////////
 // AsmPush
 ///////////////////////
 
@@ -1386,10 +1407,36 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
     case Kind::MIN:
       gen->add_instr(IGen::min_vf(dst, src1, src2), irec);
       break;
+    case Kind::DIV:
+      gen->add_instr(IGen::div_vf(dst, src1, src2), irec);
+      break;
     default:
       assert(false);
   }
 }
+
+// ---- ASM VF 4 operand
+
+IR_VFMath4Asm::IR_VFMath4Asm(Kind kind) : m_kind(kind) {}
+
+IR_VFMath3Asm::Kind IR_VFMath4Asm::first_op() {
+  switch (m_kind) {
+    case Kind::MUL_ADD:
+      return IR_VFMath3Asm::Kind::MUL;
+    case Kind::MUL_SUB:
+      return IR_VFMath3Asm::Kind::MUL;
+  }
+}
+
+IR_VFMath3Asm::Kind IR_VFMath4Asm::second_op() {
+  switch (m_kind) {
+    case Kind::MUL_ADD:
+      return IR_VFMath3Asm::Kind::ADD;
+    case Kind::MUL_SUB:
+      return IR_VFMath3Asm::Kind::SUB;
+  }
+}
+// ---- Blend VF
 
 IR_BlendVF::IR_BlendVF(bool use_color,
                        const RegVal* dst,
@@ -1422,6 +1469,8 @@ void IR_BlendVF::do_codegen(emitter::ObjectGenerator* gen,
   gen->add_instr(IGen::blend_vf(dst, src1, src2, m_mask), irec);
 }
 
+// ----- Splat VF
+
 IR_SplatVF::IR_SplatVF(bool use_color,
                        const RegVal* dst,
                        const RegVal* src,
@@ -1448,4 +1497,61 @@ void IR_SplatVF::do_codegen(emitter::ObjectGenerator* gen,
   auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
   auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
   gen->add_instr(IGen::splat_vf(dst, src, m_element), irec);
+}
+
+// ---- Swizzle VF
+
+IR_SwizzleVF::IR_SwizzleVF(bool use_color,
+                           const RegVal* dst,
+                           const RegVal* src,
+                           const u8 controlBytes)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_controlBytes(controlBytes) {}
+
+std::string IR_SwizzleVF::print() {
+  return fmt::format(".swizzle.vf{} {}, {}, {}", get_color_suffix_string(), m_dst->print(),
+                     m_src->print(), m_controlBytes);
+}
+
+RegAllocInstr IR_SwizzleVF::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_SwizzleVF::do_codegen(emitter::ObjectGenerator* gen,
+                              const AllocationResult& allocs,
+                              emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
+  gen->add_instr(IGen::swizzle_vf(dst, src, m_controlBytes), irec);
+}
+
+// ---- Square Root VF
+
+IR_SqrtVF::IR_SqrtVF(bool use_color, const RegVal* dst, const RegVal* src)
+    : IR_Asm(use_color), m_dst(dst), m_src(src) {}
+
+std::string IR_SqrtVF::print() {
+  return fmt::format(".sqrt.vf{} {}, {}", get_color_suffix_string(), m_dst->print(),
+                     m_src->print());
+}
+
+RegAllocInstr IR_SqrtVF::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_SqrtVF::do_codegen(emitter::ObjectGenerator* gen,
+                           const AllocationResult& allocs,
+                           emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
+  gen->add_instr(IGen::sqrt_vf(dst, src), irec);
 }

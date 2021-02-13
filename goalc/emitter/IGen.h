@@ -2015,17 +2015,7 @@ class IGen {
     return instr;
   }
 
-  static Instruction nop_vf() {
-    // FNOP
-    Instruction instr(0xd9);
-    instr.set_op2(0xd0);
-    return instr;
-  }
-
-  // eventually...
-  // sqrt
-  // rsqrt
-  // abs
+  // TODO - rsqrt / abs / sqrt
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   UTILITIES
@@ -2045,6 +2035,18 @@ class IGen {
   /////////////////////////////
   // AVX (VF - Vector Float) //
   /////////////////////////////
+
+  static Instruction nop_vf() {
+    Instruction instr(0xd9);  // FNOP
+    instr.set_op2(0xd0);
+    return instr;
+  }
+
+  static Instruction wait_vf() {
+    Instruction instr(0x9B);  // FWAIT / WAIT
+    return instr;
+  }
+
   static Instruction mov_vf_vf(Register dst, Register src) {
     assert(dst.is_xmm());
     assert(src.is_xmm());
@@ -2168,6 +2170,18 @@ class IGen {
 
   // TODO - rip relative loads and stores.
 
+  static Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
+    assert(!(mask & 0b11110000));
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x0c);  // VBLENDPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
+                                src1.hw_id(), false, VexPrefix::P_66);
+    instr.set(Imm(1, mask));
+    return instr;
+  }
+
   static Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
     assert(dst.is_xmm());
     assert(src.is_xmm());
@@ -2192,8 +2206,9 @@ class IGen {
     - 8-bits / 4 groups of 2 bits
     - Each group is used to determine which element in `src` gets copied to `dst`'s respective
     element.
-    - Right to Left, the first 2-bit group controls which `dst` element, gets copied to `src`'s
-    most-significant byte (left-most) and so on. GROUP OPTIONS
+    - Right to Left, the first 2-bit group controls which `src` element, gets copied to `dst`'s
+    most-significant byte (left-most) and so on.
+    GROUP OPTIONS
     - 00b - Copy the least-significant element
     - 01b - Copy the second element (from the right)
     - 10b - Copy the third element (from the right)
@@ -2201,7 +2216,9 @@ class IGen {
     Examples
     ; xmm1 = (1.5, 2.5, 3.5, 4.5)
     SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions
-    (1.5, 1.5, 1.5, 1.5) SHUFPS xmm1, xmm1, 0x39 ; Rotate right (4.5, 1.5, 2.5, 3.5)
+    > (1.5, 1.5, 1.5, 1.5)
+    SHUFPS xmm1, xmm1, 0x39 ; Rotate right
+    > (4.5, 1.5, 2.5, 3.5)
     */
   static Instruction swizzle_vf(Register dst, Register src, u8 controlBytes) {
     assert(dst.is_xmm());
@@ -2297,15 +2314,25 @@ class IGen {
     return instr;
   }
 
-  static Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
-    assert(!(mask & 0b11110000));
+  // TODO - I believe there is an encoding problem in the decompiler output for these
+  // For example, the decompiler will spit out something like
+  // vdivx Q v00, v01
+  // But the instruction is supposed to have the fsf/ftf fields set, specifying _which_ of the four
+  // floating points should be operated on vdiv Q v00x, v01y
+  static Instruction div_vf(Register dst, Register src1, Register src2) {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x0c);  // VBLENDPS
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
-                                src1.hw_id(), false, VexPrefix::P_66);
-    instr.set(Imm(1, mask));
+    Instruction instr(0x5E);  // VDIVPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction sqrt_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x51);  // VSQRTPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
     return instr;
   }
 };
