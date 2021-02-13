@@ -16,7 +16,7 @@
 namespace decompiler {
 struct DecompilerLabel;
 
-constexpr int MAX_INSTRUCTION_SOURCE = 3;
+constexpr int MAX_INSTRUCTION_SOURCE = 4;
 constexpr int MAX_INTRUCTION_DEST = 1;
 
 // An "atom", representing a single register, immediate, etc... for use in an Instruction.
@@ -28,6 +28,7 @@ struct InstructionAtom {
     LABEL,     // A label in a LinkedObjectFile
     VU_ACC,    // The VU0 Accumulator
     VU_Q,      // The VU0 Q Register
+    VF_FIELD,  // Field specifier
     INVALID
   } kind = INVALID;
 
@@ -37,6 +38,7 @@ struct InstructionAtom {
   void set_vu_q();
   void set_vu_acc();
   void set_sym(std::string _sym);
+  void set_vf_field(uint32_t value);
 
   Register get_reg() const;
   int32_t get_imm() const;

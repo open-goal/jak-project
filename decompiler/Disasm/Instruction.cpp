@@ -6,6 +6,7 @@
 
 #include "Instruction.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "third-party/fmt/core.h"
 #include <cassert>
 
 namespace decompiler {
@@ -26,6 +27,9 @@ std::string InstructionAtom::to_string(const std::vector<DecompilerLabel>& label
       return "Q";
     case IMM_SYM:
       return sym;
+    case VF_FIELD:
+      assert(imm >= 0 && imm < 4);
+      return fmt::format(".{}", "xyzw"[imm]);
     default:
       throw std::runtime_error("Unsupported InstructionAtom");
   }
@@ -75,6 +79,15 @@ void InstructionAtom::set_vu_q() {
 void InstructionAtom::set_sym(std::string _sym) {
   kind = IMM_SYM;
   sym = std::move(_sym);
+}
+
+/*!
+ * Make this atom a field (x,y,z,w) of a vf.
+ */
+void InstructionAtom::set_vf_field(uint32_t value) {
+  kind = VF_FIELD;
+  imm = value;
+  assert(value < 4);
 }
 
 /*!
@@ -224,7 +237,14 @@ std::string Instruction::to_string(const std::vector<DecompilerLabel>& labels) c
     }
 
     for (uint8_t i = 0; i < n_src; i++) {
-      result += " " + src[i].to_string(labels) + ",";
+      if (src[i].kind == InstructionAtom::VF_FIELD) {
+        if (end_comma) {
+          result.pop_back();
+        }
+        result += src[i].to_string(labels) + ",";
+      } else {
+        result += " " + src[i].to_string(labels) + ",";
+      }
       end_comma = true;
     }
 

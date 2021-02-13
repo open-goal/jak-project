@@ -405,13 +405,15 @@ void init_opcode_info() {
   def(IK::VDIV, "vdiv")
       .dst(FT::ZERO, DT::VU_Q)
       .src_vf(FT::FS)
+      .src(FT::FS_F, DT::VF_F)
       .src_vf(FT::FT)
-      .src(FT::BC, DT::BC);  // todo
+      .src(FT::FT_F, DT::VF_F);
   def(IK::VRSQRT, "vrsqrt")
       .dst(FT::ZERO, DT::VU_Q)
       .src_vf(FT::FS)
+      .src(FT::FS_F, DT::VF_F)
       .src_vf(FT::FT)
-      .src(FT::BC, DT::BC);  // todo
+      .src(FT::FT_F, DT::VF_F);
   def(IK::VCLIP, "vclip").src(FT::DEST, DT::DEST).src_vf(FT::FS).src_vf(FT::FT);
   def(IK::VMULAQ, "vmulaq")
       .src(FT::DEST, DT::DEST)
@@ -430,7 +432,7 @@ void init_opcode_info() {
 
   def(IK::QMFC2, "qmfc2").src(FT::IL, DT::IL).dst_gpr(FT::RT).src_vf(FT::FS);
   def(IK::QMTC2, "qmtc2").src(FT::IL, DT::IL).src_gpr(FT::RT).dst_vf(FT::FS);
-  def(IK::VSQRT, "vsqrt").src(FT::BC, DT::BC).dst(FT::ZERO, DT::VU_Q).src_vf(FT::FT);
+  def(IK::VSQRT, "vsqrt").dst(FT::ZERO, DT::VU_Q).src_vf(FT::FT).src(FT::FT_F, DT::VF_F);
   def(IK::VRXOR, "vrxor").src(FT::BC, DT::BC).src_vf(FT::FS);
   def(IK::VRNEXT, "vrnext").src(FT::DEST, DT::DEST).dst_vf(FT::FT);
   def(IK::CTC2, "ctc2").src(FT::IL, DT::IL).src_gpr(FT::RT).dst(FT::RD, DT::VI);
