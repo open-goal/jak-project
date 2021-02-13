@@ -659,3 +659,94 @@ TEST_F(FormRegressionTest, ExprMethod0Process) {
                  parse_hint_json("[\t\t[12, [\"a0\", \"int\"]],\n"
                                  "\t\t[13, [\"v0\", \"process\"]]]"));
 }
+
+// TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
+//  std::string func =
+//      "    sll r0, r0, 0\n"
+//      "L251:\n"
+//      "    daddiu sp, sp, -64\n"
+//      "    sd ra, 0(sp)\n"
+//      "    sq s4, 16(sp)\n"
+//      "    sq s5, 32(sp)\n"
+//      "    sq gp, 48(sp)\n"
+//
+//      "    or gp, a0, r0\n"
+//      "    lwu v1, 76(gp)\n"
+//      "    daddiu s5, v1, 4\n"
+//      "    beq r0, r0, L253\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "L252:\n"
+//      "    or a0, s5, r0\n"
+//      "    lwu v1, -4(a0)\n"
+//      "    lwu t9, 28(v1)\n"
+//      "    jalr ra, t9\n"
+//      "    sll v0, ra, 0\n"
+//
+//      "    or v1, v0, r0\n"
+//      "    addiu s4, r0, -16\n"
+//      "    or a0, s5, r0\n"
+//      "    lwu v1, -4(a0)\n"
+//      "    lwu t9, 36(v1)\n"
+//      "    jalr ra, t9\n"
+//      "    sll v0, ra, 0\n"
+//
+//      "    or v1, v0, r0\n"
+//      "    daddiu v1, v1, 15\n"
+//      "    and v1, s4, v1\n"
+//      "    daddu s5, s5, v1\n"
+//
+//      "L253:\n"
+//      "    lwu v1, 84(gp)\n"
+//      "    slt v1, s5, v1\n"
+//      "    bne v1, r0, L252\n"
+//      "    sll r0, r0, 0\n"
+//
+//      "    or v0, s7, r0\n"
+//      "    ld ra, 0(sp)\n"
+//      "    lq gp, 48(sp)\n"
+//      "    lq s5, 32(sp)\n"
+//      "    lq s4, 16(sp)\n"
+//      "    jr ra\n"
+//      "    daddiu sp, sp, 64";
+//  std::string type = "(function process symbol)";
+//  std::string expected =
+//      "(begin\n"
+//      "  (set!\n"
+//      "   v0-0\n"
+//      "   (if\n"
+//      "    (= (-> arg0 type) symbol)\n"
+//      "    (object-new arg0 arg1 (the-as int (+ (-> process size) (the-as uint arg3))))\n"
+//      "    (+ (the-as int arg0) 4)\n"
+//      "    )\n"
+//      "   )\n"
+//      "  (set! (-> (the-as process v0-0) name) arg2)\n"
+//      "  (set! (-> v0-0 status) (quote dead))\n"
+//      "  (set! (-> v0-0 pid) 0)\n"
+//      "  (set! (-> v0-0 pool) (quote #f))\n"
+//      "  (set! (-> v0-0 allocated-length) arg3)\n"
+//      "  (set! (-> v0-0 top-thread) (quote #f))\n"
+//      "  (set! (-> v0-0 main-thread) (quote #f))\n"
+//      "  (set! v1-5 (-> v0-0 stack))\n"
+//      "  (set! (-> v0-0 heap-cur) v1-5)\n"
+//      "  (set! (-> v0-0 heap-base) v1-5)\n"
+//      "  (set! (-> v0-0 heap-top) (&-> v0-0 stack (-> v0-0 allocated-length)))\n"
+//      "  (set! (-> v0-0 stack-frame-top) (-> v0-0 heap-top))\n"
+//      "  (set! (-> v0-0 stack-frame-top) (quote #f))\n"
+//      "  (set! (-> v0-0 state) (quote #f))\n"
+//      "  (set! (-> v0-0 next-state) (quote #f))\n"
+//      "  (set! (-> v0-0 entity) (quote #f))\n"
+//      "  (set! (-> v0-0 trans-hook) (quote #f))\n"
+//      "  (set! (-> v0-0 post-hook) (quote #f))\n"
+//      "  (set! (-> v0-0 event-hook) (quote #f))\n"
+//      "  (set! (-> v0-0 parent) (quote #f))\n"
+//      "  (set! (-> v0-0 brother) (quote #f))\n"
+//      "  (set! (-> v0-0 child) (quote #f))\n"
+//      "  (set! (-> v0-0 self) v0-0)\n"
+//      "  (set! (-> v0-0 ppointer) (&-> v0-0 self))\n"
+//      "  v0-0\n"
+//      "  )";
+//  test_with_expr(func, type, expected, false, "", {},
+//                 parse_hint_json("[\t\t[4, [\"s5\", \"basic\"]],\n"
+//                                 "\t\t[17, [\"s5\", \"int\"]]]"));
+//}

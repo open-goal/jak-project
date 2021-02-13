@@ -1134,6 +1134,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "min";
     case FixedOperatorKind::MAX:
       return "max";
+    case FixedOperatorKind::FABS:
+      return "fabs";
+    case FixedOperatorKind::FMIN:
+      return "fmin";
+    case FixedOperatorKind::FMAX:
+      return "fmax";
     case FixedOperatorKind::LOGAND:
       return "logand";
     case FixedOperatorKind::LOGIOR:

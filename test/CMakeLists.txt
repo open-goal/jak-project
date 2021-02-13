@@ -24,6 +24,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_gkernel_decomp.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_math_decomp.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 

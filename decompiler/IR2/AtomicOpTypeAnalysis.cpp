@@ -135,6 +135,10 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return m_args[0].get_type(input, env, dts);
     case Kind::GPR_TO_FPR: {
       const auto& in_type = input.get(get_arg(0).var().reg());
+      if (in_type.is_integer_constant(0)) {
+        // GOAL is smart enough to use binary 0b0 as floating point 0.
+        return TP_Type::make_from_ts("float");
+      }
       return in_type;
     }
     case Kind::FPR_TO_GPR:
@@ -146,7 +150,11 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::ABS_S:
     case Kind::NEG_S:
     case Kind::INT_TO_FLOAT:
+    case Kind::MIN_S:
+    case Kind::MAX_S:
       return TP_Type::make_from_ts("float");
+    case Kind::FLOAT_TO_INT:
+      return TP_Type::make_from_ts("int");
     case Kind::ADD:
     case Kind::SUB:
     case Kind::MUL_SIGNED:
@@ -423,6 +431,12 @@ TypeState SetVarOp::propagate_types_internal(const TypeState& input,
                                              const Env& env,
                                              DecompilerTypeSystem& dts) {
   TypeState result = input;
+  if (m_dst.reg().get_kind() == Reg::FPR && m_src.is_identity() && m_src.get_arg(0).is_int() &&
+      m_src.get_arg(0).get_int() == 0) {
+    // mtc fX, r0 should be a float type. GOAL was smart enough to do this.
+    result.get(m_dst.reg()) = TP_Type::make_from_ts("float");
+    return result;
+  }
   result.get(m_dst.reg()) = m_src.get_type(input, env, dts);
   return result;
 }

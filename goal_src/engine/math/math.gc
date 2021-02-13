@@ -43,26 +43,61 @@
   (- x (truncate x))
   )
 
-;; todo, rgba, xyzw, xyzwh
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; bitfield types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: verify these are in the right order.
+;; maybe used in timer-h for the color field of profile-frame?
+(deftype rgba (uint32)
+  ((r uint8 :offset 0)
+   (g uint8 :offset 8)
+   (b uint8 :offset 16)
+   (a uint8 :offset 24)
+   )
+  :flag-assert #x900000004
+  )
+
+;; TODO: fields
+(deftype xyzw (uint128)
+  ()
+  :flag-assert #x900000010
+  )
+
+;; TODO: fields
+(deftype xyzwh (uint128)
+  ()
+  :flag-assert #x900000010
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; utility functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun log2 ((x int))
-  "Straight out of Bit Twiddling Hacks graphics.stanford.edu"
-  (- (sar (the-as integer (the float x)) 23) 127)
+  "Straight out of Bit Twiddling Hacks graphics.stanford.edu.
+   This website is old enough that they possibly used this back
+   in 1999."
+  (- (sar (the-as int (the float x)) 23) 127)
   )
 
 (defun seek ((x float) (target float) (diff float))
   "Move x toward target by at most diff, with floats"
   (let ((err (- target x)))
-    ;; if we can get there all at once
-    (if (<= (fabs err) diff)
-      (return-from #f target)
+    (cond
+      ((>= diff (fabs err))
+       ;; can get there in one go
+       target
+       )
+      ((>= err 0)
+       ;; increase
+       (+ x diff)
+       )
+      (else
+       (- x diff)
+       )
       )
-
-    (if (>= err 0)
-      (+ x diff)
-      (- x diff)
-      )
-    )
+    ) 
   )
 
 (defun lerp ((minimum float) (maximum float) (amount float))
@@ -83,20 +118,22 @@
    )
 
 (defun lerp-clamp ((minimum float) (maximum float) (amount float))
-  "Interpolate between minimum and maximum.  Clamp output.
-  For some reason, the interpolate here is done in a less efficient way than lerp."
-  (if (<= amount 0.0)
-    (return-from #f minimum)
-    )
-
-  (if (>= amount 1.0)
-    (return-from #f maximum)
-    )
-  ;; lerp computes this part, but more efficiently
-  (+ (* (- 1.0 amount) minimum)
-     (* amount maximum)
+  "Interpolate between minimum and maximum, but saturate the amount to [0, 1]"
+  (cond
+    ((>= 0.0 amount)
+     minimum)
+    ((>= amount 1.0)
+     maximum)
+    (else
+     ;; the implementation in lerp uses fewer operations...
+     (+ (* (- 1.0 amount) minimum)
+        (* amount maximum)
+        )
      )
+    )
   )
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; integer utility
@@ -117,10 +154,74 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;; random vu
+;;;; random vu hardware
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; TODO
+(defun rand-vu-init ((seed float))
+  ;; TODO
+  0.0
+  )
+
+(rand-vu-init 1.418091058731079)
+
+;; rand-vu
+(defun rand-vu ()
+  0.0
+  )
+
+;; rand-vu-nostep
+(defun rand-vu-nostep ()
+  0.0
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; random vu utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun rand-vu-float-range ((minimum float) (maximum float))
+  "Get a random number in the given range.
+  TODO: is this inclusive? I think it's [min, max)"
+  (+ minimum (* (rand-vu) (- maximum minimum)))
+  )
+
+(defun rand-vu-percent? ((prob float))
+  "Get a boolean that's true with the given probability."
+  (>= prob (rand-vu))
+  )
+
+(defun rand-vu-int-range ((first int) (second int))
+  "Get an integer the given range. Inclusive of both?
+   It looks like they actually did this right??"
+   
+  (local-vars (float-in-range float))
+
+  ;; increment the larger of the range, so it is inclusive
+  ;; (we should have (max - min) + 1 buckets)
+  (if (< first second)
+      (set! second (+ second 1))
+      (set! first (+ first 1))
+      )
+  
+  ;; get a float in the range
+  (set! float-in-range
+   (rand-vu-float-range (the float first) (the float second))
+   )
+
+  ;; negatives round up and positives round down.
+  ;; but we want all to round consistently, so we subtract one from negatives.
+  (when (< float-in-range 0)
+   (set! float-in-range (+ -1.0 float-in-range))
+   )
+  ;; and back to integer.
+  (the int float-in-range)
+  )
+
+(defun rand-vu-int-count ((maximum int))
+  "Get an integer in [0, maximum)"
+  (the int (* (rand-vu) (the float maximum)))
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; terrible random integer generator

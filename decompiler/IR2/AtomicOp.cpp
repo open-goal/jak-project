@@ -698,6 +698,20 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
   }
 }
 
+bool condition_uses_float(IR2_Condition::Kind kind) {
+  switch (kind) {
+    case IR2_Condition::Kind::FLOAT_LESS_THAN:
+    case IR2_Condition::Kind::FLOAT_LEQ:
+    case IR2_Condition::Kind::FLOAT_NOT_EQUAL:
+    case IR2_Condition::Kind::FLOAT_EQUAL:
+    case IR2_Condition::Kind::FLOAT_GEQ:
+    case IR2_Condition::Kind::FLOAT_GREATER_THAN:
+      return true;
+    default:
+      return false;
+  }
+}
+
 IR2_Condition::IR2_Condition(Kind kind) : m_kind(kind) {
   assert(get_condition_num_args(m_kind) == 0);
 }

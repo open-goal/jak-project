@@ -133,6 +133,11 @@ class SimpleExpressionElement : public FormElement {
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects);
+  void update_from_stack_float_to_int(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
   void update_from_stack_copy_first_int_2(const Env& env,
                                           FixedOperatorKind kind,
                                           FormPool& pool,
