@@ -192,15 +192,9 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   return result;
 }
 
-std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
-                                                        const Variable& var,
-                                                        const Env&) {
-  // first, rewrite as normal.
-  auto default_result = rewrite(pool);
-
-  // try a few different ways to "naturally" rewrite this so the value of the form is the
-  // value in the given register.
-
+void rewrite_to_get_var(std::vector<FormElement*>& default_result,
+                        FormPool& pool,
+                        const Variable& var) {
   auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
   if (last_op_as_set && last_op_as_set->dst().reg() == var.reg()) {
     default_result.pop_back();
@@ -208,10 +202,17 @@ std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
       form->parent_form = nullptr;  // will get set later, this makes it obvious if I forget.
       default_result.push_back(form);
     }
-    return default_result;
   } else {
     default_result.push_back(pool.alloc_element<SimpleAtomElement>(SimpleAtom::make_var(var)));
-    return default_result;
   }
 }
+
+std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
+                                             FormPool& pool,
+                                             const Variable& var) {
+  auto default_result = stack.rewrite(pool);
+  rewrite_to_get_var(default_result, pool, var);
+  return default_result;
+}
+
 }  // namespace decompiler

@@ -1273,3 +1273,188 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPoolHeap) {
                  parse_hint_json("[\t\t[60, [\"v0\", \"int\"]],\n"
                                  "\t\t[61, [\"a0\", \"pointer\"], [\"v0\", \"dead-pool-heap\"]]]"));
 }
+
+TEST_F(FormRegressionTest, ExprMethod22DeadPoolHeap) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    lwu v1, 0(a1)\n"
+      "    beq s7, v1, L216\n"
+      "    sll r0, r0, 0\n"
+
+      "    lwu v1, 0(a1)\n"
+      "    lw v1, 68(v1)\n"
+      "    daddiu v1, v1, -4\n"
+      "    lw a0, process(s7)\n"
+      "    lhu a0, 8(a0)\n"
+      "    daddu v1, v1, a0\n"
+      "    lwu a0, 0(a1)\n"
+      "    daddu v0, v1, a0\n"
+      "    beq r0, r0, L217\n"
+      "    sll r0, r0, 0\n"
+
+      "L216:\n"
+      "    lwu v0, 60(a0)\n"
+
+      "L217:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function dead-pool-heap dead-pool-heap-rec pointer)";
+  std::string expected =
+      "(if\n"
+      "  (-> arg1 process)\n"
+      "  (+\n"
+      "   (+ (+ (-> arg1 process allocated-length) -4) (the-as int (-> process size)))\n"
+      "   (the-as int (-> arg1 process))\n"
+      "   )\n"
+      "  (-> arg0 heap base)\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, ExprMethod21DeadPoolHeap) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "L209:\n"
+      "    lwu v1, 0(a1)\n"
+      "    beq s7, v1, L212\n"
+      "    sll r0, r0, 0\n"
+
+      "    lwu v1, 0(a1)\n"
+      "    lw a2, process(s7)\n"
+      "    lhu a2, 8(a2)\n"
+      "    daddu v1, v1, a2\n"
+      "    lwu a2, 0(a1)\n"
+      "    lw a2, 68(a2)\n"
+      "    daddu v1, v1, a2\n"
+      "    lwu a2, 8(a1)\n"
+      "    beq s7, a2, L210\n"
+      "    sll r0, r0, 0\n"
+
+      "    lwu a0, 8(a1)\n"
+      "    lwu a0, 0(a0)\n"
+      "    dsubu v0, a0, v1\n"
+      "    beq r0, r0, L211\n"
+      "    sll r0, r0, 0\n"
+
+      "L210:\n"
+      "    lwu a0, 64(a0)\n"
+      "    daddiu v1, v1, 4\n"
+      "    dsubu v0, a0, v1\n"
+
+      "L211:\n"
+      "    beq r0, r0, L214\n"
+      "    sll r0, r0, 0\n"
+
+      "L212:\n"
+      "    lwu v1, 8(a1)\n"
+      "    beq s7, v1, L213\n"
+      "    sll r0, r0, 0\n"
+
+      "    lwu v1, 8(a1)\n"
+      "    lwu v1, 0(v1)\n"
+      "    lwu a0, 60(a0)\n"
+      "    daddiu a0, a0, 4\n"
+      "    dsubu v0, v1, a0\n"
+      "    beq r0, r0, L214\n"
+      "    sll r0, r0, 0\n"
+
+      "L213:\n"
+      "    lwu v1, 64(a0)\n"
+      "    lwu a0, 60(a0)\n"
+      "    dsubu v0, v1, a0\n"
+
+      "L214:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function dead-pool-heap dead-pool-heap-rec int)";
+  std::string expected =
+      "(cond\n"
+      "  ((-> arg1 process)\n"
+      "   (set!\n"
+      "    v1-3\n"
+      "    (+\n"
+      "     (+ (-> arg1 process) (the-as uint (-> process size)))\n"
+      "     (the-as uint (-> arg1 process allocated-length))\n"
+      "     )\n"
+      "    )\n"
+      "   (if\n"
+      "    (-> arg1 next)\n"
+      "    (- (-> arg1 next process) (the-as uint v1-3))\n"
+      "    (- (-> arg0 heap top) (the-as uint (+ v1-3 (the-as uint 4))))\n"
+      "    )\n"
+      "   )\n"
+      "  (else\n"
+      "   (if\n"
+      "    (-> arg1 next)\n"
+      "    (-\n"
+      "     (-> arg1 next process)\n"
+      "     (the-as uint (+ (-> arg0 heap base) (the-as uint 4)))\n"
+      "     )\n"
+      "    (- (-> arg0 heap top) (the-as uint (-> arg0 heap base)))\n"
+      "    )\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {},
+                 parse_hint_json("[\t\t[5, [\"v1\", \"pointer\"]],\n"
+                                 "\t\t[13, [\"a0\", \"pointer\"]],\n"
+                                 "\t\t[25, [\"v1\", \"pointer\"]]]"));
+}
+
+TEST_F(FormRegressionTest, ExprMethod23DeadPoolHeap) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s4, 16(sp)\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+
+      "    or s5, a0, r0\n"
+      "    or gp, a1, r0\n"
+      "    beq r0, r0, L207\n"
+      "    sll r0, r0, 0\n"
+
+      "L206:\n"
+      "    lwu gp, 8(gp)\n"
+
+      "L207:\n"
+      "    lwu v1, 8(gp)\n"
+      "    beql s7, v1, L208\n"
+
+      "    or s4, v1, r0\n"
+
+      "    daddiu s4, s7, 8\n"
+      "    or a0, s5, r0\n"
+      "    lwu v1, -4(a0)\n"
+      "    lwu t9, 100(v1)\n"
+      "    or a1, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    movn s4, s7, v1\n"
+
+      "L208:\n"
+      "    bne s7, s4, L206\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    lq s4, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64";
+  std::string type = "(function dead-pool-heap dead-pool-heap-rec dead-pool-heap-rec)";
+  std::string expected =
+      "(if\n"
+      "  (-> arg1 process)\n"
+      "  (+\n"
+      "   (+ (+ (-> arg1 process allocated-length) -4) (the-as int (-> process size)))\n"
+      "   (the-as int (-> arg1 process))\n"
+      "   )\n"
+      "  (-> arg0 heap base)\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}

@@ -971,29 +971,26 @@ void TypeOfElement::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 
 ConditionalMoveFalseElement::ConditionalMoveFalseElement(Variable _dest,
-                                                         Form* _source,
+                                                         Variable _old_value,
+                                                         Variable _source,
                                                          bool _on_zero)
-    : dest(_dest), source(_source), on_zero(_on_zero) {
-  source->parent_element = this;
-}
+    : dest(_dest), old_value(_old_value), source(_source), on_zero(_on_zero) {}
 
 goos::Object ConditionalMoveFalseElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list(on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero", dest.to_form(env),
-                                  source->to_form(env));
+                                  source.to_form(env), old_value.to_form(env));
 }
 
 void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
-  source->apply(f);
 }
 
-void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>& f) {
-  source->apply_form(f);
-}
+void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>&) {}
 
 void ConditionalMoveFalseElement::collect_vars(VariableSet& vars) const {
   vars.insert(dest);
-  source->collect_vars(vars);
+  vars.insert(old_value);
+  vars.insert(source);
 }
 
 void ConditionalMoveFalseElement::get_modified_regs(RegSet& regs) const {

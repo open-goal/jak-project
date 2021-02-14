@@ -33,3 +33,5 @@
 - Array access recognized in more cases with power of two stride.
 - Support for getting the address of something in an inline array with a stride that's not 1 or a power of 2.
 - Fixed a bug in unscrambling coloring moves which sometimes caused the wrong values to be used.
+- Improved nested cond rewriting to eliminate temporaries in more cases when used as a value
+- Support `zero?` and `nonzero?` which are evaluated to GOAL booleans.

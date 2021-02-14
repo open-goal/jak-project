@@ -35,7 +35,6 @@ class FormStack {
   Form* unsafe_peek(Register reg);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);
-  std::vector<FormElement*> rewrite_to_get_var(FormPool& pool, const Variable& var, const Env& env);
   std::string print(const Env& env);
 
  private:
@@ -55,4 +54,9 @@ class FormStack {
   };
   std::vector<StackEntry> m_stack;
 };
+
+void rewrite_to_get_var(std::vector<FormElement*>& default_result,
+                        FormPool& pool,
+                        const Variable& var);
+std::vector<FormElement*> rewrite_to_get_var(FormStack& stack, FormPool& pool, const Variable& var);
 }  // namespace decompiler
