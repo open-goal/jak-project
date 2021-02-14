@@ -548,7 +548,7 @@ std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
       f["name"] = fname;
       f["type"] = func.type.print();
       f["segment"] = seg;
-      f["warnings"] = func.warnings;
+      f["warnings"] = func.warnings.get_warning_text(false);
       f["parent_object"] = obj_file_name;
       std::vector<nlohmann::json::object_t> ops;
 
@@ -601,8 +601,8 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
   result += "; .function " + func.guessed_name.to_string() + " " + extra_name + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
-  if (!func.warnings.empty()) {
-    result += ";;Warnings:\n" + func.warnings + "\n";
+  if (func.warnings.has_warnings()) {
+    result += ";; Warnings:\n" + func.warnings.get_warning_text(true) + "\n";
   }
 
   // print each instruction in the function.

@@ -75,9 +75,11 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       auto& instr = instructions.at(idx);
       // storing stack pointer on the stack is done by some ASM kernel functions
       if (instr.kind == InstructionKind::SW && instr.get_src(0).get_reg() == make_gpr(Reg::SP)) {
-        printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
-               guessed_name.to_string().c_str(), instr.to_string(file.labels).c_str());
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
+        lg::warn(
+            "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
+            "in config!",
+            guessed_name.to_string(), instr.to_string(file.labels));
+        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -98,9 +100,11 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
       // support
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
-        lg::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
-                 guessed_name.to_string(), instr.to_string(file.labels));
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
+        lg::warn(
+            "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
+            "in config!",
+            guessed_name.to_string(), instr.to_string(file.labels));
+        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -136,11 +140,9 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // sometimes stack memory is zeroed immediately after gpr backups, and this fools the previous
       // check.
       if (store_reg == make_gpr(Reg::R0)) {
-        printf(
-            "[Warning] %s Stack Zeroing Detected in Function::analyze_prologue, prologue may be "
-            "wrong\n",
-            guessed_name.to_string().c_str());
-        warnings += ";; Stack Zeroing Detected, prologue may be wrong\n";
+        lg::warn("Function {} has stack zeroing, manually check prologue!",
+                 guessed_name.to_string());
+        warnings.general_warning("Stack zeroing, check prologue!");
         expect_nothing_after_gprs = true;
         break;
       }
@@ -149,10 +151,8 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // avoid false positives here!
       if (store_reg == make_gpr(Reg::A0)) {
         suspected_asm = true;
-        printf(
-            "[Warning] %s Suspected ASM function because register $a0 was stored on the stack!\n",
-            guessed_name.to_string().c_str());
-        warnings += ";; a0 on stack detected, flagging as asm\n";
+        lg::warn("Function {} stores a0 on the stack, flagging as asm!", guessed_name.to_string());
+        warnings.general_warning("Flagged as asm due to storing a0 on stack");
         return;
       }
 
@@ -168,11 +168,10 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         assert(this_offset == prologue.gpr_backup_offset + 16 * i);
         if (this_reg != get_expected_gpr_backup(i, n_gpr_backups)) {
           suspected_asm = true;
-          printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
-                 guessed_name.to_string().c_str(),
-                 instructions.at(idx + i).to_string(file.labels).c_str());
-          warnings += ";; Suspected asm function due to stack store: " +
-                      instructions.at(idx + i).to_string(file.labels) + "\n";
+          lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
+                   instructions.at(idx + i).to_string(file.labels), guessed_name.to_string());
+          warnings.general_warning("Flagged as asm due to strange stack store: {}",
+                                   instructions.at(idx + i).to_string(file.labels));
           return;
         }
       }
@@ -198,11 +197,10 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           assert(this_offset == prologue.fpr_backup_offset + 4 * i);
           if (this_reg != get_expected_fpr_backup(i, n_fpr_backups)) {
             suspected_asm = true;
-            printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
-                   guessed_name.to_string().c_str(),
-                   instructions.at(idx + i).to_string(file.labels).c_str());
-            warnings += ";; Suspected asm function due to stack store: " +
-                        instructions.at(idx + i).to_string(file.labels) + "\n";
+            lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
+                     instructions.at(idx + i).to_string(file.labels), guessed_name.to_string());
+            warnings.general_warning("Flagged as asm due to strange stack store: {}",
+                                     instructions.at(idx + i).to_string(file.labels));
             return;
           }
         }
@@ -358,11 +356,9 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
       idx--;
       assert(is_jr_ra(instructions.at(idx)));
       idx--;
-      printf(
-          "[Warning] %s Double Return Epilogue Hack!  This is probably an ASM function in "
-          "disguise\n",
-          guessed_name.to_string().c_str());
-      warnings += ";; Double Return Epilogue - this is probably an ASM function\n";
+      lg::warn("Function {} has a double return and is being flagged as asm.",
+               guessed_name.to_string());
+      warnings.general_warning("Flagged as asm due to double return");
     }
     // delay slot should be daddiu sp, sp, offset
     assert(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),
