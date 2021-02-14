@@ -157,12 +157,12 @@ Form* FormStack::unsafe_peek(Register reg) {
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      return nullptr;
+      throw std::runtime_error("Failed to unsafe peek 1");
     }
 
     entry.source->get_modified_regs(modified);
     if (modified.find(reg) != modified.end()) {
-      return nullptr;
+      throw std::runtime_error("Failed to unsafe peek 2");
     }
 
     if (entry.destination.has_value() && entry.destination->reg() == reg) {

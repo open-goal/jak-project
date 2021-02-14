@@ -35,3 +35,4 @@
 - Fixed a bug in unscrambling coloring moves which sometimes caused the wrong values to be used.
 - Improved nested cond rewriting to eliminate temporaries in more cases when used as a value
 - Support `zero?` and `nonzero?` which are evaluated to GOAL booleans.
+- Fix bug where method calls that "passed through" `a0` from the caller were not recognized.

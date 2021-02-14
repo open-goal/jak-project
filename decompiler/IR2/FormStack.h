@@ -12,7 +12,7 @@ class Form;
  */
 class FormStack {
  public:
-  FormStack() = default;
+  explicit FormStack(bool is_root_stack) : m_is_root_stack(is_root_stack) {}
   void push_value_to_reg(Variable var,
                          Form* value,
                          bool sequence_point,
@@ -36,6 +36,7 @@ class FormStack {
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);
   std::string print(const Env& env);
+  bool is_root() const { return m_is_root_stack; }
 
  private:
   struct StackEntry {
@@ -53,6 +54,7 @@ class FormStack {
     std::string print(const Env& env) const;
   };
   std::vector<StackEntry> m_stack;
+  bool m_is_root_stack = false;
 };
 
 void rewrite_to_get_var(std::vector<FormElement*>& default_result,

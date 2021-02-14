@@ -989,6 +989,16 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
 
     auto unsafe = stack.unsafe_peek(Register(Reg::GPR, Reg::A0));
+    if (!unsafe) {
+      if (!stack.is_root()) {
+        fmt::print("STACK:\n{}\n\n", stack.print(env));
+        throw std::runtime_error("Peek got to back and not root stack");
+      }
+      // failed to peek by reaching the end AND root stack, means we just take the function
+      // argument.
+      assert(false);  // want to test this before enabling.
+      unsafe = mr.maps.forms.at(0);
+    }
     if (unsafe) {
       if (!unsafe->try_as_single_element()) {
         throw std::runtime_error(
@@ -1194,7 +1204,7 @@ void DerefElement::update_from_stack(const Env& env,
 
 void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   for (auto form : {condition, body}) {
-    FormStack temp_stack;
+    FormStack temp_stack(false);
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
@@ -1210,7 +1220,7 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   for (auto form : {condition, body}) {
-    FormStack temp_stack;
+    FormStack temp_stack(false);
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
@@ -1233,7 +1243,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
   }
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
-      FormStack temp_stack;
+      FormStack temp_stack(false);
       for (auto& elt : form->elts()) {
         elt->push_to_stack(env, pool, temp_stack);
       }
@@ -1283,7 +1293,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   // process conditions and bodies
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
-      FormStack temp_stack;
+      FormStack temp_stack(false);
       for (auto& elt : form->elts()) {
         elt->push_to_stack(env, pool, temp_stack);
       }
@@ -1299,7 +1309,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   }
 
   // process else.
-  FormStack temp_stack;
+  FormStack temp_stack(false);
   for (auto& elt : else_ir->elts()) {
     elt->push_to_stack(env, pool, temp_stack);
   }
@@ -1394,7 +1404,7 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
     for (int i = 0; i < int(entries.size()); i++) {
       auto& entry = entries.at(i);
-      FormStack temp_stack;
+      FormStack temp_stack(false);
       for (auto& elt : entry.condition->elts()) {
         elt->push_to_stack(env, pool, temp_stack);
       }
@@ -1440,7 +1450,7 @@ void ShortCircuitElement::update_from_stack(const Env& env,
   }
   for (int i = 0; i < int(entries.size()); i++) {
     auto& entry = entries.at(i);
-    FormStack temp_stack;
+    FormStack temp_stack(false);
     for (auto& elt : entry.condition->elts()) {
       elt->push_to_stack(env, pool, temp_stack);
     }
@@ -1663,7 +1673,7 @@ void ConditionElement::update_from_stack(const Env& env,
 }
 
 void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  FormStack temp_stack;
+  FormStack temp_stack(false);
   for (auto& elt : return_code->elts()) {
     elt->push_to_stack(env, pool, temp_stack);
   }

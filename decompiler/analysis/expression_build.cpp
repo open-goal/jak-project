@@ -61,7 +61,7 @@ bool convert_to_expressions(Form* top_level_form,
   //  fmt::print("Before anything:\n{}\n",
   //  pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
   try {
-    FormStack stack;
+    FormStack stack(true);
     for (auto& entry : top_level_form->elts()) {
       //      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
       entry->push_to_stack(f.ir2.env, pool, stack);
