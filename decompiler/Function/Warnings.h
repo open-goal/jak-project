@@ -30,6 +30,11 @@ class DecompWarnings {
   }
 
   template <typename... Args>
+  void bad_vf_dependency(const std::string& str, Args&&... args) {
+    warning(Warning::Kind::BAD_VF_DEPENDENCY, str, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
   void info(const std::string& str, Args&&... args) {
     warning(Warning::Kind::INFO, str, std::forward<Args>(args)...);
   }
@@ -49,7 +54,14 @@ class DecompWarnings {
 
  private:
   struct Warning {
-    enum class Kind { GENERAL, EXPR_BUILD_FAILED, CFG_FAILED, TYPE_PROP_FAILED, INFO };
+    enum class Kind {
+      GENERAL,
+      EXPR_BUILD_FAILED,
+      CFG_FAILED,
+      TYPE_PROP_FAILED,
+      INFO,
+      BAD_VF_DEPENDENCY
+    };
     Warning(Kind kind, std::string text) : warning_kind(kind), message(std::move(text)) {}
 
     std::string print() const {
@@ -62,6 +74,8 @@ class DecompWarnings {
           return fmt::format("WARN: CFG building failed: {}\n", message);
         case Kind::TYPE_PROP_FAILED:
           return fmt::format("WARN: Type Propagation failed: {}\n", message);
+        case Kind::BAD_VF_DEPENDENCY:
+          return fmt::format("WARN: Bad vector register dependency: {}\n", message);
         case Kind::INFO:
           return fmt::format("INFO: {}\n", message);
         default:

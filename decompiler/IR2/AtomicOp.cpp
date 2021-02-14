@@ -422,7 +422,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     auto& dst = m_instr.get_dst(0);
     if (dst.is_reg()) {
       auto reg = dst.get_reg();
-      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
         m_dst = Variable(VariableMode::WRITE, reg, my_idx, true);
       }
     }
@@ -433,7 +433,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     auto& src = m_instr.get_src(i);
     if (src.is_reg()) {
       auto reg = src.get_reg();
-      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
         m_src[i] = Variable(VariableMode::READ, reg, my_idx, true);
       }
     }

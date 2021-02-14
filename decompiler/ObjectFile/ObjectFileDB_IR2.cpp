@@ -311,6 +311,14 @@ void ObjectFileDB::ir2_register_usage_pass() {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       analyzed_funcs++;
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
+
+      auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
+      for (auto x : block_0_start) {
+        if (x.get_kind() == Reg::VF && x.get_vf() != 0) {
+          lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
+          func.warnings.bad_vf_dependency("{}", x.to_string());
+        }
+      }
     }
   });
 
