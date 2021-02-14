@@ -26,9 +26,9 @@ class TP_Type {
     STRING_CONSTANT,            // a string that's part of the string pool
     FORMAT_STRING,              // a string with a given number of format arguments
     INTEGER_CONSTANT,           // a constant integer.
-    INTEGER_CONSTANT_PLUS_VAR,  // constant + variable. used in stuff like (&-> obj inline-val-arr
-                                // x)
-    DYNAMIC_METHOD_ACCESS,      // partial access into a
+    INTEGER_CONSTANT_PLUS_VAR,  // constant + variable. for dynamic addr of
+    INTEGER_CONSTANT_PLUS_VAR_MULT,  // like var + 100 + 12 * var2
+    DYNAMIC_METHOD_ACCESS,           // partial access into a
     METHOD,
     INVALID
   } kind = Kind::UNINITIALIZED;
@@ -130,6 +130,17 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_from_integer_constant_plus_product(int64_t constant,
+                                                         const TypeSpec& var_type,
+                                                         int64_t multiplier) {
+    TP_Type result;
+    result.kind = Kind::INTEGER_CONSTANT_PLUS_VAR_MULT;
+    result.m_int = constant;
+    result.m_extra_multiplier = multiplier;
+    result.m_ts = var_type;
+    return result;
+  }
+
   static TP_Type make_from_product(int64_t multiplier, bool is_signed) {
     TP_Type result;
     result.kind = Kind::PRODUCT_WITH_CONSTANT;
@@ -189,10 +200,22 @@ class TP_Type {
     return m_int;
   }
 
+  u64 get_add_int_constant() const {
+    assert(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
+    return m_int;
+  }
+
+  u64 get_mult_int_constant() const {
+    assert(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
+    return m_extra_multiplier;
+  }
+
  private:
   TypeSpec m_ts;
   std::string m_str;
   int64_t m_int = 0;
+
+  int64_t m_extra_multiplier = 0;
 };
 
 struct TypeState {

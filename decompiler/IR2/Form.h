@@ -719,9 +719,10 @@ class TypeOfElement : public FormElement {
 class ConditionalMoveFalseElement : public FormElement {
  public:
   Variable dest;
-  Form* source = nullptr;
+  Variable old_value;
+  Variable source;
   bool on_zero = false;
-  ConditionalMoveFalseElement(Variable _dest, Form* _source, bool _on_zero);
+  ConditionalMoveFalseElement(Variable _dest, Variable _old_value, Variable _source, bool _on_zero);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;

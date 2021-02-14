@@ -272,6 +272,11 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
           return TP_Type::make_from_ts("int");
         }
 
+      case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+        // a bit lazy here, but I don't think you can ever merge these.
+        *changed = true;
+        return TP_Type::make_from_ts("int");
+
       case TP_Type::Kind::METHOD:
         // never allow this to remain method
         *changed = true;

@@ -1266,14 +1266,18 @@ void CallOp::collect_vars(VariableSet& vars) const {
 // ConditionalMoveFalseOp
 /////////////////////////////
 
-ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_src(src), m_on_zero(on_zero) {}
+ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst,
+                                               Variable src,
+                                               Variable old_value,
+                                               bool on_zero,
+                                               int my_idx)
+    : AtomicOp(my_idx), m_dst(dst), m_src(src), m_old_value(old_value), m_on_zero(on_zero) {}
 
 goos::Object ConditionalMoveFalseOp::to_form(const std::vector<DecompilerLabel>& labels,
                                              const Env& env) const {
   (void)labels;
   return pretty_print::build_list(m_on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
-                                  m_dst.to_form(env), m_src.to_form(env));
+                                  m_dst.to_form(env), m_src.to_form(env), m_old_value.to_form(env));
 }
 
 bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
@@ -1283,7 +1287,8 @@ bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
 
   auto po = dynamic_cast<const ConditionalMoveFalseOp*>(&other);
   assert(po);
-  return m_dst == po->m_dst && m_src == po->m_src && m_on_zero == po->m_on_zero;
+  return m_dst == po->m_dst && m_src == po->m_src && m_on_zero == po->m_on_zero &&
+         m_old_value == po->m_old_value;
 }
 
 bool ConditionalMoveFalseOp::is_sequence_point() const {
@@ -1297,11 +1302,13 @@ Variable ConditionalMoveFalseOp::get_set_destination() const {
 void ConditionalMoveFalseOp::update_register_info() {
   m_write_regs.push_back(m_dst.reg());
   m_read_regs.push_back(m_src.reg());
+  m_read_regs.push_back(m_old_value.reg());
 }
 
 void ConditionalMoveFalseOp::collect_vars(VariableSet& vars) const {
   vars.insert(m_dst);
   vars.insert(m_src);
+  vars.insert(m_old_value);
 }
 
 bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {

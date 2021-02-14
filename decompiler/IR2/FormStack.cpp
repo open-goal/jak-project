@@ -75,8 +75,9 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
 Form* FormStack::pop_reg(const Variable& var,
                          const RegSet& barrier,
                          const Env& env,
-                         bool allow_side_effects) {
-  return pop_reg(var.reg(), barrier, env, allow_side_effects);
+                         bool allow_side_effects,
+                         int begin_idx) {
+  return pop_reg(var.reg(), barrier, env, allow_side_effects, begin_idx);
 }
 
 namespace {
@@ -91,10 +92,15 @@ bool nonempty_intersection(const RegSet& a, const RegSet& b) {
 Form* FormStack::pop_reg(Register reg,
                          const RegSet& barrier,
                          const Env& env,
-                         bool allow_side_effects) {
+                         bool allow_side_effects,
+                         int begin_idx) {
   (void)env;  // keep this for easy debugging.
   RegSet modified;
-  for (size_t i = m_stack.size(); i-- > 0;) {
+  size_t begin = m_stack.size();
+  if (begin_idx >= 0) {
+    begin = begin_idx;
+  }
+  for (size_t i = begin; i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
       if (entry.destination.has_value() && entry.destination->reg() == reg) {
@@ -111,7 +117,7 @@ Form* FormStack::pop_reg(Register reg,
         assert(entry.source);
         if (entry.non_seq_source.has_value()) {
           assert(entry.sequence_point == false);
-          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects);
+          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects, i);
           if (result) {
             return result;
           }
@@ -151,12 +157,12 @@ Form* FormStack::unsafe_peek(Register reg) {
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
-      return nullptr;
+      throw std::runtime_error("Failed to unsafe peek 1");
     }
 
     entry.source->get_modified_regs(modified);
     if (modified.find(reg) != modified.end()) {
-      return nullptr;
+      throw std::runtime_error("Failed to unsafe peek 2");
     }
 
     if (entry.destination.has_value() && entry.destination->reg() == reg) {
@@ -186,15 +192,9 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   return result;
 }
 
-std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
-                                                        const Variable& var,
-                                                        const Env&) {
-  // first, rewrite as normal.
-  auto default_result = rewrite(pool);
-
-  // try a few different ways to "naturally" rewrite this so the value of the form is the
-  // value in the given register.
-
+void rewrite_to_get_var(std::vector<FormElement*>& default_result,
+                        FormPool& pool,
+                        const Variable& var) {
   auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
   if (last_op_as_set && last_op_as_set->dst().reg() == var.reg()) {
     default_result.pop_back();
@@ -202,10 +202,17 @@ std::vector<FormElement*> FormStack::rewrite_to_get_var(FormPool& pool,
       form->parent_form = nullptr;  // will get set later, this makes it obvious if I forget.
       default_result.push_back(form);
     }
-    return default_result;
   } else {
     default_result.push_back(pool.alloc_element<SimpleAtomElement>(SimpleAtom::make_var(var)));
-    return default_result;
   }
 }
+
+std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
+                                             FormPool& pool,
+                                             const Variable& var) {
+  auto default_result = stack.rewrite(pool);
+  rewrite_to_get_var(default_result, pool, var);
+  return default_result;
+}
+
 }  // namespace decompiler

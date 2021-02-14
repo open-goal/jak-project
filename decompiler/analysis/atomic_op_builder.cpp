@@ -603,9 +603,9 @@ std::unique_ptr<AtomicOp> convert_sd_1(const Instruction& i0, int idx) {
 // movn or movz
 std::unique_ptr<AtomicOp> convert_cmov_1(const Instruction& i0, int idx) {
   if (i0.get_src(0).is_reg(rs7())) {
-    return std::make_unique<ConditionalMoveFalseOp>(make_dst_var(i0, idx),
-                                                    make_src_var(i0.get_src(1).get_reg(), idx),
-                                                    i0.kind == InstructionKind::MOVZ, idx);
+    return std::make_unique<ConditionalMoveFalseOp>(
+        make_dst_var(i0, idx), make_src_var(i0.get_src(1).get_reg(), idx),
+        make_src_var(i0.get_dst(0).get_reg(), idx), i0.kind == InstructionKind::MOVZ, idx);
   } else {
     return nullptr;
   }

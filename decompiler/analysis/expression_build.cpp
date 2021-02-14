@@ -61,7 +61,7 @@ bool convert_to_expressions(Form* top_level_form,
   //  fmt::print("Before anything:\n{}\n",
   //  pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
   try {
-    FormStack stack;
+    FormStack stack(true);
     for (auto& entry : top_level_form->elts()) {
       //      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
       entry->push_to_stack(f.ir2.env, pool, stack);
@@ -70,7 +70,7 @@ bool convert_to_expressions(Form* top_level_form,
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
       auto return_var = f.ir2.atomic_ops->end_op().return_var();
-      new_entries = stack.rewrite_to_get_var(pool, return_var, f.ir2.env);
+      new_entries = rewrite_to_get_var(stack, pool, return_var);
       auto reg_return_type =
           f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(return_var.reg());
       if (!dts.ts.typecheck(f.type.last_arg(), reg_return_type.typespec(), "", false, false)) {

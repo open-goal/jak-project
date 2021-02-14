@@ -611,7 +611,7 @@ class CallOp : public AtomicOp {
  */
 class ConditionalMoveFalseOp : public AtomicOp {
  public:
-  ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx);
+  ConditionalMoveFalseOp(Variable dst, Variable src, Variable old_value, bool on_zero, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
@@ -624,7 +624,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   void collect_vars(VariableSet& vars) const override;
 
  private:
-  Variable m_dst, m_src;
+  Variable m_dst, m_src, m_old_value;
   bool m_on_zero;
 };
 

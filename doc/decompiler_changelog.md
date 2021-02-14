@@ -24,3 +24,15 @@
 - Some support for float -> integer conversions, but it is not 100% yet.
 - Eliminate inserted coloring moves for function arguments that use `mtc1`.
 - Support for `>=` for signed numbers.
+
+## Version 4
+- Fix bug in decoding of `vdiv`, `vsqrt`, and `vrsqrt` instructions
+- Support for virtual method calls (may not recognize 100% of cases yet)
+- Support for "weird" new calls
+- Fixed a few "update from stack NYI" errors
+- Array access recognized in more cases with power of two stride.
+- Support for getting the address of something in an inline array with a stride that's not 1 or a power of 2.
+- Fixed a bug in unscrambling coloring moves which sometimes caused the wrong values to be used.
+- Improved nested cond rewriting to eliminate temporaries in more cases when used as a value
+- Support `zero?` and `nonzero?` which are evaluated to GOAL booleans.
+- Fix bug where method calls that "passed through" `a0` from the caller were not recognized.
