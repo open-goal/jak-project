@@ -530,8 +530,8 @@ TEST(DecompilerAtomicOpBuilder, MINS) {
 }
 
 TEST(DecompilerAtomicOpBuilder, MOVN) {
-  test_case(assembly_from_list({"movn a1, s7, a2"}), {"(cmove-#f-nonzero a1 a2)"}, {{"a1"}},
-            {{"a2"}}, {{}});
+  test_case(assembly_from_list({"movn a1, s7, a2"}), {"(cmove-#f-nonzero a1 a2 a1)"}, {{"a1"}},
+            {{"a2", "a1"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, MOVS) {
@@ -539,8 +539,8 @@ TEST(DecompilerAtomicOpBuilder, MOVS) {
 }
 
 TEST(DecompilerAtomicOpBuilder, MOVZ) {
-  test_case(assembly_from_list({"movz a1, s7, a2"}), {"(cmove-#f-zero a1 a2)"}, {{"a1"}}, {{"a2"}},
-            {{}});
+  test_case(assembly_from_list({"movz a1, s7, a2"}), {"(cmove-#f-zero a1 a2 a1)"}, {{"a1"}},
+            {{"a2", "a1"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, MTC1) {

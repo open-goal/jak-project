@@ -339,6 +339,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         for (auto& x : rd.tokens) {
           tokens.push_back(to_token(x));
         }
+
         auto load =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);
@@ -414,9 +415,7 @@ FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
 }
 
 FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) const {
-  auto source =
-      pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(m_src));
-  return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, source, m_on_zero);
+  return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, m_old_value, m_src, m_on_zero);
 }
 
 FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
