@@ -421,7 +421,8 @@ struct VectorFloatRegister {
     // {fmt} formats negative 0 as "-0.000", just going to flip any negative zeros to positives as I
     // don't think is an OpenGOAL issue
     // Additionally, GOAL doesn't have -/+ Inf it seems, so replace with NaN. -nan is also just NaN
-    return std::regex_replace(std::regex_replace(answer, std::regex("-0.0000"), "0.0000"), std::regex("nan|inf|-nan|-inf"), "NaN");
+    return std::regex_replace(std::regex_replace(answer, std::regex("-0.0000"), "0.0000"),
+                              std::regex("nan|inf|-nan|-inf"), "NaN");
   }
 
   std::string toGOALFormat(float val) {
@@ -429,7 +430,8 @@ struct VectorFloatRegister {
     // {fmt} formats negative 0 as "-0.000", just going to flip any negative zeros to positives as I
     // don't think is an OpenGOAL issue
     // Additionally, GOAL doesn't have -/+ Inf it seems, so replace with NaN
-    return std::regex_replace(std::regex_replace(answer, std::regex("-0.0000"), "0.0000"), std::regex("nan|inf|-nan|-inf"), "NaN");
+    return std::regex_replace(std::regex_replace(answer, std::regex("-0.0000"), "0.0000"),
+                              std::regex("nan|inf|-nan|-inf"), "NaN");
   }
 };
 
@@ -645,7 +647,7 @@ class VectorFloatParameterizedTestFixtureWithRunner_SingleOperand
   std::string templateFile = "test-vector-math-1-operand.template.gc";
 };
 
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_SingleOperand, VF_ABS_DEST) {
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner_SingleOperand, VF_ABS_DEST_Draft) {
   VectorFloatTestCase_SingleOperand testCase = GetParam();
   testCase.operation = [](float x) { return fabs(x); };
 
@@ -898,4 +900,3 @@ TEST_P(VectorFloatParameterizedTestFixtureWithRunner_OneOperandQuotient, VF_SQRT
 INSTANTIATE_TEST_SUITE_P(WithGameTests_VectorFloatTests,
                          VectorFloatParameterizedTestFixtureWithRunner_OneOperandQuotient,
                          ::testing::ValuesIn(vectorMathCaseGen_OneOperandQuotient()));
-

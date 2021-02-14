@@ -251,7 +251,7 @@ class Compiler {
                                Env* env,
                                std::vector<std::pair<std::string, RegVal*>> args);
   u8 ftf_fsf_to_blend_mask(u8 val);
-	emitter::Register::VF_ELEMENT ftf_fsf_to_vector_element(u8 val);
+  emitter::Register::VF_ELEMENT ftf_fsf_to_vector_element(u8 val);
 
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
