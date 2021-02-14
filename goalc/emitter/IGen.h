@@ -2312,11 +2312,6 @@ class IGen {
     return instr;
   }
 
-  // TODO - I believe there is an encoding problem in the decompiler output for these
-  // For example, the decompiler will spit out something like
-  // vdivx Q v00, v01
-  // But the instruction is supposed to have the fsf/ftf fields set, specifying _which_ of the four
-  // floating points should be operated on vdiv Q v00x, v01y
   static Instruction div_vf(Register dst, Register src1, Register src2) {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
