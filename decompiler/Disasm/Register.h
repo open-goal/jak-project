@@ -5,9 +5,6 @@
  * Representation of an EE register.
  */
 
-#ifndef NEXT_REGISTER_H
-#define NEXT_REGISTER_H
-
 #include <cstdint>
 #include <string>
 
@@ -20,9 +17,10 @@ enum RegisterKind {
   VF = 2,   // VU0 Floating point vector registers from EE, just called vf0 - vf31
   VI =
       3,  // VU0 Integer registers from EE, the first 16 are vi00 - vi15, the rest are control regs.
-  COP0 = 4,  // EE COP0 Control Registers: full of fancy names (there are 32 of them)
-  PCR = 5,   // Performance Counter registers (PCR0, PCR1)
-  MAX_KIND = 6
+  COP0 = 4,                // EE COP0 Control Registers: full of fancy names (there are 32 of them)
+  PCR = 5,                 // Performance Counter registers (PCR0, PCR1)
+  COP2_MACRO_SPECIAL = 6,  // COP2 Q, ACC accessed from macro mode instructions.
+  MAX_KIND = 7
 };
 
 // nicknames for GPRs
@@ -122,6 +120,11 @@ enum Vi {
   MAX_COP2 = 32
 };
 
+enum Cop2MacroSpecial {
+  MACRO_Q = 0,
+  MACRO_ACC = 1,
+};
+
 const extern bool allowed_local_gprs[Reg::MAX_GPR];
 
 }  // namespace Reg
@@ -141,6 +144,7 @@ class Register {
   uint32_t get_vi() const;
   Reg::Cop0 get_cop0() const;
   uint32_t get_pcr() const;
+  Reg::Cop2MacroSpecial get_cop2_macro_special() const;
 
   bool operator==(const Register& other) const;
   bool operator!=(const Register& other) const;
@@ -154,4 +158,3 @@ class Register {
   uint16_t id = -1;
 };
 }  // namespace decompiler
-#endif  // NEXT_REGISTER_H

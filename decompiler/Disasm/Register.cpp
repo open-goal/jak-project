@@ -53,10 +53,12 @@ const static char* vf_names[32] = {"vf0",  "vf1",  "vf2",  "vf3",  "vf4",  "vf5"
 const static char* vi_names[32] = {
     "vi0",      "vi1",      "vi2",      "vi3",      "vi4",   "vi5",      "vi6",       "vi7",
     "vi8",      "vi9",      "vi10",     "vi11",     "vi12",  "vi13",     "vi14",      "vi15",
-    "Status",   "MAC",      "Clipping", "INVALID3", "R",     "I",        "Q",         "INVALID7",
+    "Status",   "MAC",      "Clipping", "INVALID3", "vi_R",  "vi_I",     "vi_Q",      "INVALID7",
     "INVALID8", "INVALID9", "TPC",      "CMSAR0",   "FBRST", "VPU-STAT", "INVALID14", "CMSAR1"};
 
 const static char* pcr_names[2] = {"pcr0", "pcr1"};
+
+const static char* cop2_macro_special[2] = {"Q", "ACC"};
 
 /////////////////////////////
 // Register Names Conversion
@@ -92,6 +94,11 @@ const char* pcr_to_charp(uint32_t pcr) {
   assert(pcr < 2);
   return pcr_names[pcr];
 }
+
+const char* cop2_macro_special_to_charp(uint32_t reg) {
+  assert(reg < 2);
+  return cop2_macro_special[reg];
+}
 }  // namespace
 
 /////////////////////////////
@@ -120,6 +127,7 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
       assert(num < 32);
       break;
     case Reg::PCR:
+    case Reg::COP2_MACRO_SPECIAL:
       assert(num < 2);
       break;
     default:
@@ -164,6 +172,8 @@ const char* Register::to_charp() const {
       return cop0_to_charp(get_cop0());
     case Reg::PCR:
       return pcr_to_charp(get_pcr());
+    case Reg::COP2_MACRO_SPECIAL:
+      return cop2_macro_special_to_charp(get_cop2_macro_special());
     default:
       throw std::runtime_error("Unsupported Register");
   }
@@ -243,6 +253,13 @@ uint32_t Register::get_pcr() const {
   uint16_t kind = id & 0xff;
   assert(kind < 2);
   return kind;
+}
+
+Reg::Cop2MacroSpecial Register::get_cop2_macro_special() const {
+  assert(get_kind() == Reg::COP2_MACRO_SPECIAL);
+  uint16_t k = id & 0xff;
+  assert(k < 2);
+  return (Reg::Cop2MacroSpecial)k;
 }
 
 bool Register::operator==(const Register& other) const {

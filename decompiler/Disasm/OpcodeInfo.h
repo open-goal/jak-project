@@ -208,7 +208,7 @@ enum class InstructionKind {
   RSQRTS,
 
   // COP2
-  VMOVE,
+  VMOVE,  // first cop2 macro instruction
   VFTOI0,
   VFTOI4,
   VFTOI12,
@@ -231,6 +231,7 @@ enum class InstructionKind {
   VMUL_BC,
   VMULA_BC,
   VMADD_BC,
+
   VADDA_BC,
   VMADDA_BC,
   VMSUBA_BC,
@@ -267,10 +268,13 @@ enum class InstructionKind {
   VRNEXT,
   VNOP,
   VWAITQ,
-  VCALLMS,
+  VCALLMS,  // last cop2 macro instruction
 
   EE_OP_MAX
 };
+
+constexpr InstructionKind FIRST_COP2_MACRO = InstructionKind::VMOVE;
+constexpr InstructionKind LAST_COP2_MACRO = InstructionKind::VCALLMS;
 
 enum class FieldType {
   RS,
