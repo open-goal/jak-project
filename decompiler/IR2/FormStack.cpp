@@ -75,8 +75,9 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
 Form* FormStack::pop_reg(const Variable& var,
                          const RegSet& barrier,
                          const Env& env,
-                         bool allow_side_effects) {
-  return pop_reg(var.reg(), barrier, env, allow_side_effects);
+                         bool allow_side_effects,
+                         int begin_idx) {
+  return pop_reg(var.reg(), barrier, env, allow_side_effects, begin_idx);
 }
 
 namespace {
@@ -91,10 +92,15 @@ bool nonempty_intersection(const RegSet& a, const RegSet& b) {
 Form* FormStack::pop_reg(Register reg,
                          const RegSet& barrier,
                          const Env& env,
-                         bool allow_side_effects) {
+                         bool allow_side_effects,
+                         int begin_idx) {
   (void)env;  // keep this for easy debugging.
   RegSet modified;
-  for (size_t i = m_stack.size(); i-- > 0;) {
+  size_t begin = m_stack.size();
+  if (begin_idx >= 0) {
+    begin = begin_idx;
+  }
+  for (size_t i = begin; i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
       if (entry.destination.has_value() && entry.destination->reg() == reg) {
@@ -111,7 +117,7 @@ Form* FormStack::pop_reg(Register reg,
         assert(entry.source);
         if (entry.non_seq_source.has_value()) {
           assert(entry.sequence_point == false);
-          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects);
+          auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects, i);
           if (result) {
             return result;
           }

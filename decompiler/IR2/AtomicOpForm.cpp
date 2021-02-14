@@ -339,6 +339,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         for (auto& x : rd.tokens) {
           tokens.push_back(to_token(x));
         }
+
         auto load =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);

@@ -258,6 +258,12 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         return TP_Type::make_partial_dyanmic_vtable_access();
       }
 
+      if (arg1_type.is_integer_constant() &&
+          arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+        return TP_Type::make_from_integer_constant_plus_product(
+            arg1_type.get_integer_constant(), arg0_type.typespec(), arg0_type.get_multiplier());
+      }
+
       if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
         return TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
                                                             arg0_type.typespec());
@@ -266,6 +272,28 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
 
     default:
       break;
+  }
+
+  if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT && m_kind == Kind::ADD) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg0_type.get_add_int_constant();
+    rd_in.stride = arg0_type.get_mult_int_constant();
+    rd_in.base_type = arg1_type.typespec();
+    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    if (out.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
+    }
+  }
+
+  if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR && m_kind == Kind::ADD) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg0_type.get_integer_constant();
+    rd_in.stride = 1;
+    rd_in.base_type = arg1_type.typespec();
+    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    if (out.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
+    }
   }
 
   if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {

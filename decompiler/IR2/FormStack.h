@@ -25,8 +25,13 @@ class FormStack {
   Form* pop_reg(const Variable& var,
                 const RegSet& barrier,
                 const Env& env,
-                bool allow_side_effects);
-  Form* pop_reg(Register reg, const RegSet& barrier, const Env& env, bool allow_side_effects);
+                bool allow_side_effects,
+                int begin_idx = -1);
+  Form* pop_reg(Register reg,
+                const RegSet& barrier,
+                const Env& env,
+                bool allow_side_effects,
+                int begin_idx = -1);
   Form* unsafe_peek(Register reg);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);

@@ -465,6 +465,40 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           throw std::runtime_error("Failed to match for stride 1 address access with add.");
         }
       }
+    } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
+      // try to see if this is valid, from the type system.
+      FieldReverseLookupInput input;
+      input.offset = arg0_type.get_add_int_constant();
+      input.stride = arg0_type.get_mult_int_constant();
+      input.base_type = arg1_type.typespec();
+      auto out = env.dts->ts.reverse_field_lookup(input);
+      if (out.success) {
+        // it is. now we have to modify things
+        // first, look for the index
+        auto arg0_matcher =
+            Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                        {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                     {Matcher::integer(input.stride), Matcher::any(0)}),
+                         Matcher::integer(input.offset)});
+        auto match_result = match(arg0_matcher, args.at(0));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : out.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match for stride (non power 2) with add");
+        }
+      }
     }
   }
 
@@ -1865,7 +1899,33 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
-      throw std::runtime_error("Not power of two case, not yet implemented (offset)");
+      // (+ v0-0 (the-as uint (* 12 (+ a3-0 -1))))
+      auto mult_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                      {Matcher::integer(m_expected_stride), Matcher::any(0)});
+      mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
+      auto add_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                     {Matcher::any(1), mult_matcher});
+
+      auto mr = match(add_matcher, new_val);
+      if (!mr.matched) {
+        throw std::runtime_error("Failed to match non-power of two case: " +
+                                 new_val->to_string(env));
+      }
+
+      auto base = mr.maps.forms.at(1);
+      auto idx = mr.maps.forms.at(0);
+
+      assert(idx && base);
+
+      std::vector<DerefToken> tokens = m_deref_tokens;
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
+      result->push_back(deref);
     }
   }
 }
