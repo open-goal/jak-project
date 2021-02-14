@@ -782,6 +782,22 @@ u8 Compiler::ftf_fsf_to_blend_mask(u8 val) {
   return 0b0001 << val;
 }
 
+emitter::Register::VF_ELEMENT Compiler::ftf_fsf_to_vector_element(u8 val) {
+  // 00 -> x
+  // ...
+  // 11 -> w
+	switch (val) {
+		case 0b00:
+			return emitter::Register::VF_ELEMENT::X;
+		case 0b01:
+			return emitter::Register::VF_ELEMENT::Y;
+		case 0b10:
+			return emitter::Register::VF_ELEMENT::Z;
+		case 0b11:
+			return emitter::Register::VF_ELEMENT::W;
+	}
+}
+
 Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}},
@@ -821,14 +837,13 @@ Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& 
   // the FPU stack Registers are nicer.
 
   // Save one temp reg, use the destination as one
-  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, dest, IR_VFMath3Asm::Kind::XOR);
   auto temp_reg = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
 
-  // Blend src1's value into the dest reg.
-  env->emit_ir<IR_BlendVF>(color, dest, dest, src1, ftf_fsf_to_blend_mask(fsf));
-  // Blend src2's value into the temp reg
-  env->emit_ir<IR_BlendVF>(color, dest, dest, src2, ftf_fsf_to_blend_mask(ftf));
+	// Splat src1's value into the dest reg, keep it simple, this way no matter which vector component is accessed
+	// from the final result will be the correct answer
+  env->emit_ir<IR_SplatVF>(color, dest, src1, ftf_fsf_to_vector_element(fsf));
+  // Splat src1's value into the the temp reg
+	env->emit_ir<IR_SplatVF>(color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
 
   // Perform the Division
   env->emit_ir<IR_VFMath3Asm>(color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
@@ -863,14 +878,13 @@ Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object&
   // Why do we even bother using VSQRTPS instead of FSQRT? Because otherwise in x86, you have to use
   // the FPU stack Registers are nicer.
 
-  // Clear the destination register
-  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, dest, IR_VFMath3Asm::Kind::XOR);
+  // Splat src's value into the dest reg, keep it simple, this way no matter which vector component is accessed
+	// from the final result will be the correct answer
+	auto temp_reg = env->make_vfr(dest->type());
+  env->emit_ir<IR_SplatVF>(color, temp_reg, src, ftf_fsf_to_vector_element(ftf));
 
-  // Blend src's value into the dest reg.
-  env->emit_ir<IR_BlendVF>(color, dest, dest, src, ftf_fsf_to_blend_mask(ftf));
-
-  // Perform the operation
-  env->emit_ir<IR_SqrtVF>(color, dest, src);
+  // Perform the operation, you can't seem to VSQRTPS with the same register, which is why we needed the temp_reg.
+  env->emit_ir<IR_SqrtVF>(color, dest, temp_reg);
   return get_none();
 }
 
@@ -906,25 +920,25 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
 
   // Init two temp registers
   auto temp1 = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp1, temp1, temp1, IR_VFMath3Asm::Kind::XOR);
   auto temp2 = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp2, temp2, temp2, IR_VFMath3Asm::Kind::XOR);
 
   // First Portion
   // - Swizzle src1 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp1, src1, 0b01100000);
-  // - Move it into 'dest'
+  env->emit_ir<IR_SwizzleVF>(color, temp1, src1, 0b00001001);
+  // - Move it into 'dest' safely (avoid mutating `w`)
   env->emit_ir<IR_BlendVF>(color, dest, dest, temp1, 0b0111);
   // - Swizzle src2 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b10000100);
+  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00010010);
   // - Multiply - Result in `dest`
-  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, temp1, IR_VFMath3Asm::Kind::MUL);
+  env->emit_ir<IR_VFMath3Asm>(color, temp1, dest, temp1, IR_VFMath3Asm::Kind::MUL);
+	// - Move it into 'dest' safely (avoid mutating `w`)
+  env->emit_ir<IR_BlendVF>(color, dest, dest, temp1, 0b0111);
 
   // Second Portion
   // - Swizzle src2 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b01100000);
+  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00001001);
   // - Swizzle src1 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp2, src1, 0b10000100);
+  env->emit_ir<IR_SwizzleVF>(color, temp2, src1, 0b00010010);
   // - Multiply - Result in `temp1`
   env->emit_ir<IR_VFMath3Asm>(color, temp1, temp1, temp2, IR_VFMath3Asm::Kind::MUL);
 

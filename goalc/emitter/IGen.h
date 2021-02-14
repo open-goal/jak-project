@@ -2204,15 +2204,13 @@ class IGen {
     Generic Swizzle (re-arrangment of packed FPs) operation, the control bytes are quite involved.
     Here's a brief run-down:
     - 8-bits / 4 groups of 2 bits
-    - Each group is used to determine which element in `src` gets copied to `dst`'s respective
-    element.
-    - Right to Left, the first 2-bit group controls which `src` element, gets copied to `dst`'s
-    most-significant byte (left-most) and so on.
-    GROUP OPTIONS
-    - 00b - Copy the least-significant element
+    - Right-to-left, each group is used to determine which element in `src` gets copied into
+    `dst`'s element (W->X).
+    - GROUP OPTIONS
+    - 00b - Copy the least-significant element (X)
     - 01b - Copy the second element (from the right)
     - 10b - Copy the third element (from the right)
-    - 11b - Copy the most significant element
+    - 11b - Copy the most significant element (W)
     Examples
     ; xmm1 = (1.5, 2.5, 3.5, 4.5)
     SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions

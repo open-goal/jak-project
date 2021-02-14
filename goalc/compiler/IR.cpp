@@ -1364,6 +1364,9 @@ std::string IR_VFMath3Asm::print() {
     case Kind::MIN:
       function = ".min.vf";
       break;
+		case Kind::DIV:
+      function = ".div.vf";
+      break;
     default:
       assert(false);
   }
