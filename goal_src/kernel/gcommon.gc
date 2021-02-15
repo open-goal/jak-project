@@ -20,6 +20,23 @@
 (defconstant RELOC_METHOD_ID 7) ;; or login?
 (defconstant MEM_USAGE_METHOD_ID 8)
 
+;; distance from a symbol pointer to a (pointer string)
+;; this relies on the memory layout of the symbol table
+;; this must match SYM_INFO_OFFSET in goal_constants.h + offset of the str field in struct SymUpper.
+(defconstant SYM_TO_STRING_OFFSET 65336)
+
+;; pointers larger than this are invalid by valid?
+(defconstant END_OF_MEMORY #x8000000)
+
+;; boxed object offset (16-byte alignement offsets)
+(defconstant BINTEGER_OFFSET 0)
+(defconstant PAIR_OFFSET 2)
+(defconstant BASIC_OFFSET 4)
+
+(defmacro symbol-to-string (sym)
+  ;; "Convert a symbol to a goal string."
+  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
+  )
 
 ;; forward declarations.
 (define-extern name= (function basic basic symbol))
@@ -1114,15 +1131,15 @@
   (local-vars (current-qword int))
   (set! current-qword 0)
   (while (< current-qword (sar word-count 2))
-   (format 0 "~X: ~X ~X ~X ~X~%"
-    (+ (+ (shl (shl current-qword 2) 2) 0) (the-as int data))
-    (-> data (shl current-qword 2))
-    (-> data (+ (shl current-qword 2) 1))
-    (-> data (+ (shl current-qword 2) 2))
-    (-> data (+ (shl current-qword 2) 3))
+    (format 0 "~X: ~X ~X ~X ~X~%"
+            (+ (+ (shl (shl current-qword 2) 2) 0) (the-as int data))
+            (-> data (shl current-qword 2))
+            (-> data (+ (shl current-qword 2) 1))
+            (-> data (+ (shl current-qword 2) 2))
+            (-> data (+ (shl current-qword 2) 3))
+            )
+    (set! current-qword (+ current-qword 1))
     )
-   (set! current-qword (+ current-qword 1))
-   )
   '#f
   )
 
@@ -1138,9 +1155,9 @@
         (format '#t "    ")
         (format '#t "|   ")
         )
-   (set! bits (shr bits 1))
-   (set! i (+ i 1))
-   )
+    (set! bits (shr bits 1))
+    (set! i (+ i 1))
+    )
   '#f
   )
 
@@ -1150,6 +1167,8 @@
   0
   )
 
+
+;; these are not quite right, but it's close enough.
 (defmacro start-of-symbol-table ()
   `(rlet ((st :reg r15 :reset-here #t :type uint))
          (the uint (- st 32768))
@@ -1189,7 +1208,7 @@
 
   ;; first, check if we are even in valid memory. This is the start of the symbol table to the end of RAM.
   (set! in-goal-mem (and (>= (the-as uint obj) (start-of-symbol-table))
-                         (< (the-as uint obj) #x8000000)
+                         (< (the-as uint obj) END_OF_MEMORY)
                          )
         )
   (cond
@@ -1242,7 +1261,7 @@
        ((= expected-type pair)
         ;; pair alignment is 8 bytes + 2.
         (cond
-          ((!= (logand (the-as int obj) 7) 2)
+          ((!= (logand (the-as int obj) 7) PAIR_OFFSET)
            (if name
                (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
                )
@@ -1273,7 +1292,7 @@
           )
         )
        ;; now we assume desired type is a basic.
-       ((!= (logand (the-as int obj) 7) 4)
+       ((!= (logand (the-as int obj) 7) BASIC_OFFSET)
         (if name
             (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" obj name expected-type)
             )
@@ -1299,13 +1318,11 @@
         ;; otherwise... we want to check and see if the type is actually a type.
         ;; we use valid? to do this check.
         ;; avoid infinite recursion by skipping this check if the expected-type is type.
-        (set! v1-33 (and (!= expected-type type)
-                         (not (valid? (rtype-of obj) type '#f '#t 0)
-                              )
-                         )
-              )
+
         (cond
-          (v1-33
+          ((and (!= expected-type type)
+                (not (valid? (rtype-of obj) type '#f '#t 0))
+                )
            (if name
                ;; note: print the invalid type as an address in case it's unprintable.
                (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
