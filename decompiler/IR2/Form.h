@@ -101,6 +101,12 @@ class SimpleExpressionElement : public FormElement {
                                  FormStack& stack,
                                  std::vector<FormElement*>* result,
                                  bool allow_side_effects);
+  void update_from_stack_si_1(const Env& env,
+                              FixedOperatorKind kind,
+                              FormPool& pool,
+                              FormStack& stack,
+                              std::vector<FormElement*>* result,
+                              bool allow_side_effects);
   void update_from_stack_add_i(const Env& env,
                                FormPool& pool,
                                FormStack& stack,
