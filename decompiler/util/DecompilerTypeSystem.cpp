@@ -361,7 +361,7 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
-      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
+      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T' || str.at(i) == '0')) {
         // newline (~%) or tab (~T) don't take an argument.
         continue;
       }

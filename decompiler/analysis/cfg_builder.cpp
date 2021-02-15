@@ -1232,7 +1232,8 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
       // check for deadness
       if (op_as_set->is_dead_set()) {
         // we want to eliminate, but we should we fix up the register info.
-        add = false;
+        // now adding.
+        // add = false;
         auto consumed_expr =
             dynamic_cast<SimpleExpressionElement*>(op_as_set->src()->try_as_single_element());
         assert(consumed_expr);

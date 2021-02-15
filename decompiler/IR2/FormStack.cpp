@@ -39,6 +39,20 @@ void FormStack::push_value_to_reg(Variable var,
   m_stack.push_back(entry);
 }
 
+void FormStack::push_value_to_reg_dead(Variable var,
+                                       Form* value,
+                                       bool sequence_point,
+                                       const SetVarInfo& info) {
+  assert(value);
+  StackEntry entry;
+  entry.active = false;
+  entry.sequence_point = sequence_point;
+  entry.destination = var;
+  entry.source = value;
+  entry.set_info = info;
+  m_stack.push_back(entry);
+}
+
 void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
                                         const Variable& src,
                                         Form* src_as_form,
@@ -146,17 +160,22 @@ Form* FormStack::pop_reg(Register reg,
           }
         }
       }
+    } else {
+      if (entry.destination.has_value() && entry.destination->reg() == reg) {
+        return nullptr;
+      }
     }
   }
   // we didn't have it...
   return nullptr;
 }
 
-Form* FormStack::unsafe_peek(Register reg) {
+Form* FormStack::unsafe_peek(Register reg, const Env& env) {
   RegSet modified;
   for (size_t i = m_stack.size(); i-- > 0;) {
     auto& entry = m_stack.at(i);
     if (entry.active) {
+      fmt::print("PEEK ERROR {}:\n{}\n", reg.to_string(), print(env));
       throw std::runtime_error("Failed to unsafe peek 1");
     }
 

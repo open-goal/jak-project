@@ -21,6 +21,10 @@ class FormStack {
                                const Variable& src,
                                Form* src_as_form,
                                const SetVarInfo& info = {});
+  void push_value_to_reg_dead(Variable var,
+                              Form* value,
+                              bool sequence_point,
+                              const SetVarInfo& info = {});
   void push_form_element(FormElement* elt, bool sequence_point);
   Form* pop_reg(const Variable& var,
                 const RegSet& barrier,
@@ -32,7 +36,7 @@ class FormStack {
                 const Env& env,
                 bool allow_side_effects,
                 int begin_idx = -1);
-  Form* unsafe_peek(Register reg);
+  Form* unsafe_peek(Register reg, const Env& env);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);
   std::string print(const Env& env);
