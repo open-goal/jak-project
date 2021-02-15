@@ -540,11 +540,12 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         // remember that we're an object new.
         return TP_Type::make_object_new(method_type);
       }
-      if (method_id == GOAL_NEW_METHOD ||
-          input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      if (method_id == GOAL_NEW_METHOD) {
         return TP_Type::make_from_ts(method_type);
+      } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+        return TP_Type::make_non_virtual_method(method_type);
       } else {
-        return TP_Type::make_method(method_type);
+        return TP_Type::make_virtual_method(method_type);
       }
     }
 
@@ -555,7 +556,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto method_info = dts.ts.lookup_method("object", method_id);
       if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
         // this can get us the wrong thing for `new` methods.  And maybe relocate?
-        return TP_Type::make_from_ts(method_info.type.substitute_for_method_call("object"));
+        return TP_Type::make_non_virtual_method(
+            method_info.type.substitute_for_method_call("object"));
       }
     }
 
@@ -824,7 +826,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
     m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
-    if (i == 0 && in_tp.kind == TP_Type::Kind::METHOD) {
+    if (i == 0 && in_tp.kind == TP_Type::Kind::VIRTUAL_METHOD) {
       m_read_regs.pop_back();
       m_arg_vars.pop_back();
       m_is_virtual_method = true;

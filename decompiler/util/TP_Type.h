@@ -29,7 +29,8 @@ class TP_Type {
     INTEGER_CONSTANT_PLUS_VAR,  // constant + variable. for dynamic addr of
     INTEGER_CONSTANT_PLUS_VAR_MULT,  // like var + 100 + 12 * var2
     DYNAMIC_METHOD_ACCESS,           // partial access into a
-    METHOD,
+    VIRTUAL_METHOD,
+    NON_VIRTUAL_METHOD,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -75,9 +76,16 @@ class TP_Type {
 
   static TP_Type make_from_ts(const std::string& ts) { return make_from_ts(TypeSpec(ts)); }
 
-  static TP_Type make_method(const TypeSpec& method_type) {
+  static TP_Type make_virtual_method(const TypeSpec& method_type) {
     TP_Type result;
-    result.kind = Kind::METHOD;
+    result.kind = Kind::VIRTUAL_METHOD;
+    result.m_ts = method_type;
+    return result;
+  }
+
+  static TP_Type make_non_virtual_method(const TypeSpec& method_type) {
+    TP_Type result;
+    result.kind = Kind::NON_VIRTUAL_METHOD;
     result.m_ts = method_type;
     return result;
   }

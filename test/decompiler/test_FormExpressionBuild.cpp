@@ -2074,12 +2074,9 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "    daddiu sp, sp, 32";
   std::string type = "(function object object)";
 
-  // todo - I think this is a sign that we're unscrambling method calls in the wrong order.
-  // but I want to wait for a less confusing example before making a change.
   std::string expected =
       "(begin\n"
-      "  (set! a0-1 arg0)\n"
-      "  ((method-of-type (rtype-of a0-1) print) a0-1)\n"
+      "  ((method-of-type (rtype-of a0-1) print) arg0)\n"
       "  (format (quote #t) \"~%\")\n"
       "  arg0\n"
       "  )";
@@ -2354,5 +2351,156 @@ TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
   std::string type = "(function int float)";
 
   std::string expected = "(begin (set! v1-0 (abs arg0)) (* (l.f L20) (the float v1-0)))";
+  test_with_expr(func, type, expected, false, "");
+}
+
+TEST_F(FormRegressionTest, ExprCopyStringString) {
+  std::string func =
+      "  sll r0, r0, 0\n"
+      "L161:\n"
+      "    daddiu v1, a0, 4\n"
+      "    daddiu a1, a1, 4\n"
+      "    beq r0, r0, L163\n"
+      "    sll r0, r0, 0\n"
+
+      "L162:\n"
+      "    lbu a2, 0(a1)\n"
+      "    sb a2, 0(v1)\n"
+      "    daddiu v1, v1, 1\n"
+      "    daddiu a1, a1, 1\n"
+
+      "L163:\n"
+      "    lbu a2, 0(a1)\n"
+      "    bne a2, r0, L162\n"
+      "    sll r0, r0, 0\n"
+
+      "    or a1, s7, r0\n"
+      "    sb r0, 0(v1)\n"
+      "    or v0, a0, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function string string string)";
+  std::string expected =
+      "(begin\n"
+      "  (set! v1-0 (-> arg0 data))\n"
+      "  (set! a1-1 (-> arg1 data))\n"
+      "  (while\n"
+      "   (nonzero? (-> a1-1 0))\n"
+      "   (set! (-> v1-0 0) (-> a1-1 0))\n"
+      "   (set! v1-0 (&-> v1-0 1))\n"
+      "   (set! a1-1 (&-> a1-1 1))\n"
+      "   )\n"
+      "  (set! (-> v1-0 0) 0)\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "");
+}
+
+TEST_F(FormRegressionTest, StringLt) {
+  std::string func =
+      "  sll r0, r0, 0\n"
+      "L91:\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s4, 16(sp)\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or s5, a1, r0\n"
+      "    or a0, gp, r0\n"
+      "    lw v1, string(s7)\n"
+      "    lwu t9, 32(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    or s4, v1, r0\n"
+      "    or a0, s5, r0\n"
+      "    lw v1, string(s7)\n"
+      "    lwu t9, 32(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    slt a0, s4, v1\n"
+      "    movz s4, v1, a0\n"
+      "    addiu v1, r0, 0\n"
+      "    beq r0, r0, L95\n"
+      "    sll r0, r0, 0\n"
+
+      "L92:\n"
+      "    daddu a0, v1, gp\n"
+      "    lbu a0, 4(a0)\n"
+      "    daddu a1, v1, s5\n"
+      "    lbu a1, 4(a1)\n"
+      "    sltu a0, a0, a1\n"
+      "    beq a0, r0, L93\n"
+      "    or a0, s7, r0\n"
+
+      "    daddiu v1, s7, #t\n"
+      "    or v0, v1, r0\n"
+      "    beq r0, r0, L96\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+      "    beq r0, r0, L94\n"
+      "    sll r0, r0, 0\n"
+
+      "L93:\n"
+      "    daddu a0, v1, s5\n"
+      "    lbu a0, 4(a0)\n"
+      "    daddu a1, v1, gp\n"
+      "    lbu a1, 4(a1)\n"
+      "    sltu a0, a0, a1\n"
+      "    beq a0, r0, L94\n"
+      "    or a0, s7, r0\n"
+
+      "    or v0, s7, r0\n"
+      "    beq r0, r0, L96\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, r0, r0\n"
+
+      "L94:\n"
+      "    daddiu v1, v1, 1\n"
+
+      "L95:\n"
+      "    slt a0, v1, s4\n"
+      "    bne a0, r0, L92\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    or v0, s7, r0\n"
+
+      "L96:\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    lq s4, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64";
+  std::string type = "(function string string symbol)";
+  std::string expected =
+      "(begin\n"
+      "  (set!\n"
+      "   s4-1\n"
+      "   (min\n"
+      "    ((method-of-type string length) arg0)\n"
+      "    ((method-of-type string length) arg1)\n"
+      "    )\n"
+      "   )\n"
+      "  (set! v1-4 0)\n"
+      "  (while\n"
+      "   (< v1-4 s4-1)\n"
+      "   (cond\n"
+      "    ((< (-> arg0 data v1-4) (-> arg1 data v1-4)) (return (quote #t)))\n"
+      "    ((< (-> arg1 data v1-4) (-> arg0 data v1-4)) (return (quote #f)))\n"
+      "    )\n"
+      "   (set! v1-4 (+ v1-4 1))\n"
+      "   )\n"
+      "  (quote #f)\n"
+      "  )";
   test_with_expr(func, type, expected, false, "");
 }

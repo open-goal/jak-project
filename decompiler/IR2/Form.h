@@ -127,7 +127,8 @@ class SimpleExpressionElement : public FormElement {
                                     FormPool& pool,
                                     FormStack& stack,
                                     std::vector<FormElement*>* result,
-                                    bool allow_side_effects);
+                                    bool allow_side_effects,
+                                    bool reverse);
   void update_from_stack_force_ui_2(const Env& env,
                                     FixedOperatorKind kind,
                                     FormPool& pool,

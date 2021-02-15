@@ -1463,6 +1463,8 @@ Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
         nullptr, cfg_to_ir(pool, f, cvtx->body), cfg_to_ir(pool, f, cvtx->unreachable_block));
     clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()));
     return result;
+  } else if (dynamic_cast<const EmptyVtx*>(vtx)) {
+    return pool.alloc_single_element_form<EmptyElement>(nullptr);
   }
 
   throw std::runtime_error("not yet implemented IR conversion.");

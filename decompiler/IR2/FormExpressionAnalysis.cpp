@@ -577,7 +577,8 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
                                                            FormPool& pool,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
-                                                           bool allow_side_effects) {
+                                                           bool allow_side_effects,
+                                                           bool reverse) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   bool arg1_i = true;
   bool arg1_reg = m_expr.get_arg(1).is_var();
@@ -589,8 +590,17 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
 
   std::vector<Form*> args;
   if (arg1_reg) {
-    args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                        allow_side_effects);
+    if (reverse) {
+      args = pop_to_forms({m_expr.get_arg(1).var(), m_expr.get_arg(0).var()}, env, pool, stack,
+                          allow_side_effects);
+      auto temp = args.at(1);
+      args.at(1) = args.at(0);
+      args.at(0) = temp;
+    } else {
+      args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                          allow_side_effects);
+    }
+
   } else {
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
@@ -807,19 +817,19 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::DIV_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::DIVISION, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::MOD_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MOD, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::MIN_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MIN, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::MAX_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MAX, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::AND:
       update_from_stack_copy_first_int_2(env, FixedOperatorKind::LOGAND, pool, stack, result,
@@ -987,7 +997,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
   bool is_method = false;
   auto& tp_type = env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg());
   if (env.has_type_analysis()) {
-    if (tp_type.kind == TP_Type::Kind::METHOD && all_pop_vars.size() >= 1) {
+    if (tp_type.kind == TP_Type::Kind::VIRTUAL_METHOD && all_pop_vars.size() >= 1) {
       is_method = true;
     }
     function_type = tp_type.typespec();
@@ -1002,7 +1012,15 @@ void FunctionCallElement::update_from_stack(const Env& env,
   //    all_pop_vars.erase(all_pop_vars.begin() + 1);
   //  }
 
+  if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+    std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
+  }
   auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
+  if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+    std::swap(unstacked.at(0), unstacked.at(1));
+    std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
+  }
+
   std::vector<Form*> arg_forms;
 
   for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
@@ -1200,7 +1218,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
           //          temp_form->to_string(env));
         }
       } else {
-        throw std::runtime_error("Method call detected, not yet implemented");
+        auto ti = env.dts->ts.lookup_type(type_1);
+        auto is_basic = dynamic_cast<BasicType*>(ti);
+        if (!is_basic) {
+          throw std::runtime_error(
+              fmt::format("Method call detected, not yet implemented {} {}\n", name, type_1));
+        }
       }
     }
   }
@@ -1743,23 +1766,46 @@ void ConditionElement::update_from_stack(const Env& env,
                                          FormStack& stack,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
-  std::vector<Form*> source_forms;
+  std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    auto& var = m_src[i]->var();
-    vars.push_back(var);
-    source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    if (m_src[i]->is_var()) {
+      auto& var = m_src[i]->var();
+      vars.push_back(var);
+      source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    } else if (m_src[i]->is_int()) {
+      if (m_src[i]->get_int() == 0 && condition_uses_float(m_kind)) {
+        // if we're doing a floating point comparison, and one of our arguments is a constant
+        // which is an "integer zero", treat it as a floating point zero.
+        source_types.push_back(TypeSpec("float"));
+      } else {
+        source_types.push_back(TypeSpec("int"));
+      }
+    } else {
+      throw std::runtime_error("Unsupported atom in ConditionElement::push_to_stack");
+    }
   }
-
   if (m_flipped) {
     std::reverse(vars.begin(), vars.end());
   }
-  source_forms = pop_to_forms(vars, env, pool, stack, allow_side_effects, m_consumed);
+
+  popped_forms = pop_to_forms(vars, env, pool, stack, allow_side_effects, m_consumed);
   if (m_flipped) {
-    std::reverse(source_forms.begin(), source_forms.end());
+    std::reverse(popped_forms.begin(), popped_forms.end());
   }
+
+  int popped_counter = 0;
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    if (m_src[i]->is_var()) {
+      source_forms.push_back(popped_forms.at(popped_counter++));
+    } else {
+      source_forms.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, *m_src[i]));
+    }
+  }
+  assert(popped_counter == int(popped_forms.size()));
+  assert(source_forms.size() == source_types.size());
 
   result->push_back(make_generic(env, pool, source_forms, source_types));
 }

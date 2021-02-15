@@ -277,7 +277,13 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         *changed = true;
         return TP_Type::make_from_ts("int");
 
-      case TP_Type::Kind::METHOD:
+      case TP_Type::Kind::VIRTUAL_METHOD:
+        // never allow this to remain method
+        *changed = true;
+        return TP_Type::make_from_ts(
+            ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+
+      case TP_Type::Kind::NON_VIRTUAL_METHOD:
         // never allow this to remain method
         *changed = true;
         return TP_Type::make_from_ts(

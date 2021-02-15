@@ -102,6 +102,9 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.analyze_prologue(test->file);
   test->func.cfg = build_cfg(test->file, 0, test->func);
   EXPECT_TRUE(test->func.cfg->is_fully_resolved());
+  if (!test->func.cfg->is_fully_resolved()) {
+    fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
+  }
 
   auto ops = convert_function_to_atomic_ops(test->func, program.labels);
   test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
