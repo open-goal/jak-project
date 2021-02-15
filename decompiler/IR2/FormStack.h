@@ -36,7 +36,7 @@ class FormStack {
                 const Env& env,
                 bool allow_side_effects,
                 int begin_idx = -1);
-  Form* unsafe_peek(Register reg);
+  Form* unsafe_peek(Register reg, const Env& env);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool);
   std::string print(const Env& env);
