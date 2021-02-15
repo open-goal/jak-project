@@ -21,6 +21,10 @@ class FormStack {
                                const Variable& src,
                                Form* src_as_form,
                                const SetVarInfo& info = {});
+  void push_value_to_reg_dead(Variable var,
+                              Form* value,
+                              bool sequence_point,
+                              const SetVarInfo& info = {});
   void push_form_element(FormElement* elt, bool sequence_point);
   Form* pop_reg(const Variable& var,
                 const RegSet& barrier,

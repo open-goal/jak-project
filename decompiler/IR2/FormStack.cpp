@@ -39,6 +39,20 @@ void FormStack::push_value_to_reg(Variable var,
   m_stack.push_back(entry);
 }
 
+void FormStack::push_value_to_reg_dead(Variable var,
+                                       Form* value,
+                                       bool sequence_point,
+                                       const SetVarInfo& info) {
+  assert(value);
+  StackEntry entry;
+  entry.active = false;
+  entry.sequence_point = sequence_point;
+  entry.destination = var;
+  entry.source = value;
+  entry.set_info = info;
+  m_stack.push_back(entry);
+}
+
 void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
                                         const Variable& src,
                                         Form* src_as_form,

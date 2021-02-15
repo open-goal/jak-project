@@ -839,6 +839,12 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     assert(x->parent_form == m_src);
   }
   assert(m_src->parent_element == this);
+
+  if (is_dead_set()) {
+    stack.push_value_to_reg_dead(m_dst, m_src, true, m_var_info);
+    return;
+  }
+
   m_src->update_children_from_stack(env, pool, stack, true);
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
@@ -980,6 +986,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   FormElement* new_form = nullptr;
   if (is_method) {
+    //    fmt::print("STACK:\n{}\n\n", stack.print(env));
     auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
                                {Matcher::any(0), Matcher::any(1)});
     auto mr = match(matcher, unstacked.at(0));
@@ -999,18 +1006,46 @@ void FunctionCallElement::update_from_stack(const Env& env,
       assert(false);  // want to test this before enabling.
       unsafe = mr.maps.forms.at(0);
     }
+
+    bool resolved = false;
     if (unsafe) {
       if (!unsafe->try_as_single_element()) {
         throw std::runtime_error(
             fmt::format("Peek got something weird: {}\n", unsafe->to_string(env)));
       }
-      if (unsafe->try_as_single_element() != mr.maps.forms.at(0)->try_as_single_element()) {
-        throw std::runtime_error(fmt::format("Invalid method call. {} vs {}.",
-                                             unsafe->to_string(env),
-                                             mr.maps.forms.at(0)->to_string(env)));
+
+      if (unsafe->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
+        resolved = true;
       }
-    } else {
-      throw std::runtime_error("Failed to peek for arg0");
+
+      if (!resolved) {
+        lg::warn(fmt::format("Rare method call. {} vs {}. Not an error, but check carefully",
+                             unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+
+        auto unsafe_as_se = dynamic_cast<SimpleExpressionElement*>(unsafe->try_as_single_element());
+        if (unsafe_as_se && unsafe_as_se->expr().is_identity() &&
+            unsafe_as_se->expr().get_arg(0).is_var()) {
+          auto var = unsafe_as_se->expr().get_arg(0).var();
+          auto unsafe_2 = stack.unsafe_peek(var.reg());
+          if (unsafe_2) {
+            if (unsafe_2->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
+              resolved = true;
+              unsafe = unsafe_2;
+            } else {
+              if (unsafe_2->try_as_single_element()->to_form(env) ==
+                  mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
+                lg::warn("Check even more carefully");
+                resolved = true;
+                unsafe = unsafe_2;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!resolved) {
+      throw std::runtime_error("Failed to resolve.");
     }
 
     arg_forms.insert(arg_forms.begin(), unsafe);
@@ -1175,6 +1210,34 @@ void DerefElement::update_from_stack(const Env& env,
     if (!m_is_addr_of && !as_deref->is_addr_of()) {
       m_tokens.insert(m_tokens.begin(), as_deref->tokens().begin(), as_deref->tokens().end());
       m_base = as_deref->m_base;
+    }
+  }
+
+  if (m_tokens.size() >= 3) {
+    auto& method_name = m_tokens.at(m_tokens.size() - 1);
+    auto& mbn = m_tokens.at(m_tokens.size() - 2);
+    auto& type = m_tokens.at(m_tokens.size() - 3);
+    if (method_name.kind() == DerefToken::Kind::FIELD_NAME &&
+        mbn.kind() == DerefToken::Kind::FIELD_NAME && mbn.field_name() == "methods-by-name" &&
+        type.kind() == DerefToken::Kind::FIELD_NAME && type.field_name() == "type") {
+      std::string name = method_name.field_name();
+      m_tokens.pop_back();
+      m_tokens.pop_back();
+      m_tokens.pop_back();
+
+      if (m_tokens.empty()) {
+        auto method_op = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT), m_base,
+            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
+        result->push_back(method_op);
+      } else {
+        auto method_op = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+            pool.alloc_single_form(nullptr, this),
+            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
+        result->push_back(method_op);
+      }
+      return;
     }
   }
 
@@ -1721,6 +1784,7 @@ void GenericElement::update_from_stack(const Env& env,
                                        FormStack& stack,
                                        std::vector<FormElement*>* result,
                                        bool) {
+  // TODO fix.
   for (auto it = m_elts.rbegin(); it != m_elts.rend(); it++) {
     (*it)->update_children_from_stack(env, pool, stack, false);
   }

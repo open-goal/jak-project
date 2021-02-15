@@ -734,6 +734,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "     (set! (car s3-0) s1-0)\n"  // set iter's car to cadr
       "     (set! v1-4 (cdr s3-0))\n"  // current cdr
       "     (set! (car v1-4) s2-0)\n"  // set cadr
+      "     (set! v1-5 s2-0)\n"
       "     )\n"
       "    (set! s3-0 (cdr s3-0))\n"  // increment!
       "    )\n"
