@@ -7,10 +7,10 @@
 - `valid?` uses some inline assembly to check if a pointer is inside the symbol table, rewritten.
 - Lots of important memory constants should be defined here.
 
-## 'gstring-h': **Done**
+## `gstring-h`: **Done**
 - This file generates no code.
 
-## 'gkernel-h': **Done**
+## `gkernel-h`: **Done**
 - The types `cpu-thread` and `catch-frame` have a slightly different layout in OpenGOAL to back up x86-64 registers
 
 ## `gkernel`:
