@@ -116,8 +116,8 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
         try {
           op_types.at(op_id) = op->propagate_types(*init_types, ir2.env, dts);
         } catch (std::runtime_error& e) {
-          fmt::print("Type prop fail on {}: {}\n", guessed_name.to_string(), e.what());
-          warnings += ";; Type prop attempted and failed.\n";
+          lg::warn("Function {} failed type prop: {}", guessed_name.to_string(), e.what());
+          warnings.type_prop_warning("{}", e.what());
           ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops);
           return false;
         }
@@ -147,8 +147,7 @@ bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
 
   auto last_type = op_types.back().get(Register(Reg::GPR, Reg::V0)).typespec();
   if (last_type != my_type.last_arg()) {
-    warnings += fmt::format(";; return type mismatch {} vs {}.\n", last_type.print(),
-                            my_type.last_arg().print());
+    warnings.info("Return type mismatch {} vs {}.", last_type.print(), my_type.last_arg().print());
   }
 
   ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops);

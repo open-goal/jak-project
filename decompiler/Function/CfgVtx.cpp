@@ -1892,7 +1892,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
   }
 
   if (!cfg->is_fully_resolved()) {
-    func.warnings += ";; Failed to fully resolve CFG\n";
+    func.warnings.cfg_build_warning("Could not fully resolve CFG");
   }
 
   return cfg;

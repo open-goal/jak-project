@@ -72,20 +72,24 @@ const std::string& Env::remapped_name(const std::string& name) const {
 }
 
 goos::Object Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
-  std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
-  auto remapped = m_var_remap.find(lookup_name);
-  if (remapped != m_var_remap.end()) {
-    lookup_name = remapped->second;
-  }
-  auto type_kv = m_typehints.find(atomic_idx);
-  if (type_kv != m_typehints.end()) {
-    for (auto& x : type_kv->second) {
-      if (x.reg == reg) {
-        return pretty_print::build_list("the-as", x.type_name, lookup_name);
+  if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+    std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
+    auto remapped = m_var_remap.find(lookup_name);
+    if (remapped != m_var_remap.end()) {
+      lookup_name = remapped->second;
+    }
+    auto type_kv = m_typehints.find(atomic_idx);
+    if (type_kv != m_typehints.end()) {
+      for (auto& x : type_kv->second) {
+        if (x.reg == reg) {
+          return pretty_print::build_list("the-as", x.type_name, lookup_name);
+        }
       }
     }
+    return pretty_print::to_symbol(lookup_name);
+  } else {
+    return pretty_print::to_symbol(reg.to_charp());
   }
-  return pretty_print::to_symbol(lookup_name);
 }
 
 /*!
@@ -169,7 +173,9 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
     std::vector<std::pair<RegId, Variable>> vars;
 
     for (auto& x : var_set) {
-      vars.push_back(std::make_pair(get_ssa_var(x), x));
+      if (x.reg().get_kind() == Reg::FPR || x.reg().get_kind() == Reg::GPR) {
+        vars.push_back(std::make_pair(get_ssa_var(x), x));
+      }
     }
 
     std::sort(vars.begin(), vars.end(),

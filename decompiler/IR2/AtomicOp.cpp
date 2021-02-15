@@ -422,7 +422,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     auto& dst = m_instr.get_dst(0);
     if (dst.is_reg()) {
       auto reg = dst.get_reg();
-      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
         m_dst = Variable(VariableMode::WRITE, reg, my_idx, true);
       }
     }
@@ -433,7 +433,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     auto& src = m_instr.get_src(i);
     if (src.is_reg()) {
       auto reg = src.get_reg();
-      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
         m_src[i] = Variable(VariableMode::READ, reg, my_idx, true);
       }
     }
@@ -495,6 +495,102 @@ void AsmOp::update_register_info() {
   for (auto& src : m_src) {
     if (src.has_value()) {
       m_read_regs.push_back(src->reg());
+    }
+  }
+
+  if (m_instr.kind >= FIRST_COP2_MACRO && m_instr.kind <= LAST_COP2_MACRO) {
+    switch (m_instr.kind) {
+      case InstructionKind::VMSUBQ:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+      case InstructionKind::VMULAQ:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+        // Read Q register
+      case InstructionKind::VADDQ:
+      case InstructionKind::VSUBQ:
+      case InstructionKind::VMULQ:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        break;
+
+        // Write ACC register
+      case InstructionKind::VADDA:
+      case InstructionKind::VADDA_BC:
+      case InstructionKind::VMULA:
+      case InstructionKind::VMULA_BC:
+      case InstructionKind::VOPMULA:
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+        // Write Q register
+      case InstructionKind::VDIV:
+      case InstructionKind::VSQRT:
+      case InstructionKind::VRSQRT:
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        break;
+
+        // Read acc register
+      case InstructionKind::VMADD:
+      case InstructionKind::VMADD_BC:
+      case InstructionKind::VMSUB:
+      case InstructionKind::VMSUB_BC:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+      case InstructionKind::VOPMSUB:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+        // Read/Write acc register
+      case InstructionKind::VMADDA:
+      case InstructionKind::VMADDA_BC:
+      case InstructionKind::VMSUBA_BC:
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+      case InstructionKind::VMOVE:
+      case InstructionKind::VFTOI0:
+      case InstructionKind::VFTOI4:
+      case InstructionKind::VFTOI12:
+      case InstructionKind::VITOF0:
+      case InstructionKind::VITOF12:
+      case InstructionKind::VITOF15:
+      case InstructionKind::VABS:
+      case InstructionKind::VADD:
+      case InstructionKind::VADD_BC:
+      case InstructionKind::VSUB:
+      case InstructionKind::VSUB_BC:
+      case InstructionKind::VMUL:
+      case InstructionKind::VMUL_BC:
+      case InstructionKind::VMINI:
+      case InstructionKind::VMINI_BC:
+      case InstructionKind::VMAX:
+      case InstructionKind::VMAX_BC:
+      case InstructionKind::VCLIP:
+      case InstructionKind::VNOP:
+
+        // anything using one of these should be manually analyzed.
+      case InstructionKind::VMTIR:
+      case InstructionKind::VIAND:
+      case InstructionKind::VLQI:
+      case InstructionKind::VIADDI:
+      case InstructionKind::VSQI:
+      case InstructionKind::VRGET:
+      case InstructionKind::VRXOR:
+      case InstructionKind::VRNEXT:
+      case InstructionKind::VWAITQ:  // okay if following vsqrt/vrsqrt/vdiv
+      case InstructionKind::VCALLMS:
+
+        // do not read/write acc/q
+        break;
+
+      default:
+        assert(false);
+        break;
     }
   }
 }

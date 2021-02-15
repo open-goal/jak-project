@@ -359,6 +359,7 @@ void init_opcode_info() {
       .src_gpr(FT::RS);  // Load Quadword to COP2
 
   // COP2
+  // NOTE: if adding more here, update AtomicOp.cpp AsmOp::update_register_info()
   cd_dvft_svfs(def(IK::VMOVE, "vmove"));      // Transfer between Floating-Point Registers
   cd_dvft_svfs(def(IK::VFTOI0, "vftoi0"));    // Conversion to Fixed Point
   cd_dvft_svfs(def(IK::VFTOI4, "vftoi4"));    // Conversion to Fixed Point

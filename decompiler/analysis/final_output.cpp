@@ -104,6 +104,12 @@ std::string careful_function_to_string(
     const DecompilerTypeSystem& dts,
     FunctionDefSpecials special_mode = FunctionDefSpecials::NONE) {
   auto& env = func->ir2.env;
+
+  std::string result;
+  if (func->warnings.has_warnings()) {
+    result += func->warnings.get_warning_text(true);
+  }
+
   if (!func->ir2.top_form) {
     return ";; ERROR: function was not converted to expressions. Cannot decompile.\n\n";
   }
@@ -119,7 +125,8 @@ std::string careful_function_to_string(
     return ";; ERROR: function has no register use analysis. Cannot decompile.\n\n";
   }
 
-  return final_defun_out(*func, func->ir2.env, dts, special_mode) + "\n\n";
+  result += final_defun_out(*func, func->ir2.env, dts, special_mode) + "\n\n";
+  return result;
 }
 }  // namespace
 

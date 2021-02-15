@@ -312,7 +312,9 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     const auto& start_op_op = ops.ops.at(start_op);
     auto init_regs = start_op_info.live;
     for (auto reg : start_op_op->read_regs()) {
-      init_regs.insert(reg);
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+        init_regs.insert(reg);
+      }
     }
 
     for (auto reg : init_regs) {
@@ -353,19 +355,23 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       assert(op->write_regs().size() <= 1);
       // reads:
       for (auto r : op->read_regs()) {
-        ssa_i.src.push_back(current_regs.at(r));
+        if (r.get_kind() == Reg::FPR || r.get_kind() == Reg::GPR) {
+          ssa_i.src.push_back(current_regs.at(r));
+        }
       }
       // writes:
       if (!op->write_regs().empty()) {
         auto w = op->write_regs().front();
-        auto var = ssa.map.allocate(w);
-        ssa_i.dst = var;
-        // avoid operator[] again
-        auto it = current_regs.find(w);
-        if (it != current_regs.end()) {
-          it->second = var;
-        } else {
-          current_regs.insert(std::make_pair(w, var));
+        if (w.get_kind() == Reg::FPR || w.get_kind() == Reg::GPR) {
+          auto var = ssa.map.allocate(w);
+          ssa_i.dst = var;
+          // avoid operator[] again
+          auto it = current_regs.find(w);
+          if (it != current_regs.end()) {
+            it->second = var;
+          } else {
+            current_regs.insert(std::make_pair(w, var));
+          }
         }
       }
 
