@@ -2,15 +2,15 @@
 
 ## `gcommon`: **Done**
 - `vec4s` print/inpsect unimplemented (believed not working in GOAL either)
-- `array`'s `print`/`inspect` will not work on `uint128` or `int128`. These are believed to be unused, and also not don't work in GOAL.
+- `array`'s `print`/`inspect` will not work on `uint128` or `int128`. These are believed to be unused, and also don't work in GOAL.
 - `quad-copy!` is an optimized assembly memory copy that was rewritten. It should have identical behavior, but may be slow. In the future, we could improve the performance if it's used a lot.
 - `valid?` uses some inline assembly to check if a pointer is inside the symbol table, rewritten.
 - Lots of important memory constants should be defined here.
 
-## 'gstring-h': **Done**
+## `gstring-h`: **Done**
 - This file generates no code.
 
-## 'gkernel-h': **Done**
+## `gkernel-h`: **Done**
 - The types `cpu-thread` and `catch-frame` have a slightly different layout in OpenGOAL to back up x86-64 registers
 
 ## `gkernel`:
