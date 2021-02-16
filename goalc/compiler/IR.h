@@ -546,17 +546,6 @@ class IR_VFMath3Asm : public IR_Asm {
   Kind m_kind;
 };
 
-class IR_VFMath4Asm {
- public:
-  enum class Kind { MUL_ADD, MUL_SUB };
-  IR_VFMath4Asm(Kind kind);
-  IR_VFMath3Asm::Kind first_op();
-  IR_VFMath3Asm::Kind second_op();
-
- protected:
-  Kind m_kind;
-};
-
 class IR_BlendVF : public IR_Asm {
  public:
   IR_BlendVF(bool use_color, const RegVal* dst, const RegVal* src1, const RegVal* src2, u8 mask);

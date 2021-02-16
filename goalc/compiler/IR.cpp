@@ -1418,27 +1418,6 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
   }
 }
 
-// ---- ASM VF 4 operand
-
-IR_VFMath4Asm::IR_VFMath4Asm(Kind kind) : m_kind(kind) {}
-
-IR_VFMath3Asm::Kind IR_VFMath4Asm::first_op() {
-  switch (m_kind) {
-    case Kind::MUL_ADD:
-      return IR_VFMath3Asm::Kind::MUL;
-    case Kind::MUL_SUB:
-      return IR_VFMath3Asm::Kind::MUL;
-  }
-}
-
-IR_VFMath3Asm::Kind IR_VFMath4Asm::second_op() {
-  switch (m_kind) {
-    case Kind::MUL_ADD:
-      return IR_VFMath3Asm::Kind::ADD;
-    case Kind::MUL_SUB:
-      return IR_VFMath3Asm::Kind::SUB;
-  }
-}
 // ---- Blend VF
 
 IR_BlendVF::IR_BlendVF(bool use_color,

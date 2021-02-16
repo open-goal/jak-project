@@ -332,11 +332,8 @@ void Compiler::check_vector_float_regs(const goos::Object& form,
                                        std::vector<std::pair<std::string, RegVal*>> args) {
   for (std::pair<std::string, RegVal*> arg : args) {
     if (!arg.second->settable() || arg.second->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-      throw_compiler_error(
-          form,
-          fmt::format("Invalid {} register for a vector float operation form. Got a {{}}.",
-                      arg.first),
-          arg.second->print());
+      throw_compiler_error(form, "Invalid {} register for a vector float operation form. Got a {}.",
+                           arg.first, arg.second->print());
     }
   }
 }
@@ -585,7 +582,7 @@ Val* Compiler::compile_asm_vf_math4_two_operation(const goos::Object& form,
   // This third register is intended for the ACC/Q/ETC, and is used to temporarily store the value
   // that eventually goes into the destination
   //
-  // For example VMADD:
+  // For example VMADDA:
   // > ACC += src1 * src2
   // > DEST = ACC
   auto src3 = compile_error_guard(args.unnamed.at(3), env)->to_reg(env);
@@ -606,7 +603,6 @@ Val* Compiler::compile_asm_vf_math4_two_operation(const goos::Object& form,
 
   // First we clear a temporary register
   auto temp_reg = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
 
   // If there is a broadcast register, splat that float across the entire src2 register before
   // performing the operation For example vaddx.xyzw vf10, vf20, vf30
