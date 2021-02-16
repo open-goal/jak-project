@@ -141,6 +141,7 @@
 (declare-type state basic)
 (declare-type cpu-thread basic)
 (declare-type dead-pool basic)
+(declare-type event-message-block structure)
 
 ; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
@@ -233,9 +234,9 @@
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
-   (event-hook (function stack-frame (function object) function state object) :offset-assert #x44)
+   (event-hook (function basic int basic event-message-block object) :offset-assert #x44)
    (allocated-length int32 :offset-assert #x48)
-   (next-state basic :offset-assert #x4c)
+   (next-state state :offset-assert #x4c)
    (heap-base pointer :offset-assert #x50)
    (heap-top pointer :offset-assert #x54)
    (heap-cur pointer :offset-assert #x58)
@@ -432,12 +433,13 @@
    (trans (function object)  :offset-assert 20)
    (post  function  :offset-assert 24)
    (enter (function object object object object object object object)  :offset-assert 28)
-   (event basic     :offset-assert 32)
+   (event (function basic int basic event-message-block object)     :offset-assert 32)
    )
   (:methods
-   (new ((allocation symbol) (type-to-make type) (name basic) (code function) 
-         (trans function) (enter function) (exit (function object)) (event function)) _type_ 0)
-   )
+    (new ((allocation symbol) (type-to-make type) (name basic) (code function) 
+          (trans (function object)) (enter (function object object object object object object object)) (exit (function object)) 
+          (event (function basic int basic event-message-block object))) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
@@ -505,9 +507,14 @@
   `(!= 0 (logand ,mask (process-mask ,enum-value)))
   )
 
-(defmacro process-mask-set! (mask enum-value)
+(defmacro process-mask-set! (mask &rest enum-value)
   ;; sets the given bits in the process mask (with or)
-  `(set! ,mask (logior ,mask (process-mask ,enum-value)))
+  `(set! ,mask (logior ,mask (process-mask ,@enum-value)))
+  )
+
+(defmacro process-mask-clear! (mask &rest enum-value)
+  ;; sets the given bits in the process mask (with or)
+  `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value))))
   )
 
 (defmacro suspend ()
@@ -530,4 +537,9 @@
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          (deactivate pp)
          )
+  )
+
+(defmacro with-pp (&rest body)
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
   )

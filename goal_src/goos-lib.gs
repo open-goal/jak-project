@@ -96,7 +96,12 @@
       )
   )
 
-
+(desfun repeated-list (obj count)
+  (if (= 0 count)
+    '()
+    (cons obj (repeated-list obj (- count 1)))
+    )
+  )
 
 (defsmacro with-gensyms (names &rest body)
   `(let
