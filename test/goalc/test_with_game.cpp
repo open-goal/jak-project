@@ -647,7 +647,7 @@ class VectorFloatParameterizedTestFixtureWithRunner_SingleOperand
   std::string templateFile = "test-vector-math-1-operand.template.gc";
 };
 
-TEST_P(VectorFloatParameterizedTestFixtureWithRunner_SingleOperand, VF_ABS_DEST_Draft) {
+TEST_P(VectorFloatParameterizedTestFixtureWithRunner_SingleOperand, VF_ABS_DEST) {
   VectorFloatTestCase_SingleOperand testCase = GetParam();
   testCase.operation = [](float x) { return fabs(x); };
 

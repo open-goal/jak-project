@@ -312,7 +312,7 @@ TEST(EmitterAVX, SqrtVF) {
   tester.emit(IGen::sqrt_vf(XMM0 + 13, XMM0 + 4));
   tester.emit(IGen::sqrt_vf(XMM0 + 13, XMM0 + 14));
 
-  EXPECT_EQ(tester.dump_to_hex_string(true), "C5D851DCC4C10851DEC55851ECC4410851EE");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5F851DCC4C17851DEC57851ECC4417851EE");
 }
 
 TEST(EmitterAVX, RIP) {

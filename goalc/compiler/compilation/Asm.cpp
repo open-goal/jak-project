@@ -876,12 +876,9 @@ Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object&
 
   // Splat src's value into the dest reg, keep it simple, this way no matter which vector component
   // is accessed from the final result will be the correct answer
-  auto temp_reg = env->make_vfr(dest->type());
-  env->emit_ir<IR_SplatVF>(color, temp_reg, src, ftf_fsf_to_vector_element(ftf));
+  env->emit_ir<IR_SplatVF>(color, dest, src, ftf_fsf_to_vector_element(ftf));
 
-  // Perform the operation, you can't seem to VSQRTPS with the same register, which is why we needed
-  // the temp_reg.
-  env->emit_ir<IR_SqrtVF>(color, dest, temp_reg);
+  env->emit_ir<IR_SqrtVF>(color, dest, dest);
   return get_none();
 }
 

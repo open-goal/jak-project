@@ -2325,7 +2325,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src.is_xmm());
     Instruction instr(0x51);  // VSQRTPS
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0b0);
     return instr;
   }
 };
