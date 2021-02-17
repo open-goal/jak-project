@@ -250,6 +250,14 @@ Val* Compiler::compile_asm_nop_vf(const goos::Object& form, const goos::Object& 
   return get_none();
 }
 
+Val* Compiler::compile_asm_wait_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  env->emit_ir<IR_AsmFWait>();
+  return get_none();
+}
+
 /*!
  * Load a vector float from memory. Does an aligned load.
  */
@@ -319,192 +327,15 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   return get_none();
 }
 
-Val* Compiler::compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR,
-                              emitter::Register::VF_ELEMENT::NONE, env);
-}
-
-Val* Compiler::compile_asm_max_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
-                              emitter::Register::VF_ELEMENT::NONE, env);
-}
-
-Val* Compiler::compile_asm_maxx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
-                              emitter::Register::VF_ELEMENT::X, env);
-}
-
-Val* Compiler::compile_asm_maxy_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
-                              emitter::Register::VF_ELEMENT::Y, env);
-}
-
-Val* Compiler::compile_asm_maxz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
-                              emitter::Register::VF_ELEMENT::Z, env);
-}
-
-Val* Compiler::compile_asm_maxw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
-                              emitter::Register::VF_ELEMENT::W, env);
-}
-
-Val* Compiler::compile_asm_min_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
-                              emitter::Register::VF_ELEMENT::NONE, env);
-}
-
-Val* Compiler::compile_asm_minx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
-                              emitter::Register::VF_ELEMENT::X, env);
-}
-
-Val* Compiler::compile_asm_miny_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
-                              emitter::Register::VF_ELEMENT::Y, env);
-}
-
-Val* Compiler::compile_asm_minz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
-                              emitter::Register::VF_ELEMENT::Z, env);
-}
-
-Val* Compiler::compile_asm_minw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
-                              emitter::Register::VF_ELEMENT::W, env);
-}
-
-Val* Compiler::compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
-                              emitter::Register::VF_ELEMENT::NONE, env);
-}
-
-Val* Compiler::compile_asm_subx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
-                              emitter::Register::VF_ELEMENT::X, env);
-}
-
-Val* Compiler::compile_asm_suby_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
-                              emitter::Register::VF_ELEMENT::Y, env);
-}
-
-Val* Compiler::compile_asm_subz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
-                              emitter::Register::VF_ELEMENT::Z, env);
-}
-
-Val* Compiler::compile_asm_subw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
-                              emitter::Register::VF_ELEMENT::W, env);
-}
-
-Val* Compiler::compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
-                              emitter::Register::VF_ELEMENT::NONE, env);
-}
-
-Val* Compiler::compile_asm_addx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
-                              emitter::Register::VF_ELEMENT::X, env);
-}
-
-Val* Compiler::compile_asm_addy_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
-                              emitter::Register::VF_ELEMENT::Y, env);
-}
-
-Val* Compiler::compile_asm_addz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
-                              emitter::Register::VF_ELEMENT::Z, env);
-}
-
-Val* Compiler::compile_asm_addw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
-                              emitter::Register::VF_ELEMENT::W, env);
-}
-
-Val* Compiler::compile_asm_mul_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
-                              emitter::Register::VF_ELEMENT::NONE, env);
-}
-
-Val* Compiler::compile_asm_mulx_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
-                              emitter::Register::VF_ELEMENT::X, env);
-}
-
-Val* Compiler::compile_asm_muly_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
-                              emitter::Register::VF_ELEMENT::Y, env);
-}
-
-Val* Compiler::compile_asm_mulz_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
-                              emitter::Register::VF_ELEMENT::Z, env);
-}
-
-Val* Compiler::compile_asm_mulw_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
-                              emitter::Register::VF_ELEMENT::W, env);
-}
-
-Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(
-      form, args, {{}, {}},
-      {{"color", {false, goos::ObjectType::SYMBOL}}, {"mask", {false, goos::ObjectType::INTEGER}}});
-  bool color = true;
-  if (args.has_named("color")) {
-    color = get_true_or_false(form, args.named.at("color"));
-  }
-
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid destination register for a vector float 3-arg math form. Got a {}.",
-        dest->print());
-  }
-
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  if (src->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid first source register for a vector float 3-arg math form. Got a {}.",
-        src->print());
-  }
-
-  u8 mask = 0b1111;
-  if (args.has_named("mask")) {
-    mask = args.named.at("mask").as_int();
-    if (mask > 15) {
-      throw_compiler_error(
-          form, "The value {} is out of range for a destination mask (0-15 inclusive).", mask);
+void Compiler::check_vector_float_regs(const goos::Object& form,
+                                       Env* env,
+                                       std::vector<std::pair<std::string, RegVal*>> args) {
+  for (std::pair<std::string, RegVal*> arg : args) {
+    if (!arg.second->settable() || arg.second->ireg().reg_class != RegClass::VECTOR_FLOAT) {
+      throw_compiler_error(form, "Invalid {} register for a vector float operation form. Got a {}.",
+                           arg.first, arg.second->print());
     }
   }
-
-  // There is no single instruction ABS on AVX, so there are a number of ways to do it manually,
-  // this is one of them. For example, assume the original vec = <1, -2, -3, 4>
-
-  // First we clear a temporary register, XOR'ing itself
-  auto temp_reg = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
-
-  // Next, find the difference between our source operand and 0, use the same temp register, no need
-  // to use another <0, 0, 0, 0> - <1, -2, -3, 4> = <-1, 2, 3, 4>
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, src, IR_VFMath3Asm::Kind::SUB);
-
-  // Finally, find the maximum between our difference, and the original value
-  // MAX_OF(<-1, 2, 3, 4>, <1, -2, -3, 4>) = <1, 2, 3, 4>
-  if (mask == 0b1111) {  // If the entire destination is to be copied, we can optimize out the blend
-    env->emit_ir<IR_VFMath3Asm>(color, dest, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
-  } else {
-    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
-
-    // Blend the result back into the destination register using the mask
-    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
-  }
-
-  return get_none();
 }
 
 Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -518,25 +349,10 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid destination register for a vector float 3-arg math form. Got a {}.",
-        dest->print());
-  }
-
   auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  if (src1->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid first source register for a vector float 3-arg math form. Got a {}.",
-        src1->print());
-  }
-
   auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
-  if (src2->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid second source register for a vector float 3-arg math form. Got a {}.",
-        src2->print());
-  }
+  check_vector_float_regs(form, env,
+                          {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
   u8 mask = 0b1111;
   if (args.has_named("mask")) {
@@ -566,25 +382,10 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid destination register for a vector float 3-arg math form. Got a {}.",
-        dest->print());
-  }
-
   auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  if (src1->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid first source register for a vector float 3-arg math form. Got a {}.",
-        src1->print());
-  }
-
   auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
-  if (src2->ireg().reg_class != RegClass::VECTOR_FLOAT) {
-    throw_compiler_error(
-        form, "Invalid second source register for a vector float 3-arg math form. Got a {}.",
-        src2->print());
-  }
+  check_vector_float_regs(form, env,
+                          {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
   u8 mask = 0b1111;
   if (args.has_named("mask")) {
@@ -627,5 +428,518 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
     }
   }
 
+  return get_none();
+}
+
+Val* Compiler::compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR,
+                              emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_max_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_max_x_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_max_y_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_max_z_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_max_w_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MAX,
+                              emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_min_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_min_x_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_min_y_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_min_z_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_min_w_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MIN,
+                              emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_sub_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_sub_x_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_sub_y_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_sub_z_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_sub_w_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::SUB,
+                              emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_add_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_add_x_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_add_y_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_add_z_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_add_w_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::ADD,
+                              emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_mul_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_mul_x_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_mul_y_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_mul_z_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_mul_w_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::MUL,
+                              emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_vf_math4_two_operation(const goos::Object& form,
+                                                  const goos::Object& rest,
+                                                  IR_VFMath3Asm::Kind first_op_kind,
+                                                  IR_VFMath3Asm::Kind second_op_kind,
+                                                  emitter::Register::VF_ELEMENT broadcastElement,
+                                                  Env* env) {
+  auto args = get_va(form, rest);
+  va_check(
+      form, args, {{}, {}, {}, {}},
+      {{"color", {false, goos::ObjectType::SYMBOL}}, {"mask", {false, goos::ObjectType::INTEGER}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  // This third register is intended for the ACC/Q/ETC, and is used to temporarily store the value
+  // that eventually goes into the destination
+  //
+  // For example VMADDA:
+  // > ACC += src1 * src2
+  // > DEST = ACC
+  auto src3 = compile_error_guard(args.unnamed.at(3), env)->to_reg(env);
+  check_vector_float_regs(form, env,
+                          {{"destination", dest},
+                           {"first source", src1},
+                           {"second source", src2},
+                           {"third source", src3}});
+
+  u8 mask = 0b1111;
+  if (args.has_named("mask")) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
+      throw_compiler_error(form, "The value {} is out of range for a blend mask (0-15 inclusive).",
+                           mask);
+    }
+  }
+
+  // First we clear a temporary register
+  auto temp_reg = env->make_vfr(dest->type());
+
+  // If there is a broadcast register, splat that float across the entire src2 register before
+  // performing the operation For example vaddx.xyzw vf10, vf20, vf30
+  // vf10[x] = vf20[x] + vf30[x]
+  // vf10[y] = vf20[y] + vf30[x]
+  // vf10[z] = vf20[z] + vf30[x]
+  // vf10[w] = vf20[w] + vf30[x]
+  if (broadcastElement != emitter::Register::VF_ELEMENT::NONE) {
+    env->emit_ir<IR_SplatVF>(color, temp_reg, src2, broadcastElement);
+
+    // Perform the first operation
+    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, first_op_kind);
+
+    // If the entire destination is to be copied, we can optimize out the blend
+    if (mask == 0b1111) {
+      env->emit_ir<IR_VFMath3Asm>(color, dest, src3, temp_reg, second_op_kind);
+    } else {
+      // Perform the second operation on the two vectors into the temporary register
+      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src3, temp_reg, second_op_kind);
+      // Blend the result back into the destination register using the mask
+      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    }
+  } else {
+    // Perform the first operation
+    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, first_op_kind);
+
+    // If the entire destination is to be copied, we can optimize out the blend
+    if (mask == 0b1111) {
+      env->emit_ir<IR_VFMath3Asm>(color, dest, src3, temp_reg, second_op_kind);
+    } else {
+      // Perform the second operation on the two vectors into the temporary register
+      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src3, temp_reg, second_op_kind);
+      // Blend the result back into the destination register using the mask
+      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    }
+  }
+
+  return get_none();
+}
+
+Val* Compiler::compile_asm_mul_add_vf(const goos::Object& form,
+                                      const goos::Object& rest,
+                                      Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::ADD,
+                                            emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_mul_add_x_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::ADD,
+                                            emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_mul_add_y_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::ADD,
+                                            emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_mul_add_z_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::ADD,
+                                            emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_mul_add_w_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::ADD,
+                                            emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_mul_sub_vf(const goos::Object& form,
+                                      const goos::Object& rest,
+                                      Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::SUB,
+                                            emitter::Register::VF_ELEMENT::NONE, env);
+}
+
+Val* Compiler::compile_asm_mul_sub_x_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::SUB,
+                                            emitter::Register::VF_ELEMENT::X, env);
+}
+
+Val* Compiler::compile_asm_mul_sub_y_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::SUB,
+                                            emitter::Register::VF_ELEMENT::Y, env);
+}
+
+Val* Compiler::compile_asm_mul_sub_z_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::SUB,
+                                            emitter::Register::VF_ELEMENT::Z, env);
+}
+
+Val* Compiler::compile_asm_mul_sub_w_vf(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env) {
+  return compile_asm_vf_math4_two_operation(form, rest, IR_VFMath3Asm::Kind::MUL,
+                                            IR_VFMath3Asm::Kind::SUB,
+                                            emitter::Register::VF_ELEMENT::W, env);
+}
+
+Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(
+      form, args, {{}, {}},
+      {{"color", {false, goos::ObjectType::SYMBOL}}, {"mask", {false, goos::ObjectType::INTEGER}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
+
+  u8 mask = 0b1111;
+  if (args.has_named("mask")) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
+      throw_compiler_error(
+          form, "The value {} is out of range for a destination mask (0-15 inclusive).", mask);
+    }
+  }
+
+  // There is no single instruction ABS on AVX, so there are a number of ways to do it manually,
+  // this is one of them. For example, assume the original vec = <1, -2, -3, 4>
+
+  // First we clear a temporary register, XOR'ing itself
+  auto temp_reg = env->make_vfr(dest->type());
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
+
+  // Next, find the difference between our source operand and 0, use the same temp register, no need
+  // to use another <0, 0, 0, 0> - <1, -2, -3, 4> = <-1, 2, 3, 4>
+  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, src, IR_VFMath3Asm::Kind::SUB);
+
+  // Finally, find the maximum between our difference, and the original value
+  // MAX_OF(<-1, 2, 3, 4>, <1, -2, -3, 4>) = <1, 2, 3, 4>
+  if (mask == 0b1111) {  // If the entire destination is to be copied, we can optimize out the blend
+    env->emit_ir<IR_VFMath3Asm>(color, dest, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
+  } else {
+    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
+
+    // Blend the result back into the destination register using the mask
+    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+  }
+
+  return get_none();
+}
+
+u8 Compiler::ftf_fsf_to_blend_mask(u8 val) {
+  // 00 -> x
+  // ...
+  // 11 -> w
+  return 0b0001 << val;
+}
+
+emitter::Register::VF_ELEMENT Compiler::ftf_fsf_to_vector_element(u8 val) {
+  // 00 -> x
+  // ...
+  // 11 -> w
+  switch (val) {
+    case 0b00:
+      return emitter::Register::VF_ELEMENT::X;
+    case 0b01:
+      return emitter::Register::VF_ELEMENT::Y;
+    case 0b10:
+      return emitter::Register::VF_ELEMENT::Z;
+    case 0b11:
+      return emitter::Register::VF_ELEMENT::W;
+  }
+}
+
+Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}},
+           {
+               {"color", {false, goos::ObjectType::SYMBOL}},
+               {"fsf", {true, goos::ObjectType::INTEGER}},
+               {"ftf", {true, goos::ObjectType::INTEGER}},
+           });
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  check_vector_float_regs(form, env,
+                          {{"destination", dest}, {"first source", src1}, {"second source", src2}});
+
+  u8 fsf = args.named.at("fsf").as_int();
+  if (fsf > 3) {
+    throw_compiler_error(form, "The value {} is out of range for fsf (0-3 inclusive).", fsf);
+  }
+  u8 ftf = args.named.at("ftf").as_int();
+  if (ftf > 3) {
+    throw_compiler_error(form, "The value {} is out of range for ftf (0-3 inclusive).", ftf);
+  }
+
+  // VDIV in the VU stores its result in a single 32bit `Q` Register, it does not compute the packed
+  // division result
+  //
+  // Further more, you can mix and match the vector elements (ex. src1's X component divided by
+  // src2's Y) Because of this, we need to blend the two components into corresponding locations,
+  // perform the divide then place into the cleared dest. register.
+  //
+  // Why do we even bother using VDIVPS instead of FDIV? Because otherwise in x86, you have to use
+  // the FPU stack Registers are nicer.
+
+  // Save one temp reg, use the destination as one
+  auto temp_reg = env->make_vfr(dest->type());
+
+  // Splat src1's value into the dest reg, keep it simple, this way no matter which vector component
+  // is accessed from the final result will be the correct answer
+  env->emit_ir<IR_SplatVF>(color, dest, src1, ftf_fsf_to_vector_element(fsf));
+  // Splat src1's value into the the temp reg
+  env->emit_ir<IR_SplatVF>(color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
+
+  // Perform the Division
+  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(
+      form, args, {{}, {}},
+      {{"color", {false, goos::ObjectType::SYMBOL}}, {"ftf", {true, goos::ObjectType::INTEGER}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
+
+  u8 ftf = args.named.at("ftf").as_int();
+  if (ftf > 3) {
+    throw_compiler_error(form, "The value {} is out of range for ftf (0-3 inclusive).", ftf);
+  }
+
+  // VSQRT in the VU stores its result in a single 32bit `Q` Register, it does not compute the
+  // packed division result
+  //
+  // Because of this, we need to blend the relevent component into a cleared register and then
+  // perform the SQRT
+  //
+  // Why do we even bother using VSQRTPS instead of FSQRT? Because otherwise in x86, you have to use
+  // the FPU stack Registers are nicer.
+
+  // Splat src's value into the dest reg, keep it simple, this way no matter which vector component
+  // is accessed from the final result will be the correct answer
+  env->emit_ir<IR_SplatVF>(color, dest, src, ftf_fsf_to_vector_element(ftf));
+
+  env->emit_ir<IR_SqrtVF>(color, dest, dest);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
+                                            const goos::Object& rest,
+                                            Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  check_vector_float_regs(form, env,
+                          {{"destination", dest}, {"first source", src1}, {"second source", src2}});
+
+  // Given 2 vectors V1 = <1,2,3,4> and V2 = <5,6,7,8> and assume VDEST = <0, 0, 0, 999>
+  // The outer product is computed like so (only x,y,z components are operated on):
+  // x = (V1y * V2z) - (V2y * V1z) => (2 * 7) - (6 * 3) => -4
+  // y = (V1z * V2x) - (V2z * V1x) => (3 * 5) - (7 * 1) =>  8
+  // z = (V1x * V2y) - (V2x * V1y) => (1 * 6) - (5 * 2) => -4
+  // w = N/A, left alone                                => 999
+  //
+  // There is probably a more optimized alg for this, but we can just do this in two stages
+  // First swizzle the first two vectors accordingly, and store in `dest`
+  // Then follow up with the second half.
+  //
+  // Some temporary regs are required AND its important to not modify dest's `w` or the source
+  // registers at all
+
+  // Init two temp registers
+  auto temp1 = env->make_vfr(dest->type());
+  auto temp2 = env->make_vfr(dest->type());
+
+  // First Portion
+  // - Swizzle src1 appropriately
+  env->emit_ir<IR_SwizzleVF>(color, temp1, src1, 0b00001001);
+  // - Move it into 'dest' safely (avoid mutating `w`)
+  env->emit_ir<IR_BlendVF>(color, dest, dest, temp1, 0b0111);
+  // - Swizzle src2 appropriately
+  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00010010);
+  // - Multiply - Result in `dest`
+  env->emit_ir<IR_VFMath3Asm>(color, temp1, dest, temp1, IR_VFMath3Asm::Kind::MUL);
+  // - Move it into 'dest' safely (avoid mutating `w`)
+  env->emit_ir<IR_BlendVF>(color, dest, dest, temp1, 0b0111);
+
+  // Second Portion
+  // - Swizzle src2 appropriately
+  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00001001);
+  // - Swizzle src1 appropriately
+  env->emit_ir<IR_SwizzleVF>(color, temp2, src1, 0b00010010);
+  // - Multiply - Result in `temp1`
+  env->emit_ir<IR_VFMath3Asm>(color, temp1, temp1, temp2, IR_VFMath3Asm::Kind::MUL);
+
+  // Finalize
+  // - Subtract
+  env->emit_ir<IR_VFMath3Asm>(color, temp2, dest, temp1, IR_VFMath3Asm::Kind::SUB);
+  // - Blend result, as to avoid not modifying dest's `w` component
+  env->emit_ir<IR_BlendVF>(color, dest, dest, temp2, 0b0111);
   return get_none();
 }
