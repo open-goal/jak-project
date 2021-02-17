@@ -212,7 +212,7 @@ class IR_IntegerMath : public IR {
   u8 m_shift_amount = 0;
 };
 
-enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS, MIN_SS, MAX_SS };
+enum class FloatMathKind { DIV_SS, MUL_SS, ADD_SS, SUB_SS, MIN_SS, MAX_SS, SQRT_SS };
 
 class IR_FloatMath : public IR {
  public:

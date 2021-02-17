@@ -1897,6 +1897,17 @@ class IGen {
     return instr;
   }
 
+  static Instruction sqrts_xmm(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x51);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
   /*!
    * Multiply two floats in xmm's
    */

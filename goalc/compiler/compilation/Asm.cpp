@@ -328,7 +328,7 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
 }
 
 void Compiler::check_vector_float_regs(const goos::Object& form,
-                                       Env* env,
+                                       Env*,
                                        std::vector<std::pair<std::string, RegVal*>> args) {
   for (std::pair<std::string, RegVal*> arg : args) {
     if (!arg.second->settable() || arg.second->ireg().reg_class != RegClass::VECTOR_FLOAT) {
@@ -791,6 +791,9 @@ emitter::Register::VF_ELEMENT Compiler::ftf_fsf_to_vector_element(u8 val) {
       return emitter::Register::VF_ELEMENT::Z;
     case 0b11:
       return emitter::Register::VF_ELEMENT::W;
+    default:
+      throw_compiler_error_no_code("Invalid vector element {}", (int)val);
+      return emitter::Register::VF_ELEMENT::NONE;
   }
 }
 

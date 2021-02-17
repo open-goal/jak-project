@@ -618,6 +618,8 @@ std::string IR_FloatMath::print() {
       return fmt::format("maxss {}, {}", m_dest->print(), m_arg->print());
     case FloatMathKind::MIN_SS:
       return fmt::format("minss {}, {}", m_dest->print(), m_arg->print());
+    case FloatMathKind::SQRT_SS:
+      return fmt::format("sqrtss {}, {}", m_dest->print(), m_arg->print());
     default:
       throw std::runtime_error("Unsupported FloatMathKind");
   }
@@ -626,7 +628,9 @@ std::string IR_FloatMath::print() {
 RegAllocInstr IR_FloatMath::to_rai() {
   RegAllocInstr rai;
   rai.write.push_back(m_dest->ireg());
-  rai.read.push_back(m_dest->ireg());
+  if (m_kind != FloatMathKind::SQRT_SS) {
+    rai.read.push_back(m_dest->ireg());
+  }
   rai.read.push_back(m_arg->ireg());
   return rai;
 }
@@ -658,6 +662,10 @@ void IR_FloatMath::do_codegen(emitter::ObjectGenerator* gen,
     case FloatMathKind::MIN_SS:
       gen->add_instr(
           IGen::minss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+      break;
+    case FloatMathKind::SQRT_SS:
+      gen->add_instr(IGen::sqrts_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+                     irec);
       break;
     default:
       assert(false);
