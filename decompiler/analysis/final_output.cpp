@@ -95,6 +95,23 @@ std::string final_defun_out(const Function& func,
     append(top_form, pretty_print::build_list(inline_body));
     return pretty_print::to_string(top_form);
   }
+
+  if (func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+    std::string def_name = "defun-anon";
+    assert(special_mode == FunctionDefSpecials::NONE);
+    std::vector<goos::Object> top;
+    top.push_back(pretty_print::to_symbol(def_name));
+    top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
+    top.push_back(arguments);
+    auto top_form = pretty_print::build_list(top);
+
+    if (var_count > 0) {
+      append(top_form, pretty_print::build_list(var_dec));
+    }
+
+    append(top_form, pretty_print::build_list(inline_body));
+    return pretty_print::to_string(top_form);
+  }
   return "nyi";
 }
 

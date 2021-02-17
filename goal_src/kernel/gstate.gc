@@ -52,12 +52,100 @@ There are several ways to "go"
 ;;       )
 ;;   )
 
+;; cause the current process to change state
 (defmacro go (next-state &rest args)
   `(with-pp
      (set! (-> pp next-state) ,next-state)
      ((the (function _varargs_ object) enter-state) ,@args)
      )
   )
+
+;; cause the given process to change state.
+(defmacro go-process (proc state &rest args)
+  `(with-pp
+     (protect (pp)
+              (set! pp ,proc)
+              (set! (-> pp next-state) ,state)
+              ((the (function _varargs_ object) enter-state) ,@args)
+              )
+     )
+  )
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
+    )
+  )
+
+;; display a listing of active processes.
+(defmacro ps (&key (detail #f))
+  `(inspect-process-tree *active-pool* 0 0 ,detail)
+  )
+
+
+;; define a state state
+(defmacro defstate (state-name
+                    &key (event #f)
+                    &key (enter #f)
+                    &key (trans #f)
+                    &key (exit #f)
+                    &key (code #f)
+                    &key (post #f)
+                      )
+  `(begin
+    (define ,state-name (new 'static 'state
+                             :name (quote ,state-name)
+                             :next #f
+                             :exit #f
+                             :code #f
+                             :trans #f
+                             :post #f
+                             :enter #f
+                             :event #f
+                             )
+      )
+    ,(if event
+         `(set! (-> ,state-name event) ,event)
+         `(none)
+         )
+    ,(if enter
+         `(set! (-> ,state-name enter) (the (function object object object object object object object) ,enter))
+         `(none)
+         )
+    ,(if trans
+         `(set! (-> ,state-name trans) ,trans)
+         `(none)
+         )
+    ,(if exit
+         `(set! (-> ,state-name exit) ,exit)
+         `(none)
+         )
+    ,(if code
+         `(set! (-> ,state-name code) ,code)
+         `(none)
+         )
+    ,(if post
+         `(set! (-> ,state-name post) ,post)
+         `(none)
+         )
+    )
+    
+  )
+  
 
 (defmethod new state
   ((allocation symbol)
@@ -68,7 +156,8 @@ There are several ways to "go"
    (enter (function object object object object object object object))
    (exit (function object))
    (event (function basic int basic event-message-block object)))
-  "Allocate a new state."
+  "Allocate a new state. It seems like this isn't really used much and most states are
+   statically allocated and as a result don't have the constructor called."
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj name) name)
     (set! (-> obj next) '#f)
@@ -103,7 +192,6 @@ There are several ways to "go"
 (defun enter-state (arg0 arg1 arg2 arg3 arg4 arg5)
   "Make the process stored in pp enter the state in pp next-state"
   ;;(declare (print-asm))
-  (format 0 "call to enter-state~%")
   (with-pp
     ;; unsleep us
     (process-mask-clear! (-> pp mask) sleep sleep-code)
@@ -112,14 +200,12 @@ There are several ways to "go"
     (cond
       ((= (-> pp status) 'initialize)
        ;; did a go during initialize.
-       (format 0 "go during init~%")
        ;; remove the old trans hook, if there was one
        (set! (-> pp trans-hook) #f)
        (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
        ;; tell the kernel that we did a go during init
        (set! (-> pp status) 'initialize-go)
        ;; abandon this thread, go back to what initialized us!
-       (format 0 "throwing!~%")
        (throw 'initialize #t)
        #t
        )
@@ -144,7 +230,7 @@ There are several ways to "go"
        (let ((frame (-> pp stack-frame-top)))
          (while frame
            (let ((typ (-> frame type)))
-             (if (or (= typ protect-frame) (= type state))
+             (if (or (= typ protect-frame) (= typ state))
                  ;; if we got a protect-frame or a state, call exit handler
                  ((-> (the protect-frame frame) exit))
                  )
@@ -258,6 +344,7 @@ There are several ways to "go"
   )
 
 (defun looping-code ()
+  "Loop."
   (while #t
     (suspend)
     )

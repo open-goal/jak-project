@@ -109,3 +109,15 @@ TEST_F(KernelTest, RunFunctionInProcess) {
       "run-function-in-process result: #f\n";
   EXPECT_EQ(expected, result);
 }
+
+TEST_F(KernelTest, StateAndXmm) {
+  runner.c->run_test_from_string("(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+  std::string result = send_code_and_get_multiple_responses("(state-test)", 5, &runner);
+
+  std::string expected =
+      "0\nenter wreck: 3 4 5 6\nwreck: 3 4 5 6\nenter check: 9 8 7 6\nrun xmm-check 12.3400 "
+      "45.6300 9 8 7 6\nwreck: 3 4 5 6\nrun xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\nrun "
+      "xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\nexit check\nenter die\ntime to "
+      "die!\nexit die\nexit wreck\nenter die\ntime to die!\nexit die\n";
+  EXPECT_EQ(expected, result);
+}
