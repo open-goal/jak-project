@@ -55,7 +55,9 @@ std::string TP_Type::print() const {
       return fmt::format("<integer {} + ({} x {})>", m_int, m_extra_multiplier, m_ts.print());
     case Kind::DYNAMIC_METHOD_ACCESS:
       return fmt::format("<dynamic-method-access>");
-    case Kind::METHOD:
+    case Kind::VIRTUAL_METHOD:
+      return fmt::format("<vmethod {}>", m_ts.print());
+    case Kind::NON_VIRTUAL_METHOD:
       return fmt::format("<method {}>", m_ts.print());
     case Kind::INVALID:
     default:
@@ -75,7 +77,9 @@ bool TP_Type::operator==(const TP_Type& other) const {
       return m_ts == other.m_ts;
     case Kind::TYPE_OF_TYPE_NO_VIRTUAL:
       return m_ts == other.m_ts;
-    case Kind::METHOD:
+    case Kind::VIRTUAL_METHOD:
+      return m_ts == other.m_ts;
+    case Kind::NON_VIRTUAL_METHOD:
       return m_ts == other.m_ts;
     case Kind::FALSE_AS_NULL:
       return true;
@@ -144,7 +148,9 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("object");
     case Kind::FORMAT_STRING:
       return TypeSpec("string");
-    case Kind::METHOD:
+    case Kind::VIRTUAL_METHOD:
+      return m_ts;
+    case Kind::NON_VIRTUAL_METHOD:
       return m_ts;
     case Kind::INVALID:
     default:

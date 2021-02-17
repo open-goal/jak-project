@@ -285,6 +285,14 @@ goos::Object Break::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+std::string EmptyVtx::to_string() const {
+  return "empty";
+}
+
+goos::Object EmptyVtx::to_form() const {
+  return pretty_print::build_list("empty");
+}
+
 ControlFlowGraph::ControlFlowGraph() {
   // allocate the entry and exit vertices.
   m_entry = alloc<EntryVtx>();
@@ -1100,6 +1108,7 @@ bool ControlFlowGraph::find_cond_w_else() {
     }
 
     if (!is_found_after(else_block, b0)) {
+      ;
       return true;
     }
 
@@ -1217,6 +1226,185 @@ bool ControlFlowGraph::find_cond_w_else() {
     new_cwe->entries = std::move(entries);
 
     else_block->parent_claim(new_cwe);
+    for (const auto& x : new_cwe->entries) {
+      x.body->parent_claim(new_cwe);
+      x.condition->parent_claim(new_cwe);
+    }
+    found = true;
+    return false;
+  });
+
+  return found;
+}
+
+bool ControlFlowGraph::find_cond_w_empty_else() {
+  bool found = false;
+
+  for_each_top_level_vtx([&](CfgVtx* vtx) {
+    // determine where the "else" block would be
+    auto* c0 = vtx;       // first condition
+    auto* b0 = c0->next;  // first body
+    if (!b0) {
+      return true;
+    }
+
+    //        printf("cwe try %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
+
+    // first condition should have the _option_ to fall through to first body
+    if (c0->succ_ft != b0 || c0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+      return true;
+    }
+
+    // first body MUST unconditionally jump to else
+    if (b0->succ_ft || b0->end_branch.branch_likely ||
+        b0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+      return true;
+    }
+
+    if (b0->pred.size() != 1) {
+      return true;
+    }
+
+    assert(b0->end_branch.has_branch);
+    assert(b0->end_branch.branch_always);
+    assert(b0->succ_branch);
+
+    // TODO - check what's in the delay slot!
+    auto* end_block = b0->succ_branch;
+    if (!end_block) {
+      return true;
+    }
+
+    if (!is_found_after(end_block, b0)) {
+      return true;
+    }
+
+    auto* else_block = end_block->prev;
+    if (!else_block) {
+      return true;
+    }
+
+    if (else_block != b0) {
+      return true;
+    } else {
+      else_block = end_block;
+    }
+
+    if (else_block->succ_branch) {
+      return true;
+    }
+
+    assert(!else_block->end_branch.has_branch);
+
+    std::vector<CondWithElse::Entry> entries = {{c0, b0}};
+    auto* prev_condition = c0;
+    auto* prev_body = b0;
+
+    // loop to try to grab all the cases up to the else, or reject if the inside is not sufficiently
+    // compact or if this is not actually a cond with else Note, we are responsible for checking the
+    // branch of prev_condition, but not the fallthrough
+    while (true) {
+      auto* next = prev_body->next;
+      if (next == else_block) {
+        // TODO - check what's in the delay slot!
+        // we're done!
+        // check the prev_condition, prev_body blocks properly go to the else/end_block
+        // prev_condition should jump to else:
+        if (prev_condition->succ_branch != else_block || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          return true;
+        }
+
+        // prev_body should jump to end
+        if (prev_body->succ_branch != end_block ||
+            prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          return true;
+        }
+
+        break;
+      } else {
+        auto* c = next;
+        auto* b = c->next;
+        if (!c || !b) {
+          ;
+          return true;
+        };
+        // attempt to add another
+
+        if (c->pred.size() != 1) {
+          return true;
+        }
+
+        if (b->pred.size() != 1) {
+          return true;
+        }
+
+        // how to get to cond
+        if (prev_condition->succ_branch != c || prev_condition->end_branch.branch_likely ||
+            prev_condition->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          return true;
+        }
+
+        if (prev_body->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
+          return true;
+        }
+
+        if (c->succ_ft != b) {
+          return true;  // condition should have the option to fall through if matched
+        }
+
+        // TODO - check what's in the delay slot!
+        if (c->end_branch.branch_likely) {
+          return true;  // otherwise should go to next with a non-likely branch
+        }
+
+        if (b->succ_ft || b->end_branch.branch_likely) {
+          return true;  // body should go straight to else
+        }
+
+        if (b->succ_branch != end_block) {
+          return true;
+        }
+
+        entries.emplace_back(c, b);
+        prev_body = b;
+        prev_condition = c;
+      }
+    }
+
+    // now we need to add it
+    //    printf("got cwe\n");
+    auto new_cwe = alloc<CondWithElse>();
+
+    // link x <-> new_cwe
+    for (auto* npred : c0->pred) {
+      npred->replace_succ_and_check(c0, new_cwe);
+    }
+    new_cwe->pred = c0->pred;
+    new_cwe->prev = c0->prev;
+    if (new_cwe->prev) {
+      new_cwe->prev->next = new_cwe;
+    }
+
+    lg::error("There is a very strange control flow here, please check it manually.");
+
+    // link new_cwe <-> end
+    std::vector<CfgVtx*> to_replace;
+    // to_replace.push_back(else_block);
+    to_replace.push_back(entries.back().condition);
+    for (const auto& x : entries) {
+      to_replace.push_back(x.body);
+    }
+    end_block->replace_preds_with_and_check(to_replace, new_cwe);
+    new_cwe->succ_ft = end_block;
+    new_cwe->next = end_block;
+    end_block->prev = new_cwe;
+
+    // new_cwe->else_vtx = else_block;
+    new_cwe->else_vtx = alloc<EmptyVtx>();
+    new_cwe->entries = std::move(entries);
+
+    new_cwe->else_vtx->parent_claim(new_cwe);
     for (const auto& x : new_cwe->entries) {
       x.body->parent_claim(new_cwe);
       x.condition->parent_claim(new_cwe);
@@ -1888,6 +2076,12 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
 
     if (!changed) {
       changed = changed || cfg->find_goto_not_end();
+    }
+
+    if (!changed) {
+      changed = changed || cfg->find_cond_w_empty_else();
+      if (changed) {
+      }
     }
   }
 

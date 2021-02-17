@@ -197,7 +197,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         return pool.alloc_element<SetFormFormElement>(addr, val);
       }
 
-      if (input_type.typespec() == TypeSpec("pointer")) {
+      if (input_type.typespec() == TypeSpec("pointer") && ro.offset == 0) {
         std::string cast_type;
         switch (m_size) {
           case 1:

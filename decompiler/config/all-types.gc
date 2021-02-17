@@ -197,6 +197,7 @@
 (declare-type cpu-thread basic)
 (declare-type state basic)
 (declare-type dead-pool basic)
+(declare-type event-message-block structure)
 
 ;; gkernel-h
 (deftype thread (basic)
@@ -280,9 +281,9 @@
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
-   (event-hook (function stack-frame (function object) function state object) :offset-assert #x44)
+   (event-hook (function basic int basic event-message-block object) :offset-assert #x44)
    (allocated-length int32 :offset-assert #x48)
-   (next-state basic :offset-assert #x4c)
+   (next-state state :offset-assert #x4c)
    (heap-base pointer :offset-assert #x50)
    (heap-top pointer :offset-assert #x54)
    (heap-cur pointer :offset-assert #x58)
@@ -425,11 +426,14 @@
    (trans (function object)  :offset-assert 20)
    (post  function  :offset-assert 24)
    (enter (function object object object object object object object)  :offset-assert 28)
-   (event basic     :offset-assert 32)
+   (event (function basic int basic event-message-block object)     :offset-assert 32)
    )
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic) (code function) 
-          (trans function) (enter function) (exit (function object)) (event function)) _type_ 0)
+          (trans (function object)) 
+          (enter (function object object object object object object object)) 
+          (exit (function object)) 
+          (event (function basic int basic event-message-block object))) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x24
@@ -631,7 +635,7 @@
 (define-extern copy-charp<-charp (function (pointer uint8) (pointer uint8) (pointer uint8)))
 (define-extern cat-string<-string (function string string string))
 (define-extern catn-string<-charp (function string (pointer uint8) int string))
-(define-extern cat-string<-string_to_charp (function string string int (pointer uint8)))
+(define-extern cat-string<-string_to_charp (function string string (pointer uint8) (pointer uint8)))
 (define-extern append-character-to-string (function string uint8 int))
 (define-extern charp-basename (function (pointer uint8) (pointer uint8)))
 (define-extern clear (function string string))
@@ -639,9 +643,9 @@
 (define-extern string>? (function string string symbol))
 (define-extern string<=? (function string string symbol))
 (define-extern string>=? (function string string symbol))
-(define-extern string-skip-to-char (function (pointer uint8) uint8 (pointer uint8)))
+(define-extern string-skip-to-char (function (pointer uint8) uint (pointer uint8)))
 ;; this one might be wrong
-(define-extern string-cat-to-last-char (function uint8 string uint8 (pointer uint8)))
+(define-extern string-cat-to-last-char (function string string uint (pointer uint8)))
 (define-extern string-skip-whitespace (function (pointer uint8) (pointer uint8)))
 (define-extern string-suck-up! (function string (pointer uint8) symbol))
 (define-extern string-strip-leading-whitespace! (function string symbol))
@@ -689,7 +693,7 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (define-extern looping-code (function symbol))
-(define-extern send-event-function (function process state object))
+(define-extern send-event-function (function process event-message-block object))
 (define-extern enter-state (function object object object object object object object))
 (define-extern inherit-state (function state state state))
 

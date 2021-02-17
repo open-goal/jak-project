@@ -97,3 +97,95 @@
               )
   0
   )
+
+
+(defstate die-state
+    :enter (lambda () (format #t "enter die~%"))
+    :exit (lambda () (format #t "exit die~%"))
+    :code (lambda ()
+            (format #t "time to die!~%")
+            (process-deactivate)
+            (format #t "don't see me~%")
+            )
+    )
+
+(defun xmm-check-code (ax ay az aw)
+  "This function relies on saved xmm register being backed up on a context switch"
+  ;; (declare (print-asm))
+  ;; compiler will put these in xmm8 and xmm9 to keep them from being clobbered
+  (let ((x 12.34)
+        (y 45.63))
+    (dotimes (i 3)
+      (format #t "run xmm-check ~f ~f ~D ~D ~D ~D~%" x y ax ay az aw)
+      ;; should preserve xmm8 and xmm9
+      (suspend)
+      )
+    ;; get the wreck process and make it go to die state.
+    (go-process (process-by-name 'wreck-proc *active-pool*) die-state)
+    (go die-state)
+    (format #t "unreachable~%")
+    )
+  )
+
+(defun xmm-wreck-code (ax ay az aw)
+  "This function intentionally overwrites xmm8 and xmm9 and suspends"
+  (while #t
+    (rlet ((x :class fpr :type float :reg xmm8)
+           (y :class fpr :type float :reg xmm9))
+      (set! x 99.0)
+      (set! y 101.0)
+      (format #t "wreck: ~D ~D ~D ~D~%" ax ay az aw)
+      (suspend)
+      (set! x (+ x 1.0))
+      (set! y (+ y 1.0))
+      )
+    )
+  )
+
+;; a state.
+(defstate xmm-check-state
+    :enter (lambda (x y z w) (format #t "enter check: ~D ~D ~D ~D~%" x y z w))
+    :exit (lambda () (format #t "exit check~%"))
+    :code xmm-check-code
+    )
+
+(defstate xmm-wreck-state
+    :enter (lambda (x y z w) (format #t "enter wreck: ~D ~D ~D ~D~%" x y z w))
+    :exit (lambda () (format #t "exit wreck~%"))
+    :code xmm-wreck-code
+    )
+
+(defun state-test ()
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'check-proc *kernel-dram-stack*)
+    (run-now-in-process proc (lambda (x y z w) (go xmm-check-state x y z w))
+                        9 8 7 6)
+    )
+
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'wreck-proc *kernel-dram-stack*)
+    (run-next-time-in-process proc (lambda (x y z w) (go xmm-wreck-state x y z w))
+                              3 4 5 6)
+    )
+  0
+  )
+
+(defun throw-backup-test ()
+  (rlet ((x :reg xmm10 :class fpr :type float))
+    (set! x 10.10)
+    (let ((proc (get-process *nk-dead-pool* process 1024)))
+      (activate proc *active-pool* 'asdf *kernel-dram-stack*)
+      (format #t "value now is ~f~%" x)
+      (run-now-in-process proc (lambda ()
+                                 (rlet ((x2 :reg xmm10 :class fpr :type float))
+                                   (set! x2 -1.0)
+                                   )
+                                 ;; this will throw back.
+                                 (process-deactivate)
+                                 )
+                          )
+      (format #t "now its ~f~%" x)
+      
+      )
+    )
+  )
