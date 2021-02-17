@@ -434,6 +434,7 @@ class Compiler {
   Val* compile_pointer_add(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_fmin(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_fmax(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_sqrtf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Function
   Val* compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env);

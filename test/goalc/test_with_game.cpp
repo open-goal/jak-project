@@ -321,6 +321,10 @@ TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
 }
 
+TEST_F(WithGameTests, Sqrtf) {
+  runner.run_static_test(env, testCategory, "sqrtf.gc", {"2.2360\n0\n"});
+}
+
 TEST_F(WithGameTests, StaticPairs) {
   runner.run_static_test(env, testCategory, "test-static-pair-1.gc",
                          {"(1 (w . a) beans 2 (-1 -2) twelve (a . \"test\"))\n0\n"});
@@ -425,7 +429,7 @@ struct VectorFloatRegister {
                               std::regex("nan|inf|-nan|-inf"), "NaN");
   }
 
-  std::string toGOALFormat(float val) {
+  std::string toGOALFormat(float) {
     std::string answer = fmt::format("{:.4f}", x);
     // {fmt} formats negative 0 as "-0.000", just going to flip any negative zeros to positives as I
     // don't think is an OpenGOAL issue

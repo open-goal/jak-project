@@ -245,6 +245,19 @@ Val* Compiler::compile_fmax(const goos::Object& form, const goos::Object& rest, 
   return result;
 }
 
+Val* Compiler::compile_sqrtf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+
+  auto first_val = compile_error_guard(args.unnamed.at(0), env);
+  if (get_math_mode(first_val->type()) != MATH_FLOAT) {
+    throw_compiler_error(form, "Must use a float for sqrtf");
+  }
+  auto result = env->make_fpr(first_val->type());
+  env->emit_ir<IR_FloatMath>(FloatMathKind::SQRT_SS, result, first_val->to_fpr(env));
+  return result;
+}
+
 Val* Compiler::compile_imul64(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   if (!args.named.empty() || args.unnamed.empty()) {
