@@ -26,4 +26,4 @@
 - Just type definitions. These don't seem to match the version of DGO files found in the game, so maybe this is outdated? Also GOAL never sees DGOs, they are always processed on the IOP.
 
 ## `gstate`:
-- Not started.
+- Doing a `go` from a non-main thread of the process that is changing state is implemented a tiny bit differently. I don't think it should matter.
