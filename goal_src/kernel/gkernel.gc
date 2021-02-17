@@ -1819,7 +1819,6 @@
   The allocation must be an address.
   Unlike the original, this only works on the first six parameters, but I think this doesn't matter."
   (declare (asm-func object)
-           ;(print-asm)
            (allow-saved-regs) ;; very dangerous!
            )
   
@@ -1832,79 +1831,102 @@
          (s2 :reg r10 :type (pointer uint64))
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
+
+         (xmm8 :reg xmm8 :class fpr)
+         (xmm9 :reg xmm9 :class fpr)
+         (xmm10 :reg xmm10 :class fpr)
+         (xmm11 :reg xmm11 :class fpr)
+         (xmm12 :reg xmm12 :class fpr)
+         (xmm13 :reg xmm13 :class fpr)
+         (xmm14 :reg xmm14 :class fpr)
+         (xmm15 :reg xmm15 :class fpr)
          ) 
         
-        ;; we treat the allocation as an address.
-        (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
-          ;; setup catch frame
-          (set! (-> obj type) type-to-make)
-          (set! (-> obj name) name)
-          ;; get the return address (the compiler won't touch the stack because we're an asm-func)
-          (.pop temp)
-          (.push temp)
-          ;; make it a GOAL address so it fits in 32 bitys
-          (.sub temp off)
-          ;; store it
-          (set! (-> obj ra) (the int temp))
+    ;; we treat the allocation as an address.
+    (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
+      ;; setup catch frame
+      (set! (-> obj type) type-to-make)
+      (set! (-> obj name) name)
+      ;; get the return address (the compiler won't touch the stack because we're an asm-func)
+      (.pop temp)
+      (.push temp)
+      ;; make it a GOAL address so it fits in 32 bitys
+      (.sub temp off)
+      ;; store it
+      (set! (-> obj ra) (the int temp))
           
-          ;; todo, do we need a stack offset here?
-          ;; remember the stack pointer
-          (set! temp sp)
-          (.sub temp off)
-          (set! (-> obj sp) (the int temp))
+      ;; todo, do we need a stack offset here?
+      ;; remember the stack pointer
+      (set! temp sp)
+      (.sub temp off)
+      (set! (-> obj sp) (the int temp))
           
-          ;; back up registers we care about
-          (.mov :color #f temp s0)
-          (set-u128-as-u64! (-> obj rreg 0) temp)
-          (.mov :color #f temp s1)
-          (set-u128-as-u64! (-> obj rreg 1) temp)
-          (.mov :color #f temp s2)
-          (set-u128-as-u64! (-> obj rreg 2) temp)
-          (.mov :color #f temp s3)
-          (set-u128-as-u64! (-> obj rreg 3) temp)
-          (.mov :color #f temp s4)
-          (set-u128-as-u64! (-> obj rreg 4) temp)
-          ;; todo save fprs
+      ;; back up registers we care about
+      (.mov :color #f temp s0)
+      (set-u128-as-u64! (-> obj rreg 0) temp)
+      (.mov :color #f temp s1)
+      (set-u128-as-u64! (-> obj rreg 1) temp)
+      (.mov :color #f temp s2)
+      (set-u128-as-u64! (-> obj rreg 2) temp)
+      (.mov :color #f temp s3)
+      (set-u128-as-u64! (-> obj rreg 3) temp)
+      (.mov :color #f temp s4)
+      (set-u128-as-u64! (-> obj rreg 4) temp)
+
+      (.mov :color #f temp xmm8)
+      (set! (-> obj freg 0) (the-as float temp))
+      (.mov :color #f temp xmm9)
+      (set! (-> obj freg 1) (the-as float temp))
+      (.mov :color #f temp xmm10)
+      (set! (-> obj freg 2) (the-as float temp))
+      (.mov :color #f temp xmm11)
+      (set! (-> obj freg 3) (the-as float temp))
+      (.mov :color #f temp xmm12)
+      (set! (-> obj freg 4) (the-as float temp))
+      (.mov :color #f temp xmm13)
+      (set! (-> obj freg 5) (the-as float temp))
+      (.mov :color #f temp xmm14)
+      (set! (-> obj freg 6) (the-as float temp))
+      (.mov :color #f temp xmm15)
+      (set! (-> obj freg 7) (the-as float temp))
           
-          ;; push this stack frame
-          (set! (-> obj next) (-> pp stack-frame-top))
-          (set! (-> pp stack-frame-top) obj)
+      ;; push this stack frame
+      (set! (-> obj next) (-> pp stack-frame-top))
+      (set! (-> pp stack-frame-top) obj)
           
-          ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
-          (.push :color #f s3)
-          (.push :color #f s2)
-          (.push :color #f s2)
-          (set! s3 (the uint func))
-          (set! s2 param-block)
+      ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
+      (.push :color #f s3)
+      (.push :color #f s2)
+      (.push :color #f s2)
+      (set! s3 (the uint func))
+      (set! s2 param-block)
           
-          ;; todo - are we aligned correctly here?
-          (let ((ret ((the-super-u64-fucntion s3)
-                      (-> s2 0)
-                      (-> s2 1)
-                      (-> s2 2)
-                      (-> s2 3)
-                      (-> s2 4)
-                      (-> s2 5)
-                      ))
-                )
-            (.pop :color #f s2)
-            (.pop :color #f s2)
-            (.pop :color #f s3)
-            (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
-            (.ret)
-            (the object ret)
+      ;; todo - are we aligned correctly here?
+      (let ((ret ((the-super-u64-fucntion s3)
+                  (-> s2 0)
+                  (-> s2 1)
+                  (-> s2 2)
+                  (-> s2 3)
+                  (-> s2 4)
+                  (-> s2 5)
+                  ))
             )
-          )
+        (.pop :color #f s2)
+        (.pop :color #f s2)
+        (.pop :color #f s3)
+        (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
+        (.ret)
+        (the object ret)
         )
+      )
+    )
   )
 
 
 (defun throw-dispatch ((obj catch-frame) value)
   "Throw the given value to the catch frame.
   Only can throw a 64-bit value. The original could throw 128 bits."
-  (declare (asm-func none)
-           ;(print-asm)
-           )
+  (declare (asm-func none))
   
   (rlet ((pp :reg r13 :type process)
          (temp :reg rax :type uint)
@@ -1915,38 +1937,64 @@
          (s2 :reg r10 :type (pointer uint64))
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
+
+         (temp-float :reg xmm0 :class fpr)
+         (xmm8 :reg xmm8 :class fpr)
+         (xmm9 :reg xmm9 :class fpr)
+         (xmm10 :reg xmm10 :class fpr)
+         (xmm11 :reg xmm11 :class fpr)
+         (xmm12 :reg xmm12 :class fpr)
+         (xmm13 :reg xmm13 :class fpr)
+         (xmm14 :reg xmm14 :class fpr)
+         (xmm15 :reg xmm15 :class fpr)
          )
         
-        ;; pop everything we threw past
-        (set! (-> pp stack-frame-top) (-> obj next))
+    ;; pop everything we threw past
+    (set! (-> pp stack-frame-top) (-> obj next))
         
-        ;; restore regs we care about.
-        (set-u64-from-u128! temp (-> obj rreg 0))
-        (.mov :color #f s0 temp)
-        (set-u64-from-u128! temp (-> obj rreg 1))
-        (.mov :color #f s1 temp)
-        (set-u64-from-u128! temp (-> obj rreg 2))
-        (.mov :color #f s2 temp)
-        (set-u64-from-u128! temp (-> obj rreg 3))
-        (.mov :color #f s3 temp)
-        (set-u64-from-u128! temp (-> obj rreg 4))
-        (.mov :color #f s4 temp)
-        ;; todo fpr
+    ;; restore regs we care about.
+    (set-u64-from-u128! temp (-> obj rreg 0))
+    (.mov :color #f s0 temp)
+    (set-u64-from-u128! temp (-> obj rreg 1))
+    (.mov :color #f s1 temp)
+    (set-u64-from-u128! temp (-> obj rreg 2))
+    (.mov :color #f s2 temp)
+    (set-u64-from-u128! temp (-> obj rreg 3))
+    (.mov :color #f s3 temp)
+    (set-u64-from-u128! temp (-> obj rreg 4))
+    (.mov :color #f s4 temp)
+
+    (set! temp-float (-> obj freg 0))
+    (.mov :color #f xmm8 temp-float)
+    (set! temp-float (-> obj freg 1))
+    (.mov :color #f xmm9 temp-float)
+    (set! temp-float (-> obj freg 2))
+    (.mov :color #f xmm10 temp-float)
+    (set! temp-float (-> obj freg 3))
+    (.mov :color #f xmm11 temp-float)
+    (set! temp-float (-> obj freg 4))
+    (.mov :color #f xmm12 temp-float)
+    (set! temp-float (-> obj freg 5))
+    (.mov :color #f xmm13 temp-float)
+    (set! temp-float (-> obj freg 6))
+    (.mov :color #f xmm14 temp-float)
+    (set! temp-float (-> obj freg 7))
+    (.mov :color #f xmm15 temp-float)
         
-        ;; set stack pointer
-        (set! sp (the uint (-> obj sp)))
-        (.add sp off)
+    ;; set stack pointer
+    (set! sp (the uint (-> obj sp)))
+    (.add sp off)
         
-        ;; overwrite our return address
-        (.pop temp)
-        (set! temp (the uint (-> obj ra)))
-        (.add temp off)
-        (.push temp)
+    ;; overwrite our return address
+    (.pop temp)
+    (set! temp (the uint (-> obj ra)))
+    (.add temp off)
+    (.push temp)
         
-        ;; load the return register
-        (.mov temp value)
-        (.ret)
-        )
+    ;; load the return register
+    (.mov temp value)
+    (.ret)
+    )
   )
 
 (defun throw ((name symbol) value)

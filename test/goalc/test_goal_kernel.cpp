@@ -121,3 +121,14 @@ TEST_F(KernelTest, StateAndXmm) {
       "die!\nexit die\nexit wreck\nenter die\ntime to die!\nexit die\n";
   EXPECT_EQ(expected, result);
 }
+
+TEST_F(KernelTest, ThrowXmm) {
+  runner.c->run_test_from_string("(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+  std::string result = send_code_and_get_multiple_responses("(throw-backup-test)", 1, &runner);
+
+  std::string expected =
+      "value now is 10.1000\n"
+      "now its 10.1000\n"
+      "0\n";
+  EXPECT_EQ(expected, result);
+}
