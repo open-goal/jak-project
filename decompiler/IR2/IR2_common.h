@@ -101,6 +101,9 @@ enum class FixedOperatorKind {
   ABS,
   MIN,
   MAX,
+  FABS,
+  FMIN,
+  FMAX,
   LOGAND,
   LOGIOR,
   LOGXOR,
@@ -120,6 +123,8 @@ enum class FixedOperatorKind {
   GEQ,
   EQ,
   NEQ,
+  CONS,
+  METHOD_OF_OBJECT,
   INVALID
 };
 
@@ -148,4 +153,16 @@ struct VariableNames {
     }
   }
 };
+
+struct SetVarInfo {
+  // is this a compiler-inserted move at the beginning of a function
+  // that should be eliminated?
+  bool is_eliminated_coloring_move = false;
+  // is this a (set! var expr) which consumes the reg for expr,
+  // and var is written and unused?
+  bool is_dead_set = false;
+  // is this a (set! var #f) where the value of #f isn't used?
+  bool is_dead_false = false;
+};
+
 }  // namespace decompiler

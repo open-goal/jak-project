@@ -17,20 +17,6 @@ RegClass get_reg_kind(const Register& r) {
       assert(false);
   }
 }
-
-DerefToken to_token(FieldReverseLookupOutput::Token in) {
-  switch (in.kind) {
-    case FieldReverseLookupOutput::Token::Kind::FIELD:
-      return DerefToken::make_field_name(in.name);
-    case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
-      return DerefToken::make_int_constant(in.idx);
-    case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
-      return DerefToken::make_expr_placeholder();
-    default:
-      // temp
-      throw std::runtime_error("Cannot convert rd lookup token to deref token");
-  }
-}
 }  // namespace
 
 ConditionElement* BranchOp::get_condition_as_form(FormPool& pool, const Env& env) const {
@@ -77,11 +63,30 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
     }
   }
 
+  // create element
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
-  if (m_src.kind() == SimpleExpression::Kind::IDENTITY) {
-    if (env.has_local_vars() && env.op_id_is_eliminated_coloring_move(m_my_idx)) {
+
+  // do some analysis to look for coloring moves which are already eliminated,
+  // dead sets, and dead set falses.
+  if (m_src.kind() == SimpleExpression::Kind::IDENTITY && env.has_local_vars() &&
+      env.has_reg_use()) {
+    if (env.op_id_is_eliminated_coloring_move(m_my_idx)) {
       result->eliminate_as_coloring_move();
+    } else if (m_src.get_arg(0).is_var()) {
+      auto& src_var = m_src.get_arg(0).var();
+      auto& ri = env.reg_use().op.at(m_my_idx);
+      if (ri.consumes.find(src_var.reg()) != ri.consumes.end() &&
+          ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
+        result->mark_as_dead_set();
+        // fmt::print("marked {} as dead set\n", to_string(env));
+      }
+    } else if (m_src.get_arg(0).is_sym_ptr() && m_src.get_arg(0).get_str() == "#f") {
+      auto& ri = env.reg_use().op.at(m_my_idx);
+      if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
+        result->mark_as_dead_false();
+        // fmt::print("marked {} as dead set false\n", to_string(env));
+      }
     }
   }
 
@@ -134,6 +139,38 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         }
       }
 
+      if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+        FieldReverseLookupInput rd_in;
+        DerefKind dk;
+        dk.is_store = true;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.size = m_size;
+        rd_in.deref = dk;
+        rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+        rd_in.stride = input_type.get_multiplier();
+        rd_in.offset = ro.offset;
+        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+        if (rd.success) {
+          std::vector<DerefToken> tokens;
+          assert(!rd.tokens.empty());
+          for (auto& token : rd.tokens) {
+            tokens.push_back(to_token(token));
+          }
+
+          // we pass along the register offset because code generation seems to be a bit
+          // different in different cases.
+          auto source = pool.alloc_single_element_form<ArrayFieldAccess>(
+              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
+
+          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, m_value.as_expr(), m_my_idx);
+
+          assert(!rd.addr_of);
+          return pool.alloc_element<SetFormFormElement>(source, val);
+        }
+      }
+
       FieldReverseLookupInput rd_in;
       DerefKind dk;
       dk.is_store = true;
@@ -160,7 +197,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         return pool.alloc_element<SetFormFormElement>(addr, val);
       }
 
-      if (input_type.typespec() == TypeSpec("pointer")) {
+      if (input_type.typespec() == TypeSpec("pointer") && ro.offset == 0) {
         std::string cast_type;
         switch (m_size) {
           case 1:
@@ -200,8 +237,9 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     if (get_as_reg_offset(m_src, &ro)) {
       auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
 
-      if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD && ro.offset >= 16 &&
-          (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+      if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL ||
+           input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD) &&
+          ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
         // method get of fixed type
         auto type_name = input_type.get_type_objects_typespec().base_type();
         auto method_id = (ro.offset - 16) / 4;
@@ -301,6 +339,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         for (auto& x : rd.tokens) {
           tokens.push_back(to_token(x));
         }
+
         auto load =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
         return pool.alloc_element<SetVarElement>(m_dst, load, true);
@@ -376,9 +415,7 @@ FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
 }
 
 FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) const {
-  auto source =
-      pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(m_src));
-  return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, source, m_on_zero);
+  return pool.alloc_element<ConditionalMoveFalseElement>(m_dst, m_old_value, m_src, m_on_zero);
 }
 
 FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {

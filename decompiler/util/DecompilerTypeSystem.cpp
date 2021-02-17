@@ -173,7 +173,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
                                      bool* changed) const {
   // starting from most vague to most specific
 
-  // simplist case, no difference.
+  // simplest case, no difference.
   if (existing == add) {
     *changed = false;
     return existing;
@@ -213,7 +213,14 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         return new_result;
       }
       case TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD: {
-        auto new_result = TP_Type::make_type_object(ts.lowest_common_ancestor(
+        auto new_result = TP_Type::make_type_allow_virtual_object(ts.lowest_common_ancestor(
+            existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+        *changed = (new_result != existing);
+        return new_result;
+      }
+
+      case TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL: {
+        auto new_result = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
             existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
         *changed = (new_result != existing);
         return new_result;
@@ -252,6 +259,35 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
           *changed = true;
           return TP_Type::make_from_ts(TypeSpec("string"));
         }
+      case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR:
+        if (existing.get_integer_constant() == add.get_integer_constant()) {
+          auto new_child = TP_Type::make_from_integer_constant_plus_var(
+              existing.get_integer_constant(),
+              coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
+                                                           add.get_objects_typespec())));
+          *changed = (new_child != existing);
+          return new_child;
+        } else {
+          *changed = true;
+          return TP_Type::make_from_ts("int");
+        }
+
+      case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+        // a bit lazy here, but I don't think you can ever merge these.
+        *changed = true;
+        return TP_Type::make_from_ts("int");
+
+      case TP_Type::Kind::VIRTUAL_METHOD:
+        // never allow this to remain method
+        *changed = true;
+        return TP_Type::make_from_ts(
+            ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+
+      case TP_Type::Kind::NON_VIRTUAL_METHOD:
+        // never allow this to remain method
+        *changed = true;
+        return TP_Type::make_from_ts(
+            ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
@@ -272,6 +308,22 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         result_type = TP_Type::make_from_ts(TypeSpec("string"));
       }
 
+      *changed = (result_type != existing);
+      return result_type;
+    }
+
+    if (existing.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&
+        add.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD) {
+      auto result_type = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
+          existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+      *changed = (result_type != existing);
+      return result_type;
+    }
+
+    if (existing.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD &&
+        add.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      auto result_type = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
+          existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
       *changed = (result_type != existing);
       return result_type;
     }
@@ -315,7 +367,7 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
-      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
+      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T' || str.at(i) == '0')) {
         // newline (~%) or tab (~T) don't take an argument.
         continue;
       }

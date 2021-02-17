@@ -155,7 +155,7 @@
 (define-extern valid? (function object type basic basic object symbol))
 
 ;; has issues:
-(define-extern breakpoint-range-set! function)
+(define-extern breakpoint-range-set! (function uint uint uint int))
 
 
 
@@ -197,6 +197,7 @@
 (declare-type cpu-thread basic)
 (declare-type state basic)
 (declare-type dead-pool basic)
+(declare-type event-message-block structure)
 
 ;; gkernel-h
 (deftype thread (basic)
@@ -224,8 +225,12 @@
 
 ;; gkernel-h
 (deftype cpu-thread (thread)
-  ((rreg  uint64 8       :offset-assert 40)
-   (freg  float 6        :offset-assert 104)
+  (
+   ;;(rreg  uint64 8       :offset-assert 40)
+   ;;(freg  float 6        :offset-assert 104)
+   ;; changed from GOAL, see gkernel-h.gc
+   (rreg  uint64 7       :offset-assert 40)
+   (freg float 8)
    (stack uint8 :dynamic :offset-assert 128)
    )
   
@@ -276,9 +281,9 @@
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
-   (event-hook (function stack-frame (function object) function state object) :offset-assert #x44)
+   (event-hook (function basic int basic event-message-block object) :offset-assert #x44)
    (allocated-length int32 :offset-assert #x48)
-   (next-state basic :offset-assert #x4c)
+   (next-state state :offset-assert #x4c)
    (heap-base pointer :offset-assert #x50)
    (heap-top pointer :offset-assert #x54)
    (heap-cur pointer :offset-assert #x58)
@@ -378,8 +383,11 @@
 (deftype catch-frame (stack-frame)
   ((sp   int32     :offset-assert 12)
    (ra   int32     :offset-assert 16)
-   (freg float 6 :offset-assert 20) 
-   (rreg uint128 8 :offset-assert 48) 
+   ;; changed from GOAL, see gkernel-h.gc
+   (freg float 10 :offset-assert 20)
+   (rreg uint128 7)
+   ;;(freg float 6 :offset-assert 20) 
+   ;;(rreg uint128 8 :offset-assert 48) 
    )
   
   (:methods
@@ -418,11 +426,14 @@
    (trans (function object)  :offset-assert 20)
    (post  function  :offset-assert 24)
    (enter (function object object object object object object object)  :offset-assert 28)
-   (event basic     :offset-assert 32)
+   (event (function basic int basic event-message-block object)     :offset-assert 32)
    )
   (:methods
     (new ((allocation symbol) (type-to-make type) (name basic) (code function) 
-          (trans function) (enter function) (exit (function object)) (event function)) _type_ 0)
+          (trans (function object)) 
+          (enter (function object object object object object object object)) 
+          (exit (function object)) 
+          (event (function basic int basic event-message-block object))) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x24
@@ -624,7 +635,7 @@
 (define-extern copy-charp<-charp (function (pointer uint8) (pointer uint8) (pointer uint8)))
 (define-extern cat-string<-string (function string string string))
 (define-extern catn-string<-charp (function string (pointer uint8) int string))
-(define-extern cat-string<-string_to_charp (function string string int (pointer uint8)))
+(define-extern cat-string<-string_to_charp (function string string (pointer uint8) (pointer uint8)))
 (define-extern append-character-to-string (function string uint8 int))
 (define-extern charp-basename (function (pointer uint8) (pointer uint8)))
 (define-extern clear (function string string))
@@ -632,9 +643,9 @@
 (define-extern string>? (function string string symbol))
 (define-extern string<=? (function string string symbol))
 (define-extern string>=? (function string string symbol))
-(define-extern string-skip-to-char (function (pointer uint8) uint8 (pointer uint8)))
+(define-extern string-skip-to-char (function (pointer uint8) uint (pointer uint8)))
 ;; this one might be wrong
-(define-extern string-cat-to-last-char (function uint8 string uint8 (pointer uint8)))
+(define-extern string-cat-to-last-char (function string string uint (pointer uint8)))
 (define-extern string-skip-whitespace (function (pointer uint8) (pointer uint8)))
 (define-extern string-suck-up! (function string (pointer uint8) symbol))
 (define-extern string-strip-leading-whitespace! (function string symbol))
@@ -682,7 +693,7 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (define-extern looping-code (function symbol))
-(define-extern send-event-function (function process state object))
+(define-extern send-event-function (function process event-message-block object))
 (define-extern enter-state (function object object object object object object object))
 (define-extern inherit-state (function state state state))
 
@@ -694,6 +705,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;; START OF GAME.CGO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TYPES-H          ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(deftype time-frame (int64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype part-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -717,27 +744,36 @@
 (define-extern seek (function float float float float))
 (define-extern lerp (function float float float float))
 (define-extern lerp-scale (function float float float float float float))
+(define-extern lerp-clamp (function float float float float))
+(define-extern seekl (function int int int int))
+(define-extern rand-vu-init (function float float))
+(define-extern rand-vu (function float))
+(define-extern rand-vu-nostep (function float))
+(define-extern rand-vu-float-range (function float float float))
+(define-extern rand-vu-percent? (function float symbol))
+(define-extern rand-vu-int-range (function int int int))
+(define-extern rand-vu-int-count (function int int))
 
 ; ;;(define-extern xyzwh object) ;; unknown type
-; (define-extern rand-vu-init function)
-; (define-extern rand-vu-nostep function)
-; (define-extern rand-vu function)
+; 
+; 
+; 
 ; (define-extern lerp function)
 ; (define-extern lerp-scale function)
-; (define-extern rand-vu-int-range function)
-; (define-extern lerp-clamp function)
+; 
+
 ; ;;(define-extern random-generator object) ;; unknown type
 ; (define-extern integral? function)
 ; (define-extern rand-uint31-gen function)
-; (define-extern rand-vu-int-count function)
+; 
 ; (define-extern fractional-part function)
 ; (define-extern seek function)
 ; ;;(define-extern xyzw object) ;; unknown type
-; (define-extern rand-vu-percent? function)
+; 
 ; ;;(define-extern *random-generator* object) ;; unknown type
-; (define-extern rand-vu-float-range function)
+; 
 ; ;;(define-extern rgba object) ;; unknown type
-; (define-extern seekl function)
+; 
 
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
@@ -750,16 +786,18 @@
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
-   (_pad uint8)
+   (_pad             uint8  :offset-assert 12)
+   (bytes            uint8  :dynamic :offset 12)
    )
   :method-count-assert 13
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (new (symbol type int) _type_ 0)
+    (get-bit (_type_ int) symbol 9)
+    (clear-bit (_type_ int) int 10)
+    (set-bit (_type_ int) int 11)
+    (clear (_type_) _type_ 12)
     )
   )
 
@@ -990,6 +1028,9 @@
   )
 
 ;; todo isphere
+(deftype isphere (vec4s)
+  ()
+  )
 
 (deftype box8s (structure)
   ((data   float 8       :offset-assert 0)
@@ -1096,8 +1137,12 @@
 (define-extern *zero-vector* vector)
 
 
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; BOUNDING-BOX-H   ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-;; bounding-box-h
 (deftype bounding-box (structure)
   ((min vector :inline :offset-assert 0)
    (max vector :inline :offset-assert 16)
@@ -1116,7 +1161,6 @@
     )
   )
 
-;; bounding-box-h
 (deftype bounding-box4w (structure)
   ((min vector4w :inline :offset-assert 0)
    (max vector4w :inline :offset-assert 16)
@@ -1126,7 +1170,6 @@
   :flag-assert         #x900000020
   )
 
-;; bounding-box-h
 (deftype bounding-box-both (structure)
   ((box   bounding-box   :inline :offset-assert 0)
    (box4w bounding-box4w :inline :offset-assert 32)
@@ -1136,7 +1179,12 @@
   :flag-assert         #x900000040
   )
 
-;; matrix-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; MATRIX-H         ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype matrix (structure)
   ((data   float 16 :offset-assert 0)
    (vector vector 4  :offset 0)
@@ -1160,7 +1208,6 @@
   :flag-assert         #x900000030
   )
 
-;; guess on signs here
 (deftype matrix4h (structure)
   ((data     int16 16 :offset-assert 0)
    (vector4h vector4h 4  :offset 0)
@@ -1170,6 +1217,13 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; QUATERNION-H     ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype quaternion (structure)
   ((data float 4       :offset-assert 0)
@@ -1185,7 +1239,12 @@
   :flag-assert         #x900000010
   )
 
-;; euler-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; EULER-H          ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype euler-angles (vector)
   ()
   :method-count-assert 9
@@ -1193,7 +1252,12 @@
   :flag-assert         #x900000010
   )
 
-;; transform-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TRANSFORM-H      ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype transform (structure)
   ((trans vector :inline :offset-assert 0)
    (rot   vector :inline :offset-assert 16)
@@ -1204,7 +1268,6 @@
   :flag-assert         #x900000030
   )
 
-;; transform-h
 (deftype trs (basic)
   ((trans vector :inline :offset-assert 16)
    (rot   vector :inline :offset-assert 32)
@@ -1215,7 +1278,12 @@
   :flag-assert         #x900000040
   )
 
-;; geometry-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GEOMETRY-H       ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype curve (structure)
   ((cverts     uint32  :offset-assert 0)
    (num-cverts int32   :offset-assert 4)
@@ -1228,7 +1296,6 @@
   :flag-assert         #x900000014
   )
 
-;; geometry-h
 (deftype border-plane (basic)
   ((name   basic          :offset-assert 4)
    (action basic          :offset-assert 8)
@@ -1245,7 +1312,12 @@
     )
   )
 
-; ;; transformq-h
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TRANSFORMQ-H     ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
 (deftype transformq (transform)
   ((quat  quaternion :inline :offset 16)
    )
@@ -1262,8 +1334,6 @@
   :flag-assert         #x900000040
   )
 
-
-;; transformq-h
 (deftype trsqv (trsq)
   ((pause-adjust-distance float             :offset 4) ;; todo meters
    (nav-radius            float             :offset 8) ;; todo meters
@@ -1299,6 +1369,140 @@
     (dummy-27 () none 27)
     )
   )
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; BOUNDING-BOX     ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern box-vector-inside? (function bounding-box vector symbol))
+(define-extern box-vector-enside? (function bounding-box vector symbol))
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; MATRIX           ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern matrix-identity! (function matrix matrix))
+(define-extern matrix+! (function matrix matrix matrix matrix))
+(define-extern matrix-! (function matrix matrix matrix matrix))
+(define-extern matrix*! (function matrix matrix matrix matrix))
+(define-extern matrixp*! (function matrix matrix matrix matrix))
+(define-extern vector-matrix*! (function vector vector matrix vector))
+(define-extern vector-rotate*! (function vector vector matrix vector))
+(define-extern vector3s-matrix*! function)
+(define-extern vector3s-rotate*! function)
+
+(define-extern matrix-inverse-of-rot-trans! function)
+(define-extern matrix-3x3-determinant function)
+(define-extern matrix-3x3-inverse-transpose! function)
+
+(define-extern matrix-scale! function)
+(define-extern column-scale-matrix! function)
+(define-extern matrix-rotate-yx! function)
+(define-extern matrix-y-angle function)
+(define-extern matrix-3x3-inverse! function)
+(define-extern matrix-rotate-z! function)
+;;(define-extern *identity-matrix* object) ;; unknown type
+(define-extern matrix-axis-angle! function)
+(define-extern matrix-rotate-zyx! function)
+(define-extern matrix-rotate-x! function)
+
+(define-extern matrix-rotate-yxy! function)
+
+(define-extern matrix-4x4-determinant function)
+(define-extern matrix-inv-scale! function)
+(define-extern matrix-rotate-yzx! function)
+(define-extern matrix-axis-sin-cos! function)
+(define-extern matrix-lerp! function)
+(define-extern matrix-rotate-y! function)
+
+(define-extern matrix-rotate-xyz! function)
+(define-extern scale-matrix! function)
+(define-extern matrix-rotate-yxz! function)
+(define-extern matrix-rotate-zxy! function)
+
+(define-extern matrix3-determinant function)
+(define-extern matrix3-inverse-transpose! function)
+(define-extern matrix-translate+! function)
+(define-extern matrix-transpose! function)
+(define-extern matrix-4x4-inverse-transpose! function)
+
+(define-extern matrix-axis-sin-cos-vu! function)
+(define-extern matrix-translate! function)
+(define-extern matrix-4x4-inverse! function)
+
+(define-extern vector-sincos! function)
+(define-extern trs-matrix-calc! function)
+(define-extern transform-matrix-parent-calc! function)
+(define-extern transform-matrix-calc! function)
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; EULER            ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern set-eul! (function euler-angles float float float int euler-angles))
+(define-extern eul->matrix function)
+(define-extern quat->eul function)
+
+
+(define-extern eul->quat function)
+(define-extern matrix->eul function)
+
+
+;(define-extern sound-rpc-set-falloff-curve object) ;; unknown type
+;;(define-extern *sound-bank-2* object) ;; unknown type
+;;(define-extern sound-rpc-reload-info object) ;; unknown type
+;;(define-extern sound-rpc-stop-sound object) ;; unknown type
+;;(define-extern sound-rpc-list-sounds object) ;; unknown type
+;;(define-extern *current-sound-id* object) ;; unknown type
+;;(define-extern sound-bank-id object) ;; unknown type
+;;(define-extern sound-rpc-get-irx-version object) ;; unknown type
+;;(define-extern sound-rpc-load-music object) ;; unknown type
+;;(define-extern sound-rpc-set-ear-trans object) ;; unknown type
+;;(define-extern ambient-sound object) ;; unknown type
+;;(define-extern sound-rpc-pause-group object) ;; unknown type
+;;(define-extern sound-rpc-shutdown object) ;; unknown type
+;;(define-extern sound-rpc-unload-bank object) ;; unknown type
+;;(define-extern sound-rpc-pause-sound object) ;; unknown type
+;;(define-extern sound-id object) ;; unknown type
+(deftype sound-id (uint32)
+  ()
+  )
+
+(deftype sound-bank-id (uint32)
+  ()
+  )
+
+(deftype sound-name (uint128)
+  ()
+  )
+;;(define-extern sound-play-parms object) ;; unknown type
+;;(define-extern sound-rpc-load-bank object) ;; unknown type
+;;(define-extern sound-rpc-set-master-volume object) ;; unknown type
+;;(define-extern sound-rpc-set-param object) ;; unknown type
+;;(define-extern *sound-bank-1* object) ;; unknown type
+;;(define-extern sound-rpc-stop-group object) ;; unknown type
+;;(define-extern sound-rpc-play object) ;; unknown type
+;;(define-extern sound-rpc-cmd object) ;; unknown type
+(define-extern sound-spec type)
+;;(define-extern sound-rpc-set-sound-falloff object) ;; unknown type
+;;(define-extern sound-rpc-union object) ;; unknown type
+;;(define-extern sound-rpc-unload-music object) ;; unknown type
+;;(define-extern sound-rpc-set-language object) ;; unknown type
+;;(define-extern sound-rpc-set-reverb object) ;; unknown type
+;;(define-extern sound-rpc-sound-cmd object) ;; unknown type
+;;(define-extern sound-rpc-group-cmd object) ;; unknown type
+;;(define-extern sound-rpc-bank-cmd object) ;; unknown type
+;;(define-extern sound-rpc-continue-sound object) ;; unknown type
+;;(define-extern sound-rpc-set-flava object) ;; unknown type
+;;(define-extern sound-name object) ;; unknown type
+;;(define-extern sound-rpc-continue-group object) ;; unknown type
+
 
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
@@ -1728,13 +1932,29 @@
 ;;;;;;;;;;;;;
 
 ; ;; vif-h
-; (deftype vif-stat (uint32)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   ;; likely a bitfield type
-;   )
+(deftype vif-stat (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
+
+(deftype vif-fbrst (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
+
+(deftype vif-err (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
 
 ;; vif-h
 (deftype vif-bank (structure)
@@ -1767,13 +1987,21 @@
   :flag-assert         #x900000174
   )
 ; ;; dma-h
-; (deftype dma-chcr (uint32)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   ;; likely a bitfield type
-;   )
+(deftype dma-chcr (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
+
+(deftype dma-ctrl (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
 
 (deftype dma-bank (structure)
   ((chcr uint32  :offset 0)
@@ -1838,13 +2066,13 @@
   )
 
 ; ;; dma-h
-; (deftype dma-tag (uint64)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   ;; likely a bitfield type
-;   )
+(deftype dma-tag (uint64)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  ;; likely a bitfield type
+  )
 
 
 ; ;; dma-h
@@ -2024,7 +2252,7 @@
    (state              int32      :offset-assert 84)
    (align              uint8 6  :offset-assert 88)
    (direct             uint8 6  :offset-assert 94)
-   (buzz-val           uint16 2  :offset-assert 100)
+   (buzz-val           uint8 2  :offset-assert 100)
    (buzz-time          uint64 2  :offset-assert 104)
    (buzz               basic      :offset-assert 120)
    (buzz-act           int32      :offset-assert 124)
@@ -31498,53 +31726,7 @@
 ;;(define-extern trsq object) ;; unknown type
 (define-extern deg-diff function)
 (define-extern vector-y-angle function)
-(define-extern box-vector-inside? function)
-(define-extern box-vector-enside? function)
-(define-extern vector3s-rotate*! function)
-(define-extern matrix-inverse-of-rot-trans! function)
-(define-extern matrix-3x3-determinant function)
-(define-extern matrix-3x3-inverse-transpose! function)
-(define-extern vector-matrix*! function)
-(define-extern matrix-scale! function)
-(define-extern column-scale-matrix! function)
-(define-extern matrix-rotate-yx! function)
-(define-extern matrix-y-angle function)
-(define-extern matrix-3x3-inverse! function)
-(define-extern matrix-rotate-z! function)
-;;(define-extern *identity-matrix* object) ;; unknown type
-(define-extern matrix-axis-angle! function)
-(define-extern matrix-rotate-zyx! function)
-(define-extern matrix-rotate-x! function)
-(define-extern matrix+! function)
-(define-extern matrix-rotate-yxy! function)
-(define-extern matrix-identity! function)
-(define-extern vector3s-matrix*! function)
-(define-extern matrix-4x4-determinant function)
-(define-extern matrix-inv-scale! function)
-(define-extern matrix-rotate-yzx! function)
-(define-extern matrix-axis-sin-cos! function)
-(define-extern matrix-lerp! function)
-(define-extern matrix-rotate-y! function)
-(define-extern matrix*! function)
-(define-extern matrix-rotate-xyz! function)
-(define-extern scale-matrix! function)
-(define-extern matrix-rotate-yxz! function)
-(define-extern matrix-rotate-zxy! function)
-(define-extern vector-rotate*! function)
-(define-extern matrix3-determinant function)
-(define-extern matrix3-inverse-transpose! function)
-(define-extern matrix-translate+! function)
-(define-extern matrix-transpose! function)
-(define-extern matrix-4x4-inverse-transpose! function)
-(define-extern matrixp*! function)
-(define-extern matrix-axis-sin-cos-vu! function)
-(define-extern matrix-translate! function)
-(define-extern matrix-4x4-inverse! function)
-(define-extern matrix-! function)
-(define-extern vector-sincos! function)
-(define-extern trs-matrix-calc! function)
-(define-extern transform-matrix-parent-calc! function)
-(define-extern transform-matrix-calc! function)
+
 
 (define-extern quaternion-zero! function)
 (define-extern quaternion-set! function)
@@ -31609,11 +31791,6 @@
 (define-extern acos-rad function)
 
 (define-extern acos function)
-(define-extern quat->eul function)
-(define-extern set-eul! function)
-(define-extern eul->matrix function)
-(define-extern eul->quat function)
-(define-extern matrix->eul function)
 (define-extern vector-reflect-flat! function)
 (define-extern forward-down->inv-matrix function)
 (define-extern circle-test function)
@@ -31689,43 +31866,7 @@
 (define-extern sincos! function)
 (define-extern vector-rad<-vector-deg! function)
 (define-extern radmod function)
-;;(define-extern sound-rpc-set-falloff-curve object) ;; unknown type
-;;(define-extern *sound-bank-2* object) ;; unknown type
-;;(define-extern sound-rpc-reload-info object) ;; unknown type
-;;(define-extern sound-rpc-stop-sound object) ;; unknown type
-;;(define-extern sound-rpc-list-sounds object) ;; unknown type
-;;(define-extern *current-sound-id* object) ;; unknown type
-;;(define-extern sound-bank-id object) ;; unknown type
-;;(define-extern sound-rpc-get-irx-version object) ;; unknown type
-;;(define-extern sound-rpc-load-music object) ;; unknown type
-;;(define-extern sound-rpc-set-ear-trans object) ;; unknown type
-;;(define-extern ambient-sound object) ;; unknown type
-;;(define-extern sound-rpc-pause-group object) ;; unknown type
-;;(define-extern sound-rpc-shutdown object) ;; unknown type
-;;(define-extern sound-rpc-unload-bank object) ;; unknown type
-;;(define-extern sound-rpc-pause-sound object) ;; unknown type
-;;(define-extern sound-id object) ;; unknown type
-;;(define-extern sound-play-parms object) ;; unknown type
-;;(define-extern sound-rpc-load-bank object) ;; unknown type
-;;(define-extern sound-rpc-set-master-volume object) ;; unknown type
-;;(define-extern sound-rpc-set-param object) ;; unknown type
-;;(define-extern *sound-bank-1* object) ;; unknown type
-;;(define-extern sound-rpc-stop-group object) ;; unknown type
-;;(define-extern sound-rpc-play object) ;; unknown type
-;;(define-extern sound-rpc-cmd object) ;; unknown type
-(define-extern sound-spec type)
-;;(define-extern sound-rpc-set-sound-falloff object) ;; unknown type
-;;(define-extern sound-rpc-union object) ;; unknown type
-;;(define-extern sound-rpc-unload-music object) ;; unknown type
-;;(define-extern sound-rpc-set-language object) ;; unknown type
-;;(define-extern sound-rpc-set-reverb object) ;; unknown type
-;;(define-extern sound-rpc-sound-cmd object) ;; unknown type
-;;(define-extern sound-rpc-group-cmd object) ;; unknown type
-;;(define-extern sound-rpc-bank-cmd object) ;; unknown type
-;;(define-extern sound-rpc-continue-sound object) ;; unknown type
-;;(define-extern sound-rpc-set-flava object) ;; unknown type
-;;(define-extern sound-name object) ;; unknown type
-;;(define-extern sound-rpc-continue-group object) ;; unknown type
+;
 ;;(define-extern vif-stat object) ;; unknown type
 ;;(define-extern vif-fbrst object) ;; unknown type
 ;;(define-extern vif-err object) ;; unknown type

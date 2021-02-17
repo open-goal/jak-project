@@ -15,6 +15,7 @@
 #include "CfgVtx.h"
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/config.h"
+#include "Warnings.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
@@ -120,7 +121,8 @@ class Function {
   int epilogue_start = -1;
   int epilogue_end = -1;
 
-  std::string warnings;
+  DecompWarnings warnings;
+
   bool contains_asm_ops = false;
 
   bool attempted_type_analysis = false;

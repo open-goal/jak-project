@@ -88,7 +88,11 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
 
       if (type->second == TypeSpec("type")) {
         // if we get a type by symbol, we should remember which type we got it from.
-        return TP_Type::make_type_object(TypeSpec(m_string));
+        return TP_Type::make_type_no_virtual_object(TypeSpec(m_string));
+      }
+
+      if (type->second == TypeSpec("function")) {
+        lg::warn("Function {} has unknown type", m_string);
       }
 
       // otherwise, just return a normal typespec
@@ -131,6 +135,10 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return m_args[0].get_type(input, env, dts);
     case Kind::GPR_TO_FPR: {
       const auto& in_type = input.get(get_arg(0).var().reg());
+      if (in_type.is_integer_constant(0)) {
+        // GOAL is smart enough to use binary 0b0 as floating point 0.
+        return TP_Type::make_from_ts("float");
+      }
       return in_type;
     }
     case Kind::FPR_TO_GPR:
@@ -142,7 +150,11 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::ABS_S:
     case Kind::NEG_S:
     case Kind::INT_TO_FLOAT:
+    case Kind::MIN_S:
+    case Kind::MAX_S:
       return TP_Type::make_from_ts("float");
+    case Kind::FLOAT_TO_INT:
+      return TP_Type::make_from_ts("int");
     case Kind::ADD:
     case Kind::SUB:
     case Kind::MUL_SIGNED:
@@ -245,10 +257,43 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         // no need to track the type because we don't know the method index anyway.
         return TP_Type::make_partial_dyanmic_vtable_access();
       }
+
+      if (arg1_type.is_integer_constant() &&
+          arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+        return TP_Type::make_from_integer_constant_plus_product(
+            arg1_type.get_integer_constant(), arg0_type.typespec(), arg0_type.get_multiplier());
+      }
+
+      if (arg1_type.is_integer_constant() && is_int_or_uint(dts, arg0_type)) {
+        return TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
+                                                            arg0_type.typespec());
+      }
       break;
 
     default:
       break;
+  }
+
+  if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT && m_kind == Kind::ADD) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg0_type.get_add_int_constant();
+    rd_in.stride = arg0_type.get_mult_int_constant();
+    rd_in.base_type = arg1_type.typespec();
+    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    if (out.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
+    }
+  }
+
+  if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR && m_kind == Kind::ADD) {
+    FieldReverseLookupInput rd_in;
+    rd_in.offset = arg0_type.get_integer_constant();
+    rd_in.stride = 1;
+    rd_in.base_type = arg1_type.typespec();
+    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    if (out.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
+    }
   }
 
   if (arg0_type == arg1_type && is_int_or_uint(dts, arg0_type)) {
@@ -379,10 +424,10 @@ TypeState IR2_BranchDelay::propagate_types(const TypeState& input,
       output.get(m_var[0]->reg()) = TP_Type::make_from_ts(TypeSpec("symbol"));
       break;
     case Kind::SET_BINTEGER:
-      output.get(m_var[0]->reg()) = TP_Type::make_type_object(TypeSpec("binteger"));
+      output.get(m_var[0]->reg()) = TP_Type::make_type_no_virtual_object(TypeSpec("binteger"));
       break;
     case Kind::SET_PAIR:
-      output.get(m_var[0]->reg()) = TP_Type::make_type_object(TypeSpec("pair"));
+      output.get(m_var[0]->reg()) = TP_Type::make_type_no_virtual_object(TypeSpec("pair"));
       break;
     case Kind::NOP:
     case Kind::NO_DELAY:
@@ -414,6 +459,12 @@ TypeState SetVarOp::propagate_types_internal(const TypeState& input,
                                              const Env& env,
                                              DecompilerTypeSystem& dts) {
   TypeState result = input;
+  if (m_dst.reg().get_kind() == Reg::FPR && m_src.is_identity() && m_src.get_arg(0).is_int() &&
+      m_src.get_arg(0).get_int() == 0) {
+    // mtc fX, r0 should be a float type. GOAL was smart enough to do this.
+    result.get(m_dst.reg()) = TP_Type::make_from_ts("float");
+    return result;
+  }
   result.get(m_dst.reg()) = m_src.get_type(input, env, dts);
   return result;
 }
@@ -477,8 +528,9 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   if (get_as_reg_offset(m_src, &ro)) {
     auto& input_type = input.get(ro.reg);
 
-    if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD && ro.offset >= 16 &&
-        (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+    if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
+         input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) &&
+        ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
       // method get of fixed type
       auto type_name = input_type.get_type_objects_typespec().base_type();
       auto method_id = (ro.offset - 16) / 4;
@@ -488,7 +540,13 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         // remember that we're an object new.
         return TP_Type::make_object_new(method_type);
       }
-      return TP_Type::make_from_ts(method_type);
+      if (method_id == GOAL_NEW_METHOD) {
+        return TP_Type::make_from_ts(method_type);
+      } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+        return TP_Type::make_non_virtual_method(method_type);
+      } else {
+        return TP_Type::make_virtual_method(method_type);
+      }
     }
 
     if (input_type.kind == TP_Type::Kind::TYPESPEC && input_type.typespec() == TypeSpec("type") &&
@@ -498,7 +556,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto method_info = dts.ts.lookup_method("object", method_id);
       if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
         // this can get us the wrong thing for `new` methods.  And maybe relocate?
-        return TP_Type::make_from_ts(method_info.type.substitute_for_method_call("object"));
+        return TP_Type::make_non_virtual_method(
+            method_info.type.substitute_for_method_call("object"));
       }
     }
 
@@ -571,7 +630,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       //      load_path.push_back("type");
       //      load_path_set = true;
 
-      return TP_Type::make_type_object(input_type.typespec().base_type());
+      return TP_Type::make_type_allow_virtual_object(input_type.typespec().base_type());
     }
 
     if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
@@ -676,6 +735,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3};
 
+  m_is_virtual_method = false;
   TypeState end_types = input;
 
   auto in_tp = input.get(Register(Reg::GPR, Reg::T9));
@@ -766,6 +826,11 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
     m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
+    if (i == 0 && in_tp.kind == TP_Type::Kind::VIRTUAL_METHOD) {
+      m_read_regs.pop_back();
+      m_arg_vars.pop_back();
+      m_is_virtual_method = true;
+    }
   }
 
   m_write_regs.clear();

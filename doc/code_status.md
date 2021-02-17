@@ -1,81 +1,29 @@
-## gcommon.gc
-Missing stuff.
+# KERNEL
 
-## gstring-h.gc
-Empty file.
+## `gcommon`: **Done**
+- `vec4s` print/inpsect unimplemented (believed not working in GOAL either)
+- `array`'s `print`/`inspect` will not work on `uint128` or `int128`. These are believed to be unused, and also don't work in GOAL.
+- `quad-copy!` is an optimized assembly memory copy that was rewritten. It should have identical behavior, but may be slow. In the future, we could improve the performance if it's used a lot.
+- `valid?` uses some inline assembly to check if a pointer is inside the symbol table, rewritten.
+- Lots of important memory constants should be defined here.
 
-## gkernel-h.gc
-Likely missing some macros.  Missing `handle`, a child type of integer.
+## `gstring-h`: **Done**
+- This file generates no code.
 
-## gkernel.gc
-Missing lots of stuff. Will need x86-64 inline assembly and some tweaking for x86.
+## `gkernel-h`: **Done**
+- The types `cpu-thread` and `catch-frame` have a slightly different layout in OpenGOAL to back up x86-64 registers
 
-## pskernel.gc
-Possibly can be entirely left out. Seems to be mostly unused, or only used for PS2 debugging?
+## `gkernel`:
+- In progress
 
-## gstring.gc
-Missing lots
+## `pskernel`: **Done**
+- Unimplemented in OpenGOAL. Seems to be debugging hooks into the PS2's kernel. Error strings indicate that there should have been a second related file included that actually contained the debugging handlers, but this file is not present.
 
-## dgo-h.gc
-Done!
+## `gstring`: **Done**
+- `string->int` doesn't handle negative numbers correctly. This appears to be a bug in the original version.
 
-## gstate.gc
-Not started, probably needs state support in the compiler
+## `dgo-h`: **Done**
+- Just type definitions. These don't seem to match the version of DGO files found in the game, so maybe this is outdated? Also GOAL never sees DGOs, they are always processed on the IOP.
 
-## types.gc
-Needs child types of integer
-
-## vu-macros.gc
-Empty.
-
-# Math Section
-
-## math.gc
-Has a unit test for a lot of functions.
-rand-vu-init, rand-vu, rand-vu-nostep, rand-vu-float-range, rand-vu-percent?, rand-vu-int-range, rand-vu-int-count aren't implemented
-
-rand-uint31-gen might be wrong.
-
-## vector-h.gc
-Partially done
-
-## gravity-h.gc
-Empty file
-
-## bounding-box-h.gc
-Just types. Done!
-
-## matrix-h.gc
-Types and one function. Done, but the matrix-copy! function isn't that efficient.
-
-## quaternion-h.gc
-Done!
-
-## euler-h.gc
-Needs static arrays
-
-## transform-h.gc
-Done!
-
-## geometry-h.gc
-Done!
-
-## trigonometry-h.gc
-Empty File.
-
-## transformq-h.gc
-Not done. 
-
-## bounding-box.gc
-
-## matrix.gc
-
-## transform.gc
-
-## quaternion.gc
-
-## euler.gc
-
-## geometry.gc
-
-## trigonometry.gc
+## `gstate`:
+- Doing a `go` from a non-main thread of the process that is changing state is implemented a tiny bit differently. I don't think it should matter.

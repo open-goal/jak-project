@@ -270,6 +270,12 @@ class Break : public CfgVtx {
   CfgVtx* unreachable_block = nullptr;
 };
 
+class EmptyVtx : public CfgVtx {
+ public:
+  std::string to_string() const override;
+  goos::Object to_form() const override;
+};
+
 struct BasicBlock;
 
 /*!
@@ -294,6 +300,7 @@ class ControlFlowGraph {
   void link_fall_through_likely(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   void link_branch(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   bool find_cond_w_else();
+  bool find_cond_w_empty_else();
   bool find_cond_n_else();
 
   //  bool find_if_else_top_level();

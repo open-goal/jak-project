@@ -257,6 +257,27 @@ void FormElement::update_from_stack(const Env& env,
   throw std::runtime_error(fmt::format("update_from_stack NYI for {}", to_string(env)));
 }
 
+namespace {
+Form* make_cast(Form* in, const TypeSpec& in_type, const TypeSpec& out_type, FormPool& pool) {
+  if (in_type == out_type) {
+    return in;
+  }
+  return pool.alloc_single_element_form<CastElement>(nullptr, out_type, in);
+}
+
+std::vector<Form*> make_cast(const std::vector<Form*>& in,
+                             const std::vector<TypeSpec>& in_types,
+                             const TypeSpec& out_type,
+                             FormPool& pool) {
+  std::vector<Form*> out;
+  assert(in.size() == in_types.size());
+  for (size_t i = 0; i < in_types.size(); i++) {
+    out.push_back(make_cast(in.at(i), in_types.at(i), out_type, pool));
+  }
+  return out;
+}
+}  // namespace
+
 /*!
  * Update a LoadSourceElement from the stack.
  */
@@ -331,13 +352,14 @@ void SimpleExpressionElement::update_from_stack_fpr_to_gpr(const Env& env,
                                                            bool allow_side_effects) {
   auto src = m_expr.get_arg(0);
   auto src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
-  if (src_type.typespec() == TypeSpec("float")) {
+  if (src_type.typespec() == TypeSpec("float") || src_type.typespec() == TypeSpec("int")) {
     // set ourself to identity.
     m_expr = src.as_expr();
     // then go again.
     update_from_stack(env, pool, stack, result, allow_side_effects);
   } else {
-    throw std::runtime_error(fmt::format("FPR -> GPR applied to a {}", src_type.print()));
+    throw std::runtime_error(
+        fmt::format("FPR -> GPR applied to a {} in {}", src_type.print(), to_string(env)));
   }
 }
 
@@ -376,7 +398,11 @@ void SimpleExpressionElement::update_from_stack_float_2(const Env& env,
                                                        args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
-    throw std::runtime_error(fmt::format("Floating point math attempted on invalid types."));
+    auto type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    auto type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
+    throw std::runtime_error(
+        fmt::format("Floating point math attempted on invalid types: {} and {} in op {}.",
+                    type0.print(), type1.print(), to_string(env)));
   }
 }
 
@@ -394,6 +420,18 @@ void SimpleExpressionElement::update_from_stack_float_1(const Env& env,
   } else {
     throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
   }
+}
+
+void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
+                                                     FixedOperatorKind kind,
+                                                     FormPool& pool,
+                                                     FormStack& stack,
+                                                     std::vector<FormElement*>* result,
+                                                     bool allow_side_effects) {
+  auto in_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg()).typespec();
+  auto arg = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+  result->push_back(pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(kind), make_cast(arg, in_type, TypeSpec("int"), pool)));
 }
 
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
@@ -420,6 +458,81 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   } else {
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+  }
+
+  // Look for getting an address inside of an object.
+  // (+ <integer 108 + int> process). array style access with a stride of 1.
+  // in the case, both are vars.
+  if (arg1_reg) {
+    // lookup types.
+    auto arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
+    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
+      // try to see if this is valid, from the type system.
+      FieldReverseLookupInput input;
+      input.offset = arg0_type.get_integer_constant();
+      input.stride = 1;
+      input.base_type = arg1_type.typespec();
+      auto out = env.dts->ts.reverse_field_lookup(input);
+      if (out.success) {
+        // it is. now we have to modify things
+        // first, look for the index
+        auto arg0_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                        {Matcher::any(0), Matcher::integer(input.offset)});
+        auto match_result = match(arg0_matcher, args.at(0));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : out.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match for stride 1 address access with add.");
+        }
+      }
+    } else if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT) {
+      // try to see if this is valid, from the type system.
+      FieldReverseLookupInput input;
+      input.offset = arg0_type.get_add_int_constant();
+      input.stride = arg0_type.get_mult_int_constant();
+      input.base_type = arg1_type.typespec();
+      auto out = env.dts->ts.reverse_field_lookup(input);
+      if (out.success) {
+        // it is. now we have to modify things
+        // first, look for the index
+        auto arg0_matcher =
+            Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                        {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                     {Matcher::integer(input.stride), Matcher::any(0)}),
+                         Matcher::integer(input.offset)});
+        auto match_result = match(arg0_matcher, args.at(0));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : out.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match for stride (non power 2) with add");
+        }
+      }
+    }
   }
 
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
@@ -464,7 +577,8 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
                                                            FormPool& pool,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
-                                                           bool allow_side_effects) {
+                                                           bool allow_side_effects,
+                                                           bool reverse) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   bool arg1_i = true;
   bool arg1_reg = m_expr.get_arg(1).is_var();
@@ -476,8 +590,17 @@ void SimpleExpressionElement::update_from_stack_force_si_2(const Env& env,
 
   std::vector<Form*> args;
   if (arg1_reg) {
-    args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                        allow_side_effects);
+    if (reverse) {
+      args = pop_to_forms({m_expr.get_arg(1).var(), m_expr.get_arg(0).var()}, env, pool, stack,
+                          allow_side_effects);
+      auto temp = args.at(1);
+      args.at(1) = args.at(0);
+      args.at(0) = temp;
+    } else {
+      args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                          allow_side_effects);
+    }
+
   } else {
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
@@ -608,7 +731,23 @@ void SimpleExpressionElement::update_from_stack_int_to_float(const Env& env,
     }
     result->push_back(pool.alloc_element<CastElement>(TypeSpec("float"), arg, true));
   } else {
-    throw std::runtime_error("Used int to float on a " + type.print());
+    throw std::runtime_error(fmt::format("Used int to float on a {} from {}: {}", type.print(),
+                                         var.to_form(env).print(), arg->to_string(env)));
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_float_to_int(const Env& env,
+                                                             FormPool& pool,
+                                                             FormStack& stack,
+                                                             std::vector<FormElement*>* result,
+                                                             bool allow_side_effects) {
+  auto var = m_expr.get_arg(0).var();
+  auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
+  auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+  if (type == TypeSpec("float")) {
+    result->push_back(pool.alloc_element<CastElement>(TypeSpec("int"), arg, true));
+  } else {
+    throw std::runtime_error("Used float to int on a " + type.print());
   }
 }
 
@@ -642,13 +781,25 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_float_2(env, FixedOperatorKind::ADDITION, pool, stack, result,
                                 allow_side_effects);
       break;
+    case SimpleExpression::Kind::MAX_S:
+      update_from_stack_float_2(env, FixedOperatorKind::FMAX, pool, stack, result,
+                                allow_side_effects);
+      break;
+    case SimpleExpression::Kind::MIN_S:
+      update_from_stack_float_2(env, FixedOperatorKind::FMIN, pool, stack, result,
+                                allow_side_effects);
+      break;
     case SimpleExpression::Kind::SQRT_S:
       update_from_stack_float_1(env, FixedOperatorKind::SQRT, pool, stack, result,
                                 allow_side_effects);
       break;
     case SimpleExpression::Kind::ABS_S:
-      update_from_stack_float_1(env, FixedOperatorKind::ABS, pool, stack, result,
+      update_from_stack_float_1(env, FixedOperatorKind::FABS, pool, stack, result,
                                 allow_side_effects);
+      break;
+    case SimpleExpression::Kind::NEG:
+      update_from_stack_si_1(env, FixedOperatorKind::SUBTRACTION, pool, stack, result,
+                             allow_side_effects);
       break;
     case SimpleExpression::Kind::NEG_S:
       update_from_stack_float_1(env, FixedOperatorKind::SUBTRACTION, pool, stack, result,
@@ -666,19 +817,19 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::DIV_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::DIVISION, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::MOD_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MOD, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::MIN_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MIN, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::MAX_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MAX, pool, stack, result,
-                                   allow_side_effects);
+                                   allow_side_effects, false);
       break;
     case SimpleExpression::Kind::AND:
       update_from_stack_copy_first_int_2(env, FixedOperatorKind::LOGAND, pool, stack, result,
@@ -704,12 +855,12 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
                                          allow_side_effects);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
-      update_from_stack_force_ui_2(env, FixedOperatorKind::SHR, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHR, pool, stack, result,
+                                         allow_side_effects);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
-      update_from_stack_force_si_2(env, FixedOperatorKind::SAR, pool, stack, result,
-                                   allow_side_effects);
+      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SAR, pool, stack, result,
+                                         allow_side_effects);
       break;
     case SimpleExpression::Kind::MUL_UNSIGNED:
       update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result,
@@ -717,6 +868,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::INT_TO_FLOAT:
       update_from_stack_int_to_float(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::FLOAT_TO_INT:
+      update_from_stack_float_to_int(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -733,27 +887,40 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     assert(x->parent_form == m_src);
   }
   assert(m_src->parent_element == this);
+
+  if (is_dead_set()) {
+    stack.push_value_to_reg_dead(m_dst, m_src, true, m_var_info);
+    return;
+  }
+
   m_src->update_children_from_stack(env, pool, stack, true);
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }
+
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
+        // this can happen late in the case of coloring moves which are also gpr -> fpr's
+        // so they don't get caught by SetVarOp::get_as_form's check.
+        if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
+          m_var_info.is_eliminated_coloring_move = true;
+        }
+
         auto var = src_as_se->expr().get_arg(0).var();
         auto& info = env.reg_use().op.at(var.idx());
         if (info.consumes.find(var.reg()) != info.consumes.end()) {
           stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
-                                        m_is_eliminated_coloring_move);
+                                        m_var_info);
           return;
         }
       }
     }
   }
 
-  stack.push_value_to_reg(m_dst, m_src, true, m_is_eliminated_coloring_move);
+  stack.push_value_to_reg(m_dst, m_src, true, m_var_info);
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }
@@ -773,8 +940,8 @@ void SetVarElement::update_from_stack(const Env& env,
 
 void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   // todo - is the order here right?
-  m_src->update_children_from_stack(env, pool, stack, false);
   m_dst->update_children_from_stack(env, pool, stack, false);
+  m_src->update_children_from_stack(env, pool, stack, false);
   stack.push_form_element(this, true);
 }
 
@@ -825,13 +992,36 @@ void FunctionCallElement::update_from_stack(const Env& env,
   for (size_t i = 0; i < nargs; i++) {
     all_pop_vars.push_back(m_op->arg_vars().at(i));
   }
-  auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
-  std::vector<Form*> arg_forms;
+
   TypeSpec function_type;
+  bool is_method = false;
+  auto& tp_type = env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg());
   if (env.has_type_analysis()) {
-    function_type =
-        env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg()).typespec();
+    if (tp_type.kind == TP_Type::Kind::VIRTUAL_METHOD && all_pop_vars.size() >= 1) {
+      is_method = true;
+    }
+    function_type = tp_type.typespec();
   }
+
+  assert(is_method == m_op->is_method());
+
+  // if method, don't pop the obj arg.
+  //  Variable method_obj_var;
+  //  if (is_method) {
+  //    method_obj_var = all_pop_vars.at(1);
+  //    all_pop_vars.erase(all_pop_vars.begin() + 1);
+  //  }
+
+  if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+    std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
+  }
+  auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
+  if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+    std::swap(unstacked.at(0), unstacked.at(1));
+    std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
+  }
+
+  std::vector<Form*> arg_forms;
 
   for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
     auto val = unstacked.at(arg_id + 1);  // first is the function itself.
@@ -850,8 +1040,88 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
   }
 
-  auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_function(unstacked.at(0)), arg_forms);
+  FormElement* new_form = nullptr;
+  if (is_method) {
+    //    fmt::print("STACK:\n{}\n\n", stack.print(env));
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+                               {Matcher::any(0), Matcher::any(1)});
+    auto mr = match(matcher, unstacked.at(0));
+    if (!mr.matched) {
+      throw std::runtime_error("Failed to match method call. Got " +
+                               unstacked.at(0)->to_string(env));
+    }
+
+    auto unsafe = stack.unsafe_peek(Register(Reg::GPR, Reg::A0), env);
+    if (!unsafe) {
+      if (!stack.is_root()) {
+        fmt::print("STACK:\n{}\n\n", stack.print(env));
+        throw std::runtime_error("Peek got to back and not root stack");
+      }
+      // failed to peek by reaching the end AND root stack, means we just take the function
+      // argument.
+      unsafe = mr.maps.forms.at(0);
+    }
+
+    bool resolved = false;
+    if (unsafe) {
+      if (!unsafe->try_as_single_element()) {
+        throw std::runtime_error(
+            fmt::format("Peek got something weird: {}\n", unsafe->to_string(env)));
+      }
+
+      if (unsafe->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
+        resolved = true;
+      }
+
+      if (!resolved) {
+        if (unsafe->try_as_single_element()->to_form(env) ==
+            mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
+          resolved = true;
+          lg::warn(
+              fmt::format("Rare method call (type 1). {} vs {}. Not an error, but check carefully",
+                          unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+        }
+      }
+
+      if (!resolved) {
+        lg::warn(
+            fmt::format("Rare method call (type 2). {} vs {}. Not an error, but check carefully",
+                        unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+
+        auto unsafe_as_se = dynamic_cast<SimpleExpressionElement*>(unsafe->try_as_single_element());
+        if (unsafe_as_se && unsafe_as_se->expr().is_identity() &&
+            unsafe_as_se->expr().get_arg(0).is_var()) {
+          auto var = unsafe_as_se->expr().get_arg(0).var();
+          auto unsafe_2 = stack.unsafe_peek(var.reg(), env);
+          if (unsafe_2) {
+            if (unsafe_2->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
+              resolved = true;
+              unsafe = unsafe_2;
+            } else {
+              if (unsafe_2->try_as_single_element()->to_form(env) ==
+                  mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
+                lg::warn("Check even more carefully");
+                resolved = true;
+                unsafe = unsafe_2;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (!resolved) {
+      throw std::runtime_error("Failed to resolve.");
+    }
+
+    arg_forms.insert(arg_forms.begin(), unsafe);
+    new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
+
+  } else {
+    new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
+                                                  arg_forms);
+  }
 
   {
     // detect method calls:
@@ -910,7 +1180,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         match_result = match(matcher, temp_form);
         if (match_result.matched) {
           auto alloc = match_result.maps.strings.at(allocation);
-          if (alloc != "global" && alloc != "debug") {
+          if (alloc != "global" && alloc != "debug" && alloc != "process") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);
@@ -922,18 +1192,38 @@ void FunctionCallElement::update_from_stack(const Env& env,
           auto quoted_type = pool.alloc_single_element_form<SimpleAtomElement>(
               nullptr, SimpleAtom::make_sym_ptr(type_2));
 
-          std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
-          new_args.at(1) = quoted_type;
+          if (alloc == "global" && type_1 == "pair") {
+            // cons!
+            // (new 'global 'pair a b) -> (cons a b)
+            std::vector<Form*> cons_args = {dynamic_cast<GenericElement*>(new_form)->elts().at(2),
+                                            dynamic_cast<GenericElement*>(new_form)->elts().at(3)};
+            auto cons_op = pool.alloc_element<GenericElement>(
+                GenericOperator::make_fixed(FixedOperatorKind::CONS), cons_args);
+            result->push_back(cons_op);
+            return;
+          } else {
+            // just normal construction on the heap
+            std::vector<Form*> new_args = dynamic_cast<GenericElement*>(new_form)->elts();
+            new_args.at(1) = quoted_type;
 
-          auto new_op = pool.alloc_element<GenericElement>(
-              GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
-          result->push_back(new_op);
-          return;
+            auto new_op = pool.alloc_element<GenericElement>(
+                GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
+            result->push_back(new_op);
+            return;
+          }
         } else {
-          throw std::runtime_error("Failed to match new method");
+          lg::warn("Got a suspicious new method. This may be fine, but should be uncommon: {}",
+                   temp_form->to_string(env));
+          //          throw std::runtime_error("Failed to match new method: " +
+          //          temp_form->to_string(env));
         }
       } else {
-        throw std::runtime_error("Method call detected, not yet implemented");
+        auto ti = env.dts->ts.lookup_type(type_1);
+        auto is_basic = dynamic_cast<BasicType*>(ti);
+        if (!is_basic) {
+          throw std::runtime_error(
+              fmt::format("Method call detected, not yet implemented {} {}\n", name, type_1));
+        }
       }
     }
   }
@@ -984,6 +1274,8 @@ void DerefElement::update_from_stack(const Env& env,
                                      bool allow_side_effects) {
   // todo - update var tokens from stack?
   m_base->update_children_from_stack(env, pool, stack, allow_side_effects);
+
+  // merge nested ->'s
   auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
   if (as_deref) {
     if (!m_is_addr_of && !as_deref->is_addr_of()) {
@@ -991,7 +1283,53 @@ void DerefElement::update_from_stack(const Env& env,
       m_base = as_deref->m_base;
     }
   }
-  result->push_back(this);
+
+  if (m_tokens.size() >= 3) {
+    auto& method_name = m_tokens.at(m_tokens.size() - 1);
+    auto& mbn = m_tokens.at(m_tokens.size() - 2);
+    auto& type = m_tokens.at(m_tokens.size() - 3);
+    if (method_name.kind() == DerefToken::Kind::FIELD_NAME &&
+        mbn.kind() == DerefToken::Kind::FIELD_NAME && mbn.field_name() == "methods-by-name" &&
+        type.kind() == DerefToken::Kind::FIELD_NAME && type.field_name() == "type") {
+      std::string name = method_name.field_name();
+      m_tokens.pop_back();
+      m_tokens.pop_back();
+      m_tokens.pop_back();
+
+      if (m_tokens.empty()) {
+        auto method_op = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT), m_base,
+            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
+        result->push_back(method_op);
+      } else {
+        auto method_op = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+            pool.alloc_single_form(nullptr, this),
+            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
+        result->push_back(method_op);
+      }
+      return;
+    }
+  }
+
+  // rewrite access to the method table to use method-of-object
+  // (-> <some-object> type methods-by-name <method-name>)
+  // (method-of-object <some-object> <method-name>)
+  auto get_method_matcher = Matcher::deref(
+      Matcher::any(0), false,
+      {DerefTokenMatcher::string("type"), DerefTokenMatcher::string("methods-by-name"),
+       DerefTokenMatcher::any_string(1)});
+  Form hack_form;
+  hack_form.elts() = {this};
+  auto mr = match(get_method_matcher, &hack_form);
+  if (mr.matched) {
+    auto method_op = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT), mr.maps.forms.at(0),
+        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, mr.maps.strings.at(1)));
+    result->push_back(method_op);
+  } else {
+    result->push_back(this);
+  }
 }
 
 ///////////////////
@@ -1000,7 +1338,7 @@ void DerefElement::update_from_stack(const Env& env,
 
 void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   for (auto form : {condition, body}) {
-    FormStack temp_stack;
+    FormStack temp_stack(false);
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
@@ -1015,8 +1353,10 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 }
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  for (auto form : {condition, body}) {
-    FormStack temp_stack;
+  bool first = true;
+  for (auto form : {body, condition}) {
+    FormStack temp_stack(first && stack.is_root());
+    first = false;
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
@@ -1035,17 +1375,18 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   if (already_rewritten) {
     stack.push_form_element(this, true);
+    return;
   }
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
-      FormStack temp_stack;
+      FormStack temp_stack(false);
       for (auto& elt : form->elts()) {
         elt->push_to_stack(env, pool, temp_stack);
       }
 
       std::vector<FormElement*> new_entries;
       if (form == entry.body && used_as_value) {
-        new_entries = temp_stack.rewrite_to_get_var(pool, final_destination, env);
+        new_entries = rewrite_to_get_var(temp_stack, pool, final_destination);
       } else {
         new_entries = temp_stack.rewrite(pool);
       }
@@ -1055,6 +1396,17 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         form->push_back(e);
       }
     }
+  }
+
+  // raise expression.
+  auto top_condition = entries.front().condition;
+  if (!top_condition->is_single_element()) {
+    auto real_condition = top_condition->back();
+    top_condition->pop_back();
+    for (auto x : top_condition->elts()) {
+      x->push_to_stack(env, pool, stack);
+    }
+    top_condition->elts() = {real_condition};
   }
 
   if (used_as_value) {
@@ -1068,10 +1420,43 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   if (already_rewritten) {
     stack.push_form_element(this, true);
+    return;
   }
   // first, let's try to detect if all bodies write the same value
   std::optional<Variable> last_var;
   bool rewrite_as_set = true;
+
+  // process conditions and bodies
+  for (auto& entry : entries) {
+    for (auto form : {entry.condition, entry.body}) {
+      FormStack temp_stack(false);
+      for (auto& elt : form->elts()) {
+        elt->push_to_stack(env, pool, temp_stack);
+      }
+
+      std::vector<FormElement*> new_entries;
+      new_entries = temp_stack.rewrite(pool);
+
+      form->clear();
+      for (auto e : new_entries) {
+        form->push_back(e);
+      }
+    }
+  }
+
+  // process else.
+  FormStack temp_stack(false);
+  for (auto& elt : else_ir->elts()) {
+    elt->push_to_stack(env, pool, temp_stack);
+  }
+
+  std::vector<FormElement*> new_entries;
+  new_entries = temp_stack.rewrite(pool);
+
+  else_ir->clear();
+  for (auto e : new_entries) {
+    else_ir->push_back(e);
+  }
 
   // collect all forms which should write the output.
   std::vector<Form*> write_output_forms;
@@ -1107,45 +1492,15 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
   }
 
-  // process everything.
-  for (auto& entry : entries) {
-    for (auto form : {entry.condition, entry.body}) {
-      FormStack temp_stack;
-      for (auto& elt : form->elts()) {
-        elt->push_to_stack(env, pool, temp_stack);
-      }
-
-      std::vector<FormElement*> new_entries;
-      if (form == entry.body && rewrite_as_set) {
-        new_entries = temp_stack.rewrite_to_get_var(pool, *last_var, env);
-      } else {
-        new_entries = temp_stack.rewrite(pool);
-      }
-
-      form->clear();
-      for (auto e : new_entries) {
-        form->push_back(e);
-      }
+  // rewrite extra sets as needed.
+  if (rewrite_as_set && !set_unused) {
+    for (auto& entry : entries) {
+      rewrite_to_get_var(entry.body->elts(), pool, *last_var);
     }
+    rewrite_to_get_var(else_ir->elts(), pool, *last_var);
   }
 
-  FormStack temp_stack;
-  for (auto& elt : else_ir->elts()) {
-    elt->push_to_stack(env, pool, temp_stack);
-  }
-
-  std::vector<FormElement*> new_entries;
-  if (rewrite_as_set) {
-    new_entries = temp_stack.rewrite_to_get_var(pool, *last_var, env);
-  } else {
-    new_entries = temp_stack.rewrite(pool);
-  }
-
-  else_ir->clear();
-  for (auto e : new_entries) {
-    else_ir->push_back(e);
-  }
-
+  // raise expression.
   auto top_condition = entries.front().condition;
   if (!top_condition->is_single_element()) {
     auto real_condition = top_condition->back();
@@ -1181,17 +1536,18 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   } else {
     if (already_rewritten) {
       stack.push_form_element(this, true);
+      return;
     }
     for (int i = 0; i < int(entries.size()); i++) {
       auto& entry = entries.at(i);
-      FormStack temp_stack;
+      FormStack temp_stack(false);
       for (auto& elt : entry.condition->elts()) {
         elt->push_to_stack(env, pool, temp_stack);
       }
 
       std::vector<FormElement*> new_entries;
       if (i == int(entries.size()) - 1) {
-        new_entries = temp_stack.rewrite_to_get_var(pool, final_result, env);
+        new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
       } else {
         new_entries = temp_stack.rewrite(pool);
       }
@@ -1201,6 +1557,17 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         entry.condition->push_back(e);
       }
     }
+
+    auto top_condition = entries.front().condition;
+    if (!top_condition->is_single_element()) {
+      auto real_condition = top_condition->back();
+      top_condition->pop_back();
+      for (auto x : top_condition->elts()) {
+        x->push_to_stack(env, pool, stack);
+      }
+      top_condition->elts() = {real_condition};
+    }
+
     assert(used_as_value.has_value());
     stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
     already_rewritten = true;
@@ -1219,14 +1586,14 @@ void ShortCircuitElement::update_from_stack(const Env& env,
   }
   for (int i = 0; i < int(entries.size()); i++) {
     auto& entry = entries.at(i);
-    FormStack temp_stack;
+    FormStack temp_stack(false);
     for (auto& elt : entry.condition->elts()) {
       elt->push_to_stack(env, pool, temp_stack);
     }
 
     std::vector<FormElement*> new_entries;
     if (i == int(entries.size()) - 1) {
-      new_entries = temp_stack.rewrite_to_get_var(pool, final_result, env);
+      new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
     } else {
       new_entries = temp_stack.rewrite(pool);
     }
@@ -1243,27 +1610,6 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 ///////////////////
 // ConditionElement
 ///////////////////
-
-namespace {
-Form* make_cast(Form* in, const TypeSpec& in_type, const TypeSpec& out_type, FormPool& pool) {
-  if (in_type == out_type) {
-    return in;
-  }
-  return pool.alloc_single_element_form<CastElement>(nullptr, out_type, in);
-}
-
-std::vector<Form*> make_cast(const std::vector<Form*>& in,
-                             const std::vector<TypeSpec>& in_types,
-                             const TypeSpec& out_type,
-                             FormPool& pool) {
-  std::vector<Form*> out;
-  assert(in.size() == in_types.size());
-  for (size_t i = 0; i < in_types.size(); i++) {
-    out.push_back(make_cast(in.at(i), in_types.at(i), out_type, pool));
-  }
-  return out;
-}
-}  // namespace
 
 FormElement* ConditionElement::make_generic(const Env&,
                                             FormPool& pool,
@@ -1301,6 +1647,11 @@ FormElement* ConditionElement::make_generic(const Env&,
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::GEQ),
           make_cast(source_forms, types, TypeSpec("uint"), pool));
+
+    case IR2_Condition::Kind::GEQ_SIGNED:
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+          make_cast(source_forms, types, TypeSpec("int"), pool));
 
     case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED: {
       auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
@@ -1366,23 +1717,46 @@ FormElement* ConditionElement::make_generic(const Env&,
 }
 
 void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  std::vector<Form*> source_forms;
+  std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    auto& var = m_src[i]->var();
-    vars.push_back(var);
-    source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    if (m_src[i]->is_var()) {
+      auto& var = m_src[i]->var();
+      vars.push_back(var);
+      source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    } else if (m_src[i]->is_int()) {
+      if (m_src[i]->get_int() == 0 && condition_uses_float(m_kind)) {
+        // if we're doing a floating point comparison, and one of our arguments is a constant
+        // which is an "integer zero", treat it as a floating point zero.
+        source_types.push_back(TypeSpec("float"));
+      } else {
+        source_types.push_back(TypeSpec("int"));
+      }
+    } else {
+      throw std::runtime_error("Unsupported atom in ConditionElement::push_to_stack");
+    }
   }
   if (m_flipped) {
     std::reverse(vars.begin(), vars.end());
   }
 
-  source_forms = pop_to_forms(vars, env, pool, stack, true, m_consumed);
+  popped_forms = pop_to_forms(vars, env, pool, stack, true, m_consumed);
   if (m_flipped) {
-    std::reverse(source_forms.begin(), source_forms.end());
+    std::reverse(popped_forms.begin(), popped_forms.end());
   }
+
+  int popped_counter = 0;
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    if (m_src[i]->is_var()) {
+      source_forms.push_back(popped_forms.at(popped_counter++));
+    } else {
+      source_forms.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, *m_src[i]));
+    }
+  }
+  assert(popped_counter == int(popped_forms.size()));
+  assert(source_forms.size() == source_types.size());
 
   stack.push_form_element(make_generic(env, pool, source_forms, source_types), true);
 }
@@ -1392,35 +1766,58 @@ void ConditionElement::update_from_stack(const Env& env,
                                          FormStack& stack,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
-  std::vector<Form*> source_forms;
+  std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
-    auto& var = m_src[i]->var();
-    vars.push_back(var);
-    source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    if (m_src[i]->is_var()) {
+      auto& var = m_src[i]->var();
+      vars.push_back(var);
+      source_types.push_back(env.get_types_before_op(var.idx()).get(var.reg()).typespec());
+    } else if (m_src[i]->is_int()) {
+      if (m_src[i]->get_int() == 0 && condition_uses_float(m_kind)) {
+        // if we're doing a floating point comparison, and one of our arguments is a constant
+        // which is an "integer zero", treat it as a floating point zero.
+        source_types.push_back(TypeSpec("float"));
+      } else {
+        source_types.push_back(TypeSpec("int"));
+      }
+    } else {
+      throw std::runtime_error("Unsupported atom in ConditionElement::push_to_stack");
+    }
   }
-
   if (m_flipped) {
     std::reverse(vars.begin(), vars.end());
   }
-  source_forms = pop_to_forms(vars, env, pool, stack, allow_side_effects, m_consumed);
+
+  popped_forms = pop_to_forms(vars, env, pool, stack, allow_side_effects, m_consumed);
   if (m_flipped) {
-    std::reverse(source_forms.begin(), source_forms.end());
+    std::reverse(popped_forms.begin(), popped_forms.end());
   }
+
+  int popped_counter = 0;
+  for (int i = 0; i < get_condition_num_args(m_kind); i++) {
+    if (m_src[i]->is_var()) {
+      source_forms.push_back(popped_forms.at(popped_counter++));
+    } else {
+      source_forms.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, *m_src[i]));
+    }
+  }
+  assert(popped_counter == int(popped_forms.size()));
+  assert(source_forms.size() == source_types.size());
 
   result->push_back(make_generic(env, pool, source_forms, source_types));
 }
 
 void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  FormStack temp_stack;
+  FormStack temp_stack(false);
   for (auto& elt : return_code->elts()) {
     elt->push_to_stack(env, pool, temp_stack);
   }
 
   std::vector<FormElement*> new_entries;
-  new_entries = temp_stack.rewrite_to_get_var(pool, env.end_var(), env);
+  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var());
 
   return_code->clear();
   for (auto e : new_entries) {
@@ -1438,7 +1835,8 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
 
   auto as_special = dynamic_cast<const SpecialOp*>(m_op);
   if (as_special) {
-    if (as_special->kind() == SpecialOp::Kind::NOP) {
+    if (as_special->kind() == SpecialOp::Kind::NOP ||
+        as_special->kind() == SpecialOp::Kind::BREAK) {
       stack.push_form_element(this, true);
       return;
     }
@@ -1461,12 +1859,11 @@ void GenericElement::update_from_stack(const Env& env,
                                        FormStack& stack,
                                        std::vector<FormElement*>* result,
                                        bool) {
-  for (auto it = m_elts.rbegin(); it != m_elts.rend(); it++) {
-    (*it)->update_children_from_stack(env, pool, stack, false);
-  }
-
+  // TODO improve.
   if (m_head.m_kind == GenericOperator::Kind::FUNCTION_EXPR) {
     m_head.m_function->update_children_from_stack(env, pool, stack, false);
+  } else {
+    m_elts.back()->update_children_from_stack(env, pool, stack, false);
   }
   result->push_back(this);
 }
@@ -1546,7 +1943,8 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       // reg1 is idx
 
       auto reg0_matcher =
-          Matcher::match_or({Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                             Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
       auto sll_matcher =
@@ -1555,10 +1953,14 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
-        fmt::print("power {}\n", power_of_two);
-        throw std::runtime_error(
-            "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
-            new_val->to_string(env));
+        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher});
+        match_result = match(matcher, new_val);
+        if (!match_result.matched) {
+          fmt::print("power {}\n", power_of_two);
+          throw std::runtime_error(
+              "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
+              new_val->to_string(env));
+        }
       }
 
       auto idx = match_result.maps.forms.at(1);
@@ -1582,7 +1984,7 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::any_reg(0), Matcher::cast("int", Matcher::any_reg(0))});
+          Matcher::match_or({Matcher::any(0), Matcher::cast("int", Matcher::any_reg(0))});
       // reg1 is base
       auto reg1_matcher =
           Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
@@ -1592,14 +1994,14 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
         throw std::runtime_error("Couldn't match ArrayFieldAccess (stride 1) values: " +
                                  new_val->to_string(env));
       }
-      auto idx = match_result.maps.regs.at(0);
+      auto idx = match_result.maps.forms.at(0);
       auto base = match_result.maps.regs.at(1);
-      assert(idx.has_value() && base.has_value());
+      assert(idx && base.has_value());
 
       std::vector<DerefToken> tokens = m_deref_tokens;
       for (auto& x : tokens) {
         if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
-          x = DerefToken::make_int_expr(var_to_form(idx.value(), pool));
+          x = DerefToken::make_int_expr(idx);
         }
       }
       // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
@@ -1644,7 +2046,33 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
-      throw std::runtime_error("Not power of two case, not yet implemented (offset)");
+      // (+ v0-0 (the-as uint (* 12 (+ a3-0 -1))))
+      auto mult_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                      {Matcher::integer(m_expected_stride), Matcher::any(0)});
+      mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
+      auto add_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                     {Matcher::any(1), mult_matcher});
+
+      auto mr = match(add_matcher, new_val);
+      if (!mr.matched) {
+        throw std::runtime_error("Failed to match non-power of two case: " +
+                                 new_val->to_string(env));
+      }
+
+      auto base = mr.maps.forms.at(1);
+      auto idx = mr.maps.forms.at(0);
+
+      assert(idx && base);
+
+      std::vector<DerefToken> tokens = m_deref_tokens;
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
+      result->push_back(deref);
     }
   }
 }
@@ -1683,8 +2111,77 @@ void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   stack.push_form_element(this, true);
 }
 
-void ConditionalMoveFalseElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+bool is_symbol_true(const Form* form) {
+  auto as_simple = dynamic_cast<SimpleExpressionElement*>(form->try_as_single_element());
+  if (as_simple && as_simple->expr().is_identity() && as_simple->expr().get_arg(0).is_sym_ptr() &&
+      as_simple->expr().get_arg(0).get_str() == "#t") {
+    return true;
+  }
+  return false;
+}
+
+void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // pop the value and the original
+  auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
+  if (!is_symbol_true(popped.at(0))) {
+    throw std::runtime_error("Got unrecognized ConditionalMoveFalseElement original: " +
+                             popped.at(0)->to_string(env));
+  }
+  stack.push_value_to_reg(dest,
+                          pool.alloc_single_element_form<GenericElement>(
+                              nullptr,
+                              GenericOperator::make_compare(on_zero ? IR2_Condition::Kind::NONZERO
+                                                                    : IR2_Condition::Kind::ZERO),
+                              std::vector<Form*>{popped.at(1)}),
+                          true);
+}
+
+void SimpleAtomElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   stack.push_form_element(this, true);
+}
+
+void SimpleAtomElement::update_from_stack(const Env&,
+                                          FormPool&,
+                                          FormStack&,
+                                          std::vector<FormElement*>* result,
+                                          bool) {
+  result->push_back(this);
+}
+
+void SimpleExpressionElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  stack.push_form_element(this, true);
+}
+
+void StringConstantElement::update_from_stack(const Env&,
+                                              FormPool&,
+                                              FormStack&,
+                                              std::vector<FormElement*>* result,
+                                              bool) {
+  result->push_back(this);
+}
+
+void GetMethodElement::update_from_stack(const Env&,
+                                         FormPool&,
+                                         FormStack&,
+                                         std::vector<FormElement*>* result,
+                                         bool) {
+  result->push_back(this);
+}
+
+void CondNoElseElement::update_from_stack(const Env&,
+                                          FormPool&,
+                                          FormStack&,
+                                          std::vector<FormElement*>* result,
+                                          bool) {
+  result->push_back(this);
+}
+
+void ConstantTokenElement::update_from_stack(const Env&,
+                                             FormPool&,
+                                             FormStack&,
+                                             std::vector<FormElement*>* result,
+                                             bool) {
+  result->push_back(this);
 }
 
 }  // namespace decompiler

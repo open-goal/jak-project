@@ -716,7 +716,7 @@ void ObjectFileDB::analyze_functions_ir1() {
         unique_names.insert(name);
 
         if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
-          func.warnings += ";; flagged as asm by config\n";
+          func.warnings.info("Flagged as asm by config");
           func.suspected_asm = true;
         }
       }
@@ -729,7 +729,7 @@ void ObjectFileDB::analyze_functions_ir1() {
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
-      func.warnings += ";; this function exists in multiple non-identical object files\n";
+      func.warnings.info("Exists in multiple non-identical object files");
     }
   });
 
@@ -791,7 +791,6 @@ void ObjectFileDB::analyze_functions_ir1() {
       }
     } else {
       asm_funcs++;
-      func.warnings.append(";; Assembly Function. Analysis passes were not attempted.\n");
     }
   });
 

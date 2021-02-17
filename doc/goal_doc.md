@@ -1308,6 +1308,13 @@ Inserts a `FNOP` assembly instruction, which is fundamentally the same as a `NOP
 
 Inserts a single-byte `nop`.
 
+## `.wait.vf`
+```lisp
+(.wait.vf)
+```
+
+Inserts a `FWAIT` assembly instruction, x86 does not require as much synchronization as the PS2's VU registers did, but it has a purpose in rare cases. It is a 2-byte instruction.
+
 ## `.lvf`
 ```lisp
 (.lvf dst-reg src-loc [:color #t|#f])
@@ -1330,7 +1337,7 @@ Store a vector float. Works similarly to the `lvf` form, but there is no optimiz
 
 ## Three operand vector float operations.
 ```lisp
-(.<op-name>[<broadcast-element>].vf dst src0 src1 [:color #t|#f] [:mask #b<0-15>])
+(.<op-name>[.<broadcast-element>].vf dst src0 src1 [:color #t|#f] [:mask #b<0-15>])
 ```
 All the three operand forms work similarly. You can do something like `(.add.vf vf1 vf2 vf3)`. All operations use the similarly named `v<op-name>ps` instruction, xmm128 VEX encoding. We support the following `op-name`s:
 - `xor`
@@ -1342,7 +1349,7 @@ All the three operand forms work similarly. You can do something like `(.add.vf 
 
 An optional `:mask` value can be provided as a binary number between 0-15 (inclusive).  This determines _which_ of the resulting elements will be committed to the destination vector.  For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed.  Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most.  This aligns with the PS2's VU implementation.
 
-Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.  Take the following for an example: `(vaddx.xyzw vf10, vf20, vf30)`, translates into:
+Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.  Take the following for an example: `(.add.x.xyzw vf10, vf20, vf30)`, translates into:
 
 ```cpp
 vf10[x] = vf20[x] + vf30[x]
@@ -1351,6 +1358,18 @@ vf10[z] = vf20[z] + vf30[x]
 vf10[w] = vf20[w] + vf30[x]
 ```
 
+## Three operand vector float operations with the accumulator
+```lisp
+(.<op-name>[.<broadcast-element>].vf dst src0 src1 acc [:color #t|#f] [:mask #b<0-15>])
+```
+There are a few functions that will perform multiple operations involving the accumulator. We support the following `op-name`s:
+- `add.mul` - Calculate the product of `src0` and `src1` and add it to the value of `acc` => `acc + (src0 * src1)`
+- `sub.mul` - Calculate the product of `src0` and `src1` and subtract it from the value of `acc` => `acc - (src0 * src1)`
+
+An optional `:mask` value can be provided as a binary number between 0-15 (inclusive).  This determines _which_ of the resulting elements will be committed to the destination vector.  For example, `:mask #b1011` means that the `w`, `y` and `x` results will be committed.  Note that the components are defined left-to-right which may be a little counter-intuitive -- `w` is the left-most, `x` is the right-most.  This aligns with the PS2's VU implementation.
+
+Additionally, all of these operations support defining a single `broadcast-element`.  This can be one of the 4 vector components `x|y|z|w`.
+
 ## `.abs.vf`
 ```lisp
 (.abs.vf dst src [:color #t|#f] [:mask #b<0-15>])
@@ -1358,11 +1377,47 @@ vf10[w] = vf20[w] + vf30[x]
 
 Calculates the absolute value of the `src` vector, and stores in the `dst` vector.
 
+## `.div.vf` and `.sqrt.vf`
+```lisp
+(.div.vf dst src1 src2 :ftf #b<0-3> :fsf #b<0-3> [:color #t|#f])
+```
+
+Calculates the quotient of _one_ of `src1`'s components specified by `fsf` _one_ of `src2`'s components specified by `ftf` and stores in every component of `dst`
+
+```lisp
+(.sqrt.vf dst src :ftf #b<0-3> [:color #t|#f])
+```
+
+Calculates the square-root of _one_ of `src`'s components specified by `ftf` and stores in every component of `dst`
+
+
+These instructions are interesting as they behave differently than the other math operations.  In the original VU, results were stored in a seperate `Q` register, which was _NOT_ 128-bit.  Instead it was a 32-bit register, meaning you have to pick which component from `src` you want to use. `:fsf` and `:ftf` are used to accomplish this, as usual, this is through bit flags -- `00` will select `x` and `11` will select `w`.
+
+As `dst` is just yet another vector / xmm register in x86, things are kept simple and the quotient is copied to _all_ packed single-float positions.  This allows:
+- Selecting any of the resulting vector slots will be equal to the quotient.
+- Since the low-floating-point (X) is defined, the xmm register should function as expected for normal math operations
+
+## `.outer.product.vf`
+```lisp
+(.outer.product.vf dst src1 src2 [:color #t|#f])
+```
+
+Calculates the outer-product of `src1` and `src2` and stores the result in `dst`.  _ONLY_ the x,y,z components are considered, and `dst`'s `w` component will be untouched.  The following example illustrates what the outer-product is:
+
+Given 2 vectors `V1 = <1,2,3,4>` and `V2 = <5,6,7,8>` and assume `VDEST = <0, 0, 0, 999>`
+The outer product is computed like so (only x,y,z components are operated on):
+`x = (V1y * V2z) - (V2y * V1z) => (2 * 7) - (6 * 3) => -4`
+`y = (V1z * V2x) - (V2z * V1x) => (3 * 5) - (7 * 1) =>  8`
+`z = (V1x * V2y) - (V2x * V1y) => (1 * 6) - (5 * 2) => -4`
+`w = N/A, left alone                                => 999`
+
+`VDEST = <-4, 8, -4, 999>`
+
 ## `.blend.vf`
 ```lisp
 (.blend.vf dst src0 src1 mask [:color #t|#f])
 ```
-Wrapper around `vblendps` (VEX xmm128 version) instruction. The `mask` must evaluate to a constant integer at compile time. The integer must be in the range of 0-15. 
+Wrapper around `vblendps` (VEX xmm128 version) instruction. The `mask` must evaluate to a constant integer at compile time. The integer must be in the range of 0-15.
 
 # Compiler Forms - Unsorted
 

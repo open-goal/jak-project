@@ -260,6 +260,17 @@ bool is_saved_reg(Register r) {
   }
 }
 
+bool is_possible_coloring_move(Register dst, Register src) {
+  if (is_arg_reg(src) && is_saved_reg(dst)) {
+    return true;
+  }
+
+  if (dst.get_kind() == Reg::FPR && dst.get_fpr() < 20 && is_arg_reg(src)) {
+    return true;
+  }
+  return false;
+}
+
 /*!
  * Create a "really crude" SSA, as described in
  * "Aycock and Horspool Simple Generation of Static Single-Assignment Form"
@@ -301,7 +312,9 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     const auto& start_op_op = ops.ops.at(start_op);
     auto init_regs = start_op_info.live;
     for (auto reg : start_op_op->read_regs()) {
-      init_regs.insert(reg);
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+        init_regs.insert(reg);
+      }
     }
 
     for (auto reg : init_regs) {
@@ -321,22 +334,20 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       SSA::Ins ssa_i(op_id);
 
       if (block_id == 0 && !got_not_arg_coloring) {
+        got_not_arg_coloring = true;
         auto as_set = dynamic_cast<const SetVarOp*>(op.get());
         if (as_set) {
-          if (as_set->src().is_identity() && as_set->src().get_arg(0).is_var()) {
+          if ((as_set->src().kind() == SimpleExpression::Kind::GPR_TO_FPR ||
+               as_set->src().is_identity()) &&
+              as_set->src().get_arg(0).is_var()) {
             auto src = as_set->src().get_arg(0).var().reg();
             auto dst = as_set->dst().reg();
-            if (is_arg_reg(src) && is_saved_reg(dst) &&
+            if (is_possible_coloring_move(dst, src) &&
                 rui.op.at(op_id).consumes.find(src) != rui.op.at(op_id).consumes.end()) {
               ssa_i.is_arg_coloring_move = true;
-            } else {
-              got_not_arg_coloring = true;
+              got_not_arg_coloring = false;
             }
-          } else {
-            got_not_arg_coloring = true;
           }
-        } else {
-          got_not_arg_coloring = true;
         }
       }
 
@@ -344,19 +355,23 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       assert(op->write_regs().size() <= 1);
       // reads:
       for (auto r : op->read_regs()) {
-        ssa_i.src.push_back(current_regs.at(r));
+        if (r.get_kind() == Reg::FPR || r.get_kind() == Reg::GPR) {
+          ssa_i.src.push_back(current_regs.at(r));
+        }
       }
       // writes:
       if (!op->write_regs().empty()) {
         auto w = op->write_regs().front();
-        auto var = ssa.map.allocate(w);
-        ssa_i.dst = var;
-        // avoid operator[] again
-        auto it = current_regs.find(w);
-        if (it != current_regs.end()) {
-          it->second = var;
-        } else {
-          current_regs.insert(std::make_pair(w, var));
+        if (w.get_kind() == Reg::FPR || w.get_kind() == Reg::GPR) {
+          auto var = ssa.map.allocate(w);
+          ssa_i.dst = var;
+          // avoid operator[] again
+          auto it = current_regs.find(w);
+          if (it != current_regs.end()) {
+            it->second = var;
+          } else {
+            current_regs.insert(std::make_pair(w, var));
+          }
         }
       }
 

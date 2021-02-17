@@ -7,6 +7,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/AtomicOp.h"
 #include "common/goos/Object.h"
+#include "common/type_system/TypeSystem.h"
 
 namespace decompiler {
 class Form;
@@ -21,14 +22,17 @@ class FormElement {
  public:
   Form* parent_form = nullptr;
 
-  virtual goos::Object to_form(const Env& env) const = 0;
-  virtual goos::Object to_form_as_condition(const Env& env) const;
+  goos::Object to_form(const Env& env) const;
+  virtual goos::Object to_form_internal(const Env& env) const = 0;
+  virtual goos::Object to_form_as_condition_internal(const Env& env) const;
   virtual ~FormElement() = default;
   virtual void apply(const std::function<void(FormElement*)>& f) = 0;
   virtual void apply_form(const std::function<void(Form*)>& f) = 0;
   virtual bool is_sequence_point() const { return true; }
   virtual void collect_vars(VariableSet& vars) const = 0;
   virtual void get_modified_regs(RegSet& regs) const = 0;
+  virtual bool active() const;
+
   std::string to_string(const Env& env) const;
   bool has_side_effects();
 
@@ -52,11 +56,12 @@ class SimpleExpressionElement : public FormElement {
  public:
   explicit SimpleExpressionElement(SimpleExpression expr, int my_idx);
 
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   //  void push_to_stack(const Env& env, FormStack& stack) override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -96,6 +101,12 @@ class SimpleExpressionElement : public FormElement {
                                  FormStack& stack,
                                  std::vector<FormElement*>* result,
                                  bool allow_side_effects);
+  void update_from_stack_si_1(const Env& env,
+                              FixedOperatorKind kind,
+                              FormPool& pool,
+                              FormStack& stack,
+                              std::vector<FormElement*>* result,
+                              bool allow_side_effects);
   void update_from_stack_add_i(const Env& env,
                                FormPool& pool,
                                FormStack& stack,
@@ -116,7 +127,8 @@ class SimpleExpressionElement : public FormElement {
                                     FormPool& pool,
                                     FormStack& stack,
                                     std::vector<FormElement*>* result,
-                                    bool allow_side_effects);
+                                    bool allow_side_effects,
+                                    bool reverse);
   void update_from_stack_force_ui_2(const Env& env,
                                     FixedOperatorKind kind,
                                     FormPool& pool,
@@ -124,6 +136,11 @@ class SimpleExpressionElement : public FormElement {
                                     std::vector<FormElement*>* result,
                                     bool allow_side_effects);
   void update_from_stack_int_to_float(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
+  void update_from_stack_float_to_int(const Env& env,
                                       FormPool& pool,
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
@@ -150,7 +167,7 @@ class StoreElement : public FormElement {
  public:
   explicit StoreElement(const StoreOp* op);
 
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -169,7 +186,7 @@ class StoreElement : public FormElement {
 class LoadSourceElement : public FormElement {
  public:
   LoadSourceElement(Form* addr, int size, LoadVarOp::Kind kind);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -196,12 +213,18 @@ class LoadSourceElement : public FormElement {
 class SimpleAtomElement : public FormElement {
  public:
   explicit SimpleAtomElement(const SimpleAtom& var);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
   const SimpleAtom& atom() const { return m_atom; }
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
   //  void push_to_stack(const Env& env, FormStack& stack) override;
 
  private:
@@ -213,8 +236,11 @@ class SimpleAtomElement : public FormElement {
  */
 class SetVarElement : public FormElement {
  public:
-  SetVarElement(const Variable& var, Form* value, bool is_sequence_point);
-  goos::Object to_form(const Env& env) const override;
+  SetVarElement(const Variable& var,
+                Form* value,
+                bool is_sequence_point,
+                const SetVarInfo& info = {});
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
@@ -226,18 +252,28 @@ class SetVarElement : public FormElement {
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
+  bool active() const override;
 
   const Variable& dst() const { return m_dst; }
   const Form* src() const { return m_src; }
   Form* src() { return m_src; }
-  bool is_eliminated_coloring_move() const { return m_is_eliminated_coloring_move; }
-  void eliminate_as_coloring_move() { m_is_eliminated_coloring_move = true; }
+  bool is_eliminated_coloring_move() const { return m_var_info.is_eliminated_coloring_move; }
+  void eliminate_as_coloring_move() { m_var_info.is_eliminated_coloring_move = true; }
+
+  bool is_dead_set() const { return m_var_info.is_dead_set; }
+  void mark_as_dead_set() { m_var_info.is_dead_set = true; }
+
+  bool is_dead_false_set() const { return m_var_info.is_dead_false; }
+  void mark_as_dead_false() { m_var_info.is_dead_false = true; }
+
+  const SetVarInfo& info() const { return m_var_info; }
 
  private:
   Variable m_dst;
   Form* m_src = nullptr;
   bool m_is_sequence_point = true;
-  bool m_is_eliminated_coloring_move = false;
+
+  SetVarInfo m_var_info;
 };
 
 /*!
@@ -248,7 +284,7 @@ class SetVarElement : public FormElement {
 class SetFormFormElement : public FormElement {
  public:
   SetFormFormElement(Form* dst, Form* src);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
@@ -273,7 +309,7 @@ class SetFormFormElement : public FormElement {
 class AtomicOpElement : public FormElement {
  public:
   explicit AtomicOpElement(const AtomicOp* op);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -291,7 +327,7 @@ class AtomicOpElement : public FormElement {
 class AsmOpElement : public FormElement {
  public:
   explicit AsmOpElement(const AsmOp* op);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -318,8 +354,8 @@ class ConditionElement : public FormElement {
                    std::optional<SimpleAtom> src1,
                    RegSet consumed,
                    bool flipped);
-  goos::Object to_form(const Env& env) const override;
-  goos::Object to_form_as_condition(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
+  goos::Object to_form_as_condition_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -351,7 +387,7 @@ class ConditionElement : public FormElement {
 class FunctionCallElement : public FormElement {
  public:
   explicit FunctionCallElement(const CallOp* op);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -374,7 +410,7 @@ class FunctionCallElement : public FormElement {
 class BranchElement : public FormElement {
  public:
   explicit BranchElement(const BranchOp* op);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -397,7 +433,7 @@ class ReturnElement : public FormElement {
   Form* dead_code = nullptr;
   ReturnElement(Form* _return_code, Form* _dead_code)
       : return_code(_return_code), dead_code(_dead_code) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -432,7 +468,7 @@ class BreakElement : public FormElement {
   Form* dead_code = nullptr;
   BreakElement(Form* _return_code, Form* _dead_code)
       : return_code(_return_code), dead_code(_dead_code) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -466,7 +502,7 @@ class CondWithElseElement : public FormElement {
   bool already_rewritten = false;
   CondWithElseElement(std::vector<Entry> _entries, Form* _else_ir)
       : entries(std::move(_entries)), else_ir(_else_ir) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -485,7 +521,7 @@ class CondWithElseElement : public FormElement {
 class EmptyElement : public FormElement {
  public:
   EmptyElement() = default;
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -501,7 +537,7 @@ class EmptyElement : public FormElement {
 class WhileElement : public FormElement {
  public:
   WhileElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -520,7 +556,7 @@ class WhileElement : public FormElement {
 class UntilElement : public FormElement {
  public:
   UntilElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -555,7 +591,7 @@ class ShortCircuitElement : public FormElement {
   bool already_rewritten = false;
 
   explicit ShortCircuitElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -587,12 +623,17 @@ class CondNoElseElement : public FormElement {
   bool already_rewritten = false;
   std::vector<Entry> entries;
   explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
 };
 
 /*!
@@ -601,7 +642,7 @@ class CondNoElseElement : public FormElement {
 class AbsElement : public FormElement {
  public:
   explicit AbsElement(Variable _source, RegSet _consumed);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -631,7 +672,7 @@ class AshElement : public FormElement {
              std::optional<Variable> _clobber,
              bool _is_signed,
              RegSet _consumed);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -652,7 +693,7 @@ class TypeOfElement : public FormElement {
   Form* value;
   std::optional<Variable> clobber;
   TypeOfElement(Form* _value, std::optional<Variable> _clobber);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -685,10 +726,11 @@ class TypeOfElement : public FormElement {
 class ConditionalMoveFalseElement : public FormElement {
  public:
   Variable dest;
-  Form* source = nullptr;
+  Variable old_value;
+  Variable source;
   bool on_zero = false;
-  ConditionalMoveFalseElement(Variable _dest, Form* _source, bool _on_zero);
-  goos::Object to_form(const Env& env) const override;
+  ConditionalMoveFalseElement(Variable _dest, Variable _old_value, Variable _source, bool _on_zero);
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -752,7 +794,7 @@ class GenericElement : public FormElement {
   GenericElement(GenericOperator op, Form* arg0, Form* arg1);
   GenericElement(GenericOperator op, std::vector<Form*> forms);
 
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -775,7 +817,7 @@ class GenericElement : public FormElement {
 class CastElement : public FormElement {
  public:
   explicit CastElement(TypeSpec type, Form* source, bool numeric = false);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -833,11 +875,13 @@ class DerefToken {
   Form* m_expr = nullptr;
 };
 
+DerefToken to_token(const FieldReverseLookupOutput::Token& in);
+
 class DerefElement : public FormElement {
  public:
   DerefElement(Form* base, bool is_addr_of, DerefToken token);
   DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -862,7 +906,7 @@ class DerefElement : public FormElement {
 class DynamicMethodAccess : public FormElement {
  public:
   explicit DynamicMethodAccess(Variable source);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -883,7 +927,7 @@ class ArrayFieldAccess : public FormElement {
                    const std::vector<DerefToken>& deref_tokens,
                    int expected_stride,
                    int constant_offset);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
@@ -904,11 +948,16 @@ class ArrayFieldAccess : public FormElement {
 class GetMethodElement : public FormElement {
  public:
   GetMethodElement(Form* in, std::string name, bool is_object);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
 
  private:
   Form* m_in = nullptr;
@@ -919,11 +968,34 @@ class GetMethodElement : public FormElement {
 class StringConstantElement : public FormElement {
  public:
   StringConstantElement(const std::string& value);
-  goos::Object to_form(const Env& env) const override;
+  goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  std::string m_value;
+};
+
+class ConstantTokenElement : public FormElement {
+ public:
+  ConstantTokenElement(const std::string& value);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
 
  private:
   std::string m_value;
@@ -958,7 +1030,7 @@ class Form {
   }
   bool is_single_element() const { return m_elements.size() == 1; }
   FormElement* operator[](int idx) { return m_elements.at(idx); }
-  FormElement* at(int idx) { return m_elements.at(idx); }
+  FormElement*& at(int idx) { return m_elements.at(idx); }
   const FormElement* operator[](int idx) const { return m_elements.at(idx); }
   int size() const { return int(m_elements.size()); }
   FormElement* back() const {

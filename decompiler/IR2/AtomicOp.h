@@ -303,7 +303,7 @@ class AsmOp : public AtomicOp {
  private:
   Instruction m_instr;
   std::optional<Variable> m_dst;
-  std::optional<Variable> m_src[3];
+  std::optional<Variable> m_src[4];
 };
 
 /*!
@@ -377,6 +377,7 @@ class IR2_Condition {
 std::string get_condition_kind_name(IR2_Condition::Kind kind);
 int get_condition_num_args(IR2_Condition::Kind kind);
 IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind);
+bool condition_uses_float(IR2_Condition::Kind kind);
 
 /*!
  * Set a variable to a GOAL boolean, based off of a condition.
@@ -584,10 +585,12 @@ class CallOp : public AtomicOp {
   void collect_vars(VariableSet& vars) const override;
   const std::vector<Variable>& arg_vars() const { return m_arg_vars; }
   Variable function_var() const { return m_function_var; }
+  bool is_method() const { return m_is_virtual_method; }
 
  protected:
   TypeSpec m_call_type;
   bool m_call_type_set = false;
+  bool m_is_virtual_method = false;
 
   std::vector<Variable> m_arg_vars;
   Variable m_function_var;
@@ -608,7 +611,7 @@ class CallOp : public AtomicOp {
  */
 class ConditionalMoveFalseOp : public AtomicOp {
  public:
-  ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx);
+  ConditionalMoveFalseOp(Variable dst, Variable src, Variable old_value, bool on_zero, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
@@ -621,7 +624,7 @@ class ConditionalMoveFalseOp : public AtomicOp {
   void collect_vars(VariableSet& vars) const override;
 
  private:
-  Variable m_dst, m_src;
+  Variable m_dst, m_src, m_old_value;
   bool m_on_zero;
 };
 

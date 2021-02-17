@@ -422,18 +422,18 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     auto& dst = m_instr.get_dst(0);
     if (dst.is_reg()) {
       auto reg = dst.get_reg();
-      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
         m_dst = Variable(VariableMode::WRITE, reg, my_idx, true);
       }
     }
   }
 
-  assert(m_instr.n_src <= 3);
+  assert(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     auto& src = m_instr.get_src(i);
     if (src.is_reg()) {
       auto reg = src.get_reg();
-      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
         m_src[i] = Variable(VariableMode::READ, reg, my_idx, true);
       }
     }
@@ -455,7 +455,7 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
-  assert(m_instr.n_src <= 3);
+  assert(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     if (m_src[i].has_value()) {
       forms.push_back(m_src[i].value().to_form(env));
@@ -495,6 +495,102 @@ void AsmOp::update_register_info() {
   for (auto& src : m_src) {
     if (src.has_value()) {
       m_read_regs.push_back(src->reg());
+    }
+  }
+
+  if (m_instr.kind >= FIRST_COP2_MACRO && m_instr.kind <= LAST_COP2_MACRO) {
+    switch (m_instr.kind) {
+      case InstructionKind::VMSUBQ:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+      case InstructionKind::VMULAQ:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+        // Read Q register
+      case InstructionKind::VADDQ:
+      case InstructionKind::VSUBQ:
+      case InstructionKind::VMULQ:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        break;
+
+        // Write ACC register
+      case InstructionKind::VADDA:
+      case InstructionKind::VADDA_BC:
+      case InstructionKind::VMULA:
+      case InstructionKind::VMULA_BC:
+      case InstructionKind::VOPMULA:
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+        // Write Q register
+      case InstructionKind::VDIV:
+      case InstructionKind::VSQRT:
+      case InstructionKind::VRSQRT:
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        break;
+
+        // Read acc register
+      case InstructionKind::VMADD:
+      case InstructionKind::VMADD_BC:
+      case InstructionKind::VMSUB:
+      case InstructionKind::VMSUB_BC:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+      case InstructionKind::VOPMSUB:
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+        // Read/Write acc register
+      case InstructionKind::VMADDA:
+      case InstructionKind::VMADDA_BC:
+      case InstructionKind::VMSUBA_BC:
+        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        break;
+
+      case InstructionKind::VMOVE:
+      case InstructionKind::VFTOI0:
+      case InstructionKind::VFTOI4:
+      case InstructionKind::VFTOI12:
+      case InstructionKind::VITOF0:
+      case InstructionKind::VITOF12:
+      case InstructionKind::VITOF15:
+      case InstructionKind::VABS:
+      case InstructionKind::VADD:
+      case InstructionKind::VADD_BC:
+      case InstructionKind::VSUB:
+      case InstructionKind::VSUB_BC:
+      case InstructionKind::VMUL:
+      case InstructionKind::VMUL_BC:
+      case InstructionKind::VMINI:
+      case InstructionKind::VMINI_BC:
+      case InstructionKind::VMAX:
+      case InstructionKind::VMAX_BC:
+      case InstructionKind::VCLIP:
+      case InstructionKind::VNOP:
+
+        // anything using one of these should be manually analyzed.
+      case InstructionKind::VMTIR:
+      case InstructionKind::VIAND:
+      case InstructionKind::VLQI:
+      case InstructionKind::VIADDI:
+      case InstructionKind::VSQI:
+      case InstructionKind::VRGET:
+      case InstructionKind::VRXOR:
+      case InstructionKind::VRNEXT:
+      case InstructionKind::VWAITQ:  // okay if following vsqrt/vrsqrt/vdiv
+      case InstructionKind::VCALLMS:
+
+        // do not read/write acc/q
+        break;
+
+      default:
+        assert(false);
+        break;
     }
   }
 }
@@ -695,6 +791,20 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       return IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED;
     default:
       assert(false);
+  }
+}
+
+bool condition_uses_float(IR2_Condition::Kind kind) {
+  switch (kind) {
+    case IR2_Condition::Kind::FLOAT_LESS_THAN:
+    case IR2_Condition::Kind::FLOAT_LEQ:
+    case IR2_Condition::Kind::FLOAT_NOT_EQUAL:
+    case IR2_Condition::Kind::FLOAT_EQUAL:
+    case IR2_Condition::Kind::FLOAT_GEQ:
+    case IR2_Condition::Kind::FLOAT_GREATER_THAN:
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -1252,14 +1362,18 @@ void CallOp::collect_vars(VariableSet& vars) const {
 // ConditionalMoveFalseOp
 /////////////////////////////
 
-ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst, Variable src, bool on_zero, int my_idx)
-    : AtomicOp(my_idx), m_dst(dst), m_src(src), m_on_zero(on_zero) {}
+ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst,
+                                               Variable src,
+                                               Variable old_value,
+                                               bool on_zero,
+                                               int my_idx)
+    : AtomicOp(my_idx), m_dst(dst), m_src(src), m_old_value(old_value), m_on_zero(on_zero) {}
 
 goos::Object ConditionalMoveFalseOp::to_form(const std::vector<DecompilerLabel>& labels,
                                              const Env& env) const {
   (void)labels;
   return pretty_print::build_list(m_on_zero ? "cmove-#f-zero" : "cmove-#f-nonzero",
-                                  m_dst.to_form(env), m_src.to_form(env));
+                                  m_dst.to_form(env), m_src.to_form(env), m_old_value.to_form(env));
 }
 
 bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
@@ -1269,7 +1383,8 @@ bool ConditionalMoveFalseOp::operator==(const AtomicOp& other) const {
 
   auto po = dynamic_cast<const ConditionalMoveFalseOp*>(&other);
   assert(po);
-  return m_dst == po->m_dst && m_src == po->m_src && m_on_zero == po->m_on_zero;
+  return m_dst == po->m_dst && m_src == po->m_src && m_on_zero == po->m_on_zero &&
+         m_old_value == po->m_old_value;
 }
 
 bool ConditionalMoveFalseOp::is_sequence_point() const {
@@ -1283,11 +1398,13 @@ Variable ConditionalMoveFalseOp::get_set_destination() const {
 void ConditionalMoveFalseOp::update_register_info() {
   m_write_regs.push_back(m_dst.reg());
   m_read_regs.push_back(m_src.reg());
+  m_read_regs.push_back(m_old_value.reg());
 }
 
 void ConditionalMoveFalseOp::collect_vars(VariableSet& vars) const {
   vars.insert(m_dst);
   vars.insert(m_src);
+  vars.insert(m_old_value);
 }
 
 bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {

@@ -1,0 +1,29 @@
+(defun test-vector-outer-product ()
+  (let ((vector-in-1 (new 'stack 'vector))
+        (vector-in-2 (new 'stack 'vector))
+        (vector-acc (new 'stack 'vector))
+        (vector-out (new 'stack 'vector)))
+
+    (set-vector! vector-in-1 {{ v1x }} {{ v1y }} {{ v1z }} {{ v1w }})
+    (set-vector! vector-in-2 {{ v2x }} {{ v2y }} {{ v2z }} {{ v2w }})
+    (set-vector! vector-acc {{ accx }} {{ accy }} {{ accz }} {{ accw }})
+    (set-vector! vector-out {{ destx }} {{ desty }} {{ destz }} {{ destw }})
+
+    (rlet ((vf1 :class vf :reset-here #t)
+           (vf2 :class vf :reset-here #t)
+           (vfd :class vf :reset-here #t)
+           (acc :class vf :reset-here #t))
+
+      (.lvf vfd vector-out)
+      (.lvf vf1 vector-in-1)
+      (.lvf vf2 vector-in-2)
+      (.lvf acc vector-acc)
+    
+      ({{ operation }} vfd vf1 vf2 acc{% if destinationMask %} :mask #b{{ destinationMask }}{% endif %})
+      (.wait.vf)
+
+      (.svf vector-out vfd))
+
+    (format #t "(~f, ~f, ~f, ~f)~%" (-> vector-out x) (-> vector-out y) (-> vector-out z) (-> vector-out w))))
+
+(test-vector-outer-product)

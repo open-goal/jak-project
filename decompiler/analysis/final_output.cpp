@@ -21,7 +21,10 @@ void append(goos::Object& _in, const goos::Object& add) {
 }
 }  // namespace
 
-std::string final_defun_out(const Function& func, const Env& env, const DecompilerTypeSystem& dts) {
+std::string final_defun_out(const Function& func,
+                            const Env& env,
+                            const DecompilerTypeSystem& dts,
+                            FunctionDefSpecials special_mode) {
   std::vector<goos::Object> inline_body;
   func.ir2.top_form->inline_forms(inline_body, env);
 
@@ -39,8 +42,14 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
   auto arguments = pretty_print::build_list(argument_elts);
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+    std::string def_name = "defun";
+    if (special_mode == FunctionDefSpecials::DEFUN_DEBUG) {
+      def_name = "defun-debug";
+    } else {
+      assert(special_mode == FunctionDefSpecials::NONE);
+    }
     std::vector<goos::Object> top;
-    top.push_back(pretty_print::to_symbol("defun"));
+    top.push_back(pretty_print::to_symbol(def_name));
     top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
@@ -54,6 +63,7 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
   }
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    assert(special_mode == FunctionDefSpecials::NONE);
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol("defmethod"));
     auto method_info =
@@ -72,8 +82,26 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
   }
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::TOP_LEVEL_INIT) {
+    assert(special_mode == FunctionDefSpecials::NONE);
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol("top-level-function"));
+    top.push_back(arguments);
+    auto top_form = pretty_print::build_list(top);
+
+    if (var_count > 0) {
+      append(top_form, pretty_print::build_list(var_dec));
+    }
+
+    append(top_form, pretty_print::build_list(inline_body));
+    return pretty_print::to_string(top_form);
+  }
+
+  if (func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+    std::string def_name = "defun-anon";
+    assert(special_mode == FunctionDefSpecials::NONE);
+    std::vector<goos::Object> top;
+    top.push_back(pretty_print::to_symbol(def_name));
+    top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
@@ -88,8 +116,17 @@ std::string final_defun_out(const Function& func, const Env& env, const Decompil
 }
 
 namespace {
-std::string careful_function_to_string(const Function* func, const DecompilerTypeSystem& dts) {
+std::string careful_function_to_string(
+    const Function* func,
+    const DecompilerTypeSystem& dts,
+    FunctionDefSpecials special_mode = FunctionDefSpecials::NONE) {
   auto& env = func->ir2.env;
+
+  std::string result;
+  if (func->warnings.has_warnings()) {
+    result += func->warnings.get_warning_text(true);
+  }
+
   if (!func->ir2.top_form) {
     return ";; ERROR: function was not converted to expressions. Cannot decompile.\n\n";
   }
@@ -105,7 +142,8 @@ std::string careful_function_to_string(const Function* func, const DecompilerTyp
     return ";; ERROR: function has no register use analysis. Cannot decompile.\n\n";
   }
 
-  return final_defun_out(*func, func->ir2.env, dts) + "\n\n";
+  result += final_defun_out(*func, func->ir2.env, dts, special_mode) + "\n\n";
+  return result;
 }
 }  // namespace
 
@@ -151,6 +189,14 @@ std::string write_from_top_level(const Function& top_level,
       Matcher::op_with_rest(GenericOpMatcher::fixed(FixedOperatorKind::TYPE_NEW),
                             {Matcher::any_quoted_symbol(type_name)});
 
+  // (if *debug-segment* (set! mem-print L347) (set! mem-print nothing))
+  auto debug_seg_matcher = Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY),
+                                       {Matcher::symbol("*debug-segment*")});
+  auto debug_def_matcher = Matcher::set(Matcher::any_symbol(0), Matcher::any_label(1));
+  auto non_debug_def_matcher = Matcher::set(Matcher::any_symbol(2), Matcher::symbol("nothing"));
+  auto defun_debug_matcher =
+      Matcher::if_with_else(debug_seg_matcher, debug_def_matcher, non_debug_def_matcher);
+
   for (auto& x : top_form->elts()) {
     bool something_matched = false;
     Form f;
@@ -187,6 +233,23 @@ std::string write_from_top_level(const Function& top_level,
         result += dts.ts.generate_deftype(dts.ts.lookup_type(name));
         result += "\n\n";
         something_matched = true;
+      }
+    }
+
+    if (!something_matched) {
+      auto debug_match_result = match(defun_debug_matcher, &f);
+      if (debug_match_result.matched) {
+        auto first_name = debug_match_result.maps.strings.at(0);
+        auto second_name = debug_match_result.maps.strings.at(2);
+        if (first_name == second_name) {
+          auto func = file.try_get_function_at_label(debug_match_result.maps.label.at(1));
+          if (func) {
+            something_matched = true;
+            result += fmt::format(";; definition (debug) for function {}\n",
+                                  debug_match_result.maps.strings.at(0));
+            result += careful_function_to_string(func, dts, FunctionDefSpecials::DEFUN_DEBUG);
+          }
+        }
       }
     }
 

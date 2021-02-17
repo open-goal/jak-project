@@ -119,7 +119,7 @@ void ObjectFileDB::ir2_top_level_pass() {
 
         if (get_config().asm_functions_by_name.find(name) !=
             get_config().asm_functions_by_name.end()) {
-          func.warnings += ";; flagged as asm by config\n";
+          func.warnings.info("Flagged as asm by config");
           func.suspected_asm = true;
         }
       }
@@ -133,7 +133,7 @@ void ObjectFileDB::ir2_top_level_pass() {
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
-      func.warnings += ";; this function exists in multiple non-identical object files\n";
+      func.warnings.info("this function exists in multiple non-identical object files");
     }
   });
 
@@ -207,7 +207,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
     }
 
     if (func.suspected_asm) {
-      func.warnings.append(";; Assembly Function\n");
+      func.warnings.info("Assembly Function");
       suspected_asm++;
     }
   });
@@ -248,7 +248,7 @@ void ObjectFileDB::ir2_atomic_op_pass() {
       } catch (std::exception& e) {
         lg::warn("Function {} from {} could not be converted to atomic ops: {}",
                  func.guessed_name.to_string(), data.to_unique_name(), e.what());
-        func.warnings.append(";; Failed to convert to atomic ops\n");
+        func.warnings.general_warning("Failed to convert to atomic ops: {}", e.what());
       }
     }
   });
@@ -286,11 +286,12 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints)) {
           successful_functions++;
         } else {
-          func.warnings.append(";; Type analysis failed\n");
+          func.warnings.type_prop_warning("Type analysis failed");
         }
       } else {
         // lg::warn("Function {} didn't know its type", func.guessed_name.to_string());
-        func.warnings.append(";; Type of function is unknown\n");
+        func.warnings.type_prop_warning("Function {} has unknown type",
+                                        func.guessed_name.to_string());
       }
     }
   });
@@ -310,6 +311,19 @@ void ObjectFileDB::ir2_register_usage_pass() {
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded) {
       analyzed_funcs++;
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
+
+      auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
+      for (auto x : block_0_start) {
+        if (x.get_kind() == Reg::VF && x.get_vf() != 0) {
+          lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
+          func.warnings.bad_vf_dependency("{}", x.to_string());
+        }
+
+        if (x.get_kind() == Reg::COP2_MACRO_SPECIAL) {
+          lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
+          func.warnings.bad_vf_dependency("{}", x.to_string());
+        }
+      }
     }
   });
 
@@ -531,8 +545,8 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   result += "; .function " + func.guessed_name.to_string() + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
-  if (!func.warnings.empty()) {
-    result += ";;Warnings:\n" + func.warnings + "\n";
+  if (func.warnings.has_warnings()) {
+    result += ";; Warnings:\n" + func.warnings.get_warning_text(true) + "\n";
   }
 
   if (func.ir2.env.has_local_vars()) {

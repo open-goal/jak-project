@@ -641,9 +641,7 @@
 (defmethod thread-suspend cpu-thread ((unused cpu-thread))
   "Suspend the thread and return to the kernel."
   
-  (declare (asm-func none)
-           ;(print-asm)
-           )
+  (declare (asm-func none))
   
   ;; we begin this function with the thread object in pp.
   ;; not sure why we do this, maybe at one point suspending didn't clobber
@@ -656,71 +654,99 @@
          (s1 :reg rbp :type uint)
          (s2 :reg r10 :type uint)
          (s3 :reg r11 :type uint)
-         (s4 :reg r12 :type uint))
+         (s4 :reg r12 :type uint)
+         
+         (xmm8 :reg xmm8 :class fpr)
+         (xmm9 :reg xmm9 :class fpr)
+         (xmm10 :reg xmm10 :class fpr)
+         (xmm11 :reg xmm11 :class fpr)
+         (xmm12 :reg xmm12 :class fpr)
+         (xmm13 :reg xmm13 :class fpr)
+         (xmm14 :reg xmm14 :class fpr)
+         (xmm15 :reg xmm15 :class fpr)
+         )
         
-        ;; get the return address pushed by "call" in the suspend.
-        (.pop temp)
-        ;; convert to a GOAL address
-        (.sub temp off)
-        ;; store return address in thread
-        (set! (-> obj pc) (the pointer temp))
+    ;; get the return address pushed by "call" in the suspend.
+    (.pop temp)
+    ;; convert to a GOAL address
+    (.sub temp off)
+    ;; store return address in thread
+    (set! (-> obj pc) (the pointer temp))
         
-        ;; convert our stack pointer to a GOAL address
-        (.sub sp off)
-        ;; store in thread.
-        (set! (-> obj sp) (the pointer sp))
+    ;; convert our stack pointer to a GOAL address
+    (.sub sp off)
+    ;; store in thread.
+    (set! (-> obj sp) (the pointer sp))
         
-        ;; back up registers
-        (.mov :color #f temp s0)
-        (set! (-> obj rreg 0) temp)
-        (.mov :color #f temp s1)
-        (set! (-> obj rreg 1) temp)
-        (.mov :color #f temp s2)
-        (set! (-> obj rreg 2) temp)
-        (.mov :color #f temp s3)
-        (set! (-> obj rreg 3) temp)
-        (.mov :color #f temp s4)
-        (set! (-> obj rreg 4) temp)
+    ;; back up registers
+    (.mov :color #f temp s0)
+    (set! (-> obj rreg 0) temp)
+    (.mov :color #f temp s1)
+    (set! (-> obj rreg 1) temp)
+    (.mov :color #f temp s2)
+    (set! (-> obj rreg 2) temp)
+    (.mov :color #f temp s3)
+    (set! (-> obj rreg 3) temp)
+    (.mov :color #f temp s4)
+    (set! (-> obj rreg 4) temp)
         
-        ;; todo, back up fprs
+    ;; back up fprs
+    (.mov :color #f temp xmm8)
+    (set! (-> obj freg 0) (the-as float temp))
+    (.mov :color #f temp xmm9)
+    (set! (-> obj freg 1) (the-as float temp))
+    (.mov :color #f temp xmm10)
+    (set! (-> obj freg 2) (the-as float temp))
+    (.mov :color #f temp xmm11)
+    (set! (-> obj freg 3) (the-as float temp))
+    (.mov :color #f temp xmm12)
+    (set! (-> obj freg 4) (the-as float temp))
+    (.mov :color #f temp xmm13)
+    (set! (-> obj freg 5) (the-as float temp))
+    (.mov :color #f temp xmm14)
+    (set! (-> obj freg 6) (the-as float temp))
+    (.mov :color #f temp xmm15)
+    (set! (-> obj freg 7) (the-as float temp))
+
         
-        ;; get our process
-        (let ((proc (-> obj process)))
-          (when (> (process-stack-used proc) (-> obj stack-size))
-            (break) ;; too much stack has been used and we can't suspend!
-            )
-          
-          ;; mark the process as suspended and copy the stack
-          (set! (-> proc status) 'suspended)
-          (let ((cur (the (pointer uint64) (-> obj stack-top)))
-                (save (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
-                )
-            (while (> (the int cur) (the int sp))
-              (set! cur (the (pointer uint64) (&- cur 8)))
-              (set! save (the (pointer uint64) (&- save 8)))
-              (set! (-> save) (-> cur))
-              )
-            )
-          )
         
-        ;; actually setting pp to 0
-        (set! obj (the cpu-thread 0))
-        
-        ;; get the kernel stack pointer as a GOAL pointer
-        (.load-sym :sext #f sp *kernel-sp*)
-        ;; convert it back to a real pointer
-        (.add sp off)
-        
-        ;; restore saved registers...
-        ;; without coloring system because this is "cheating".
-        (.pop :color #f s4)
-        (.pop :color #f s3)
-        (.pop :color #f s2)
-        (.pop :color #f s1)
-        (.pop :color #f s0)
-        ;; return to the kernel function that called the user code
-        (.ret)
+    ;; get our process
+    (let ((proc (-> obj process)))
+      (when (> (process-stack-used proc) (-> obj stack-size))
+        (break) ;; too much stack has been used and we can't suspend!
         )
+          
+      ;; mark the process as suspended and copy the stack
+      (set! (-> proc status) 'suspended)
+      (let ((cur (the (pointer uint64) (-> obj stack-top)))
+            (save (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
+            )
+        (while (> (the int cur) (the int sp))
+          (set! cur (the (pointer uint64) (&- cur 8)))
+          (set! save (the (pointer uint64) (&- save 8)))
+          (set! (-> save) (-> cur))
+          )
+        )
+      )
+        
+    ;; actually setting pp to 0
+    (set! obj (the cpu-thread 0))
+        
+    ;; get the kernel stack pointer as a GOAL pointer
+    (.load-sym :sext #f sp *kernel-sp*)
+    ;; convert it back to a real pointer
+    (.add sp off)
+        
+    ;; restore saved registers...
+    ;; without coloring system because this is "cheating".
+    (.pop :color #f s4)
+    (.pop :color #f s3)
+    (.pop :color #f s2)
+    (.pop :color #f s1)
+    (.pop :color #f s0)
+    ;; return to the kernel function that called the user code
+    (.ret)
+    )
   (none)
   )
 
@@ -730,7 +756,7 @@
    This is also used to start a thread initialized with set-to-run.
    As a result of MIPS/x86 differences, there is a hack for this."
   (declare (asm-func none)
-           ;(print-asm)
+           ;;(print-asm)
            )
   
   (rlet ((obj :reg r13 :type cpu-thread)
@@ -744,81 +770,106 @@
          (s4 :reg r12 :type uint)
          (a4 :reg r8 :type uint)
          (a5 :reg r9 :type uint)
+
+         (temp-float :reg xmm0 :class fpr)
+         (xmm8 :reg xmm8 :class fpr)
+         (xmm9 :reg xmm9 :class fpr)
+         (xmm10 :reg xmm10 :class fpr)
+         (xmm11 :reg xmm11 :class fpr)
+         (xmm12 :reg xmm12 :class fpr)
+         (xmm13 :reg xmm13 :class fpr)
+         (xmm14 :reg xmm14 :class fpr)
+         (xmm15 :reg xmm15 :class fpr)
          ) 
         
-        ;; save the current kernel regs
-        (.push :color #f s0)
-        (.push :color #f s1)
-        (.push :color #f s2)
-        (.push :color #f s3)
-        (.push :color #f s4)
+    ;; save the current kernel regs
+    (.push :color #f s0)
+    (.push :color #f s1)
+    (.push :color #f s2)
+    (.push :color #f s3)
+    (.push :color #f s4)
         
-        ;; make rsp a GOAL pointer
-        (.sub sp off)
-        ;; and store it
-        (set! *kernel-sp* (the pointer sp)) ;; todo, asm form here?
+    ;; make rsp a GOAL pointer
+    (.sub sp off)
+    ;; and store it
+    (set! *kernel-sp* (the pointer sp)) ;; todo, asm form here?
         
-        ;; temp, stash thread in process-pointer
-        (set! obj thread-to-resume)
+    ;; temp, stash thread in process-pointer
+    (set! obj thread-to-resume)
         
-        ;; set stack pointer for the thread. leave it as a GOAL pointer for now..
-        (set! sp (the uint (-> obj sp)))
+    ;; set stack pointer for the thread. leave it as a GOAL pointer for now..
+    (set! sp (the uint (-> obj sp)))
         
-        ;; restore the stack (sp is a GOAL pointer)
-        (let ((cur (the (pointer uint64) (-> obj stack-top)))
-              (restore (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
-              )
-          (while (> (the int cur) (the int sp))
-            (set! cur (the (pointer uint64) (&- cur 8)))
-            (set! restore (the (pointer uint64) (&- restore 8)))
-            (set! (-> cur) (-> restore))
-            )
+    ;; restore the stack (sp is a GOAL pointer)
+    (let ((cur (the (pointer uint64) (-> obj stack-top)))
+          (restore (&+ (the (pointer uint64) (-> obj stack)) (-> obj stack-size)))
           )
-        
-        ;; offset sp after we're done using it as a GOAL pointer.
-        (.add sp off)
-        
-        ;; setup process
-        (set! (-> (-> obj process) top-thread) obj)
-        (set! (-> (-> obj process) status) 'running)
-        
-        ;; restore reg
-        (set! temp (-> obj rreg 0))
-        (.mov :color #f s0 temp)
-        (set! temp (-> obj rreg 1))
-        (.mov :color #f s1 temp)
-        (set! temp (-> obj rreg 2))
-        (.mov :color #f s2 temp)
-        (set! temp (-> obj rreg 3))
-        (.mov :color #f s3 temp)
-        (set! temp (-> obj rreg 4))
-        (.mov :color #f s4 temp)
-        ;; todo restore fpr.
-        
-        ;; hack for set-to-run-bootstrap. The set-to-run-bootstrap in MIPS
-        ;; expects to receive 7 values from the cpu thread's rregs.
-        ;; usually rreg holds saved registers, but on the first resume after
-        ;; a set-to-run, they hold arguments, and set-to-run-bootstrap copies them.
-        
-        ;; We only have 5 saved regs, so we need to cheat and directly pass
-        ;; two values in other registers
-        ;; so we load the a4/a5 argument registers with rreg 5 and rreg 6
-        ;; In the case where we are doing a normal resume, the 
-        ;; compiler should assume that these registers are overwritten anyway.
-        (set! temp (-> obj rreg 5))
-        (.mov a4 temp)
-        (set! temp (-> obj rreg 6))
-        (.mov a5 temp)
-        
-        ;; get the resume address
-        (set! temp (the uint (-> obj pc)))
-        (.add temp off)
-        
-        ;; setup the process
-        (set! obj (the cpu-thread (-> obj process)))
-        ;; resume!
-        (.jr temp)
+      (while (> (the int cur) (the int sp))
+        (set! cur (the (pointer uint64) (&- cur 8)))
+        (set! restore (the (pointer uint64) (&- restore 8)))
+        (set! (-> cur) (-> restore))
         )
+      )
+        
+    ;; offset sp after we're done using it as a GOAL pointer.
+    (.add sp off)
+        
+    ;; setup process
+    (set! (-> (-> obj process) top-thread) obj)
+    (set! (-> (-> obj process) status) 'running)
+        
+    ;; restore reg
+    (set! temp (-> obj rreg 0))
+    (.mov :color #f s0 temp)
+    (set! temp (-> obj rreg 1))
+    (.mov :color #f s1 temp)
+    (set! temp (-> obj rreg 2))
+    (.mov :color #f s2 temp)
+    (set! temp (-> obj rreg 3))
+    (.mov :color #f s3 temp)
+    (set! temp (-> obj rreg 4))
+    (.mov :color #f s4 temp)
+    (set! temp-float (-> obj freg 0))
+    (.mov :color #f xmm8 temp-float)
+    (set! temp-float (-> obj freg 1))
+    (.mov :color #f xmm9 temp-float)
+    (set! temp-float (-> obj freg 2))
+    (.mov :color #f xmm10 temp-float)
+    (set! temp-float (-> obj freg 3))
+    (.mov :color #f xmm11 temp-float)
+    (set! temp-float (-> obj freg 4))
+    (.mov :color #f xmm12 temp-float)
+    (set! temp-float (-> obj freg 5))
+    (.mov :color #f xmm13 temp-float)
+    (set! temp-float (-> obj freg 6))
+    (.mov :color #f xmm14 temp-float)
+    (set! temp-float (-> obj freg 7))
+    (.mov :color #f xmm15 temp-float)
+    
+    ;; hack for set-to-run-bootstrap. The set-to-run-bootstrap in MIPS
+    ;; expects to receive 7 values from the cpu thread's rregs.
+    ;; usually rreg holds saved registers, but on the first resume after
+    ;; a set-to-run, they hold arguments, and set-to-run-bootstrap copies them.
+        
+    ;; We only have 5 saved regs, so we need to cheat and directly pass
+    ;; two values in other registers
+    ;; so we load the a4/a5 argument registers with rreg 5 and rreg 6
+    ;; In the case where we are doing a normal resume, the 
+    ;; compiler should assume that these registers are overwritten anyway.
+    (set! temp (-> obj rreg 5))
+    (.mov a4 temp)
+    (set! temp (-> obj rreg 6))
+    (.mov a5 temp)
+        
+    ;; get the resume address
+    (set! temp (the uint (-> obj pc)))
+    (.add temp off)
+        
+    ;; setup the process
+    (set! obj (the cpu-thread (-> obj process)))
+    ;; resume!
+    (.jr temp)
+    )
   (none)
   )
 
@@ -903,10 +954,14 @@
 ;; Process Dead Pool Heap
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; a dead-pool-heap is a chunk of memory where you can allocate variable sized processes.
-; these processes start out with a lot of memory, then shrink their heap (compact) to the size
-; they actually need.  To avoid heap fragmentation, the dead-pool-heap system will relocate
-; processes. This requires that you implement the relocate method on your process.
+;; a dead-pool-heap is a chunk of memory where you can allocate variable sized processes.
+;; these processes start out with a lot of memory, then shrink their heap (compact) to the size
+;; they actually need.  To avoid heap fragmentation, the dead-pool-heap system will relocate
+;; processes. This requires that you implement the relocate method on your process.
+
+;; DANGER: the dead pool heap is _not_ a proper process tree. Do not attempt to treat it like on.
+;;  If you get-process, you should immediately activate it. The activate method will (change-parent)
+;;  and this will get stuck in an endless loop if you do it on a process that wasn't the most recent one.
 
 (define-extern *null-process* process)
 
@@ -1612,7 +1667,6 @@
     (lambda ((obj process))
       ;(format 0 "Call to dispatcher lambda!~%")
       (let ((context *kernel-context*))
-        
         (cond
           ((or (eq? (-> obj status) 'waiting-to-run)
                (eq? (-> obj status) 'suspended))
@@ -1658,8 +1712,10 @@
            (if (process-mask? (-> obj mask) sleep-code)
                ;; we're sleeping. Move us to suspended, in case we were in waiting to run.
                (set! (-> obj status) 'suspended)
+
                ;; not sleeping. call resume hook
                ((-> obj main-thread resume-hook) (-> obj main-thread))
+               
                )
            ;; check for deadness
            (cond
@@ -1763,7 +1819,6 @@
   The allocation must be an address.
   Unlike the original, this only works on the first six parameters, but I think this doesn't matter."
   (declare (asm-func object)
-           ;(print-asm)
            (allow-saved-regs) ;; very dangerous!
            )
   
@@ -1776,79 +1831,102 @@
          (s2 :reg r10 :type (pointer uint64))
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
+
+         (xmm8 :reg xmm8 :class fpr)
+         (xmm9 :reg xmm9 :class fpr)
+         (xmm10 :reg xmm10 :class fpr)
+         (xmm11 :reg xmm11 :class fpr)
+         (xmm12 :reg xmm12 :class fpr)
+         (xmm13 :reg xmm13 :class fpr)
+         (xmm14 :reg xmm14 :class fpr)
+         (xmm15 :reg xmm15 :class fpr)
          ) 
         
-        ;; we treat the allocation as an address.
-        (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
-          ;; setup catch frame
-          (set! (-> obj type) type-to-make)
-          (set! (-> obj name) name)
-          ;; get the return address (the compiler won't touch the stack because we're an asm-func)
-          (.pop temp)
-          (.push temp)
-          ;; make it a GOAL address so it fits in 32 bitys
-          (.sub temp off)
-          ;; store it
-          (set! (-> obj ra) (the int temp))
+    ;; we treat the allocation as an address.
+    (let ((obj (the catch-frame (&+ allocation *gtype-basic-offset*))))
+      ;; setup catch frame
+      (set! (-> obj type) type-to-make)
+      (set! (-> obj name) name)
+      ;; get the return address (the compiler won't touch the stack because we're an asm-func)
+      (.pop temp)
+      (.push temp)
+      ;; make it a GOAL address so it fits in 32 bitys
+      (.sub temp off)
+      ;; store it
+      (set! (-> obj ra) (the int temp))
           
-          ;; todo, do we need a stack offset here?
-          ;; remember the stack pointer
-          (set! temp sp)
-          (.sub temp off)
-          (set! (-> obj sp) (the int temp))
+      ;; todo, do we need a stack offset here?
+      ;; remember the stack pointer
+      (set! temp sp)
+      (.sub temp off)
+      (set! (-> obj sp) (the int temp))
           
-          ;; back up registers we care about
-          (.mov :color #f temp s0)
-          (set-u128-as-u64! (-> obj rreg 0) temp)
-          (.mov :color #f temp s1)
-          (set-u128-as-u64! (-> obj rreg 1) temp)
-          (.mov :color #f temp s2)
-          (set-u128-as-u64! (-> obj rreg 2) temp)
-          (.mov :color #f temp s3)
-          (set-u128-as-u64! (-> obj rreg 3) temp)
-          (.mov :color #f temp s4)
-          (set-u128-as-u64! (-> obj rreg 4) temp)
-          ;; todo save fprs
+      ;; back up registers we care about
+      (.mov :color #f temp s0)
+      (set-u128-as-u64! (-> obj rreg 0) temp)
+      (.mov :color #f temp s1)
+      (set-u128-as-u64! (-> obj rreg 1) temp)
+      (.mov :color #f temp s2)
+      (set-u128-as-u64! (-> obj rreg 2) temp)
+      (.mov :color #f temp s3)
+      (set-u128-as-u64! (-> obj rreg 3) temp)
+      (.mov :color #f temp s4)
+      (set-u128-as-u64! (-> obj rreg 4) temp)
+
+      (.mov :color #f temp xmm8)
+      (set! (-> obj freg 0) (the-as float temp))
+      (.mov :color #f temp xmm9)
+      (set! (-> obj freg 1) (the-as float temp))
+      (.mov :color #f temp xmm10)
+      (set! (-> obj freg 2) (the-as float temp))
+      (.mov :color #f temp xmm11)
+      (set! (-> obj freg 3) (the-as float temp))
+      (.mov :color #f temp xmm12)
+      (set! (-> obj freg 4) (the-as float temp))
+      (.mov :color #f temp xmm13)
+      (set! (-> obj freg 5) (the-as float temp))
+      (.mov :color #f temp xmm14)
+      (set! (-> obj freg 6) (the-as float temp))
+      (.mov :color #f temp xmm15)
+      (set! (-> obj freg 7) (the-as float temp))
           
-          ;; push this stack frame
-          (set! (-> obj next) (-> pp stack-frame-top))
-          (set! (-> pp stack-frame-top) obj)
+      ;; push this stack frame
+      (set! (-> obj next) (-> pp stack-frame-top))
+      (set! (-> pp stack-frame-top) obj)
           
-          ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
-          (.push :color #f s3)
-          (.push :color #f s2)
-          (.push :color #f s2)
-          (set! s3 (the uint func))
-          (set! s2 param-block)
+      ;; help coloring, it isn't smart enough to realize it's "safe" to use these registers.
+      (.push :color #f s3)
+      (.push :color #f s2)
+      (.push :color #f s2)
+      (set! s3 (the uint func))
+      (set! s2 param-block)
           
-          ;; todo - are we aligned correctly here?
-          (let ((ret ((the-super-u64-fucntion s3)
-                      (-> s2 0)
-                      (-> s2 1)
-                      (-> s2 2)
-                      (-> s2 3)
-                      (-> s2 4)
-                      (-> s2 5)
-                      ))
-                )
-            (.pop :color #f s2)
-            (.pop :color #f s2)
-            (.pop :color #f s3)
-            (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
-            (.ret)
-            (the object ret)
+      ;; todo - are we aligned correctly here?
+      (let ((ret ((the-super-u64-fucntion s3)
+                  (-> s2 0)
+                  (-> s2 1)
+                  (-> s2 2)
+                  (-> s2 3)
+                  (-> s2 4)
+                  (-> s2 5)
+                  ))
             )
-          )
+        (.pop :color #f s2)
+        (.pop :color #f s2)
+        (.pop :color #f s3)
+        (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
+        (.ret)
+        (the object ret)
         )
+      )
+    )
   )
 
 
 (defun throw-dispatch ((obj catch-frame) value)
   "Throw the given value to the catch frame.
   Only can throw a 64-bit value. The original could throw 128 bits."
-  (declare (asm-func none)
-           ;(print-asm)
-           )
+  (declare (asm-func none))
   
   (rlet ((pp :reg r13 :type process)
          (temp :reg rax :type uint)
@@ -1859,38 +1937,64 @@
          (s2 :reg r10 :type (pointer uint64))
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
+
+         (temp-float :reg xmm0 :class fpr)
+         (xmm8 :reg xmm8 :class fpr)
+         (xmm9 :reg xmm9 :class fpr)
+         (xmm10 :reg xmm10 :class fpr)
+         (xmm11 :reg xmm11 :class fpr)
+         (xmm12 :reg xmm12 :class fpr)
+         (xmm13 :reg xmm13 :class fpr)
+         (xmm14 :reg xmm14 :class fpr)
+         (xmm15 :reg xmm15 :class fpr)
          )
         
-        ;; pop everything we threw past
-        (set! (-> pp stack-frame-top) (-> obj next))
+    ;; pop everything we threw past
+    (set! (-> pp stack-frame-top) (-> obj next))
         
-        ;; restore regs we care about.
-        (set-u64-from-u128! temp (-> obj rreg 0))
-        (.mov :color #f s0 temp)
-        (set-u64-from-u128! temp (-> obj rreg 1))
-        (.mov :color #f s1 temp)
-        (set-u64-from-u128! temp (-> obj rreg 2))
-        (.mov :color #f s2 temp)
-        (set-u64-from-u128! temp (-> obj rreg 3))
-        (.mov :color #f s3 temp)
-        (set-u64-from-u128! temp (-> obj rreg 4))
-        (.mov :color #f s4 temp)
-        ;; todo fpr
+    ;; restore regs we care about.
+    (set-u64-from-u128! temp (-> obj rreg 0))
+    (.mov :color #f s0 temp)
+    (set-u64-from-u128! temp (-> obj rreg 1))
+    (.mov :color #f s1 temp)
+    (set-u64-from-u128! temp (-> obj rreg 2))
+    (.mov :color #f s2 temp)
+    (set-u64-from-u128! temp (-> obj rreg 3))
+    (.mov :color #f s3 temp)
+    (set-u64-from-u128! temp (-> obj rreg 4))
+    (.mov :color #f s4 temp)
+
+    (set! temp-float (-> obj freg 0))
+    (.mov :color #f xmm8 temp-float)
+    (set! temp-float (-> obj freg 1))
+    (.mov :color #f xmm9 temp-float)
+    (set! temp-float (-> obj freg 2))
+    (.mov :color #f xmm10 temp-float)
+    (set! temp-float (-> obj freg 3))
+    (.mov :color #f xmm11 temp-float)
+    (set! temp-float (-> obj freg 4))
+    (.mov :color #f xmm12 temp-float)
+    (set! temp-float (-> obj freg 5))
+    (.mov :color #f xmm13 temp-float)
+    (set! temp-float (-> obj freg 6))
+    (.mov :color #f xmm14 temp-float)
+    (set! temp-float (-> obj freg 7))
+    (.mov :color #f xmm15 temp-float)
         
-        ;; set stack pointer
-        (set! sp (the uint (-> obj sp)))
-        (.add sp off)
+    ;; set stack pointer
+    (set! sp (the uint (-> obj sp)))
+    (.add sp off)
         
-        ;; overwrite our return address
-        (.pop temp)
-        (set! temp (the uint (-> obj ra)))
-        (.add temp off)
-        (.push temp)
+    ;; overwrite our return address
+    (.pop temp)
+    (set! temp (the uint (-> obj ra)))
+    (.add temp off)
+    (.push temp)
         
-        ;; load the return register
-        (.mov temp value)
-        (.ret)
-        )
+    ;; load the return register
+    (.mov temp value)
+    (.ret)
+    )
   )
 
 (defun throw ((name symbol) value)
@@ -2006,6 +2110,7 @@
   (let ((thread (new 'global 'cpu-thread obj 'code PROCESS_STACK_SAVE_SIZE stack-top)))
     (set! (-> obj main-thread) thread)
     )
+
   (change-parent obj dest)
   )
 
