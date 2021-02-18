@@ -329,6 +329,7 @@ class SetFormFormElement : public FormElement {
   Form* dst() { return m_dst; }
 
  private:
+  int m_real_push_count = 0;
   Form* m_dst = nullptr;
   Form* m_src = nullptr;
 };
@@ -372,7 +373,8 @@ class AsmOpElement : public FormElement {
 
 /*!
  * A "condition" like (< a b). This can be used as a boolean value directly: (set! a (< b c))
- * or it can be used as a branch condition: (if (< a b)).
+ * or it can be used as a branch condition: (if (< a b)). As a result, it implements both push
+ * and update.
  *
  * In the first case, it can be either a conditional move or actually branching. GOAL seems to use
  * the branching when sometimes it could have used the conditional move, and for now, we don't
@@ -972,6 +974,12 @@ class ArrayFieldAccess : public FormElement {
                          bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
+  void update_with_val(Form* new_val,
+                       const Env& env,
+                       FormPool& pool,
+                       std::vector<FormElement*>* result,
+                       bool allow_side_effects);
+
  private:
   Variable m_source;
   std::vector<DerefToken> m_deref_tokens;
@@ -1056,6 +1064,23 @@ class StorePlainDeref : public FormElement {
   int m_my_idx = -1;
   Variable m_base_var;
   std::optional<TypeSpec> m_cast_type;
+};
+
+class StoreArrayAccess : public FormElement {
+ public:
+  StoreArrayAccess(ArrayFieldAccess* dst, SimpleExpression expr, int my_idx, Variable array_src);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+
+ private:
+  ArrayFieldAccess* m_dst = nullptr;
+  SimpleExpression m_expr;
+  int m_my_idx = -1;
+  Variable m_base_var;
 };
 
 /*!

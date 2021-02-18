@@ -145,14 +145,14 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          auto source = pool.alloc_single_element_form<ArrayFieldAccess>(
-              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
+          auto source = pool.alloc_element<ArrayFieldAccess>(
+              ro.var, tokens, input_type.get_multiplier(), ro.offset);
 
-          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
-              nullptr, m_value.as_expr(), m_my_idx);
+          //          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+          //              nullptr, m_value.as_expr(), m_my_idx);
 
           assert(!rd.addr_of);
-          return pool.alloc_element<SetFormFormElement>(source, val);
+          return pool.alloc_element<StoreArrayAccess>(source, m_value.as_expr(), m_my_idx, ro.var);
         }
       }
 

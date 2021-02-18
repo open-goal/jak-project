@@ -1679,4 +1679,33 @@ void StorePlainDeref::get_modified_regs(RegSet& regs) const {
   m_dst->get_modified_regs(regs);
 }
 
+StoreArrayAccess::StoreArrayAccess(ArrayFieldAccess* dst,
+                                   SimpleExpression expr,
+                                   int my_idx,
+                                   Variable array_src)
+    : m_dst(dst), m_expr(expr), m_my_idx(my_idx), m_base_var(array_src) {}
+
+goos::Object StoreArrayAccess::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("set!", m_dst->to_form(env),
+                                  m_expr.to_form(env.file->labels, env));
+}
+
+void StoreArrayAccess::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_dst->apply(f);
+}
+
+void StoreArrayAccess::apply_form(const std::function<void(Form*)>& f) {
+  m_dst->apply_form(f);
+}
+
+void StoreArrayAccess::collect_vars(VariableSet& vars) const {
+  m_expr.collect_vars(vars);
+  m_dst->collect_vars(vars);
+}
+
+void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
+  m_dst->get_modified_regs(regs);
+}
+
 }  // namespace decompiler

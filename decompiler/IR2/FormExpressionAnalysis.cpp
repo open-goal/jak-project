@@ -937,15 +937,11 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
-void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+void SetFormFormElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   // todo - is the order here right?
-  if (!m_popped) {
-    // TODO - remove the need for this!!
-    m_dst->update_children_from_stack(env, pool, stack, false);
-    m_src->update_children_from_stack(env, pool, stack, false);
-    mark_popped();
-  }
-
+  assert(m_popped);
+  assert(m_real_push_count == 0);
+  m_real_push_count++;
   stack.push_form_element(this, true);
 }
 
@@ -1019,6 +1015,32 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
   }
 }
 
+void StoreArrayAccess::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  Form* expr_form = nullptr;
+  Form* array_form = nullptr;
+  if (m_expr.is_var()) {
+    auto vars = std::vector<Variable>({m_expr.var(), m_base_var});
+    auto popped = pop_to_forms(vars, env, pool, stack, true);
+    m_dst->mark_popped();
+    expr_form = popped.at(0);
+    array_form = popped.at(1);
+  } else {
+    auto vars = std::vector<Variable>({m_base_var});
+    auto popped = pop_to_forms(vars, env, pool, stack, true);
+    m_dst->mark_popped();
+    expr_form = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_expr, m_my_idx);
+    array_form = popped.at(0);
+  }
+
+  std::vector<FormElement*> forms_out;
+  m_dst->update_with_val(array_form, env, pool, &forms_out, true);
+  auto form_out = pool.alloc_sequence_form(nullptr, forms_out);
+
+  auto fr = pool.alloc_element<SetFormFormElement>(form_out, expr_form);
+  fr->mark_popped();
+  stack.push_form_element(fr, true);
+}
+
 ///////////////////
 // AshElement
 ///////////////////
@@ -1028,6 +1050,7 @@ void AshElement::update_from_stack(const Env& env,
                                    FormStack& stack,
                                    std::vector<FormElement*>* result,
                                    bool allow_side_effects) {
+  mark_popped();
   auto forms = pop_to_forms({value, shift_amount}, env, pool, stack, allow_side_effects, consumed);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ARITH_SHIFT), forms.at(0), forms.at(1));
@@ -1043,6 +1066,7 @@ void AbsElement::update_from_stack(const Env& env,
                                    FormStack& stack,
                                    std::vector<FormElement*>* result,
                                    bool allow_side_effects) {
+  mark_popped();
   auto forms = pop_to_forms({source}, env, pool, stack, allow_side_effects, consumed);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ABS), forms.at(0));
@@ -1058,6 +1082,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
                                             FormStack& stack,
                                             std::vector<FormElement*>* result,
                                             bool allow_side_effects) {
+  mark_popped();
   std::vector<Form*> args;
   auto nargs = m_op->arg_vars().size();
   args.resize(nargs, nullptr);
@@ -1416,6 +1441,7 @@ void DerefElement::inline_nested() {
 ///////////////////
 
 void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   for (auto form : {condition, body}) {
     FormStack temp_stack(false);
     for (auto& entry : form->elts()) {
@@ -1432,6 +1458,7 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 }
 
 void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   bool first = true;
   for (auto form : {body, condition}) {
     FormStack temp_stack(first && stack.is_root());
@@ -1452,40 +1479,43 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
 // CondNoElseElement
 ///////////////////
 void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   if (already_rewritten) {
     stack.push_form_element(this, true);
     return;
   }
-  for (auto& entry : entries) {
-    for (auto form : {entry.condition, entry.body}) {
-      FormStack temp_stack(false);
-      for (auto& elt : form->elts()) {
-        elt->push_to_stack(env, pool, temp_stack);
-      }
 
-      std::vector<FormElement*> new_entries;
-      if (form == entry.body && used_as_value) {
-        new_entries = rewrite_to_get_var(temp_stack, pool, final_destination);
-      } else {
-        new_entries = temp_stack.rewrite(pool);
-      }
-
-      form->clear();
-      for (auto e : new_entries) {
-        form->push_back(e);
-      }
-    }
+  // the first condition is special
+  auto first_condition = entries.front().condition;
+  // lets evaluate in on the parent stack...
+  for (auto x : first_condition->elts()) {
+    x->push_to_stack(env, pool, stack);
   }
 
-  // raise expression.
-  auto top_condition = entries.front().condition;
-  if (!top_condition->is_single_element()) {
-    auto real_condition = top_condition->back();
-    top_condition->pop_back();
-    for (auto x : top_condition->elts()) {
-      x->push_to_stack(env, pool, stack);
+  for (auto& entry : entries) {
+    for (auto form : {entry.condition, entry.body}) {
+      if (form == first_condition) {
+        form->clear();
+        form->push_back(stack.pop_back(pool));
+      } else {
+        FormStack temp_stack(false);
+        for (auto& elt : form->elts()) {
+          elt->push_to_stack(env, pool, temp_stack);
+        }
+
+        std::vector<FormElement*> new_entries;
+        if (form == entry.body && used_as_value) {
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination);
+        } else {
+          new_entries = temp_stack.rewrite(pool);
+        }
+
+        form->clear();
+        for (auto e : new_entries) {
+          form->push_back(e);
+        }
+      }
     }
-    top_condition->elts() = {real_condition};
   }
 
   if (used_as_value) {
@@ -1497,6 +1527,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 }
 
 void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   if (already_rewritten) {
     stack.push_form_element(this, true);
     return;
@@ -1505,20 +1536,32 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   std::optional<Variable> last_var;
   bool rewrite_as_set = true;
 
+  // the first condition is special
+  auto first_condition = entries.front().condition;
+  // lets evaluate in on the parent stack...
+  for (auto x : first_condition->elts()) {
+    x->push_to_stack(env, pool, stack);
+  }
+
   // process conditions and bodies
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
-      FormStack temp_stack(false);
-      for (auto& elt : form->elts()) {
-        elt->push_to_stack(env, pool, temp_stack);
-      }
+      if (form == first_condition) {
+        form->clear();
+        form->push_back(stack.pop_back(pool));
+      } else {
+        FormStack temp_stack(false);
+        for (auto& elt : form->elts()) {
+          elt->push_to_stack(env, pool, temp_stack);
+        }
 
-      std::vector<FormElement*> new_entries;
-      new_entries = temp_stack.rewrite(pool);
+        std::vector<FormElement*> new_entries;
+        new_entries = temp_stack.rewrite(pool);
 
-      form->clear();
-      for (auto e : new_entries) {
-        form->push_back(e);
+        form->clear();
+        for (auto e : new_entries) {
+          form->push_back(e);
+        }
       }
     }
   }
@@ -1579,17 +1622,6 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     rewrite_to_get_var(else_ir->elts(), pool, *last_var);
   }
 
-  // raise expression.
-  auto top_condition = entries.front().condition;
-  if (!top_condition->is_single_element()) {
-    auto real_condition = top_condition->back();
-    top_condition->pop_back();
-    for (auto x : top_condition->elts()) {
-      x->push_to_stack(env, pool, stack);
-    }
-    top_condition->elts() = {real_condition};
-  }
-
   if (rewrite_as_set) {
     if (set_unused) {
       stack.push_form_element(this, true);
@@ -1607,6 +1639,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 ///////////////////
 
 void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   if (!used_as_value.value_or(false)) {
     throw std::runtime_error(
         "ShortCircuitElement::push_to_stack not implemented for result not used case.");
@@ -1617,34 +1650,37 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       stack.push_form_element(this, true);
       return;
     }
-    for (int i = 0; i < int(entries.size()); i++) {
-      auto& entry = entries.at(i);
-      FormStack temp_stack(false);
-      for (auto& elt : entry.condition->elts()) {
-        elt->push_to_stack(env, pool, temp_stack);
-      }
 
-      std::vector<FormElement*> new_entries;
-      if (i == int(entries.size()) - 1) {
-        new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
-      } else {
-        new_entries = temp_stack.rewrite(pool);
-      }
-
-      entry.condition->clear();
-      for (auto e : new_entries) {
-        entry.condition->push_back(e);
-      }
+    // the first condition is special
+    auto first_condition = entries.front().condition;
+    // lets evaluate in on the parent stack...
+    for (auto x : first_condition->elts()) {
+      x->push_to_stack(env, pool, stack);
     }
 
-    auto top_condition = entries.front().condition;
-    if (!top_condition->is_single_element()) {
-      auto real_condition = top_condition->back();
-      top_condition->pop_back();
-      for (auto x : top_condition->elts()) {
-        x->push_to_stack(env, pool, stack);
+    for (int i = 0; i < int(entries.size()); i++) {
+      auto& entry = entries.at(i);
+      if (entry.condition == first_condition) {
+        entry.condition->clear();
+        entry.condition->push_back(stack.pop_back(pool));
+      } else {
+        FormStack temp_stack(false);
+        for (auto& elt : entry.condition->elts()) {
+          elt->push_to_stack(env, pool, temp_stack);
+        }
+
+        std::vector<FormElement*> new_entries;
+        if (i == int(entries.size()) - 1) {
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
+        } else {
+          new_entries = temp_stack.rewrite(pool);
+        }
+
+        entry.condition->clear();
+        for (auto e : new_entries) {
+          entry.condition->push_back(e);
+        }
       }
-      top_condition->elts() = {real_condition};
     }
 
     assert(used_as_value.has_value());
@@ -1658,6 +1694,7 @@ void ShortCircuitElement::update_from_stack(const Env& env,
                                             FormStack& stack,
                                             std::vector<FormElement*>* result,
                                             bool) {
+  mark_popped();
   (void)stack;
   if (already_rewritten) {
     result->push_back(this);
@@ -1796,6 +1833,7 @@ FormElement* ConditionElement::make_generic(const Env&,
 }
 
 void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
@@ -1845,6 +1883,7 @@ void ConditionElement::update_from_stack(const Env& env,
                                          FormStack& stack,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
+  mark_popped();
   std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
   std::vector<Variable> vars;
@@ -1890,6 +1929,7 @@ void ConditionElement::update_from_stack(const Env& env,
 }
 
 void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   FormStack temp_stack(false);
   for (auto& elt : return_code->elts()) {
     elt->push_to_stack(env, pool, temp_stack);
@@ -1906,6 +1946,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 }
 
 void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack) {
+  mark_popped();
   auto as_end = dynamic_cast<const FunctionEndOp*>(m_op);
   if (as_end) {
     // we don't want to push this to the stack (for now at least)
@@ -1930,6 +1971,7 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
 }
 
 void AsmOpElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
   stack.push_form_element(this, true);
 }
 
@@ -2006,12 +2048,11 @@ bool is_power_of_two(int in, int* out) {
 }
 }  // namespace
 
-void ArrayFieldAccess::update_from_stack(const Env& env,
-                                         FormPool& pool,
-                                         FormStack& stack,
-                                         std::vector<FormElement*>* result,
-                                         bool allow_side_effects) {
-  auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+void ArrayFieldAccess::update_with_val(Form* new_val,
+                                       const Env& env,
+                                       FormPool& pool,
+                                       std::vector<FormElement*>* result,
+                                       bool) {
   int power_of_two = 0;
 
   if (m_constant_offset == 0) {
@@ -2156,6 +2197,15 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
   }
 }
 
+void ArrayFieldAccess::update_from_stack(const Env& env,
+                                         FormPool& pool,
+                                         FormStack& stack,
+                                         std::vector<FormElement*>* result,
+                                         bool allow_side_effects) {
+  auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  update_with_val(new_val, env, pool, result, allow_side_effects);
+}
+
 ////////////////////////
 // CastElement
 ////////////////////////
@@ -2178,6 +2228,7 @@ void TypeOfElement::update_from_stack(const Env& env,
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects) {
+  mark_popped();
   value->update_children_from_stack(env, pool, stack, allow_side_effects);
   result->push_back(this);
 }
@@ -2187,6 +2238,7 @@ void TypeOfElement::update_from_stack(const Env& env,
 ////////////////////////
 
 void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
   stack.push_form_element(this, true);
 }
 
@@ -2200,6 +2252,7 @@ bool is_symbol_true(const Form* form) {
 }
 
 void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
