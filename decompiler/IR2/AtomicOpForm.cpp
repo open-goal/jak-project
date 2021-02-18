@@ -106,10 +106,8 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
     if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
-      auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value.as_expr(),
-                                                                         m_my_idx);
-      auto src = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_addr, m_my_idx);
-      return pool.alloc_element<SetFormFormElement>(src, val);
+      return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                      m_value.as_expr(), m_my_idx);
     }
 
     IR2_RegOffset ro;
@@ -120,22 +118,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           (input_type.typespec() == TypeSpec("object") ||
            input_type.typespec() == TypeSpec("pair"))) {
         if (ro.offset == 2) {
-          auto base = pool.alloc_single_element_form<SimpleExpressionElement>(
-              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
-              nullptr, m_value.as_expr(), m_my_idx);
-          auto addr = pool.alloc_single_element_form<GenericElement>(
-              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), base);
-          auto fr = pool.alloc_element<SetFormFormElement>(addr, val);
-          return fr;
+          return pool.alloc_element<StoreInPairElement>(false, ro.var, m_value.as_expr(), m_my_idx);
         } else if (ro.offset == -2) {
-          auto base = pool.alloc_single_element_form<SimpleExpressionElement>(
-              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
-              nullptr, m_value.as_expr(), m_my_idx);
-          auto addr = pool.alloc_single_element_form<GenericElement>(
-              nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), base);
-          return pool.alloc_element<SetFormFormElement>(addr, val);
+          return pool.alloc_element<StoreInPairElement>(true, ro.var, m_value.as_expr(), m_my_idx);
         }
       }
 
@@ -160,14 +145,14 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          auto source = pool.alloc_single_element_form<ArrayFieldAccess>(
-              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
+          auto source = pool.alloc_element<ArrayFieldAccess>(
+              ro.var, tokens, input_type.get_multiplier(), ro.offset);
 
-          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
-              nullptr, m_value.as_expr(), m_my_idx);
+          //          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
+          //              nullptr, m_value.as_expr(), m_my_idx);
 
           assert(!rd.addr_of);
-          return pool.alloc_element<SetFormFormElement>(source, val);
+          return pool.alloc_element<StoreArrayAccess>(source, m_value.as_expr(), m_my_idx, ro.var);
         }
       }
 
@@ -183,8 +168,6 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
       auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
-            nullptr, m_value.as_expr(), m_my_idx);
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
             nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
         std::vector<DerefToken> tokens;
@@ -192,13 +175,13 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           tokens.push_back(to_token(x));
         }
         assert(!rd.addr_of);
-        auto addr =
-            pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
-        return pool.alloc_element<SetFormFormElement>(addr, val);
+        auto addr = pool.alloc_element<DerefElement>(source, rd.addr_of, tokens);
+        return pool.alloc_element<StorePlainDeref>(addr, m_value.as_expr(), m_my_idx, ro.var,
+                                                   std::nullopt);
       }
 
+      std::string cast_type;
       if (input_type.typespec() == TypeSpec("pointer") && ro.offset == 0) {
-        std::string cast_type;
         switch (m_size) {
           case 1:
             cast_type = "int8";
@@ -220,11 +203,10 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
         auto cast_source = pool.alloc_single_element_form<CastElement>(
             nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), source);
-        auto deref = pool.alloc_single_element_form<DerefElement>(nullptr, cast_source, false,
-                                                                  std::vector<DerefToken>());
-        auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
-            nullptr, m_value.as_expr(), m_my_idx);
-        return pool.alloc_element<SetFormFormElement>(deref, val);
+        auto deref =
+            pool.alloc_element<DerefElement>(cast_source, false, std::vector<DerefToken>());
+        return pool.alloc_element<StorePlainDeref>(deref, m_value.as_expr(), m_my_idx, ro.var,
+                                                   TypeSpec("pointer", {TypeSpec(cast_type)}));
       }
     }
   }

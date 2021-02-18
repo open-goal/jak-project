@@ -191,6 +191,21 @@ Form* FormStack::unsafe_peek(Register reg, const Env& env) {
   return nullptr;
 }
 
+FormElement* FormStack::pop_back(FormPool& pool) {
+  auto& back = m_stack.back();
+  assert(back.active);
+  back.active = false;
+  if (back.elt) {
+    return back.elt;
+  } else {
+    assert(back.destination.has_value());
+    auto elt = pool.alloc_element<SetVarElement>(*back.destination, back.source,
+                                                 back.sequence_point, back.set_info);
+    back.source->parent_element = elt;
+    return elt;
+  }
+}
+
 std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
   std::vector<FormElement*> result;
 

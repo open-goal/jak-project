@@ -14,7 +14,9 @@
 - The types `cpu-thread` and `catch-frame` have a slightly different layout in OpenGOAL to back up x86-64 registers
 
 ## `gkernel`:
-- In progress
+- Many changes for x86-64/OpenGOAL
+- A few bugs in the game related to `process-tree` vs `(pointer process-tree)`.
+- `change-brother` is totally wrong, unused, and left out.
 
 ## `pskernel`: **Done**
 - Unimplemented in OpenGOAL. Seems to be debugging hooks into the PS2's kernel. Error strings indicate that there should have been a second related file included that actually contained the debugging handlers, but this file is not present.
