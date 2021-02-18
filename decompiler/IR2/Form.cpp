@@ -319,6 +319,50 @@ bool SetVarElement::active() const {
   }
 }
 
+StoreInSymbolElement::StoreInSymbolElement(std::string sym_name, SimpleExpression value, int my_idx)
+    : m_sym_name(std::move(sym_name)), m_value(std::move(value)), m_my_idx(my_idx) {}
+
+goos::Object StoreInSymbolElement::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("set!", m_sym_name, m_value.to_form(env.file->labels, env));
+}
+
+void StoreInSymbolElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void StoreInSymbolElement::apply_form(const std::function<void(Form*)>&) {}
+
+void StoreInSymbolElement::collect_vars(VariableSet& vars) const {
+  m_value.collect_vars(vars);
+}
+
+void StoreInSymbolElement::get_modified_regs(RegSet&) const {}
+
+StoreInPairElement::StoreInPairElement(bool is_car,
+                                       Variable pair,
+                                       SimpleExpression value,
+                                       int my_idx)
+    : m_is_car(is_car), m_pair(pair), m_value(value), m_my_idx(my_idx) {}
+
+goos::Object StoreInPairElement::to_form_internal(const Env& env) const {
+  return pretty_print::build_list(
+      "set!", pretty_print::build_list(m_is_car ? "car" : "cdr", m_pair.to_form(env)),
+      m_value.to_form(env.file->labels, env));
+}
+
+void StoreInPairElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void StoreInPairElement::apply_form(const std::function<void(Form*)>&) {}
+
+void StoreInPairElement::collect_vars(VariableSet& vars) const {
+  m_value.collect_vars(vars);
+  vars.insert(m_pair);
+}
+
+void StoreInPairElement::get_modified_regs(RegSet&) const {}
+
 /////////////////////////////
 // SetFormFormElement
 /////////////////////////////
@@ -335,6 +379,7 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
 }
 
 void SetFormFormElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
   m_src->apply(f);
   m_dst->apply(f);
 }
@@ -1597,5 +1642,70 @@ void ConstantTokenElement::apply(const std::function<void(FormElement*)>&) {}
 void ConstantTokenElement::apply_form(const std::function<void(Form*)>&) {}
 void ConstantTokenElement::collect_vars(VariableSet&) const {}
 void ConstantTokenElement::get_modified_regs(RegSet&) const {}
+
+StorePlainDeref::StorePlainDeref(DerefElement* dst,
+                                 SimpleExpression expr,
+                                 int my_idx,
+                                 Variable base_var,
+                                 std::optional<TypeSpec> cast_type)
+    : m_dst(dst),
+      m_expr(std::move(expr)),
+      m_my_idx(my_idx),
+      m_base_var(std::move(base_var)),
+      m_cast_type(cast_type) {}
+goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
+  if (!m_cast_type.has_value()) {
+    return pretty_print::build_list("set!", m_dst->to_form(env),
+                                    m_expr.to_form(env.file->labels, env));
+  } else {
+    return pretty_print::build_list(
+        "set!", pretty_print::build_list("the-as", m_cast_type->print(), m_dst->to_form(env)),
+        m_expr.to_form(env.file->labels, env));
+  }
+}
+void StorePlainDeref::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_dst->apply(f);
+}
+
+void StorePlainDeref::apply_form(const std::function<void(Form*)>&) {}
+
+void StorePlainDeref::collect_vars(VariableSet& vars) const {
+  m_expr.collect_vars(vars);
+  m_dst->collect_vars(vars);
+}
+
+void StorePlainDeref::get_modified_regs(RegSet& regs) const {
+  m_dst->get_modified_regs(regs);
+}
+
+StoreArrayAccess::StoreArrayAccess(ArrayFieldAccess* dst,
+                                   SimpleExpression expr,
+                                   int my_idx,
+                                   Variable array_src)
+    : m_dst(dst), m_expr(expr), m_my_idx(my_idx), m_base_var(array_src) {}
+
+goos::Object StoreArrayAccess::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("set!", m_dst->to_form(env),
+                                  m_expr.to_form(env.file->labels, env));
+}
+
+void StoreArrayAccess::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_dst->apply(f);
+}
+
+void StoreArrayAccess::apply_form(const std::function<void(Form*)>& f) {
+  m_dst->apply_form(f);
+}
+
+void StoreArrayAccess::collect_vars(VariableSet& vars) const {
+  m_expr.collect_vars(vars);
+  m_dst->collect_vars(vars);
+}
+
+void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
+  m_dst->get_modified_regs(regs);
+}
 
 }  // namespace decompiler

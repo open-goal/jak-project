@@ -43,9 +43,16 @@ class FormElement {
                                  FormStack& stack,
                                  std::vector<FormElement*>* result,
                                  bool allow_side_effects);
+  bool is_popped() const { return m_popped; }
+
+  void mark_popped() {
+    assert(!m_popped);
+    m_popped = true;
+  }
 
  protected:
   friend class Form;
+  bool m_popped = false;
 };
 
 /*!
@@ -61,8 +68,6 @@ class SimpleExpressionElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
-  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
-  //  void push_to_stack(const Env& env, FormStack& stack) override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -219,13 +224,11 @@ class SimpleAtomElement : public FormElement {
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
   const SimpleAtom& atom() const { return m_atom; }
-  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
-  //  void push_to_stack(const Env& env, FormStack& stack) override;
 
  private:
   SimpleAtom m_atom;
@@ -246,11 +249,6 @@ class SetVarElement : public FormElement {
   bool is_sequence_point() const override;
   void collect_vars(VariableSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
-  void update_from_stack(const Env& env,
-                         FormPool& pool,
-                         FormStack& stack,
-                         std::vector<FormElement*>* result,
-                         bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
   bool active() const override;
 
@@ -276,6 +274,39 @@ class SetVarElement : public FormElement {
   SetVarInfo m_var_info;
 };
 
+class StoreInSymbolElement : public FormElement {
+ public:
+  StoreInSymbolElement(std::string sym_name, SimpleExpression value, int my_idx);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  std::string m_sym_name;
+  SimpleExpression m_value;
+  int m_my_idx = -1;
+};
+
+class StoreInPairElement : public FormElement {
+ public:
+  StoreInPairElement(bool is_car, Variable pair, SimpleExpression value, int my_idx);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  bool m_is_car = false;
+  Variable m_pair;
+  SimpleExpression m_value;
+  int m_my_idx = -1;
+};
+
 /*!
  * Like SetVar, but sets a form to another form.
  * This is intended to be used with stores.
@@ -298,6 +329,7 @@ class SetFormFormElement : public FormElement {
   Form* dst() { return m_dst; }
 
  private:
+  int m_real_push_count = 0;
   Form* m_dst = nullptr;
   Form* m_src = nullptr;
 };
@@ -341,7 +373,8 @@ class AsmOpElement : public FormElement {
 
 /*!
  * A "condition" like (< a b). This can be used as a boolean value directly: (set! a (< b c))
- * or it can be used as a branch condition: (if (< a b)).
+ * or it can be used as a branch condition: (if (< a b)). As a result, it implements both push
+ * and update.
  *
  * In the first case, it can be either a conditional move or actually branching. GOAL seems to use
  * the branching when sometimes it could have used the conditional move, and for now, we don't
@@ -892,10 +925,13 @@ class DerefElement : public FormElement {
                          bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
 
+  void inline_nested();
+
   bool is_addr_of() const { return m_is_addr_of; }
   const Form* base() const { return m_base; }
   Form* base() { return m_base; }
   const std::vector<DerefToken>& tokens() const { return m_tokens; }
+  void set_base(Form* new_base) { m_base = new_base; }
 
  private:
   Form* m_base = nullptr;
@@ -937,6 +973,12 @@ class ArrayFieldAccess : public FormElement {
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
+
+  void update_with_val(Form* new_val,
+                       const Env& env,
+                       FormPool& pool,
+                       std::vector<FormElement*>* result,
+                       bool allow_side_effects);
 
  private:
   Variable m_source;
@@ -999,6 +1041,46 @@ class ConstantTokenElement : public FormElement {
 
  private:
   std::string m_value;
+};
+
+class StorePlainDeref : public FormElement {
+ public:
+  StorePlainDeref(DerefElement* dst,
+                  SimpleExpression expr,
+                  int my_idx,
+                  Variable base_var,
+                  std::optional<TypeSpec> cast_type);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+
+ private:
+  DerefElement* m_dst = nullptr;
+  SimpleExpression m_expr;
+  int m_my_idx = -1;
+  Variable m_base_var;
+  std::optional<TypeSpec> m_cast_type;
+};
+
+class StoreArrayAccess : public FormElement {
+ public:
+  StoreArrayAccess(ArrayFieldAccess* dst, SimpleExpression expr, int my_idx, Variable array_src);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+
+ private:
+  ArrayFieldAccess* m_dst = nullptr;
+  SimpleExpression m_expr;
+  int m_my_idx = -1;
+  Variable m_base_var;
 };
 
 /*!
@@ -1072,6 +1154,14 @@ class Form {
                                   bool allow_side_effects);
   bool has_side_effects();
   void get_modified_regs(RegSet& regs) const;
+
+  bool is_popped() const { return m_elements.at(0)->is_popped(); }
+
+  void mark_popped() {
+    for (auto x : m_elements) {
+      x->mark_popped();
+    }
+  }
 
   FormElement* parent_element = nullptr;
 

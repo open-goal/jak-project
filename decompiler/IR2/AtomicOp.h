@@ -232,6 +232,11 @@ class SimpleExpression {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
   bool operator==(const SimpleExpression& other) const;
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
+  bool is_var() const { return is_identity() && get_arg(0).is_var(); }
+  const Variable& var() const {
+    assert(is_var());
+    return get_arg(0).var();
+  }
   void get_regs(std::vector<Register>* out) const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
   TP_Type get_type_int2(const TypeState& input,
