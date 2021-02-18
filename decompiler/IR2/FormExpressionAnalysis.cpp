@@ -980,6 +980,7 @@ void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 }
 
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   if (m_expr.is_var()) {
     auto vars = std::vector<Variable>({m_expr.var(), m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
@@ -1016,6 +1017,7 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
 }
 
 void StoreArrayAccess::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   Form* expr_form = nullptr;
   Form* array_form = nullptr;
   if (m_expr.is_var()) {
@@ -1980,11 +1982,11 @@ void GenericElement::update_from_stack(const Env& env,
                                        FormStack& stack,
                                        std::vector<FormElement*>* result,
                                        bool) {
-  // TODO improve.
-  if (m_head.m_kind == GenericOperator::Kind::FUNCTION_EXPR) {
-    m_head.m_function->update_children_from_stack(env, pool, stack, false);
-  } else {
-    m_elts.back()->update_children_from_stack(env, pool, stack, false);
+  mark_popped();
+  if (m_elts.size() == 1) {
+    // a bit of a hack, but AtomicOpForm uses this for loading car/cdr
+    // this is safe to do.
+    m_elts.front()->update_children_from_stack(env, pool, stack, true);
   }
   result->push_back(this);
 }
@@ -1992,6 +1994,7 @@ void GenericElement::update_from_stack(const Env& env,
 void GenericElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   (void)env;
   (void)pool;
+  mark_popped();
   stack.push_form_element(this, true);
 }
 
@@ -2004,6 +2007,7 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
                                             FormStack& stack,
                                             std::vector<FormElement*>* result,
                                             bool allow_side_effects) {
+  mark_popped();
   auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
   auto reg0_matcher =
       Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
@@ -2202,6 +2206,7 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
                                          FormStack& stack,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
+  mark_popped();
   auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
   update_with_val(new_val, env, pool, result, allow_side_effects);
 }
@@ -2215,6 +2220,7 @@ void CastElement::update_from_stack(const Env& env,
                                     FormStack& stack,
                                     std::vector<FormElement*>* result,
                                     bool allow_side_effects) {
+  mark_popped();
   m_source->update_children_from_stack(env, pool, stack, allow_side_effects);
   result->push_back(this);
 }
@@ -2282,6 +2288,7 @@ void StringConstantElement::update_from_stack(const Env&,
                                               FormStack&,
                                               std::vector<FormElement*>* result,
                                               bool) {
+  mark_popped();
   result->push_back(this);
 }
 
@@ -2290,6 +2297,7 @@ void GetMethodElement::update_from_stack(const Env&,
                                          FormStack&,
                                          std::vector<FormElement*>* result,
                                          bool) {
+  mark_popped();
   result->push_back(this);
 }
 
@@ -2298,6 +2306,7 @@ void CondNoElseElement::update_from_stack(const Env&,
                                           FormStack&,
                                           std::vector<FormElement*>* result,
                                           bool) {
+  mark_popped();
   result->push_back(this);
 }
 
@@ -2306,6 +2315,7 @@ void ConstantTokenElement::update_from_stack(const Env&,
                                              FormStack&,
                                              std::vector<FormElement*>* result,
                                              bool) {
+  mark_popped();
   result->push_back(this);
 }
 

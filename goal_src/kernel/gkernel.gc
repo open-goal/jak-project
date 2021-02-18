@@ -1515,7 +1515,6 @@
 
 (defun kill-by-type (type (pool process-tree))
   "Call deactivate on all processes with the given type"
-  (break) ; this is sketchy.
   (set! *global-search-name* (the basic type))
   (let ((proc (the process-tree #f)))
     (while (set! proc (search-process-tree pool (lambda ((var process))
@@ -1537,7 +1536,6 @@
 
 (defun kill-not-type (type (pool process-tree))
   "Call deactivate on all prcesses that don't match the given type"
-  (break) ;; this function is weird.
   (set! *global-search-name* (the basic type))
   (let ((proc (the process-tree #f)))
     (while (set! proc (search-process-tree pool (lambda ((var process))
@@ -1693,8 +1691,7 @@
              ((-> obj trans-hook)
               ;; we have a trans hook defined. let's create a thread and run it. we can reuse the stack of the main-thread
               ;; it is safe to do this because the main-thread is currently suspended or hasn't run yet.
-              ;; hack process -> global new todo 
-              (let ((trans (new 'global 'cpu-thread obj 'trans PROCESS_STACK_SAVE_SIZE (-> obj main-thread stack-top))))
+              (let ((trans (new 'process 'cpu-thread obj 'trans PROCESS_STACK_SAVE_SIZE (-> obj main-thread stack-top))))
                 ;; call the function in the thread.
                 (reset-and-call trans (-> obj trans-hook))
                 ;; remove the cpu-thread
@@ -1729,8 +1726,7 @@
                ;; POST CODE
                (cond
                  ((-> obj post-hook)
-                  ;; hack process -> global new todo 
-                  (let ((post (new 'global 'cpu-thread obj 'post PROCESS_STACK_SAVE_SIZE *kernel-dram-stack*)))
+                  (let ((post (new 'process 'cpu-thread obj 'post PROCESS_STACK_SAVE_SIZE *kernel-dram-stack*)))
                     (reset-and-call post (-> obj post-hook))
                     (delete post)
                     (when (eq? (-> obj status) 'dead)
@@ -1755,9 +1751,6 @@
       )
     *kernel-context*
     )
-  
-  ;; todo, remove this and replace it with the rest of the kernel dispatcher.
-  (set! *listener-function* (the (function object) #f))
   )
 
 (define-extern inspect-process-tree (function process-tree int int symbol process-tree))
@@ -1806,7 +1799,7 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Stack Frame Stuff (TODO)
+;; Stack Frame Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The GOAL kernel supports dynamic throw and catch.
@@ -2000,22 +1993,22 @@
 (defun throw ((name symbol) value)
   "Dynamic throw."
   (rlet ((pp :reg r13 :type process))
-        (let ((cur (-> pp stack-frame-top)))
-          (while cur
-            (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
-              ;; match!
+    (let ((cur (-> pp stack-frame-top)))
+      (while cur
+        (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
+          ;; match!
               
-              (throw-dispatch (the catch-frame cur) value)
-              )
-            
-            (if (eq? (-> cur type) protect-frame)
-                ;; call the cleanup function
-                ((-> (the protect-frame cur) exit))
-                )
-            (set! cur (-> cur next))
-            )
+          (throw-dispatch (the catch-frame cur) value)
           )
+            
+        (if (eq? (-> cur type) protect-frame)
+            ;; call the cleanup function
+            ((-> (the protect-frame cur) exit))
+            )
+        (set! cur (-> cur next))
         )
+      )
+    )
   (format 0 "ERROR: throw could not find tag ~A~%" name)
   (break)
   )
@@ -2027,9 +2020,9 @@
     (set! (-> obj exit) func)
     
     (rlet ((pp :reg r13 :type process))
-          (set! (-> obj next) (-> pp stack-frame-top))
-          (set! (-> pp stack-frame-top) obj)
-          )
+      (set! (-> obj next) (-> pp stack-frame-top))
+      (set! (-> pp stack-frame-top) obj)
+      )
     obj
     )
   )
@@ -2038,7 +2031,29 @@
 ;; Tree Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; todo previous-brother
+(defun previous-brother ((proc process-tree))
+  "Get the process p where (-> p brother) is proc. Unused"
+  (local-vars (parent (pointer process-tree))
+              (child (pointer process-tree))
+              )
+  ;; look up the tree to find our parent
+  (set! parent (-> proc parent))
+  (the-as process-tree
+          (when parent
+            ;; make sure we aren't the only child.
+            (set! child (-> parent 0 child))
+            (if (= child proc) (return '#f))
+            ;; iterate, until we find the one.
+            (while child
+              (if (= (-> child 0 brother) proc) (return child))
+              (set! child (-> child 0 brother))
+              )
+            ;; nope, didn't find it. bad tree.
+            '#f
+            )
+          )
+  )
+
 
 (defun change-parent ((obj process-tree) (new-parent process-tree))
   "Make obj a child of new-parent"
@@ -2071,8 +2086,114 @@
     )
   )
 
-;; todo change-brother
-;; todo change-to-last-brother
+(defun change-brother ((arg0 process-tree) (arg1 process-tree))
+  "Unused, and wrong.
+   It seems like this was written when processes store process-trees, not (pointer process-tree)."
+  ;; (local-vars
+  ;;  (v1-4 (pointer process-tree))
+  ;;  (a1-1 symbol)
+  ;;  (a2-1 (pointer process-tree))
+  ;;  (a3-1 (pointer process-tree))
+  ;;  (t0-0 (pointer process-tree))
+  ;;  (t1-0 (pointer process-tree))
+  ;;  (t1-3 (pointer process-tree))
+  ;;  (t1-4 (pointer process-tree))
+  ;;  (t1-7 (pointer process-tree))
+  ;;  (t1-8 (pointer process-tree))
+  ;;  (t1-12 (pointer process-tree))
+  ;;  (t1-13 (pointer process-tree))
+  ;;  (t1-17 (pointer process-tree))
+  ;;  )
+  ;; (when (and arg0 (!= (-> arg0 brother) arg1) (!= arg0 arg1))
+  ;;  (set! a2-1 (-> arg0 parent))
+  ;;  (when a2-1
+  ;;   (set! t0-0 (-> a2-1 0 child))
+  ;;   (set! a3-1 '#f)
+  ;;   (set! v1-4 '#f)
+  ;;   (set! t1-0 t0-0)
+  ;;   (when (= (if t1-0 (-> t1-0 0 self)) arg0)
+  ;;     (set! a3-1 a2-1)
+  ;;     (set! t1-3 a3-1)
+  ;;     )
+  ;;   (set! t1-4 t0-0)
+  ;;   (when (= (if t1-4 (-> t1-4 0 self)) arg1)
+  ;;     (set! v1-4 a2-1)
+  ;;     (set! t1-7 v1-4)
+  ;;     )
+  ;;   (while (and (-> t0-0 0 brother) (or (not a3-1) (not v1-4)))
+  ;;    (set! t1-8 t0-0)
+  ;;    (when (= (-> (if t1-8 (-> t1-8 0 self)) brother) arg1)
+  ;;     (set! v1-4 t0-0)
+  ;;     (set! t1-12 v1-4)
+  ;;     )
+  ;;    (set! t1-13 t0-0)
+  ;;    (when (= (-> (if t1-13 (-> t1-13 0 self)) brother) arg0)
+  ;;     (set! a3-1 t0-0)
+  ;;     (set! t1-17 a3-1)
+  ;;     )
+  ;;    (set! t0-0 (-> t0-0 0 brother))
+  ;;    )
+  ;;   (if (or (not a3-1) (not v1-4))
+  ;;    (return 0)
+  ;;    (if (= a3-1 a2-1)
+  ;;     (set! (-> a3-1 4) (-> arg0 brother))
+  ;;     (set! (-> a3-1 3) (-> arg0 brother))
+  ;;     )
+  ;;    )
+  ;;   (cond
+  ;;    ((= v1-4 a2-1)
+  ;;     (set! (-> arg0 brother) (-> v1-4 4))
+  ;;     (set! (-> v1-4 4) (-> arg0 ppointer))
+  ;;     )
+  ;;    (else
+  ;;     (set! (-> arg0 brother) (-> v1-4 3))
+  ;;     (set! (-> v1-4 3) (-> arg0 ppointer))
+  ;;     )
+  ;;    )
+  ;;   )
+  ;;  )
+  ;; (the-as process-tree arg0)
+  (break)
+   arg0
+  )
+
+(defun change-to-last-brother ((arg0 process-tree))
+  (local-vars
+   (v1-4 (pointer process-tree))
+   (v1-8 symbol)
+   (a1-0 (pointer process-tree))
+   (a1-5 symbol)
+   (a1-9 symbol)
+   )
+  (when (and (-> arg0 brother) (-> arg0 parent))
+   (set! a1-0 (-> arg0 parent))
+   (set! v1-4 (-> a1-0 0 child))
+   (cond
+     ((= (-> v1-4 0) arg0)
+      (set! (-> a1-0 0 child) (-> arg0 brother)))
+    (else
+     (while (!= (-> v1-4 0 brother 0) arg0)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (set! v1-4 (-> v1-4 0 brother))
+      )
+     (set! (-> v1-4 0 brother) (-> arg0 brother))
+     )
+    )
+   (while (-> v1-4 0 brother)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (set! v1-4 (-> v1-4 0 brother))
+    )
+   (set! (-> v1-4 0 brother) (-> arg0 ppointer))
+   (set! (-> arg0 brother) '#f)
+   )
+  arg0
+  )
  
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2106,8 +2227,7 @@
   (set! (-> obj connection-list next1) #f)
   (set! (-> obj connection-list prev1) #f)
   
-  ;; todo global -> process
-  (let ((thread (new 'global 'cpu-thread obj 'code PROCESS_STACK_SAVE_SIZE stack-top)))
+  (let ((thread (new 'process 'cpu-thread obj 'code PROCESS_STACK_SAVE_SIZE stack-top)))
     (set! (-> obj main-thread) thread)
     )
 
@@ -2244,12 +2364,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod deactivate process-tree ((obj process-tree))
-  ;; todo
-  (format 0 "CALL TO DEACTIVATE~%")
   (none)
   )
 
-;; todo defstate
+;; The defstate macro isn't defined yet, so we do it manually.
 (define dead-state 
         (new 'static 'state
              :name #f
@@ -2264,8 +2382,10 @@
 (set! (-> dead-state code) nothing)
 
 
-;; hack
+;; this is not yet defined.
 (define-extern entity-deactivate-handler (function process object none))
+(define entity-deactivate-handler (the (function process object none) nothing))
+
 (define-extern process-disconnect (function object none))
 
 (defmethod deactivate process ((obj process))
@@ -2372,8 +2492,7 @@
 (let ((obj (define *listener-process* (new 'global 'process 'listener 2048))))
   (set! (-> obj status) 'ready)
   (set! (-> obj pid) 1)
-  ;; allocation symbol is actually process, but it's ignored so this is ok for now.
-  (set! (-> obj main-thread) (new 'global 'cpu-thread obj 'main 256 *kernel-dram-stack*))
+  (set! (-> obj main-thread) (new 'process 'cpu-thread obj 'main 256 *kernel-dram-stack*))
   )
 
 ;; these are unknown
