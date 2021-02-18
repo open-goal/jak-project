@@ -233,7 +233,12 @@ void Form::update_children_from_stack(const Env& env,
   for (size_t i = 0; i < m_elements.size(); i++) {
     if (i == 0) {
       // only bother doing the first one.
-      m_elements[i]->update_from_stack(env, pool, stack, &new_elts, allow_side_effects);
+      if (!m_elements[i]->is_popped()) {
+        m_elements[i]->update_from_stack(env, pool, stack, &new_elts, allow_side_effects);
+      } else {
+        new_elts.push_back(m_elements[i]);
+      }
+
     } else {
       new_elts.push_back(m_elements[i]);
     }
@@ -286,6 +291,7 @@ void LoadSourceElement::update_from_stack(const Env& env,
                                           FormStack& stack,
                                           std::vector<FormElement*>* result,
                                           bool allow_side_effects) {
+  mark_popped();
   m_addr->update_children_from_stack(env, pool, stack, allow_side_effects);
   result->push_back(this);
 }
@@ -356,6 +362,8 @@ void SimpleExpressionElement::update_from_stack_fpr_to_gpr(const Env& env,
     // set ourself to identity.
     m_expr = src.as_expr();
     // then go again.
+    assert(m_popped);
+    m_popped = false;
     update_from_stack(env, pool, stack, result, allow_side_effects);
   } else {
     throw std::runtime_error(
@@ -756,6 +764,7 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
                                                 FormStack& stack,
                                                 std::vector<FormElement*>* result,
                                                 bool allow_side_effects) {
+  mark_popped();
   switch (m_expr.kind()) {
     case SimpleExpression::Kind::IDENTITY:
       update_from_stack_identity(env, pool, stack, result, allow_side_effects);
@@ -883,6 +892,7 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
 ///////////////////
 
 void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }
@@ -894,6 +904,7 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   m_src->update_children_from_stack(env, pool, stack, true);
+
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }
@@ -926,23 +937,86 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 }
 
-void SetVarElement::update_from_stack(const Env& env,
-                                      FormPool& pool,
-                                      FormStack& stack,
-                                      std::vector<FormElement*>* result,
-                                      bool allow_side_effects) {
-  m_src->update_children_from_stack(env, pool, stack, allow_side_effects);
-  for (auto x : m_src->elts()) {
-    assert(x->parent_form == m_src);
-  }
-  result->push_back(this);
-}
-
 void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   // todo - is the order here right?
-  m_dst->update_children_from_stack(env, pool, stack, false);
-  m_src->update_children_from_stack(env, pool, stack, false);
+  if (!m_popped) {
+    // TODO - remove the need for this!!
+    m_dst->update_children_from_stack(env, pool, stack, false);
+    m_src->update_children_from_stack(env, pool, stack, false);
+    mark_popped();
+  }
+
   stack.push_form_element(this, true);
+}
+
+void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  auto sym = pool.alloc_single_element_form<ConstantTokenElement>(nullptr, m_sym_name);
+  auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
+  val->update_children_from_stack(env, pool, stack, true);
+
+  auto elt = pool.alloc_element<SetFormFormElement>(sym, val);
+  elt->mark_popped();
+  stack.push_form_element(elt, true);
+}
+
+void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  auto op = m_is_car ? FixedOperatorKind::CAR : FixedOperatorKind::CDR;
+  if (m_value.is_var()) {
+    auto vars = std::vector<Variable>({m_value.var(), m_pair});
+    auto popped = pop_to_forms(vars, env, pool, stack, true);
+    auto addr = pool.alloc_single_element_form<GenericElement>(
+        nullptr, GenericOperator::make_fixed(op), popped.at(1));
+    addr->mark_popped();
+    auto fr = pool.alloc_element<SetFormFormElement>(addr, popped.at(0));
+    fr->mark_popped();
+    stack.push_form_element(fr, true);
+  } else {
+    auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
+    val->mark_popped();
+    auto addr = pool.alloc_single_element_form<GenericElement>(
+        nullptr, GenericOperator::make_fixed(op),
+        pop_to_forms({m_pair}, env, pool, stack, true).at(0));
+    addr->mark_popped();
+    auto fr = pool.alloc_element<SetFormFormElement>(addr, val);
+    fr->mark_popped();
+    stack.push_form_element(fr, true);
+  }
+}
+
+void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  if (m_expr.is_var()) {
+    auto vars = std::vector<Variable>({m_expr.var(), m_base_var});
+    auto popped = pop_to_forms(vars, env, pool, stack, true);
+    if (m_cast_type.has_value()) {
+      m_dst->set_base(
+          pool.alloc_single_element_form<CastElement>(nullptr, *m_cast_type, popped.at(1)));
+    } else {
+      m_dst->set_base(popped.at(1));
+    }
+
+    m_dst->mark_popped();
+    m_dst->inline_nested();
+    auto fr = pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst),
+                                                     popped.at(0));
+    fr->mark_popped();
+    stack.push_form_element(fr, true);
+  } else {
+    auto vars = std::vector<Variable>({m_base_var});
+    auto popped = pop_to_forms(vars, env, pool, stack, true);
+    if (m_cast_type.has_value()) {
+      m_dst->set_base(
+          pool.alloc_single_element_form<CastElement>(nullptr, *m_cast_type, popped.at(1)));
+    } else {
+      m_dst->set_base(popped.at(0));
+    }
+    m_dst->mark_popped();
+    m_dst->inline_nested();
+    auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_expr, m_my_idx);
+    val->mark_popped();
+    auto fr = pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst), val);
+    fr->mark_popped();
+    stack.push_form_element(fr, true);
+  }
 }
 
 ///////////////////
@@ -1272,17 +1346,12 @@ void DerefElement::update_from_stack(const Env& env,
                                      FormStack& stack,
                                      std::vector<FormElement*>* result,
                                      bool allow_side_effects) {
+  mark_popped();
   // todo - update var tokens from stack?
   m_base->update_children_from_stack(env, pool, stack, allow_side_effects);
 
   // merge nested ->'s
-  auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
-  if (as_deref) {
-    if (!m_is_addr_of && !as_deref->is_addr_of()) {
-      m_tokens.insert(m_tokens.begin(), as_deref->tokens().begin(), as_deref->tokens().end());
-      m_base = as_deref->m_base;
-    }
-  }
+  inline_nested();
 
   if (m_tokens.size() >= 3) {
     auto& method_name = m_tokens.at(m_tokens.size() - 1);
@@ -1329,6 +1398,16 @@ void DerefElement::update_from_stack(const Env& env,
     result->push_back(method_op);
   } else {
     result->push_back(this);
+  }
+}
+
+void DerefElement::inline_nested() {
+  auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
+  if (as_deref) {
+    if (!m_is_addr_of && !as_deref->is_addr_of()) {
+      m_tokens.insert(m_tokens.begin(), as_deref->tokens().begin(), as_deref->tokens().end());
+      m_base = as_deref->m_base;
+    }
   }
 }
 
@@ -2136,20 +2215,13 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
                           true);
 }
 
-void SimpleAtomElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
-  stack.push_form_element(this, true);
-}
-
 void SimpleAtomElement::update_from_stack(const Env&,
                                           FormPool&,
                                           FormStack&,
                                           std::vector<FormElement*>* result,
                                           bool) {
+  mark_popped();
   result->push_back(this);
-}
-
-void SimpleExpressionElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
-  stack.push_form_element(this, true);
 }
 
 void StringConstantElement::update_from_stack(const Env&,
