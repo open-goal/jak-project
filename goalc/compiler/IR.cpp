@@ -117,7 +117,7 @@ void regset_common(emitter::ObjectGenerator* gen,
     } else {
       gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
     }
-  } else if (src_class == RegClass::FLOAT && dst_class == RegClass::FLOAT) {
+  } else if (src_class == RegClass::FLOAT && dst_class == RegClass::VECTOR_FLOAT) {
     if (src_reg == dst_reg) {
       // eliminate move
       gen->add_instr(IGen::null(), irec);
