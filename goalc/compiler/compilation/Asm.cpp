@@ -282,7 +282,6 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
   info.reg = RegClass::VECTOR_FLOAT;
   if (as_co) {
     // can do a clever offset here
-    assert(false);
     env->emit_ir<IR_LoadConstOffset>(dest, as_co->offset, as_co->base->to_gpr(env), info, color);
   } else if (as_sv) {
     if (!color) {

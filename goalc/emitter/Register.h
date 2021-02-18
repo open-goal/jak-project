@@ -52,14 +52,14 @@ enum X86_REG : s8 {
   XMM5,
   XMM6,
   XMM7,
-  XMM8,
-  XMM9,
-  XMM10,
-  XMM11,
-  XMM12,
-  XMM13,
-  XMM14,
-  XMM15,
+  XMM8,   // saved
+  XMM9,   // saved
+  XMM10,  // saved
+  XMM11,  // saved
+  XMM12,  // saved
+  XMM13,  // saved
+  XMM14,  // saved
+  XMM15,  // saved
 };
 
 class Register {

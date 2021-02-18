@@ -1643,6 +1643,21 @@ void ConstantTokenElement::apply_form(const std::function<void(Form*)>&) {}
 void ConstantTokenElement::collect_vars(VariableSet&) const {}
 void ConstantTokenElement::get_modified_regs(RegSet&) const {}
 
+/////////////////////////////
+// ConstantFloatElement
+/////////////////////////////
+
+ConstantFloatElement::ConstantFloatElement(float value) : m_value(value) {}
+
+void ConstantFloatElement::apply(const std::function<void(FormElement*)>&) {}
+void ConstantFloatElement::apply_form(const std::function<void(Form*)>&) {}
+void ConstantFloatElement::collect_vars(VariableSet&) const {}
+void ConstantFloatElement::get_modified_regs(RegSet&) const {}
+
+goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
+  return goos::Object::make_float(m_value);
+}
+
 StorePlainDeref::StorePlainDeref(DerefElement* dst,
                                  SimpleExpression expr,
                                  int my_idx,

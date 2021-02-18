@@ -111,7 +111,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
 
-  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, hints));
+  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, hints, {}));
 
   test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
 

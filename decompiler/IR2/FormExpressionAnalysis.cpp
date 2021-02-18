@@ -946,7 +946,8 @@ void SetFormFormElement::push_to_stack(const Env&, FormPool&, FormStack& stack) 
 }
 
 void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  auto sym = pool.alloc_single_element_form<ConstantTokenElement>(nullptr, m_sym_name);
+  auto sym = pool.alloc_single_element_form<SimpleExpressionElement>(
+      nullptr, SimpleAtom::make_sym_val(m_sym_name).as_expr(), m_my_idx);
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
@@ -2311,6 +2312,15 @@ void CondNoElseElement::update_from_stack(const Env&,
 }
 
 void ConstantTokenElement::update_from_stack(const Env&,
+                                             FormPool&,
+                                             FormStack&,
+                                             std::vector<FormElement*>* result,
+                                             bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void ConstantFloatElement::update_from_stack(const Env&,
                                              FormPool&,
                                              FormStack&,
                                              std::vector<FormElement*>* result,

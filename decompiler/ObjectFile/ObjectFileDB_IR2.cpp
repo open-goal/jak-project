@@ -283,7 +283,8 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         attempted_functions++;
         // try type analysis here.
         auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
-        if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints)) {
+        auto label_types = get_config().label_types[data.to_unique_name()];
+        if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints, label_types)) {
           successful_functions++;
         } else {
           func.warnings.type_prop_warning("Type analysis failed");

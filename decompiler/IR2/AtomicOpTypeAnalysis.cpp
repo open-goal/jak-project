@@ -142,6 +142,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return in_type;
     }
     case Kind::FPR_TO_GPR:
+      return m_args[0].get_type(input, env, dts);
     case Kind::DIV_S:
     case Kind::SUB_S:
     case Kind::MUL_S:
@@ -517,6 +518,12 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         // 8 byte integer constants are always loaded from a static pool
         // this could technically hide loading a different type from inside of a static basic.
         return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
+      }
+
+      auto label_name = env.file->labels.at(src.label()).name;
+      auto hint = env.label_types().find(label_name);
+      if (hint != env.label_types().end()) {
+        return TP_Type::make_from_ts(env.dts->parse_type_spec(hint->second.type_name));
       }
     }
   }

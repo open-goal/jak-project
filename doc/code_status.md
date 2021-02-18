@@ -29,3 +29,30 @@
 
 ## `gstate`:
 - Doing a `go` from a non-main thread of the process that is changing state is implemented a tiny bit differently. I don't think it should matter.
+
+# ENGINE
+
+## `types-h`:
+- Just some bitfield types.
+
+## `vu-macros`:
+- Empty
+
+## `math`:
+- The VU random generator has been rewritten, it used the PS2's (very bad) random hardware
+- The "31 bit" integer random generator was rewritten, it used very strange inline assembly.
+
+## `vector-h`:
+- Has some very simple, manually rewritten VU functions
+
+## `gravity-h`:
+- Empty
+
+## `matrix-h`:
+- `matrix-copy!` is a good example of where the OpenGOAL compiler's register allocator does poorly.
+
+## `quaternion-h`:
+- No comments
+
+## `euler-h`:
+- Uses boxed arrays
