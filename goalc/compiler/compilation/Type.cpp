@@ -884,7 +884,7 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     return compile_static_new(form, type, rest, env);
   } else if (allocation == "stack") {
     return compile_stack_new(form, type, rest, env, true);
-  } else if (allocation == "stack-no-constructor") {
+  } else if (allocation == "stack-no-clear") {
     return compile_stack_new(form, type, rest, env, false);
   }
 

@@ -5,3 +5,506 @@
 ;; name in dgo: trigonometry
 ;; dgos: GAME, ENGINE
 
+;; The "degrees" unit stores an angle in 65,536ths of a full rotation.
+;; Use the ~r format specifier to print degrees.
+;; In general, functions which use "degrees" will only be accurate to one 65,536th of a rotation.
+
+;; convert degrees to "degrees"
+(defmacro degrees (value)
+  `(* (/ (the float ,value) 360.0)
+      65536.0
+      )
+  )
+
+(defun radmod ((arg0 float))
+  "Wrap arg0 to be within (-pi, pi)"
+  (local-vars (f0-1 float))
+  (set! f0-1 (+ 3.14159250 arg0))
+  (if (< 0.0 f0-1)
+      (+ -3.14159250 (- f0-1 (* (the float (the int (/ f0-1 6.28318501))) 6.28318501)))
+      (+ 3.14159250 (- f0-1 (* (the float (the int (/ f0-1 6.28318501))) 6.28318501)))
+      )
+  )
+
+
+(defun deg- ((arg0 float) (arg1 float))
+  "Compute arg0-arg1, unwrapped.
+   Result should be in the range (-180, 180)"
+  (the float (sar (- (shl (the int arg0) 48)
+                     (shl (the int arg1) 48))
+                  48)
+       )
+  )
+
+(defun deg-diff ((arg0 float) (arg1 float))
+  "Very similar to the function above, but computes arg1 - arg0"
+  (the float (sar (- (shl (the int arg1) 48)
+                     (shl (the int arg0) 48))
+                  48)
+       )
+  )
+
+(defun deg-seek ((in float) (target float) (max-diff float))
+  "Move in toward target by at most max-diff"
+  (local-vars
+   (in-int int)
+   (target-int int)
+   (max-diff-int int)
+   (diff int)
+   (abs-diff int)
+   )
+  (set! in-int (shl (the int in) 48))
+  (set! target-int (shl (the int target) 48))
+  (set! max-diff-int (shl (the int max-diff) 48))
+  (set! diff (- target-int in-int))
+  (set! abs-diff (abs diff))
+  (the float
+       (sar (cond
+              ((< abs-diff 0) ;; ??
+               (+ in-int max-diff-int)
+               )
+              ((>= max-diff-int abs-diff)
+               target-int
+               )
+              ((>= diff 0)
+               (+ in-int max-diff-int)
+               )
+              (else
+               (- in-int max-diff-int)
+               )
+              )
+            48
+            )
+       )
+  )
+
+(defun deg-seek-smooth ((in float) (target float) (max-diff float) (amount float))
+  "Step amount of the way from in to target, by at most max-diff"
+  (local-vars (step float))
+  ;; how much we want to go
+  (set! step (* (deg- target in) amount))
+  ;; can we make it in one go?
+  (if (< max-diff (fabs step))
+      ;; nope, saturate.
+      (if (>= step 0.00000000)
+          (set! step max-diff)
+          (set! step (- max-diff))
+          )
+      )
+  (+ in step)
+  )
+
+(defun deg-lerp-clamp ((min-val float) (max-val float) (in float))
+  "Map [0, 1] to min-val, max-val, handling wrapping and saturating."
+  (cond
+    ((>= 0.00000000 in)
+     min-val
+     )
+    ((>= in 1.00000000)
+     max-val
+     )
+    (else
+     (the float
+          (sar (shl (the int (+ min-val
+                                (* in (deg-diff min-val max-val))))
+                    48)
+               48)
+          )
+     )
+    )
+  )
+
+;; create a static array with the given values, interpreted as floats.
+(defmacro make-float-table (name size vals)
+  `(define ,name (new 'static 'boxed-array float ,size
+                      ,@(apply (lambda (x) `(the-as float ,x))  vals)))
+  )
+
+;; table[x] = 1/(2^x)
+(make-float-table
+ binary-table
+ 32
+ (#x3f800000 ;; 1.0
+  #x3f000000 ;; 0.5
+  #x3e800000 ;; 0.25
+  #x3e000000 ;; ...
+  #x3d800000
+  #x3d000000
+  #x3c800000
+  #x3c000000
+  #x3b800000
+  #x3b000000
+  #x3a800000
+  #x3a000000
+  #x39800000
+  #x39000000
+  #x38800000
+  #x38000000
+  #x37800000
+  #x37000000
+  #x36800000
+  #x36000000
+  #x35800000
+  #x35000000
+  #x34800000
+  #x34000000
+  #x33800000
+  #x33000000
+  #x32800000
+  #x32000000
+  #x31800000
+  #x31000000
+  #x30800000
+  #x30000000
+  )
+ )
+
+;; not sure what these values are yet.
+(make-float-table
+ sincos-table
+ 32
+ (#x3f490fdb
+  #x3eed6338
+  #x3e7adbb0
+  #x3dfeadd5
+  #x3d7faade
+  #x3cffeaae
+  #x3c7ffaab
+  #x3bfffeab
+  #x3b7fffab
+  #x3affffeb
+  #x3a7ffffb
+  #x39fffffe
+  #x39800000
+  #x39000000
+  #x38800000
+  #x38000000
+  #x37800000
+  #x37000000
+  #x36800000
+  #x36000000
+  #x35800000
+  #x35000000
+  #x34800000
+  #x34000000
+  #x33800000
+  #x33000000
+  #x32800000
+  #x32000000
+  #x31800000
+  #x31000000
+  #x30800000
+  #x30000000
+  )
+ )
+
+(defun sin ((arg0 float))
+  "Compute the sine of an angle. Unwraps it."
+  (local-vars
+   (f0-1 float)
+   (f0-3 float)
+   (f0-4 float)
+   (f1-4 float)
+   (f1-5 float)
+   (f1-6 float)
+   (f1-7 float)
+   (f2-0 float)
+   (f2-1 float)
+   (f2-2 float)
+   (f2-3 float)
+   )
+  (set! f2-0 (* 0.000095874 (the float (sar (shl (the int arg0) 48) 48))))
+  (set! f0-1 f2-0)
+  (set! f1-4 (* 0.999997973 f2-0))
+  (set! f0-3 (* f2-0 f2-0))
+  (set! f2-1 (* f2-0 f0-3))
+  (set! f1-5 (+ f1-4 (* -0.166660145 f2-1)))
+  (set! f2-2 (* f2-1 f0-3))
+  (set! f1-6 (+ f1-5 (* 0.008326521 f2-2)))
+  (set! f2-3 (* f2-2 f0-3))
+  (set! f1-7 (+ f1-6 (* -0.000195624 f2-3)))
+  (set! f0-4 (* f2-3 f0-3))
+  (+ f1-7 (* 0.000002304 f0-4))
+  )
+
+(defun sin-rad ((arg0 float))
+  "Compute the sine of an angle in radians.
+   No unwrap is done, should be in -pi, pi"
+  (local-vars
+   (f1-0 float)
+   (f2-0 float)
+   (f3-0 float)
+   (f4-0 float)
+   (f5-0 float)
+   (f6-0 float)
+   (f7-0 float)
+   (f8-0 float)
+   (f9-0 float)
+   (f10-0 float)
+   (f11-0 float)
+   (acc float)
+   )
+  (set! f1-0 (* arg0 arg0))
+  (set! f7-0 0.999997973)
+  (set! f8-0 -0.166660145)
+  (set! f2-0 (* arg0 f1-0))
+  (set! f3-0 (* f1-0 f1-0))
+  (set! f9-0 0.008326521)
+  (set! f4-0 (* f2-0 f1-0))
+  (set! f5-0 (* f3-0 f2-0))
+  (set! f10-0 -0.000195624)
+  (set! f6-0 (* f4-0 f3-0))
+  (set! f11-0 0.000002304)
+  ;;(.mula.s arg0 f7-0)
+  (set! acc (* arg0 f7-0))
+  ;;(.madda.s f2-0 f8-0)
+  (set! acc (+ acc (* f2-0 f8-0)))
+  ;;(.madda.s f4-0 f9-0)
+  (set! acc (+ acc (* f4-0 f9-0)))      
+  ;;(.madda.s f5-0 f10-0)
+  (set! acc (+ acc (* f5-0 f10-0)))
+  ;;(.madd.s f12-0 f6-0 f11-0)
+  (+ acc (* f6-0 f11-0))
+  )
+
+;; taylor series coefficients for sine approximation
+(define *sin-poly-vec* (new 'static 'vector
+                            :x (the-as float #xbe2aa8f5) ;; -1/3!
+                            :y (the-as float #x3c086bf6) ;; 1/5!
+                            :z (the-as float #xb94d2072) ;; -1/7!
+                            :w (the-as float #x361aa27f) ;; 1/9?
+                            )
+  )
+
+;; 
+(define *sin-poly-vec2* (new 'static 'vector
+                             :x (the-as float #x3f7fffde)
+                             :y 0.0
+                             :z 0.0
+                             :w 0.0
+                             )
+  )
+
+(defun vector-sin-rad! ((dst vector) (src vector))
+  "Taylor series approximation of sine on all 4 elements in a vector.
+   Inputs should be in radians, in -pi to pi.
+   Somehow their coefficients are a little bit off.
+   Like the first coefficient, which should obviously be 1, is not quite 1."
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         (vf10 :class vf)
+         (acc :class vf))
+    ;; (.lqc2 vf1 0 arg1)
+    (.lvf vf1 src)
+    ;; (.vmul.xyzw vf3 vf1 vf1)
+    (.mul.vf vf3 vf1 vf1)
+    ;; (set! v1-0 *sin-poly-vec2*)
+    ;; (.lqc2 vf10 0 v1-0)
+    (.lvf vf10 *sin-poly-vec2*)
+    ;; (set! v1-1 *sin-poly-vec*)
+    ;; (.lqc2 vf9 0 v1-1)
+    (.lvf vf9 *sin-poly-vec*)
+    ;; (.vmul.xyzw vf4 vf3 vf1)
+    (.mul.vf vf4 vf3 vf1)
+    ;; (.vmul.xyzw vf5 vf3 vf3)
+    (.mul.vf vf5 vf3 vf3)
+    ;; (.vmulax.xyzw acc vf1 vf10)
+    (.mul.x.vf acc vf1 vf10)
+    ;; (.vmul.xyzw vf6 vf4 vf3)
+    (.mul.vf vf6 vf4 vf3)
+    ;; (.vmul.xyzw vf7 vf5 vf4)
+    (.mul.vf vf7 vf5 vf4)
+    ;; (.vmaddax.xyzw acc vf4 vf9)
+    (.add.mul.x.vf acc vf4 vf9 acc)
+    ;; (.vmul.xyzw vf8 vf6 vf5)
+    (.mul.vf vf8 vf6 vf5)
+    ;; (.vmadday.xyzw acc vf6 vf9)
+    (.add.mul.y.vf acc vf6 vf9 acc)
+    ;; (.vmaddaz.xyzw acc vf7 vf9)
+    (.add.mul.z.vf acc vf7 vf9 acc)
+    ;; (.vmaddw.xyzw vf2 vf8 vf9)
+    (.add.mul.w.vf vf2 vf8 vf9 acc)
+    ;; (.sqc2 vf2 0 arg0)
+    (.svf dst vf2)
+    dst
+    ;; arg0
+    )
+  )
+
+(defun cos-rad ((arg0 float))
+  "Cosine with taylor series. Input is in radians, in -pi, pi"
+  (local-vars
+   (f1-0 float)
+   (f3-0 float)
+   (f4-0 float)
+   (f5-0 float)
+   (f7-0 float)
+   (f8-0 float)
+   (f9-0 float)
+   (f10-0 float)
+   (f11-0 float)
+   (acc float)
+   )
+  (set! f1-0 (* arg0 arg0))
+  (set! f7-0 1.000000000)
+  (set! f8-0 -0.499980032)
+  (set! f3-0 (* f1-0 f1-0))
+  (set! f9-0 0.041620404)
+  (set! f10-0 -0.001363641)
+  (set! f4-0 (* f3-0 f1-0))
+  (set! f5-0 (* f3-0 f3-0))
+  (set! f11-0 0.000020171)
+  ;;(.mula.s f7-0 f7-0)
+  (set! acc (* f7-0 f7-0))
+  ;;(.madda.s f8-0 f1-0)
+  (set! acc (+ acc (* f8-0 f1-0)))      
+  ;;(.madda.s f9-0 f3-0)
+  (set! acc (+ acc (* f9-0 f3-0)))
+  ;;(.madda.s f10-0 f4-0)
+  (set! acc (+ acc (* f10-0 f4-0)))
+  ;;(.madd.s f12-0 f11-0 f5-0)
+  (+ acc (* f11-0 f5-0))
+  ;;(the-as float f12-0)
+  )
+
+
+(define *cos-poly-vec*
+    (new 'static 'vector
+         :x (the-as float #xbefffd62)
+         :y (the-as float #x3d2a7a28)
+         :z (the-as float #xbab2bc31)
+         :w (the-as float #x37a933eb)
+         )
+  )
+
+(defun vector-cos-rad! ((dst vector) (src vector))
+  "Compute the cosine of all 4 vector elements.
+   Radians, with no wrapping. Uses taylor series with 4 coefficients."
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf9 :class vf)
+         (acc :class vf))
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    ;;(.lqc2 vf1 0 arg1)
+    (.lvf vf1 src)
+    ;;(.vsub.xyzw vf2 vf2 vf2)
+    (.xor.vf vf2 vf2 vf2)
+    ;;(set! v1-0 *cos-poly-vec*)
+    ;;(.lqc2 vf9 0 v1-0)
+    (.lvf vf9 *cos-poly-vec*)
+    ;;(.vmul.xyzw vf3 vf1 vf1)
+    (.mul.vf vf3 vf1 vf1)
+    ;;(.vaddaw.xyzw acc vf2 vf0)
+    (.add.w.vf acc vf2 vf0)
+    ;;(.vmul.xyzw vf4 vf3 vf3)
+    (.mul.vf vf4 vf3 vf3)
+    ;;(.vmaddax.xyzw acc vf3 vf9)
+    (.add.mul.x.vf acc vf3 vf9 acc)
+    ;;(.vmul.xyzw vf5 vf4 vf3)
+    (.mul.vf vf5 vf4 vf3)
+    ;;(.vmadday.xyzw acc vf4 vf9)
+    (.add.mul.y.vf acc vf4 vf9 acc)
+    ;;(.vmul.xyzw vf6 vf4 vf4)
+    (.mul.vf vf6 vf4 vf4)
+    ;;(.vmaddaz.xyzw acc vf5 vf9)
+    (.add.mul.z.vf acc vf5 vf9 acc)
+    ;;(.vmaddw.xyzw vf2 vf6 vf9)
+    (.add.mul.vf vf2 vf6 vf9 acc)
+    ;;(.sqc2 vf2 0 arg0)
+    (.svf dst vf2)
+    dst
+    )
+  )
+
+
+(defun vector-sincos-rad! ((dst-sin vector) (dst-cos vector) (src vector))
+  "Compute the sine and cosine of each element of src, storing it in dst-sin and dst-cos.
+   This is more efficient than separate calls to sin and cos.
+   Inputs should be radians in -pi to pi."
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (acc :class vf)
+         )
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    ;; (.lqc2 vf1 0 arg2)
+    (.lvf vf1 src)
+    ;; (.vsub.xyzw vf14 vf14 vf14)
+    (.xor.vf vf14 vf14 vf14)
+    ;; (set! v1-0 *sin-poly-vec2*)
+    ;; (.lqc2 vf11 0 v1-0)
+    (.lvf vf11 *sin-poly-vec2*)
+    ;; (.vmul.xyzw vf2 vf1 vf1)
+    (.mul.vf vf2 vf1 vf1)
+    ;; (set! v1-1 *sin-poly-vec*)
+    ;; (.lqc2 vf10 0 v1-1)
+    (.lvf vf10 *sin-poly-vec*)
+    ;; (set! v1-2 *cos-poly-vec*)
+    ;; (.lqc2 vf13 0 v1-2)
+    (.lvf vf13 *cos-poly-vec*)
+    ;; (.vmulax.xyzw acc vf1 vf11)
+    (.mul.x.vf acc vf1 vf11)
+    ;; (.vmul.xyzw vf3 vf2 vf1)
+    (.mul.vf vf3 vf2 vf1)
+    ;; (.vmul.xyzw vf4 vf2 vf2)
+    (.mul.vf vf4 vf2 vf2)
+    ;; (.vmul.xyzw vf5 vf3 vf2)
+    (.mul.vf vf5 vf3 vf2)
+    ;; (.vmul.xyzw vf6 vf3 vf3)
+    (.mul.vf vf6 vf3 vf3)
+    ;; (.vmul.xyzw vf7 vf4 vf3)
+    (.mul.vf vf7 vf4 vf3)
+    ;; (.vmul.xyzw vf8 vf4 vf4)
+    (.mul.vf vf8 vf4 vf4)
+    ;; (.vmul.xyzw vf9 vf5 vf4)
+    (.mul.vf vf9 vf5 vf4)
+    ;; (.vmaddax.xyzw acc vf3 vf10)
+    (.add.mul.x.vf acc vf3 vf10 acc)
+    ;; (.vmadday.xyzw acc vf5 vf10)
+    (.add.mul.y.vf acc vf5 vf10 acc)
+    ;; (.vmaddaz.xyzw acc vf7 vf10)
+    (.add.mul.z.vf acc vf7 vf10 acc)
+    ;; (.vmaddw.xyzw vf12 vf9 vf10)
+    (.add.mul.w.vf vf12 vf9 vf10 acc)
+    ;; (.vaddaw.xyzw acc vf14 vf0)
+    (.add.w.vf acc vf14 vf0)
+    ;; (.vmaddax.xyzw acc vf2 vf13)
+    (.add.mul.x.vf acc vf2 vf13 acc)
+    ;; (.vmadday.xyzw acc vf4 vf13)
+    (.add.mul.y.vf acc vf4 vf13 acc)
+    ;; (.vmaddaz.xyzw acc vf6 vf13)
+    (.add.mul.z.vf acc vf6 vf13 acc)
+    ;; (.vmaddw.xyzw vf14 vf8 vf13)
+    (.add.mul.w.vf vf14 vf8 vf13 acc)
+    ;; (.sqc2 vf12 0 arg0)
+    (.svf dst-sin vf12)
+    ;; (.sqc2 vf14 0 arg1)
+    (.svf dst-cos vf14)
+    ;; (set! v0-0 0)
+    0
+    )
+  )

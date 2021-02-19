@@ -520,6 +520,18 @@ StaticResult Compiler::compile_static(const goos::Object& form, Env* env) {
           throw_compiler_error(form, "Cannot construct a static {}.", ts.print());
         }
       }
+    } else if (first.is_symbol() && first.as_symbol()->name == "the-as") {
+      auto args = get_va(form, rest);
+      va_check(form, args, {{}, {}}, {});
+      auto type = parse_typespec(args.unnamed.at(0));
+      if (type == TypeSpec("float")) {
+        s64 value;
+        if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
+          if (integer_fits(value, 4, false)) {
+            return StaticResult::make_constant_data(value, TypeSpec("float"));
+          }
+        }
+      }
     } else {
       // maybe an enum
       s64 int_out;

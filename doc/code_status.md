@@ -56,3 +56,31 @@
 
 ## `euler-h`:
 - Uses boxed arrays
+
+## `transform-h`:
+- No comments
+
+## `geometry-h`:
+- No comments
+
+## `trigonometry-h`:
+- Empty
+
+## `transformq-h`:
+- Needs stack stuff
+
+## `geometry-h`:
+
+## `bounding-box-h`:
+
+## `matrix`:
+
+## `transform`:
+
+## `quaternion`:
+
+## `euler`:
+
+## `geometry`:
+
+## `trigonometry`:

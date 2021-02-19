@@ -913,6 +913,15 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
+          m_dst.reg().get_kind() == Reg::FPR && src_as_se->expr().get_arg(0).is_int() &&
+          src_as_se->expr().get_arg(0).get_int() == 0) {
+        stack.push_value_to_reg(m_dst,
+                                pool.alloc_single_element_form<ConstantFloatElement>(nullptr, 0.0),
+                                true, m_var_info);
+        return;
+      }
+
+      if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
         // this can happen late in the case of coloring moves which are also gpr -> fpr's
         // so they don't get caught by SetVarOp::get_as_form's check.
