@@ -470,6 +470,31 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
         }
 
         result += '\n';
+      } else if (func.ir2.atomic_ops_succeeded) {
+        auto& ao = func.ir2.atomic_ops;
+        for (size_t i = 0; i < ao->ops.size(); i++) {
+          auto& op = ao->ops.at(i);
+
+          if (!dynamic_cast<FunctionEndOp*>(op.get())) {
+            auto instr_idx = ao->atomic_op_to_instruction.at(i);
+
+            // check for a label to print
+            auto label_id = data.linked_data.get_label_at(seg, (func.start_word + instr_idx) * 4);
+            if (label_id != -1) {
+              result += fmt::format("(label {})\n", data.linked_data.labels.at(label_id).name);
+            }
+            // check for no misaligned labels in code segments.
+            for (int j = 1; j < 4; j++) {
+              assert(data.linked_data.get_label_at(seg, (func.start_word + instr_idx) * 4 + j) ==
+                     -1);
+            }
+
+            // print assembly ops.
+          }
+
+          // print instruction
+          result += fmt::format("  {}\n", op->to_string(func.ir2.env));
+        }
       }
 
       if (func.ir2.print_debug_forms) {

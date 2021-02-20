@@ -1064,7 +1064,7 @@ void LoadVarOp::collect_vars(VariableSet& vars) const {
 /////////////////////////////
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind) : m_kind(kind) {
-  assert(m_kind == Kind::NOP || m_kind == Kind::NO_DELAY);
+  assert(m_kind == Kind::NOP || m_kind == Kind::NO_DELAY || m_kind == Kind::UNKNOWN);
 }
 
 IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0) : m_kind(kind) {
@@ -1129,6 +1129,8 @@ goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels
       assert(m_var[1].has_value());
       return pretty_print::build_list("set!", m_var[0]->to_form(env),
                                       pretty_print::build_list("-", m_var[1]->to_form(env)));
+    case Kind::UNKNOWN:
+      return pretty_print::build_list("unknown-branch-delay!");
     default:
       assert(false);
   }
@@ -1235,6 +1237,78 @@ void BranchOp::update_register_info() {
 void BranchOp::collect_vars(VariableSet& vars) const {
   m_condition.collect_vars(vars);
   m_branch_delay.collect_vars(vars);
+}
+
+/////////////////////////////
+// AsmBranchOp
+/////////////////////////////
+
+AsmBranchOp::AsmBranchOp(bool likely,
+                         IR2_Condition condition,
+                         int label,
+                         std::shared_ptr<AtomicOp> branch_delay,
+                         int my_idx)
+    : AtomicOp(my_idx),
+      m_likely(likely),
+      m_condition(std::move(condition)),
+      m_label(label),
+      m_branch_delay(std::move(branch_delay)) {}
+
+goos::Object AsmBranchOp::to_form(const std::vector<DecompilerLabel>& labels,
+                                  const Env& env) const {
+  std::vector<goos::Object> forms;
+
+  if (m_likely) {
+    forms.push_back(pretty_print::to_symbol("bl!"));
+  } else {
+    forms.push_back(pretty_print::to_symbol("b!"));
+  }
+
+  forms.push_back(m_condition.to_form(labels, env));
+  forms.push_back(pretty_print::to_symbol(labels.at(m_label).name));
+  forms.push_back(m_branch_delay->to_form(labels, env));
+
+  return pretty_print::build_list(forms);
+}
+
+bool AsmBranchOp::operator==(const AtomicOp& other) const {
+  if (typeid(BranchOp) != typeid(other)) {
+    return false;
+  }
+
+  auto po = dynamic_cast<const AsmBranchOp*>(&other);
+  assert(po);
+  return m_likely == po->m_likely && m_condition == po->m_condition && m_label == po->m_label &&
+         m_branch_delay == po->m_branch_delay;
+}
+
+bool AsmBranchOp::is_sequence_point() const {
+  return true;
+}
+
+Variable AsmBranchOp::get_set_destination() const {
+  throw std::runtime_error("AsmBranchOp cannot be treated as a set! operation");
+}
+
+void AsmBranchOp::update_register_info() {
+  m_condition.get_regs(&m_read_regs);
+  m_branch_delay->update_register_info();
+  for (auto x : m_branch_delay->read_regs()) {
+    m_read_regs.push_back(x);
+  }
+
+  for (auto x : m_branch_delay->write_regs()) {
+    m_write_regs.push_back(x);
+  }
+
+  for (auto x : m_branch_delay->clobber_regs()) {
+    m_clobber_regs.push_back(x);
+  }
+}
+
+void AsmBranchOp::collect_vars(VariableSet& vars) const {
+  m_condition.collect_vars(vars);
+  m_branch_delay->collect_vars(vars);
 }
 
 /////////////////////////////

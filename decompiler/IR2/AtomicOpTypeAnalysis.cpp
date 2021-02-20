@@ -876,4 +876,15 @@ void FunctionEndOp::mark_function_as_no_return_value() {
   m_function_has_return_value = false;
 }
 
+TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
+                                                const Env&,
+                                                DecompilerTypeSystem&) {
+  // for now, just make everything uint
+  TypeState output = input;
+  for (auto x : m_write_regs) {
+    output.get(x) = TP_Type::make_from_ts("uint");
+  }
+  return output;
+}
+
 }  // namespace decompiler

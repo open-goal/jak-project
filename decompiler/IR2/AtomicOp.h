@@ -542,6 +542,34 @@ class BranchOp : public AtomicOp {
 };
 
 /*!
+ * This represents an unknown branch instruction that we think was generated from inline assembly
+ */
+class AsmBranchOp : public AtomicOp {
+ public:
+  AsmBranchOp(bool likely,
+              IR2_Condition condition,
+              int label,
+              std::shared_ptr<AtomicOp> branch_delay,
+              int my_idx);
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_sequence_point() const override;
+  Variable get_set_destination() const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
+  void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) override;
+  void collect_vars(VariableSet& vars) const override;
+
+ private:
+  bool m_likely = false;
+  IR2_Condition m_condition;
+  int m_label = -1;
+  std::shared_ptr<AtomicOp> m_branch_delay;
+};
+
+/*!
  * A "special" op has no arguments.
  * NOP, BREAK, SUSPEND,
  */
