@@ -423,9 +423,9 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    )
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   )
   )
 
 (deftype cylinder-flat (structure)
@@ -438,9 +438,9 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    )
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   )
   )
 
 ;; vector-h
@@ -489,52 +489,122 @@
 
 (defmacro set-vector! (v xv yv zv wv)
   `(begin
-      (set! (-> ,v x) ,xv)
-      (set! (-> ,v y) ,yv)
-      (set! (-> ,v z) ,zv)
-      (set! (-> ,v w) ,wv))
+    (set! (-> ,v x) ,xv)
+    (set! (-> ,v y) ,yv)
+    (set! (-> ,v z) ,zv)
+    (set! (-> ,v w) ,wv))
   )
 
 (defun vector-dot ((a vector) (b vector))
   "Take the dot product of two vectors.
    Only does the x, y, z compoments.
    Originally handwritten assembly to space out loads and use FPU accumulator"
-   (declare (inline))
-   (let ((result 0.))
-     (+! result (* (-> a x) (-> b x)))
-     (+! result (* (-> a y) (-> b y)))
-     (+! result (* (-> a z) (-> b z)))
-     result
-     )
-   )
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    result
+    )
+  )
 
 (defun vector-dot-vu ((a vector) (b vector))
   "Take the dot product of two vectors.
    Only does the x, y, z components.
    Originally implemented using VU macro ops"
-   (declare (inline))
-   (vector-dot a b)
+  (declare (inline))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (result :class fpr :type float))
+    ;; (.lqc2 vf1 0 arg0)
+    (.lvf vf1 a)
+    ;; (.lqc2 vf2 0 arg1)
+    (.lvf vf2 b)
+    ;; (.vmul.xyzw vf1 vf1 vf2)
+    (.mul.vf vf1 vf1 vf2)
+    ;; (.vaddy.x vf1 vf1 vf1)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    ;; (.vaddz.x vf1 vf1 vf1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    ;; (.qmfc2.i v0-0 vf1)
+    (.mov result vf1)
+    result
+    )
   )
 
 (defun vector4-dot ((a vector) (b vector))
   "Take the dot product of two vectors.
    Does the x, y, z, and w compoments"
-   (declare (inline))
-   (let ((result 0.))
-     (+! result (* (-> a x) (-> b x)))
-     (+! result (* (-> a y) (-> b y)))
-     (+! result (* (-> a z) (-> b z)))
-     (+! result (* (-> a w) (-> b w)))
-     result
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    (+! result (* (-> a w) (-> b w)))
+    result
+    )
+  )
+
+(defmacro print-vf (vf &key (name #f))
+  `(let ((temp (new 'stack 'vector)))
+     (.svf temp ,vf)
+     ,(if name
+          `(format #t "~A: ~`vector`P~%" (quote ,name) temp)
+          `(format #t "~`vector`P~%" temp)
+          )
      )
-   )
+  )
+
+(defmacro print-vf-hex (vf)
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t "~`vector4w`P~%" temp)
+     )
+  )
 
 (defun vector4-dot-vu ((a vector) (b vector))
   "Take the dot product of two vectors.
    Does the x, y, z, and w compoments
    Originally implemented using VU macro ops"
-   (declare (inline))
-   (vector4-dot a b)
+  (declare (inline))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (acc :class vf)
+         (vf0 :class vf)
+         (result :class fpr :type float))
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    ;; (.lqc2 vf1 0 arg0)
+    (.lvf vf1 a)
+    ;; (.lqc2 vf2 0 arg1)
+    (.lvf vf2 b)
+    
+    ;; (.vmul.xyzw vf1 vf1 vf2)
+    ;; set vf1 to element-wise products
+    (.mul.vf vf1 vf1 vf2)
+    
+    ;; (.vaddw.x vf3 vf0 vf0)
+    ;; set vf3x to 1
+    (.xor.vf vf3 vf3 vf3)
+    (.add.w.vf vf3 vf0 vf0 :mask #b1)
+    
+    ;; (.vmulax.x acc vf3 vf1)
+    ;; acc.x is now (xa * xb)
+    (.mul.x.vf acc vf3 vf1 :mask #b1)
+    
+    ;; (.vmadday.x acc vf3 vf1)
+    ;;  acc += thing
+    (.add.mul.y.vf acc vf3 vf1 acc :mask #b1)
+    
+    ;; (.vmaddaz.x acc vf3 vf1)
+    (.add.mul.z.vf acc vf3 vf1 acc :mask #b1)
+    
+    ;; (.vmaddw.x vf1 vf3 vf1)
+    (.add.mul.w.vf vf1 vf3 vf1 acc :mask #b1)
+    ;; (.qmfc2.i v0-0 vf1)
+    (.mov result vf1)
+    result
+    )
   )
 
 (defun vector+! ((dst vector) (a vector) (b vector))
@@ -544,18 +614,18 @@
          (vf1 :class vf :reset-here #t)
          (vf2 :class vf :reset-here #t)
          (vf3 :class vf :reset-here #t))
-        ; load vectors
-        (.lvf vf2 a)
-        (.lvf vf3 b)
-        ; set vf0 to zero
-        (.xor.vf vf0 vf0 vf0)
-        ; add
-        (.add.vf vf1 vf2 vf3)
-        ; set w = 0
-        (.blend.vf vf1 vf1 vf0 :mask #b1000)
-        ; store
-        (.svf dst vf1)
-        )
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    ;; set vf0 to zero
+    (.xor.vf vf0 vf0 vf0)
+    ;; add
+    (.add.vf vf1 vf2 vf3)
+    ;; set w = 0
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
   dst
   )
 
@@ -566,18 +636,18 @@
          (vf1 :class vf :reset-here #t)
          (vf2 :class vf :reset-here #t)
          (vf3 :class vf :reset-here #t))
-        ; load vectors
-        (.lvf vf2 a)
-        (.lvf vf3 b)
-        ; set vf0 to zero
-        (.xor.vf vf0 vf0 vf0)
-        ; subtract
-        (.sub.vf vf1 vf2 vf3)
-        ; set w = 0
-        (.blend.vf vf1 vf1 vf0 :mask #b1000)
-        ; store
-        (.svf dst vf1)
-        )
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    ;; set vf0 to zero
+    (.xor.vf vf0 vf0 vf0)
+    ;; subtract
+    (.sub.vf vf1 vf2 vf3)
+    ;; set w = 0
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
   dst
   )
 
@@ -585,11 +655,11 @@
   "Set xyzw to 0."
   (declare (inline))
   (rlet ((vf1 :class vf :reset-here #t))
-        ; set vf1 = 0
-        (.xor.vf vf1 vf1 vf1)
-        ; store the 0
-        (.svf dest vf1)
-        )
+    ;; set vf1 = 0
+    (.xor.vf vf1 vf1 vf1)
+    ;; store the 0
+    (.svf dest vf1)
+    )
   dest
   )
 
@@ -606,9 +676,9 @@
    The vectors must be aligned."
   (declare (inline))
   (rlet ((vf1 :class vf :reset-here #t))
-        (.lvf vf1 src)
-        (.svf dst vf1)
-        )
+    (.lvf vf1 src)
+    (.svf dst vf1)
+    )
   dst
   )
 

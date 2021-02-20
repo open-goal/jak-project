@@ -346,6 +346,80 @@ TEST_F(WithGameTests, StaticBoxedArray) {
                          {"4 asdf \"test\" (a b) 0 object 12 12\n0\n"});
 }
 
+TEST_F(WithGameTests, Trig) {
+  runner.run_static_test(env, testCategory, "test-trig.gc",
+                         {"2.0000\n"    // 2 deg
+                          "-45.0000\n"  // -45 deg
+                          "1.2000\n"
+                          "-1.2000\n"
+                          "-2.2831\n"  // wrap
+                          "1.2831\n"   // wrapped
+                          "\n"
+                          "0.4999\n"  // sin
+                          "1.0000\n"
+                          "-0.7071\n"
+                          "-0.8659\n"
+                          "\n"
+                          "0.4999\n"  // sin-rads
+                          "1.0000\n"
+                          "-0.7071\n"
+                          "-0.8660\n"
+                          "\n"
+                          "0.4999 -0.7071 0.8660 -1.0000\n"  // vector-sin-rad!
+                          "\n"
+                          "0.8660\n"  // cos-rads
+                          "0.0000\n"
+                          "0.7071\n"
+                          "0.4999\n"
+                          "\n"
+                          "0.8660 0.7071 0.4999 0.0000\n"  // vector-cos-rad
+                          "\n"
+                          "0.4999 -0.7071 0.8660 -1.0000\n"  // vector-sincos
+                          "0.8660 0.7071 0.4999 0.0000\n"
+                          "\n"
+                          "0.7071 0.7082\n"   // sincos with cosine bug
+                          "-1.0000 0.0047\n"  // sincos, with cosine bug
+                          "\n"
+                          "sincos!\n"
+                          "0.7071 0.7082\n"  // also with cosine bugs
+                          "0.4999 0.8665\n"
+                          "\n"
+                          "0.0174 -3.1066 3.0892 1.2217\n"  // vector-rad<-vector deg
+                          "\n"
+                          "0.0174 -3.1066 3.0892 1.2217\n"  // with div/2
+                          "\n"
+                          "0.0000\n"  // tan
+                          "1.0000\n"
+                          "-0.5773\n"
+                          "\n"
+                          "0.4636\n"  // atan-rad
+                          "0.6154\n"
+                          "\n"
+                          "0.4636\n"  // atan2
+                          "-0.4636\n"
+                          "2.6779\n"
+                          "-2.6779\n"
+                          "\n"
+                          "1.0000\n"  // exp
+                          "1.2214\n"
+                          "2.7182\n"
+                          "3.6692\n"
+                          "31.5003\n"
+                          "0.3678\n"
+                          "0.6065\n"
+                          "0.0963\n"
+                          "\n"
+                          "26.5650\n"
+                          "-35.2603\n"
+                          "139.1074\n"
+                          "-116.5650\n"
+                          "\n"
+                          "44.9913\n"
+                          "-59.9970\n"
+                          "\n"
+                          "0\n"});
+}
+
 // VECTOR FLOAT TESTS
 
 // ---- One off Tests
@@ -383,6 +457,29 @@ TEST_F(WithGameTests, LocalVars) {
 TEST_F(WithGameTests, ShortCircuit) {
   runner.run_static_test(env, testCategory, "test-short-circuit.gc",
                          get_test_pass_string("short-circuit", 13));
+}
+
+TEST_F(WithGameTests, VectorFloatToInt) {
+  runner.run_static_test(env, testCategory, "test-vector-int-float-conversions.gc",
+                         {"1.0000 -2.0000 3.0000 4.0000\n"
+                          "1 -2 3 4\n"
+                          "1.0000 -2.0000 3.0000 4.0000\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, PWShifts) {
+  runner.run_static_test(env, testCategory, "test-pw-shifts.gc",
+                         {"ffffffffaafffff0 ffffffffbbfffff0 ffffffffccfffff0 ffffffffddfffff0\n"
+                          "ffffffffeabffffc ffffffffeefffffc fffffffff33ffffc fffffffff77ffffc\n"
+                          "ffffffffafffff00 ffffffffbfffff00 ffffffffcfffff00 ffffffffdfffff00\n"
+                          "2bffffc0 2fffffc0 33ffffc0 37ffffc0\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, StaticArray) {
+  runner.run_static_test(env, testCategory, "test-static-array.gc",
+                         {"1 2 -10\n"
+                          "0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

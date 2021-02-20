@@ -1419,6 +1419,23 @@ The outer product is computed like so (only x,y,z components are operated on):
 ```
 Wrapper around `vblendps` (VEX xmm128 version) instruction. The `mask` must evaluate to a constant integer at compile time. The integer must be in the range of 0-15.
 
+## `.itof.vf` and `.ftoi.vf`
+```
+(.itof.vf dst src [:mask mask-val] [:color #t|#f])
+(.ftoi.vf dst src [:mask mask-val] [:color #t|#f])
+```
+
+Wrapper around `vcvtdq2ps` and `vcvtps2dq` to convert packed 32-bit signed integers to packed 32-bit floats and back.  The `mask` and `color` arguments behave like other assembly operations.
+
+## `.pw.sra`, `.pw.srl`, and `pw.sll`
+```
+(.pw.sra dst src shift-amount [:mask mask-val] [:color #t|#f])
+(.pw.srl dst src shift-amount [:mask mask-val] [:color #t|#f])
+(.pw.sll dst src shift-amount [:mask mask-val] [:color #t|#f])
+```
+
+Wrapper around `vpsrld`, `vpsrad`, and `vpslld`. Does shifts on each of the 4 32-bit integers in the register.
+
 # Compiler Forms - Unsorted
 
 ## `let`

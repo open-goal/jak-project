@@ -362,6 +362,24 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     }
   }
 
+  if (m_src.is_identity() && m_src.get_arg(0).is_label() &&
+      (m_kind == Kind::FLOAT || m_kind == Kind::SIGNED) && m_size == 4) {
+    // try to see if we're loading a constant
+    auto label = env.file->labels.at(m_src.get_arg(0).label());
+    auto label_name = label.name;
+    auto hint = env.label_types().find(label_name);
+    if (hint != env.label_types().end()) {
+      if (hint->second.is_const && hint->second.type_name == "float") {
+        auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+        assert(word.kind == LinkedWord::PLAIN_DATA);
+        float value;
+        memcpy(&value, &word.data, 4);
+        auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
+        return pool.alloc_element<SetVarElement>(m_dst, float_elt, true);
+      }
+    }
+  }
+
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   auto load = pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
   return pool.alloc_element<SetVarElement>(m_dst, load, true);
@@ -401,6 +419,10 @@ FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) con
 }
 
 FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
+  return pool.alloc_element<AtomicOpElement>(this);
+}
+
+FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
   return pool.alloc_element<AtomicOpElement>(this);
 }
 }  // namespace decompiler

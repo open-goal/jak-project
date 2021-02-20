@@ -42,8 +42,19 @@
 
 (defun matrix-copy! ((dst matrix) (src matrix))
   "Copy src to dst."
-  ;; actual implementation is in assembly, unrolled quad copies, loads/stores spaced out.
-  (dotimes (i 16 dst)
-    (set! (-> dst data i) (-> src data i))
+  (rlet ((r0 :class vf)
+         (r1 :class vf)
+         (r2 :class vf)
+         (r3 :class vf)
+         )
+    (.lvf r0 (&-> src quad 0))
+    (.lvf r1 (&-> src quad 1))
+    (.lvf r2 (&-> src quad 2))
+    (.lvf r3 (&-> src quad 3))
+    (.svf (&-> dst quad 0) r0)
+    (.svf (&-> dst quad 1) r1)
+    (.svf (&-> dst quad 2) r2)
+    (.svf (&-> dst quad 3) r3)
     )
+  dst
   )

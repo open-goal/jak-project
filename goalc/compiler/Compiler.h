@@ -72,6 +72,16 @@ class Compiler {
                             emitter::Register::VF_ELEMENT broadcastElement,
                             Env* env);
 
+  Val* compile_asm_vf_math2(const goos::Object& form,
+                            const goos::Object& rest,
+                            IR_VFMath2Asm::Kind kind,
+                            Env* env);
+
+  Val* compile_asm_vf_math2_imm_u8(const goos::Object& form,
+                                   const goos::Object& rest,
+                                   IR_VFMath2Asm::Kind kind,
+                                   Env* env);
+
   Val* compile_asm_vf_math4_two_operation(const goos::Object& form,
                                           const goos::Object& rest,
                                           IR_VFMath3Asm::Kind first_op_kind,
@@ -149,6 +159,11 @@ class Compiler {
                          const goos::Object* rest,
                          Env* env,
                          bool call_constructor);
+
+  StaticResult fill_static_array(const goos::Object& form,
+                                 const goos::Object& rest,
+                                 bool boxed,
+                                 Env* env);
 
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
@@ -360,6 +375,11 @@ class Compiler {
 
   Val* compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_itof_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_ftoi_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pw_sll(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pw_srl(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms
 

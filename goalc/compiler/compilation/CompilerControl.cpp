@@ -182,6 +182,11 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       printf(" %12s %4.0f", e.first.c_str(), e.second);
     }
     printf("\n");
+  } else {
+    auto total_time = total_timer.getMs();
+    if (total_time > 10.0) {
+      fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
+    }
   }
 
   return get_none();

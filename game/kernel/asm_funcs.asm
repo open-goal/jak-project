@@ -14,6 +14,17 @@ _stack_call_linux:
   pop rax
   ; align stack
   sub rsp, 8
+
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
+
   ; create stack array of arguments
   push r11
   push r10
@@ -23,6 +34,7 @@ _stack_call_linux:
   push rdx
   push rsi
   push rdi
+
   ; set first argument
   mov rdi, rsp
   ; call function
@@ -36,6 +48,17 @@ _stack_call_linux:
   pop r9
   pop r10
   pop r11
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 128
+
   ; restore stack
   add rsp, 8
   ; return!
@@ -47,6 +70,16 @@ _stack_call_win32:
   pop rax
   ; to make sure the stack frame is aligned
   sub rsp, 8
+
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
 
   ; push all registers and create the register array on the stack
   push r11
@@ -76,6 +109,17 @@ _stack_call_win32:
   pop r9
   pop r10
   pop r11
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 128
+
   add rsp, 8
   ret
 

@@ -761,7 +761,8 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   const goos::Object* rest,
                                   Env* env) {
   auto unquoted = unquote(type);
-  if (unquoted.is_symbol() && unquoted.as_symbol()->name == "boxed-array") {
+  if (unquoted.is_symbol() &&
+      (unquoted.as_symbol()->name == "boxed-array" || unquoted.as_symbol()->name == "array")) {
     auto fe = get_parent_env_of_type<FunctionEnv>(env);
     auto sr = compile_static(form, env);
     auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
@@ -884,7 +885,7 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
     return compile_static_new(form, type, rest, env);
   } else if (allocation == "stack") {
     return compile_stack_new(form, type, rest, env, true);
-  } else if (allocation == "stack-no-constructor") {
+  } else if (allocation == "stack-no-clear") {
     return compile_stack_new(form, type, rest, env, false);
   }
 

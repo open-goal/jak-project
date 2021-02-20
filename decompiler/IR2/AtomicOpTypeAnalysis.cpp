@@ -142,6 +142,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return in_type;
     }
     case Kind::FPR_TO_GPR:
+      return m_args[0].get_type(input, env, dts);
     case Kind::DIV_S:
     case Kind::SUB_S:
     case Kind::MUL_S:
@@ -518,6 +519,12 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         // this could technically hide loading a different type from inside of a static basic.
         return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
       }
+
+      auto label_name = env.file->labels.at(src.label()).name;
+      auto hint = env.label_types().find(label_name);
+      if (hint != env.label_types().end()) {
+        return TP_Type::make_from_ts(env.dts->parse_type_spec(hint->second.type_name));
+      }
     }
   }
 
@@ -867,6 +874,17 @@ TypeState FunctionEndOp::propagate_types_internal(const TypeState& input,
 void FunctionEndOp::mark_function_as_no_return_value() {
   m_read_regs.clear();
   m_function_has_return_value = false;
+}
+
+TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
+                                                const Env&,
+                                                DecompilerTypeSystem&) {
+  // for now, just make everything uint
+  TypeState output = input;
+  for (auto x : m_write_regs) {
+    output.get(x) = TP_Type::make_from_ts("uint");
+  }
+  return output;
 }
 
 }  // namespace decompiler
