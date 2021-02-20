@@ -5,11 +5,21 @@
 ;; name in dgo: trigonometry
 ;; dgos: GAME, ENGINE
 
-;; The "degrees" unit stores an angle in 65,536ths of a full rotation.
-;; Use the ~r format specifier to print degrees.
-;; In general, functions which use "degrees" will only be accurate to one 65,536th of a rotation.
+;; The "rotation" unit stores an angle in 65,536ths of a full rotation.
+;; Use the ~r format specifier to print rotations as degrees.
+;; In general, functions which use these units will only be accurate to 65,536, with
+;; the exception of cosine in sincos!, which is slightly wrong.
 
-;; convert degrees to "degrees"
+;; Generally, the functions using "rotation" units have nothing in the name, or "deg" in the name.
+;; These "deg" functions usually handle wrapped angles correctly
+;; Functions using radians have "rad" in the name, and generally only work on -pi to pi
+
+(defglobalconstant FIX_COSINE_BUG #f)
+
+;; 2pi / 2^16
+(defconstant ROT_TO_RAD (the-as float #x38c90fda))
+
+;; convert floating point number of degrees to a rotation.
 (defmacro degrees (value)
   `(* (/ (the float ,value) 360.0)
       65536.0
@@ -17,7 +27,8 @@
   )
 
 (defun radmod ((arg0 float))
-  "Wrap arg0 to be within (-pi, pi)"
+  "Wrap arg0 to be within (-pi, pi), using rotation units.
+   - TODO constants"
   (local-vars (f0-1 float))
   (set! f0-1 (+ 3.14159250 arg0))
   (if (< 0.0 f0-1)
@@ -28,7 +39,7 @@
 
 
 (defun deg- ((arg0 float) (arg1 float))
-  "Compute arg0-arg1, unwrapped.
+  "Compute arg0-arg1, unwrapped, using rotation units.
    Result should be in the range (-180, 180)"
   (the float (sar (- (shl (the int arg0) 48)
                      (shl (the int arg1) 48))
@@ -37,7 +48,7 @@
   )
 
 (defun deg-diff ((arg0 float) (arg1 float))
-  "Very similar to the function above, but computes arg1 - arg0"
+  "Very similar to the function above, but computes arg1 - arg0 instead."
   (the float (sar (- (shl (the int arg1) 48)
                      (shl (the int arg0) 48))
                   48)
@@ -45,7 +56,7 @@
   )
 
 (defun deg-seek ((in float) (target float) (max-diff float))
-  "Move in toward target by at most max-diff"
+  "Move in toward target by at most max-diff, using rotation units"
   (local-vars
    (in-int int)
    (target-int int)
@@ -79,7 +90,7 @@
   )
 
 (defun deg-seek-smooth ((in float) (target float) (max-diff float) (amount float))
-  "Step amount of the way from in to target, by at most max-diff"
+  "Step amount of the way from in to target, by at most max-diff, using rotation units"
   (local-vars (step float))
   ;; how much we want to go
   (set! step (* (deg- target in) amount))
@@ -95,7 +106,7 @@
   )
 
 (defun deg-lerp-clamp ((min-val float) (max-val float) (in float))
-  "Map [0, 1] to min-val, max-val, handling wrapping and saturating."
+  "Map [0, 1] to min-val, max-val, handling wrapping and saturating, using rotation units."
   (cond
     ((>= 0.00000000 in)
      min-val
@@ -121,6 +132,7 @@
   )
 
 ;; table[x] = 1/(2^x)
+;; unused?
 (make-float-table
  binary-table
  32
@@ -160,6 +172,7 @@
  )
 
 ;; not sure what these values are yet.
+;; unused.
 (make-float-table
  sincos-table
  32
@@ -199,7 +212,8 @@
  )
 
 (defun sin ((arg0 float))
-  "Compute the sine of an angle. Unwraps it."
+  "Compute the sine of an angle in rotation units. Unwraps it.
+   - TODO constants"
   (local-vars
    (f0-1 float)
    (f0-3 float)
@@ -213,7 +227,7 @@
    (f2-2 float)
    (f2-3 float)
    )
-  (set! f2-0 (* 0.000095874 (the float (sar (shl (the int arg0) 48) 48))))
+  (set! f2-0 (* ROT_TO_RAD (the float (sar (shl (the int arg0) 48) 48))))
   (set! f0-1 f2-0)
   (set! f1-4 (* 0.999997973 f2-0))
   (set! f0-3 (* f2-0 f2-0))
@@ -229,7 +243,8 @@
 
 (defun sin-rad ((arg0 float))
   "Compute the sine of an angle in radians.
-   No unwrap is done, should be in -pi, pi"
+   No unwrap is done, should be in -pi, pi
+   - TODO constants"
   (local-vars
    (f1-0 float)
    (f2-0 float)
@@ -339,7 +354,8 @@
   )
 
 (defun cos-rad ((arg0 float))
-  "Cosine with taylor series. Input is in radians, in -pi, pi"
+  "Cosine with taylor series. Input is in radians, in -pi, pi.
+   - TODO constants"
   (local-vars
    (f1-0 float)
    (f3-0 float)
@@ -507,4 +523,204 @@
     ;; (set! v0-0 0)
     0
     )
+  )
+
+(defmacro sincos-rad-asm (out x)
+  ;; Compute the sine and cosine of x, store it in the output array
+  ;; this assembly is shared in two functions.
+  `(rlet ((f10 :class fpr :type float) ;; coeff 1.0
+          (f11 :class fpr :type float) ;; coeff -1/3!
+          (f12 :class fpr :type float) ;; coeff 1/5!
+          (f14 :class fpr :type float) ;; coeff -1/7!
+          (f15 :class fpr :type float) ;; coeff 1/9!
+          (f1 :class fpr :type float)  ;; x
+          (f2 :class fpr :type float)  ;; x^2
+          (f3 :class fpr :type float)  ;; x^3
+          (f4 :class fpr :type float)  ;; x^4
+          (f5 :class fpr :type float)  ;; x^5
+          (f6 :class fpr :type float)  ;; x^6
+          (f7 :class fpr :type float)  ;; x^7
+          (f8 :class fpr :type float)  ;; x^8
+          (f9 :class fpr :type float)  ;; x^9
+          (f21 :class fpr :type float)
+          (f22 :class fpr :type float) ;; 0 ?
+          (acc :class fpr :type float) ;; temp
+          (f16 :class fpr :type float) ;; 1.0
+          (f17 :class fpr :type float) ;; cos coeff 1
+          (f18 :class fpr :type float) ;; cos coeff 2
+          (f19 :class fpr :type float) ;; cos coeff 3
+          (f20 :class fpr :type float) ;; cos coeff 4
+          )
+     ;; lui v1, 16255
+     ;; lui a2, -16854
+     ;; ori v1, v1, 65502
+     ;; mtc1 f1, a1
+     (set! f1 ,x)
+     ;; ori a1, a2, 43253
+     ;; sub.s f22, f22, f22
+     (set! f22 (the-as float 0))
+     ;; lui a2, 15368
+     ;; mtc1 f10, v1
+     (set! f10 (the-as float #x3F7FFFDE)) ;; almost 1.0
+     ;; ori v1, a2, 27638
+     ;; mtc1 f11, a1
+     (set! f11 (the-as float #xBE2AA8F5)) ;; -0.166, 1/3!
+     ;; lui a1, -18099
+     ;; mul.s f2, f1, f1
+     (set! f2 (* f1 f1))
+     ;; ori a1, a1, 8306
+     ;; mtc1 f12, v1
+     (set! f12 (the-as float #x3C086BF6)) ;; 1/5!
+     ;; lui v1, 13850
+     ;; mtc1 f14, a1
+     (set! f14 (the-as float #xB94D2072)) ;; 1/7!
+     ;; ori a1, v1, 41599
+     ;; mula.s f1, f10
+     (set! acc (* f1 f10))               ;; x * c_1
+     ;; lui v1, 16256
+     ;; mul.s f3, f2, f1
+     (set! f3 (* f2 f1))                 ;; x^3
+     ;; or v1, v1, r0
+     ;; mul.s f4, f2, f2
+     (set! f4 (* f2 f2))                 ;; x^4
+     ;; lui a2, -16641
+     ;; mtc1 f15, a1
+     (set! f15 (the-as float #x361AA27F)) ;; 1/9!
+     ;; lui a1, -16641 ;; I think this is a typo...
+     ;; or a1, a2, a1  ;; this should set the lower 16 bits.
+     ;; mtc1 f16, v1
+     (set! f16 (the-as float #x3f800000)) ;; 1.0
+     ;; sll r0, r0, 0
+     ;; mtc1 f17, a1
+
+     ;; it looks like they set the lower 16-bits of the x^2
+     ;; coefficient for cosine incorrectly
+     (#cond
+       (FIX_COSINE_BUG
+        ;; the constant used in *cos-poly-vec*
+        (set! f17 (the-as float #xbefffd62))
+        )
+       (#t
+        ;; missing the lower 16 bits.
+        (set! f17 (the-as float #xBEFF0000))
+        )
+       )
+    
+     ;; sll r0, r0, 0
+     ;; mul.s f5, f3, f2
+     (set! f5 (* f3 f2))
+     ;; sll r0, r0, 0
+     ;; mul.s f6, f3, f3
+     (set! f6 (* f3 f3))
+     ;; sll r0, r0, 0
+     ;; mul.s f7, f4, f3
+     (set! f7 (* f4 f3))
+     ;; sll r0, r0, 0
+     ;; mul.s f8, f4, f4
+     (set! f8 (* f4 f4))
+     ;; sll r0, r0, 0
+     ;; mul.s f9, f5, f4
+     (set! f9 (* f5 f4))
+     ;; lui v1, 15658
+     ;; madda.s f3, f11
+     (set! acc (+ acc (* f3 f11)))       ;; add x^3 sine term
+     ;; ori v1, v1, 31272
+     ;; madda.s f5, f12
+     (set! acc (+ acc (* f5 f12)))       ;; add x^5 sine term
+     ;; lui a1, -17742
+     ;; madda.s f7, f14
+     (set! acc (+ acc (* f7 f14)))       ;; add x^7 sine term
+     ;; ori a1, a1, 48177
+     ;; madd.s f21, f9, f15
+     (set! f21 (+ acc (* f9 f15)))       ;; add x^9 sine term
+     ;; lui a2, 14249
+     ;; mtc1 f18, v1
+     (set! f18 (the-as float #x3D2A7A28)) ;; cos coeff
+     ;; ori v1, a2, 13291
+     ;; mtc1 f19, a1
+     (set! f19 (the-as float #xBAB2BC31)) ;; cos coeff
+     ;; sll r0, r0, 0
+     ;; mtc1 f20, v1
+     (set! f20 (the-as float #x37A933EB))
+     ;; sll r0, r0, 0
+     ;; mula.s f16, f16
+     (set! acc (* f16 f16)) ;; acc = 1, constant cos term.
+     ;; sll r0, r0, 0
+     ;; madda.s f2, f17
+     (set! acc (+ acc (* f2 f17)))
+     ;; sll r0, r0, 0
+     ;; madda.s f4, f18
+     (set! acc (+ acc (* f4 f18)))
+     ;; sll r0, r0, 0
+     ;; madda.s f6, f19
+     (set! acc (+ acc (* f6 f19)))
+     ;; sll r0, r0, 0
+     ;; madd.s f22, f8, f20
+     (set! f22 (+ acc (* f8 f20)))
+     ;; sll r0, r0, 0
+     ;; swc1 f21, 0(a0)
+     (set! (-> ,out 0) f21)
+     ;; sll r0, r0, 0
+     ;; swc1 f22, 4(a0)
+     (set! (-> ,out 1) f22)
+     ;; or v0, r0, r0
+     0
+     )
+  )
+
+(defun sincos-rad! ((out (pointer float)) (x float))
+  "Compute the sine and cosine of x, store it in the output array.
+   Has the cosine bug."
+  (sincos-rad-asm out x)
+  )
+
+(defun sincos! ((out (pointer float)) (x float))
+  "Compute the sine and cosine of x, store it in the output array.
+   The input is in rotation units, and is unwrapped properly.
+   Also has the cosine bug"
+  (sincos-rad-asm out (* ROT_TO_RAD (the float (sar (shl (the int x) 48) 48))))
+  )
+
+(defun vector-rad<-vector-deg! ((out vector) (in vector))
+  "TODO, needs more ops"
+  ;(declare (print-asm))
+  (rlet ((rot-to-rad :class vf)
+         (vf1 :class vf))
+    (.mov rot-to-rad (the-as float ROT_TO_RAD))
+    (.lvf vf1 in)
+    (.ftoi.vf vf1 vf1) ;; to int
+    ;; (.p.sll.w in 16)   ;; shifts
+    ;; (.p.sra.w in 16)
+    (.itof.vf vf1 vf1)    ;; to float
+    (.mul.x.vf vf1 vf1 rot-to-rad)
+    (.svf out vf1)
+    )
+  )
+
+;; todo vector-rad<-vector-deg/2!
+
+
+(defun vector-sincos! ((out-sin vector) (out-cos vector) (in vector))
+  "Compute sine and cosine of each element in a vector, in rotation units"
+  (let ((temp (new 'stack-no-clear 'vector)))
+    (vector-rad<-vector-deg! temp in)
+    (vector-sincos-rad! out-sin out-cos temp)
+    )
+  )
+
+(defun-extern cos float float)
+
+(defun tan-rad ((arg0 float))
+  "This function appears to be named wrong and actually operates on rotation units."
+  (/ (sin arg0) (cos arg0))
+  )
+
+(defun cos ((arg0 float))
+  "Cosine of rotation units"
+  (sin (+ 16384.000000 arg0))
+  )
+
+(defun tan ((arg0 float))
+  "Correctly named tangent of rotation units"
+  (/ (sin arg0) (cos arg0))
   )

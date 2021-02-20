@@ -385,6 +385,14 @@ TEST_F(WithGameTests, ShortCircuit) {
                          get_test_pass_string("short-circuit", 13));
 }
 
+TEST_F(WithGameTests, VectorFloatToInt) {
+  runner.run_static_test(env, testCategory, "test-vector-int-float-conversions.gc",
+                         {"1.0000 -2.0000 3.0000 4.0000\n"
+                          "1 -2 3 4\n"
+                          "1.0000 -2.0000 3.0000 4.0000\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

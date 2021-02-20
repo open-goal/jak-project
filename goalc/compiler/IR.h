@@ -546,6 +546,22 @@ class IR_VFMath3Asm : public IR_Asm {
   Kind m_kind;
 };
 
+class IR_VFMath2Asm : public IR_Asm {
+ public:
+  enum class Kind { ITOF, FTOI };
+  IR_VFMath2Asm(bool use_color, const RegVal* dst, const RegVal* src, Kind kind);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+  Kind m_kind;
+};
+
 class IR_BlendVF : public IR_Asm {
  public:
   IR_BlendVF(bool use_color, const RegVal* dst, const RegVal* src1, const RegVal* src2, u8 mask);

@@ -430,6 +430,54 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   return get_none();
 }
 
+Val* Compiler::compile_asm_vf_math2(const goos::Object& form,
+                                    const goos::Object& rest,
+                                    IR_VFMath2Asm::Kind kind,
+                                    Env* env) {
+  auto args = get_va(form, rest);
+  va_check(
+      form, args, {{}, {}},
+      {{"color", {false, goos::ObjectType::SYMBOL}}, {"mask", {false, goos::ObjectType::INTEGER}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
+
+  u8 mask = 0b1111;
+  if (args.has_named("mask")) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
+      throw_compiler_error(form, "The value {} is out of range for a blend mask (0-15 inclusive).",
+                           mask);
+    }
+  }
+
+  // If the entire destination is to be copied, we can optimize out the blend
+  if (mask == 0b1111) {
+    env->emit_ir<IR_VFMath2Asm>(color, dest, src, kind);
+  } else {
+    auto temp_reg = env->make_vfr(dest->type());
+    // Perform the arithmetic operation on the two vectors into a temporary register
+    env->emit_ir<IR_VFMath2Asm>(color, temp_reg, src, kind);
+    // Blend the result back into the destination register using the mask
+    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+  }
+
+  return get_none();
+}
+
+Val* Compiler::compile_asm_itof_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math2(form, rest, IR_VFMath2Asm::Kind::ITOF, env);
+}
+
+Val* Compiler::compile_asm_ftoi_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_vf_math2(form, rest, IR_VFMath2Asm::Kind::FTOI, env);
+}
+
 Val* Compiler::compile_asm_xor_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math3(form, rest, IR_VFMath3Asm::Kind::XOR,
                               emitter::Register::VF_ELEMENT::NONE, env);

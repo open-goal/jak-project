@@ -87,6 +87,8 @@ static const std::unordered_map<
 
         {".div.vf", &Compiler::compile_asm_div_vf},
         {".sqrt.vf", &Compiler::compile_asm_sqrt_vf},
+        {".itof.vf", &Compiler::compile_asm_itof_vf},
+        {".ftoi.vf", &Compiler::compile_asm_ftoi_vf},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},

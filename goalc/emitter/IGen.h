@@ -2339,6 +2339,23 @@ class IGen {
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0b0);
     return instr;
   }
+
+  static Instruction itof_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x5b);  // VCVTDQ2PS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0);
+    return instr;
+  }
+
+  static Instruction ftoi_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x5b);  // VCVTDQ2PS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
+                                VexPrefix::P_66);
+    return instr;
+  }
 };
 }  // namespace emitter
 

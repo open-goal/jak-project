@@ -72,6 +72,11 @@ class Compiler {
                             emitter::Register::VF_ELEMENT broadcastElement,
                             Env* env);
 
+  Val* compile_asm_vf_math2(const goos::Object& form,
+                            const goos::Object& rest,
+                            IR_VFMath2Asm::Kind kind,
+                            Env* env);
+
   Val* compile_asm_vf_math4_two_operation(const goos::Object& form,
                                           const goos::Object& rest,
                                           IR_VFMath3Asm::Kind first_op_kind,
@@ -360,6 +365,8 @@ class Compiler {
 
   Val* compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_itof_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_ftoi_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms
 
