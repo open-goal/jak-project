@@ -1655,7 +1655,17 @@ void ConstantFloatElement::collect_vars(VariableSet&) const {}
 void ConstantFloatElement::get_modified_regs(RegSet&) const {}
 
 goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
-  return goos::Object::make_float(m_value);
+  // return goos::Object::make_float(m_value);
+  int rounded = m_value;
+  bool exact_int = ((float)rounded) == m_value;
+  if (m_value == 0.5 || m_value == -0.5 || m_value == 0.0 || m_value == 1.0 || m_value == -1.0 ||
+      exact_int) {
+    return goos::Object::make_float(m_value);
+  } else {
+    u32 value;
+    memcpy(&value, &m_value, 4);
+    return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", value));
+  }
 }
 
 StorePlainDeref::StorePlainDeref(DerefElement* dst,

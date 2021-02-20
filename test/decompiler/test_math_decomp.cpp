@@ -98,7 +98,7 @@ TEST_F(FormRegressionTest, ExprSeek) {
       "  (set! f2-0 (- arg1 arg0))\n"
       "  (cond\n"
       "   ((>= arg2 (fabs f2-0)) arg1)\n"
-      "   ((>= f2-0 0) (+ arg0 arg2))\n"
+      "   ((>= f2-0 0.000000) (+ arg0 arg2))\n"
       "   (else (- arg0 arg2))\n"
       "   )\n"
       "  )";

@@ -90,6 +90,10 @@ static const std::unordered_map<
         {".itof.vf", &Compiler::compile_asm_itof_vf},
         {".ftoi.vf", &Compiler::compile_asm_ftoi_vf},
 
+        {".pw.sll", &Compiler::compile_asm_pw_sll},
+        {".pw.srl", &Compiler::compile_asm_pw_srl},
+        {".pw.sra", &Compiler::compile_asm_pw_sra},
+
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
         {"begin", &Compiler::compile_begin},

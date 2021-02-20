@@ -393,6 +393,21 @@ TEST_F(WithGameTests, VectorFloatToInt) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, PWShifts) {
+  runner.run_static_test(env, testCategory, "test-pw-shifts.gc",
+                         {"ffffffffaafffff0 ffffffffbbfffff0 ffffffffccfffff0 ffffffffddfffff0\n"
+                          "ffffffffeabffffc ffffffffeefffffc fffffffff33ffffc fffffffff77ffffc\n"
+                          "ffffffffafffff00 ffffffffbfffff00 ffffffffcfffff00 ffffffffdfffff00\n"
+                          "2bffffc0 2fffffc0 33ffffc0 37ffffc0\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, StaticArray) {
+  runner.run_static_test(env, testCategory, "test-static-array.gc",
+                         {"1 2 -10\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

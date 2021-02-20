@@ -18,6 +18,9 @@
 
 ;; 2pi / 2^16
 (defconstant ROT_TO_RAD (the-as float #x38c90fda))
+(defconstant PI (the-as float #x40490fda))
+(defconstant MINUS_PI (the-as float #xc0490fda))
+(defconstant PI_OVER_2 (the-as float #x3fc90fda)) ;; 1.5708
 
 ;; convert floating point number of degrees to a rotation.
 (defmacro degrees (value)
@@ -682,22 +685,57 @@
   )
 
 (defun vector-rad<-vector-deg! ((out vector) (in vector))
-  "TODO, needs more ops"
-  ;(declare (print-asm))
+  "Convert a vector in rotation units to radians, and unwrap.
+   Input can be anything, output will be -2pi to pi."
   (rlet ((rot-to-rad :class vf)
          (vf1 :class vf))
     (.mov rot-to-rad (the-as float ROT_TO_RAD))
     (.lvf vf1 in)
     (.ftoi.vf vf1 vf1) ;; to int
-    ;; (.p.sll.w in 16)   ;; shifts
-    ;; (.p.sra.w in 16)
+    (.pw.sll vf1 vf1 16)   ;; shifts
+    (.pw.sra vf1 vf1 16)
     (.itof.vf vf1 vf1)    ;; to float
     (.mul.x.vf vf1 vf1 rot-to-rad)
     (.svf out vf1)
     )
   )
 
-;; todo vector-rad<-vector-deg/2!
+(defun vector-rad<-vector-deg/2! ((out vector) (in vector))
+  "Divide the input by two, and then convert from rotation units to radians, unwrapping.
+   Not sure why this really needs to be separate the from previous function..."
+  (rlet ((temp :class vf)
+         (vf1 :class vf))
+    ;;(set! v1-0 952700890)
+    ;;(set! a2-0 1056964608)
+    ;;(.lqc2 vf1 0 a1-0)
+    (.lvf vf1 in)
+
+    ;; multiply by 0.5.
+    ;;(.qmtc2.i vf2 a2-0)
+    (.mov temp (the-as float #x3f000000)) ;; 0.5
+    ;;(.vmulx.xyzw vf1 vf1 vf2)
+    (.mul.x.vf vf1 vf1 temp)
+    
+    ;;(.vftoi0.xyzw vf1 vf1)
+    (.ftoi.vf vf1 vf1)
+    ;;(.qmtc2.i vf2 v1-0)
+    ;;(.qmfc2.i v1-1 vf1)
+    ;;(.psllw v1-2 v1-1 16)
+    (.pw.sll vf1 vf1 16)
+    ;;(.psraw v1-3 v1-2 16)
+    (.pw.sra vf1 vf1 16)
+    ;;(.qmtc2.i vf1 v1-3)
+    ;;(.vitof0.xyzw vf1 vf1)
+    (.itof.vf vf1 vf1)
+    ;;(.vmulx.xyzw vf1 vf1 vf2)
+    (.mov temp (the-as float ROT_TO_RAD))
+    (.mul.x.vf vf1 vf1 temp)
+    ;;(.sqc2 vf1 0 arg0)
+    ;;(.qmfc2.i v0-0 vf1)
+    (.svf out vf1)
+    0
+    )
+  )
 
 
 (defun vector-sincos! ((out-sin vector) (out-cos vector) (in vector))
@@ -723,4 +761,474 @@
 (defun tan ((arg0 float))
   "Correctly named tangent of rotation units"
   (/ (sin arg0) (cos arg0))
+  )
+
+(defun atan0 ((arg0 float) (arg1 float))
+  "?"
+  (rlet ((f20 :class fpr :type float)
+         (f21 :class fpr :type float)
+         (f1  :class fpr :type float)
+         (f2  :class fpr :type float)
+         (f3  :class fpr :type float)
+         (f4  :class fpr :type float)
+         (f5  :class fpr :type float)
+         (f6  :class fpr :type float)
+         (f7  :class fpr :type float)
+         (f8  :class fpr :type float)
+         (f9  :class fpr :type float)
+         (f10  :class fpr :type float)
+         (f19 :class fpr :type float)
+         (f11 :class fpr :type float)
+         (f12 :class fpr :type float)
+         (f13 :class fpr :type float)
+         (f14 :class fpr :type float)
+         (f15 :class fpr :type float)
+         (f16 :class fpr :type float)
+         (f17 :class fpr :type float)
+         (f18 :class fpr :type float)
+         (acc :class fpr :type float)
+         )
+    
+    ;;mtc1 f20, a1
+    (set! f20 arg1)
+    ;;mtc1 f21, a0
+    (set! f21 arg0)
+    ;;sub.s f1, f21, f20
+    (set! f1 (- f21 f20))
+    ;;add.s f2, f21, f20
+    (set! f2 (+ f21 f20))
+    ;;div.s f1, f1, f2
+    (set! f1 (/ f1 f2))
+    ;;lwc1 f19, L132(fp)
+    (set! f19 (the-as float #x46000000))
+    ;;lwc1 f11, L140(fp)
+    (set! f11 (the-as float #x4622f97c))
+    ;;lwc1 f12, L151(fp)
+    (set! f12 (the-as float #xc55946e1))
+    ;;lwc1 f13, L120(fp)
+    (set! f13 (the-as float #x450207fd))
+    ;;lwc1 f14, L126(fp)
+    (set! f14 (the-as float #xc4b556ce))
+    ;;lwc1 f15, L113(fp)
+    (set! f15 (the-as float #x447b6ca4))
+    ;;mul.s f2, f1, f1
+    (set! f2 (* f1 f1))
+    ;;lwc1 f16, L142(fp)
+    (set! f16 (the-as float #xc411ca52))
+    ;;lwc1 f17, L118(fp)
+    (set! f17 (the-as float #x43640558))
+    ;;mul.s f3, f1, f2
+    (set! f3 (* f1 f2))
+    ;;mul.s f1, f1, f11
+    (set! f1 (* f1 f11))
+    ;;mul.s f4, f2, f2
+    (set! f4 (* f2 f2))
+    ;;lwc1 f18, L141(fp)
+    (set! f18 (the-as float #xc2292434))
+    ;;mul.s f5, f3, f2
+    (set! f5 (* f3 f2))
+    ;;mul.s f6, f4, f3
+    (set! f6 (* f4 f3))
+    ;;mul.s f7, f5, f4
+    (set! f7 (* f5 f4))
+    ;;mul.s f8, f6, f4
+    (set! f8 (* f6 f4))
+    ;;mul.s f9, f7, f4
+    (set! f9 (* f7 f4))
+    ;;mul.s f10, f8, f4
+    (set! f10 (* f8 f4))
+    ;;adda.s f1, f19
+    (set! acc (+ f1 f19))
+    ;;madda.s f3, f12
+    (set! acc (+ acc (* f3 f12)))
+    
+    ;;madda.s f5, f13
+    (set! acc (+ acc (* f5 f13)))
+    
+    ;;madda.s f6, f14
+    (set! acc (+ acc (* f6 f14)))
+    
+    ;;madda.s f7, f15
+    (set! acc (+ acc (* f7 f15)))
+    
+    ;;madda.s f8, f16
+    (set! acc (+ acc (* f8 f16)))
+    
+    ;;madda.s f9, f17
+    (set! acc (+ acc (* f9 f17)))
+    
+    ;;madd.s f19, f10, f18
+    ;;mfc1 v0, f19
+    (+ acc (* f10 f18))
+    )
+  )
+
+
+(defmacro .adda.s (a b)
+  `(set! acc (+ ,a ,b))
+  )
+
+(defmacro .madda.s (a b)
+  `(set! acc (+ acc (* ,a ,b)))
+  )
+
+(defmacro .madd.s (a b c)
+  `(set! ,a (+ acc (* ,b ,c)))
+  )
+
+(defun atan-series-rad ((arg0 float))
+  "A helper function for atan"
+  (local-vars
+   (f0-1 float)
+   (f1-0 float)
+   (f2-0 float)
+   (f3-0 float)
+   (f4-0 float)
+   (f5-0 float)
+   (f6-0 float)
+   (f7-0 float)
+   (f8-0 float)
+   (f9-0 float)
+   (f10-0 float)
+   (f11-0 float)
+   (f12-0 float)
+   (f13-0 float)
+   (f14-0 float)
+   (f15-0 float)
+   (f16-0 float)
+   (f17-0 float)
+   (f18-0 float)
+   (acc float)
+   (f18-1 float)
+   )
+  (set! f1-0 (* arg0 arg0))
+  (set! f10-0 (the-as float #x3f7ffff5))
+  (set! f11-0 (the-as float #xbeaaa61c))
+  (set! f2-0 (* arg0 f1-0))
+  (set! f3-0 (* f1-0 f1-0))
+  (set! f12-0 (the-as float #x3e4c40a6))
+  (set! f4-0 (* f2-0 f1-0))
+  (set! f5-0 (* f3-0 f2-0))
+  (set! f13-0 (the-as float #xbe0e6c63))
+  (set! f6-0 (* f4-0 f3-0))
+  (set! f7-0 (* f5-0 f3-0))
+  (set! f14-0 (the-as float #x3dc577df))
+  (set! f8-0 (* f6-0 f3-0))
+  (set! f9-0 (* f7-0 f3-0))
+  (set! f15-0 (the-as float #xbd6501c4))
+  (set! f18-0 (the-as float #x3f490fdb))
+  (set! f0-1 (* arg0 f10-0))
+  (set! f16-0 (the-as float #x3cb31652))
+  (set! f17-0 (the-as float #xbb84d7e7))
+  (.adda.s f0-1 f18-0)
+  (.madda.s f2-0 f11-0)
+  (.madda.s f4-0 f12-0)
+  (.madda.s f5-0 f13-0)
+  (.madda.s f6-0 f14-0)
+  (.madda.s f7-0 f15-0)
+  (.madda.s f8-0 f16-0)
+  (.madd.s f18-1 f9-0 f17-0)
+  ;;(the-as float f18-1)
+  f18-1
+  )
+
+
+(defun atan-rad ((arg0 float))
+  "inverse tangent in radians"
+  (atan-series-rad (/ (+ -1.000000 arg0) (+ 1.000000 arg0)))
+  )
+
+(defun sign ((arg0 float))
+  "Returns -1.0, 0.0, or 1.0 depending on the sign of the argument"
+  (cond
+    ((< 0.000000 arg0)
+     1.000000)
+    ((< arg0 0.000000)
+     -1.000000)
+    (else
+     0.000000)
+   )
+  )
+
+(defun atan2-rad ((arg0 float) (arg1 float))
+  (local-vars
+   (f0-6 float)
+   (f0-14 float)
+   (f0-22 float)
+   (f0-28 float)
+   (f30-1 float)
+   (f30-2 float)
+   )
+  (if (= arg1 0.000000)
+      (* PI_OVER_2 (sign arg0))
+      (cond
+        ((and (< arg0 0.000000) (< arg1 0.000000))
+         ;; this was probably an inline call to atan-rad
+         (set! f30-1 MINUS_PI)
+         (set! f0-6 (/ arg0 arg1))
+         (+ f30-1 (atan-series-rad (/ (+ -1.000000 f0-6) (+ 1.000000 f0-6))))
+         )
+        ((< arg0 0.000000)
+         (set! f0-14 (- (/ arg0 arg1)))
+         (- (atan-series-rad (/ (+ -1.000000 f0-14) (+ 1.000000 f0-14))))
+         )
+        ((< arg1 0.000000)
+         (set! f30-2 PI)
+         (set! f0-22 (- (/ arg0 arg1)))
+         (- f30-2 (atan-series-rad (/ (+ -1.000000 f0-22) (+ 1.000000 f0-22))))
+         )
+        (else
+         (set! f0-28 (/ arg0 arg1))
+         (atan-series-rad (/ (+ -1.000000 f0-28) (+ 1.000000 f0-28)))
+         )
+        )
+      )
+  )
+
+;; ????
+(deftype float-type (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+;; magic numbers for exp.
+(define exp-slead 
+    (new 'static 'array float 32
+         (the-as float #x3f800000) 
+         (the-as float #x3f82cd80)
+         (the-as float #x3f85aac0)
+         (the-as float #x3f889800)
+         (the-as float #x3f8b95c0)
+         (the-as float #x3f8ea400)
+         (the-as float #x3f91c3c0)
+         (the-as float #x3f94f4c0)
+         (the-as float #x3f9837c0)
+         (the-as float #x3f9b8d00)
+         (the-as float #x3f9ef500)
+         (the-as float #x3fa27040)
+         (the-as float #x3fa5fec0)
+         (the-as float #x3fa9a140)
+         (the-as float #x3fad5800)
+         (the-as float #x3fb123c0)
+         (the-as float #x3fb504c0)
+         (the-as float #x3fb8fb80)
+         (the-as float #x3fbd0880)
+         (the-as float #x3fc12c40)
+         (the-as float #x3fc56700)
+         (the-as float #x3fc9b980)
+         (the-as float #x3fce2480)
+         (the-as float #x3fd2a800)
+         (the-as float #x3fd744c0)
+         (the-as float #x3fdbfb80)
+         (the-as float #x3fe0ccc0)
+         (the-as float #x3fe5b900)
+         (the-as float #x3feac0c0)
+         (the-as float #x3fefe480)
+         (the-as float #x3ff52540)
+         (the-as float #x3ffa8380)
+         )
+  )
+
+(define exp-strail
+    (new 'static 'array float 32
+         (the-as float #x0) 
+         (the-as float #x35531585)
+         (the-as float #x34d9f312)
+         (the-as float #x35e8092e)
+         (the-as float #x3471f546)
+         (the-as float #x36e62d17)
+         (the-as float #x361b9d59)
+         (the-as float #x36bea3fc)
+         (the-as float #x36c14637)
+         (the-as float #x36e6e755)
+         (the-as float #x36c98247)
+         (the-as float #x34c0c312)
+         (the-as float #x36354d8b)
+         (the-as float #x3655a754)
+         (the-as float #x36fba90b)
+         (the-as float #x36d6074b)
+         (the-as float #x36cccfe7)
+         (the-as float #x36bd1d8c)
+         (the-as float #x368e7d60)
+         (the-as float #x35cca667)
+         (the-as float #x36a84554)
+         (the-as float #x36f619b9)
+         (the-as float #x35c151f8)
+         (the-as float #x366c8f89)
+         (the-as float #x36f32b5a)
+         (the-as float #x36de5f6c)
+         (the-as float #x36776155)
+         (the-as float #x355cef90)
+         (the-as float #x355cfba5)
+         (the-as float #x36e66f73)
+         (the-as float #x36f45492)
+         (the-as float #x36cb6dc9)
+         )
+  )
+
+
+;; TODO EXP
+
+(defun atan ((arg0 float) (arg1 float))
+  "atan2, for rotation units"
+  (if
+   (and (= arg1 0.0) (= arg0 0.0))
+   0.000000
+   (cond
+    ((and (< arg1 0.0) (< arg0 0.0))
+     (+ -32768.0 (atan0 (- arg0) (- arg1)))
+     )
+    ((< arg0 0.)
+     (- (atan0 (- arg0) arg1))
+     )
+    ((< arg1 0.)
+     (- 32768.0 (atan0 arg0 (- arg1)))
+     )
+    (else
+     (atan0 arg0 arg1)
+     )
+    )
+   )
+  )
+
+(defun asin ((arg0 float))
+  "Inverse sine. Returns rotation units"
+  (local-vars
+   (v1-1 symbol)
+   (v1-2 float)
+   (v1-4 float)
+   (gp-0 symbol)
+   (f0-0 float)
+   (f0-5 float)
+   (f0-6 float)
+   (f0-8 float)
+   (f1-2 float)
+   )
+  (set! gp-0 '#f)
+  (set! f0-0 0.000000)
+  (when (< arg0 0.000000) (set! arg0 (- arg0)) (set! gp-0 '#t) (set! v1-1 gp-0))
+  (cond
+   ((< 1.000000 arg0) (set! f0-5 (the-as float #x467ffffc)) (set! v1-2 f0-5))
+   (else
+    (set! f0-6 1.000000)
+    (set! f1-2 arg0)
+    (set! f0-8 (sqrtf (- f0-6 (* f1-2 f1-2))))
+    (set! f0-5 (atan0 arg0 f0-8))
+    (set! v1-4 f0-5)
+    )
+   )
+  (if gp-0 (- f0-5) f0-5)
+  )
+
+(defun acos ((arg0 float))
+  "Inverse cosine. Returns rotation units"
+  (- 16384.000000 (asin arg0))
+  )
+
+(defun acos-rad ((arg0 float))
+  "Inverse cosine, returning radians."
+  (local-vars
+   (a1-0 none)
+   (f0-1 float)
+   (f0-3 float)
+   (f0-5 float)
+   (f0-6 float)
+   (f0-8 float)
+   (f0-10 float)
+   (f1-1 float)
+   (f1-6 float)
+   )
+  (cond
+   ((>= arg0 0.000000)
+    (set! f0-1 1.000000)
+    (set! f1-1 arg0)
+    (set! f0-3 (sqrtf (- f0-1 (* f1-1 f1-1))))
+    (set! f0-5 (/ (- f0-3 arg0) (+ f0-3 arg0)))
+    (atan-series-rad f0-5)
+    )
+   (else
+    (set! f0-6 1.000000)
+    (set! f1-6 arg0)
+    (set! f0-8 (sqrtf (- f0-6 (* f1-6 f1-6))))
+    (set! f0-10 (/ (+ f0-8 arg0) (- f0-8 arg0)))
+    (- (the-as float #x40490fda) (atan-series-rad f0-10))
+    )
+   )
+  )
+
+(defun sinerp ((minimum float) (maximum float) (amount float))
+  "map amount to min,max using sine. Kinda weird, usually people use cosine."
+  (lerp minimum maximum (sin (* 16384.000000 amount)))
+  )
+
+(defun sinerp-clamp ((minimum float) (maximum float) (amount float))
+  "Like sinerp, but clamp to min,max"
+  (cond
+   ((>= 0.000000 amount) minimum)
+   ((>= amount 1.000000) maximum)
+   (else (sinerp minimum maximum amount))
+   )
+  )
+
+(defun coserp ((minimum float) (maximum float) (amount float))
+  "Weird lerp with cosine (over 90 degrees?)"
+  (lerp minimum maximum (- 1.000000 (cos (* 16384.000000 amount))))
+  )
+
+(defun coserp-clamp ((minimum float) (maximum float) (amount float))
+  "Weird 90 degree lerp with cosine, clamped to min,max"
+  (cond
+   ((>= 0.000000 amount) minimum)
+   ((>= amount 1.000000) maximum)
+   (else (coserp minimum maximum amount))
+   )
+  )
+
+(defun coserp180 ((minimum float) (maximum float) (amount float))
+  "Classic lerp with cosine"
+  (lerp minimum maximum
+        (* 0.5 (- 1.000000 (cos (* 32768.000000 amount))))
+        )
+  )
+
+(defun coserp180-clamp ((minimum float) (maximum float) (amount float))
+  "Classic coserp with saturation"
+  (cond
+    ((>= 0.000000 amount) minimum)
+    ((>= amount 1.000000) maximum)
+    (else (coserp180 minimum maximum amount))
+    )
+  )
+
+(defun ease-in-out ((total int) (progress int))
+  "Weird coserp like mapping from 0 to 1 as progress goes from 0 to total"
+  (local-vars (v1-0 int) (a0-1 int))
+  (cond
+    ((>= progress total)
+     ;; past the end
+     1.000000
+     )
+    ((<= progress 0)
+     ;; negative progress
+     0.000000
+     )
+    ((begin (set! v1-0 (sar total 1)) (< v1-0 progress))
+     ;; more than half way there!
+     (set! a0-1 (- progress total))
+     (+ 0.500000
+        (* 0.500000 (sin
+                     (- 16384.000000 (/ (* 16384.000000 (the float a0-1)) (the float v1-0)))
+                     )
+           )
+        )
+     )
+    (else
+     ;; less than half way there.
+     (- 0.500000
+        (* 0.500000
+           (cos (/ (* 16384.000000 (the float progress)) (the float v1-0)))
+           )
+        )
+     )
+    )
   )

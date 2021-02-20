@@ -101,14 +101,21 @@ void pop_helper(const std::vector<Variable>& vars,
   std::vector<size_t> submit_reg_to_var;
 
   // build submission for stack
+  std::unordered_map<Register, int, Register::hash> reg_counts;
+  for (auto& v : vars) {
+    reg_counts[v.reg()]++;
+  }
+
   for (size_t var_idx = 0; var_idx < vars.size(); var_idx++) {
     const auto& var = vars.at(var_idx);
     auto& ri = env.reg_use().op.at(var.idx());
     RegSet consumes_to_use = consumes.value_or(ri.consumes);
     if (consumes_to_use.find(var.reg()) != consumes_to_use.end()) {
-      // we consume the register, so it's safe to try popping.
-      submit_reg_to_var.push_back(var_idx);
-      submit_regs.push_back(var.reg());
+      if (reg_counts.at(var.reg()) == 1) {
+        // we consume the register, so it's safe to try popping.
+        submit_reg_to_var.push_back(var_idx);
+        submit_regs.push_back(var.reg());
+      }
     }
   }
 
@@ -1787,6 +1794,15 @@ FormElement* ConditionElement::make_generic(const Env&,
           nullptr, SimpleAtom::make_int_constant(0));
       casted.push_back(zero);
       return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::LEQ_ZERO_SIGNED: {
+      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LEQ),
                                                 casted);
     }
 

@@ -1438,11 +1438,16 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
 // AsmVF2
 ///////////////////////
 
-IR_VFMath2Asm::IR_VFMath2Asm(bool use_color, const RegVal* dst, const RegVal* src, Kind kind)
-    : IR_Asm(use_color), m_dst(dst), m_src(src), m_kind(kind) {}
+IR_VFMath2Asm::IR_VFMath2Asm(bool use_color,
+                             const RegVal* dst,
+                             const RegVal* src,
+                             Kind kind,
+                             std::optional<int64_t> imm)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_kind(kind), m_imm(std::move(imm)) {}
 
 std::string IR_VFMath2Asm::print() {
   std::string function;
+  bool use_imm = false;
   switch (m_kind) {
     case Kind::ITOF:
       function = ".itof.vf";
@@ -1450,11 +1455,30 @@ std::string IR_VFMath2Asm::print() {
     case Kind::FTOI:
       function = ".ftoi.vf";
       break;
+    case Kind::PW_SLL:
+      use_imm = true;
+      function = ".pw.sll";
+      break;
+    case Kind::PW_SRL:
+      use_imm = true;
+      function = ".pw.srl";
+      break;
+    case Kind::PW_SRA:
+      use_imm = true;
+      function = ".pw.sra";
+      break;
     default:
       assert(false);
   }
-  return fmt::format("{}{} {}, {}", function, get_color_suffix_string(), m_dst->print(),
-                     m_src->print());
+
+  if (use_imm) {
+    assert(m_imm.has_value());
+    return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                       m_src->print(), *m_imm);
+  } else {
+    return fmt::format("{}{} {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                       m_src->print());
+  }
 }
 
 RegAllocInstr IR_VFMath2Asm::to_rai() {
@@ -1478,6 +1502,25 @@ void IR_VFMath2Asm::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case Kind::FTOI:
       gen->add_instr(IGen::ftoi_vf(dst, src), irec);
+      break;
+    case Kind::PW_SLL:
+      // you are technically allowed to put values > 32 in here.
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::pw_sll(dst, src, *m_imm), irec);
+      break;
+    case Kind::PW_SRL:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::pw_srl(dst, src, *m_imm), irec);
+      break;
+    case Kind::PW_SRA:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::pw_sra(dst, src, *m_imm), irec);
       break;
     default:
       assert(false);
