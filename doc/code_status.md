@@ -27,5 +27,61 @@
 ## `dgo-h`: **Done**
 - Just type definitions. These don't seem to match the version of DGO files found in the game, so maybe this is outdated? Also GOAL never sees DGOs, they are always processed on the IOP.
 
-## `gstate`:
+## `gstate`: **Done**
 - Doing a `go` from a non-main thread of the process that is changing state is implemented a tiny bit differently. I don't think it should matter.
+
+# ENGINE
+
+## `types-h`: **Done**
+- Just some bitfield types.
+
+## `vu1-macros`: **Done**
+- Empty
+
+## `math`: **Done**
+- The VU random generator has been rewritten, it used the PS2's (very bad) random hardware
+- The "31 bit" integer random generator was rewritten, it used very strange inline assembly.
+
+## `vector-h`: **Done**
+- Has some very simple, manually rewritten VU functions
+
+## `gravity-h`: **Done**
+- Empty
+
+## `bounding-box-h`: **Done**
+
+## `matrix-h`: **Done**
+- `matrix-copy!` is a good example of where the OpenGOAL compiler's register allocator does poorly.
+
+## `quaternion-h`: **Done**
+- No comments
+
+## `euler-h`: **Done**
+- Uses boxed arrays
+
+## `transform-h`: **Done**
+- No comments
+
+## `geometry-h`: **Done**
+- No comments
+
+## `trigonometry-h`: **Done**
+- Empty
+
+## `transformq-h`:
+- Needs stack stuff
+
+## `bounding-box`:
+
+## `matrix`:
+
+## `transform`:
+
+## `quaternion`:
+
+## `euler`:
+
+## `geometry`:
+
+## `trigonometry`: **Done**
+- `sincos!` and `sincos-rad!` have a bug where cosine is slightly off

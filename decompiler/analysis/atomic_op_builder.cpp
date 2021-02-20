@@ -10,6 +10,8 @@ namespace decompiler {
 
 namespace {
 
+std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx);
+
 //////////////////////
 // Register Helpers
 //////////////////////
@@ -376,7 +378,8 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
   if (branch_delay.is_known()) {
     return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
   } else {
-    return nullptr;
+    auto delay_op = std::shared_ptr<AtomicOp>(convert_1(delay, my_idx));
+    return std::make_unique<AsmBranchOp>(likely, condition, dest_label, delay_op, my_idx);
   }
 }
 

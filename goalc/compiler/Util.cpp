@@ -267,6 +267,8 @@ std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
     if (max_length >= 0 && n >= max_length) {
       if (rest_out) {
         *rest_out = *cur;
+      } else {
+        throw std::runtime_error("get_list_as_vector would discard arguments");
       }
       return result;
     }

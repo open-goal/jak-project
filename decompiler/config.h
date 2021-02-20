@@ -15,6 +15,11 @@ struct TypeHint {
   std::string type_name;
 };
 
+struct LabelType {
+  std::string type_name;
+  bool is_const = false;
+};
+
 struct Config {
   int game_version = -1;
   std::vector<std::string> dgo_names;
@@ -46,6 +51,8 @@ struct Config {
       anon_function_types_by_obj_by_id;
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>> function_var_names;
+
+  std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   bool run_ir2 = false;
 };
 

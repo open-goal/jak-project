@@ -44,12 +44,15 @@ void try_apply_hints(int idx,
 }
 }  // namespace
 
-bool Function::run_type_analysis_ir2(const TypeSpec& my_type,
-                                     DecompilerTypeSystem& dts,
-                                     LinkedObjectFile& file,
-                                     const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+bool Function::run_type_analysis_ir2(
+    const TypeSpec& my_type,
+    DecompilerTypeSystem& dts,
+    LinkedObjectFile& file,
+    const std::unordered_map<int, std::vector<TypeHint>>& hints,
+    const std::unordered_map<std::string, LabelType>& label_types) {
   (void)file;
   ir2.env.set_type_hints(hints);
+  ir2.env.set_label_types(label_types);
   // STEP 0 - set decompiler type system settings for this function. In config we can manually
   // specify some settings for type propagation to reduce the strictness of type propagation.
   // TODO - this is kinda hacky so that it works in both unit tests and actual decompilation.

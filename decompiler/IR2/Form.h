@@ -1027,7 +1027,7 @@ class StringConstantElement : public FormElement {
 
 class ConstantTokenElement : public FormElement {
  public:
-  ConstantTokenElement(const std::string& value);
+  explicit ConstantTokenElement(const std::string& value);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1041,6 +1041,24 @@ class ConstantTokenElement : public FormElement {
 
  private:
   std::string m_value;
+};
+
+class ConstantFloatElement : public FormElement {
+ public:
+  explicit ConstantFloatElement(float value);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  float m_value;
 };
 
 class StorePlainDeref : public FormElement {

@@ -107,6 +107,11 @@ class Env {
     return m_var_names.eliminated_move_op_ids.find(op_id) !=
            m_var_names.eliminated_move_op_ids.end();
   }
+  const std::unordered_map<std::string, LabelType>& label_types() const { return m_label_types; }
+
+  void set_label_types(const std::unordered_map<std::string, LabelType>& types) {
+    m_label_types = types;
+  }
 
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
@@ -129,5 +134,6 @@ class Env {
 
   std::unordered_map<int, std::vector<TypeHint>> m_typehints;
   std::unordered_map<std::string, std::string> m_var_remap;
+  std::unordered_map<std::string, LabelType> m_label_types;
 };
 }  // namespace decompiler

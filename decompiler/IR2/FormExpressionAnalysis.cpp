@@ -101,14 +101,21 @@ void pop_helper(const std::vector<Variable>& vars,
   std::vector<size_t> submit_reg_to_var;
 
   // build submission for stack
+  std::unordered_map<Register, int, Register::hash> reg_counts;
+  for (auto& v : vars) {
+    reg_counts[v.reg()]++;
+  }
+
   for (size_t var_idx = 0; var_idx < vars.size(); var_idx++) {
     const auto& var = vars.at(var_idx);
     auto& ri = env.reg_use().op.at(var.idx());
     RegSet consumes_to_use = consumes.value_or(ri.consumes);
     if (consumes_to_use.find(var.reg()) != consumes_to_use.end()) {
-      // we consume the register, so it's safe to try popping.
-      submit_reg_to_var.push_back(var_idx);
-      submit_regs.push_back(var.reg());
+      if (reg_counts.at(var.reg()) == 1) {
+        // we consume the register, so it's safe to try popping.
+        submit_reg_to_var.push_back(var_idx);
+        submit_regs.push_back(var.reg());
+      }
     }
   }
 
@@ -913,6 +920,15 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
+          m_dst.reg().get_kind() == Reg::FPR && src_as_se->expr().get_arg(0).is_int() &&
+          src_as_se->expr().get_arg(0).get_int() == 0) {
+        stack.push_value_to_reg(m_dst,
+                                pool.alloc_single_element_form<ConstantFloatElement>(nullptr, 0.0),
+                                true, m_var_info);
+        return;
+      }
+
+      if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
         // this can happen late in the case of coloring moves which are also gpr -> fpr's
         // so they don't get caught by SetVarOp::get_as_form's check.
@@ -946,7 +962,8 @@ void SetFormFormElement::push_to_stack(const Env&, FormPool&, FormStack& stack) 
 }
 
 void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
-  auto sym = pool.alloc_single_element_form<ConstantTokenElement>(nullptr, m_sym_name);
+  auto sym = pool.alloc_single_element_form<SimpleExpressionElement>(
+      nullptr, SimpleAtom::make_sym_val(m_sym_name).as_expr(), m_my_idx);
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
@@ -1780,6 +1797,15 @@ FormElement* ConditionElement::make_generic(const Env&,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::LEQ_ZERO_SIGNED: {
+      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LEQ),
+                                                casted);
+    }
+
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED: {
       auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
       auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
@@ -2311,6 +2337,15 @@ void CondNoElseElement::update_from_stack(const Env&,
 }
 
 void ConstantTokenElement::update_from_stack(const Env&,
+                                             FormPool&,
+                                             FormStack&,
+                                             std::vector<FormElement*>* result,
+                                             bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void ConstantFloatElement::update_from_stack(const Env&,
                                              FormPool&,
                                              FormStack&,
                                              std::vector<FormElement*>* result,

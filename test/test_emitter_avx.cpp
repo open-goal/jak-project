@@ -322,3 +322,53 @@ TEST(EmitterAVX, RIP) {
   tester.emit(IGen::loadvf_rip_plus_s32(XMM0 + 13, -123));
   EXPECT_EQ(tester.dump_to_hex_string(true), "C5F8281D85FFFFFFC578282D85FFFFFF");
 }
+
+TEST(EmitterAVX, ITOF) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::itof_vf(XMM0 + 3, XMM0 + 4));
+  tester.emit(IGen::itof_vf(XMM0 + 3, XMM0 + 14));
+  tester.emit(IGen::itof_vf(XMM0 + 13, XMM0 + 4));
+  tester.emit(IGen::itof_vf(XMM0 + 13, XMM0 + 14));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5F85BDCC4C1785BDEC5785BECC441785BEE");
+}
+
+TEST(EmitterAVX, FTOI) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::ftoi_vf(XMM0 + 3, XMM0 + 4));
+  tester.emit(IGen::ftoi_vf(XMM0 + 3, XMM0 + 14));
+  tester.emit(IGen::ftoi_vf(XMM0 + 13, XMM0 + 4));
+  tester.emit(IGen::ftoi_vf(XMM0 + 13, XMM0 + 14));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5F95BDCC4C1795BDEC5795BECC441795BEE");
+}
+
+TEST(EmitterAVX, VPSRAD) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::pw_sra(XMM0 + 3, XMM0 + 4, 3));
+  tester.emit(IGen::pw_sra(XMM0 + 3, XMM0 + 14, 4));
+  tester.emit(IGen::pw_sra(XMM0 + 13, XMM0 + 4, 5));
+  tester.emit(IGen::pw_sra(XMM0 + 13, XMM0 + 14, 6));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5E172E403C4C16172E604C59172E405C4C11172E606");
+}
+
+TEST(EmitterAVX, VPSRLD) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::pw_srl(XMM0 + 3, XMM0 + 4, 3));
+  tester.emit(IGen::pw_srl(XMM0 + 3, XMM0 + 14, 4));
+  tester.emit(IGen::pw_srl(XMM0 + 13, XMM0 + 4, 5));
+  tester.emit(IGen::pw_srl(XMM0 + 13, XMM0 + 14, 6));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5E172D403C4C16172D604C59172D405C4C11172D606");
+}
+
+TEST(EmitterAVX, VPSLLD) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::pw_sll(XMM0 + 3, XMM0 + 4, 3));
+  tester.emit(IGen::pw_sll(XMM0 + 3, XMM0 + 14, 4));
+  tester.emit(IGen::pw_sll(XMM0 + 13, XMM0 + 4, 5));
+  tester.emit(IGen::pw_sll(XMM0 + 13, XMM0 + 14, 6));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5E172F403C4C16172F604C59172F405C4C11172F606");
+}

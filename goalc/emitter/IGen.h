@@ -2339,6 +2339,56 @@ class IGen {
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0b0);
     return instr;
   }
+
+  static Instruction itof_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x5b);  // VCVTDQ2PS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0);
+    return instr;
+  }
+
+  static Instruction ftoi_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x5b);  // VCVTDQ2PS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
+                                VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pw_sra(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 72 /4 ib VPSRAD xmm1, xmm2, imm8
+    Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(4, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction pw_srl(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 72 /2 ib VPSRLD xmm1, xmm2, imm8
+    Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(2, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction pw_sll(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 72 /6 ib VPSLLD xmm1, xmm2, imm8
+    Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
 };
 }  // namespace emitter
 

@@ -110,6 +110,14 @@ void regset_common(emitter::ObjectGenerator* gen,
   } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
     // gpr -> xmm 1x
     gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
+  } else if (src_class == RegClass::VECTOR_FLOAT && dst_class == RegClass::FLOAT) {
+    gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
+  } else if (src_class == RegClass::FLOAT && dst_class == RegClass::VECTOR_FLOAT) {
+    gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
+  } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::VECTOR_FLOAT) {
+    gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
+  } else if (src_class == RegClass::VECTOR_FLOAT && dst_class == RegClass::GPR_64) {
+    gen->add_instr(IGen::movd_gpr32_xmm32(dst_reg, src_reg), irec);
   } else {
     assert(false);  // unhandled move.
   }
@@ -1420,6 +1428,99 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case Kind::DIV:
       gen->add_instr(IGen::div_vf(dst, src1, src2), irec);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+///////////////////////
+// AsmVF2
+///////////////////////
+
+IR_VFMath2Asm::IR_VFMath2Asm(bool use_color,
+                             const RegVal* dst,
+                             const RegVal* src,
+                             Kind kind,
+                             std::optional<int64_t> imm)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_kind(kind), m_imm(std::move(imm)) {}
+
+std::string IR_VFMath2Asm::print() {
+  std::string function;
+  bool use_imm = false;
+  switch (m_kind) {
+    case Kind::ITOF:
+      function = ".itof.vf";
+      break;
+    case Kind::FTOI:
+      function = ".ftoi.vf";
+      break;
+    case Kind::PW_SLL:
+      use_imm = true;
+      function = ".pw.sll";
+      break;
+    case Kind::PW_SRL:
+      use_imm = true;
+      function = ".pw.srl";
+      break;
+    case Kind::PW_SRA:
+      use_imm = true;
+      function = ".pw.sra";
+      break;
+    default:
+      assert(false);
+  }
+
+  if (use_imm) {
+    assert(m_imm.has_value());
+    return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                       m_src->print(), *m_imm);
+  } else {
+    return fmt::format("{}{} {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                       m_src->print());
+  }
+}
+
+RegAllocInstr IR_VFMath2Asm::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_VFMath2Asm::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
+
+  switch (m_kind) {
+    case Kind::ITOF:
+      gen->add_instr(IGen::itof_vf(dst, src), irec);
+      break;
+    case Kind::FTOI:
+      gen->add_instr(IGen::ftoi_vf(dst, src), irec);
+      break;
+    case Kind::PW_SLL:
+      // you are technically allowed to put values > 32 in here.
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::pw_sll(dst, src, *m_imm), irec);
+      break;
+    case Kind::PW_SRL:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::pw_srl(dst, src, *m_imm), irec);
+      break;
+    case Kind::PW_SRA:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::pw_sra(dst, src, *m_imm), irec);
       break;
     default:
       assert(false);

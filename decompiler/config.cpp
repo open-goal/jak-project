@@ -125,5 +125,17 @@ void set_config(const std::string& path_to_config_file) {
       }
     }
   }
+
+  auto label_types_json = read_json_file_from_config(cfg, "label_types_file");
+  for (auto& kv : label_types_json.items()) {
+    auto& obj_name = kv.key();
+    auto& types = kv.value();
+    for (auto& x : types) {
+      const auto& name = x.at(0).get<std::string>();
+      const auto& type_name = x.at(1).get<std::string>();
+      bool is_const = x.at(2).get<bool>();
+      gConfig.label_types[obj_name][name] = {type_name, is_const};
+    }
+  }
 }
 }  // namespace decompiler
