@@ -5,24 +5,35 @@
 ;; name in dgo: trigonometry
 ;; dgos: GAME, ENGINE
 
-;; The "rotation" unit stores an angle in 65,536ths of a full rotation.
+;; The "rotation" unit stores an angle in a float, where 1.0 = 1/65,536 (1/2^16) of a rotation.
 ;; Use the ~r format specifier to print rotations as degrees.
-;; In general, functions which use these units will only be accurate to 65,536, with
-;; the exception of cosine in sincos!, which is slightly wrong.
+;; In general, functions which use these units will only be accurate to within 1/65,536th of a rotation,
+;; as they often internally convert the float to an integer. These function also handle wrapping
+;; correctly, and will output angles in the range -32768 to 32768 (+/- one half of a rotation)
+;; Functions with these units have deg or nothing special in the name.
 
-;; Generally, the functions using "rotation" units have nothing in the name, or "deg" in the name.
-;; These "deg" functions usually handle wrapped angles correctly
-;; Functions using radians have "rad" in the name, and generally only work on -pi to pi
+;; Some functions use radians. These typically have rad in the name, and they don't handle wrapping.
+;; The input must be in the range -pi to pi
 
+;; General note on floating point constants: to avoid ambiguity/rounding issues related to printing/parsing, weird
+;; constants are stored as hex.  Commonly used constants that are exactly represented (1, 0.5, etc) will appear
+;; normally.
+
+
+;; There is a bug in some of the cosine functions that can be fixed by toggling this flag.
 (defglobalconstant FIX_COSINE_BUG #f)
 
-;; 2pi / 2^16
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Floating Point Constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defconstant ROT_TO_RAD (the-as float #x38c90fda))
 (defconstant PI (the-as float #x40490fda))
 (defconstant MINUS_PI (the-as float #xc0490fda))
-(defconstant PI_OVER_2 (the-as float #x3fc90fda)) ;; 1.5708
+(defconstant PI_OVER_2 (the-as float #x3fc90fda))
+(defconstant TWO_PI (the-as float #x40c90fda))
 
-;; convert floating point number of degrees to a rotation.
+;; convert number of degrees to a rotation.
 (defmacro degrees (value)
   `(* (/ (the float ,value) 360.0)
       65536.0
@@ -30,13 +41,12 @@
   )
 
 (defun radmod ((arg0 float))
-  "Wrap arg0 to be within (-pi, pi), using rotation units.
-   - TODO constants"
+  "Wrap arg0 to be within (-pi, pi)."
   (local-vars (f0-1 float))
-  (set! f0-1 (+ 3.14159250 arg0))
+  (set! f0-1 (+ PI arg0))
   (if (< 0.0 f0-1)
-      (+ -3.14159250 (- f0-1 (* (the float (the int (/ f0-1 6.28318501))) 6.28318501)))
-      (+ 3.14159250 (- f0-1 (* (the float (the int (/ f0-1 6.28318501))) 6.28318501)))
+      (+ MINUS_PI (- f0-1 (* (the float (the int (/ f0-1 TWO_PI))) TWO_PI)))
+      (+ PI (- f0-1 (* (the float (the int (/ f0-1 TWO_PI))) TWO_PI)))
       )
   )
 
@@ -215,8 +225,7 @@
  )
 
 (defun sin ((arg0 float))
-  "Compute the sine of an angle in rotation units. Unwraps it.
-   - TODO constants"
+  "Compute the sine of an angle in rotation units. Unwraps it."
   (local-vars
    (f0-1 float)
    (f0-3 float)
@@ -232,22 +241,21 @@
    )
   (set! f2-0 (* ROT_TO_RAD (the float (sar (shl (the int arg0) 48) 48))))
   (set! f0-1 f2-0)
-  (set! f1-4 (* 0.999997973 f2-0))
+  (set! f1-4 (* (the-as float #x3f7fffde) f2-0))
   (set! f0-3 (* f2-0 f2-0))
   (set! f2-1 (* f2-0 f0-3))
-  (set! f1-5 (+ f1-4 (* -0.166660145 f2-1)))
+  (set! f1-5 (+ f1-4 (* (the-as float #xbe2aa8f5) f2-1)))
   (set! f2-2 (* f2-1 f0-3))
-  (set! f1-6 (+ f1-5 (* 0.008326521 f2-2)))
+  (set! f1-6 (+ f1-5 (* (the-as float #x3c086bf6) f2-2)))
   (set! f2-3 (* f2-2 f0-3))
-  (set! f1-7 (+ f1-6 (* -0.000195624 f2-3)))
+  (set! f1-7 (+ f1-6 (* (the-as float #xb94d2072) f2-3)))
   (set! f0-4 (* f2-3 f0-3))
-  (+ f1-7 (* 0.000002304 f0-4))
+  (+ f1-7 (* (the-as float #x361aa27f) f0-4))
   )
 
 (defun sin-rad ((arg0 float))
   "Compute the sine of an angle in radians.
-   No unwrap is done, should be in -pi, pi
-   - TODO constants"
+   No unwrap is done, should be in -pi, pi"
   (local-vars
    (f1-0 float)
    (f2-0 float)
@@ -263,16 +271,16 @@
    (acc float)
    )
   (set! f1-0 (* arg0 arg0))
-  (set! f7-0 0.999997973)
-  (set! f8-0 -0.166660145)
+  (set! f7-0 (the-as float #x3f7fffde))
+  (set! f8-0 (the-as float #xbe2aa8f5))
   (set! f2-0 (* arg0 f1-0))
   (set! f3-0 (* f1-0 f1-0))
-  (set! f9-0 0.008326521)
+  (set! f9-0 (the-as float #x3c086bf6))
   (set! f4-0 (* f2-0 f1-0))
   (set! f5-0 (* f3-0 f2-0))
-  (set! f10-0 -0.000195624)
+  (set! f10-0 (the-as float #xb94d2072))
   (set! f6-0 (* f4-0 f3-0))
-  (set! f11-0 0.000002304)
+  (set! f11-0 (the-as float #x361aa27f))
   ;;(.mula.s arg0 f7-0)
   (set! acc (* arg0 f7-0))
   ;;(.madda.s f2-0 f8-0)
@@ -372,14 +380,14 @@
    (acc float)
    )
   (set! f1-0 (* arg0 arg0))
-  (set! f7-0 1.000000000)
-  (set! f8-0 -0.499980032)
+  (set! f7-0 1.000000)
+  (set! f8-0 (the-as float #xbefffd62))
   (set! f3-0 (* f1-0 f1-0))
-  (set! f9-0 0.041620404)
-  (set! f10-0 -0.001363641)
+  (set! f9-0 (the-as float #x3d2a7a28))
+  (set! f10-0 (the-as float #xbab2bc31))
   (set! f4-0 (* f3-0 f1-0))
   (set! f5-0 (* f3-0 f3-0))
-  (set! f11-0 0.000020171)
+  (set! f11-0 (the-as float #x37a933eb))
   ;;(.mula.s f7-0 f7-0)
   (set! acc (* f7-0 f7-0))
   ;;(.madda.s f8-0 f1-0)
