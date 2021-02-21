@@ -12,9 +12,9 @@
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/game.txt"}));
   if (verbose) {
-    lg::set_file_level(lg::level::info);
-    lg::set_stdout_level(lg::level::info);
-    lg::set_flush_level(lg::level::info);
+    lg::set_file_level(lg::level::debug);
+    lg::set_stdout_level(lg::level::debug);
+    lg::set_flush_level(lg::level::debug);
   } else {
     lg::set_file_level(lg::level::warn);
     lg::set_stdout_level(lg::level::warn);

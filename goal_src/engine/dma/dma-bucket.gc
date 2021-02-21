@@ -5,3 +5,58 @@
 ;; name in dgo: dma-bucket
 ;; dgos: GAME, ENGINE
 
+
+(defun dma-buffer-add-buckets ((dma-buf dma-buffer) (count int))
+  (local-vars (current-bucket dma-bucket) (a1-1 symbol) (a1-2 symbol) (i int))
+  ;; grab the first free memory
+  (set! current-bucket (the dma-bucket (-> dma-buf base)))
+  (set! i 0)
+  (while (< i count)
+    ;; next which points to the next slot for the next tag.
+   (set! (-> current-bucket tag)
+    (logior
+     #x20000000
+     (the-as int (shr (shl (+ (the-as uint current-bucket) 16) 33) 1))
+     )
+    )
+
+   ;; not sure what this does, I think it's just a placeholder.
+   (set! (-> current-bucket last) current-bucket)
+   ;; advance to next bucket
+   (set! current-bucket (&+ current-bucket 16))
+   (set! i (+ i 1))
+   )
+  ;; update base ptr.
+  (set! (-> dma-buf base) (the pointer current-bucket))
+  )
+
+(defun dma-buffer-patch-buckets ((bucket dma-bucket) (count int))
+  "Patch last pointers in a sequence of buckets."
+  (local-vars (i int))
+  (when (nonzero? bucket)
+    (set! i 0)
+    (while (< i count)
+      (set! (-> bucket last tag)
+            (logior (logand (-> bucket last tag) #x80000000ffffffff)
+                    (shr (shl (+ (the-as uint bucket) 16) 33) 1)
+                    )
+            )
+      (set! (-> bucket last) (the dma-bucket 0))
+      (set! bucket (&+ bucket 16))
+      (set! i (+ i 1))
+      )
+    )
+  (the-as int bucket)
+  )
+
+(defun dma-bucket-insert-tag ((base dma-bucket) (idx int) (tag-start dma-bucket) (tag-end dma-bucket))
+  "Splice in a tag."
+  (local-vars (v1-1 dma-bucket))
+  ;; seek to bucket we want to splice before.
+  (set! v1-1 (&+ base (shl idx 4)))
+  ;; make prev's next point to us
+  (set! (-> (the-as dma-bucket v1-1) last next) (the uint tag-start))
+  ;; make prev = end of tag
+  (set! (-> v1-1 last) tag-end)
+  (the-as int tag-start)
+  )

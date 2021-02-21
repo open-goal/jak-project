@@ -484,6 +484,12 @@ Object Interpreter::eval_symbol(const Object& sym, const std::shared_ptr<Environ
   return result;
 }
 
+bool Interpreter::eval_symbol(const Object& sym,
+                              const std::shared_ptr<EnvironmentObject>& env,
+                              Object* result) {
+  return try_symbol_lookup(sym, env, result);
+}
+
 /*!
  * Evaluate a pair, either as special form, builtin form, macro application, or lambda application.
  */

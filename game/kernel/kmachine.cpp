@@ -24,6 +24,8 @@
 #include "game/sce/sif_ee.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/stubs.h"
+#include "game/sce/libdma.h"
+#include "game/sce/libgraph.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
 using namespace ee;

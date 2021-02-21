@@ -9,13 +9,9 @@ using namespace goos;
 bool Compiler::try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest) {
   Object macro_obj;
   bool got_macro = false;
-  try {
-    macro_obj = m_goos.eval_symbol(macro_name, m_goos.goal_env.as_env());
-    if (macro_obj.is_macro()) {
-      got_macro = true;
-    }
-  } catch (std::runtime_error& e) {
-    got_macro = false;
+  if (m_goos.eval_symbol(macro_name, m_goos.goal_env.as_env(), &macro_obj) &&
+      macro_obj.is_macro()) {
+    got_macro = true;
   }
 
   if (got_macro) {

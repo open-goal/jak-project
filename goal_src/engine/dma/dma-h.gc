@@ -5,3 +5,264 @@
 ;; name in dgo: dma-h
 ;; dgos: GAME, ENGINE
 
+;; disable DMA syncing
+(defglobalconstant INSTANT_DMA #t)
+;; count returned by dma-sync-with-count
+;; when instant dma is enabled.
+(defglobalconstant INSTANT_DMA_COUNT 123)
+
+(deftype dma-chcr (uint32)
+  ;; DMA Channel Control Register.
+  ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
+   (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
+   (asp uint8 :offset 4 :size 2) ;; none, 1, 2
+   (tte uint8 :offset 6 :size 1) ;; transfer tag (sc only)
+   (tie uint8 :offset 7 :size 1) ;; tag interrupt
+   (str uint8 :offset 8 :size 1) ;; start!
+   (tag uint16 :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(defmethod inspect dma-chcr ((obj dma-chcr))
+  (format #t "~Tdir: ~D~%" (-> obj dir))
+  (format #t "~Tmod: ~D~%" (-> obj mod))
+  (format #t "~Tasp: ~D~%" (-> obj asp))
+  (format #t "~Ttte: ~D~%" (-> obj tte))
+  (format #t "~Ttie: ~D~%" (-> obj tie))
+  (format #t "~Tstr: ~D~%" (-> obj str))
+  (format #t "~Ttag: #x~X~%" (-> obj tag))
+  obj
+  )
+           
+
+(deftype dma-bank (structure)
+  ;; layout of DMA registers in memory
+  ((chcr dma-chcr  :offset 0)
+   (madr uint32  :offset 16)
+   (qwc  uint32  :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype dma-bank-source (dma-bank)
+  ((tadr uint32  :offset 48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+(deftype dma-bank-vif (dma-bank-source)
+  ((as0  uint32  :offset 64)
+   (as1  uint32  :offset 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+(deftype dma-bank-spr (dma-bank-source)
+  ((sadr uint32  :offset 128)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+(deftype dma-ctrl (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype dma-enable (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype dma-sqwc (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype dma-bank-control (structure)
+  ((ctrl    dma-ctrl  :offset 0)
+   (stat    uint32  :offset 16)
+   (pcr     uint32  :offset 32)
+   (sqwc    dma-sqwc  :offset 48)
+   (rbsr    uint32  :offset 64)
+   (rbor    uint32  :offset 80)
+   (stadr   uint32  :offset 96)
+   (enabler uint32  :offset 5408)
+   (enablew uint32  :offset 5520)
+   )
+  :method-count-assert 9
+  :size-assert         #x1594
+  :flag-assert         #x900001594
+  )
+
+(deftype vu-code-block (basic)
+  ((name         basic   :offset-assert 4)
+   (code         uint32  :offset-assert 8)
+   (size         int32   :offset-assert 12)
+   (dest-address uint32  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype vu-stat (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype dma-tag (uint64)
+  ((qwc uint16 :offset 0)
+   (pce uint8 :offset 26 :size 2)
+   (id uint8 :offset 28 :size 3)
+   (irq uint8 :offset 31 :size 1)
+   (addr uint32 :offset 32 :size 31)
+   (spr uint8 :offset 63 :size 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype dma-bucket (structure)
+  ((tag   uint64  :offset-assert 0)
+   (last  dma-bucket  :offset-assert 8)
+   (dummy uint32  :offset-assert 12)
+   (next  uint32  :offset 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype vif-mask (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype vif-stcycl-imm (uint16)
+  ()
+  :flag-assert #x900000002
+  )
+
+(deftype vif-unpack-imm (uint16)
+  ()
+  :flag-assert #x900000002
+  )
+
+(deftype vif-tag (uint32)
+  ((imm uint16 :offset 0 :size 16)
+   (num uint8 :offset 16 :size 8)
+   (cmd uint8 :offset 24 :size 8)
+   (irq uint8 :offset 31 :size 1) ;;?
+   (msk uint8 :offset 15 :size 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(defmethod inspect vif-tag ((obj vif-tag))
+  (format #t "~Timm: #x~X~%" (-> obj imm))
+  (format #t "~Tnum: ~D~%" (-> obj num))
+  (format #t "~Tcmd: ~D~%" (-> obj cmd))
+  (format #t "~Tirq: ~D~%" (-> obj irq))
+  (format #t "~Tmsk: ~D~%" (-> obj msk))
+  obj
+  )
+
+;; NOTE: these functions are never called
+;;  so they are not really modified for x86-64
+;;  they were inline assembly originally
+
+(defun dma-sync-fast ((bank dma-bank))
+  "Wait for chcr str to go to 0, indicating DMA
+   is complete."
+  (declare (inline))
+  (#cond
+    (INSTANT_DMA
+     ;; nothing to do.
+     0
+     )
+    (#t
+     (while (nonzero? (-> bank chcr str))
+       ;; they had a precise number of nops here.
+       (nop!)
+       )
+     )
+    )
+  )
+
+(defun dma-send-no-scratch ((bank dma-bank)
+                            (madr uint32)
+                            (qwc uint32))
+  "Begin a DMA transfer, directly to the bank.
+   Makes sure any ongoing transfer on the channel is done
+   Flushes the cache. Sets dir to 0, so I don't expect
+   this to be used for VIF1 transfers.
+   Madr should not be a scratchpad address."
+  ((inline dma-sync-fast) bank)
+  (flush-cache 0)
+  ;; (.sync.l)
+  (set! (-> bank madr) madr)
+  (set! (-> bank qwc) qwc)
+  ;; (.sync.l)
+
+  ;; this seems wrong, the set everything to 0,
+  ;; including dir, which is the to-memory direction
+  (set! (-> bank chcr)
+        (new 'static 'dma-chcr :str 1)
+        )
+  )
+
+(defun dma-sync-with-count ((bank dma-bank)
+                            (count (pointer int32)))
+  "Wait for DMA to finish, incrementing count.
+   This doesn't seem like a very accurate way
+   to find out how long it takes..."
+  (#cond
+    (INSTANT_DMA
+     (set! (-> count) INSTANT_DMA_COUNT)
+     0
+     )
+    (#t
+     (when (nonzero? (-> bank chcr str))
+       (let ((x (-> count)))
+         (while (nonzero? (-> bank chcr str))
+           (+! x 1)
+           (set! (-> count) x)
+           )
+         )
+       )
+     0
+     )
+    )
+  )
+
+(defun dma-count-until-done ((bank dma-bank)
+                             (count (pointer int32)))
+  "Like the previous one, kinda"
+  (#cond
+    (INSTANT_DMA
+     (set! (-> count) INSTANT_DMA_COUNT)
+     0
+     )
+    (#t
+     (while (nonzero? (-> bank chcr str))
+       (set! (-> count) (+ 1 (-> count)))
+       )
+     )
+    )
+  )

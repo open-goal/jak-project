@@ -10,9 +10,6 @@
 namespace ee {
 void sceGsSyncV();
 void sceGsSyncPath();
-void sceGsResetPath();
-void sceGsResetGraph();
-void sceDmaSync();
 void sceGsPutIMR();
 void sceGsGetIMR();
 void sceGsExecStoreImage();

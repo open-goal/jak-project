@@ -40,6 +40,7 @@
 
 #include "Object.h"
 #include "common/util/FileUtil.h"
+#include "third-party/fmt/core.h"
 
 namespace goos {
 
@@ -88,6 +89,18 @@ std::string fixed_to_string(FloatType x) {
   char buff[256];
   sprintf(buff, "%.6f", x);
   return {buff};
+}
+
+/*!
+ * Special case to print an integer
+ */
+template <>
+std::string fixed_to_string(IntType x) {
+  if (x > 10000) {
+    return fmt::format("#x{:x}", x);
+  } else {
+    return fmt::format("{}", x);
+  }
 }
 
 /*!
