@@ -5,7 +5,22 @@
 ;; name in dgo: dma-buffer
 ;; dgos: GAME, ENGINE
 
-;; first quadword of a DMA + vif packet
+;; DMA buffers are used per frame to store DMA data.
+;; The dma-buffer manages the memory and dma-bucket organizes the stuff within.
+
+;; The DMA system reads dma-tags.  A common trick is to set the dma in tte mode, which transfers
+;; the upper 64-bits of the 128-bit "packet" to the VIF, and you can put your vifcode there:
+
+;; Ex:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 32-bit vifcode ;; 32-bit vifcode ;; 64-bit dma-tag ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; in this case, the vifcodes will be sent to the vif, if
+;; the dma transfer has tte set.
+;; note that the second vifcode can also hold other stuff depending on the mode.
+
+
+;; first quadword of a DMA with vif packet
 (deftype dma-packet (structure)
   ((dma  dma-tag   :offset-assert 0)
    (vif0 vif-tag   :offset-assert 8)
@@ -17,16 +32,16 @@
   :flag-assert         #x900000010
   )
 
+;; seems to be unused?
 (deftype dma-packet-array (inline-array-class)
   ()
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
 (set! (-> dma-packet-array heap-base) 16)
 
-;; dma vif -> gif packet.
+;; For doing a dma -> vif -> gif (path 2) transfer.
 (deftype dma-gif-packet (structure)
   ((dma-vif dma-packet :inline :offset-assert 0)
    (gif     uint64    2       :offset-assert 16) ;; guess
@@ -37,11 +52,16 @@
   :flag-assert         #x900000020
   )
 
+;; dma-buffer holds per-frame data for dma.
+;; the allocated-length is in bytes.
+;; the base points to the first unused memory in the buffer
+;; it is a dynamically sized type.
 (deftype dma-buffer (basic)
   ((allocated-length int32     :offset-assert 4)
    (base             pointer   :offset-assert 8)
    (end              uint32    :offset-assert 12)
-   (data             uint64 1 :offset-assert 16) ;; hmmm, seems wrong
+   (data             uint64 1 :offset-assert 16) ;; weird, I guess this aligns the data?
+   (data-buffer      uint8 :dynamic :offset 16)
    )
   (:methods
    (new (symbol type int) _type_  0)
@@ -54,6 +74,7 @@
 (defmethod new dma-buffer ((allocation symbol) (type-to-make type) (size int))
   "Allocate a new dma-buffer with size bytes of space"
   (local-vars (v0-0 dma-buffer))
+  ;; we really get size + 4 bytes I think...
   (set! v0-0
    (object-new allocation type-to-make
     (+ (+ size -4) (the-as int (-> type-to-make size)))
@@ -82,7 +103,7 @@
   )
 
 (defun dma-buffer-length ((arg0 dma-buffer))
-  "Get length in quadwords, rounded down"
+  "Get length used in quadwords, rounded down"
   (shr (+ (&- (-> arg0 base) (-> arg0 data)) 15) 4)
   )
 
@@ -106,7 +127,10 @@
    (dma-buf-2 dma-buffer)
    (buf-ptr pointer)
    )
-  ;; the actual data
+  ;; our strategy is to upload the program in chunks, as we can only upload 127 or 128 quadwords at a time.
+  ;; it is not clear why they did 127 quadword chunks, it seems like 128 would have worked too.
+  
+  ;; the actual data to upload.
   (set! func-ptr (the uint (&-> vu-func data 4)))
   ;; how long it is
   (set! qlen (-> vu-func qlength))
@@ -115,7 +139,7 @@
 
   ;; while we still have stuff to transfer...
   (while (> qlen 0)
-    ;; get up to 127 quadwords. we loose one for the dmatag + 2 vif tags.
+    ;; get up to 127 quadwords. maybe they thought they lost one for the dmatag + 2 vif tags?
    (set! qwc-now (min 127 qlen))
    (set! dma-buf-2 dma-buf)
    ;; grab a pointer to the next free memory
@@ -141,6 +165,7 @@
     )
    ;; MPG - Transfers the microgram!
    ;; sets num to 0, which means 256x 64 bit units, or 128 quadwords.
+   ;; I think this transfers one quadword too many, but it's okay.
    (set! (-> (the-as (pointer int32) buf-ptr) 3)
     (logior (logior #x4a000000 (shr (shl origin 48) 48))
      (shr (shl (shl qwc-now 1) 56) 40)

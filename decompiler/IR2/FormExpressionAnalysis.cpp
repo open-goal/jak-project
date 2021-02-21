@@ -1340,7 +1340,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
 
   {
-
     // detect method calls:
     // ex: ((-> XXX methods-by-name new) (quote global) pair gp-0 a3-0)
     constexpr int method_name = 0;

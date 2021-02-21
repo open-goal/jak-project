@@ -5,14 +5,20 @@
 ;; name in dgo: dma-h
 ;; dgos: GAME, ENGINE
 
-;; disable DMA syncing
+;; Constants/type for the PS2 DMA System.
+;; There are a number of DMA channels.
+;; The PS2 supports several types of DMA, including simple chunk transfer and more complicated
+;; "chain" transfers, where the hardware can follow a linked data-structure.
+
+;; In OpenGOAL, "DMA" will be instant. By default, DMA syncs will be disabled by this flag.
 (defglobalconstant INSTANT_DMA #t)
+
 ;; count returned by dma-sync-with-count
 ;; when instant dma is enabled.
 (defglobalconstant INSTANT_DMA_COUNT 123)
 
+;; DMA Channel Control Register. This starts the DMA and can be checked to see if it done.
 (deftype dma-chcr (uint32)
-  ;; DMA Channel Control Register.
   ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
    (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
    (asp uint8 :offset 4 :size 2) ;; none, 1, 2
@@ -36,44 +42,55 @@
   (format #t "~Ttag: #x~X~%" (-> obj tag))
   obj
   )
-           
 
+;; Most basic DMA register layout
 (deftype dma-bank (structure)
-  ;; layout of DMA registers in memory
-  ((chcr dma-chcr  :offset 0)
-   (madr uint32  :offset 16)
-   (qwc  uint32  :offset 32)
+  ((chcr dma-chcr  :offset 0) ;; control register
+   (madr uint32  :offset 16)  ;; memory address
+   (qwc  uint32  :offset 32)  ;; quadword count
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
 
+;; DMA register layout for channels supporting source-chain
 (deftype dma-bank-source (dma-bank)
-  ((tadr uint32  :offset 48)
+  ((tadr uint32  :offset 48) ;; tag address
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
 
+;; The DMA source chain supports a two-entry "call stack" of tags.
+;; The tag addresses are stored here.
 (deftype dma-bank-vif (dma-bank-source)
-  ((as0  uint32  :offset 64)
-   (as1  uint32  :offset 80)
+  ((as0  uint32  :offset 64) ;; pushed tag register
+   (as1  uint32  :offset 80) ;; pushed tag register
    )
   :method-count-assert 9
   :size-assert         #x54
   :flag-assert         #x900000054
   )
 
+;; The toSPR and fromSPR DMA channels require a second address in the scratchpad.
+;; This is an offset from the start of SPR.
 (deftype dma-bank-spr (dma-bank-source)
-  ((sadr uint32  :offset 128)
+  ((sadr uint32  :offset 128) ;; spad address.
    )
   :method-count-assert 9
   :size-assert         #x84
   :flag-assert         #x900000084
   )
 
+(defconstant VIF0_DMA_BANK (the dma-bank-vif #x10008000))
+(defconstant VIF1_DMA_BANK (the dma-bank-vif #x10009000))
+;; gif, ipuFrom, ipTop, sif0, sif1, sif2 believed unused.
+(defconstant SPR_FROM_BANK (the dma-bank-spr #x1000d000))
+(defconstant SPR_TO_BANK (the dma-bank-spr #x1000d400))
+
+;; D_CTRL, master DMA control register, shraed for all channels.
 (deftype dma-ctrl (uint32)
   ()
   :method-count-assert 9
@@ -81,16 +98,19 @@
   :flag-assert         #x900000004
   )
 
+;; D_ENABLEW, D_ENABLER?
 (deftype dma-enable (uint32)
   ()
   :flag-assert #x900000004
   )
 
+;; D_SQWC
 (deftype dma-sqwc (uint32)
   ()
   :flag-assert #x900000004
   )
 
+;; Shared DMA control registers.
 (deftype dma-bank-control (structure)
   ((ctrl    dma-ctrl  :offset 0)
    (stat    uint32  :offset 16)
@@ -107,6 +127,9 @@
   :flag-assert         #x900001594
   )
 
+(defconstant DMA_CONTROL_BANK (the dma-bank-control #x1000e000))
+
+;; Seems to be unused. The vu-function type is used instead.
 (deftype vu-code-block (basic)
   ((name         basic   :offset-assert 4)
    (code         uint32  :offset-assert 8)
@@ -118,50 +141,63 @@
   :flag-assert         #x900000014
   )
 
+;; ?? not sure what this is.
 (deftype vu-stat (uint64)
   ()
   :flag-assert #x900000008
   )
 
+;; In source chain mode, the DMA controller reads "DMAtag"s to determine addresses
+;; sizes, and the next thing to transfer.
+;; A tag is 8 bytes.
 (deftype dma-tag (uint64)
-  ((qwc uint16 :offset 0)
-   (pce uint8 :offset 26 :size 2)
-   (id uint8 :offset 28 :size 3)
-   (irq uint8 :offset 31 :size 1)
-   (addr uint32 :offset 32 :size 31)
-   (spr uint8 :offset 63 :size 1)
+  ((qwc uint16 :offset 0)          ;; quadword count
+   (pce uint8 :offset 26 :size 2)  ;; priority (source mode)
+   (id uint8 :offset 28 :size 3)   ;; ID (what the tag means)
+   (irq uint8 :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32 :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8 :offset 63 :size 1)    ;; spr or not flag.
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
 
+;; A DMA bucket is a way of organizing data within a dma buffer.
+;; The buckets themselves live inside in the dma buffer.
+;; the addr field of their tag should point to the next bucket.
+;; This is not a PS2 hardware thing
 (deftype dma-bucket (structure)
-  ((tag   uint64  :offset-assert 0)
-   (last  dma-bucket  :offset-assert 8)
-   (dummy uint32  :offset-assert 12)
-   (next  uint32  :offset 4)
+  ((tag   dma-tag  :offset-assert 0)     ;; the DMA tag to transfer the bucket's data
+   (last  (pointer uint64)  :offset-assert 8)  ;; the last tag of this bucket.
+   (dummy uint32  :offset-assert 12)     ;; empty space.
+   (next  uint32  :offset 4)             ;; this overlaps with the addr bit-field of the dma-tag
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
+;; ??
 (deftype vif-mask (uint32)
   ()
   :flag-assert #x900000004
   )
 
+;; ??
 (deftype vif-stcycl-imm (uint16)
   ()
   :flag-assert #x900000002
   )
 
+;; ??
 (deftype vif-unpack-imm (uint16)
   ()
   :flag-assert #x900000002
   )
 
+;; The VIF also has tags to control it.
+;; Different VIF commands (called VIFCode) have different tag layouts.
 (deftype vif-tag (uint32)
   ((imm uint16 :offset 0 :size 16)
    (num uint8 :offset 16 :size 8)
@@ -199,10 +235,13 @@
     (#t
      (while (nonzero? (-> bank chcr str))
        ;; they had a precise number of nops here.
+       ;; it turns out that spamming the DMA registers is not a good idea
+       ;; because it uses the main bus that the DMA is possibly also trying to use.
        (nop!)
        )
      )
     )
+  (none)
   )
 
 (defun dma-send-no-scratch ((bank dma-bank)
@@ -225,6 +264,7 @@
   (set! (-> bank chcr)
         (new 'static 'dma-chcr :str 1)
         )
+  (none)
   )
 
 (defun dma-sync-with-count ((bank dma-bank)

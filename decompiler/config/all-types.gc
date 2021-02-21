@@ -2039,27 +2039,43 @@
 
 ; ;; vif-h
 (deftype vif-stat (uint32)
-  ()
+  ((vps uint8 :offset 0 :size 2)
+   (vew uint8 :offset 2 :size 1)
+   (mrk uint8 :offset 6 :size 1)
+   (vss uint8 :offset 8 :size 1)
+   (vfs uint8 :offset 9 :size 1)
+   (vis uint8 :offset 10 :size 1)
+   (int uint8 :offset 11 :size 1)
+   (er0 uint8 :offset 12 :size 1)
+   (er1 uint8 :offset 13 :size 1)
+   (fqc uint8 :offset 24 :size 4)
+   )
+   
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype vif-fbrst (uint32)
-  ()
+  ((rst uint8 :offset 0 :size 1)
+   (fbk uint8 :offset 1 :size 1)
+   (stp uint8 :offset 2 :size 1)
+   (stc uint8 :offset 3 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
+
 (deftype vif-err (uint32)
-  ()
+  ((mii uint8 :offset 0 :size 1)
+   (me0 uint8 :offset 1 :size 1) ;; PS2 hardware bug, must set this to 1 for correct operation.
+   (me1 uint8 :offset 2 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 ;; vif-h
@@ -2106,11 +2122,17 @@
 
 ; ;; dma-h
 (deftype dma-chcr (uint32)
-  ()
+  ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
+   (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
+   (asp uint8 :offset 4 :size 2) ;; none, 1, 2
+   (tte uint8 :offset 6 :size 1) ;; transfer tag (sc only)
+   (tie uint8 :offset 7 :size 1) ;; tag interrupt
+   (str uint8 :offset 8 :size 1) ;; start!
+   (tag uint16 :offset 16)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype dma-ctrl (uint32)
@@ -2185,34 +2207,43 @@
 
 ; ;; dma-h
 (deftype dma-tag (uint64)
-  ()
+  ((qwc uint16 :offset 0)          ;; quadword count
+   (pce uint8 :offset 26 :size 2)  ;; priority (source mode)
+   (id uint8 :offset 28 :size 3)   ;; ID (what the tag means)
+   (irq uint8 :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32 :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8 :offset 63 :size 1)    ;; spr or not flag.
+   )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
-  ;; likely a bitfield type
   )
-
 
 ; ;; dma-h
 (deftype dma-bucket (structure)
-  ((tag   uint64  :offset-assert 0)
-   (last  dma-bucket  :offset-assert 8)
-   (dummy uint32  :offset-assert 12)
-   (next  uint32  :offset 4)
+  ((tag   dma-tag  :offset-assert 0)     ;; the DMA tag to transfer the bucket's data
+   (last  (pointer uint64)  :offset-assert 8)  ;; the last tag of this bucket.
+   (dummy uint32  :offset-assert 12)     ;; empty space.
+   (next  uint32  :offset 4)             ;; this overlaps with the addr bit-field of the dma-tag
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
 ;; dma-h
+
 (deftype vif-tag (uint32)
-  ()
+  ((imm uint16 :offset 0 :size 16)
+   (num uint8 :offset 16 :size 8)
+   (cmd uint8 :offset 24 :size 8)
+   (irq uint8 :offset 31 :size 1) ;;?
+   (msk uint8 :offset 15 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
-
 (deftype dma-enable (uint32)
   ()
   :flag-assert #x900000004
@@ -2305,11 +2336,22 @@
   :flag-assert         #x900000014
   )
 
+(deftype dma-foreground-sink (basic)
+  ((bucket                   int32  :offset-assert 4) ;; not sure if this is a bucket index or pointer?
+   (foreground-texture-page  int8   :offset-assert 8)  ;; ?
+   (foreground-texture-level int8   :offset-assert 9)  ;; ?
+   (foreground-output-bucket int8   :offset-assert 10) ;; ?
+   )
+  :method-count-assert 9
+  :size-assert         #xb
+  :flag-assert         #x90000000b
+  )
+
 (deftype dma-foreground-sink-group (basic)
-  ((sink         basic 3 :offset-assert 4)
-   (merc-sink    basic     :offset 4)
-   (generic-sink basic     :offset 8)
-   (level        basic     :offset-assert 16)
+  ((sink         dma-foreground-sink       3 :offset-assert 4)
+   (merc-sink    dma-foreground-sink         :offset 4)
+   (generic-sink generic-dma-foreground-sink :offset 8)
+   (level        basic                       :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -2348,16 +2390,16 @@
 ;;(define-extern vif-fbrst object) ;; unknown type
 ;;(define-extern vif-err object) ;; unknown type
 ;;(define-extern vif-bank object) ;; unknown type
-(define-extern dma-count-until-done function)
+(define-extern dma-count-until-done (function dma-bank (pointer int32) int))
 ;;(define-extern vif-tag object) ;; unknown type
-(define-extern dma-send-no-scratch function)
+(define-extern dma-send-no-scratch (function dma-bank uint32 uint32 none))
 ;;(define-extern dma-tag object) ;; unknown type
 ;;(define-extern dma-chcr object) ;; unknown type
 ;;(define-extern dma-bank-spr object) ;; unknown type
 ;;(define-extern dma-bucket object) ;; unknown type
-(define-extern dma-sync-with-count function)
+(define-extern dma-sync-with-count (function dma-bank (pointer int32) int))
 ;;(define-extern vu-code-block object) ;; unknown type
-(define-extern dma-sync-fast function)
+(define-extern dma-sync-fast (function dma-bank none))
 ;;(define-extern vif-mask object) ;; unknown type
 ;;(define-extern dma-bank-control object) ;; unknown type
 ;;(define-extern vif-unpack-imm object) ;; unknown type
@@ -2380,17 +2422,17 @@
 (define-extern generic-dma-foreground-sink type)
 
 
-(define-extern symlink3 function)
+(define-extern symlink3 (function none))
 
 
 
 
-(define-extern dma-sync-hang function)
-(define-extern symlink2 function)
+(define-extern dma-sync-hang (function dma-bank none))
+(define-extern symlink2 (function none))
 
 
 
-(define-extern dma-send function)
+(define-extern dma-send (function dma-bank uint uint none))
 
 (define-extern *video-reset-parm* int)
 
@@ -2404,10 +2446,9 @@
 
 (deftype dma-packet (structure)
   ((dma  dma-tag   :offset-assert 0)
-   (vif0 uint32   :offset-assert 8)
-   (vif1 vif-tag   :offset-assert 12)
+   (vif0 vif-tag   :offset-assert 8)
+   (vif1 vif-tag   :offset-assert 12) ;; doesn't have to be a vif tag.
    (quad uint128  :offset 0)
-   (data uint8 :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -2435,11 +2476,12 @@
   ((allocated-length int32     :offset-assert 4)
    (base             pointer   :offset-assert 8)
    (end              uint32    :offset-assert 12)
-   (data             uint64 1 :offset-assert 16) ;; hmmm, seems wrong
+   (data             uint64 1 :offset-assert 16) ;; weird, I guess this aligns the data?
+   (data-buffer      uint8 :dynamic :offset 16)
    )
   (:methods
-    (new (symbol type int) _type_ 0)
-    )
+   (new (symbol type int) _type_  0)
+   )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
@@ -2450,7 +2492,7 @@
 ;;(define-extern dma-sync object) ;; unknown type
 ;;(define-extern dma-packet-array object) ;; unknown type
 (define-extern dma-buffer-inplace-new (function dma-buffer int dma-buffer))
-(define-extern dma-buffer-length (function dma-buffer int))
+(define-extern dma-buffer-length (function dma-buffer uint))
 (define-extern dma-buffer-free (function dma-buffer int))
 
 ;;(define-extern dma-gif-packet object) ;; unknown type
@@ -2460,7 +2502,7 @@
 ;;(define-extern dma-buffer object) ;; unknown type
 (define-extern dma-buffer-send-chain (function dma-bank-source dma-buffer none))
 (define-extern dma-buffer-send (function dma-bank dma-buffer none))
-(define-extern dma-bucket-insert-tag (function dma-bucket int dma-bucket dma-bucket int))
+(define-extern dma-bucket-insert-tag (function dma-bucket int dma-bucket (pointer uint64) dma-bucket))
 (define-extern dma-buffer-add-buckets (function dma-buffer int none))
 (define-extern dma-buffer-patch-buckets (function dma-bucket int int))
 
@@ -2474,8 +2516,8 @@
    (tag     uint32  :offset-assert 4)
    (val     uint32  :offset-assert 8)
    (print   uint32  :offset-assert 12)
-   (string1 basic   :offset-assert 16)
-   (string2 basic   :offset-assert 20)
+   (string1 string   :offset-assert 16)
+   (string2 string   :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -2483,9 +2525,9 @@
   )
 
 (define-extern *vif-disasm-table* (array vif-disasm-element)) ;; unknown type
-(define-extern disasm-vif-tag (function (pointer uint32) int int int int))
+(define-extern disasm-vif-tag function)
 (define-extern disasm-dma-tag function)
-(define-extern disasm-vif-details function)
+(define-extern disasm-vif-details (function symbol (pointer uint8) int int int))
 (define-extern vif-disasm-element type)
 ;;(define-extern *dma-disasm* object) ;; unknown type
 (define-extern disasm-dma-list function)

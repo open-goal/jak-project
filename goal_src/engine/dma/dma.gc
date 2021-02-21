@@ -34,6 +34,7 @@
        )
      )
     )
+  (none)
   )
 
 (defun dma-sync-crash ((arg0 dma-bank))
@@ -94,10 +95,10 @@
   ;;(set! (-> arg0 chcr) 325)
   (set! (-> arg0 chcr)
         (new 'static 'dma-chcr
-             :dir 1
-             :mod 1
-             :tte 1
-             :str 1)
+             :dir 1 ;; from memory
+             :mod 1 ;; source chain
+             :tte 1 ;; send tags
+             :str 1) ;; go!
         )
   ;(.sync.l)
   (none)
@@ -107,7 +108,7 @@
   "Send DMA chain! TTE bit is not set, don't transfer tags."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
-  ;(.sync.l)
+  ;;(.sync.l)
   (set! (-> arg0 qwc) 0)
   (set!
    (-> arg0 tadr)
@@ -119,15 +120,16 @@
      )
     )
    )
-  ;(.sync.l)
+  ;;(.sync.l)
   (set! (-> arg0 chcr)
         (new 'static 'dma-chcr
-             :dir 1
-             :mod 1
-             :tte 0
-             :str 1)
+             :dir 1  ;; from memory
+             :mod 1  ;; source chain
+             :tte 0  ;; no tags
+             :str 1) ;; go!
         )
-  ;(.sync.l)
+  ;;(.sync.l)
+  (none)
   )
 
 (defun dma-send-chain-no-flush ((arg0 dma-bank-source) (arg1 uint))
@@ -157,10 +159,11 @@
         )
   ;;(.sync.l)
   (set! v0-1 0)
+  (none)
   )
 
 (defun dma-send-to-spr ((sadr uint) (madr uint) (qwc uint) (sync symbol))
-  "Transfer quads to spr"
+  "Transfer data to spr"
   (local-vars (s5-0 dma-bank-spr))
   (set! s5-0 SPR_TO_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
@@ -234,12 +237,13 @@
     (return 0)
     )
   
-  (set! (-> (the vif-bank #x10003800) err)
-        (logior (logand (-> (the vif-bank #x10003800) err) (the-as uint -3)) 2)
+  (set! (-> VIF0_BANK err)
+        (logior (logand (-> VIF0_BANK err) (the-as uint -3)) 2)
         )
   (set! (-> (the vif-bank #x10003c00) err)
-        (logior (logand (-> (the vif-bank #x10003c00) err) (the-as uint -3)) 2)
+        (logior (logand (-> VIF1_BANK err) (the-as uint -3)) 2)
         )
+  (none)
   )
 
 (defun clear-vu0-mem ()
@@ -295,6 +299,7 @@
             )
     (set! s5-0 (+ s5-0 1))
     )
+  (none)
   )
 
 (defun dump-vu1-range ((start uint) (total-count uint))
@@ -322,15 +327,19 @@
   '#f
   )
 
-;; the video mode (PAL/NTSC) to use if we need to suddenly reset
-;; by default 2 is NTSC
+;; if we send junk DMA data due to an engine bug, the PS2 will eventually time out the transfer.
+;; in this case, the main loop will attempt to reset everything to hopefully recover.
+;; this value is the PAL/NTSC constant for the Sony reset functions.
+;; if we switch PAL/NTSC during runtime, we should update this.
 (define *video-reset-parm* 2)
 
 (defun reset-vif1-path ()
   "When things go wrong, totally reset vif1."
-  ;; inspect the banks.
-  ((method-of-type dma-bank-vif inspect) (the-as dma-bank-vif #x10009000))
-  ((method-of-type vif-bank inspect) (the-as vif-bank #x10003c00))
+  ;; inspect the banks
+  (#unless PC_PORT
+    ((method-of-type dma-bank-vif inspect) VIF1_DMA_BANK)
+    ((method-of-type vif-bank inspect) VIF1_BANK)
+    )
   ;; sceGsResetPath
   (reset-path)
   ;; sceGsResetGraph
@@ -338,7 +347,6 @@
   (format 0 "gkernel: vif1 path reset!~%")
   (none)
   )
-
 
 (defun ultimate-memcpy ((dst pointer) (src pointer) (size-bytes uint))
   "Fast memcpy using the scratchpad. Will blow away everything in scratch.
@@ -391,12 +399,14 @@
     ;; advance dst.
     (set! dst (&+ dst (the-as uint (shl qwc-transferred-now 4))))
     )
+  (none)
   )
 
 (defun symlink2 ()
   "symlink2 is a handwritten assembly version of the v2 linking routine.
    it is not ported because the OpenGOAL linker has its own implementation already."
   (segfault)
+  (none)
   )
 
 (defun symlink3 ()
@@ -404,6 +414,9 @@
    OpenGOAL uses a different format for v3, customized for x86-64, so this is not
    needed. The C++ implementation is plenty fast enough"
   (segfault)
+  (none)
   )
 
+;; configuration required to work around hardware bug.
+;; doesn't do anything important
 (dma-initialize)

@@ -5,6 +5,11 @@
 ;; name in dgo: vif-h
 ;; dgos: GAME, ENGINE
 
+;; Types related to VIF: the PS2's Vector Interface.
+;;  Each of VU0 and VU1 has a VIF which is used to sent/receive data.
+;;  The VIFs are controller by registers and fed data using DMA
+
+;;VIF0_STAT or VIF1_STAT bitfields
 (deftype vif-stat (uint32)
   ((vps uint8 :offset 0 :size 2)
    (vew uint8 :offset 2 :size 1)
@@ -36,20 +41,30 @@
   (format #t "~Tfqc: ~D" (-> obj fqc))
   obj)
 
+;; VIF "reset" register.
 (deftype vif-fbrst (uint32)
-  ()
+  ((rst uint8 :offset 0 :size 1)
+   (fbk uint8 :offset 1 :size 1)
+   (stp uint8 :offset 2 :size 1)
+   (stc uint8 :offset 3 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
 
+;; Error mask register
 (deftype vif-err (uint32)
-  ()
+  ((mii uint8 :offset 0 :size 1)
+   (me0 uint8 :offset 1 :size 1) ;; PS2 hardware bug, must set this to 1 for correct operation.
+   (me1 uint8 :offset 2 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
 
+;; Common layout of hardware registers shared between the two VIFs
 (deftype vif-bank (structure)
   ((stat   uint32  :offset-assert 0)
    (fbrst  uint32  :offset 16)
@@ -79,3 +94,7 @@
   :size-assert         #x174
   :flag-assert         #x900000174
   )
+
+;; PS2 VIF map. There are no VIFs in OpenGOAL.
+(defconstant VIF0_BANK (the vif-bank #x10003800))
+(defconstant VIF1_BANK (the vif-bank #x10003c00))

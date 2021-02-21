@@ -5,6 +5,10 @@
 ;; name in dgo: gsound-h
 ;; dgos: GAME, ENGINE
 
+;; Type definitions for sound.
+;; The actual sound code is all on the IOP, and the EE can send RPCs to control.
+;; There is also some sort of per-frame status update, that is not included here.
+
 (deftype sound-id (uint32)
   ()
   (:methods
@@ -18,12 +22,14 @@
   :flag-assert #x900000004
   )
 
+;; Sound names were sometimes packed into a uint128
 (deftype sound-name (uint128)
   ()
   :flag-assert #x900000010
   )
 
 ;; like should match the sound type in OVERLORD
+;; This is shared between all sound RPCs.
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
    (command uint16  :offset-assert 2)
@@ -261,6 +267,7 @@
   :flag-assert         #x900000004
   )
 
+;; union of all the possible sound commands.
 (deftype sound-rpc-union (structure)
   ((data              uint32                     20 :offset-assert 0)
    (load-bank         sound-rpc-load-bank            :offset 0)

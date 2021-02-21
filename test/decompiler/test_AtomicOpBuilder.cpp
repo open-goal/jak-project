@@ -465,13 +465,13 @@ TEST(DecompilerAtomicOpBuilder, LHU) {
 }
 
 TEST(DecompilerAtomicOpBuilder, LUI) {
-  test_case(assembly_from_list({"lui a3, 2"}), {"(set! a3 131072)"}, {{"a3"}}, {{}}, {{}});
+  test_case(assembly_from_list({"lui a3, 2"}), {"(set! a3 #x20000)"}, {{"a3"}}, {{}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, LUI_ORI) {
-  test_case(assembly_from_list({"L100:", "lui a0, 2", "ori a1, a0, 3"}), {"(set! a1 131075)"},
+  test_case(assembly_from_list({"L100:", "lui a0, 2", "ori a1, a0, 3"}), {"(set! a1 #x20003)"},
             {{"a1"}}, {{}}, {{"a0"}});
-  test_case(assembly_from_list({"L100:", "lui a0, 2", "ori a0, a0, 3"}), {"(set! a0 131075)"},
+  test_case(assembly_from_list({"L100:", "lui a0, 2", "ori a0, a0, 3"}), {"(set! a0 #x20003)"},
             {{"a0"}}, {{}}, {{}});
   test_case(assembly_from_list({"L100:", "lui a0, L100", "ori a1, a0, L100"}), {"(set! a1 L100)"},
             {{"a1"}}, {{}}, {{"a0"}});

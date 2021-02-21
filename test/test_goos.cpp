@@ -871,7 +871,8 @@ TEST(GoosLib, Desfun) {
 
 TEST(GoosLib, Factorial) {
   Interpreter i;
-  EXPECT_EQ(e(i, "(factorial 10)"), "3628800");
+  // now large numbers are printed as hex.
+  EXPECT_EQ(e(i, "(factorial 10)"), "#x375f00");
 }
 
 TEST(GoosLib, ApplySimple) {
