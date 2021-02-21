@@ -70,7 +70,7 @@ bool convert_to_expressions(Form* top_level_form,
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
       auto return_var = f.ir2.atomic_ops->end_op().return_var();
-      new_entries = rewrite_to_get_var(stack, pool, return_var);
+      new_entries = rewrite_to_get_var(stack, pool, return_var, f.ir2.env);
       auto reg_return_type =
           f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(return_var.reg());
       if (!dts.ts.typecheck(f.type.last_arg(), reg_return_type.typespec(), "", false, false)) {
@@ -82,7 +82,7 @@ bool convert_to_expressions(Form* top_level_form,
         new_entries.push_back(cast);
       }
     } else {
-      new_entries = stack.rewrite(pool);
+      new_entries = stack.rewrite(pool, f.ir2.env);
     }
     assert(!new_entries.empty());
     top_level_form->clear();

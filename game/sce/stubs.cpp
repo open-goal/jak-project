@@ -3,13 +3,6 @@
 #include "stubs.h"
 
 namespace ee {
-int scePadPortOpen(int port, int slot, void* data) {
-  (void)port;
-  (void)slot;
-  (void)data;
-  assert(false);
-  return 0;
-}
 
 void sceGsSyncV() {
   assert(false);

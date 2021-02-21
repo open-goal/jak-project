@@ -2525,9 +2525,9 @@
   )
 
 (define-extern *vif-disasm-table* (array vif-disasm-element)) ;; unknown type
-(define-extern disasm-vif-tag function)
-(define-extern disasm-dma-tag function)
-(define-extern disasm-vif-details (function symbol (pointer uint8) int int int))
+;;(define-extern disasm-vif-tag (function (pointer uint32) int symbol int symbol))
+(define-extern disasm-dma-tag (function uint symbol int))
+(define-extern disasm-vif-details (function symbol (pointer uint8) int int symbol))
 (define-extern vif-disasm-element type)
 ;;(define-extern *dma-disasm* object) ;; unknown type
 (define-extern disasm-dma-list function)
@@ -2555,9 +2555,9 @@
 (deftype cpad-info (hw-cpad)
   ((number             int32      :offset-assert 36)
    (cpad-file          int32      :offset-assert 40)
-   (button0-abs        int32 3  :offset-assert 44) ;; guess
-   (button0-shadow-abs int32 1  :offset-assert 56) ;; guess
-   (button0-rel        int32 3  :offset-assert 60) ;; guess
+   (button0-abs        uint32 3  :offset-assert 44) ;; guess
+   (button0-shadow-abs uint32 1  :offset-assert 56) ;; guess
+   (button0-rel        uint32 3  :offset-assert 60) ;; guess
    (stick0-dir         float      :offset-assert 72)
    (stick0-speed       float      :offset-assert 76)
    (new-pad            int32      :offset-assert 80)
@@ -2570,6 +2570,9 @@
    (buzz-act           int32      :offset-assert 124)
    (change-time        uint64     :offset-assert 128)
    )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
@@ -2577,12 +2580,32 @@
 
 (deftype cpad-list (basic)
   ((num-cpads int32     :offset-assert 4)
-   (cpads     int32 2 :offset-assert 8) ;; guess
+   (cpads     cpad-info 2 :offset-assert 8) ;; guess
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+;; display
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
+;; in the kernel.
+(define-extern cpad-open (function cpad-info int cpad-info))
+(define-extern cpad-get-data (function cpad-info cpad-info))
+
+
+(define-extern cpad-set-buzz! (function cpad-info int int int none))
+(define-extern *cpad-debug* symbol) ;; unknown type
+(define-extern analog-input (function int float float float float float))
+(define-extern buzz-stop! (function int none))
+;;(define-extern cpad-info object) ;; unknown type
+;;(define-extern hw-cpad object) ;; unknown type
+(define-extern cpad-invalid! (function cpad-info cpad-info))
+;;(define-extern cpad-list object) ;; unknown type
+;;(define-extern *cheat-mode* object) ;; unknown type
+(define-extern *cpad-list* cpad-list) ;; unknown type
+(define-extern service-cpads (function cpad-list))
 
 ;;;;;;;;;;;;;;;
 ;; gs
@@ -32143,17 +32166,7 @@
 
 ;;(define-extern error object) ;; unknown type
 ;;(define-extern details object) ;; unknown type
-(define-extern cpad-set-buzz! function)
-;;(define-extern *cpad-debug* object) ;; unknown type
-(define-extern analog-input function)
-(define-extern buzz-stop! function)
-;;(define-extern cpad-info object) ;; unknown type
-;;(define-extern hw-cpad object) ;; unknown type
-(define-extern cpad-invalid! function)
-;;(define-extern cpad-list object) ;; unknown type
-;;(define-extern *cheat-mode* object) ;; unknown type
-;;(define-extern *cpad-list* object) ;; unknown type
-(define-extern service-cpads function)
+
 (define-extern get-integral-current-time function)
 (define-extern get-current-time function)
 ;;(define-extern cpad-get-data object) ;; unknown type

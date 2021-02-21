@@ -81,7 +81,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
         result->mark_as_dead_set();
         // fmt::print("marked {} as dead set\n", to_string(env));
       }
-    } else if (m_src.get_arg(0).is_sym_ptr() && m_src.get_arg(0).get_str() == "#f") {
+    } else if (m_src.get_arg(0).is_sym_val() && m_src.get_arg(0).get_str() == "#f") {
       auto& ri = env.reg_use().op.at(m_my_idx);
       if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
         result->mark_as_dead_false();

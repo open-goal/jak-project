@@ -222,6 +222,11 @@ bool is_uint_type(const Env& env, int my_idx, Variable var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
   return type == TypeSpec("uint");
 }
+
+bool is_ptr_or_child(const Env& env, int my_idx, Variable var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+  return type == "pointer";
+}
 }  // namespace
 
 /*!
@@ -456,6 +461,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       bool allow_side_effects) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var());
 
   bool arg1_reg = m_expr.get_arg(1).is_var();
   bool arg1_i = true;
@@ -553,6 +559,10 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
+    result->push_back(new_form);
+  } else if (arg0_ptr) {
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
     auto cast = pool.alloc_single_element_form<CastElement>(
@@ -1459,7 +1469,7 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
-    auto new_entries = temp_stack.rewrite(pool);
+    auto new_entries = temp_stack.rewrite(pool, env);
     form->clear();
     for (auto e : new_entries) {
       form->push_back(e);
@@ -1478,7 +1488,7 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
-    auto new_entries = temp_stack.rewrite(pool);
+    auto new_entries = temp_stack.rewrite(pool, env);
     form->clear();
     for (auto e : new_entries) {
       form->push_back(e);
@@ -1517,9 +1527,9 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 
         std::vector<FormElement*> new_entries;
         if (form == entry.body && used_as_value) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination);
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env);
         } else {
-          new_entries = temp_stack.rewrite(pool);
+          new_entries = temp_stack.rewrite(pool, env);
         }
 
         form->clear();
@@ -1568,7 +1578,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         }
 
         std::vector<FormElement*> new_entries;
-        new_entries = temp_stack.rewrite(pool);
+        new_entries = temp_stack.rewrite(pool, env);
 
         form->clear();
         for (auto e : new_entries) {
@@ -1585,7 +1595,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   }
 
   std::vector<FormElement*> new_entries;
-  new_entries = temp_stack.rewrite(pool);
+  new_entries = temp_stack.rewrite(pool, env);
 
   else_ir->clear();
   for (auto e : new_entries) {
@@ -1629,9 +1639,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   // rewrite extra sets as needed.
   if (rewrite_as_set && !set_unused) {
     for (auto& entry : entries) {
-      rewrite_to_get_var(entry.body->elts(), pool, *last_var);
+      rewrite_to_get_var(entry.body->elts(), pool, *last_var, env);
     }
-    rewrite_to_get_var(else_ir->elts(), pool, *last_var);
+    rewrite_to_get_var(else_ir->elts(), pool, *last_var, env);
   }
 
   if (rewrite_as_set) {
@@ -1683,9 +1693,9 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
         std::vector<FormElement*> new_entries;
         if (i == int(entries.size()) - 1) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_result, env);
         } else {
-          new_entries = temp_stack.rewrite(pool);
+          new_entries = temp_stack.rewrite(pool, env);
         }
 
         entry.condition->clear();
@@ -1721,9 +1731,9 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 
     std::vector<FormElement*> new_entries;
     if (i == int(entries.size()) - 1) {
-      new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
+      new_entries = rewrite_to_get_var(temp_stack, pool, final_result, env);
     } else {
-      new_entries = temp_stack.rewrite(pool);
+      new_entries = temp_stack.rewrite(pool, env);
     }
 
     entry.condition->clear();
@@ -1966,7 +1976,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   std::vector<FormElement*> new_entries;
-  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var());
+  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var(), env);
 
   return_code->clear();
   for (auto e : new_entries) {

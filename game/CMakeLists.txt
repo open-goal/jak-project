@@ -37,6 +37,7 @@ set(RUNTIME_SOURCE
         sce/libcdvd_ee.cpp
         sce/libscf.cpp
         sce/libdma.cpp
+        sce/libpad.cpp
         sce/libgraph.cpp
         sce/deci2.cpp
         sce/sif_ee.cpp

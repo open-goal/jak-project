@@ -236,7 +236,7 @@ TEST_F(FormRegressionTest, WhileLoop) {
       "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)))\n"
       "    )\n"
       "   )\n"
-      "  (set! v0-0 '#f)\n"
+      "  (set! v0-0 #f)\n"
       "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);
@@ -302,7 +302,7 @@ TEST_F(FormRegressionTest, Or) {
       "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)))\n"
       "    )\n"
       "   )\n"
-      "  (set! v0-0 '#f)\n"
+      "  (set! v0-0 #f)\n"
       "  (ret-value v0-0)\n"
       "  )";
   test_no_expr(func, type, expected);

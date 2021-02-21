@@ -534,7 +534,6 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   IR2_RegOffset ro;
   if (get_as_reg_offset(m_src, &ro)) {
     auto& input_type = input.get(ro.reg);
-
     if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
          input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) &&
         ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
@@ -568,7 +567,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       }
     }
 
-    if (input_type.typespec() == TypeSpec("pointer")) {
+    if (input_type.typespec() == TypeSpec("pointer") &&
+        input_type.kind != TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
       // we got a plain pointer. let's just assume we're loading an integer.
       // perhaps we should disable this feature by default on 4-byte loads if we're getting
       // lots of false positives for loading pointers from plain pointers.

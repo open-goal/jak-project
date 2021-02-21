@@ -302,6 +302,9 @@ bool SetVarElement::is_sequence_point() const {
 }
 
 void SetVarElement::collect_vars(VariableSet& vars) const {
+  if (m_var_info.is_dead_set || m_var_info.is_dead_false) {
+    return;
+  }
   vars.insert(m_dst);
   m_src->collect_vars(vars);
 }
@@ -1160,6 +1163,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "/";
     case FixedOperatorKind::ADDITION:
       return "+";
+    case FixedOperatorKind::ADDITION_IN_PLACE:
+      return "+!";
+    case FixedOperatorKind::ADDITION_PTR:
+      return "&+";
+    case FixedOperatorKind::ADDITION_PTR_IN_PLACE:
+      return "&+!";
     case FixedOperatorKind::SUBTRACTION:
       return "-";
     case FixedOperatorKind::MULTIPLICATION:

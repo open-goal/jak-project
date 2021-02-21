@@ -26,6 +26,7 @@
 #include "game/sce/stubs.h"
 #include "game/sce/libdma.h"
 #include "game/sce/libgraph.h"
+#include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
 using namespace ee;

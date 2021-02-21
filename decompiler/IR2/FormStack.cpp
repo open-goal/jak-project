@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "FormStack.h"
 #include "Form.h"
+#include "GenericElementMatcher.h"
 
 namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {
@@ -206,7 +207,68 @@ FormElement* FormStack::pop_back(FormPool& pool) {
   }
 }
 
-std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
+namespace {
+bool is_op_in_place(SetVarElement* elt,
+                    FixedOperatorKind op,
+                    const Env&,
+                    Variable* base_out,
+                    Form** val_out) {
+  auto matcher = Matcher::op(GenericOpMatcher::fixed(op), {Matcher::any_reg(0), Matcher::any(1)});
+  auto result = match(matcher, elt->src());
+  if (result.matched) {
+    auto first = result.maps.regs.at(0);
+    assert(first.has_value());
+    if (first->reg() != elt->dst().reg()) {
+      return false;
+    }
+
+    if (first->idx() != elt->dst().idx()) {
+      return false;
+    }
+
+    *val_out = result.maps.forms.at(1);
+    *base_out = first.value();
+    return true;
+  }
+  return false;
+}
+
+FormElement* rewrite_set_op_in_place_for_kind(SetVarElement* in,
+                                              const Env& env,
+                                              FormPool& pool,
+                                              FixedOperatorKind first_kind,
+                                              FixedOperatorKind in_place_kind) {
+  Form* val = nullptr;
+  Variable base;
+
+  if (is_op_in_place(in, first_kind, env, &base, &val)) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(in_place_kind),
+        std::vector<Form*>{
+            pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(base)),
+            val});
+  }
+  return in;
+}
+
+FormElement* try_rewrites_in_place(SetVarElement* in, const Env& env, FormPool& pool) {
+  auto out = rewrite_set_op_in_place_for_kind(in, env, pool, FixedOperatorKind::ADDITION,
+                                              FixedOperatorKind::ADDITION_IN_PLACE);
+  if (out != in) {
+    return out;
+  }
+
+  out = rewrite_set_op_in_place_for_kind(in, env, pool, FixedOperatorKind::ADDITION_PTR,
+                                         FixedOperatorKind::ADDITION_PTR_IN_PLACE);
+  if (out != in) {
+    return out;
+  }
+
+  return in;
+}
+}  // namespace
+
+std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
   std::vector<FormElement*> result;
 
   for (auto& e : m_stack) {
@@ -215,10 +277,14 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
     }
 
     if (e.destination.has_value()) {
+      // (set! x (+ x y)) -> (+! x y)
+
       auto elt =
           pool.alloc_element<SetVarElement>(*e.destination, e.source, e.sequence_point, e.set_info);
       e.source->parent_element = elt;
-      result.push_back(elt);
+
+      auto final_elt = try_rewrites_in_place(elt, env, pool);
+      result.push_back(final_elt);
     } else {
       result.push_back(e.elt);
     }
@@ -228,7 +294,8 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool) {
 
 void rewrite_to_get_var(std::vector<FormElement*>& default_result,
                         FormPool& pool,
-                        const Variable& var) {
+                        const Variable& var,
+                        const Env&) {
   auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
   if (last_op_as_set && last_op_as_set->dst().reg() == var.reg()) {
     default_result.pop_back();
@@ -243,9 +310,10 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
 
 std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
                                              FormPool& pool,
-                                             const Variable& var) {
-  auto default_result = stack.rewrite(pool);
-  rewrite_to_get_var(default_result, pool, var);
+                                             const Variable& var,
+                                             const Env& env) {
+  auto default_result = stack.rewrite(pool, env);
+  rewrite_to_get_var(default_result, pool, var, env);
   return default_result;
 }
 
