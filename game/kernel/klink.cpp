@@ -878,7 +878,7 @@ uint64_t link_resume() {
  */
 void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
   // only possible if alignment is good.
-  if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf)) {
+  if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf) && size > 0xfff) {
     if (!gfunc_774.offset) {
       // GOAL function is unknown, lets see if its loaded:
       auto sym = find_symbol_from_c("ultimate-memcpy");
@@ -887,7 +887,7 @@ void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
       }
       gfunc_774.offset = sym->value;
     }
-    printf("calling goal um\n");
+    printf("calling goal ultimate-memcpy!\n");
     return Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset, size,
                              s7.offset, g_ee_main_mem))
         .c();

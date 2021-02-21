@@ -5,3 +5,56 @@
 ;; name in dgo: vu1-user-h
 ;; dgos: GAME, ENGINE
 
+;; VU1 renderers are enabled/disabled with a bitmask.
+
+;; I believe this is renderers which can be enabled/disabled in the debug menu?
+(define *vu1-enable-user-menu*
+    #x1FFFF8)
+
+;; by default, all off.
+;; the menu renderers get copied to this on each frame
+(define *vu1-enable-user* 0)
+
+;; a dma "sink" is somewhere where a renderer can put stuff.
+(deftype dma-foreground-sink (basic)
+  ((bucket                   int32  :offset-assert 4) ;; not sure if this is a bucket index or pointer?
+   (foreground-texture-page  int8   :offset-assert 8)  ;; ?
+   (foreground-texture-level int8   :offset-assert 9)  ;; ?
+   (foreground-output-bucket int8   :offset-assert 10) ;; ?
+   )
+  :method-count-assert 9
+  :size-assert         #xb
+  :flag-assert         #x90000000b
+  )
+
+;; additional info for the generic renderer
+(deftype generic-bucket-state (structure)
+  ((gifbuf-adr uint32  :offset-assert 0)
+   (inbuf-adr  uint32  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; sink for the generic renderer, a normal sink + extra data.
+(deftype generic-dma-foreground-sink (dma-foreground-sink)
+  ((state                    generic-bucket-state :inline :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+;; group of sinks used for the foreground renderers.
+(deftype dma-foreground-sink-group (basic)
+  ((sink         dma-foreground-sink       3 :offset-assert 4)
+   (merc-sink    dma-foreground-sink         :offset 4)
+   (generic-sink generic-dma-foreground-sink :offset 8)
+   (level        basic                       :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )

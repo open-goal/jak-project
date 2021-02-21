@@ -105,6 +105,12 @@ template <>
 std::string fixed_to_string<char>(char);
 
 /*!
+ * Special case to print integer
+ */
+template <>
+std::string fixed_to_string<IntType>(IntType);
+
+/*!
  * Common implementation for a fixed object
  */
 template <typename T>

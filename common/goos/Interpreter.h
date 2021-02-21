@@ -23,6 +23,9 @@ class Interpreter {
   Object intern(const std::string& name);
   void disable_printfs();
   Object eval_symbol(const Object& sym, const std::shared_ptr<EnvironmentObject>& env);
+  bool eval_symbol(const Object& sym,
+                   const std::shared_ptr<EnvironmentObject>& env,
+                   Object* result);
   Arguments get_args(const Object& form, const Object& rest, const ArgumentSpec& spec);
   void set_args_in_env(const Object& form,
                        const Arguments& args,

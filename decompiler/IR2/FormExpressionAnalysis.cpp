@@ -1335,13 +1335,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
           //          throw std::runtime_error("Failed to match new method: " +
           //          temp_form->to_string(env));
         }
-      } else {
-        auto ti = env.dts->ts.lookup_type(type_1);
-        auto is_basic = dynamic_cast<BasicType*>(ti);
-        if (!is_basic) {
-          throw std::runtime_error(
-              fmt::format("Method call detected, not yet implemented {} {}\n", name, type_1));
-        }
       }
     }
   }
@@ -1815,6 +1808,15 @@ FormElement* ConditionElement::make_generic(const Env&,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED: {
+      auto casted = make_cast(source_forms, types, TypeSpec("uint"), pool);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GT),
+                                                casted);
+    }
+
     case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED: {
       auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
       auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
@@ -1984,7 +1986,8 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
   auto as_special = dynamic_cast<const SpecialOp*>(m_op);
   if (as_special) {
     if (as_special->kind() == SpecialOp::Kind::NOP ||
-        as_special->kind() == SpecialOp::Kind::BREAK) {
+        as_special->kind() == SpecialOp::Kind::BREAK ||
+        as_special->kind() == SpecialOp::Kind::CRASH) {
       stack.push_form_element(this, true);
       return;
     }

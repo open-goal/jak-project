@@ -779,9 +779,10 @@ void TypeSystem::add_builtin_types() {
 
   // VU FUNCTION
   // don't inherit
-  add_field_to_type(vu_function_type, "length", make_typespec("int32"));    // todo integer type
-  add_field_to_type(vu_function_type, "origin", make_typespec("pointer"));  // todo sign extend?
-  add_field_to_type(vu_function_type, "qlength", make_typespec("int32"));   // todo integer type
+  add_field_to_type(vu_function_type, "length", make_typespec("int32"));   // todo integer type
+  add_field_to_type(vu_function_type, "origin", make_typespec("int32"));   // todo sign extend?
+  add_field_to_type(vu_function_type, "qlength", make_typespec("int32"));  // todo integer type
+  add_field_to_type(vu_function_type, "data", make_typespec("uint8"), false, true);
 
   // link block
   builtin_structure_inherit(link_block_type);

@@ -5,3 +5,209 @@
 ;; name in dgo: dma-buffer
 ;; dgos: GAME, ENGINE
 
+;; DMA buffers are used per frame to store DMA data.
+;; The dma-buffer manages the memory and dma-bucket organizes the stuff within.
+
+;; The DMA system reads dma-tags.  A common trick is to set the dma in tte mode, which transfers
+;; the upper 64-bits of the 128-bit "packet" to the VIF, and you can put your vifcode there:
+
+;; Ex:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 32-bit vifcode ;; 32-bit vifcode ;; 64-bit dma-tag ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; in this case, the vifcodes will be sent to the vif, if
+;; the dma transfer has tte set.
+;; note that the second vifcode can also hold other stuff depending on the mode.
+
+
+;; first quadword of a DMA with vif packet
+(deftype dma-packet (structure)
+  ((dma  dma-tag   :offset-assert 0)
+   (vif0 vif-tag   :offset-assert 8)
+   (vif1 vif-tag   :offset-assert 12) ;; doesn't have to be a vif tag.
+   (quad uint128  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; seems to be unused?
+(deftype dma-packet-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> dma-packet-array heap-base) 16)
+
+;; For doing a dma -> vif -> gif (path 2) transfer.
+(deftype dma-gif-packet (structure)
+  ((dma-vif dma-packet :inline :offset-assert 0)
+   (gif     uint64    2       :offset-assert 16) ;; guess
+   (quad    uint128    2       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; dma-buffer holds per-frame data for dma.
+;; the allocated-length is in bytes.
+;; the base points to the first unused memory in the buffer
+;; it is a dynamically sized type.
+(deftype dma-buffer (basic)
+  ((allocated-length int32     :offset-assert 4)
+   (base             pointer   :offset-assert 8)
+   (end              uint32    :offset-assert 12)
+   (data             uint64 1 :offset-assert 16) ;; weird, I guess this aligns the data?
+   (data-buffer      uint8 :dynamic :offset 16)
+   )
+  (:methods
+   (new (symbol type int) _type_  0)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (size int))
+  "Allocate a new dma-buffer with size bytes of space"
+  (local-vars (v0-0 dma-buffer))
+  ;; we really get size + 4 bytes I think...
+  (set! v0-0
+   (object-new allocation type-to-make
+    (+ (+ size -4) (the-as int (-> type-to-make size)))
+    )
+   )
+  (set! (-> v0-0 base) (-> v0-0 data))
+  (set! (-> v0-0 allocated-length) size)
+  v0-0
+  )
+
+(defun dma-buffer-inplace-new ((obj dma-buffer) (size int))
+  "Initialize a DMA buffer in place. Doesn't set the type of the memory"
+  (set! (-> obj base) (-> obj data))
+  (set! (-> obj allocated-length) size)
+  obj
+  )
+
+(defmethod length dma-buffer ((obj dma-buffer))
+  "Get the size of the buffer"
+  (-> obj allocated-length)
+  )
+
+(defmethod asize-of dma-buffer ((obj dma-buffer))
+  "Get the size in memory of the object"
+  (+ (+ (-> obj allocated-length) -4) (the-as int (-> dma-buffer size)))
+  )
+
+(defun dma-buffer-length ((arg0 dma-buffer))
+  "Get length used in quadwords, rounded down"
+  (shr (+ (&- (-> arg0 base) (-> arg0 data)) 15) 4)
+  )
+
+(defun dma-buffer-free ((arg0 dma-buffer))
+  "Get the number of free quadwords, rounded down."
+  (the-as int
+          (shr (+ (&- (-> arg0 end) (-> arg0 base)) 15) 4)
+          )
+  )
+
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (arg2 int))
+  "Add DMA chain instructions to load the given VU function to VU program memory.
+   The destination address in VU memory is specified inside of the vu-function.
+   if arg2 = 0, then use FLUSHE, otherwise use FLUSHA, I think the runs _before_ the program upload.
+   Should run with TTE."
+  (local-vars
+   (func-ptr uint)
+   (origin int)
+   (qlen int)
+   (qwc-now int)
+   (dma-buf-2 dma-buffer)
+   (buf-ptr pointer)
+   )
+  ;; our strategy is to upload the program in chunks, as we can only upload 127 or 128 quadwords at a time.
+  ;; it is not clear why they did 127 quadword chunks, it seems like 128 would have worked too.
+  
+  ;; the actual data to upload.
+  (set! func-ptr (the uint (&-> vu-func data 4)))
+  ;; how long it is
+  (set! qlen (-> vu-func qlength))
+  ;; where to upload to. In 64-bit units because the PS2 is annoying.
+  (set! origin (-> vu-func origin))
+
+  ;; while we still have stuff to transfer...
+  (while (> qlen 0)
+    ;; get up to 127 quadwords. maybe they thought they lost one for the dmatag + 2 vif tags?
+   (set! qwc-now (min 127 qlen))
+   (set! dma-buf-2 dma-buf)
+   ;; grab a pointer to the next free memory
+   (set! buf-ptr (-> dma-buf-2 base))
+
+   ;; We will add the following tags
+   ;; | 32-bit MPG VIFCode | 32-bit FLUSHX VIFCode | 64-bit DMATag |
+   ;;  DMA Tag will the REF - indicating to transfer some other data (the program), then advance to
+   ;;   the next quadword in this buffer for the next steps.
+   ;; FLUSHX makes sure the VU isn't running while we upload a program.
+   ;; MPG tells VIF to upload the program to the VU.
+   
+   ;; put in a DMA Tag, REF
+   (set! (-> (the-as (pointer int64) buf-ptr))
+         (logior (logior #x30000000 ;; tag id = ref
+                         (shr (shl qwc-now 48) 48)) ;; qwc = qwc-now
+                 (the-as int (shr (shl (the-as uint func-ptr) 33) 1)) ;; addr = func-ptr
+                 )
+         )
+   ;; VIFCODE - FLUSHE or FLUSHA, wait for previous program to finish?
+   (set! (-> (the-as (pointer int32) buf-ptr) 2)
+    (shr (shl (if (zero? arg2) 16 19) 57) 33)
+    )
+   ;; MPG - Transfers the microgram!
+   ;; sets num to 0, which means 256x 64 bit units, or 128 quadwords.
+   ;; I think this transfers one quadword too many, but it's okay.
+   (set! (-> (the-as (pointer int32) buf-ptr) 3)
+    (logior (logior #x4a000000 (shr (shl origin 48) 48))
+     (shr (shl (shl qwc-now 1) 56) 40)
+     )
+    )
+   ;; advance buffer pointer to next quadword.
+   (set! (-> dma-buf-2 base) (&-> (the (pointer uint32) buf-ptr) 4))
+   ;; advance data pointer
+   (set! func-ptr (+ func-ptr (the-as uint (shl qwc-now 4))))
+   ;; count down transfered quads
+   (set! qlen (- qlen qwc-now))
+   ;; source pointer advances by doublewords...
+   (set! origin (+ origin (shl qwc-now 1)))
+   )
+  '#f
+  )
+
+(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
+  "Send the DMA buffer! DOES NOT TRANSFER TAG."
+  (when (< (-> buf allocated-length)
+           (&- (-> buf base) (-> buf data))
+           )
+    ;; oops. we overflowed the DMA buffer. die.
+    (segfault)
+    )
+  (dma-send
+   chan
+   (the-as uint (-> buf data))
+   (the-as uint (dma-buffer-length buf))
+   )
+  )
+
+(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
+  "Send the DMA buffer! Sends the tags"
+  (when (< (-> buf allocated-length)
+           (&- (-> buf base) (-> buf data))
+           )
+    ;; oops. we overflowed the DMA buffer. die.
+    (segfault)
+    )
+  (dma-send-chain
+   chan
+   (the-as uint (-> buf data))
+   )
+  )

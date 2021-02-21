@@ -128,7 +128,7 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
     case Kind::VARIABLE:
       return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT:
-      return pretty_print::to_symbol(std::to_string(m_int));
+      return goos::Object::make_integer(m_int);
     case Kind::SYMBOL_PTR:
       return pretty_print::to_symbol(fmt::format("'{}", m_string));
     case Kind::SYMBOL_VAL:

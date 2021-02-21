@@ -68,20 +68,48 @@
 ## `trigonometry-h`: **Done**
 - Empty
 
-## `transformq-h`:
+## `transformq-h`: waiting on stack stuff
 - Needs stack stuff
 
-## `bounding-box`:
+## `bounding-box`: asm
 
-## `matrix`:
+## `matrix`: asm
 
-## `transform`:
+## `transform`: asm
 
-## `quaternion`:
+## `quaternion`: asm
 
-## `euler`:
+## `euler`: asm
 
-## `geometry`:
+## `geometry`: asm
 
 ## `trigonometry`: **Done**
 - `sincos!` and `sincos-rad!` have a bug where cosine is slightly off
+
+## `gsound-h`: **Done**
+
+## `timer-h`: **Done**
+- `timer-init` removed for PC port.
+
+## `timer`: Decompiled, probably needs porting
+- Has functions for accessing PS2 timers, needs to be ported to PC. All the logic for stopwatches etc is decopmiled, just the timer reads/writes need to be modified.
+
+## `vif-h`: **Done**
+
+## `dma-h`: **Done**
+- DMA sync disabled by default.
+
+## `video-h`: **Done**
+
+## `vu1-user-h`: **Done**
+
+## `dma`: **Done**
+- `dma-initialize` disabled on PC.
+- Plan is to modify things at a higher level than this for the PC graphics system, most of these functions are non-functional on the PC.
+- `ultimate-memcpy` may need to be modified, or we can just swap out code to use the non-`ultimate` version of `memcpy`.
+
+## `dma-buffer`: **Done**
+- The sends won't work on PC, but it should let you build the buffer...
+
+## `dma-bucket`: **Done**
+- Could clean up some bitfield access, should probably add some features to the compiler to help here.

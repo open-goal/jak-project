@@ -19,15 +19,7 @@ void sceGsSyncPath() {
   assert(false);
 }
 
-void sceGsResetPath() {
-  assert(false);
-}
-
 void sceGsResetGraph() {
-  assert(false);
-}
-
-void sceDmaSync() {
   assert(false);
 }
 

@@ -60,6 +60,9 @@
 (define-extern file-stream-length (function file-stream int))
 (define-extern file-stream-read (function file-stream pointer int int))
 
+(define-extern dma-sync (function pointer int int int))
+(define-extern flush-cache (function int none))
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; GCOMMON             ;;;;;;;;;;;;;;;;;;;
@@ -1567,14 +1570,20 @@
 ;;(define-extern sound-id object) ;; unknown type
 (deftype sound-id (uint32)
   ()
+  (:methods
+   (dummy-9 () none 9)
+   )
+  :flag-assert #xa00000004
   )
 
 (deftype sound-bank-id (uint32)
   ()
+  :flag-assert #x900000004
   )
 
 (deftype sound-name (uint128)
   ()
+  :flag-assert #x900000010
   )
 ;;(define-extern sound-play-parms object) ;; unknown type
 ;;(define-extern sound-rpc-load-bank object) ;; unknown type
@@ -2022,33 +2031,51 @@
 (define-extern stopwatch-elapsed-ticks (function stopwatch uint))
 (define-extern stopwatch-elapsed-seconds (function stopwatch float))
 
-;;;;;;;;;;;;;
-;; vif-h
-;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; VIF-H               ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 ; ;; vif-h
 (deftype vif-stat (uint32)
-  ()
+  ((vps uint8 :offset 0 :size 2)
+   (vew uint8 :offset 2 :size 1)
+   (mrk uint8 :offset 6 :size 1)
+   (vss uint8 :offset 8 :size 1)
+   (vfs uint8 :offset 9 :size 1)
+   (vis uint8 :offset 10 :size 1)
+   (int uint8 :offset 11 :size 1)
+   (er0 uint8 :offset 12 :size 1)
+   (er1 uint8 :offset 13 :size 1)
+   (fqc uint8 :offset 24 :size 4)
+   )
+   
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype vif-fbrst (uint32)
-  ()
+  ((rst uint8 :offset 0 :size 1)
+   (fbk uint8 :offset 1 :size 1)
+   (stp uint8 :offset 2 :size 1)
+   (stc uint8 :offset 3 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
+
 (deftype vif-err (uint32)
-  ()
+  ((mii uint8 :offset 0 :size 1)
+   (me0 uint8 :offset 1 :size 1) ;; PS2 hardware bug, must set this to 1 for correct operation.
+   (me1 uint8 :offset 2 :size 1)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 ;; vif-h
@@ -2081,13 +2108,31 @@
   :size-assert         #x174
   :flag-assert         #x900000174
   )
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; DMA-H               ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(deftype dma-sqwc (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
 ; ;; dma-h
 (deftype dma-chcr (uint32)
-  ()
+  ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
+   (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
+   (asp uint8 :offset 4 :size 2) ;; none, 1, 2
+   (tte uint8 :offset 6 :size 1) ;; transfer tag (sc only)
+   (tie uint8 :offset 7 :size 1) ;; tag interrupt
+   (str uint8 :offset 8 :size 1) ;; start!
+   (tag uint16 :offset 16)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype dma-ctrl (uint32)
@@ -2099,7 +2144,7 @@
   )
 
 (deftype dma-bank (structure)
-  ((chcr uint32  :offset 0)
+  ((chcr dma-chcr  :offset 0)
    (madr uint32  :offset 16)
    (qwc  uint32  :offset 32)
    )
@@ -2134,10 +2179,10 @@
   )
 
 (deftype dma-bank-control (structure)
-  ((ctrl    uint32  :offset 0)
+  ((ctrl    dma-ctrl  :offset 0)
    (stat    uint32  :offset 16)
    (pcr     uint32  :offset 32)
-   (sqwc    uint32  :offset 48)
+   (sqwc    dma-sqwc  :offset 48)
    (rbsr    uint32  :offset 64)
    (rbor    uint32  :offset 80)
    (stadr   uint32  :offset 96)
@@ -2162,33 +2207,74 @@
 
 ; ;; dma-h
 (deftype dma-tag (uint64)
-  ()
+  ((qwc uint16 :offset 0)          ;; quadword count
+   (pce uint8 :offset 26 :size 2)  ;; priority (source mode)
+   (id uint8 :offset 28 :size 3)   ;; ID (what the tag means)
+   (irq uint8 :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32 :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8 :offset 63 :size 1)    ;; spr or not flag.
+   )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
-  ;; likely a bitfield type
   )
-
 
 ; ;; dma-h
 (deftype dma-bucket (structure)
-  ((tag   uint64  :offset-assert 0)
-   (last  uint32  :offset-assert 8)
-   (dummy uint32  :offset-assert 12)
-   (next  uint32  :offset 4)
+  ((tag   dma-tag  :offset-assert 0)     ;; the DMA tag to transfer the bucket's data
+   (last  (pointer uint64)  :offset-assert 8)  ;; the last tag of this bucket.
+   (dummy uint32  :offset-assert 12)     ;; empty space.
+   (next  uint32  :offset 4)             ;; this overlaps with the addr bit-field of the dma-tag
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-; ;; dma-h
-; (deftype vif-tag (uint32)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   ;; likely a bitfield type
-;   )
+
+;; dma-h
+
+(deftype vif-tag (uint32)
+  ((imm uint16 :offset 0 :size 16)
+   (num uint8 :offset 16 :size 8)
+   (cmd uint8 :offset 24 :size 8)
+   (irq uint8 :offset 31 :size 1) ;;?
+   (msk uint8 :offset 15 :size 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+(deftype dma-enable (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+
+(deftype vu-stat (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype vif-mask (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype vif-stcycl-imm (uint16)
+  ()
+  :flag-assert #x900000002
+  )
+
+(deftype vif-unpack-imm (uint16)
+  ()
+  :flag-assert #x900000002
+  )
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; VIDEO-H             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 ; ;; video-h
 (deftype video-parms (structure)
@@ -2213,6 +2299,12 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; VU1-USER-H          ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 ;; vu1-user-h
 (deftype dma-foreground-sink (basic)
@@ -2244,25 +2336,118 @@
   :flag-assert         #x900000014
   )
 
+(deftype dma-foreground-sink (basic)
+  ((bucket                   int32  :offset-assert 4) ;; not sure if this is a bucket index or pointer?
+   (foreground-texture-page  int8   :offset-assert 8)  ;; ?
+   (foreground-texture-level int8   :offset-assert 9)  ;; ?
+   (foreground-output-bucket int8   :offset-assert 10) ;; ?
+   )
+  :method-count-assert 9
+  :size-assert         #xb
+  :flag-assert         #x90000000b
+  )
+
 (deftype dma-foreground-sink-group (basic)
-  ((sink         basic 3 :offset-assert 4)
-   (merc-sink    basic     :offset 4)
-   (generic-sink basic     :offset 8)
-   (level        basic     :offset 16)
+  ((sink         dma-foreground-sink       3 :offset-assert 4)
+   (merc-sink    dma-foreground-sink         :offset 4)
+   (generic-sink generic-dma-foreground-sink :offset 8)
+   (level        basic                       :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
 
-;;;;;;;;;;;;;;;
-;; dma-buffer
-;;;;;;;;;;;;;;;
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; DMA                 ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern reset-path (function none))
+(define-extern reset-graph (function int int int int none))
+
+(define-extern dma-sync-crash (function dma-bank none))
+(define-extern dma-send (function dma-bank uint uint none))
+(define-extern dma-send-chain (function dma-bank-source uint none))
+(define-extern dma-send-chain-no-tte (function dma-bank-source uint none))
+(define-extern dma-send-chain-no-flush (function dma-bank-source uint none))
+(define-extern dma-send-to-spr (function uint uint uint symbol none))
+(define-extern dma-send-to-spr-no-flush (function uint uint uint symbol none))
+(define-extern dma-send-from-spr (function uint uint uint symbol none))
+(define-extern dma-send-from-spr-no-flush (function uint uint uint symbol none))
+(define-extern dma-initialize (function none))
+(define-extern clear-vu0-mem (function none))
+(define-extern clear-vu1-mem (function none))
+(define-extern dump-vu1-mem (function none))
+(define-extern dump-vu1-range (function uint uint symbol))
+(define-extern reset-vif1-path (function none))
+(define-extern ultimate-memcpy (function pointer pointer uint none))
+
+;
+;;(define-extern vif-stat object) ;; unknown type
+;;(define-extern vif-fbrst object) ;; unknown type
+;;(define-extern vif-err object) ;; unknown type
+;;(define-extern vif-bank object) ;; unknown type
+(define-extern dma-count-until-done (function dma-bank (pointer int32) int))
+;;(define-extern vif-tag object) ;; unknown type
+(define-extern dma-send-no-scratch (function dma-bank uint32 uint32 none))
+;;(define-extern dma-tag object) ;; unknown type
+;;(define-extern dma-chcr object) ;; unknown type
+;;(define-extern dma-bank-spr object) ;; unknown type
+;;(define-extern dma-bucket object) ;; unknown type
+(define-extern dma-sync-with-count (function dma-bank (pointer int32) int))
+;;(define-extern vu-code-block object) ;; unknown type
+(define-extern dma-sync-fast (function dma-bank none))
+;;(define-extern vif-mask object) ;; unknown type
+;;(define-extern dma-bank-control object) ;; unknown type
+;;(define-extern vif-unpack-imm object) ;; unknown type
+;;(define-extern dma-ctrl object) ;; unknown type
+;;(define-extern dma-enable object) ;; unknown type
+;;(define-extern vu-stat object) ;; unknown type
+;;(define-extern dma-bank-source object) ;; unknown type
+;;(define-extern dma-bank-vif object) ;; unknown type
+;;(define-extern dma-sqwc object) ;; unknown type
+;;(define-extern vif-stcycl-imm object) ;; unknown type
+;;(define-extern dma-bank object) ;; unknown type
+;;(define-extern flush-cache object) ;; unknown type
+;;(define-extern *video-parms* object) ;; unknown type
+;;(define-extern video-parms object) ;; unknown type
+;;(define-extern generic-bucket-state object) ;; unknown type
+;;(define-extern *vu1-enable-user-menu* object) ;; unknown type
+(define-extern dma-foreground-sink type)
+(define-extern dma-foreground-sink-group type)
+;;(define-extern *vu1-enable-user* object) ;; unknown type
+(define-extern generic-dma-foreground-sink type)
+
+
+(define-extern symlink3 (function none))
+
+
+
+
+(define-extern dma-sync-hang (function dma-bank none))
+(define-extern symlink2 (function none))
+
+
+
+(define-extern dma-send (function dma-bank uint uint none))
+
+(define-extern *video-reset-parm* int)
+
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; DMA-BUFFER          ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype dma-packet (structure)
-  ((dma  uint64   :offset-assert 0)
-   (vif0 uint32   :offset-assert 8)
-   (vif1 uint32   :offset-assert 12)
+  ((dma  dma-tag   :offset-assert 0)
+   (vif0 vif-tag   :offset-assert 8)
+   (vif1 vif-tag   :offset-assert 12) ;; doesn't have to be a vif tag.
    (quad uint128  :offset 0)
    )
   :method-count-assert 9
@@ -2289,31 +2474,63 @@
 
 (deftype dma-buffer (basic)
   ((allocated-length int32     :offset-assert 4)
-   (base             uint32    :offset-assert 8)
+   (base             pointer   :offset-assert 8)
    (end              uint32    :offset-assert 12)
-   (data             uint64 1 :offset-assert 16) ;; hmmm, seems wrong
+   (data             uint64 1 :offset-assert 16) ;; weird, I guess this aligns the data?
+   (data-buffer      uint8 :dynamic :offset 16)
+   )
+  (:methods
+   (new (symbol type int) _type_  0)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
 
+;;(define-extern reset-path object) ;; unknown type
+;;(define-extern reset-graph object) ;; unknown type
+;;(define-extern dma-sync object) ;; unknown type
+;;(define-extern dma-packet-array object) ;; unknown type
+(define-extern dma-buffer-inplace-new (function dma-buffer int dma-buffer))
+(define-extern dma-buffer-length (function dma-buffer uint))
+(define-extern dma-buffer-free (function dma-buffer int))
+
+;;(define-extern dma-gif-packet object) ;; unknown type
+
+(define-extern dma-buffer-add-vu-function (function dma-buffer vu-function int symbol))
+;;(define-extern dma-packet object) ;; unknown type
+;;(define-extern dma-buffer object) ;; unknown type
+(define-extern dma-buffer-send-chain (function dma-bank-source dma-buffer none))
+(define-extern dma-buffer-send (function dma-bank dma-buffer none))
+(define-extern dma-bucket-insert-tag (function dma-bucket int dma-bucket (pointer uint64) dma-bucket))
+(define-extern dma-buffer-add-buckets (function dma-buffer int none))
+(define-extern dma-buffer-patch-buckets (function dma-bucket int int))
+
 ;;;;;;;;;;;;;;;
 ;; dma-disasm
 ;;;;;;;;;;;;;;;
+
 
 (deftype vif-disasm-element (structure)
   ((mask    uint32  :offset-assert 0)
    (tag     uint32  :offset-assert 4)
    (val     uint32  :offset-assert 8)
    (print   uint32  :offset-assert 12)
-   (string1 basic   :offset-assert 16)
-   (string2 basic   :offset-assert 20)
+   (string1 string   :offset-assert 16)
+   (string2 string   :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
+
+(define-extern *vif-disasm-table* (array vif-disasm-element)) ;; unknown type
+(define-extern disasm-vif-tag function)
+(define-extern disasm-dma-tag function)
+(define-extern disasm-vif-details (function symbol (pointer uint8) int int int))
+(define-extern vif-disasm-element type)
+;;(define-extern *dma-disasm* object) ;; unknown type
+(define-extern disasm-dma-list function)
 
 ;;;;;;;;;;;;;;;
 ;; pad
@@ -31921,84 +32138,9 @@
 (define-extern vector-circle-tangent-new function)
 
 
-;
-;;(define-extern vif-stat object) ;; unknown type
-;;(define-extern vif-fbrst object) ;; unknown type
-;;(define-extern vif-err object) ;; unknown type
-;;(define-extern vif-bank object) ;; unknown type
-(define-extern dma-count-until-done function)
-;;(define-extern vif-tag object) ;; unknown type
-(define-extern dma-send-no-scratch function)
-;;(define-extern dma-tag object) ;; unknown type
-;;(define-extern dma-chcr object) ;; unknown type
-;;(define-extern dma-bank-spr object) ;; unknown type
-;;(define-extern dma-bucket object) ;; unknown type
-(define-extern dma-sync-with-count function)
-;;(define-extern vu-code-block object) ;; unknown type
-(define-extern dma-sync-fast function)
-;;(define-extern vif-mask object) ;; unknown type
-;;(define-extern dma-bank-control object) ;; unknown type
-;;(define-extern vif-unpack-imm object) ;; unknown type
-;;(define-extern dma-ctrl object) ;; unknown type
-;;(define-extern dma-enable object) ;; unknown type
-;;(define-extern vu-stat object) ;; unknown type
-;;(define-extern dma-bank-source object) ;; unknown type
-;;(define-extern dma-bank-vif object) ;; unknown type
-;;(define-extern dma-sqwc object) ;; unknown type
-;;(define-extern vif-stcycl-imm object) ;; unknown type
-;;(define-extern dma-bank object) ;; unknown type
-;;(define-extern flush-cache object) ;; unknown type
-;;(define-extern *video-parms* object) ;; unknown type
-;;(define-extern video-parms object) ;; unknown type
-;;(define-extern generic-bucket-state object) ;; unknown type
-;;(define-extern *vu1-enable-user-menu* object) ;; unknown type
-(define-extern dma-foreground-sink type)
-(define-extern dma-foreground-sink-group type)
-;;(define-extern *vu1-enable-user* object) ;; unknown type
-(define-extern generic-dma-foreground-sink type)
-(define-extern reset-vif1-path function)
-(define-extern dump-vu1-range function)
-(define-extern symlink3 function)
-(define-extern dma-sync-crash function)
-(define-extern clear-vu0-mem function)
-(define-extern dump-vu1-mem function)
-(define-extern dma-send-from-spr function)
-(define-extern dma-send-to-spr function)
-(define-extern dma-sync-hang function)
-(define-extern symlink2 function)
-(define-extern ultimate-memcpy function)
-(define-extern dma-send-to-spr-no-flush function)
-(define-extern dma-initialize function)
-(define-extern dma-send function)
-(define-extern dma-send-chain-no-flush function)
-(define-extern clear-vu1-mem function)
-(define-extern dma-send-from-spr-no-flush function)
-;;(define-extern *video-reset-parm* object) ;; unknown type
-(define-extern dma-send-chain function)
-(define-extern dma-send-chain-no-tte function)
-;;(define-extern reset-path object) ;; unknown type
-;;(define-extern reset-graph object) ;; unknown type
-;;(define-extern dma-sync object) ;; unknown type
-;;(define-extern dma-packet-array object) ;; unknown type
-(define-extern dma-buffer-inplace-new function)
-(define-extern dma-buffer-length function)
-;;(define-extern dma-gif-packet object) ;; unknown type
-(define-extern dma-buffer-free function)
-(define-extern dma-buffer-add-vu-function function)
-;;(define-extern dma-packet object) ;; unknown type
-;;(define-extern dma-buffer object) ;; unknown type
-(define-extern dma-buffer-send-chain function)
-(define-extern dma-buffer-send function)
-(define-extern dma-bucket-insert-tag function)
-(define-extern dma-buffer-add-buckets function)
-(define-extern dma-buffer-patch-buckets function)
-;;(define-extern *vif-disasm-table* object) ;; unknown type
-(define-extern disasm-vif-tag function)
-(define-extern disasm-dma-tag function)
-(define-extern disasm-vif-details function)
-(define-extern vif-disasm-element type)
-;;(define-extern *dma-disasm* object) ;; unknown type
-(define-extern disasm-dma-list function)
+
+
+
 ;;(define-extern error object) ;; unknown type
 ;;(define-extern details object) ;; unknown type
 (define-extern cpad-set-buzz! function)

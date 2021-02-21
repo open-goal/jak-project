@@ -779,7 +779,8 @@ Val* Compiler::compile_static_new(const goos::Object& form,
   }
 
   throw_compiler_error(form,
-                       "Cannot do a static new of a {} because it is not a bitfield or structure.");
+                       "Cannot do a static new of a {} because it is not a bitfield or structure.",
+                       type.print());
   return get_none();
 }
 

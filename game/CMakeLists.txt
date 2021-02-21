@@ -36,6 +36,8 @@ set(RUNTIME_SOURCE
         system/Deci2Server.cpp
         sce/libcdvd_ee.cpp
         sce/libscf.cpp
+        sce/libdma.cpp
+        sce/libgraph.cpp
         sce/deci2.cpp
         sce/sif_ee.cpp
         sce/iop.cpp
