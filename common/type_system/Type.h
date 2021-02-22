@@ -52,7 +52,8 @@ class Type {
   // get the alignment for the "size in memory" data.
   virtual int get_in_memory_alignment() const = 0;
 
-  virtual int get_inline_array_alignment() const = 0;
+  virtual int get_inline_array_stride_alignment() const = 0;
+  virtual int get_inline_array_start_alignment() const = 0;
 
   virtual bool operator==(const Type& other) const = 0;
 
@@ -115,7 +116,8 @@ class NullType : public Type {
   int get_load_size() const override;
   bool get_load_signed() const override;
   int get_size_in_memory() const override;
-  int get_inline_array_alignment() const override;
+  int get_inline_array_stride_alignment() const override;
+  int get_inline_array_start_alignment() const override;
   RegClass get_preferred_reg_class() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
@@ -143,7 +145,8 @@ class ValueType : public Type {
   RegClass get_preferred_reg_class() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
-  int get_inline_array_alignment() const override;
+  int get_inline_array_stride_alignment() const override;
+  int get_inline_array_start_alignment() const override;
   std::string print() const override;
   bool operator==(const Type& other) const override;
   ~ValueType() = default;
@@ -231,11 +234,13 @@ class StructureType : public ReferenceType {
   int get_size_in_memory() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
-  int get_inline_array_alignment() const override;
+  int get_inline_array_stride_alignment() const override;
+  int get_inline_array_start_alignment() const override;
   bool lookup_field(const std::string& name, Field* out);
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
   void set_pack(bool pack) { m_pack = pack; }
+  void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
 
  protected:
   friend class TypeSystem;
@@ -254,6 +259,7 @@ class StructureType : public ReferenceType {
   bool m_dynamic = false;
   int m_size_in_mem = 0;
   bool m_pack = false;
+  bool m_allow_misalign = false;
   int m_offset = 0;
   size_t m_idx_of_first_unique_field = 0;
 };
@@ -262,6 +268,7 @@ class BasicType : public StructureType {
  public:
   BasicType(std::string parent, std::string name, bool dynamic = false);
   int get_offset() const override;
+  int get_inline_array_start_alignment() const override;
   std::string print() const override;
   ~BasicType() = default;
 };

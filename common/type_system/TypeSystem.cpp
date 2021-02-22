@@ -147,8 +147,8 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
     info.sign_extend = false;                // not applicable anyway
 
     if (result_type->is_reference()) {
-      info.stride =
-          align(result_type->get_size_in_memory(), result_type->get_inline_array_alignment());
+      info.stride = align(result_type->get_size_in_memory(),
+                          result_type->get_inline_array_stride_alignment());
     } else {
       // can't have an inline array of value types!
       assert(false);
@@ -886,11 +886,11 @@ int TypeSystem::get_alignment_in_type(const Field& field) {
     if (field.is_array()) {
       // TODO - is this actually correct? or do we use in_memory for the first element and
       // inline_array for the ones that follow?
-      return field_type->get_inline_array_alignment();
+      return field_type->get_inline_array_start_alignment();
     } else {
       // it is an inlined field, so return the alignment in memory
       // TODO - for inline, but not inline array, do we use structure alignment always?
-      return field_type->get_inline_array_alignment();
+      return field_type->get_inline_array_start_alignment();
     }
   }
 
@@ -929,8 +929,8 @@ int TypeSystem::get_size_in_type(const Field& field) const {
         throw std::runtime_error("bad get size in type");
       }
       assert(field_type->is_reference());
-      return field.array_size() *
-             align(field_type->get_size_in_memory(), field_type->get_inline_array_alignment());
+      return field.array_size() * align(field_type->get_size_in_memory(),
+                                        field_type->get_inline_array_stride_alignment());
     } else {
       if (field_type->is_reference()) {
         return field.array_size() * POINTER_SIZE;

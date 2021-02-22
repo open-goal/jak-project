@@ -68,6 +68,13 @@ Matcher Matcher::integer(std::optional<int> value) {
   return m;
 }
 
+Matcher Matcher::any_integer(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_INT;
+  m.m_int_out_id = match_id;
+  return m;
+}
+
 Matcher Matcher::any_quoted_symbol(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_QUOTED_SYMBOL;
@@ -266,6 +273,31 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
             return true;
           }
           return atom.get_int() == *m_int_match;
+        }
+      }
+
+      return false;
+    } break;
+
+    case Kind::ANY_INT: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_int()) {
+          if (m_int_out_id != -1) {
+            maps_out->ints[m_int_out_id] = as_simple_atom->atom().get_int();
+          }
+          return true;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_int()) {
+          if (m_int_out_id != -1) {
+            maps_out->ints[m_int_out_id] = atom.get_int();
+          }
+          return true;
         }
       }
 

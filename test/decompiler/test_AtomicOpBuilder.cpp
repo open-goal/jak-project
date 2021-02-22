@@ -580,7 +580,7 @@ TEST(DecompilerAtomicOpBuilder, OR) {
   test_case(assembly_from_list({"or a1, a2, a3"}), {"(set! a1 (logior a2 a3))"}, {{"a1"}},
             {{"a2", "a3"}}, {{}});
   test_case(assembly_from_list({"or a2, r0, r0"}), {"(set! a2 0)"}, {{"a2"}}, {{}}, {{}});
-  test_case(assembly_from_list({"or a1, s7, r0"}), {"(set! a1 '#f)"}, {{"a1"}}, {{}}, {{}});
+  test_case(assembly_from_list({"or a1, s7, r0"}), {"(set! a1 #f)"}, {{"a1"}}, {{}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, ORI) {
@@ -594,24 +594,24 @@ TEST(DecompilerAtomicOpBuilder, SB) {
   test_case(assembly_from_list({"sb a1, 2(a3)"}), {"(s.b! (+ a3 2) a1)"}, {{}}, {{"a1", "a3"}},
             {{}});
   test_case(assembly_from_list({"sb a1, 0(a3)"}), {"(s.b! a3 a1)"}, {{}}, {{"a1", "a3"}}, {{}});
-  test_case(assembly_from_list({"sb s7, 2(a3)"}), {"(s.b! (+ a3 2) '#f)"}, {{}}, {{"a3"}}, {{}});
-  test_case(assembly_from_list({"sb s7, 0(a3)"}), {"(s.b! a3 '#f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sb s7, 2(a3)"}), {"(s.b! (+ a3 2) #f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sb s7, 0(a3)"}), {"(s.b! a3 #f)"}, {{}}, {{"a3"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, SD) {
   test_case(assembly_from_list({"sd a1, 2(a3)"}), {"(s.d! (+ a3 2) a1)"}, {{}}, {{"a1", "a3"}},
             {{}});
   test_case(assembly_from_list({"sd a1, 0(a3)"}), {"(s.d! a3 a1)"}, {{}}, {{"a1", "a3"}}, {{}});
-  test_case(assembly_from_list({"sd s7, 2(a3)"}), {"(s.d! (+ a3 2) '#f)"}, {{}}, {{"a3"}}, {{}});
-  test_case(assembly_from_list({"sd s7, 0(a3)"}), {"(s.d! a3 '#f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sd s7, 2(a3)"}), {"(s.d! (+ a3 2) #f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sd s7, 0(a3)"}), {"(s.d! a3 #f)"}, {{}}, {{"a3"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, SH) {
   test_case(assembly_from_list({"sh a1, 2(a3)"}), {"(s.h! (+ a3 2) a1)"}, {{}}, {{"a1", "a3"}},
             {{}});
   test_case(assembly_from_list({"sh a1, 0(a3)"}), {"(s.h! a3 a1)"}, {{}}, {{"a1", "a3"}}, {{}});
-  test_case(assembly_from_list({"sh s7, 2(a3)"}), {"(s.h! (+ a3 2) '#f)"}, {{}}, {{"a3"}}, {{}});
-  test_case(assembly_from_list({"sh s7, 0(a3)"}), {"(s.h! a3 '#f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sh s7, 2(a3)"}), {"(s.h! (+ a3 2) #f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sh s7, 0(a3)"}), {"(s.h! a3 #f)"}, {{}}, {{"a3"}}, {{}});
 }
 
 TEST(DecompilerAtomicOpBuilder, SLL) {
@@ -756,12 +756,12 @@ TEST(DecompilerAtomicOpBuilder, SUBS) {
 
 TEST(DecompilerAtomicOpBuilder, SW) {
   test_case(assembly_from_list({"sw a1, test(s7)"}), {"(s.w! test a1)"}, {{}}, {{"a1"}}, {{}});
-  test_case(assembly_from_list({"sw s7, test(s7)"}), {"(s.w! test '#f)"}, {{}}, {{}}, {{}});
+  test_case(assembly_from_list({"sw s7, test(s7)"}), {"(s.w! test #f)"}, {{}}, {{}}, {{}});
   test_case(assembly_from_list({"sw a1, 2(a3)"}), {"(s.w! (+ a3 2) a1)"}, {{}}, {{"a1", "a3"}},
             {{}});
   test_case(assembly_from_list({"sw a1, 0(a3)"}), {"(s.w! a3 a1)"}, {{}}, {{"a1", "a3"}}, {{}});
-  test_case(assembly_from_list({"sw s7, 2(a3)"}), {"(s.w! (+ a3 2) '#f)"}, {{}}, {{"a3"}}, {{}});
-  test_case(assembly_from_list({"sw s7, 0(a3)"}), {"(s.w! a3 '#f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sw s7, 2(a3)"}), {"(s.w! (+ a3 2) #f)"}, {{}}, {{"a3"}}, {{}});
+  test_case(assembly_from_list({"sw s7, 0(a3)"}), {"(s.w! a3 #f)"}, {{}}, {{"a3"}}, {{}});
   test_case(assembly_from_list({"sw r0, test(s7)"}), {"(s.w! test 0)"}, {{}}, {{}}, {{}});
   test_case(assembly_from_list({"sw r0, 2(a3)"}), {"(s.w! (+ a3 2) 0)"}, {{}}, {{"a3"}}, {{}});
   test_case(assembly_from_list({"sw r0, 0(a3)"}), {"(s.w! a3 0)"}, {{}}, {{"a3"}}, {{}});

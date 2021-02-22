@@ -12,7 +12,7 @@ bool tc(const DecompilerTypeSystem& dts, const TypeSpec& expected, const TP_Type
 }
 
 bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
-  return tc(dts, TypeSpec("int"), type) || tc(dts, TypeSpec("uint"), type);
+  return tc(dts, TypeSpec("integer"), type) || tc(dts, TypeSpec("uint"), type);
 }
 
 bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {

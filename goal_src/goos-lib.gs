@@ -137,7 +137,15 @@
 
 ;; goal macro to define a goal macro
 (defgmacro defmacro (name args &rest body)
-  `(seval (defgmacro ,name ,args ,@body))
+    (if (and
+        (> (length body) 1)      ;; more than one thing in function
+        (string? (first body))   ;; first thing is a string
+        )
+    ;; then it's a docstring and we ignore it.
+    `(seval (defgmacro ,name ,args ,@(cdr body)))
+    ;; otherwise don't ignore it.
+    `(seval (defgmacro ,name ,args ,@body))
+    )
   )
 
 ;; goal macro to define a goos macro

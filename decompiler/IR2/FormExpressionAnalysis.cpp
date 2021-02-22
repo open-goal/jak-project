@@ -72,6 +72,18 @@ bool FormElement::has_side_effects() {
 
 namespace {
 
+bool is_power_of_two(int in, int* out) {
+  int x = 1;
+  for (int i = 0; i < 32; i++) {
+    if (x == in) {
+      *out = i;
+      return true;
+    }
+    x = x * 2;
+  }
+  return false;
+}
+
 /*!
  * Create a form which represents a variable.
  */
@@ -529,28 +541,60 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       if (out.success) {
         // it is. now we have to modify things
         // first, look for the index
-        auto arg0_matcher =
-            Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                        {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                                     {Matcher::integer(input.stride), Matcher::any(0)}),
-                         Matcher::integer(input.offset)});
-        auto match_result = match(arg0_matcher, args.at(0));
-        if (match_result.matched) {
-          bool used_index = false;
-          std::vector<DerefToken> tokens;
-          for (auto& tok : out.tokens) {
-            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
-              assert(!used_index);
-              used_index = true;
-              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
-            } else {
-              tokens.push_back(to_token(tok));
+        int p2;
+        if (is_power_of_two(input.stride, &p2)) {
+          // (+ (shl (-> a0-0 reg-count) 3) 28)
+          auto arg0_matcher =
+              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                       {Matcher::any(0), Matcher::integer(p2)}),
+                           Matcher::integer(input.offset)});
+          auto match_result = match(arg0_matcher, args.at(0));
+          if (match_result.matched) {
+            bool used_index = false;
+            std::vector<DerefToken> tokens;
+            for (auto& tok : out.tokens) {
+              if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+                assert(!used_index);
+                used_index = true;
+                tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+              } else {
+                tokens.push_back(to_token(tok));
+              }
             }
+            result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+            return;
+          } else {
+            throw std::runtime_error(
+                fmt::format("Failed to match for stride (power 2 {}) with add: {}", input.stride,
+                            args.at(0)->to_string(env)));
           }
-          result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
-          return;
         } else {
-          throw std::runtime_error("Failed to match for stride (non power 2) with add");
+          auto arg0_matcher =
+              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                       {Matcher::integer(input.stride), Matcher::any(0)}),
+                           Matcher::integer(input.offset)});
+          auto match_result = match(arg0_matcher, args.at(0));
+          if (match_result.matched) {
+            bool used_index = false;
+            std::vector<DerefToken> tokens;
+            for (auto& tok : out.tokens) {
+              if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+                assert(!used_index);
+                used_index = true;
+                tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+              } else {
+                tokens.push_back(to_token(tok));
+              }
+            }
+            result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+            return;
+          } else {
+            throw std::runtime_error(
+                fmt::format("Failed to match for stride (non power 2 {}) with add: {}",
+                            input.stride, args.at(0)->to_string(env)));
+          }
         }
       }
     }
@@ -1749,13 +1793,34 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 // ConditionElement
 ///////////////////
 
-FormElement* ConditionElement::make_generic(const Env&,
+FormElement* ConditionElement::make_zero_check_generic(const Env& env,
+                                                       FormPool& pool,
+                                                       const std::vector<Form*>& source_forms,
+                                                       const std::vector<TypeSpec>& types) {
+  // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
+
+  auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                              {Matcher::any(0), Matcher::any_integer(1)}),
+                  source_forms.at(0));
+  if (mr.matched) {
+    s64 value = -mr.maps.ints.at(1);
+    auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
+        nullptr, SimpleAtom::make_int_constant(value));
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                              std::vector<Form*>{mr.maps.forms.at(0), value_form});
+  } else {
+    return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
+  }
+}
+
+FormElement* ConditionElement::make_generic(const Env& env,
                                             FormPool& pool,
                                             const std::vector<Form*>& source_forms,
                                             const std::vector<TypeSpec>& types) {
   switch (m_kind) {
-    case IR2_Condition::Kind::TRUTHY:
     case IR2_Condition::Kind::ZERO:
+      return make_zero_check_generic(env, pool, source_forms, types);
+    case IR2_Condition::Kind::TRUTHY:
     case IR2_Condition::Kind::NONZERO:
     case IR2_Condition::Kind::FALSE:
     case IR2_Condition::Kind::IS_PAIR:
@@ -2077,20 +2142,6 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
 // ArrayFieldAccess
 ////////////////////////
 
-namespace {
-bool is_power_of_two(int in, int* out) {
-  int x = 1;
-  for (int i = 0; i < 32; i++) {
-    if (x == in) {
-      *out = i;
-      return true;
-    }
-    x = x * 2;
-  }
-  return false;
-}
-}  // namespace
-
 void ArrayFieldAccess::update_with_val(Form* new_val,
                                        const Env& env,
                                        FormPool& pool,
@@ -2283,6 +2334,11 @@ void TypeOfElement::update_from_stack(const Env& env,
 ////////////////////////
 
 void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
+  stack.push_form_element(this, true);
+}
+
+void StoreElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   mark_popped();
   stack.push_form_element(this, true);
 }

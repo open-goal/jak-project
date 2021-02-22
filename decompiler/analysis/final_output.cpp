@@ -229,9 +229,14 @@ std::string write_from_top_level(const Function& top_level,
       auto deftype_match_result = match(deftype_matcher, &f);
       if (deftype_match_result.matched) {
         auto& name = deftype_match_result.maps.strings.at(type_name);
-        result += fmt::format(";; definition of type {}\n", name);
-        result += dts.ts.generate_deftype(dts.ts.lookup_type(name));
-        result += "\n\n";
+        if (dts.ts.fully_defined_type_exists(name)) {
+          result += fmt::format(";; definition of type {}\n", name);
+          result += dts.ts.generate_deftype(dts.ts.lookup_type(name));
+          result += "\n\n";
+        } else {
+          result +=
+              fmt::format(";; type {} defintion, but it is unknown to the decompiler\n\n", name);
+        }
         something_matched = true;
       }
     }
