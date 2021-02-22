@@ -3315,14 +3315,14 @@
 ;; texture-h
 ;;;;;;;;;;;;;;
 
-; ;; texture-h
-; (deftype texture-id (uint32)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   ;; likely a bitfield type
-;   )
+;; texture-h
+(deftype texture-id (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
 
 (deftype texture-pool-segment (structure)
   ((dest uint32  :offset-assert 0)
@@ -3401,6 +3401,8 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
+
+(define-extern texture-mip->segment (function int int int))
 
 ;; texture-h
 (deftype texture-page (basic)
@@ -3490,6 +3492,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+(define-extern *texture-relocate-later* texture-relocate-later)
+
 ;;;;;;;;;;;;;;
 ;; level-h
 ;;;;;;;;;;;;;;
@@ -3646,11 +3651,16 @@
    (receiving-level basic                :offset-assert 32)
    (load-commands   basic                :offset-assert 36)
    (play?           basic                :offset-assert 40)
-   ; (level           UNKNOWN      3       :offset-assert 100)
-   ; (data            UNKNOWN      3       :offset-assert 100)
-   (level0          level        :inline :offset 96) ;; inline basic
+   ;; there's something? from 40 -> 96. 
+   (hack-pad        uint8                :offset 90)
+   
+   ;(level           level 3 :inline      :offset-assert 96)
+   ;(data            level 3 :inline      :offset-assert 100)
+   (level0          level        :inline :offset-assert 96) ;; inline basic
    (level1          level        :inline :offset-assert 2704) ;; inline basic
    (level-default   level        :inline :offset-assert 5312) ;; inline basic
+   ;; this actually went earlier, 
+   (level           level 3      :inline :offset 96)
    (pad uint32)
    )
   :method-count-assert 27
@@ -32475,14 +32485,14 @@
 (define-extern texture-page type)
 ;;(define-extern *depth-cue-base-page* object) ;; unknown type
 ;;(define-extern texture-pool-segment object) ;; unknown type
-;;(define-extern *texture-relocate-later* object) ;; unknown type
+;; ;; unknown type
 ;;(define-extern *sky-base-vram-word* object) ;; unknown type
 ;;(define-extern texture-id object) ;; unknown type
 ;;(define-extern *sky-base-page* object) ;; unknown type
 (define-extern texture-page-dir type)
 ;;(define-extern texture-relocate-later object) ;; unknown type
 ;;(define-extern texture-link object) ;; unknown type
-(define-extern texture-mip->segment function)
+
 ;;(define-extern shader-ptr object) ;; unknown type
 ;;(define-extern *eyes-base-vram-word* object) ;; unknown type
 ;;(define-extern *eyes-base-page* object) ;; unknown type
