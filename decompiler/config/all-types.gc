@@ -1934,17 +1934,26 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype timer-mode (uint32)
-  (;(data  uint32 :offset 0 :size 32)
+  (;; clock selection:
+   ;;  0: BUSCLK
+   ;;  1: BUSCLK/16
+   ;;  2: BUSCLK/256
+   ;;  3: hblank
    (clks  uint8 :offset 0 :size 2)
-   (gate  uint8 :offset 2 :size 1)
-   (gats  uint8 :offset 3 :size 1)
+   (gate  uint8 :offset 2 :size 1) ;; gate function enable
+   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
+   ;; gate mode:
+   ;;  0: count while gate signal is low
+   ;;  1: start when gate signal rises
+   ;;  2: start when gate signal falls
+   ;;  3: start when gate signal rises/falls
    (gatm  uint8 :offset 4 :size 2)
-   (zret  uint8 :offset 6 :size 1)
-   (cue   uint8 :offset 7 :size 1)
-   (cmpe  uint8 :offset 8 :size 1)
-   (ovfe  uint8 :offset 9 :size 1)
-   (equf  uint8 :offset 10 :size 1)
-   (ovff  uint8 :offset 11 :size 1)
+   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
+   (cue   uint8 :offset 7 :size 1) ;; count-up enable
+   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
+   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
+   (equf  uint8 :offset 10 :size 1) ;; equal-flag
+   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -2022,12 +2031,12 @@
 (define-extern timer-count (function timer-bank uint))
 (define-extern disable-irq (function none))
 (define-extern enable-irq (function none))
-(define-extern stopwatch-init (function stopwatch none))
-(define-extern stopwatch-reset (function stopwatch none))
-(define-extern stopwatch-start (function stopwatch none))
-(define-extern stopwatch-stop (function stopwatch none))
-(define-extern stopwatch-begin (function stopwatch none))
-(define-extern stopwatch-end (function stopwatch none))
+(define-extern stopwatch-init (function stopwatch int))
+(define-extern stopwatch-reset (function stopwatch int))
+(define-extern stopwatch-start (function stopwatch int))
+(define-extern stopwatch-stop (function stopwatch uint))
+(define-extern stopwatch-begin (function stopwatch int))
+(define-extern stopwatch-end (function stopwatch uint))
 (define-extern stopwatch-elapsed-ticks (function stopwatch uint))
 (define-extern stopwatch-elapsed-seconds (function stopwatch float))
 

@@ -59,21 +59,21 @@
    Like dma-send-no-scratch, this sets chcr to zero, which may be undesirable."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> arg0 madr)
         (logior (logand #xfffffff (the-as int madr)) ;; lower 28 bits are untouched
                 ;; if we are transferring to the scratchpad (at 70000000)
                 ;; we should set bit 31 in madr, per the manual.
                 (if (= (logand #x70000000 (the-as int madr)) #x70000000)
-                    (shl 32768 16) ;; set bit 31
+                    (shl #x8000 16) ;; set bit 31
                     0)
                 )
         )
   (set! (-> arg0 qwc) qwc)
-  ;(.sync.l)
+  (.sync.l)
   ;; set str!
   (set! (-> arg0 chcr) (new 'static 'dma-chcr :str 1))
-  ;(.sync.l)
+  (.sync.l)
   (none)
   )
 
@@ -81,17 +81,17 @@
   "Send DMA! tadr should be a tag address, possibly in spad ram."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
-  ;(.sync.l)
+  (.sync.l)
   (set! (-> arg0 qwc) 0)
   ;; adjust address
   (set! (-> arg0 tadr)
-   (logior (logand 268435455 (the-as int tadr))
-           (if (= (logand 1879048192 (the-as int tadr)) 1879048192)
-               (shl 32768 16)
+   (logior (logand #xfffffff (the-as int tadr))
+           (if (= (logand #x70000000 (the-as int tadr)) #x70000000)
+               (shl #x8000 16)
                0)
     )
    )
-  ;(.sync.l)
+  (.sync.l)
   ;;(set! (-> arg0 chcr) 325)
   (set! (-> arg0 chcr)
         (new 'static 'dma-chcr
@@ -100,7 +100,7 @@
              :tte 1 ;; send tags
              :str 1) ;; go!
         )
-  ;(.sync.l)
+  (.sync.l)
   (none)
   )
 
@@ -108,19 +108,19 @@
   "Send DMA chain! TTE bit is not set, don't transfer tags."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> arg0 qwc) 0)
   (set!
    (-> arg0 tadr)
    (logior
-    (logand 268435455 (the-as int arg1))
+    (logand #xfffffff (the-as int arg1))
     (the-as
      uint
-     (if (= (logand 1879048192 (the-as int arg1)) 1879048192) (shl 32768 16) 0)
+     (if (= (logand #x70000000 (the-as int arg1)) #x70000000) (shl #x8000 16) 0)
      )
     )
    )
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> arg0 chcr)
         (new 'static 'dma-chcr
              :dir 1  ;; from memory
@@ -128,7 +128,7 @@
              :tte 0  ;; no tags
              :str 1) ;; go!
         )
-  ;;(.sync.l)
+  (.sync.l)
   (none)
   )
 
@@ -141,14 +141,14 @@
   (set!
    (-> arg0 tadr)
    (logior
-    (logand 268435455 (the-as int arg1))
+    (logand #xfffffff (the-as int arg1))
     (the-as
      uint
-     (if (= (logand 1879048192 (the-as int arg1)) 1879048192) (shl 32768 16) 0)
+     (if (= (logand #x70000000 (the-as int arg1)) #x70000000) (shl #x8000 16) 0)
      )
     )
    )
-  ;;(.sync.l)
+  (.sync.l)
   ;;(set! (-> arg0 chcr) 325)
   (set! (-> arg0 chcr)
         (new 'static 'dma-chcr
@@ -157,7 +157,7 @@
              :tte 1
              :str 1)
         )
-  ;;(.sync.l)
+  (.sync.l)
   (set! v0-1 0)
   (none)
   )
@@ -169,12 +169,12 @@
   (dma-sync (the-as pointer s5-0) 0 0)
   (flush-cache 0)
   (.sync.l)
-  (set! (-> s5-0 madr) (logand #xFFFFFFF (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand #xFFFFFFF (the-as int sadr)))
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
-  ;;(.sync.l)
+  (.sync.l)
   (if sync
       (dma-sync (the-as pointer s5-0) 0 0))
   (none)
@@ -185,13 +185,13 @@
   (local-vars (s5-0 dma-bank-spr))
   (set! s5-0 SPR_TO_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
-  ;;(.sync.l)
-  (set! (-> s5-0 madr) (logand 268435455 (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand 268435455 (the-as int sadr)))
+  (.sync.l)
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
-  ;;(.sync.l)
+  (.sync.l)
   (if sync (dma-sync (the-as pointer s5-0) 0 0))
   (none)
   )
@@ -202,13 +202,13 @@
   (set! s5-0 SPR_FROM_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
   (flush-cache 0)
-  ;;(.sync.l)
-  (set! (-> s5-0 madr) (logand 268435455 (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand 268435455 (the-as int sadr)))
+  (.sync.l)
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
-  ;;(.sync.l)
+  (.sync.l)
   (if sync (dma-sync (the-as pointer s5-0) 0 0))
   (none)
   )
@@ -218,13 +218,13 @@
   (local-vars (s5-0 dma-bank-spr))
   (set! s5-0 SPR_FROM_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
-  ;;(.sync.l)
-  (set! (-> s5-0 madr) (logand 268435455 (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand 268435455 (the-as int sadr)))
+  (.sync.l)
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
-  ;;(.sync.l)
+  (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
-  ;;(.sync.l)
+  (.sync.l)
   (if sync (dma-sync (the-as pointer s5-0) 0 0))
   (none)
   )
@@ -264,7 +264,7 @@
 
 (defun clear-vu1-mem ()
   "Clear the data memory of VU1, filling it with abadbeef
-   This uses the slow memory mapping of VU0's data memory at 0x11004000"
+   This uses the slow memory mapping of VU1's data memory at 0x1100C000"
   (local-vars
    (v1-0 (pointer uint32))
    (a0-0 int)
@@ -371,15 +371,15 @@
       )
     (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
     
-    ;;(.sync.l)
+    (.sync.l)
     ;; set up dma
     (set! (-> spr-to-bank madr) (the uint src))
     (set! (-> spr-to-bank sadr) 0)
     (set! (-> spr-to-bank qwc) qwc-transferred-now)
-    ;;(.sync.l)
+    (.sync.l)
     ;; start dma
     (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str 1))
-    ;;(.sync.l)
+    (.sync.l)
     ;; sync
     (dma-sync (the-as pointer spr-to-bank) 0 0)
 
@@ -391,9 +391,9 @@
     (set! (-> spr-from-bank sadr) 0)
     (set! (-> spr-from-bank qwc) qwc-transferred-now)
     ;; transfer!
-    ;;(.sync.l)
+    (.sync.l)
     (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str 1))
-    ;;(.sync.l)
+    (.sync.l)
     ;; sync!
     (dma-sync (the-as pointer spr-from-bank) 0 0)
     ;; advance dst.

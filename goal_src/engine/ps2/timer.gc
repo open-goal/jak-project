@@ -5,16 +5,6 @@
 ;; name in dgo: timer
 ;; dgos: GAME, ENGINE
 
-;; Sneakily disable these instructions for readibility (remove this later)
-;; SYNC is an EE instruction that waits for various memory access to be completed
-;; (this might not be necessary for x86_64)
-(defmacro .sync.l () `(none))
-(defmacro .sync.p () `(none))
-;; Copies the contents of a cop0 (system control) register to a gpr
-(defmacro .mfc0 (dest src) `(none))
-;; Copies the contents of a gpr to a cop0 (system control) register
-(defmacro .mtc0 (dest src) `(none))
-
 
 (defun timer-reset ((timer timer-bank))
   "Reset a timer's counter to zero"
@@ -63,7 +53,6 @@
   "Init a stopwatch"
   (set! (-> obj begin-level) 0)
   (set! (-> obj prev-time-elapsed) 0)
-  (none)
   )
 
 
@@ -76,7 +65,6 @@
       (set! (-> obj start-time) count)
       )
     )
-  (none)
   )
 
 (defun stopwatch-start ((obj stopwatch))
@@ -88,7 +76,6 @@
       (set! (-> obj start-time) count)
       )
     )
-  (none)
   )
 
 (defun stopwatch-stop ((obj stopwatch))
@@ -97,16 +84,15 @@
     (set! (-> obj begin-level) 0)
     (let ((count 0))
       (let ((count 0))
-        (.mfc0 count Count) ; wrong register? a typo in a rlet? who knows.
+        (.mfc0 count Count) ;; wrong register? a typo in a rlet? who knows.
         (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
         )
       )
     )
-  (none)
   )
 
 (defun stopwatch-begin ((obj stopwatch))
-  "Begin a stopwatch layer. Starts the stopwatch if it has not yet begun"
+  "Begin a stopwatch level, and starts it if it hasn't yet"
   (when (zero? (-> obj begin-level))
     (let ((count 0))
       (.mfc0 count Count)
@@ -114,12 +100,12 @@
       )
     )
   (+! (-> obj begin-level) 1)
-  (none)
   )
 
-;; NOTE : there is no guard against ending a stopwatch too many times!
 (defun stopwatch-end ((obj stopwatch))
-  "End a stopwatch layer. Stops the stopwatch if it has ended as many times as it has begun"
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
   (+! (-> obj begin-level) -1)
   (when (zero? (-> obj begin-level))
     (set! (-> obj begin-level) 0)
@@ -128,17 +114,16 @@
       (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
       )
     )
-  (none)
   )
 
 (defun stopwatch-elapsed-ticks ((obj stopwatch))
   "Returns the elapsed time so far (in clock cycles) of a stopwatch"
   (let ((elapsed (-> obj prev-time-elapsed)))
     (when (> (-> obj begin-level) 0)
-      (let ((count 0))
+      (let ((count (the uint 0)))
         (.mfc0 count Count)
         (+! elapsed (- count (-> obj start-time)))
-        ;(set! count elapsed) ;; ??
+        (set! count elapsed) ;; ??
         )
       )
     elapsed
