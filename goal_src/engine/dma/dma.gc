@@ -65,7 +65,7 @@
                 ;; if we are transferring to the scratchpad (at 70000000)
                 ;; we should set bit 31 in madr, per the manual.
                 (if (= (logand #x70000000 (the-as int madr)) #x70000000)
-                    (shl 32768 16) ;; set bit 31
+                    (shl #x8000 16) ;; set bit 31
                     0)
                 )
         )
@@ -85,9 +85,9 @@
   (set! (-> arg0 qwc) 0)
   ;; adjust address
   (set! (-> arg0 tadr)
-   (logior (logand 268435455 (the-as int tadr))
-           (if (= (logand 1879048192 (the-as int tadr)) 1879048192)
-               (shl 32768 16)
+   (logior (logand #xfffffff (the-as int tadr))
+           (if (= (logand #x70000000 (the-as int tadr)) #x70000000)
+               (shl #x8000 16)
                0)
     )
    )
@@ -113,10 +113,10 @@
   (set!
    (-> arg0 tadr)
    (logior
-    (logand 268435455 (the-as int arg1))
+    (logand #xfffffff (the-as int arg1))
     (the-as
      uint
-     (if (= (logand 1879048192 (the-as int arg1)) 1879048192) (shl 32768 16) 0)
+     (if (= (logand #x70000000 (the-as int arg1)) #x70000000) (shl #x8000 16) 0)
      )
     )
    )
@@ -141,10 +141,10 @@
   (set!
    (-> arg0 tadr)
    (logior
-    (logand 268435455 (the-as int arg1))
+    (logand #xfffffff (the-as int arg1))
     (the-as
      uint
-     (if (= (logand 1879048192 (the-as int arg1)) 1879048192) (shl 32768 16) 0)
+     (if (= (logand #x70000000 (the-as int arg1)) #x70000000) (shl #x8000 16) 0)
      )
     )
    )
@@ -169,8 +169,8 @@
   (dma-sync (the-as pointer s5-0) 0 0)
   (flush-cache 0)
   (.sync.l)
-  (set! (-> s5-0 madr) (logand #xFFFFFFF (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand #xFFFFFFF (the-as int sadr)))
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
   (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
@@ -185,9 +185,9 @@
   (local-vars (s5-0 dma-bank-spr))
   (set! s5-0 SPR_TO_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
-  (set! (-> s5-0 madr) (logand 268435455 (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand 268435455 (the-as int sadr)))
   (.sync.l)
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
   (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
@@ -202,9 +202,9 @@
   (set! s5-0 SPR_FROM_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
   (flush-cache 0)
-  (set! (-> s5-0 madr) (logand 268435455 (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand 268435455 (the-as int sadr)))
   (.sync.l)
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffff (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
   (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
@@ -218,9 +218,9 @@
   (local-vars (s5-0 dma-bank-spr))
   (set! s5-0 SPR_FROM_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
-  (set! (-> s5-0 madr) (logand 268435455 (the-as int madr)))
-  (set! (-> s5-0 sadr) (logand 268435455 (the-as int sadr)))
   (.sync.l)
+  (set! (-> s5-0 madr) (logand #xfffffff (the-as int madr)))
+  (set! (-> s5-0 sadr) (logand #xfffffffZ (the-as int sadr)))
   (set! (-> s5-0 qwc) qwc)
   (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
