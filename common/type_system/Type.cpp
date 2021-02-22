@@ -280,8 +280,12 @@ int NullType::get_in_memory_alignment() const {
   throw std::runtime_error("get_in_memory_alignment called on NullType");
 }
 
-int NullType::get_inline_array_alignment() const {
-  throw std::runtime_error("get_inline_array_alignment called on NullType");
+int NullType::get_inline_array_start_alignment() const {
+  throw std::runtime_error("get_inline_array_start_alignment called on NullType");
+}
+
+int NullType::get_inline_array_stride_alignment() const {
+  throw std::runtime_error("get_inline_array_stride_alignment called on NullType");
 }
 
 std::string NullType::print() const {
@@ -372,7 +376,11 @@ int ValueType::get_in_memory_alignment() const {
   return m_size;
 }
 
-int ValueType::get_inline_array_alignment() const {
+int ValueType::get_inline_array_stride_alignment() const {
+  return m_size;
+}
+
+int ValueType::get_inline_array_start_alignment() const {
   return m_size;
 }
 
@@ -528,8 +536,30 @@ int StructureType::get_in_memory_alignment() const {
   return STRUCTURE_ALIGNMENT;
 }
 
-int StructureType::get_inline_array_alignment() const {
+// So the GOAL compiler was weird here.
+// It seems like there were two states:
+// - don't care about alignment of both the first element and the later
+// - don't care about the alignment, but pad the stride.
+// so you end up with a misaligned array of padded structures which seems very stupid.
+
+int StructureType::get_inline_array_stride_alignment() const {
   if (m_pack) {
+    // make elements of inline array the minimum allowable alignment.
+    int alignment = 1;
+    // TODO - I don't know if GOAL actually did this check, maybe packed inline arrays could
+    // violate these?
+    for (const auto& field : m_fields) {
+      alignment = std::max(alignment, field.alignment());
+    }
+    return alignment;
+  } else {
+    // make elements of inline array properly aligned structures
+    return STRUCTURE_ALIGNMENT;
+  }
+}
+
+int StructureType::get_inline_array_start_alignment() const {
+  if (m_pack || m_allow_misalign) {
     // make elements of inline array the minimum allowable alignment.
     int alignment = 1;
     // TODO - I don't know if GOAL actually did this check, maybe packed inline arrays could
@@ -578,6 +608,22 @@ std::string BasicType::print() const {
 
 int BasicType::get_offset() const {
   return BASIC_OFFSET;
+}
+
+int BasicType::get_inline_array_start_alignment() const {
+  if (m_pack) {
+    // make elements of inline array the minimum allowable alignment.
+    int alignment = 8;
+    // TODO - I don't know if GOAL actually did this check, maybe packed inline arrays could
+    // violate these?
+    for (const auto& field : m_fields) {
+      alignment = std::max(alignment, field.alignment());
+    }
+    return alignment;
+  } else {
+    // make elements of inline array properly aligned structures
+    return STRUCTURE_ALIGNMENT;
+  }
 }
 
 /////////////////

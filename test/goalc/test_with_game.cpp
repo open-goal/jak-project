@@ -420,6 +420,17 @@ TEST_F(WithGameTests, Trig) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, InlinedPackedBasics) {
+  runner.run_static_test(env, testCategory, "inlined-packed-basics.gc",
+                         {"rec stride: 48\n"
+                          "offset of float: 40\n"
+                          "offset: 16\n"
+                          "offset2: 184\n"
+                          "array: #x0\n"
+                          "first: #x0\n"
+                          "0\n"});
+}
+
 // VECTOR FLOAT TESTS
 
 // ---- One off Tests

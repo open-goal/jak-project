@@ -360,7 +360,7 @@ TEST_F(FormRegressionTest, ExprFalse) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function symbol)";
-  std::string expected = "'#f";
+  std::string expected = "#f";
   test_with_expr(func, type, expected);
 }
 
@@ -464,7 +464,7 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
       "    (return '#t)\n"
       "    )\n"
       "   )\n"
-      "  '#f\n"
+      "  #f\n"
       "  )";
   test_with_expr(func, type, expected);
 }
@@ -507,7 +507,7 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
       "    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
       "    (if (= v1-0 arg1) (return (quote #t)))\n"
       "    )\n"
-      "   (quote #f)\n"
+      "   #f\n"
       "  )";
   test_final_function(func, type, expected);
 }
@@ -561,7 +561,7 @@ TEST_F(FormRegressionTest, ExprTypeTypep) {
       "    )\n"
       "   (if (= arg0 arg1) (return '#t))\n"
       "   )\n"
-      "  '#f\n"
+      "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "");
 }
@@ -662,7 +662,7 @@ TEST_F(FormRegressionTest, ExprRef) {
       "   (nop!)\n"
       "   (nop!)\n"
       "   (set! arg0 (cdr arg0))\n"
-      "   (set! v1-0 (+ v1-0 1))\n"
+      "   (+! v1-0 1)\n"
       "   )\n"
       "  (car arg0)\n"
       "  )";
@@ -726,7 +726,7 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
       "      (and (!= v1-1 '()) "
       "                   (< (shl (the-as int v1-1) 62) 0)\n"
       "      )\n"
-      "     (set! v0-0 (+ v0-0 1))\n"
+      "     (+! v0-0 1)\n"
       "     (set! v1-1 (cdr v1-1))\n"
       "     )\n"
       "    )\n"
@@ -1582,7 +1582,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "    (set! v1-1 (arg1 s2-0 s1-0))\n"
       "    (when\n"
       "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 (quote #t)))\n"
-      "     (set! s4-0 (+ s4-0 1))\n"
+      "     (+! s4-0 1)\n"
       "     (set! (car s3-0) s1-0)\n"
       "     (set! (car (cdr s3-0)) s2-0)\n"
       "     )\n"
@@ -1873,9 +1873,9 @@ TEST_F(FormRegressionTest, ExprMemCopy) {
       "  (while\n"
       "   (< v1-0 arg2)\n"
       "   (set! (-> (the-as (pointer int8) arg0)) (-> (the-as (pointer uint8) arg1)))\n"
-      "   (set! arg0 (+ arg0 (the-as uint 1)))\n"
-      "   (set! arg1 (+ arg1 (the-as uint 1)))\n"
-      "   (set! v1-0 (+ v1-0 1))\n"
+      "   (&+! arg0 1)\n"
+      "   (&+! arg1 1)\n"
+      "   (+! v1-0 1)\n"
       "   )\n"
       "  v0-0\n"
       "  )";
@@ -1914,9 +1914,9 @@ TEST_F(FormRegressionTest, ExprMemSet32) {
       "  (while\n"
       "   (< v1-0 arg1)\n"
       "   (set! (-> (the-as (pointer int32) arg0)) arg2)\n"
-      "   (set! arg0 (+ arg0 (the-as uint 4)))\n"
+      "   (&+! arg0 4)\n"
       "   (nop!)\n"
-      "   (set! v1-0 (+ v1-0 1))\n"
+      "   (+! v1-0 1)\n"
       "   )\n"
       "  v0-0\n"
       "  )";
@@ -1964,9 +1964,9 @@ TEST_F(FormRegressionTest, ExprMemOr) {
       "     (-> (the-as (pointer uint8) arg1))\n"
       "     )\n"
       "    )\n"
-      "   (set! arg0 (+ arg0 (the-as uint 1)))\n"
-      "   (set! arg1 (+ arg1 (the-as uint 1)))\n"
-      "   (set! v1-0 (+ v1-0 1))\n"
+      "   (&+! arg0 1)\n"
+      "   (&+! arg1 1)\n"
+      "   (+! v1-0 1)\n"
       "   )\n"
       "  v0-0\n"
       "  )";
@@ -2181,9 +2181,9 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "    (format (quote #t) \"|   \")\n"
       "    )\n"
       "   (set! arg0 (shr arg0 1))\n"
-      "   (set! s4-0 (+ s4-0 1))\n"
+      "   (+! s4-0 1)\n"
       "   )\n"
-      "  (quote #f)\n"
+      "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L323", "    "}, {"L322", "|   "}});
 }
@@ -2496,11 +2496,11 @@ TEST_F(FormRegressionTest, StringLt) {
       "   (< v1-4 s4-1)\n"
       "   (cond\n"
       "    ((< (-> arg0 data v1-4) (-> arg1 data v1-4)) (return (quote #t)))\n"
-      "    ((< (-> arg1 data v1-4) (-> arg0 data v1-4)) (return (quote #f)))\n"
+      "    ((< (-> arg1 data v1-4) (-> arg0 data v1-4)) (return #f))\n"
       "    )\n"
-      "   (set! v1-4 (+ v1-4 1))\n"
+      "   (+! v1-4 1)\n"
       "   )\n"
-      "  (quote #f)\n"
+      "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "");
 }

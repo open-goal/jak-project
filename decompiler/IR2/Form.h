@@ -177,6 +177,7 @@ class StoreElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
  private:
   // todo - we may eventually want to use a different representation for more
@@ -406,6 +407,11 @@ class ConditionElement : public FormElement {
                             FormPool& pool,
                             const std::vector<Form*>& source_forms,
                             const std::vector<TypeSpec>& types);
+
+  FormElement* make_zero_check_generic(const Env& env,
+                                       FormPool& pool,
+                                       const std::vector<Form*>& source_forms,
+                                       const std::vector<TypeSpec>& types);
 
  private:
   IR2_Condition::Kind m_kind;

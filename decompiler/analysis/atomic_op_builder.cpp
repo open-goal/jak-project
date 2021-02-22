@@ -66,7 +66,7 @@ SimpleAtom make_src_atom(Register reg, int idx) {
 }
 
 SimpleAtom false_sym() {
-  return SimpleAtom::make_sym_ptr("#f");
+  return SimpleAtom::make_sym_val("#f");
 }
 
 ////////////////////////
@@ -168,7 +168,7 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
   SimpleExpression dst;
   if (i0.get_src(0).is_reg(rs7())) {
     assert(!is_float);
-    val = SimpleAtom::make_sym_ptr("#f");
+    val = SimpleAtom::make_sym_val("#f");
   } else if (i0.get_src(0).is_reg(rr0())) {
     assert(!is_float);
     val = SimpleAtom::make_int_constant(0);
@@ -581,7 +581,7 @@ std::unique_ptr<AtomicOp> convert_sw_1(const Instruction& i0, int idx) {
     SimpleAtom val;
     if (i0.get_src(0).is_reg(rs7())) {
       // store a false
-      val = SimpleAtom::make_sym_ptr("#f");
+      val = SimpleAtom::make_sym_val("#f");
     } else if (i0.get_src(0).is_reg(rr0())) {
       // store a 0
       val = SimpleAtom::make_int_constant(0);
@@ -648,14 +648,14 @@ std::unique_ptr<AtomicOp> convert_beql_1(const Instruction& i0, int idx, bool li
   } else if (i0.get_src(0).is_reg(rs7())) {
     if (s1 == rs7()) {
       // (if #f ...) type code?
-      condition = IR2_Condition(IR2_Condition::Kind::FALSE, SimpleAtom::make_sym_ptr("#f"));
+      condition = IR2_Condition(IR2_Condition::Kind::FALSE, SimpleAtom::make_sym_val("#f"));
     } else {
       condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_atom(s1, idx));
     }
   } else if (s1 == rs7()) {
     // likely a case where somebody wrote (= x #f) or (!= x #f). much rarer than the flipped one
     condition = IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx),
-                              SimpleAtom::make_sym_ptr("#f"));
+                              SimpleAtom::make_sym_val("#f"));
   } else {
     condition =
         IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
@@ -676,7 +676,7 @@ std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0, int idx, bool li
   } else if (s1 == rs7()) {
     // likely a case where somebody wrote (= x #f) or (!= x #f). much rarer than the flipped one
     condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
-                              SimpleAtom::make_sym_ptr("#f"));
+                              SimpleAtom::make_sym_val("#f"));
   } else {
     condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
                               make_src_atom(s1, idx));
@@ -855,7 +855,7 @@ std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
   } else if (s1 == rs7()) {
     // likely a case where somebody wrote (= x #f) or (!= x #f). much rarer than the flipped one
     condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
-                              SimpleAtom::make_sym_ptr("#f"));
+                              SimpleAtom::make_sym_val("#f"));
   } else {
     condition = IR2_Condition(IR2_Condition::Kind::NOT_EQUAL, make_src_atom(s0, idx),
                               make_src_atom(s1, idx));
@@ -879,14 +879,14 @@ std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
   } else if (i0.get_src(0).is_reg(rs7())) {
     if (s1 == rs7()) {
       // (if #f ...) type code?
-      condition = IR2_Condition(IR2_Condition::Kind::FALSE, SimpleAtom::make_sym_ptr("#f"));
+      condition = IR2_Condition(IR2_Condition::Kind::FALSE, SimpleAtom::make_sym_val("#f"));
     } else {
       condition = IR2_Condition(IR2_Condition::Kind::FALSE, make_src_atom(s1, idx));
     }
   } else if (s1 == rs7()) {
     // likely a case where somebody wrote (= x #f) or (!= x #f). much rarer than the flipped one
     condition = IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx),
-                              SimpleAtom::make_sym_ptr("#f"));
+                              SimpleAtom::make_sym_val("#f"));
   } else {
     condition =
         IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
@@ -1081,7 +1081,7 @@ std::unique_ptr<AtomicOp> convert_dsubu_3(const Instruction& i0,
       // some sort of not gone wrong?
       result = std::make_unique<SetVarConditionOp>(
           make_dst_var(dest, idx),
-          IR2_Condition(kind, make_src_atom(a, idx), SimpleAtom::make_sym_ptr("#f")), idx);
+          IR2_Condition(kind, make_src_atom(a, idx), SimpleAtom::make_sym_val("#f")), idx);
     } else if (b == rr0()) {
       // not the greatest codegen...
       result = std::make_unique<SetVarConditionOp>(

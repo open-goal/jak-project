@@ -225,6 +225,7 @@ struct StructureDefResult {
   TypeFlags flags;
   bool generate_runtime_type = true;
   bool pack_me = false;
+  bool allow_misaligned = false;
 };
 
 StructureDefResult parse_structure_def(StructureType* type,
@@ -286,9 +287,9 @@ StructureDefResult parse_structure_def(StructureType* type,
         u16 hb = get_int(car(rest));
         rest = cdr(rest);
         flags.heap_base = hb;
-      }
-
-      else {
+      } else if (opt_name == ":allow-misaligned") {
+        result.allow_misaligned = true;
+      } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
     }
@@ -459,8 +460,13 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {
-      fmt::print("[TypeSystem] :pack-me was set on {}, which is a basic and cannot be packed.",
-                 name);
+      new_type->set_pack(true);
+    }
+    if (sr.allow_misaligned) {
+      fmt::print(
+          "[TypeSystem] :allow-misaligned was set on {}, which is a basic and cannot "
+          "be misaligned\n",
+          name);
       throw std::runtime_error("invalid pack option on basic");
     }
     ts->add_type(name, std::move(new_type));
@@ -475,6 +481,9 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {
       new_type->set_pack(true);
+    }
+    if (sr.allow_misaligned) {
+      new_type->set_allow_misalign(true);
     }
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {

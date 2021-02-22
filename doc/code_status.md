@@ -113,3 +113,22 @@
 
 ## `dma-bucket`: **Done**
 - Could clean up some bitfield access, should probably add some features to the compiler to help here.
+
+## `dma-disasm`: In progress
+- Unused, but possibly useful debugging utilities for printing DMA chains.
+- Needs stack stuff to do the last two functions
+- Needs static data disassembler for a lookup table.
+
+## `pad`: **Done**
+
+## `gs`: **Done**
+- Missing bitfields
+
+## `display-h`: **Done**
+
+## `vector`: asm
+
+## `fileio`: **Done**
+
+## `loader-h`: **Done**
+- Good one for playing with inlined basics.

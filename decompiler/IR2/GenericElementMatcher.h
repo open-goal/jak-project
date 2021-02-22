@@ -18,6 +18,7 @@ struct MatchResult {
     std::unordered_map<int, std::string> strings;
     std::unordered_map<int, Form*> forms;
     std::unordered_map<int, int> label;
+    std::unordered_map<int, int> ints;
   } maps;
 };
 
@@ -33,6 +34,7 @@ class Matcher {
   static Matcher cast(const std::string& type, Matcher value);
   static Matcher any(int match_id = -1);
   static Matcher integer(std::optional<int> value);
+  static Matcher any_integer(int match_id = -1);
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
   static Matcher any_symbol(int match_id = -1);
@@ -52,6 +54,7 @@ class Matcher {
     CAST,
     ANY,
     INT,
+    ANY_INT,
     ANY_QUOTED_SYMBOL,
     ANY_SYMBOL,
     DEREF_OP,
@@ -74,6 +77,7 @@ class Matcher {
   int m_string_out_id = -1;
   int m_form_match = -1;
   int m_label_out_id = -1;
+  int m_int_out_id = -1;
   std::optional<int> m_int_match;
   std::string m_str;
 };

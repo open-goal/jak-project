@@ -5,3 +5,521 @@
 ;; name in dgo: gs
 ;; dgos: GAME, ENGINE
 
+(deftype gs-pmode (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-smode2 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+;; 19 = PSMT8
+;; 20 = PSMT4
+;; 2 = PSMCT24
+;; 10 = PSMCT16S
+;; 50 = PSMZ16
+;; 58 = PSMZ16S
+
+(defconstant TEX_MZ16S 58)
+(defconstant TEX_MZ16  50)
+(defconstant TEX_MZ24  49)
+(defconstant TEX_MZ32  48)
+(defconstant TEX_MT4HH 44)
+(defconstant TEX_MT4HL 36)
+(defconstant TEX_MT8H  27)
+(defconstant TEX_MT4   20)
+(defconstant TEX_MT8   19)
+(defconstant TEX_CT16S 10)
+(defconstant TEX_CT16   2)
+(defconstant TEX_CT24   1)
+(defconstant TEX_CT32   0)
+
+(defun psm-size ((arg0 int))
+  "Not sure exactly what 'size' means, but this likely takes a texture format as an input."
+  (cond
+   ((= arg0 TEX_MT8) 64)
+   ((= arg0 TEX_MT4) 32)
+   (else
+    (if (or (= arg0 TEX_CT16) (= arg0 TEX_CT16S) (= arg0 TEX_MZ16) (= arg0 TEX_MZ16S))
+        128
+        256
+        )
+    )
+   )
+  )
+
+(defun psm-page-height ((arg0 int))
+  "texture format -> page height?"
+  (cond
+   ((= arg0 TEX_MT8) 64)
+   ((= arg0 TEX_MT4) 128)
+   (else
+    (if (or (= arg0 TEX_CT16) (= arg0 TEX_CT16S) (= arg0 TEX_MZ16) (= arg0 TEX_MZ16S))
+        64
+        32
+        )
+    )
+   )
+  )
+
+
+(defun psm->string ((arg0 int))
+  "Convert texture format to its name"
+  (local-vars (v1-0 int))
+  (set! v1-0 arg0)
+  (cond
+   ((= v1-0 TEX_MZ16S) "mz16s")
+   ((= v1-0 TEX_MZ16) "mz16")
+   ((= v1-0 TEX_MZ24) "mz24")
+   ((= v1-0 TEX_MZ32) "mz32")
+   ((= v1-0 TEX_MT4HH) "mt4hh")
+   ((= v1-0 TEX_MT4HL) "mt4hl")
+   ((= v1-0 TEX_MT8H) "mt8h")
+   ((= v1-0 TEX_MT4) "mt4")
+   ((= v1-0 TEX_MT8) "mt8")
+   ((= v1-0 TEX_CT16S) "ct16s")
+   ((= v1-0 TEX_CT16) "ct16")
+   ((= v1-0 TEX_CT24) "ct24")
+   ((zero? v1-0) "ct32")
+   (else "*unknown*")
+   )
+  )
+
+(deftype gs-display-fb (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-display (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-bgcolor (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-csr (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-bank (structure)
+  ((pmode    gs-pmode  :offset-assert 0)
+   (smode2   gs-smode2  :offset 32)
+   (dspfb1   gs-display-fb  :offset 112)
+   (display1 gs-display  :offset 128)
+   (dspfb2   gs-display-fb  :offset 144)
+   (display2 gs-display  :offset 160)
+   (extbuf   uint64  :offset 176)
+   (extdata  uint64  :offset 192)
+   (extwrite uint64  :offset 208)
+   (bgcolor  gs-bgcolor  :offset 224)
+   (csr      gs-csr   :offset 4096)
+   (imr      uint64  :offset 4112)
+   (busdir   uint64  :offset 4160)
+   )
+  :method-count-assert 9
+  :size-assert         #x1048
+  :flag-assert         #x900001048
+  )
+
+(deftype gs-frame (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-zbuf (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-xy-offset (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-scissor (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-prmode-cont (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-color-clamp (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-dthe (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-test (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-prim (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-rgbaq (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-xyz (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-uv (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-st (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-xyzf (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-trxpos (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-trxreg (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-trxdir (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-bitbltbuf (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-tex0 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-tex1 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-texa (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-texclut (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-miptbp (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-alpha (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(defmethod inspect gs-alpha ((obj gs-alpha))
+  (format #t "[~8x] ~A~%" obj 'gs-alpha)
+  (format #t "~Ta: ~D~%" (shr (shl (the-as int obj) 62) 62))
+  (format #t "~Tb: ~D~%" (shr (shl (the-as int obj) 60) 62))
+  (format #t "~Tc: ~D~%" (shr (shl (the-as int obj) 58) 62))
+  (format #t "~Td: ~D~%" (shr (shl (the-as int obj) 56) 62))
+  (format #t "~Tfix: ~D~%" (shr (shl (the-as int obj) 24) 56))
+  obj
+  )
+
+(deftype gs-fog (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(defmethod inspect gs-fog ((obj gs-fog))
+  (format #t "[~8x] ~A~%" obj 'gs-fog)
+  (format #t "~Tf: ~D~%" (shr (the-as int obj) 56))
+  obj
+  )
+
+(deftype gs-fogcol (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(defmethod inspect gs-fogcol ((obj gs-fogcol))
+  (format #t "[~8x] ~A~%" obj 'gs-fogcol)
+  (format #t "~Tr: ~D~%" (shr (shl (the-as int obj) 56) 56))
+  (format #t "~Tg: ~D~%" (shr (shl (the-as int obj) 48) 56))
+  (format #t "~Tb: ~D~%" (shr (shl (the-as int obj) 40) 56))
+  obj
+  )
+
+(deftype gif-ctrl (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-mode (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-stat (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-cnt (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-p3cnt (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-p3tag (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype gif-bank (structure)
+  ((ctrl  gif-ctrl  :offset 0)
+   (mode  gif-mode  :offset 16)
+   (stat  gif-stat  :offset 32)
+   (tag0  uint32  :offset 64)
+   (tag1  uint32  :offset 80)
+   (tag2  uint32  :offset 96)
+   (tag3  uint32  :offset 112)
+   (cnt   gif-cnt  :offset 128)
+   (p3cnt gif-p3cnt  :offset 144)
+   (p3tag gif-p3tag  :offset 160)
+   )
+  :method-count-assert 9
+  :size-assert         #xa4
+  :flag-assert         #x9000000a4
+  )
+
+(deftype gif-tag-prim (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-tag-count (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-tag64 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gif-tag (uint128)
+  ()
+  :flag-assert #x900000010
+  )
+
+(deftype gs-gif-tag (structure)
+  ((qword uint128   :offset-assert 0) ;; is "qword" and inline? in game
+   (dword uint64 2       :offset 0)
+   (word  uint32 4       :offset 0)
+   (tag   uint64          :offset 0)
+   (regs  uint64          :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; Note - there was an inspect method for the uint128-based gif-tag, but it is being left out.
+
+;; no idea what format this is stored in. Looks like a nasty orange?
+(define *fog-color* #xc88029)
+
+;; set up a DMA buffer. This will hold a message to set the GS state to normal.
+;; these regs are NOT the ones mapped in the EE memory, but other internal GS registers.
+(define *default-regs-buffer* (new 'global 'dma-buffer 1024))
+
+(defun default-buffer-init ((buff dma-buffer))
+  "Puts some currently unknown gif tags in the buffer."
+  (local-vars
+   (tag3 gs-gif-tag)
+   (tag gs-gif-tag)
+   (tag2 gs-gif-tag)
+   (data (pointer uint64))
+   )
+  ;; reset the buffer base and end.
+  (set! (-> buff base) (-> buff data))
+  (set! (-> buff end) (&-> buff data-buffer (-> buff allocated-length)))
+
+  ;; make a tag (maybe this is actually a dma/vif tag?)
+  (set! tag (the gs-gif-tag (-> buff base)))
+  (set! (-> tag dword 0) #x1000000a)
+  (set! (-> tag word 2) #x13000000)
+  (set! (-> tag word 3) #x5000000a)
+  (set! (-> buff base) (&+ (the-as pointer tag) 16))
+  
+  ;; make another tag.
+  (set! tag2 (the gs-gif-tag (-> buff base)))
+  ;; no idea what this is about, it doesn't matter.
+  ;;(set! a2-3 (l.d L53))
+  ;;(.pcpyld a2-4 r0-0 a2-3)
+  (set! (-> tag2 dword 0) #x9000000000008001)
+  (set! (-> tag2 dword 1) #xeeeeeeeeeeeeeeee)
+  (set! (-> buff base) (&+ (the-as pointer tag2) 16))
+  
+  ;; now some payload.
+  (set! data (the (pointer uint64) (-> buff base)))
+  (set! (-> data 0) 68)
+  (set! (-> data 1) 66)
+  (set! (-> data 2) #x10001c0)
+  (set! (-> data 3) 78)
+  (set! (-> data 4) #x5000e)
+  (set! (-> data 5) 71)
+  (set! (-> data 6) 0)
+  (set! (-> data 7) 73)
+  (set! (-> data 8) 5)
+  (set! (-> data 9) 8)
+  (set! (-> data 10) 96)
+  (set! (-> data 11) 20)
+  (set! (-> data 12) (shl 128 32))
+  (set! (-> data 13) 59)
+  (set! (-> data 14) 4)
+  (set! (-> data 15) 28)
+  (set! (-> data 16) *fog-color*)
+  (set! (-> data 17) 61)
+  (set! (-> buff base) (&-> data 18))
+
+  ;; and a final tag.
+  (set! tag3 (the gs-gif-tag (-> buff base)))
+  (set! (-> tag3 dword 0) #x60000000)
+  (set! (-> tag3 word 2) 0)
+  (set! (-> tag3 word 3) 0)
+  (set! (-> buff base) (&+ (the-as pointer tag3) 16))
+  (none)
+  )
+
+(default-buffer-init *default-regs-buffer*)
+
+;; This isn't a dynamic type in the type system, but it's used as one.
+;; the array at the end is used as a dynamic array.
+;; NOTE - this gif-packet stuff seems unused. Instead dma-gif-packet is used.
+;; this seems to use 128-bit integer values, but the compiler gets confused sometimes??
+
+;; This stuff could be used like this:
+;; - new gif-packet
+;; - open-gif-packet
+;; - add-reg-gif-packet to add a register
+;; - close-gif-packet
+;; now you have a reglist gs packet.
+
+(deftype gif-packet (basic)
+  ((reg-count int32     :offset-assert 4)
+   (gif-tag0  uint128   :offset-assert 16)
+   (gif-tag gs-gif-tag :inline :offset 16)
+   (args      uint64 1 :offset-assert 32) ;; there's one here already.
+   )
+  (:methods
+   (new (symbol type int) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+(defmethod new gif-packet ((allocation symbol) (type-to-make type) (arg0 int))
+  "Make a new gif packet with enough room for arg0 64-bit args"
+  (object-new allocation type-to-make
+   (the-as int (+ (-> type-to-make size) (shl (+ arg0 -1) 3)))
+   )
+  )
+
+(defun open-gif-packet ((arg0 gif-packet))
+  "Initialize a gif packet"
+  (set! (-> arg0 reg-count) 0)
+  (set! (-> arg0 gif-tag dword 1) 0)
+  arg0
+  )
+
+(defun add-reg-gif-packet ((packet gif-packet) (reg-idx int) (reg-val int))
+  "Adds a register to reglist packet."
+  (local-vars (tag gs-gif-tag))
+  (set! tag (-> packet gif-tag))
+  ;; dword 1 contains the list of registers to set. each is 4-bits.
+  (set! (-> tag dword 1)
+   (logior (-> tag dword 1)
+    (the-as uint (ash reg-idx (shl (-> packet reg-count) 2))) ;; shift to the correct spot
+    )
+   )
+  ;; ?? (-> packet args (-> packet reg-count))
+  ;; store the value for the register.
+  (set! (-> (&-> packet args (-> packet reg-count)) 0) reg-val)
+  ;; increment the reg we're on.
+  (set! (-> packet reg-count) (+ (-> packet reg-count) 1))
+  (none)
+  )
+
+(defun close-gif-packet ((arg0 gif-packet) (arg1 int))
+  "Sets the lower dword of the giftag for reglist"
+  (local-vars  (v1-2 int) (v1-3 int))
+  (set! v1-2
+   (logior (logior #x400000000000001 (the-as uint (shl (-> arg0 reg-count) 60)))
+    (the-as uint (shr (shl arg1 63) 48))
+    )
+   )
+  ;;(.pcpyld v1-3 r0-0 v1-2)?? GOAL compiler is confused.
+  (set! (-> arg0 gif-tag dword 0) v1-2)
+  arg0
+  )
+
+
+(deftype draw-context (basic)
+  ((orgx   int32     :offset-assert 4)
+   (orgy   int32     :offset-assert 8)
+   (orgz   int32     :offset-assert 12)
+   (width  int32     :offset-assert 16)
+   (height int32     :offset-assert 20)
+   (color  int32 4 :offset-assert 24)
+   )
+  (:methods 
+   (new (symbol type int int int int int) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+(defmethod new draw-context ((allocation symbol)
+                             (type-to-make type)
+                             (org-x int)
+                             (org-y int)
+                             (width int)
+                             (height int)
+                             (color-0 int)
+                             )
+  "Allocate and initialize a draw-context"
+  (local-vars (v0-0 draw-context) (v1-3 int) (a0-2 int))
+  (set! v0-0
+        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+        )
+  (set! v1-3
+        (the int (* (the float org-y) (-> *video-parms* relative-y-scale)))
+        )
+  (set! a0-2
+        (the int (* (the float height) (-> *video-parms* relative-y-scale)))
+        )
+  (set! (-> v0-0 orgx) org-x)
+  (set! (-> v0-0 orgy) v1-3)
+  (set! (-> v0-0 orgz) #xffffff)
+  (set! (-> v0-0 width) width)
+  (set! (-> v0-0 height) a0-2)
+  (set! (-> v0-0 color 0) color-0)
+  v0-0
+  )
+
+(defun draw-context-set-xy ((arg0 draw-context) (x int) (y int))
+  "Set the origin of the draw context, scaling by relative-y-scale as needed."
+  (local-vars (v0-0 int))
+  (set! v0-0 (the int (* (the float y) (-> *video-parms* relative-y-scale))))
+  (set! (-> arg0 orgx) x)
+  (set! (-> arg0 orgy) v0-0)
+  (none)
+  )

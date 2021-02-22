@@ -39,7 +39,7 @@ class FormStack {
   FormElement* pop_back(FormPool& pool);
   Form* unsafe_peek(Register reg, const Env& env);
   bool is_single_expression();
-  std::vector<FormElement*> rewrite(FormPool& pool);
+  std::vector<FormElement*> rewrite(FormPool& pool, const Env& env);
   std::string print(const Env& env);
   bool is_root() const { return m_is_root_stack; }
 
@@ -64,6 +64,10 @@ class FormStack {
 
 void rewrite_to_get_var(std::vector<FormElement*>& default_result,
                         FormPool& pool,
-                        const Variable& var);
-std::vector<FormElement*> rewrite_to_get_var(FormStack& stack, FormPool& pool, const Variable& var);
+                        const Variable& var,
+                        const Env& env);
+std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
+                                             FormPool& pool,
+                                             const Variable& var,
+                                             const Env& env);
 }  // namespace decompiler

@@ -2421,7 +2421,7 @@
 ;;(define-extern vif-stcycl-imm object) ;; unknown type
 ;;(define-extern dma-bank object) ;; unknown type
 ;;(define-extern flush-cache object) ;; unknown type
-;;(define-extern *video-parms* object) ;; unknown type
+(define-extern *video-parms* video-parms) ;; unknown type
 ;;(define-extern video-parms object) ;; unknown type
 ;;(define-extern generic-bucket-state object) ;; unknown type
 ;;(define-extern *vu1-enable-user-menu* object) ;; unknown type
@@ -2484,7 +2484,7 @@
 (deftype dma-buffer (basic)
   ((allocated-length int32     :offset-assert 4)
    (base             pointer   :offset-assert 8)
-   (end              uint32    :offset-assert 12)
+   (end              pointer    :offset-assert 12)
    (data             uint64 1 :offset-assert 16) ;; weird, I guess this aligns the data?
    (data-buffer      uint8 :dynamic :offset 16)
    )
@@ -2515,9 +2515,11 @@
 (define-extern dma-buffer-add-buckets (function dma-buffer int none))
 (define-extern dma-buffer-patch-buckets (function dma-bucket int int))
 
-;;;;;;;;;;;;;;;
-;; dma-disasm
-;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; DMA-DISASM          ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 
 (deftype vif-disasm-element (structure)
@@ -2534,17 +2536,18 @@
   )
 
 (define-extern *vif-disasm-table* (array vif-disasm-element)) ;; unknown type
-(define-extern disasm-vif-tag function)
-(define-extern disasm-dma-tag function)
-(define-extern disasm-vif-details (function symbol (pointer uint8) int int int))
+;;(define-extern disasm-vif-tag (function (pointer uint32) int symbol int symbol))
+(define-extern disasm-dma-tag (function uint symbol int))
+(define-extern disasm-vif-details (function symbol (pointer uint8) int int symbol))
 (define-extern vif-disasm-element type)
 ;;(define-extern *dma-disasm* object) ;; unknown type
 (define-extern disasm-dma-list function)
 
-;;;;;;;;;;;;;;;
-;; pad
-;;;;;;;;;;;;;;;
-
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PAD                 ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 (deftype hw-cpad (basic)
   ((valid   uint8      :offset-assert 4)
    (status  uint8      :offset-assert 5)
@@ -2564,9 +2567,9 @@
 (deftype cpad-info (hw-cpad)
   ((number             int32      :offset-assert 36)
    (cpad-file          int32      :offset-assert 40)
-   (button0-abs        int32 3  :offset-assert 44) ;; guess
-   (button0-shadow-abs int32 1  :offset-assert 56) ;; guess
-   (button0-rel        int32 3  :offset-assert 60) ;; guess
+   (button0-abs        uint32 3  :offset-assert 44) ;; guess
+   (button0-shadow-abs uint32 1  :offset-assert 56) ;; guess
+   (button0-rel        uint32 3  :offset-assert 60) ;; guess
    (stick0-dir         float      :offset-assert 72)
    (stick0-speed       float      :offset-assert 76)
    (new-pad            int32      :offset-assert 80)
@@ -2579,6 +2582,9 @@
    (buzz-act           int32      :offset-assert 124)
    (change-time        uint64     :offset-assert 128)
    )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
@@ -2586,29 +2592,91 @@
 
 (deftype cpad-list (basic)
   ((num-cpads int32     :offset-assert 4)
-   (cpads     int32 2 :offset-assert 8) ;; guess
+   (cpads     cpad-info 2 :offset-assert 8) ;; guess
    )
+  (:methods
+    (new (symbol type) _type_ 0))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-;;;;;;;;;;;;;;;
-;; gs
-;;;;;;;;;;;;;;;
+;; display
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
+;; in the kernel.
+(define-extern cpad-open (function cpad-info int cpad-info))
+(define-extern cpad-get-data (function cpad-info cpad-info))
+
+
+(define-extern cpad-set-buzz! (function cpad-info int int int none))
+(define-extern *cpad-debug* symbol) ;; unknown type
+(define-extern analog-input (function int float float float float float))
+(define-extern buzz-stop! (function int none))
+;;(define-extern cpad-info object) ;; unknown type
+;;(define-extern hw-cpad object) ;; unknown type
+(define-extern cpad-invalid! (function cpad-info cpad-info))
+;;(define-extern cpad-list object) ;; unknown type
+;;(define-extern *cheat-mode* object) ;; unknown type
+(define-extern *cpad-list* cpad-list) ;; unknown type
+(define-extern service-cpads (function cpad-list))
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GS                  ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+;; L139 - #x900000008
+;; L138 - 
+;; L137 - 
+
+(deftype gs-pmode (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-smode2 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(define-extern psm-size (function int int))
+(define-extern psm-page-height (function int int))
+(define-extern psm->string (function int string))
+
+(deftype gs-display-fb (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-display (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-bgcolor (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+
+(deftype gs-csr (uint64)
+  ()
+  :flag-assert #x900000008
+  )
 
 (deftype gs-bank (structure)
-  ((pmode    uint64  :offset-assert 0)
-   (smode2   uint64  :offset 32)
-   (dspfb1   uint64  :offset 112)
-   (display1 uint64  :offset 128)
-   (dspfb2   uint64  :offset 144)
-   (display2 uint64  :offset 160)
+  ((pmode    gs-pmode  :offset-assert 0)
+   (smode2   gs-smode2  :offset 32)
+   (dspfb1   gs-display-fb  :offset 112)
+   (display1 gs-display  :offset 128)
+   (dspfb2   gs-display-fb  :offset 144)
+   (display2 gs-display  :offset 160)
    (extbuf   uint64  :offset 176)
    (extdata  uint64  :offset 192)
    (extwrite uint64  :offset 208)
-   (bgcolor  uint64  :offset 224)
-   (csr      uint64  :offset 4096)
+   (bgcolor  gs-bgcolor  :offset 224)
+   (csr      gs-csr   :offset 4096)
    (imr      uint64  :offset 4112)
    (busdir   uint64  :offset 4160)
    )
@@ -2617,48 +2685,168 @@
   :flag-assert         #x900001048
   )
 
-; ;; gs
-; (deftype gs-alpha (uint64)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   ;; likely a bitfield type
-;   )
+(deftype gs-frame (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-zbuf (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-xy-offset (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-scissor (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-prmode-cont (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-color-clamp (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-dthe (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-test (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-prim (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-rgbaq (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-xyz (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-uv (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-st (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-xyzf (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-trxpos (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-trxreg (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-trxdir (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-bitbltbuf (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-tex0 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-tex1 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-texa (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-texclut (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-miptbp (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-alpha (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-fog (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gs-fogcol (uint64)
+  ()
+  :flag-assert #x900000008
+  )
 
-; ;; gs
-; (deftype gs-fog (uint64)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   ;; likely a bitfield type
-;   )
-
-; ;; gs
-; (deftype gs-fogcol (uint64)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   ;; likely a bitfield type
-;   )
+(deftype gif-ctrl (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-mode (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-stat (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-cnt (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-p3cnt (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-p3tag (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
 (deftype gif-bank (structure)
-  ((ctrl  uint32  :offset 0)
-   (mode  uint32  :offset 16)
-   (stat  uint32  :offset 32)
+  ((ctrl  gif-ctrl  :offset 0)
+   (mode  gif-mode  :offset 16)
+   (stat  gif-stat  :offset 32)
    (tag0  uint32  :offset 64)
    (tag1  uint32  :offset 80)
    (tag2  uint32  :offset 96)
    (tag3  uint32  :offset 112)
-   (cnt   uint32  :offset 128)
-   (p3cnt uint32  :offset 144)
-   (p3tag uint32  :offset 160)
+   (cnt   gif-cnt  :offset 128)
+   (p3cnt gif-p3cnt  :offset 144)
+   (p3tag gif-p3tag  :offset 160)
    )
   :method-count-assert 9
   :size-assert         #xa4
   :flag-assert         #x9000000a4
+  )
+
+(deftype gif-tag-prim (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-tag-count (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+(deftype gif-tag64 (uint64)
+  ()
+  :flag-assert #x900000008
+  )
+(deftype gif-tag (uint128)
+  ()
+  :flag-assert #x900000010
   )
 
 (deftype gs-gif-tag (structure)
@@ -2673,20 +2861,21 @@
   :flag-assert         #x900000010
   )
 
-; ;; gs
-; (deftype gif-tag (uint128)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   ;; bad type dec string: [~8x] gif-tag~%
-;   )
+(define-extern *fog-color* int)
+(define-extern default-buffer-init (function dma-buffer none))
+(define-extern *default-regs-buffer* dma-buffer) 
+
 
 (deftype gif-packet (basic)
   ((reg-count int32     :offset-assert 4)
    (gif-tag0  uint128   :offset-assert 16)
+   (gif-tag   gs-gif-tag :inline :offset 16) ;; note- added
    (args      uint64 1 :offset-assert 32)
+   
    )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
@@ -2700,10 +2889,73 @@
    (height int32     :offset-assert 20)
    (color  int32 4 :offset-assert 24)
    )
+  (:methods 
+    (new (symbol type int int int int int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
+
+
+;;(define-extern gs-trxreg object) ;; unknown type
+;;(define-extern gif-packet object) ;; unknown type
+;;(define-extern gs-fogcol object) ;; unknown type
+;;(define-extern gs-zbuf object) ;; unknown type
+;;(define-extern gif-bank object) ;; unknown type
+;; ;; unknown type
+;;(define-extern gs-trxpos object) ;; unknown type
+;;(define-extern gs-xy-offset object) ;; unknown type
+;;(define-extern gs-tex1 object) ;; unknown type
+;;(define-extern gs-prim object) ;; unknown type
+;;(define-extern gif-tag object) ;; unknown type
+;;(define-extern gs-display object) ;; unknown type
+;;(define-extern gs-prmode-cont object) ;; unknown type
+;;(define-extern gs-scissor object) ;; unknown type
+;;(define-extern gs-st object) ;; unknown type
+;;(define-extern gs-smode2 object) ;; unknown type
+(define-extern add-reg-gif-packet (function gif-packet int int none))
+;;(define-extern draw-context object) ;; unknown type
+;;(define-extern gs-texclut object) ;; unknown type
+;;(define-extern gs-bgcolor object) ;; unknown type
+(define-extern open-gif-packet (function gif-packet gif-packet))
+;;(define-extern gif-tag-count object) ;; unknown type
+;;(define-extern gs-test object) ;; unknown type
+;;(define-extern gs-tex0 object) ;; unknown type
+;;(define-extern gif-tag64 object) ;; unknown type
+;;(define-extern gs-alpha object) ;; unknown type
+;;(define-extern gs-miptbp object) ;; unknown type
+;;(define-extern gs-color-clamp object) ;; unknown type
+;;(define-extern gif-p3cnt object) ;; unknown type
+;;(define-extern gs-clamp object) ;; unknown type
+;;(define-extern gs-uv object) ;; unknown type
+;;(define-extern gif-stat object) ;; unknown type
+
+;;(define-extern gif-mode object) ;; unknown type
+
+;;(define-extern gs-trxdir object) ;; unknown type
+;;(define-extern gs-xyzf object) ;; unknown type
+;;(define-extern gs-csr object) ;; unknown type
+(define-extern draw-context-set-xy (function draw-context int int none))
+
+;;(define-extern gs-frame object) ;; unknown type
+;;(define-extern gs-texa object) ;; unknown type
+;;(define-extern gs-bank object) ;; unknown type
+;;(define-extern gif-cnt object) ;; unknown type
+;;(define-extern gif-ctrl object) ;; unknown type
+;;(define-extern gs-gif-tag object) ;; unknown type
+;;(define-extern gs-pmode object) ;; unknown type
+;;(define-extern gs-dthe object) ;; unknown type
+;;(define-extern gs-fog object) ;; unknown type
+;;(define-extern gs-xyz object) ;; unknown type
+
+;;(define-extern gif-tag-prim object) ;; unknown type
+;;(define-extern gif-p3tag object) ;; unknown type
+(define-extern close-gif-packet (function gif-packet int gif-packet))
+;;(define-extern gs-display-fb object) ;; unknown type
+;;(define-extern gs-bitbltbuf object) ;; unknown type
+;;(define-extern gs-rgbaq object) ;; unknown type
+
 
 ;;;;;;;;;;;;;;;
 ;; display-h
@@ -2745,6 +2997,16 @@
   :flag-assert         #x900000080
   )
 
+;;(define-extern display-env object) ;; unknown type
+;;(define-extern display-frame object) ;; unknown type
+;;(define-extern display object) ;; unknown type
+;;(define-extern *post-draw-hook* object) ;; unknown type
+;;(define-extern virtual-frame object) ;; unknown type
+(define-extern put-draw-env (function dma-packet none))
+;;(define-extern draw-env object) ;; unknown type
+;;(define-extern *pre-draw-hook* object) ;; unknown type
+
+
 (deftype display-frame (basic)
   ((buffer       int32    11 :offset-assert 4) ;; no idea
    (calc-buf     basic         :offset 8)
@@ -2755,19 +3017,23 @@
    (profile-bar  basic    2  :offset 48)
    (run-time     uint64        :offset 56)
    )
+    (:methods
+   (new (symbol type) _type_ 0)
+   )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
 
 (deftype virtual-frame (structure)
-  ((display      display-env  :offset-assert 0)
-   (display-last display-env  :offset-assert 4)
-   (gif          uint32       :offset-assert 8)
-   (draw         draw-env     :offset-assert 12)
-   (frame        basic        :offset-assert 16)
+  ((display      display-env    :offset-assert 0)
+   (display-last display-env    :offset-assert 4)
+   (gif          pointer        :offset-assert 8)
+   (draw         draw-env       :offset-assert 12)
+   (frame        display-frame  :offset-assert 16)
    )
-  :pack-me
+  
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
@@ -2786,10 +3052,8 @@
    (draw2                           draw-env    :inline :offset-assert 432)
    (on-screen                       int32               :offset-assert 560)
    (last-screen                     int32               :offset-assert 564)
-   ;(frames                          UNKNOWN     6       :offset-assert 568)
-   (_frames-pad uint8 196)
-   ;(bg-clear-color                  UNKNOWN     4       :offset-assert 760)
-   (_bg-clear-color-pad uint8 8)
+   (frames                          virtual-frame 6 :inline :offset-assert 568)
+   (bg-clear-color                  uint32       4      :offset-assert 760)
    (real-frame-counter              uint64              :offset-assert 776)
    (base-frame-counter              uint64              :offset-assert 784)
    (game-frame-counter              uint64              :offset-assert 792)
@@ -2816,11 +3080,13 @@
   :size-assert         #x39c
   :flag-assert         #xa0000039c
   (:methods
+    (new (symbol type int int int int int) _type_ 0)
     (dummy-9 () none 9)
     )
   )
 
 (define-extern *display* display)
+(define-extern set-display (function display int int int int int display))
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2947,9 +3213,29 @@
 ;; loader-h
 ;;;;;;;;;;;;;;;
 
+(deftype load-dir (basic)
+  ((unknown basic)
+   (string-array (array string))
+   (data-array (array basic)))
+  :flag-assert #xb00000010
+  (:methods
+   (new (symbol type int basic) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   )
+  )
+
+(deftype load-dir-art-group (load-dir)
+  ()
+  :flag-assert #xb00000010
+   (:methods
+   (new (symbol type int basic) _type_ 0)
+   )
+  )
+
 (deftype external-art-buffer (basic)
   ((index                      int32          :offset-assert 4)
-   (other                      basic          :offset-assert 8)
+   (other                      external-art-buffer          :offset-assert 8)
    (status                     basic          :offset-assert 12)
    (locked?                    basic          :offset-assert 16)
    (frame-lock                 basic          :offset-assert 20)
@@ -2970,6 +3256,7 @@
   :size-assert         #x68
   :flag-assert         #x1000000068
   (:methods
+    (new (symbol type int) _type_)
     (dummy-9 () none 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
@@ -2989,38 +3276,40 @@
    (owner        uint64  :offset-assert 32)
    (command-list basic   :offset-assert 40)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
 
-;; loader-h
-;; todo inline basics
-; (deftype external-art-control (basic)
-;   ((buffer               basic    2       :offset-assert 4)
-;    ;(rec                  UNKNOWN    3       :offset-assert 20)
-;    (_rec-pad uint8 142)
-;    (spool-lock           uint64             :offset-assert 160)
-;    (reserve-buffer       basic              :offset-assert 168)
-;    (reserve-buffer-count int32              :offset-assert 172)
-;    (active-stream        basic              :offset-assert 176)
-;    (preload-stream       spool-anim :inline :offset-assert 188)
-;    (last-preload-stream  spool-anim :inline :offset-assert 236)
-;    )
-;   :method-count-assert 17
-;   :size-assert         #x118
-;   :flag-assert         #x1100000118
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     )
-;   )
+; loader-h
+; todo inline basics
+(deftype external-art-control (basic)
+  ((buffer               external-art-buffer    2       :offset-assert 4)
+   (rec             spool-anim 3 :inline)
+   (spool-lock           uint64             :offset-assert 160)
+   (reserve-buffer       basic              :offset-assert 168)
+   (reserve-buffer-count int32              :offset-assert 172)
+   (active-stream        basic              :offset-assert 176)
+   (preload-stream       spool-anim :inline :offset-assert 184)
+   (last-preload-stream  spool-anim :inline :offset-assert 232)
+   (end-pad uint32)
+   )
+  :method-count-assert 17
+  :size-assert         #x118
+  :flag-assert         #x1100000118
+  (:methods
+    (new (symbol type) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    )
+  )
 
 ;;;;;;;;;;;;;;
 ;; texture-h
@@ -32152,88 +32441,12 @@
 
 ;;(define-extern error object) ;; unknown type
 ;;(define-extern details object) ;; unknown type
-(define-extern cpad-set-buzz! function)
-;;(define-extern *cpad-debug* object) ;; unknown type
-(define-extern analog-input function)
-(define-extern buzz-stop! function)
-;;(define-extern cpad-info object) ;; unknown type
-;;(define-extern hw-cpad object) ;; unknown type
-(define-extern cpad-invalid! function)
-;;(define-extern cpad-list object) ;; unknown type
-;;(define-extern *cheat-mode* object) ;; unknown type
-;;(define-extern *cpad-list* object) ;; unknown type
-(define-extern service-cpads function)
-(define-extern get-integral-current-time function)
-(define-extern get-current-time function)
+
+(define-extern get-integral-current-time (function uint))
+(define-extern get-current-time (function uint))
 ;;(define-extern cpad-get-data object) ;; unknown type
 ;;(define-extern cpad-open object) ;; unknown type
-(define-extern psm->string function)
-;;(define-extern gs-trxreg object) ;; unknown type
-;;(define-extern gif-packet object) ;; unknown type
-;;(define-extern gs-fogcol object) ;; unknown type
-;;(define-extern gs-zbuf object) ;; unknown type
-;;(define-extern gif-bank object) ;; unknown type
-;;(define-extern *fog-color* object) ;; unknown type
-;;(define-extern gs-trxpos object) ;; unknown type
-;;(define-extern gs-xy-offset object) ;; unknown type
-;;(define-extern gs-tex1 object) ;; unknown type
-;;(define-extern gs-prim object) ;; unknown type
-;;(define-extern gif-tag object) ;; unknown type
-;;(define-extern gs-display object) ;; unknown type
-;;(define-extern gs-prmode-cont object) ;; unknown type
-;;(define-extern gs-scissor object) ;; unknown type
-;;(define-extern gs-st object) ;; unknown type
-;;(define-extern gs-smode2 object) ;; unknown type
-(define-extern add-reg-gif-packet function)
-;;(define-extern draw-context object) ;; unknown type
-;;(define-extern gs-texclut object) ;; unknown type
-;;(define-extern gs-bgcolor object) ;; unknown type
-(define-extern open-gif-packet function)
-;;(define-extern gif-tag-count object) ;; unknown type
-;;(define-extern gs-test object) ;; unknown type
-;;(define-extern gs-tex0 object) ;; unknown type
-;;(define-extern gif-tag64 object) ;; unknown type
-;;(define-extern gs-alpha object) ;; unknown type
-;;(define-extern gs-miptbp object) ;; unknown type
-;;(define-extern gs-color-clamp object) ;; unknown type
-;;(define-extern gif-p3cnt object) ;; unknown type
-;;(define-extern gs-clamp object) ;; unknown type
-;;(define-extern gs-uv object) ;; unknown type
-;;(define-extern gif-stat object) ;; unknown type
-(define-extern psm-page-height function)
-;;(define-extern gif-mode object) ;; unknown type
-(define-extern psm-size function)
-;;(define-extern gs-trxdir object) ;; unknown type
-;;(define-extern gs-xyzf object) ;; unknown type
-;;(define-extern gs-csr object) ;; unknown type
-(define-extern draw-context-set-xy function)
-;;(define-extern *default-regs-buffer* object) ;; unknown type
-;;(define-extern gs-frame object) ;; unknown type
-;;(define-extern gs-texa object) ;; unknown type
-;;(define-extern gs-bank object) ;; unknown type
-;;(define-extern gif-cnt object) ;; unknown type
-;;(define-extern gif-ctrl object) ;; unknown type
-;;(define-extern gs-gif-tag object) ;; unknown type
-;;(define-extern gs-pmode object) ;; unknown type
-;;(define-extern gs-dthe object) ;; unknown type
-;;(define-extern gs-fog object) ;; unknown type
-;;(define-extern gs-xyz object) ;; unknown type
-(define-extern default-buffer-init function)
-;;(define-extern gif-tag-prim object) ;; unknown type
-;;(define-extern gif-p3tag object) ;; unknown type
-(define-extern close-gif-packet function)
-;;(define-extern gs-display-fb object) ;; unknown type
-;;(define-extern gs-bitbltbuf object) ;; unknown type
-;;(define-extern gs-rgbaq object) ;; unknown type
-;;(define-extern display-env object) ;; unknown type
-;;(define-extern display-frame object) ;; unknown type
-;;(define-extern display object) ;; unknown type
-;;(define-extern *post-draw-hook* object) ;; unknown type
-;;(define-extern virtual-frame object) ;; unknown type
-(define-extern put-draw-env function)
-;;(define-extern draw-env object) ;; unknown type
-;;(define-extern *pre-draw-hook* object) ;; unknown type
-(define-extern set-display function)
+
 
 ;;(define-extern *display* object) ;; unknown type
 

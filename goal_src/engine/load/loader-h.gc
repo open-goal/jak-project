@@ -5,3 +5,184 @@
 ;; name in dgo: loader-h
 ;; dgos: GAME, ENGINE
 
+(define-extern art-group type)
+
+;; This type didn't have an inspect method, so these field names are made up.
+(deftype load-dir (basic)
+  ((unknown basic)
+   (string-array (array string))
+   (data-array (array basic))
+   )
+  :flag-assert #xb00000010
+  (:methods
+   (new (symbol type int basic) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   )
+  )
+
+(deftype load-dir-art-group (load-dir)
+  ()
+  (:methods
+   (new (symbol type int basic) _type_ 0)
+   )
+  :flag-assert #xb00000010
+  )
+
+
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (arg1 basic))
+  (local-vars (obj load-dir))
+  (set! obj (object-new allocation type-to-make (the-as int (-> type-to-make size))) )
+  (set! (-> obj unknown) arg1)
+  (set! (-> obj string-array)
+        (the (array string) ((method-of-type array new) allocation array string length))
+        )
+  (set! (-> obj string-array length) 0)
+  (set! (-> obj data-array)
+        (the (array basic) ((method-of-type array new) allocation array basic length))
+        )
+  (set! (-> obj data-array length) 0)
+  obj
+  )
+
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (arg0 int) (arg1 basic))
+  (local-vars (v0-0 load-dir))
+  ;; call parent constructor...
+  (set! v0-0 ((method-of-type load-dir new) allocation type-to-make arg0 arg1))
+  ;; change our content type to art-group
+  (set! (-> v0-0 data-array content-type) art-group)
+  ;; cast us to a load-dir-art-group.
+  (the-as load-dir-art-group v0-0)
+  )
+
+(deftype external-art-buffer (basic)
+  ((index                      int32          :offset-assert 4)
+   (other                      external-art-buffer          :offset-assert 8)
+   (status                     basic          :offset-assert 12)
+   (locked?                    basic          :offset-assert 16)
+   (frame-lock                 basic          :offset-assert 20)
+   (heap                       kheap  :inline :offset-assert 32)
+   (pending-load-file          basic          :offset-assert 48)
+   (pending-load-file-part     int32          :offset-assert 52)
+   (pending-load-file-owner    uint64         :offset-assert 56)
+   (pending-load-file-priority float          :offset-assert 64)
+   (load-file                  basic          :offset-assert 68)
+   (load-file-part             int32          :offset-assert 72)
+   (load-file-owner            uint64         :offset-assert 80)
+   (load-file-priority         float          :offset-assert 88)
+   (buf                        uint32         :offset-assert 92)
+   (len                        int32          :offset-assert 96)
+   (art-group                  basic          :offset-assert 100)
+   )
+  :method-count-assert 16
+  :size-assert         #x68
+  :flag-assert         #x1000000068
+  (:methods
+   (new (symbol type int) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   )
+  )
+
+(defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (arg0 int))
+  (local-vars (v0-0 external-art-buffer))
+  (set! v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  (set! (-> v0-0 index) arg0)
+  (set! (-> v0-0 load-file) #f)
+  (set! (-> v0-0 load-file-part) -1)
+  (set! (-> v0-0 load-file-owner) (the uint64 #f))
+  (set! (-> v0-0 load-file-priority) 100000000.0)
+  (set! (-> v0-0 pending-load-file) #f)
+  (set! (-> v0-0 pending-load-file-part) -1)
+  (set! (-> v0-0 pending-load-file-owner) (the uint64 #f))
+  (set! (-> v0-0 pending-load-file-priority) 100000000.0)
+  (set! (-> v0-0 art-group) #f)
+  (set! (-> v0-0 status) 'initialize)
+  (set! (-> v0-0 locked?) #f)
+  (set! (-> v0-0 other) #f)
+  v0-0
+  )
+
+(deftype spool-anim (basic)
+  ((name         basic   :offset 16) ;; why?
+   (index        int32   :offset-assert 20)
+   (parts        int32   :offset-assert 24)
+   (priority     float   :offset-assert 28)
+   (owner        uint64  :offset-assert 32)
+   (command-list basic   :offset-assert 40)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype external-art-control (basic)
+  ((buffer               external-art-buffer    2       :offset-assert 4)
+   (rec             spool-anim 3 :inline)
+   (spool-lock           uint64             :offset-assert 160)
+   (reserve-buffer       basic              :offset-assert 168)
+   (reserve-buffer-count int32              :offset-assert 172)
+   (active-stream        basic              :offset-assert 176)
+   (preload-stream       spool-anim :inline :offset-assert 184)
+   (last-preload-stream  spool-anim :inline :offset-assert 232)
+   (end-pad uint32)
+   )
+  :method-count-assert 17
+  :size-assert         #x118
+  :flag-assert         #x1100000118
+  (:methods
+   (new (symbol type) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   )
+  )
+
+(defmethod new external-art-control ((allocation symbol) (type-to-make type))
+  (local-vars (v1-9 int) (s4-0 int) (obj external-art-control))
+  (set! obj
+        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+        )
+  (set! s4-0 0)
+  (while (< s4-0 2)
+    ;; construct buffers.
+    (set! (-> obj buffer s4-0)
+          ((method-of-type external-art-buffer new) allocation external-art-buffer s4-0 )
+          )
+    (+! s4-0 1)
+    )
+  ;; point buffers to each other
+  (set! (-> obj buffer 0 other) (-> obj buffer 1))
+  (set! (-> obj buffer 1 other) (-> obj buffer 0))
+  (set! v1-9 0)
+  ;; setup recs
+  (while (< v1-9 3)
+    (set! (-> obj rec v1-9 name) #f)
+    (set! (-> obj rec v1-9 priority) 100000000.000000)
+    (set! (-> obj rec v1-9 owner) (the uint64 #f))
+    (+! v1-9 1)
+    )
+  ;; setup 
+  (set! (-> obj spool-lock) (the uint64 #f))
+  (set! (-> obj reserve-buffer) #f)
+  (set! (-> obj active-stream) #f)
+  ;; setup streams
+  (set! (-> obj preload-stream name) #f)
+  (set! (-> obj preload-stream priority) 100000000.000000)
+  (set! (-> obj preload-stream owner) (the uint64 #f))
+  (set! (-> obj last-preload-stream name) #f)
+  (set! (-> obj last-preload-stream priority) 100000000.000000)
+  (set! (-> obj last-preload-stream owner) (the uint64 #f))
+  obj
+  )

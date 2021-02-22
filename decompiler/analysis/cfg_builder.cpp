@@ -201,7 +201,7 @@ bool delay_slot_sets_false(BranchElement* branch, SetVarOp& delay) {
   assert(branch->op()->likely());
   assert(branch->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NO_DELAY);
 
-  if (delay.src().is_identity() && delay.src().get_arg(0).is_sym_ptr() &&
+  if (delay.src().is_identity() && delay.src().get_arg(0).is_sym_val() &&
       delay.src().get_arg(0).get_str() == "#f") {
     return true;
   }
@@ -517,7 +517,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
   auto dst = body->dst();
   auto src_atom = get_atom_src(body->src());
   assert(src_atom);
-  assert(src_atom->is_sym_ptr());
+  assert(src_atom->is_sym_val());
   assert(src_atom->get_str() == "#f");
   assert(cne->entries.size() == 1);
 

@@ -72,6 +72,18 @@ bool FormElement::has_side_effects() {
 
 namespace {
 
+bool is_power_of_two(int in, int* out) {
+  int x = 1;
+  for (int i = 0; i < 32; i++) {
+    if (x == in) {
+      *out = i;
+      return true;
+    }
+    x = x * 2;
+  }
+  return false;
+}
+
 /*!
  * Create a form which represents a variable.
  */
@@ -221,6 +233,11 @@ bool is_int_type(const Env& env, int my_idx, Variable var) {
 bool is_uint_type(const Env& env, int my_idx, Variable var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
   return type == TypeSpec("uint");
+}
+
+bool is_ptr_or_child(const Env& env, int my_idx, Variable var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+  return type == "pointer";
 }
 }  // namespace
 
@@ -456,6 +473,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       bool allow_side_effects) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var());
 
   bool arg1_reg = m_expr.get_arg(1).is_var();
   bool arg1_i = true;
@@ -523,28 +541,60 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       if (out.success) {
         // it is. now we have to modify things
         // first, look for the index
-        auto arg0_matcher =
-            Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                        {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                                     {Matcher::integer(input.stride), Matcher::any(0)}),
-                         Matcher::integer(input.offset)});
-        auto match_result = match(arg0_matcher, args.at(0));
-        if (match_result.matched) {
-          bool used_index = false;
-          std::vector<DerefToken> tokens;
-          for (auto& tok : out.tokens) {
-            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
-              assert(!used_index);
-              used_index = true;
-              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
-            } else {
-              tokens.push_back(to_token(tok));
+        int p2;
+        if (is_power_of_two(input.stride, &p2)) {
+          // (+ (shl (-> a0-0 reg-count) 3) 28)
+          auto arg0_matcher =
+              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                       {Matcher::any(0), Matcher::integer(p2)}),
+                           Matcher::integer(input.offset)});
+          auto match_result = match(arg0_matcher, args.at(0));
+          if (match_result.matched) {
+            bool used_index = false;
+            std::vector<DerefToken> tokens;
+            for (auto& tok : out.tokens) {
+              if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+                assert(!used_index);
+                used_index = true;
+                tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+              } else {
+                tokens.push_back(to_token(tok));
+              }
             }
+            result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+            return;
+          } else {
+            throw std::runtime_error(
+                fmt::format("Failed to match for stride (power 2 {}) with add: {}", input.stride,
+                            args.at(0)->to_string(env)));
           }
-          result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
-          return;
         } else {
-          throw std::runtime_error("Failed to match for stride (non power 2) with add");
+          auto arg0_matcher =
+              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                       {Matcher::integer(input.stride), Matcher::any(0)}),
+                           Matcher::integer(input.offset)});
+          auto match_result = match(arg0_matcher, args.at(0));
+          if (match_result.matched) {
+            bool used_index = false;
+            std::vector<DerefToken> tokens;
+            for (auto& tok : out.tokens) {
+              if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+                assert(!used_index);
+                used_index = true;
+                tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+              } else {
+                tokens.push_back(to_token(tok));
+              }
+            }
+            result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
+            return;
+          } else {
+            throw std::runtime_error(
+                fmt::format("Failed to match for stride (non power 2 {}) with add: {}",
+                            input.stride, args.at(0)->to_string(env)));
+          }
         }
       }
     }
@@ -553,6 +603,10 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
+    result->push_back(new_form);
+  } else if (arg0_ptr) {
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
     auto cast = pool.alloc_single_element_form<CastElement>(
@@ -1459,7 +1513,7 @@ void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
-    auto new_entries = temp_stack.rewrite(pool);
+    auto new_entries = temp_stack.rewrite(pool, env);
     form->clear();
     for (auto e : new_entries) {
       form->push_back(e);
@@ -1478,7 +1532,7 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
     for (auto& entry : form->elts()) {
       entry->push_to_stack(env, pool, temp_stack);
     }
-    auto new_entries = temp_stack.rewrite(pool);
+    auto new_entries = temp_stack.rewrite(pool, env);
     form->clear();
     for (auto e : new_entries) {
       form->push_back(e);
@@ -1517,9 +1571,9 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 
         std::vector<FormElement*> new_entries;
         if (form == entry.body && used_as_value) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination);
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env);
         } else {
-          new_entries = temp_stack.rewrite(pool);
+          new_entries = temp_stack.rewrite(pool, env);
         }
 
         form->clear();
@@ -1568,7 +1622,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         }
 
         std::vector<FormElement*> new_entries;
-        new_entries = temp_stack.rewrite(pool);
+        new_entries = temp_stack.rewrite(pool, env);
 
         form->clear();
         for (auto e : new_entries) {
@@ -1585,7 +1639,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   }
 
   std::vector<FormElement*> new_entries;
-  new_entries = temp_stack.rewrite(pool);
+  new_entries = temp_stack.rewrite(pool, env);
 
   else_ir->clear();
   for (auto e : new_entries) {
@@ -1629,9 +1683,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   // rewrite extra sets as needed.
   if (rewrite_as_set && !set_unused) {
     for (auto& entry : entries) {
-      rewrite_to_get_var(entry.body->elts(), pool, *last_var);
+      rewrite_to_get_var(entry.body->elts(), pool, *last_var, env);
     }
-    rewrite_to_get_var(else_ir->elts(), pool, *last_var);
+    rewrite_to_get_var(else_ir->elts(), pool, *last_var, env);
   }
 
   if (rewrite_as_set) {
@@ -1683,9 +1737,9 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
         std::vector<FormElement*> new_entries;
         if (i == int(entries.size()) - 1) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_result, env);
         } else {
-          new_entries = temp_stack.rewrite(pool);
+          new_entries = temp_stack.rewrite(pool, env);
         }
 
         entry.condition->clear();
@@ -1721,9 +1775,9 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 
     std::vector<FormElement*> new_entries;
     if (i == int(entries.size()) - 1) {
-      new_entries = rewrite_to_get_var(temp_stack, pool, final_result);
+      new_entries = rewrite_to_get_var(temp_stack, pool, final_result, env);
     } else {
-      new_entries = temp_stack.rewrite(pool);
+      new_entries = temp_stack.rewrite(pool, env);
     }
 
     entry.condition->clear();
@@ -1739,13 +1793,34 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 // ConditionElement
 ///////////////////
 
-FormElement* ConditionElement::make_generic(const Env&,
+FormElement* ConditionElement::make_zero_check_generic(const Env&,
+                                                       FormPool& pool,
+                                                       const std::vector<Form*>& source_forms,
+                                                       const std::vector<TypeSpec>&) {
+  // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
+
+  auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                              {Matcher::any(0), Matcher::any_integer(1)}),
+                  source_forms.at(0));
+  if (mr.matched) {
+    s64 value = -mr.maps.ints.at(1);
+    auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
+        nullptr, SimpleAtom::make_int_constant(value));
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                              std::vector<Form*>{mr.maps.forms.at(0), value_form});
+  } else {
+    return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
+  }
+}
+
+FormElement* ConditionElement::make_generic(const Env& env,
                                             FormPool& pool,
                                             const std::vector<Form*>& source_forms,
                                             const std::vector<TypeSpec>& types) {
   switch (m_kind) {
-    case IR2_Condition::Kind::TRUTHY:
     case IR2_Condition::Kind::ZERO:
+      return make_zero_check_generic(env, pool, source_forms, types);
+    case IR2_Condition::Kind::TRUTHY:
     case IR2_Condition::Kind::NONZERO:
     case IR2_Condition::Kind::FALSE:
     case IR2_Condition::Kind::IS_PAIR:
@@ -1966,7 +2041,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   std::vector<FormElement*> new_entries;
-  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var());
+  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var(), env);
 
   return_code->clear();
   for (auto e : new_entries) {
@@ -2066,20 +2141,6 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
 ////////////////////////
 // ArrayFieldAccess
 ////////////////////////
-
-namespace {
-bool is_power_of_two(int in, int* out) {
-  int x = 1;
-  for (int i = 0; i < 32; i++) {
-    if (x == in) {
-      *out = i;
-      return true;
-    }
-    x = x * 2;
-  }
-  return false;
-}
-}  // namespace
 
 void ArrayFieldAccess::update_with_val(Form* new_val,
                                        const Env& env,
@@ -2273,6 +2334,11 @@ void TypeOfElement::update_from_stack(const Env& env,
 ////////////////////////
 
 void EmptyElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
+  stack.push_form_element(this, true);
+}
+
+void StoreElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   mark_popped();
   stack.push_form_element(this, true);
 }
