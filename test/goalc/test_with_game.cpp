@@ -421,7 +421,7 @@ TEST_F(WithGameTests, Trig) {
 }
 
 TEST_F(WithGameTests, InlinedPackedBasics) {
-  runner.run_static_test(env, testCategory, "inline-packed-basics.gc",
+  runner.run_static_test(env, testCategory, "inlined-packed-basics.gc",
                          {"rec stride: 48\n"
                           "offset of float: 40\n"
                           "offset: 16\n"

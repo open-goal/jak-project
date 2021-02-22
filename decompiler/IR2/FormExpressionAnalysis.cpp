@@ -1793,10 +1793,10 @@ void ShortCircuitElement::update_from_stack(const Env& env,
 // ConditionElement
 ///////////////////
 
-FormElement* ConditionElement::make_zero_check_generic(const Env& env,
+FormElement* ConditionElement::make_zero_check_generic(const Env&,
                                                        FormPool& pool,
                                                        const std::vector<Form*>& source_forms,
-                                                       const std::vector<TypeSpec>& types) {
+                                                       const std::vector<TypeSpec>&) {
   // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
 
   auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
