@@ -9,7 +9,7 @@ namespace decompiler {
  */
 struct DecompilerLabel {
   std::string name;
-  int target_segment;
+  int target_segment = 0;
   int offset;  // in bytes
 };
 }  // namespace decompiler
