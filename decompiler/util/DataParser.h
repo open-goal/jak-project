@@ -20,4 +20,4 @@ struct ParsedData {
 
 ParsedData parse_data(const std::string& str);
 
-}
+}  // namespace decompiler
