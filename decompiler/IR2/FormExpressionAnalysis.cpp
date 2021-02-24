@@ -959,29 +959,17 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
   assert(m_src->parent_element == this);
 
+  // hack for method stuff
   if (is_dead_set()) {
     stack.push_value_to_reg_dead(m_dst, m_src, true, m_var_info);
     return;
   }
 
-  m_src->update_children_from_stack(env, pool, stack, true);
-
-  for (auto x : m_src->elts()) {
-    assert(x->parent_form == m_src);
-  }
-
+  // if we are a reg-reg move that consumes the original, push it without popping from stack.
+  // it is the Stack's responsibility to untangle these later on.
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {
-      if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
-          m_dst.reg().get_kind() == Reg::FPR && src_as_se->expr().get_arg(0).is_int() &&
-          src_as_se->expr().get_arg(0).get_int() == 0) {
-        stack.push_value_to_reg(m_dst,
-                                pool.alloc_single_element_form<ConstantFloatElement>(nullptr, 0.0),
-                                true, m_var_info);
-        return;
-      }
-
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
         // this can happen late in the case of coloring moves which are also gpr -> fpr's
@@ -996,6 +984,37 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
           stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
                                         m_var_info);
           return;
+        }
+      }
+    }
+  }
+
+  // we aren't a reg-reg move, so update our source
+  m_src->update_children_from_stack(env, pool, stack, true);
+
+  for (auto x : m_src->elts()) {
+    assert(x->parent_form == m_src);
+  }
+
+  if (m_src->is_single_element()) {
+    auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
+    if (src_as_se) {
+      if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
+          m_dst.reg().get_kind() == Reg::FPR && src_as_se->expr().get_arg(0).is_int() &&
+          src_as_se->expr().get_arg(0).get_int() == 0) {
+        // not sure this is the best place for this.
+        stack.push_value_to_reg(m_dst,
+                                pool.alloc_single_element_form<ConstantFloatElement>(nullptr, 0.0),
+                                true, m_var_info);
+        return;
+      }
+
+      // this might get skipped earlier because gpr->fpr gets wrapped in an operation that's
+      // stripped off by update_children_from_stack.
+      if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
+          src_as_se->expr().get_arg(0).is_var()) {
+        if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
+          m_var_info.is_eliminated_coloring_move = true;
         }
       }
     }
