@@ -293,7 +293,7 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
     if (e.destination.has_value()) {
       // (set! x (+ x y)) -> (+! x y)
 
-      // we want to untagle coloring moves here
+      // we want to untangle coloring moves here
       auto simplified_source = e.source;
       auto src_as_var = dynamic_cast<SimpleExpressionElement*>(e.source->try_as_single_element());
       if (src_as_var && src_as_var->expr().is_var() && e.is_compactable) {
@@ -339,10 +339,12 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
 
   std::vector<FormElement*> result;
 
+  bool first = true;
   while (keep_going) {
     keep_going = false;
     auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
-    if (last_op_as_set && last_op_as_set->dst().reg() == var_to_get.reg()) {
+    if (last_op_as_set && last_op_as_set->dst().reg() == var_to_get.reg() &&
+        (first || last_op_as_set->info().is_compactable)) {
       default_result.pop_back();
       auto as_one =
           dynamic_cast<SimpleExpressionElement*>(last_op_as_set->src()->try_as_single_element());
@@ -354,6 +356,7 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
 
       result = last_op_as_set->src()->elts();
     }
+    first = false;
   }
 
   if (result.empty()) {
