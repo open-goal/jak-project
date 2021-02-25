@@ -98,6 +98,7 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   bool is_dynamic = false;
   int offset_override = -1;
   int offset_assert = -1;
+  bool skip_in_decomp = false;
 
   if (!rest->is_empty_list()) {
     if (car(rest).is_int()) {
@@ -122,6 +123,8 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
           throw std::runtime_error("Cannot use -1 as offset-assert");
         }
         rest = cdr(rest);
+      } else if (opt_name == ":do-not-decompile") {
+        skip_in_decomp = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -129,7 +132,7 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   }
 
   int actual_offset = ts->add_field_to_type(structure, name, type, is_inline, is_dynamic,
-                                            array_size, offset_override);
+                                            array_size, offset_override, skip_in_decomp);
   if (offset_assert != -1 && actual_offset != offset_assert) {
     throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
                              " but offset-assert was set to " + std::to_string(offset_assert));

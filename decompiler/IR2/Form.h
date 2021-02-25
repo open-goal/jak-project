@@ -1115,6 +1115,7 @@ class DecompiledDataElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(VariableSet& vars) const override;
   void get_modified_regs(RegSet& regs) const override;
+
  private:
   goos::Object m_description;
 };

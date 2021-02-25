@@ -51,8 +51,10 @@ Field::Field(std::string name, TypeSpec ts, int offset)
  */
 std::string Field::print() const {
   return fmt::format(
-      "Field: ({} {} :offset {}) inline: {:5}, dynamic: {:5}, array: {:5}, array size {:3}", m_name,
-      m_type.print(), m_offset, m_inline, m_dynamic, m_array, m_array_size);
+      "Field: ({} {} :offset {}) inline: {:5}, dynamic: {:5}, array: {:5}, array size {:3}, align "
+      "{:2}, skip {}",
+      m_name, m_type.print(), m_offset, m_inline, m_dynamic, m_array, m_array_size, m_alignment,
+      m_skip_in_static_decomp);
 }
 
 /*!
@@ -90,7 +92,8 @@ bool Field::operator==(const Field& other) const {
          m_dynamic == other.m_dynamic &&
          m_array == other.m_array &&
          m_array_size == other.m_array_size &&
-         m_alignment == other.m_alignment;
+         m_alignment == other.m_alignment &&
+         m_skip_in_static_decomp == other.m_skip_in_static_decomp;
   // clang-format on
 }
 
@@ -480,8 +483,9 @@ StructureType::StructureType(std::string parent,
 
 std::string StructureType::print() const {
   std::string result = fmt::format(
-      "[StructureType] {}\n parent: {}\n boxed: {}\n dynamic: {}\n size: {}\n pack: {}\n fields:\n",
-      m_name, m_parent, m_is_boxed, m_dynamic, m_size_in_mem, m_pack);
+      "[StructureType] {}\n parent: {}\n boxed: {}\n dynamic: {}\n size: {}\n pack: {}\n misalign: "
+      "{}\n fields:\n",
+      m_name, m_parent, m_is_boxed, m_dynamic, m_size_in_mem, m_pack, m_allow_misalign);
   for (auto& x : m_fields) {
     result += "   " + x.print() + "\n";
   }
@@ -507,7 +511,8 @@ bool StructureType::operator==(const Type& other) const {
          m_fields == p_other->m_fields &&
          m_dynamic == p_other->m_dynamic &&
          m_size_in_mem == p_other->m_size_in_mem &&
-         m_pack == p_other->m_pack;
+         m_pack == p_other->m_pack &&
+         m_allow_misalign == p_other->m_allow_misalign;
   // clang-format on
 }
 

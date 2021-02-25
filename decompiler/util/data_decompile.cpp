@@ -212,6 +212,10 @@ goos::Object decompile_structure(const TypeSpec& type,
   // now iterate over fields:
   int idx = 0;
   for (auto& field : type_info->fields()) {
+    if (field.skip_in_decomp()) {
+      idx++;
+      continue;
+    }
     if (is_basic && idx == 0) {
       assert(field.name() == "type" && field.offset() == 0);
       auto& word = obj_words.at(0);
@@ -274,15 +278,35 @@ goos::Object decompile_structure(const TypeSpec& type,
       field_status_per_byte.at(i) = HAS_DATA_READ;
     }
 
-    // first, let's see if it's a value or reference (todo, where does pair fit in here...)
+    // first, let's see if it's a value or reference
     auto field_type_info = ts.lookup_type(field.type());
     if (!field_type_info->is_reference()) {
       // value type. need to get bytes.
       assert(!field.is_inline());
       if (field.is_array()) {
-        field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("NYI"));
-        //        throw std::runtime_error(
-        //            fmt::format("Value field array {} not yet implemented", field.name()));
+        // array of values.
+        auto len = field.array_size();
+        auto stride = ts.get_size_in_type(field) / len;
+        assert(stride == field_type_info->get_size_in_memory());
+
+        std::vector<goos::Object> array_def = {pretty_print::to_symbol(
+            fmt::format("new 'static 'array '{} {}", field.type().print(), field.array_size()))};
+
+        for (int i = 0; i < len; i++) {
+          auto start = field_start + stride * i;
+          auto end = start + field_type_info->get_size_in_memory();
+          std::vector<u8> elt_bytes;
+          for (int j = start; j < end; j++) {
+            auto& word = obj_words.at(j / 4);
+            if (word.kind != LinkedWord::PLAIN_DATA) {
+              throw std::runtime_error("Got bad word in kind in array of values");
+            }
+            elt_bytes.push_back(word.get_byte(j % 4));
+          }
+          array_def.push_back(decompile_value(field.type(), elt_bytes, ts));
+        }
+
+        field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
       } else if (field.is_dynamic()) {
         throw std::runtime_error(
             fmt::format("Dynamic value field {} in static data type {} not yet implemented",

@@ -340,8 +340,9 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       if (kv != env.label_types().end()) {
         auto type_name = kv->second.type_name;
         if (type_name == "_auto_") {
-          // todo
-          assert(false);
+          auto decompiled_data = decompile_at_label_guess_type(lab, env.file->labels,
+                                                               env.file->words_by_seg, env.dts->ts);
+          result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
         } else {
           auto type = env.dts->parse_type_spec(kv->second.type_name);
           auto decompiled_data =
@@ -349,13 +350,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
           result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
         }
       } else {
-        try {
-          auto decompiled_data = decompile_at_label_guess_type(lab, env.file->labels,
-                                                               env.file->words_by_seg, env.dts->ts);
-          result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
-        } catch (std::runtime_error& e) {
-          result->push_back(this);
-        }
+        result->push_back(this);
       }
     }
 

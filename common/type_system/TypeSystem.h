@@ -145,7 +145,8 @@ class TypeSystem {
                         bool is_inline = false,
                         bool is_dynamic = false,
                         int array_size = -1,
-                        int offset_override = -1);
+                        int offset_override = -1,
+                        bool skip_in_static_decomp = false);
 
   void add_builtin_types();
 

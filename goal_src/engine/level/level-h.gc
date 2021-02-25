@@ -5,6 +5,10 @@
 ;; name in dgo: level-h
 ;; dgos: GAME, ENGINE
 
+;; Information related to visibility data for a level.
+;; Unclear why there are 8 of these per level.
+;; Perhaps there are up to 8 "chunks" of the visibility loaded at a single time?
+;; The full visibility data lives on the IOP.
 (deftype level-vis-info (basic)
   ((level              basic            :offset-assert 4)
    (from-level         basic            :offset-assert 8)
@@ -18,7 +22,7 @@
    (ramdisk            uint32           :offset-assert 40)
    (vis-bits           uint32           :offset-assert 44)
    (current-vis-string uint32           :offset-assert 48)
-   (vis-string         uint8 :dynamic :offset-assert 52)
+   (vis-string         uint8 :dynamic   :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -27,34 +31,37 @@
 
 
 (defmethod asize-of level-vis-info ((obj level-vis-info))
+  "Get the size of a level-vis-info in memory"
   (the-as int (+ (-> level-vis-info size) (-> obj dictionary-length)))
   )
 
+;; Per level information related to how to load the level.
+;; These are stored in level-info.gc
 (deftype level-load-info (basic)
   ((name-list         basic 3   :offset-assert 4)
-   (index             int32     :offset-assert 16)
-   (name              basic     :offset 4)
-   (visname           basic     :offset 8)
-   (nickname          basic     :offset 12)
-   (packages          pair      :offset-assert 20)
-   (sound-banks       pair      :offset-assert 24)
-   (music-bank        basic     :offset-assert 28)
-   (ambient-sounds    pair      :offset-assert 32)
-   (mood              basic     :offset-assert 36)
-   (mood-func         basic     :offset-assert 40)
-   (ocean             basic     :offset-assert 44)
-   (sky               basic     :offset-assert 48)
-   (sun-fade          float     :offset-assert 52)
-   (continues         pair      :offset-assert 56)
-   (tasks             pair      :offset-assert 60)
-   (priority          int32     :offset-assert 64)
-   (load-commands     pair      :offset-assert 68)
-   (alt-load-commands pair      :offset-assert 72)
-   (bsp-mask          uint64    :offset-assert 80)
-   (bsphere           sphere    :offset-assert 88)
-   (buzzer            int32     :offset-assert 92)
+   (index             int32     :offset-assert 16) ;; the level number (starting with 1?)
+   (name              basic     :offset 4)         ;; symbol with full name, like "misty"
+   (visname           basic     :offset 8)         ;; symbol with vis file name, like "misty-vis"
+   (nickname          basic     :offset 12)        ;; 3 letter name for DGO, like "mis"
+   (packages          pair      :offset-assert 20) ;; list of symbols, usually empty or the level name
+   (sound-banks       pair      :offset-assert 24) ;; require sound bank files (list of symbols)
+   (music-bank        basic     :offset-assert 28) ;; name of level music
+   (ambient-sounds    pair      :offset-assert 32) ;; always empty list.
+   (mood              basic     :offset-assert 36) ;; mood object name
+   (mood-func         basic     :offset-assert 40) ;; mood update function name
+   (ocean             basic     :offset-assert 44) ;; ocean map object
+   (sky               basic     :offset-assert 48) ;; boolean to enable sky
+   (sun-fade          float     :offset-assert 52) ;; sun/sky setting
+   (continues         pair      :offset-assert 56) ;; list of checkpoints
+   (tasks             pair      :offset-assert 60) ;; list of boxed integers for tasks
+   (priority          int32     :offset-assert 64) ;; either 100 or 200
+   (load-commands     pair      :offset-assert 68) ;; ??
+   (alt-load-commands pair      :offset-assert 72) ;; ??
+   (bsp-mask          uint64    :offset-assert 80) ;; ??
+   (bsphere           sphere    :offset-assert 88) ;; boundings sphere of level?
+   (buzzer            int32     :offset-assert 92) ;; which task is the scout fly?
    (bottom-height     float     :offset-assert 96) ;; meters
-   (run-packages      pair      :offset-assert 100)
+   (run-packages      pair      :offset-assert 100) ;; possibly unused?
    (prev-level        basic     :offset-assert 104)
    (next-level        basic     :offset-assert 108)
    (wait-for-load     basic     :offset-assert 112)
@@ -75,6 +82,7 @@
   :flag-assert         #x900000050
   )
 
+;; Per level-buffer info about the current loaded level.
 (deftype level (basic)
   ((name                      basic           :offset-assert 4)
    (load-name                 basic           :offset-assert 8)
@@ -147,6 +155,10 @@
 
 (declare-type entity-links structure)
 
+;; Main *level* object.
+;; There are actually three levels. level0 and level1 correspond to the actual buffered levels
+;; The level-default seems to be a fake level that can possibly be used by renderers that
+;; don't belong to any level, for example to render Jak.
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
    (unknown-field-1 basic                :offset-assert 8)
@@ -156,7 +168,7 @@
    (vis?            basic                :offset-assert 24)
    (want-level      basic                :offset-assert 28)
    (receiving-level basic                :offset-assert 32)
-   (load-commands   basic                :offset-assert 36)
+   (load-commands   pair                 :offset-assert 36)
    (play?           basic                :offset-assert 40)
    ;; there's something? from 40 -> 96. 
    (hack-pad        uint8                :offset 90)
@@ -166,7 +178,6 @@
    (level0          level        :inline :offset-assert 96) ;; inline basic
    (level1          level        :inline :offset-assert 2704) ;; inline basic
    (level-default   level        :inline :offset-assert 5312) ;; inline basic
-   ;; this actually went earlier, 
    (level           level 3      :inline :offset 96)
    (pad uint32)
    )
@@ -368,3 +379,4 @@
           )
     )
 |#
+
