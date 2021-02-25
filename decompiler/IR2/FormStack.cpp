@@ -340,7 +340,7 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
   std::vector<FormElement*> result;
 
   bool first = true;
-  while (keep_going) {
+  while (keep_going && !default_result.empty()) {
     keep_going = false;
     auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
     if (last_op_as_set && last_op_as_set->dst().reg() == var_to_get.reg() &&

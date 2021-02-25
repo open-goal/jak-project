@@ -31,30 +31,30 @@
   )
 
 (deftype level-load-info (basic)
-  ((name-list         basic 3 :offset-assert 4)
+  ((name-list         basic 3   :offset-assert 4)
    (index             int32     :offset-assert 16)
    (name              basic     :offset 4)
    (visname           basic     :offset 8)
    (nickname          basic     :offset 12)
-   (packages          basic     :offset-assert 20)
-   (sound-banks       basic     :offset-assert 24)
+   (packages          pair      :offset-assert 20)
+   (sound-banks       pair      :offset-assert 24)
    (music-bank        basic     :offset-assert 28)
-   (ambient-sounds    basic     :offset-assert 32)
+   (ambient-sounds    pair      :offset-assert 32)
    (mood              basic     :offset-assert 36)
    (mood-func         basic     :offset-assert 40)
    (ocean             basic     :offset-assert 44)
    (sky               basic     :offset-assert 48)
    (sun-fade          float     :offset-assert 52)
-   (continues         basic     :offset-assert 56)
-   (tasks             basic     :offset-assert 60)
+   (continues         pair      :offset-assert 56)
+   (tasks             pair      :offset-assert 60)
    (priority          int32     :offset-assert 64)
-   (load-commands     basic     :offset-assert 68)
-   (alt-load-commands basic     :offset-assert 72)
+   (load-commands     pair      :offset-assert 68)
+   (alt-load-commands pair      :offset-assert 72)
    (bsp-mask          uint64    :offset-assert 80)
    (bsphere           sphere    :offset-assert 88)
    (buzzer            int32     :offset-assert 92)
-   (bottom-height     float    :offset-assert 96) ;; meters
-   (run-packages      basic     :offset-assert 100)
+   (bottom-height     float     :offset-assert 96) ;; meters
+   (run-packages      pair      :offset-assert 100)
    (prev-level        basic     :offset-assert 104)
    (next-level        basic     :offset-assert 108)
    (wait-for-load     basic     :offset-assert 112)
@@ -89,7 +89,7 @@
    (texture-page              basic 9       :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
-   (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic
+   (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic, todo check stride.
    (foreground-draw-engine    basic 3       :offset-assert 272)
    (entity                    basic           :offset-assert 284)
    (ambient                   basic           :offset-assert 288)
@@ -149,6 +149,8 @@
 
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
+   (unknown-field-1 basic                :offset-assert 8)
+   (unknown-field-2 basic                :offset-assert 12)
    (entity-link     entity-links         :offset 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -192,3 +194,177 @@
     (dummy-26 () none 26)
     )
   )
+
+(define-extern *level* level-group)
+;; OpenGOAL doesn not yet support setting fields to arrays in statics.
+#|
+(if (zero? *level*)
+    (set! *level*
+          (new 'static 'level-group
+               :length 2
+               :unknown-field-1 #f
+               :unknown-field-2 #f
+               :entity-link #f
+               :border? #f
+               :want-level #f
+               :load-commands '()
+               :play? #f
+               :level0
+               (new 'static 'level
+                    :name #f
+                    :status 'inactive
+                    :foreground-sink-group
+                    (new 'static 'inline-array 'dma-foreground-sink-group 3
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink :bucket 10)
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 11 :foreground-output-bucket 1
+                                              )
+                                         0)
+                              )
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 49
+                                              :foreground-texture-page 1
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink :
+                                              bucket 50 :foreground-texture-page 1
+                                              :foreground-output-bucket 1)
+                                         0)
+                              )
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 58
+                                              :foreground-texture-page 2
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 59
+                                              :foreground-texture-page 2
+                                              :foreground-output-bucket 1
+                                              )
+                                         0)
+                              )
+                         )
+                    :inside-sphere? #f
+                    :inside-boxes? #f
+                    :force-inside? #f
+                    )
+               :level1
+               (new 'static 'level
+                    :name #f
+                    :index 1
+                    :status 'inactive
+                    :foreground-sink-group
+                    (new 'static 'inline-array 'dma-foreground-sink-group 3
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 17
+                                              :foreground-texture-level 1
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 18
+                                              :foreground-texture-level 1
+                                              :foreground-output-bucket 1
+                                              )
+                                         0)
+                              )
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 52
+                                              :foreground-texture-page 1
+                                              :foreground-texture-level 1
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 53
+                                              :foreground-texture-page 1
+                                              :foreground-texture-level 1
+                                              :foreground-output-bucket 1
+                                              )
+                                         0
+                                         )
+                              )
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 61
+                                              :foreground-texture-page 2
+                                              :foreground-texture-level 1
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 62
+                                              :foreground-texture-page 2
+                                              :foreground-texture-level 1
+                                              :foreground-output-bucket 1
+                                              )
+                                         0)
+                              )
+                         )
+                    :inside-sphere? #f
+                    :inside-boxes? #f
+                    :force-inside? #f
+                    )
+               :level-default
+               (new 'static 'level
+                    :name 'default
+                    :index 2
+                    :status 'reserved
+                    :foreground-sink-group
+                    (new 'static 'inline-array 'dma-foreground-sink-group 3
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 45
+                                              :foreground-texture-level 2
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 46
+                                              :foreground-texture-level 2
+                                              :foreground-output-bucket 1
+                                              )
+                                         0)
+                              )
+                         (new 'static 'dma-foreground-sink-group :
+                              sink (new 'static 'array 'dma-foreground-sink 3
+                                        (new 'static 'dma-foreground-sink
+                                             :bucket 55
+                                             :foreground-texture-page 1
+                                             :foreground-texture-level 2
+                                             )
+                                        (new 'static 'generic-dma-foreground-sink
+                                             :bucket 56
+                                             :foreground-texture-page 1
+                                             :foreground-texture-level 2
+                                             :foreground-output-bucket 1
+                                             )
+                                        0)
+                              )
+                         (new 'static 'dma-foreground-sink-group
+                              :sink (new 'static 'array 'dma-foreground-sink 3
+                                         (new 'static 'dma-foreground-sink
+                                              :bucket 58
+                                              :foreground-texture-page 2
+                                              :foreground-texture-level 2
+                                              )
+                                         (new 'static 'generic-dma-foreground-sink
+                                              :bucket 59
+                                              :foreground-texture-page 2
+                                              :foreground-texture-level 2
+                                              :foreground-output-bucket 1
+                                              )
+                                         0
+                                         )
+                              )
+                         )
+                    :inside-sphere? #f
+                    :inside-boxes? #f
+                    :force-inside? #f
+                    )
+               )
+          )
+    )
+|#

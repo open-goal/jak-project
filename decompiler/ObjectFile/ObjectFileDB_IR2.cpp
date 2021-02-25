@@ -456,7 +456,14 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
 
     // functions
     for (auto& func : data.linked_data.functions_by_seg.at(seg)) {
-      result += ir2_function_to_string(data, func, seg);
+      try {
+        result += ir2_function_to_string(data, func, seg);
+      } catch (std::exception& e) {
+        result += "Failed to write: ";
+        result += e.what();
+        result += "\n";
+      }
+
       if (func.ir2.top_form && func.ir2.env.has_local_vars()) {
         result += '\n';
         if (func.ir2.env.has_local_vars()) {

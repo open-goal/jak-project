@@ -26,7 +26,11 @@ std::string final_defun_out(const Function& func,
                             const DecompilerTypeSystem& dts,
                             FunctionDefSpecials special_mode) {
   std::vector<goos::Object> inline_body;
-  func.ir2.top_form->inline_forms(inline_body, env);
+  try {
+    func.ir2.top_form->inline_forms(inline_body, env);
+  } catch (std::exception& e) {
+    return e.what();
+  }
 
   int var_count = 0;
   auto var_dec = env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1, &var_count);

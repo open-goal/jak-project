@@ -408,7 +408,7 @@ StaticResult Compiler::compile_static(const goos::Object& form, Env* env) {
         if (!rest.as_pair()->cdr.is_empty_list()) {
           throw_compiler_error(form, "The form {} is an invalid quoted form.", form.print());
         }
-        if (second.is_pair()) {
+        if (second.is_pair() || second.is_empty_list()) {
           return compile_static_no_eval_for_pairs(second, env);
         } else {
           throw_compiler_error(form, "Could not evaluate the quoted form {} at compile time.",

@@ -22,11 +22,15 @@ goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            const std::vector<DecompilerLabel>& labels,
                                            const std::vector<std::vector<LinkedWord>>& words,
                                            const TypeSystem& ts);
-goos::Object decompile_structure(const TypeSpec& type,
+goos::Object decompile_structure(const TypeSpec& actual_type,
                                  const DecompilerLabel& label,
                                  const std::vector<DecompilerLabel>& labels,
                                  const std::vector<std::vector<LinkedWord>>& words,
                                  const TypeSystem& ts);
+goos::Object decompile_pair(const DecompilerLabel& label,
+                            const std::vector<DecompilerLabel>& labels,
+                            const std::vector<std::vector<LinkedWord>>& words,
+                            const TypeSystem& ts);
 goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
