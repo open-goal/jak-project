@@ -2504,3 +2504,34 @@ TEST_F(FormRegressionTest, StringLt) {
       "  )";
   test_with_expr(func, type, expected, false, "");
 }
+
+TEST_F(FormRegressionTest, ExprAssert) {
+  std::string func =
+      "    sll r0, r0, 0\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+
+      "    bne s7, a0, L12\n"
+      "    or v1, s7, r0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu v1, fp, L17\n"
+      "    or a2, a1, r0\n"
+      "    or a1, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "L12:\n"
+      "    or v0, r0, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function symbol string int)";
+
+  std::string expected = "(begin (if (not arg0) (format (quote #t) \"A ~A\" arg1)) 0)";
+  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
+}

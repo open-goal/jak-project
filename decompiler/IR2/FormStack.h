@@ -53,6 +53,7 @@ class FormStack {
     FormElement* elt = nullptr;
     bool sequence_point = false;
     TP_Type type;
+    bool is_compactable = false;
 
     SetVarInfo set_info;
 

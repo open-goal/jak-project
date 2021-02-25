@@ -166,6 +166,9 @@ struct SetVarInfo {
   bool is_dead_set = false;
   // is this a (set! var #f) where the value of #f isn't used?
   bool is_dead_false = false;
+  // it this a move that can be compacted? For now, this is always false, but we may want to
+  // allow more advanced compaction later.
+  bool is_compactable = false;
 };
 
 }  // namespace decompiler
