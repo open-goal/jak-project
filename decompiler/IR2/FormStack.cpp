@@ -7,13 +7,25 @@ namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {
   if (destination.has_value()) {
     assert(source && !elt);
-    return fmt::format("d: {} s: {} | {} <- {} f: {}", active, sequence_point,
-                       destination.value().reg().to_charp(), source->to_string(env),
-                       non_seq_source.has_value());
+    if (active) {
+      return fmt::format("d: {} s: {} | {} <- {} f: {} w: {}", active, sequence_point,
+                         destination.value().reg().to_charp(), source->to_string(env),
+                         non_seq_source.has_value(), is_compactable);
+    } else {
+      return fmt::format("  d: {} s: {} | {} <- {} f: {} w: {}", active, sequence_point,
+                         destination.value().reg().to_charp(), source->to_string(env),
+                         non_seq_source.has_value(), is_compactable);
+    }
+
   } else {
     assert(elt && !source);
-    return fmt::format("d: {} s: {} | {} f: {}", active, sequence_point, elt->to_string(env),
-                       non_seq_source.has_value());
+    if (active) {
+      return fmt::format("d: {} s: {} | {} f: {}", active, sequence_point, elt->to_string(env),
+                         non_seq_source.has_value());
+    } else {
+      return fmt::format("  d: {} s: {} | {} f: {}", active, sequence_point, elt->to_string(env),
+                         non_seq_source.has_value());
+    }
   }
 }
 
@@ -66,6 +78,7 @@ void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
   entry.non_seq_source = src;
   entry.source = src_as_form;
   entry.set_info = info;
+  entry.is_compactable = true;
   m_stack.push_back(entry);
 }
 
@@ -109,6 +122,7 @@ Form* FormStack::pop_reg(Register reg,
                          const Env& env,
                          bool allow_side_effects,
                          int begin_idx) {
+  assert(allow_side_effects);
   (void)env;  // keep this for easy debugging.
   RegSet modified;
   size_t begin = m_stack.size();
@@ -279,8 +293,32 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
     if (e.destination.has_value()) {
       // (set! x (+ x y)) -> (+! x y)
 
-      auto elt =
-          pool.alloc_element<SetVarElement>(*e.destination, e.source, e.sequence_point, e.set_info);
+      // we want to untangle coloring moves here
+      auto simplified_source = e.source;
+      auto src_as_var = dynamic_cast<SimpleExpressionElement*>(e.source->try_as_single_element());
+      if (src_as_var && src_as_var->expr().is_var() && e.is_compactable) {
+        bool keep_going = true;
+        auto var_to_get = src_as_var->expr().var();
+        while (keep_going && !result.empty()) {
+          keep_going = false;
+          auto last_op_as_set = dynamic_cast<SetVarElement*>(result.back());
+          if (last_op_as_set && last_op_as_set->dst().reg() == var_to_get.reg()) {
+            result.pop_back();
+            auto as_one = dynamic_cast<SimpleExpressionElement*>(
+                last_op_as_set->src()->try_as_single_element());
+            if (as_one && as_one->expr().is_identity() && as_one->expr().is_var() &&
+                !result.empty()) {
+              keep_going = true;
+              var_to_get = as_one->expr().var();
+            }
+            simplified_source = last_op_as_set->src();
+            // result = last_op_as_set->src()->elts();
+          }
+        }
+      }
+
+      auto elt = pool.alloc_element<SetVarElement>(*e.destination, simplified_source,
+                                                   e.sequence_point, e.set_info);
       e.source->parent_element = elt;
 
       auto final_elt = try_rewrites_in_place(elt, env, pool);
@@ -296,15 +334,38 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
                         FormPool& pool,
                         const Variable& var,
                         const Env&) {
-  auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
-  if (last_op_as_set && last_op_as_set->dst().reg() == var.reg()) {
-    default_result.pop_back();
-    for (auto form : last_op_as_set->src()->elts()) {
-      form->parent_form = nullptr;  // will get set later, this makes it obvious if I forget.
-      default_result.push_back(form);
+  bool keep_going = true;
+  Variable var_to_get = var;
+
+  std::vector<FormElement*> result;
+
+  bool first = true;
+  while (keep_going) {
+    keep_going = false;
+    auto last_op_as_set = dynamic_cast<SetVarElement*>(default_result.back());
+    if (last_op_as_set && last_op_as_set->dst().reg() == var_to_get.reg() &&
+        (first || last_op_as_set->info().is_compactable)) {
+      default_result.pop_back();
+      auto as_one =
+          dynamic_cast<SimpleExpressionElement*>(last_op_as_set->src()->try_as_single_element());
+      if (as_one && as_one->expr().is_identity() && as_one->expr().is_var() &&
+          !default_result.empty()) {
+        keep_going = true;
+        var_to_get = as_one->expr().var();
+      }
+
+      result = last_op_as_set->src()->elts();
     }
-  } else {
+    first = false;
+  }
+
+  if (result.empty()) {
     default_result.push_back(pool.alloc_element<SimpleAtomElement>(SimpleAtom::make_var(var)));
+  } else {
+    for (auto x : result) {
+      x->parent_form = nullptr;
+      default_result.push_back(x);
+    }
   }
 }
 
