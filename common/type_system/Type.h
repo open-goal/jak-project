@@ -192,6 +192,7 @@ class Field {
   bool is_dynamic() const { return m_dynamic; }
   const std::string& name() const { return m_name; }
   int offset() const { return m_offset; }
+  bool skip_in_decomp() const { return m_skip_in_static_decomp; }
   bool operator==(const Field& other) const;
 
   int alignment() const {
@@ -208,6 +209,7 @@ class Field {
   friend class TypeSystem;
   void set_alignment(int alignment) { m_alignment = alignment; }
   void set_offset(int offset) { m_offset = offset; }
+  void set_skip_in_static_decomp() { m_skip_in_static_decomp = true; }
 
   std::string m_name;
   TypeSpec m_type;
@@ -218,6 +220,7 @@ class Field {
   bool m_array = false;
   int m_array_size = 0;
   int m_alignment = -1;
+  bool m_skip_in_static_decomp = false;
 };
 
 class StructureType : public ReferenceType {

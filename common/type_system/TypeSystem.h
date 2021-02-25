@@ -145,7 +145,8 @@ class TypeSystem {
                         bool is_inline = false,
                         bool is_dynamic = false,
                         int array_size = -1,
-                        int offset_override = -1);
+                        int offset_override = -1,
+                        bool skip_in_static_decomp = false);
 
   void add_builtin_types();
 
@@ -182,6 +183,8 @@ class TypeSystem {
   TypeSpec lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) const;
   TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types) const;
 
+  int get_size_in_type(const Field& field) const;
+
  private:
   bool try_reverse_lookup(const FieldReverseLookupInput& input,
                           std::vector<FieldReverseLookupOutput::Token>* path,
@@ -205,7 +208,6 @@ class TypeSystem {
                                 TypeSpec* result_type) const;
   std::string lca_base(const std::string& a, const std::string& b) const;
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
-  int get_size_in_type(const Field& field) const;
   int get_alignment_in_type(const Field& field);
   Field lookup_field(const std::string& type_name, const std::string& field_name) const;
   StructureType* add_builtin_structure(const std::string& parent,

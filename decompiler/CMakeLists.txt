@@ -44,6 +44,8 @@ add_library(
         ObjectFile/ObjectFileDB.cpp
         ObjectFile/ObjectFileDB_IR2.cpp
 
+        util/data_decompile.cpp
+        util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
         util/TP_Type.cpp
 

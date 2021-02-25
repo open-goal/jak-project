@@ -97,6 +97,7 @@ bool convert_to_expressions(Form* top_level_form,
 
   } catch (std::exception& e) {
     f.warnings.expression_build_warning("In {}: {}", f.guessed_name.to_string(), e.what());
+    lg::warn("In {}: {}", f.guessed_name.to_string(), e.what());
     return false;
   }
 

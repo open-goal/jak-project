@@ -5,11 +5,11 @@
  * A word (4 bytes), possibly with some linking info.
  */
 
-#ifndef JAK2_DISASSEMBLER_LINKEDWORD_H
-#define JAK2_DISASSEMBLER_LINKEDWORD_H
-
 #include <cstdint>
 #include <string>
+#include <cassert>
+
+#include "common/common_types.h"
 
 namespace decompiler {
 class LinkedWord {
@@ -31,7 +31,21 @@ class LinkedWord {
 
   int label_id = -1;
   std::string symbol_name;
+
+  u8 get_byte(int idx) const {
+    assert(kind == PLAIN_DATA);
+    switch (idx) {
+      case 0:
+        return data & 0xff;
+      case 1:
+        return (data >> 8) & 0xff;
+      case 2:
+        return (data >> 16) & 0xff;
+      case 3:
+        return (data >> 24) & 0xff;
+      default:
+        assert(false);
+    }
+  }
 };
 }  // namespace decompiler
-
-#endif  // JAK2_DISASSEMBLER_LINKEDWORD_H

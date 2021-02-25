@@ -1107,6 +1107,19 @@ class StoreArrayAccess : public FormElement {
   Variable m_base_var;
 };
 
+class DecompiledDataElement : public FormElement {
+ public:
+  DecompiledDataElement(goos::Object description);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  goos::Object m_description;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:

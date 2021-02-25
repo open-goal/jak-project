@@ -1664,17 +1664,7 @@ void ConstantFloatElement::collect_vars(VariableSet&) const {}
 void ConstantFloatElement::get_modified_regs(RegSet&) const {}
 
 goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
-  // return goos::Object::make_float(m_value);
-  int rounded = m_value;
-  bool exact_int = ((float)rounded) == m_value;
-  if (m_value == 0.5 || m_value == -0.5 || m_value == 0.0 || m_value == 1.0 || m_value == -1.0 ||
-      exact_int) {
-    return goos::Object::make_float(m_value);
-  } else {
-    u32 value;
-    memcpy(&value, &m_value, 4);
-    return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", value));
-  }
+  return pretty_print::float_representation(m_value);
 }
 
 StorePlainDeref::StorePlainDeref(DerefElement* dst,
@@ -1741,5 +1731,22 @@ void StoreArrayAccess::collect_vars(VariableSet& vars) const {
 void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
   m_dst->get_modified_regs(regs);
 }
+
+DecompiledDataElement::DecompiledDataElement(goos::Object description)
+    : m_description(std::move(description)) {}
+
+goos::Object DecompiledDataElement::to_form_internal(const Env&) const {
+  return m_description;
+}
+
+void DecompiledDataElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void DecompiledDataElement::apply_form(const std::function<void(Form*)>&) {}
+
+void DecompiledDataElement::collect_vars(VariableSet&) const {}
+
+void DecompiledDataElement::get_modified_regs(RegSet&) const {}
 
 }  // namespace decompiler

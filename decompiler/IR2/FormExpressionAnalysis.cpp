@@ -4,6 +4,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/data_decompile.h"
 
 /*
  * TODO
@@ -334,7 +335,23 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       auto str = env.file->get_goal_string(lab.target_segment, lab.offset / 4 - 1, false);
       result->push_back(pool.alloc_element<StringConstantElement>(str));
     } else {
-      result->push_back(this);
+      // look for a label hint:
+      auto kv = env.label_types().find(lab.name);
+      if (kv != env.label_types().end()) {
+        auto type_name = kv->second.type_name;
+        if (type_name == "_auto_") {
+          auto decompiled_data = decompile_at_label_guess_type(lab, env.file->labels,
+                                                               env.file->words_by_seg, env.dts->ts);
+          result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
+        } else {
+          auto type = env.dts->parse_type_spec(kv->second.type_name);
+          auto decompiled_data =
+              decompile_at_label(type, lab, env.file->labels, env.file->words_by_seg, env.dts->ts);
+          result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
+        }
+      } else {
+        result->push_back(this);
+      }
     }
 
   } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
@@ -1194,7 +1211,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
-  assert(is_method == m_op->is_method());
+  // assert(is_method == m_op->is_method());
+  if (is_method != m_op->is_method()) {
+    lg::error("Disagreement on method!");
+    throw std::runtime_error("Disagreement on method");
+  }
 
   // if method, don't pop the obj arg.
   //  Variable method_obj_var;

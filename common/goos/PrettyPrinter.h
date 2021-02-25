@@ -51,4 +51,6 @@ goos::Object build_list(const goos::Object& car, Args... rest) {
 
 goos::Reader& get_pretty_printer_reader();
 
+goos::Object float_representation(float value);
+
 }  // namespace pretty_print

@@ -7,10 +7,28 @@
 #include <cassert>
 #include <stdexcept>
 #include <utility>
+#include <cstring>
 #include "PrettyPrinter.h"
 #include "Reader.h"
+#include "third-party/fmt/core.h"
 
 namespace pretty_print {
+
+/*!
+ * Print a float in a nice representation if possibly, or an exact 32-bit integer constant to
+ * be reinterpreted.
+ */
+goos::Object float_representation(float value) {
+  int rounded = value;
+  bool exact_int = ((float)rounded) == value;
+  if (value == 0.5 || value == -0.5 || value == 0.0 || value == 1.0 || value == -1.0 || exact_int) {
+    return goos::Object::make_float(value);
+  } else {
+    u32 int_value;
+    memcpy(&int_value, &value, 4);
+    return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
+  }
+}
 
 /*!
  * A single token which cannot be split between lines.

@@ -658,14 +658,6 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
     rd_in.offset = ro.offset;
     auto rd = dts.ts.reverse_field_lookup(rd_in);
 
-    // only error on failure if "pair" is disabled. otherwise it might be a pair.
-    if (!rd.success && !dts.type_prop_settings.allow_pair) {
-      printf("input type is %s, offset is %d, sign %d size %d\n", rd_in.base_type.print().c_str(),
-             rd_in.offset, rd_in.deref.value().sign_extend, rd_in.deref.value().size);
-      throw std::runtime_error(fmt::format("Could not get type of load: {}. Reverse Deref Failed.",
-                                           to_form(env.file->labels, env).print()));
-    }
-
     if (rd.success) {
       //      load_path_set = true;
       //      load_path_addr_of = rd.addr_of;
@@ -674,6 +666,41 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       //        load_path.push_back(x.print());
       //      }
       return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    }
+
+    if (input_type.typespec() == TypeSpec("pointer")) {
+      // we got a plain pointer. let's just assume we're loading an integer.
+      // perhaps we should disable this feature by default on 4-byte loads if we're getting
+      // lots of false positives for loading pointers from plain pointers.
+
+      switch (m_kind) {
+        case Kind::UNSIGNED:
+          switch (m_size) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+              return TP_Type::make_from_ts(TypeSpec("uint"));
+            default:
+              break;
+          }
+          break;
+        case Kind::SIGNED:
+          switch (m_size) {
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+              return TP_Type::make_from_ts(TypeSpec("int"));
+            default:
+              break;
+          }
+          break;
+        case Kind::FLOAT:
+          return TP_Type::make_from_ts(TypeSpec("float"));
+        default:
+          assert(false);
+      }
     }
 
     // rd failed, try as pair.

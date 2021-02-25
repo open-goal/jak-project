@@ -983,7 +983,7 @@
 
 (deftype vector (structure)
   (
-   (data float 4 :offset-assert 0)
+   (data float 4 :do-not-decompile :offset-assert 0)
    (x float :offset 0)
    (y float :offset 4)
    (z float :offset 8)
@@ -3315,14 +3315,14 @@
 ;; texture-h
 ;;;;;;;;;;;;;;
 
-; ;; texture-h
-; (deftype texture-id (uint32)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   ;; likely a bitfield type
-;   )
+;; texture-h
+(deftype texture-id (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  ;; likely a bitfield type
+  )
 
 (deftype texture-pool-segment (structure)
   ((dest uint32  :offset-assert 0)
@@ -3401,6 +3401,8 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
+
+(define-extern texture-mip->segment (function int int int))
 
 ;; texture-h
 (deftype texture-page (basic)
@@ -3490,6 +3492,9 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+(define-extern *texture-relocate-later* texture-relocate-later)
+
 ;;;;;;;;;;;;;;
 ;; level-h
 ;;;;;;;;;;;;;;
@@ -3517,30 +3522,30 @@
 
 ;; level-h
 (deftype level-load-info (basic)
-  ((name-list         basic 3 :offset-assert 4)
+  ((name-list         basic 3   :offset-assert 4)
    (index             int32     :offset-assert 16)
    (name              basic     :offset 4)
    (visname           basic     :offset 8)
    (nickname          basic     :offset 12)
-   (packages          basic     :offset-assert 20)
-   (sound-banks       basic     :offset-assert 24)
+   (packages          pair      :offset-assert 20)
+   (sound-banks       pair      :offset-assert 24)
    (music-bank        basic     :offset-assert 28)
-   (ambient-sounds    basic     :offset-assert 32)
+   (ambient-sounds    pair      :offset-assert 32)
    (mood              basic     :offset-assert 36)
    (mood-func         basic     :offset-assert 40)
    (ocean             basic     :offset-assert 44)
    (sky               basic     :offset-assert 48)
    (sun-fade          float     :offset-assert 52)
-   (continues         basic     :offset-assert 56)
-   (tasks             basic     :offset-assert 60)
+   (continues         pair      :offset-assert 56)
+   (tasks             pair      :offset-assert 60)
    (priority          int32     :offset-assert 64)
-   (load-commands     basic     :offset-assert 68)
-   (alt-load-commands basic     :offset-assert 72)
+   (load-commands     pair      :offset-assert 68)
+   (alt-load-commands pair      :offset-assert 72)
    (bsp-mask          uint64    :offset-assert 80)
    (bsphere           sphere    :offset-assert 88)
    (buzzer            int32     :offset-assert 92)
-   (bottom-height     float    :offset-assert 96) ;; meters
-   (run-packages      basic     :offset-assert 100)
+   (bottom-height     float     :offset-assert 96) ;; meters
+   (run-packages      pair      :offset-assert 100)
    (prev-level        basic     :offset-assert 104)
    (next-level        basic     :offset-assert 108)
    (wait-for-load     basic     :offset-assert 112)
@@ -3576,6 +3581,10 @@
    (texture-page              basic 9       :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
+   ; (foreground-sink-group-0   dma-foreground-sink-group :inline :offset-assert 176)
+   ; (foreground-sink-group-1   dma-foreground-sink-group :inline :offset-assert 208)
+   ; (foreground-sink-group-2   dma-foreground-sink-group :inline :offset-assert 240)
+   ; (array-pad uint8 12)
    (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic
    (foreground-draw-engine    basic 3       :offset-assert 272)
    (entity                    basic           :offset-assert 284)
@@ -3639,18 +3648,25 @@
 ;; level-h
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
+   (unknown-field-1 basic                :offset-assert 8)
+   (unknown-field-2 basic                :offset-assert 12)
    (entity-link     entity-links         :offset 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
    (want-level      basic                :offset-assert 28)
    (receiving-level basic                :offset-assert 32)
-   (load-commands   basic                :offset-assert 36)
+   (load-commands   pair                :offset-assert 36)
    (play?           basic                :offset-assert 40)
-   ; (level           UNKNOWN      3       :offset-assert 100)
-   ; (data            UNKNOWN      3       :offset-assert 100)
-   (level0          level        :inline :offset 96) ;; inline basic
+   ;; there's something? from 40 -> 96. 
+   (hack-pad        uint8                :offset 90)
+   
+   ;(level           level 3 :inline      :offset-assert 96)
+   ;(data            level 3 :inline      :offset-assert 100)
+   (level0          level        :inline :offset-assert 96) ;; inline basic
    (level1          level        :inline :offset-assert 2704) ;; inline basic
    (level-default   level        :inline :offset-assert 5312) ;; inline basic
+   ;; this actually went earlier, 
+   (level           level 3      :inline :offset 96)
    (pad uint32)
    )
   :method-count-assert 27
@@ -6984,7 +7000,7 @@
    (quat          vector  :inline :offset-assert 32)
    (camera-trans  vector  :inline :offset-assert 48)
    (camera-rot    float 9       :offset-assert 64)
-   (load-commands basic           :offset-assert 100)
+   (load-commands pair           :offset-assert 100)
    (vis-nick      basic           :offset-assert 104)
    (lev0          basic           :offset-assert 108)
    (disp0         basic           :offset-assert 112)
@@ -32489,14 +32505,14 @@
 (define-extern texture-page type)
 ;;(define-extern *depth-cue-base-page* object) ;; unknown type
 ;;(define-extern texture-pool-segment object) ;; unknown type
-;;(define-extern *texture-relocate-later* object) ;; unknown type
+;; ;; unknown type
 ;;(define-extern *sky-base-vram-word* object) ;; unknown type
 ;;(define-extern texture-id object) ;; unknown type
 ;;(define-extern *sky-base-page* object) ;; unknown type
 (define-extern texture-page-dir type)
 ;;(define-extern texture-relocate-later object) ;; unknown type
 ;;(define-extern texture-link object) ;; unknown type
-(define-extern texture-mip->segment function)
+
 ;;(define-extern shader-ptr object) ;; unknown type
 ;;(define-extern *eyes-base-vram-word* object) ;; unknown type
 ;;(define-extern *eyes-base-page* object) ;; unknown type

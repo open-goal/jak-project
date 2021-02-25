@@ -616,7 +616,8 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   bool is_inline,
                                   bool is_dynamic,
                                   int array_size,
-                                  int offset_override) {
+                                  int offset_override,
+                                  bool skip_in_static_decomp) {
   if (type->lookup_field(field_name, nullptr)) {
     fmt::print("[TypeSystem] Type {} already has a field named {}\n", type->get_name(), field_name);
     throw std::runtime_error("add_field_to_type duplicate field names");
@@ -656,6 +657,9 @@ int TypeSystem::add_field_to_type(StructureType* type,
 
   field.set_offset(offset);
   field.set_alignment(field_alignment);
+  if (skip_in_static_decomp) {
+    field.set_skip_in_static_decomp();
+  }
 
   int after_field = offset + get_size_in_type(field);
   if (type->get_size_in_memory() < after_field) {
