@@ -14,6 +14,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
+#include "decompiler/analysis/vector_rewrite.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 
@@ -45,6 +46,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
     ir2_store_current_forms();
     lg::info("Expression building...");
     ir2_build_expressions();
+    lg::info("Re-writing vector operations...");
+    ir2_rewrite_vector_instructions();
   }
   lg::info("Writing results...");
   ir2_write_results(output_dir);
@@ -418,6 +421,29 @@ void ObjectFileDB::ir2_build_expressions() {
   });
 
   lg::info("{}/{}/{} expression build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
+}
+
+void ObjectFileDB::ir2_rewrite_vector_instructions() {
+  Timer timer;
+  int total = 0;
+  int attempted = 0;
+  int successful = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    total++;
+    if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
+      attempted++;
+      if (rewrite_vector_instructions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
+        successful++;
+        func.ir2.print_debug_forms = true;
+        //        auto end = final_defun_out(func, func.ir2.env, dts);
+        //        fmt::print("{}\n\n", end);
+      }
+    }
+  });
+
+  lg::info("{}/{}/{} rewrote vector instructions in {:.2f} ms\n", successful, attempted, total, timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {

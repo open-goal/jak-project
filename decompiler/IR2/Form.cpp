@@ -466,6 +466,36 @@ void AsmOpElement::get_modified_regs(RegSet& regs) const {
 }
 
 /////////////////////////////
+// OpenGoalAsmOpElement
+/////////////////////////////
+
+OpenGoalAsmOpElement::OpenGoalAsmOpElement(const AsmOp* op) : m_op(op) {}
+
+goos::Object OpenGoalAsmOpElement::to_form_internal(const Env& env) const {
+  return m_op->to_open_goal_form(env.file->labels, env);
+}
+
+void OpenGoalAsmOpElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void OpenGoalAsmOpElement::apply_form(const std::function<void(Form*)>&) {}
+
+void OpenGoalAsmOpElement::collect_vars(VariableSet& vars) const {
+  m_op->collect_vars(vars);
+}
+
+void OpenGoalAsmOpElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
+/////////////////////////////
 // ConditionElement
 /////////////////////////////
 

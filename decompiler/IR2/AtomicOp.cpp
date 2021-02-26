@@ -6,6 +6,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "AtomicOp.h"
+#include "OpenGoalMapping.h"
 
 namespace decompiler {
 /////////////////////////////
@@ -466,6 +467,98 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
 
   return pretty_print::build_list(forms);
 }
+
+goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels,
+                                      const Env& env) const {
+  std::vector<goos::Object> forms;
+
+  OpenGOALAsm asmOp = OpenGOALAsm(m_instr.kind);
+  OpenGOALAsm::Function func = asmOp.func;
+
+  // OpenGOAL uses the function name for broadcast specification
+  // TODO - probably helper functions would be nice...
+  std::string funcName = func.funcTemplate;
+  if (std::find(func.modifiers.begin(), func.modifiers.end(),
+                OpenGOALAsm::InstructionModifiers::BROADCAST) != func.modifiers.end()) {
+    // TODO - another helper function...
+    if (m_instr.cop2_bc != 0xff) {
+      std::string bc = "";
+      switch (m_instr.cop2_bc) {
+        case 0:
+          bc = "x";
+          break;
+        case 1:
+          bc = "y";
+          break;
+        case 2:
+          bc = "z";
+          break;
+        case 3:
+          bc = "w";
+          break;
+        default:
+          bc = "?";
+          break;
+      }
+      funcName = fmt::format(funcName, bc);
+    }
+  }
+  forms.push_back(pretty_print::to_symbol(funcName));
+
+  // TODO - if destination is Q, should already be wrapped in a form to initialize it
+  assert(m_instr.n_dst <= 1);
+  if (m_instr.n_dst == 1) {
+    if (m_dst.has_value()) {
+      // then print it as a variable
+      forms.push_back(m_dst.value().to_form(env));
+    } else {
+      // print the atom
+      forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(labels)));
+    }
+  }
+
+  std::vector<goos::Object> named_args;
+
+  assert(m_instr.n_src <= 4);
+  for (int i = 0; i < m_instr.n_src; i++) {
+    auto v = m_src[i];
+    if (v.has_value()) {
+      forms.push_back(v.value().to_form(env));
+    } else {
+      InstructionAtom atom = m_instr.get_src(i);
+      if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
+        std::string keyword = named_args.size() == 0 ? "ftf" : "fsf";
+        named_args.push_back(
+            pretty_print::to_symbol(fmt::format(":{} #b{:b}", keyword, atom.get_imm())));
+      } else if ((m_instr.kind == InstructionKind::LQC2 || m_instr.kind == InstructionKind::SQC2)&&
+                 atom.kind == InstructionAtom::AtomKind::IMM)
+      // TODO - Kinda have to treat loading differently, I can think of some better ways to do this
+      // now!
+      {
+        named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
+      } else {
+        goos::Object obj = pretty_print::to_symbol(atom.to_string(labels));
+        forms.push_back(obj);
+      }
+    }
+  }
+
+  // Add any named arguments to the function
+  // TODO - ftf/fsf
+  // TODO make sure function supports masking
+  // Add destination mask, if excluded, xyzw (15 in binary) assumed
+  if (m_instr.cop2_dest != 0xff && m_instr.cop2_dest != 15) {
+    std::string maskKeyword = fmt::format(":mask #b{:b}", m_instr.cop2_dest);
+    named_args.push_back(pretty_print::to_symbol(maskKeyword));
+  }
+
+  // Add all additional args to form
+  forms.insert(forms.end(), named_args.begin(), named_args.end());
+
+  // TODO - handle register rearranging elegantly
+  // TODO - (higher level) need to handle instruction look-ahead / dropping instructions
+  return pretty_print::build_list(forms);
+}  // namespace decompiler
 
 bool AsmOp::operator==(const AtomicOp& other) const {
   if (typeid(AsmOp) != typeid(other)) {

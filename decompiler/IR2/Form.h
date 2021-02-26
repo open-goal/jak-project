@@ -373,6 +373,24 @@ class AsmOpElement : public FormElement {
 };
 
 /*!
+ * A wrapper around a single AsmOp, with OpenGOAL considerations
+ */
+class OpenGoalAsmOpElement : public FormElement {
+ public:
+  explicit OpenGoalAsmOpElement(const AsmOp* op);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+  const AsmOp* op() const { return m_op; }
+
+ private:
+  const AsmOp* m_op;
+};
+
+/*!
  * A "condition" like (< a b). This can be used as a boolean value directly: (set! a (< b c))
  * or it can be used as a branch condition: (if (< a b)). As a result, it implements both push
  * and update.

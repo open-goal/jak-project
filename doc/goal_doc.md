@@ -1406,12 +1406,16 @@ Calculates the outer-product of `src1` and `src2` and stores the result in `dst`
 
 Given 2 vectors `V1 = <1,2,3,4>` and `V2 = <5,6,7,8>` and assume `VDEST = <0, 0, 0, 999>`
 The outer product is computed like so (only x,y,z components are operated on):
+
 `x = (V1y * V2z) - (V2y * V1z) => (2 * 7) - (6 * 3) => -4`
+
 `y = (V1z * V2x) - (V2z * V1x) => (3 * 5) - (7 * 1) =>  8`
+
 `z = (V1x * V2y) - (V2x * V1y) => (1 * 6) - (5 * 2) => -4`
+
 `w = N/A, left alone                                => 999`
 
-`VDEST = <-4, 8, -4, 999>`
+> `VDEST = <-4, 8, -4, 999>`
 
 ## `.blend.vf`
 ```lisp

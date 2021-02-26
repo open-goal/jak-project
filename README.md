@@ -12,11 +12,14 @@
 - [Table of Contents](#table-of-contents)
 - [Project Description](#project-description)
 - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
+- [Getting Started - Linux (Arch)](#getting-started---linux-arch)
+- [Getting Started - Nixpkgs](#getting-started---nixpkgs)
 - [Getting Started - Windows](#getting-started---windows)
 - [Project Layout](#project-layout)
 - [Directory Layout](#directory-layout)
 - [More Documentation](#more-documentation)
 - [ASan Build](#asan-build)
+  - [On Windows / Visual Studio](#on-windows--visual-studio)
 <!-- tocstop -->
 ## Project Description
 
@@ -236,3 +239,8 @@ You will have to delete the build folder when changing compilers.  When running 
 ```
 
 Then you can run the tests, runtime, and compiler as normal and they will abort if ASan finds an error.
+
+### On Windows / Visual Studio
+
+Until 16.9 Preview 4, when attaching a debugger to the ASan build, you must disable breaking on Win32 Access Violation exceptions.  See the relevant section `Debugging - Exceptions` here https://devblogs.microsoft.com/cppblog/asan-for-windows-x64-and-debug-build-support/#known-issues
+

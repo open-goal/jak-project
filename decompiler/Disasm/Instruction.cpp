@@ -102,7 +102,7 @@ Register InstructionAtom::get_reg() const {
  * Get as integer immediate, or error if not an integer immediate.
  */
 int32_t InstructionAtom::get_imm() const {
-  assert(kind == IMM);
+  assert(kind == IMM || kind == VF_FIELD);
   return imm;
 }
 
