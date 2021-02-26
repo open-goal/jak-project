@@ -123,15 +123,15 @@ void Compiler::generate_field_description(const goos::Object& form,
     // Dynamic Field
     str_template += fmt::format("~T{}[0] @ #x~X~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (f.is_dynamic()) {
-    // Structure
-    str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
-    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.typecheck(m_ts.make_typespec("basic"), f.type(), "", false, false) ||
              m_ts.typecheck(m_ts.make_typespec("binteger"), f.type(), "", false, false) ||
              m_ts.typecheck(m_ts.make_typespec("pair"), f.type(), "", false, false)) {
     // basic, binteger, pair
     str_template += fmt::format("~T{}: ~A~%", f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (m_ts.typecheck(m_ts.make_typespec("structure"), f.type(), "", false, false)) {
+    // Structure
+    str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.typecheck(m_ts.make_typespec("integer"), f.type(), "", false, false)) {
     // Integer

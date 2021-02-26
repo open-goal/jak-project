@@ -5,3 +5,397 @@
 ;; name in dgo: math-camera
 ;; dgos: GAME, ENGINE
 
+(deftype fog-corrector (structure)
+  ((fog-end   float  :offset-assert 0)
+   (fog-start float  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(defun fog-corrector-setup ((arg0 fog-corrector) (arg1 math-camera))
+  "Set up a fog-corrector based on the math-camera"
+  (set! (-> arg0 fog-end) (* (-> arg1 fog-end) (-> arg1 fov-correction-factor)))
+  (set! (-> arg0 fog-start) (* (-> arg1 fog-start) (-> arg1 fov-correction-factor)))
+  )
+
+(define *math-camera-fog-correction* (new 'global 'fog-corrector))
+
+(define-extern sprite-distorter-generate-tables (function none))
+
+(defun update-math-camera ((math-cam math-camera) (video-mode symbol) (aspect symbol))
+  (local-vars
+   (cam-mat matrix)
+   (cull-info cull-info)
+   (sprite-row-0 matrix)
+   (sprite-row-1 (pointer float))
+   (sprite-row-2 (pointer float))
+   (sprite-row-3 (pointer float))
+   (v1-15 vector)
+   (v1-17 int)
+   (v1-19 int)
+   (v1-20 int)
+   (v1-22 int)
+   (v1-23 int)
+   (pfog float)
+   (a0-10 vector)
+   (a0-11 int)
+   (vis-gif-0 vis-gif-tag)
+   (vis-gif-1 vis-gif-tag)
+   (vis-gif-1-again vis-gif-tag)
+   (vis-gif-1-again-again vis-gif-tag)
+   (a1-5 int)
+   (a1-6 int)
+   (y-rat float)
+   (drat-sqr-len float)
+   (fog-contsant-3 float)
+   (d-temp-2 float)
+   (d-temp-4 float)
+   (fog-constant-3 float)
+   (fog-at-d float)
+   (x-rat float)
+   (dy-rat float)
+   (d-temp float)
+   (dx-rat-2 float)
+   ;;(dy-rat float)
+   (mid-range float)
+   (persp-x float)
+   (temp7 float)
+   (unused-x-thing float)
+   (y-thing float)
+   (dx-rat float)
+   (dx-rat-times-4 float)
+   (dy-rat-times-4 float)
+   (very-near float)
+   (hvdf-z float)
+   (persp-xx float)
+   (d-temp-3 float)
+   (d-temp-5 float)
+   (very-far float)
+   (persp-yy float)
+   (inverse-x-len float)
+   (inverse-y-len float)
+   (cam-fov-mult float)
+   (hvdf-w float)
+   (inverse-x-len-2 float)
+   (inverse-y-len-2 float)
+   (range-factor float)
+   (hvdf-x float)
+   (hvdf-y float)
+   )
+
+  ;; Camera Math:
+  ;;  The camera transformation projects a point in space to the camera's projection plane.
+  ;;  The usual camera frustum is shown below:
+
+  ;;        
+  ;;        *  <- the camera origin.
+  ;;       --- <- project the point onto this plane, the screen.
+  ;;      / | \
+  ;;     /  |  \
+  ;;    /   | * \  <- some point in the world
+
+  ;; The "x ratio" is the slope of frustum:
+  ;; for a point on the frustum (px,pz), it satisfies x_ratio * pz = px.
+
+  ;; Compute the x-ratio using half of the fov angle (the triangle is the midplane, frustum wall, and offset in x)
+  (set! (-> math-cam x-ratio) (tan (* 0.500000 (-> math-cam fov))))
+
+  ;; The plane has the same aspect ratio as the screen, so we can derive the y-ratio
+  ;; based on the game's aspect ratio setting.
+  (if (= aspect 'aspect4x3)
+      (set! (-> math-cam y-ratio) (* 0.75 (-> math-cam x-ratio)))
+      (set! (-> math-cam y-ratio) (* 0.5625 (-> math-cam x-ratio)))
+      )
+
+  ;; Eventually, we will want to cull things that are oustide of the view frustum.
+  ;; To do this, we need to compute the equation of the planes for the sides of the frustum.
+  ;; I'm not yet sure what these "x-fact" things are, but likely related to their culling strategy.
+  (set! x-rat (-> math-cam x-ratio))
+  (set! y-rat (-> math-cam y-ratio))
+  (set! cull-info (-> math-cam cull-info))
+  
+  (set! unused-x-thing
+        (/ (+ 1.000000 (* (* 4.000000 x-rat) x-rat)) (+ 1.000000 (* x-rat x-rat)))
+        )
+  
+  (set! y-thing
+        (/ (+ 1.000000 (* (* 4.000000 y-rat) y-rat)) (+ 1.000000 (* y-rat y-rat)))
+        )
+  
+  (set!
+   (-> cull-info x-fact)
+   (/ (+ 1.000000 (* (* 4.000000 x-rat) x-rat))
+      (* x-rat (sqrtf (+ 1.000000 (* (* 16.000000 x-rat) x-rat))))
+      )
+   )
+  
+  (set!
+   (-> cull-info y-fact)
+   (/ (+ 1.000000 (* (* 4.000000 y-rat) y-rat))
+      (* y-rat (sqrtf (+ 1.000000 (* (* 16.000000 y-rat) y-rat))))
+      )
+   )
+
+  (set! (-> cull-info z-fact)
+        (sqrtf (+ (* (* (* (+ -4.000000 y-thing) (+ -4.000000 y-thing)) y-rat) y-rat)
+                 (* (+ -1.000000 y-thing) (+ -1.000000 y-thing))
+                 )
+              )
+        )
+
+  ;; this is the distance from the origin of the projection plane to the frustum, in x
+  (set! dx-rat (* x-rat (-> math-cam d)))
+  ;; this is the distance from the origin of the projection plane to the frustum, in y
+  (set! dy-rat (* y-rat (-> math-cam d)))
+  ;; this is the distance from the origin of the projection plane to the corner of the frustum
+  (set! drat-sqr-len (+ (* dx-rat dx-rat) (* dy-rat dy-rat)))
+
+  ;; this is the distance from the origin (behind the projection plane)
+  ;; to the farthest point of the intersection of the view frustum and the projection plane
+  (set! d-temp (-> math-cam d))
+  (set! (-> cull-info cam-radius) (sqrtf (+ drat-sqr-len (* d-temp d-temp))))
+
+  ;; origin of projection plane to frustum, x
+  (set! dx-rat-2 (* (-> math-cam d) (-> math-cam x-ratio)))
+  (set! d-temp-2 (-> math-cam d))
+
+  ;; ?? not sure what this is used for
+  (set! dx-rat-times-4 (* 4.000000 dx-rat-2))
+  (set! d-temp-3 (-> math-cam d))
+
+  ;; 1/length(cam origin to frust x on projection plane)
+  (set! inverse-x-len
+   (/ 1.000000 (sqrtf (+ (* dx-rat-2 dx-rat-2) (* d-temp-2 d-temp-2))))
+   )
+  (set! inverse-x-len-2
+   (/ 1.000000
+    (sqrtf (+ (* dx-rat-times-4 dx-rat-times-4) (* d-temp-3 d-temp-3)))
+    )
+   )
+  (set! (-> cull-info xz-dir-ax) (* dx-rat-2 inverse-x-len)) ;; frustum normal x (scaled)
+  (set! (-> cull-info xz-dir-az) (* d-temp-2 inverse-x-len)) ;; normal z (scaled)
+
+  ;; not sure what this "b" means, but it just seems like it's a much wider frustum?
+  (set! (-> cull-info xz-dir-bx) (* dx-rat-times-4 inverse-x-len-2))
+  (set! (-> cull-info xz-dir-bz) (* d-temp-3 inverse-x-len-2))
+
+  ;; not sure why you'd want this, but okay.
+  (set! (-> cull-info xz-cross-ab) (- (* dx-rat-2 d-temp-3) (* d-temp-2 dx-rat-times-4)))
+
+  ;; Repeat of the above math for y.
+  (set! dy-rat (* (-> math-cam d) (-> math-cam y-ratio)))
+  (set! d-temp-4 (-> math-cam d))
+  (set! dy-rat-times-4 (* 4.000000 dy-rat))
+  (set! d-temp-5 (-> math-cam d))
+  (set! inverse-y-len
+   (/ 1.000000 (sqrtf (+ (* dy-rat dy-rat) (* d-temp-4 d-temp-4))))
+   )
+  (set! inverse-y-len-2
+   (/ 1.000000
+    (sqrtf (+ (* dy-rat-times-4 dy-rat-times-4) (* d-temp-5 d-temp-5)))
+    )
+   )
+  (set! (-> cull-info yz-dir-ay) (* dy-rat inverse-y-len))
+  (set! (-> cull-info yz-dir-az) (* d-temp-4 inverse-y-len))
+  (set! (-> cull-info yz-dir-by) (* dy-rat-times-4 inverse-y-len-2))
+  (set! (-> cull-info yz-dir-bz) (* d-temp-5 inverse-y-len-2))
+  (set! (-> cull-info yz-cross-ab) (- (* dy-rat d-temp-5) (* d-temp-4 dy-rat-times-4)))
+
+
+  ;; update the fog corrector.
+  (fog-corrector-setup *math-camera-fog-correction* math-cam)
+  ;; not sure why we do this here.
+  (set! cam-mat (matrix-identity! (-> math-cam camera-rot)))
+  (set! very-near 100.000000)
+  (set! very-far 16760631.000000) ;; this is ~4091.95 meters.
+  (set! fog-constant-3 16777115.000000) ;; unused.
+
+  ;; this is actually fog.
+  (set! fog-at-d
+        (/ (* (-> math-cam d) (- (-> math-cam fog-min) (-> math-cam fog-max))) ;; fog of the plane
+           (-  (-> *math-camera-fog-correction* fog-end) (-> *math-camera-fog-correction* fog-start)) ;; corrected fog.
+           )
+        )
+  
+  (set! mid-range (* -0.500000 (- very-far very-near)))
+
+  ;; not sure what this is doing exactly
+  (set! range-factor
+        (/ mid-range
+           (* (-> math-cam d) (- (-> math-cam f) (-> math-cam d)))
+           )
+        )
+  
+  (set! cam-fov-mult (-> math-cam fov-correction-factor))
+
+  
+  (set! (-> math-cam perspective data 0)
+        (* cam-fov-mult
+           (- (/ (-> math-cam x-pix) ;; scale for pixels I guess?
+                 (* (-> math-cam x-ratio) (-> math-cam d)) ;; width of frustum
+                 )
+              )
+           )
+        )
+  (set! (-> math-cam perspective data 5)
+        (* cam-fov-mult
+           (- (/ (-> math-cam y-pix) (* (-> math-cam y-ratio) (-> math-cam d))))
+           )
+        )
+  (set! (-> math-cam perspective data 10)
+        (* cam-fov-mult
+           (+ (-> math-cam f) (-> math-cam d))
+           range-factor
+           )
+        )
+  (set! (-> math-cam perspective data 11)
+   (* (/ cam-fov-mult (-> math-cam d)) fog-at-d)
+   )
+  (set!  (-> math-cam perspective data 14)
+         (* -2.000000 range-factor (-> math-cam f) (-> math-cam d) cam-fov-mult)
+         )
+  (set! hvdf-x 2048.000000)
+  (set! hvdf-y 2048.000000)
+  (set! hvdf-w
+        (/ (- (* (-> *math-camera-fog-correction* fog-end) (-> math-cam fog-max))
+              (* (-> *math-camera-fog-correction* fog-start) (-> math-cam fog-min))
+              )
+           (- (-> *math-camera-fog-correction* fog-end)
+              (-> *math-camera-fog-correction* fog-start)
+              )
+           )
+        )
+  (set! hvdf-z (* 0.500000 (+ very-far very-near)))
+  (set! (-> math-cam hmge-scale data 0) (/ 1.000000 (-> math-cam x-clip)))
+  (set! (-> math-cam hmge-scale data 1) (/ 1.000000 (-> math-cam y-clip)))
+  (set! (-> math-cam hmge-scale data 2) (/ 1.000000 mid-range))
+  (set! (-> math-cam hmge-scale data 3) (/ 1.000000 fog-at-d))
+  (set! (-> math-cam inv-hmge-scale data 0) (-> math-cam x-clip))
+  (set! (-> math-cam inv-hmge-scale data 1) (-> math-cam y-clip))
+  (set! (-> math-cam inv-hmge-scale data 2) mid-range)
+  (set! (-> math-cam inv-hmge-scale data 3) fog-at-d)
+  (set! (-> math-cam hvdf-off data 0) hvdf-x)
+  (set! (-> math-cam hvdf-off data 1) hvdf-y)
+  (set! (-> math-cam hvdf-off data 2) hvdf-z)
+  (set! (-> math-cam hvdf-off data 3) hvdf-w)
+  (set! (-> math-cam guard data 0) (/ (-> math-cam x-clip) (-> math-cam x-pix)))
+  (set! (-> math-cam guard data 1) (/ (-> math-cam y-clip) (-> math-cam y-pix)))
+  (set! (-> math-cam guard data 2) 1.000000)
+  (set! (-> math-cam guard data 3) 1.000000)
+  (set! (-> math-cam isometric data 14) (- 16777215.000000 hvdf-z))
+  (set! (-> math-cam isometric data 15) fog-at-d)
+  (set! persp-xx (-> math-cam perspective data 0))
+  (set! persp-yy (-> math-cam perspective data 5))
+  (set! persp-x (* (the-as float #xbffff2e5) (-> math-cam perspective data 0)))
+  (set! sprite-row-0 (-> math-cam sprite-2d))
+  (set! (-> sprite-row-0 data 0) persp-x)
+  (set! (-> sprite-row-0 data 1) 0.000000)
+  (set! (-> sprite-row-0 data 2) 0.000000)
+  (set! (-> sprite-row-0 data 3) 0.000000)
+  (set! sprite-row-1 (&-> math-cam sprite-2d data 4))
+  (set! (-> sprite-row-1 0) 0.000000)
+  (set! (-> sprite-row-1 1) (- (* (/ persp-yy persp-xx) persp-x)))
+  (set! (-> sprite-row-1 2) 0.000000)
+  (set! (-> sprite-row-1 3) 0.000000)
+  (set! sprite-row-2 (&-> math-cam sprite-2d data 8))
+  (set! (-> sprite-row-2 0) 0.000000)
+  (set! (-> sprite-row-2 1) 0.000000)
+  (set! (-> sprite-row-2 2) (- persp-x))
+  (set! (-> sprite-row-2 3) 0.000000)
+  (set! sprite-row-3 (&-> math-cam sprite-2d data 12))
+  (set! (-> sprite-row-3 0) 0.000000)
+  (set! (-> sprite-row-3 1) 0.000000)
+  (set! (-> sprite-row-3 2) (* 500000000.000000 persp-x))
+  (set! (-> sprite-row-3 3) (* (* 60.000000 persp-x) (-> math-cam pfog0)))
+  (set! v1-15 (-> math-cam sprite-2d-hvdf))
+  (set! a0-10 (-> math-cam hvdf-off))
+
+  ;;(.lq a0-11 0 a0-10)
+  ;;(.sq a0-11 0 v1-15)
+  (rlet ((a0-11 :class vf))
+    (.lvf a0-11 a0-10)
+    (.svf v1-15 a0-11)
+    )
+
+  (set! (-> math-cam sprite-2d-hvdf data 0) 2048.000000)
+  (set! (-> math-cam sprite-2d-hvdf data 1) 2048.000000)
+  (set! (-> math-cam sprite-2d-hvdf data 2) (-> math-cam hvdf-off data 2))
+  (set! (-> math-cam pfog0) fog-at-d)
+  (set! (-> math-cam pfog1) hvdf-w)
+  ;; unused
+  ;;(set! v1-17 0)
+  ;;(set! v1-19 (shl #x301ec000 32))
+  ;;(.pcpyld v1-20 r0-0 v1-19)
+  ;;(set! v1-22 (shl #x303ec000 32))
+  ;;(.pcpyld v1-23 r0-0 v1-22)
+  (set! pfog (-> math-cam pfog0))
+  (set! vis-gif-0 (-> math-cam vis-gifs 0))
+  (set! (-> vis-gif-0 fog0) (the-as uint pfog))
+  (set! (-> vis-gif-0 strip) #x301e4000)
+  (set! (-> vis-gif-0 regs) 1042)
+  (set! (-> vis-gif-0 fan) #x301ec000)
+  (set! vis-gif-1 (-> math-cam vis-gifs 1))
+  (set! (-> vis-gif-1 fog0) (the-as uint pfog))
+  (set! a1-5 (shl #x20164000 32))
+  ;;(.pcpyld a1-6 r0-0 a1-5) no effect
+  (set! (-> vis-gif-1 strip) a1-5)
+  
+  (set! (-> vis-gif-1 regs) 65)
+  (set! (-> vis-gif-1 fan) #x301ec000)
+  (set! vis-gif-1-again (-> math-cam vis-gifs 0))
+  (set! (-> vis-gif-1-again fog0) (the-as uint pfog))
+  (set! (-> vis-gif-1-again strip) #x303e4000)
+  (set! (-> vis-gif-1-again regs) 1042)
+  (set! (-> vis-gif-1-again fan) #x303ec000)
+  (set! vis-gif-1-again-again (-> math-cam vis-gifs 0))
+  (set! (-> vis-gif-1-again-again fog0) (the-as uint pfog))
+  (set! (-> vis-gif-1-again-again strip) #x303e4000)
+  (set! (-> vis-gif-1-again-again regs) 1042)
+  (set! (-> vis-gif-1-again-again fan) #x303ec000)
+  (if (nonzero? sprite-distorter-generate-tables)
+   (sprite-distorter-generate-tables)
+   )
+  math-cam
+  )
+
+(defmethod new math-camera ((allocation symbol) (type-to-make type))
+  "Allocate and initialize a math-camera.
+   NOTE: the result is full of nans due to fov-correction-factor being unset and defaulting to 0.
+   This matches what I remember from PS2 emulator stuff."
+  (local-vars (v1-2 vector) (obj math-camera))
+  (set! obj (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  (set! (-> obj d) 1024.000000)     ;; near plane
+  (set! (-> obj f) 40960000.000000) ;; far plane (4096 meters)
+  (set! (-> obj fov) (the-as float #x46360b61)) ;; 64 degrees
+  (set! (-> obj x-pix) 256.000000)
+  ;; not sure what this is, but it seems like there's a 4x wide clipping plane called "b"
+  (set! (-> obj x-clip) 1024.000000)
+  (set! (-> obj y-pix) 112.000000)
+  ;; again, 4x wide clippin gthing
+  (set! (-> obj y-clip) 448.000000)
+  ;; start fog at 10 meters
+  (set! (-> obj fog-start) 40960.000000)
+  ;; end fog at 200 meters
+  (set! (-> obj fog-end) 819200.000000)
+  ;; are these the actual fog values used?
+  (set! (-> obj fog-max) 255.000000)
+  (set! (-> obj fog-min) 150.000000)
+  (matrix-identity! (-> obj inv-camera-rot))
+  (matrix-identity! (-> obj camera-rot))
+  ;;(set! v1-2 (-> obj trans))
+  ;;(.sqc2 vf0 0 v1-2)
+  (vector-zero! (-> obj trans))
+  (set! (-> obj isometric data 0) 1.000000) ;; xx
+  (set! (-> obj isometric data 5) 0.500000) ;; yy
+  (set! (-> obj isometric data 10) -1.000000) ;; zz
+  (set! (-> obj reset) 1)
+  (set! (-> obj smooth-step) 0.000000)
+  (set! (-> obj smooth-t) 0.000000)
+  ;; setup initial math camera
+  (update-math-camera obj 'ntsc 'aspect4x3)
+  )
+
+

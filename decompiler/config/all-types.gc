@@ -958,6 +958,7 @@
    (w    int16     :offset 6)
    (long uint64    :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -1210,7 +1211,7 @@
 
 (deftype matrix (structure)
   ((data   float 16 :offset-assert 0)
-   (vector vector 4  :offset 0)
+   (vector vector 4  :inline :offset 0)
    (quad   uint128 4  :offset 0)
    )
   :method-count-assert 10
@@ -1223,7 +1224,7 @@
 
 (deftype matrix3 (structure)
   ((data   float 12 :offset-assert 0)
-   (vector vector 3  :offset 0)
+   (vector vector 3 :inline :offset 0)
    (quad   uint128 3  :offset 0)
    )
   :method-count-assert 9
@@ -1233,7 +1234,7 @@
 
 (deftype matrix4h (structure)
   ((data     int16 16 :offset-assert 0)
-   (vector4h vector4h 4  :offset 0)
+   (vector4h vector4h 4 :inline :offset 0)
    (long     int64 4  :offset 0)
    )
   :method-count-assert 9
@@ -1430,7 +1431,7 @@
 (define-extern matrix-rotate-z! function)
 ;;(define-extern *identity-matrix* object) ;; unknown type
 (define-extern matrix-axis-angle! function)
-(define-extern matrix-rotate-zyx! function)
+(define-extern matrix-rotate-zyx! (function matrix vector matrix))
 (define-extern matrix-rotate-x! function)
 
 (define-extern matrix-rotate-yxy! function)
@@ -3772,7 +3773,7 @@
    (inv-hmge-scale             vector     :inline :offset-assert 720)
    (hvdf-off                   vector     :inline :offset-assert 736)
    (guard                      vector     :inline :offset-assert 752)
-   (vis-gifs                   uint128    4       :offset-assert 768)
+   (vis-gifs                   vis-gif-tag 4 :inline      :offset-assert 768)
    (giftex                     uint128            :offset 768)
    (gifgr                      uint128            :offset 784)
    (giftex-trans               uint128            :offset 800)
@@ -3784,6 +3785,9 @@
    (guard-plane                uint128    4       :offset-assert 928)
    (shrub-mat                  matrix     :inline :offset-assert 992)
    (fov-correction-factor      float              :offset-assert 1056)
+   )
+  (:methods
+   (new (symbol type) _type_ 0)
    )
   :method-count-assert 9
   :size-assert         #x424
@@ -3799,14 +3803,31 @@
   :flag-assert         #x900000008
   )
 
+;;(define-extern cull-info object) ;; unknown type
+;;(define-extern math-camera object) ;; unknown type
+;;(define-extern vis-gif-tag object) ;; unknown type
+(define-extern *math-camera* math-camera) ;; unknown type
+(define-extern *math-camera-fog-correction* fog-corrector) ;; unknown type
+(define-extern init-for-transform function)
+(define-extern move-target-from-pad (function (pointer float) int none))
+(define-extern transform-point-vector! function)
+(define-extern fog-corrector-setup (function fog-corrector math-camera float))
+;;(define-extern fog-corrector object) ;; unknown type
+(define-extern math-cam-start-smoothing (function float float quaternion))
+(define-extern update-math-camera (function math-camera symbol symbol math-camera))
+(define-extern transform-point-qword! function)
+(define-extern transform-point-vector-scale! function)
+(define-extern sprite-distorter-generate-tables (function none))
+;;(define-extern ntsc object) ;; unknown type
+
 ;;;;;;;;;;;
 ;; font-h
 ;;;;;;;;;;;
 
 (deftype char-verts (structure)
-  ((pos    uint128 4 :offset-assert 0)
-   (color  uint128 4 :offset-assert 64)
-   (tex-st uint128 4 :offset-assert 128)
+  ((pos    vector 4 :inline :offset-assert 0)
+   (color  vector 4 :inline :offset-assert 64)
+   (tex-st vector 4 :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #xc0
@@ -3837,17 +3858,18 @@
   :size-assert         #x58
   :flag-assert         #x1400000058
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (new (symbol type int int int float int int) _type_ 0)
+    (set-mat! (font-context matrix) font-context 9)
+    (set-origin! (font-context int int) font-context 10)
+    (set-depth! (font-context int) font-context 11)
+    (set-w! (font-context int) font-context 12)
+    (set-width! (font-context int) font-context 13)
+    (set-height! (font-context int) font-context 14)
+    (set-projection! (font-context float) font-context 15)
+    (set-color! (font-context uint64) font-context 16)
+    (set-flags! (font-context uint32) font-context 17)
+    (set-start-line! (font-context uint32) font-context 18)
+    (set-scale! (font-context float) font-context 19)
     )
   )
 
@@ -3869,13 +3891,13 @@
    (size-st2           vector         :inline :offset-assert 256)
    (size-st3           vector         :inline :offset-assert 272)
    (save               vector         :inline :offset-assert 288)
-   (save-color         uint128        4       :offset-assert 304)
+   (save-color         vector  4   :inline    :offset-assert 304)
    (current-verts      char-verts     :inline :offset-assert 368)
    (src-verts          char-verts     :inline :offset-assert 560)
    (dest-verts         char-verts     :inline :offset-assert 752)
-   (justify            uint128        64      :offset-assert 944)
+   (justify            vector        64   :inline   :offset-assert 944)
    (color-shadow       vector4w       :inline :offset-assert 1968)
-   (color-table        uint128        64      :offset-assert 1984)
+   (color-table        vector        64  :inline    :offset-assert 1984)
    (last-color         uint64                 :offset-assert 3008)
    (save-last-color    uint64                 :offset-assert 3016)
    (buf                basic                  :offset-assert 3024)
@@ -32397,7 +32419,7 @@
 
 (define-extern quaternion-zero! function)
 (define-extern quaternion-set! function)
-(define-extern matrix->quaternion function)
+(define-extern matrix->quaternion (function quaternion matrix quaternion))
 (define-extern quaternion-exp! function)
 (define-extern quaternion-axis-angle! function)
 (define-extern quaternion-rotate-x! function)
@@ -32556,26 +32578,11 @@
 ;;(define-extern reserved object) ;; unknown type
 ;;(define-extern default object) ;; unknown type
 ;;(define-extern inactive object) ;; unknown type
-;;(define-extern cull-info object) ;; unknown type
-;;(define-extern math-camera object) ;; unknown type
-;;(define-extern vis-gif-tag object) ;; unknown type
-;;(define-extern *math-camera* object) ;; unknown type
-;;(define-extern *math-camera-fog-correction* object) ;; unknown type
-(define-extern init-for-transform function)
-(define-extern move-target-from-pad function)
-(define-extern transform-point-vector! function)
-(define-extern fog-corrector-setup function)
-;;(define-extern fog-corrector object) ;; unknown type
-(define-extern math-cam-start-smoothing function)
-(define-extern update-math-camera function)
-(define-extern transform-point-qword! function)
-(define-extern transform-point-vector-scale! function)
-(define-extern sprite-distorter-generate-tables function)
-;;(define-extern ntsc object) ;; unknown type
+
 ;;(define-extern aspect4x3 object) ;; unknown type
 ;;(define-extern font-work object) ;; unknown type
-(define-extern font-set-tex0 function)
-;;(define-extern *font-default-matrix* object) ;; unknown type
+(define-extern font-set-tex0 (function font-work texture uint uint uint none))
+(define-extern *font-default-matrix* matrix) ;; unknown type
 ;;(define-extern char-verts object) ;; unknown type
 ;;(define-extern char-color object) ;; unknown type
 ;;(define-extern font-context object) ;; unknown type
@@ -32604,14 +32611,14 @@
 ;;(define-extern *profile-ticks* object) ;; unknown type
 ;;(define-extern *font-context* object) ;; unknown type
 (define-extern vif1-handler-debug function)
-(define-extern set-display-env function)
+(define-extern set-display-env (function display-env int int int int int int display-env))
 (define-extern set-display2 function)
 (define-extern allocate-dma-buffers function)
 (define-extern draw-string-xy function)
 ;;(define-extern end-draw object) ;; unknown type
 (define-extern start function)
 ;;(define-extern pal object) ;; unknown type
-(define-extern get-video-mode function)
+(define-extern get-video-mode (function symbol))
 ;;(define-extern end-calc object) ;; unknown type
 ;;(define-extern engine object) ;; unknown type
 ;;(define-extern connectable object) ;; unknown type
