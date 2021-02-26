@@ -82,13 +82,78 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       throw_compiler_error(form, "Dynamic fields are not supported for inline");
     }
 
-    if (field_info.field.is_dynamic() || field_info.field.is_array()) {
-      throw_compiler_error(form, "Static objects not yet implemented for dynamic/inline/array");
-    }
-
     auto field_offset = field_info.field.offset() + offset;
 
-    if (is_integer(field_info.type)) {
+    if (field_info.field.is_array()) {
+      bool is_inline = field_info.field.is_inline();
+
+      // for an array field, we only accept (new 'static 'array <type> ...)
+      if (!field_value.is_list()) {
+        throw_compiler_error(field_value, "Array field was not properly specified");
+      }
+
+      goos::Object constructor_args;
+      auto new_form = get_list_as_vector(field_value, &constructor_args, 5);
+      if (new_form.size() != 5) {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol()->name != "static") {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      if (unquote(new_form.at(2)).print() != (is_inline ? "inline-array" : "array")) {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      auto array_content_type = parse_typespec(new_form.at(3));
+
+      if (is_inline) {
+        if (field_info.field.type() != array_content_type) {
+          throw_compiler_error(field_value, "Inline array field must have the correct type");
+        }
+      } else {
+        // allow more specific types.
+        m_ts.typecheck(field_info.field.type(), array_content_type, "Array content type");
+      }
+
+      s64 elt_array_len;
+      if (!try_getting_constant_integer(new_form.at(4), &elt_array_len, env)) {
+        throw_compiler_error(field_value, "Array field size is invalid, got {}",
+                             new_form.at(4).print());
+      }
+
+      if (elt_array_len != field_info.field.array_size()) {
+        throw_compiler_error(field_value, "Array field had an expected size of {} but got {}",
+                             field_info.field.array_size(), elt_array_len);
+      }
+
+      auto arg_list = get_list_as_vector(field_value.as_pair()->cdr);
+      if (((int)arg_list.size() - 5) > elt_array_len) {
+        throw_compiler_error(field_value, "Array field definition has too many values in it.");
+      }
+
+      if (is_inline) {
+        fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
+                                        field_offset, env);
+      } else {
+        fill_static_array_inline(field_value, field_info.field.type(), arg_list, structure,
+                                 field_offset, env);
+      }
+
+    } else if (is_integer(field_info.type)) {
       assert(field_info.needs_deref);  // for now...
       auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
       auto field_size = deref_info.load_size;
@@ -166,7 +231,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         assert(field_offset + field_size <= int(structure->data.size()));
         auto sr = compile_static(field_value, env);
         if (sr.is_symbol()) {
-          if (sr.symbol_name() != "#f") {
+          if (sr.symbol_name() != "#f" && sr.symbol_name() != "_empty_") {
             typecheck(form, field_info.type, sr.typespec());
           }
           structure->add_symbol_record(sr.symbol_name(), field_offset);
