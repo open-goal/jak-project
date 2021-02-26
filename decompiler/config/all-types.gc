@@ -15242,38 +15242,21 @@
 ;   :flag-assert         #x900000054
 ;   )
 
-; ;; glist-h
-; (deftype glst-node (structure)
-;   ((next glst-node  :offset-assert 0)
-;    (prev glst-node  :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
 
-; ;; glist-h
-; (deftype glst-named-node (glst-node)
-;   ((next     glst-node  :offset-assert 0)
-;    (prev     glst-node  :offset-assert 4)
-;    (privname basic      :offset-assert 8)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xc
-;   :flag-assert         #x90000000c
-;   )
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GLIST-H             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-; ;; glist-h
-; (deftype glst-list (structure)
-;   ((head     glst-node  :offset-assert 0)
-;    (tail     glst-node  :offset-assert 4)
-;    (tailpred glst-node  :offset-assert 8)
-;    (numelem  int32      :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype glst-node (structure)
+  ((next glst-node  :offset-assert 0)
+   (prev glst-node  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
 
 ; ;; anim-tester
 ; (deftype list-control (UNKNOWN)
@@ -15283,6 +15266,13 @@
 ;   :flag-assert         #x0
 ;   ;; bad get label
 ;   )
+(deftype glst-named-node (glst-node)
+  ((privname string     :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
 
 ; ;; anim-tester
 ; (deftype list-field (UNKNOWN)
@@ -15292,6 +15282,47 @@
 ;   :flag-assert         #x0
 ;   ;; bad get label
 ;   )
+(deftype glst-list (structure)
+  ((head     glst-node  :offset-assert 0)
+   (tail     glst-node  :offset-assert 4)
+   (tailpred glst-node  :offset-assert 8)
+   (numelem  int32      :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(define-extern glst-next (function glst-node glst-node))
+(define-extern glst-prev (function glst-node glst-node))
+(define-extern glst-head (function glst-list glst-node))
+(define-extern glst-tail (function glst-list glst-node))
+(define-extern glst-end-of-list? (function glst-node symbol))
+(define-extern glst-start-of-list? (function glst-node symbol))
+(define-extern glst-empty? (function glst-list symbol))
+(define-extern glst-node-name (function glst-named-node string))
+(define-extern glst-set-name! (function glst-named-node string string))
+
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GLIST               ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern glst-num-elements (function glst-list int))
+(define-extern glst-remove (function glst-list glst-node glst-node))
+(define-extern glst-remove-tail (function glst-list glst-node))
+(define-extern glst-remove-head (function glst-list glst-node))
+(define-extern glst-insert-before (function glst-list glst-node glst-node glst-node))
+(define-extern glst-insert-after (function glst-list glst-node glst-node glst-node))
+(define-extern glst-add-tail (function glst-list glst-node glst-node))
+(define-extern glst-add-head (function glst-list glst-node glst-node))
+(define-extern glst-init-list! (function glst-list glst-list))
+(define-extern glst-find-node-by-name (function glst-list string glst-node))
+(define-extern glst-get-node-by-index (function glst-list int glst-node))
+(define-extern glst-length-of-longest-name (function glst-list int))
+(define-extern glst-get-node-index (function glst-list glst-node int))
 
 ; ;; anim-tester
 ; (deftype DISP_LIST-bank (UNKNOWN)
@@ -36379,31 +36410,6 @@
 (define-extern convert-eye-data function)
 (define-extern render-eyes function)
 ;;(define-extern *eye-work* object) ;; unknown type
-;;(define-extern glst-named-node object) ;; unknown type
-(define-extern glst-head function)
-(define-extern glst-tail function)
-(define-extern glst-empty? function)
-(define-extern glst-node-name function)
-(define-extern glst-end-of-list? function)
-(define-extern glst-prev function)
-;;(define-extern glst-list object) ;; unknown type
-(define-extern glst-set-name! function)
-(define-extern glst-next function)
-(define-extern glst-start-of-list? function)
-;;(define-extern glst-node object) ;; unknown type
-(define-extern glst-num-elements function)
-(define-extern glst-get-node-index function)
-(define-extern glst-remove-tail function)
-(define-extern glst-find-node-by-name function)
-(define-extern glst-remove-head function)
-(define-extern glst-add-head function)
-(define-extern glst-insert-before function)
-(define-extern glst-add-tail function)
-(define-extern glst-init-list! function)
-(define-extern glst-remove function)
-(define-extern glst-insert-after function)
-(define-extern glst-length-of-longest-name function)
-(define-extern glst-get-node-by-index function)
 (define-extern anim-tester-start function)
 ;;(define-extern *DISP_LIST-bank* object) ;; unknown type
 (define-extern anim-test-obj-remove-invalid function)
