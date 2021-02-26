@@ -110,10 +110,12 @@ Form* FormStack::pop_reg(const Variable& var,
 
 namespace {
 bool nonempty_intersection(const RegSet& a, const RegSet& b) {
-  // todo - if we ever switch to bit reg sets, this could be a lot faster.
-  std::vector<Register> isect;
-  std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(isect));
-  return !isect.empty();
+  for (auto x : a) {
+    if (b.find(x) != b.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 }  // namespace
 
