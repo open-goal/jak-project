@@ -493,6 +493,31 @@ TEST_F(WithGameTests, StaticArray) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, StaticInlineArray) {
+  runner.run_static_test(
+      env, testCategory, "test-static-inline-array.gc",
+      {"test-basic-for-static-inline test-basic-for-static-inline #x4 #x4 \"hello\"\n"
+       "#x0 #x0 \"hello\"\n"
+       "0\n"});
+}
+
+TEST_F(WithGameTests, StaticArrayField) {
+  runner.run_static_test(env, testCategory, "test-static-array-field.gc",
+                         {"\"ghjkl\"\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, StaticFieldInlineArray) {
+  runner.run_static_test(env, testCategory, "test-static-field-inline-arrays.gc",
+                         {"\"second\" \"first\"\n"
+                          "basic-elt #x4 #x4\n"
+                          "two\n"
+                          "\"second\" \"first\"\n"
+                          "basic-elt #x4 #x4\n"
+                          "two\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

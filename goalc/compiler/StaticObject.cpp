@@ -90,7 +90,7 @@ StaticObject::LoadInfo StaticStructure::get_load_info() const {
 }
 
 int StaticStructure::get_addr_offset() const {
-  return 0;
+  return m_offset;
 }
 
 void StaticStructure::generate_structure(emitter::ObjectGenerator* gen) {

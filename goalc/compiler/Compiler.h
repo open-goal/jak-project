@@ -165,6 +165,23 @@ class Compiler {
                                  bool boxed,
                                  Env* env);
 
+  StaticResult fill_static_inline_array(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        Env* env);
+
+  void fill_static_inline_array_inline(const goos::Object& form,
+                                       const TypeSpec& content_type,
+                                       const std::vector<goos::Object>& args,
+                                       StaticStructure* structure,
+                                       int offset,
+                                       Env* env);
+  void fill_static_array_inline(const goos::Object& form,
+                                const TypeSpec& content_type,
+                                const std::vector<goos::Object>& args,
+                                StaticStructure* structure,
+                                int offset,
+                                Env* env);
+
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
   std::unique_ptr<None> m_none = nullptr;

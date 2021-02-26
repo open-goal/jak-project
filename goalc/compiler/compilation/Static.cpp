@@ -78,13 +78,82 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     field_name_def = field_name_def.substr(1);
     auto field_info = m_ts.lookup_field_info(type_info->get_name(), field_name_def);
 
-    if (field_info.field.is_dynamic() || field_info.field.is_array()) {
-      throw_compiler_error(form, "Static objects not yet implemented for dynamic/inline/array");
+    if (field_info.field.is_dynamic()) {
+      throw_compiler_error(form, "Dynamic fields are not supported for inline");
     }
 
     auto field_offset = field_info.field.offset() + offset;
 
-    if (is_integer(field_info.type)) {
+    if (field_info.field.is_array()) {
+      bool is_inline = field_info.field.is_inline();
+
+      // for an array field, we only accept (new 'static 'array <type> ...)
+      if (!field_value.is_list()) {
+        throw_compiler_error(field_value, "Array field was not properly specified");
+      }
+
+      goos::Object constructor_args;
+      auto new_form = get_list_as_vector(field_value, &constructor_args, 5);
+      if (new_form.size() != 5) {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol()->name != "static") {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      if (unquote(new_form.at(2)).print() != (is_inline ? "inline-array" : "array")) {
+        throw_compiler_error(
+            field_value,
+            "Array field must be defined with (new 'static ['array, 'inline-array] type-name ...)");
+      }
+
+      auto array_content_type = parse_typespec(new_form.at(3));
+
+      if (is_inline) {
+        if (field_info.field.type() != array_content_type) {
+          throw_compiler_error(field_value, "Inline array field must have the correct type");
+        }
+      } else {
+        // allow more specific types.
+        m_ts.typecheck(field_info.field.type(), array_content_type, "Array content type");
+      }
+
+      s64 elt_array_len;
+      if (!try_getting_constant_integer(new_form.at(4), &elt_array_len, env)) {
+        throw_compiler_error(field_value, "Array field size is invalid, got {}",
+                             new_form.at(4).print());
+      }
+
+      if (elt_array_len != field_info.field.array_size()) {
+        throw_compiler_error(field_value, "Array field had an expected size of {} but got {}",
+                             field_info.field.array_size(), elt_array_len);
+      }
+
+      auto arg_list = get_list_as_vector(field_value.as_pair()->cdr);
+      if (((int)arg_list.size() - 5) > elt_array_len) {
+        throw_compiler_error(field_value, "Array field definition has too many values in it.");
+      }
+
+      if (is_inline) {
+        fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
+                                        field_offset, env);
+      } else {
+        fill_static_array_inline(field_value, field_info.field.type(), arg_list, structure,
+                                 field_offset, env);
+      }
+
+    } else if (is_integer(field_info.type)) {
       assert(field_info.needs_deref);  // for now...
       auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
       auto field_size = deref_info.load_size;
@@ -162,7 +231,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         assert(field_offset + field_size <= int(structure->data.size()));
         auto sr = compile_static(field_value, env);
         if (sr.is_symbol()) {
-          if (sr.symbol_name() != "#f") {
+          if (sr.symbol_name() != "#f" && sr.symbol_name() != "_empty_") {
             typecheck(form, field_info.type, sr.typespec());
           }
           structure->add_symbol_record(sr.symbol_name(), field_offset);
@@ -437,6 +506,8 @@ StaticResult Compiler::compile_static(const goos::Object& form, Env* env) {
         return fill_static_array(form, rest, true, env);
       } else if (unquote(args.at(1)).as_symbol()->name == "array") {
         return fill_static_array(form, rest, false, env);
+      } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
+        return fill_static_inline_array(form, rest, env);
       } else {
         auto ts = parse_typespec(unquote(args.at(1)));
         if (ts == TypeSpec("string")) {
@@ -485,6 +556,46 @@ StaticResult Compiler::compile_static(const goos::Object& form, Env* env) {
   return {};
 }
 
+void Compiler::fill_static_array_inline(const goos::Object& form,
+                                        const TypeSpec& content_type,
+                                        const std::vector<goos::Object>& args,
+                                        StaticStructure* structure,
+                                        int offset,
+                                        Env* env) {
+  auto pointer_type = m_ts.make_pointer_typespec(content_type);
+  auto deref_info = m_ts.get_deref_info(pointer_type);
+  assert(deref_info.can_deref);
+  assert(deref_info.mem_deref);
+  for (size_t i = 4; i < args.size(); i++) {
+    int arg_idx = i - 4;
+    int elt_offset = offset + arg_idx * deref_info.stride;
+    auto sr = compile_static(args.at(i), env);
+    if (is_integer(content_type)) {
+      typecheck(form, TypeSpec("integer"), sr.typespec());
+    } else {
+      typecheck(form, content_type, sr.typespec());
+    }
+    if (sr.is_symbol()) {
+      assert(deref_info.stride == 4);
+      structure->add_symbol_record(sr.symbol_name(), elt_offset);
+      u32 symbol_placeholder = 0xffffffff;
+      memcpy(structure->data.data() + elt_offset, &symbol_placeholder, 4);
+    } else if (sr.is_reference()) {
+      assert(deref_info.stride == 4);
+      structure->add_pointer_record(elt_offset, sr.reference(), sr.reference()->get_addr_offset());
+    } else if (sr.is_constant_data()) {
+      if (!integer_fits(sr.constant_data(), deref_info.load_size, deref_info.sign_extend)) {
+        throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
+                             sr.constant_data(), arg_idx, content_type.print());
+      }
+      u64 data = sr.constant_data();
+      memcpy(structure->data.data() + elt_offset, &data, deref_info.load_size);
+    } else {
+      assert(false);
+    }
+  }
+}
+
 StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          const goos::Object& rest,
                                          bool boxed,
@@ -530,40 +641,99 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   }
 
   // now add arguments:
-  for (size_t i = 4; i < args.size(); i++) {
-    int arg_idx = i - 4;
-    int elt_offset = array_header_size + arg_idx * deref_info.stride;
-    auto sr = compile_static(args.at(i), env);
-    if (is_integer(content_type)) {
-      typecheck(form, TypeSpec("integer"), sr.typespec());
-    } else {
-      typecheck(form, content_type, sr.typespec());
-    }
-    if (sr.is_symbol()) {
-      assert(deref_info.stride == 4);
-      obj->add_symbol_record(sr.symbol_name(), elt_offset);
-      u32 symbol_placeholder = 0xffffffff;
-      memcpy(obj->data.data() + elt_offset, &symbol_placeholder, 4);
-    } else if (sr.is_reference()) {
-      assert(deref_info.stride == 4);
-      obj->add_pointer_record(elt_offset, sr.reference(), sr.reference()->get_addr_offset());
-    } else if (sr.is_constant_data()) {
-      if (!integer_fits(sr.constant_data(), deref_info.load_size, deref_info.sign_extend)) {
-        throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
-                             sr.constant_data(), arg_idx, content_type.print());
-      }
-      u64 data = sr.constant_data();
-      memcpy(obj->data.data() + elt_offset, &data, deref_info.load_size);
-    } else {
-      assert(false);
-    }
-  }
+  fill_static_array_inline(form, content_type, args, obj.get(), array_header_size, env);
+
   TypeSpec result_type;
   if (boxed) {
     result_type = m_ts.make_array_typespec(content_type);
   } else {
     result_type = m_ts.make_pointer_typespec(content_type);
   }
+  auto result = StaticResult::make_structure_reference(obj.get(), result_type);
+  fie->add_static(std::move(obj));
+  return result;
+}
+
+void Compiler::fill_static_inline_array_inline(const goos::Object& form,
+                                               const TypeSpec& content_type,
+                                               const std::vector<goos::Object>& args,
+                                               StaticStructure* structure,
+                                               int offset,
+                                               Env* env) {
+  auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
+  auto deref_info = m_ts.get_deref_info(inline_array_type);
+  assert(deref_info.can_deref);
+  assert(!deref_info.mem_deref);
+
+  for (size_t i = 4; i < args.size(); i++) {
+    auto arg_idx = i - 4;
+    int elt_offset = arg_idx * deref_info.stride;
+    auto& elt_def = args.at(i);
+    if (!elt_def.is_list()) {
+      throw_compiler_error(form, "Element in static inline-array must be a {}. Got {}",
+                           content_type.print(), elt_def.print());
+    }
+
+    goos::Object ctor_args;
+    auto new_form = get_list_as_vector(elt_def, &ctor_args, 3);
+    if (new_form.size() != 3) {
+      throw_compiler_error(
+          elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
+    }
+
+    if (!new_form.at(0).is_symbol() || new_form.at(0).as_symbol()->name != "new") {
+      throw_compiler_error(
+          elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
+    }
+
+    if (!is_quoted_sym(new_form.at(1)) || unquote(new_form.at(1)).as_symbol()->name != "static") {
+      throw_compiler_error(
+          elt_def, "Inline array element must be defined with (new 'static 'type-name ...)");
+    }
+
+    auto inlined_type = parse_typespec(unquote(new_form.at(2)));
+    if (inlined_type != content_type) {
+      throw_compiler_error(elt_def, "Cannot store a {} in an inline array of {}",
+                           inlined_type.print(), content_type.print());
+    }
+    compile_static_structure_inline(elt_def, content_type, ctor_args, structure,
+                                    elt_offset + offset, env);
+    if (is_basic(content_type)) {
+      structure->add_type_record(content_type.base_type(), elt_offset + offset);
+    }
+  }
+}
+
+StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
+                                                const goos::Object& rest,
+                                                Env* env) {
+  auto fie = get_parent_env_of_type<FileEnv>(env);
+  // (new 'static 'inline-array ...)
+  // get all arguments now
+  auto args = get_list_as_vector(rest);
+  if (args.size() < 4) {
+    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
+  }
+  auto content_type = parse_typespec(args.at(2));
+  s64 min_size;
+  if (!try_getting_constant_integer(args.at(3), &min_size, env)) {
+    throw_compiler_error(form, "The length {} is not valid.", args.at(3).print());
+  }
+  s32 length = std::max(min_size, s64(args.size() - 4));
+
+  auto inline_array_type = m_ts.make_inline_array_typespec(content_type);
+  auto deref_info = m_ts.get_deref_info(inline_array_type);
+  assert(deref_info.can_deref);
+  assert(!deref_info.mem_deref);
+  // todo
+  auto obj = std::make_unique<StaticStructure>(MAIN_SEGMENT);
+  obj->set_offset(is_basic(content_type) ? 4 : 0);
+  obj->data.resize(length * deref_info.stride);
+
+  // now add elements:
+  fill_static_inline_array_inline(form, content_type, args, obj.get(), 0, env);
+
+  TypeSpec result_type = m_ts.make_inline_array_typespec(content_type);
   auto result = StaticResult::make_structure_reference(obj.get(), result_type);
   fie->add_static(std::move(obj));
   return result;
