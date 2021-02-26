@@ -48,6 +48,7 @@ class StaticStructure : public StaticObject {
   void generate_structure(emitter::ObjectGenerator* gen);
   void generate(emitter::ObjectGenerator* gen) override;
   int get_addr_offset() const override;
+  void set_offset(int offset) { m_offset = offset; }
 
   struct SymbolRecord {
     int offset = -1;
@@ -67,6 +68,9 @@ class StaticStructure : public StaticObject {
   void add_symbol_record(std::string name, int offset);
   void add_pointer_record(int offset_in_this, StaticStructure* dest, int offset_in_dest);
   void add_type_record(std::string name, int offset);
+
+ private:
+  int m_offset = 0;
 };
 
 class StaticBasic : public StaticStructure {

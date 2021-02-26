@@ -766,7 +766,8 @@ Val* Compiler::compile_static_new(const goos::Object& form,
                                   Env* env) {
   auto unquoted = unquote(type);
   if (unquoted.is_symbol() &&
-      (unquoted.as_symbol()->name == "boxed-array" || unquoted.as_symbol()->name == "array")) {
+      (unquoted.as_symbol()->name == "boxed-array" || unquoted.as_symbol()->name == "array" ||
+       unquoted.as_symbol()->name == "inline-array")) {
     auto fe = get_parent_env_of_type<FunctionEnv>(env);
     auto sr = compile_static(form, env);
     auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
