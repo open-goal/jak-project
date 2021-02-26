@@ -348,7 +348,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         if (m_kind == Kind::UNSIGNED) {
           cast_type = "u" + cast_type;
         } else if (m_kind == Kind::FLOAT) {
-          assert(false);  // nyi
+          cast_type = "float";
         }
 
         auto dest = pool.alloc_single_element_form<SimpleExpressionElement>(

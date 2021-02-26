@@ -298,15 +298,21 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   if (!auto_inline) {
     // if auto-inlining failed, we must get the thing to call in a different way.
     if (uneval_head.is_symbol()) {
-      if (is_local_symbol(uneval_head, env) ||
-          m_symbol_types.find(symbol_string(uneval_head)) != m_symbol_types.end()) {
-        // the local environment (mlets, lexicals, constants, globals) defines this symbol.
-        // this will "win" over a method name lookup, so we should compile as normal
-        head = compile_error_guard(args.unnamed.front(), env);
-      } else {
-        // we don't think compiling the head give us a function, so it's either a method or an error
+      if (uneval_head.as_symbol()->name == "inspect" || uneval_head.as_symbol()->name == "print") {
         is_method_call = true;
+      } else {
+        if (is_local_symbol(uneval_head, env) ||
+            m_symbol_types.find(symbol_string(uneval_head)) != m_symbol_types.end()) {
+          // the local environment (mlets, lexicals, constants, globals) defines this symbol.
+          // this will "win" over a method name lookup, so we should compile as normal
+          head = compile_error_guard(args.unnamed.front(), env);
+        } else {
+          // we don't think compiling the head give us a function, so it's either a method or an
+          // error
+          is_method_call = true;
+        }
       }
+
     } else {
       // the head is some expression. Could be something like (inline my-func) or (-> obj
       // func-ptr-field) in either case, compile it - and it can't be a method call.

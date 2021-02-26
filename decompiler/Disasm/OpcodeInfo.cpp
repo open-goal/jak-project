@@ -98,6 +98,10 @@ static OpcodeInfo& dfd_sfs(OpcodeInfo& info) {
   return info.dst_fpr(FT::FD).src_fpr(FT::FS);
 }
 
+static OpcodeInfo& dfd_sft(OpcodeInfo& info) {
+  return info.dst_fpr(FT::FD).src_fpr(FT::FT);
+}
+
 static OpcodeInfo& drd(OpcodeInfo& info) {
   return info.dst_gpr(FT::RD);
 }
@@ -338,7 +342,7 @@ void init_opcode_info() {
   dfd_sfs(def(IK::CVTSW, "cvt.s.w"));  // Fixed-point Convert to Single Floating Point
   dfd_sfs(def(IK::CVTWS, "cvt.w.s"));  // Floating Point Convert to Word Fixed-point
   dfd_sfs(def(IK::MOVS, "mov.s"));     // Floating Point Move
-  dfd_sfs(def(IK::SQRTS, "sqrt.s"));   // Floating Point Square Root
+  dfd_sft(def(IK::SQRTS, "sqrt.s"));   // Floating Point Square Root
 
   sfs_sft(def(IK::CLTS, "c.lt.s"));     // Floating Point Compare
   sfs_sft(def(IK::CLES, "c.le.s"));     // Floating Point Compare
