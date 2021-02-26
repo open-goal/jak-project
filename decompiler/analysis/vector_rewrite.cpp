@@ -43,6 +43,7 @@ bool rewrite_vector_instructions(Form* top_level_form,
       // There are so far only one set of instructions that come in pairs, the outer-product
       // instructions In OpenGOAL this is a single function call, to support this, we implement
       // atleast 1 instruction look-ahead (this could be expanded upon if needed)
+
       if (elem->op()->instruction().kind == InstructionKind::VOPMULA) {
         // We found the first instruction, store it and move on. We'll use this instruction's args
         // combined with the second!
@@ -54,8 +55,8 @@ bool rewrite_vector_instructions(Form* top_level_form,
         continue;
       } else if (previousAsmOp != nullptr &&
                  elem->op()->instruction().kind == InstructionKind::VOPMSUB) {
-
-        currInstr = elem->op()->instruction();
+        // TODO - I'll clean this up later, for now im just going to swap VOPMSUB's secondary args
+        // because...i want to see something working!
       }
 
       OpenGoalAsmOpElement* newElem = pool.alloc_element<OpenGoalAsmOpElement>(elem->op());
@@ -64,9 +65,14 @@ bool rewrite_vector_instructions(Form* top_level_form,
 
     assert(!new_entries.empty());
     top_level_form->clear();
+    Form* body = pool.alloc_empty_form();
     for (auto x : new_entries) {
-      top_level_form->push_back(x);
+      body->push_back(x);
     }
+    // if needed!
+    std::vector<std::tuple<std::string, decompiler::RLetElement::RegClass>> regs = {};
+    RLetElement* rlet = pool.alloc_element<RLetElement>(body, regs);
+    top_level_form->push_back(rlet);
   } catch (std::exception& e) {
     std::string warning = fmt::format("Vector instruction re-writing failed in {}: {}",
                                       f.guessed_name.to_string(), e.what());

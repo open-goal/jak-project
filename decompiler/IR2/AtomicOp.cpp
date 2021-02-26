@@ -522,6 +522,14 @@ goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels
   assert(m_instr.n_src <= 4);
   for (int i = 0; i < m_instr.n_src; i++) {
     auto v = m_src[i];
+    // TODO - ...ugh gross
+    if (m_instr.kind == InstructionKind::VOPMSUB) {
+      if (i == 0) {
+        v = m_src[1];
+      } else if (i == 1) {
+        v = m_src[0];
+      }
+    }
     if (v.has_value()) {
       forms.push_back(v.value().to_form(env));
     } else {

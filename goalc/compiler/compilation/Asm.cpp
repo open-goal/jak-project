@@ -263,7 +263,7 @@ Val* Compiler::compile_asm_wait_vf(const goos::Object& form, const goos::Object&
  */
 Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}, {"offset", {false, goos::ObjectType::INTEGER}}});
   bool color = true;
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
@@ -274,15 +274,15 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
     throw_compiler_error(form, "Cannot .lvf into this. Got a {}.", dest->print());
   }
   auto src = compile_error_guard(args.unnamed.at(1), env);
-  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
   auto as_sv = dynamic_cast<StaticVal*>(src);
   MemLoadInfo info;
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  if (as_co) {
+  if (args.has_named("offset")) {
+    int offset = args.named.at("offset").as_int();
     // can do a clever offset here
-    env->emit_ir<IR_LoadConstOffset>(dest, as_co->offset, as_co->base->to_gpr(env), info, color);
+    env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color);
   } else if (as_sv) {
     if (!color) {
       throw std::runtime_error("no color nyi for static loads");
@@ -299,7 +299,7 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
  */
 Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}, {"offset", {false, goos::ObjectType::INTEGER}}});
   bool color = true;
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
@@ -317,9 +317,11 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  if (as_co) {
+  // TODO - i don't think this is correct (the gpr allocation)
+  if (args.has_named("offset")) {
+    int offset = args.named.at("offset").as_int();
     // can do a clever offset here
-    env->emit_ir<IR_StoreConstOffset>(src, as_co->offset, as_co->base->to_gpr(env), 16, color);
+    env->emit_ir<IR_StoreConstOffset>(src, offset, as_co->base->to_gpr(env), 16, color);
   } else {
     env->emit_ir<IR_StoreConstOffset>(src, 0, dest->to_gpr(env), 16, color);
   }

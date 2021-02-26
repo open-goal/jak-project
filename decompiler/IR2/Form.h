@@ -587,6 +587,25 @@ class EmptyElement : public FormElement {
 };
 
 /*!
+ * Represents an OpenGOAL 'rlet' expressions
+ */
+class RLetElement : public FormElement {
+ public:
+  enum class RegClass { VF };
+
+  explicit RLetElement(Form* _body, std::vector<std::tuple<std::string, RegClass>> _regs);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(VariableSet& vars) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+  Form* body = nullptr;
+  // TODO - something better than a string?
+  std::vector<std::tuple<std::string, RegClass>> registers;
+};
+
+/*!
  * Represents a GOAL while loop and more complicated loops which have the "while" format of checking
  * the condition before the first loop. This will not include infinite while loops.
  * Unlike CondWithElseElement, this will correctly identify the start and end of the condition.

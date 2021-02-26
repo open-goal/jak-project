@@ -771,6 +771,38 @@ void EmptyElement::collect_vars(VariableSet&) const {}
 void EmptyElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
+// RLetElement
+/////////////////////////////
+
+RLetElement::RLetElement(Form* _body, std::vector<std::tuple<std::string, RegClass>> _regs)
+    : body(_body), registers(_regs) {}
+
+void RLetElement::apply(const std::function<void(FormElement*)>& f) {
+  // note - this is done in program order, rather than print order. Not sure if this makes sense.
+  f(this);
+  body->apply(f);
+}
+
+goos::Object RLetElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("rlet"));
+  body->inline_forms(list, env);
+  return pretty_print::build_list(list);
+}
+
+void RLetElement::apply_form(const std::function<void(Form*)>& f) {
+  body->apply_form(f);
+}
+
+void RLetElement::collect_vars(VariableSet& vars) const {
+  body->collect_vars(vars);
+}
+
+void RLetElement::get_modified_regs(RegSet& regs) const {
+  body->get_modified_regs(regs);
+}
+
+/////////////////////////////
 // WhileElement
 /////////////////////////////
 

@@ -11,6 +11,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::LQC2, {".lvf", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
     {InstructionKind::QMFC2, {".mov", {}, {}}},
     {InstructionKind::SQC2, {".svf", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
+    {InstructionKind::QMTC2, {".mov", {}, {}}},
 
     // Redundant ops, NOP and WAIT
     {InstructionKind::VNOP, {".nop.vf", {}, {}}},
