@@ -134,7 +134,11 @@ void set_config(const std::string& path_to_config_file) {
       const auto& name = x.at(0).get<std::string>();
       const auto& type_name = x.at(1).get<std::string>();
       bool is_const = x.at(2).get<bool>();
-      gConfig.label_types[obj_name][name] = {type_name, is_const};
+      auto& config_entry = gConfig.label_types[obj_name][name];
+      config_entry = {type_name, is_const, {}};
+      if (x.size() > 3) {
+        config_entry.array_size = x.at(3).get<int>();
+      }
     }
   }
 }

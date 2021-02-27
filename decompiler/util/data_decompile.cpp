@@ -7,6 +7,43 @@
 namespace decompiler {
 
 /*!
+ * Entry point from the decompiler to decompile data.
+ */
+goos::Object decompile_at_label_with_hint(const LabelType& hint,
+                                          const DecompilerLabel& label,
+                                          const std::vector<DecompilerLabel>& labels,
+                                          const std::vector<std::vector<LinkedWord>>& words,
+                                          DecompilerTypeSystem& dts) {
+  auto type = dts.parse_type_spec(hint.type_name);
+  if (!hint.array_size.has_value()) {
+    // if we don't have an array size, treat it as just a normal type.
+    return decompile_at_label(type, label, labels, words, dts.ts);
+  }
+
+  if (type.base_type() == "pointer") {
+    auto field_type_info = dts.ts.lookup_type(type.get_single_arg());
+    if (field_type_info->is_reference()) {
+      throw std::runtime_error(
+          fmt::format("Type {} is not yet supported by the data decompiler.", hint.type_name));
+    } else {
+      auto stride = field_type_info->get_size_in_memory();
+
+      int word_count = ((stride * (*hint.array_size)) + 3) / 4;
+      std::vector<LinkedWord> obj_words;
+      obj_words.insert(obj_words.begin(),
+                       words.at(label.target_segment).begin() + (label.offset / 4),
+                       words.at(label.target_segment).begin() + (label.offset / 4) + word_count);
+
+      return decompile_value_array(type.get_single_arg(), field_type_info, *hint.array_size, stride,
+                                   0, obj_words, dts.ts);
+    }
+  }
+
+  throw std::runtime_error(
+      fmt::format("Type {} is not yet supported by the data decompiler.", hint.type_name));
+}
+
+/*!
  * Attempt to determine the type of this label. This does not make sure that the type system
  * actually knows about the type. If the thing is not a basic or pair, it will fail.
  */
@@ -138,6 +175,33 @@ goos::Object decompile_string_at_label(const DecompilerLabel& label,
     assert(result.back() != 0);
   }
   return goos::StringObject::make_new(result);
+}
+
+goos::Object decompile_value_array(const TypeSpec& elt_type,
+                                   const Type* elt_type_info,
+                                   int length,
+                                   int stride,
+                                   int offset,
+                                   const std::vector<LinkedWord>& obj_words,
+                                   const TypeSystem& ts) {
+  std::vector<goos::Object> array_def = {
+      pretty_print::to_symbol(fmt::format("new 'static 'array '{} {}", elt_type.print(), length))};
+
+  for (int i = 0; i < length; i++) {
+    auto start = offset + stride * i;
+    auto end = start + elt_type_info->get_size_in_memory();
+    std::vector<u8> elt_bytes;
+    for (int j = start; j < end; j++) {
+      auto& word = obj_words.at(j / 4);
+      if (word.kind != LinkedWord::PLAIN_DATA) {
+        throw std::runtime_error("Got bad word in kind in array of values");
+      }
+      elt_bytes.push_back(word.get_byte(j % 4));
+    }
+    array_def.push_back(decompile_value(elt_type, elt_bytes, ts));
+  }
+
+  return pretty_print::build_list(array_def);
 }
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -289,24 +353,9 @@ goos::Object decompile_structure(const TypeSpec& type,
         auto stride = ts.get_size_in_type(field) / len;
         assert(stride == field_type_info->get_size_in_memory());
 
-        std::vector<goos::Object> array_def = {pretty_print::to_symbol(
-            fmt::format("new 'static 'array '{} {}", field.type().print(), field.array_size()))};
-
-        for (int i = 0; i < len; i++) {
-          auto start = field_start + stride * i;
-          auto end = start + field_type_info->get_size_in_memory();
-          std::vector<u8> elt_bytes;
-          for (int j = start; j < end; j++) {
-            auto& word = obj_words.at(j / 4);
-            if (word.kind != LinkedWord::PLAIN_DATA) {
-              throw std::runtime_error("Got bad word in kind in array of values");
-            }
-            elt_bytes.push_back(word.get_byte(j % 4));
-          }
-          array_def.push_back(decompile_value(field.type(), elt_bytes, ts));
-        }
-
-        field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
+        field_defs_out.emplace_back(
+            field.name(), decompile_value_array(field.type(), field_type_info, len, stride,
+                                                field_start, obj_words, ts));
       } else if (field.is_dynamic()) {
         throw std::runtime_error(
             fmt::format("Dynamic value field {} in static data type {} not yet implemented",
