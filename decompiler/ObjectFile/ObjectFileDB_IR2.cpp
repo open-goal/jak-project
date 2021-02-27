@@ -406,7 +406,7 @@ void ObjectFileDB::ir2_build_expressions() {
     (void)segment_id;
     (void)data;
     total++;
-    if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
+    if (func.ir2.top_form && func.ir2.env.has_type_analysis() && func.ir2.env.has_local_vars()) {
       attempted++;
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;

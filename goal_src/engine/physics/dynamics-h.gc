@@ -5,3 +5,49 @@
 ;; name in dgo: dynamics-h
 ;; dgos: GAME, ENGINE
 
+;; 1 / 300.
+(defconstant TICKS_TO_SECONDS (the-as float #x3b5a740e))
+
+(deftype dynamics (basic)
+  ((name           basic          :offset-assert 4)
+   (gravity-max    float         :offset-assert 8) ;; meters
+   (gravity-length float         :offset-assert 12) ;; meters
+   (gravity        vector :inline :offset-assert 16)
+   (gravity-normal vector :inline :offset-assert 32)
+   (walk-distance  float         :offset-assert 48)  ;meters
+   (run-distance   float         :offset-assert 52) ; meters
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+(defun time-to-apex ((arg0 float) (arg1 float))
+  (the int (/ arg0 (- (* TICKS_TO_SECONDS arg1)))) 
+  )
+
+(defun time-to-ground ((velocity float) (gravity float) (height float))
+  "How long to fall from height?"
+  (local-vars (v0-0 int) (position float))
+  (set! position 0.000000)
+  (set! v0-0 0)
+  ;; loop in ticks until below the ground.
+  (while (< (- height) position)
+   (set! velocity (- velocity (* TICKS_TO_SECONDS gravity)))
+   (+! position (* TICKS_TO_SECONDS velocity))
+   (+! v0-0 1)
+   )
+  v0-0
+  )
+
+(define *standard-dynamics*
+    (new 'static 'dynamics
+         :name 'standard
+         :gravity-max 163840.000000
+         :gravity-length 245760.000000
+         :gravity  (new 'static 'vector :y 245760.000000 :w 1.000000)
+         :gravity-normal (new 'static 'vector :y 1.000000 :w 1.000000)
+         :walk-distance 8192.000000
+         :run-distance 20480.000000
+         )
+  )

@@ -66,6 +66,9 @@
 (define-extern dma-sync (function pointer int int int))
 (define-extern flush-cache (function int none))
 
+(define-extern mc-run (function none))
+(define-extern mc-check-result (function int))
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; GCOMMON             ;;;;;;;;;;;;;;;;;;;
@@ -5372,7 +5375,7 @@
 
 ;; sky-h
 (deftype sky-color-day (structure)
-  ((hour uint128 24 :offset-assert 0)
+  ((hour sky-color-hour 24 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x180
@@ -5381,7 +5384,7 @@
 
 ;; sky-h
 (deftype sky-circle-data (structure)
-  ((data uint128 17 :offset-assert 0)
+  ((data vector 17 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x110
@@ -5427,6 +5430,7 @@
    (min-halo  float  :offset-assert 16)
    (max-halo  float  :offset-assert 20)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
@@ -5446,19 +5450,23 @@
   :flag-assert         #x9000001c0
   )
 
-; ;; sky-h
-; (deftype sky-parms (basic)
-;   ((orbit             UNKNOWN         3       :offset-assert 4)
-;    (upload-data       sky-upload-data :inline :offset-assert 116)
-;    (sun-lights        light-group     :inline :offset-assert 560)
-;    (moon-lights       light-group     :inline :offset-assert 752)
-;    (default-lights    light-group     :inline :offset-assert 944)
-;    (default-vu-lights vu-lights       :inline :offset-assert 1136)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x4e0
-;   :flag-assert         #x9000004e0
-;   )
+;; sky-h
+(deftype sky-parms (basic)
+  ;; check - the alignment on some of these.
+  ((orbit             sky-orbit 3     :inline      :offset-assert 4)
+   (upload-data       sky-upload-data :inline :offset-assert 112)
+   (sun-lights        light-group     :inline :offset-assert 560)
+   (moon-lights       light-group     :inline :offset-assert 752)
+   (default-lights    light-group     :inline :offset-assert 944)
+   (default-vu-lights vu-lights       :inline :offset-assert 1136)
+   )
+  (:methods
+   (new (symbol type) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4e0
+  :flag-assert         #x9000004e0
+  )
 
 ;; sky-h
 (deftype sky-tng-data (basic)
@@ -5517,14 +5525,14 @@
   :flag-assert         #x900000030
   )
 
-; ;; mood-h
-; (deftype mood-fog-table (structure)
-;   ((data UNKNOWN 8 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x180
-;   :flag-assert         #x900000180
-;   )
+;; mood-h
+(deftype mood-fog-table (structure)
+  ((data mood-fog 8 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
 
 ;; mood-h
 (deftype mood-lights (structure)
@@ -5539,14 +5547,14 @@
   :flag-assert         #x900000050
   )
 
-; ;; mood-h
-; (deftype mood-lights-table (structure)
-;   ((data UNKNOWN 8 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x280
-;   :flag-assert         #x900000280
-;   )
+;; mood-h
+(deftype mood-lights-table (structure)
+  ((data mood-lights 8 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x280
+  :flag-assert         #x900000280
+  )
 
 ;; mood-h
 (deftype mood-sun (structure)
@@ -5558,39 +5566,42 @@
   :flag-assert         #x900000020
   )
 
-; ;; mood-h
-; (deftype mood-sun-table (structure)
-;   ((data UNKNOWN 8 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x100
-;   :flag-assert         #x900000100
-;   )
+;; mood-h
+(deftype mood-sun-table (structure)
+  ((data mood-sun 8 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
 
-; ;; mood-h
-; (deftype mood-context (basic)
-;   ((mood-fog-table       mood-fog-table            :offset-assert 4)
-;    (mood-lights-table    mood-lights-table         :offset-assert 8)
-;    (mood-sun-table       mood-sun-table            :offset-assert 12)
-;    (fog-interp           sky-color-day             :offset-assert 16)
-;    (palette-interp       sky-color-day             :offset-assert 20)
-;    (sky-texture-interp   sky-color-day             :offset-assert 24)
-;    (current-fog          mood-fog          :inline :offset-assert 32)
-;    (current-sun          mood-sun          :inline :offset-assert 80)
-;    (current-prt-color    vector            :inline :offset-assert 112)
-;    (current-shadow       vector            :inline :offset-assert 128)
-;    (current-shadow-color vector            :inline :offset-assert 144)
-;    (light-group          UNKNOWN           8       :offset-assert 160)
-;    (times                UNKNOWN           8       :offset-assert 1696)
-;    (sky-times            UNKNOWN           8       :offset-assert 1824)
-;    (itimes               UNKNOWN           4       :offset-assert 1856)
-;    (state                UNKNOWN           16      :offset-assert 1920)
-;    (num-stars            float                     :offset-assert 1936)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x794
-;   :flag-assert         #x900000794
-;   )
+;; mood-h
+(deftype mood-context (basic)
+  ((mood-fog-table       mood-fog-table            :offset-assert 4)
+   (mood-lights-table    mood-lights-table         :offset-assert 8)
+   (mood-sun-table       mood-sun-table            :offset-assert 12)
+   (fog-interp           sky-color-day             :offset-assert 16)
+   (palette-interp       sky-color-day             :offset-assert 20)
+   (sky-texture-interp   sky-color-day             :offset-assert 24)
+   (current-fog          mood-fog          :inline :offset-assert 32)
+   (current-sun          mood-sun          :inline :offset-assert 80)
+   (current-prt-color    vector            :inline :offset-assert 112)
+   (current-shadow       vector            :inline :offset-assert 128)
+   (current-shadow-color vector            :inline :offset-assert 144)
+   ;; (light-group          UNKNOWN           8       :offset-assert 160)
+   (times                vector  8 :inline       :offset 1696)
+   (sky-times            float           8       :offset-assert 1824)
+   ;; (itimes               UNKNOWN           4       :offset-assert 1856)
+   ;; (state                UNKNOWN           16      :offset-assert 1920)
+   (num-stars            float                     :offset 1936)
+   )
+  (:methods 
+    (new (symbol type) _type_ 0)
+    )
+  :method-count-assert 9
+  :size-assert         #x794
+  :flag-assert         #x900000794
+  )
 
 ;; time-of-day-h
 (deftype palette-fade-control (structure)
@@ -5603,18 +5614,18 @@
   :flag-assert         #x900000018
   )
 
-; ;; time-of-day-h
-; (deftype palette-fade-controls (basic)
-;   ((control UNKNOWN 8 :offset-assert 16)
-;    )
-;   :method-count-assert 11
-;   :size-assert         #x110
-;   :flag-assert         #xb00000110
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     )
-;   )
+;; time-of-day-h
+(deftype palette-fade-controls (basic)
+  ((control palette-fade-control 8 :inline :offset-assert 16)
+   )
+  :method-count-assert 11
+  :size-assert         #x110
+  :flag-assert         #xb00000110
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
 
 ;; time-of-day-h
 (deftype time-of-day-proc (process)
@@ -5919,29 +5930,29 @@
 ;     )
 ;   )
 
-; ;; generic-vu1-h
-; (deftype pris-mtx (structure)
-;   ((data   UNKNOWN 32      :offset-assert 0)
-;    (vector UNKNOWN 8       :offset-assert 0)
-;    (t-mtx  matrix  :inline :offset-assert 0)
-;    (n-mtx  matrix3 :inline :offset-assert 64)
-;    (scale  vector  :inline :offset-assert 112)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x80
-;   :flag-assert         #x900000080
-;   )
+;; generic-vu1-h
+(deftype pris-mtx (structure)
+  ((data   float 32      :offset 0)
+   (vector vector 8 :inline       :offset 0)
+   (t-mtx  matrix  :inline :offset 0)
+   (n-mtx  matrix3 :inline :offset 64)
+   (scale  vector  :inline :offset 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
 
-; ;; generic-vu1-h
-; (deftype generic-pris-mtx-save (structure)
-;   ((loc-mtx pris-mtx :inline :offset-assert 0)
-;    (par-mtx pris-mtx :inline :offset-assert 128)
-;    (dif-mtx pris-mtx :inline :offset-assert 256)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x180
-;   :flag-assert         #x900000180
-;   )
+;; generic-vu1-h
+(deftype generic-pris-mtx-save (structure)
+  ((loc-mtx pris-mtx :inline :offset-assert 0)
+   (par-mtx pris-mtx :inline :offset-assert 128)
+   (dif-mtx pris-mtx :inline :offset-assert 256)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
 
 ;; generic-vu1-h
 (deftype generic-constants (structure)
@@ -6322,6 +6333,9 @@
    (send-query              basic  :offset-assert 32)
    (query                   basic  :offset-assert 36)
    )
+  (:methods 
+    (new (symbol type) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
@@ -6369,20 +6383,20 @@
   :flag-assert         #x9000001a0
   )
 
-;; generic-merc-h
-; (deftype generic-merc-input (structure)
-;   ((geo-tag     generic-merc-tag           :inline :offset-assert 0)
-;    (geo-block   UNKNOWN                    1296    :offset-assert 16)
-;    (byte-header merc-byte-header           :inline :offset-assert 16)
-;    (matrix      UNKNOWN                    9       :offset-assert 1312)
-;    (control     generic-merc-ctrl-with-sfx :inline :offset-assert 2464)
-;    (end-tag     generic-merc-tag           :inline :offset-assert 2880)
-;    (shader      adgif-shader               :inline :offset-assert 2896)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xba0
-;   :flag-assert         #x900000ba0
-;   )
+; generic-merc-h
+(deftype generic-merc-input (structure)
+  ((geo-tag     generic-merc-tag           :inline :offset-assert 0)
+   (geo-block   uint8                    1296    :offset-assert 16)
+   (byte-header merc-byte-header           :inline :offset 16)
+   (matrix      merc-matrix       9    :inline   :offset-assert 1312)
+   (control     generic-merc-ctrl-with-sfx :inline :offset-assert 2464)
+   (end-tag     generic-merc-tag           :inline :offset-assert 2880)
+   (shader      adgif-shader               :inline :offset-assert 2896)
+   )
+  :method-count-assert 9
+  :size-assert         #xba0
+  :flag-assert         #x900000ba0
+  )
 
 ; ;; generic-merc-h
 ; (deftype generic-merc-output (structure)
@@ -6819,10 +6833,11 @@
   :size-assert         #x60
   :flag-assert         #x1000000060
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (new (symbol type float float float float float) _type_ 0)
+    (clear-offset-bit (shadow-control) none 9)
+    (set-offset-bit (shadow-control) none 10)
+    (set-top-plane-offset (shadow-control float) none 11)
+    (set-bottom-plane-offset (shadow-control float) none 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
     (dummy-15 () none 15)
@@ -6863,21 +6878,32 @@
   ((first uint32  :offset-assert 0)
    (next  uint32  :offset-assert 4)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
 
-;; shadow-cpu-h
-; (deftype shadow-queue (structure)
-;   ((num-runs uint32     :offset-assert 0)
-;    (cur-run  uint32     :offset-assert 4)
-;    (run      UNKNOWN 15 :offset-assert 8)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xf8
-;   :flag-assert         #x9000000f8
-;   )
+; shadow-cpu-h
+(deftype shadow-queue (structure)
+  ((num-runs uint32     :offset-assert 0)
+   (cur-run  uint32     :offset-assert 4)
+   (run      shadow-run 15 :inline :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xf8
+  :flag-assert         #x9000000f8
+  )
+
+(define-extern shadow-queue-append (function shadow-queue uint))
+;;(define-extern shadow-work object) ;; unknown type
+;;(define-extern shadow-queue object) ;; unknown type
+;;(define-extern *shadow-queue* object) ;; unknown type
+;;(define-extern *shadow* object) ;; unknown type
+;;(define-extern shadow-settings object) ;; unknown type
+;;(define-extern *shadow-object* object) ;; unknown type
+(define-extern shadow-queue-reset (function shadow-queue int))
+
 
 ;; shadow-cpu-h
 (deftype shadow-vertex (structure)
@@ -7016,6 +7042,9 @@
   :flag-assert         #x90000012c
   )
 
+(define-extern show-mc-info (function none))
+(define-extern mc-sync (function int))
+
 ;; game-info-h
 (deftype game-bank (basic)
   ((life-max-default   float  :offset-assert 4)
@@ -7046,7 +7075,7 @@
 (deftype load-state (basic)
   ((want          level-buffer-state  2 :inline  :offset-assert 4)
    (vis-nick      basic       :offset-assert 36)
-   (command-list  basic       :offset-assert 40)
+   (command-list  pair       :offset-assert 40)
    (object-name   basic 256 :offset-assert 44)
    (object-status basic 256 :offset-assert 1068)
    )
@@ -7054,7 +7083,8 @@
   :size-assert         #x82c
   :flag-assert         #x150000082c
   (:methods
-    (dummy-9 () none 9)
+    (new (symbol type) _type_ 0)
+    (reset! (_type_) _type_ 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -7182,18 +7212,18 @@
   :flag-assert         #x900000010
   )
 
-; ;; wind-h
-; (deftype wind-work (basic)
-;   ((wind-array  UNKNOWN 64      :offset-assert 16)
-;    (wind-normal vector  :inline :offset-assert 1040)
-;    (wind-temp   vector  :inline :offset-assert 1056)
-;    (wind-force  UNKNOWN 64      :offset-assert 1072)
-;    (wind-time   uint32          :offset-assert 1328)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x534
-;   :flag-assert         #x900000534
-;   )
+;; wind-h
+(deftype wind-work (basic)
+  ((wind-array  vector  64 :inline      :offset-assert 16)
+   (wind-normal vector  :inline :offset-assert 1040)
+   (wind-temp   vector  :inline :offset-assert 1056)
+   (wind-force  float 64      :offset-assert 1072)
+   (wind-time   uint32          :offset-assert 1328)
+   )
+  :method-count-assert 9
+  :size-assert         #x534
+  :flag-assert         #x900000534
+  )
 
 ; ;; prototype-h
 ; (deftype prototype-bucket (basic)
@@ -7582,11 +7612,17 @@
   )
 
 ;; res-h
+
+(deftype res-tag (uint128)
+  ()
+  :flag-assert #x900000010
+  )
+
 (deftype res-lump (basic)
   ((length           int32   :offset-assert 4)
    (allocated-length int32   :offset-assert 8)
-   (data-base        uint32  :offset-assert 12)
-   (data-top         uint32  :offset-assert 16)
+   (data-base        pointer  :offset-assert 12)
+   (data-top         pointer  :offset-assert 16)
    (data-size        int32   :offset-assert 20)
    (extra            basic   :offset-assert 24)
    (tag              uint32  :offset-assert 28)
@@ -32987,7 +33023,7 @@
 ;;(define-extern *ocean-mid-indices-village2* object) ;; unknown type
 ;;(define-extern *ocean-mid-masks-sunken* object) ;; unknown type
 ;;(define-extern *ocean-map-village1* object) ;; unknown type
-;;(define-extern *ocean-spheres-village1* object) ;; unknown type
+(define-extern *ocean-spheres-village1* (inline-array sphere)) ;; unknown type
 ;;(define-extern *ocean-wave-frames* object) ;; unknown type
 ;;(define-extern sky-color-hour object) ;; unknown type
 ;;(define-extern sky-circle-data object) ;; unknown type
@@ -33001,7 +33037,7 @@
 ;;(define-extern sky-upload-data object) ;; unknown type
 ;;(define-extern *sky-parms* object) ;; unknown type
 ;;(define-extern sky-moon-data object) ;; unknown type
-;;(define-extern *sky-upload-data* object) ;; unknown type
+(define-extern *sky-upload-data* sky-upload-data) ;; unknown type
 ;;(define-extern sky-work object) ;; unknown type
 ;;(define-extern sky-parms object) ;; unknown type
 ;;(define-extern mood-fog object) ;; unknown type
@@ -33017,7 +33053,7 @@
 ;;(define-extern *time-of-day-mode* object) ;; unknown type
 ;;(define-extern time-of-day-dma object) ;; unknown type
 ;;(define-extern palette-fade-controls object) ;; unknown type
-;;(define-extern *palette-fade-controls* object) ;; unknown type
+(define-extern *palette-fade-controls* palette-fade-controls) ;; unknown type
 (define-extern time-of-day-palette type)
 ;;(define-extern time-of-day-proc object) ;; unknown type
 (define-extern skeleton-group type)
@@ -33057,7 +33093,7 @@
 ;;(define-extern merc-effect object) ;; unknown type
 ;;(define-extern ripple-wave object) ;; unknown type
 ;;(define-extern merc-mat-dest object) ;; unknown type
-(define-extern merc-fragment-fp-data function)
+(define-extern merc-fragment-fp-data (function merc-fragment pointer))
 (define-extern ripple-wave-set type)
 ;;(define-extern merc-fragment object) ;; unknown type
 ;;(define-extern merc-vtx object) ;; unknown type
@@ -33101,14 +33137,7 @@
 ;;(define-extern generic-effect-buffer object) ;; unknown type
 ;;(define-extern generic-vu1-texbuf object) ;; unknown type
 ;;(define-extern *generic-debug* object) ;; unknown type
-(define-extern shadow-queue-append function)
-;;(define-extern shadow-work object) ;; unknown type
-;;(define-extern shadow-queue object) ;; unknown type
-;;(define-extern *shadow-queue* object) ;; unknown type
-;;(define-extern *shadow* object) ;; unknown type
-;;(define-extern shadow-settings object) ;; unknown type
-;;(define-extern *shadow-object* object) ;; unknown type
-(define-extern shadow-queue-reset function)
+
 ;;(define-extern shadow-matrix-ref object) ;; unknown type
 ;;(define-extern *shadow-debug* object) ;; unknown type
 (define-extern shadow-geo type)
@@ -33120,10 +33149,7 @@
 ;;(define-extern shadow-edge object) ;; unknown type
 (define-extern shadow-control type)
 ;;(define-extern mc-file-info object) ;; unknown type
-(define-extern show-mc-info function)
-;;(define-extern mc-handle object) ;; unknown type
-;;(define-extern mc-slot-info object) ;; unknown type
-(define-extern mc-sync function)
+
 ;;(define-extern mc-run object) ;; unknown type
 ;;(define-extern mc-get-slot-info object) ;; unknown type
 ;;(define-extern mc-check-result object) ;; unknown type
@@ -33136,10 +33162,10 @@
 ;;(define-extern actor-id object) ;; unknown type
 ;;(define-extern *GAME-bank* object) ;; unknown type
 ;;(define-extern wind-work object) ;; unknown type
-(define-extern wind-get-hashed-index function)
+(define-extern wind-get-hashed-index (function vector int))
 ;;(define-extern *wind-scales* object) ;; unknown type
 ;;(define-extern wind-vector object) ;; unknown type
-;;(define-extern *wind-work* object) ;; unknown type
+(define-extern *wind-work* wind-work) ;; unknown type
 (define-extern prototype-bucket-shrub type)
 (define-extern prototype-bucket-tie type)
 ;;(define-extern instance object) ;; unknown type
@@ -33164,7 +33190,7 @@
 ;;(define-extern bone-buffer object) ;; unknown type
 ;;(define-extern merc-global-array object) ;; unknown type
 ;;(define-extern *merc-globals* object) ;; unknown type
-;;(define-extern *matrix-engine* object) ;; unknown type
+(define-extern *matrix-engine* (array handle)) ;; unknown type
 ;;(define-extern camera-eng object) ;; unknown type
 ;;(define-extern *camera-engine* object) ;; unknown type
 ;;(define-extern *background-draw-engine* object) ;; unknown type
@@ -33193,8 +33219,8 @@
 (define-extern light-group-process! function)
 ;;(define-extern *default-lights* object) ;; unknown type
 (define-extern vu-lights<-light-group! function)
-(define-extern time-to-apex function)
-(define-extern time-to-ground function)
+(define-extern time-to-apex (function float float int))
+(define-extern time-to-ground (function float float float int))
 ;;(define-extern *standard-dynamics* object) ;; unknown type
 (define-extern dynamics type)
 ;;(define-extern standard object) ;; unknown type
@@ -33208,7 +33234,7 @@
 ;;(define-extern *smack-jump-mods* object) ;; unknown type
 ;;(define-extern *dive-mods* object) ;; unknown type
 ;;(define-extern *swim-surface* object) ;; unknown type
-(define-extern calc-terminal2-vel function)
+(define-extern calc-terminal2-vel (function float float float float float))
 ;;(define-extern *wade-surface* object) ;; unknown type
 ;;(define-extern *jump-mods* object) ;; unknown type
 ;;(define-extern *turn-around-mods* object) ;; unknown type
@@ -33226,11 +33252,11 @@
 ;;(define-extern *run-attack-mods* object) ;; unknown type
 ;;(define-extern *quicksand-surface* object) ;; unknown type
 ;;(define-extern *walk-no-turn-mods* object) ;; unknown type
-(define-extern calc-terminal-vel function)
+(define-extern calc-terminal-vel (function float float float float))
 ;;(define-extern *duck-mods* object) ;; unknown type
 ;;(define-extern *duck-attack-mods* object) ;; unknown type
 ;;(define-extern *slope-surface* object) ;; unknown type
-(define-extern calc-terminal4-vel function)
+(define-extern calc-terminal4-vel (function float float float float))
 ;;(define-extern *edge-grab-mods* object) ;; unknown type
 ;;(define-extern *standard-ground-surface* object) ;; unknown type
 ;;(define-extern *flop-land-mods* object) ;; unknown type

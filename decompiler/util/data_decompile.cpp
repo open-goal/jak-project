@@ -39,6 +39,37 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
     }
   }
 
+  if (type.base_type() == "inline-array") {
+    auto field_type_info = dts.ts.lookup_type(type.get_single_arg());
+    if (!field_type_info->is_reference()) {
+      throw std::runtime_error(
+          fmt::format("Type {} is invalid, the element type is not inlineable.", hint.type_name));
+    } else {
+      // it's an inline array.  let's figure out the len and stride
+      auto len = *hint.array_size;
+      // TODO - having this logic here isn't great.
+      auto stride = align(field_type_info->get_size_in_memory(),
+                          field_type_info->get_inline_array_stride_alignment());
+
+      if (dynamic_cast<BasicType*>(field_type_info)) {
+        throw std::runtime_error("Plan basic arrays not supported yet");
+        // I just want to double check offsets....
+      }
+
+      std::vector<goos::Object> array_def = {pretty_print::to_symbol(fmt::format(
+          "new 'static 'inline-array '{} {}", type.get_single_arg().print(), *hint.array_size))};
+      for (int elt = 0; elt < len; elt++) {
+        DecompilerLabel fake_label;
+        fake_label.target_segment = label.target_segment;
+        fake_label.offset = label.offset + field_type_info->get_offset() + stride * elt;
+        fake_label.name = fmt::format("fake-label-{}-elt-{}", type.get_single_arg().print(), elt);
+        array_def.push_back(
+            decompile_at_label(type.get_single_arg(), fake_label, labels, words, dts.ts));
+      }
+      return pretty_print::build_list(array_def);
+    }
+  }
+
   throw std::runtime_error(
       fmt::format("Type {} is not yet supported by the data decompiler.", hint.type_name));
 }
@@ -525,9 +556,12 @@ goos::Object decompile_value(const TypeSpec& type,
     float value;
     memcpy(&value, bytes.data(), 4);
     return pretty_print::float_representation(value);
-  }
-
-  else {
+  } else if (ts.typecheck(TypeSpec("uint8"), type, "", false, false)) {
+    assert(bytes.size() == 1);
+    u8 value;
+    memcpy(&value, bytes.data(), 1);
+    return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+  } else {
     throw std::runtime_error(fmt::format("decompile_value failed on a {}", type.print()));
   }
 }
@@ -596,8 +630,27 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
 
     return pretty_print::build_list(result);
   } else {
-    // value type.
-    throw std::runtime_error("boxed value type array decompile not yet implemented.");
+    // value array
+    std::vector<goos::Object> result = {
+        pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
+        pretty_print::to_symbol("'boxed-array"), pretty_print::to_symbol(content_type.print()),
+        pretty_print::to_symbol(fmt::format("{}", array_length))};
+
+    auto stride = content_type_info->get_size_in_memory();
+    for (int i = 0; i < array_length; i++) {
+      auto start = first_elt_word_idx * 4 + stride * i;
+      auto end = start + content_type_info->get_size_in_memory();
+      std::vector<u8> elt_bytes;
+      for (int j = start; j < end; j++) {
+        auto& word = words.at(label.target_segment).at(j / 4);
+        if (word.kind != LinkedWord::PLAIN_DATA) {
+          throw std::runtime_error("Got bad word in kind in array of values");
+        }
+        elt_bytes.push_back(word.get_byte(j % 4));
+      }
+      result.push_back(decompile_value(content_type, elt_bytes, ts));
+    }
+    return pretty_print::build_list(result);
   }
 }
 
