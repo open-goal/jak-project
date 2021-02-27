@@ -1,7 +1,10 @@
 #include "OpenGoalMapping.h"
+#include "common/goos/PrettyPrinter.h"
+#include <optional>
 
 // TODO - having a way to handle named args here might be nice.
-// TODO - env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color); in compile_asm_lvf
+// TODO - env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color); in
+// compile_asm_lvf
 namespace decompiler {
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
     // TODO - load/store instructions?
@@ -172,11 +175,95 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     //// Status Checks
     //{InstructionKind::VCLIP, "not-implemented"},
 };
-OpenGOALAsm::OpenGOALAsm(InstructionKind kind) {
-  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(kind) == 0) {
+
+bool OpenGOALAsm::Function::allows_modifier(InstructionModifiers mod) {
+  return std::find(modifiers.begin(), modifiers.end(), mod) != modifiers.end();
+}
+
+OpenGOALAsm::OpenGOALAsm(Instruction _instr) {
+  instr = _instr;
+  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
     valid = false;
   } else {
-    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(kind);
+    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
   }
+}
+
+OpenGOALAsm::OpenGOALAsm(Instruction _instr,
+                         std::optional<Variable> _dst,
+                         std::vector<std::optional<Variable>> _src) {
+  instr = _instr;
+  m_dst = _dst;
+  m_src = _src;
+  if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
+    valid = false;
+  } else {
+    func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
+  }
+}
+
+std::string OpenGOALAsm::full_function_name() {
+  std::string func_name = func.funcTemplate;
+  // OpenGOAL uses the function name for broadcast specification
+  if (func.allows_modifier(InstructionModifiers::BROADCAST)) {
+    if (instr.cop2_bc != 0xff) {
+      std::string bc = std::string(1, instr.cop2_bc_to_char());
+      func_name = fmt::format(func_name, bc);
+    }
+  }
+  return func_name;
+}
+
+std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabel>& labels,
+                                                const Env& env) {
+  std::vector<goos::Object> args;
+  std::vector<goos::Object> named_args;
+
+  for (int i = 0; i < instr.n_src; i++) {
+    auto v = m_src.at(i);
+    // TODO - Tempoary Hack for VOPMSUB, ideally id just re-write before it gets to this stage at
+    // higher-level!
+    if (instr.kind == InstructionKind::VOPMSUB) {
+      if (i == 0) {
+        v = m_src.at(1);
+      } else if (i == 1) {
+        v = m_src.at(0);
+      }
+    }
+    InstructionAtom atom = instr.get_src(i);
+    // NOTE - handling FTF/FSF has to come first because there is no way
+    // to differentiate between what the `imm` corresponds to
+    if (v.has_value()) {
+      args.push_back(v.value().to_form(env));
+    } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
+      if (func.allows_modifier(InstructionModifiers::FTF) && args.size() == 0) {
+        named_args.push_back(pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_imm())));
+      } else if (func.allows_modifier(InstructionModifiers::FSF)) {
+        named_args.push_back(pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_imm())));
+      }
+    } else {
+      args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
+    }
+  }
+
+  // Do the rest, this ensures the previous workaround is safe (incase ftf/fsf don't come first)
+  for (int i = 0; i < instr.n_src; i++) {
+    auto v = m_src.at(i);
+    InstructionAtom atom = instr.get_src(i);
+    // NOTE - handling FTF/FSF has to come first because there is no way
+    // to differentiate between what the `imm` corresponds to
+    if (func.allows_modifier(InstructionModifiers::OFFSET) &&
+        atom.kind == InstructionAtom::AtomKind::IMM && atom.get_imm() != 0) {
+      named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
+    }
+  }
+
+  if (func.allows_modifier(InstructionModifiers::DEST_MASK) && instr.cop2_dest != 0xff &&
+      instr.cop2_dest != 15) {
+    named_args.push_back(pretty_print::to_symbol(fmt::format(":mask #b{:b}", instr.cop2_dest)));
+  }
+
+  args.insert(args.end(), named_args.begin(), named_args.end());
+  return args;
 }
 }  // namespace decompiler

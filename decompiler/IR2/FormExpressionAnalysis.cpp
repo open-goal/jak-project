@@ -1554,7 +1554,7 @@ void RLetElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack
   for (auto& entry : body->elts()) {
     entry->push_to_stack(env, pool, temp_stack);
   }
-  auto new_entries = temp_stack.rewrite(pool);
+  auto new_entries = temp_stack.rewrite(pool, env);
   body->clear();
   for (auto e : new_entries) {
     body->push_back(e);

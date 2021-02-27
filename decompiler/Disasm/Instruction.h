@@ -104,6 +104,9 @@ class Instruction {
   uint8_t cop2_dest = 0xff;  // 0xff indicates "don't print dest"
   uint8_t cop2_bc = 0xff;    // 0xff indicates "don't print bc"
   uint8_t il = 0xff;         // 0xff indicates "don't print il"
+
+  char cop2_bc_to_char() const;
+  char cop2_dest_to_char() const;
 };
 }  // namespace decompiler
 #endif  // NEXT_INSTRUCTION_H

@@ -148,6 +148,31 @@ bool InstructionAtom::operator==(const InstructionAtom& other) const {
   }
 }
 
+char Instruction::cop2_bc_to_char() const {
+  switch (cop2_bc) {
+    case 0:
+      return 'x';
+    case 1:
+      return 'y';
+    case 2:
+      return 'z';
+    case 3:
+      return 'w';
+    default:
+      return '?';
+  }
+}
+char Instruction::cop2_dest_to_char() const {
+  if (cop2_dest & 8)
+    return 'x';
+  if (cop2_dest & 4)
+    return 'y';
+  if (cop2_dest & 2)
+    return 'z';
+  if (cop2_dest & 1)
+    return 'w';
+}
+
 /*!
  * Convert just the name of the opcode to a string, omitting src/dst, but including
  * suffixes (interlock, broadcasts and destination)
@@ -165,37 +190,15 @@ std::string Instruction::op_name_to_string() const {
 
   // optional "broadcast" specification for COP2 opcodes.
   if (cop2_bc != 0xff) {
-    switch (cop2_bc) {
-      case 0:
-        result.push_back('x');
-        break;
-      case 1:
-        result.push_back('y');
-        break;
-      case 2:
-        result.push_back('z');
-        break;
-      case 3:
-        result.push_back('w');
-        break;
-      default:
-        result.push_back('?');
-        break;
-    }
+    result.push_back(cop2_bc_to_char());
   }
 
   // optional "destination" specification for COP2 opcodes.
   if (cop2_dest != 0xff) {
     result += ".";
-    if (cop2_dest & 8)
-      result.push_back('x');
-    if (cop2_dest & 4)
-      result.push_back('y');
-    if (cop2_dest & 2)
-      result.push_back('z');
-    if (cop2_dest & 1)
-      result.push_back('w');
+    result.push_back(cop2_dest_to_char());
   }
+
   return result;
 }
 
