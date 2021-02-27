@@ -58,5 +58,3 @@ struct Config {
 Config& get_config();
 void set_config(const std::string& path_to_config_file);
 }  // namespace decompiler
-
-
