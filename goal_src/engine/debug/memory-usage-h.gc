@@ -5,3 +5,32 @@
 ;; name in dgo: memory-usage-h
 ;; dgos: GAME, ENGINE
 
+(deftype memory-usage-info (structure)
+  ((name  basic  :offset-assert 0)
+   (count int32  :offset-assert 4)
+   (used  int32  :offset-assert 8)
+   (total int32  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype memory-usage-block (basic)
+  ((work-bsp basic       :offset-assert 4)
+   (length   int32       :offset-assert 8)
+   (data     memory-usage-info 109 :inline :offset-assert 16) ;; guess
+   )
+  :method-count-assert 12
+  :size-assert         #x6e0
+  :flag-assert         #xc000006e0
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    )
+  )
+
+(define *mem-usage* (new 'debug 'memory-usage-block))
+(define *dma-mem-usage* (new 'debug 'memory-usage-block))
+(define *temp-mem-usage* #f)

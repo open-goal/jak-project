@@ -60,6 +60,9 @@
 (define-extern file-stream-length (function file-stream int))
 (define-extern file-stream-read (function file-stream pointer int int))
 
+(define-extern kmalloc (function kheap int int string pointer))
+(define-extern global kheap)
+
 (define-extern dma-sync (function pointer int int int))
 (define-extern flush-cache (function int none))
 
@@ -520,7 +523,7 @@
 (define-extern set-to-run (function cpu-thread function object object object object object object pointer))
 (define-extern set-to-run-bootstrap (function none))
 (define-extern entity-deactivate-handler (function process object none))
-(define-extern process-disconnect (function object none))
+
 
 (define-extern stack-frame type)
 (define-extern state type)
@@ -3940,8 +3943,9 @@
   :flag-assert         #x900000010
   )
 
+(declare-type engine basic)
 (deftype connection (connectable)
-  ((param0 basic         :offset-assert 16)
+  ((param0 (function object object object object object)      :offset-assert 16)
    (param1 basic         :offset-assert 20)
    (param2 basic         :offset-assert 24)
    (param3 basic         :offset-assert 28)
@@ -3952,38 +3956,53 @@
   :flag-assert         #xe00000020
   ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load field param3 is a basic loaded with a signed load 
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (print (connection) _type_ 2)
+    (get-engine (connection) engine 9)
+    (get-process (connection) process 10)
+    (belongs-to-engine? (connection engine) symbol 11)
+    (belongs-to-process? (connection process) symbol 12)
+    (move-to-dead (connection) connection 13)
     )
   )
 
-; ;; connect
-; (deftype engine (basic)
-;   ()
-;   :method-count-assert 24
-;   :size-assert         #x80
-;   :flag-assert         #x1800000080
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     )
-;   )
+;; connect
+(deftype engine (basic)
+  ((name basic :offset-assert 4)
+   (length int16 :offset-assert 8)             ;; in use elts of the data array
+   (allocated-length int16 :offset-assert 10)  ;; size of the data array
+   (engine-time uint64 :offset-assert 16)      ;; frame that we last executed
+
+   ;; terminating nodes for the next0/prev0 linked lists
+   (alive-list connectable :inline :offset-assert 32)
+   (alive-list-end connectable :inline :offset-assert 48)
+   (dead-list connectable :inline :offset-assert 64)
+   (dead-list-end connectable :inline :offset-assert 80)
+
+   ;; storage for nodes. this is dynamically sized.
+   (data connection 1 :inline :offset-assert 96)
+   )
+  :method-count-assert 24
+  :size-assert         #x80
+  :flag-assert         #x1800000080
+  (:methods
+    (new (symbol type basic int) _type_ 0)
+    (inspect-all-connections (engine) none 9)
+    (apply-to-connections (engine (xx (function connectable none))) none 10)
+    (apply-to-connections-reverse (engine (xx (function connectable none))) none 11)
+    (execute-connections (engine object) none 12)
+    (execute-connections-and-move-to-dead (engine object) none 13)
+    (execute-connections-if-needed (engine object) none 14)
+    (add-connection (engine process (xx (function object object object object object)) object object object) connection 15)
+    (remove-from-process (engine process) none 16)
+    (remove-matching (engine (xx (function connection engine symbol))) none 17)
+    (remove-all (engine) none 18)
+    (remove-by-param1 (engine object) none 19)
+    (remove-by-param2 (engine int) none 20)
+    (get-first-connectable (engine) connectable 21)
+    (get-last-connectable (engine) connectable 22)
+    (unknown-1 (engine (xx (pointer uint32))) uint 23)
+    )
+  )
 
 ;;;;;;;;;;;;;;;;
 ;; text-h
@@ -4031,11 +4050,11 @@
    (screeny int32 :offset-assert 36)
    (vibration basic :offset-assert 40)
    (play-hints basic :offset-assert 44)
-   (movie basic :offset-assert 48) ;; special print
-   (talking basic :offset-assert 52) ;; special print
-   (spooling basic :offset-assert 56) ;; special print
-   (hint basic :offset-assert 60) ;; special print
-   (ambient basic :offset-assert 64) ;; special print
+   (movie (pointer process) :offset-assert 48) ;; special print
+   (talking (pointer process) :offset-assert 52) ;; special print
+   (spooling (pointer process) :offset-assert 56) ;; special print
+   (hint (pointer process) :offset-assert 60) ;; special print
+   (ambient (pointer process) :offset-assert 64) ;; special print
    (video-mode basic :offset-assert 68)
    (aspect-ratio basic :offset-assert 72)
    (sound-flava uint8 :offset-assert 76)
@@ -4073,12 +4092,13 @@
   ((current setting-data :inline :offset-assert 16)
    (target  setting-data :inline :offset-assert 224)
    (default setting-data :inline :offset-assert 432)
-   (engine  basic                :offset-assert 628)
+   (engine  engine               :offset-assert 628)
    )
   :method-count-assert 14
   :size-assert         #x278
   :flag-assert         #xe00000278
   (:methods
+    (new (symbol type int) _type_ 0)
     (dummy-9 () none 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
@@ -4126,6 +4146,10 @@
   :size-assert         #x70
   :flag-assert         #x900000070
   )
+
+(define-extern store-image function)
+;;(define-extern gs-store-image-packet object) ;; unknown type
+(define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
 
 ;;;;;;;;;;;;;;;;;;
 ;; memory-usage-h
@@ -4207,7 +4231,7 @@
 (deftype joint (basic)
   ((name      basic          :offset-assert 4)
    (number    int32          :offset-assert 8)
-   (parent    basic          :offset-assert 12)
+   (parent    joint          :offset-assert 12)
    (bind-pose matrix :inline :offset-assert 16)
    )
   :method-count-assert 9
@@ -4250,7 +4274,7 @@
 ;; mspace-h
 (deftype cspace (structure)
   ((parent    cspace  :offset-assert 0)
-   (joint     basic   :offset-assert 4)
+   (joint     joint   :offset-assert 4)
    (joint-num int16   :offset-assert 8)
    (geo       basic   :offset-assert 12)
    (bone      bone    :offset-assert 16)
@@ -4289,7 +4313,7 @@
   :flag-assert         #x1200000020
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -4309,7 +4333,7 @@
   :flag-assert         #x1200000024
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -4318,6 +4342,11 @@
     (dummy-16 () none 16)
     (dummy-17 () none 17)
     )
+  )
+
+(deftype drawable-group (drawable)
+  ((pad uint8 4))
+  :flag-assert #x1200000024
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4332,7 +4361,7 @@
   :flag-assert         #x1200000020
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -4359,7 +4388,7 @@
   ;; field distance is a float printed as hex? 
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -4370,15 +4399,25 @@
     )
   )
 
-; ;; draw-node-h
-; (deftype draw-node-dma (structure)
-;   ((banka UNKNOWN 32 :offset-assert 4)
-;    (bankb UNKNOWN 32 :offset-assert 1028)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x800
-;   :flag-assert         #x900000800
-;   )
+;; draw-node-h
+(deftype draw-node-dma (structure)
+  ((banka draw-node 32 :inline :offset-assert 0)
+   (bankb draw-node 32 :inline :offset-assert 1024)
+   )
+  :method-count-assert 9
+  :size-assert         #x800
+  :flag-assert         #x900000800
+  )
+
+(deftype drawable-tree (drawable-group)
+  ()
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-array (drawable-group)
+  ()
+  :flag-assert #x1200000024
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; drawable-actor-h
@@ -4392,7 +4431,7 @@
   :flag-assert         #x1200000020
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -4401,6 +4440,16 @@
     (dummy-16 () none 16)
     (dummy-17 () none 17)
     )
+  )
+
+(deftype drawable-tree-actor (drawable-tree)
+  ()
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-inline-array-actor (drawable-inline-array)
+  ((paid uint8 36))
+  :flag-assert #x1200000044
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -4416,7 +4465,7 @@
   :flag-assert         #x1300000020
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -4426,6 +4475,16 @@
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     )
+  )
+
+(deftype drawable-tree-ambient (drawable-tree)
+  ()
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-inline-array-ambient (drawable-inline-array)
+  ((paid uint8 36))
+  :flag-assert #x1200000044
   )
 
 ;; drawable-ambient-h
@@ -4527,13 +4586,13 @@
   )
 
 ; ;; generic-h
-; (deftype gsf-vertex-array (UNKNOWN)
-;   ((vtx UNKNOWN :dynamic :offset-assert 0)
-;    )
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   )
+(deftype gsf-vertex-array (structure)
+  ((vtx gsf-vertex :dynamic :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x0
+  :flag-assert         #x900000000
+  )
 
 ; ;; generic-h
 (deftype gsf-fx-vertex (structure)
@@ -4546,14 +4605,14 @@
   )
 
 
-; ;; generic-h
-; (deftype gsf-fx-vertex-array (UNKNOWN)
-;   ((data UNKNOWN :dynamic :offset-assert 0)
-;    )
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   )
+;; generic-h
+(deftype gsf-fx-vertex-array (structure)
+  ((data gsf-fx-vertex :dynamic :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x0
+  :flag-assert         #x900000000
+  )
 
 ; ;; generic-h
 (deftype gsf-header (structure)
@@ -4844,17 +4903,13 @@
   :flag-assert         #x90000000c
   )
 
-;; todo
-; (deftype light-volume-array (array)
-;   ((type             basic  :offset-assert 0)
-;    (length           int32  :offset-assert 4)
-;    (allocated-length int32  :offset-assert 8)
-;    (content-type     basic  :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+; todo
+(deftype light-volume-array (array)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 ;; lights-h
 (deftype light-group (structure)
@@ -4953,6 +5008,7 @@
 (deftype ocean-mid-masks (basic)
   ((data uint32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -4963,6 +5019,7 @@
   ((mask uint16 4 :offset-assert 0)
    (word uint64    :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -4973,6 +5030,7 @@
   ((parent int16  :offset-assert 0)
    (child  int16  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -5060,47 +5118,47 @@
   :flag-assert         #x900000400
   )
 
-; ;; ocean-h
-; (deftype ocean-wave-frames (structure)
-;   ((frame UNKNOWN 64 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x0
-;   :flag-assert         #x900010000
-;   )
+;; ocean-h
+(deftype ocean-wave-frames (structure)
+  ((frame ocean-wave-data 64 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10000
+  ;:flag-assert         #x900010000
+  )
 
-; ;; ocean-h
-; (deftype ocean-work (basic)
-;   ((deltas             vector  :inline :offset-assert 16)
-;    (map-min            vector  :inline :offset-assert 32)
-;    (map-max            vector  :inline :offset-assert 48)
-;    (interp             vector  :inline :offset-assert 64)
-;    (corner-array       UNKNOWN 25      :offset-assert 80)
-;    (corner-count       int32           :offset-assert 2080)
-;    (temp-vecs          UNKNOWN 4       :offset-assert 2096)
-;    (mid-mask-ptrs      UNKNOWN 36      :offset-assert 2160)
-;    (mid-camera-masks   UNKNOWN 36      :offset-assert 2304)
-;    (trans-mask-ptrs    UNKNOWN 64      :offset-assert 2592)
-;    (trans-camera-masks UNKNOWN 16      :offset-assert 2848)
-;    (trans-temp-masks   UNKNOWN 16      :offset-assert 2976)
-;    (near-mask-indices  UNKNOWN 16      :offset-assert 3104)
-;    (mid-minx           uint8           :offset-assert 3136)
-;    (mid-maxx           uint8           :offset-assert 3137)
-;    (mid-minz           uint8           :offset-assert 3138)
-;    (mid-maxz           uint8           :offset-assert 3139)
-;    (near-minx          uint8           :offset-assert 3140)
-;    (near-maxx          uint8           :offset-assert 3141)
-;    (near-minz          uint8           :offset-assert 3142)
-;    (near-maxz          uint8           :offset-assert 3143)
-;    (temp-minx          uint8           :offset-assert 3144)
-;    (temp-maxx          uint8           :offset-assert 3145)
-;    (temp-minz          uint8           :offset-assert 3146)
-;    (temp-maxz          uint8           :offset-assert 3147)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xc4c
-;   :flag-assert         #x900000c4c
-;   )
+;; ocean-h
+(deftype ocean-work (basic)
+  ((deltas             vector  :inline :offset-assert 16)
+   (map-min            vector  :inline :offset-assert 32)
+   (map-max            vector  :inline :offset-assert 48)
+   (interp             vector  :inline :offset-assert 64)
+   (corner-array       ocean-corner 25 :inline     :offset-assert 80)
+   (corner-count       int32           :offset-assert 2080)
+   (temp-vecs          vector 4 :inline        :offset-assert 2096)
+   (mid-mask-ptrs      pointer 36      :offset-assert 2160)
+   (mid-camera-masks   ocean-mid-masks 36 :inline      :offset-assert 2304)
+   (trans-mask-ptrs    pointer 64      :offset-assert 2592)
+   (trans-camera-masks ocean-trans-mask 16 :inline      :offset-assert 2848)
+   (trans-temp-masks   ocean-trans-mask 16 :inline     :offset-assert 2976)
+   (near-mask-indices  uint16 16      :offset-assert 3104)
+   (mid-minx           uint8           :offset-assert 3136)
+   (mid-maxx           uint8           :offset-assert 3137)
+   (mid-minz           uint8           :offset-assert 3138)
+   (mid-maxz           uint8           :offset-assert 3139)
+   (near-minx          uint8           :offset-assert 3140)
+   (near-maxx          uint8           :offset-assert 3141)
+   (near-minz          uint8           :offset-assert 3142)
+   (near-maxz          uint8           :offset-assert 3143)
+   (temp-minx          uint8           :offset-assert 3144)
+   (temp-maxx          uint8           :offset-assert 3145)
+   (temp-minz          uint8           :offset-assert 3146)
+   (temp-maxz          uint8           :offset-assert 3147)
+   )
+  :method-count-assert 9
+  :size-assert         #xc4c
+  :flag-assert         #x900000c4c
+  )
 
 ;; ocean-h
 (deftype ocean-vu0-work (structure)
@@ -7300,7 +7358,7 @@
   :flag-assert         #x1200000040
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -9845,7 +9903,7 @@
   :flag-assert         #x1200000070
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -9894,7 +9952,7 @@
   :flag-assert         #x1200000020
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -9916,7 +9974,7 @@
   :flag-assert         #x1200000050
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -9945,7 +10003,7 @@
   :flag-assert         #x1200000020
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (drawable) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -32622,7 +32680,8 @@
 ;;(define-extern end-calc object) ;; unknown type
 ;;(define-extern engine object) ;; unknown type
 ;;(define-extern connectable object) ;; unknown type
-(define-extern connection-process-apply function)
+(define-extern connection-process-apply (function process (function object none) symbol))
+(define-extern process-disconnect (function process int))
 ;;(define-extern connection object) ;; unknown type
 ;;(define-extern *common-text* object) ;; unknown type
 ;;(define-extern *common-text-heap* object) ;; unknown type
@@ -32633,9 +32692,7 @@
 ;;(define-extern scf-time object) ;; unknown type
 ;;(define-extern setting-data object) ;; unknown type
 ;;(define-extern setting-control object) ;; unknown type
-(define-extern store-image function)
-;;(define-extern gs-store-image-packet object) ;; unknown type
-(define-extern gs-set-default-store-image function)
+
 ;;(define-extern file-stream-close object) ;; unknown type
 ;;(define-extern file-stream-write object) ;; unknown type
 ;;(define-extern write object) ;; unknown type

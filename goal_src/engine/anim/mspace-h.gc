@@ -5,3 +5,84 @@
 ;; name in dgo: mspace-h
 ;; dgos: GAME, ENGINE
 
+(deftype joint (basic)
+  ((name      basic          :offset-assert 4)
+   (number    int32          :offset-assert 8)
+   (parent    joint          :offset-assert 12)
+   (bind-pose matrix :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype bone-cache (structure)
+  ((bone-matrix   uint32  :offset-assert 0)
+   (parent-matrix uint32  :offset-assert 4)
+   (dummy         uint32  :offset-assert 8)
+   (frame         uint32  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype bone (structure)
+  ((transform matrix     :inline :offset-assert 0)
+   (position  vector     :inline :offset 48) ;; overlays the matrix
+   (scale     vector     :inline :offset-assert 64)
+   (cache     bone-cache :inline :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+(deftype skeleton (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> skeleton heap-base) 96)
+
+(deftype cspace (structure)
+  ((parent    cspace  :offset-assert 0)
+   (joint     joint   :offset-assert 4)
+   (joint-num int16   :offset-assert 8)
+   (geo       basic   :offset-assert 12)
+   (bone      bone    :offset-assert 16)
+   (param0    basic   :offset-assert 20)
+   (param1    basic   :offset-assert 24)
+   (param2    basic   :offset-assert 28)
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  ;; params are loaded with signed loads.
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+(deftype cspace-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+(set! (-> cspace-array heap-base) 32)
+
+
+(defmethod print cspace ((obj cspace))
+  "Print a cspace, with the attached joint"
+  (format #t "#<cspace ~S @ #x~X>"
+          (if (-> obj joint)
+              (-> obj joint name)
+              "nojoint")
+          obj
+          )
+  obj
+  )
+
+

@@ -84,7 +84,9 @@ bool convert_to_expressions(Form* top_level_form,
     } else {
       new_entries = stack.rewrite(pool, f.ir2.env);
     }
-    assert(!new_entries.empty());
+    if (new_entries.empty()) {
+      new_entries.push_back(pool.alloc_element<EmptyElement>());
+    }
     top_level_form->clear();
     for (auto x : new_entries) {
       top_level_form->push_back(x);
