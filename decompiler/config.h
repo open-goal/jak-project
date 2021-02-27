@@ -1,12 +1,10 @@
 #pragma once
 
-#ifndef JAK2_DISASSEMBLER_CONFIG_H
-#define JAK2_DISASSEMBLER_CONFIG_H
-
 #include <string>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <optional>
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
@@ -18,6 +16,7 @@ struct TypeHint {
 struct LabelType {
   std::string type_name;
   bool is_const = false;
+  std::optional<int> array_size;
 };
 
 struct Config {
@@ -59,5 +58,3 @@ struct Config {
 Config& get_config();
 void set_config(const std::string& path_to_config_file);
 }  // namespace decompiler
-
-#endif  // JAK2_DISASSEMBLER_CONFIG_H

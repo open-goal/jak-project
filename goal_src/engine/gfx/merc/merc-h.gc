@@ -5,3 +5,392 @@
 ;; name in dgo: merc-h
 ;; dgos: GAME, ENGINE
 
+(deftype ripple-merc-query (inline-array-class)
+  ((start-vertex     int32            :offset-assert 16)
+   (vertex-skip      int32            :offset-assert 20)
+   (vertex-count     int32            :offset-assert 24)
+   (current-loc      int32            :offset-assert 28)
+   (data2             uint8 :dynamic :offset-assert 32) ;; renamed from data. suspect inline-array has some magic.
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(set! (-> ripple-merc-query heap-base) 16)
+
+(deftype merc-byte-header (structure)
+  ((srcdest-off        uint8      :offset-assert 0)
+   (rgba-off           uint8      :offset-assert 1)
+   (lump-off           uint8      :offset-assert 2)
+   (fp-off             uint8      :offset-assert 3)
+   (mat1-cnt           uint8      :offset-assert 4)
+   (mat2-cnt           uint8      :offset-assert 5)
+   (mat3-cnt           uint8      :offset-assert 6)
+   (samecopy-cnt       uint8      :offset-assert 7)
+   (crosscopy-cnt      uint8      :offset-assert 8)
+   (strip-len          uint8      :offset-assert 9)
+   (mm-quadword-fp-off uint8      :offset-assert 10)
+   (mm-quadword-size   uint8      :offset-assert 11)
+   (perc-off           uint8      :offset-assert 12)
+   (mat-slot           uint8 10 :offset-assert 13)
+   )
+  :method-count-assert 9
+  :size-assert         #x17
+  :flag-assert         #x900000017
+  )
+
+;; merc-h
+(deftype merc-fragment (structure)
+  ((header merc-byte-header :inline :offset-assert 0)
+   (rest   uint8          1       :offset-assert 23)
+   )
+  :method-count-assert 10
+  :size-assert         #x18
+  :flag-assert         #xa00000018
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+;; merc-h
+(deftype merc-vtx (structure)
+  ((mat-0 uint8  :offset-assert 0)
+   (mat-1 uint8  :offset-assert 1)
+   (nrm-x uint8  :offset-assert 2)
+   (pos-x uint8  :offset-assert 3)
+   (dst-0 uint8  :offset-assert 4)
+   (dst-1 uint8  :offset-assert 5)
+   (nrm-y uint8  :offset-assert 6)
+   (pos-y uint8  :offset-assert 7)
+   (tex-s uint8  :offset-assert 8)
+   (tex-t uint8  :offset-assert 9)
+   (nrm-z uint8  :offset-assert 10)
+   (pos-z uint8  :offset-assert 11)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; merc-h
+(deftype merc-fp-header (structure)
+  ((x-add            float  :offset-assert 0)
+   (y-add            float  :offset-assert 4)
+   (z-add            float  :offset-assert 8)
+   (shader-cnt       uint8  :offset-assert 12)
+   (kick-info-offset uint8  :offset-assert 13)
+   (kick-info-step   uint8  :offset-assert 14)
+   (hword-cnt        uint8  :offset-assert 15)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(defun merc-fragment-fp-data ((arg0 merc-fragment))
+  "Get the floating-point data of a merc-fragment"
+  (the pointer (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4))))
+  )
+
+;; merc-h
+(deftype merc-mat-dest (structure)
+  ((matrix-number uint8  :offset-assert 0)
+   (matrix-dest   uint8  :offset-assert 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; merc-h
+(deftype merc-fragment-control (structure)
+  ((unsigned-four-count uint8            :offset-assert 0)
+   (lump-four-count     uint8            :offset-assert 1)
+   (fp-qwc              uint8            :offset-assert 2)
+   (mat-xfer-count      uint8            :offset-assert 3)
+   (mat-dest-data       uint8 :dynamic :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; merc-h
+(deftype merc-blend-data (structure) ;; was unknown!
+  ((int8-data int8 :dynamic :offset-assert 0)
+   )
+  )
+
+;; merc-h
+(deftype merc-blend-ctrl (structure)
+  ((blend-vtx-count     uint8            :offset-assert 0)
+   (nonzero-index-count uint8            :offset-assert 1)
+   (bt-index            uint8 :dynamic :offset-assert 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; merc-h
+(deftype mei-envmap-tint (structure)
+  ((fade0 float   :offset-assert 0)
+   (fade1 float   :offset-assert 4)
+   (tint  uint32  :offset-assert 8)
+   (dummy int32   :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; merc-h
+(deftype mei-texture-scroll (structure)
+  ((max-dist     float     :offset-assert 0)
+   (st-int-scale uint8     :offset-assert 4)
+   (time-factor  uint8     :offset-assert 5)
+   (scroll-dir   uint8     :offset-assert 6)
+   (cached-time  uint8     :offset-assert 7)
+   (time-delta   uint8     :offset-assert 8)
+   (dummy        uint8 7 :offset-assert 9)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; merc-h
+(deftype mei-ripple (structure)
+  ((x-base    float  :offset-assert 0)
+   (z-base    float  :offset-assert 4)
+   (grid-size float  :offset-assert 8)
+   (angle     float  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; merc-h
+(deftype merc-extra-info (structure)
+  ((envmap-tint-offset    uint8      :offset-assert 0)
+   (shader-offset         uint8      :offset-assert 1)
+   (texture-scroll-offset uint8      :offset-assert 2)
+   (ripple-offset         uint8      :offset-assert 3)
+   (dummy                 uint8 12 :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+; ;; merc-h
+(deftype merc-effect (structure)
+  ((frag-geo         merc-fragment          :offset-assert 0)
+   (frag-ctrl        merc-fragment-control  :offset-assert 4)
+   (blend-data       merc-blend-data        :offset-assert 8)
+   (blend-ctrl       merc-blend-ctrl        :offset-assert 12)
+   (dummy0           uint8                  :offset-assert 16)
+   (effect-bits      uint8                  :offset-assert 17)
+   (frag-count       uint16                 :offset-assert 18)
+   (blend-frag-count uint16                 :offset-assert 20)
+   (tri-count        uint16                 :offset-assert 22)
+   (dvert-count      uint16                 :offset-assert 24)
+   (dummy1           uint8                  :offset-assert 26)
+   (envmap-usage     uint8                  :offset-assert 27)
+   (extra-info       merc-extra-info        :offset-assert 28)
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+;; merc-h
+(deftype merc-eye-ctrl (structure)
+  ((eye-slot      int8                 :offset-assert 0)
+   (shader-offset int8                 :offset-assert 1)
+   (shader-count  int8                 :offset-assert 2)
+   ;(shader        UNKNOWN      3       :offset-assert 16)
+   (iris-shader   adgif-shader :inline :offset-assert 16)
+   (pupil-shader  adgif-shader :inline :offset-assert 96)
+   (lid-shader    adgif-shader :inline :offset-assert 176)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
+
+;; merc-h
+(deftype merc-eye-anim-frame (structure)
+  ((pupil-trans-x int8    :offset-assert 0)
+   (pupil-trans-y int8    :offset-assert 1)
+   (blink         int8    :offset-assert 2)
+   (iris-scale    int8    :offset 4)
+   (pupil-scale   int8    :offset-assert 5)
+   (lid-scale     int8    :offset-assert 6)
+   (dword         uint64  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; merc-h
+(deftype merc-eye-anim-block (structure)
+  ((max-frame int16            :offset-assert 0)
+   (data      uint8 :dynamic :offset 8)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; merc-h
+(deftype merc-ctrl-header (structure)
+  ((xyz-scale              float            :offset-assert 0)
+   (st-magic               uint32           :offset-assert 4)
+   (st-out-a               uint32           :offset-assert 8)
+   (st-out-b               uint32           :offset-assert 12)
+   (st-vif-add             uint32           :offset-assert 16)
+   (st-int-off             uint16           :offset-assert 20)
+   (st-int-scale           uint16           :offset-assert 22)
+   (effect-count           uint32           :offset-assert 24)
+   (blend-target-count     uint32           :offset-assert 28)
+   (fragment-count         uint16           :offset-assert 32)
+   (tri-count              uint16           :offset-assert 34)
+   (matrix-count           uint8            :offset-assert 36)
+   (shader-count           uint8            :offset-assert 37)
+   (transform-vertex-count uint16           :offset-assert 38)
+   (dvert-count            uint16           :offset-assert 40)
+   (one-mat-count          uint16           :offset-assert 42)
+   (two-mat-count          uint16           :offset-assert 44)
+   (two-mat-reuse-count    uint16           :offset-assert 46)
+   (three-mat-count        uint16           :offset-assert 48)
+   (three-mat-reuse-count  uint16           :offset-assert 50)
+   (shader-upload-count    uint8            :offset-assert 52)
+   (matrix-upload-count    uint8            :offset-assert 53)
+   (same-copy-count        uint16           :offset-assert 54)
+   (cross-copy-count       uint16           :offset-assert 56)
+   (num-verts              uint16           :offset-assert 58)
+   (longest-edge           float            :offset-assert 60)
+   (eye-ctrl               merc-eye-ctrl    :offset-assert 64)
+   (masks                  uint32       3  :offset-assert 68)
+   (dummy-bytes            uint8       48 :offset 32)
+   (envmap-tint            uint32           :offset 32)
+   (query                  basic            :offset 36)
+   (needs-clip             uint8            :offset 40)
+   (use-isometric          uint8            :offset 41)
+   (use-attached-shader    uint8            :offset 42)
+   (display-triangles      uint8            :offset 43)
+   (death-vertex-skip      uint16           :offset 44)
+   (death-start-vertex     uint16           :offset 46)
+   (death-effect           uint32           :offset 48)
+   (use-translucent        uint8            :offset 52)
+   (display-this-fragment  uint8            :offset 53)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  ;; field xyz-scale is a float printed as hex? 
+  )
+
+;; merc-h
+(deftype merc-ctrl (art-element)
+  ((num-joints int32                     :offset 20)
+   (header     merc-ctrl-header :inline  :offset-assert 32)
+   (effect     uint8          :dynamic :offset-assert 112)
+   )
+  :method-count-assert 13
+  :size-assert         #x70
+  :flag-assert         #xd00000070
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    )
+  )
+
+;; merc-h
+(deftype merc-vu1-low-mem (structure)
+  ((tri-strip-gif qword   :inline :offset-assert 0)
+   (ad-gif        qword   :inline :offset-assert 16)
+   (hvdf-offset   vector  :inline :offset-assert 32)
+   (perspective   uint128 4       :offset-assert 48)
+   (fog           vector  :inline :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+;; merc-h
+(deftype ripple-wave (structure)
+  ((scale float  :offset-assert 0)
+   (offs  float  :offset-assert 4)
+   (xdiv  int16  :offset-assert 8)
+   (zdiv  int16  :offset-assert 10)
+   (speed float  :offset-assert 12)
+   (xmul  float  :offset-assert 16)
+   (zmul  float  :offset-assert 20)
+   (delta float  :offset-assert 24)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; merc-h
+(deftype ripple-wave-set (basic)
+  ((count        int32     :offset-assert 4)
+   (converted    basic     :offset-assert 8)
+   (frame-save   uint32    :offset-assert 12)
+   (normal-scale float     :offset-assert 16)
+   (wave         ripple-wave 4 :inline :offset-assert 20)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+;; merc-h
+(deftype ripple-control (basic)
+  ((global-scale            float  :offset-assert 4)
+   (last-frame-scale        float  :offset-assert 8)
+   (close-fade-dist         float  :offset-assert 12)
+   (far-fade-dist           float  :offset-assert 16)
+   (faded-scale             float  :offset-assert 20)
+   (individual-normal-scale float  :offset-assert 24)
+   (waveform                basic  :offset-assert 28)
+   (send-query              basic  :offset-assert 32)
+   (query                   basic  :offset-assert 36)
+   )
+  (:methods 
+   (new (symbol type) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+(defmethod new ripple-control ((allocation symbol) (type-to-make type))
+  (local-vars (v0-0 ripple-control))
+  (set! v0-0
+        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+        )
+  (set! (-> v0-0 global-scale) 0.000000)
+  (set! (-> v0-0 last-frame-scale) (the-as float #xba83126f))
+  (set! (-> v0-0 close-fade-dist) (the-as float #x4f742400))
+  (set! (-> v0-0 far-fade-dist) (the-as float #x4ff42400))
+  (set! (-> v0-0 faded-scale) (the-as float #xba83126f))
+  (set! (-> v0-0 waveform) #f)
+  (set! (-> v0-0 individual-normal-scale) 1.000000)
+  (set! (-> v0-0 send-query) #f)
+  (set! (-> v0-0 query) #f)
+  v0-0
+  )

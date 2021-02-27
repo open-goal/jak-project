@@ -14,6 +14,12 @@
 
 namespace pretty_print {
 
+namespace {
+const std::unordered_set<float> allowed_floats = {
+    0.0,     0.0625, 0.125,   0.1875, 0.25,    0.3125,  0.375,   0.4375,  0.5,    0.5625,  0.625,
+    0.6875,  0.75,   0.8125,  0.875,  0.9375,  -0.0625, -0.125,  -0.1875, -0.25,  -0.3125, -0.375,
+    -0.4375, -0.5,   -0.5625, -0.625, -0.6875, -0.75,   -0.8125, -0.875,  -0.9375};
+}
 /*!
  * Print a float in a nice representation if possibly, or an exact 32-bit integer constant to
  * be reinterpreted.
@@ -21,7 +27,7 @@ namespace pretty_print {
 goos::Object float_representation(float value) {
   int rounded = value;
   bool exact_int = ((float)rounded) == value;
-  if (value == 0.5 || value == -0.5 || value == 0.0 || value == 1.0 || value == -1.0 || exact_int) {
+  if (exact_int || allowed_floats.find(value) != allowed_floats.end()) {
     return goos::Object::make_float(value);
   } else {
     u32 int_value;

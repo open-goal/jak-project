@@ -5,3 +5,177 @@
 ;; name in dgo: sky-h
 ;; dgos: GAME, ENGINE
 
+(deftype sky-color-hour (structure)
+  ((snapshot1   int32  :offset-assert 0)
+   (snapshot2   int32  :offset-assert 4)
+   (morph-start float  :offset-assert 8)
+   (morph-end   float  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sky-color-day (structure)
+  ((hour sky-color-hour 24 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
+
+
+(deftype sky-circle-data (structure)
+  ((data vector 17 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x110
+  :flag-assert         #x900000110
+  )
+
+(deftype sky-sun-data (structure)
+  ((data           uint128 4       :offset-assert 0)
+   (pos            vector  :inline :offset 0)
+   (r-sun          float           :offset 16)
+   (r-halo         float           :offset 20)
+   (r-aurora       float           :offset 24)
+   (c-sun-start    uint32          :offset 32)
+   (c-sun-end      uint32          :offset 48)
+   (c-halo-start   uint32          :offset 36)
+   (c-halo-end     uint32          :offset 52)
+   (c-aurora-start uint32          :offset 40)
+   (c-aurora-end   uint32          :offset 56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype sky-moon-data (structure)
+  ((data  uint128 2       :offset-assert 0)
+   (pos   vector  :inline :offset 0)
+   (scale vector  :inline :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sky-orbit (structure)
+  ((high-noon float  :offset-assert 0)
+   (tilt      float  :offset-assert 4)
+   (rise      float  :offset-assert 8)
+   (dist      float  :offset-assert 12)
+   (min-halo  float  :offset-assert 16)
+   (max-halo  float  :offset-assert 20)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+(deftype sky-upload-data (basic)
+  (
+   ;;(data   UNKNOWN         27      :offset-assert 16)
+   (circle sky-circle-data :inline :offset-assert 16)
+   (sun    sky-sun-data 2 :inline       :offset-assert 288)
+   (moon   sky-moon-data   :inline :offset-assert 416)
+   (data   uint128         27      :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c0
+  :flag-assert         #x9000001c0
+  )
+
+(deftype sky-parms (basic)
+  ;; check - the alignment on some of these.
+  ((orbit             sky-orbit 3     :inline :offset-assert 4)
+   (upload-data       sky-upload-data :inline :offset-assert 112)
+   (sun-lights        light-group     :inline :offset-assert 560)
+   (moon-lights       light-group     :inline :offset-assert 752)
+   (default-lights    light-group     :inline :offset-assert 944)
+   (default-vu-lights vu-lights       :inline :offset-assert 1136)
+   )
+  (:methods
+   (new (symbol type) _type_ 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4e0
+  :flag-assert         #x9000004e0
+  )
+
+(defmethod new sky-parms ((allocation symbol) (type-to-make type))
+  (local-vars (v0-0 sky-parms))
+  (set! v0-0
+        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+        )
+  (set! (-> v0-0 upload-data type) sky-upload-data)
+  v0-0
+  )
+
+(define *sky-parms* (new 'global 'sky-parms))
+(define *sky-upload-data* (new 'global 'sky-upload-data))
+
+;; generate some sky data.
+(let ((gp-0 0))
+  (while (< gp-0 17)
+    (let* ((f30-0 (+ (the-as float #xc0490fda)
+                     (* (the-as float #x3ec90fda) (the float (logand gp-0 15)))
+                     )
+             )
+           (f0-2 (* (the-as float #x400ccccd) (sin-rad f30-0)))
+           )
+
+      (set! (-> *sky-upload-data* circle data gp-0 data 0)
+            (* (the-as float #x400ccccd) (sin-rad f30-0))
+            )
+      (set! (-> *sky-upload-data* circle data gp-0 data 1) (cos-rad f30-0))
+      (set! (-> *sky-upload-data* circle data gp-0 data 2) 0.000000)
+      (set! (-> *sky-upload-data* circle data gp-0 data 3) 0.000000)
+      (+! gp-0 1)
+      )
+    )
+  )
+
+(deftype sky-tng-data (basic)
+  ((giftag-base  qword   :inline :offset-assert 16)
+   (giftag-roof  qword   :inline :offset-assert 32)
+   (giftag-ocean qword   :inline :offset-assert 48)
+   (fog          vector  :inline :offset-assert 64)
+   (sky          uint32 8       :offset-assert 80)
+   (time         float           :offset-assert 112)
+   (off-s-0      uint16          :offset-assert 116)
+   (off-t-0      uint16          :offset-assert 118)
+   (off-s-1      uint16          :offset-assert 120)
+   (off-t-1      uint16          :offset-assert 122)
+   )
+  :method-count-assert 9
+  :size-assert         #x7c
+  :flag-assert         #x90000007c
+  )
+
+(deftype sky-work (structure)
+  ((adgif-tmpl dma-gif-packet :inline :offset-assert 0)
+   (draw-tmpl  dma-gif-packet :inline :offset-assert 32)
+   (blend-tmpl dma-gif-packet :inline :offset-assert 64)
+   (sky-data   uint128        5       :offset-assert 96)
+   (cloud-data uint128        5       :offset-assert 176)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
+
+(deftype sky-vertex (structure)
+  ((pos vector :inline :offset-assert 0)
+   (stq vector :inline :offset-assert 16)
+   (col vector :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(define *sky-drawn* #f)
+(define *cloud-drawn* #f)

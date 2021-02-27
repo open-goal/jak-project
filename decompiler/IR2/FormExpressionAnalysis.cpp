@@ -344,9 +344,8 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
                                                                env.file->words_by_seg, env.dts->ts);
           result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
         } else {
-          auto type = env.dts->parse_type_spec(kv->second.type_name);
-          auto decompiled_data =
-              decompile_at_label(type, lab, env.file->labels, env.file->words_by_seg, env.dts->ts);
+          auto decompiled_data = decompile_at_label_with_hint(kv->second, lab, env.file->labels,
+                                                              env.file->words_by_seg, *env.dts);
           result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
         }
       } else {

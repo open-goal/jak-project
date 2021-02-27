@@ -5,3 +5,261 @@
 ;; name in dgo: shadow-cpu-h
 ;; dgos: GAME, ENGINE
 
+(deftype shadow-settings (structure)
+  ((center        vector :inline :offset-assert 0)
+   (flags         int32          :offset 12)
+   (shadow-dir    vector :inline :offset-assert 16)
+   (dist-to-locus float          :offset 28)
+   (bot-plane     plane  :inline :offset-assert 32)
+   (top-plane     plane  :inline :offset-assert 48)
+   (fade-dist     float          :offset-assert 64)
+   (fade-start    float          :offset-assert 68)
+   (dummy-2       int32          :offset-assert 72)
+   (dummy-3       int32          :offset-assert 76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype shadow-control (basic)
+  ((settings shadow-settings :inline :offset-assert 16)
+   )
+  :method-count-assert 16
+  :size-assert         #x60
+  :flag-assert         #x1000000060
+  (:methods
+   (new (symbol type float float float float float) _type_ 0)
+   (clear-offset-bit (shadow-control) none 9)
+   (set-offset-bit (shadow-control) none 10)
+   (set-top-plane-offset (shadow-control float) none 11)
+   (set-bottom-plane-offset (shadow-control float) none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   )
+  )
+
+(defmethod clear-offset-bit shadow-control ((obj shadow-control))
+  "Clear a bit in w for the center of the shadow."
+  (set! (-> obj settings center w)
+        (the-as float (logand -33 (the-as int (-> obj settings center w))))
+        )
+  (none)
+  )
+
+(defmethod set-offset-bit shadow-control ((obj shadow-control))
+  "Set a bit in w for the center position of the shadow"
+  (set! (-> obj settings center w)
+        (the-as float (logior (the-as int (-> obj settings center w))
+                              32)
+                )
+        )
+  (none)
+  )
+
+
+(defmethod set-bottom-plane-offset shadow-control ((obj shadow-control) (arg0 float))
+  (set! (-> obj settings bot-plane d) (- arg0))
+  (none)
+  )
+
+(defmethod set-top-plane-offset shadow-control ((obj shadow-control) (arg0 float))
+  (set! (-> obj settings top-plane d) (- arg0))
+  (none)
+  )
+
+(deftype shadow-data (structure)
+  ((texoffset           vector     :inline :offset-assert 0)
+   (texscale            vector     :inline :offset-assert 16)
+   (clrs                uint128    2       :offset-assert 32)
+   (dma-unpack-template dma-packet :inline :offset-assert 64)
+   (dma-cnt             uint64             :offset-assert 80)
+   (vif-nop             uint32             :offset-assert 88)
+   (vif-unpack-v4-8     uint32             :offset-assert 92)
+   (pdc                 basic              :offset-assert 96)
+   (dist                float              :offset-assert 100)
+   (oddeven             uint8              :offset-assert 104)
+   (waits               uint32             :offset-assert 108)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+(deftype shadow-work (structure)
+  ((shadow-data shadow-data :inline :offset-assert 0)
+   (inbuf       uint128     600     :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x25f0
+  :flag-assert         #x9000025f0
+  )
+
+(deftype shadow-run (structure)
+  ((first uint32  :offset-assert 0)
+   (next  uint32  :offset-assert 4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype shadow-queue (structure)
+  ((num-runs uint32     :offset-assert 0)
+   (cur-run  uint32     :offset-assert 4)
+   (run      shadow-run 15 :inline :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xf8
+  :flag-assert         #x9000000f8
+  )
+
+(defun shadow-queue-append ((arg0 shadow-queue))
+  "Increment the run counter"
+  (local-vars (v0-0 uint))
+  (set! v0-0 (+ (-> arg0 cur-run) 1))
+  (set! (-> arg0 cur-run) v0-0)
+  v0-0
+  )
+
+(defun shadow-queue-reset ((arg0 shadow-queue))
+  "Reset the run counter"
+  (set! (-> arg0 cur-run) 0)
+  0
+  )
+
+(define *shadow-queue* (new 'global 'shadow-queue))
+
+(deftype shadow-vertex (structure)
+  ((x      float  :offset-assert 0)
+   (y      float  :offset-assert 4)
+   (z      float  :offset-assert 8)
+   (weight float  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype shadow-matrix-ref (structure)
+  ((joint-0 uint8  :offset-assert 0)
+   (joint-1 uint8  :offset-assert 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x2
+  :flag-assert         #x900000002
+  )
+
+;; BUG:
+;; the shadow-edge type is multiply defined.
+;; it seems like the first definition is not used.
+;; The OpenGOAL compiler doesn't like this, so this is commented out.
+#|
+;; shadow-cpu-h
+; (deftype shadow-edge (structure)      ;
+;   ((ind-0 uint16  :offset-assert 0)   ;
+;    (ind-1 uint16  :offset-assert 2)   ;
+;    (tri-0 uint16  :offset-assert 4)   ;
+;    (tri-1 uint16  :offset-assert 6)   ;
+;    )                                  ;
+;   :method-count-assert 9              ;
+;   :size-assert         #x4            ;
+;   :flag-assert         #x900000004    ;
+;   )                                   ;
+|#
+
+(deftype shadow-tri (structure)
+  ((ind-0 uint8  :offset-assert 0)
+   (ind-1 uint8  :offset-assert 1)
+   (ind-2 uint8  :offset-assert 2)
+   (faces uint8  :offset-assert 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype shadow-edge (structure)
+  ((ind-0 uint8  :offset-assert 0)
+   (ind-1 uint8  :offset-assert 1)
+   (tri-0 uint8  :offset-assert 2)
+   (tri-1 uint8  :offset-assert 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype shadow-header (structure)
+  ((qwc-data         uint32  :offset-assert 0)
+   (num-joints       uint32  :offset-assert 4)
+   (num-verts        uint16  :offset-assert 8)
+   (num-twos         uint16  :offset-assert 10)
+   (num-single-tris  uint16  :offset-assert 12)
+   (num-single-edges uint16  :offset-assert 14)
+   (num-double-tris  uint16  :offset-assert 16)
+   (num-double-edges uint16  :offset-assert 18)
+   (ofs-verts        uint32  :offset-assert 20)
+   (ofs-refs         uint32  :offset-assert 24)
+   (ofs-single-tris  uint32  :offset-assert 28)
+   (ofs-single-edges uint32  :offset-assert 32)
+   (ofs-double-tris  uint32  :offset-assert 36)
+   (ofs-double-edges uint32  :offset-assert 40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype shadow-geo (art-element)
+  ((total-size uint32                 :offset-assert 32)
+   (header     shadow-header :inline  :offset 32)
+   (rest       uint64       :dynamic :offset-assert 80)
+   )
+  :method-count-assert 13
+  :size-assert         #x50
+  :flag-assert         #xd00000050
+  (:methods
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   )
+  )
+
+(defmethod new shadow-control ((allocation symbol) (type-to-make type)
+                               (bottom-offset float)
+                               (top-offset float)
+                               (dir float)
+                               (center float)
+                               (fade float)
+                               )
+  (local-vars (v0-0 shadow-control) (v1-2 vector) (v1-3 plane) (v1-4 plane))
+  (set! v0-0
+        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+        )
+  (set! (-> v0-0 settings center data 3) center)
+  (set! v1-2 (-> v0-0 settings shadow-dir))
+  (set! (-> v1-2 x) 0.000000)
+  (set! (-> v1-2 y) -1.000000)
+  (set! (-> v1-2 z) 0.000000)
+  (set! (-> v1-2 w) dir)
+  (set! v1-3 (-> v0-0 settings bot-plane))
+  (set! (-> v1-3 a) 0.000000)
+  (set! (-> v1-3 b) 1.000000)
+  (set! (-> v1-3 c) 0.000000)
+  (set! (-> v1-3 d) (- bottom-offset))
+  (set! v1-4 (-> v0-0 settings top-plane))
+  (set! (-> v1-4 a) 0.000000)
+  (set! (-> v1-4 b) 1.000000)
+  (set! (-> v1-4 c) 0.000000)
+  (set! (-> v1-4 d) (- top-offset))
+  (set! (-> v0-0 settings fade-dist) fade)
+  v0-0
+  )
+
+(define *shadow* #f)
+(define *shadow-object* #f)
+(define *shadow-debug* #f)
