@@ -36,10 +36,10 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_type_analysis_pass();
   lg::info("Register usage analysis...");
   ir2_register_usage_pass();
-  lg::info("Initial structuring..");
-  ir2_cfg_build_pass();
   lg::info("Variable analysis...");
   ir2_variable_pass();
+  lg::info("Initial structuring..");
+  ir2_cfg_build_pass();
   if (get_config().analyze_expressions) {
     lg::info("Storing temporary form result...");
     ir2_store_current_forms();

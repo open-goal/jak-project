@@ -330,21 +330,23 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
       // we also want to fix up the use/def info for the result.
       // it's somewhat arbitrary, but we use the convention that the short-circuit defs
       // are eliminated:
-      auto& ud_info = func.ir2.env.get_use_def_info(as_set->dst());
-      if (i == int(ir->entries.size()) - 2) {
-        if (ud_info.def_count() == 1) {
-          // the final case of the or doesn't explicitly set the destination register.
-          // this can happen if the move is eliminated during coloring.
-          // for now, let's leave this last def here, just so it looks like _something_ sets it.
+      if (func.ir2.env.has_local_vars()) {
+        auto& ud_info = func.ir2.env.get_use_def_info(as_set->dst());
+        if (i == int(ir->entries.size()) - 2) {
+          if (ud_info.def_count() == 1) {
+            // the final case of the or doesn't explicitly set the destination register.
+            // this can happen if the move is eliminated during coloring.
+            // for now, let's leave this last def here, just so it looks like _something_ sets it.
 
+          } else {
+            // lg::warn("Disabling def of {} in final or delay slot",
+            // as_set->to_string(func.ir2.env));
+            func.ir2.env.disable_def(as_set->dst());
+          }
         } else {
-          // lg::warn("Disabling def of {} in final or delay slot",
-          // as_set->to_string(func.ir2.env));
+          // lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
           func.ir2.env.disable_def(as_set->dst());
         }
-      } else {
-        // lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
-        func.ir2.env.disable_def(as_set->dst());
       }
 
       if (i == 0) {
@@ -679,12 +681,13 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
     }
   }
 
-  for (size_t i = 0; i < cne->entries.size(); i++) {
-    if (func.ir2.env.has_reg_use()) {
-      auto branch = dynamic_cast<BranchElement*>(cne->entries.at(i).original_condition_branch);
-      auto reg = cne->entries.at(i).false_destination;
-      // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
-      func.ir2.env.disable_def(*reg);
+  if (func.ir2.env.has_local_vars()) {
+    for (size_t i = 0; i < cne->entries.size(); i++) {
+      if (func.ir2.env.has_reg_use()) {
+        auto reg = cne->entries.at(i).false_destination;
+        // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
+        func.ir2.env.disable_def(*reg);
+      }
     }
   }
 }
