@@ -14,7 +14,7 @@ class GenericOpMatcher;
 struct MatchResult {
   bool matched = false;
   struct Maps {
-    std::vector<std::optional<Variable>> regs;
+    std::vector<std::optional<RegisterAccess>> regs;
     std::unordered_map<int, std::string> strings;
     std::unordered_map<int, Form*> forms;
     std::unordered_map<int, int> label;

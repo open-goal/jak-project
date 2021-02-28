@@ -277,7 +277,7 @@ bool delay_slot_sets_truthy(BranchElement* branch, SetVarOp& delay) {
  */
 bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement* ir) {
   Register destination;
-  Variable ir_dest;
+  RegisterAccess ir_dest;
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
@@ -318,6 +318,34 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
         branch_info.consumes.insert(x);
       }
 
+      auto delay_op = func.ir2.atomic_ops->ops.at(delay_id).get();
+      auto as_set = dynamic_cast<SetVarOp*>(delay_op);
+      assert(as_set);
+      if (as_set->src().is_var()) {
+        // must be the case where the src should have truthy in it.
+        lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
+        func.ir2.env.disable_use(as_set->src().var());
+      }
+
+      // we also want to fix up the use/def info for the result.
+      // it's somewhat arbitrary, but we use the convention that the short-circuit defs
+      // are eliminated:
+      auto& ud_info = func.ir2.env.get_use_def_info(as_set->dst());
+      if (i == int(ir->entries.size()) - 2) {
+        if (ud_info.def_count() == 1) {
+          // the final case of the or doesn't explicitly set the destination register.
+          // this can happen if the move is eliminated during coloring.
+          // for now, let's leave this last def here, just so it looks like _something_ sets it.
+
+        } else {
+          lg::warn("Disabling def of {} in final or delay slot", as_set->to_string(func.ir2.env));
+          func.ir2.env.disable_def(as_set->dst());
+        }
+      } else {
+        lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
+        func.ir2.env.disable_def(as_set->dst());
+      }
+
       if (i == 0) {
         live_out_result = (branch_info.written_and_unused.find(ir_dest.reg()) ==
                            branch_info.written_and_unused.end());
@@ -346,12 +374,20 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
  * Note - this will convert an and to a very strange or, so always use the try as and first.
  */
 bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* ir) {
-  Register destination;
-  Variable ir_dest;
+  // all cases of an or, excluding the last one, should move the value "true" into the result reg
+  // in case the short circuit is taken.  The final case should just write the result reg.
+
+  Register destination;    // destination register
+  RegisterAccess ir_dest;  // destination access (the first one)
+
+  // all but the last one (these should all do the delay slot trick)
+  // this first pass is where we can reject this as an or.
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
+    // short circuit branch
     auto branch = get_condition_branch(ir->entries.at(i).condition);
     assert(branch.first);
     assert(ir->entries.at(i).branch_delay.has_value());
+    // the branch should write true (there's two ways this can happen)
     if (!delay_slot_sets_truthy(branch.first, *ir->entries.at(i).branch_delay)) {
       return false;
     }
@@ -367,10 +403,21 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
     }
   }
 
+  // at this point, we know that all non-last cases write the destination, and what
+  // the destination is.
+  // so we commit to rewriting this thing as an or, and any errors from here on are fatal.
+
   ir->kind = ShortCircuitElement::OR;
   ir->final_result = ir_dest;
 
+  // we also would like to know if the result of this OR is used or not.
+  // there's also a sanity check that:
+  //  if the result is used - all writes to the result reg _should_ be live
+  //  if the result is unused - all writes to the result reg should be dead.
+  //  otherwise it means that our control flow graph is messed up, and we abort.
+
   bool live_out_result = false;
+  bool left_last_delay_def = false;
 
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
@@ -380,11 +427,48 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
       auto delay_id = ir->entries.at(i).branch_delay->dst().idx();
       auto& delay_info = func.ir2.env.reg_use().op.at(delay_id);
 
+      // cheat for the old method
       auto branch_id = branch.first->op()->op_id();
       auto& branch_info = func.ir2.env.reg_use().op.at(branch_id);
       for (auto x : delay_info.consumes) {
         branch_info.consumes.insert(x);
       }
+
+      // the branch may look like this:
+      // bnel s7, a3, L283
+      // or a2, a3, r0
+      // which reads a3 twice.  But we want it to count as only once, as the second read
+      // is inserted by the GOAL compiler, not by putting a var twice in the source code.
+      auto delay_op = func.ir2.atomic_ops->ops.at(delay_id).get();
+      auto as_set = dynamic_cast<SetVarOp*>(delay_op);
+      assert(as_set);
+      if (as_set->src().is_var()) {
+        // must be the case where the src should have truthy in it.
+        lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
+        func.ir2.env.disable_use(as_set->src().var());
+      }
+
+      // we also want to fix up the use/def info for the result.
+      // it's somewhat arbitrary, but we use the convention that the short-circuit defs
+      // are eliminated:
+      auto& ud_info = func.ir2.env.get_use_def_info(as_set->dst());
+      if (i == int(ir->entries.size()) - 2) {
+        if (ud_info.def_count() == 1) {
+          // the final case of the or doesn't explicitly set the destination register.
+          // this can happen if the move is eliminated during coloring.
+          // for now, let's leave this last def here, just so it looks like _something_ sets it.
+          // TODO - what if this isn't a def in the last slot? Does it matter?
+          left_last_delay_def = true;
+        } else {
+          lg::warn("Disabling def of {} in final or delay slot", as_set->to_string(func.ir2.env));
+          func.ir2.env.disable_def(as_set->dst());
+        }
+
+      } else {
+        lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
+        func.ir2.env.disable_def(as_set->dst());
+      }
+
 
       if (i == 0) {
         live_out_result = (delay_info.written_and_unused.find(ir_dest.reg()) ==
@@ -400,7 +484,11 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
     *(branch.second) = replacement;
   }
 
+  // TODO - check the one remaining def location?
+
   ir->used_as_value = live_out_result;
+
+
   return true;
 }
 
@@ -556,7 +644,8 @@ void convert_cond_no_else_to_compare(FormPool& pool,
   }
 }
 
-void clean_up_cond_no_else_final(const Function& func, CondNoElseElement* cne) {
+void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
+
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
     auto& entry = cne->entries.at(idx);
     if (entry.false_destination.has_value()) {
@@ -587,6 +676,16 @@ void clean_up_cond_no_else_final(const Function& func, CondNoElseElement* cne) {
       assert(branch);
       assert(branch_info_i.written_and_unused.find(reg->reg()) !=
              branch_info_i.written_and_unused.end());
+    }
+  }
+
+  for (size_t i = 0; i < cne->entries.size(); i++) {
+    if (func.ir2.env.has_reg_use()) {
+      auto branch = dynamic_cast<BranchElement*>(cne->entries.at(i).original_condition_branch);
+      auto& branch_info_i = func.ir2.env.reg_use().op.at(branch->op()->op_id());
+      auto reg = cne->entries.at(i).false_destination;
+      lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
+      func.ir2.env.disable_def(*reg);
     }
   }
 }
@@ -980,7 +1079,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
     return nullptr;
   }
 
-  std::optional<Variable> clobber_ir;
+  std::optional<RegisterAccess> clobber_ir;
   auto dsubu_set = dynamic_cast<SetVarElement*>(dsubu_candidate);
   auto dsrav_set = dynamic_cast<SetVarElement*>(dsrav_candidate);
   assert(dsubu_set && dsrav_set);
@@ -988,7 +1087,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
     clobber_ir = dsubu_set->dst();
   }
 
-  Variable dest_ir = result;
+  RegisterAccess dest_ir = result;
   SimpleAtom shift_ir = branch->op()->condition().src(0);
   auto value_ir =
       dynamic_cast<const SimpleExpressionElement*>(dsrav_set->src()->try_as_single_element())
@@ -1015,6 +1114,9 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
       nullptr, shift_ir.var(), value_ir.var(), clobber_ir, is_arith, consumed);
   auto set_form = pool.alloc_element<SetVarElement>(dest_ir, ash_form, true);
   b0_c_ptr->push_back(set_form);
+
+  // fix up reg info
+  f.ir2.env.disable_use(delay->src().get_arg(0).var());
 
   return b0_c_ptr;
 }
@@ -1147,7 +1249,7 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   assert(src_reg3.var().reg() == src_reg.reg());
   assert(offset.get_int() == -4);
 
-  std::optional<Variable> clobber;
+  std::optional<RegisterAccess> clobber;
   if (temp_reg.reg() != dst_reg.reg()) {
     clobber = first_branch->op()->condition().src(0).var();
   }
@@ -1157,12 +1259,18 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   // remove the shift
   b0_ptr->pop_back();
 
+  // add the type-of
   auto obj = pool.alloc_single_element_form<SimpleExpressionElement>(
       nullptr, shift->expr().get_arg(0).as_expr(), set_shift->dst().idx());
   auto type_op = pool.alloc_single_element_form<TypeOfElement>(nullptr, obj, clobber);
   auto op = pool.alloc_element<SetVarElement>(else_case->dst(), type_op, true);
   b0_ptr->push_back(op);
-  // add the type-of
+
+  // fix register info
+  f.ir2.env.disable_def(b0_delay_op.dst());
+  f.ir2.env.disable_def(b1_delay_op.dst());
+  f.ir2.env.disable_use(shift->expr().get_arg(0).var());
+
 
   return b0_ptr;
 }

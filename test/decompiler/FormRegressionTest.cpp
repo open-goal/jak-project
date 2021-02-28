@@ -128,7 +128,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
 
   // for now, just test that this can at least be called.
   if (test->func.ir2.top_form) {
-    VariableSet vars;
+    RegAccessSet vars;
     test->func.ir2.top_form->collect_vars(vars);
 
     if (do_expressions) {

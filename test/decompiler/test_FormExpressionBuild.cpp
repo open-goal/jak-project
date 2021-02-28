@@ -2053,10 +2053,10 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "    bgtzl v1, L62\n"
       "    lw v1, pair(s7)\n"
       "\n"
-      "    lwu v1, -4(a0)\n"  // want to cheat this read.
+      "    lwu v1, -4(a0)\n"  // use 1
       "L62:\n"
       "    lwu t9, 24(v1)\n"
-      "    jalr ra, t9\n"
+      "    jalr ra, t9\n"    // use 2
       "    sll v0, ra, 0\n"
       "\n"
       "    or v1, v0, r0\n"
@@ -2535,36 +2535,36 @@ TEST_F(FormRegressionTest, ExprAssert) {
   std::string expected = "(begin (if (not arg0) (format (quote #t) \"A ~A\" arg1)) 0)";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
-//
-// TEST_F(FormRegressionTest, ExprTerminal2) {
-//  std::string func =
-//      "sll r0, r0, 0\n"
-//      "L29:\n"
-//      "    daddiu sp, sp, -16\n"
-//      "    sd fp, 8(sp)\n"
-//      "    or fp, t9, r0\n"
-//
-//      //"    lwc1 f0, L71(fp)\n"
-//      "    mtc1 f0, r0\n"
-//      "    mtc1 f1, a0\n"
-//      "    mul.s f0, f0, f1\n"
-//      "    mtc1 f1, a1\n"
-//      "    sub.s f0, f0, f1\n"
-//      "    mtc1 f1, a2\n"
-//      "    div.s f0, f0, f1\n"
-//      "    sqrt.s f0, f0\n"
-//      "    mtc1 f1, a1\n"
-//      "    mtc1 f2, a2\n"
-//      "    mul.s f3, f0, f0\n"
-//      "    mul.s f2, f2, f3\n"
-//      "    add.s f1, f1, f2\n"
-//      "    sub.s f0, f0, f1\n"
-//      "    mfc1 v0, f0\n"
-//      "    ld fp, 8(sp)\n"
-//      "    jr ra\n"
-//      "    daddiu sp, sp, 16\n";
-//  std::string type = "(function float float float float float)";
-//
-//  std::string expected = "(begin (if (not arg0) (format (quote #t) \"A ~A\" arg1)) 0)";
-//  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
-//}
+
+ TEST_F(FormRegressionTest, ExprTerminal2) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L29:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+
+      //"    lwc1 f0, L71(fp)\n"
+      "    mtc1 f0, r0\n"
+      "    mtc1 f1, a0\n"
+      "    mul.s f0, f0, f1\n"
+      "    mtc1 f1, a1\n"
+      "    sub.s f0, f0, f1\n"
+      "    mtc1 f1, a2\n"
+      "    div.s f0, f0, f1\n"
+      "    sqrt.s f0, f0\n"
+      "    mtc1 f1, a1\n"
+      "    mtc1 f2, a2\n"
+      "    mul.s f3, f0, f0\n"
+      "    mul.s f2, f2, f3\n"
+      "    add.s f1, f1, f2\n"
+      "    sub.s f0, f0, f1\n"
+      "    mfc1 v0, f0\n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16\n";
+  std::string type = "(function float float float float float)";
+
+  std::string expected = "(begin (if (not arg0) (format (quote #t) \"A ~A\" arg1)) 0)";
+  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
+}

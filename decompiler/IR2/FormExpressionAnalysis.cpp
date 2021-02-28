@@ -88,7 +88,7 @@ bool is_power_of_two(int in, int* out) {
 /*!
  * Create a form which represents a variable.
  */
-Form* var_to_form(const Variable& var, FormPool& pool) {
+Form* var_to_form(const RegisterAccess& var, FormPool& pool) {
   return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
 }
 
@@ -101,13 +101,14 @@ Form* var_to_form(const Variable& var, FormPool& pool) {
  * @param output   : list of locations to push results.
  * @param consumes : if you have a different list of variables that are consumed by this operation.
  */
-void pop_helper(const std::vector<Variable>& vars,
+void pop_helper(const std::vector<RegisterAccess>& vars,
                 const Env& env,
                 FormPool& pool,
                 FormStack& stack,
                 const std::vector<std::vector<FormElement*>*>& output,
                 bool allow_side_effects,
-                const std::optional<RegSet>& consumes = std::nullopt) {
+                const std::optional<RegSet>& consumes = std::nullopt,
+                const std::vector<int>& times_used = {}) {
   // to submit to stack to attempt popping
   std::vector<Register> submit_regs;
   // submit_reg[i] is for var submit_reg_to_var[i]
@@ -126,8 +127,27 @@ void pop_helper(const std::vector<Variable>& vars,
     if (consumes_to_use.find(var.reg()) != consumes_to_use.end()) {
       if (reg_counts.at(var.reg()) == 1) {
         // we consume the register, so it's safe to try popping.
-        submit_reg_to_var.push_back(var_idx);
-        submit_regs.push_back(var.reg());
+
+        int times = 1;
+        if (!times_used.empty()) {
+          times = times_used.at(var_idx);
+        }
+
+        auto& use_def = env.get_use_def_info(var);
+        if (use_def.use_count() == times && use_def.def_count() == 1) {
+          submit_reg_to_var.push_back(var_idx);
+          submit_regs.push_back(var.reg());
+        } else {
+          fmt::print("Unsafe to pop {}: used {} times, def {} times, expected use {}\n", var.to_string(env),
+                     use_def.use_count(), use_def.def_count(), times);
+          if (var.to_string(env) == "a0-1") {
+            for (auto& use : use_def.uses) {
+              if (!use.disabled) {
+                fmt::print("  at instruction {}\n", use.op_id);
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -185,12 +205,13 @@ void pop_helper(const std::vector<Variable>& vars,
  * This uses the barrier register approach, but it is only effective if you put all registers
  * appearing at the same level.
  */
-std::vector<Form*> pop_to_forms(const std::vector<Variable>& vars,
+std::vector<Form*> pop_to_forms(const std::vector<RegisterAccess>& vars,
                                 const Env& env,
                                 FormPool& pool,
                                 FormStack& stack,
                                 bool allow_side_effects,
-                                const std::optional<RegSet>& consumes = std::nullopt) {
+                                const std::optional<RegSet>& consumes = std::nullopt,
+                                const std::vector<int>& times_to_use = {}) {
   std::vector<Form*> forms;
   std::vector<std::vector<FormElement*>> forms_out;
   std::vector<std::vector<FormElement*>*> form_ptrs;
@@ -201,7 +222,7 @@ std::vector<Form*> pop_to_forms(const std::vector<Variable>& vars,
     form_ptrs.push_back(&x);
   }
 
-  pop_helper(vars, env, pool, stack, form_ptrs, allow_side_effects, consumes);
+  pop_helper(vars, env, pool, stack, form_ptrs, allow_side_effects, consumes, times_to_use);
 
   for (auto& x : forms_out) {
     forms.push_back(pool.alloc_sequence_form(nullptr, x));
@@ -215,7 +236,7 @@ std::vector<Form*> pop_to_forms(const std::vector<Variable>& vars,
 /*!
  * type == float (exactly)?
  */
-bool is_float_type(const Env& env, int my_idx, Variable var) {
+bool is_float_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
   return type == TypeSpec("float");
 }
@@ -223,7 +244,7 @@ bool is_float_type(const Env& env, int my_idx, Variable var) {
 /*!
  * type == int (exactly)?
  */
-bool is_int_type(const Env& env, int my_idx, Variable var) {
+bool is_int_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
   return type == TypeSpec("int");
 }
@@ -231,12 +252,12 @@ bool is_int_type(const Env& env, int my_idx, Variable var) {
 /*!
  * type == uint (exactly)?
  */
-bool is_uint_type(const Env& env, int my_idx, Variable var) {
+bool is_uint_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
   return type == TypeSpec("uint");
 }
 
-bool is_ptr_or_child(const Env& env, int my_idx, Variable var) {
+bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
   return type == "pointer";
 }
@@ -1064,7 +1085,7 @@ void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormSta
 void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   auto op = m_is_car ? FixedOperatorKind::CAR : FixedOperatorKind::CDR;
   if (m_value.is_var()) {
-    auto vars = std::vector<Variable>({m_value.var(), m_pair});
+    auto vars = std::vector<RegisterAccess>({m_value.var(), m_pair});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
     auto addr = pool.alloc_single_element_form<GenericElement>(
         nullptr, GenericOperator::make_fixed(op), popped.at(1));
@@ -1088,7 +1109,7 @@ void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   if (m_expr.is_var()) {
-    auto vars = std::vector<Variable>({m_expr.var(), m_base_var});
+    auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
     if (m_cast_type.has_value()) {
       m_dst->set_base(
@@ -1104,7 +1125,7 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     fr->mark_popped();
     stack.push_form_element(fr, true);
   } else {
-    auto vars = std::vector<Variable>({m_base_var});
+    auto vars = std::vector<RegisterAccess>({m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
     if (m_cast_type.has_value()) {
       m_dst->set_base(
@@ -1127,13 +1148,13 @@ void StoreArrayAccess::push_to_stack(const Env& env, FormPool& pool, FormStack& 
   Form* expr_form = nullptr;
   Form* array_form = nullptr;
   if (m_expr.is_var()) {
-    auto vars = std::vector<Variable>({m_expr.var(), m_base_var});
+    auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
     m_dst->mark_popped();
     expr_form = popped.at(0);
     array_form = popped.at(1);
   } else {
-    auto vars = std::vector<Variable>({m_base_var});
+    auto vars = std::vector<RegisterAccess>({m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
     m_dst->mark_popped();
     expr_form = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_expr, m_my_idx);
@@ -1159,7 +1180,8 @@ void AshElement::update_from_stack(const Env& env,
                                    std::vector<FormElement*>* result,
                                    bool allow_side_effects) {
   mark_popped();
-  auto forms = pop_to_forms({value, shift_amount}, env, pool, stack, allow_side_effects, consumed);
+  auto forms =
+      pop_to_forms({value, shift_amount}, env, pool, stack, allow_side_effects, consumed);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ARITH_SHIFT), forms.at(0), forms.at(1));
   result->push_back(new_form);
@@ -1195,23 +1217,23 @@ void FunctionCallElement::update_from_stack(const Env& env,
   auto nargs = m_op->arg_vars().size();
   args.resize(nargs, nullptr);
 
-  std::vector<Variable> all_pop_vars = {m_op->function_var()};
+  std::vector<RegisterAccess> all_pop_vars = {m_op->function_var()};
   for (size_t i = 0; i < nargs; i++) {
     all_pop_vars.push_back(m_op->arg_vars().at(i));
   }
 
   TypeSpec function_type;
-  bool is_method = false;
+  bool is_virtual_method = false;
   auto& tp_type = env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg());
   if (env.has_type_analysis()) {
     if (tp_type.kind == TP_Type::Kind::VIRTUAL_METHOD && all_pop_vars.size() >= 1) {
-      is_method = true;
+      is_virtual_method = true;
     }
     function_type = tp_type.typespec();
   }
 
   // assert(is_method == m_op->is_method());
-  if (is_method != m_op->is_method()) {
+  if (is_virtual_method != m_op->is_method()) {
     lg::error("Disagreement on method!");
     throw std::runtime_error("Disagreement on method");
   }
@@ -1223,9 +1245,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
   //    all_pop_vars.erase(all_pop_vars.begin() + 1);
   //  }
 
+  fmt::print("Function call: {} {}\n", is_virtual_method, tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD);
+
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
+
   auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     std::swap(unstacked.at(0), unstacked.at(1));
@@ -1252,7 +1277,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
 
   FormElement* new_form = nullptr;
-  if (is_method) {
+  if (is_virtual_method) {
     //    fmt::print("STACK:\n{}\n\n", stack.print(env));
     auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
                                {Matcher::any(0), Matcher::any(1)});
@@ -1638,7 +1663,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     return;
   }
   // first, let's try to detect if all bodies write the same value
-  std::optional<Variable> last_var;
+  std::optional<RegisterAccess> last_var;
   bool rewrite_as_set = true;
 
   // the first condition is special
@@ -1693,9 +1718,11 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   write_output_forms.push_back(else_ir);
 
   // check all to see if they write the value.
+  std::vector<SetVarElement*> dest_sets;
   for (auto form : write_output_forms) {
     auto last_in_body = dynamic_cast<SetVarElement*>(form->elts().back());
     if (last_in_body) {
+      dest_sets.push_back(last_in_body);
       if (last_var.has_value()) {
         if (last_var->reg() != last_in_body->dst().reg()) {
           rewrite_as_set = false;
@@ -1703,6 +1730,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         }
       }
       last_var = last_in_body->dst();
+    } else {
+      rewrite_as_set = false;
+      break;
     }
   }
 
@@ -1725,6 +1755,16 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       rewrite_to_get_var(entry.body->elts(), pool, *last_var, env);
     }
     rewrite_to_get_var(else_ir->elts(), pool, *last_var, env);
+  }
+
+  // update register info
+  if (rewrite_as_set && !set_unused) {
+    assert(dest_sets.size() == write_output_forms.size());
+    for (size_t i = 0; i < dest_sets.size() - 1; i++) {
+      auto var = dest_sets.at(i)->dst();
+      auto* env2 = const_cast<Env*>(&env);
+      env2->disable_def(var);
+    }
   }
 
   if (rewrite_as_set) {
@@ -1980,7 +2020,7 @@ void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
   mark_popped();
   std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
-  std::vector<Variable> vars;
+  std::vector<RegisterAccess> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     if (m_src[i]->is_var()) {
@@ -2030,7 +2070,7 @@ void ConditionElement::update_from_stack(const Env& env,
   mark_popped();
   std::vector<Form*> source_forms, popped_forms;
   std::vector<TypeSpec> source_types;
-  std::vector<Variable> vars;
+  std::vector<RegisterAccess> vars;
 
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     if (m_src[i]->is_var()) {
