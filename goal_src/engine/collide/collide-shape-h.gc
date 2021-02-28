@@ -5,3 +5,639 @@
 ;; name in dgo: collide-shape-h
 ;; dgos: GAME, ENGINE
 
+;; Represents a collision between the "rider" (zoomer?) and a primitive shape.
+;; collisions are "sticky", meaning these structures stick around.
+(deftype collide-sticky-rider (structure)
+  ((rider-handle    handle         :offset-assert 0)
+   (sticky-prim     basic          :offset-assert 8)
+   (prim-ry         float          :offset-assert 12)
+   (rider-local-pos vector :inline :offset-assert 16)
+   )
+  :method-count-assert 10
+  :size-assert         #x20
+  :flag-assert         #xa00000020
+  (:methods
+   (set-rider! (_type_ handle) symbol 9)
+   )
+  )
+
+(defmethod set-rider! collide-sticky-rider ((obj collide-sticky-rider) (arg0 handle))
+  "Set the rider and clear the primitive."
+  (set! (-> obj rider-handle) arg0)
+  (set! (-> obj sticky-prim) #f)
+  #f
+  )
+
+;; A collection of collide-sticky-riders
+;; dynamic type. I think there's one collide-sticky-rider per rider?
+(deftype collide-sticky-rider-group (basic)
+  ((num-riders       int32     :offset-assert 4)
+   (allocated-riders int32     :offset-assert 8)
+   (rider            collide-sticky-rider 1 :inline :offset-assert 16)
+   )
+  :method-count-assert 11
+  :size-assert         #x30
+  :flag-assert         #xb00000030
+  (:methods
+   (new (symbol type int) _type_ 0)
+   (dummy-9 () none 9)
+   (reset! (_type_) int 10)
+   )
+  )
+
+(defmethod reset! collide-sticky-rider-group ((obj collide-sticky-rider-group))
+  "Reset all active riders"
+  (set! (-> obj num-riders) 0)
+  0
+  )
+
+(deftype pull-rider-info (structure)
+  ((rider          collide-sticky-rider         :offset-assert 0)
+   (rider-cshape   basic                        :offset-assert 4)
+   (rider-delta-ry float                        :offset-assert 8)
+   (rider-dest     vector               :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype collide-shape-intersect (basic)
+  ((move-vec       vector             :inline :offset-assert 16)
+   (best-u         float                      :offset-assert 32)
+   (best-tri       collide-tri-result :inline :offset-assert 48)
+   (best-from-prim basic                      :offset-assert 132)
+   (best-to-prim   basic                      :offset-assert 136)
+   )
+  :method-count-assert 10
+  :size-assert         #x8c
+  :flag-assert         #xa0000008c
+  (:methods
+   (dummy-9 () none 9)
+   )
+  )
+
+(deftype collide-overlap-result (structure)
+  ((best-dist      float                      :offset-assert 0)
+   (best-from-prim basic                      :offset-assert 4)
+   (best-to-prim   basic                      :offset-assert 8)
+   (best-from-tri  collide-tri-result :inline :offset-assert 16)
+   )
+  :method-count-assert 10
+  :size-assert         #x64
+  :flag-assert         #xa00000064
+  (:methods
+   (reset! (_type_) none 9)
+   )
+  )
+
+(defmethod reset! collide-overlap-result ((obj collide-overlap-result))
+  "Reset the result."
+  (set! (-> obj best-dist) 0.000000)
+  (set! (-> obj best-from-prim) #f)
+  (set! (-> obj best-to-prim) #f)
+  (none)
+  )
+
+(deftype overlaps-others-params (structure)
+  ((options uint32  :offset-assert 0)
+   (tlist   basic   :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; The engine system is used to link collision checks with processes.
+(define *collide-hit-by-player-list*
+    (new 'global 'engine 'collide-hit-by-player-list 768)
+  )
+
+(define *collide-usually-hit-by-player-list*
+    (new 'global 'engine 'collide-usually-hit-by-player-list 256)
+  )
+
+(define *collide-hit-by-others-list*
+    (new 'global 'engine 'collide-hit-by-others-list 96)
+  )
+
+(define *collide-player-list* (new 'global 'engine 'collide-player-list 32))
+
+;; some parts of collide-shape-prim are broken out here.
+(deftype collide-prim-core (structure)
+  ((world-sphere vector  :inline :offset-assert 0)
+   (collide-as   uint64          :offset-assert 16)
+   (action       uint32          :offset-assert 24)
+   (offense      int8            :offset-assert 28)
+   (prim-type    int8            :offset-assert 29)
+   (extra        uint8 2       :offset-assert 30)
+   (quad         uint128 2       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; the base class for collision shapes.
+(deftype collide-shape-prim (basic)
+  ((cshape          basic                     :offset-assert 4)
+   (prim-id         uint32                    :offset-assert 8)
+   (transform-index int8                      :offset-assert 12)
+   (prim-core       collide-prim-core :inline :offset-assert 16)
+   (local-sphere    vector            :inline :offset-assert 48)
+   (collide-with    uint64                    :offset-assert 64)
+   ;; overlays of the prim-core
+   (world-sphere    vector            :inline :offset 16)
+   (collide-as      uint64                    :offset 32)
+   (action          uint32                    :offset 40)
+   (offense         int8                      :offset 44)
+   (prim-type       int8                      :offset 45)
+   ;; overlay of the local-sphere w
+   (radius          float                     :offset 60) ;; meters
+   )
+  :method-count-assert 28
+  :size-assert         #x48
+  :flag-assert         #x1c00000048
+  (:methods
+   (new (symbol type basic uint int) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   (dummy-17 () none 17)
+   (dummy-18 () none 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   (dummy-21 () none 21)
+   (dummy-22 () none 22)
+   (dummy-23 () none 23)
+   (dummy-24 () none 24)
+   (dummy-25 () none 25)
+   (dummy-26 () none 26)
+   (dummy-27 () none 27)
+   )
+  )
+
+;; sphere collision
+;; the pat is stored directly here.
+(deftype collide-shape-prim-sphere (collide-shape-prim)
+  ((pat             uint32                    :offset-assert 72)
+   )
+  :method-count-assert 28
+  :size-assert         #x4c
+  :flag-assert         #x1c0000004c
+  (:methods
+   (new (symbol type basic uint) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   (dummy-17 () none 17)
+   (dummy-18 () none 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   (dummy-21 () none 21)
+   (dummy-22 () none 22)
+   (dummy-23 () none 23)
+   (dummy-24 () none 24)
+   (dummy-25 () none 25)
+   (dummy-26 () none 26)
+   (dummy-27 () none 27)
+   )
+  )
+
+;; mesh collision
+;; the pats are stored per tri in the mesh.
+(deftype collide-shape-prim-mesh (collide-shape-prim)
+  ((mesh            basic                     :offset-assert 72)
+   (mesh-id         int32                     :offset-assert 76)
+   (mesh-cache-id   uint64                    :offset-assert 80)
+   (mesh-cache-tris uint32                    :offset-assert 88)
+   )
+  :method-count-assert 29
+  :size-assert         #x5c
+  :flag-assert         #x1d0000005c
+  (:methods
+   (new (symbol type basic uint uint) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   (dummy-17 () none 17)
+   (dummy-18 () none 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   (dummy-21 () none 21)
+   (dummy-22 () none 22)
+   (dummy-23 () none 23)
+   (dummy-24 () none 24)
+   (dummy-25 () none 25)
+   (dummy-26 () none 26)
+   (dummy-27 () none 27)
+   (dummy-28 () none 28)
+   )
+  )
+
+;; A group of collide-shape-prim's
+(deftype collide-shape-prim-group (collide-shape-prim)
+  ((num-prims       int32                     :offset-assert 72)
+   (allocated-prims int32                     :offset-assert 76)
+   (prim            uint32           1       :offset-assert 80) ;; array of references.
+   )
+  :method-count-assert 30
+  :size-assert         #x54
+  :flag-assert         #x1e00000054
+  (:methods
+   (new (symbol type basic uint int) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   (dummy-17 () none 17)
+   (dummy-18 () none 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   (dummy-21 () none 21)
+   (dummy-22 () none 22)
+   (dummy-23 () none 23)
+   (dummy-24 () none 24)
+   (dummy-25 () none 25)
+   (dummy-26 () none 26)
+   (dummy-27 () none 27)
+   (dummy-28 () none 28)
+   (dummy-29 () none 29)
+   )
+  )
+
+;; an actual instance of a collision primitive.
+;; it's based on a transform (q means quaternion, v means with derivatives)
+(deftype collide-shape (trsqv)
+  ((process               basic              :offset-assert 140)
+   (max-iteration-count   uint8              :offset-assert 144)
+   (nav-flags             uint8              :offset-assert 145)
+   (pad-byte              uint8      2       :offset-assert 146)
+   (pat-ignore-mask       uint32             :offset-assert 148)
+   (event-self            basic              :offset-assert 152)
+   (event-other           basic              :offset-assert 156)
+   (root-prim             basic              :offset-assert 160)
+   (riders                basic              :offset-assert 164)
+   (backup-collide-as     uint64             :offset-assert 168)
+   (backup-collide-with   uint64             :offset-assert 176)
+   )
+  :method-count-assert 56
+  :size-assert         #xb8
+  :flag-assert         #x38000000b8
+  (:methods
+   (new (symbol type process int) _type_)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   (dummy-17 () none 17)
+   (dummy-18 () none 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   (dummy-21 () none 21)
+   (dummy-22 () none 22)
+   (dummy-23 () none 23)
+   (dummy-24 () none 24)
+   (dummy-25 () none 25)
+   (dummy-26 () none 26)
+   (dummy-27 () none 27)
+   (dummy-28 () none 28)
+   (dummy-29 () none 29)
+   (dummy-30 () none 30)
+   (dummy-31 () none 31)
+   (dummy-32 () none 32)
+   (dummy-33 () none 33)
+   (dummy-34 () none 34)
+   (dummy-35 () none 35)
+   (dummy-36 () none 36)
+   (dummy-37 () none 37)
+   (dummy-38 () none 38)
+   (dummy-39 () none 39)
+   (dummy-40 () none 40)
+   (dummy-41 () none 41)
+   (dummy-42 () none 42)
+   (dummy-43 () none 43)
+   (dummy-44 () none 44)
+   (dummy-45 () none 45)
+   (dummy-46 () none 46)
+   (dummy-47 () none 47)
+   (dummy-48 () none 48)
+   (dummy-49 () none 49)
+   (dummy-50 () none 50)
+   (dummy-51 () none 51)
+   (dummy-52 () none 52)
+   (dummy-53 () none 53)
+   (dummy-54 () none 54)
+   (dummy-55 () none 55)
+   )
+  )
+
+;; More complicated collide-shape?
+(deftype collide-shape-moving (collide-shape)
+  ((rider-time            uint64             :offset-assert 184)
+   (rider-last-move       vector     :inline :offset-assert 192)
+   (trans-old             vector    3 :inline      :offset-assert 208)
+   (poly-pat              uint32             :offset-assert 256)
+   (cur-pat               uint32             :offset-assert 260)
+   (ground-pat            uint32             :offset-assert 264)
+   (status                uint64             :offset-assert 272)
+   (old-status            uint64             :offset-assert 280)
+   (prev-status           uint64             :offset-assert 288)
+   (reaction-flag         uint32             :offset-assert 296)
+   (reaction              basic              :offset-assert 300)
+   (no-reaction           basic              :offset-assert 304)
+   (local-normal          vector     :inline :offset-assert 320)
+   (surface-normal        vector     :inline :offset-assert 336)
+   (poly-normal           vector     :inline :offset-assert 352)
+   (ground-poly-normal    vector     :inline :offset-assert 368)
+   (ground-touch-point    vector     :inline :offset-assert 384)
+   (shadow-pos            vector     :inline :offset-assert 400)
+   (ground-impact-vel     float              :offset-assert 416) ;; meters
+   (surface-angle         float              :offset-assert 420)
+   (poly-angle            float              :offset-assert 424)
+   (touch-angle           float              :offset-assert 428)
+   (coverage              float              :offset-assert 432)
+   (dynam                 basic              :offset-assert 436)
+   (surf                  basic              :offset-assert 440)
+   )
+  :method-count-assert 65
+  :size-assert         #x1bc
+  :flag-assert         #x41000001bc
+  (:methods
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   (dummy-17 () none 17)
+   (dummy-18 () none 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   (dummy-21 () none 21)
+   (dummy-22 () none 22)
+   (dummy-23 () none 23)
+   (dummy-24 () none 24)
+   (dummy-25 () none 25)
+   (dummy-26 () none 26)
+   (dummy-27 () none 27)
+   (dummy-28 () none 28)
+   (dummy-29 () none 29)
+   (dummy-30 () none 30)
+   (dummy-31 () none 31)
+   (dummy-32 () none 32)
+   (dummy-33 () none 33)
+   (dummy-34 () none 34)
+   (dummy-35 () none 35)
+   (dummy-36 () none 36)
+   (dummy-37 () none 37)
+   (dummy-38 () none 38)
+   (dummy-39 () none 39)
+   (dummy-40 () none 40)
+   (dummy-41 () none 41)
+   (dummy-42 () none 42)
+   (dummy-43 () none 43)
+   (dummy-44 () none 44)
+   (dummy-45 () none 45)
+   (dummy-46 () none 46)
+   (dummy-47 () none 47)
+   (dummy-48 () none 48)
+   (dummy-49 () none 49)
+   (dummy-50 () none 50)
+   (dummy-51 () none 51)
+   (dummy-52 () none 52)
+   (dummy-53 () none 53)
+   (dummy-54 () none 54)
+   (dummy-55 () none 55)
+   (dummy-56 () none 56)
+   (dummy-57 () none 57)
+   (dummy-58 () none 58)
+   (dummy-59 () none 59)
+   (dummy-60 () none 60)
+   (dummy-61 () none 61)
+   (dummy-62 () none 62)
+   (dummy-63 () none 63)
+   (dummy-64 () none 64)
+   )
+  )
+
+(defmethod new collide-shape-prim ((allocation symbol) (type-to-make type) (cshape basic) (prim-id uint) (size-bytes int))
+  "Allocate a new collide-shape-prim. It is expected that children of collide-shape-prim override this.
+   NOTE: uses the size-bytes as the TOTAL size of the structure."
+  (local-vars (v0-0 collide-shape-prim))
+  (set! v0-0 (object-new allocation type-to-make size-bytes))
+  ;; not sure what this is.
+  (set! (-> v0-0 cshape) cshape)
+  ;; sphere/mesh?
+  (set! (-> v0-0 prim-id) prim-id)
+  (set! (-> v0-0 prim-core action) 0)
+  (set! (-> v0-0 prim-core collide-as) 0)
+  (set! (-> v0-0 collide-with) 0)
+  (set! (-> v0-0 transform-index) -2)
+  (set! (-> v0-0 prim-core offense) 0)
+  (set! (-> v0-0 prim-core prim-type) -2)
+  v0-0
+  )
+
+(defmethod new collide-shape-prim-sphere ((allocation symbol) (type-to-make type) (cshape basic) (prim-id uint))
+  "Allocate a new sphere primitive"
+  (local-vars (v0-0 collide-shape-prim-sphere))
+  (set! v0-0
+        (the collide-shape-prim-sphere
+             ((method-of-type collide-shape-prim new)
+              allocation
+              type-to-make
+              cshape
+              prim-id
+              76
+              )
+             )
+        )
+  (set! (-> v0-0 pat) 16) ;; todo - bitfield
+  (set! (-> v0-0 prim-core prim-type) -1)
+  v0-0
+  )
+
+(defmethod new collide-shape-prim-mesh ((allocation symbol) (type-to-make type) (cshape basic) (mesh-id uint) (prim-id uint))
+  "Allocate a new mesh primitive"
+  (local-vars (v0-0 collide-shape-prim-mesh))
+  (set! v0-0 (the collide-shape-prim-mesh
+                  ((method-of-type collide-shape-prim new)
+                   allocation
+                   type-to-make
+                   cshape
+                   prim-id
+                   92
+                   )
+                  )
+        )
+  (set! (-> (the-as collide-shape-prim-mesh v0-0) mesh) #f)
+  (set! (-> v0-0 mesh-id) (the int mesh-id))
+  (set! (-> v0-0 mesh-cache-id) 0)
+  (set! (-> v0-0 prim-core prim-type) 1)
+  v0-0
+  )
+
+(defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (cshape basic) (elt-count uint) (prim-id int))
+  "Allocate a group of primitives."
+  (local-vars (v0-0 collide-shape-prim-group))
+  (set! v0-0 (the collide-shape-prim-group
+                  ((method-of-type collide-shape-prim new)
+                   allocation
+                   type-to-make
+                   cshape
+                   (the-as uint prim-id)
+                   ;; minus one for the one reference in the type.
+                   (the-as int (+ (-> type-to-make size) (shl (+ elt-count -1) 2)))
+                   )
+                  )
+        )
+  (set! (-> v0-0 allocated-prims) (the int elt-count))
+  (set! (-> v0-0 num-prims) 0)
+  (set! (-> v0-0 prim-core prim-type) 0)
+  (while (nonzero? elt-count)
+    (+! elt-count -1)
+    (set! (-> v0-0 prim elt-count) (the uint #f))
+    (nop!)
+    )
+  v0-0
+  )
+
+(defmethod length collide-shape-prim-group ((obj collide-shape-prim-group))
+  "How many primitives are used?"
+  (-> obj num-prims)
+  )
+
+(defmethod asize-of collide-shape-prim-group ((obj collide-shape-prim-group))
+  "How big is this in memory?"
+  (the-as int
+          (+ (-> obj type size) (the-as uint (shl (+ (-> obj allocated-prims) -1) 2)))
+          )
+  )
+
+(defmethod new collide-shape ((allocation symbol) (type-to-make type) (proc process) (collide-list-kind int))
+  (local-vars (v1-5 symbol) (obj collide-shape))
+  (set! obj (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  (set! (-> obj process) proc)
+  (set! (-> obj max-iteration-count) 1)
+  (set! (-> obj nav-flags) 1)
+  (set! (-> obj event-self) #f)
+  (set! (-> obj event-other) #f)
+  (set! (-> obj riders) #f)
+  (set! (-> obj root-prim) #f)
+  (set! v1-5 (-> proc type symbol))
+
+  ;; add a special ignore mask for the camera vs other things.
+  (if (= v1-5 'camera)
+      (set! (-> obj pat-ignore-mask) 2)
+      (set! (-> obj pat-ignore-mask) 1)
+      )
+
+  ;; reset transformation to the origin.
+  (set! (-> obj trans w) 1.000000)
+  (quaternion-identity! (the-as quaternion (-> obj rot)))
+  (vector-identity! (-> obj scale))
+
+  ;; add us to right list.
+  (cond
+    ((zero? collide-list-kind)
+     (add-connection *collide-hit-by-player-list* proc (the (function object object object object object) #f) obj #f #f)
+     )
+    ((= collide-list-kind 1)
+     (add-connection *collide-usually-hit-by-player-list* proc (the (function object object object object object) #f) obj #f #f)
+     )
+    ((= collide-list-kind 2)
+     (add-connection *collide-hit-by-others-list* proc (the (function object object object object object) #f) obj #f #f)
+     )
+    ((= collide-list-kind 3)
+     (add-connection *collide-player-list* proc (the (function object object object object object) #f) obj #f #f)
+     )
+    (else
+     (format 0 "Unsupported collide-list-enum in collide-shape constructor!~%")
+     )
+    )
+  obj
+  )
+
+(defmethod new collide-sticky-rider-group ((allocation symbol) (type-to-make type) (arg0 int))
+  (local-vars (v0-0 collide-sticky-rider-group))
+  (set! v0-0
+        (object-new allocation type-to-make
+                    (the-as int (+ (-> type-to-make size) (the-as uint (shl (+ arg0 -1) 5))))
+                    )
+        )
+  (set! (-> v0-0 allocated-riders) arg0)
+  (set! (-> v0-0 num-riders) 0)
+  v0-0
+  )
+
+(defmethod length collide-sticky-rider-group ((obj collide-sticky-rider-group))
+  (-> obj num-riders)
+  )
+
+(defmethod asize-of collide-sticky-rider-group ((obj collide-sticky-rider-group))
+  (the-as int
+          (+ (-> obj type size) (the-as uint (shl (+ (-> obj allocated-riders) -1) 5)))
+          )
+  )
+
+(define *collide-shape-prim-backgnd*
+    (new 'static 'collide-shape-prim-mesh
+         :cshape #f
+         :prim-core
+         (new 'static 'collide-prim-core
+              :world-sphere
+              (new 'static 'vector :w 204800000.000000)
+              :collide-as #x1
+              :action #x1
+              :offense 4
+              :prim-type 2
+              )
+         :local-sphere
+         (new 'static 'vector :w 204800000.000000)
+         :mesh #f
+         )
+  )
+
+(define *collide-shape-prim-water*
+    (new 'static 'collide-shape-prim-mesh
+         :cshape #f
+         :prim-core
+         (new 'static 'collide-prim-core
+              :world-sphere
+              (new 'static 'vector :w 204800000.000000)
+              :collide-as #x20
+              :action #x1
+              :offense 4
+              :prim-type 2
+              )
+         :local-sphere
+         (new 'static 'vector :w 204800000.000000)
+         :mesh #f
+         )
+  )
