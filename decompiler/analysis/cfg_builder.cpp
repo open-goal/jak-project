@@ -418,7 +418,6 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
   //  otherwise it means that our control flow graph is messed up, and we abort.
 
   bool live_out_result = false;
-  bool left_last_delay_def = false;
 
   for (int i = 0; i < int(ir->entries.size()) - 1; i++) {
     auto branch = get_condition_branch(ir->entries.at(i).condition);
@@ -459,7 +458,6 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
           // this can happen if the move is eliminated during coloring.
           // for now, let's leave this last def here, just so it looks like _something_ sets it.
           // TODO - what if this isn't a def in the last slot? Does it matter?
-          left_last_delay_def = true;
         } else {
           // lg::warn("Disabling def of {} in final or delay slot",
           // as_set->to_string(func.ir2.env));
@@ -684,7 +682,6 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
   for (size_t i = 0; i < cne->entries.size(); i++) {
     if (func.ir2.env.has_reg_use()) {
       auto branch = dynamic_cast<BranchElement*>(cne->entries.at(i).original_condition_branch);
-      auto& branch_info_i = func.ir2.env.reg_use().op.at(branch->op()->op_id());
       auto reg = cne->entries.at(i).false_destination;
       // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
       func.ir2.env.disable_def(*reg);
