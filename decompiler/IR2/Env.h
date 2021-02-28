@@ -43,7 +43,7 @@ class Env {
     return m_reg_use;
   }
 
-  goos::Object get_variable_name(Register reg, int atomic_idx, VariableMode mode) const;
+  goos::Object get_variable_name(Register reg, int atomic_idx, AccessMode mode) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -76,8 +76,8 @@ class Env {
     m_has_local_vars = true;
   }
 
-  void set_end_var(Variable var) { m_end_var = var; }
-  const Variable& end_var() const { return m_end_var; }
+  void set_end_var(RegisterAccess var) { m_end_var = var; }
+  const RegisterAccess& end_var() const { return m_end_var; }
 
   std::vector<VariableNames::VarInfo> extract_visible_variables(const Form* top_level_form) const;
   std::string print_local_var_types(const Form* top_level_form) const;
@@ -85,8 +85,8 @@ class Env {
                                    int nargs_to_ignore,
                                    int* count_out) const;
 
-  std::unordered_set<RegId, RegId::hash> get_ssa_var(const VariableSet& vars) const;
-  RegId get_ssa_var(const Variable& var) const;
+  std::unordered_set<RegId, RegId::hash> get_ssa_var(const RegAccessSet& vars) const;
+  RegId get_program_var_id(const RegisterAccess& var) const;
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
@@ -113,11 +113,16 @@ class Env {
     m_label_types = types;
   }
 
+  const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
+  void disable_use(const RegisterAccess& access) { m_var_names.disable_use(access); }
+
+  void disable_def(const RegisterAccess& access) { m_var_names.disable_def(access); }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
  private:
-  Variable m_end_var;
+  RegisterAccess m_end_var;
 
   bool m_has_reg_use = false;
   RegUsageInfo m_reg_use;

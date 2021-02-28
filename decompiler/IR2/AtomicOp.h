@@ -58,7 +58,7 @@ class AtomicOp {
   virtual bool is_sequence_point() const = 0;
 
   // get the variable being set by this operation. Only call this if is_variable_set returns true.
-  virtual Variable get_set_destination() const = 0;
+  virtual RegisterAccess get_set_destination() const = 0;
 
   // convert me to an expression. If I'm a set!, this will produce a (set! x y), which may be
   // undesirable when expression stacking.
@@ -70,7 +70,7 @@ class AtomicOp {
   // read twice.
   virtual void update_register_info() = 0;
 
-  virtual void collect_vars(VariableSet& vars) const = 0;
+  virtual void collect_vars(RegAccessSet& vars) const = 0;
 
   TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
 
@@ -122,18 +122,18 @@ class SimpleAtom {
   };
 
   SimpleAtom() = default;
-  static SimpleAtom make_var(const Variable& var);
+  static SimpleAtom make_var(const RegisterAccess& var);
   static SimpleAtom make_sym_ptr(const std::string& name);
   static SimpleAtom make_sym_val(const std::string& name);
   static SimpleAtom make_empty_list();
   static SimpleAtom make_int_constant(s64 value);
   static SimpleAtom make_static_address(int static_label_id);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
-  void collect_vars(VariableSet& vars) const;
+  void collect_vars(RegAccessSet& vars) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
   bool is_label() const { return m_kind == Kind::STATIC_ADDRESS; }
-  const Variable& var() const {
+  const RegisterAccess& var() const {
     assert(is_var());
     return m_variable;
   }
@@ -166,7 +166,7 @@ class SimpleAtom {
   Kind m_kind = Kind::INVALID;
   std::string m_string;  // for symbol ptr and symbol val
   s64 m_int = -1;        // for integer constant and static address label id
-  Variable m_variable;
+  RegisterAccess m_variable;
 };
 
 /*!
@@ -233,7 +233,7 @@ class SimpleExpression {
   bool operator==(const SimpleExpression& other) const;
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
   bool is_var() const { return is_identity() && get_arg(0).is_var(); }
-  const Variable& var() const {
+  const RegisterAccess& var() const {
     assert(is_var());
     return get_arg(0).var();
   }
@@ -245,7 +245,7 @@ class SimpleExpression {
   TP_Type get_type_int1(const TypeState& input,
                         const Env& env,
                         const DecompilerTypeSystem& dts) const;
-  void collect_vars(VariableSet& vars) const;
+  void collect_vars(RegAccessSet& vars) const;
 
  private:
   Kind m_kind = Kind::INVALID;
@@ -260,7 +260,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind);
  */
 class SetVarOp : public AtomicOp {
  public:
-  SetVarOp(const Variable& dst, SimpleExpression src, int my_idx)
+  SetVarOp(const RegisterAccess& dst, SimpleExpression src, int my_idx)
       : AtomicOp(my_idx), m_dst(dst), m_src(std::move(src)) {
     assert(my_idx == dst.idx());
   }
@@ -268,18 +268,18 @@ class SetVarOp : public AtomicOp {
                                const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
-  const Variable& dst() const { return m_dst; }
+  void collect_vars(RegAccessSet& vars) const override;
+  const RegisterAccess& dst() const { return m_dst; }
   const SimpleExpression& src() const { return m_src; }
 
  private:
-  Variable m_dst;
+  RegisterAccess m_dst;
   SimpleExpression m_src;
 };
 
@@ -296,19 +296,19 @@ class AsmOp : public AtomicOp {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   const Instruction& instruction() const { return m_instr; }
 
  private:
   Instruction m_instr;
-  std::optional<Variable> m_dst;
-  std::optional<Variable> m_src[4];
+  std::optional<RegisterAccess> m_dst;
+  std::optional<RegisterAccess> m_src[4];
 };
 
 /*!
@@ -369,7 +369,7 @@ class IR2_Condition {
   Kind kind() const { return m_kind; }
   const SimpleAtom& src(int i) const { return m_src[i]; }
   ConditionElement* get_as_form(FormPool& pool, const Env& env, int my_idx) const;
-  void collect_vars(VariableSet& vars) const;
+  void collect_vars(RegAccessSet& vars) const;
   void make_flipped() { m_flipped_eval = true; }
   bool flipped() const { return m_flipped_eval; }
 
@@ -389,21 +389,21 @@ bool condition_uses_float(IR2_Condition::Kind kind);
  */
 class SetVarConditionOp : public AtomicOp {
  public:
-  SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx);
+  SetVarConditionOp(RegisterAccess dst, IR2_Condition condition, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   void invert() { m_condition.invert(); }
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
 
  private:
-  Variable m_dst;
+  RegisterAccess m_dst;
   IR2_Condition m_condition;
 };
 
@@ -418,13 +418,13 @@ class StoreOp : public AtomicOp {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   const SimpleExpression& addr() const { return m_addr; }
   const SimpleAtom& value() const { return m_value; }
 
@@ -442,23 +442,23 @@ class StoreOp : public AtomicOp {
 class LoadVarOp : public AtomicOp {
  public:
   enum class Kind { UNSIGNED, SIGNED, FLOAT };
-  LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx);
+  LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
 
  private:
   Kind m_kind;
   int m_size = -1;
-  Variable m_dst;
+  RegisterAccess m_dst;
   SimpleExpression m_src;
 };
 
@@ -485,9 +485,9 @@ class IR2_BranchDelay {
   };
 
   explicit IR2_BranchDelay(Kind kind);
-  IR2_BranchDelay(Kind kind, Variable var0);
-  IR2_BranchDelay(Kind kind, Variable var0, Variable var1);
-  IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variable var2);
+  IR2_BranchDelay(Kind kind, RegisterAccess var0);
+  IR2_BranchDelay(Kind kind, RegisterAccess var0, RegisterAccess var1);
+  IR2_BranchDelay(Kind kind, RegisterAccess var0, RegisterAccess var1, RegisterAccess var2);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
   bool operator==(const IR2_BranchDelay& other) const;
   void get_regs(std::vector<Register>* write, std::vector<Register>* read) const;
@@ -495,16 +495,16 @@ class IR2_BranchDelay {
   TypeState propagate_types(const TypeState& input,
                             const Env& env,
                             DecompilerTypeSystem& dts) const;
-  void collect_vars(VariableSet& vars) const;
+  void collect_vars(RegAccessSet& vars) const;
   Kind kind() const { return m_kind; }
-  const Variable& var(int idx) const {
+  const RegisterAccess& var(int idx) const {
     assert(idx < 3);
     assert(m_var[idx].has_value());
     return m_var[idx].value();
   }
 
  private:
-  std::optional<Variable> m_var[3];
+  std::optional<RegisterAccess> m_var[3];
   Kind m_kind = Kind::UNKNOWN;
 };
 
@@ -522,13 +522,13 @@ class BranchOp : public AtomicOp {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   const IR2_BranchDelay& branch_delay() const { return m_branch_delay; }
   const IR2_Condition& condition() const { return m_condition; }
   ConditionElement* get_condition_as_form(FormPool& pool, const Env& env) const;
@@ -554,13 +554,13 @@ class AsmBranchOp : public AtomicOp {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
 
  private:
   bool m_likely = false;
@@ -586,13 +586,13 @@ class SpecialOp : public AtomicOp {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   Kind kind() const { return m_kind; }
 
  private:
@@ -609,15 +609,15 @@ class CallOp : public AtomicOp {
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
-  const std::vector<Variable>& arg_vars() const { return m_arg_vars; }
-  Variable function_var() const { return m_function_var; }
+  void collect_vars(RegAccessSet& vars) const override;
+  const std::vector<RegisterAccess>& arg_vars() const { return m_arg_vars; }
+  RegisterAccess function_var() const { return m_function_var; }
   bool is_method() const { return m_is_virtual_method; }
 
  protected:
@@ -625,9 +625,9 @@ class CallOp : public AtomicOp {
   bool m_call_type_set = false;
   bool m_is_virtual_method = false;
 
-  std::vector<Variable> m_arg_vars;
-  Variable m_function_var;
-  Variable m_return_var;
+  std::vector<RegisterAccess> m_arg_vars;
+  RegisterAccess m_function_var;
+  RegisterAccess m_return_var;
 };
 
 /*!
@@ -644,26 +644,30 @@ class CallOp : public AtomicOp {
  */
 class ConditionalMoveFalseOp : public AtomicOp {
  public:
-  ConditionalMoveFalseOp(Variable dst, Variable src, Variable old_value, bool on_zero, int my_idx);
+  ConditionalMoveFalseOp(RegisterAccess dst,
+                         RegisterAccess src,
+                         RegisterAccess old_value,
+                         bool on_zero,
+                         int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
 
  private:
-  Variable m_dst, m_src, m_old_value;
+  RegisterAccess m_dst, m_src, m_old_value;
   bool m_on_zero;
 };
 
 struct IR2_RegOffset {
   Register reg;
-  Variable var;
+  RegisterAccess var;
   int offset;
 };
 
@@ -680,22 +684,22 @@ class FunctionEndOp : public AtomicOp {
                                const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
-  Variable get_set_destination() const override;
+  RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   void mark_function_as_no_return_value();
-  const Variable& return_var() const {
+  const RegisterAccess& return_var() const {
     assert(m_function_has_return_value);
     return m_return_reg;
   }
 
  private:
   bool m_function_has_return_value = true;
-  Variable m_return_reg;
+  RegisterAccess m_return_reg;
 };
 
 bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out);

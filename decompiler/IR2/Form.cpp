@@ -120,7 +120,7 @@ void Form::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void Form::collect_vars(VariableSet& vars) const {
+void Form::collect_vars(RegAccessSet& vars) const {
   for (auto e : m_elements) {
     e->collect_vars(vars);
   }
@@ -153,7 +153,7 @@ bool SimpleExpressionElement::is_sequence_point() const {
   throw std::runtime_error("Should not check if a SimpleExpressionElement is a sequence point");
 }
 
-void SimpleExpressionElement::collect_vars(VariableSet& vars) const {
+void SimpleExpressionElement::collect_vars(RegAccessSet& vars) const {
   m_expr.collect_vars(vars);
 }
 
@@ -177,7 +177,7 @@ void StoreElement::apply(const std::function<void(FormElement*)>& f) {
 
 void StoreElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StoreElement::collect_vars(VariableSet& vars) const {
+void StoreElement::collect_vars(RegAccessSet& vars) const {
   return m_op->collect_vars(vars);
 }
 
@@ -239,7 +239,7 @@ void LoadSourceElement::apply_form(const std::function<void(Form*)>& f) {
   m_addr->apply_form(f);
 }
 
-void LoadSourceElement::collect_vars(VariableSet& vars) const {
+void LoadSourceElement::collect_vars(RegAccessSet& vars) const {
   m_addr->collect_vars(vars);
 }
 
@@ -263,7 +263,7 @@ void SimpleAtomElement::apply(const std::function<void(FormElement*)>& f) {
 
 void SimpleAtomElement::apply_form(const std::function<void(Form*)>&) {}
 
-void SimpleAtomElement::collect_vars(VariableSet& vars) const {
+void SimpleAtomElement::collect_vars(RegAccessSet& vars) const {
   return m_atom.collect_vars(vars);
 }
 
@@ -275,7 +275,7 @@ void SimpleAtomElement::get_modified_regs(RegSet& regs) const {
 // SetVarElement
 /////////////////////////////
 
-SetVarElement::SetVarElement(const Variable& var,
+SetVarElement::SetVarElement(const RegisterAccess& var,
                              Form* value,
                              bool is_sequence_point,
                              const SetVarInfo& info)
@@ -301,7 +301,7 @@ bool SetVarElement::is_sequence_point() const {
   return m_is_sequence_point;
 }
 
-void SetVarElement::collect_vars(VariableSet& vars) const {
+void SetVarElement::collect_vars(RegAccessSet& vars) const {
   if (m_var_info.is_dead_set || m_var_info.is_dead_false) {
     return;
   }
@@ -335,14 +335,14 @@ void StoreInSymbolElement::apply(const std::function<void(FormElement*)>& f) {
 
 void StoreInSymbolElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StoreInSymbolElement::collect_vars(VariableSet& vars) const {
+void StoreInSymbolElement::collect_vars(RegAccessSet& vars) const {
   m_value.collect_vars(vars);
 }
 
 void StoreInSymbolElement::get_modified_regs(RegSet&) const {}
 
 StoreInPairElement::StoreInPairElement(bool is_car,
-                                       Variable pair,
+                                       RegisterAccess pair,
                                        SimpleExpression value,
                                        int my_idx)
     : m_is_car(is_car), m_pair(pair), m_value(value), m_my_idx(my_idx) {}
@@ -359,7 +359,7 @@ void StoreInPairElement::apply(const std::function<void(FormElement*)>& f) {
 
 void StoreInPairElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StoreInPairElement::collect_vars(VariableSet& vars) const {
+void StoreInPairElement::collect_vars(RegAccessSet& vars) const {
   m_value.collect_vars(vars);
   vars.insert(m_pair);
 }
@@ -396,7 +396,7 @@ bool SetFormFormElement::is_sequence_point() const {
   return true;
 }
 
-void SetFormFormElement::collect_vars(VariableSet& vars) const {
+void SetFormFormElement::collect_vars(RegAccessSet& vars) const {
   m_src->collect_vars(vars);
   m_dst->collect_vars(vars);
 }
@@ -421,7 +421,7 @@ void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AtomicOpElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AtomicOpElement::collect_vars(VariableSet& vars) const {
+void AtomicOpElement::collect_vars(RegAccessSet& vars) const {
   m_op->collect_vars(vars);
 }
 
@@ -451,7 +451,7 @@ void AsmOpElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AsmOpElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AsmOpElement::collect_vars(VariableSet& vars) const {
+void AsmOpElement::collect_vars(RegAccessSet& vars) const {
   m_op->collect_vars(vars);
 }
 
@@ -510,7 +510,7 @@ void ConditionElement::invert() {
   m_kind = get_condition_opposite(m_kind);
 }
 
-void ConditionElement::collect_vars(VariableSet& vars) const {
+void ConditionElement::collect_vars(RegAccessSet& vars) const {
   for (auto src : m_src) {
     if (src.has_value() && src->is_var()) {
       vars.insert(src->var());
@@ -538,7 +538,7 @@ void FunctionCallElement::apply(const std::function<void(FormElement*)>& f) {
 
 void FunctionCallElement::apply_form(const std::function<void(Form*)>&) {}
 
-void FunctionCallElement::collect_vars(VariableSet& vars) const {
+void FunctionCallElement::collect_vars(RegAccessSet& vars) const {
   return m_op->collect_vars(vars);
 }
 
@@ -568,7 +568,7 @@ void BranchElement::apply(const std::function<void(FormElement*)>& f) {
 
 void BranchElement::apply_form(const std::function<void(Form*)>&) {}
 
-void BranchElement::collect_vars(VariableSet& vars) const {
+void BranchElement::collect_vars(RegAccessSet& vars) const {
   return m_op->collect_vars(vars);
 }
 
@@ -611,7 +611,7 @@ void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void ReturnElement::collect_vars(VariableSet& vars) const {
+void ReturnElement::collect_vars(RegAccessSet& vars) const {
   return_code->collect_vars(vars);
   if (dead_code) {
     dead_code->collect_vars(vars);
@@ -648,7 +648,7 @@ void BreakElement::apply_form(const std::function<void(Form*)>& f) {
   dead_code->apply_form(f);
 }
 
-void BreakElement::collect_vars(VariableSet& vars) const {
+void BreakElement::collect_vars(RegAccessSet& vars) const {
   return_code->collect_vars(vars);
   dead_code->collect_vars(vars);
 }
@@ -708,7 +708,7 @@ void CondWithElseElement::apply_form(const std::function<void(Form*)>& f) {
   else_ir->apply_form(f);
 }
 
-void CondWithElseElement::collect_vars(VariableSet& vars) const {
+void CondWithElseElement::collect_vars(RegAccessSet& vars) const {
   for (auto& entry : entries) {
     entry.condition->collect_vars(vars);
     entry.body->collect_vars(vars);
@@ -737,7 +737,7 @@ void EmptyElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void EmptyElement::apply_form(const std::function<void(Form*)>&) {}
-void EmptyElement::collect_vars(VariableSet&) const {}
+void EmptyElement::collect_vars(RegAccessSet&) const {}
 void EmptyElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
@@ -764,7 +764,7 @@ void WhileElement::apply_form(const std::function<void(Form*)>& f) {
   condition->apply_form(f);
 }
 
-void WhileElement::collect_vars(VariableSet& vars) const {
+void WhileElement::collect_vars(RegAccessSet& vars) const {
   body->collect_vars(vars);
   condition->collect_vars(vars);
 }
@@ -798,7 +798,7 @@ void UntilElement::apply_form(const std::function<void(Form*)>& f) {
   condition->apply_form(f);
 }
 
-void UntilElement::collect_vars(VariableSet& vars) const {
+void UntilElement::collect_vars(RegAccessSet& vars) const {
   body->collect_vars(vars);
   condition->collect_vars(vars);
 }
@@ -854,7 +854,7 @@ goos::Object ShortCircuitElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list(forms);
 }
 
-void ShortCircuitElement::collect_vars(VariableSet& vars) const {
+void ShortCircuitElement::collect_vars(RegAccessSet& vars) const {
   //  vars.insert(final_result);  // todo - this might be unused.
   for (auto& entry : entries) {
     entry.condition->collect_vars(vars);
@@ -916,7 +916,7 @@ void CondNoElseElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void CondNoElseElement::collect_vars(VariableSet& vars) const {
+void CondNoElseElement::collect_vars(RegAccessSet& vars) const {
   for (auto& e : entries) {
     e.condition->collect_vars(vars);
     e.body->collect_vars(vars);
@@ -934,7 +934,7 @@ void CondNoElseElement::get_modified_regs(RegSet& regs) const {
 // AbsElement
 /////////////////////////////
 
-AbsElement::AbsElement(Variable _source, RegSet _consumed)
+AbsElement::AbsElement(RegisterAccess _source, RegSet _consumed)
     : source(_source), consumed(std::move(_consumed)) {}
 
 goos::Object AbsElement::to_form_internal(const Env& env) const {
@@ -947,7 +947,7 @@ void AbsElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AbsElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AbsElement::collect_vars(VariableSet& vars) const {
+void AbsElement::collect_vars(RegAccessSet& vars) const {
   vars.insert(source);
 }
 
@@ -957,9 +957,9 @@ void AbsElement::get_modified_regs(RegSet&) const {}
 // AshElement
 /////////////////////////////
 
-AshElement::AshElement(Variable _shift_amount,
-                       Variable _value,
-                       std::optional<Variable> _clobber,
+AshElement::AshElement(RegisterAccess _shift_amount,
+                       RegisterAccess _value,
+                       std::optional<RegisterAccess> _clobber,
                        bool _is_signed,
                        RegSet _consumed)
     : shift_amount(_shift_amount),
@@ -979,7 +979,7 @@ void AshElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AshElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AshElement::collect_vars(VariableSet& vars) const {
+void AshElement::collect_vars(RegAccessSet& vars) const {
   vars.insert(value);
   vars.insert(shift_amount);
 }
@@ -990,7 +990,7 @@ void AshElement::get_modified_regs(RegSet&) const {}
 // TypeOfElement
 /////////////////////////////
 
-TypeOfElement::TypeOfElement(Form* _value, std::optional<Variable> _clobber)
+TypeOfElement::TypeOfElement(Form* _value, std::optional<RegisterAccess> _clobber)
     : value(_value), clobber(_clobber) {
   value->parent_element = this;
 }
@@ -1008,7 +1008,7 @@ void TypeOfElement::apply_form(const std::function<void(Form*)>& f) {
   value->apply_form(f);
 }
 
-void TypeOfElement::collect_vars(VariableSet& vars) const {
+void TypeOfElement::collect_vars(RegAccessSet& vars) const {
   value->collect_vars(vars);
 }
 
@@ -1018,9 +1018,9 @@ void TypeOfElement::get_modified_regs(RegSet&) const {}
 // ConditionalMoveFalseElement
 /////////////////////////////
 
-ConditionalMoveFalseElement::ConditionalMoveFalseElement(Variable _dest,
-                                                         Variable _old_value,
-                                                         Variable _source,
+ConditionalMoveFalseElement::ConditionalMoveFalseElement(RegisterAccess _dest,
+                                                         RegisterAccess _old_value,
+                                                         RegisterAccess _source,
                                                          bool _on_zero)
     : dest(_dest), old_value(_old_value), source(_source), on_zero(_on_zero) {}
 
@@ -1035,7 +1035,7 @@ void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>&
 
 void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>&) {}
 
-void ConditionalMoveFalseElement::collect_vars(VariableSet& vars) const {
+void ConditionalMoveFalseElement::collect_vars(RegAccessSet& vars) const {
   vars.insert(dest);
   vars.insert(old_value);
   vars.insert(source);
@@ -1070,7 +1070,7 @@ GenericOperator GenericOperator::make_compare(IR2_Condition::Kind kind) {
   return op;
 }
 
-void GenericOperator::collect_vars(VariableSet& vars) const {
+void GenericOperator::collect_vars(RegAccessSet& vars) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
     case Kind::CONDITION_OPERATOR:
@@ -1303,7 +1303,7 @@ void GenericElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void GenericElement::collect_vars(VariableSet& vars) const {
+void GenericElement::collect_vars(RegAccessSet& vars) const {
   m_head.collect_vars(vars);
   for (auto x : m_elts) {
     x->collect_vars(vars);
@@ -1340,7 +1340,7 @@ void CastElement::apply_form(const std::function<void(Form*)>& f) {
   m_source->apply_form(f);
 }
 
-void CastElement::collect_vars(VariableSet& vars) const {
+void CastElement::collect_vars(RegAccessSet& vars) const {
   m_source->collect_vars(vars);
 }
 
@@ -1379,7 +1379,7 @@ DerefToken DerefToken::make_expr_placeholder() {
   return x;
 }
 
-void DerefToken::collect_vars(VariableSet& vars) const {
+void DerefToken::collect_vars(RegAccessSet& vars) const {
   switch (m_kind) {
     case Kind::INTEGER_CONSTANT:
     case Kind::FIELD_NAME:
@@ -1508,7 +1508,7 @@ void DerefElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void DerefElement::collect_vars(VariableSet& vars) const {
+void DerefElement::collect_vars(RegAccessSet& vars) const {
   m_base->collect_vars(vars);
   for (auto& tok : m_tokens) {
     tok.collect_vars(vars);
@@ -1526,7 +1526,7 @@ void DerefElement::get_modified_regs(RegSet& regs) const {
 // DynamicMethodAccess
 /////////////////////////////
 
-DynamicMethodAccess::DynamicMethodAccess(Variable source) : m_source(source) {}
+DynamicMethodAccess::DynamicMethodAccess(RegisterAccess source) : m_source(source) {}
 
 goos::Object DynamicMethodAccess::to_form_internal(const Env& env) const {
   return pretty_print::build_list("dyn-method-access", m_source.to_form(env));
@@ -1538,7 +1538,7 @@ void DynamicMethodAccess::apply(const std::function<void(FormElement*)>& f) {
 
 void DynamicMethodAccess::apply_form(const std::function<void(Form*)>&) {}
 
-void DynamicMethodAccess::collect_vars(VariableSet& vars) const {
+void DynamicMethodAccess::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_source);
 }
 
@@ -1547,7 +1547,7 @@ void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 /////////////////////////////
 // ArrayFieldAccess
 /////////////////////////////
-ArrayFieldAccess::ArrayFieldAccess(Variable source,
+ArrayFieldAccess::ArrayFieldAccess(RegisterAccess source,
                                    const std::vector<DerefToken>& deref_tokens,
                                    int expected_stride,
                                    int constant_offset)
@@ -1579,7 +1579,7 @@ void ArrayFieldAccess::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void ArrayFieldAccess::collect_vars(VariableSet& vars) const {
+void ArrayFieldAccess::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_source);
   for (auto& tok : m_deref_tokens) {
     tok.collect_vars(vars);
@@ -1615,7 +1615,7 @@ void GetMethodElement::apply_form(const std::function<void(Form*)>& f) {
   m_in->apply_form(f);
 }
 
-void GetMethodElement::collect_vars(VariableSet& vars) const {
+void GetMethodElement::collect_vars(RegAccessSet& vars) const {
   m_in->collect_vars(vars);
 }
 
@@ -1635,7 +1635,7 @@ goos::Object StringConstantElement::to_form_internal(const Env&) const {
 
 void StringConstantElement::apply(const std::function<void(FormElement*)>&) {}
 void StringConstantElement::apply_form(const std::function<void(Form*)>&) {}
-void StringConstantElement::collect_vars(VariableSet&) const {}
+void StringConstantElement::collect_vars(RegAccessSet&) const {}
 void StringConstantElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
@@ -1649,7 +1649,7 @@ goos::Object ConstantTokenElement::to_form_internal(const Env&) const {
 
 void ConstantTokenElement::apply(const std::function<void(FormElement*)>&) {}
 void ConstantTokenElement::apply_form(const std::function<void(Form*)>&) {}
-void ConstantTokenElement::collect_vars(VariableSet&) const {}
+void ConstantTokenElement::collect_vars(RegAccessSet&) const {}
 void ConstantTokenElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
@@ -1660,7 +1660,7 @@ ConstantFloatElement::ConstantFloatElement(float value) : m_value(value) {}
 
 void ConstantFloatElement::apply(const std::function<void(FormElement*)>&) {}
 void ConstantFloatElement::apply_form(const std::function<void(Form*)>&) {}
-void ConstantFloatElement::collect_vars(VariableSet&) const {}
+void ConstantFloatElement::collect_vars(RegAccessSet&) const {}
 void ConstantFloatElement::get_modified_regs(RegSet&) const {}
 
 goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
@@ -1670,7 +1670,7 @@ goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
 StorePlainDeref::StorePlainDeref(DerefElement* dst,
                                  SimpleExpression expr,
                                  int my_idx,
-                                 Variable base_var,
+                                 RegisterAccess base_var,
                                  std::optional<TypeSpec> cast_type)
     : m_dst(dst),
       m_expr(std::move(expr)),
@@ -1694,7 +1694,7 @@ void StorePlainDeref::apply(const std::function<void(FormElement*)>& f) {
 
 void StorePlainDeref::apply_form(const std::function<void(Form*)>&) {}
 
-void StorePlainDeref::collect_vars(VariableSet& vars) const {
+void StorePlainDeref::collect_vars(RegAccessSet& vars) const {
   m_expr.collect_vars(vars);
   m_dst->collect_vars(vars);
 }
@@ -1706,7 +1706,7 @@ void StorePlainDeref::get_modified_regs(RegSet& regs) const {
 StoreArrayAccess::StoreArrayAccess(ArrayFieldAccess* dst,
                                    SimpleExpression expr,
                                    int my_idx,
-                                   Variable array_src)
+                                   RegisterAccess array_src)
     : m_dst(dst), m_expr(expr), m_my_idx(my_idx), m_base_var(array_src) {}
 
 goos::Object StoreArrayAccess::to_form_internal(const Env& env) const {
@@ -1723,7 +1723,7 @@ void StoreArrayAccess::apply_form(const std::function<void(Form*)>& f) {
   m_dst->apply_form(f);
 }
 
-void StoreArrayAccess::collect_vars(VariableSet& vars) const {
+void StoreArrayAccess::collect_vars(RegAccessSet& vars) const {
   m_expr.collect_vars(vars);
   m_dst->collect_vars(vars);
 }
@@ -1745,7 +1745,7 @@ void DecompiledDataElement::apply(const std::function<void(FormElement*)>& f) {
 
 void DecompiledDataElement::apply_form(const std::function<void(Form*)>&) {}
 
-void DecompiledDataElement::collect_vars(VariableSet&) const {}
+void DecompiledDataElement::collect_vars(RegAccessSet&) const {}
 
 void DecompiledDataElement::get_modified_regs(RegSet&) const {}
 

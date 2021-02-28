@@ -12,7 +12,7 @@ namespace decompiler {
 // VARIABLE
 /////////////////////////////
 
-Variable::Variable(VariableMode mode, Register reg, int atomic_idx, bool allow_all)
+RegisterAccess::RegisterAccess(AccessMode mode, Register reg, int atomic_idx, bool allow_all)
     : m_mode(mode), m_reg(reg), m_atomic_idx(atomic_idx) {
   // make sure we're using a valid GPR.
   if (reg.get_kind() == Reg::GPR && !allow_all) {
@@ -23,13 +23,13 @@ Variable::Variable(VariableMode mode, Register reg, int atomic_idx, bool allow_a
   }
 }
 
-goos::Object Variable::to_form(const Env& env, Print mode) const {
+goos::Object RegisterAccess::to_form(const Env& env, Print mode) const {
   switch (mode) {
     case Print::AS_REG:
       return pretty_print::to_symbol(m_reg.to_string());
     case Print::FULL:
       return pretty_print::to_symbol(fmt::format("{}-{:03d}-{}", m_reg.to_charp(), m_atomic_idx,
-                                                 m_mode == VariableMode::READ ? 'r' : 'w'));
+                                                 m_mode == AccessMode::READ ? 'r' : 'w'));
     case Print::AS_VARIABLE:
       return env.get_variable_name(m_reg, m_atomic_idx, m_mode);
     case Print::AUTOMATIC:
@@ -43,11 +43,15 @@ goos::Object Variable::to_form(const Env& env, Print mode) const {
   }
 }
 
-bool Variable::operator==(const Variable& other) const {
-  return m_mode == other.m_mode && m_reg == other.m_reg && m_atomic_idx && other.m_atomic_idx;
+std::string RegisterAccess::to_string(const Env& env, Print mode) const {
+  return to_form(env, mode).print();
 }
 
-bool Variable::operator!=(const Variable& other) const {
+bool RegisterAccess::operator==(const RegisterAccess& other) const {
+  return m_mode == other.m_mode && m_reg == other.m_reg && m_atomic_idx == other.m_atomic_idx;
+}
+
+bool RegisterAccess::operator!=(const RegisterAccess& other) const {
   return !((*this) == other);
 }
 
@@ -82,7 +86,7 @@ void AtomicOp::clobber_temps() {
 // SimpleAtom
 /////////////////////////////
 
-SimpleAtom SimpleAtom::make_var(const Variable& var) {
+SimpleAtom SimpleAtom::make_var(const RegisterAccess& var) {
   SimpleAtom result;
   result.m_kind = Kind::VARIABLE;
   result.m_variable = var;
@@ -143,7 +147,7 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
   }
 }
 
-void SimpleAtom::collect_vars(VariableSet& vars) const {
+void SimpleAtom::collect_vars(RegAccessSet& vars) const {
   if (is_var()) {
     vars.insert(var());
   }
@@ -360,7 +364,7 @@ void SimpleExpression::get_regs(std::vector<Register>* out) const {
   }
 }
 
-void SimpleExpression::collect_vars(VariableSet& vars) const {
+void SimpleExpression::collect_vars(RegAccessSet& vars) const {
   for (int i = 0; i < args(); i++) {
     get_arg(i).collect_vars(vars);
   }
@@ -398,7 +402,7 @@ bool SetVarOp::is_sequence_point() const {
   return true;
 }
 
-Variable SetVarOp::get_set_destination() const {
+RegisterAccess SetVarOp::get_set_destination() const {
   return m_dst;
 }
 
@@ -407,7 +411,7 @@ void SetVarOp::update_register_info() {
   m_src.get_regs(&m_read_regs);
 }
 
-void SetVarOp::collect_vars(VariableSet& vars) const {
+void SetVarOp::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_dst);
   m_src.collect_vars(vars);
 }
@@ -423,7 +427,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     if (dst.is_reg()) {
       auto reg = dst.get_reg();
       if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
-        m_dst = Variable(VariableMode::WRITE, reg, my_idx, true);
+        m_dst = RegisterAccess(AccessMode::WRITE, reg, my_idx, true);
       }
     }
   }
@@ -434,7 +438,7 @@ AsmOp::AsmOp(Instruction instr, int my_idx) : AtomicOp(my_idx), m_instr(std::mov
     if (src.is_reg()) {
       auto reg = src.get_reg();
       if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR || reg.get_kind() == Reg::VF) {
-        m_src[i] = Variable(VariableMode::READ, reg, my_idx, true);
+        m_src[i] = RegisterAccess(AccessMode::READ, reg, my_idx, true);
       }
     }
   }
@@ -483,7 +487,7 @@ bool AsmOp::is_sequence_point() const {
   return true;
 }
 
-Variable AsmOp::get_set_destination() const {
+RegisterAccess AsmOp::get_set_destination() const {
   throw std::runtime_error("AsmOp cannot be treated as a set! operation");
 }
 
@@ -595,7 +599,7 @@ void AsmOp::update_register_info() {
   }
 }
 
-void AsmOp::collect_vars(VariableSet& vars) const {
+void AsmOp::collect_vars(RegAccessSet& vars) const {
   if (m_dst.has_value()) {
     vars.insert(*m_dst);
   }
@@ -862,7 +866,7 @@ void IR2_Condition::get_regs(std::vector<Register>* out) const {
   }
 }
 
-void IR2_Condition::collect_vars(VariableSet& vars) const {
+void IR2_Condition::collect_vars(RegAccessSet& vars) const {
   for (int i = 0; i < get_condition_num_args(m_kind); i++) {
     m_src[i].collect_vars(vars);
   }
@@ -872,7 +876,7 @@ void IR2_Condition::collect_vars(VariableSet& vars) const {
 // SetVarConditionOp
 /////////////////////////////
 
-SetVarConditionOp::SetVarConditionOp(Variable dst, IR2_Condition condition, int my_idx)
+SetVarConditionOp::SetVarConditionOp(RegisterAccess dst, IR2_Condition condition, int my_idx)
     : AtomicOp(my_idx), m_dst(dst), m_condition(std::move(condition)) {}
 
 goos::Object SetVarConditionOp::to_form(const std::vector<DecompilerLabel>& labels,
@@ -895,7 +899,7 @@ bool SetVarConditionOp::is_sequence_point() const {
   return true;
 }
 
-Variable SetVarConditionOp::get_set_destination() const {
+RegisterAccess SetVarConditionOp::get_set_destination() const {
   return m_dst;
 }
 
@@ -904,7 +908,7 @@ void SetVarConditionOp::update_register_info() {
   m_condition.get_regs(&m_read_regs);
 }
 
-void SetVarConditionOp::collect_vars(VariableSet& vars) const {
+void SetVarConditionOp::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_dst);
   m_condition.collect_vars(vars);
 }
@@ -963,7 +967,7 @@ bool StoreOp::is_sequence_point() const {
   return true;
 }
 
-Variable StoreOp::get_set_destination() const {
+RegisterAccess StoreOp::get_set_destination() const {
   throw std::runtime_error("StoreOp cannot be treated as a set! operation");
 }
 
@@ -972,7 +976,7 @@ void StoreOp::update_register_info() {
   m_value.get_regs(&m_read_regs);
 }
 
-void StoreOp::collect_vars(VariableSet& vars) const {
+void StoreOp::collect_vars(RegAccessSet& vars) const {
   m_addr.collect_vars(vars);
   m_value.collect_vars(vars);
 }
@@ -981,7 +985,7 @@ void StoreOp::collect_vars(VariableSet& vars) const {
 // LoadVarOp
 /////////////////////////////
 
-LoadVarOp::LoadVarOp(Kind kind, int size, Variable dst, SimpleExpression src, int my_idx)
+LoadVarOp::LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx)
     : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}
 
 goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
@@ -1045,7 +1049,7 @@ bool LoadVarOp::is_sequence_point() const {
   return true;
 }
 
-Variable LoadVarOp::get_set_destination() const {
+RegisterAccess LoadVarOp::get_set_destination() const {
   return m_dst;
 }
 
@@ -1054,7 +1058,7 @@ void LoadVarOp::update_register_info() {
   m_write_regs.push_back(m_dst.reg());
 }
 
-void LoadVarOp::collect_vars(VariableSet& vars) const {
+void LoadVarOp::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_dst);
   m_src.collect_vars(vars);
 }
@@ -1067,27 +1071,31 @@ IR2_BranchDelay::IR2_BranchDelay(Kind kind) : m_kind(kind) {
   assert(m_kind == Kind::NOP || m_kind == Kind::NO_DELAY || m_kind == Kind::UNKNOWN);
 }
 
-IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0) : m_kind(kind) {
+IR2_BranchDelay::IR2_BranchDelay(Kind kind, RegisterAccess var0) : m_kind(kind) {
   assert(m_kind == Kind::SET_REG_FALSE || m_kind == Kind::SET_REG_TRUE ||
          m_kind == Kind::SET_BINTEGER || m_kind == Kind::SET_PAIR);
-  assert(var0.mode() == VariableMode::WRITE);
+  assert(var0.mode() == AccessMode::WRITE);
   m_var[0] = var0;
 }
 
-IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1) : m_kind(kind) {
+IR2_BranchDelay::IR2_BranchDelay(Kind kind, RegisterAccess var0, RegisterAccess var1)
+    : m_kind(kind) {
   assert(m_kind == Kind::NEGATE || m_kind == Kind::SET_REG_REG);
-  assert(var0.mode() == VariableMode::WRITE);
-  assert(var1.mode() == VariableMode::READ);
+  assert(var0.mode() == AccessMode::WRITE);
+  assert(var1.mode() == AccessMode::READ);
   m_var[0] = var0;
   m_var[1] = var1;
 }
 
-IR2_BranchDelay::IR2_BranchDelay(Kind kind, Variable var0, Variable var1, Variable var2)
+IR2_BranchDelay::IR2_BranchDelay(Kind kind,
+                                 RegisterAccess var0,
+                                 RegisterAccess var1,
+                                 RegisterAccess var2)
     : m_kind(kind) {
   assert(m_kind == Kind::DSLLV);
-  assert(var0.mode() == VariableMode::WRITE);
-  assert(var1.mode() == VariableMode::READ);
-  assert(var2.mode() == VariableMode::READ);
+  assert(var0.mode() == AccessMode::WRITE);
+  assert(var1.mode() == AccessMode::READ);
+  assert(var2.mode() == AccessMode::READ);
   m_var[0] = var0;
   m_var[1] = var1;
   m_var[2] = var2;
@@ -1171,7 +1179,7 @@ void IR2_BranchDelay::get_regs(std::vector<Register>* write, std::vector<Registe
   }
 }
 
-void IR2_BranchDelay::collect_vars(VariableSet& vars) const {
+void IR2_BranchDelay::collect_vars(RegAccessSet& vars) const {
   for (auto& x : m_var) {
     if (x.has_value()) {
       vars.insert(*x);
@@ -1225,7 +1233,7 @@ bool BranchOp::is_sequence_point() const {
   return true;
 }
 
-Variable BranchOp::get_set_destination() const {
+RegisterAccess BranchOp::get_set_destination() const {
   throw std::runtime_error("BranchOp cannot be treated as a set! operation");
 }
 
@@ -1234,7 +1242,7 @@ void BranchOp::update_register_info() {
   m_branch_delay.get_regs(&m_write_regs, &m_read_regs);
 }
 
-void BranchOp::collect_vars(VariableSet& vars) const {
+void BranchOp::collect_vars(RegAccessSet& vars) const {
   m_condition.collect_vars(vars);
   m_branch_delay.collect_vars(vars);
 }
@@ -1286,7 +1294,7 @@ bool AsmBranchOp::is_sequence_point() const {
   return true;
 }
 
-Variable AsmBranchOp::get_set_destination() const {
+RegisterAccess AsmBranchOp::get_set_destination() const {
   throw std::runtime_error("AsmBranchOp cannot be treated as a set! operation");
 }
 
@@ -1306,7 +1314,7 @@ void AsmBranchOp::update_register_info() {
   }
 }
 
-void AsmBranchOp::collect_vars(VariableSet& vars) const {
+void AsmBranchOp::collect_vars(RegAccessSet& vars) const {
   m_condition.collect_vars(vars);
   m_branch_delay->collect_vars(vars);
 }
@@ -1349,7 +1357,7 @@ bool SpecialOp::is_sequence_point() const {
   return true;
 }
 
-Variable SpecialOp::get_set_destination() const {
+RegisterAccess SpecialOp::get_set_destination() const {
   throw std::runtime_error("SpecialOp cannot be treated as a set! operation");
 }
 
@@ -1371,7 +1379,7 @@ void SpecialOp::update_register_info() {
   }
 }
 
-void SpecialOp::collect_vars(VariableSet&) const {}
+void SpecialOp::collect_vars(RegAccessSet&) const {}
 
 /////////////////////////////
 // CallOp
@@ -1379,8 +1387,8 @@ void SpecialOp::collect_vars(VariableSet&) const {}
 
 CallOp::CallOp(int my_idx)
     : AtomicOp(my_idx),
-      m_function_var(VariableMode::READ, Register(Reg::GPR, Reg::T9), my_idx),
-      m_return_var(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), my_idx) {}
+      m_function_var(AccessMode::READ, Register(Reg::GPR, Reg::T9), my_idx),
+      m_return_var(AccessMode::WRITE, Register(Reg::GPR, Reg::V0), my_idx) {}
 
 goos::Object CallOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   (void)labels;
@@ -1407,7 +1415,7 @@ bool CallOp::is_sequence_point() const {
   return true;
 }
 
-Variable CallOp::get_set_destination() const {
+RegisterAccess CallOp::get_set_destination() const {
   throw std::runtime_error("CallOp cannot be treated as a set! operation");
 }
 
@@ -1421,7 +1429,7 @@ void CallOp::update_register_info() {
   clobber_temps();
 }
 
-void CallOp::collect_vars(VariableSet& vars) const {
+void CallOp::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_function_var);
   for (auto& e : m_arg_vars) {
     vars.insert(e);
@@ -1436,9 +1444,9 @@ void CallOp::collect_vars(VariableSet& vars) const {
 // ConditionalMoveFalseOp
 /////////////////////////////
 
-ConditionalMoveFalseOp::ConditionalMoveFalseOp(Variable dst,
-                                               Variable src,
-                                               Variable old_value,
+ConditionalMoveFalseOp::ConditionalMoveFalseOp(RegisterAccess dst,
+                                               RegisterAccess src,
+                                               RegisterAccess old_value,
                                                bool on_zero,
                                                int my_idx)
     : AtomicOp(my_idx), m_dst(dst), m_src(src), m_old_value(old_value), m_on_zero(on_zero) {}
@@ -1465,7 +1473,7 @@ bool ConditionalMoveFalseOp::is_sequence_point() const {
   return true;
 }
 
-Variable ConditionalMoveFalseOp::get_set_destination() const {
+RegisterAccess ConditionalMoveFalseOp::get_set_destination() const {
   throw std::runtime_error("ConditionalMoveFalseOp cannot be treated as a set! operation");
 }
 
@@ -1475,7 +1483,7 @@ void ConditionalMoveFalseOp::update_register_info() {
   m_read_regs.push_back(m_old_value.reg());
 }
 
-void ConditionalMoveFalseOp::collect_vars(VariableSet& vars) const {
+void ConditionalMoveFalseOp::collect_vars(RegAccessSet& vars) const {
   vars.insert(m_dst);
   vars.insert(m_src);
   vars.insert(m_old_value);
@@ -1504,7 +1512,7 @@ bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out) {
 /////////////////////////////
 
 FunctionEndOp::FunctionEndOp(int my_idx)
-    : AtomicOp(my_idx), m_return_reg(VariableMode::READ, Register(Reg::GPR, Reg::V0), my_idx) {}
+    : AtomicOp(my_idx), m_return_reg(AccessMode::READ, Register(Reg::GPR, Reg::V0), my_idx) {}
 
 goos::Object FunctionEndOp::to_form(const std::vector<DecompilerLabel>&, const Env& env) const {
   if (m_function_has_return_value) {
@@ -1528,7 +1536,7 @@ bool FunctionEndOp::is_sequence_point() const {
   return true;
 }
 
-Variable FunctionEndOp::get_set_destination() const {
+RegisterAccess FunctionEndOp::get_set_destination() const {
   throw std::runtime_error("FunctionEndOp cannot be treated as a set! operation");
 }
 
@@ -1536,7 +1544,7 @@ void FunctionEndOp::update_register_info() {
   m_read_regs.push_back(Register(Reg::GPR, Reg::V0));
 }
 
-void FunctionEndOp::collect_vars(VariableSet& vars) const {
+void FunctionEndOp::collect_vars(RegAccessSet& vars) const {
   if (m_function_has_return_value) {
     vars.insert(m_return_reg);
   }

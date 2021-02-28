@@ -44,15 +44,15 @@ Register rv0() {
 // Variable Helpers
 /////////////////////////
 
-Variable make_dst_var(Register reg, int idx) {
-  return Variable(VariableMode::WRITE, reg, idx);
+RegisterAccess make_dst_var(Register reg, int idx) {
+  return RegisterAccess(AccessMode::WRITE, reg, idx);
 }
 
-Variable make_src_var(Register reg, int idx) {
-  return Variable(VariableMode::READ, reg, idx);
+RegisterAccess make_src_var(Register reg, int idx) {
+  return RegisterAccess(AccessMode::READ, reg, idx);
 }
 
-Variable make_dst_var(const Instruction& i, int idx) {
+RegisterAccess make_dst_var(const Instruction& i, int idx) {
   assert(i.n_dst == 1);
   return make_dst_var(i.get_dst(0).get_reg(), idx);
 }

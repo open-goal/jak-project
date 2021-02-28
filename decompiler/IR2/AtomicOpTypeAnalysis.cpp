@@ -789,7 +789,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     m_read_regs.emplace_back(Reg::GPR, Reg::T9);
     for (int i = 0; i < int(m_call_type.arg_count()) - 1; i++) {
       m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
-      m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
+      m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
     }
     return end_types;
   }
@@ -838,7 +838,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       m_read_regs.emplace_back(Reg::GPR, Reg::T9);
       for (int i = 0; i < arg_count; i++) {
         m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
-        m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
+        m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
       }
 
       return end_types;
@@ -859,7 +859,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
-    m_arg_vars.push_back(Variable(VariableMode::READ, m_read_regs.back(), m_my_idx));
+    m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
     if (i == 0 && in_tp.kind == TP_Type::Kind::VIRTUAL_METHOD) {
       m_read_regs.pop_back();
       m_arg_vars.pop_back();

@@ -22,7 +22,7 @@ std::string reg_to_string(const T& regs) {
 
 /*!
  * Allocate a new SSA variable for the given register.
- * This should only be used to allocate the result of a non-phi instruction.
+ * This should only be used to allocate the result of a non-phi instruction (a real instruction)
  */
 VarSSA VarMapSSA::allocate(Register reg) {
   Entry new_entry;
@@ -35,7 +35,7 @@ VarSSA VarMapSSA::allocate(Register reg) {
 }
 
 /*!
- * Allocate a new SSA for the given register.
+ * Allocate a new SSA variable for the given register as a result of a phi.
  * This should only be used to allocate the result of a phi-function.
  */
 VarSSA VarMapSSA::allocate_init_phi(Register reg, int block_id) {
@@ -128,13 +128,16 @@ bool VarMapSSA::same(const VarSSA& var_a, const VarSSA& var_b) const {
 /*!
  * Get program variable ID from an SSA variable.
  */
-int VarMapSSA::var_id(const VarSSA& var) {
+int VarMapSSA::var_id(const VarSSA& var) const {
   return m_entries.at(var.m_entry_id).var_id;
 }
 
 /*!
  * For a given register and map, remap using var_id = remap[var_id]
  * For variables not in the map, set ID to INT32_MIN.
+ *
+ * This allows you to do a full remapping, without worrying new/old mappings aliasing part way
+ * through the remapping.
  */
 void VarMapSSA::remap_reg(Register reg, const std::unordered_map<int, int>& remap) {
   for (auto& entry : m_entries) {
@@ -337,16 +340,31 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
         got_not_arg_coloring = true;
         auto as_set = dynamic_cast<const SetVarOp*>(op.get());
         if (as_set) {
+          auto dst = as_set->dst().reg();
+
           if ((as_set->src().kind() == SimpleExpression::Kind::GPR_TO_FPR ||
                as_set->src().is_identity()) &&
               as_set->src().get_arg(0).is_var()) {
             auto src = as_set->src().get_arg(0).var().reg();
-            auto dst = as_set->dst().reg();
+
             if (is_possible_coloring_move(dst, src) &&
                 rui.op.at(op_id).consumes.find(src) != rui.op.at(op_id).consumes.end()) {
               ssa_i.is_arg_coloring_move = true;
               got_not_arg_coloring = false;
             }
+          }
+        }
+      }
+
+      auto as_set = dynamic_cast<const SetVarOp*>(op.get());
+      if (as_set) {
+        auto dst = as_set->dst().reg();
+        if (as_set->src().is_var()) {
+          auto src = as_set->src().get_arg(0).var().reg();
+          auto& ri = rui.op.at(op_id);
+          if (ri.consumes.find(src) != ri.consumes.end() &&
+              ri.written_and_unused.find(dst) != ri.written_and_unused.end()) {
+            ssa_i.is_dead_set = true;
           }
         }
       }
@@ -480,6 +498,10 @@ void SSA::merge_all_phis() {
   }
 }
 
+/*!
+ * Remaps all SSA variable ids to final variable IDs.
+ * This forces you to have all positive, consecutive IDs, with 0 being the entry value.
+ */
 void SSA::remap() {
   // this keeps the order of variable assignments in the instruction order, not var_id order.
   struct VarIdRecord {
@@ -528,6 +550,15 @@ void SSA::remap() {
     for (auto var_id : reg_vars.second.order) {
       var_remap[var_id] = i++;
     }
+
+    // paranoid
+    assert(var_remap.size() == reg_vars.second.order.size());
+    std::unordered_set<int> check;
+    for (auto kv : var_remap) {
+      check.insert(kv.second);
+    }
+    assert(check.size() == var_remap.size());
+
     map.remap_reg(reg_vars.first, var_remap);
     program_read_vars[reg_vars.first].resize(i);
     program_write_vars[reg_vars.first].resize(i);
@@ -554,6 +585,9 @@ void update_var_info(VariableNames::VarInfo* info,
 }
 }  // namespace
 
+/*!
+ * Create variable info for each variable.
+ */
 void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
@@ -595,7 +629,7 @@ void remap_color_move(
   old_kv->second.at(old_var.id).reg_id = new_var;
 }
 
-VariableNames SSA::get_vars() {
+VariableNames SSA::get_vars() const {
   VariableNames result;
   result.read_vars = program_read_vars;
   result.write_vars = program_write_vars;
@@ -640,6 +674,71 @@ VariableNames SSA::get_vars() {
       old_regid.id = map.var_id(*instr.dst);
       remap_color_move(result.read_vars, old_regid, new_regid);
       remap_color_move(result.write_vars, old_regid, new_regid);
+    }
+  }
+
+  return result;
+}
+
+/*!
+ * Get a map from access to SSA variable.
+ */
+RegAccessMap<int> SSA::get_ssa_mapping() {
+  RegAccessMap<int> result;
+
+  for (const auto& block : blocks) {
+    for (const auto& instr : block.ins) {
+      if (instr.dst.has_value()) {
+        RegisterAccess access(AccessMode::WRITE, instr.dst->reg(), instr.op_id, true);
+        result[access] = map.var_id(*instr.dst);
+      }
+
+      for (const auto& src : instr.src) {
+        RegisterAccess access(AccessMode::READ, src.reg(), instr.op_id, true);
+        result[access] = map.var_id(src);
+      }
+    }
+  }
+
+  return result;
+}
+
+/*!
+ * Find Program Variables that can safely be propagated.
+ */
+std::unordered_map<RegId, UseDefInfo, RegId::hash> SSA::get_use_def_info(
+    const RegAccessMap<int>& ssa_info) const {
+  std::unordered_map<RegId, UseDefInfo, RegId::hash> result;
+
+  // now, iterate through instruction
+  // for (const auto& block : blocks) {
+  for (size_t block_id = 0; block_id < blocks.size(); block_id++) {
+    const auto& block = blocks[block_id];
+    for (const auto& instr : block.ins) {
+      if (instr.is_dead_set) {
+        continue;
+      }
+      if (instr.dst.has_value()) {
+        // get the SSA var:
+        auto ssa_var_id =
+            ssa_info.at(RegisterAccess(AccessMode::WRITE, instr.dst->reg(), instr.op_id, true));
+        // get the info
+        auto& info = result[RegId(instr.dst->reg(), map.var_id(*instr.dst))];
+        // remember which SSA variable was in use here
+        info.defs.push_back({instr.op_id, (int)block_id, AccessMode::WRITE});
+        info.ssa_vars.insert(ssa_var_id);
+      }
+
+      for (const auto& src : instr.src) {
+        // get the SSA var:
+        auto ssa_var_id =
+            ssa_info.at(RegisterAccess(AccessMode::READ, src.reg(), instr.op_id, true));
+        // get the info
+        auto& info = result[RegId(src.reg(), map.var_id(src))];
+        // remember the variable
+        info.ssa_vars.insert(ssa_var_id);
+        info.uses.push_back({instr.op_id, (int)block_id, AccessMode::READ});
+      }
     }
   }
 
@@ -694,14 +793,17 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
     fmt::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
   }
 
-  // eliminate PHIs that are stupid.
+  // eliminate PHIs that are not needed, still keeping us in SSA.
   while (ssa.simplify()) {
   }
   if (debug_prints) {
     fmt::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
   }
 
-  // Merge phis to return to executable code.
+  // remember what the SSA mapping was:
+  auto ssa_mapping = ssa.get_ssa_mapping();
+
+  // Merge phis to return to executable code and exit SSA.
   if (debug_prints) {
     ssa.map.debug_print_map();
   }
@@ -725,7 +827,10 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   if (function.ir2.env.has_type_analysis()) {
     // make vars
     ssa.make_vars(function, dts);
-    return ssa.get_vars();
+    //
+    auto result = ssa.get_vars();
+    result.use_def_info = ssa.get_use_def_info(ssa_mapping);
+    return result;
   } else {
     return std::nullopt;
   }

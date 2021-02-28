@@ -36,6 +36,8 @@ struct FunctionAtomicOps;
  * These must be created from a VarMapSSA, which can then remap and merge these.
  * This remapping/merging functionality is used in the initial conversion to SSA,
  * the simplification of the SSA, and the merging of variables.
+ *
+ * Note - these are like references to SSA or program variable.
  */
 class VarSSA {
  public:
@@ -72,7 +74,7 @@ class VarMapSSA {
   void merge_to_first(const VarSSA& var_a, const VarSSA& var_b);
   std::string to_string(const VarSSA& var) const;
   bool same(const VarSSA& var_a, const VarSSA& var_b) const;
-  int var_id(const VarSSA& var);
+  int var_id(const VarSSA& var) const;
   void remap_reg(Register reg, const std::unordered_map<int, int>& remap);
   void debug_print_map() const;
 
@@ -109,6 +111,7 @@ struct SSA {
     std::vector<VarSSA> src;
     int op_id = -1;
     bool is_arg_coloring_move = false;
+    bool is_dead_set = false;
 
     std::string print(const VarMapSSA& var_map) const;
   };
@@ -134,11 +137,15 @@ struct SSA {
   VarSSA get_phi_dest(int block, Register dest_reg);
   void add_source_to_phi(int block, Register dest_reg, const VarSSA& src_var);
 
+  RegAccessMap<int> get_ssa_mapping();
+
   bool simplify();
   void merge_all_phis();
   void remap();
   void make_vars(const Function& function, const DecompilerTypeSystem& dts);
-  VariableNames get_vars();
+  std::unordered_map<RegId, UseDefInfo, RegId::hash> get_use_def_info(
+      const RegAccessMap<int>& ssa_info) const;
+  VariableNames get_vars() const;
   std::string print() const;
 };
 
