@@ -7690,7 +7690,7 @@
 ;; surface-h
 (deftype surface (basic)
   ((name              basic      :offset-assert 4)
-   ;(data              UNKNOWN 30 :offset-assert 8)
+   ;; data went here
    (turnv             float      :offset-assert 8)
    (turnvv            float      :offset-assert 12)
    (tiltv             float      :offset-assert 16)
@@ -7713,28 +7713,92 @@
    (alignv            float      :offset-assert 84)
    (slope-up-traction float      :offset-assert 88)
    (align-speed       float      :offset-assert 92)
-   ;(hook              UNKNOWN 4  :offset-assert 128)
+   ;; hook went here
    (active-hook       basic      :offset 128)
    (touch-hook        basic      :offset-assert 132)
    (impact-hook       basic      :offset-assert 136)
-   (mult-hook         basic      :offset-assert 140)
-   ;(dataw             UNKNOWN 2  :offset-assert 144)
+   (mult-hook         (function surface surface surface int none)     :offset-assert 140)
+   ;; dataw went here
    (mode              basic      :offset-assert 144)
    (flags             uint32     :offset-assert 148)
+   
+   (data              float 30 :offset 8)
+   (hook              basic 4  :offset 128)
+   (dataw             uint32 2  :offset 144)
    )
   :method-count-assert 9
   :size-assert         #x98
   :flag-assert         #x900000098
   )
 
-; ;; pat-h
-; (deftype pat-surface (uint32)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   ;; likely a bitfield type
-;   )
+(define-extern surface-interp! (function surface surface surface float surface))
+
+;;(define-extern standard object) ;; unknown type
+;;(define-extern *edge-surface* object) ;; unknown type
+;;(define-extern *uppercut-jump-mods* object) ;; unknown type
+;;(define-extern *forward-pole-jump-mods* object) ;; unknown type
+;;(define-extern *flip-jump-mods* object) ;; unknown type
+(define-extern surface-clamp-speed (function surface surface surface int none))
+;;(define-extern *flop-mods* object) ;; unknown type
+(define-extern surface type)
+;;(define-extern *smack-jump-mods* object) ;; unknown type
+;;(define-extern *dive-mods* object) ;; unknown type
+;;(define-extern *swim-surface* object) ;; unknown type
+(define-extern calc-terminal2-vel (function float float float float float))
+;;(define-extern *wade-surface* object) ;; unknown type
+;;(define-extern *jump-mods* object) ;; unknown type
+;;(define-extern *turn-around-mods* object) ;; unknown type
+;;(define-extern *jump-attack-mods* object) ;; unknown type
+;;(define-extern *grass-surface* object) ;; unknown type
+;;(define-extern *dive-bottom-mods* object) ;; unknown type
+;;(define-extern *tread-surface* object) ;; unknown type
+(define-extern surface-mult! (function surface surface surface surface))
+;;(define-extern *forward-high-jump-mods* object) ;; unknown type
+;;(define-extern *double-jump-mods* object) ;; unknown type
+;;(define-extern edge-grab object) ;; unknown type
+;;(define-extern *high-jump-mods* object) ;; unknown type
+;;(define-extern *ice-surface* object) ;; unknown type
+;;(define-extern *grab-mods* object) ;; unknown type
+;;(define-extern *run-attack-mods* object) ;; unknown type
+;;(define-extern *quicksand-surface* object) ;; unknown type
+;;(define-extern *walk-no-turn-mods* object) ;; unknown type
+(define-extern calc-terminal-vel (function float float float float))
+;;(define-extern *duck-mods* object) ;; unknown type
+;;(define-extern *duck-attack-mods* object) ;; unknown type
+;;(define-extern *slope-surface* object) ;; unknown type
+(define-extern calc-terminal4-vel (function float float float float))
+;;(define-extern *edge-grab-mods* object) ;; unknown type
+;;(define-extern *standard-ground-surface* object) ;; unknown type
+;;(define-extern *flop-land-mods* object) ;; unknown type
+;;(define-extern *wheel-mods* object) ;; unknown type
+;;(define-extern *swim-mods* object) ;; unknown type
+
+(define-extern *walk-mods* surface) ;; unknown type
+;;(define-extern *attack-mods* object) ;; unknown type
+;;(define-extern *neutral-mods* object) ;; unknown type
+;;(define-extern grab object) ;; unknown type
+;;(define-extern *wade-mods* object) ;; unknown type
+;;(define-extern *forward-jump-mods* object) ;; unknown type
+(define-extern *stone-surface* surface) ;; unknown type
+;;(define-extern *launch-jump-mods* object) ;; unknown type
+;;(define-extern *empty-mods* object) ;; unknown type
+;;(define-extern *tar-surface* object) ;; unknown type
+;;(define-extern *wheel-flip-mods* object) ;; unknown type
+;;(define-extern *pole-mods* object) ;; unknown type
+
+;; pat-h
+(deftype pat-surface (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(define-extern pat-event->string (function pat-surface string))
+(define-extern pat-material->string (function pat-surface string))
+;;(define-extern pat-surface object) ;; unknown type
+;;(define-extern pat-mode-info object) ;; unknown type
+(define-extern pat-mode->string (function pat-surface string))
 
 ;; pat-h
 (deftype pat-mode-info (structure)
@@ -7770,6 +7834,8 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
+
+(define-extern pickup-type->string (function int string))
 
 ;; fact-h
 (deftype fact-info (basic)
@@ -7840,29 +7906,29 @@
     )
   )
 
-; ;; aligner-h
-; (deftype align-control (basic)
-;   ((flags       uint32             :offset-assert 4)
-;    (process     basic              :offset-assert 8)
-;    (frame-group basic              :offset-assert 12)
-;    (frame-num   float              :offset-assert 16)
-;    (matrix      UNKNOWN    2       :offset-assert 32)
-;    (transform   UNKNOWN    2       :offset-assert 160)
-;    (delta       transformq :inline :offset-assert 256)
-;    (last-speed  meters             :offset-assert 304)
-;    (align       transformq :inline :offset-assert 160)
-;    )
-;   :method-count-assert 14
-;   :size-assert         #x134
-;   :flag-assert         #xe00000134
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     )
-;   )
+;; aligner-h
+(deftype align-control (basic)
+  ((flags       uint32             :offset-assert 4)
+   (process     basic              :offset-assert 8)
+   (frame-group basic              :offset-assert 12)
+   (frame-num   float              :offset-assert 16)
+   (matrix      matrix     2  :inline     :offset-assert 32)
+   (transform   transform    2 :inline      :offset-assert 160)
+   (delta       transformq :inline :offset-assert 256)
+   (last-speed  float             :offset-assert 304);; meters
+   (align       transformq :inline :offset 160)
+   )
+  :method-count-assert 14
+  :size-assert         #x134
+  :flag-assert         #xe00000134
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    )
+  )
 
 ;; game-h
 (deftype process-drawable (process)
@@ -8390,12 +8456,12 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (set-zero! (_type_) _type_ 9)
+    (update! (_type_) float 10)
+    (get-no-update (_type_) float 11)
+    (activate! (_type_ float int int float float float) _type_ 12)
+    (nonzero-amplitude? (_type_) symbol 13)
+    (die-on-next-update! (_type_) _type_ 14)
     )
   )
 
@@ -8568,83 +8634,86 @@
   :flag-assert         #x90000002c
   )
 
-; ;; collide-mesh-h
-; (deftype collide-tri-result (structure)
-;   ((vertex    UNKNOWN 3       :offset-assert 0)
-;    (intersect vector  :inline :offset-assert 48)
-;    (normal    vector  :inline :offset-assert 64)
-;    (pat       uint32          :offset-assert 80)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x54
-;   :flag-assert         #x900000054
-;   )
+;; collide-mesh-h
+(deftype collide-tri-result (structure)
+  ((vertex    vector 3 :inline :offset-assert 0)
+   (intersect vector  :inline  :offset-assert 48)
+   (normal    vector  :inline  :offset-assert 64)
+   (pat       uint32           :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
 
 ; ;; collide-mesh-h
-; (deftype collide-mesh-tri (structure)
-;   ((vertex-index UNKNOWN 3 :offset-assert 0)
-;    (unused       uint8     :offset-assert 3)
-;    (pat          uint32    :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
+(deftype collide-mesh-tri (structure)
+  ((vertex-index uint8   3 :offset-assert 0)
+   (unused       uint8     :offset-assert 3)
+   (pat          uint32    :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
 
-; ;; collide-mesh-h
-; (deftype collide-mesh (basic)
-;   ((joint-id    int32     :offset-assert 4)
-;    (num-tris    uint32    :offset-assert 8)
-;    (num-verts   uint32    :offset-assert 12)
-;    (vertex-data uint32    :offset-assert 16)
-;    (tris        UNKNOWN 1 :offset-assert 32)
-;    )
-;   :method-count-assert 16
-;   :size-assert         #x28
-;   :flag-assert         #x1000000028
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     )
-;   )
+;; collide-mesh-h
+(deftype collide-mesh (basic)
+  ((joint-id    int32     :offset-assert 4)
+   (num-tris    uint32    :offset-assert 8)
+   (num-verts   uint32    :offset-assert 12)
+   (vertex-data uint32    :offset-assert 16)
+   ;; todo - this could be wrong
+   (tris        collide-mesh-tri 1 :inline :offset 32)
+   )
+  :method-count-assert 16
+  :size-assert         #x28
+  :flag-assert         #x1000000028
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    )
+  )
 
-; ;; collide-mesh-h
-; (deftype collide-mesh-cache (basic)
-;   ((used-size uint32        :offset-assert 4)
-;    (max-size  uint32        :offset-assert 8)
-;    (id        uint64        :offset-assert 16)
-;    (data      UNKNOWN 40960 :offset-assert 32)
-;    )
-;   :method-count-assert 12
-;   :size-assert         #xa020
-;   :flag-assert         #xc0000a020
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     )
-;   )
+;; collide-mesh-h
+(deftype collide-mesh-cache (basic)
+  ((used-size uint32        :offset-assert 4)
+   (max-size  uint32        :offset-assert 8)
+   (id        uint64        :offset-assert 16)
+   (pad uint8 8) ;; added
+   (data      uint8 40960 :offset-assert 32)
+   )
+  :method-count-assert 12
+  :size-assert         #xa020
+  :flag-assert         #xc0000a020
+  (:methods
+    (dummy-9 () none 9)
+    (is-id? (_type_ int) symbol 10)
+    (next-id! (_type_) uint 11)
+    )
+  )
 
-; ;; collide-mesh-h
-; (deftype collide-mesh-cache-tri (structure)
-;   ((vertex UNKNOWN        3       :offset-assert 0)
-;    (normal vector         :inline :offset-assert 48)
-;    (bbox4w bounding-box4w :inline :offset-assert 64)
-;    (pat    uint32                 :offset-assert 60)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x60
-;   :flag-assert         #x900000060
-;   )
+;; collide-mesh-h
+(deftype collide-mesh-cache-tri (structure)
+  ((vertex vector   3     :inline :offset-assert 0)
+   (normal vector         :inline :offset-assert 48)
+   (bbox4w bounding-box4w :inline :offset-assert 64)
+   (pat    uint32                 :offset 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
 
 ;; collide-shape-h
 (deftype collide-sticky-rider (structure)
-  ((rider-handle    uint64         :offset-assert 0)
+  ((rider-handle    handle         :offset-assert 0)
    (sticky-prim     basic          :offset-assert 8)
    (prim-ry         float          :offset-assert 12)
    (rider-local-pos vector :inline :offset-assert 16)
@@ -8653,24 +8722,25 @@
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (dummy-9 () none 9)
+    (set-rider! (_type_ handle) symbol 9)
     )
   )
 
-; ;; collide-shape-h
-; (deftype collide-sticky-rider-group (basic)
-;   ((num-riders       int32     :offset-assert 4)
-;    (allocated-riders int32     :offset-assert 8)
-;    (rider            UNKNOWN 1 :offset-assert 16)
-;    )
-;   :method-count-assert 11
-;   :size-assert         #x30
-;   :flag-assert         #xb00000030
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-sticky-rider-group (basic)
+  ((num-riders       int32     :offset-assert 4)
+   (allocated-riders int32     :offset-assert 8)
+   (rider            collide-sticky-rider 1 :inline :offset-assert 16)
+   )
+  :method-count-assert 11
+  :size-assert         #x30
+  :flag-assert         #xb00000030
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (dummy-9 () none 9)
+    (reset! (_type_) int 10)
+    )
+  )
 
 ;; collide-shape-h
 (deftype pull-rider-info (structure)
@@ -8684,430 +8754,364 @@
   :flag-assert         #x900000020
   )
 
-; ;; collide-shape-h
-; (deftype collide-shape-intersect (basic)
-;   ((move-vec       vector             :inline :offset-assert 16)
-;    (best-u         float                      :offset-assert 32)
-;    (best-tri       collide-tri-result :inline :offset-assert 48)
-;    (best-from-prim basic                      :offset-assert 132)
-;    (best-to-prim   basic                      :offset-assert 136)
-;    )
-;   :method-count-assert 10
-;   :size-assert         #x8c
-;   :flag-assert         #xa0000008c
-;   (:methods
-;     (dummy-9 () none 9)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape-intersect (basic)
+  ((move-vec       vector             :inline :offset-assert 16)
+   (best-u         float                      :offset-assert 32)
+   (best-tri       collide-tri-result :inline :offset-assert 48)
+   (best-from-prim basic                      :offset-assert 132)
+   (best-to-prim   basic                      :offset-assert 136)
+   )
+  :method-count-assert 10
+  :size-assert         #x8c
+  :flag-assert         #xa0000008c
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype collide-overlap-result (structure)
-;   ((best-dist      float                      :offset-assert 0)
-;    (best-from-prim basic                      :offset-assert 4)
-;    (best-to-prim   basic                      :offset-assert 8)
-;    (best-from-tri  collide-tri-result :inline :offset-assert 16)
-;    )
-;   :method-count-assert 10
-;   :size-assert         #x64
-;   :flag-assert         #xa00000064
-;   (:methods
-;     (dummy-9 () none 9)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-overlap-result (structure)
+  ((best-dist      float                      :offset-assert 0)
+   (best-from-prim basic                      :offset-assert 4)
+   (best-to-prim   basic                      :offset-assert 8)
+   (best-from-tri  collide-tri-result :inline :offset-assert 16)
+   )
+  :method-count-assert 10
+  :size-assert         #x64
+  :flag-assert         #xa00000064
+  (:methods
+    (reset! (_type_) none 9)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype overlaps-others-params (structure)
-;   ((options uint32  :offset-assert 0)
-;    (tlist   basic   :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
+;; collide-shape-h
+(deftype overlaps-others-params (structure)
+  ((options uint32  :offset-assert 0)
+   (tlist   basic   :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
 
-; ;; collide-shape-h
-; (deftype collide-prim-core (structure)
-;   ((world-sphere vector  :inline :offset-assert 0)
-;    (collide-as   uint64          :offset-assert 16)
-;    (action       uint32          :offset-assert 24)
-;    (offense      int8            :offset-assert 28)
-;    (prim-type    int8            :offset-assert 29)
-;    (extra        UNKNOWN 2       :offset-assert 30)
-;    (quad         UNKNOWN 2       :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+;; collide-shape-h
+(deftype collide-prim-core (structure)
+  ((world-sphere vector  :inline :offset-assert 0)
+   (collide-as   uint64          :offset-assert 16)
+   (action       uint32          :offset-assert 24)
+   (offense      int8            :offset-assert 28)
+   (prim-type    int8            :offset-assert 29)
+   (extra        uint8 2       :offset-assert 30)
+   (quad         uint128 2       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
-; ;; collide-shape-h
-; (deftype collide-shape-prim (basic)
-;   ((cshape          basic                     :offset-assert 4)
-;    (prim-id         uint32                    :offset-assert 8)
-;    (transform-index int8                      :offset-assert 12)
-;    (prim-core       collide-prim-core :inline :offset-assert 16)
-;    (local-sphere    vector            :inline :offset-assert 48)
-;    (collide-with    uint64                    :offset-assert 64)
-;    (world-sphere    vector            :inline :offset-assert 16)
-;    (collide-as      uint64                    :offset-assert 32)
-;    (action          uint32                    :offset-assert 40)
-;    (offense         int8                      :offset-assert 44)
-;    (prim-type       int8                      :offset-assert 45)
-;    (radius          meters                    :offset-assert 60)
-;    )
-;   :method-count-assert 28
-;   :size-assert         #x48
-;   :flag-assert         #x1c00000048
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape-prim (basic)
+  ((cshape          basic                     :offset-assert 4)
+   (prim-id         uint32                    :offset-assert 8)
+   (transform-index int8                      :offset-assert 12)
+   (prim-core       collide-prim-core :inline :offset-assert 16)
+   (local-sphere    vector            :inline :offset-assert 48)
+   (collide-with    uint64                    :offset-assert 64)
+   (world-sphere    vector            :inline :offset 16)
+   (collide-as      uint64                    :offset 32)
+   (action          uint32                    :offset 40)
+   (offense         int8                      :offset 44)
+   (prim-type       int8                      :offset 45)
+   (radius          float                     :offset 60) ;; meters
+   )
+  :method-count-assert 28
+  :size-assert         #x48
+  :flag-assert         #x1c00000048
+  (:methods
+    (new (symbol type basic uint int) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype collide-shape-prim-sphere (collide-shape-prim)
-;   ((cshape          basic                     :offset-assert 4)
-;    (prim-id         uint32                    :offset-assert 8)
-;    (transform-index int8                      :offset-assert 12)
-;    (prim-core       collide-prim-core :inline :offset-assert 16)
-;    (local-sphere    vector            :inline :offset-assert 48)
-;    (collide-with    uint64                    :offset-assert 64)
-;    (world-sphere    vector            :inline :offset-assert 16)
-;    (collide-as      uint64                    :offset-assert 32)
-;    (action          uint32                    :offset-assert 40)
-;    (offense         int8                      :offset-assert 44)
-;    (prim-type       int8                      :offset-assert 45)
-;    (radius          meters                    :offset-assert 60)
-;    (pat             uint32                    :offset-assert 72)
-;    )
-;   :method-count-assert 28
-;   :size-assert         #x4c
-;   :flag-assert         #x1c0000004c
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape-prim-sphere (collide-shape-prim)
+  ((pat             uint32                    :offset-assert 72)
+   )
+  :method-count-assert 28
+  :size-assert         #x4c
+  :flag-assert         #x1c0000004c
+  (:methods
+    (new (symbol type basic uint) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype collide-shape-prim-mesh (collide-shape-prim)
-;   ((cshape          basic                     :offset-assert 4)
-;    (prim-id         uint32                    :offset-assert 8)
-;    (transform-index int8                      :offset-assert 12)
-;    (prim-core       collide-prim-core :inline :offset-assert 16)
-;    (local-sphere    vector            :inline :offset-assert 48)
-;    (collide-with    uint64                    :offset-assert 64)
-;    (world-sphere    vector            :inline :offset-assert 16)
-;    (collide-as      uint64                    :offset-assert 32)
-;    (action          uint32                    :offset-assert 40)
-;    (offense         int8                      :offset-assert 44)
-;    (prim-type       int8                      :offset-assert 45)
-;    (radius          meters                    :offset-assert 60)
-;    (mesh            basic                     :offset-assert 72)
-;    (mesh-id         int32                     :offset-assert 76)
-;    (mesh-cache-id   uint64                    :offset-assert 80)
-;    (mesh-cache-tris uint32                    :offset-assert 88)
-;    )
-;   :method-count-assert 29
-;   :size-assert         #x5c
-;   :flag-assert         #x1d0000005c
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape-prim-mesh (collide-shape-prim)
+  ((mesh            basic                     :offset-assert 72)
+   (mesh-id         int32                     :offset-assert 76)
+   (mesh-cache-id   uint64                    :offset-assert 80)
+   (mesh-cache-tris uint32                    :offset-assert 88)
+   )
+  :method-count-assert 29
+  :size-assert         #x5c
+  :flag-assert         #x1d0000005c
+  (:methods
+    (new (symbol type basic uint uint) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype collide-shape-prim-group (collide-shape-prim)
-;   ((cshape          basic                     :offset-assert 4)
-;    (prim-id         uint32                    :offset-assert 8)
-;    (transform-index int8                      :offset-assert 12)
-;    (prim-core       collide-prim-core :inline :offset-assert 16)
-;    (local-sphere    vector            :inline :offset-assert 48)
-;    (collide-with    uint64                    :offset-assert 64)
-;    (world-sphere    vector            :inline :offset-assert 16)
-;    (collide-as      uint64                    :offset-assert 32)
-;    (action          uint32                    :offset-assert 40)
-;    (offense         int8                      :offset-assert 44)
-;    (prim-type       int8                      :offset-assert 45)
-;    (radius          meters                    :offset-assert 60)
-;    (num-prims       int32                     :offset-assert 72)
-;    (allocated-prims int32                     :offset-assert 76)
-;    (prim            UNKNOWN           1       :offset-assert 80)
-;    )
-;   :method-count-assert 30
-;   :size-assert         #x54
-;   :flag-assert         #x1e00000054
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape-prim-group (collide-shape-prim)
+  ((num-prims       int32                     :offset-assert 72)
+   (allocated-prims int32                     :offset-assert 76)
+   (prim            uint32           1       :offset-assert 80)
+   )
+  :method-count-assert 30
+  :size-assert         #x54
+  :flag-assert         #x1e00000054
+  (:methods
+    (new (symbol type basic uint int) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype collide-shape (trsqv)
-;   ((trans                 vector     :inline :offset-assert 16)
-;    (rot                   vector     :inline :offset-assert 32)
-;    (scale                 vector     :inline :offset-assert 48)
-;    (quat                  quaternion :inline :offset-assert 32)
-;    (pause-adjust-distance meters             :offset-assert 4)
-;    (nav-radius            meters             :offset-assert 8)
-;    (transv                vector     :inline :offset-assert 64)
-;    (rotv                  vector     :inline :offset-assert 80)
-;    (scalev                vector     :inline :offset-assert 96)
-;    (dir-targ              quaternion :inline :offset-assert 112)
-;    (angle-change-time     uint64             :offset-assert 128)
-;    (old-y-angle-diff      float              :offset-assert 136)
-;    (process               basic              :offset-assert 140)
-;    (max-iteration-count   uint8              :offset-assert 144)
-;    (nav-flags             uint8              :offset-assert 145)
-;    (pad-byte              UNKNOWN    2       :offset-assert 146)
-;    (pat-ignore-mask       uint32             :offset-assert 148)
-;    (event-self            basic              :offset-assert 152)
-;    (event-other           basic              :offset-assert 156)
-;    (root-prim             basic              :offset-assert 160)
-;    (riders                basic              :offset-assert 164)
-;    (backup-collide-as     uint64             :offset-assert 168)
-;    (backup-collide-with   uint64             :offset-assert 176)
-;    )
-;   :method-count-assert 56
-;   :size-assert         #xb8
-;   :flag-assert         #x38000000b8
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape (trsqv)
+  ((process               basic              :offset-assert 140)
+   (max-iteration-count   uint8              :offset-assert 144)
+   (nav-flags             uint8              :offset-assert 145)
+   (pad-byte              uint8      2       :offset-assert 146)
+   (pat-ignore-mask       uint32             :offset-assert 148)
+   (event-self            basic              :offset-assert 152)
+   (event-other           basic              :offset-assert 156)
+   (root-prim             basic              :offset-assert 160)
+   (riders                basic              :offset-assert 164)
+   (backup-collide-as     uint64             :offset-assert 168)
+   (backup-collide-with   uint64             :offset-assert 176)
+   )
+  :method-count-assert 56
+  :size-assert         #xb8
+  :flag-assert         #x38000000b8
+  (:methods
+    (new (symbol type process int) _type_)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    (dummy-30 () none 30)
+    (dummy-31 () none 31)
+    (dummy-32 () none 32)
+    (dummy-33 () none 33)
+    (dummy-34 () none 34)
+    (dummy-35 () none 35)
+    (dummy-36 () none 36)
+    (dummy-37 () none 37)
+    (dummy-38 () none 38)
+    (dummy-39 () none 39)
+    (dummy-40 () none 40)
+    (dummy-41 () none 41)
+    (dummy-42 () none 42)
+    (dummy-43 () none 43)
+    (dummy-44 () none 44)
+    (dummy-45 () none 45)
+    (dummy-46 () none 46)
+    (dummy-47 () none 47)
+    (dummy-48 () none 48)
+    (dummy-49 () none 49)
+    (dummy-50 () none 50)
+    (dummy-51 () none 51)
+    (dummy-52 () none 52)
+    (dummy-53 () none 53)
+    (dummy-54 () none 54)
+    (dummy-55 () none 55)
+    )
+  )
 
-; ;; collide-shape-h
-; (deftype collide-shape-moving (collide-shape)
-;   ((trans                 vector     :inline :offset-assert 16)
-;    (rot                   vector     :inline :offset-assert 32)
-;    (scale                 vector     :inline :offset-assert 48)
-;    (quat                  quaternion :inline :offset-assert 32)
-;    (pause-adjust-distance meters             :offset-assert 4)
-;    (nav-radius            meters             :offset-assert 8)
-;    (transv                vector     :inline :offset-assert 64)
-;    (rotv                  vector     :inline :offset-assert 80)
-;    (scalev                vector     :inline :offset-assert 96)
-;    (dir-targ              quaternion :inline :offset-assert 112)
-;    (angle-change-time     uint64             :offset-assert 128)
-;    (old-y-angle-diff      float              :offset-assert 136)
-;    (process               basic              :offset-assert 140)
-;    (max-iteration-count   uint8              :offset-assert 144)
-;    (nav-flags             uint8              :offset-assert 145)
-;    (pad-byte              UNKNOWN    2       :offset-assert 146)
-;    (pat-ignore-mask       uint32             :offset-assert 148)
-;    (event-self            basic              :offset-assert 152)
-;    (event-other           basic              :offset-assert 156)
-;    (root-prim             basic              :offset-assert 160)
-;    (riders                basic              :offset-assert 164)
-;    (backup-collide-as     uint64             :offset-assert 168)
-;    (backup-collide-with   uint64             :offset-assert 176)
-;    (rider-time            uint64             :offset-assert 184)
-;    (rider-last-move       vector     :inline :offset-assert 192)
-;    (trans-old             UNKNOWN    3       :offset-assert 208)
-;    (poly-pat              uint32             :offset-assert 256)
-;    (cur-pat               uint32             :offset-assert 260)
-;    (ground-pat            uint32             :offset-assert 264)
-;    (status                uint64             :offset-assert 272)
-;    (old-status            uint64             :offset-assert 280)
-;    (prev-status           uint64             :offset-assert 288)
-;    (reaction-flag         uint32             :offset-assert 296)
-;    (reaction              basic              :offset-assert 300)
-;    (no-reaction           basic              :offset-assert 304)
-;    (local-normal          vector     :inline :offset-assert 320)
-;    (surface-normal        vector     :inline :offset-assert 336)
-;    (poly-normal           vector     :inline :offset-assert 352)
-;    (ground-poly-normal    vector     :inline :offset-assert 368)
-;    (ground-touch-point    vector     :inline :offset-assert 384)
-;    (shadow-pos            vector     :inline :offset-assert 400)
-;    (ground-impact-vel     meters             :offset-assert 416)
-;    (surface-angle         float              :offset-assert 420)
-;    (poly-angle            float              :offset-assert 424)
-;    (touch-angle           float              :offset-assert 428)
-;    (coverage              float              :offset-assert 432)
-;    (dynam                 basic              :offset-assert 436)
-;    (surf                  basic              :offset-assert 440)
-;    )
-;   :method-count-assert 65
-;   :size-assert         #x1bc
-;   :flag-assert         #x41000001bc
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     (dummy-56 () none 56)
-;     (dummy-57 () none 57)
-;     (dummy-58 () none 58)
-;     (dummy-59 () none 59)
-;     (dummy-60 () none 60)
-;     (dummy-61 () none 61)
-;     (dummy-62 () none 62)
-;     (dummy-63 () none 63)
-;     (dummy-64 () none 64)
-;     )
-;   )
+;; collide-shape-h
+(deftype collide-shape-moving (collide-shape)
+  ((rider-time            uint64             :offset-assert 184)
+   (rider-last-move       vector     :inline :offset-assert 192)
+   (trans-old             vector    3 :inline      :offset-assert 208)
+   (poly-pat              uint32             :offset-assert 256)
+   (cur-pat               uint32             :offset-assert 260)
+   (ground-pat            uint32             :offset-assert 264)
+   (status                uint64             :offset-assert 272)
+   (old-status            uint64             :offset-assert 280)
+   (prev-status           uint64             :offset-assert 288)
+   (reaction-flag         uint32             :offset-assert 296)
+   (reaction              basic              :offset-assert 300)
+   (no-reaction           basic              :offset-assert 304)
+   (local-normal          vector     :inline :offset-assert 320)
+   (surface-normal        vector     :inline :offset-assert 336)
+   (poly-normal           vector     :inline :offset-assert 352)
+   (ground-poly-normal    vector     :inline :offset-assert 368)
+   (ground-touch-point    vector     :inline :offset-assert 384)
+   (shadow-pos            vector     :inline :offset-assert 400)
+   (ground-impact-vel     float              :offset-assert 416) ;; meters
+   (surface-angle         float              :offset-assert 420)
+   (poly-angle            float              :offset-assert 424)
+   (touch-angle           float              :offset-assert 428)
+   (coverage              float              :offset-assert 432)
+   (dynam                 basic              :offset-assert 436)
+   (surf                  basic              :offset-assert 440)
+   )
+  :method-count-assert 65
+  :size-assert         #x1bc
+  :flag-assert         #x41000001bc
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    (dummy-30 () none 30)
+    (dummy-31 () none 31)
+    (dummy-32 () none 32)
+    (dummy-33 () none 33)
+    (dummy-34 () none 34)
+    (dummy-35 () none 35)
+    (dummy-36 () none 36)
+    (dummy-37 () none 37)
+    (dummy-38 () none 38)
+    (dummy-39 () none 39)
+    (dummy-40 () none 40)
+    (dummy-41 () none 41)
+    (dummy-42 () none 42)
+    (dummy-43 () none 43)
+    (dummy-44 () none 44)
+    (dummy-45 () none 45)
+    (dummy-46 () none 46)
+    (dummy-47 () none 47)
+    (dummy-48 () none 48)
+    (dummy-49 () none 49)
+    (dummy-50 () none 50)
+    (dummy-51 () none 51)
+    (dummy-52 () none 52)
+    (dummy-53 () none 53)
+    (dummy-54 () none 54)
+    (dummy-55 () none 55)
+    (dummy-56 () none 56)
+    (dummy-57 () none 57)
+    (dummy-58 () none 58)
+    (dummy-59 () none 59)
+    (dummy-60 () none 60)
+    (dummy-61 () none 61)
+    (dummy-62 () none 62)
+    (dummy-63 () none 63)
+    (dummy-64 () none 64)
+    )
+  )
 
 ;; collide-target-h
 (deftype collide-history (structure)
@@ -32554,7 +32558,7 @@
 (define-extern vector-angle<-quaternion! function)
 (define-extern quaternion-rotate-local-y! function)
 (define-extern quaternion-norm2 function)
-(define-extern quaternion-identity! function)
+(define-extern quaternion-identity! (function quaternion quaternion))
 (define-extern quaternion-y-angle function)
 (define-extern quaternion-vector-y-angle function)
 (define-extern quaternion-copy! function)
@@ -33223,58 +33227,7 @@
 (define-extern time-to-ground (function float float float int))
 ;;(define-extern *standard-dynamics* object) ;; unknown type
 (define-extern dynamics type)
-;;(define-extern standard object) ;; unknown type
-;;(define-extern *edge-surface* object) ;; unknown type
-;;(define-extern *uppercut-jump-mods* object) ;; unknown type
-;;(define-extern *forward-pole-jump-mods* object) ;; unknown type
-;;(define-extern *flip-jump-mods* object) ;; unknown type
-(define-extern surface-clamp-speed function)
-;;(define-extern *flop-mods* object) ;; unknown type
-(define-extern surface type)
-;;(define-extern *smack-jump-mods* object) ;; unknown type
-;;(define-extern *dive-mods* object) ;; unknown type
-;;(define-extern *swim-surface* object) ;; unknown type
-(define-extern calc-terminal2-vel (function float float float float float))
-;;(define-extern *wade-surface* object) ;; unknown type
-;;(define-extern *jump-mods* object) ;; unknown type
-;;(define-extern *turn-around-mods* object) ;; unknown type
-;;(define-extern *jump-attack-mods* object) ;; unknown type
-;;(define-extern *grass-surface* object) ;; unknown type
-;;(define-extern *dive-bottom-mods* object) ;; unknown type
-;;(define-extern *tread-surface* object) ;; unknown type
-(define-extern surface-mult! function)
-;;(define-extern *forward-high-jump-mods* object) ;; unknown type
-;;(define-extern *double-jump-mods* object) ;; unknown type
-;;(define-extern edge-grab object) ;; unknown type
-;;(define-extern *high-jump-mods* object) ;; unknown type
-;;(define-extern *ice-surface* object) ;; unknown type
-;;(define-extern *grab-mods* object) ;; unknown type
-;;(define-extern *run-attack-mods* object) ;; unknown type
-;;(define-extern *quicksand-surface* object) ;; unknown type
-;;(define-extern *walk-no-turn-mods* object) ;; unknown type
-(define-extern calc-terminal-vel (function float float float float))
-;;(define-extern *duck-mods* object) ;; unknown type
-;;(define-extern *duck-attack-mods* object) ;; unknown type
-;;(define-extern *slope-surface* object) ;; unknown type
-(define-extern calc-terminal4-vel (function float float float float))
-;;(define-extern *edge-grab-mods* object) ;; unknown type
-;;(define-extern *standard-ground-surface* object) ;; unknown type
-;;(define-extern *flop-land-mods* object) ;; unknown type
-;;(define-extern *wheel-mods* object) ;; unknown type
-;;(define-extern *swim-mods* object) ;; unknown type
-(define-extern surface-interp! function)
-;;(define-extern *walk-mods* object) ;; unknown type
-;;(define-extern *attack-mods* object) ;; unknown type
-;;(define-extern *neutral-mods* object) ;; unknown type
-;;(define-extern grab object) ;; unknown type
-;;(define-extern *wade-mods* object) ;; unknown type
-;;(define-extern *forward-jump-mods* object) ;; unknown type
-;;(define-extern *stone-surface* object) ;; unknown type
-;;(define-extern *launch-jump-mods* object) ;; unknown type
-;;(define-extern *empty-mods* object) ;; unknown type
-;;(define-extern *tar-surface* object) ;; unknown type
-;;(define-extern *wheel-flip-mods* object) ;; unknown type
-;;(define-extern *pole-mods* object) ;; unknown type
+
 ;;(define-extern pole object) ;; unknown type
 ;;(define-extern wheel-flip object) ;; unknown type
 ;;(define-extern swim-bottom object) ;; unknown type
@@ -33294,14 +33247,10 @@
 ;;(define-extern flop object) ;; unknown type
 ;;(define-extern launch-jump object) ;; unknown type
 ;;(define-extern run object) ;; unknown type
-(define-extern pat-event->string function)
-(define-extern pat-material->string function)
-;;(define-extern pat-surface object) ;; unknown type
-;;(define-extern pat-mode-info object) ;; unknown type
-(define-extern pat-mode->string function)
+
 ;;(define-extern *pat-mode-info* object) ;; unknown type
 ;;(define-extern fact-info-target object) ;; unknown type
-(define-extern pickup-type->string function)
+
 (define-extern fact-bank type)
 (define-extern fact-info type)
 ;;(define-extern fact-info-enemy object) ;; unknown type
@@ -33372,19 +33321,19 @@
 (define-extern cspace<-parented-transformq-joint! function)
 ;;(define-extern target object) ;; unknown type
 ;;(define-extern collide-mesh-tri object) ;; unknown type
-;;(define-extern *collide-mesh-cache* object) ;; unknown type
+(define-extern *collide-mesh-cache* collide-mesh-cache) ;; unknown type
 ;;(define-extern collide-mesh-cache-tri object) ;; unknown type
 ;;(define-extern collide-mesh-cache object) ;; unknown type
 ;;(define-extern collide-tri-result object) ;; unknown type
 ;;(define-extern collide-player-list object) ;; unknown type
 ;;(define-extern collide-shape-moving object) ;; unknown type
 ;;(define-extern collide-shape-prim object) ;; unknown type
-;;(define-extern *collide-usually-hit-by-player-list* object) ;; unknown type
+(define-extern *collide-usually-hit-by-player-list* engine) ;; unknown type
 (define-extern collide-shape-prim-mesh type)
 ;;(define-extern collide-shape-intersect object) ;; unknown type
 ;;(define-extern collide-hit-by-others-list object) ;; unknown type
 ;;(define-extern *collide-shape-prim-water* object) ;; unknown type
-;;(define-extern *collide-player-list* object) ;; unknown type
+(define-extern *collide-player-list* engine) ;; unknown type
 ;;(define-extern collide-shape-prim-sphere object) ;; unknown type
 ;;(define-extern collide-sticky-rider-group object) ;; unknown type
 ;;(define-extern collide-sticky-rider object) ;; unknown type
@@ -33395,8 +33344,8 @@
 ;;(define-extern pull-rider-info object) ;; unknown type
 ;;(define-extern collide-hit-by-player-list object) ;; unknown type
 ;;(define-extern collide-overlap-result object) ;; unknown type
-;;(define-extern *collide-hit-by-others-list* object) ;; unknown type
-;;(define-extern *collide-hit-by-player-list* object) ;; unknown type
+(define-extern *collide-hit-by-others-list* engine) ;; unknown type
+(define-extern *collide-hit-by-player-list* engine) ;; unknown type
 ;;(define-extern collide-shape object) ;; unknown type
 ;;(define-extern overlaps-others-params object) ;; unknown type
 ;;(define-extern camera object) ;; unknown type

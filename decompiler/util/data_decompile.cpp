@@ -510,11 +510,18 @@ goos::Object decompile_structure(const TypeSpec& type,
   }
 
   std::vector<goos::Object> result_def = {
-      pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-      pretty_print::to_symbol(fmt::format("'{}", actual_type.print()))};
+      pretty_print::to_symbol(fmt::format("new 'static '{}", actual_type.print()))};
+  //      pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
+  //      pretty_print::to_symbol(fmt::format("'{}", actual_type.print()))};
   for (auto& f : field_defs_out) {
-    result_def.push_back(pretty_print::to_symbol(fmt::format(":{}", f.first)));
-    result_def.push_back(f.second);
+    auto str = f.second.print();
+    if (str.length() < 40) {
+      result_def.push_back(
+          pretty_print::to_symbol(fmt::format(":{} {}", f.first, f.second.print())));
+    } else {
+      result_def.push_back(pretty_print::to_symbol(fmt::format(":{}", f.first)));
+      result_def.push_back(f.second);
+    }
   }
   return pretty_print::build_list(result_def);
 }

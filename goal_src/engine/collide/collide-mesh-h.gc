@@ -5,3 +5,112 @@
 ;; name in dgo: collide-mesh-h
 ;; dgos: GAME, ENGINE
 
+(deftype collide-tri-result (structure)
+  ((vertex    vector 3 :inline :offset-assert 0)
+   (intersect vector  :inline  :offset-assert 48)
+   (normal    vector  :inline  :offset-assert 64)
+   (pat       uint32           :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+(deftype collide-mesh-tri (structure)
+  ((vertex-index uint8   3 :offset-assert 0)
+   (unused       uint8     :offset-assert 3)
+   (pat          uint32    :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype collide-mesh (basic)
+  ((joint-id    int32     :offset-assert 4)
+   (num-tris    uint32    :offset-assert 8)
+   (num-verts   uint32    :offset-assert 12)
+   (vertex-data uint32    :offset-assert 16)
+   ;; todo - this could be wrong
+   (tris        collide-mesh-tri 1 :inline :offset 32)
+   )
+  :method-count-assert 16
+  :size-assert         #x28
+  :flag-assert         #x1000000028
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    )
+  )
+
+(deftype collide-mesh-cache (basic)
+  ((used-size uint32        :offset-assert 4)
+   (max-size  uint32        :offset-assert 8)
+   (id        uint64        :offset-assert 16)
+   (pad uint8 8) ;; added
+   (data      uint8 40960 :offset-assert 32)
+   )
+  :method-count-assert 12
+  :size-assert         #xa020
+  :flag-assert         #xc0000a020
+  (:methods
+    (dummy-9 () none 9)
+    (is-id? (_type_ int) symbol 10)
+    (next-id! (_type_) uint 11)
+    )
+  )
+
+(defmethod next-id! collide-mesh-cache ((obj collide-mesh-cache))
+  "Reset all used entries in the cache and increment the id.
+   If the id is zero, set it to 1"
+  ;;     ld v1, 12(a0)
+  (let ((v1 (-> obj id)))
+    ;;     sw r0, 0(a0)
+    (set! (-> obj used-size) 0)
+    ;;     daddiu v0, v1, 1
+    (let ((v0 (+ v1 1)))    
+      ;;     beql v0, r0, L3
+      ;;     addiu v0, r0, 1 (only taken if v0 = 0)
+      (if (= v0 0)
+          (set! v0 (the uint 1))
+          )
+      ;; L3:
+      ;;     sd v0, 12(a0)
+      (set! (-> obj id) v0)
+      v0
+      )
+    )
+  )
+
+(defmethod is-id? collide-mesh-cache ((obj collide-mesh-cache) (arg0 int))
+  "Is this our id?"
+  (= (-> obj id) arg0)
+  )
+
+(deftype collide-mesh-cache-tri (structure)
+  ((vertex vector   3     :inline :offset-assert 0)
+   (normal vector         :inline :offset-assert 48)
+   (bbox4w bounding-box4w :inline :offset-assert 64)
+   (pat    uint32                 :offset 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+;; only allocate if we don't have an existing one.
+(define-extern *collide-mesh-cache* collide-mesh-cache)
+(if (or (not *collide-mesh-cache*) (zero? *collide-mesh-cache*))
+ (set! *collide-mesh-cache* (new 'global 'collide-mesh-cache))
+ )
+
+;; in all cases, re-init.
+(set! (-> *collide-mesh-cache* id) 1)
+(set! (-> *collide-mesh-cache* used-size) 0)
+(set! (-> *collide-mesh-cache* max-size) #xa000)
