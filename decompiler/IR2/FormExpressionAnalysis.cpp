@@ -138,15 +138,16 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           submit_reg_to_var.push_back(var_idx);
           submit_regs.push_back(var.reg());
         } else {
-          fmt::print("Unsafe to pop {}: used {} times, def {} times, expected use {}\n", var.to_string(env),
-                     use_def.use_count(), use_def.def_count(), times);
-          if (var.to_string(env) == "a0-1") {
-            for (auto& use : use_def.uses) {
-              if (!use.disabled) {
-                fmt::print("  at instruction {}\n", use.op_id);
-              }
-            }
-          }
+          //          fmt::print("Unsafe to pop {}: used {} times, def {} times, expected use {}\n",
+          //                     var.to_string(env), use_def.use_count(), use_def.def_count(),
+          //                     times);
+          //          if (var.to_string(env) == "v1-3") {
+          //            for (auto& use : use_def.defs) {
+          //              if (!use.disabled) {
+          //                fmt::print("  at instruction {}\n", use.op_id);
+          //              }
+          //            }
+          //          }
         }
       }
     }
@@ -1180,8 +1181,7 @@ void AshElement::update_from_stack(const Env& env,
                                    std::vector<FormElement*>* result,
                                    bool allow_side_effects) {
   mark_popped();
-  auto forms =
-      pop_to_forms({value, shift_amount}, env, pool, stack, allow_side_effects, consumed);
+  auto forms = pop_to_forms({value, shift_amount}, env, pool, stack, allow_side_effects, consumed);
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::ARITH_SHIFT), forms.at(0), forms.at(1));
   result->push_back(new_form);
@@ -1244,8 +1244,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
   //    method_obj_var = all_pop_vars.at(1);
   //    all_pop_vars.erase(all_pop_vars.begin() + 1);
   //  }
-
-  fmt::print("Function call: {} {}\n", is_virtual_method, tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD);
 
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
@@ -1730,10 +1728,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         }
       }
       last_var = last_in_body->dst();
-    } else {
-      rewrite_as_set = false;
-      break;
-    }
+    }  // For now, I am fine with letting this fail. For example, if the set is eliminated by a
+       // coloring move.  If this makes really ugly code later on, we could use this to disable
+    // write as set.
   }
 
   if (!last_var.has_value()) {
@@ -1759,7 +1756,8 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
   // update register info
   if (rewrite_as_set && !set_unused) {
-    assert(dest_sets.size() == write_output_forms.size());
+    // might not be the same if a set is eliminated by a coloring move.
+    // assert(dest_sets.size() == write_output_forms.size());
     for (size_t i = 0; i < dest_sets.size() - 1; i++) {
       auto var = dest_sets.at(i)->dst();
       auto* env2 = const_cast<Env*>(&env);

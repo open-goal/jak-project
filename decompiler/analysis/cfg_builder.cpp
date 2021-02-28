@@ -323,7 +323,7 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
       assert(as_set);
       if (as_set->src().is_var()) {
         // must be the case where the src should have truthy in it.
-        lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
+        // lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
         func.ir2.env.disable_use(as_set->src().var());
       }
 
@@ -338,11 +338,12 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
           // for now, let's leave this last def here, just so it looks like _something_ sets it.
 
         } else {
-          lg::warn("Disabling def of {} in final or delay slot", as_set->to_string(func.ir2.env));
+          // lg::warn("Disabling def of {} in final or delay slot",
+          // as_set->to_string(func.ir2.env));
           func.ir2.env.disable_def(as_set->dst());
         }
       } else {
-        lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
+        // lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
         func.ir2.env.disable_def(as_set->dst());
       }
 
@@ -444,7 +445,7 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
       assert(as_set);
       if (as_set->src().is_var()) {
         // must be the case where the src should have truthy in it.
-        lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
+        // lg::warn("Disabling use of {} in or delay slot", as_set->to_string(func.ir2.env));
         func.ir2.env.disable_use(as_set->src().var());
       }
 
@@ -460,15 +461,15 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
           // TODO - what if this isn't a def in the last slot? Does it matter?
           left_last_delay_def = true;
         } else {
-          lg::warn("Disabling def of {} in final or delay slot", as_set->to_string(func.ir2.env));
+          // lg::warn("Disabling def of {} in final or delay slot",
+          // as_set->to_string(func.ir2.env));
           func.ir2.env.disable_def(as_set->dst());
         }
 
       } else {
-        lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
+        // lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
         func.ir2.env.disable_def(as_set->dst());
       }
-
 
       if (i == 0) {
         live_out_result = (delay_info.written_and_unused.find(ir_dest.reg()) ==
@@ -487,7 +488,6 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
   // TODO - check the one remaining def location?
 
   ir->used_as_value = live_out_result;
-
 
   return true;
 }
@@ -593,7 +593,7 @@ const SimpleAtom* get_atom_src(const Form* form) {
  * successfully
  */
 void convert_cond_no_else_to_compare(FormPool& pool,
-                                     const Function& f,
+                                     Function& f,
                                      FormElement** ir_loc,
                                      Form* parent_form) {
   CondNoElseElement* cne = dynamic_cast<CondNoElseElement*>(*ir_loc);
@@ -608,6 +608,9 @@ void convert_cond_no_else_to_compare(FormPool& pool,
   assert(src_atom->is_sym_val());
   assert(src_atom->get_str() == "#f");
   assert(cne->entries.size() == 1);
+
+  // safe to do this here because we never give up on this.
+  f.ir2.env.disable_def(condition.first->op()->branch_delay().var(0));
 
   auto condition_as_single =
       dynamic_cast<BranchElement*>(cne->entries.front().condition->try_as_single_element());
@@ -645,7 +648,6 @@ void convert_cond_no_else_to_compare(FormPool& pool,
 }
 
 void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
-
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
     auto& entry = cne->entries.at(idx);
     if (entry.false_destination.has_value()) {
@@ -684,7 +686,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       auto branch = dynamic_cast<BranchElement*>(cne->entries.at(i).original_condition_branch);
       auto& branch_info_i = func.ir2.env.reg_use().op.at(branch->op()->op_id());
       auto reg = cne->entries.at(i).false_destination;
-      lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
+      // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
       func.ir2.env.disable_def(*reg);
     }
   }
@@ -699,10 +701,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
  * But it generally seems inconsistent.  The expression propagation step will have to deal with
  * this.
  */
-void clean_up_cond_no_else(FormPool& pool,
-                           const Function& f,
-                           FormElement** ir_loc,
-                           Form* parent_form) {
+void clean_up_cond_no_else(FormPool& pool, Function& f, FormElement** ir_loc, Form* parent_form) {
   auto cne = dynamic_cast<CondNoElseElement*>(*ir_loc);
   assert(cne);
   for (size_t idx = 0; idx < cne->entries.size(); idx++) {
@@ -1270,7 +1269,6 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   f.ir2.env.disable_def(b0_delay_op.dst());
   f.ir2.env.disable_def(b1_delay_op.dst());
   f.ir2.env.disable_use(shift->expr().get_arg(0).var());
-
 
   return b0_ptr;
 }

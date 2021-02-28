@@ -689,12 +689,12 @@ RegAccessMap<int> SSA::get_ssa_mapping() {
   for (const auto& block : blocks) {
     for (const auto& instr : block.ins) {
       if (instr.dst.has_value()) {
-        RegisterAccess access(AccessMode::WRITE, instr.dst->reg(), instr.op_id);
+        RegisterAccess access(AccessMode::WRITE, instr.dst->reg(), instr.op_id, true);
         result[access] = map.var_id(*instr.dst);
       }
 
       for (const auto& src : instr.src) {
-        RegisterAccess access(AccessMode::READ, src.reg(), instr.op_id);
+        RegisterAccess access(AccessMode::READ, src.reg(), instr.op_id, true);
         result[access] = map.var_id(src);
       }
     }
@@ -721,7 +721,7 @@ std::unordered_map<RegId, UseDefInfo, RegId::hash> SSA::get_use_def_info(
       if (instr.dst.has_value()) {
         // get the SSA var:
         auto ssa_var_id =
-            ssa_info.at(RegisterAccess(AccessMode::WRITE, instr.dst->reg(), instr.op_id));
+            ssa_info.at(RegisterAccess(AccessMode::WRITE, instr.dst->reg(), instr.op_id, true));
         // get the info
         auto& info = result[RegId(instr.dst->reg(), map.var_id(*instr.dst))];
         // remember which SSA variable was in use here
@@ -731,7 +731,8 @@ std::unordered_map<RegId, UseDefInfo, RegId::hash> SSA::get_use_def_info(
 
       for (const auto& src : instr.src) {
         // get the SSA var:
-        auto ssa_var_id = ssa_info.at(RegisterAccess(AccessMode::READ, src.reg(), instr.op_id));
+        auto ssa_var_id =
+            ssa_info.at(RegisterAccess(AccessMode::READ, src.reg(), instr.op_id, true));
         // get the info
         auto& info = result[RegId(src.reg(), map.var_id(src))];
         // remember the variable
@@ -749,7 +750,6 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
                                                    const FunctionAtomicOps& ops,
                                                    const DecompilerTypeSystem& dts,
                                                    bool debug_prints) {
-  debug_prints = true;
   if (debug_prints) {
     std::string debug_in;
     for (int block_id = 0; block_id < rui.block_count(); block_id++) {

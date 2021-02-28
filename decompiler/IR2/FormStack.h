@@ -45,10 +45,11 @@ class FormStack {
 
  private:
   struct StackEntry {
-    bool active = true;                   // should this appear in the output?
-    std::optional<RegisterAccess> destination;  // what register we are setting (or nullopt if no dest.)
+    bool active = true;  // should this appear in the output?
+    std::optional<RegisterAccess>
+        destination;  // what register we are setting (or nullopt if no dest.)
     std::optional<RegisterAccess> non_seq_source;  // source variable, if we are setting var to var.
-    Form* source = nullptr;                  // the value we are setting the register to.
+    Form* source = nullptr;                        // the value we are setting the register to.
 
     FormElement* elt = nullptr;
     bool sequence_point = false;

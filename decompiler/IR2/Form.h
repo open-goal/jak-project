@@ -770,7 +770,8 @@ class ConditionalMoveFalseElement : public FormElement {
   bool on_zero = false;
   ConditionalMoveFalseElement(RegisterAccess _dest,
                               RegisterAccess _old_value,
-                              RegisterAccess _source, bool _on_zero);
+                              RegisterAccess _source,
+                              bool _on_zero);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1094,7 +1095,9 @@ class StorePlainDeref : public FormElement {
 
 class StoreArrayAccess : public FormElement {
  public:
-  StoreArrayAccess(ArrayFieldAccess* dst, SimpleExpression expr, int my_idx,
+  StoreArrayAccess(ArrayFieldAccess* dst,
+                   SimpleExpression expr,
+                   int my_idx,
                    RegisterAccess array_src);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;

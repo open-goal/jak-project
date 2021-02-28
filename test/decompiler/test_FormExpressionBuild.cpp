@@ -266,7 +266,7 @@ TEST_F(FormRegressionTest, ExprAbs) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
-  std::string expected = "(abs arg0)";
+  std::string expected = "(begin (set! v0-0 arg0) (abs v0-0))";
   test_with_expr(func, type, expected);
 }
 
@@ -2056,7 +2056,7 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "    lwu v1, -4(a0)\n"  // use 1
       "L62:\n"
       "    lwu t9, 24(v1)\n"
-      "    jalr ra, t9\n"    // use 2
+      "    jalr ra, t9\n"  // use 2
       "    sll v0, ra, 0\n"
       "\n"
       "    or v1, v0, r0\n"
@@ -2076,7 +2076,8 @@ TEST_F(FormRegressionTest, ExprPrintl) {
 
   std::string expected =
       "(begin\n"
-      "  ((method-of-type (rtype-of a0-1) print) arg0)\n"
+      "  (set! a0-1 arg0)\n"
+      "  ((method-of-type (rtype-of a0-1) print) a0-1)\n"
       "  (format (quote #t) \"~%\")\n"
       "  arg0\n"
       "  )";
@@ -2536,7 +2537,7 @@ TEST_F(FormRegressionTest, ExprAssert) {
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 
- TEST_F(FormRegressionTest, ExprTerminal2) {
+TEST_F(FormRegressionTest, ExprTerminal2) {
   std::string func =
       "sll r0, r0, 0\n"
       "L29:\n"
@@ -2565,6 +2566,10 @@ TEST_F(FormRegressionTest, ExprAssert) {
       "    daddiu sp, sp, 16\n";
   std::string type = "(function float float float float float)";
 
-  std::string expected = "(begin (if (not arg0) (format (quote #t) \"A ~A\" arg1)) 0)";
+  std::string expected =
+      "(begin\n"
+      "  (set! f0-4 (sqrt (/ (- (* 0.000000 arg0) arg1) arg2)))\n"
+      "  (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))\n"
+      "  )";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }

@@ -646,7 +646,9 @@ class ConditionalMoveFalseOp : public AtomicOp {
  public:
   ConditionalMoveFalseOp(RegisterAccess dst,
                          RegisterAccess src,
-                         RegisterAccess old_value, bool on_zero, int my_idx);
+                         RegisterAccess old_value,
+                         bool on_zero,
+                         int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
