@@ -798,9 +798,7 @@ void EmptyElement::get_modified_regs(RegSet&) const {}
 // RLetElement
 /////////////////////////////
 
-
-bool cmp(Register x, Register y)
-{
+bool cmp(Register x, Register y) {
   int comparison = x.to_string().compare(y.to_string());
   if (comparison <= 0)
     return true;
@@ -826,8 +824,8 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
     if (reg.get_kind() == Reg::RegisterKind::VF ||
         reg.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
       std::string reg_name = reg.to_string() == "ACC" ? "acc" : reg.to_string();
-      regs.push_back(pretty_print::build_list(
-          pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));
+      regs.push_back(
+          pretty_print::build_list(pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));
     }
   }
 

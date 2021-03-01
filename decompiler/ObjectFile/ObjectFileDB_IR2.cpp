@@ -441,7 +441,8 @@ void ObjectFileDB::ir2_rewrite_inline_asm_instructions() {
     }
   });
 
-  lg::info("{}/{}/{} rewrote vector instructions in {:.2f} ms\n", successful, attempted, total, timer.getMs());
+  lg::info("{}/{}/{} rewrote vector instructions in {:.2f} ms\n", successful, attempted, total,
+           timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {

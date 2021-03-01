@@ -263,7 +263,9 @@ Val* Compiler::compile_asm_wait_vf(const goos::Object& form, const goos::Object&
  */
 Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}, {"offset", {false, goos::ObjectType::INTEGER}}});
+  va_check(form, args, {{}, {}},
+           {{"color", {false, goos::ObjectType::SYMBOL}},
+            {"offset", {false, goos::ObjectType::INTEGER}}});
   bool color = true;
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
@@ -299,7 +301,9 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
  */
 Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}, {"offset", {false, goos::ObjectType::INTEGER}}});
+  va_check(form, args, {{}, {}},
+           {{"color", {false, goos::ObjectType::SYMBOL}},
+            {"offset", {false, goos::ObjectType::INTEGER}}});
   bool color = true;
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));

@@ -40,7 +40,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
                    asmOp.instr.kind);
           new_entries.push_back(entry);
           continue;
-        } else if (!asmOp.todo) {
+        } else if (asmOp.todo) {
           // If its an invalid or unsupported exception, skip it
           lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
                    asmOp.full_function_name());

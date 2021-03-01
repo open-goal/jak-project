@@ -129,7 +129,7 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) {
     valid = false;
   } else {
     func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
-    if (func.funcTemplate.rfind("TODO")) {
+    if (func.funcTemplate.rfind("TODO", 0) == 0) {
       todo = true;
     }
   }
@@ -145,7 +145,7 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr,
     valid = false;
   } else {
     func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
-    if (func.funcTemplate.rfind("TODO")) {
+    if (func.funcTemplate.rfind("TODO", 0) == 0) {
       todo = true;
     }
   }
