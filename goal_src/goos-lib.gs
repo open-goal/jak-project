@@ -125,7 +125,15 @@
 
 
 (defsmacro string? (x)
-           `(type? 'string ,x))
+  `(type? 'string ,x))
+
+(defsmacro float? (x)
+  `(type? 'float ,x)
+  )
+
+(defsmacro integer? (x)
+  `(type? 'integer ,x)
+  )
 
 (defsmacro ferror (&rest args)
   `(error (fmt #f ,@args))

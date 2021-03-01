@@ -29,4 +29,10 @@ else()
     target_link_libraries(common stdc++fs)
 endif()
 
+if(UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+elseif(WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
+endif()
+
 install(TARGETS common)
