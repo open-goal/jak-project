@@ -114,9 +114,17 @@ class Env {
   }
 
   const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
-  void disable_use(const RegisterAccess& access) { m_var_names.disable_use(access); }
+  void disable_use(const RegisterAccess& access) {
+    if (has_local_vars()) {
+      m_var_names.disable_use(access);
+    }
+  }
 
-  void disable_def(const RegisterAccess& access) { m_var_names.disable_def(access); }
+  void disable_def(const RegisterAccess& access) {
+    if (has_local_vars()) {
+      m_var_names.disable_def(access);
+    }
+  }
 
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
