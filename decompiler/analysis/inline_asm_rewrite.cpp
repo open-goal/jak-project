@@ -36,10 +36,14 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
         OpenGOALAsm asmOp = OpenGOALAsm(elem->op()->instruction());
         if (!asmOp.valid) {
           // If its an invalid or unsupported exception, skip it
-          lg::warn("[ASM Re-Write] - Found an unsupported inline assembly instruction kind - [{}]!",
+          lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
                    asmOp.instr.kind);
           new_entries.push_back(entry);
           continue;
+        } else if (!asmOp.todo) {
+          // If its an invalid or unsupported exception, skip it
+          lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
+                   asmOp.full_function_name());
         }
 
         // If we've made it this far, it's an AsmOperation that is also a supported vector

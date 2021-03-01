@@ -5,195 +5,121 @@
 // TODO - Known Issues:
 // - init / use ACC for instructions that implicitly use it
 namespace decompiler {
+
+typedef OpenGOALAsm::InstructionModifiers MOD;
+
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
     // ----- EE -------
-    {InstructionKind::PSLLW, {".pw.sll", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::PSRAW, {".pw.sra", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::PSUBW, {"TODO.psubw", {}, {}}},
+    {InstructionKind::PSLLW, {".pw.sll", {MOD::DEST_MASK}}},
+    {InstructionKind::PSRAW, {".pw.sra", {MOD::DEST_MASK}}},
+    {InstructionKind::PSUBW, {"TODO.PSUBW", {}}},
 
     // TODO - this is waiting on proper 128-bit int support in OpenGOAL
-    {InstructionKind::LQ, {"TODO.lq", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
-    {InstructionKind::SQ, {"TODO.sq", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
+    {InstructionKind::LQ, {"TODO.LQ", {MOD::OFFSET}}},
+    {InstructionKind::SQ, {"TODO.SQ", {MOD::OFFSET}}},
 
     // NOTE - depending on how this is used, this may case issues! Be Warned!
-    {InstructionKind::MFC1, {".mov", {}, {}}},
+    // lots of implicit logic in OpenGOAL depending on argument types!
+    {InstructionKind::MFC1, {".mov", {}}},
 
     // ---- COP2 -----
     // TODO - VMOVE supports dest, but OpenGOAL does NOT yet!
-    {InstructionKind::VMOVE, {"TODO.mov", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VMOVE, {"TODO.VMOVE", {MOD::DEST_MASK}}},
 
     // Load and Store
-    {InstructionKind::LQC2, {".lvf", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
-    {InstructionKind::QMFC2, {".mov", {}, {}}},
-    {InstructionKind::SQC2,
-     {".svf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::OFFSET,
-       OpenGOALAsm::InstructionModifiers::SWAP_SOURCE_ARGS}}},
-    {InstructionKind::QMTC2, {".mov", {}, {}}},
+    {InstructionKind::LQC2, {".lvf", {MOD::OFFSET}}},
+    {InstructionKind::QMFC2, {".mov", {}}},
+    {InstructionKind::SQC2, {".svf", {MOD::OFFSET, MOD::SWAP_FIRST_TWO_SOURCE_ARGS}}},
+    {InstructionKind::QMTC2, {".mov", {}}},
 
     // Redundant ops, NOP and WAIT
-    {InstructionKind::VNOP, {".nop.vf", {}, {}}},
-    {InstructionKind::VWAITQ, {".wait.vf", {}, {}}},
+    {InstructionKind::VNOP, {".nop.vf", {}}},
+    {InstructionKind::VWAITQ, {".wait.vf", {}}},
 
     // Max / Min
-    {InstructionKind::VMAX, {".max.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMAX_BC,
-     {".max.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMINI, {".min.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMINI_BC,
-     {".min.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VMAX, {".max.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VMAX_BC, {".max.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
+    {InstructionKind::VMINI, {".min.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VMINI_BC, {".min.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
 
     // Addition / Addition with ACC
-    {InstructionKind::VADD, {".add.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VADD_BC,
-     {".add.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VADDA,
-     {".add.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VADDA_BC,
-     {".add.{}.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VADD, {".add.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VADD_BC, {".add.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
+    {InstructionKind::VADDA, {".add.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VADDA_BC, {".add.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
 
     // Subtraction
-    {InstructionKind::VSUB, {".sub.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VSUB_BC,
-     {".sub.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    // TODO - missing VSUBA?
+    {InstructionKind::VSUB, {".sub.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VSUB_BC, {".sub.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
 
     // Multiplication / Multiplication with ACC
-    {InstructionKind::VMUL, {".mul.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMUL_BC,
-     {".mul.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMULA,
-     {".mul.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMULA_BC,
-     {".mul.{}.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VMUL, {".mul.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VMUL_BC, {".mul.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
+    {InstructionKind::VMULA, {".mul.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VMULA_BC, {".mul.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK}}},
 
     // Add or Subtract with the resulting product / use the ACC
-    {InstructionKind::VMADD, {".add.mul.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VMADD, {".add.mul.vf", {MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
     {InstructionKind::VMADD_BC,
-     {".add.mul.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMADDA,
-     {".add.mul.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+     {".add.mul.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
+    {InstructionKind::VMADDA, {".add.mul.vf", {MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
     {InstructionKind::VMADDA_BC,
-     {".add.mul.{}.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMSUB, {".sub.mul.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+     {".add.mul.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
+    {InstructionKind::VMSUB, {".sub.mul.vf", {MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
     {InstructionKind::VMSUB_BC,
-     {".sub.mul.{}.vf",
-      {},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    // TODO - missing a VMSUBA?
+     {".sub.mul.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
     {InstructionKind::VMSUBA_BC,
-     {".sub.mul.{}.vf",
-      {OpenGOALAsm::AdditionalVURegisters::ACC},
-      {OpenGOALAsm::InstructionModifiers::BROADCAST,
-       OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+     {".sub.mul.{}.vf", {MOD::BROADCAST, MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
+    {InstructionKind::VMSUBQ, {".sub.mul.vf", {MOD::DEST_MASK, MOD::ACC_THIRD_SRC_ARG}}},
 
     // Absolute value
-    {InstructionKind::VABS, {".abs.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VABS, {".abs.vf", {MOD::DEST_MASK}}},
 
     // Outer-product
     // NOTE - currently it's assumed these groups of instructions will be replaced with 1
-    {InstructionKind::VOPMULA, {".outer.product.vf", {}, {}}},
-    {InstructionKind::VOPMSUB,
-     {".outer.product.vf", {}, {OpenGOALAsm::InstructionModifiers::SWAP_SOURCE_ARGS}}},
+    {InstructionKind::VOPMULA, {"TODO.VOPMULA.vf", {}}},
+    {InstructionKind::VOPMSUB, {".outer.product.vf", {MOD::SWAP_FIRST_TWO_SOURCE_ARGS}}},
 
     // Division
-    {InstructionKind::VDIV,
-     {".div.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_DST},
-      {OpenGOALAsm::InstructionModifiers::FTF, OpenGOALAsm::InstructionModifiers::FSF}}},
+    {InstructionKind::VDIV, {".div.vf", {MOD::FTF, MOD::FSF}}},
 
     // Square-root
-    {InstructionKind::VSQRT,
-     {".sqrt.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_DST},
-      {OpenGOALAsm::InstructionModifiers::FTF}}},
-    {InstructionKind::VRSQRT, {"TODO.vrsqrt", {}, {}}},  // TODO - implement in compiler!
+    {InstructionKind::VSQRT, {".sqrt.vf", {MOD::FTF}}},
+    {InstructionKind::VRSQRT, {"TODO.VRSQRT", {}}},  // TODO - implement in compiler!
 
     // Operations using the result of division
-    {InstructionKind::VADDQ,
-     {".add.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_SRC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VSUBQ,
-     {".sub.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_SRC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMULQ,
-     {".mul.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_SRC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VMULAQ,
-     {".mul.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_SRC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    // TODO - missing a vmaddq?
-    {InstructionKind::VMSUBQ,
-     {".sub.mul.vf",
-      {OpenGOALAsm::AdditionalVURegisters::Q_SRC},
-      {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VADDQ, {".add.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VSUBQ, {".sub.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VMULQ, {".mul.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VMULAQ, {".mul.vf", {MOD::DEST_MASK}}},
 
     //// Random number generation
-    //{InstructionKind::VRGET, "not-implemented"},
-    //{InstructionKind::VRXOR, "not-implemented"},
-    //{InstructionKind::VRNEXT, "not-implemented"},
+    {InstructionKind::VRGET, {"TODO.VRGET", {}}},
+    {InstructionKind::VRXOR, {"TODO.VRXOR", {}}},
+    {InstructionKind::VRNEXT, {"TODO.VRNEXT", {}}},
 
     //// VU Integer operations
-    //{InstructionKind::VMTIR, "not-implemented"},
-    //{InstructionKind::VIAND, "not-implemented"},
-    //{InstructionKind::VIADDI, "not-implemented"},
+    {InstructionKind::VMTIR, {"TODO.VMTIR", {}}},
+    {InstructionKind::VIAND, {"TODO.VIAND", {}}},
+    {InstructionKind::VIADDI, {"TODO.VIADDI", {}}},
 
     //// Load/store from VU memory
-    //{InstructionKind::VLQI, "not-implemented"},
-    //{InstructionKind::VSQI, "not-implemented"},
+    {InstructionKind::VLQI, {"TODO.VLQI", {}}},
+    {InstructionKind::VSQI, {"TODO.VSQI", {}}},
 
     //// Fixed point conversions
-    {InstructionKind::VFTOI0, {".ftoi.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VFTOI4, {"TODO.VFTOI4", {}, {}}},
-    {InstructionKind::VFTOI12, {"TODO.VFTOI12", {}, {}}},
-    {InstructionKind::VITOF0, {".itof.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
-    {InstructionKind::VITOF12, {"TODO.VITOF12", {}, {}}},
-    {InstructionKind::VITOF15, {"TODO.VITOF15", {}, {}}},
+    {InstructionKind::VFTOI0, {".ftoi.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VFTOI4, {"TODO.VFTOI4", {}}},
+    {InstructionKind::VFTOI12, {"TODO.VFTOI12", {}}},
+    {InstructionKind::VITOF0, {".itof.vf", {MOD::DEST_MASK}}},
+    {InstructionKind::VITOF12, {"TODO.VITOF12", {}}},
+    {InstructionKind::VITOF15, {"TODO.VITOF15", {}}},
 
     //// Status Checks
-    //{InstructionKind::VCLIP, "not-implemented"},
+    {InstructionKind::VCLIP, {"TODO.VCLIP", {}}},
 };
 
-bool OpenGOALAsm::Function::allows_modifier(InstructionModifiers mod) {
+bool OpenGOALAsm::Function::allows_modifier(MOD mod) {
   return std::find(modifiers.begin(), modifiers.end(), mod) != modifiers.end();
 }
 
@@ -203,6 +129,9 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) {
     valid = false;
   } else {
     func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
+    if (func.funcTemplate.rfind("TODO")) {
+      todo = true;
+    }
   }
 }
 
@@ -216,13 +145,16 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr,
     valid = false;
   } else {
     func = MIPS_ASM_TO_OPEN_GOAL_FUNCS.at(instr.kind);
+    if (func.funcTemplate.rfind("TODO")) {
+      todo = true;
+    }
   }
 }
 
 std::string OpenGOALAsm::full_function_name() {
   std::string func_name = func.funcTemplate;
   // OpenGOAL uses the function name for broadcast specification
-  if (func.allows_modifier(InstructionModifiers::BROADCAST)) {
+  if (func.allows_modifier(MOD::BROADCAST)) {
     if (instr.cop2_bc != 0xff) {
       std::string bc = std::string(1, instr.cop2_bc_to_char());
       func_name = fmt::format(func_name, bc);
@@ -245,13 +177,12 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
       args.push_back(v.value().to_form(env));
     } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
       // Handle FTF/FSF operations
-      if (func.allows_modifier(InstructionModifiers::FTF) && args.size() == 0) {
+      if (func.allows_modifier(MOD::FTF) && args.size() == 0) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_imm())));
-      } else if (func.allows_modifier(InstructionModifiers::FSF)) {
+      } else if (func.allows_modifier(MOD::FSF)) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_imm())));
       }
-    } else if (func.allows_modifier(InstructionModifiers::OFFSET) &&
-               atom.kind == InstructionAtom::AtomKind::IMM) {
+    } else if (func.allows_modifier(MOD::OFFSET) && atom.kind == InstructionAtom::AtomKind::IMM) {
       // Handle offsetting
       if (atom.get_imm() != 0) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
@@ -261,19 +192,19 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
     }
   }
 
-  if (instr.kind == InstructionKind::VFTOI0) {
-    int x = 0;
+  // Handle third-argument accumulator
+  if (func.allows_modifier(MOD::ACC_THIRD_SRC_ARG)) {
+    args.push_back(pretty_print::to_symbol("acc"));
   }
 
   // Handle destination masks
-  if (func.allows_modifier(InstructionModifiers::DEST_MASK) && instr.cop2_dest != 0xff &&
-      instr.cop2_dest != 15) {
+  if (func.allows_modifier(MOD::DEST_MASK) && instr.cop2_dest != 0xff && instr.cop2_dest != 15) {
     named_args.push_back(pretty_print::to_symbol(fmt::format(":mask #b{:b}", instr.cop2_dest)));
   }
 
   // Some functions are configured, or its easiest to swap the source args
   // NOTE - this currently assumes it is the first two args that must be swapped
-  if (func.allows_modifier(InstructionModifiers::SWAP_SOURCE_ARGS)) {
+  if (func.allows_modifier(MOD::SWAP_FIRST_TWO_SOURCE_ARGS)) {
     std::swap(args.at(0), args.at(1));
   }
 
