@@ -119,7 +119,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::VCLIP, {"TODO.VCLIP", {}}},
 };
 
-bool OpenGOALAsm::Function::allows_modifier(MOD mod) {
+bool OpenGOALAsm::Function::allows_modifier(InstructionModifiers mod) {
   return std::find(modifiers.begin(), modifiers.end(), mod) != modifiers.end();
 }
 
