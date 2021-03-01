@@ -15,19 +15,18 @@
 ;; BUILD SYSTEM
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; compile, color, and save a file
 (defmacro m (file)
+  "Make: compile a file fully and save the result"
   `(asm-file ,file :color :write)
   )
 
-;; compile, color, save, and disassemble a file.
-;; make "debug".
 (defmacro md (file)
+  "Make Debug: make + print disassembly for a file"
   `(asm-file ,file :color :write :disassemble)
   )
 
-;; compile, color, load and save a file
 (defmacro ml (file)
+  "Make Load: make and load the file through the listener"
   `(asm-file ,file :color :load :write)
   )
 
@@ -37,6 +36,7 @@
 
 
 (defmacro build-kernel ()
+  "Build kernel and create the KERNEL CGO"
   `(begin
      ,@(apply make-build-command all-kernel-goal-files)
      (build-dgos "goal_src/build/kernel_dgos.txt")
@@ -44,6 +44,7 @@
   )
 
 (defmacro build-game ()
+  "Build all game code and all game CGOs"
   `(begin
      (build-kernel)
      ,@(apply make-build-command all-goal-files)
@@ -52,6 +53,7 @@
   )
 
 (defmacro build-data ()
+  "Build all game data"
   `(begin
      (asm-data-file game-text "assets/game_text.txt")
      (asm-data-file game-count "assets/game_count.txt")
@@ -59,6 +61,8 @@
   )
 
 (defmacro blg ()
+  "Build engine and kernel CGOs (code only, no data for now) and load them in the listener
+   Uses the blocking dgo-load."
   `(begin
      (build-game)
      (dgo-load "kernel" global #xf #x200000)
@@ -67,14 +71,17 @@
   )
 
 (defmacro tc ()
+  "Typecheck against the all-types file"
   `(m "decompiler/config/all-types.gc")
   )
 
 (defmacro e ()
+  "Exit the compiler"
   `(:exit)
   )
 
 (defmacro dbc ()
+  "Put the compiler in debug mode"
   `(begin
     (set-config! print-ir #t)
     (set-config! print-regalloc #t)
@@ -93,14 +100,12 @@
   `(#cond ((not ,clause) ,@body))
   )
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TARGET CONTROL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro lt (&rest args)
-  ;; shortcut for listen-to-target. also sends a :status command to make sure
-  ;; all buffers on the target are flushed.
+  "Listen to target. Opens a connection and flushes buffers"
   `(begin
      (listen-to-target ,@args)
      (:status)
@@ -108,7 +113,7 @@
   )
 
 (defmacro r (&rest args)
-  ;; shortcut to completely reset the target and connect, regardless of current state
+  "Reset the target state and reconnect."
   `(begin
      ;; connect, so we can send reset.  if we're already connected, does nothing
      (listen-to-target ,@args)
@@ -122,6 +127,7 @@
   )
 
 (defmacro shutdown-target ()
+  "Make the target exit. The runtime itself will exit and not restart automatically."
   `(begin
     (reset-target :shutdown)
     )
@@ -132,30 +138,37 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro db (&rest args)
+  "Print bytes."
   `(:pm 1 ,@args)
   )
 
 (defmacro dh (&rest args)
+  "Print halfwords (16-bits)"
   `(:pm 2 ,@args)
   )
 
 (defmacro dw (&rest args)
+  "Print words (32-bits)"
   `(:pm 4 ,@args)
   )
 
 (defmacro dd (&rest args)
+  "Print doublewords (64-bits)"
   `(:pm 8 ,@args)
   )
 
 (defmacro df (&rest args)
+  "Print floats (32-bit)"
   `(:pm 4 ,@args :print-mode float)
   )
 
 (defmacro segfault ()
+  "Dereference the GOAL 0 pointer, which should be a segfault"
   `(-> (the (pointer int) 0))
   )
 
 (defmacro fpe ()
+  "Trigger a SIGFPE by doing integer division by zero"
   `(/ 0 0)
   )
 
@@ -195,9 +208,8 @@
   `(define-extern ,function-name (function ,@type-info))
   )
 
-;; Define a new function, but only if we're debugging.
-;; TODO - should place the function in the debug segment!
 (defmacro defun-debug (name bindings &rest body)
+  "Define a function which is only present in debug mode. Otherwise the function becomes nothing"
   `(if *debug-segment*
        ,(if (and
              (> (length body) 1)      ;; more than one thing in function
@@ -215,7 +227,20 @@
        )
   )
 
+(defmacro define-perm (name type value)
+  "Define 'permanent', meaning the original definition will not be blown away by a file reload.
+   If the value of the symbol is unset (zero) or set to false, it will be defined.
+   Otherwise, no effect, other than to inform the type system of the symbol type."
+  `(begin
+    (define-extern ,name ,type)
+    (if (or (not ,name) (zero? ,name))
+        (set! ,name ,value)
+        )
+    )
+  )
+
 (defmacro while (test &rest body)
+  "While loop. The test is evaluated before body."
   (with-gensyms (reloop test-exit)
     `(begin
        (goto ,test-exit)
@@ -229,6 +254,7 @@
   )
 
 (defmacro until (test &rest body)
+  "Until loop. The body is evaluated before the test."
   (with-gensyms (reloop)
     `(begin
        (label ,reloop)
@@ -239,6 +265,7 @@
   )
 
 (defmacro dotimes (var &rest body)
+  "Loop like for (int i = 0; i < end; i++)"
   `(let (( ,(first var) 0))
      (while (< ,(first var) ,(second var))
             ,@body
@@ -249,6 +276,7 @@
   )
 
 (defmacro countdown (var &rest body)
+  "Loop like for (int i = end; i-- > 0)"
   `(let ((,(first var) ,(second var)))
      (while (!= ,(first var) 0)
        (set! ,(first var) (- ,(first var) 1))
@@ -278,10 +306,6 @@
                      )
                   )
     )
-  )
-
-(defmacro +! (place amount)
-  `(set! ,place (+ ,place ,amount))
   )
 
 (defmacro if (condition true-case &rest others)
@@ -439,6 +463,7 @@
   ;; todo, make this better
   `(eq? ,arg '())
   )
+
 (defmacro caar (arg)
   `(car (car ,arg))
   )
@@ -484,19 +509,6 @@
 
 (defmacro finish-test ()
   `(format #t "Test ~A: ~D Passes~%" *test-name* *test-count*)
-  )
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Decompiler Macros
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro <.si (a b)
-  `(< (the-as int ,a) (the-as int ,b))
-  )
-
-(defmacro <0.si (a)
-  `(< (the-as int ,a) (the-as int 0))
   )
 
 

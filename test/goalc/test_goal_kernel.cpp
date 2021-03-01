@@ -18,6 +18,7 @@ class KernelTest : public testing::Test {
     printf("Starting GOAL Kernel...\n");
     runtime_thread = std::thread(GoalTest::runtime_with_kernel);
     runner.c = &compiler;
+    compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
   }
 
   static void TearDownTestSuite() {
