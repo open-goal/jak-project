@@ -162,15 +162,17 @@ char Instruction::cop2_bc_to_char() const {
       return '?';
   }
 }
-char Instruction::cop2_dest_to_char() const {
+std::string Instruction::cop2_dest_to_char() const {
+  std::string dest = ".";
   if (cop2_dest & 8)
-    return 'x';
+    dest.push_back('x');
   if (cop2_dest & 4)
-    return 'y';
+    dest.push_back('y');
   if (cop2_dest & 2)
-    return 'z';
+    dest.push_back('z');
   if (cop2_dest & 1)
-    return 'w';
+    dest.push_back('w');
+  return dest;
 }
 
 /*!
@@ -195,8 +197,7 @@ std::string Instruction::op_name_to_string() const {
 
   // optional "destination" specification for COP2 opcodes.
   if (cop2_dest != 0xff) {
-    result += ".";
-    result.push_back(cop2_dest_to_char());
+    result.append(cop2_dest_to_char());
   }
 
   return result;

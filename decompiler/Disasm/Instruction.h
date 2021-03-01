@@ -106,7 +106,7 @@ class Instruction {
   uint8_t il = 0xff;         // 0xff indicates "don't print il"
 
   char cop2_bc_to_char() const;
-  char cop2_dest_to_char() const;
+  std::string cop2_dest_to_char() const;
 };
 }  // namespace decompiler
 #endif  // NEXT_INSTRUCTION_H

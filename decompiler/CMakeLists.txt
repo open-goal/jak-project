@@ -50,7 +50,7 @@ add_library(
         util/TP_Type.cpp
 
         config.cpp
- "analysis/vector_rewrite.cpp" "analysis/vector_rewrite.h" "IR2/OpenGoalMapping.cpp")
+ "analysis/inline_asm_rewrite.cpp" "analysis/inline_asm_rewrite.h" "IR2/OpenGoalMapping.cpp")
 
 target_link_libraries(decomp
         lzokay
@@ -59,8 +59,7 @@ target_link_libraries(decomp
         )
 
 add_executable(decompiler
-        main.cpp
-         "analysis/vector_rewrite.cpp" "analysis/vector_rewrite.h" "IR2/OpenGoalMapping.cpp")
+        main.cpp)
 
 target_link_libraries(decompiler
         decomp

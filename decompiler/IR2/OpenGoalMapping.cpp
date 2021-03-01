@@ -2,18 +2,34 @@
 #include "common/goos/PrettyPrinter.h"
 #include <optional>
 
-// TODO - having a way to handle named args here might be nice.
-// TODO - env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color); in
-// compile_asm_lvf
+// TODO - Known Issues:
+// - init / use ACC for instructions that implicitly use it
 namespace decompiler {
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
-    // TODO - load/store instructions?
-    {InstructionKind::VMOVE, {"TODO", {}, {}}},
+    // ----- EE -------
+    {InstructionKind::PSLLW, {".pw.sll", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::PSRAW, {".pw.sra", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::PSUBW, {"TODO.psubw", {}, {}}},
+
+    // TODO - this is waiting on proper 128-bit int support in OpenGOAL
+    {InstructionKind::LQ, {"TODO.lq", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
+    {InstructionKind::SQ, {"TODO.sq", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
+
+    // NOTE - depending on how this is used, this may case issues! Be Warned!
+    {InstructionKind::MFC1, {".mov", {}, {}}},
+
+    // ---- COP2 -----
+    // TODO - VMOVE supports dest, but OpenGOAL does NOT yet!
+    {InstructionKind::VMOVE, {"TODO.mov", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
 
     // Load and Store
     {InstructionKind::LQC2, {".lvf", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
     {InstructionKind::QMFC2, {".mov", {}, {}}},
-    {InstructionKind::SQC2, {".svf", {}, {OpenGOALAsm::InstructionModifiers::OFFSET}}},
+    {InstructionKind::SQC2,
+     {".svf",
+      {},
+      {OpenGOALAsm::InstructionModifiers::OFFSET,
+       OpenGOALAsm::InstructionModifiers::SWAP_SOURCE_ARGS}}},
     {InstructionKind::QMTC2, {".mov", {}, {}}},
 
     // Redundant ops, NOP and WAIT
@@ -110,9 +126,10 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::VABS, {".abs.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
 
     // Outer-product
-    // TODO - currently it's assumed these groups of instructions will be replaced with 1
+    // NOTE - currently it's assumed these groups of instructions will be replaced with 1
     {InstructionKind::VOPMULA, {".outer.product.vf", {}, {}}},
-    {InstructionKind::VOPMSUB, {".outer.product.vf", {}, {}}},
+    {InstructionKind::VOPMSUB,
+     {".outer.product.vf", {}, {OpenGOALAsm::InstructionModifiers::SWAP_SOURCE_ARGS}}},
 
     // Division
     {InstructionKind::VDIV,
@@ -125,6 +142,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
      {".sqrt.vf",
       {OpenGOALAsm::AdditionalVURegisters::Q_DST},
       {OpenGOALAsm::InstructionModifiers::FTF}}},
+    {InstructionKind::VRSQRT, {"TODO.vrsqrt", {}, {}}},  // TODO - implement in compiler!
 
     // Operations using the result of division
     {InstructionKind::VADDQ,
@@ -151,7 +169,6 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
 
     //// Random number generation
     //{InstructionKind::VRGET, "not-implemented"},
-    //{InstructionKind::VRSQRT, "not-implemented"},
     //{InstructionKind::VRXOR, "not-implemented"},
     //{InstructionKind::VRNEXT, "not-implemented"},
 
@@ -165,12 +182,12 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     //{InstructionKind::VSQI, "not-implemented"},
 
     //// Fixed point conversions
-    //{InstructionKind::VFTOI0, "not-implemented"},
-    //{InstructionKind::VFTOI4, "not-implemented"},
-    //{InstructionKind::VFTOI12, "not-implemented"},
-    //{InstructionKind::VITOF0, "not-implemented"},
-    //{InstructionKind::VITOF12, "not-implemented"},
-    //{InstructionKind::VITOF15, "not-implemented"},
+    {InstructionKind::VFTOI0, {".ftoi.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VFTOI4, {"TODO.VFTOI4", {}, {}}},
+    {InstructionKind::VFTOI12, {"TODO.VFTOI12", {}, {}}},
+    {InstructionKind::VITOF0, {".itof.vf", {}, {OpenGOALAsm::InstructionModifiers::DEST_MASK}}},
+    {InstructionKind::VITOF12, {"TODO.VITOF12", {}, {}}},
+    {InstructionKind::VITOF15, {"TODO.VITOF15", {}, {}}},
 
     //// Status Checks
     //{InstructionKind::VCLIP, "not-implemented"},
@@ -221,46 +238,43 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
 
   for (int i = 0; i < instr.n_src; i++) {
     auto v = m_src.at(i);
-    // TODO - Tempoary Hack for VOPMSUB, ideally id just re-write before it gets to this stage at
-    // higher-level!
-    if (instr.kind == InstructionKind::VOPMSUB) {
-      if (i == 0) {
-        v = m_src.at(1);
-      } else if (i == 1) {
-        v = m_src.at(0);
-      }
-    }
     InstructionAtom atom = instr.get_src(i);
-    // NOTE - handling FTF/FSF has to come first because there is no way
-    // to differentiate between what the `imm` corresponds to
+
     if (v.has_value()) {
+      // Normal register / constant args
       args.push_back(v.value().to_form(env));
     } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
+      // Handle FTF/FSF operations
       if (func.allows_modifier(InstructionModifiers::FTF) && args.size() == 0) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_imm())));
       } else if (func.allows_modifier(InstructionModifiers::FSF)) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_imm())));
+      }
+    } else if (func.allows_modifier(InstructionModifiers::OFFSET) &&
+               atom.kind == InstructionAtom::AtomKind::IMM) {
+      // Handle offsetting
+      if (atom.get_imm() != 0) {
+        named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
       }
     } else {
       args.push_back(pretty_print::to_symbol(atom.to_string(labels)));
     }
   }
 
-  // Do the rest, this ensures the previous workaround is safe (incase ftf/fsf don't come first)
-  for (int i = 0; i < instr.n_src; i++) {
-    auto v = m_src.at(i);
-    InstructionAtom atom = instr.get_src(i);
-    // NOTE - handling FTF/FSF has to come first because there is no way
-    // to differentiate between what the `imm` corresponds to
-    if (func.allows_modifier(InstructionModifiers::OFFSET) &&
-        atom.kind == InstructionAtom::AtomKind::IMM && atom.get_imm() != 0) {
-      named_args.push_back(pretty_print::to_symbol(fmt::format(":offset {}", atom.get_imm())));
-    }
+  if (instr.kind == InstructionKind::VFTOI0) {
+    int x = 0;
   }
 
+  // Handle destination masks
   if (func.allows_modifier(InstructionModifiers::DEST_MASK) && instr.cop2_dest != 0xff &&
       instr.cop2_dest != 15) {
     named_args.push_back(pretty_print::to_symbol(fmt::format(":mask #b{:b}", instr.cop2_dest)));
+  }
+
+  // Some functions are configured, or its easiest to swap the source args
+  // NOTE - this currently assumes it is the first two args that must be swapped
+  if (func.allows_modifier(InstructionModifiers::SWAP_SOURCE_ARGS)) {
+    std::swap(args.at(0), args.at(1));
   }
 
   args.insert(args.end(), named_args.begin(), named_args.end());

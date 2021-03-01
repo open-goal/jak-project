@@ -19,7 +19,7 @@ struct OpenGOALAsm {
   // and add a new look-ahead to check for a preceeding `LOI`, load the constant into a `vector` and
   // perform the normal operation
   enum class AdditionalVURegisters { ACC, Q_SRC, Q_DST, R, I, VF0 };
-  enum class InstructionModifiers { BROADCAST, DEST_MASK, FTF, FSF, OFFSET };
+  enum class InstructionModifiers { BROADCAST, DEST_MASK, FTF, FSF, OFFSET, SWAP_SOURCE_ARGS };
 
   struct Function {
     std::string funcTemplate = "";
