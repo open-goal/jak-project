@@ -414,6 +414,7 @@ class Compiler {
   Val* compile_exit(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_poke(const goos::Object& form, const goos::Object& rest, Env* env);

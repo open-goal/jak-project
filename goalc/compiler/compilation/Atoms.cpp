@@ -104,6 +104,7 @@ static const std::unordered_map<
         {"nop!", &Compiler::compile_nop},
 
         // COMPILER CONTROL
+        {"repl-help", &Compiler::compile_repl_help},
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
         {"asm-file", &Compiler::compile_asm_file},

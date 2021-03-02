@@ -2,7 +2,7 @@
 This is the main documentation for the OpenGOAL language. It's designed to be read in order to learn OpenGOAL. It does not explain the OpenGOAL kernel or state system.
 
 The syntax description uses these rules:
-- Something `[in-brackets]` is optional and can be left out. 
+- Something `[in-brackets]` is optional and can be left out.
 - Something like `[:type type-name]` means there is an optional named argument. It can be used like `:type type-name`, replacing `type-name` with what you want, or left out entirely.
 - When there are multiple choices, they are separated by `|`. Example: `#t|#f` is either `#t` or `#f`.
 - A `...` means more of the thing before can be included. Example `(f arg...)` can have multiple arguments.
@@ -153,7 +153,7 @@ Documented forms are crossed out.
 OpenGOAL is a compiled language. Source code is stored in `.gc` files. Each `.gc` file is compiled into a `.o` file.  These `.o` files are then loaded by the game. When they are loaded, it has the effect of running every "top level" expression in the file. Usually these are function, type, and method declarations, but you can also use this for initialization code.  For example, it is common to first define types, functions, and methods, then set up global instances.
 
 There are effectively three different "languages":
-1. OpenGOAL - the normal compiled language. 
+1. OpenGOAL - the normal compiled language.
 2. OpenGOAL compiler commands - simple commands to run the compiler, listener, and debugger.  These run in the compiler only.
 3. GOOS macro language.  This is used in OpenGOAL macros and runs at compile-time. These macros generate OpenGOAL compiler commands or OpenGOAL source which is then processed. These run in the compiler only.
 
@@ -165,7 +165,7 @@ Unlike a C/C++ compiler, the OpenGOAL compiler has a state. It remembers functio
  When you start the OpenGOAL compiler, you'll see a prompt like this:
  ```
  OpenGOAL Compiler 0.2
-g  > 
+g  >
  ```
 The `g` indicates that you can input OpenGOAL compiler commands.  For example:
 
@@ -207,7 +207,7 @@ Reset the target.
 ```
 Regardless of the current state, attempt to reset the target and reconnect. After this, the target will have nothing loaded.  Like with `(lt)`, the default IP and port are probably what you want.
 
-Note: `r` is actually a macro. 
+Note: `r` is actually a macro.
 ***
 ### `shutdown-target`
 If the target is connected, make it exit.
@@ -227,7 +227,7 @@ Ping the target.
 ```
 Send a ping-like message to the target. Requires the target to be connected. If successful, prints nothing.  Will time-out and display and error message if the GOAL kernel or code dispatched by the kernel is stuck in an infinite loop.  Unlikely to be used often.
 ***
- 
+
  ## Connecting To Target Example
 ```lisp
 ;; we cannot execute OpenGOAL code unless we connect the listener
@@ -283,7 +283,7 @@ A symbol has a name and a value. The name is a string, and the value is an `obje
 
 All `symbol`s are stored in the global symbol table, which is a hash table. As a result, you cannot have multiple symbols with the same name. A name is enough to uniquely determine the symbol.  To get a symbol, use the syntax `'symbol-name`. To get the value, use `symbol-name`.
 
-Each global variable, type, and named global function has a symbol for it which has the variable, type, or function as its value. The linker is able to perform symbol table lookups at link time and patch the code so you don't have to do a hash table lookup every time you access a global variable, function, or type.  
+Each global variable, type, and named global function has a symbol for it which has the variable, type, or function as its value. The linker is able to perform symbol table lookups at link time and patch the code so you don't have to do a hash table lookup every time you access a global variable, function, or type.
 
 You can also use symbols as a efficient way to represent a enum. For example, a function may return `'error` or `'complete` as a status. The compiler is able to compare symbols for equality very efficiently (just a pointer comparison, as symbols are a reference type).
 
@@ -334,7 +334,7 @@ A compound type is a type like "a pointer to an int64" or "a function which take
 ### Pointer
 Pointers work like you would expect. They can only point to memory types - you can't have a `(pointer int)`, instead you must have a `(pointer int32)` (for example).  Note that a `(pointer basic)` is like a C++ `basic**` as `basic` is already like a C++ pointer to struct. You can nest these, like `(pointer (pointer int64))`.  If you want a pointer with no type, (like C++ `void*`) just use a plain `pointer`. The `(pointer none)` type is invalid.
 
-Like in C/C++, you can use array indexing with a pointer. One thing to note is that a `(pointer basic)` (or pointer to any reference type) is like a C++ "array of pointers to structs". To get the C++ "array of structs", you need an `inline-array`. 
+Like in C/C++, you can use array indexing with a pointer. One thing to note is that a `(pointer basic)` (or pointer to any reference type) is like a C++ "array of pointers to structs". To get the C++ "array of structs", you need an `inline-array`.
 
 ### Inline Array
 These are only valid for reference types. They refer to an array of the actual data (like C array of structs) rather than an array of reference (like C array of pointers to structs, or GOAL `(pointer structure)`).  At runtime, `inline-array` becomes pointer.
@@ -346,37 +346,37 @@ For information about how to create these arrays, see `deftype` (fields in a typ
 ### Function
 Function compound types look like this `(function arg0-type arg1-type... return-type)`. There can be no arguments. The `return-type` must always be specified, and should be `none` if there is no return value.  The argument types themselves can be compound types.  In order to call a function, you must have a compound function type - a `function` by itself cannot be called.
 
- 
+
 ## Field Definitions
-GOAL field definitions look like this:  
-  
-`(name type-name [optional stuff])`  
-  
-where optional stuff can include these, in any order:  
-  
-- `:inline #t` (default is false), to mark field as inline. This can only be done for a reference type, and indicates that the data should be stored inline, in the type, rather than just storing a reference to data stored elsewhere.  
-- `:dynamic #t` (default is false), to mark field as dynamically-sized array (must be the last field in the type)  
-- a number, to give an array size.  
-- `:offset x` where x is a number, to manually specify where the field is located  
-  
-There are many combinations of reference/value, dynamic/not-dynamic, inline/not-inline, array-size/no-array-size, and it can be confusing.  This list explains all that are valid.  
-  
-- Value type, no modifiers: a single value is stored in the field. The field type is the value type.  
-- Value type, `:dynamic #t`: the field marks the beginning of an array (of unknown size). Field type is `(pointer your-type)`  
-- Value type, with array size: the field marks the beginning of an array (of known size). Field type is `(pointer your-type)`  
-- Value type, with `:inline #t`: invalid in all cases.  
-- Reference type, no modifiers: a single reference is stored in the type. Type of field is `your-type` (a C++ pointer).    
-- Reference type, `:inline #t`: a single object is stored inside the type. Type of field is `your-type` still (a C++ pointer). The access logic is different to make this work.  
-- Reference type, `:dynamic #t` or array size: the field marks the beginning of an **array of references**. Field type is `(pointer your-type)`.  Like C array of pointers.  
-- Reference type, `:inline #t` and (`:dynamic #t` or array size): the field marks the beginning of an **array of inline objects**. Field type is `(inline-array your-type)`. Like C array of structs.  
-  
-Bonus ones, for where the array is stored _outside_ of the type:  
-- A dynamically typed GOAL array, stored outside your type (think `std::vector`): use `(name (array your-type))`  
-- A dynamically type GOAL array, stored inside your type: Not allowed, `array` is dynamic!  
-- An array of value types, stored outside your type: use `(name (pointer your-type))`  
-- An array of references (C++ array of pointers), stored outside your type: use `(name (pointer your-ref-type))`  
-- An array of objects of reference type (C++ array of structs), stored outside your type: use `(name (inline-array your-ref-type))`  
-  
+GOAL field definitions look like this:
+
+`(name type-name [optional stuff])`
+
+where optional stuff can include these, in any order:
+
+- `:inline #t` (default is false), to mark field as inline. This can only be done for a reference type, and indicates that the data should be stored inline, in the type, rather than just storing a reference to data stored elsewhere.
+- `:dynamic #t` (default is false), to mark field as dynamically-sized array (must be the last field in the type)
+- a number, to give an array size.
+- `:offset x` where x is a number, to manually specify where the field is located
+
+There are many combinations of reference/value, dynamic/not-dynamic, inline/not-inline, array-size/no-array-size, and it can be confusing.  This list explains all that are valid.
+
+- Value type, no modifiers: a single value is stored in the field. The field type is the value type.
+- Value type, `:dynamic #t`: the field marks the beginning of an array (of unknown size). Field type is `(pointer your-type)`
+- Value type, with array size: the field marks the beginning of an array (of known size). Field type is `(pointer your-type)`
+- Value type, with `:inline #t`: invalid in all cases.
+- Reference type, no modifiers: a single reference is stored in the type. Type of field is `your-type` (a C++ pointer).
+- Reference type, `:inline #t`: a single object is stored inside the type. Type of field is `your-type` still (a C++ pointer). The access logic is different to make this work.
+- Reference type, `:dynamic #t` or array size: the field marks the beginning of an **array of references**. Field type is `(pointer your-type)`.  Like C array of pointers.
+- Reference type, `:inline #t` and (`:dynamic #t` or array size): the field marks the beginning of an **array of inline objects**. Field type is `(inline-array your-type)`. Like C array of structs.
+
+Bonus ones, for where the array is stored _outside_ of the type:
+- A dynamically typed GOAL array, stored outside your type (think `std::vector`): use `(name (array your-type))`
+- A dynamically type GOAL array, stored inside your type: Not allowed, `array` is dynamic!
+- An array of value types, stored outside your type: use `(name (pointer your-type))`
+- An array of references (C++ array of pointers), stored outside your type: use `(name (pointer your-ref-type))`
+- An array of objects of reference type (C++ array of structs), stored outside your type: use `(name (inline-array your-ref-type))`
+
 Of course, you can combine these, to get even more confusing types! But this seems uncommon.
 
 ## Dynamic Size Types
@@ -417,7 +417,7 @@ The `kheap` system doesn't really support freeing objects unless you free in the
 ### `print`
 This method should print out a short description of the object (with no newlines) and return the object.  The printing should be done with `(format #t ...)` (see the section on `format`) for more information.  If you call `print` by itself, it'll make this description show up in the REPL. (Note that there is some magic involved to add a newline here... there's actually a function named `print` that calls the `print` method and adds a newline)
 
-The default short description looks like this: `#<test-type @ #x173e54>` for printing an object of type `test-type`. Of course, you can override it with a better version.  Built-in types like string, type, boxed integer, pair, have reasonable overrides. 
+The default short description looks like this: `#<test-type @ #x173e54>` for printing an object of type `test-type`. Of course, you can override it with a better version.  Built-in types like string, type, boxed integer, pair, have reasonable overrides.
 
 This method is also used to print out the object with `format`'s `~A` format option.
 
@@ -557,7 +557,7 @@ will print `hello ` only and the value of the entire `block` form is `7`.  The t
 Block is used rarely, and possibly almost never?
 
 ## `return-from`
-Exit a `block` or function early. 
+Exit a `block` or function early.
 ```lisp
 (return-from block-name value)
 ```
@@ -649,7 +649,7 @@ Build a data file.
 ```lisp
 (asm-data-file tool-name "file-name")
 ```
-The `tool-name` refers to which data building tool should be used. For example, this should be `game-text` when building the game text data files.  
+The `tool-name` refers to which data building tool should be used. For example, this should be `game-text` when building the game text data files.
 
 There's a macro `(build-data)` which rebuilds everything.
 
@@ -726,7 +726,7 @@ Examples:
 (when-goto (> x y) some-label)
 (when-goto (is-player-dead?) some-label)
 ```
-Jump to `destination` if the condition is truthy (not `#f`).  This ends up generating much better code than `(if condition (goto x))`. 
+Jump to `destination` if the condition is truthy (not `#f`).  This ends up generating much better code than `(if condition (goto x))`.
 
 Like normal `goto`, this isn't used much outside of macros.
 
@@ -988,7 +988,7 @@ Addition. Can take 1 or more arguments. `(+ 1)` will give you `1`, like you'd ex
 Works on integers and floats. Integer add is 64-bit and wrapping.
 
 ## `-`
-Subtraction or negative. Can take 1 or more arguments. 
+Subtraction or negative. Can take 1 or more arguments.
 ```lisp
 (- form...)
 ```
@@ -1092,9 +1092,9 @@ The type of the result is always `object`, as pairs can hold any `object`. The t
 
 ## `new`
 ```lisp
-(new [allocation] [new-type-specification] [args]) 
+(new [allocation] [new-type-specification] [args])
 ```
-See section on creating new GOAL objects. 
+See section on creating new GOAL objects.
 
 ## `print-type`
 Print the type of some GOAL expression at compile time.
@@ -1194,7 +1194,7 @@ Not implemented well yet.
 Create register variables. You can optionally specify a register with the `:reg` option and a register name like `rax` or `xmm3`. The initial value of the register is not set. If you don't specify a register, a GPR will be chosen for you by the coloring system and it will behave like a `let`.  If you don't specify a register, you can specify a register class (`gpr`, a normal 64-bit integer register; `fpr`, a 32-bit single precision float; or  `vf`, and 128-bit floating point vector register) and the compiler will pick a GPR or XMM for you.
 
 If you pick a callee-saved register and use it within the coloring system, the compiler will back it up for you in the prologue and restore it in the epilogue.
-If you pick a special register like `rsp`, it won't be backed up.  
+If you pick a special register like `rsp`, it won't be backed up.
 
 Inside the `rlet`, all uses of `var-name` will always be in the given register.  If the variable goes dead (or is never live), the compiler may reuse the register as it wants.  The compiler may also spill the variable onto the stack.  Of course, if you are in an `asm-func`, the stack will never be used.  Be extremely careful about using "normal" registers without the coloring system and with higher-level code as the compiler may use your "normal" register as a temporary.  If you read the value of a register and use the coloring system, the variable will then be alive starting at the beginning of the function, and will make that register unavailable to the compiler and other `rlet`s that occur before. This is useful to preserve the value of a temporary register if needed, but can also be undesirable in other cases.  If you add the `:reset-here #t` flag, it will make the variable dead until the start of the `rlet`. It "resets" the value of the register in the coloring system at the start of the `rlet`.  The default value is false. It is recommended to keep the default value when accessing specific registers that are also normally used by the compiler.  For special registers like `rsp`, `r15`, `r14`, and `r13`, if you plan to use them with the coloring system, it is recommended to set the `reset-here` flag.
 
@@ -1212,8 +1212,8 @@ Here is an example of using an `rlet` to access registers:
 ## General assembly forms
 In general, assembly forms have a name that begins with a `.`. They all evaluate to `none` and copy the form of an x86-64 instruction. For example `(.sub dst src)`. A destination must be a settable register (ok if it's spilled). So you can't do something like `(.sub (-> obj field) x)`. Instead, do `(set! temp (-> obj field))`, `(.sub temp x)`, `(set! (-> obj field) temp)`.   The sources can be any expression, or a register. This allows you to mix high-level code with assembly easily, like `(.mov rax (-> obj field))` or `(.push (+ 1 (-> obj field)))`.
 
-By default, assembly forms work with the coloring system. This means that assembly and high level expression can be mixed together without clobbering each other. It also means use of callee-saved registers will cause them to be backed up/restored in the function prologue and epilogue.  Use of weird registers like `r15`, `r14`, and `rsp` works as you would expect with the coloring system. 
- 
+By default, assembly forms work with the coloring system. This means that assembly and high level expression can be mixed together without clobbering each other. It also means use of callee-saved registers will cause them to be backed up/restored in the function prologue and epilogue.  Use of weird registers like `r15`, `r14`, and `rsp` works as you would expect with the coloring system.
+
 But you can also request to skip this with `:color #f` option, like `(.push my-reg-var :color #f)`. Be very careful with this. The `:color #f` option will only work with register variables from `rlet` which have a manually specified register. It will entirely bypass the coloring system and use this register. Use of this near high level GOAL variables is extremely dangerous and should be done very carefully or avoided, as the GOAL compiler will not know that you could be modifying its registers.  In a form with `:color #f`, you cannot use higher level code or variables - all variables must be defined in `rlet`s. This is because higher level expressions and variables cannot be used without the coloring system.
 
 ## `.sub`
@@ -1230,7 +1230,7 @@ Example:
          (off :reg r15 :type uint)
          (ret :reg rax :type uint)
          )
-        
+
         ;; mov rax, rsp
         (set! ret rsp)
         ;; sub rax, r15
@@ -1451,7 +1451,7 @@ Example:
   (if (count > 10)
     ;; print a message if count > 10.
     (format #t "count = ~D, ~D~%" count-1 count-2)
-    )    
+    )
   )
 ```
 
@@ -1471,7 +1471,7 @@ Example:
   (if (count > 10)
     ;; print a message if count > 10.
     (format #t "count = ~D, ~D~%" count-1 count-2)
-    )    
+    )
   )
 ```
 
@@ -1521,9 +1521,9 @@ There is an escape code `\` for string:
 - `\cXX` where `XX` is a two character hex number: insert this character.
 - Any other character following a `\` is an error.
 
-OpenGOAL stores strings in the same segment of the function which uses the string. I believe GOAL does the same. 
+OpenGOAL stores strings in the same segment of the function which uses the string. I believe GOAL does the same.
 
-In GOAL, string constants are pooled per object file (or perhaps per segment)- if the same string appears twice, it is only included once. OpenGOAL currently does not pool strings. If any code is found that modifies a string "constant", or if repeated strings take up too much memory, string pooling will be added.  
+In GOAL, string constants are pooled per object file (or perhaps per segment)- if the same string appears twice, it is only included once. OpenGOAL currently does not pool strings. If any code is found that modifies a string "constant", or if repeated strings take up too much memory, string pooling will be added.
 
 For now I will assume that string constants are never modified.
 
@@ -1565,7 +1565,7 @@ In both C and GOAL, there is a connection between arrays and pointers.  A GOAL a
 One confusing thing is that a `(pointer int32)` is a C `int32_t*`, but a `(pointer my-structure-type)` is a C `my_structure_type**`, because a GOAL `my-structure-type` is like a C `my_structure_type*`.
 
 ## Inline Arrays
-One limitation of the system above is that an array of `my_structure_type` is actually an array of references to structures (C `object*[]`).  It would be more efficient if instead we had an array of structures, laid out together in memory (C `object[]`).  
+One limitation of the system above is that an array of `my_structure_type` is actually an array of references to structures (C `object*[]`).  It would be more efficient if instead we had an array of structures, laid out together in memory (C `object[]`).
 
 GOAL has a "inline array" to represent this.  A GOAL `(inline-array thing)` is like a C `thing[]`. The inline-array can only be used on structure types, as these are the only reference types.
 
@@ -1584,14 +1584,14 @@ For a field with a value type (integer, etc)
 Using the `:inline #t` option on a value type is not allowed.
 
 ## Dynamic Structs
-GOAL structure can be dynamically sized, which means their size isn't determined at compile time. Instead the user should implement `asize-of` to return the actual size. 
+GOAL structure can be dynamically sized, which means their size isn't determined at compile time. Instead the user should implement `asize-of` to return the actual size.
 
 This works by having the structure end in an array of unknown size at compile time. In a dynamic structure definition, the last field of the struct should be an array with an unspecified size. To create this, add a `:dynamic #t` option to the field and do not specify an array size.  This can be an array of value types, an array of reference types, or an inline-array of reference types.
 
 ### Unknown
 Is the `size` of a dynamic struct:
 - size assuming the dynamic array has 0 elements (I think it's this)
-- size assuming the dynamic array doesn't 
+- size assuming the dynamic array doesn't
 
 These can differ by padding for alignment.
 
@@ -1618,7 +1618,7 @@ This will work on dynamically sized items.
 
 ### Heap Allocated Arrays
 You can construct a heap array with `(new 'global 'inline-array 'obj-type count)` or `(new 'global 'array 'obj-type count)`.
-These objects are not initialized. Note that the `array` version creates a `(pointer obj-type)` plain array, 
+These objects are not initialized. Note that the `array` version creates a `(pointer obj-type)` plain array,
 __not__ a GOAL `array` type fancy array.  In the future this may change because it is confusing.
 
 Because these objects are uninitialized, you cannot provide constructor arguments.
@@ -1646,7 +1646,7 @@ Works like heap allocated, the objects are initialized with the constructor. The
 ## Integer Type
 GOAL has some weird behavior when it comes to integers. It may seem complicated to describe, but it really makes the implementation simpler - the integer types are designed around the available MIPS instructions.
 
-Integers that are used as local variables (defined with `let`), function arguments, function return values, and intermediate values when combining these are called "register integers", as the values will be stored in CPU registers. 
+Integers that are used as local variables (defined with `let`), function arguments, function return values, and intermediate values when combining these are called "register integers", as the values will be stored in CPU registers.
 
 Integers that are stored in memory as a field of a `structure`/`basic`, an element in an array, or accessed through a `pointer` are "memory integers", as the values will need to be loaded/stored from memory to access them.
 
@@ -1662,7 +1662,7 @@ Conversions between these types are completely automatic - as soon as you access
 - If there aren't enough hardware registers, "register integers" can be spilled to stack, but keep their "register integer" types. This process should be impossible to notice, so you don't have to worry about it.
 
 ## Array Spacing
-In general, all GOAL objects are 16-byte aligned and the boxing system requires this.  All heap memory allocations are 16-byte aligned too, so this is usually not an issue.  
+In general, all GOAL objects are 16-byte aligned and the boxing system requires this.  All heap memory allocations are 16-byte aligned too, so this is usually not an issue.
 
 ## Truth
 Everything is true except for `#f`. This means `0` is true, and `'()` is true.

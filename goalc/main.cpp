@@ -4,6 +4,9 @@
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
 
+#include "third-party/fmt/core.h";
+#include "third-party/fmt/color.h";
+
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
   if (verbose) {
@@ -39,6 +42,24 @@ int main(int argc, char** argv) {
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   Compiler compiler;
+
+  // Welcome message / brief intro for documentation
+  std::string ascii;
+  ascii += " _____             _____ _____ _____ __    \n";
+  ascii += "|     |___ ___ ___|   __|     |  _  |  |   \n";
+  ascii += "|  |  | . | -_|   |  |  |  |  |     |  |__ \n";
+  ascii += "|_____|  _|___|_|_|_____|_____|__|__|_____|\n";
+  ascii += "      |_|                                  \n";
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::orange), ascii);
+
+  fmt::print("Welcome to OpenGOAL {}.{}!\n", versions::GOAL_VERSION_MAJOR,
+             versions::GOAL_VERSION_MINOR);
+  fmt::print("Run ");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(repl-help)");
+  fmt::print(" for help with common commands and REPL usage.\n");
+  fmt::print("Run ");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
+  fmt::print(" to connect to the local listener.\n");
 
   if (argument.empty()) {
     compiler.execute_repl();
