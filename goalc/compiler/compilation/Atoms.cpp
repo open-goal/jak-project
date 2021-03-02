@@ -28,6 +28,7 @@ static const std::unordered_map<
         // INLINE ASM - VECTOR FLOAT OPERATIONS
         {".lvf", &Compiler::compile_asm_lvf},
         {".svf", &Compiler::compile_asm_svf},
+        {".mov.vf", &Compiler::compile_asm_mov_vf},
         {".blend.vf", &Compiler::compile_asm_blend_vf},
 
         {".nop.vf", &Compiler::compile_asm_nop_vf},
@@ -87,7 +88,8 @@ static const std::unordered_map<
 
         {".div.vf", &Compiler::compile_asm_div_vf},
         {".sqrt.vf", &Compiler::compile_asm_sqrt_vf},
-        {".itof.vf", &Compiler::compile_asm_itof_vf},
+        {".isqrt.vf", &Compiler::compile_asm_inv_sqrt_vf} {".itof.vf",
+                                                           &Compiler::compile_asm_itof_vf},
         {".ftoi.vf", &Compiler::compile_asm_ftoi_vf},
 
         {".pw.sll", &Compiler::compile_asm_pw_sll},

@@ -343,6 +343,33 @@ void Compiler::check_vector_float_regs(const goos::Object& form,
   }
 }
 
+Val* Compiler::compile_asm_mov_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(
+      form, args, {{}, {}},
+      {{"color", {false, goos::ObjectType::SYMBOL}}, {"mask", {false, goos::ObjectType::INTEGER}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
+
+  u8 mask = 0b1111;
+  if (args.has_named("mask")) {
+    mask = args.named.at("mask").as_int();
+    if (mask > 15) {
+      throw_compiler_error(form, "The value {} is out of range for a blend mask (0-15 inclusive).",
+                           mask);
+    }
+  }
+
+  env->emit_ir<IR_BlendVF>(color, dest, dest, src);
+  return get_none();
+}
+
 Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(
@@ -997,6 +1024,52 @@ Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object&
   env->emit_ir<IR_SplatVF>(color, dest, src, ftf_fsf_to_vector_element(ftf));
 
   env->emit_ir<IR_SqrtVF>(color, dest, dest);
+  return get_none();
+}
+
+Val* Compiler::compile_asm_inv_sqrt_vf(const goos::Object& form,
+                                       const goos::Object& rest,
+                                       Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}},
+           {
+               {"color", {false, goos::ObjectType::SYMBOL}},
+               {"fsf", {true, goos::ObjectType::INTEGER}},
+               {"ftf", {true, goos::ObjectType::INTEGER}},
+           });
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  check_vector_float_regs(form, env,
+                          {{"destination", dest}, {"first source", src1}, {"second source", src2}});
+
+  u8 fsf = args.named.at("fsf").as_int();
+  if (fsf > 3) {
+    throw_compiler_error(form, "The value {} is out of range for fsf (0-3 inclusive).", fsf);
+  }
+  u8 ftf = args.named.at("ftf").as_int();
+  if (ftf > 3) {
+    throw_compiler_error(form, "The value {} is out of range for ftf (0-3 inclusive).", ftf);
+  }
+
+  // Save one temp reg, use the destination as one
+  auto temp_reg = env->make_vfr(dest->type());
+
+  // Splat src1's value into the dest reg, keep it simple, this way no matter which vector component
+  // is accessed from the final result will be the correct answer
+  env->emit_ir<IR_SplatVF>(color, dest, src1, ftf_fsf_to_vector_element(fsf));
+  // Splat src1's value into the the temp reg
+  env->emit_ir<IR_SplatVF>(color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
+  // Square Root the temp reg
+  env->emit_ir<IR_SqrtVF>(color, temp_reg, temp_reg);
+
+  // Perform the Division
+  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
   return get_none();
 }
 
