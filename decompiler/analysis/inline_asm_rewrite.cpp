@@ -21,7 +21,6 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
     // Iterate through all TLFs
     top_level_form->apply_form([&](Form* form) {
       std::vector<FormElement*> new_entries;
-      AsmOpElement* previousAsmOp = nullptr;
       for (auto& entry : form->elts()) {
         // All vector instructions are inline assembly, so we only care to re-write assembly
         // operations
@@ -40,6 +39,12 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
                    asmOp.instr.kind);
           new_entries.push_back(entry);
           continue;
+        } else if (elem->op()->instruction().kind == InstructionKind::VOPMULA) {
+          // So far, the only instruction we deal with in pairs is the outer-product
+          // This is kinda a hack, internally the src args of VOPMSUB will be swapped which is
+          // correct and the first op we skip.
+          // In the future if this needs to support more, it will be worth cleaning this up
+          continue;
         } else if (asmOp.todo) {
           // If its an invalid or unsupported exception, skip it
           lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
@@ -49,21 +54,6 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
         // If we've made it this far, it's an AsmOperation that is also a supported vector
         // instruction by OpenGOAL All we have to do is convert it to the correct `FormElement` that
         // will write the form so it works for OpenGOAL
-
-        // So far, the only instruction we deal with in pairs is the outer-product
-        // This is kinda a hack, internally the src args of VOPMSUB will be swapped which is correct
-        // and the first op we skip.  In the future if this needs to support more, it will be worth
-        // cleaning this up
-        if (elem->op()->instruction().kind == InstructionKind::VOPMULA) {
-          // We found the first instruction, store it and move on. We'll use this instruction's args
-          // combined with the second!
-          if (previousAsmOp != nullptr) {
-            lg::warn("[ASM Re-Write] - Found a VOPMULA after a preceeding VOPMULA!");
-            new_entries.push_back(previousAsmOp);
-          }
-          previousAsmOp = elem;
-          continue;
-        }
 
         OpenGoalAsmOpElement* newElem = pool.alloc_element<OpenGoalAsmOpElement>(elem->op());
         newElem->collect_vf_regs(vf_regs);

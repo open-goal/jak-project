@@ -2,19 +2,17 @@
 #include "common/goos/PrettyPrinter.h"
 #include <optional>
 
-// TODO - Known Issues:
-// - init / use ACC for instructions that implicitly use it
 namespace decompiler {
 
 typedef OpenGOALAsm::InstructionModifiers MOD;
 
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
     // ----- EE -------
-    {InstructionKind::PSLLW, {".pw.sll", {MOD::DEST_MASK}}},
-    {InstructionKind::PSRAW, {".pw.sra", {MOD::DEST_MASK}}},
+    // TODO - these are waiting on proper 128-bit int support in OpenGOAL
+    {InstructionKind::PSLLW, {"TODO.PSLLW", {}}},
+    {InstructionKind::PSRAW, {"TODO.PSRAW", {}}},
     {InstructionKind::PSUBW, {"TODO.PSUBW", {}}},
 
-    // TODO - this is waiting on proper 128-bit int support in OpenGOAL
     {InstructionKind::LQ, {"TODO.LQ", {MOD::OFFSET}}},
     {InstructionKind::SQ, {"TODO.SQ", {MOD::OFFSET}}},
 
@@ -24,7 +22,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
 
     // ---- COP2 -----
     // TODO - VMOVE supports dest, but OpenGOAL does NOT yet!
-    {InstructionKind::VMOVE, {"TODO.VMOVE", {MOD::DEST_MASK}}},
+    {InstructionKind::VMOVE, {".mov.vf", {MOD::DEST_MASK}}},
 
     // Load and Store
     {InstructionKind::LQC2, {".lvf", {MOD::OFFSET}}},
@@ -85,7 +83,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
 
     // Square-root
     {InstructionKind::VSQRT, {".sqrt.vf", {MOD::FTF}}},
-    {InstructionKind::VRSQRT, {"TODO.VRSQRT", {}}},  // TODO - implement in compiler!
+    {InstructionKind::VRSQRT, {".isqrt.vf", {MOD::FTF, MOD::FSF}}},
 
     // Operations using the result of division
     {InstructionKind::VADDQ, {".add.vf", {MOD::DEST_MASK}}},
@@ -109,10 +107,13 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
 
     //// Fixed point conversions
     {InstructionKind::VFTOI0, {".ftoi.vf", {MOD::DEST_MASK}}},
-    {InstructionKind::VFTOI4, {"TODO.VFTOI4", {}}},
-    {InstructionKind::VFTOI12, {"TODO.VFTOI12", {}}},
     {InstructionKind::VITOF0, {".itof.vf", {MOD::DEST_MASK}}},
+
+    {InstructionKind::VFTOI4, {"TODO.VFTOI4", {}}},
+
     {InstructionKind::VITOF12, {"TODO.VITOF12", {}}},
+    {InstructionKind::VFTOI12, {"TODO.VFTOI12", {}}},
+
     {InstructionKind::VITOF15, {"TODO.VITOF15", {}}},
 
     //// Status Checks

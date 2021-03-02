@@ -441,7 +441,7 @@ void ObjectFileDB::ir2_rewrite_inline_asm_instructions() {
     }
   });
 
-  lg::info("{}/{}/{} rewrote vector instructions in {:.2f} ms\n", successful, attempted, total,
+  lg::info("{}/{}/{} rewrote inline-asm instructions in {:.2f} ms\n", successful, attempted, total,
            timer.getMs());
 }
 
