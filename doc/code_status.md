@@ -149,6 +149,11 @@
     - `PSLLW`
     - `PSUBW`
     - `PSRAW`
+- Some functions are currently skipped because of missing functionality:
+  - The method gpr->fpr of type int could not be found.
+    - `spheres-overlap?`
+    - `vector-normalize-ret-len!`
+
 
 ## `fileio`: **Done**
 

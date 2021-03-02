@@ -88,8 +88,8 @@ static const std::unordered_map<
 
         {".div.vf", &Compiler::compile_asm_div_vf},
         {".sqrt.vf", &Compiler::compile_asm_sqrt_vf},
-        {".isqrt.vf", &Compiler::compile_asm_inv_sqrt_vf} {".itof.vf",
-                                                           &Compiler::compile_asm_itof_vf},
+        {".isqrt.vf", &Compiler::compile_asm_inv_sqrt_vf},
+        {".itof.vf", &Compiler::compile_asm_itof_vf},
         {".ftoi.vf", &Compiler::compile_asm_ftoi_vf},
 
         {".pw.sll", &Compiler::compile_asm_pw_sll},

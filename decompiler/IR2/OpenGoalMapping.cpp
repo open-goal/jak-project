@@ -178,7 +178,7 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
       args.push_back(v.value().to_form(env));
     } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
       // Handle FTF/FSF operations
-      if (func.allows_modifier(MOD::FTF) && args.size() == 0) {
+      if (func.allows_modifier(MOD::FTF) && named_args.size() == 0) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_imm())));
       } else if (func.allows_modifier(MOD::FSF)) {
         named_args.push_back(pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_imm())));

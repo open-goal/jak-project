@@ -366,7 +366,7 @@ Val* Compiler::compile_asm_mov_vf(const goos::Object& form, const goos::Object& 
     }
   }
 
-  env->emit_ir<IR_BlendVF>(color, dest, dest, src);
+  env->emit_ir<IR_BlendVF>(color, dest, dest, src, mask);
   return get_none();
 }
 
