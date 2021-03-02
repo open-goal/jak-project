@@ -124,8 +124,7 @@ bool OpenGOALAsm::Function::allows_modifier(InstructionModifiers mod) {
   return std::find(modifiers.begin(), modifiers.end(), mod) != modifiers.end();
 }
 
-OpenGOALAsm::OpenGOALAsm(Instruction _instr) {
-  instr = _instr;
+OpenGOALAsm::OpenGOALAsm(Instruction _instr) : instr(_instr) {
   if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
     valid = false;
   } else {
@@ -138,10 +137,8 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) {
 
 OpenGOALAsm::OpenGOALAsm(Instruction _instr,
                          std::optional<RegisterAccess> _dst,
-                         std::vector<std::optional<RegisterAccess>> _src) {
-  instr = _instr;
-  m_dst = _dst;
-  m_src = _src;
+                         const std::vector<std::optional<RegisterAccess>> &_src)
+    : instr(_instr), m_dst(_dst), m_src(_src) {
   if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
     valid = false;
   } else {

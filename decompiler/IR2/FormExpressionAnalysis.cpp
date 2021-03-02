@@ -1572,7 +1572,6 @@ void RLetElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack
   mark_popped();
   bool first = true;
   FormStack temp_stack(first && stack.is_root());
-  first = false;
   for (auto& entry : body->elts()) {
     entry->push_to_stack(env, pool, temp_stack);
   }

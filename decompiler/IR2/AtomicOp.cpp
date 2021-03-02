@@ -483,7 +483,6 @@ goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels
   }
 
   OpenGOALAsm goalOp = OpenGOALAsm(m_instr, m_dst, src);
-  OpenGOALAsm::Function func = goalOp.func;
   forms.push_back(pretty_print::to_symbol(goalOp.full_function_name()));
 
   assert(m_instr.n_dst <= 1);
