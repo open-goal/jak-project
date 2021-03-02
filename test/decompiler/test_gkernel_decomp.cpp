@@ -2242,9 +2242,9 @@ TEST_F(FormRegressionTest, ExprMethod17DeadPoolHeap) {
 
       "    lwu v1, 52(s4)\n"
       "    beq s7, v1, L161\n"
-      "    daddiu v1, s7, 8\n"
+      "    daddiu v1, s7, 8\n"  // one
 
-      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"  // two
 
       "L161:\n"
       "    bne s7, v1, L163\n"

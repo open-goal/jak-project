@@ -13,20 +13,20 @@ class Form;
 class FormStack {
  public:
   explicit FormStack(bool is_root_stack) : m_is_root_stack(is_root_stack) {}
-  void push_value_to_reg(Variable var,
+  void push_value_to_reg(RegisterAccess var,
                          Form* value,
                          bool sequence_point,
                          const SetVarInfo& info = {});
-  void push_non_seq_reg_to_reg(const Variable& dst,
-                               const Variable& src,
+  void push_non_seq_reg_to_reg(const RegisterAccess& dst,
+                               const RegisterAccess& src,
                                Form* src_as_form,
                                const SetVarInfo& info = {});
-  void push_value_to_reg_dead(Variable var,
+  void push_value_to_reg_dead(RegisterAccess var,
                               Form* value,
                               bool sequence_point,
                               const SetVarInfo& info = {});
   void push_form_element(FormElement* elt, bool sequence_point);
-  Form* pop_reg(const Variable& var,
+  Form* pop_reg(const RegisterAccess& var,
                 const RegSet& barrier,
                 const Env& env,
                 bool allow_side_effects,
@@ -45,10 +45,11 @@ class FormStack {
 
  private:
   struct StackEntry {
-    bool active = true;                   // should this appear in the output?
-    std::optional<Variable> destination;  // what register we are setting (or nullopt if no dest.)
-    std::optional<Variable> non_seq_source;  // source variable, if we are setting var to var.
-    Form* source = nullptr;                  // the value we are setting the register to.
+    bool active = true;  // should this appear in the output?
+    std::optional<RegisterAccess>
+        destination;  // what register we are setting (or nullopt if no dest.)
+    std::optional<RegisterAccess> non_seq_source;  // source variable, if we are setting var to var.
+    Form* source = nullptr;                        // the value we are setting the register to.
 
     FormElement* elt = nullptr;
     bool sequence_point = false;
@@ -65,10 +66,10 @@ class FormStack {
 
 void rewrite_to_get_var(std::vector<FormElement*>& default_result,
                         FormPool& pool,
-                        const Variable& var,
+                        const RegisterAccess& var,
                         const Env& env);
 std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
                                              FormPool& pool,
-                                             const Variable& var,
+                                             const RegisterAccess& var,
                                              const Env& env);
 }  // namespace decompiler

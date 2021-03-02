@@ -1317,13 +1317,11 @@ Inserts a `FWAIT` assembly instruction, x86 does not require as much synchroniza
 
 ## `.lvf`
 ```lisp
-(.lvf dst-reg src-loc [:color #t|#f])
+(.lvf dst-reg src-loc [:color #t|#f] [:offset <int>])
 ```
-Load a vector float register from `src-loc`. The `dst-reg` must be a vector float register. The `src-loc` can be a gpr containing a GOAL pointer or expression which gives a GOAL pointer. There is no type checking on the `src-loc` so be careful. The load uses `vmovaps`, so the source must be 16-byte aligned. 
+Load a vector float register from `src-loc`. The `dst-reg` must be a vector float register. The `src-loc` can be a gpr containing a GOAL pointer or expression which gives a GOAL pointer. There is no type checking on the `src-loc` so be careful. The load uses `vmovaps`, so the source must be 16-byte aligned.
 
-TODO - WRONG, specify the offset explicitly with `:offset` now!
-
-If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, the constant offset will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`.
+If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, specify the offset explicitly with `:offset`, this will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`.  The default `:offset` is assumed to be `0`.
 
 If the source is an immediate `(new 'static ...)` form that results in a statically allocated variable, it will use `RIP` relative addressing (32-bit immediate) form. This means that the code:
 ```lisp
@@ -1333,7 +1331,7 @@ will be just a single instruction to do a `vmovaps xmm1, [rip + XXX]`.
 
 ## `.svf`
 ```lisp
-(.svf dst-loc src-reg [:color #t|#f])
+(.svf dst-loc src-reg [:color #t|#f] [:offset <int>])
 ```
 Store a vector float. Works similarly to the `lvf` form, but there is no optimized case for storing into a static because this isn't allowed in GOAL.
 

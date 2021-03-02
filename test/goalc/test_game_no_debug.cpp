@@ -9,6 +9,8 @@ TEST(GameNoDebugSegment, Init) {
   compiler.run_front_end_on_string("(build-kernel)");
   std::thread runtime_thread = std::thread(GoalTest::runtime_with_kernel_no_debug_segment);
 
+  compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
+
   // this shouldn't crash
   compiler.run_test_from_string("(inspect *kernel-context*)");
 

@@ -132,7 +132,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return true;
     case Kind::ANY_REG: {
       bool got = false;
-      Variable result;
+      RegisterAccess result;
 
       auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
       if (as_simple_atom) {

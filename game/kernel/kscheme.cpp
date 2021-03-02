@@ -1377,7 +1377,7 @@ u64 print_vu_function(u32 obj) {
  * Dynamically sized basics should override this method.
  */
 u64 asize_of_basic(u32 it) {
-  return Ptr<Type>(it - 4)->allocated_size;
+  return Ptr<Type>(*Ptr<u32>(it - BASIC_OFFSET))->allocated_size;
 }
 
 /*!

@@ -36,7 +36,7 @@ if(WIN32)
   target_link_libraries(goalc-test mman)
 endif()
 
-gtest_discover_tests(goalc-test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+#gtest_discover_tests(goalc-test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)

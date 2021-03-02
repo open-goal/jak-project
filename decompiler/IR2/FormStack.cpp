@@ -38,7 +38,7 @@ std::string FormStack::print(const Env& env) {
   return result;
 }
 
-void FormStack::push_value_to_reg(Variable var,
+void FormStack::push_value_to_reg(RegisterAccess var,
                                   Form* value,
                                   bool sequence_point,
                                   const SetVarInfo& info) {
@@ -52,7 +52,7 @@ void FormStack::push_value_to_reg(Variable var,
   m_stack.push_back(entry);
 }
 
-void FormStack::push_value_to_reg_dead(Variable var,
+void FormStack::push_value_to_reg_dead(RegisterAccess var,
                                        Form* value,
                                        bool sequence_point,
                                        const SetVarInfo& info) {
@@ -66,8 +66,8 @@ void FormStack::push_value_to_reg_dead(Variable var,
   m_stack.push_back(entry);
 }
 
-void FormStack::push_non_seq_reg_to_reg(const Variable& dst,
-                                        const Variable& src,
+void FormStack::push_non_seq_reg_to_reg(const RegisterAccess& dst,
+                                        const RegisterAccess& src,
                                         Form* src_as_form,
                                         const SetVarInfo& info) {
   assert(src_as_form);
@@ -100,7 +100,7 @@ void FormStack::push_form_element(FormElement* elt, bool sequence_point) {
   m_stack.push_back(entry);
 }
 
-Form* FormStack::pop_reg(const Variable& var,
+Form* FormStack::pop_reg(const RegisterAccess& var,
                          const RegSet& barrier,
                          const Env& env,
                          bool allow_side_effects,
@@ -227,7 +227,7 @@ namespace {
 bool is_op_in_place(SetVarElement* elt,
                     FixedOperatorKind op,
                     const Env&,
-                    Variable* base_out,
+                    RegisterAccess* base_out,
                     Form** val_out) {
   auto matcher = Matcher::op(GenericOpMatcher::fixed(op), {Matcher::any_reg(0), Matcher::any(1)});
   auto result = match(matcher, elt->src());
@@ -255,7 +255,7 @@ FormElement* rewrite_set_op_in_place_for_kind(SetVarElement* in,
                                               FixedOperatorKind first_kind,
                                               FixedOperatorKind in_place_kind) {
   Form* val = nullptr;
-  Variable base;
+  RegisterAccess base;
 
   if (is_op_in_place(in, first_kind, env, &base, &val)) {
     return pool.alloc_element<GenericElement>(
@@ -334,10 +334,10 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
 
 void rewrite_to_get_var(std::vector<FormElement*>& default_result,
                         FormPool& pool,
-                        const Variable& var,
+                        const RegisterAccess& var,
                         const Env&) {
   bool keep_going = true;
-  Variable var_to_get = var;
+  RegisterAccess var_to_get = var;
 
   std::vector<FormElement*> result;
 
@@ -373,7 +373,7 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
 
 std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
                                              FormPool& pool,
-                                             const Variable& var,
+                                             const RegisterAccess& var,
                                              const Env& env) {
   auto default_result = stack.rewrite(pool, env);
   rewrite_to_get_var(default_result, pool, var, env);

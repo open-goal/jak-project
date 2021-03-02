@@ -407,7 +407,7 @@ FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
 
     // this is a little scary in the case that type analysis doesn't run and relies on the fact
     // that CallOp falls back to writing v0 in the case where the function type isn't known.
-    Variable out_var(VariableMode::WRITE, Register(Reg::GPR, Reg::V0), m_my_idx);
+    RegisterAccess out_var(AccessMode::WRITE, Register(Reg::GPR, Reg::V0), m_my_idx);
     return pool.alloc_element<SetVarElement>(out_var, pool.alloc_single_form(nullptr, call), true);
   } else {
     throw std::runtime_error("CallOp::get_as_expr not yet implemented");

@@ -71,7 +71,7 @@ const std::string& Env::remapped_name(const std::string& name) const {
   }
 }
 
-goos::Object Env::get_variable_name(Register reg, int atomic_idx, VariableMode mode) const {
+goos::Object Env::get_variable_name(Register reg, int atomic_idx, AccessMode mode) const {
   if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
     std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
     auto remapped = m_var_remap.find(lookup_name);
@@ -166,22 +166,21 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
   assert(has_local_vars());
   std::vector<VariableNames::VarInfo> entries;
   if (top_level_form) {
-    VariableSet var_set;
+    RegAccessSet var_set;
     top_level_form->collect_vars(var_set);
 
     // we want to sort them for easier reading:
-    std::vector<std::pair<RegId, Variable>> vars;
+    std::vector<std::pair<RegId, RegisterAccess>> vars;
 
     for (auto& x : var_set) {
       if (x.reg().get_kind() == Reg::FPR || x.reg().get_kind() == Reg::GPR) {
-        vars.push_back(std::make_pair(get_ssa_var(x), x));
+        vars.push_back(std::make_pair(get_program_var_id(x), x));
       }
     }
 
     std::sort(vars.begin(), vars.end(),
-              [](const std::pair<RegId, Variable>& a, const std::pair<RegId, Variable>& b) {
-                return a.first < b.first;
-              });
+              [](const std::pair<RegId, RegisterAccess>& a,
+                 const std::pair<RegId, RegisterAccess>& b) { return a.first < b.first; });
 
     RegId* prev = nullptr;
     for (auto& x : vars) {
@@ -191,8 +190,8 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
         continue;
       }
       prev = &x.first;
-      auto& map = x.second.mode() == VariableMode::WRITE ? m_var_names.write_vars.at(x.second.reg())
-                                                         : m_var_names.read_vars.at(x.second.reg());
+      auto& map = x.second.mode() == AccessMode::WRITE ? m_var_names.write_vars.at(x.second.reg())
+                                                       : m_var_names.read_vars.at(x.second.reg());
       auto& info = map.at(x.first.id);
 
       if (info.initialized) {
@@ -259,15 +258,21 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
   return pretty_print::build_list(elts);
 }
 
-std::unordered_set<RegId, RegId::hash> Env::get_ssa_var(const VariableSet& vars) const {
+std::unordered_set<RegId, RegId::hash> Env::get_ssa_var(const RegAccessSet& vars) const {
   std::unordered_set<RegId, RegId::hash> result;
   for (auto& x : vars) {
-    result.insert(get_ssa_var(x));
+    result.insert(get_program_var_id(x));
   }
   return result;
 }
 
-RegId Env::get_ssa_var(const Variable& var) const {
+RegId Env::get_program_var_id(const RegisterAccess& var) const {
   return m_var_names.lookup(var.reg(), var.idx(), var.mode()).reg_id;
+}
+
+const UseDefInfo& Env::get_use_def_info(const RegisterAccess& ra) const {
+  assert(has_local_vars());
+  auto var_id = get_program_var_id(ra);
+  return m_var_names.use_def_info.at(var_id);
 }
 }  // namespace decompiler

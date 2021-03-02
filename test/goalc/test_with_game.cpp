@@ -34,6 +34,7 @@ class WithGameTests : public ::testing::Test {
     runner.c = &compiler;
 
     compiler.run_test_from_file("test/goalc/source_templates/with_game/test-load-game.gc");
+    compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
   }
 
   static void TearDownTestSuite() {
@@ -60,6 +61,53 @@ class WithGameTests : public ::testing::Test {
 std::thread WithGameTests::runtime_thread;
 Compiler WithGameTests::compiler;
 GoalTest::CompilerTestRunner WithGameTests::runner;
+
+class WithMinimalGameTests : public ::testing::Test {
+ public:
+  static void SetUpTestSuite() {
+    try {
+      compiler.run_front_end_on_string("(build-kernel)");
+    } catch (std::exception& e) {
+      fprintf(stderr, "caught exception %s\n", e.what());
+      EXPECT_TRUE(false);
+    }
+    runtime_thread = std::thread((GoalTest::runtime_with_kernel));
+    runner.c = &compiler;
+
+    compiler.run_test_from_string("(dgo-load \"kernel\" global #xf #x200000)");
+
+    const auto minimal_files = {"goal_src/engine/math/vector-h.gc"};
+    for (auto& file : minimal_files) {
+      compiler.run_test_from_string(fmt::format("(ml \"{}\")", file));
+    }
+
+    compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
+  }
+
+  static void TearDownTestSuite() {
+    compiler.shutdown_target();
+    runtime_thread.join();
+  }
+
+  void SetUp() {
+    GoalTest::createDirIfAbsent(GoalTest::getTemplateDir(testCategory));
+    GoalTest::createDirIfAbsent(GoalTest::getGeneratedDir(testCategory));
+  }
+
+  void TearDown() {}
+
+  static std::thread runtime_thread;
+  static Compiler compiler;
+  static GoalTest::CompilerTestRunner runner;
+
+  std::string testCategory = "with_game";
+  inja::Environment env{GoalTest::getTemplateDir(testCategory),
+                        GoalTest::getGeneratedDir(testCategory)};
+};
+
+std::thread WithMinimalGameTests::runtime_thread;
+Compiler WithMinimalGameTests::compiler;
+GoalTest::CompilerTestRunner WithMinimalGameTests::runner;
 
 namespace {
 std::vector<std::string> get_test_pass_string(const std::string& name, int count) {
@@ -650,7 +698,7 @@ std::vector<VectorFloatTestCase_TwoOperand> vectorMathCaseGen_TwoOperand() {
 }
 
 class VectorFloatParameterizedTestFixtureWithRunner_TwoOperand
-    : public WithGameTests,
+    : public WithMinimalGameTests,
       public ::testing::WithParamInterface<VectorFloatTestCase_TwoOperand> {
  protected:
   std::string templateFile = "test-vector-math-2-operand.template.gc";
@@ -778,7 +826,7 @@ std::vector<VectorFloatTestCase_SingleOperand> vectorMathCaseGen_SingleOperand_N
 }
 
 class VectorFloatParameterizedTestFixtureWithRunner_SingleOperand
-    : public WithGameTests,
+    : public WithMinimalGameTests,
       public ::testing::WithParamInterface<VectorFloatTestCase_SingleOperand> {
  protected:
   std::string templateFile = "test-vector-math-1-operand.template.gc";
@@ -863,7 +911,7 @@ std::vector<VectorFloatTestCase_TwoOperandACC> vectorMathCaseGen_TwoOperandACC()
 }
 
 class VectorFloatParameterizedTestFixtureWithRunner_TwoOperandACC
-    : public WithGameTests,
+    : public WithMinimalGameTests,
       public ::testing::WithParamInterface<VectorFloatTestCase_TwoOperandACC> {
  protected:
   std::string templateFile = "test-vector-math-2-operand-acc.template.gc";
@@ -950,7 +998,7 @@ std::vector<VectorFloatTestCase_TwoOperandQuotient> vectorMathCaseGen_TwoOperand
 }
 
 class VectorFloatParameterizedTestFixtureWithRunner_TwoOperandQuotient
-    : public WithGameTests,
+    : public WithMinimalGameTests,
       public ::testing::WithParamInterface<VectorFloatTestCase_TwoOperandQuotient> {
  protected:
   std::string templateFile = "test-vector-math-division.template.gc";
@@ -1014,7 +1062,7 @@ std::vector<VectorFloatTestCase_OneOperandQuotient> vectorMathCaseGen_OneOperand
 }
 
 class VectorFloatParameterizedTestFixtureWithRunner_OneOperandQuotient
-    : public WithGameTests,
+    : public WithMinimalGameTests,
       public ::testing::WithParamInterface<VectorFloatTestCase_OneOperandQuotient> {
  protected:
   std::string templateFile = "test-vector-math-sqrt.template.gc";
