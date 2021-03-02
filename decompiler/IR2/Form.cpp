@@ -482,7 +482,7 @@ void OpenGoalAsmOpElement::apply(const std::function<void(FormElement*)>& f) {
 
 void OpenGoalAsmOpElement::apply_form(const std::function<void(Form*)>&) {}
 
-void OpenGoalAsmOpElement::collect_vars(VariableSet& vars) const {
+void OpenGoalAsmOpElement::collect_vars(RegAccessSet& vars) const {
   m_op->collect_vars(vars);
 }
 
@@ -849,7 +849,7 @@ void RLetElement::apply_form(const std::function<void(Form*)>& f) {
   body->apply_form(f);
 }
 
-void RLetElement::collect_vars(VariableSet& vars) const {
+void RLetElement::collect_vars(RegAccessSet& vars) const {
   body->collect_vars(vars);
 }
 

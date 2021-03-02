@@ -381,7 +381,7 @@ class OpenGoalAsmOpElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void collect_vf_regs(RegSet& regs) const;
   void get_modified_regs(RegSet& regs) const override;
@@ -598,7 +598,7 @@ class RLetElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(VariableSet& vars) const override;
+  void collect_vars(RegAccessSet& vars) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   Form* body = nullptr;

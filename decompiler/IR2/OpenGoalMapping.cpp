@@ -137,8 +137,8 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) {
 }
 
 OpenGOALAsm::OpenGOALAsm(Instruction _instr,
-                         std::optional<Variable> _dst,
-                         std::vector<std::optional<Variable>> _src) {
+                         std::optional<RegisterAccess> _dst,
+                         std::vector<std::optional<RegisterAccess>> _src) {
   instr = _instr;
   m_dst = _dst;
   m_src = _src;

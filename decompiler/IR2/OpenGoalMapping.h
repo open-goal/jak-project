@@ -35,13 +35,13 @@ struct OpenGOALAsm {
   OpenGOALAsm(Instruction _instr);
 
   OpenGOALAsm(Instruction _instr,
-              std::optional<Variable> _dst,
-              std::vector<std::optional<Variable>> _src);
+              std::optional<RegisterAccess> _dst,
+              std::vector<std::optional<RegisterAccess>> _src);
 
   bool valid = true;
   bool todo = false;
-  std::optional<Variable> m_dst;
-  std::vector<std::optional<Variable>> m_src;
+  std::optional<RegisterAccess> m_dst;
+  std::vector<std::optional<RegisterAccess>> m_src;
   Instruction instr;
   OpenGOALAsm::Function func;
 

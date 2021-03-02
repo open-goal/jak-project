@@ -476,7 +476,7 @@ goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels
                                       const Env& env) const {
   std::vector<goos::Object> forms;
 
-  std::vector<std::optional<Variable>> src;
+  std::vector<std::optional<RegisterAccess>> src;
   for (int i = 0; i < m_instr.n_src; i++) {
     auto v = m_src[i];
     src.push_back(v);
