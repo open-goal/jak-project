@@ -11,6 +11,7 @@
 #include "common/util/FileUtil.h"
 #include "goalc/data_compiler/game_text.h"
 #include "goalc/data_compiler/game_count.h"
+#include "common/goos/ReplHistory.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -30,6 +31,7 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   }
   // flag for the REPL.
   m_want_exit = true;
+  ReplHistory::repl_save_history();
   return get_none();
 }
 

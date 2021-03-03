@@ -36,7 +36,8 @@ add_library(compiler
         regalloc/allocate.cpp
         regalloc/allocate_common.cpp
         compiler/Compiler.cpp
-        compiler/compilation/Asm.cpp)
+        compiler/compilation/Asm.cpp
+        )
 
 target_link_libraries(compiler common Zydis)
 
