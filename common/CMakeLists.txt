@@ -8,6 +8,7 @@ add_library(common
         goos/PrettyPrinter.cpp
         goos/Reader.cpp
         goos/TextDB.cpp
+        goos/ReplHistory.cpp
         log/log.cpp
         type_system/deftype.cpp
         type_system/Type.cpp

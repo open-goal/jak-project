@@ -13,6 +13,7 @@
 #include "BinaryWriter.h"
 #include "common/common_types.h"
 #include "third-party/svpng.h"
+#include <stdlib.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -22,6 +23,17 @@
 #endif
 
 namespace file_util {
+std::filesystem::path get_user_home_dir() {
+#ifdef _WIN32
+  // NOTE - on older systems, this may case issues if it cannot be found!
+  std::string home_dir = std::getenv("USERPROFILE");
+  return std::filesystem::path(home_dir);
+#else
+  std::string home_dir = std::getenv("HOME");
+  return std::filesystem::path(home_dir);
+#endif
+}
+
 std::string get_project_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];

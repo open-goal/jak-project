@@ -7,6 +7,8 @@
 #include "third-party/fmt/core.h";
 #include "third-party/fmt/color.h";
 
+#include "common/goos/ReplHistory.h"
+
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
   if (verbose) {
@@ -61,6 +63,7 @@ int main(int argc, char** argv) {
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
   fmt::print(" to connect to the local listener.\n");
 
+  ReplHistory::repl_load_history();
   if (argument.empty()) {
     compiler.execute_repl();
   } else {
