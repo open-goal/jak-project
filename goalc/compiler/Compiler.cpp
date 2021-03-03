@@ -288,9 +288,24 @@ bool Compiler::connect_to_target() {
   return true;
 }
 
+/*!
+ * Just run the front end on a string. Will not do register allocation or code generation.
+ * Useful for typechecking or running strings that invoke the compiler again.
+ */
 void Compiler::run_front_end_on_string(const std::string& src) {
   auto code = m_goos.reader.read_from_string({src});
   compile_object_file("run-on-string", code, true);
+}
+
+/*!
+ * Run the entire compilation process on the input source code. Will generate an object file, but
+ * won't save it anywhere.
+ */
+void Compiler::run_full_compiler_on_string_no_save(const std::string& src) {
+  auto code = m_goos.reader.read_from_string({src});
+  auto compiled = compile_object_file("run-on-string", code, true);
+  color_object_file(compiled);
+  codegen_object_file(compiled);
 }
 
 std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {

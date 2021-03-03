@@ -78,7 +78,8 @@ class ObjectFileDB {
   void ir2_write_results(const std::string& output_dir);
   std::string ir2_to_file(ObjectFileData& data);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
-  std::string ir2_final_out(ObjectFileData& data);
+  std::string ir2_final_out(ObjectFileData& data,
+                            const std::unordered_set<std::string>& skip_functions = {});
 
   void process_tpages();
   std::string process_game_count_file();

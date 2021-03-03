@@ -2241,10 +2241,14 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto sll_matcher =
           Matcher::fixed_op(FixedOperatorKind::SHL, {reg1_matcher, Matcher::integer(power_of_two)});
       sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});
-      auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher});
+      auto matcher = Matcher::match_or(
+          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher}),
+           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {reg0_matcher, sll_matcher})});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
-        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher});
+        matcher = Matcher::match_or(
+            {Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher}),
+             Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {sll_matcher, reg0_matcher})});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
           fmt::print("power {}\n", power_of_two);
@@ -2405,7 +2409,6 @@ void TypeOfElement::update_from_stack(const Env& env,
   value->update_children_from_stack(env, pool, stack, allow_side_effects);
   result->push_back(this);
 }
-
 ////////////////////////
 // EmptyElement
 ////////////////////////
@@ -2434,8 +2437,10 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    throw std::runtime_error("Got unrecognized ConditionalMoveFalseElement original: " +
-                             popped.at(0)->to_string(env));
+    lg::warn("Failed to ConditionalMoveFalseElement::push_to_stack");
+    stack.push_value_to_reg(source, popped.at(1), true);
+    stack.push_form_element(this, true);
+    return;
   }
   stack.push_value_to_reg(dest,
                           pool.alloc_single_element_form<GenericElement>(

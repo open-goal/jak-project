@@ -2573,3 +2573,24 @@ TEST_F(FormRegressionTest, ExprTerminal2) {
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
+
+TEST_F(FormRegressionTest, MoveFalse) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L29:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    daddiu v1, s7, 8\n"
+      "    daddiu a0, a0, 12\n"
+      "    andi a0, a0, 1\n"
+      "    movz v1, s7, a0\n"
+      "    or v0, v1, r0\n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16\n";
+  std::string type = "(function int symbol)";
+
+  std::string expected = "(nonzero? (logand (+ arg0 12) 1))";
+  test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
+}

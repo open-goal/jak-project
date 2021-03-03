@@ -197,7 +197,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 /*!
  * Simple help / documentation command
  */
-Val* Compiler::compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env) {
+Val* Compiler::compile_repl_help(const goos::Object&, const goos::Object&, Env*) {
   fmt::print(fmt::emphasis::bold, "\nREPL Controls:\n");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(e)\n");
   fmt::print(" - Exit the compiler once the current REPL command is finished\n");
