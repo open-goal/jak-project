@@ -1078,7 +1078,7 @@ void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormSta
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
-  auto elt = pool.alloc_element<SetFormFormElement>(sym, val);
+  auto elt = pool.alloc_element<SetFormFormElement>(sym, val, m_cast_for_set, m_cast_for_define);
   elt->mark_popped();
   stack.push_form_element(elt, true);
 }

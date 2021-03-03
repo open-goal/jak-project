@@ -87,8 +87,16 @@ std::string object_type_to_string(ObjectType type) {
 template <>
 std::string fixed_to_string(FloatType x) {
   char buff[256];
-  sprintf(buff, "%.6f", x);
-  return {buff};
+  s64 rounded = x;
+  bool exact_int = ((float)rounded) == x;
+
+  if (exact_int) {
+    sprintf(buff, "%.1f", x);
+    return {buff};
+  } else {
+    sprintf(buff, "%.6f", x);
+    return {buff};
+  }
 }
 
 /*!

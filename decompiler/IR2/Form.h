@@ -277,7 +277,11 @@ class SetVarElement : public FormElement {
 
 class StoreInSymbolElement : public FormElement {
  public:
-  StoreInSymbolElement(std::string sym_name, SimpleExpression value, int my_idx);
+  StoreInSymbolElement(std::string sym_name,
+                       SimpleExpression value,
+                       std::optional<TypeSpec> cast_for_set,
+                       std::optional<TypeSpec> cast_for_define,
+                       int my_idx);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -288,6 +292,8 @@ class StoreInSymbolElement : public FormElement {
  private:
   std::string m_sym_name;
   SimpleExpression m_value;
+  std::optional<TypeSpec> m_cast_for_set;
+  std::optional<TypeSpec> m_cast_for_define;
   int m_my_idx = -1;
 };
 
@@ -315,8 +321,12 @@ class StoreInPairElement : public FormElement {
  */
 class SetFormFormElement : public FormElement {
  public:
-  SetFormFormElement(Form* dst, Form* src);
+  SetFormFormElement(Form* dst,
+                     Form* src,
+                     std::optional<TypeSpec> cast_for_set = {},
+                     std::optional<TypeSpec> cast_for_define = {});
   goos::Object to_form_internal(const Env& env) const override;
+  goos::Object to_form_for_define(const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
@@ -333,6 +343,7 @@ class SetFormFormElement : public FormElement {
   int m_real_push_count = 0;
   Form* m_dst = nullptr;
   Form* m_src = nullptr;
+  std::optional<TypeSpec> m_cast_for_set, m_cast_for_define;
 };
 
 /*!

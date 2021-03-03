@@ -106,8 +106,78 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
     if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
-      return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
-                                                      m_value.as_expr(), m_my_idx);
+      // we are storing a value in a global symbol. This is something like sw rx, offset(s7)
+      // so the source can only be a variable, r0 (integer 0), or false (s7)
+      // we want to know both: what cast (if any) do we need for a set!, and what cast (if any)
+      // do we need for a define.
+
+      auto symbol_type = env.dts->lookup_symbol_type(m_addr.get_arg(0).get_str());
+      auto symbol_type_info = env.dts->ts.lookup_type(symbol_type);
+
+      switch (m_value.get_kind()) {
+        case SimpleAtom::Kind::VARIABLE: {
+          auto src_type = env.get_types_before_op(m_my_idx).get(m_value.var().reg()).typespec();
+          std::optional<TypeSpec> cast_for_set, cast_for_define;
+
+          if (src_type != symbol_type) {
+            // the define will need a cast to the exactly right type.
+            cast_for_define = symbol_type;
+          }
+
+          if (!env.dts->ts.typecheck(symbol_type, src_type, "", false, false)) {
+            // we fail the typecheck for a normal set!, so add a cast.
+            cast_for_set = symbol_type;
+          }
+
+          return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                          m_value.as_expr(), cast_for_set,
+                                                          cast_for_define, m_my_idx);
+        } break;
+        case SimpleAtom::Kind::INTEGER_CONSTANT: {
+          std::optional<TypeSpec> cast_for_set, cast_for_define;
+          bool sym_int_or_uint =
+              env.dts->ts.typecheck(TypeSpec("integer"), symbol_type, "", false, false);
+          bool sym_uint =
+              env.dts->ts.typecheck(TypeSpec("uinteger"), symbol_type, "", false, false);
+          bool sym_int = sym_int_or_uint && !sym_uint;
+
+          if (TypeSpec("int") != symbol_type) {
+            // the define will need a cast to the exactly right type.
+            cast_for_define = symbol_type;
+          }
+
+          if (sym_int) {
+            // do nothing for set.
+          } else {
+            // for uint or other
+            cast_for_set = symbol_type;
+          }
+
+          return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                          m_value.as_expr(), cast_for_set,
+                                                          cast_for_define, m_my_idx);
+        } break;
+
+        case SimpleAtom::Kind::SYMBOL_PTR:
+        case SimpleAtom::Kind::SYMBOL_VAL: {
+          assert(m_value.get_str() == "#f");
+          std::optional<TypeSpec> cast_for_set, cast_for_define;
+          if (symbol_type != TypeSpec("symbol")) {
+            cast_for_define = symbol_type;
+            // explicitly cast if we're not using a reference type, including pointers.
+            // otherwise, we allow setting references to #f.
+            if (!symbol_type_info->is_reference()) {
+              cast_for_set = symbol_type;
+            }
+          }
+          return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                          m_value.as_expr(), cast_for_set,
+                                                          cast_for_define, m_my_idx);
+        } break;
+
+        default:
+          assert(false);
+      }
     }
 
     IR2_RegOffset ro;

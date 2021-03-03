@@ -322,11 +322,26 @@ bool SetVarElement::active() const {
   }
 }
 
-StoreInSymbolElement::StoreInSymbolElement(std::string sym_name, SimpleExpression value, int my_idx)
-    : m_sym_name(std::move(sym_name)), m_value(std::move(value)), m_my_idx(my_idx) {}
+StoreInSymbolElement::StoreInSymbolElement(std::string sym_name,
+                                           SimpleExpression value,
+                                           std::optional<TypeSpec> cast_for_set,
+                                           std::optional<TypeSpec> cast_for_define,
+                                           int my_idx)
+    : m_sym_name(std::move(sym_name)),
+      m_value(std::move(value)),
+      m_cast_for_set(std::move(cast_for_set)),
+      m_cast_for_define(std::move(cast_for_define)),
+      m_my_idx(my_idx) {}
 
 goos::Object StoreInSymbolElement::to_form_internal(const Env& env) const {
-  return pretty_print::build_list("set!", m_sym_name, m_value.to_form(env.file->labels, env));
+  if (m_cast_for_set) {
+    return pretty_print::build_list(
+        "set!", m_sym_name,
+        pretty_print::build_list(fmt::format("the-as {}", m_cast_for_set->print()),
+                                 m_value.to_form(env.file->labels, env)));
+  } else {
+    return pretty_print::build_list("set!", m_sym_name, m_value.to_form(env.file->labels, env));
+  }
 }
 
 void StoreInSymbolElement::apply(const std::function<void(FormElement*)>& f) {
@@ -370,15 +385,42 @@ void StoreInPairElement::get_modified_regs(RegSet&) const {}
 // SetFormFormElement
 /////////////////////////////
 
-SetFormFormElement::SetFormFormElement(Form* dst, Form* src) : m_dst(dst), m_src(src) {
+SetFormFormElement::SetFormFormElement(Form* dst,
+                                       Form* src,
+                                       std::optional<TypeSpec> cast_for_set,
+                                       std::optional<TypeSpec> cast_for_define)
+    : m_dst(dst),
+      m_src(src),
+      m_cast_for_set(std::move(cast_for_set)),
+      m_cast_for_define(std::move(cast_for_define)) {
   m_dst->parent_element = this;
   m_src->parent_element = this;
 }
 
 goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
-  std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"), m_dst->to_form(env),
-                                     m_src->to_form(env)};
-  return pretty_print::build_list(forms);
+  if (m_cast_for_set) {
+    return pretty_print::build_list(
+        fmt::format("set!"), m_dst->to_form(env),
+        pretty_print::build_list(fmt::format("the-as {}", m_cast_for_set->print()),
+                                 m_src->to_form(env)));
+  } else {
+    std::vector<goos::Object> forms = {pretty_print::to_symbol("set!"), m_dst->to_form(env),
+                                       m_src->to_form(env)};
+    return pretty_print::build_list(forms);
+  }
+}
+
+goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
+  if (m_cast_for_define) {
+    return pretty_print::build_list(
+        fmt::format("define"), m_dst->to_form(env),
+        pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                 m_src->to_form(env)));
+  } else {
+    std::vector<goos::Object> forms = {pretty_print::to_symbol("define"), m_dst->to_form(env),
+                                       m_src->to_form(env)};
+    return pretty_print::build_list(forms);
+  }
 }
 
 void SetFormFormElement::apply(const std::function<void(FormElement*)>& f) {

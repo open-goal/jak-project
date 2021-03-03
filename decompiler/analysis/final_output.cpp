@@ -202,6 +202,9 @@ std::string write_from_top_level(const Function& top_level,
   auto defun_debug_matcher =
       Matcher::if_with_else(debug_seg_matcher, debug_def_matcher, non_debug_def_matcher);
 
+  // (set! sym-val <expr>)
+  auto define_symbol_matcher = Matcher::set(Matcher::any_symbol(0), Matcher::any(1));
+
   for (auto& x : top_form->elts()) {
     bool something_matched = false;
     Form f;
@@ -272,6 +275,21 @@ std::string write_from_top_level(const Function& top_level,
             }
           }
         }
+      }
+    }
+
+    if (!something_matched) {
+      auto define_match_result = match(define_symbol_matcher, &f);
+      if (define_match_result.matched) {
+        something_matched = true;
+        auto sym_name = define_match_result.maps.strings.at(0);
+        auto symbol_type = dts.lookup_symbol_type(sym_name);
+        result +=
+            fmt::format(";; definition for symbol {}, type {}\n", sym_name, symbol_type.print());
+        auto setset = dynamic_cast<SetFormFormElement*>(f.try_as_single_element());
+        assert(setset);
+        result += pretty_print::to_string(setset->to_form_for_define(env));
+        result += "\n\n";
       }
     }
 
