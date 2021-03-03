@@ -62,8 +62,6 @@ class OfflineDecompilation : public ::testing::Test {
     decompiler::set_config(
         file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}));
 
-    auto in_folder = file_util::get_file_path({"iso_data"});
-
     decompiler::get_config().allowed_objects = object_files_to_decompile;
     db = std::make_unique<decompiler::ObjectFileDB>(
         std::vector<std::string>{file_util::get_file_path({"iso_data", "CGO", "KERNEL.CGO"}),
