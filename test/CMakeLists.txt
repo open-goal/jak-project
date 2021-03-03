@@ -1,6 +1,7 @@
 set(CMAKE_CXX_STANDARD 17)
 
 include(${CMAKE_CURRENT_LIST_DIR}/goalc/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/offline/CMakeLists.txt)
 
 add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_main.cpp

@@ -4,8 +4,8 @@
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
 
-#include "third-party/fmt/core.h";
-#include "third-party/fmt/color.h";
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/color.h"
 
 #include "common/goos/ReplHistory.h"
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   fmt::print(" for help with common commands and REPL usage.\n");
   fmt::print("Run ");
   fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
-  fmt::print(" to connect to the local listener.\n");
+  fmt::print(" to connect to the local target.\n");
 
   ReplHistory::repl_load_history();
   if (argument.empty()) {

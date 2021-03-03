@@ -46,8 +46,11 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
     lg::info("Expression building...");
     ir2_build_expressions();
   }
-  lg::info("Writing results...");
-  ir2_write_results(output_dir);
+
+  if (!output_dir.empty()) {
+    lg::info("Writing results...");
+    ir2_write_results(output_dir);
+  }
 }
 
 /*!
@@ -411,8 +414,7 @@ void ObjectFileDB::ir2_build_expressions() {
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
-        //        auto end = final_defun_out(func, func.ir2.env, dts);
-        //        fmt::print("{}\n\n", end);
+        func.ir2.expressions_succeeded = true;
       }
     }
   });
@@ -782,14 +784,15 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
   return false;
 }
 
-std::string ObjectFileDB::ir2_final_out(ObjectFileData& data) {
+std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
+                                        const std::unordered_set<std::string>& skip_functions) {
   if (data.obj_version == 3) {
     std::string result;
     result += ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";
     assert(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
     auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
-    result += write_from_top_level(top_level, dts, data.linked_data);
+    result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
     result += "\n\n";
     return result;
   } else {
