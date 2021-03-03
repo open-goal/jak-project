@@ -2591,10 +2591,6 @@ TEST_F(FormRegressionTest, MoveFalse) {
       "    daddiu sp, sp, 16\n";
   std::string type = "(function int symbol)";
 
-  std::string expected =
-      "(begin\n"
-      "  (set! f0-4 (sqrt (/ (- (* 0.000000 arg0) arg1) arg2)))\n"
-      "  (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))\n"
-      "  )";
+  std::string expected = "(nonzero? (logand (+ arg0 12) 1))";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
