@@ -433,6 +433,7 @@ class Compiler {
   Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);

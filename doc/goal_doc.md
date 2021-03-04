@@ -625,6 +625,72 @@ Reload the GOAL compiler
 ```
 Disconnect from the target and reset all compiler state.  This is equivalent to exiting the compiler and opening it again.
 
+## `get-info`
+Get information about something.
+```lisp
+(get-info <something>)
+```
+Use `get-info` to see what something is and where it is defined.
+
+For example:
+```lisp
+;; get info about a global variable:
+g  > (get-info *kernel-context*)
+[Global Variable] Type: kernel-context Defined: text from goal_src/kernel/gkernel.gc, line: 88
+(define *kernel-context* (new 'static 'kernel-context
+
+;; get info about a function. This particular function is forward declared, so there's an entry for that too.
+;; global functions are also global variables, so there's a global variable entry as well.
+g  > (get-info fact)
+[Forward-Declared] Name: fact Defined: text from goal_src/kernel/gcommon.gc, line: 1098
+(define-extern fact (function int int))
+
+[Function] Name: fact Defined: text from kernel/gcommon.gc, line: 1099
+(defun fact ((x int))
+
+[Global Variable] Type: (function int int) Defined: text from goal_src/kernel/gcommon.gc, line: 1099
+(defun fact ((x int))
+
+;; get info about a type
+g  > (get-info kernel-context)
+[Type] Name: kernel-context Defined: text from goal_src/kernel/gkernel-h.gc, line: 114
+(deftype kernel-context (basic)
+
+;; get info about a method
+g  > (get-info reset!)
+[Method] Type: collide-sticky-rider-group Method Name: reset! Defined: text from goal_src/engine/collide/collide-shape-h.gc, line: 48
+(defmethod reset! collide-sticky-rider-group ((obj collide-sticky-rider-group))
+[Method] Type: collide-overlap-result Method Name: reset! Defined: text from goal_src/engine/collide/collide-shape-h.gc, line: 94
+(defmethod reset! collide-overlap-result ((obj collide-overlap-result))
+[Method] Type: load-state Method Name: reset! Defined: text from goal_src/engine/level/load-boundary.gc, line: 9
+(defmethod reset! load-state ((obj load-state))
+
+;; get info about a constant
+g  > (get-info TWO_PI)
+[Constant] Name: TWO_PI Value: (the-as float #x40c90fda) Defined: text from goal_src/engine/math/trigonometry.gc, line: 34
+(defconstant TWO_PI (the-as float #x40c90fda))
+
+;; get info about a built-in form
+g  > (get-info asm-file)
+[Built-in Form] asm-file
+```
+
+## `autocomplete`
+Preview the results of the REPL autocomplete:
+```lisp
+(autcomplete <sym>)
+```
+
+For example:
+```lisp
+g  > (autocomplete *)
+ *
+ *16k-dead-pool*
+ *4k-dead-pool*
+...
+Autocomplete: 326/1474 symbols matched, took 1.29 ms
+```
+
 ## `seval`
 Execute GOOS code.
 ```lisp

@@ -115,6 +115,7 @@ const std::unordered_map<
         {"in-package", &Compiler::compile_in_package},
         {"reload", &Compiler::compile_reload},
         {"get-info", &Compiler::compile_get_info},
+        {"autocomplete", &Compiler::compile_autocomplete},
 
         // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},

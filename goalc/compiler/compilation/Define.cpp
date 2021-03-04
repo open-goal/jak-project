@@ -37,6 +37,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     if ((as_lambda->func && as_lambda->func->settings.allow_inline) || !as_lambda->func) {
       m_inlineable_functions[sym.as_symbol()] = as_lambda;
     }
+    m_symbol_info.add_function(symbol_string(sym), form);
   }
 
   if (!sym_val->settable()) {
@@ -94,6 +95,7 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   }
 
   m_symbol_types[symbol_string(sym)] = new_type;
+  m_symbol_info.add_fwd_dec(symbol_string(sym), form);
   return get_none();
 }
 

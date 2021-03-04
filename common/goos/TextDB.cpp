@@ -108,7 +108,7 @@ void TextDb::link(const Object& o, std::shared_ptr<SourceText> frag, int offset)
 /*!
  * Given an object, get a string representing where it's from. Or "?" if we can't find it.
  */
-std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error) {
+std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error) const {
   if (o.is_pair()) {
     auto kv = map.find(o.heap_obj);
     if (kv != map.end()) {
@@ -133,10 +133,25 @@ std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error
 /*!
  * Given a source text and an offset, print a description of where it is.
  */
-std::string TextDb::get_info_for(const std::shared_ptr<SourceText>& frag, int offset) {
+std::string TextDb::get_info_for(const std::shared_ptr<SourceText>& frag, int offset) const {
   std::string result = "text from " + frag->get_description() +
                        ", line: " + std::to_string(frag->get_line_idx(offset) + 1) + "\n";
   result += frag->get_line_containing_offset(offset) + "\n";
   return result;
+}
+
+/*!
+ * Make child have the same location in the source as parent.  For example, if parent generates
+ * code that we want to be associated with the parent's location in source.
+ *
+ * Note: this only has an effect if both parent and child are pair/list. Otherwise it does nothing.
+ */
+void TextDb::inherit_info(const Object& parent, const Object& child) {
+  if (parent.is_pair() && child.is_pair()) {
+    auto parent_kv = map.find(parent.heap_obj);
+    if (parent_kv != map.end()) {
+      map[child.heap_obj] = parent_kv->second;
+    }
+  }
 }
 }  // namespace goos

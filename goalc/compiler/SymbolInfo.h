@@ -18,11 +18,62 @@
  */
 class SymbolInfo {
  public:
-  enum class Kind { GLOBAL_VAR, FUNCTION, TYPE, CONSTANT, MACRO, LANGUAGE_BUILTIN, INVALID };
+  enum class Kind {
+    GLOBAL_VAR,
+    FWD_DECLARED_SYM,
+    FUNCTION,
+    TYPE,
+    CONSTANT,
+    MACRO,
+    LANGUAGE_BUILTIN,
+    METHOD,
+    INVALID
+  };
 
   static SymbolInfo make_global(const std::string& name, const goos::Object& defining_form) {
     SymbolInfo info;
     info.m_kind = Kind::GLOBAL_VAR;
+    info.m_name = name;
+    info.m_def_form = defining_form;
+    return info;
+  }
+
+  static SymbolInfo make_fwd_declared_sym(const std::string& name,
+                                          const goos::Object& defining_form) {
+    SymbolInfo info;
+    info.m_kind = Kind::FWD_DECLARED_SYM;
+    info.m_name = name;
+    info.m_def_form = defining_form;
+    return info;
+  }
+
+  static SymbolInfo make_function(const std::string& name, const goos::Object& defining_form) {
+    SymbolInfo info;
+    info.m_kind = Kind::FUNCTION;
+    info.m_name = name;
+    info.m_def_form = defining_form;
+    return info;
+  }
+
+  static SymbolInfo make_type(const std::string& name, const goos::Object& defining_form) {
+    SymbolInfo info;
+    info.m_kind = Kind::TYPE;
+    info.m_name = name;
+    info.m_def_form = defining_form;
+    return info;
+  }
+
+  static SymbolInfo make_constant(const std::string& name, const goos::Object& defining_form) {
+    SymbolInfo info;
+    info.m_kind = Kind::CONSTANT;
+    info.m_name = name;
+    info.m_def_form = defining_form;
+    return info;
+  }
+
+  static SymbolInfo make_macro(const std::string& name, const goos::Object& defining_form) {
+    SymbolInfo info;
+    info.m_kind = Kind::MACRO;
     info.m_name = name;
     info.m_def_form = defining_form;
     return info;
@@ -35,7 +86,19 @@ class SymbolInfo {
     return info;
   }
 
+  static SymbolInfo make_method(const std::string& method_name,
+                                const std::string& type_name,
+                                const goos::Object& defining_form) {
+    SymbolInfo info;
+    info.m_kind = Kind::METHOD;
+    info.m_name = method_name;
+    info.m_type_of_method = type_name;
+    info.m_def_form = defining_form;
+    return info;
+  }
+
   const std::string& name() const { return m_name; }
+  const std::string& type() const { return m_type_of_method; }
   Kind kind() const { return m_kind; }
   const goos::Object& src_form() const { return m_def_form; }
 
@@ -43,6 +106,7 @@ class SymbolInfo {
   Kind m_kind = Kind::INVALID;
   goos::Object m_def_form;
   std::string m_name;
+  std::string m_type_of_method;
 };
 
 /*!
@@ -56,8 +120,34 @@ class SymbolInfoMap {
     m_map[name]->push_back(SymbolInfo::make_global(name, defining_form));
   }
 
+  void add_fwd_dec(const std::string& name, const goos::Object& defining_form) {
+    m_map[name]->push_back(SymbolInfo::make_fwd_declared_sym(name, defining_form));
+  }
+
+  void add_function(const std::string& name, const goos::Object& defining_form) {
+    m_map[name]->push_back(SymbolInfo::make_function(name, defining_form));
+  }
+
+  void add_type(const std::string& name, const goos::Object& defining_form) {
+    m_map[name]->push_back(SymbolInfo::make_type(name, defining_form));
+  }
+
+  void add_constant(const std::string& name, const goos::Object& defining_form) {
+    m_map[name]->push_back(SymbolInfo::make_constant(name, defining_form));
+  }
+
+  void add_macro(const std::string& name, const goos::Object& defining_form) {
+    m_map[name]->push_back(SymbolInfo::make_macro(name, defining_form));
+  }
+
   void add_builtin(const std::string& name) {
     m_map[name]->push_back(SymbolInfo::make_builtin(name));
+  }
+
+  void add_method(const std::string& method_name,
+                  const std::string& type_name,
+                  const goos::Object& defining_form) {
+    m_map[method_name]->push_back(SymbolInfo::make_method(method_name, type_name, defining_form));
   }
 
   std::vector<SymbolInfo>* lookup_exact_name(const std::string& name) { return m_map.lookup(name); }
@@ -72,6 +162,8 @@ class SymbolInfoMap {
     }
     return result;
   }
+
+  int symbol_count() const { return m_map.size(); }
 
  private:
   Trie<std::vector<SymbolInfo>> m_map;

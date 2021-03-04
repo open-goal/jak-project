@@ -395,11 +395,31 @@ Val* Compiler::compile_reload(const goos::Object& form, const goos::Object& rest
 std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
   switch (info.kind()) {
     case SymbolInfo::Kind::GLOBAL_VAR:
-      return fmt::format("[Global Variable] Type: {} Defined: {}\n",
+      return fmt::format("[Global Variable] Type: {} Defined: {}",
                          m_symbol_types.at(info.name()).print(),
                          m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::LANGUAGE_BUILTIN:
       return fmt::format("[Built-in Form] {}\n", info.name());
+    case SymbolInfo::Kind::METHOD:
+      return fmt::format("[Method] Type: {} Method Name: {} Defined: {}", info.type(), info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::TYPE:
+      return fmt::format("[Type] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::MACRO:
+      return fmt::format("[Macro] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::CONSTANT:
+      return fmt::format(
+          "[Constant] Name: {} Value: {} Defined: {}", info.name(),
+          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name())).print(),
+          m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::FUNCTION:
+      return fmt::format("[Function] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::FWD_DECLARED_SYM:
+      return fmt::format("[Forward-Declared] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
     default:
       assert(false);
   }
@@ -418,6 +438,25 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
       fmt::print("{}", make_symbol_info_description(info));
     }
   }
+
+  return get_none();
+}
+
+Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+
+  Timer timer;
+  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol()->name);
+  auto time = timer.getMs();
+
+  for (auto& x : result) {
+    fmt::print(" {}\n", x);
+  }
+
+  fmt::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
+             m_symbol_info.symbol_count(), time);
 
   return get_none();
 }

@@ -29,6 +29,9 @@ class Trie {
   // Lookup an existing object. If none exists, return nullptr.
   T* lookup(const std::string& str);
 
+  // return the number of entries.
+  int size() const { return m_size; }
+
   // Get all objects starting with the given prefix.
   std::vector<T*> lookup_prefix(const std::string& str);
   ~Trie();
@@ -62,28 +65,39 @@ class Trie {
       }
     }
 
-    void insert(const char* str, const T* obj) {
+    /*!
+     * Return true if a new object was inserted.
+     */
+    bool insert(const char* str, const T* obj) {
       if (!*str) {
         // we are the child!
         if (value) {
           delete value;
+          value = new T(*obj);
+          return false;  // didn't change the count.
+        } else {
+          value = new T(*obj);
+          return true;  // did change the count
         }
-        value = new T(*obj);
+
       } else {
         // still more to go
         char first = *str;
         if (!children[idx(first)]) {
           children[idx(first)] = new Node();
         }
-        children[idx(first)]->insert(str + 1, obj);
+        return children[idx(first)]->insert(str + 1, obj);
       }
     }
 
-    T* operator[](const char* str) {
+    T* bracket_operator(const char* str, bool* inserted) {
       if (!*str) {
         // we are the child!
         if (!value) {
           value = new T();
+          *inserted = true;
+        } else {
+          *inserted = false;
         }
 
         return value;
@@ -93,7 +107,7 @@ class Trie {
         if (!children[idx(first)]) {
           children[idx(first)] = new Node();
         }
-        return children[idx(first)]->operator[](str + 1);
+        return children[idx(first)]->bracket_operator(str + 1, inserted);
       }
     }
 
@@ -134,16 +148,20 @@ class Trie {
   };
 
   Node m_root;
+  int m_size = 0;
 };
 
 template <typename T>
 Trie<T>::~Trie<T>() {
   m_root.delete_children();
+  m_size = 0;
 }
 
 template <typename T>
 void Trie<T>::insert(const std::string& str, const T& obj) {
-  m_root.insert(str.c_str(), &obj);
+  if (m_root.insert(str.c_str(), &obj)) {
+    m_size++;
+  }
 }
 
 template <typename T>
@@ -153,7 +171,12 @@ T* Trie<T>::lookup(const std::string& str) {
 
 template <typename T>
 T* Trie<T>::operator[](const std::string& str) {
-  return m_root.operator[](str.c_str());
+  bool added = false;
+  auto result = m_root.bracket_operator(str.c_str(), &added);
+  if (added) {
+    m_size++;
+  }
+  return result;
 }
 
 template <typename T>
