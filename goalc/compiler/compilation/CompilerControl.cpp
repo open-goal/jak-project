@@ -391,3 +391,33 @@ Val* Compiler::compile_reload(const goos::Object& form, const goos::Object& rest
   m_want_reload = true;
   return get_none();
 }
+
+std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
+  switch (info.kind()) {
+    case SymbolInfo::Kind::GLOBAL_VAR:
+      return fmt::format("[Global Variable] Type: {} Defined: {}\n",
+                         m_symbol_types.at(info.name()).print(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::LANGUAGE_BUILTIN:
+      return fmt::format("[Built-in Form] {}\n", info.name());
+    default:
+      assert(false);
+  }
+}
+
+Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+
+  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol()->name);
+  if (!result) {
+    fmt::print("No results found.\n");
+  } else {
+    for (auto& info : *result) {
+      fmt::print("{}", make_symbol_info_description(info));
+    }
+  }
+
+  return get_none();
+}

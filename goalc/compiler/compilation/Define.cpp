@@ -39,6 +39,10 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
   }
 
+  if (!sym_val->settable()) {
+    throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
+  }
+
   auto in_gpr = compiled_val->to_gpr(fe);
   auto existing_type = m_symbol_types.find(sym.as_symbol()->name);
   if (existing_type == m_symbol_types.end()) {
@@ -53,9 +57,8 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
   }
 
-  if (!sym_val->settable()) {
-    throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
-  }
+  m_symbol_info.add_global(symbol_string(sym), form);
+
   fe->emit(std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
 }
