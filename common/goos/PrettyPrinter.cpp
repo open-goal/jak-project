@@ -15,30 +15,19 @@
 namespace pretty_print {
 
 namespace {
-const std::unordered_set<float> allowed_floats = {
-    0.0,     0.0625, 0.125,   0.1875, 0.25,    0.3125,  0.375,   0.4375,  0.5,    0.5625,  0.625,
-    0.6875,  0.75,   0.8125,  0.875,  0.9375,  -0.0625, -0.125,  -0.1875, -0.25,  -0.3125, -0.375,
-    -0.4375, -0.5,   -0.5625, -0.625, -0.6875, -0.75,   -0.8125, -0.875,  -0.9375};
-}
+// the integer representation is used here instead, wouldn't want really long numbers
+const std::unordered_set<u32> banned_floats = {};
+}  // namespace
 /*!
  * Print a float in a nice representation if possibly, or an exact 32-bit integer constant to
  * be reinterpreted.
  */
 goos::Object float_representation(float value) {
-  s64 rounded = value;
-  bool exact_int = ((float)rounded) == value;
-  if (exact_int || allowed_floats.find(value) != allowed_floats.end()) {
-    auto result = goos::Object::make_float(value);
-
-    // this is probably very slow for huge numbers of floats, but worth checking.
-    auto float_as_string = result.print();
-    auto as_float_again = float(std::stod(float_as_string));
-    assert(as_float_again == value);
-
-    return result;
+  u32 int_value;
+  memcpy(&int_value, &value, 4);
+  if (banned_floats.find(int_value) == banned_floats.end()) {
+    return goos::Object::make_float(value);
   } else {
-    u32 int_value;
-    memcpy(&int_value, &value, 4);
     return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
   }
 }
