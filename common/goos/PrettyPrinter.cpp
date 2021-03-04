@@ -17,7 +17,7 @@ namespace pretty_print {
 namespace {
 // the integer representation is used here instead, wouldn't want really long numbers
 const std::unordered_set<u32> banned_floats = {};
-}
+}  // namespace
 /*!
  * Print a float in a nice representation if possibly, or an exact 32-bit integer constant to
  * be reinterpreted.
