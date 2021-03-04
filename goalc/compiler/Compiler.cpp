@@ -15,9 +15,14 @@ Compiler::Compiler() : m_debugger(&m_listener) {
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
-  // todo - compile library
+  // compile GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
+
+  // add built-in forms to symbol info
+  for (auto& builtin : g_goal_forms) {
+    m_symbol_info.add_builtin(builtin.first);
+  }
 }
 
 ReplStatus Compiler::execute_repl() {

@@ -251,6 +251,8 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   // Auto-generate (inspect) method
   generate_inspector_for_type(form, env, result.type_info);
 
+  m_symbol_info.add_type(result.type.base_type(), form);
+
   // return none, making the value of (deftype..) unusable
   return get_none();
 }
@@ -381,6 +383,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     obj_env->add_function(std::move(new_func_env));
   }
   place->set_type(lambda_ts);
+
+  m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
 
   auto info =
       m_ts.add_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, false);

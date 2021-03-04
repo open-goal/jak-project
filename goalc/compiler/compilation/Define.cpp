@@ -37,6 +37,11 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     if ((as_lambda->func && as_lambda->func->settings.allow_inline) || !as_lambda->func) {
       m_inlineable_functions[sym.as_symbol()] = as_lambda;
     }
+    m_symbol_info.add_function(symbol_string(sym), form);
+  }
+
+  if (!sym_val->settable()) {
+    throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
   }
 
   auto in_gpr = compiled_val->to_gpr(fe);
@@ -53,9 +58,8 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
   }
 
-  if (!sym_val->settable()) {
-    throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
-  }
+  m_symbol_info.add_global(symbol_string(sym), form);
+
   fe->emit(std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
   return in_gpr;
 }
@@ -91,6 +95,7 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   }
 
   m_symbol_types[symbol_string(sym)] = new_type;
+  m_symbol_info.add_fwd_dec(symbol_string(sym), form);
   return get_none();
 }
 

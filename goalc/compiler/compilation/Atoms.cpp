@@ -9,10 +9,10 @@
 /*!
  * Main table for compiler forms
  */
-static const std::unordered_map<
+const std::unordered_map<
     std::string,
     Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
-    goal_forms = {
+    g_goal_forms = {
         // INLINE ASM
         {".nop", &Compiler::compile_nop},
         {".ret", &Compiler::compile_asm_ret},
@@ -114,6 +114,8 @@ static const std::unordered_map<
         {":status", &Compiler::compile_poke},
         {"in-package", &Compiler::compile_in_package},
         {"reload", &Compiler::compile_reload},
+        {"get-info", &Compiler::compile_get_info},
+        {"autocomplete", &Compiler::compile_autocomplete},
 
         // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
@@ -247,8 +249,8 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
   if (head.is_symbol()) {
     auto head_sym = head.as_symbol();
     // first try as a goal compiler form
-    auto kv_gfs = goal_forms.find(head_sym->name);
-    if (kv_gfs != goal_forms.end()) {
+    auto kv_gfs = g_goal_forms.find(head_sym->name);
+    if (kv_gfs != g_goal_forms.end()) {
       return ((*this).*(kv_gfs->second))(code, rest, env);
     }
 
