@@ -113,6 +113,7 @@ static const std::unordered_map<
         {"reset-target", &Compiler::compile_reset_target},
         {":status", &Compiler::compile_poke},
         {"in-package", &Compiler::compile_in_package},
+        {"reload", &Compiler::compile_reload},
 
         // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
@@ -432,7 +433,7 @@ Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object&
 
   bool ok_type = false;
   for (auto& type : {"pointer", "structure", "inline-array"}) {
-    if (m_ts.typecheck(m_ts.make_typespec(type), first->type(), "", false, false)) {
+    if (m_ts.tc(m_ts.make_typespec(type), first->type())) {
       ok_type = true;
       break;
     }

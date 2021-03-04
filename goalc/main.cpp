@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
-  Compiler compiler;
+  std::unique_ptr<Compiler> compiler = std::make_unique<Compiler>();
 
   // Welcome message / brief intro for documentation
   std::string ascii;
@@ -65,9 +65,16 @@ int main(int argc, char** argv) {
 
   ReplHistory::repl_load_history();
   if (argument.empty()) {
-    compiler.execute_repl();
+    ReplStatus status = ReplStatus::WANT_RELOAD;
+    while (status == ReplStatus::WANT_RELOAD) {
+      compiler = std::make_unique<Compiler>();
+      status = compiler->execute_repl();
+      if (status == ReplStatus::WANT_RELOAD) {
+        fmt::print("Reloading compiler...\n");
+      }
+    }
   } else {
-    compiler.run_front_end_on_string(argument);
+    compiler->run_front_end_on_string(argument);
   }
 
   return 0;

@@ -73,7 +73,7 @@ bool convert_to_expressions(Form* top_level_form,
       new_entries = rewrite_to_get_var(stack, pool, return_var, f.ir2.env);
       auto reg_return_type =
           f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(return_var.reg());
-      if (!dts.ts.typecheck(f.type.last_arg(), reg_return_type.typespec(), "", false, false)) {
+      if (!dts.ts.tc(f.type.last_arg(), reg_return_type.typespec())) {
         // we need to cast the final value.
         auto to_cast = new_entries.back();
         new_entries.pop_back();

@@ -124,7 +124,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             cast_for_define = symbol_type;
           }
 
-          if (!env.dts->ts.typecheck(symbol_type, src_type, "", false, false)) {
+          if (!env.dts->ts.tc(symbol_type, src_type)) {
             // we fail the typecheck for a normal set!, so add a cast.
             cast_for_set = symbol_type;
           }
@@ -135,10 +135,8 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         } break;
         case SimpleAtom::Kind::INTEGER_CONSTANT: {
           std::optional<TypeSpec> cast_for_set, cast_for_define;
-          bool sym_int_or_uint =
-              env.dts->ts.typecheck(TypeSpec("integer"), symbol_type, "", false, false);
-          bool sym_uint =
-              env.dts->ts.typecheck(TypeSpec("uinteger"), symbol_type, "", false, false);
+          bool sym_int_or_uint = env.dts->ts.tc(TypeSpec("integer"), symbol_type);
+          bool sym_uint = env.dts->ts.tc(TypeSpec("uinteger"), symbol_type);
           bool sym_int = sym_int_or_uint && !sym_uint;
 
           if (TypeSpec("int") != symbol_type) {
@@ -432,20 +430,36 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     }
   }
 
-  if (m_src.is_identity() && m_src.get_arg(0).is_label() &&
-      (m_kind == Kind::FLOAT || m_kind == Kind::SIGNED) && m_size == 4) {
+  if (m_src.is_identity() && m_src.get_arg(0).is_label()) {
     // try to see if we're loading a constant
     auto label = env.file->labels.at(m_src.get_arg(0).label());
     auto label_name = label.name;
     auto hint = env.label_types().find(label_name);
     if (hint != env.label_types().end()) {
-      if (hint->second.is_const && hint->second.type_name == "float") {
-        auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-        assert(word.kind == LinkedWord::PLAIN_DATA);
-        float value;
-        memcpy(&value, &word.data, 4);
-        auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
-        return pool.alloc_element<SetVarElement>(m_dst, float_elt, true);
+      if (hint->second.is_const) {
+        if ((m_kind == Kind::FLOAT || m_kind == Kind::SIGNED) && m_size == 4 &&
+            hint->second.type_name == "float") {
+          assert((label.offset % 4) == 0);
+          auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+          assert(word.kind == LinkedWord::PLAIN_DATA);
+          float value;
+          memcpy(&value, &word.data, 4);
+          auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
+          return pool.alloc_element<SetVarElement>(m_dst, float_elt, true);
+        } else if (hint->second.type_name == "uint64" && m_kind != Kind::FLOAT && m_size == 8) {
+          assert((label.offset % 8) == 0);
+          auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+          auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+          assert(word0.kind == LinkedWord::PLAIN_DATA);
+          assert(word1.kind == LinkedWord::PLAIN_DATA);
+          u64 value;
+
+          memcpy(&value, &word0.data, 4);
+          memcpy(((u8*)&value) + 4, &word1.data, 4);
+          auto val_elt = pool.alloc_single_element_form<ConstantTokenElement>(
+              nullptr, fmt::format("#x{:x}", value));
+          return pool.alloc_element<SetVarElement>(m_dst, val_elt, true);
+        }
       }
     }
   }

@@ -16,6 +16,32 @@ const std::unordered_set<std::string> g_object_files_to_check_against_reference 
     "gcommon"  // NOTE: this file needs work, but adding it for now just to test the framework.
 };
 
+// the functions we expect the decompiler to skip
+const std::unordered_set<std::string> expected_skip_in_decompiler = {
+    // gcommon
+    "quad-copy!",  // asm mempcy
+    // gkernel
+    "set-to-run-bootstrap",     // kernel context switch
+    "throw",                    // manually sets fp/t9.
+    "throw-dispatch",           // restore context
+    "(method 0 catch-frame)",   // save context
+    "(method 11 cpu-thread)",   // kernel -> user context switch
+    "(method 10 cpu-thread)",   // user -> kernel context switch
+    "reset-and-call",           // kernel -> user
+    "return-from-thread-dead",  // kernel -> user
+    "return-from-thread",       // kernel -> user
+    "return-from-exception",    // ps2 exception -> ps2 user
+    // pskernel
+    "kernel-check-hardwired-addresses",  // ps2 ee kernel debug hook
+    "kernel-read-function",              // ps2 ee kernel debug hook
+    "kernel-write-function",             // ps2 ee kernel debug hook
+    "kernel-copy-function"               // ps2 ee kernel debug hook
+};
+
+const std::unordered_set<std::string> skip_in_compiling = {
+    // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
+    "abs", "ash", "min", "max", "lognor", "(method 3 vec4s)", "(method 2 vec4s)"};
+
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
 
@@ -42,32 +68,6 @@ int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
-
-// the functions we expect the decompiler to skip
-const std::unordered_set<std::string> expected_skip_in_decompiler = {
-    // gcommon
-    "quad-copy!",  // asm mempcy
-    // gkernel
-    "set-to-run-bootstrap",     // kernel context switch
-    "throw",                    // manually sets fp/t9.
-    "throw-dispatch",           // restore context
-    "(method 0 catch-frame)",   // save context
-    "(method 11 cpu-thread)",   // kernel -> user context switch
-    "(method 10 cpu-thread)",   // user -> kernel context switch
-    "reset-and-call",           // kernel -> user
-    "return-from-thread-dead",  // kernel -> user
-    "return-from-thread",       // kernel -> user
-    "return-from-exception",    // ps2 exception -> ps2 user
-    // pskernel
-    "kernel-check-hardwired-addresses",  // ps2 ee kernel debug hook
-    "kernel-read-function",              // ps2 ee kernel debug hook
-    "kernel-write-function",             // ps2 ee kernel debug hook
-    "kernel-copy-function"               // ps2 ee kernel debug hook
-};
-
-const std::unordered_set<std::string> skip_in_compiling = {
-    // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs", "ash", "min", "max", "lognor"};
 
 class OfflineDecompilation : public ::testing::Test {
  protected:

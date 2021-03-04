@@ -8,7 +8,7 @@ namespace decompiler {
 
 namespace {
 bool tc(const DecompilerTypeSystem& dts, const TypeSpec& expected, const TP_Type& actual) {
-  return dts.ts.typecheck(expected, actual.typespec(), "", false, false);
+  return dts.ts.tc(expected, actual.typespec());
 }
 
 bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {

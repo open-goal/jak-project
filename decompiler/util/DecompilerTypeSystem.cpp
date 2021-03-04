@@ -156,7 +156,7 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   if (skv == symbol_types.end() || skv->second == type_spec) {
     symbol_types[name] = type_spec;
   } else {
-    if (ts.typecheck(type_spec, skv->second, "", false, false)) {
+    if (ts.tc(type_spec, skv->second)) {
     } else {
       lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
                skv->second.print(), type_spec.print());
