@@ -8,7 +8,7 @@
 
 ;; definition for function 1/
 (defun 1/ ((x float))
-  (/ 1.000000 x)
+  (/ 1.0 x)
   )
 
 ;; definition for function +
@@ -92,13 +92,22 @@
 (defun false-func () #f)
 
 ;; definition for function true-func
-(defun true-func () '#t)
+(defun true-func () #t)
 
-;; failed to figure out what this is:
-(set! format _format)
+;; definition for symbol format, type (function _varargs_ object)
+(define format _format)
 
 ;; definition of type vec4s
-;; cannot generate deftype for vec4s, it is not a structure/basic (parent uint128)
+(deftype vec4s (uint128)
+  ((x float :offset   0 :size  32)
+   (y float :offset  32 :size  32)
+   (z float :offset  64 :size  32)
+   (w float :offset  96 :size  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 
 ;; definition for method of type vec4s
@@ -128,24 +137,24 @@
    )
   (.por gp-0 obj r0-0)
   (set! t9-0 format)
-  (set! a0-1 '#t)
+  (set! a0-1 #t)
   (set! a1-0 "[~8x] ~A~%")
   (.por a2-0 gp-0 r0-0)
   (t9-0 a0-1 a1-0 a2-0 'vec4s)
   (set! t9-1 format)
-  (set! a0-2 '#t)
+  (set! a0-2 #t)
   (set! a1-1 "~Tx: ~f~%")
   (.sllv a2-1 gp-0 r0-0)
   (t9-1 a0-2 a1-1 a2-1)
-  (format '#t "~Ty: ~f~%" (sar gp-0 32))
+  (format #t "~Ty: ~f~%" (sar gp-0 32))
   (set! t9-3 format)
-  (set! a0-4 '#t)
+  (set! a0-4 #t)
   (set! a1-3 "~Tz: ~f~%")
   (.pcpyud v1-0 gp-0 r0-0)
   (.sllv a2-3 v1-0 r0-0)
   (t9-3 a0-4 a1-3 a2-3)
   (set! t9-4 format)
-  (set! a0-5 '#t)
+  (set! a0-5 #t)
   (set! a1-4 "~Tw: ~f~%")
   (.pcpyud v1-1 gp-0 r0-0)
   (t9-4 a0-5 a1-4 (sar v1-1 32))
@@ -173,7 +182,7 @@
    )
   (.por gp-0 obj r0-0)
   (set! t9-0 format)
-  (set! a0-1 '#t)
+  (set! a0-1 #t)
   (set! a1-0 "#<vector ~F ~F ~F ~F @ #x~X>")
   (.sllv a2-0 gp-0 r0-0)
   (set! a3-0 (sar gp-0 32))
@@ -199,21 +208,21 @@
 
 ;; definition for method of type bfloat
 (defmethod inspect bfloat ((obj bfloat))
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tdata: ~f~%" (-> obj data))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tdata: ~f~%" (-> obj data))
   obj
   )
 
 ;; definition for method of type bfloat
 (defmethod print bfloat ((obj bfloat))
-  (format '#t "~f" (-> obj data))
+  (format #t "~f" (-> obj data))
   obj
   )
 
 ;; definition for method of type type
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of type ((obj type))
-  (the-as int (logand (l.d L346) (+ (shl (-> obj allocated-length) 2) 43)))
+  (the-as int (logand #xfffffff0 (+ (shl (-> obj allocated-length) 2) 43)))
   )
 
 ;; definition for function basic-type?
@@ -223,7 +232,7 @@
   (set! end-type object)
   (until
    (begin (set! obj-type (-> obj-type parent)) (= obj-type end-type))
-   (if (= obj-type parent-type) (return '#t))
+   (if (= obj-type parent-type) (return #t))
    )
   #f
   )
@@ -237,7 +246,7 @@
     (set! child-type (-> child-type parent))
     (or (= child-type end-type) (zero? child-type))
     )
-   (if (= child-type parent-type) (return '#t))
+   (if (= child-type parent-type) (return #t))
    )
   #f
   )
@@ -464,7 +473,7 @@
     (when
      (and
       (or (not compare-result) (> (the-as int compare-result) 0))
-      (!= compare-result '#t)
+      (!= compare-result #t)
       )
      (+! unsorted-count 1)
      (set! (car iter) seoncd-elt)
@@ -494,9 +503,9 @@
 
 ;; definition for method of type inline-array-class
 (defmethod inspect inline-array-class ((obj inline-array-class))
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tlength: ~D~%" (-> obj length))
-  (format '#t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
   obj
   )
 
@@ -599,7 +608,7 @@
    (i int)
    (t9-10 (function _varargs_ object))
    )
-  (format '#t "#(")
+  (format #t "#(")
   (cond
    ((type-type? (-> obj content-type) integer)
     (set! content-type-sym (-> obj content-type symbol))
@@ -608,7 +617,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) obj) i))
        (+! i 1)
        )
       )
@@ -616,7 +625,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array uint32) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint32) obj) i))
        (+! i 1)
        )
       )
@@ -624,7 +633,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int64) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int64) obj) i))
        (+! i 1)
        )
       )
@@ -633,7 +642,7 @@
       (while
        (< i (-> obj length))
        (format
-        '#t
+        #t
         (if (zero? i) "#x~X" " #x~X")
         (-> (the-as (array uint64) obj) i)
         )
@@ -644,7 +653,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int8) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int8) obj) i))
        (+! i 1)
        )
       )
@@ -652,7 +661,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array uint8) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint8) obj) i))
        (+! i 1)
        )
       )
@@ -660,7 +669,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int16) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int16) obj) i))
        (+! i 1)
        )
       )
@@ -668,7 +677,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array uint16) obj) i))
+       (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint16) obj) i))
        (+! i 1)
        )
       )
@@ -679,7 +688,7 @@
         (while
          (< i (-> obj length))
          (set! t9-10 format)
-         (set! a0-21 '#t)
+         (set! a0-21 #t)
          (set! a1-11 (if (zero? i) "#x~X" " #x~X"))
          (set! v1-42 (+ (shl i 4) (the-as int (the-as (array uint128) obj))))
          (.lq a2-8 12 v1-42)
@@ -691,11 +700,7 @@
         (set! i 0)
         (while
          (< i (-> obj length))
-         (format
-          '#t
-          (if (zero? i) "~D" " ~D")
-          (-> (the-as (array int32) obj) i)
-          )
+         (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) obj) i))
          (+! i 1)
          )
         )
@@ -711,8 +716,8 @@
        (< i (-> obj length))
        (if
         (zero? i)
-        (format '#t "~f" (-> (the-as (array float) obj) i))
-        (format '#t " ~f" (-> (the-as (array float) obj) i))
+        (format #t "~f" (-> (the-as (array float) obj) i))
+        (format #t " ~f" (-> (the-as (array float) obj) i))
         )
        (+! i 1)
        )
@@ -723,8 +728,8 @@
        (< i (-> obj length))
        (if
         (zero? i)
-        (format '#t "~A" (-> (the-as (array basic) obj) i))
-        (format '#t " ~A" (-> (the-as (array basic) obj) i))
+        (format #t "~A" (-> (the-as (array basic) obj) i))
+        (format #t " ~A" (-> (the-as (array basic) obj) i))
         )
        (+! i 1)
        )
@@ -732,7 +737,7 @@
      )
     )
    )
-  (format '#t ")")
+  (format #t ")")
   obj
   )
 
@@ -759,11 +764,11 @@
    (i int)
    (t9-14 (function _varargs_ object))
    )
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format '#t "~Tlength: ~D~%" (-> obj length))
-  (format '#t "~Tcontent-type: ~A~%" (-> obj content-type))
-  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   (cond
    ((type-type? (-> obj content-type) integer)
     (set! content-type-sym (-> obj content-type symbol))
@@ -772,7 +777,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int32) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array int32) obj) i))
        (+! i 1)
        )
       )
@@ -780,7 +785,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array uint32) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array uint32) obj) i))
        (+! i 1)
        )
       )
@@ -788,7 +793,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int64) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array int64) obj) i))
        (+! i 1)
        )
       )
@@ -796,7 +801,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] #x~X~%" i (-> (the-as (array uint64) obj) i))
+       (format #t "~T  [~D] #x~X~%" i (-> (the-as (array uint64) obj) i))
        (+! i 1)
        )
       )
@@ -804,7 +809,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int8) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array int8) obj) i))
        (+! i 1)
        )
       )
@@ -812,7 +817,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int8) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array int8) obj) i))
        (+! i 1)
        )
       )
@@ -820,7 +825,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int16) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array int16) obj) i))
        (+! i 1)
        )
       )
@@ -828,7 +833,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~D~%" i (-> (the-as (array uint16) obj) i))
+       (format #t "~T  [~D] ~D~%" i (-> (the-as (array uint16) obj) i))
        (+! i 1)
        )
       )
@@ -839,7 +844,7 @@
         (while
          (< i (-> obj length))
          (set! t9-14 format)
-         (set! a0-25 '#t)
+         (set! a0-25 #t)
          (set! a1-15 "~T  [~D] #x~X~%")
          (set! a2-13 i)
          (set! v1-42 (+ (shl i 4) (the-as int obj)))
@@ -852,7 +857,7 @@
         (set! i 0)
         (while
          (< i (-> obj length))
-         (format '#t "~T  [~D] ~D~%" i (-> obj i))
+         (format #t "~T  [~D] ~D~%" i (-> obj i))
          (+! i 1)
          )
         )
@@ -866,7 +871,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~f~%" i (-> obj i))
+       (format #t "~T  [~D] ~f~%" i (-> obj i))
        (+! i 1)
        )
       )
@@ -874,7 +879,7 @@
       (set! i 0)
       (while
        (< i (-> obj length))
-       (format '#t "~T  [~D] ~A~%" i (-> obj i))
+       (format #t "~T  [~D] ~A~%" i (-> obj i))
        (+! i 1)
        )
       )
@@ -1007,8 +1012,8 @@
   (if (= x 1) 1 (* x (fact (+ x -1))))
   )
 
-;; failed to figure out what this is:
-(set! *print-column* 0)
+;; definition for symbol *print-column*, type binteger
+(define *print-column* (the-as binteger 0))
 
 ;; definition for function print
 (defun print ((arg0 object))
@@ -1020,7 +1025,7 @@
   (local-vars (a0-1 object))
   (set! a0-1 arg0)
   ((method-of-type (rtype-of a0-1) print) a0-1)
-  (format '#t "~%")
+  (format #t "~%")
   arg0
   )
 
@@ -1049,8 +1054,8 @@
   #f
   )
 
-;; failed to figure out what this is:
-(set! *trace-list* '())
+;; definition for symbol *trace-list*, type pair
+(define *trace-list* '())
 
 ;; definition for function print-tree-bitmask
 (defun print-tree-bitmask ((bits int) (count int))
@@ -1058,7 +1063,7 @@
   (set! i 0)
   (while
    (< i count)
-   (if (zero? (logand bits 1)) (format '#t "    ") (format '#t "|   "))
+   (if (zero? (logand bits 1)) (format #t "    ") (format #t "|   "))
    (set! bits (shr bits 1))
    (+! i 1)
    )
@@ -1126,10 +1131,10 @@
        )
       #f
       )
-     (else '#t)
+     (else #t)
      )
     )
-   ((and allow-false (not obj)) '#t)
+   ((and allow-false (not obj)) #t)
    (else
     (cond
      ((= expected-type structure)
@@ -1167,7 +1172,7 @@
          )
         #f
         )
-       (else '#t)
+       (else #t)
        )
       )
      ((= expected-type pair)
@@ -1198,12 +1203,12 @@
          )
         #f
         )
-       (else '#t)
+       (else #t)
        )
       )
      ((= expected-type binteger)
       (cond
-       ((zero? (logand (the-as int obj) 7)) '#t)
+       ((zero? (logand (the-as int obj) 7)) #t)
        (else
         (if
          name
@@ -1261,10 +1266,7 @@
       )
      (else
       (cond
-       ((and
-         (!= expected-type type)
-         (not (valid? (rtype-of obj) type #f '#t 0))
-         )
+       ((and (!= expected-type type) (not (valid? (rtype-of obj) type #f #t 0)))
         (if
          name
          (format
@@ -1309,7 +1311,7 @@
            )
           #f
           )
-         (else '#t)
+         (else #t)
          )
         )
        ((begin
@@ -1329,7 +1331,7 @@
          )
         #f
         )
-       (else '#t)
+       (else #t)
        )
       )
      )

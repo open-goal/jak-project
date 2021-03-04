@@ -151,7 +151,7 @@ TEST(GoosBuiltins, Addition) {
   Interpreter i;
   // single element adding
   EXPECT_EQ(e(i, "(+ 1)"), "1");
-  EXPECT_EQ(e(i, "(+ 1.)"), "1.000000");
+  EXPECT_EQ(e(i, "(+ 1.)"), "1.0");
 
   // two element adding
   EXPECT_EQ(e(i, "(+ 1 2)"), "3");
@@ -174,7 +174,7 @@ TEST(GoosBuiltins, Multiplication) {
   Interpreter i;
   // single element adding
   EXPECT_EQ(e(i, "(* 2)"), "2");
-  EXPECT_EQ(e(i, "(* 2.)"), "2.000000");
+  EXPECT_EQ(e(i, "(* 2.)"), "2.0");
 
   // two element adding
   EXPECT_EQ(e(i, "(* 3 2)"), "6");
@@ -197,7 +197,7 @@ TEST(GoosBuiltins, Subtraction) {
   Interpreter i;
   // single element adding
   EXPECT_EQ(e(i, "(- 2)"), "-2");
-  EXPECT_EQ(e(i, "(- 2.)"), "-2.000000");
+  EXPECT_EQ(e(i, "(- 2.)"), "-2.0");
 
   // two element adding
   EXPECT_EQ(e(i, "(- 3 2)"), "1");

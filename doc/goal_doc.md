@@ -618,6 +618,13 @@ This form is reserved by the compiler. Internally all forms in a file are groupe
 # Compiler Forms - Compiler Commands
 These forms are used to control the GOAL compiler, and are usually entered at the GOAL REPL, or as part of a macro that's executed at the GOAL REPL. These shouldn't be used in GOAL source code.
 
+## `reload`
+Reload the GOAL compiler
+```lisp
+(reload)
+```
+Disconnect from the target and reset all compiler state.  This is equivalent to exiting the compiler and opening it again.
+
 ## `seval`
 Execute GOOS code.
 ```lisp

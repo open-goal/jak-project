@@ -383,3 +383,11 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
 
   return get_none();
 }
+
+Val* Compiler::compile_reload(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  m_want_reload = true;
+  return get_none();
+}

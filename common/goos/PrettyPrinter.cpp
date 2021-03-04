@@ -25,10 +25,17 @@ const std::unordered_set<float> allowed_floats = {
  * be reinterpreted.
  */
 goos::Object float_representation(float value) {
-  int rounded = value;
+  s64 rounded = value;
   bool exact_int = ((float)rounded) == value;
   if (exact_int || allowed_floats.find(value) != allowed_floats.end()) {
-    return goos::Object::make_float(value);
+    auto result = goos::Object::make_float(value);
+
+    // this is probably very slow for huge numbers of floats, but worth checking.
+    auto float_as_string = result.print();
+    auto as_float_again = float(std::stod(float_as_string));
+    assert(as_float_again == value);
+
+    return result;
   } else {
     u32 int_value;
     memcpy(&int_value, &value, 4);

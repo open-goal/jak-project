@@ -138,11 +138,11 @@ goos::Object decompile_at_label(const TypeSpec& type,
     return decompile_string_at_label(label, words);
   }
 
-  if (ts.typecheck(TypeSpec("array"), type, "", false, false)) {
+  if (ts.tc(TypeSpec("array"), type)) {
     return decompile_boxed_array(label, labels, words, ts);
   }
 
-  if (ts.typecheck(TypeSpec("structure"), type, "", false, false)) {
+  if (ts.tc(TypeSpec("structure"), type)) {
     return decompile_structure(type, label, labels, words, ts);
   }
 
@@ -321,7 +321,7 @@ goos::Object decompile_structure(const TypeSpec& type,
       if (word.symbol_name != actual_type.base_type()) {
         // we can specify a more specific type.
         auto got_type = TypeSpec(word.symbol_name);
-        if (ts.typecheck(actual_type, got_type, "", false, false)) {
+        if (ts.tc(actual_type, got_type)) {
           lg::info("For type {}, got more specific type {}\n", actual_type.print(),
                    got_type.print());
           actual_type = got_type;
@@ -530,12 +530,12 @@ goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts) {
   // try as common integer types:
-  if (ts.typecheck(TypeSpec("uint32"), type, "", false, false)) {
+  if (ts.tc(TypeSpec("uint32"), type)) {
     assert(bytes.size() == 4);
     u32 value;
     memcpy(&value, bytes.data(), 4);
     return pretty_print::to_symbol(fmt::format("#x{:x}", u64(value)));
-  } else if (ts.typecheck(TypeSpec("int32"), type, "", false, false)) {
+  } else if (ts.tc(TypeSpec("int32"), type)) {
     assert(bytes.size() == 4);
     s32 value;
     memcpy(&value, bytes.data(), 4);
@@ -544,7 +544,7 @@ goos::Object decompile_value(const TypeSpec& type,
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
     }
-  } else if (ts.typecheck(TypeSpec("int8"), type, "", false, false)) {
+  } else if (ts.tc(TypeSpec("int8"), type)) {
     assert(bytes.size() == 1);
     s8 value;
     memcpy(&value, bytes.data(), 1);
@@ -553,17 +553,17 @@ goos::Object decompile_value(const TypeSpec& type,
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
     }
-  } else if (ts.typecheck(TypeSpec("uint64"), type, "", false, false)) {
+  } else if (ts.tc(TypeSpec("uint64"), type)) {
     assert(bytes.size() == 8);
     u64 value;
     memcpy(&value, bytes.data(), 8);
     return pretty_print::to_symbol(fmt::format("#x{:x}", value));
-  } else if (ts.typecheck(TypeSpec("float"), type, "", false, false)) {
+  } else if (ts.tc(TypeSpec("float"), type)) {
     assert(bytes.size() == 4);
     float value;
     memcpy(&value, bytes.data(), 4);
     return pretty_print::float_representation(value);
-  } else if (ts.typecheck(TypeSpec("uint8"), type, "", false, false)) {
+  } else if (ts.tc(TypeSpec("uint8"), type)) {
     assert(bytes.size() == 1);
     u8 value;
     memcpy(&value, bytes.data(), 1);

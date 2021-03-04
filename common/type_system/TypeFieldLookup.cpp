@@ -109,9 +109,8 @@ bool TypeSystem::try_reverse_lookup_pointer(const FieldReverseLookupInput& input
     return false;
   }
   auto di = get_deref_info(input.base_type);
-  bool is_integer =
-      typecheck(TypeSpec("integer"), input.base_type.get_single_arg(), "", false, false);
-  bool is_basic = typecheck(TypeSpec("basic"), input.base_type.get_single_arg(), "", false, false);
+  bool is_integer = tc(TypeSpec("integer"), input.base_type.get_single_arg());
+  bool is_basic = tc(TypeSpec("basic"), input.base_type.get_single_arg());
   assert(di.mem_deref);  // it's accessing a pointer.
   auto elt_type = di.result_type;
   if (input.stride) {
@@ -205,9 +204,8 @@ bool TypeSystem::try_reverse_lookup_array(const FieldReverseLookupInput& input,
   // this is the data type - (pointer elt-type). this is stored at an offset of ARRAY_DATA_OFFSET.
   auto array_data_type = make_pointer_typespec(input.base_type.get_single_arg());
   auto di = get_deref_info(array_data_type);
-  bool is_integer =
-      typecheck(TypeSpec("integer"), input.base_type.get_single_arg(), "", false, false);
-  bool is_basic = typecheck(TypeSpec("basic"), input.base_type.get_single_arg(), "", false, false);
+  bool is_integer = tc(TypeSpec("integer"), input.base_type.get_single_arg());
+  bool is_basic = tc(TypeSpec("basic"), input.base_type.get_single_arg());
   assert(di.mem_deref);  // it's accessing a pointer.
   auto elt_type = di.result_type;
   if (input.stride) {
@@ -398,8 +396,8 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
             // (pointer <field-type>)
             TypeSpec loc_type = make_pointer_typespec(field_deref.type);
             auto di = get_deref_info(loc_type);
-            bool is_integer = typecheck(TypeSpec("integer"), field_deref.type, "", false, false);
-            bool is_basic = typecheck(TypeSpec("basic"), field_deref.type, "", false, false);
+            bool is_integer = tc(TypeSpec("integer"), field_deref.type);
+            bool is_basic = tc(TypeSpec("basic"), field_deref.type);
             if (!deref_matches(di, input.deref.value(), is_integer, is_basic)) {
               continue;  // try another field!
             }

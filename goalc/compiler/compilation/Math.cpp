@@ -1,15 +1,15 @@
 #include "goalc/compiler/Compiler.h"
 
 MathMode Compiler::get_math_mode(const TypeSpec& ts) {
-  if (m_ts.typecheck(m_ts.make_typespec("binteger"), ts, "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("binteger"), ts)) {
     return MATH_BINT;
   }
 
-  if (m_ts.typecheck(m_ts.make_typespec("integer"), ts, "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("integer"), ts)) {
     return MATH_INT;
   }
 
-  if (m_ts.typecheck(m_ts.make_typespec("float"), ts, "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("float"), ts)) {
     return MATH_FLOAT;
   }
 
@@ -17,25 +17,23 @@ MathMode Compiler::get_math_mode(const TypeSpec& ts) {
 }
 
 bool Compiler::is_number(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("number"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("number"), ts);
 }
 
 bool Compiler::is_float(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("float"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("float"), ts);
 }
 
 bool Compiler::is_integer(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("integer"), ts, "", false, false) &&
-         !m_ts.typecheck(m_ts.make_typespec("binteger"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("integer"), ts) && !m_ts.tc(m_ts.make_typespec("binteger"), ts);
 }
 
 bool Compiler::is_binteger(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("binteger"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("binteger"), ts);
 }
 
 bool Compiler::is_singed_integer_or_binteger(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("integer"), ts, "", false, false) &&
-         !m_ts.typecheck(m_ts.make_typespec("uinteger"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("integer"), ts) && !m_ts.tc(m_ts.make_typespec("uinteger"), ts);
 }
 
 Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {

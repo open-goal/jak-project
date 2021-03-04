@@ -126,7 +126,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         }
       } else {
         // allow more specific types.
-        m_ts.typecheck(field_info.field.type(), array_content_type, "Array content type");
+        // TODO make this better.
+        m_ts.typecheck_and_throw(field_info.field.type(), array_content_type, "Array content type");
       }
 
       s64 elt_array_len;

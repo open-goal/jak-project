@@ -20,8 +20,8 @@ Compiler::Compiler() : m_debugger(&m_listener) {
   compile_object_file("goal-lib", library_code, false);
 }
 
-void Compiler::execute_repl() {
-  while (!m_want_exit) {
+ReplStatus Compiler::execute_repl() {
+  while (!m_want_exit && !m_want_reload) {
     try {
       // 1). get a line from the user (READ)
       std::string prompt = "g";
@@ -69,6 +69,16 @@ void Compiler::execute_repl() {
   }
 
   m_listener.disconnect();
+
+  if (m_want_exit) {
+    return ReplStatus::WANT_EXIT;
+  }
+
+  if (m_want_reload) {
+    return ReplStatus::WANT_RELOAD;
+  }
+
+  return ReplStatus::OK;
 }
 
 FileEnv* Compiler::compile_object_file(const std::string& name,
@@ -329,8 +339,9 @@ void Compiler::typecheck(const goos::Object& form,
                          const TypeSpec& actual,
                          const std::string& error_message) {
   (void)form;
-  if (!m_ts.typecheck(expected, actual, error_message, true, false)) {
-    throw_compiler_error(form, "Typecheck failed");
+  if (!m_ts.typecheck_and_throw(expected, actual, error_message, false, false)) {
+    throw_compiler_error(form, "Typecheck failed. For {}, got a \"{}\" when expecting a \"{}\"",
+                         error_message, actual.print(), expected.print());
   }
 }
 
@@ -342,7 +353,7 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
                                               const TypeSpec& expected,
                                               const Val* actual,
                                               const std::string& error_message) {
-  if (!m_ts.typecheck(m_ts.make_typespec("number"), expected, "", false, false)) {
+  if (!m_ts.typecheck_and_throw(m_ts.make_typespec("number"), expected, "", false, false)) {
     auto as_sym_val = dynamic_cast<const SymbolVal*>(actual);
     if (as_sym_val && as_sym_val->name() == "#f") {
       return;

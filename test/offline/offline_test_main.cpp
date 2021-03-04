@@ -7,19 +7,12 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"
 
-int main(int argc, char** argv) {
-  lg::initialize();
-
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
-
 namespace {
 // the object files to test
-const std::unordered_set<std::string> object_files_to_decompile = {"gcommon"};
+const std::unordered_set<std::string> g_object_files_to_decompile = {"gcommon"};
 
 // the object files to check against a reference in test/decompiler/reference
-const std::unordered_set<std::string> object_files_to_check_against_reference = {
+const std::unordered_set<std::string> g_object_files_to_check_against_reference = {
     "gcommon"  // NOTE: this file needs work, but adding it for now just to test the framework.
 };
 
@@ -47,9 +40,34 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
 
 const std::unordered_set<std::string> skip_in_compiling = {
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs", "ash", "min", "max", "lognor"};
+    "abs", "ash", "min", "max", "lognor", "(method 3 vec4s)", "(method 2 vec4s)"};
+
+// default location for the data. It can be changed with a command line argument.
+std::string g_iso_data_path = "";
 
 }  // namespace
+int main(int argc, char** argv) {
+  lg::initialize();
+
+  // look for an argument that's not a gtest option
+  bool got_arg = false;
+  for (int i = 1; i < argc; i++) {
+    auto arg = std::string(argv[i]);
+    if (arg.length() > 2 && arg[0] == '-' && arg[1] == '-') {
+      continue;
+    }
+    if (got_arg) {
+      printf("You can only specify a single path for ISO data\n");
+      return 1;
+    }
+    g_iso_data_path = arg;
+    lg::warn("Using path {} for iso_data", g_iso_data_path);
+    got_arg = true;
+  }
+
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
 
 class OfflineDecompilation : public ::testing::Test {
  protected:
@@ -62,11 +80,22 @@ class OfflineDecompilation : public ::testing::Test {
     decompiler::set_config(
         file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}));
 
-    decompiler::get_config().allowed_objects = object_files_to_decompile;
+    decompiler::get_config().allowed_objects = g_object_files_to_decompile;
+
+    std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO"};
+    std::vector<std::string> dgo_paths;
+    if (g_iso_data_path.empty()) {
+      for (auto& x : dgos) {
+        dgo_paths.push_back(file_util::get_file_path({"iso_data", x}));
+      }
+    } else {
+      for (auto& x : dgos) {
+        dgo_paths.push_back(file_util::combine_path(g_iso_data_path, x));
+      }
+    }
+
     db = std::make_unique<decompiler::ObjectFileDB>(
-        std::vector<std::string>{file_util::get_file_path({"iso_data", "CGO", "KERNEL.CGO"}),
-                                 file_util::get_file_path({"iso_data", "CGO", "ENGINE.CGO"})},
-        decompiler::get_config().obj_file_name_map_file, std::vector<std::string>{},
+        dgo_paths, decompiler::get_config().obj_file_name_map_file, std::vector<std::string>{},
         std::vector<std::string>{});
 
     // basic processing to find functions/data/disassembly
@@ -273,7 +302,7 @@ void strip_trailing_newlines(std::string& in) {
 }  // namespace
 
 TEST_F(OfflineDecompilation, Reference) {
-  for (auto& file : object_files_to_check_against_reference) {
+  for (auto& file : g_object_files_to_check_against_reference) {
     auto& obj_l = db->obj_files_by_name.at(file);
     ASSERT_EQ(obj_l.size(), 1);
 
@@ -292,7 +321,7 @@ TEST_F(OfflineDecompilation, Reference) {
 TEST_F(OfflineDecompilation, Compile) {
   Compiler compiler;
 
-  for (auto& file : object_files_to_check_against_reference) {
+  for (auto& file : g_object_files_to_check_against_reference) {
     auto& obj_l = db->obj_files_by_name.at(file);
     ASSERT_EQ(obj_l.size(), 1);
 

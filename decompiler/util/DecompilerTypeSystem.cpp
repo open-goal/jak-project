@@ -156,7 +156,7 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   if (skv == symbol_types.end() || skv->second == type_spec) {
     symbol_types[name] = type_spec;
   } else {
-    if (ts.typecheck(type_spec, skv->second, "", false, false)) {
+    if (ts.tc(type_spec, skv->second)) {
     } else {
       lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
                skv->second.print(), type_spec.print());
@@ -382,6 +382,16 @@ int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) const {
     return get_format_arg_count(type.get_string());
   } else {
     return type.get_format_string_arg_count();
+  }
+}
+
+TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const {
+  auto kv = symbol_types.find(name);
+  if (kv == symbol_types.end()) {
+    throw std::runtime_error(
+        fmt::format("Decompiler type system did not know the type of symbol {}. Add it!", name));
+  } else {
+    return kv->second;
   }
 }
 }  // namespace decompiler

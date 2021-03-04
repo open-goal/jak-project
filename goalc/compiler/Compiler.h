@@ -20,10 +20,12 @@
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
+enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
+
 class Compiler {
  public:
   Compiler();
-  void execute_repl();
+  ReplStatus execute_repl();
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
@@ -187,6 +189,7 @@ class Compiler {
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
   std::unique_ptr<None> m_none = nullptr;
   bool m_want_exit = false;
+  bool m_want_reload = false;
   listener::Listener m_listener;
   Debugger m_debugger;
   goos::Interpreter m_goos;
@@ -423,6 +426,7 @@ class Compiler {
   Val* compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);

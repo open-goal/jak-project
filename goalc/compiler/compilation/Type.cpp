@@ -112,7 +112,7 @@ void Compiler::generate_field_description(const goos::Object& form,
                                           const Field& f) {
   std::string str_template;
   std::vector<RegVal*> format_args = {};
-  if (m_ts.typecheck(m_ts.make_typespec("type"), f.type(), "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("type"), f.type())) {
     // type
     return;
   } else if (f.is_array() && !f.is_dynamic()) {
@@ -123,17 +123,17 @@ void Compiler::generate_field_description(const goos::Object& form,
     // Dynamic Field
     str_template += fmt::format("~T{}[0] @ #x~X~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("basic"), f.type(), "", false, false) ||
-             m_ts.typecheck(m_ts.make_typespec("binteger"), f.type(), "", false, false) ||
-             m_ts.typecheck(m_ts.make_typespec("pair"), f.type(), "", false, false)) {
+  } else if (m_ts.tc(m_ts.make_typespec("basic"), f.type()) ||
+             m_ts.tc(m_ts.make_typespec("binteger"), f.type()) ||
+             m_ts.tc(m_ts.make_typespec("pair"), f.type())) {
     // basic, binteger, pair
     str_template += fmt::format("~T{}: ~A~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("structure"), f.type(), "", false, false)) {
+  } else if (m_ts.tc(m_ts.make_typespec("structure"), f.type())) {
     // Structure
     str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("integer"), f.type(), "", false, false)) {
+  } else if (m_ts.tc(m_ts.make_typespec("integer"), f.type())) {
     // Integer
     if (f.type().print() == "uint128") {
       str_template += fmt::format("~T{}: <cannot-print>~%", f.name());
@@ -142,11 +142,11 @@ void Compiler::generate_field_description(const goos::Object& form,
       format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
     }
 
-  } else if (m_ts.typecheck(m_ts.make_typespec("float"), f.type(), "", false, false)) {
+  } else if (m_ts.tc(m_ts.make_typespec("float"), f.type())) {
     // Float
     str_template += fmt::format("~T{}: ~f~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
-  } else if (m_ts.typecheck(m_ts.make_typespec("pointer"), f.type(), "", false, false)) {
+  } else if (m_ts.tc(m_ts.make_typespec("pointer"), f.type())) {
     // Pointers
     str_template += fmt::format("~T{}: #x~X~%", f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
@@ -626,11 +626,11 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
   auto base = compile_error_guard(args.unnamed.at(1), env);
 
   if (is_number(base->type())) {
-    if (m_ts.typecheck(m_ts.make_typespec("binteger"), desired_ts, "", false, false)) {
+    if (m_ts.tc(m_ts.make_typespec("binteger"), desired_ts)) {
       return number_to_binteger(form, base, env);
     }
 
-    if (m_ts.typecheck(m_ts.make_typespec("integer"), desired_ts, "", false, false)) {
+    if (m_ts.tc(m_ts.make_typespec("integer"), desired_ts)) {
       auto result = number_to_integer(form, base, env);
       if (result != base) {
         result->set_type(desired_ts);
@@ -641,7 +641,7 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
       }
     }
 
-    if (m_ts.typecheck(m_ts.make_typespec("float"), desired_ts, "", false, false)) {
+    if (m_ts.tc(m_ts.make_typespec("float"), desired_ts)) {
       return number_to_float(form, base, env);
     }
   }

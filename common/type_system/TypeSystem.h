@@ -133,6 +133,9 @@ class TypeSystem {
   void assert_method_id(const std::string& type_name, const std::string& method_name, int id);
 
   std::string generate_deftype(const Type* type) const;
+  std::string generate_deftype_for_structure(const StructureType* type) const;
+  std::string generate_deftype_for_bitfield(const BitFieldType* type) const;
+  std::string generate_deftype_footer(const Type* type) const;
 
   FieldLookupInfo lookup_field_info(const std::string& type_name,
                                     const std::string& field_name) const;
@@ -151,11 +154,12 @@ class TypeSystem {
   void add_builtin_types();
 
   std::string print_all_type_information() const;
-  bool typecheck(const TypeSpec& expected,
-                 const TypeSpec& actual,
-                 const std::string& error_source_name = "",
-                 bool print_on_error = true,
-                 bool throw_on_error = true) const;
+  bool typecheck_and_throw(const TypeSpec& expected,
+                           const TypeSpec& actual,
+                           const std::string& error_source_name = "",
+                           bool print_on_error = true,
+                           bool throw_on_error = true) const;
+  bool tc(const TypeSpec& expected, const TypeSpec& actual) const;
   std::vector<std::string> get_path_up_tree(const std::string& type) const;
   int get_next_method_id(const Type* type) const;
 

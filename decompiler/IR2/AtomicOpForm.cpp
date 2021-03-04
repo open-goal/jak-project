@@ -106,8 +106,76 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
     if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
-      return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
-                                                      m_value.as_expr(), m_my_idx);
+      // we are storing a value in a global symbol. This is something like sw rx, offset(s7)
+      // so the source can only be a variable, r0 (integer 0), or false (s7)
+      // we want to know both: what cast (if any) do we need for a set!, and what cast (if any)
+      // do we need for a define.
+
+      auto symbol_type = env.dts->lookup_symbol_type(m_addr.get_arg(0).get_str());
+      auto symbol_type_info = env.dts->ts.lookup_type(symbol_type);
+
+      switch (m_value.get_kind()) {
+        case SimpleAtom::Kind::VARIABLE: {
+          auto src_type = env.get_types_before_op(m_my_idx).get(m_value.var().reg()).typespec();
+          std::optional<TypeSpec> cast_for_set, cast_for_define;
+
+          if (src_type != symbol_type) {
+            // the define will need a cast to the exactly right type.
+            cast_for_define = symbol_type;
+          }
+
+          if (!env.dts->ts.tc(symbol_type, src_type)) {
+            // we fail the typecheck for a normal set!, so add a cast.
+            cast_for_set = symbol_type;
+          }
+
+          return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                          m_value.as_expr(), cast_for_set,
+                                                          cast_for_define, m_my_idx);
+        } break;
+        case SimpleAtom::Kind::INTEGER_CONSTANT: {
+          std::optional<TypeSpec> cast_for_set, cast_for_define;
+          bool sym_int_or_uint = env.dts->ts.tc(TypeSpec("integer"), symbol_type);
+          bool sym_uint = env.dts->ts.tc(TypeSpec("uinteger"), symbol_type);
+          bool sym_int = sym_int_or_uint && !sym_uint;
+
+          if (TypeSpec("int") != symbol_type) {
+            // the define will need a cast to the exactly right type.
+            cast_for_define = symbol_type;
+          }
+
+          if (sym_int) {
+            // do nothing for set.
+          } else {
+            // for uint or other
+            cast_for_set = symbol_type;
+          }
+
+          return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                          m_value.as_expr(), cast_for_set,
+                                                          cast_for_define, m_my_idx);
+        } break;
+
+        case SimpleAtom::Kind::SYMBOL_PTR:
+        case SimpleAtom::Kind::SYMBOL_VAL: {
+          assert(m_value.get_str() == "#f");
+          std::optional<TypeSpec> cast_for_set, cast_for_define;
+          if (symbol_type != TypeSpec("symbol")) {
+            cast_for_define = symbol_type;
+            // explicitly cast if we're not using a reference type, including pointers.
+            // otherwise, we allow setting references to #f.
+            if (!symbol_type_info->is_reference()) {
+              cast_for_set = symbol_type;
+            }
+          }
+          return pool.alloc_element<StoreInSymbolElement>(m_addr.get_arg(0).get_str(),
+                                                          m_value.as_expr(), cast_for_set,
+                                                          cast_for_define, m_my_idx);
+        } break;
+
+        default:
+          assert(false);
+      }
     }
 
     IR2_RegOffset ro;
@@ -362,20 +430,36 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     }
   }
 
-  if (m_src.is_identity() && m_src.get_arg(0).is_label() &&
-      (m_kind == Kind::FLOAT || m_kind == Kind::SIGNED) && m_size == 4) {
+  if (m_src.is_identity() && m_src.get_arg(0).is_label()) {
     // try to see if we're loading a constant
     auto label = env.file->labels.at(m_src.get_arg(0).label());
     auto label_name = label.name;
     auto hint = env.label_types().find(label_name);
     if (hint != env.label_types().end()) {
-      if (hint->second.is_const && hint->second.type_name == "float") {
-        auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-        assert(word.kind == LinkedWord::PLAIN_DATA);
-        float value;
-        memcpy(&value, &word.data, 4);
-        auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
-        return pool.alloc_element<SetVarElement>(m_dst, float_elt, true);
+      if (hint->second.is_const) {
+        if ((m_kind == Kind::FLOAT || m_kind == Kind::SIGNED) && m_size == 4 &&
+            hint->second.type_name == "float") {
+          assert((label.offset % 4) == 0);
+          auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+          assert(word.kind == LinkedWord::PLAIN_DATA);
+          float value;
+          memcpy(&value, &word.data, 4);
+          auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
+          return pool.alloc_element<SetVarElement>(m_dst, float_elt, true);
+        } else if (hint->second.type_name == "uint64" && m_kind != Kind::FLOAT && m_size == 8) {
+          assert((label.offset % 8) == 0);
+          auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+          auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+          assert(word0.kind == LinkedWord::PLAIN_DATA);
+          assert(word1.kind == LinkedWord::PLAIN_DATA);
+          u64 value;
+
+          memcpy(&value, &word0.data, 4);
+          memcpy(((u8*)&value) + 4, &word1.data, 4);
+          auto val_elt = pool.alloc_single_element_form<ConstantTokenElement>(
+              nullptr, fmt::format("#x{:x}", value));
+          return pool.alloc_element<SetVarElement>(m_dst, val_elt, true);
+        }
       }
     }
   }

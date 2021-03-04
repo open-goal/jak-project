@@ -1078,7 +1078,7 @@ void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormSta
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
-  auto elt = pool.alloc_element<SetFormFormElement>(sym, val);
+  auto elt = pool.alloc_element<SetFormFormElement>(sym, val, m_cast_for_set, m_cast_for_define);
   elt->mark_popped();
   stack.push_form_element(elt, true);
 }
@@ -1263,7 +1263,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
       auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
       auto desired_arg_type = function_type.get_arg(arg_id);
-      if (!env.dts->ts.typecheck(desired_arg_type, actual_arg_type, "", false, false)) {
+      if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
         arg_forms.push_back(
             pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
       } else {
@@ -1387,7 +1387,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         for (size_t i = 0; i < 3; i++) {
           auto& var = all_pop_vars.at(i + 1);  // 0 is the function itself.
           auto arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-          if (!env.dts->ts.typecheck(expected_arg_types.at(i), arg_type, "", false, false)) {
+          if (!env.dts->ts.tc(expected_arg_types.at(i), arg_type)) {
             new_args.at(i) = pool.alloc_single_element_form<CastElement>(
                 nullptr, expected_arg_types.at(i), new_args.at(i));
           }

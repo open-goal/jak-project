@@ -371,7 +371,7 @@ TEST_F(FormRegressionTest, ExprTrue) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function symbol)";
-  std::string expected = "'#t";
+  std::string expected = "#t";
   test_with_expr(func, type, expected);
 }
 
@@ -401,7 +401,7 @@ TEST_F(FormRegressionTest, ExprPrintBfloat) {
       "    daddiu sp, sp, 32";
   std::string type = "(function bfloat bfloat)";
 
-  std::string expected = "(begin (format (quote #t) \"~f\" (-> arg0 data)) arg0)";
+  std::string expected = "(begin (format #t \"~f\" (-> arg0 data)) arg0)";
   test_with_expr(func, type, expected, false, "", {{"L343", "~f"}});
 }
 
@@ -461,7 +461,7 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
                                                                  // don't plan on supporting this.
       "   (if\n"
       "    (= v1-0 arg1)\n"
-      "    (return '#t)\n"
+      "    (return #t)\n"
       "    )\n"
       "   )\n"
       "  #f\n"
@@ -505,7 +505,7 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
       "   (set! a0-1 object)\n"
       "   (until\n"
       "    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
-      "    (if (= v1-0 arg1) (return (quote #t)))\n"
+      "    (if (= v1-0 arg1) (return #t))\n"
       "    )\n"
       "   #f\n"
       "  )";
@@ -559,7 +559,7 @@ TEST_F(FormRegressionTest, ExprTypeTypep) {
       "    (set! arg0 (-> arg0 parent))\n"
       "    (or (= arg0 v1-0) (zero? arg0))\n"
       "    )\n"
-      "   (if (= arg0 arg1) (return '#t))\n"
+      "   (if (= arg0 arg1) (return #t))\n"
       "   )\n"
       "  #f\n"
       "  )";
@@ -1581,7 +1581,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "    (set! s1-0 (car (cdr s3-0)))\n"
       "    (set! v1-1 (arg1 s2-0 s1-0))\n"
       "    (when\n"
-      "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 (quote #t)))\n"
+      "     (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 #t))\n"
       "     (+! s4-0 1)\n"
       "     (set! (car s3-0) s1-0)\n"
       "     (set! (car (cdr s3-0)) s2-0)\n"
@@ -2078,7 +2078,7 @@ TEST_F(FormRegressionTest, ExprPrintl) {
       "(begin\n"
       "  (set! a0-1 arg0)\n"
       "  ((method-of-type (rtype-of a0-1) print) a0-1)\n"
-      "  (format (quote #t) \"~%\")\n"
+      "  (format #t \"~%\")\n"
       "  arg0\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L324", "~%"}});
@@ -2178,8 +2178,8 @@ TEST_F(FormRegressionTest, ExprPrintTreeBitmask) {
       "   (< s4-0 arg1)\n"
       "   (if\n"
       "    (zero? (logand arg0 1))\n"
-      "    (format (quote #t) \"    \")\n"
-      "    (format (quote #t) \"|   \")\n"
+      "    (format #t \"    \")\n"
+      "    (format #t \"|   \")\n"
       "    )\n"
       "   (set! arg0 (shr arg0 1))\n"
       "   (+! s4-0 1)\n"
@@ -2294,7 +2294,7 @@ TEST_F(FormRegressionTest, ExprPrintName) {
 
   std::string expected =
       "(cond\n"
-      "  ((= arg0 arg1) (quote #t))\n"
+      "  ((= arg0 arg1) #t)\n"
       "  ((and (= (-> arg0 type) string) (= (-> arg1 type) string))\n"
       "   (string= (the-as string arg0) (the-as string arg1))\n"
       "   )\n"
@@ -2496,7 +2496,7 @@ TEST_F(FormRegressionTest, StringLt) {
       "  (while\n"
       "   (< v1-4 s4-1)\n"
       "   (cond\n"
-      "    ((< (-> arg0 data v1-4) (-> arg1 data v1-4)) (return (quote #t)))\n"
+      "    ((< (-> arg0 data v1-4) (-> arg1 data v1-4)) (return #t))\n"
       "    ((< (-> arg1 data v1-4) (-> arg0 data v1-4)) (return #f))\n"
       "    )\n"
       "   (+! v1-4 1)\n"
@@ -2533,7 +2533,7 @@ TEST_F(FormRegressionTest, ExprAssert) {
       "    daddiu sp, sp, 16";
   std::string type = "(function symbol string int)";
 
-  std::string expected = "(begin (if (not arg0) (format (quote #t) \"A ~A\" arg1)) 0)";
+  std::string expected = "(begin (if (not arg0) (format #t \"A ~A\" arg1)) 0)";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 

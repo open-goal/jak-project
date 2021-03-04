@@ -134,7 +134,11 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
     case Kind::INTEGER_CONSTANT:
       return goos::Object::make_integer(m_int);
     case Kind::SYMBOL_PTR:
-      return pretty_print::to_symbol(fmt::format("'{}", m_string));
+      if (m_string == "#t") {
+        return pretty_print::to_symbol("#t");
+      } else {
+        return pretty_print::to_symbol(fmt::format("'{}", m_string));
+      }
     case Kind::SYMBOL_VAL:
       return pretty_print::to_symbol(m_string);
     case Kind::EMPTY_LIST:

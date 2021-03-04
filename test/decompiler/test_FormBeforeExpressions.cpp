@@ -188,7 +188,7 @@ TEST_F(FormRegressionTest, FormatString) {
   std::string expected =
       "(begin\n"
       "  (set! t9-0 format)\n"
-      "  (set! a0-1 '#t)\n"
+      "  (set! a0-1 #t)\n"
       "  (set! a1-0 L343)\n"
       "  (set! f0-0 (-> a0-0 data))\n"
       "  (set! a2-0 (fpr->gpr f0-0))\n"
@@ -233,7 +233,7 @@ TEST_F(FormRegressionTest, WhileLoop) {
       "   (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
       "   (if\n"
       "    (= v1-0 a1-0)\n"
-      "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)))\n"
+      "    (return (begin (set! v1-1 #t) (set! v0-0 v1-1)))\n"
       "    )\n"
       "   )\n"
       "  (set! v0-0 #f)\n"
@@ -299,7 +299,7 @@ TEST_F(FormRegressionTest, Or) {
       "    )\n"
       "   (if\n"
       "    (= a0-0 a1-0)\n"
-      "    (return (begin (set! v1-1 '#t) (set! v0-0 v1-1)))\n"
+      "    (return (begin (set! v1-1 #t) (set! v0-0 v1-1)))\n"
       "    )\n"
       "   )\n"
       "  (set! v0-0 #f)\n"
@@ -726,7 +726,7 @@ TEST_F(FormRegressionTest, NestedAndOr) {
       "         )\n"
       "        a0-2\n"  // false or >0
       "        )\n"
-      "       (begin (set! a0-3 '#t) (set! v1-2 (!= v1-1 a0-3)))\n"  // not #t
+      "       (begin (set! a0-3 #t) (set! v1-2 (!= v1-1 a0-3)))\n"  // not #t
       "       )\n"
       "      v1-2\n"  // (and (or false >0) (not #t))
       "      )\n"
