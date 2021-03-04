@@ -12,7 +12,7 @@
  * Object::make_<type>
  *
  * To convert an Object into a more specific object, use the as_<type> method of Object.
- * It will throw an exception is you get the type wrong.
+ * It will throw an exception if you get the type wrong.
  *
  * These are all the types:
  *
@@ -90,12 +90,42 @@ std::string fixed_to_string(FloatType x) {
   s64 rounded = x;
   bool exact_int = ((float)rounded) == x;
 
+  // it's an integer number, so let's just get this over with asap
   if (exact_int) {
-    sprintf(buff, "%.1f", x);
+    sprintf(buff, "%lld.0", rounded);
     return {buff};
   } else {
-    sprintf(buff, "%.6f", x);
-    return {buff};
+    // not an integer - see how many decimal cases we need
+    // i'm not sure what happens if x is a NaN/inf...
+
+    // buffer for format string
+    char fmt_buf[256];
+
+    // we are going to try our hardest to make sure the output is re-parseable
+    // for what it's worth, the lowest representable 32-bit floating point number has almost 50
+    // decimal cases, although:
+    // - by that point we should just be using scientific notation instead?
+    // - the PS2 DOES NOT DENORMALIZE FLOATS, or handle NaNs/infs! so the representation wouldn't
+    // be accurate anyway
+    // - we might not ever encounter numbers like that. the pretty printer has a "banned" floats
+    // list just in case
+
+    // 99 might seem high, but we are gonna get the result in under 10 or so most of the time, so
+    // it's fine.
+    // maybe there's some math principles or other tricks to optimize this?
+    for (int i = 1; i <= 99; ++i) {
+      // generate the format string
+      sprintf(fmt_buf, "%%.%df", i);
+      sprintf(buff, fmt_buf, x);
+
+      auto float_from_string = float(std::stod(buff));
+      float value_as_float = float(x);
+      bool are_they_equal = float_from_string == value_as_float;
+
+      if (are_they_equal)
+        return {buff};
+    }
+    throw std::runtime_error("a float could not be represented accurately");
   }
 }
 
