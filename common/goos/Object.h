@@ -14,7 +14,7 @@
  * Object::make_<type>
  *
  * To convert an Object into a more specific object, use the as_<type> method of Object.
- * It will throw an exception is you get the type wrong.
+ * It will throw an exception if you get the type wrong.
  *
  * These are all the types:
  *
