@@ -276,23 +276,38 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
     throw_compiler_error(form, "Cannot .lvf into this. Got a {}.", dest->print());
   }
   auto src = compile_error_guard(args.unnamed.at(1), env);
+
   auto as_sv = dynamic_cast<StaticVal*>(src);
+  // Loading directly from a static value is not supported!
+  if (as_sv && args.has_named("offset")) {
+    throw_compiler_error(form, "Cannot .lvf from a static value");
+  } else if (as_sv && !args.has_named("offset")) {
+    env->emit_ir<IR_StaticVarLoad>(dest, as_sv->obj);
+    return get_none();
+  }
+
+  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
+  RegVal* baseReg = as_co ? as_co->base->to_gpr(env) : src->to_gpr(env);
+  int offset = 0;
+
+  if (as_co) {
+    if (!args.has_named("offset")) {
+      offset = as_co->offset;
+    } else {
+      int offset = args.named.at("offset").as_int();
+      offset = as_co->offset + offset;
+    }
+  } else if (args.has_named("offset")) {
+    int offset = args.named.at("offset").as_int();
+    offset = as_co->offset + offset;
+  }
+
   MemLoadInfo info;
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  if (args.has_named("offset")) {
-    int offset = args.named.at("offset").as_int();
-    // can do a clever offset here
-    env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color);
-  } else if (as_sv) {
-    if (!color) {
-      throw std::runtime_error("no color nyi for static loads");
-    }
-    env->emit_ir<IR_StaticVarLoad>(dest, as_sv->obj);
-  } else {
-    env->emit_ir<IR_LoadConstOffset>(dest, 0, src->to_gpr(env), info, color);
-  }
+  env->emit_ir<IR_LoadConstOffset>(dest, offset, baseReg, info, color);
+
   return get_none();
 }
 

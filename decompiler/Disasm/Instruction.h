@@ -42,6 +42,7 @@ struct InstructionAtom {
 
   Register get_reg() const;
   int32_t get_imm() const;
+  int32_t get_vf_field() const;
   int get_label() const;
   std::string get_sym() const;
 

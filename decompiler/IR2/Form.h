@@ -382,7 +382,6 @@ class OpenGoalAsmOpElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars) const override;
-  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void collect_vf_regs(RegSet& regs) const;
   void get_modified_regs(RegSet& regs) const override;
   const AsmOp* op() const { return m_op; }
@@ -599,7 +598,6 @@ class RLetElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars) const override;
-  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   Form* body = nullptr;
   std::vector<decompiler::Register> sorted_regs;

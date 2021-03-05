@@ -137,7 +137,7 @@ OpenGOALAsm::OpenGOALAsm(Instruction _instr) : instr(_instr) {
 
 OpenGOALAsm::OpenGOALAsm(Instruction _instr,
                          std::optional<RegisterAccess> _dst,
-                         const std::vector<std::optional<RegisterAccess>> &_src)
+                         const std::vector<std::optional<RegisterAccess>>& _src)
     : instr(_instr), m_dst(_dst), m_src(_src) {
   if (MIPS_ASM_TO_OPEN_GOAL_FUNCS.count(instr.kind) == 0) {
     valid = false;
@@ -176,9 +176,11 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
     } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
       // Handle FTF/FSF operations
       if (func.allows_modifier(MOD::FTF) && named_args.size() == 0) {
-        named_args.push_back(pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_imm())));
+        named_args.push_back(
+            pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_vf_field())));
       } else if (func.allows_modifier(MOD::FSF)) {
-        named_args.push_back(pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_imm())));
+        named_args.push_back(
+            pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_vf_field())));
       }
     } else if (func.allows_modifier(MOD::OFFSET) && atom.kind == InstructionAtom::AtomKind::IMM) {
       // Handle offsetting

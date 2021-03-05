@@ -35,8 +35,10 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
         OpenGOALAsm asmOp = OpenGOALAsm(elem->op()->instruction());
         if (!asmOp.valid) {
           // If its an invalid or unsupported exception, skip it
-          lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
-                   asmOp.instr.kind);
+          /*lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
+                   asmOp.instr.kind);*/
+          f.warnings.general_warning(";; Unsupported inline assembly instruction kind - [{}]",
+                                     asmOp.instr.kind);
           new_entries.push_back(entry);
           continue;
         } else if (elem->op()->instruction().kind == InstructionKind::VOPMULA) {
@@ -47,8 +49,10 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           continue;
         } else if (asmOp.todo) {
           // If its an invalid or unsupported exception, skip it
-          lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
-                   asmOp.full_function_name());
+          /*lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
+                   asmOp.full_function_name());*/
+          f.warnings.general_warning(";; Inline assembly instruction marked with TODO - [{}]",
+                                     asmOp.full_function_name());
         }
 
         // If we've made it this far, it's an AsmOperation that is also a supported vector
@@ -83,7 +87,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
     std::string warning = fmt::format("ASM instruction re-writing failed in {}: {}",
                                       f.guessed_name.to_string(), e.what());
     lg::warn(warning);
-    // TODO - changed to what? f.warnings.append(";; " + warning);
+    f.warnings.general_warning(";; {}", warning);
     return false;
   }
 

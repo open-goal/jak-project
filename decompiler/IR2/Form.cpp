@@ -813,7 +813,6 @@ RLetElement::RLetElement(Form* _body, RegSet _regs) : body(_body) {
 }
 
 void RLetElement::apply(const std::function<void(FormElement*)>& f) {
-  // note - this is done in program order, rather than print order. Not sure if this makes sense.
   f(this);
   body->apply(f);
 }
@@ -836,6 +835,9 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
   // NOTE - initialize any relevant registers in the body first
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
+      // TODO - a good idea to move this to a macro like initialize-constant-vector! or something.
+      // There could be some clever way to do this initialization that's faster that a normal static
+      // load.
       rletForm.push_back(
           pretty_print::to_symbol("(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))"));
     }
