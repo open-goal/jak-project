@@ -331,19 +331,27 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
     throw_compiler_error(form, "Cannot .svf from this. Got a {}.", dest->print());
   }
 
-  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(dest);
+  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
+  RegVal* baseReg = as_co ? as_co->base->to_gpr(env) : src->to_gpr(env);
+  int offset = 0;
+
+  if (as_co) {
+    if (!args.has_named("offset")) {
+      offset = as_co->offset;
+    } else {
+      int offset = args.named.at("offset").as_int();
+      offset = as_co->offset + offset;
+    }
+  } else if (args.has_named("offset")) {
+    int offset = args.named.at("offset").as_int();
+    offset = as_co->offset + offset;
+  }
+
   MemLoadInfo info;
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  // TODO - i don't think this is correct (the gpr allocation)
-  if (args.has_named("offset")) {
-    int offset = args.named.at("offset").as_int();
-    // can do a clever offset here
-    env->emit_ir<IR_StoreConstOffset>(src, offset, as_co->base->to_gpr(env), 16, color);
-  } else {
-    env->emit_ir<IR_StoreConstOffset>(src, 0, dest->to_gpr(env), 16, color);
-  }
+  env->emit_ir<IR_StoreConstOffset>(dest, offset, baseReg, info.size, color);
   return get_none();
 }
 
