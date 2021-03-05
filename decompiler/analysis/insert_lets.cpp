@@ -55,7 +55,7 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
   auto a_up = path_up_tree(a);
   auto b_up = path_up_tree(b);
 
-  //fmt::print("lca {} and {}\n", a->to_string(env), b->to_string(env));
+  // fmt::print("lca {} and {}\n", a->to_string(env), b->to_string(env));
 
   int ai = a_up.size() - 1;
   int bi = b_up.size() - 1;
@@ -72,7 +72,7 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
   }
   assert(result);
 
-  //fmt::print("{}\n\n", result->to_string(env));
+  // fmt::print("{}\n\n", result->to_string(env));
   return result;
 }
 }  // namespace
@@ -100,7 +100,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
   top_level_form->apply([&](FormElement* elt) {
     // for each element, figure out what vars we reference:
     RegAccessSet reg_accesses;
-    elt->collect_vars(reg_accesses);
+    elt->collect_vars(reg_accesses, false);
 
     // and add it.
     for (auto& access : reg_accesses) {
@@ -135,8 +135,17 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
 
     bool got_one = false;
     for (int i = 0; i < kv.second.lca_form->size(); i++) {
-      if (kv.second.elts_using_var.find(kv.second.lca_form->at(i)) !=
-          kv.second.elts_using_var.end()) {
+      RegAccessSet ras;
+      kv.second.lca_form->at(i)->collect_vars(ras, true);
+      bool uses = false;
+      for (auto& ra : ras) {
+        if (env.get_variable_name(ra) == kv.second.var_name) {
+          uses = true;
+        }
+      }
+      if (uses) {
+        //      if (kv.second.elts_using_var.find(kv.second.lca_form->at(i)) !=
+        //          kv.second.elts_using_var.end()) {
         got_one = true;
         kv.second.start_idx = std::min(kv.second.start_idx, i);
         kv.second.end_idx = std::max(kv.second.end_idx, i + 1);
@@ -301,6 +310,20 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
       }
 
       for (auto& e : inner_let->entries()) {
+        if (!as_let->is_star()) {
+          RegAccessSet used;
+          e.src->collect_vars(used, true);
+          std::unordered_set<std::string> used_by_name;
+          for (auto used_var : used) {
+            used_by_name.insert(env.get_variable_name(used_var));
+          }
+          for (auto& old_entry : as_let->entries()) {
+            if (used_by_name.find(env.get_variable_name(old_entry.dest)) != used_by_name.end()) {
+              as_let->make_let_star();
+              break;
+            }
+          }
+        }
         as_let->add_entry(e);
       }
 

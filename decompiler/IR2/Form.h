@@ -29,7 +29,7 @@ class FormElement {
   virtual void apply(const std::function<void(FormElement*)>& f) = 0;
   virtual void apply_form(const std::function<void(Form*)>& f) = 0;
   virtual bool is_sequence_point() const { return true; }
-  virtual void collect_vars(RegAccessSet& vars) const = 0;
+  virtual void collect_vars(RegAccessSet& vars, bool recursive) const = 0;
   virtual void get_modified_regs(RegSet& regs) const = 0;
   virtual bool active() const;
 
@@ -67,7 +67,7 @@ class SimpleExpressionElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -175,7 +175,7 @@ class StoreElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
@@ -195,7 +195,7 @@ class LoadSourceElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
@@ -222,7 +222,7 @@ class SimpleAtomElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   const SimpleAtom& atom() const { return m_atom; }
   void update_from_stack(const Env& env,
@@ -248,7 +248,7 @@ class SetVarElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   bool active() const override;
@@ -285,7 +285,7 @@ class StoreInSymbolElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
 
@@ -303,7 +303,7 @@ class StoreInPairElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
 
@@ -330,7 +330,7 @@ class SetFormFormElement : public FormElement {
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   bool is_sequence_point() const override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
 
@@ -356,7 +356,7 @@ class AtomicOpElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   const AtomicOp* op() const { return m_op; }
@@ -374,7 +374,7 @@ class AsmOpElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   const AsmOp* op() const { return m_op; }
@@ -403,7 +403,7 @@ class ConditionElement : public FormElement {
   goos::Object to_form_as_condition_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -440,7 +440,7 @@ class FunctionCallElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -463,7 +463,7 @@ class BranchElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   const BranchOp* op() const { return m_op; }
 
@@ -485,7 +485,7 @@ class ReturnElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
 };
@@ -519,7 +519,7 @@ class BreakElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
 };
 
@@ -552,7 +552,7 @@ class CondWithElseElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
 };
@@ -571,7 +571,7 @@ class EmptyElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
@@ -587,7 +587,7 @@ class WhileElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   Form* condition = nullptr;
@@ -606,7 +606,7 @@ class UntilElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   Form* condition = nullptr;
@@ -641,7 +641,7 @@ class ShortCircuitElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -673,7 +673,7 @@ class CondNoElseElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
@@ -692,7 +692,7 @@ class AbsElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -722,7 +722,7 @@ class AshElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -743,7 +743,7 @@ class TypeOfElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -783,7 +783,7 @@ class ConditionalMoveFalseElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
@@ -801,7 +801,7 @@ class GenericOperator {
   static GenericOperator make_fixed(FixedOperatorKind kind);
   static GenericOperator make_function(Form* value);
   static GenericOperator make_compare(IR2_Condition::Kind kind);
-  void collect_vars(RegAccessSet& vars) const;
+  void collect_vars(RegAccessSet& vars, bool recursive) const;
   goos::Object to_form(const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
@@ -847,7 +847,7 @@ class GenericElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -870,7 +870,7 @@ class CastElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -901,7 +901,7 @@ class DerefToken {
   static DerefToken make_field_name(const std::string& name);
   static DerefToken make_expr_placeholder();
 
-  void collect_vars(RegAccessSet& vars) const;
+  void collect_vars(RegAccessSet& vars, bool recursive) const;
   goos::Object to_form(const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
@@ -934,7 +934,7 @@ class DerefElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -962,7 +962,7 @@ class DynamicMethodAccess : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -983,7 +983,7 @@ class ArrayFieldAccess : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -1010,7 +1010,7 @@ class GetMethodElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -1030,7 +1030,7 @@ class StringConstantElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -1048,7 +1048,7 @@ class ConstantTokenElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -1066,7 +1066,7 @@ class ConstantFloatElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void update_from_stack(const Env& env,
                          FormPool& pool,
@@ -1089,7 +1089,7 @@ class StorePlainDeref : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
@@ -1110,7 +1110,7 @@ class StoreArrayAccess : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 
@@ -1127,7 +1127,7 @@ class DecompiledDataElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
 
  private:
@@ -1143,7 +1143,7 @@ class LetElement : public FormElement {
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
-  void collect_vars(RegAccessSet& vars) const override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   Form* body() { return m_body; }
   void set_body(Form* new_body);
@@ -1154,6 +1154,7 @@ class LetElement : public FormElement {
   };
   std::vector<Entry> entries() { return m_entries; }
   void add_entry(const Entry& e);
+  bool is_star() const { return m_star; }
 
  private:
   Form* m_body = nullptr;
@@ -1229,7 +1230,7 @@ class Form {
   void inline_forms(std::vector<goos::Object>& forms, const Env& env) const;
   void apply(const std::function<void(FormElement*)>& f);
   void apply_form(const std::function<void(Form*)>& f);
-  void collect_vars(RegAccessSet& vars) const;
+  void collect_vars(RegAccessSet& vars, bool recursive) const;
 
   void update_children_from_stack(const Env& env,
                                   FormPool& pool,

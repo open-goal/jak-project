@@ -181,7 +181,7 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
   std::vector<VariableNames::VarInfo> entries;
   if (top_level_form) {
     RegAccessSet var_set;
-    top_level_form->collect_vars(var_set);
+    top_level_form->collect_vars(var_set, true);
 
     // we want to sort them for easier reading:
     std::vector<std::pair<RegId, RegisterAccess>> vars;

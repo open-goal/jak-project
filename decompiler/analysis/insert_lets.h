@@ -18,4 +18,4 @@ struct LetStats {
 
 LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form);
 
-}
+}  // namespace decompiler

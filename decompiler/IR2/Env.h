@@ -128,9 +128,7 @@ class Env {
     }
   }
 
-  void set_defined_in_let(const std::string& var) {
-    m_vars_defined_in_let.insert(var);
-  }
+  void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
 
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;

@@ -120,9 +120,9 @@ void Form::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void Form::collect_vars(RegAccessSet& vars) const {
+void Form::collect_vars(RegAccessSet& vars, bool recursive) const {
   for (auto e : m_elements) {
-    e->collect_vars(vars);
+    e->collect_vars(vars, recursive);
   }
 }
 
@@ -153,7 +153,7 @@ bool SimpleExpressionElement::is_sequence_point() const {
   throw std::runtime_error("Should not check if a SimpleExpressionElement is a sequence point");
 }
 
-void SimpleExpressionElement::collect_vars(RegAccessSet& vars) const {
+void SimpleExpressionElement::collect_vars(RegAccessSet& vars, bool) const {
   m_expr.collect_vars(vars);
 }
 
@@ -177,7 +177,7 @@ void StoreElement::apply(const std::function<void(FormElement*)>& f) {
 
 void StoreElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StoreElement::collect_vars(RegAccessSet& vars) const {
+void StoreElement::collect_vars(RegAccessSet& vars, bool) const {
   return m_op->collect_vars(vars);
 }
 
@@ -239,8 +239,10 @@ void LoadSourceElement::apply_form(const std::function<void(Form*)>& f) {
   m_addr->apply_form(f);
 }
 
-void LoadSourceElement::collect_vars(RegAccessSet& vars) const {
-  m_addr->collect_vars(vars);
+void LoadSourceElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_addr->collect_vars(vars, recursive);
+  }
 }
 
 void LoadSourceElement::get_modified_regs(RegSet& regs) const {
@@ -263,7 +265,7 @@ void SimpleAtomElement::apply(const std::function<void(FormElement*)>& f) {
 
 void SimpleAtomElement::apply_form(const std::function<void(Form*)>&) {}
 
-void SimpleAtomElement::collect_vars(RegAccessSet& vars) const {
+void SimpleAtomElement::collect_vars(RegAccessSet& vars, bool) const {
   return m_atom.collect_vars(vars);
 }
 
@@ -301,12 +303,14 @@ bool SetVarElement::is_sequence_point() const {
   return m_is_sequence_point;
 }
 
-void SetVarElement::collect_vars(RegAccessSet& vars) const {
+void SetVarElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   if (m_var_info.is_dead_set || m_var_info.is_dead_false) {
     return;
   }
   vars.insert(m_dst);
-  m_src->collect_vars(vars);
+  if (recursive) {
+    m_src->collect_vars(vars, recursive);
+  }
 }
 
 void SetVarElement::get_modified_regs(RegSet& regs) const {
@@ -350,7 +354,7 @@ void StoreInSymbolElement::apply(const std::function<void(FormElement*)>& f) {
 
 void StoreInSymbolElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StoreInSymbolElement::collect_vars(RegAccessSet& vars) const {
+void StoreInSymbolElement::collect_vars(RegAccessSet& vars, bool) const {
   m_value.collect_vars(vars);
 }
 
@@ -374,7 +378,7 @@ void StoreInPairElement::apply(const std::function<void(FormElement*)>& f) {
 
 void StoreInPairElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StoreInPairElement::collect_vars(RegAccessSet& vars) const {
+void StoreInPairElement::collect_vars(RegAccessSet& vars, bool) const {
   m_value.collect_vars(vars);
   vars.insert(m_pair);
 }
@@ -438,9 +442,11 @@ bool SetFormFormElement::is_sequence_point() const {
   return true;
 }
 
-void SetFormFormElement::collect_vars(RegAccessSet& vars) const {
-  m_src->collect_vars(vars);
-  m_dst->collect_vars(vars);
+void SetFormFormElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_src->collect_vars(vars, recursive);
+    m_dst->collect_vars(vars, recursive);
+  }
 }
 
 void SetFormFormElement::get_modified_regs(RegSet& regs) const {
@@ -463,7 +469,7 @@ void AtomicOpElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AtomicOpElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AtomicOpElement::collect_vars(RegAccessSet& vars) const {
+void AtomicOpElement::collect_vars(RegAccessSet& vars, bool) const {
   m_op->collect_vars(vars);
 }
 
@@ -493,7 +499,7 @@ void AsmOpElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AsmOpElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AsmOpElement::collect_vars(RegAccessSet& vars) const {
+void AsmOpElement::collect_vars(RegAccessSet& vars, bool) const {
   m_op->collect_vars(vars);
 }
 
@@ -552,7 +558,7 @@ void ConditionElement::invert() {
   m_kind = get_condition_opposite(m_kind);
 }
 
-void ConditionElement::collect_vars(RegAccessSet& vars) const {
+void ConditionElement::collect_vars(RegAccessSet& vars, bool) const {
   for (auto src : m_src) {
     if (src.has_value() && src->is_var()) {
       vars.insert(src->var());
@@ -580,7 +586,7 @@ void FunctionCallElement::apply(const std::function<void(FormElement*)>& f) {
 
 void FunctionCallElement::apply_form(const std::function<void(Form*)>&) {}
 
-void FunctionCallElement::collect_vars(RegAccessSet& vars) const {
+void FunctionCallElement::collect_vars(RegAccessSet& vars, bool) const {
   return m_op->collect_vars(vars);
 }
 
@@ -610,7 +616,7 @@ void BranchElement::apply(const std::function<void(FormElement*)>& f) {
 
 void BranchElement::apply_form(const std::function<void(Form*)>&) {}
 
-void BranchElement::collect_vars(RegAccessSet& vars) const {
+void BranchElement::collect_vars(RegAccessSet& vars, bool) const {
   return m_op->collect_vars(vars);
 }
 
@@ -631,7 +637,9 @@ void BranchElement::get_modified_regs(RegSet& regs) const {
 ReturnElement::ReturnElement(Form* _return_code, Form* _dead_code)
     : return_code(_return_code), dead_code(_dead_code) {
   return_code->parent_element = this;
-  dead_code->parent_element = this;
+  if (dead_code) {
+    dead_code->parent_element = this;
+  }
 }
 
 goos::Object ReturnElement::to_form_internal(const Env& env) const {
@@ -659,10 +667,12 @@ void ReturnElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void ReturnElement::collect_vars(RegAccessSet& vars) const {
-  return_code->collect_vars(vars);
-  if (dead_code) {
-    dead_code->collect_vars(vars);
+void ReturnElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    return_code->collect_vars(vars, recursive);
+    if (dead_code) {
+      dead_code->collect_vars(vars, recursive);
+    }
   }
 }
 
@@ -702,9 +712,11 @@ void BreakElement::apply_form(const std::function<void(Form*)>& f) {
   dead_code->apply_form(f);
 }
 
-void BreakElement::collect_vars(RegAccessSet& vars) const {
-  return_code->collect_vars(vars);
-  dead_code->collect_vars(vars);
+void BreakElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    return_code->collect_vars(vars, recursive);
+    dead_code->collect_vars(vars, recursive);
+  }
 }
 
 void BreakElement::get_modified_regs(RegSet& regs) const {
@@ -771,12 +783,14 @@ void CondWithElseElement::apply_form(const std::function<void(Form*)>& f) {
   else_ir->apply_form(f);
 }
 
-void CondWithElseElement::collect_vars(RegAccessSet& vars) const {
-  for (auto& entry : entries) {
-    entry.condition->collect_vars(vars);
-    entry.body->collect_vars(vars);
+void CondWithElseElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& entry : entries) {
+      entry.condition->collect_vars(vars, recursive);
+      entry.body->collect_vars(vars, recursive);
+    }
+    else_ir->collect_vars(vars, recursive);
   }
-  else_ir->collect_vars(vars);
 }
 
 void CondWithElseElement::get_modified_regs(RegSet& regs) const {
@@ -800,7 +814,7 @@ void EmptyElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void EmptyElement::apply_form(const std::function<void(Form*)>&) {}
-void EmptyElement::collect_vars(RegAccessSet&) const {}
+void EmptyElement::collect_vars(RegAccessSet&, bool) const {}
 void EmptyElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
@@ -832,9 +846,11 @@ void WhileElement::apply_form(const std::function<void(Form*)>& f) {
   condition->apply_form(f);
 }
 
-void WhileElement::collect_vars(RegAccessSet& vars) const {
-  body->collect_vars(vars);
-  condition->collect_vars(vars);
+void WhileElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    body->collect_vars(vars, recursive);
+    condition->collect_vars(vars, recursive);
+  }
 }
 
 void WhileElement::get_modified_regs(RegSet& regs) const {
@@ -871,9 +887,11 @@ void UntilElement::apply_form(const std::function<void(Form*)>& f) {
   condition->apply_form(f);
 }
 
-void UntilElement::collect_vars(RegAccessSet& vars) const {
-  body->collect_vars(vars);
-  condition->collect_vars(vars);
+void UntilElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    body->collect_vars(vars, recursive);
+    condition->collect_vars(vars, recursive);
+  }
 }
 
 void UntilElement::get_modified_regs(RegSet& regs) const {
@@ -934,10 +952,12 @@ goos::Object ShortCircuitElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list(forms);
 }
 
-void ShortCircuitElement::collect_vars(RegAccessSet& vars) const {
+void ShortCircuitElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   //  vars.insert(final_result);  // todo - this might be unused.
-  for (auto& entry : entries) {
-    entry.condition->collect_vars(vars);
+  if (recursive) {
+    for (auto& entry : entries) {
+      entry.condition->collect_vars(vars, recursive);
+    }
   }
 }
 
@@ -1003,10 +1023,12 @@ void CondNoElseElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void CondNoElseElement::collect_vars(RegAccessSet& vars) const {
-  for (auto& e : entries) {
-    e.condition->collect_vars(vars);
-    e.body->collect_vars(vars);
+void CondNoElseElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& e : entries) {
+      e.condition->collect_vars(vars, recursive);
+      e.body->collect_vars(vars, recursive);
+    }
   }
 }
 
@@ -1034,7 +1056,7 @@ void AbsElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AbsElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AbsElement::collect_vars(RegAccessSet& vars) const {
+void AbsElement::collect_vars(RegAccessSet& vars, bool) const {
   vars.insert(source);
 }
 
@@ -1066,7 +1088,7 @@ void AshElement::apply(const std::function<void(FormElement*)>& f) {
 
 void AshElement::apply_form(const std::function<void(Form*)>&) {}
 
-void AshElement::collect_vars(RegAccessSet& vars) const {
+void AshElement::collect_vars(RegAccessSet& vars, bool) const {
   vars.insert(value);
   vars.insert(shift_amount);
 }
@@ -1095,8 +1117,10 @@ void TypeOfElement::apply_form(const std::function<void(Form*)>& f) {
   value->apply_form(f);
 }
 
-void TypeOfElement::collect_vars(RegAccessSet& vars) const {
-  value->collect_vars(vars);
+void TypeOfElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    value->collect_vars(vars, recursive);
+  }
 }
 
 void TypeOfElement::get_modified_regs(RegSet&) const {}
@@ -1122,7 +1146,7 @@ void ConditionalMoveFalseElement::apply(const std::function<void(FormElement*)>&
 
 void ConditionalMoveFalseElement::apply_form(const std::function<void(Form*)>&) {}
 
-void ConditionalMoveFalseElement::collect_vars(RegAccessSet& vars) const {
+void ConditionalMoveFalseElement::collect_vars(RegAccessSet& vars, bool) const {
   vars.insert(dest);
   vars.insert(old_value);
   vars.insert(source);
@@ -1157,13 +1181,15 @@ GenericOperator GenericOperator::make_compare(IR2_Condition::Kind kind) {
   return op;
 }
 
-void GenericOperator::collect_vars(RegAccessSet& vars) const {
+void GenericOperator::collect_vars(RegAccessSet& vars, bool recursive) const {
   switch (m_kind) {
     case Kind::FIXED_OPERATOR:
     case Kind::CONDITION_OPERATOR:
       return;
     case Kind::FUNCTION_EXPR:
-      m_function->collect_vars(vars);
+      if (recursive) {
+        m_function->collect_vars(vars, recursive);
+      }
       return;
     default:
       assert(false);
@@ -1391,10 +1417,12 @@ void GenericElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void GenericElement::collect_vars(RegAccessSet& vars) const {
-  m_head.collect_vars(vars);
-  for (auto x : m_elts) {
-    x->collect_vars(vars);
+void GenericElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_head.collect_vars(vars, recursive);
+    for (auto x : m_elts) {
+      x->collect_vars(vars, recursive);
+    }
   }
 }
 
@@ -1428,8 +1456,10 @@ void CastElement::apply_form(const std::function<void(Form*)>& f) {
   m_source->apply_form(f);
 }
 
-void CastElement::collect_vars(RegAccessSet& vars) const {
-  m_source->collect_vars(vars);
+void CastElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_source->collect_vars(vars, recursive);
+  }
 }
 
 void CastElement::get_modified_regs(RegSet& regs) const {
@@ -1467,14 +1497,16 @@ DerefToken DerefToken::make_expr_placeholder() {
   return x;
 }
 
-void DerefToken::collect_vars(RegAccessSet& vars) const {
+void DerefToken::collect_vars(RegAccessSet& vars, bool recursive) const {
   switch (m_kind) {
     case Kind::INTEGER_CONSTANT:
     case Kind::FIELD_NAME:
     case Kind::EXPRESSION_PLACEHOLDER:
       break;
     case Kind::INTEGER_EXPRESSION:
-      m_expr->collect_vars(vars);
+      if (recursive) {
+        m_expr->collect_vars(vars, recursive);
+      }
       break;
     default:
       assert(false);
@@ -1597,10 +1629,12 @@ void DerefElement::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void DerefElement::collect_vars(RegAccessSet& vars) const {
-  m_base->collect_vars(vars);
-  for (auto& tok : m_tokens) {
-    tok.collect_vars(vars);
+void DerefElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_base->collect_vars(vars, recursive);
+    for (auto& tok : m_tokens) {
+      tok.collect_vars(vars, recursive);
+    }
   }
 }
 
@@ -1632,7 +1666,7 @@ void DynamicMethodAccess::apply(const std::function<void(FormElement*)>& f) {
 
 void DynamicMethodAccess::apply_form(const std::function<void(Form*)>&) {}
 
-void DynamicMethodAccess::collect_vars(RegAccessSet& vars) const {
+void DynamicMethodAccess::collect_vars(RegAccessSet& vars, bool) const {
   vars.insert(m_source);
 }
 
@@ -1679,10 +1713,12 @@ void ArrayFieldAccess::apply_form(const std::function<void(Form*)>& f) {
   }
 }
 
-void ArrayFieldAccess::collect_vars(RegAccessSet& vars) const {
+void ArrayFieldAccess::collect_vars(RegAccessSet& vars, bool recursive) const {
   vars.insert(m_source);
-  for (auto& tok : m_deref_tokens) {
-    tok.collect_vars(vars);
+  if (recursive) {
+    for (auto& tok : m_deref_tokens) {
+      tok.collect_vars(vars, recursive);
+    }
   }
 }
 
@@ -1715,8 +1751,10 @@ void GetMethodElement::apply_form(const std::function<void(Form*)>& f) {
   m_in->apply_form(f);
 }
 
-void GetMethodElement::collect_vars(RegAccessSet& vars) const {
-  m_in->collect_vars(vars);
+void GetMethodElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_in->collect_vars(vars, recursive);
+  }
 }
 
 void GetMethodElement::get_modified_regs(RegSet& regs) const {
@@ -1735,7 +1773,7 @@ goos::Object StringConstantElement::to_form_internal(const Env&) const {
 
 void StringConstantElement::apply(const std::function<void(FormElement*)>&) {}
 void StringConstantElement::apply_form(const std::function<void(Form*)>&) {}
-void StringConstantElement::collect_vars(RegAccessSet&) const {}
+void StringConstantElement::collect_vars(RegAccessSet&, bool) const {}
 void StringConstantElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
@@ -1749,7 +1787,7 @@ goos::Object ConstantTokenElement::to_form_internal(const Env&) const {
 
 void ConstantTokenElement::apply(const std::function<void(FormElement*)>&) {}
 void ConstantTokenElement::apply_form(const std::function<void(Form*)>&) {}
-void ConstantTokenElement::collect_vars(RegAccessSet&) const {}
+void ConstantTokenElement::collect_vars(RegAccessSet&, bool) const {}
 void ConstantTokenElement::get_modified_regs(RegSet&) const {}
 
 /////////////////////////////
@@ -1760,7 +1798,7 @@ ConstantFloatElement::ConstantFloatElement(float value) : m_value(value) {}
 
 void ConstantFloatElement::apply(const std::function<void(FormElement*)>&) {}
 void ConstantFloatElement::apply_form(const std::function<void(Form*)>&) {}
-void ConstantFloatElement::collect_vars(RegAccessSet&) const {}
+void ConstantFloatElement::collect_vars(RegAccessSet&, bool) const {}
 void ConstantFloatElement::get_modified_regs(RegSet&) const {}
 
 goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
@@ -1798,9 +1836,9 @@ void StorePlainDeref::apply(const std::function<void(FormElement*)>& f) {
 
 void StorePlainDeref::apply_form(const std::function<void(Form*)>&) {}
 
-void StorePlainDeref::collect_vars(RegAccessSet& vars) const {
+void StorePlainDeref::collect_vars(RegAccessSet& vars, bool recursive) const {
   m_expr.collect_vars(vars);
-  m_dst->collect_vars(vars);
+  m_dst->collect_vars(vars, recursive);
 }
 
 void StorePlainDeref::get_modified_regs(RegSet& regs) const {
@@ -1831,9 +1869,9 @@ void StoreArrayAccess::apply_form(const std::function<void(Form*)>& f) {
   m_dst->apply_form(f);
 }
 
-void StoreArrayAccess::collect_vars(RegAccessSet& vars) const {
+void StoreArrayAccess::collect_vars(RegAccessSet& vars, bool recursive) const {
   m_expr.collect_vars(vars);
-  m_dst->collect_vars(vars);
+  m_dst->collect_vars(vars, recursive);
 }
 
 void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
@@ -1857,7 +1895,7 @@ void DecompiledDataElement::apply(const std::function<void(FormElement*)>& f) {
 
 void DecompiledDataElement::apply_form(const std::function<void(Form*)>&) {}
 
-void DecompiledDataElement::collect_vars(RegAccessSet&) const {}
+void DecompiledDataElement::collect_vars(RegAccessSet&, bool) const {}
 
 void DecompiledDataElement::get_modified_regs(RegSet&) const {}
 
@@ -1907,11 +1945,11 @@ void LetElement::apply_form(const std::function<void(Form*)>& f) {
   m_body->apply_form(f);
 }
 
-void LetElement::collect_vars(RegAccessSet& vars) const {
+void LetElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   for (auto& entry : m_entries) {
     vars.insert(entry.dest);
   }
-  m_body->collect_vars(vars);
+  m_body->collect_vars(vars, recursive);
 }
 
 void LetElement::get_modified_regs(RegSet& regs) const {
