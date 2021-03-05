@@ -127,7 +127,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
   info.reg = RegClass::GPR_64;
   info.mem_deref = true;
 
-  if (typecheck(TypeSpec("float"), ts, "", false, false)) {
+  if (tc(TypeSpec("float"), ts)) {
     info.reg = RegClass::FLOAT;
   }
 
@@ -1008,6 +1008,10 @@ void TypeSystem::builtin_structure_inherit(StructureType* st) {
   st->inherit(get_type_of_type<StructureType>(st->get_parent()));
 }
 
+bool TypeSystem::tc(const TypeSpec& expected, const TypeSpec& actual) const {
+  return typecheck_and_throw(expected, actual, "", false, false);
+}
+
 /*!
  * Main compile-time type check!
  * @param expected - the expected type
@@ -1017,11 +1021,11 @@ void TypeSystem::builtin_structure_inherit(StructureType* st) {
  * @param throw_on_error - throw a std::runtime_error on failure if set.
  * @return if the type check passes
  */
-bool TypeSystem::typecheck(const TypeSpec& expected,
-                           const TypeSpec& actual,
-                           const std::string& error_source_name,
-                           bool print_on_error,
-                           bool throw_on_error) const {
+bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
+                                     const TypeSpec& actual,
+                                     const std::string& error_source_name,
+                                     bool print_on_error,
+                                     bool throw_on_error) const {
   bool success = true;
   // first, typecheck the base types:
   if (!typecheck_base_types(expected.base_type(), actual.base_type())) {
@@ -1033,7 +1037,7 @@ bool TypeSystem::typecheck(const TypeSpec& expected,
     for (size_t i = 0; i < expected.m_arguments.size(); i++) {
       // don't print/throw because the error would be confusing. Better to fail only the
       // outer most check and print a single error message.
-      if (!typecheck(expected.m_arguments[i], actual.m_arguments[i], "", false, false)) {
+      if (!tc(expected.m_arguments[i], actual.m_arguments[i])) {
         success = false;
         break;
       }
@@ -1266,17 +1270,63 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
   type->m_fields.push_back(field);
 }
 
-std::string TypeSystem::generate_deftype(const Type* type) const {
+/*!
+ * Generate the part of a deftype for the flag asserts and methods.
+ * Doesn't include the final close paren of the deftype
+ * This should work for both structure/bitfield definitions.
+ */
+std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   std::string result;
+  auto method_count = get_next_method_id(type);
+  result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
+  result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
+  TypeFlags flags;
+  flags.heap_base = 0;
+  flags.size = type->get_size_in_memory();
+  flags.pad = 0;
+  flags.methods = method_count;
 
-  auto st = dynamic_cast<const StructureType*>(type);
-  if (!st) {
-    return fmt::format(
-        ";; cannot generate deftype for {}, it is not a structure/basic (parent {})\n",
-        type->get_name(), type->get_parent());
+  result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
+
+  std::string methods_string;
+  auto new_info = type->get_new_method_defined_for_type();
+  if (new_info) {
+    methods_string.append("(new (");
+    for (size_t i = 0; i < new_info->type.arg_count() - 1; i++) {
+      methods_string.append(new_info->type.get_arg(i).print());
+      if (i != new_info->type.arg_count() - 2) {
+        methods_string.push_back(' ');
+      }
+    }
+    methods_string.append(fmt::format(
+        ") {} {})\n    ", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
   }
 
-  result += fmt::format("(deftype {} ({})\n  (", type->get_name(), type->get_parent());
+  for (auto& info : type->get_methods_defined_for_type()) {
+    methods_string.append(fmt::format("({} (", info.name));
+    for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
+      methods_string.append(info.type.get_arg(i).print());
+      if (i != info.type.arg_count() - 2) {
+        methods_string.push_back(' ');
+      }
+    }
+    methods_string.append(fmt::format(
+        ") {} {})\n    ", info.type.get_arg(info.type.arg_count() - 1).print(), info.id));
+  }
+
+  if (!methods_string.empty()) {
+    result.append("(:methods\n    ");
+    result.append(methods_string);
+    result.append(")\n  ");
+  }
+
+  result.append(")\n");
+  return result;
+}
+
+std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) const {
+  std::string result;
+  result += fmt::format("(deftype {} ({})\n  (", st->get_name(), st->get_parent());
 
   int longest_field_name = 0;
   int longest_type_name = 0;
@@ -1342,52 +1392,56 @@ std::string TypeSystem::generate_deftype(const Type* type) const {
     result.append(std::to_string(field.offset()));
     result.append(")\n   ");
   }
-  result.append(")\n");
-
-  auto method_count = get_next_method_id(type);
-  result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
-  result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
-  TypeFlags flags;
-  flags.heap_base = 0;
-  flags.size = type->get_size_in_memory();
-  flags.pad = 0;
-  flags.methods = method_count;
-
-  result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
-
-  std::string methods_string;
-  auto new_info = type->get_new_method_defined_for_type();
-  if (new_info) {
-    methods_string.append("(new (");
-    for (size_t i = 0; i < new_info->type.arg_count() - 1; i++) {
-      methods_string.append(new_info->type.get_arg(i).print());
-      if (i != new_info->type.arg_count() - 2) {
-        methods_string.push_back(' ');
-      }
-    }
-    methods_string.append(fmt::format(
-        ") {} {})\n    ", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
-  }
-
-  for (auto& info : type->get_methods_defined_for_type()) {
-    methods_string.append(fmt::format("({} (", info.name));
-    for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
-      methods_string.append(info.type.get_arg(i).print());
-      if (i != info.type.arg_count() - 2) {
-        methods_string.push_back(' ');
-      }
-    }
-    methods_string.append(fmt::format(
-        ") {} {})\n    ", info.type.get_arg(info.type.arg_count() - 1).print(), info.id));
-  }
-
-  if (!methods_string.empty()) {
-    result.append("(:methods\n    ");
-    result.append(methods_string);
-    result.append(")\n  ");
-  }
 
   result.append(")\n");
+  result.append(generate_deftype_footer(st));
 
   return result;
+}
+
+std::string TypeSystem::generate_deftype_for_bitfield(const BitFieldType* type) const {
+  std::string result;
+  result += fmt::format("(deftype {} ({})\n  (", type->get_name(), type->get_parent());
+
+  int longest_field_name = 0;
+  int longest_type_name = 0;
+
+  for (const auto& field : type->fields()) {
+    longest_field_name = std::max(longest_field_name, int(field.name().size()));
+    longest_type_name = std::max(longest_type_name, int(field.type().print().size()));
+  }
+
+  for (const auto& field : type->fields()) {
+    result += "(";
+    result += field.name();
+    result.append(1 + (longest_field_name - int(field.name().size())), ' ');
+    result += field.type().print();
+    result.append(1 + (longest_type_name - int(field.type().print().size())), ' ');
+
+    result.append(fmt::format(":offset {:3d} :size {:3d}", field.offset(), field.size()));
+    result.append(")\n   ");
+  }
+
+  result.append(")\n");
+  result.append(generate_deftype_footer(type));
+
+  return result;
+}
+
+std::string TypeSystem::generate_deftype(const Type* type) const {
+  std::string result;
+
+  auto st = dynamic_cast<const StructureType*>(type);
+  if (st) {
+    return generate_deftype_for_structure(st);
+  }
+
+  auto bf = dynamic_cast<const BitFieldType*>(type);
+  if (bf) {
+    return generate_deftype_for_bitfield(bf);
+  }
+
+  return fmt::format(
+      ";; cannot generate deftype for {}, it is not a structure, basic, or bitfield (parent {})\n",
+      type->get_name(), type->get_parent());
 }

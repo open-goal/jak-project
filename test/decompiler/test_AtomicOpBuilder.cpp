@@ -299,7 +299,7 @@ TEST(DecompilerAtomicOpBuilder, DADDIU) {
   test_case(assembly_from_list({"daddiu a1, s7, -10"}), {"(set! a1 '())"}, {{"a1"}}, {{}}, {{}});
   test_case(assembly_from_list({"daddiu a1, s7, -32768"}), {"(set! a1 __START-OF-TABLE__)"},
             {{"a1"}}, {{}}, {{}});
-  test_case(assembly_from_list({"daddiu a1, s7, 8"}), {"(set! a1 '#t)"}, {{"a1"}}, {{}}, {{}});
+  test_case(assembly_from_list({"daddiu a1, s7, 8"}), {"(set! a1 #t)"}, {{"a1"}}, {{}}, {{}});
   test_case(assembly_from_list({"L123:", "daddiu a1, fp, L123"}), {"(set! a1 L123)"}, {{"a1"}},
             {{}}, {{}});
   test_case(assembly_from_list({"daddiu a1, a2, 1234"}), {"(set! a1 (+ a2 1234))"}, {{"a1"}},

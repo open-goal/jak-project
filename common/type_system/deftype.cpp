@@ -53,7 +53,7 @@ std::string deftype_parent_list(const goos::Object& list) {
 }
 
 bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSystem* ts) {
-  return ts->typecheck(ts->make_typespec(expected), actual, "", false, false);
+  return ts->tc(ts->make_typespec(expected), actual);
 }
 
 template <typename T>

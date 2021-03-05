@@ -239,7 +239,7 @@ TEST(TypeSystem, MethodSubstitute) {
 
 namespace {
 bool ts_name_name(TypeSystem& ts, const std::string& ex, const std::string& act) {
-  return ts.typecheck(ts.make_typespec(ex), ts.make_typespec(act), "", false, false);
+  return ts.typecheck_and_throw(ts.make_typespec(ex), ts.make_typespec(act), "", false, false);
 }
 }  // namespace
 
@@ -260,17 +260,17 @@ TEST(TypeSystem, TypeCheck) {
   auto f_b_n = ts.make_function_typespec({"basic"}, "none");
 
   // complex
-  EXPECT_TRUE(ts.typecheck(f, f_s_n));
-  EXPECT_TRUE(ts.typecheck(f_s_n, f_s_n));
-  EXPECT_TRUE(ts.typecheck(f_b_n, f_s_n));
+  EXPECT_TRUE(ts.typecheck_and_throw(f, f_s_n));
+  EXPECT_TRUE(ts.typecheck_and_throw(f_s_n, f_s_n));
+  EXPECT_TRUE(ts.typecheck_and_throw(f_b_n, f_s_n));
 
-  EXPECT_FALSE(ts.typecheck(f_s_n, f, "", false, false));
-  EXPECT_FALSE(ts.typecheck(f_s_n, f_b_n, "", false, false));
+  EXPECT_FALSE(ts.typecheck_and_throw(f_s_n, f, "", false, false));
+  EXPECT_FALSE(ts.typecheck_and_throw(f_s_n, f_b_n, "", false, false));
 
   // number of parameter mismatch
   auto f_s_s_n = ts.make_function_typespec({"string", "string"}, "none");
-  EXPECT_FALSE(ts.typecheck(f_s_n, f_s_s_n, "", false, false));
-  EXPECT_FALSE(ts.typecheck(f_s_s_n, f_s_n, "", false, false));
+  EXPECT_FALSE(ts.typecheck_and_throw(f_s_n, f_s_s_n, "", false, false));
+  EXPECT_FALSE(ts.typecheck_and_throw(f_s_s_n, f_s_n, "", false, false));
 }
 
 TEST(TypeSystem, FieldLookup) {

@@ -153,7 +153,8 @@ std::string careful_function_to_string(
 
 std::string write_from_top_level(const Function& top_level,
                                  const DecompilerTypeSystem& dts,
-                                 const LinkedObjectFile& file) {
+                                 const LinkedObjectFile& file,
+                                 const std::unordered_set<std::string>& skip_functions) {
   auto top_form = top_level.ir2.top_form;
   if (!top_form) {
     return ";; ERROR: top level function was not converted to expressions. Cannot decompile.\n\n";
@@ -201,6 +202,9 @@ std::string write_from_top_level(const Function& top_level,
   auto defun_debug_matcher =
       Matcher::if_with_else(debug_seg_matcher, debug_def_matcher, non_debug_def_matcher);
 
+  // (set! sym-val <expr>)
+  auto define_symbol_matcher = Matcher::set(Matcher::any_symbol(0), Matcher::any(1));
+
   for (auto& x : top_form->elts()) {
     bool something_matched = false;
     Form f;
@@ -212,7 +216,11 @@ std::string write_from_top_level(const Function& top_level,
         something_matched = true;
         result += fmt::format(";; definition for function {}\n",
                               global_match_result.maps.strings.at(func_name));
-        result += careful_function_to_string(func, dts);
+        if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
+          result += careful_function_to_string(func, dts);
+        } else {
+          result += ";; skipped.\n\n";
+        }
       }
     }
 
@@ -224,7 +232,11 @@ std::string write_from_top_level(const Function& top_level,
           something_matched = true;
           result += fmt::format(";; definition for method of type {}\n",
                                 method_match_result.maps.strings.at(type_name));
-          result += careful_function_to_string(func, dts);
+          if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
+            result += careful_function_to_string(func, dts);
+          } else {
+            result += ";; skipped.\n\n";
+          }
         }
       }
     }
@@ -238,8 +250,8 @@ std::string write_from_top_level(const Function& top_level,
           result += dts.ts.generate_deftype(dts.ts.lookup_type(name));
           result += "\n\n";
         } else {
-          result +=
-              fmt::format(";; type {} defintion, but it is unknown to the decompiler\n\n", name);
+          result += fmt::format(
+              ";; type {} is defined here, but it is unknown to the decompiler\n\n", name);
         }
         something_matched = true;
       }
@@ -256,9 +268,28 @@ std::string write_from_top_level(const Function& top_level,
             something_matched = true;
             result += fmt::format(";; definition (debug) for function {}\n",
                                   debug_match_result.maps.strings.at(0));
-            result += careful_function_to_string(func, dts, FunctionDefSpecials::DEFUN_DEBUG);
+            if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
+              result += careful_function_to_string(func, dts, FunctionDefSpecials::DEFUN_DEBUG);
+            } else {
+              result += ";; skipped.\n\n";
+            }
           }
         }
+      }
+    }
+
+    if (!something_matched) {
+      auto define_match_result = match(define_symbol_matcher, &f);
+      if (define_match_result.matched) {
+        something_matched = true;
+        auto sym_name = define_match_result.maps.strings.at(0);
+        auto symbol_type = dts.lookup_symbol_type(sym_name);
+        result +=
+            fmt::format(";; definition for symbol {}, type {}\n", sym_name, symbol_type.print());
+        auto setset = dynamic_cast<SetFormFormElement*>(f.try_as_single_element());
+        assert(setset);
+        result += pretty_print::to_string(setset->to_form_for_define(env));
+        result += "\n\n";
       }
     }
 

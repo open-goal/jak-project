@@ -152,6 +152,8 @@ class SimpleAtom {
   bool is_sym_val() const { return m_kind == Kind::SYMBOL_VAL; };
   bool is_empty_list() const { return m_kind == Kind::EMPTY_LIST; };
   bool is_static_addr() const { return m_kind == Kind::STATIC_ADDRESS; };
+  Kind get_kind() const { return m_kind; }
+
   bool operator==(const SimpleAtom& other) const;
   bool operator!=(const SimpleAtom& other) const { return !((*this) == other); }
   void get_regs(std::vector<Register>* out) const;

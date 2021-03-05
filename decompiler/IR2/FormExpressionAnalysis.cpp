@@ -1078,7 +1078,7 @@ void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormSta
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
-  auto elt = pool.alloc_element<SetFormFormElement>(sym, val);
+  auto elt = pool.alloc_element<SetFormFormElement>(sym, val, m_cast_for_set, m_cast_for_define);
   elt->mark_popped();
   stack.push_form_element(elt, true);
 }
@@ -1263,7 +1263,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
       auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
       auto desired_arg_type = function_type.get_arg(arg_id);
-      if (!env.dts->ts.typecheck(desired_arg_type, actual_arg_type, "", false, false)) {
+      if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
         arg_forms.push_back(
             pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
       } else {
@@ -1387,7 +1387,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         for (size_t i = 0; i < 3; i++) {
           auto& var = all_pop_vars.at(i + 1);  // 0 is the function itself.
           auto arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-          if (!env.dts->ts.typecheck(expected_arg_types.at(i), arg_type, "", false, false)) {
+          if (!env.dts->ts.tc(expected_arg_types.at(i), arg_type)) {
             new_args.at(i) = pool.alloc_single_element_form<CastElement>(
                 nullptr, expected_arg_types.at(i), new_args.at(i));
           }
@@ -2241,10 +2241,14 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto sll_matcher =
           Matcher::fixed_op(FixedOperatorKind::SHL, {reg1_matcher, Matcher::integer(power_of_two)});
       sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});
-      auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher});
+      auto matcher = Matcher::match_or(
+          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher}),
+           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {reg0_matcher, sll_matcher})});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
-        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher});
+        matcher = Matcher::match_or(
+            {Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher}),
+             Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {sll_matcher, reg0_matcher})});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
           fmt::print("power {}\n", power_of_two);
@@ -2405,7 +2409,6 @@ void TypeOfElement::update_from_stack(const Env& env,
   value->update_children_from_stack(env, pool, stack, allow_side_effects);
   result->push_back(this);
 }
-
 ////////////////////////
 // EmptyElement
 ////////////////////////
@@ -2434,8 +2437,10 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    throw std::runtime_error("Got unrecognized ConditionalMoveFalseElement original: " +
-                             popped.at(0)->to_string(env));
+    lg::warn("Failed to ConditionalMoveFalseElement::push_to_stack");
+    stack.push_value_to_reg(source, popped.at(1), true);
+    stack.push_form_element(this, true);
+    return;
   }
   stack.push_value_to_reg(dest,
                           pool.alloc_single_element_form<GenericElement>(

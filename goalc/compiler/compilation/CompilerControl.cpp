@@ -11,6 +11,7 @@
 #include "common/util/FileUtil.h"
 #include "goalc/data_compiler/game_text.h"
 #include "goalc/data_compiler/game_count.h"
+#include "common/goos/ReplHistory.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -30,6 +31,7 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   }
   // flag for the REPL.
   m_want_exit = true;
+  ReplHistory::repl_save_history();
   return get_none();
 }
 
@@ -193,6 +195,59 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
 }
 
 /*!
+ * Simple help / documentation command
+ */
+Val* Compiler::compile_repl_help(const goos::Object&, const goos::Object&, Env*) {
+  fmt::print(fmt::emphasis::bold, "\nREPL Controls:\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(e)\n");
+  fmt::print(" - Exit the compiler once the current REPL command is finished\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt [ip-address] [port-number])\n");
+  fmt::print(
+      " - Connect the listener to a running target. The IP address defaults to `127.0.0.1` and the "
+      "port to `8112`\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(r [ip-address] [port-number])\n");
+  fmt::print(
+      " - Attempt to reset the target and reconnect. After this, the target will have nothing "
+      "loaded.\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(:status)\n");
+  fmt::print(" - Send a ping-like message to the target. Requires the target to be connected\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(shutdown-target)\n");
+  fmt::print(" - If the target is connected, make it exit\n");
+
+  fmt::print(fmt::emphasis::bold, "\nCompiling & Building:\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow), "(m \"filename\")\n");
+  fmt::print(" - Compile an OpenGOAL source file\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow), "(ml \"filename\")\n");
+  fmt::print(" - Compile and Load an OpenGOAL source file\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow), "(build-game)\n");
+  fmt::print(" - Loads and builds all game files and rebuilds DGOs\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow), "(build-kernel)\n");
+  fmt::print(" - Similar to (build-game) but only the kernel files\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow), "(blg)\n");
+  fmt::print(" - Performs a (build-game) and then loads all CGOs\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow),
+             "(build-dgos \"path/to/dgos/description/file\")\n");
+  fmt::print(
+      " - Builds all the DGO files described in the DGO description file. See "
+      "`goal_src/builds/dgos.txt` for an example.\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow),
+             "(asm-data-file tool-name \"file-name\")\n");
+  fmt::print(
+      " - Build a data file. The `tool-name` refers to which data building tool should be used.\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::yellow), "(build-data)\n");
+  fmt::print(" - Macro for rebuilding all data files\n");
+
+  fmt::print(fmt::emphasis::bold, "\nOther:\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::magenta), "(gs)\n");
+  fmt::print(" - Enter a GOOS REPL\n");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::magenta),
+             "(set-config! config-name config-value)\n");
+  fmt::print(" - Used to set compiler configuration\n");
+
+  return get_none();
+}
+
+/*!
  * Connect the compiler to a target. Takes an optional IP address / port, defaults to
  * 127.0.0.1 and 8112, which is the local computer and the default port for the DECI2 over IP
  * implementation.
@@ -325,6 +380,83 @@ Val* Compiler::compile_build_dgo(const goos::Object& form, const goos::Object& r
 
     build_dgo(desc);
   });
+
+  return get_none();
+}
+
+Val* Compiler::compile_reload(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+  m_want_reload = true;
+  return get_none();
+}
+
+std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
+  switch (info.kind()) {
+    case SymbolInfo::Kind::GLOBAL_VAR:
+      return fmt::format("[Global Variable] Type: {} Defined: {}",
+                         m_symbol_types.at(info.name()).print(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::LANGUAGE_BUILTIN:
+      return fmt::format("[Built-in Form] {}\n", info.name());
+    case SymbolInfo::Kind::METHOD:
+      return fmt::format("[Method] Type: {} Method Name: {} Defined: {}", info.type(), info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::TYPE:
+      return fmt::format("[Type] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::MACRO:
+      return fmt::format("[Macro] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::CONSTANT:
+      return fmt::format(
+          "[Constant] Name: {} Value: {} Defined: {}", info.name(),
+          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name())).print(),
+          m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::FUNCTION:
+      return fmt::format("[Function] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    case SymbolInfo::Kind::FWD_DECLARED_SYM:
+      return fmt::format("[Forward-Declared] Name: {} Defined: {}", info.name(),
+                         m_goos.reader.db.get_info_for(info.src_form()));
+    default:
+      assert(false);
+  }
+}
+
+Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+
+  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol()->name);
+  if (!result) {
+    fmt::print("No results found.\n");
+  } else {
+    for (auto& info : *result) {
+      fmt::print("{}", make_symbol_info_description(info));
+    }
+  }
+
+  return get_none();
+}
+
+Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+
+  Timer timer;
+  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol()->name);
+  auto time = timer.getMs();
+
+  for (auto& x : result) {
+    fmt::print(" {}\n", x);
+  }
+
+  fmt::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
+             m_symbol_info.symbol_count(), time);
 
   return get_none();
 }

@@ -16,14 +16,17 @@
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/color.h"
 #include "CompilerException.h"
+#include "goalc/compiler/SymbolInfo.h"
 #include "Enum.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
+enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
+
 class Compiler {
  public:
   Compiler();
-  void execute_repl();
+  ReplStatus execute_repl();
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
@@ -38,6 +41,7 @@ class Compiler {
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void compile_and_send_from_string(const std::string& source_code);
   void run_front_end_on_string(const std::string& src);
+  void run_full_compiler_on_string_no_save(const std::string& src);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }
   Debugger& get_debugger() { return m_debugger; }
@@ -182,10 +186,13 @@ class Compiler {
                                 int offset,
                                 Env* env);
 
+  std::string make_symbol_info_description(const SymbolInfo& info);
+
   TypeSystem m_ts;
   std::unique_ptr<GlobalEnv> m_global_env = nullptr;
   std::unique_ptr<None> m_none = nullptr;
   bool m_want_exit = false;
+  bool m_want_reload = false;
   listener::Listener m_listener;
   Debugger m_debugger;
   goos::Interpreter m_goos;
@@ -195,6 +202,8 @@ class Compiler {
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
+  SymbolInfoMap m_symbol_info;
+
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);
   bool is_float(const TypeSpec& ts);
@@ -416,6 +425,7 @@ class Compiler {
   Val* compile_exit(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reset_target(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_poke(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -423,6 +433,9 @@ class Compiler {
   Val* compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);
@@ -498,5 +511,10 @@ class Compiler {
   Val* compile_none(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
 };
+
+extern const std::unordered_map<
+    std::string,
+    Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
+    g_goal_forms;
 
 #endif  // JAK_COMPILER_H

@@ -1,11 +1,9 @@
+#include <filesystem>
+
 #include "gtest/gtest.h"
 
 #include "common/util/FileUtil.h"
-
-#include <filesystem>
-#ifdef _WIN32
-#include <Windows.h>
-#endif
+#include "common/log/log.h"
 
 // Running subsets of tests, see:
 // -
@@ -19,22 +17,8 @@
 // to make it easier to test a subset of tests
 
 int main(int argc, char** argv) {
-#ifdef _WIN32
-  // Always enable VIRTUAL_TERMINAL_PROCESSING, this console mode allows the console (stdout) to
-  // support ANSI colors in the outputted text, which are used by the logging tool.
-  // This mode may not be enabled by default, and changing that involves modifying the registry,
-  // so it seems like a better solution would be enabling it ourselves.
+  lg::initialize();
 
-  // Get handle to stdout
-  HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-  // get current stdout mode
-  DWORD modeStdOut;
-  GetConsoleMode(hStdOut, &modeStdOut);
-  // enable VIRTUAL_TERMINAL_PROCESSING. As a bitwise OR it will not do anything if it is
-  // already set
-  modeStdOut |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  SetConsoleMode(hStdOut, modeStdOut);
-#endif
   ::testing::InitGoogleTest(&argc, argv);
 
   // Re-init failed folder
