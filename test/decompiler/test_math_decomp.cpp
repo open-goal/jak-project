@@ -94,11 +94,11 @@ TEST_F(FormRegressionTest, ExprSeek) {
       "    daddu sp, sp, r0";
   std::string type = "(function float float float float)";
   std::string expected =
-      "(begin\n"
-      "  (set! f2-0 (- arg1 arg0))\n"
+      "(let\n"
+      "  ((f2-0 (- arg1 arg0)))\n"
       "  (cond\n"
       "   ((>= arg2 (fabs f2-0)) arg1)\n"
-      "   ((>= f2-0 0.000000) (+ arg0 arg2))\n"
+      "   ((>= f2-0 0.0) (+ arg0 arg2))\n"
       "   (else (- arg0 arg2))\n"
       "   )\n"
       "  )";

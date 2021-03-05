@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "insert_lets.h"
 
 namespace decompiler {
@@ -35,14 +37,15 @@ std::vector<Form*> path_up_tree(Form* in) {
 
   while (in) {
     path.push_back(in);
-    // lg::warn("In: {}\n", in->to_string(env));
+    // lg::warn("In: {}", in->to_string(env));
     if (in->parent_element) {
-      // lg::warn("  {}\n", in->parent_element->to_string(env));
+      // lg::warn("  {}", in->parent_element->to_string(env));
       in = in->parent_element->parent_form;
     } else {
       in = nullptr;
     }
   }
+  // lg::warn("DONE\n");
   return path;
 }
 
@@ -52,10 +55,11 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     return b;
   }
 
+  // fmt::print("lca {} ({}) and {} ({})\n", a->to_string(env), (void*)a, b->to_string(env),
+  // (void*)b);
+
   auto a_up = path_up_tree(a);
   auto b_up = path_up_tree(b);
-
-  // fmt::print("lca {} and {}\n", a->to_string(env), b->to_string(env));
 
   int ai = a_up.size() - 1;
   int bi = b_up.size() - 1;

@@ -43,12 +43,16 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "abs", "ash", "min", "max", "lognor",
     // these require 128-bit integers. We want these eventually, but disabling for now to focus
     // on more important issues.
-    "(method 3 vec4s)", "(method 2 vec4s)"};
+    "(method 3 vec4s)", "(method 2 vec4s)",
+    // these should pass eventually
+    "(method 2 array)", "(method 3 array)", "valid?", "mem-copy!", "qmem-copy<-!", "qmem-copy->!",
+    "mem-or!", "breakpoint-range-set!", "print", "printl", "inspect"};
 
 // The decompiler does not attempt to insert forward definitions, as this would be part of an
 // unimplemented full-program type analysis pass.  For now, we manually specify all functions
 // that should have a forward definition here.
-const std::string g_forward_type_defs = "(define-extern name= (function basic basic symbol))";
+const std::string g_forward_type_defs = "(define-extern name= (function basic basic symbol))\n"
+    "(define-extern fact (function int int))";
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";

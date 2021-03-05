@@ -1348,7 +1348,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
       throw std::runtime_error("Failed to resolve.");
     }
 
-    arg_forms.insert(arg_forms.begin(), unsafe);
+    arg_forms.insert(arg_forms.begin(), mr.maps.forms.at(0));
+
     new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
 
