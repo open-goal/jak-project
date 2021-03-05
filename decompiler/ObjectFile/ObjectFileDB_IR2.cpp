@@ -10,6 +10,7 @@
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "decompiler/analysis/reg_usage.h"
+#include "decompiler/analysis/insert_lets.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/final_output.h"
@@ -45,6 +46,11 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
     ir2_store_current_forms();
     lg::info("Expression building...");
     ir2_build_expressions();
+
+    if (get_config().insert_lets) {
+      lg::info("Inserting lets...");
+      ir2_insert_lets();
+    }
   }
 
   if (!output_dir.empty()) {
@@ -420,6 +426,22 @@ void ObjectFileDB::ir2_build_expressions() {
   });
 
   lg::info("{}/{}/{} expression build in {:.2f} ms\n", successful, attempted, total, timer.getMs());
+}
+
+void ObjectFileDB::ir2_insert_lets() {
+  Timer timer;
+  LetStats combined_stats;
+  int attempted = 0;
+
+  for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
+    if (func.ir2.expressions_succeeded) {
+      attempted++;
+      combined_stats += insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+    }
+  });
+
+  lg::info("Let pass on {} functions ({}/{} vars in lets) in {:.2f} ms\n", attempted,
+           combined_stats.vars_in_lets, combined_stats.total_vars, timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {

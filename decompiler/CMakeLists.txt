@@ -6,6 +6,7 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/insert_lets.cpp
         analysis/reg_usage.cpp
         analysis/variable_naming.cpp
 

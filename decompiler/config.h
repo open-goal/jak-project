@@ -40,6 +40,7 @@ struct Config {
   bool write_func_json = false;
   bool function_type_prop = false;
   bool analyze_expressions = false;
+  bool insert_lets = false;
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_set<std::string> no_type_analysis_functions_by_name;
