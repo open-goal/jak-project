@@ -628,6 +628,12 @@ void BranchElement::get_modified_regs(RegSet& regs) const {
 // ReturnElement
 /////////////////////////////
 
+ReturnElement::ReturnElement(Form* _return_code, Form* _dead_code)
+    : return_code(_return_code), dead_code(_dead_code) {
+  return_code->parent_element = this;
+  dead_code->parent_element = this;
+}
+
 goos::Object ReturnElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("return"));
@@ -671,6 +677,12 @@ void ReturnElement::get_modified_regs(RegSet& regs) const {
 // BreakElement
 /////////////////////////////
 
+BreakElement::BreakElement(Form* _return_code, Form* _dead_code)
+    : return_code(_return_code), dead_code(_dead_code) {
+  return_code->parent_element = this;
+  dead_code->parent_element = this;
+}
+
 goos::Object BreakElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
   forms.push_back(pretty_print::to_symbol("break"));
@@ -704,6 +716,15 @@ void BreakElement::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 // CondWithElseElement
 /////////////////////////////
+
+CondWithElseElement::CondWithElseElement(std::vector<Entry> _entries, Form* _else_ir)
+    : entries(std::move(_entries)), else_ir(_else_ir) {
+  for (auto& e : entries) {
+    e.condition->parent_element = this;
+    e.body->parent_element = this;
+  }
+  else_ir->parent_element = this;
+}
 
 goos::Object CondWithElseElement::to_form_internal(const Env& env) const {
   // for now we only turn it into an if statement if both cases won't require a begin at the top
@@ -786,6 +807,11 @@ void EmptyElement::get_modified_regs(RegSet&) const {}
 // WhileElement
 /////////////////////////////
 
+WhileElement::WhileElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {
+  condition->parent_element = this;
+  body->parent_element = this;
+}
+
 void WhileElement::apply(const std::function<void(FormElement*)>& f) {
   // note - this is done in program order, rather than print order. Not sure if this makes sense.
   f(this);
@@ -820,6 +846,11 @@ void WhileElement::get_modified_regs(RegSet& regs) const {
 // UntilElement
 /////////////////////////////
 
+UntilElement::UntilElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {
+  condition->parent_element = this;
+  body->parent_element = this;
+}
+
 void UntilElement::apply(const std::function<void(FormElement*)>& f) {
   // note - this is done in program order, rather than print order. Not sure if this makes sense.
   f(this);
@@ -853,6 +884,13 @@ void UntilElement::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 // ShortCircuitElement
 /////////////////////////////
+
+ShortCircuitElement::ShortCircuitElement(std::vector<Entry> _entries)
+    : entries(std::move(_entries)) {
+  for (auto& entry : entries) {
+    entry.condition->parent_element = this;
+  }
+}
 
 void ShortCircuitElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
@@ -912,6 +950,13 @@ void ShortCircuitElement::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 // CondNoElseElement
 /////////////////////////////
+
+CondNoElseElement::CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {
+  for (auto& entry : entries) {
+    entry.condition->parent_element = this;
+    entry.body->parent_element = this;
+  }
+}
 
 goos::Object CondNoElseElement::to_form_internal(const Env& env) const {
   if (entries.size() == 1 && entries.front().body->is_single_element()) {
@@ -1324,6 +1369,7 @@ goos::Object GenericElement::to_form_internal(const Env& env) const {
     std::vector<goos::Object> result;
     result.push_back(m_head.to_form(env));
     for (auto x : m_elts) {
+      assert(x->parent_element);
       result.push_back(x->to_form(env));
     }
     return pretty_print::build_list(result);
@@ -1527,6 +1573,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> 
 }
 
 goos::Object DerefElement::to_form_internal(const Env& env) const {
+  assert(m_base->parent_element);
   std::vector<goos::Object> forms = {pretty_print::to_symbol(m_is_addr_of ? "&->" : "->"),
                                      m_base->to_form(env)};
   for (auto& tok : m_tokens) {
@@ -1564,6 +1611,11 @@ void DerefElement::get_modified_regs(RegSet& regs) const {
   }
 }
 
+void DerefElement::set_base(Form* new_base) {
+  m_base = new_base;
+  m_base->parent_element = this;
+}
+
 /////////////////////////////
 // DynamicMethodAccess
 /////////////////////////////
@@ -1596,7 +1648,13 @@ ArrayFieldAccess::ArrayFieldAccess(RegisterAccess source,
     : m_source(source),
       m_deref_tokens(deref_tokens),
       m_expected_stride(expected_stride),
-      m_constant_offset(constant_offset) {}
+      m_constant_offset(constant_offset) {
+  for (auto& token : m_deref_tokens) {
+    if (token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      token.expr()->parent_element = this;
+    }
+  }
+}
 
 goos::Object ArrayFieldAccess::to_form_internal(const Env& env) const {
   std::vector<goos::Object> elts;
@@ -1709,6 +1767,10 @@ goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
   return pretty_print::float_representation(m_value);
 }
 
+/////////////////////////////
+// StorePlainDeref
+/////////////////////////////
+
 StorePlainDeref::StorePlainDeref(DerefElement* dst,
                                  SimpleExpression expr,
                                  int my_idx,
@@ -1745,6 +1807,10 @@ void StorePlainDeref::get_modified_regs(RegSet& regs) const {
   m_dst->get_modified_regs(regs);
 }
 
+/////////////////////////////
+// StoreArrayAccess
+/////////////////////////////
+
 StoreArrayAccess::StoreArrayAccess(ArrayFieldAccess* dst,
                                    SimpleExpression expr,
                                    int my_idx,
@@ -1774,6 +1840,10 @@ void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
   m_dst->get_modified_regs(regs);
 }
 
+/////////////////////////////
+// DecompiledDataElement
+/////////////////////////////
+
 DecompiledDataElement::DecompiledDataElement(goos::Object description)
     : m_description(std::move(description)) {}
 
@@ -1790,5 +1860,75 @@ void DecompiledDataElement::apply_form(const std::function<void(Form*)>&) {}
 void DecompiledDataElement::collect_vars(RegAccessSet&) const {}
 
 void DecompiledDataElement::get_modified_regs(RegSet&) const {}
+
+/////////////////////////////
+// LetElement
+/////////////////////////////
+
+LetElement::LetElement(Form* body, bool star) : m_body(body), m_star(star) {
+  m_body->parent_element = this;
+}
+
+void LetElement::add_def(RegisterAccess dst, Form* value) {
+  value->parent_element = this;
+  m_entries.push_back({dst, value});
+}
+
+void LetElement::make_let_star() {
+  m_star = true;
+}
+
+goos::Object LetElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> outer = {pretty_print::to_symbol(m_star ? "let*" : "let")};
+
+  std::vector<goos::Object> def_list;
+
+  for (auto& entry : m_entries) {
+    def_list.push_back(pretty_print::build_list(entry.dest.to_form(env), entry.src->to_form(env)));
+  }
+
+  outer.push_back(pretty_print::build_list(def_list));
+  m_body->inline_forms(outer, env);
+  return pretty_print::build_list(outer);
+}
+
+void LetElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& entry : m_entries) {
+    entry.src->apply(f);
+  }
+  m_body->apply(f);
+}
+
+void LetElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& entry : m_entries) {
+    entry.src->apply_form(f);
+  }
+  m_body->apply_form(f);
+}
+
+void LetElement::collect_vars(RegAccessSet& vars) const {
+  for (auto& entry : m_entries) {
+    vars.insert(entry.dest);
+  }
+  m_body->collect_vars(vars);
+}
+
+void LetElement::get_modified_regs(RegSet& regs) const {
+  for (auto& entry : m_entries) {
+    regs.insert(entry.dest.reg());
+  }
+  m_body->get_modified_regs(regs);
+}
+
+void LetElement::add_entry(const Entry& e) {
+  e.src->parent_element = this;
+  m_entries.push_back(e);
+}
+
+void LetElement::set_body(Form* new_body) {
+  m_body = new_body;
+  m_body->parent_element = this;
+}
 
 }  // namespace decompiler

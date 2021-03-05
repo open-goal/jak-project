@@ -481,8 +481,7 @@ class ReturnElement : public FormElement {
  public:
   Form* return_code = nullptr;
   Form* dead_code = nullptr;
-  ReturnElement(Form* _return_code, Form* _dead_code)
-      : return_code(_return_code), dead_code(_dead_code) {}
+  ReturnElement(Form* _return_code, Form* _dead_code);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -516,8 +515,7 @@ class BreakElement : public FormElement {
  public:
   Form* return_code = nullptr;
   Form* dead_code = nullptr;
-  BreakElement(Form* _return_code, Form* _dead_code)
-      : return_code(_return_code), dead_code(_dead_code) {}
+  BreakElement(Form* _return_code, Form* _dead_code);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -550,8 +548,7 @@ class CondWithElseElement : public FormElement {
   std::vector<Entry> entries;
   Form* else_ir = nullptr;
   bool already_rewritten = false;
-  CondWithElseElement(std::vector<Entry> _entries, Form* _else_ir)
-      : entries(std::move(_entries)), else_ir(_else_ir) {}
+  CondWithElseElement(std::vector<Entry> _entries, Form* _else_ir);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -586,7 +583,7 @@ class EmptyElement : public FormElement {
  */
 class WhileElement : public FormElement {
  public:
-  WhileElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {}
+  WhileElement(Form* _condition, Form* _body);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -605,7 +602,7 @@ class WhileElement : public FormElement {
  */
 class UntilElement : public FormElement {
  public:
-  UntilElement(Form* _condition, Form* _body) : condition(_condition), body(_body) {}
+  UntilElement(Form* _condition, Form* _body);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -640,7 +637,7 @@ class ShortCircuitElement : public FormElement {
   std::optional<bool> used_as_value = std::nullopt;
   bool already_rewritten = false;
 
-  explicit ShortCircuitElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  explicit ShortCircuitElement(std::vector<Entry> _entries);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -672,7 +669,7 @@ class CondNoElseElement : public FormElement {
   bool used_as_value = false;
   bool already_rewritten = false;
   std::vector<Entry> entries;
-  explicit CondNoElseElement(std::vector<Entry> _entries) : entries(std::move(_entries)) {}
+  explicit CondNoElseElement(std::vector<Entry> _entries);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -951,7 +948,7 @@ class DerefElement : public FormElement {
   const Form* base() const { return m_base; }
   Form* base() { return m_base; }
   const std::vector<DerefToken>& tokens() const { return m_tokens; }
-  void set_base(Form* new_base) { m_base = new_base; }
+  void set_base(Form* new_base);
 
  private:
   Form* m_base = nullptr;
@@ -1137,6 +1134,33 @@ class DecompiledDataElement : public FormElement {
   goos::Object m_description;
 };
 
+class LetElement : public FormElement {
+ public:
+  LetElement(Form* body, bool star = false);
+  void add_def(RegisterAccess dst, Form* value);
+
+  void make_let_star();
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  Form* body() { return m_body; }
+  void set_body(Form* new_body);
+
+  struct Entry {
+    RegisterAccess dest;
+    Form* src = nullptr;
+  };
+  std::vector<Entry> entries() { return m_entries; }
+  void add_entry(const Entry& e);
+
+ private:
+  Form* m_body = nullptr;
+  std::vector<Entry> m_entries;
+  bool m_star = false;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:
@@ -1186,6 +1210,11 @@ class Form {
 
   const std::vector<FormElement*>& elts() const { return m_elements; }
   std::vector<FormElement*>& elts() { return m_elements; }
+  void claim_all_children() {
+    for (auto elt : elts()) {
+      elt->parent_form = this;
+    }
+  }
 
   void push_back(FormElement* elt) {
     elt->parent_form = this;

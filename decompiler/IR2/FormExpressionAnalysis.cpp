@@ -1750,8 +1750,10 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   if (rewrite_as_set && !set_unused) {
     for (auto& entry : entries) {
       rewrite_to_get_var(entry.body->elts(), pool, *last_var, env);
+      entry.body->claim_all_children();
     }
     rewrite_to_get_var(else_ir->elts(), pool, *last_var, env);
+    else_ir->claim_all_children();
   }
 
   // update register info
