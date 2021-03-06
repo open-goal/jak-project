@@ -266,7 +266,7 @@ TEST_F(FormRegressionTest, ExprAbs) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
-  std::string expected = "(let ((v0-0 arg0)) (abs v0-0))";
+  std::string expected = "(abs arg0)";
   test_with_expr(func, type, expected);
 }
 
