@@ -495,6 +495,11 @@ void LinkedObjectFile::process_fp_relative_links() {
               case InstructionKind::DADDU:
               case InstructionKind::ADDU: {
                 assert(prev_instr);
+                if (prev_instr->kind != InstructionKind::ORI) {
+                  lg::error("Failed to process fp relative links for (d)addu preceded by: {}",
+                            prev_instr->to_string(labels));
+                  return;
+                }
                 assert(prev_instr->kind == InstructionKind::ORI);
                 int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
                 auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
@@ -814,7 +819,9 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_q
     char cword[4];
     memcpy(cword, &word.data, 4);
     result += cword[byte_offset];
-    assert(result.back() != 0);
+    if (result.back() == 0) {
+      return "invalid string! (check me!)";
+    }
   }
   if (with_quotes) {
     result += "\"";

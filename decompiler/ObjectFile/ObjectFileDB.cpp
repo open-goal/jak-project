@@ -18,7 +18,6 @@
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
-#include "third-party/lzokay/lzokay.hpp"
 #include "common/util/BinaryReader.h"
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
@@ -343,8 +342,11 @@ std::string ObjectFileDB::generate_dgo_listing() {
 
 namespace {
 std::string pad_string(const std::string& in, size_t length) {
-  assert(in.length() < length);
-  return in + std::string(length - in.length(), ' ');
+  if (in.length() < length) {
+    return in + std::string(length - in.length(), ' ');
+  } else {
+    return in;
+  }
 }
 }  // namespace
 
@@ -366,11 +368,16 @@ std::string ObjectFileDB::generate_obj_listing() {
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
+      if (all_unique_names.find(x.to_unique_name()) != all_unique_names.end()) {
+        lg::error("Object file {} appears multiple times with the same name.", x.to_unique_name());
+      }
       all_unique_names.insert(x.to_unique_name());
     }
     // this check is extremely important. It makes sure we don't have any repeat names. This could
     // be caused by two files with the same name, in the same DGOs, but different data.
-    assert(int(all_unique_names.size()) == unique_count);
+    if (int(all_unique_names.size()) != unique_count) {
+      lg::error("Object files are not named properly, data will be lost!");
+    }
   }
 
   if (result.length() >= 2) {
