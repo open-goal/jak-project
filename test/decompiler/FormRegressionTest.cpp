@@ -5,6 +5,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
+#include "decompiler/analysis/insert_lets.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 #include "third-party/json.hpp"
@@ -129,7 +130,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // for now, just test that this can at least be called.
   if (test->func.ir2.top_form) {
     RegAccessSet vars;
-    test->func.ir2.top_form->collect_vars(vars);
+    test->func.ir2.top_form->collect_vars(vars, true);
 
     if (do_expressions) {
       bool success = convert_to_expressions(test->func.ir2.top_form, *test->func.ir2.form_pool,
@@ -139,6 +140,8 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
       if (!success) {
         return nullptr;
       }
+      insert_lets(test->func, test->func.ir2.env, *test->func.ir2.form_pool,
+                  test->func.ir2.top_form);
     }
   }
 

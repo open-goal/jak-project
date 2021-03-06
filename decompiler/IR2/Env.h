@@ -43,7 +43,9 @@ class Env {
     return m_reg_use;
   }
 
+  // TODO - remove this.
   goos::Object get_variable_name(Register reg, int atomic_idx, AccessMode mode) const;
+  std::string get_variable_name(const RegisterAccess& access) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -126,6 +128,8 @@ class Env {
     }
   }
 
+  void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -148,5 +152,7 @@ class Env {
   std::unordered_map<int, std::vector<TypeHint>> m_typehints;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, LabelType> m_label_types;
+
+  std::unordered_set<std::string> m_vars_defined_in_let;
 };
 }  // namespace decompiler

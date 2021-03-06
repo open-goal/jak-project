@@ -82,6 +82,7 @@ goos::Object Env::get_variable_name(Register reg, int atomic_idx, AccessMode mod
     if (type_kv != m_typehints.end()) {
       for (auto& x : type_kv->second) {
         if (x.reg == reg) {
+          // TODO - redo this!
           return pretty_print::build_list("the-as", x.type_name, lookup_name);
         }
       }
@@ -89,6 +90,19 @@ goos::Object Env::get_variable_name(Register reg, int atomic_idx, AccessMode mod
     return pretty_print::to_symbol(lookup_name);
   } else {
     return pretty_print::to_symbol(reg.to_charp());
+  }
+}
+
+std::string Env::get_variable_name(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    std::string lookup_name = m_var_names.lookup(access.reg(), access.idx(), access.mode()).name();
+    auto remapped = m_var_remap.find(lookup_name);
+    if (remapped != m_var_remap.end()) {
+      lookup_name = remapped->second;
+    }
+    return lookup_name;
+  } else {
+    throw std::runtime_error("Cannot store a variable in this reg");
   }
 }
 
@@ -167,7 +181,7 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
   std::vector<VariableNames::VarInfo> entries;
   if (top_level_form) {
     RegAccessSet var_set;
-    top_level_form->collect_vars(var_set);
+    top_level_form->collect_vars(var_set, true);
 
     // we want to sort them for easier reading:
     std::vector<std::pair<RegId, RegisterAccess>> vars;
@@ -243,12 +257,18 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
         x.reg_id.reg.get_gpr() >= Reg::A0 && x.reg_id.id == 0) {
       continue;
     }
-    count++;
+
     std::string lookup_name = x.name();
     auto remapped = m_var_remap.find(lookup_name);
     if (remapped != m_var_remap.end()) {
       lookup_name = remapped->second;
     }
+
+    if (m_vars_defined_in_let.find(lookup_name) != m_vars_defined_in_let.end()) {
+      continue;
+    }
+
+    count++;
 
     elts.push_back(pretty_print::build_list(lookup_name, x.type.typespec().print()));
   }

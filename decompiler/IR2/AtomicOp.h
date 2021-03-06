@@ -148,6 +148,7 @@ class SimpleAtom {
     return m_int;
   }
   bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; };
+  bool is_int(s64 integer) const { return is_int() && get_int() == integer; }
   bool is_sym_ptr() const { return m_kind == Kind::SYMBOL_PTR; };
   bool is_sym_val() const { return m_kind == Kind::SYMBOL_VAL; };
   bool is_empty_list() const { return m_kind == Kind::EMPTY_LIST; };

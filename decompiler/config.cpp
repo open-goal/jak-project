@@ -53,6 +53,7 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.function_type_prop = cfg.at("function_type_prop").get<bool>();
   gConfig.analyze_expressions = cfg.at("analyze_expressions").get<bool>();
   gConfig.run_ir2 = cfg.at("run_ir2").get<bool>();
+  gConfig.insert_lets = cfg.at("insert_lets").get<bool>();
 
   std::vector<std::string> asm_functions_by_name =
       cfg.at("asm_functions_by_name").get<std::vector<std::string>>();
