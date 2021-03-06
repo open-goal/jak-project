@@ -45,6 +45,7 @@ class Matcher {
   static Matcher if_with_else(const Matcher& condition,
                               const Matcher& true_case,
                               const Matcher& false_case);
+  static Matcher while_loop(const Matcher& condition, const Matcher& body);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -62,6 +63,7 @@ class Matcher {
     ANY_LABEL,
     SYMBOL,
     IF_WITH_ELSE,
+    WHILE_LOOP,
     INVALID
   };
 
