@@ -294,12 +294,10 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
     if (!args.has_named("offset")) {
       offset = as_co->offset;
     } else {
-      int offset = args.named.at("offset").as_int();
-      offset = as_co->offset + offset;
+      offset = as_co->offset + args.named.at("offset").as_int();
     }
   } else if (args.has_named("offset")) {
-    int offset = args.named.at("offset").as_int();
-    offset = as_co->offset + offset;
+    offset = args.named.at("offset").as_int();
   }
 
   MemLoadInfo info;
@@ -331,27 +329,25 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
     throw_compiler_error(form, "Cannot .svf from this. Got a {}.", dest->print());
   }
 
-  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
-  RegVal* baseReg = as_co ? as_co->base->to_gpr(env) : src->to_gpr(env);
+  auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(dest);
+  RegVal* baseReg = as_co ? as_co->base->to_gpr(env) : dest->to_gpr(env);
   int offset = 0;
 
   if (as_co) {
     if (!args.has_named("offset")) {
       offset = as_co->offset;
     } else {
-      int offset = args.named.at("offset").as_int();
-      offset = as_co->offset + offset;
+      offset = as_co->offset + args.named.at("offset").as_int();
     }
   } else if (args.has_named("offset")) {
-    int offset = args.named.at("offset").as_int();
-    offset = as_co->offset + offset;
+    offset = args.named.at("offset").as_int();
   }
 
   MemLoadInfo info;
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  env->emit_ir<IR_StoreConstOffset>(dest, offset, baseReg, info.size, color);
+  env->emit_ir<IR_StoreConstOffset>(src, offset, baseReg, info.size, color);
   return get_none();
 }
 
