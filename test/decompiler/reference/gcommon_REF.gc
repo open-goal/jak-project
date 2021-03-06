@@ -255,10 +255,7 @@
 
 ;; definition for function ref
 (defun ref ((lst object) (index int))
-  (let
-   ((count 0))
-   (while (< count index) (nop!) (nop!) (set! lst (cdr lst)) (+! count 1))
-   )
+  (dotimes (count index) (nop!) (nop!) (set! lst (cdr lst)))
   (car lst)
   )
 
@@ -901,15 +898,11 @@
 (defun mem-copy! ((dst pointer) (src pointer) (size int))
   (let
    ((result dst))
-   (let
-    ((i 0))
-    (while
-     (< i size)
-     (set! (-> (the-as (pointer int8) dst)) (-> (the-as (pointer uint8) src)))
-     (&+! dst 1)
-     (&+! src 1)
-     (+! i 1)
-     )
+   (dotimes
+    (i size)
+    (set! (-> (the-as (pointer int8) dst)) (-> (the-as (pointer uint8) src)))
+    (&+! dst 1)
+    (&+! src 1)
     )
    result
    )
@@ -961,15 +954,11 @@
 (defun mem-set32! ((dst pointer) (size int) (value int))
   (let
    ((result dst))
-   (let
-    ((i 0))
-    (while
-     (< i size)
-     (set! (-> (the-as (pointer int32) dst)) value)
-     (&+! dst 4)
-     (nop!)
-     (+! i 1)
-     )
+   (dotimes
+    (i size)
+    (set! (-> (the-as (pointer int32) dst)) value)
+    (&+! dst 4)
+    (nop!)
     )
    result
    )
@@ -979,21 +968,17 @@
 (defun mem-or! ((dst pointer) (src pointer) (size int))
   (let
    ((result dst))
-   (let
-    ((i 0))
-    (while
-     (< i size)
-     (set!
-      (-> (the-as (pointer int8) dst))
-      (logior
-       (-> (the-as (pointer uint8) dst))
-       (-> (the-as (pointer uint8) src))
-       )
+   (dotimes
+    (i size)
+    (set!
+     (-> (the-as (pointer int8) dst))
+     (logior
+      (-> (the-as (pointer uint8) dst))
+      (-> (the-as (pointer uint8) src))
       )
-     (&+! dst 1)
-     (&+! src 1)
-     (+! i 1)
      )
+    (&+! dst 1)
+    (&+! src 1)
     )
    result
    )
@@ -1029,20 +1014,16 @@
 
 ;; definition (debug) for function mem-print
 (defun-debug mem-print ((data (pointer uint32)) (word-count int))
-  (let
-   ((current-qword 0))
-   (while
-    (< current-qword (sar word-count 2))
-    (format
-     0
-     "~X: ~X ~X ~X ~X~%"
-     (&-> data (shl current-qword 2))
-     (-> data (shl current-qword 2))
-     (-> data (+ (shl current-qword 2) 1))
-     (-> data (+ (shl current-qword 2) 2))
-     (-> data (+ (shl current-qword 2) 3))
-     )
-    (+! current-qword 1)
+  (dotimes
+   (current-qword (sar word-count 2))
+   (format
+    0
+    "~X: ~X ~X ~X ~X~%"
+    (&-> data (shl current-qword 2))
+    (-> data (shl current-qword 2))
+    (-> data (+ (shl current-qword 2) 1))
+    (-> data (+ (shl current-qword 2) 2))
+    (-> data (+ (shl current-qword 2) 3))
     )
    )
   #f
@@ -1053,14 +1034,10 @@
 
 ;; definition for function print-tree-bitmask
 (defun print-tree-bitmask ((bits int) (count int))
-  (let
-   ((i 0))
-   (while
-    (< i count)
-    (if (zero? (logand bits 1)) (format #t "    ") (format #t "|   "))
-    (set! bits (shr bits 1))
-    (+! i 1)
-    )
+  (dotimes
+   (i count)
+   (if (zero? (logand bits 1)) (format #t "    ") (format #t "|   "))
+   (set! bits (shr bits 1))
    )
   #f
   )

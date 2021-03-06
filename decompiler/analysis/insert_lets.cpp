@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "insert_lets.h"
+#include "decompiler/IR2/GenericElementMatcher.h"
 
 namespace decompiler {
 
@@ -78,6 +79,101 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
 
   // fmt::print("{}\n\n", result->to_string(env));
   return result;
+}
+
+bool is_constant_int(const Form* f, int val) {
+  auto as_atom = form_as_atom(f);
+  return as_atom && as_atom->is_int(val);
+}
+
+FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) {
+  // dotimes OpenGOAL:
+  /*
+     (defmacro dotimes (var &rest body)
+       "Loop like for (int i = 0; i < end; i++)"
+       `(let ((,(first var) 0))
+         (while (< ,(first var) ,(second var))
+                 ,@body
+                 (+1! ,(first var))
+                 )
+          ,@(cddr var)
+          )
+       )
+   */
+
+  // should have this anyway, but double check so we don't throw this away.
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  // look for setting a var to zero.
+  auto ra = in->entries().at(0).dest;
+  auto var = env.get_variable_name(ra);
+  if (!is_constant_int(in->entries().at(0).src, 0)) {
+    return nullptr;
+  }
+
+  // still have to check body for the increment and have to check that the lt operates on the right
+  // thing.
+  Matcher while_matcher =
+      Matcher::while_loop(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LT),
+                                      {Matcher::any_reg(0), Matcher::any(1)}),
+                          Matcher::any(2));
+
+  auto mr = match(while_matcher, in->body());
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  // check the lt operation:
+  auto lt_var = mr.maps.regs.at(0);
+  assert(lt_var);
+  if (env.get_variable_name(*lt_var) != var) {
+    return nullptr;  // wrong variable checked
+  }
+
+  // check the body
+  auto body = mr.maps.forms.at(2);
+  auto last_in_body = body->elts().back();
+
+  // kind hacky
+  Form fake_form;
+  fake_form.elts().push_back(last_in_body);
+  Matcher increment_matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_IN_PLACE),
+                  {Matcher::any_reg(0), Matcher::integer(1)});
+
+  auto int_mr = match(increment_matcher, &fake_form);
+  if (!int_mr.matched) {
+    return nullptr;
+  }
+
+  auto inc_var = int_mr.maps.regs.at(0);
+  assert(inc_var);
+  if (env.get_variable_name(*inc_var) != var) {
+    return nullptr;  // wrong variable incremented
+  }
+
+  // success! here we commit to modifying this:
+
+  // first, remove the increment
+  body->pop_back();
+
+  return pool.alloc_element<DoTimesElement>(in->entries().at(0).dest, *lt_var, *inc_var,
+                                            mr.maps.forms.at(1), body);
+}
+
+/*!
+ * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
+ */
+FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
+  auto as_dotimes = rewrite_as_dotimes(in, env, pool);
+  if (as_dotimes) {
+    return as_dotimes;
+  }
+
+  // nothing matched.
+  return nullptr;
 }
 }  // namespace
 
@@ -296,7 +392,19 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     group.first->claim_all_children();
   }
 
-  // Part 8: (todo) recognize loops and stuff.
+  // Part 8: recognize loop forms
+  top_level_form->apply_form([&](Form* f) {
+    for (auto& elt : f->elts()) {
+      auto as_let = dynamic_cast<LetElement*>(elt);
+      if (as_let) {
+        auto rewritten = rewrite_let(as_let, env, pool);
+        if (rewritten) {
+          rewritten->parent_form = f;
+          elt = rewritten;
+        }
+      }
+    }
+  });
 
   // Part 9: compact recursive lets:
   bool changed = true;

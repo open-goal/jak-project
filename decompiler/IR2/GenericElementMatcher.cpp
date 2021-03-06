@@ -123,6 +123,13 @@ Matcher Matcher::set(const Matcher& dst, const Matcher& src) {
   return m;
 }
 
+Matcher Matcher::while_loop(const Matcher& condition, const Matcher& body) {
+  Matcher m;
+  m.m_kind = Kind::WHILE_LOOP;
+  m.m_sub_matchers = {condition, body};
+  return m;
+}
+
 bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::ANY:
@@ -427,6 +434,22 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       }
 
       if (!m_sub_matchers.at(2).do_match(as_cond->else_ir, maps_out)) {
+        return false;
+      }
+      return true;
+    } break;
+
+    case Kind::WHILE_LOOP: {
+      auto as_while = dynamic_cast<WhileElement*>(input->try_as_single_element());
+      if (!as_while) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_while->condition, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_while->body, maps_out)) {
         return false;
       }
       return true;

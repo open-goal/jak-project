@@ -1162,6 +1162,25 @@ class LetElement : public FormElement {
   bool m_star = false;
 };
 
+class DoTimesElement : public FormElement {
+ public:
+  DoTimesElement(RegisterAccess var_init,
+                 RegisterAccess var_check,
+                 RegisterAccess var_inc,
+                 Form* check_value,
+                 Form* body);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  RegisterAccess m_var_init, m_var_check, m_var_inc;
+  Form* m_check_value = nullptr;
+  Form* m_body = nullptr;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:
@@ -1306,4 +1325,6 @@ class FormPool {
   std::vector<Form*> m_forms;
   std::vector<FormElement*> m_elements;
 };
+
+std::optional<SimpleAtom> form_as_atom(const Form* f);
 }  // namespace decompiler
