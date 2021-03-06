@@ -20,6 +20,13 @@ int main(int argc, char** argv) {
     printf("Unpacking %s\n", base.c_str());
     // read the file
     auto data = file_util::read_binary_file(file_name);
+    if (file_util::dgo_header_is_compressed(data)) {
+      printf(" Detected compressed dgo, decompressing...\n");
+      auto original_size = data.size();
+      data = file_util::decompress_dgo(data);
+      printf(" Decompressed from %d to %d bytes (%.2f%% compression)\n", int(original_size),
+             int(data.size()), 100.f * original_size / data.size());
+    }
     // read as a DGO
     auto dgo = DgoReader(base, data);
     // write dgo description
