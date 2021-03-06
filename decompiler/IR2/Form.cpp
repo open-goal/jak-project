@@ -4,6 +4,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/type_system/TypeSystem.h"
+#include <algorithm>
 
 namespace decompiler {
 
@@ -514,6 +515,59 @@ void AsmOpElement::get_modified_regs(RegSet& regs) const {
 }
 
 /////////////////////////////
+// OpenGoalAsmOpElement
+/////////////////////////////
+
+OpenGoalAsmOpElement::OpenGoalAsmOpElement(const AsmOp* op) : m_op(op) {}
+
+goos::Object OpenGoalAsmOpElement::to_form_internal(const Env& env) const {
+  return m_op->to_open_goal_form(env.file->labels, env);
+}
+
+void OpenGoalAsmOpElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void OpenGoalAsmOpElement::apply_form(const std::function<void(Form*)>&) {}
+
+void OpenGoalAsmOpElement::collect_vars(RegAccessSet& vars, bool) const {
+  m_op->collect_vars(vars);
+}
+
+void OpenGoalAsmOpElement::collect_vf_regs(RegSet& regs) const {
+  for (auto r : m_op->read_regs()) {
+    if (r.get_kind() == Reg::RegisterKind::VF ||
+        r.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+      regs.insert(r);
+    }
+  }
+
+  for (auto r : m_op->write_regs()) {
+    if (r.get_kind() == Reg::RegisterKind::VF ||
+        r.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+      regs.insert(r);
+    }
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    if (r.get_kind() == Reg::RegisterKind::VF ||
+        r.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+      regs.insert(r);
+    }
+  }
+}
+
+void OpenGoalAsmOpElement::get_modified_regs(RegSet& regs) const {
+  for (auto r : m_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
+/////////////////////////////
 // ConditionElement
 /////////////////////////////
 
@@ -816,6 +870,73 @@ void EmptyElement::apply(const std::function<void(FormElement*)>& f) {
 void EmptyElement::apply_form(const std::function<void(Form*)>&) {}
 void EmptyElement::collect_vars(RegAccessSet&, bool) const {}
 void EmptyElement::get_modified_regs(RegSet&) const {}
+
+/////////////////////////////
+// RLetElement
+/////////////////////////////
+
+bool cmp(Register x, Register y) {
+  int comparison = x.to_string().compare(y.to_string());
+  if (comparison <= 0)
+    return true;
+  return false;
+}
+
+RLetElement::RLetElement(Form* _body, RegSet _regs) : body(_body) {
+  for (auto& reg : _regs) {
+    sorted_regs.push_back(reg);
+  }
+  std::sort(sorted_regs.begin(), sorted_regs.end(), cmp);
+}
+
+void RLetElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  body->apply(f);
+}
+
+goos::Object RLetElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> regs;
+  for (auto& reg : sorted_regs) {
+    if (reg.get_kind() == Reg::RegisterKind::VF ||
+        reg.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+      std::string reg_name = reg.to_string() == "ACC" ? "acc" : reg.to_string();
+      regs.push_back(
+          pretty_print::build_list(pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));
+    }
+  }
+
+  std::vector<goos::Object> rletForm;
+  rletForm.push_back(pretty_print::to_symbol("rlet"));
+  rletForm.push_back(pretty_print::build_list(regs));
+
+  // NOTE - initialize any relevant registers in the body first
+  for (auto& reg : sorted_regs) {
+    if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
+      // TODO - a good idea to move this to a macro like initialize-constant-vector! or something.
+      // There could be some clever way to do this initialization that's faster that a normal static
+      // load.
+      rletForm.push_back(
+          pretty_print::to_symbol("(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))"));
+    }
+  }
+
+  body->inline_forms(rletForm, env);
+  return pretty_print::build_list(rletForm);
+}
+
+void RLetElement::apply_form(const std::function<void(Form*)>& f) {
+  body->apply_form(f);
+}
+
+void RLetElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    body->collect_vars(vars, recursive);
+  }
+}
+
+void RLetElement::get_modified_regs(RegSet& regs) const {
+  body->get_modified_regs(regs);
+}
 
 /////////////////////////////
 // WhileElement

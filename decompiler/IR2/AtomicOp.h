@@ -297,6 +297,7 @@ class AsmOp : public AtomicOp {
  public:
   AsmOp(Instruction instr, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
+  goos::Object to_open_goal_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   RegisterAccess get_set_destination() const override;

@@ -384,6 +384,24 @@ class AsmOpElement : public FormElement {
 };
 
 /*!
+ * A wrapper around a single AsmOp, with OpenGOAL considerations
+ */
+class OpenGoalAsmOpElement : public FormElement {
+ public:
+  explicit OpenGoalAsmOpElement(const AsmOp* op);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void collect_vf_regs(RegSet& regs) const;
+  void get_modified_regs(RegSet& regs) const override;
+  const AsmOp* op() const { return m_op; }
+
+ private:
+  const AsmOp* m_op;
+};
+
+/*!
  * A "condition" like (< a b). This can be used as a boolean value directly: (set! a (< b c))
  * or it can be used as a branch condition: (if (< a b)). As a result, it implements both push
  * and update.
@@ -574,6 +592,23 @@ class EmptyElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+};
+
+/*!
+ * Represents an OpenGOAL 'rlet' expressions
+ */
+class RLetElement : public FormElement {
+ public:
+  enum class RegClass { VF };
+
+  explicit RLetElement(Form* _body, RegSet _regs);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  Form* body = nullptr;
+  std::vector<decompiler::Register> sorted_regs;
 };
 
 /*!

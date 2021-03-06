@@ -15,6 +15,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
+#include "decompiler/analysis/inline_asm_rewrite.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 
@@ -46,7 +47,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
     ir2_store_current_forms();
     lg::info("Expression building...");
     ir2_build_expressions();
-
+    lg::info("Re-writing inline asm instructions...");
+    ir2_rewrite_inline_asm_instructions();
     if (get_config().insert_lets) {
       lg::info("Inserting lets...");
       ir2_insert_lets();
@@ -442,6 +444,28 @@ void ObjectFileDB::ir2_insert_lets() {
 
   lg::info("Let pass on {} functions ({}/{} vars in lets) in {:.2f} ms\n", attempted,
            combined_stats.vars_in_lets, combined_stats.total_vars, timer.getMs());
+}
+
+void ObjectFileDB::ir2_rewrite_inline_asm_instructions() {
+  Timer timer;
+  int total = 0;
+  int attempted = 0;
+  int successful = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    total++;
+    if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
+      attempted++;
+      if (rewrite_inline_asm_instructions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
+        successful++;
+        func.ir2.print_debug_forms = true;
+      }
+    }
+  });
+
+  lg::info("{}/{}/{} rewrote inline-asm instructions in {:.2f} ms\n", successful, attempted, total,
+           timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {

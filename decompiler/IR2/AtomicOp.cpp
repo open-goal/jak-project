@@ -6,6 +6,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "AtomicOp.h"
+#include "OpenGoalMapping.h"
 
 namespace decompiler {
 /////////////////////////////
@@ -474,6 +475,37 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
 
   return pretty_print::build_list(forms);
 }
+
+goos::Object AsmOp::to_open_goal_form(const std::vector<DecompilerLabel>& labels,
+                                      const Env& env) const {
+  std::vector<goos::Object> forms;
+
+  std::vector<std::optional<RegisterAccess>> src;
+  for (int i = 0; i < m_instr.n_src; i++) {
+    auto v = m_src[i];
+    src.push_back(v);
+  }
+
+  OpenGOALAsm goalOp = OpenGOALAsm(m_instr, m_dst, src);
+  forms.push_back(pretty_print::to_symbol(goalOp.full_function_name()));
+
+  assert(m_instr.n_dst <= 1);
+  if (m_instr.n_dst == 1) {
+    if (m_dst.has_value()) {
+      // then print it as a variable
+      forms.push_back(m_dst.value().to_form(env));
+    } else {
+      // print the atom
+      forms.push_back(pretty_print::to_symbol(m_instr.get_dst(0).to_string(labels)));
+    }
+  }
+
+  assert(m_instr.n_src <= 4);
+  std::vector<goos::Object> args = goalOp.get_args(labels, env);
+  forms.insert(forms.end(), args.begin(), args.end());
+
+  return pretty_print::build_list(forms);
+}  // namespace decompiler
 
 bool AsmOp::operator==(const AtomicOp& other) const {
   if (typeid(AsmOp) != typeid(other)) {

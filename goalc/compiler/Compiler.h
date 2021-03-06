@@ -347,6 +347,7 @@ class Compiler {
   // Vector Float Operations
   Val* compile_asm_lvf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_svf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_mov_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_blend_vf(const goos::Object& form, const goos::Object& rest, Env* env);
 
   Val* compile_asm_wait_vf(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -401,6 +402,7 @@ class Compiler {
 
   Val* compile_asm_div_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_inv_sqrt_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_itof_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ftoi_vf(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pw_sll(const goos::Object& form, const goos::Object& rest, Env* env);

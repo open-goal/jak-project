@@ -1390,11 +1390,11 @@ Inserts a `FWAIT` assembly instruction, x86 does not require as much synchroniza
 
 ## `.lvf`
 ```lisp
-(.lvf dst-reg src-loc [:color #t|#f])
+(.lvf dst-reg src-loc [:color #t|#f] [:offset <int>])
 ```
-Load a vector float register from `src-loc`. The `dst-reg` must be a vector float register. The `src-loc` can be a gpr containing a GOAL pointer or expression which gives a GOAL pointer. There is no type checking on the `src-loc` so be careful. The load uses `vmovaps`, so the source must be 16-byte aligned. 
+Load a vector float register from `src-loc`. The `dst-reg` must be a vector float register. The `src-loc` can be a gpr containing a GOAL pointer or expression which gives a GOAL pointer. There is no type checking on the `src-loc` so be careful. The load uses `vmovaps`, so the source must be 16-byte aligned.
 
-If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, the constant offset will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`.
+If the source is in the form `base-reg + constant-offset`, like from a `(&-> my-object my-inline-vector-field)`, the constant offset will be folded into the load instruction like `vmovaps xmm1, [r15 + rax + 12]`.  An explicit offset can be provided via the `:offset` keyword, and will be used if applicable.
 
 If the source is an immediate `(new 'static ...)` form that results in a statically allocated variable, it will use `RIP` relative addressing (32-bit immediate) form. This means that the code:
 ```lisp
@@ -1404,7 +1404,7 @@ will be just a single instruction to do a `vmovaps xmm1, [rip + XXX]`.
 
 ## `.svf`
 ```lisp
-(.svf dst-loc src-reg [:color #t|#f])
+(.svf dst-loc src-reg [:color #t|#f] [:offset <int>])
 ```
 Store a vector float. Works similarly to the `lvf` form, but there is no optimized case for storing into a static because this isn't allowed in GOAL.
 
@@ -1479,12 +1479,16 @@ Calculates the outer-product of `src1` and `src2` and stores the result in `dst`
 
 Given 2 vectors `V1 = <1,2,3,4>` and `V2 = <5,6,7,8>` and assume `VDEST = <0, 0, 0, 999>`
 The outer product is computed like so (only x,y,z components are operated on):
+
 `x = (V1y * V2z) - (V2y * V1z) => (2 * 7) - (6 * 3) => -4`
+
 `y = (V1z * V2x) - (V2z * V1x) => (3 * 5) - (7 * 1) =>  8`
+
 `z = (V1x * V2y) - (V2x * V1y) => (1 * 6) - (5 * 2) => -4`
+
 `w = N/A, left alone                                => 999`
 
-`VDEST = <-4, 8, -4, 999>`
+> `VDEST = <-4, 8, -4, 999>`
 
 ## `.blend.vf`
 ```lisp

@@ -127,6 +127,33 @@
 ## `display-h`: **Done**
 
 ## `vector`: asm
+- Largely decompiled successfully and compiles!
+  - Functions are currently undocumented and still with rough variable names
+- Some functions are currently failing to decompile:
+  - `rand-vu-sphere-point!`
+  - `vector-deg-lerp-clamp!`
+  - `vector=`
+- Some functions are currently skipped due to instructions not being supported.
+  - These instructions are:
+    - `sphere<-vector+r!`
+    - `sphere<-vector!`
+    - `vector-deg-diff`
+    - `vector-degmod`
+    - `vector-degf`
+    - `vector-degi`
+    - `vector4-lerp-clamp!`
+    - `vector-normalize-copy!`
+  - The affects functions are:
+    - `LQ`
+    - `SQ`
+    - `PSLLW`
+    - `PSUBW`
+    - `PSRAW`
+- Some functions are currently skipped because of missing functionality:
+  - The method gpr->fpr of type int could not be found.
+    - `spheres-overlap?`
+    - `vector-normalize-ret-len!`
+
 
 ## `fileio`: **Done**
 
