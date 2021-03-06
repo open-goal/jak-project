@@ -22,7 +22,7 @@ add_library(common
         util/Timer.cpp
         )
 
-target_link_libraries(common fmt)
+target_link_libraries(common fmt lzokay)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32)

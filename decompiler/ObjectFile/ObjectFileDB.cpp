@@ -195,52 +195,8 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
   auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
-  const char jak2_header[] = "oZlB";
-  bool is_jak2 = true;
-  for (int i = 0; i < 4; i++) {
-    if (jak2_header[i] != dgo_data[i]) {
-      is_jak2 = false;
-    }
-  }
-
-  if (is_jak2) {
-    BinaryReader compressed_reader(dgo_data);
-    // seek past oZlB
-    compressed_reader.ffwd(4);
-    std::size_t decompressed_size = compressed_reader.read<uint32_t>();
-    std::vector<uint8_t> decompressed_data;
-    decompressed_data.resize(decompressed_size);
-    size_t output_offset = 0;
-    while (true) {
-      // seek past alignment bytes and read the next chunk size
-      uint32_t chunk_size = 0;
-      while (!chunk_size) {
-        chunk_size = compressed_reader.read<uint32_t>();
-      }
-
-      if (chunk_size < MAX_CHUNK_SIZE) {
-        std::size_t bytes_written = 0;
-        lzokay::EResult ok = lzokay::decompress(
-            compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
-            decompressed_data.size() - output_offset, bytes_written);
-        assert(ok == lzokay::EResult::Success);
-        compressed_reader.ffwd(chunk_size);
-        output_offset += bytes_written;
-      } else {
-        // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
-        //        assert(chunk_size == MAX_CHUNK_SIZE);
-        memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
-        compressed_reader.ffwd(MAX_CHUNK_SIZE);
-        output_offset += MAX_CHUNK_SIZE;
-      }
-
-      if (output_offset >= decompressed_size)
-        break;
-      while (compressed_reader.get_seek() % 4) {
-        compressed_reader.ffwd(1);
-      }
-    }
-    dgo_data = decompressed_data;
+  if (file_util::dgo_header_is_compressed(dgo_data)) {
+    dgo_data = file_util::decompress_dgo(dgo_data);
   }
 
   BinaryReader reader(dgo_data);

@@ -22,7 +22,14 @@ DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
 
     DgoDataEntry entry;
     entry.internal_name = obj_header.name;
+
     entry.unique_name = get_object_file_name(entry.internal_name, reader.here(), obj_header.size);
+    if (all_unique_names.find(entry.unique_name) != all_unique_names.end()) {
+      printf("Warning: there are multiple files named %s\n", entry.unique_name.c_str());
+      entry.unique_name += '-';
+      entry.unique_name += std::to_string(obj_header.size);
+    }
+
     all_unique_names.insert(entry.unique_name);
     entry.data.resize(obj_header.size);
 
