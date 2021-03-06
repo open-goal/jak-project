@@ -41,18 +41,21 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
 const std::unordered_set<std::string> skip_in_compiling = {
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
     "abs", "ash", "min", "max", "lognor",
+    // weird PS2 specific debug registers:
+    "breakpoint-range-set!",
     // these require 128-bit integers. We want these eventually, but disabling for now to focus
     // on more important issues.
-    "(method 3 vec4s)", "(method 2 vec4s)",
+    "(method 3 vec4s)", "(method 2 vec4s)", "qmem-copy<-!", "qmem-copy->!",
     // these should pass eventually
-    "(method 2 array)", "(method 3 array)", "valid?", "mem-copy!", "qmem-copy<-!", "qmem-copy->!",
-    "mem-or!", "breakpoint-range-set!", "print", "printl", "inspect"};
+    "(method 2 array)", "(method 3 array)", "valid?", "mem-copy!", "mem-or!", "print", "printl",
+    "inspect"};
 
 // The decompiler does not attempt to insert forward definitions, as this would be part of an
 // unimplemented full-program type analysis pass.  For now, we manually specify all functions
 // that should have a forward definition here.
 const std::string g_forward_type_defs =
     "(define-extern name= (function basic basic symbol))\n"
+    // todo - check if recursive?
     "(define-extern fact (function int int))";
 
 // default location for the data. It can be changed with a command line argument.

@@ -40,9 +40,9 @@ struct OpenGOALAsm {
 
   bool valid = true;
   bool todo = false;
+  Instruction instr;
   std::optional<RegisterAccess> m_dst;
   std::vector<std::optional<RegisterAccess>> m_src;
-  Instruction instr;
   OpenGOALAsm::Function func;
 
   std::string full_function_name();

@@ -228,10 +228,11 @@ std::string write_from_top_level(const Function& top_level,
       auto method_match_result = match(method_def_matcher, &f);
       if (method_match_result.matched) {
         auto func = file.try_get_function_at_label(method_match_result.maps.label.at(method_label));
-        if (func) {
+        if (func && func->guessed_name.kind == FunctionName::FunctionKind::METHOD) {
           something_matched = true;
-          result += fmt::format(";; definition for method of type {}\n",
-                                method_match_result.maps.strings.at(type_name));
+          result +=
+              fmt::format(";; definition for method {} of type {}\n", func->guessed_name.method_id,
+                          method_match_result.maps.strings.at(type_name));
           if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
             result += careful_function_to_string(func, dts);
           } else {
@@ -248,7 +249,7 @@ std::string write_from_top_level(const Function& top_level,
         if (dts.ts.fully_defined_type_exists(name)) {
           result += fmt::format(";; definition of type {}\n", name);
           result += dts.ts.generate_deftype(dts.ts.lookup_type(name));
-          result += "\n\n";
+          result += "\n";
         } else {
           result += fmt::format(
               ";; type {} is defined here, but it is unknown to the decompiler\n\n", name);

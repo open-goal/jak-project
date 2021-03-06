@@ -107,8 +107,7 @@
   :flag-assert         #x900000010
   )
 
-
-;; definition for method of type vec4s
+;; definition for method 3 of type vec4s
 ;; INFO: Return type mismatch int vs vec4s.
 ;; WARN: Unsupported inline assembly instruction kind - [131]
 ;; WARN: Unsupported inline assembly instruction kind - [131]
@@ -163,7 +162,7 @@
   (the-as vec4s v0-5)
   )
 
-;; definition for method of type vec4s
+;; definition for method 2 of type vec4s
 ;; INFO: Return type mismatch int vs vec4s.
 ;; WARN: Unsupported inline assembly instruction kind - [131]
 ;; WARN: Unsupported inline assembly instruction kind - [73]
@@ -214,21 +213,20 @@
   :flag-assert         #x900000008
   )
 
-
-;; definition for method of type bfloat
+;; definition for method 3 of type bfloat
 (defmethod inspect bfloat ((obj bfloat))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tdata: ~f~%" (-> obj data))
   obj
   )
 
-;; definition for method of type bfloat
+;; definition for method 2 of type bfloat
 (defmethod print bfloat ((obj bfloat))
   (format #t "~f" (-> obj data))
   obj
   )
 
-;; definition for method of type type
+;; definition for method 5 of type type
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of type ((obj type))
   (the-as int (logand #xfffffff0 (+ (shl (-> obj allocated-length) 2) 43)))
@@ -294,18 +292,18 @@
   (car lst)
   )
 
-;; definition for method of type pair
+;; definition for method 4 of type pair
 (defmethod length pair ((obj pair))
   (local-vars (result int))
   (cond
-   ((= obj '())
+   ((null? obj)
     (set! result 0)
     )
    (else
     (let ((iter (cdr obj))
           )
      (set! result 1)
-     (while (and (!= iter '()) (< (shl (the-as int iter) 62) 0))
+     (while (and (not (null? iter)) (pair? iter))
       (+! result 1)
       (set! iter (cdr iter))
       )
@@ -315,7 +313,7 @@
   result
   )
 
-;; definition for method of type pair
+;; definition for method 5 of type pair
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of pair ((obj pair))
   (the-as int (-> pair size))
@@ -325,7 +323,7 @@
 (defun last ((lst object))
   (let ((iter lst)
         )
-   (while (!= (cdr iter) '())
+   (while (not (null? (cdr iter)))
     (nop!)
     (nop!)
     (set! iter (cdr iter))
@@ -338,10 +336,10 @@
 (defun member ((obj object) (lst object))
   (let ((iter lst)
         )
-   (while (not (or (= iter '()) (= (car iter) obj)))
+   (while (not (or (null? iter) (= (car iter) obj)))
     (set! iter (cdr iter))
     )
-   (if (!= iter '())
+   (if (not (null? iter))
     iter
     )
    )
@@ -349,10 +347,10 @@
 
 ;; definition for function nmember
 (defun nmember ((obj basic) (lst object))
-  (while (not (or (= lst '()) (name= (the-as basic (car lst)) obj)))
+  (while (not (or (null? lst) (name= (the-as basic (car lst)) obj)))
    (set! lst (cdr lst))
    )
-  (if (!= lst '())
+  (if (not (null? lst))
    lst
    )
   )
@@ -361,10 +359,10 @@
 (defun assoc ((item object) (alist object))
   (let ((iter alist)
         )
-   (while (not (or (= iter '()) (= (car (car iter)) item)))
+   (while (not (or (null? iter) (= (car (car iter)) item)))
     (set! iter (cdr iter))
     )
-   (if (!= iter '())
+   (if (not (null? iter))
     (car iter)
     )
    )
@@ -375,10 +373,10 @@
   (let ((iter alist)
         )
    (while
-    (not (or (= iter '()) (= (car (car iter)) item) (= (car (car iter)) 'else)))
+    (not (or (null? iter) (= (car (car iter)) item) (= (car (car iter)) 'else)))
     (set! iter (cdr iter))
     )
-   (if (!= iter '())
+   (if (not (null? iter))
     (car iter)
     )
    )
@@ -386,7 +384,7 @@
 
 ;; definition for function nassoc
 (defun nassoc ((item-name string) (alist object))
-  (while (not (or (= alist '()) (let ((key (car (car alist)))
+  (while (not (or (null? alist) (let ((key (car (car alist)))
                                       )
                                  (if (pair? key)
                                   (nmember item-name key)
@@ -397,14 +395,14 @@
           )
    (set! alist (cdr alist))
    )
-  (if (!= alist '())
+  (if (not (null? alist))
    (car alist)
    )
   )
 
 ;; definition for function nassoce
 (defun nassoce ((item-name string) (alist object))
-  (while (not (or (= alist '()) (let ((key (car (car alist)))
+  (while (not (or (null? alist) (let ((key (car (car alist)))
                                       )
                                  (if (pair? key)
                                   (nmember item-name key)
@@ -418,7 +416,7 @@
           )
    (set! alist (cdr alist))
    )
-  (if (!= alist '())
+  (if (not (null? alist))
    (car alist)
    )
   )
@@ -426,18 +424,18 @@
 ;; definition for function append!
 (defun append! ((front object) (back object))
   (cond
-   ((= front '())
+   ((null? front)
     back
     )
    (else
     (let ((iter front)
           )
-     (while (!= (cdr iter) '())
+     (while (not (null? (cdr iter)))
       (nop!)
       (nop!)
       (set! iter (cdr iter))
       )
-     (if (!= iter '())
+     (if (not (null? iter))
       (set! (cdr iter) back)
       )
      )
@@ -457,11 +455,11 @@
                  (let ((iter-prev lst)
                        (iter (cdr lst))
                        )
-                  (while (not (or (= iter '()) (= (car iter) item)))
+                  (while (not (or (null? iter) (= (car iter) item)))
                    (set! iter-prev iter)
                    (set! iter (cdr iter))
                    )
-                  (if (!= iter '())
+                  (if (not (null? iter))
                    (set! (cdr iter-prev) (cdr iter))
                    )
                   )
@@ -481,11 +479,11 @@
     (let ((iter-prev lst)
           (iter (cdr lst))
           )
-     (while (not (or (= iter '()) (= (car (car iter)) item)))
+     (while (not (or (null? iter) (= (car (car iter)) item)))
       (set! iter-prev iter)
       (set! iter (cdr iter))
       )
-     (if (!= iter '())
+     (if (not (null? iter))
       (set! (cdr iter-prev) (cdr iter))
       )
      )
@@ -510,8 +508,7 @@
     (set! unsorted-count 0)
     (let ((iter lst)
           )
-     (while
-      (not (or (= (cdr iter) '()) (>= (shl (the-as int (cdr iter)) 62) 0)))
+     (while (not (or (null? (cdr iter)) (not (pair? (cdr iter)))))
       (let* ((first-elt (car iter))
              (seoncd-elt (car (cdr iter)))
              (compare-result (compare-func first-elt seoncd-elt))
@@ -549,8 +546,7 @@
     )
   )
 
-
-;; definition for method of type inline-array-class
+;; definition for method 3 of type inline-array-class
 (defmethod inspect inline-array-class ((obj inline-array-class))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -558,7 +554,7 @@
   obj
   )
 
-;; definition for method of type inline-array-class
+;; definition for method 0 of type inline-array-class
 (defmethod
   new
   inline-array-class
@@ -586,12 +582,12 @@
    )
   )
 
-;; definition for method of type inline-array-class
+;; definition for method 4 of type inline-array-class
 (defmethod length inline-array-class ((obj inline-array-class))
   (-> obj length)
   )
 
-;; definition for method of type inline-array-class
+;; definition for method 5 of type inline-array-class
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of inline-array-class ((obj inline-array-class))
   (the-as
@@ -606,7 +602,7 @@
    )
   )
 
-;; definition for method of type array
+;; definition for method 0 of type array
 (defmethod
   new
   array
@@ -638,7 +634,7 @@
    )
   )
 
-;; definition for method of type array
+;; definition for method 2 of type array
 ;; WARN: Inline assembly instruction marked with TODO - [TODO.LQ]
 (defmethod print array ((obj array))
   (local-vars
@@ -822,7 +818,7 @@
   obj
   )
 
-;; definition for method of type array
+;; definition for method 3 of type array
 ;; WARN: Inline assembly instruction marked with TODO - [TODO.LQ]
 (defmethod inspect array ((obj array))
   (local-vars
@@ -955,12 +951,12 @@
   obj
   )
 
-;; definition for method of type array
+;; definition for method 4 of type array
 (defmethod length array ((obj array))
   (-> obj length)
   )
 
-;; definition for method of type array
+;; definition for method 5 of type array
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of array ((obj array))
   (the-as

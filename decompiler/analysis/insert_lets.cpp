@@ -280,7 +280,8 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
       kv.second.lca_form->at(i)->collect_vars(ras, true);
       bool uses = false;
       for (auto& ra : ras) {
-        if (env.get_variable_name(ra) == kv.second.var_name) {
+        if ((ra.reg().get_kind() == Reg::FPR || ra.reg().get_kind() == Reg::GPR) &&
+            env.get_variable_name(ra) == kv.second.var_name) {
           uses = true;
         }
       }

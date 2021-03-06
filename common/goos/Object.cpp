@@ -38,6 +38,7 @@
  *
  */
 
+#include <cinttypes>
 #include "Object.h"
 #include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
@@ -92,7 +93,7 @@ std::string fixed_to_string(FloatType x) {
 
   // it's an integer number, so let's just get this over with asap
   if (exact_int) {
-    sprintf(buff, "%lld.0", rounded);
+    sprintf(buff, "%" PRId64 ".0", rounded);
     return {buff};
   } else {
     // not an integer - see how many decimal cases we need

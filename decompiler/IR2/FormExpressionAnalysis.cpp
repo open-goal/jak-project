@@ -1878,7 +1878,7 @@ FormElement* ConditionElement::make_zero_check_generic(const Env&,
                                                        const std::vector<Form*>& source_forms,
                                                        const std::vector<TypeSpec>&) {
   // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
-
+  assert(source_forms.size() == 1);
   auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
                               {Matcher::any(0), Matcher::any_integer(1)}),
                   source_forms.at(0));
@@ -1890,6 +1890,109 @@ FormElement* ConditionElement::make_zero_check_generic(const Env&,
                                               std::vector<Form*>{mr.maps.forms.at(0), value_form});
   } else {
     return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
+  }
+}
+
+FormElement* ConditionElement::make_equal_check_generic(const Env&,
+                                                        FormPool& pool,
+                                                        const std::vector<Form*>& source_forms,
+                                                        const std::vector<TypeSpec>&) {
+  assert(source_forms.size() == 2);
+  // (= thing '())
+  auto ref = source_forms.at(1);
+  auto ref_atom = form_as_atom(ref);
+  if (ref_atom && ref_atom->get_kind() == SimpleAtom::Kind::EMPTY_LIST) {
+    // null?
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NULLP),
+                                              source_forms.at(0));
+  } else {
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                              source_forms);
+  }
+}
+
+FormElement* ConditionElement::make_not_equal_check_generic(const Env&,
+                                                            FormPool& pool,
+                                                            const std::vector<Form*>& source_forms,
+                                                            const std::vector<TypeSpec>&) {
+  assert(source_forms.size() == 2);
+  // (!= thing '())
+  auto ref = source_forms.at(1);
+  auto ref_atom = form_as_atom(ref);
+  if (ref_atom && ref_atom->get_kind() == SimpleAtom::Kind::EMPTY_LIST) {
+    // null?
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
+        pool.alloc_single_element_form<GenericElement>(
+            nullptr, GenericOperator::make_fixed(FixedOperatorKind::NULLP), source_forms.at(0)));
+  } else {
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                              source_forms);
+  }
+}
+
+FormElement* ConditionElement::make_less_than_zero_signed_check_generic(
+    const Env&,
+    FormPool& pool,
+    const std::vector<Form*>& source_forms,
+    const std::vector<TypeSpec>& types) {
+  assert(source_forms.size() == 1);
+  // (< (shl (the-as int iter) 62) 0) -> (pair? iter)
+
+  // match (shl [(the-as int [x]) | [x]] 62)
+  auto shift_match =
+      match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                        {
+                            Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                                               Matcher::any(0)}),  // the val
+                            Matcher::integer(62)  // get the bit in the highest position.
+                        }),
+            source_forms.at(0));
+
+  if (shift_match.matched) {
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::PAIRP),
+                                              shift_match.maps.forms.at(0));
+  } else {
+    auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+    auto zero = pool.alloc_single_element_form<SimpleAtomElement>(nullptr,
+                                                                  SimpleAtom::make_int_constant(0));
+    casted.push_back(zero);
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
+                                              casted);
+  }
+}
+
+FormElement* ConditionElement::make_geq_zero_signed_check_generic(
+    const Env&,
+    FormPool& pool,
+    const std::vector<Form*>& source_forms,
+    const std::vector<TypeSpec>& types) {
+  assert(source_forms.size() == 1);
+  // (>= (shl (the-as int iter) 62) 0) -> (not (pair? iter))
+
+  // match (shl [(the-as int [x]) | [x]] 62)
+  auto shift_match =
+      match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                        {
+                            Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                                               Matcher::any(0)}),  // the val
+                            Matcher::integer(62)  // get the bit in the highest position.
+                        }),
+            source_forms.at(0));
+
+  if (shift_match.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_compare(IR2_Condition::Kind::FALSE),
+        pool.alloc_single_element_form<GenericElement>(
+            nullptr, GenericOperator::make_fixed(FixedOperatorKind::PAIRP),
+            shift_match.maps.forms.at(0)));
+  } else {
+    auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
+    auto zero = pool.alloc_single_element_form<SimpleAtomElement>(nullptr,
+                                                                  SimpleAtom::make_int_constant(0));
+    casted.push_back(zero);
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
+                                              casted);
   }
 }
 
@@ -1911,11 +2014,10 @@ FormElement* ConditionElement::make_generic(const Env& env,
       return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind),
                                                 source_forms);
     case IR2_Condition::Kind::EQUAL:
-      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
-                                                source_forms);
+      return make_equal_check_generic(env, pool, source_forms, types);
+
     case IR2_Condition::Kind::NOT_EQUAL:
-      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-                                                source_forms);
+      return make_not_equal_check_generic(env, pool, source_forms, types);
 
     case IR2_Condition::Kind::LESS_THAN_SIGNED:
       return pool.alloc_element<GenericElement>(
@@ -1937,12 +2039,7 @@ FormElement* ConditionElement::make_generic(const Env& env,
           make_cast(source_forms, types, TypeSpec("int"), pool));
 
     case IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED: {
-      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
-      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
-          nullptr, SimpleAtom::make_int_constant(0));
-      casted.push_back(zero);
-      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
-                                                casted);
+      return make_less_than_zero_signed_check_generic(env, pool, source_forms, types);
     }
 
     case IR2_Condition::Kind::LEQ_ZERO_SIGNED: {
@@ -1955,12 +2052,7 @@ FormElement* ConditionElement::make_generic(const Env& env,
     }
 
     case IR2_Condition::Kind::GEQ_ZERO_SIGNED: {
-      auto casted = make_cast(source_forms, types, TypeSpec("int"), pool);
-      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
-          nullptr, SimpleAtom::make_int_constant(0));
-      casted.push_back(zero);
-      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GEQ),
-                                                casted);
+      return make_geq_zero_signed_check_generic(env, pool, source_forms, types);
     }
 
     case IR2_Condition::Kind::GREATER_THAN_ZERO_UNSIGNED: {

@@ -13,7 +13,7 @@ namespace decompiler {
 bool rewrite_inline_asm_instructions(Form* top_level_form,
                                      FormPool& pool,
                                      Function& f,
-                                     const DecompilerTypeSystem& dts) {
+                                     const DecompilerTypeSystem&) {
   assert(top_level_form);
 
   try {

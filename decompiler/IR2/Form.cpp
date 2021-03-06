@@ -1467,6 +1467,10 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "!=";
     case FixedOperatorKind::METHOD_OF_OBJECT:
       return "method-of-object";
+    case FixedOperatorKind::NULLP:
+      return "null?";
+    case FixedOperatorKind::PAIRP:
+      return "pair?";
     default:
       assert(false);
   }
