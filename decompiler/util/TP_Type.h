@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cassert>
+#include <stdexcept>
 #include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/common_types.h"
