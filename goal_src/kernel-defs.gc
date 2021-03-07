@@ -158,3 +158,48 @@
 
 (define-extern rpc-call (function int uint uint uint int uint int uint))
 (define-extern rpc-busy? (function int uint))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; kernel types
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These are types that are both:
+;;  - set up in the kernel
+;;  - not set up in GOAL code
+;;  So these deftypes generate no code.
+
+(deftype process-tree (basic)
+  ((name basic :offset-assert 4)
+   (mask uint32 :offset-assert 8)
+   (parent (pointer process-tree) :offset-assert 12)
+   (brother (pointer process-tree) :offset-assert 16)
+   (child (pointer process-tree) :offset-assert 20)
+   (ppointer (pointer process-tree) :offset-assert 24)
+   (self process-tree :offset-assert 28)
+   )
+  
+  (:methods
+   (new (symbol type basic) _type_ 0)
+   (activate (_type_ process-tree basic pointer) process-tree 9)
+   (deactivate  (_type_) none 10)
+   (dummy-method-11 () none 11)
+   (run-logic? (_type_) symbol 12)
+   (dummy-method () none 13)
+   )  
+  
+  :size-assert #x20
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+(deftype stack-frame (basic)
+  ((name basic :offset 4)
+   (next stack-frame :offset 8) ;; which way does this point?
+   )
+  
+  :size-assert #xc
+  :method-count-assert 9
+  :flag-assert #x90000000c
+  :no-runtime-type ;; already constructed, don't do it again.
+  )

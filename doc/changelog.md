@@ -119,3 +119,7 @@
 - Static type reference link data now has the correct number of methods. This prevents errors like `dkernel: trying to redefine a type 'game-info' with 29 methods when it had 12, try restarting` when you did not actually redefine the number of methods.
 - Added `get-info` to figure out what something is and where it's defined.
 - Added `autocomplete` to get auto-completions for a prefix.
+
+## V0.7
+- There is now an option for `allow-misaligned` which allows the alignment of an struct type to be less than 16-bytes when inlined, without enabling array packing. This seems like a stupid option, but GOAL has this in some places, so we support it too.
+- In method declarations in a `deftype`, you can no longer provide argument names.  There was ambiguity when parsing a compound typespec vs named argument. The names were not used for anything.

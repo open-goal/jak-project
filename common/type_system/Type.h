@@ -185,6 +185,7 @@ class Field {
   void set_dynamic();
   void set_array(int size);
   void set_inline();
+  void mark_as_user_placed() { m_placed_by_user = true; }
   std::string print() const;
   const TypeSpec& type() const { return m_type; }
   bool is_inline() const { return m_inline; }
@@ -193,6 +194,7 @@ class Field {
   const std::string& name() const { return m_name; }
   int offset() const { return m_offset; }
   bool skip_in_decomp() const { return m_skip_in_static_decomp; }
+  bool user_placed() const { return m_placed_by_user; }
   bool operator==(const Field& other) const;
 
   int alignment() const {
@@ -221,6 +223,7 @@ class Field {
   int m_array_size = 0;
   int m_alignment = -1;
   bool m_skip_in_static_decomp = false;
+  bool m_placed_by_user = false;  // was this field placed manually by the user?
 };
 
 class StructureType : public ReferenceType {
@@ -243,6 +246,8 @@ class StructureType : public ReferenceType {
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
   void set_pack(bool pack) { m_pack = pack; }
+  bool is_packed() const { return m_pack; }
+  bool is_allowed_misalign() const { return m_allow_misalign; };
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
 
  protected:

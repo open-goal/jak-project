@@ -301,7 +301,10 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
     } else if (fwd_dec->second == BASIC) {
       return lookup_type("basic");
     } else {
-      fmt::print("[TypeSystem] The type {} is not fully define (allow partial).\n", name);
+      fmt::print(
+          "[TypeSystem] The type {} is known to be a type, but has not been defined with deftype "
+          "or properly forward declared with declare-type\n",
+          name);
     }
 
   } else {
@@ -646,6 +649,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
     offset = align(type->get_size_in_memory(), field_alignment);
   } else {
     int aligned_offset = align(offset, field_alignment);
+    field.mark_as_user_placed();
     if (offset != aligned_offset) {
       fmt::print(
           "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
@@ -1277,6 +1281,17 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
  */
 std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   std::string result;
+
+  auto as_structure = dynamic_cast<const StructureType*>(type);
+  if (as_structure) {
+    if (as_structure->is_packed()) {
+      result.append("  :pack-me\n");
+    }
+    if (as_structure->is_allowed_misalign()) {
+      result.append("  :allow-misaligned");
+    }
+  }
+
   auto method_count = get_next_method_id(type);
   result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
   result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
@@ -1332,8 +1347,9 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
   int longest_type_name = 0;
   int longest_mods = 0;
 
-  std::string inline_string = ":inline";
-  std::string dynamic_string = ":dynamic";
+  const std::string inline_string = ":inline";
+  const std::string dynamic_string = ":dynamic";
+  const std::string user_offset_string = ":offset xxx";
 
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
@@ -1358,6 +1374,13 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
         mods++;  // space
       }
       mods += dynamic_string.size();
+    }
+
+    if (field.user_placed()) {
+      if (mods) {
+        mods++;
+      }
+      mods += user_offset_string.size();
     }
     longest_mods = std::max(longest_mods, mods);
   }
@@ -1385,11 +1408,18 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
       mods += dynamic_string;
       mods += " ";
     }
-    result.append(mods);
-    result.append(longest_mods - int(mods.size() - 1), ' ');
 
-    result.append(":offset-assert ");
-    result.append(std::to_string(field.offset()));
+    if (field.user_placed()) {
+      mods += fmt::format(":offset {:3d}", field.offset());
+    }
+    result.append(mods);
+
+    if (!field.user_placed()) {
+      result.append(longest_mods - int(mods.size() - 1), ' ');
+      result.append(":offset-assert ");
+      result.append(std::to_string(field.offset()));
+    }
+
     result.append(")\n   ");
   }
 

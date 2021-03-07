@@ -297,6 +297,7 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         auto label_types = get_config().label_types[data.to_unique_name()];
         if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints, label_types)) {
           successful_functions++;
+          func.ir2.types_succeeded = true;
         } else {
           func.warnings.type_prop_warning("Type analysis failed");
         }
