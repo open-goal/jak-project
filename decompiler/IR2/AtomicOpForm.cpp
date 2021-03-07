@@ -267,6 +267,13 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             assert(false);
         }
 
+        if (m_value.is_var()) {
+          auto input_var_type = env.get_types_before_op(m_my_idx).get(m_value.var().reg());
+          if (env.dts->ts.tc(TypeSpec("uinteger"), input_var_type.typespec())) {
+            cast_type.insert(cast_type.begin(), 'u');
+          }
+        }
+
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
             nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
         auto cast_source = pool.alloc_single_element_form<CastElement>(
