@@ -2,6 +2,7 @@
 #include "common/util/Trie.h"
 #include "gtest/gtest.h"
 #include "test/all_jak1_symbols.h"
+#include "common/util/json_comment_strip.h"
 #include <string>
 #include <vector>
 
@@ -38,4 +39,27 @@ TEST(CommonUtil, Trie) {
   EXPECT_FALSE(test.lookup("path1") == nullptr);
   EXPECT_TRUE(test.lookup("path-") == nullptr);
   EXPECT_FALSE(test.lookup("path1-k") == nullptr);
+}
+
+TEST(CommonUtil, StripComments) {
+  std::string test_input =
+      R"(
+test "asdf /* y */ /////a\"bcd"
+///////// commented out!
+// /*  also commented out
+
+/* this is a block comment "with an unterminated string.
+*/ and its done
+)";
+
+  std::string test_expected =
+      R"(
+test "asdf /* y */ /////a\"bcd"
+
+
+
+ and its done
+)";
+
+  EXPECT_EQ(strip_cpp_style_comments(test_input), test_expected);
 }

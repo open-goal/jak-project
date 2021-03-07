@@ -2,6 +2,7 @@
 #include "third-party/json.hpp"
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
+#include "common/util/json_comment_strip.h"
 
 namespace decompiler {
 Config gConfig;
@@ -18,7 +19,7 @@ namespace {
 nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::string& file_key) {
   auto file_name = cfg.at(file_key).get<std::string>();
   auto file_txt = file_util::read_text_file(file_util::get_file_path({file_name}));
-  return nlohmann::json::parse(file_txt, nullptr, true, true);
+  return parse_commented_json(file_txt);
 }
 }  // namespace
 
@@ -27,8 +28,7 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::
  */
 void set_config(const std::string& path_to_config_file) {
   auto config_str = file_util::read_text_file(path_to_config_file);
-  // to ignore comments in json, which may be useful
-  auto cfg = nlohmann::json::parse(config_str, nullptr, true, true);
+  auto cfg = parse_commented_json(config_str);
 
   gConfig.game_version = cfg.at("game_version").get<int>();
   gConfig.dgo_names = cfg.at("dgo_names").get<std::vector<std::string>>();
