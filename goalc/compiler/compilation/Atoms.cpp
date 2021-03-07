@@ -107,6 +107,7 @@ const std::unordered_map<
 
         // COMPILER CONTROL
         {"repl-help", &Compiler::compile_repl_help},
+        {":clear", &Compiler::compile_repl_clear_screen},
         {"gs", &Compiler::compile_gs},
         {":exit", &Compiler::compile_exit},
         {"asm-file", &Compiler::compile_asm_file},

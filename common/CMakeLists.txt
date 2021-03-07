@@ -8,7 +8,7 @@ add_library(common
         goos/PrettyPrinter.cpp
         goos/Reader.cpp
         goos/TextDB.cpp
-        goos/ReplHistory.cpp
+        goos/ReplUtils.cpp
         log/log.cpp
         type_system/deftype.cpp
         type_system/Type.cpp
@@ -22,7 +22,7 @@ add_library(common
         util/Timer.cpp
         )
 
-target_link_libraries(common fmt lzokay)
+target_link_libraries(common fmt lzokay replxx)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32)

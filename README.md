@@ -212,7 +212,7 @@ The final component is the "runtime", located in `game`. This is the part of the
   - `run-clang-tidy`
   - `zydis`: x86-64 disassembler used in the OpenGOAL debugger
   - `json`: A JSON library
-  - `linenoise`: Used for the REPL input. Support history and useful editing shortcuts.
+  - `replxx`: Used for the REPL input. Support history and useful editing shortcuts.
   - `svpng`: Save a PNG file
 
 

@@ -61,6 +61,9 @@ include_directories(./)
 
 include_directories(SYSTEM third-party/inja)
 
+# build repl library
+add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
+
 # build common library
 add_subdirectory(common)
 

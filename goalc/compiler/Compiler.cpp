@@ -9,7 +9,8 @@
 
 using namespace goos;
 
-Compiler::Compiler() : m_debugger(&m_listener) {
+Compiler::Compiler(std::unique_ptr<ReplWrapper> repl) : m_debugger(&m_listener) {
+  m_repl = std::move(repl);
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -26,6 +27,11 @@ Compiler::Compiler() : m_debugger(&m_listener) {
 }
 
 ReplStatus Compiler::execute_repl() {
+  // init repl callbacks
+  std::vector<std::string> examples{};
+  using namespace std::placeholders;
+  m_repl->get_repl().set_completion_callback(
+      std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
   while (!m_want_exit && !m_want_reload) {
     try {
       // 1). get a line from the user (READ)
@@ -44,7 +50,7 @@ ReplStatus Compiler::execute_repl() {
         prompt += " ";
       }
 
-      Object code = m_goos.reader.read_from_stdin(prompt);
+      Object code = m_goos.reader.read_from_stdin(prompt, *m_repl.get());
 
       // 2). compile
       auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
