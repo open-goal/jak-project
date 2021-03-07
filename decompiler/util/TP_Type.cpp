@@ -62,6 +62,7 @@ std::string TP_Type::print() const {
     case Kind::INVALID:
     default:
       assert(false);
+      return {};
   }
 }
 
@@ -107,6 +108,7 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::INVALID:
     default:
       assert(false);
+      return false;
   }
 }
 
@@ -155,6 +157,7 @@ TypeSpec TP_Type::typespec() const {
     case Kind::INVALID:
     default:
       assert(false);
+      return {};
   }
 }
 }  // namespace decompiler

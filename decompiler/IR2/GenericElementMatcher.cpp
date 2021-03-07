@@ -500,6 +500,7 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
       return false;
     default:
       assert(false);
+      return false;
   }
 }
 
@@ -543,6 +544,7 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
       return false;
     default:
       assert(false);
+      return false;
   }
 }
 

@@ -1,8 +1,6 @@
 /*!
  * @file Listener.cpp
  * The Listener can connect to a Deci2Server for debugging.
- *
- * TODO - msg ID?
  */
 
 #ifdef __linux__
@@ -20,7 +18,6 @@
 #undef max
 #endif
 
-// TODO - i think im not including the dependency right..?
 #include "common/cross_sockets/xsocket.h"
 
 #include <stdexcept>
@@ -224,8 +221,8 @@ void Listener::receive_func() {
           if (hdr->msg_id == last_sent_id) {
             printf("[Listener] Received ACK for most recent message late.\n");
             if (last_recvd_id != hdr->msg_id - 1) {
-              printf(
-                  "[Listener] WARNING: message ID jumped from %ld to %ld. Some messages may have "
+              fmt::print(
+                  "[Listener] WARNING: message ID jumped from {} to {}. Some messages may have "
                   "been lost. You must wait for an ACK before sending the next message.\n",
                   last_recvd_id, hdr->msg_id);
             }
@@ -251,9 +248,9 @@ void Listener::receive_func() {
           got_ack = true;
           last_recvd_id = hdr->msg_id;
           if (last_recvd_id > last_sent_id) {
-            printf(
-                "[Listener] ERROR: Got an ack message with id of %ld, but the last message sent "
-                "had an ID of %ld.\n",
+            fmt::print(
+                "[Listener] ERROR: Got an ack message with id of {}, but the last message sent "
+                "had an ID of {}.\n",
                 last_recvd_id, last_sent_id);
           }
         } else {

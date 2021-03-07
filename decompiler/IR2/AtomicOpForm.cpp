@@ -15,6 +15,7 @@ RegClass get_reg_kind(const Register& r) {
       return RegClass::FLOAT;
     default:
       assert(false);
+      return RegClass::INVALID;
   }
 }
 }  // namespace

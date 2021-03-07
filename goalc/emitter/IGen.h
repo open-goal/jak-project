@@ -714,6 +714,7 @@ class IGen {
       return storevf_gpr64_plus_gpr64_plus_s32(value, addr, off, offset);
     }
     assert(false);
+    return {0};
   }
 
   static Instruction store_goal_gpr(Register addr,
@@ -764,6 +765,7 @@ class IGen {
         }
       default:
         assert(false);
+        return {0};
     }
   }
 
@@ -776,6 +778,7 @@ class IGen {
       return loadvf_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -871,6 +874,7 @@ class IGen {
         }
       default:
         assert(false);
+        return {0};
     }
   }
 
@@ -993,6 +997,7 @@ class IGen {
       return lea_reg_plus_off32(dest, base, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1076,6 +1081,7 @@ class IGen {
       return load32_xmm32_gpr64_plus_gpr64_plus_s32(xmm_dest, addr, off, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1088,6 +1094,7 @@ class IGen {
       return store32_xmm32_gpr64_plus_gpr64_plus_s32(addr, off, xmm_value, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1100,6 +1107,7 @@ class IGen {
       return store32_xmm32_gpr64_plus_s32(base, xmm_value, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1112,6 +1120,7 @@ class IGen {
       return load32_xmm32_gpr64_plus_s32(xmm_dest, base, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1211,6 +1220,7 @@ class IGen {
       return load128_xmm128_gpr64_s32(xmm_dest, base, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1223,6 +1233,7 @@ class IGen {
       return store128_gpr64_xmm128_s32(base, xmm_val, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -2266,6 +2277,7 @@ class IGen {
         break;
       default:
         assert(false);
+        return {0};
     }
   }
 

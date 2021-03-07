@@ -92,6 +92,7 @@ std::string get_before_paren(std::string& instr) {
     }
   }
   assert(false);
+  return {};
 }
 
 std::string get_in_paren(std::string& instr) {
@@ -110,6 +111,7 @@ std::string get_in_paren(std::string& instr) {
     }
   }
   assert(false);
+  return {};
 }
 
 bool is_integer(const std::string& str) {

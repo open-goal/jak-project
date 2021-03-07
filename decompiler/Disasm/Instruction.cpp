@@ -153,6 +153,7 @@ bool InstructionAtom::operator==(const InstructionAtom& other) const {
       return true;
     default:
       assert(false);
+      return false;
   }
 }
 

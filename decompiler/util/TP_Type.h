@@ -239,6 +239,7 @@ struct TypeState {
         return fpr_types[r.get_fpr()];
       default:
         assert(false);
+        throw std::runtime_error("TP_Type::get failed");
     }
   }
 
@@ -251,6 +252,7 @@ struct TypeState {
       default:
         lg::die("Cannot use register {} with TypeState.", r.to_charp());
         assert(false);
+        throw std::runtime_error("TP_Type::get failed");
     }
   }
 };

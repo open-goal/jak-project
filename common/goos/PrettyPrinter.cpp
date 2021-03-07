@@ -489,6 +489,15 @@ const std::unordered_set<std::string> control_flow_start_forms = {
 };
 }
 
+PrettyPrinterNode* seek_to_next_non_whitespace(PrettyPrinterNode* in) {
+  in = in->next;
+  while (in && (in->is_line_separator ||
+                (in->tok && in->tok->kind == FormToken::TokenKind::WHITESPACE))) {
+    in = in->next;
+  }
+  return in;
+}
+
 void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
   for (; node; node = node->next) {
     if (!node->is_line_separator && node->tok->kind == FormToken::TokenKind::STRING) {
@@ -502,15 +511,39 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
 
       if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
           name == "let*") {
-        auto* parent_type_dec = getNextListOnLine(node);
-        if (parent_type_dec) {
-          insertNewlineAfter(pool, parent_type_dec->paren, 0);
-          breakList(pool, node->paren, parent_type_dec);
+        auto* first_list = getNextListOnLine(node);
+        if (first_list) {
+          insertNewlineAfter(pool, first_list->paren, 0);
+          breakList(pool, node->paren, first_list);
         }
 
-        if ((name == "let" || name == "let*") && parent_type_dec) {
-          if (parent_type_dec->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
-            breakList(pool, parent_type_dec);
+        if ((name == "let" || name == "let*") && first_list) {
+          if (first_list->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+            // we only want to break the variable list if it has multiple.
+            bool single_var = false;
+            // auto var_close_paren = first_list->paren;
+            auto first_var_open = seek_to_next_non_whitespace(first_list);
+            if (first_var_open->tok &&
+                first_var_open->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+              auto var_close_paren = first_var_open->paren;
+              if (var_close_paren && var_close_paren->next) {
+                auto iter = var_close_paren->next;
+                while (iter &&
+                       (iter->is_line_separator ||
+                        (iter->tok && iter->tok->kind == FormToken::TokenKind::WHITESPACE))) {
+                  iter = iter->next;
+                }
+                if (iter) {
+                  if (iter->tok && iter->tok->kind == FormToken::TokenKind::CLOSE_PAREN) {
+                    single_var = true;
+                  }
+                }
+              }
+            }
+
+            if (!single_var) {
+              breakList(pool, first_list);
+            }
           }
           auto open_paren = node->prev;
           if (open_paren && open_paren->tok->kind == FormToken::TokenKind::OPEN_PAREN) {

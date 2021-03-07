@@ -80,6 +80,7 @@ class DecompWarnings {
           return fmt::format("INFO: {}\n", message);
         default:
           assert(false);
+          return {};
       }
     }
 

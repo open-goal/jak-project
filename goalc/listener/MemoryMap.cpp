@@ -114,6 +114,7 @@ const MemoryMapEntry& MemoryMap::lookup(u32 addr) {
     }
   }
   assert(false);
+  throw std::runtime_error("MemoryMap::lookup failed");
 }
 
 bool MemoryMap::lookup(const std::string& obj_name, u8 seg_id, MemoryMapEntry* out) {
