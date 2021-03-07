@@ -13,7 +13,7 @@ namespace decompiler {
 bool rewrite_inline_asm_instructions(Form* top_level_form,
                                      FormPool& pool,
                                      Function& f,
-                                     const DecompilerTypeSystem& dts) {
+                                     const DecompilerTypeSystem&) {
   assert(top_level_form);
 
   try {
@@ -37,7 +37,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           // If its an invalid or unsupported exception, skip it
           /*lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
                    asmOp.instr.kind);*/
-          f.warnings.general_warning(";; Unsupported inline assembly instruction kind - [{}]",
+          f.warnings.general_warning("Unsupported inline assembly instruction kind - [{}]",
                                      asmOp.instr.kind);
           new_entries.push_back(entry);
           continue;
@@ -51,7 +51,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           // If its an invalid or unsupported exception, skip it
           /*lg::warn("[ASM Re-Write] - Inline assembly instruction marked with TODO - [{}]",
                    asmOp.full_function_name());*/
-          f.warnings.general_warning(";; Inline assembly instruction marked with TODO - [{}]",
+          f.warnings.general_warning("Inline assembly instruction marked with TODO - [{}]",
                                      asmOp.full_function_name());
         }
 

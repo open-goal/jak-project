@@ -136,6 +136,8 @@ enum class FixedOperatorKind {
   NEQ,
   CONS,
   METHOD_OF_OBJECT,
+  NULLP,
+  PAIRP,
   INVALID
 };
 
@@ -154,23 +156,29 @@ struct UseDefInfo {
   void disable_use(int op_id) {
     for (auto& x : uses) {
       if (x.op_id == op_id) {
-        assert(!x.disabled);
+        if (x.disabled) {
+          throw std::runtime_error("Invalid disable use twice");
+        }
         x.disabled = true;
         return;
       }
     }
-    assert(false);
+
+    throw std::runtime_error("Invalid disable use");
   }
 
   void disable_def(int op_id) {
     for (auto& x : defs) {
       if (x.op_id == op_id) {
-        assert(!x.disabled);
+        if (x.disabled) {
+          throw std::runtime_error("Invalid disable def twice");
+        }
         x.disabled = true;
         return;
       }
     }
-    assert(false);
+
+    throw std::runtime_error("Invalid disable def");
   }
 
   int use_count() const {

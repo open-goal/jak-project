@@ -289,7 +289,7 @@ static PrettyPrinterNode* propagatePretty(NodePool& pool,
   for (auto* n = list; n; n = n->next) {
     if (n->is_line_separator) {
       previous_line_sep = true;
-      offset = indentStack.back() += n->specialIndentDelta;
+      offset = indentStack.back() + n->specialIndentDelta;
     } else {
       if (previous_line_sep) {
         line_start = n;
@@ -483,6 +483,12 @@ void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* 
   }
 }
 
+namespace {
+const std::unordered_set<std::string> control_flow_start_forms = {
+    "while", "dotimes", "until", "if", "when",
+};
+}
+
 void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
   for (; node; node = node->next) {
     if (!node->is_line_separator && node->tok->kind == FormToken::TokenKind::STRING) {
@@ -494,12 +500,78 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
       }
 
-      if (name == "defun" || name == "defmethod" || name == "defun-debug") {
+      if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
+          name == "let*") {
         auto* parent_type_dec = getNextListOnLine(node);
         if (parent_type_dec) {
           insertNewlineAfter(pool, parent_type_dec->paren, 0);
           breakList(pool, node->paren, parent_type_dec);
         }
+
+        if ((name == "let" || name == "let*") && parent_type_dec) {
+          if (parent_type_dec->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+            breakList(pool, parent_type_dec);
+          }
+          auto open_paren = node->prev;
+          if (open_paren && open_paren->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+            // insertNewlineBefore(pool, open_paren, 0);
+            if (open_paren->prev) {
+              breakList(pool, open_paren->prev->paren, open_paren);
+            }
+          }
+        }
+      }
+
+      if (control_flow_start_forms.find(name) != control_flow_start_forms.end()) {
+        auto* parent_type_dec = getNextListOnLine(node);
+        if (parent_type_dec) {
+          insertNewlineAfter(pool, parent_type_dec->paren, 0);
+          breakList(pool, node->paren, parent_type_dec);
+          auto open_paren = node->prev;
+          if (open_paren && open_paren->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+            if (open_paren->prev && !open_paren->prev->is_line_separator) {
+              if (open_paren->prev) {
+                auto to_break = open_paren->prev->paren;
+                if (to_break->tok && to_break->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+                  breakList(pool, open_paren->prev->paren, open_paren);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (name == "cond") {
+        auto* start_of_case = getNextListOnLine(node);
+        while (true) {
+          // let's break this case:
+          assert(start_of_case->tok->kind == FormToken::TokenKind::OPEN_PAREN);
+          auto end_of_case = start_of_case->paren;
+          assert(end_of_case->tok->kind == FormToken::TokenKind::CLOSE_PAREN);
+          // get the first thing in the case
+
+          // and break there.
+          breakList(pool, start_of_case);
+          // now, look for the next case.
+          auto next = end_of_case->next;
+          while (next &&
+                 (next->is_line_separator || next->tok->kind == FormToken::TokenKind::WHITESPACE)) {
+            next = next->next;
+          }
+          if (!next) {
+            break;
+          }
+          if (next->tok->kind == FormToken::TokenKind::CLOSE_PAREN) {
+            break;
+          }
+          if (next->tok->kind != FormToken::TokenKind::OPEN_PAREN) {
+            break;
+          }
+          start_of_case = next;
+        }
+
+        // break cond into a multi-line always
+        breakList(pool, node->paren);
       }
     }
   }

@@ -266,7 +266,7 @@ TEST_F(FormRegressionTest, ExprAbs) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int int)";
-  std::string expected = "(let ((v0-0 arg0)) (abs v0-0))";
+  std::string expected = "(abs arg0)";
   test_with_expr(func, type, expected);
 }
 
@@ -704,13 +704,13 @@ TEST_F(FormRegressionTest, ExprPairMethod4) {
   std::string expected =
       "(begin\n"
       "  (cond\n"
-      "   ((= arg0 (quote ())) (set! v0-0 0))\n"
+      "   ((null? arg0) (set! v0-0 0))\n"
       "   (else\n"
       "    (let\n"
       "     ((v1-1 (cdr arg0)))\n"
       "     (set! v0-0 1)\n"
       "     (while\n"
-      "      (and (!= v1-1 (quote ())) (< (shl (the-as int v1-1) 62) 0))\n"
+      "      (and (not (null? v1-1)) (pair? v1-1))\n"
       "      (+! v0-0 1)\n"
       "      (set! v1-1 (cdr v1-1))\n"
       "      )\n"
@@ -762,7 +762,7 @@ TEST_F(FormRegressionTest, ExprLast) {
   std::string expected =
       "(let\n"
       "  ((v0-0 arg0))\n"
-      "  (while (!= (cdr v0-0) (quote ())) (nop!) (nop!) (set! v0-0 (cdr v0-0)))\n"
+      "  (while (not (null? (cdr v0-0))) (nop!) (nop!) (set! v0-0 (cdr v0-0)))\n"
       "  v0-0\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
@@ -812,10 +812,10 @@ TEST_F(FormRegressionTest, ExprMember) {
       "(let\n"
       "  ((v1-0 arg1))\n"
       "  (while\n"
-      "   (not (or (= v1-0 (quote ())) (= (car v1-0) arg0)))\n"
+      "   (not (or (null? v1-0) (= (car v1-0) arg0)))\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
-      "  (if (!= v1-0 (quote ())) v1-0)\n"
+      "  (if (not (null? v1-0)) v1-0)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -874,10 +874,10 @@ TEST_F(FormRegressionTest, ExprNmember) {
   std::string expected =
       "(begin\n"
       "  (while\n"
-      "   (not (or (= arg1 '()) (name= (the-as basic (car arg1)) arg0)))\n"
+      "   (not (or (null? arg1) (name= (the-as basic (car arg1)) arg0)))\n"
       "   (set! arg1 (cdr arg1))\n"
       "   )\n"
-      "  (if (!= arg1 '()) arg1)\n"
+      "  (if (not (null? arg1)) arg1)\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -925,10 +925,10 @@ TEST_F(FormRegressionTest, ExprAssoc) {
       "(let\n"
       "  ((v1-0 arg1))\n"
       "  (while\n"
-      "   (not (or (= v1-0 (quote ())) (= (car (car v1-0)) arg0)))\n"
+      "   (not (or (null? v1-0) (= (car (car v1-0)) arg0)))\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
-      "  (if (!= v1-0 (quote ())) (car v1-0))\n"
+      "  (if (not (null? v1-0)) (car v1-0))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -989,14 +989,14 @@ TEST_F(FormRegressionTest, ExprAssoce) {
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (= v1-0 (quote ()))\n"
+      "     (null? v1-0)\n"
       "     (= (car (car v1-0)) arg0)\n"
       "     (= (car (car v1-0)) (quote else))\n"
       "     )\n"
       "    )\n"
       "   (set! v1-0 (cdr v1-0))\n"
       "   )\n"
-      "  (if (!= v1-0 (quote ())) (car v1-0))\n"
+      "  (if (not (null? v1-0)) (car v1-0))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1074,7 +1074,7 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (= arg1 (quote ()))\n"
+      "     (null? arg1)\n"
       "     (let\n"
       "      ((a1-1 (car (car arg1))))\n"
       "      (if\n"
@@ -1087,7 +1087,7 @@ TEST_F(FormRegressionTest, ExprNassoc) {
       "    )\n"
       "   (set! arg1 (cdr arg1))\n"
       "   )\n"
-      "  (if (!= arg1 (quote ())) (car arg1))\n"
+      "  (if (not (null? arg1)) (car arg1))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1176,7 +1176,7 @@ TEST_F(FormRegressionTest, ExprNassoce) {
       "  (while\n"
       "   (not\n"
       "    (or\n"
-      "     (= arg1 (quote ()))\n"
+      "     (null? arg1)\n"
       "     (let\n"
       "      ((s4-0 (car (car arg1))))\n"
       "      (if\n"
@@ -1192,7 +1192,7 @@ TEST_F(FormRegressionTest, ExprNassoce) {
       "    )\n"
       "   (set! arg1 (cdr arg1))\n"
       "   )\n"
-      "  (if (!= arg1 (quote ())) (car arg1))\n"
+      "  (if (not (null? arg1)) (car arg1))\n"
       "  )";
   test_with_expr(func, type, expected, true, "");
 }
@@ -1243,12 +1243,12 @@ TEST_F(FormRegressionTest, ExprAppend) {
 
   std::string expected =
       "(cond\n"
-      "  ((= arg0 (quote ())) arg1)\n"
+      "  ((null? arg0) arg1)\n"
       "  (else\n"
       "   (let\n"
       "    ((v1-1 arg0))\n"
-      "    (while (!= (cdr v1-1) (quote ())) (nop!) (nop!) (set! v1-1 (cdr v1-1)))\n"
-      "    (if (!= v1-1 (quote ())) (set! (cdr v1-1) arg1))\n"
+      "    (while (not (null? (cdr v1-1))) (nop!) (nop!) (set! v1-1 (cdr v1-1)))\n"
+      "    (if (not (null? v1-1)) (set! (cdr v1-1) arg1))\n"
       "    )\n"
       "   arg0\n"
       "   )\n"
@@ -1320,11 +1320,11 @@ TEST_F(FormRegressionTest, ExprDelete) {
       "    (let\n"
       "     ((v1-1 arg1) (a2-0 (cdr arg1)))\n"
       "     (while\n"
-      "      (not (or (= a2-0 (quote ())) (= (car a2-0) arg0)))\n"
+      "      (not (or (null? a2-0) (= (car a2-0) arg0)))\n"
       "      (set! v1-1 a2-0)\n"
       "      (set! a2-0 (cdr a2-0))\n"
       "      )\n"
-      "     (if (!= a2-0 (quote ())) (set! (cdr v1-1) (cdr a2-0)))\n"
+      "     (if (not (null? a2-0)) (set! (cdr v1-1) (cdr a2-0)))\n"
       "     )\n"
       "    arg1\n"
       "    )\n"
@@ -1399,11 +1399,11 @@ TEST_F(FormRegressionTest, ExprDeleteCar) {
       "    (let\n"
       "     ((v1-2 arg1) (a2-0 (cdr arg1)))\n"
       "     (while\n"
-      "      (not (or (= a2-0 (quote ())) (= (car (car a2-0)) arg0)))\n"
+      "      (not (or (null? a2-0) (= (car (car a2-0)) arg0)))\n"
       "      (set! v1-2 a2-0)\n"
       "      (set! a2-0 (cdr a2-0))\n"
       "      )\n"
-      "     (if (!= a2-0 (quote ())) (set! (cdr v1-2) (cdr a2-0)))\n"
+      "     (if (not (null? a2-0)) (set! (cdr v1-2) (cdr a2-0)))\n"
       "     )\n"
       "    arg1\n"
       "    )\n"
@@ -1560,7 +1560,7 @@ TEST_F(FormRegressionTest, ExprSort) {
       "     ((s3-0 arg0))\n"
       "     (while\n"
       "      (not\n"
-      "       (or (= (cdr s3-0) (quote ())) (>= (shl (the-as int (cdr s3-0)) 62) 0))\n"
+      "       (or (null? (cdr s3-0)) (not (pair? (cdr s3-0))))\n"
       "       )\n"
       "      (let*\n"
       "       ((s2-0 (car s3-0)) (s1-0 (car (cdr s3-0))) (v1-1 (arg1 s2-0 s1-0)))\n"
@@ -1858,7 +1858,7 @@ TEST_F(FormRegressionTest, ExprMemCopy) {
       "  ((v0-0 arg0))\n"
       "  (dotimes\n"
       "   (v1-0 arg2)\n"
-      "   (set! (-> (the-as (pointer int8) arg0)) (-> (the-as (pointer uint8) arg1)))\n"
+      "   (set! (-> (the-as (pointer uint8) arg0)) (-> (the-as (pointer uint8) arg1)))\n"
       "   (&+! arg0 1)\n"
       "   (&+! arg1 1)\n"
       "   )\n"
@@ -1940,7 +1940,7 @@ TEST_F(FormRegressionTest, ExprMemOr) {
       "  (dotimes\n"
       "   (v1-0 arg2)\n"
       "   (set!\n"
-      "    (-> (the-as (pointer int8) arg0))\n"
+      "    (-> (the-as (pointer uint8) arg0))\n"
       "    (logior\n"
       "     (-> (the-as (pointer uint8) arg0))\n"
       "     (-> (the-as (pointer uint8) arg1))\n"

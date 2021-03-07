@@ -678,8 +678,12 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       auto reg = cne->entries.at(i).false_destination;
       assert(reg.has_value());
       assert(branch);
-      assert(branch_info_i.written_and_unused.find(reg->reg()) !=
-             branch_info_i.written_and_unused.end());
+      if (branch_info_i.written_and_unused.find(reg->reg()) ==
+          branch_info_i.written_and_unused.end()) {
+        throw std::runtime_error("Bad delay slot in clean_up_cond_no_else_final");
+      }
+      // assert(branch_info_i.written_and_unused.find(reg->reg()) !=
+      //       branch_info_i.written_and_unused.end());
     }
   }
 

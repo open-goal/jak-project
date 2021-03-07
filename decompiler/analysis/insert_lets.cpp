@@ -163,6 +163,42 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
                                             mr.maps.forms.at(1), body);
 }
 
+FormElement* fix_up_abs(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+    (let ((v0-0 x)
+          )
+     (abs v0-0)
+     )
+   */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  // look for setting a temp.
+  auto temp = in->entries().at(0).dest;
+  auto temp_name = env.get_variable_name(temp);
+
+  Form* src = in->entries().at(0).src;
+
+  auto body_matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ABS), {Matcher::any_reg(0)});
+  auto mr = match(body_matcher, in->body());
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  assert(mr.maps.regs.at(0));
+  auto abs_var_name = env.get_variable_name(*mr.maps.regs.at(0));
+  if (abs_var_name != temp_name) {
+    return nullptr;
+  }
+
+  // success!
+  return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::ABS),
+                                            src);
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -170,6 +206,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_dotimes = rewrite_as_dotimes(in, env, pool);
   if (as_dotimes) {
     return as_dotimes;
+  }
+
+  auto as_abs = fix_up_abs(in, env, pool);
+  if (as_abs) {
+    return as_abs;
   }
 
   // nothing matched.
@@ -239,7 +280,8 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
       kv.second.lca_form->at(i)->collect_vars(ras, true);
       bool uses = false;
       for (auto& ra : ras) {
-        if (env.get_variable_name(ra) == kv.second.var_name) {
+        if ((ra.reg().get_kind() == Reg::FPR || ra.reg().get_kind() == Reg::GPR) &&
+            env.get_variable_name(ra) == kv.second.var_name) {
           uses = true;
         }
       }

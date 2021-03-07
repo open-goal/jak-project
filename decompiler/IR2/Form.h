@@ -436,11 +436,26 @@ class ConditionElement : public FormElement {
                             FormPool& pool,
                             const std::vector<Form*>& source_forms,
                             const std::vector<TypeSpec>& types);
-
   FormElement* make_zero_check_generic(const Env& env,
                                        FormPool& pool,
                                        const std::vector<Form*>& source_forms,
                                        const std::vector<TypeSpec>& types);
+  FormElement* make_equal_check_generic(const Env& env,
+                                        FormPool& pool,
+                                        const std::vector<Form*>& source_forms,
+                                        const std::vector<TypeSpec>& types);
+  FormElement* make_not_equal_check_generic(const Env& env,
+                                            FormPool& pool,
+                                            const std::vector<Form*>& source_forms,
+                                            const std::vector<TypeSpec>& types);
+  FormElement* make_less_than_zero_signed_check_generic(const Env& env,
+                                                        FormPool& pool,
+                                                        const std::vector<Form*>& source_forms,
+                                                        const std::vector<TypeSpec>& types);
+  FormElement* make_geq_zero_signed_check_generic(const Env& env,
+                                                  FormPool& pool,
+                                                  const std::vector<Form*>& source_forms,
+                                                  const std::vector<TypeSpec>& types);
 
  private:
   IR2_Condition::Kind m_kind;
