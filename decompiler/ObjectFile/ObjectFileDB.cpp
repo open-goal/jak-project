@@ -18,7 +18,6 @@
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
-#include "third-party/lzokay/lzokay.hpp"
 #include "common/util/BinaryReader.h"
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
@@ -195,52 +194,8 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
   auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
-  const char jak2_header[] = "oZlB";
-  bool is_jak2 = true;
-  for (int i = 0; i < 4; i++) {
-    if (jak2_header[i] != dgo_data[i]) {
-      is_jak2 = false;
-    }
-  }
-
-  if (is_jak2) {
-    BinaryReader compressed_reader(dgo_data);
-    // seek past oZlB
-    compressed_reader.ffwd(4);
-    std::size_t decompressed_size = compressed_reader.read<uint32_t>();
-    std::vector<uint8_t> decompressed_data;
-    decompressed_data.resize(decompressed_size);
-    size_t output_offset = 0;
-    while (true) {
-      // seek past alignment bytes and read the next chunk size
-      uint32_t chunk_size = 0;
-      while (!chunk_size) {
-        chunk_size = compressed_reader.read<uint32_t>();
-      }
-
-      if (chunk_size < MAX_CHUNK_SIZE) {
-        std::size_t bytes_written = 0;
-        lzokay::EResult ok = lzokay::decompress(
-            compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
-            decompressed_data.size() - output_offset, bytes_written);
-        assert(ok == lzokay::EResult::Success);
-        compressed_reader.ffwd(chunk_size);
-        output_offset += bytes_written;
-      } else {
-        // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
-        //        assert(chunk_size == MAX_CHUNK_SIZE);
-        memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
-        compressed_reader.ffwd(MAX_CHUNK_SIZE);
-        output_offset += MAX_CHUNK_SIZE;
-      }
-
-      if (output_offset >= decompressed_size)
-        break;
-      while (compressed_reader.get_seek() % 4) {
-        compressed_reader.ffwd(1);
-      }
-    }
-    dgo_data = decompressed_data;
+  if (file_util::dgo_header_is_compressed(dgo_data)) {
+    dgo_data = file_util::decompress_dgo(dgo_data);
   }
 
   BinaryReader reader(dgo_data);
@@ -387,8 +342,11 @@ std::string ObjectFileDB::generate_dgo_listing() {
 
 namespace {
 std::string pad_string(const std::string& in, size_t length) {
-  assert(in.length() < length);
-  return in + std::string(length - in.length(), ' ');
+  if (in.length() < length) {
+    return in + std::string(length - in.length(), ' ');
+  } else {
+    return in;
+  }
 }
 }  // namespace
 
@@ -410,11 +368,16 @@ std::string ObjectFileDB::generate_obj_listing() {
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
+      if (all_unique_names.find(x.to_unique_name()) != all_unique_names.end()) {
+        lg::error("Object file {} appears multiple times with the same name.", x.to_unique_name());
+      }
       all_unique_names.insert(x.to_unique_name());
     }
     // this check is extremely important. It makes sure we don't have any repeat names. This could
     // be caused by two files with the same name, in the same DGOs, but different data.
-    assert(int(all_unique_names.size()) == unique_count);
+    if (int(all_unique_names.size()) != unique_count) {
+      lg::error("Object files are not named properly, data will be lost!");
+    }
   }
 
   if (result.length() >= 2) {

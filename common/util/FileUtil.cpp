@@ -10,10 +10,12 @@
 #include <fstream>
 #include <sstream>
 #include <cassert>
+#include <cstdlib>
+#include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
 #include "common/common_types.h"
 #include "third-party/svpng.h"
-#include <stdlib.h>
+#include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -325,6 +327,65 @@ void assert_file_exists(const char* path, const char* error_message) {
     fprintf(stderr, "File %s was not found: %s\n", path, error_message);
     assert(false);
   }
+}
+
+/*!
+ * Check if the given DGO header (or entire file) is compressed.
+ */
+bool dgo_header_is_compressed(const std::vector<u8>& data) {
+  const char compressed_header[] = "oZlB";
+  bool is_compressed = true;
+  for (int i = 0; i < 4; i++) {
+    if (compressed_header[i] != data.at(i)) {
+      is_compressed = false;
+    }
+  }
+  return is_compressed;
+}
+
+/*!
+ * Decompress a DGO. Resulting data will start at the DGO header.
+ */
+std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
+  constexpr int MAX_CHUNK_SIZE = 0x8000;
+  BinaryReader compressed_reader(data_in);
+  // seek past oZlB
+  compressed_reader.ffwd(4);
+  std::size_t decompressed_size = compressed_reader.read<uint32_t>();
+  std::vector<uint8_t> decompressed_data;
+  decompressed_data.resize(decompressed_size);
+  size_t output_offset = 0;
+  while (true) {
+    // seek past alignment bytes and read the next chunk size
+    uint32_t chunk_size = 0;
+    while (!chunk_size) {
+      chunk_size = compressed_reader.read<uint32_t>();
+    }
+
+    if (chunk_size < MAX_CHUNK_SIZE) {
+      std::size_t bytes_written = 0;
+      lzokay::EResult ok = lzokay::decompress(
+          compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
+          decompressed_data.size() - output_offset, bytes_written);
+      assert(ok == lzokay::EResult::Success);
+      compressed_reader.ffwd(chunk_size);
+      output_offset += bytes_written;
+    } else {
+      // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
+      //        assert(chunk_size == MAX_CHUNK_SIZE);
+      memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
+      compressed_reader.ffwd(MAX_CHUNK_SIZE);
+      output_offset += MAX_CHUNK_SIZE;
+    }
+
+    if (output_offset >= decompressed_size)
+      break;
+    while (compressed_reader.get_seek() % 4) {
+      compressed_reader.ffwd(1);
+    }
+  }
+
+  return decompressed_data;
 }
 
 }  // namespace file_util
