@@ -22,6 +22,7 @@ std::string IRegister::to_string() const {
       return fmt::format("ivf-{}", id);
     default:
       assert(false);
+      return {};
   }
 }
 

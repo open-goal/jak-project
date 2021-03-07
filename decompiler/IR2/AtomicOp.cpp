@@ -41,6 +41,7 @@ goos::Object RegisterAccess::to_form(const Env& env, Print mode) const {
       }
     default:
       assert(false);
+      return {};
   }
 }
 
@@ -268,6 +269,7 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "max.ui";
     default:
       assert(false);
+      return {};
   }
 }
 }  // namespace
@@ -317,6 +319,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       return 2;
     default:
       assert(false);
+      return -1;
   }
 }
 
@@ -718,6 +721,7 @@ std::string get_condition_kind_name(IR2_Condition::Kind kind) {
       return ">=0.ui";
     default:
       assert(false);
+      return "";
   }
 }
 
@@ -760,6 +764,7 @@ int get_condition_num_args(IR2_Condition::Kind kind) {
       return 0;
     default:
       assert(false);
+      return -1;
   }
 }
 
@@ -831,6 +836,7 @@ IR2_Condition::Kind get_condition_opposite(IR2_Condition::Kind kind) {
       return IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED;
     default:
       assert(false);
+      return IR2_Condition::Kind::INVALID;
   }
 }
 
@@ -1177,6 +1183,7 @@ goos::Object IR2_BranchDelay::to_form(const std::vector<DecompilerLabel>& labels
       return pretty_print::build_list("unknown-branch-delay!");
     default:
       assert(false);
+      return {};
   }
 }
 
@@ -1375,6 +1382,7 @@ goos::Object SpecialOp::to_form(const std::vector<DecompilerLabel>& labels, cons
       return pretty_print::build_list("suspend");
     default:
       assert(false);
+      return {};
   }
 }
 

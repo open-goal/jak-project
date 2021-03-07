@@ -295,6 +295,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::INVALID:
       default:
         assert(false);
+        return {};
     }
   } else {
     // trying to combine two of different types.

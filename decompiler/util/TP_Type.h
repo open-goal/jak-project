@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <cassert>
+#include <stdexcept>
 #include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"
 #include "common/common_types.h"
@@ -239,6 +240,7 @@ struct TypeState {
         return fpr_types[r.get_fpr()];
       default:
         assert(false);
+        throw std::runtime_error("TP_Type::get failed");
     }
   }
 
@@ -251,6 +253,7 @@ struct TypeState {
       default:
         lg::die("Cannot use register {} with TypeState.", r.to_charp());
         assert(false);
+        throw std::runtime_error("TP_Type::get failed");
     }
   }
 };

@@ -1,5 +1,6 @@
 #include <cassert>
 #include <algorithm>
+#include <stdexcept>
 #include "MemoryMap.h"
 #include "third-party/fmt/core.h"
 #include "common/link_types.h"
@@ -114,6 +115,7 @@ const MemoryMapEntry& MemoryMap::lookup(u32 addr) {
     }
   }
   assert(false);
+  throw std::runtime_error("MemoryMap::lookup failed");
 }
 
 bool MemoryMap::lookup(const std::string& obj_name, u8 seg_id, MemoryMapEntry* out) {

@@ -110,6 +110,7 @@ std::shared_ptr<IR> instr_atom_to_ir(const InstructionAtom& ia, int idx) {
       return make_int(ia.get_imm());
     default:
       assert(false);
+      return nullptr;
   }
 }
 

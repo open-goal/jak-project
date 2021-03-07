@@ -44,6 +44,7 @@ std::string FieldReverseLookupOutput::Token::print() const {
       return "__VAR__";
     default:
       assert(false);
+      return {};
   }
 }
 

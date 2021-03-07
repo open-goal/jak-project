@@ -85,6 +85,7 @@ struct VEX3 {
       return result;
     } else {
       assert(false);
+      return -1;
     }
   }
 
@@ -124,6 +125,7 @@ struct VEX2 {
       return result;
     } else {
       assert(false);
+      return -1;
     }
   }
 

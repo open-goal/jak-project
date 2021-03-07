@@ -33,6 +33,7 @@ bool integer_fits(s64 in, int size, bool is_signed) {
       return true;
     default:
       assert(false);
+      return false;
   }
 }
 
@@ -415,6 +416,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
     return result;
   } else {
     assert(false);  // not yet implemented
+    return {};
   }
 }
 

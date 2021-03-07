@@ -614,6 +614,7 @@ goos::Object BranchDelay::to_form(const LinkedObjectFile& file) const {
       return pretty_print::build_list("unknown-branch-delay");
     default:
       assert(false);
+      return {};
   }
 }
 
@@ -669,6 +670,7 @@ int Condition::num_args() const {
       return 0;
     default:
       assert(false);
+      return -1;
   }
 }
 
@@ -867,6 +869,7 @@ goos::Object Condition::to_form(const LinkedObjectFile& file) const {
     return pretty_print::to_symbol(condtion_operator);
   } else {
     assert(false);
+    return {};
   }
 }
 
@@ -992,6 +995,7 @@ goos::Object IR_AsmReg::to_form(const LinkedObjectFile& file) const {
       return pretty_print::to_symbol("ACC");
     default:
       assert(false);
+      return {};
   }
 }
 

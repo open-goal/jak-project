@@ -91,6 +91,7 @@ HWRegKind reg_class_to_hw(RegClass reg_class) {
       return HWRegKind::GPR;
     default:
       assert(false);
+      return HWRegKind::INVALID;
   }
 }
 

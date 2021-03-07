@@ -154,7 +154,7 @@ RegVal* MemoryDerefVal::to_reg(Env* fe) {
   if (base_as_co) {
     s64 offset;
     auto final_base = get_constant_offset_and_base(base_as_co, &offset);
-    fe->emit_ir<IR_LoadConstOffset>(re, offset, final_base->to_gpr(fe), info);
+    fe->emit_ir<IR_LoadConstOffset>(re, (int)offset, final_base->to_gpr(fe), info);
   } else {
     auto addr = base->to_gpr(fe);
     fe->emit(std::make_unique<IR_LoadConstOffset>(re, 0, addr, info));

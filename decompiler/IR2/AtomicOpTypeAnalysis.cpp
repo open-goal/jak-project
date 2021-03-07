@@ -27,6 +27,7 @@ RegClass get_reg_kind(const Register& r) {
       return RegClass::FLOAT;
     default:
       assert(false);
+      return RegClass::INVALID;
   }
 }
 
@@ -758,6 +759,7 @@ TypeState SpecialOp::propagate_types_internal(const TypeState& input,
       return input;
     default:
       assert(false);
+      return input;
   }
 }
 

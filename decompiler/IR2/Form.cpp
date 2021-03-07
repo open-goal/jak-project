@@ -212,6 +212,7 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
           return pretty_print::build_list("l.d", m_addr->to_form(env));
         default:
           assert(false);
+          return {};
       }
       break;
     case LoadVarOp::Kind::SIGNED:
@@ -224,10 +225,12 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
           return pretty_print::build_list("l.w", m_addr->to_form(env));
         default:
           assert(false);
+          return {};
       }
       break;
     default:
       assert(false);
+      return {};
   }
 }
 
@@ -1327,6 +1330,7 @@ goos::Object GenericOperator::to_form(const Env& env) const {
       return m_function->to_form(env);
     default:
       assert(false);
+      return {};
   }
 }
 
@@ -1369,6 +1373,7 @@ bool GenericOperator::operator==(const GenericOperator& other) const {
       return false;
     default:
       assert(false);
+      return false;
   }
 }
 
@@ -1473,6 +1478,7 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "pair?";
     default:
       assert(false);
+      return "";
   }
 }
 
@@ -1650,6 +1656,7 @@ goos::Object DerefToken::to_form(const Env& env) const {
       return pretty_print::to_symbol("PLACEHOLDER");
     default:
       assert(false);
+      return {};
   }
 }
 

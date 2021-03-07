@@ -45,6 +45,7 @@ class LinkedWord {
         return (data >> 24) & 0xff;
       default:
         assert(false);
+        return 0;
     }
   }
 };

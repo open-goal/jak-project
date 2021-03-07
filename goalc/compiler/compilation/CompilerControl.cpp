@@ -83,7 +83,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   bool no_code = false;
   bool disassemble = false;
 
-  std::vector<std::pair<std::string, float>> timing;
+  std::vector<std::pair<std::string, double>> timing;
   Timer total_timer;
 
   // parse arguments
@@ -422,6 +422,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
                          m_goos.reader.db.get_info_for(info.src_form()));
     default:
       assert(false);
+      return {};
   }
 }
 

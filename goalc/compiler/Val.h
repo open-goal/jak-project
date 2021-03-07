@@ -181,14 +181,14 @@ class StackVarAddrVal : public Val {
 
 class MemoryOffsetConstantVal : public Val {
  public:
-  MemoryOffsetConstantVal(TypeSpec ts, Val* _base, int _offset)
+  MemoryOffsetConstantVal(TypeSpec ts, Val* _base, s64 _offset)
       : Val(std::move(ts)), base(_base), offset(_offset) {}
   std::string print() const override {
     return "(" + base->print() + " + " + std::to_string(offset) + ")";
   }
   RegVal* to_reg(Env* fe) override;
   Val* base = nullptr;
-  int offset = 0;
+  s64 offset = 0;
 };
 
 class MemoryOffsetVal : public Val {

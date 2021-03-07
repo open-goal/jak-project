@@ -73,7 +73,7 @@ std::pair<int, int> SourceText::get_containing_line(int offset) {
       return std::make_pair(offset_by_line[line], offset_by_line[line + 1]);
     }
   }
-  return std::make_pair(0, text.size());
+  return std::make_pair(0, (int)text.size());
 }
 
 /*!
