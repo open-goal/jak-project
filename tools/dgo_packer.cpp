@@ -31,14 +31,15 @@ int main(int argc, char** argv) {
     for (auto& entry : x["objects"]) {
       auto obj_data =
           file_util::read_binary_file(file_util::combine_path(out_path, entry["unique_name"]));
+      auto aligned_size = ((obj_data.size() + 15) / 16) * 16;
       // size
-      writer.add<uint32_t>(obj_data.size());
+      writer.add<uint32_t>(aligned_size);
       // name
       writer.add_str_len(entry["internal_name"].get<std::string>().c_str(), 60);
       // data
       writer.add_data(obj_data.data(), obj_data.size());
       // pad
-      while (writer.get_size() & 0xf) {
+      while (writer.get_size() & 15) {
         writer.add<uint8_t>(0);
       }
     }

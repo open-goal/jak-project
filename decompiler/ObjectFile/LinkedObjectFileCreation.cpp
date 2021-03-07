@@ -302,7 +302,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
           for (uint8_t i = 0; i < count; i++) {
             if (!f.pointer_link_word(0, code_ptr_offset - code_offset, 0,
                                      *((const uint32_t*)(&data.at(code_ptr_offset))))) {
-              printf("WARNING bad link in %s\n", name.c_str());
+              lg::error("Skipping link in {} because it is out of range!", name.c_str());
             }
             f.stats.total_v2_pointers++;
             code_ptr_offset += 4;
