@@ -136,9 +136,9 @@ Reader::Reader() {
 /*!
  * Prompt the user and read the result.
  */
-Object Reader::read_from_stdin(const std::string& prompt_name, ReplWrapper& repl) {
+Object Reader::read_from_stdin(const std::string& prompt, ReplWrapper& repl) {
   // escape code will make sure that we remove any color
-  std::string prompt_full = "\033[0m" + prompt_name + "> ";
+  std::string prompt_full = "\033[0m" + prompt;
   std::string line = repl.readline(prompt_full);
   repl.add_to_history(line.c_str());
   // todo, decide if we should keep reading or not.

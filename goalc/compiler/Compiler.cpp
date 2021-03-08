@@ -27,27 +27,29 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl) : m_debugger(&m_listener) 
 }
 
 ReplStatus Compiler::execute_repl() {
-  // init repl callbacks
-  std::vector<std::string> examples{};
+  // init repl
+  auto examples = m_repl.get()->examples;
+  auto regex_colors = m_repl.get()->regex_colors;
+  m_repl.get()->init_default_settings();
   using namespace std::placeholders;
-  m_repl->get_repl().set_completion_callback(
+  m_repl.get()->get_repl().set_completion_callback(
       std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+  m_repl.get()->get_repl().set_hint_callback(
+      std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
+  m_repl.get()->get_repl().set_highlighter_callback(
+      std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
+
   while (!m_want_exit && !m_want_reload) {
     try {
       // 1). get a line from the user (READ)
-      std::string prompt = "g";
+      std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
       if (m_listener.is_connected()) {
-        prompt += "c";
-      } else {
-        prompt += " ";
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
       }
-
       if (m_debugger.is_halted()) {
-        prompt += "s";
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
       } else if (m_debugger.is_attached()) {
-        prompt += "r";
-      } else {
-        prompt += " ";
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
       }
 
       Object code = m_goos.reader.read_from_stdin(prompt, *m_repl.get());
