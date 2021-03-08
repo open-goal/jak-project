@@ -49,7 +49,16 @@ class Compiler {
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
-  Replxx::completions_t find_symbols_by_prefix(std::string const& context, int& contextLen, std::vector<std::string> const& user_data);
+  Replxx::completions_t find_symbols_by_prefix(std::string const& context,
+                                               int& contextLen,
+                                               std::vector<std::string> const& user_data);
+  Replxx::hints_t find_hints_by_prefix(std::string const& context,
+                                       int& contextLen,
+                                       Replxx::Color& color,
+                                       std::vector<std::string> const& user_data);
+  void repl_coloring(std::string const& str,
+                     Replxx::colors_t& colors,
+                     std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
 
  private:
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);

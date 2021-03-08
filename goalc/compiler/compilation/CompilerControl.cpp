@@ -12,6 +12,8 @@
 #include "goalc/data_compiler/game_text.h"
 #include "goalc/data_compiler/game_count.h"
 #include "common/goos/ReplUtils.h"
+#include <regex>
+#include <stack>
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -407,27 +409,103 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
 Replxx::completions_t Compiler::find_symbols_by_prefix(std::string const& context,
                                                        int& contextLen,
                                                        std::vector<std::string> const& user_data) {
-  // Find the current token
-  std::string token = "";
-  for (auto c = context.crbegin(); c != context.crend(); c++) {
-    if (std::isspace(*c)) {
-      break;
-    } else {
-      token = *c + token;
-    }
-  }
-
-  // If there is a preceeding '(' remove it
-  if (token.at(0) == '(') {
-    token.erase(0, 1);
-  }
-
-  auto result = m_symbol_info.lookup_symbols_starting_with(token);
+  auto token = m_repl.get()->get_current_repl_token(context);
+  auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
   Replxx::completions_t completions;
-  for (auto& x : result) {
+  for (auto& x : possible_forms) {
     completions.push_back(x);
   }
   return completions;
+}
+
+Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
+                                               int& contextLen,
+                                               Replxx::Color& color,
+                                               std::vector<std::string> const& user_data) {
+  auto token = m_repl.get()->get_current_repl_token(context);
+  auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
+
+  Replxx::hints_t hints;
+
+  // Only show hints if there are <= 3 possibilities
+  if (possible_forms.size() <= 3) {
+    for (auto& x : possible_forms) {
+      hints.push_back(token.second ? "(" + x : x);
+    }
+  }
+
+  // set hint color to green if single match found
+  if (hints.size() == 1) {
+    color = Replxx::Color::GREEN;
+  }
+
+  return hints;
+}
+
+void Compiler::repl_coloring(
+    std::string const& context,
+    Replxx::colors_t& colors,
+    std::vector<std::pair<std::string, Replxx::Color>> const& regex_color) {
+  using cl = Replxx::Color;
+  // TODO - a proper circular queue would be cleaner to use
+  std::deque<cl> paren_colors = {cl::GREEN, cl::CYAN, cl::MAGENTA};
+  std::stack<std::pair<char, cl>> expression_stack;
+
+  std::pair<int, std::string> curr_symbol = {-1, ""};
+  for (std::string::size_type i = 0; i < context.size(); i++) {
+    char curr = context.at(i);
+    // We lookup every potential symbol and color it based on it's type
+    if (std::isspace(curr) || curr == ')') {
+      // Lookup the symbol, if its legit, color it
+      if (!curr_symbol.second.empty() && curr_symbol.second.at(0) == '(') {
+        curr_symbol.second.erase(0, 1);
+        curr_symbol.first++;
+      }
+      std::vector<SymbolInfo>* sym_match = m_symbol_info.lookup_exact_name(curr_symbol.second);
+      if (sym_match != nullptr && sym_match->size() == 1) {
+        SymbolInfo sym_info = sym_match->at(0);
+        for (int pos = curr_symbol.first; pos <= i; pos++) {
+          // TODO - currently just coloring all types brown/gold
+          // - would be nice to have a different color for globals, functions, etc
+          colors.at(pos) = cl::BROWN;
+        }
+      }
+      curr_symbol = {-1, ""};
+    } else {
+      if (curr_symbol.first == -1) {
+        curr_symbol.first = i;
+      }
+      curr_symbol.second += curr;
+    }
+    // Rainbow paren coloring and known-form coloring
+    if (curr == '(') {
+      cl color = paren_colors.front();
+      expression_stack.push({curr, color});
+      colors.at(i) = color;
+      paren_colors.pop_front();
+      paren_colors.push_back(color);
+    } else if (curr == ')') {
+      if (expression_stack.empty()) {
+        colors.at(i) = cl::RED;
+      } else {
+        auto& matching_paren = expression_stack.top();
+        expression_stack.pop();
+        if (matching_paren.first == '(') {
+          if (i == context.size() - 1 && !expression_stack.empty()) {
+            colors.at(i) = cl::RED;
+          } else {
+            colors.at(i) = matching_paren.second;
+          }
+        }
+      }
+    }
+    // Reset the color order
+    if (expression_stack.empty()) {
+      paren_colors = {cl::GREEN, cl::CYAN, cl::MAGENTA};
+    }
+  }
+
+  // TODO - general syntax highlighting with regexes (quotes, symbols, etc)
 }
 
 Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env) {

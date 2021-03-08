@@ -14,6 +14,7 @@ class ReplWrapper {
  public:
   ReplWrapper() {}
   Replxx& get_repl() { return repl; }
+  void init_default_settings();
 
   // Functionality / Commands
   void clear_screen();
@@ -23,4 +24,9 @@ class ReplWrapper {
   void save_history();
   void load_history();
   void print_help_message();
+  std::pair<std::string, bool> get_current_repl_token(std::string const& context);
+
+  std::vector<std::string> examples{};
+  using cl = Replxx::Color;
+  std::vector<std::pair<std::string, cl>> regex_colors{};
 };
