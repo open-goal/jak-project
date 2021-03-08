@@ -9,8 +9,8 @@
 
 using namespace goos;
 
-Compiler::Compiler(std::unique_ptr<ReplWrapper> repl) : m_debugger(&m_listener) {
-  m_repl = std::move(repl);
+Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
+    : m_debugger(&m_listener), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
