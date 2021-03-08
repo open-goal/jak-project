@@ -413,7 +413,7 @@ Replxx::completions_t Compiler::find_symbols_by_prefix(std::string const& contex
   auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
   Replxx::completions_t completions;
   for (auto& x : possible_forms) {
-    completions.push_back(x);
+    completions.push_back(token.second ? "(" + x : x);
   }
   return completions;
 }
