@@ -1,6 +1,8 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 project(jak)
 include(CTest)
 if(NOT CMAKE_BUILD_TYPE)
