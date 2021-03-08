@@ -2,7 +2,7 @@
 
 #include "common/util/FileUtil.h"
 #include "third-party/replxx/include/replxx.hxx"
-
+#include "common/versions.h"
 #include "third-party/fmt/color.h"
 #include "third-party/fmt/core.h"
 
@@ -13,6 +13,27 @@ using Replxx = replxx::Replxx;
 
 void ReplWrapper::clear_screen() {
   repl.clear_screen();
+}
+
+void ReplWrapper::print_welcome_message() {
+  clear_screen();
+  // Welcome message / brief intro for documentation
+  std::string ascii;
+  ascii += " _____             _____ _____ _____ __    \n";
+  ascii += "|     |___ ___ ___|   __|     |  _  |  |   \n";
+  ascii += "|  |  | . | -_|   |  |  |  |  |     |  |__ \n";
+  ascii += "|_____|  _|___|_|_|_____|_____|__|__|_____|\n";
+  ascii += "      |_|                                  \n";
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::orange), ascii);
+
+  fmt::print("Welcome to OpenGOAL {}.{}!\n", versions::GOAL_VERSION_MAJOR,
+             versions::GOAL_VERSION_MINOR);
+  fmt::print("Run ");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(repl-help)");
+  fmt::print(" for help with common commands and REPL usage.\n");
+  fmt::print("Run ");
+  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
+  fmt::print(" to connect to the local target.\n\n");
 }
 
 void ReplWrapper::set_history_max_size(size_t len) {

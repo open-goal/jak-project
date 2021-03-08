@@ -28,6 +28,7 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl) : m_debugger(&m_listener) 
 
 ReplStatus Compiler::execute_repl() {
   // init repl
+  m_repl.get()->print_welcome_message();
   auto examples = m_repl.get()->examples;
   auto regex_colors = m_repl.get()->regex_colors;
   m_repl.get()->init_default_settings();
