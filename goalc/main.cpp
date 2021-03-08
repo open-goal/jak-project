@@ -7,7 +7,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/color.h"
 
-#include "common/goos/ReplHistory.h"
+#include "common/goos/ReplUtils.h"
 
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
@@ -43,31 +43,13 @@ int main(int argc, char** argv) {
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
+  // Init REPL
   std::unique_ptr<Compiler> compiler = std::make_unique<Compiler>();
 
-  // Welcome message / brief intro for documentation
-  std::string ascii;
-  ascii += " _____             _____ _____ _____ __    \n";
-  ascii += "|     |___ ___ ___|   __|     |  _  |  |   \n";
-  ascii += "|  |  | . | -_|   |  |  |  |  |     |  |__ \n";
-  ascii += "|_____|  _|___|_|_|_____|_____|__|__|_____|\n";
-  ascii += "      |_|                                  \n";
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::orange), ascii);
-
-  fmt::print("Welcome to OpenGOAL {}.{}!\n", versions::GOAL_VERSION_MAJOR,
-             versions::GOAL_VERSION_MINOR);
-  fmt::print("Run ");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(repl-help)");
-  fmt::print(" for help with common commands and REPL usage.\n");
-  fmt::print("Run ");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
-  fmt::print(" to connect to the local target.\n");
-
-  ReplHistory::repl_load_history();
   if (argument.empty()) {
     ReplStatus status = ReplStatus::WANT_RELOAD;
     while (status == ReplStatus::WANT_RELOAD) {
-      compiler = std::make_unique<Compiler>();
+      compiler = std::make_unique<Compiler>(std::make_unique<ReplWrapper>());
       status = compiler->execute_repl();
       if (status == ReplStatus::WANT_RELOAD) {
         fmt::print("Reloading compiler...\n");

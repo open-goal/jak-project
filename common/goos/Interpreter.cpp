@@ -125,11 +125,11 @@ Object Interpreter::intern(const std::string& name) {
 /*!
  * Display the REPL, which will run until the user executes exit.
  */
-void Interpreter::execute_repl() {
+void Interpreter::execute_repl(ReplWrapper& repl) {
   while (!want_exit) {
     try {
       // read something from the user
-      Object obj = reader.read_from_stdin("goos");
+      Object obj = reader.read_from_stdin("goos", repl);
       // evaluate
       Object evald = eval_with_rewind(obj, global_environment.as_env());
       // print

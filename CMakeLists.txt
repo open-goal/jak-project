@@ -1,6 +1,8 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 project(jak)
 include(CTest)
 if(NOT CMAKE_BUILD_TYPE)
@@ -60,6 +62,9 @@ endif()
 include_directories(./)
 
 include_directories(SYSTEM third-party/inja)
+
+# build repl library
+add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 
 # build common library
 add_subdirectory(common)
