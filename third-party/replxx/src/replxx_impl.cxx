@@ -942,6 +942,11 @@ int longest_common_prefix( Replxx::ReplxxImpl::completions_t const& completions 
 }
 }
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 /**
  * Handle command completion, using a completionCallback() routine to provide
  * possible substitutions
@@ -1165,6 +1170,10 @@ char32_t Replxx::ReplxxImpl::do_complete_line( bool showCompletions_ ) {
 	refresh_line();
 	return 0;
 }
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 int Replxx::ReplxxImpl::get_input_line( void ) {
 	// The latest history entry is always our current buffer

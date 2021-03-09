@@ -119,6 +119,7 @@ const std::unordered_map<
         {"reload", &Compiler::compile_reload},
         {"get-info", &Compiler::compile_get_info},
         {"autocomplete", &Compiler::compile_autocomplete},
+        {"add-macro-to-autocomplete", &Compiler::compile_add_macro_to_autocomplete},
 
         // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
