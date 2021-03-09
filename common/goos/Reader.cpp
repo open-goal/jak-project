@@ -13,7 +13,7 @@
 #include "common/util/FileUtil.h"
 #include "third-party/fmt/core.h"
 #include <filesystem>
-#include "ReplHistory.h"
+#include "ReplUtils.h"
 
 namespace goos {
 
@@ -103,9 +103,6 @@ void TextStream::seek_past_whitespace_and_comments() {
 }
 
 Reader::Reader() {
-  // third-party library used for a fancy line in
-  ReplHistory::repl_set_history_max_size(5000);
-
   // add default macros
   add_reader_macro("'", "quote");
   add_reader_macro("`", "quasiquote");
@@ -139,12 +136,11 @@ Reader::Reader() {
 /*!
  * Prompt the user and read the result.
  */
-Object Reader::read_from_stdin(const std::string& prompt_name) {
-  std::string line;
+Object Reader::read_from_stdin(const std::string& prompt, ReplWrapper& repl) {
   // escape code will make sure that we remove any color
-  std::string prompt_full = "\033[0m" + prompt_name + "> ";
-  ReplHistory::repl_readline(prompt_full.c_str(), line);
-  ReplHistory::repl_add_to_history(line.c_str());
+  std::string prompt_full = "\033[0m" + prompt;
+  std::string line = repl.readline(prompt_full);
+  repl.add_to_history(line.c_str());
   // todo, decide if we should keep reading or not.
 
   // create text fragment and add to the DB

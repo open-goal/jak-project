@@ -18,6 +18,7 @@
 #include "CompilerException.h"
 #include "goalc/compiler/SymbolInfo.h"
 #include "Enum.h"
+#include "common/goos/ReplUtils.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -25,7 +26,7 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
 class Compiler {
  public:
-  Compiler();
+  Compiler(std::unique_ptr<ReplWrapper> repl = nullptr);
   ReplStatus execute_repl();
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
@@ -48,6 +49,16 @@ class Compiler {
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();
+  Replxx::completions_t find_symbols_by_prefix(std::string const& context,
+                                               int& contextLen,
+                                               std::vector<std::string> const& user_data);
+  Replxx::hints_t find_hints_by_prefix(std::string const& context,
+                                       int& contextLen,
+                                       Replxx::Color& color,
+                                       std::vector<std::string> const& user_data);
+  void repl_coloring(std::string const& str,
+                     Replxx::colors_t& colors,
+                     std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
 
  private:
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
@@ -203,6 +214,7 @@ class Compiler {
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
   SymbolInfoMap m_symbol_info;
+  std::unique_ptr<ReplWrapper> m_repl;
 
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);
@@ -424,6 +436,7 @@ class Compiler {
   Val* compile_seval(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_exit(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_file(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_repl_clear_screen(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_data_file(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_repl_help(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_listen_to_target(const goos::Object& form, const goos::Object& rest, Env* env);
