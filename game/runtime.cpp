@@ -237,6 +237,14 @@ u32 exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
 
+  bool enable_display = true;
+  for (int i = 1; i < argc; i++) {
+    if (std::string("-nodisplay") == argv[i]) {
+      enable_display = false;
+      break;
+    }
+  }
+
   // step 1: sce library prep
   iop::LIBRARY_INIT();
   ee::LIBRARY_INIT_sceCd();
@@ -257,32 +265,31 @@ u32 exec_runtime(int argc, char** argv) {
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
-  Gfx::Init();
-  while (!tm.all_threads_exiting()) {
+  if (enable_display) {
+    Gfx::Init();
+    while (!tm.all_threads_exiting()) {
+      // run display-specific things
+      if (Display::display) {
+        // lg::debug("run display");
+        glfwMakeContextCurrent(Display::display);
 
-    // run display-specific things
-    if (Display::display) {
-      // lg::debug("run display");
-      glfwMakeContextCurrent(Display::display);
+        // render graphics
+        glClear(GL_COLOR_BUFFER_BIT);
 
-      // render graphics
-      glClear(GL_COLOR_BUFFER_BIT);
+        glfwSwapBuffers(Display::display);
 
-      glfwSwapBuffers(Display::display);
+        // poll events TODO integrate input with cpad
+        glfwPollEvents();
 
-      // poll events TODO integrate input with cpad
-      glfwPollEvents();
-
-      // exit if display window was closed (TODO improve)
-      if (glfwWindowShouldClose(Display::display)) {
-        // Display::KillDisplay(Display::display);
-        MasterExit = 1;
+        // exit if display window was closed
+        if (glfwWindowShouldClose(Display::display)) {
+          // Display::KillDisplay(Display::display);
+          MasterExit = 1;
+        }
       }
-
     }
-
+    Gfx::Exit();
   }
-  Gfx::Exit();
 
   deci_thread.join();
   // DECI has been killed, shutdown!
