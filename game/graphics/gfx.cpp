@@ -31,7 +31,7 @@ u32 Init() {
   } else {
     Display::InitDisplay(640, 480, "testy", Display::display);
   }
-  
+
   return 0;
 }
 
