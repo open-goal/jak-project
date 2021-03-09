@@ -74,7 +74,7 @@ set(RUNTIME_SOURCE
 
 
 # we build the runtime as a static library.
-add_library(runtime ${RUNTIME_SOURCE})
+add_library(runtime STATIC ${RUNTIME_SOURCE})
 
 target_link_libraries(runtime common fmt)
 if(WIN32)

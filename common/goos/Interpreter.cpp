@@ -129,9 +129,12 @@ void Interpreter::execute_repl(ReplWrapper& repl) {
   while (!want_exit) {
     try {
       // read something from the user
-      Object obj = reader.read_from_stdin("goos", repl);
+      auto obj = reader.read_from_stdin("goos> ", repl);
+      if (!obj) {
+        continue;
+      }
       // evaluate
-      Object evald = eval_with_rewind(obj, global_environment.as_env());
+      Object evald = eval_with_rewind(*obj, global_environment.as_env());
       // print
       printf("%s\n", evald.print().c_str());
     } catch (std::exception& e) {
