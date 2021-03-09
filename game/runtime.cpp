@@ -86,8 +86,6 @@ void deci2_runner(SystemThreadInterface& iface) {
   }
 
   lg::debug("[DECI2] Waiting for listener...");
-  // lg::debug("[DECI2] Waiting for listener..."); --> disabled temporarily, some weird race
-  // condition?
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
     if (server.check_for_listener()) {
@@ -256,12 +254,13 @@ u32 exec_runtime(int argc, char** argv) {
   ee_thread.start(ee_runner);
   deci_thread.start(deci2_runner);
 
-  // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread
+  // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
+  // TODO relegate this to its own function
+  // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   Gfx::Init();
   while (!tm.all_threads_exiting()) {
 
     // run display-specific things
-    // TODO sync game graphics with GIF or something?
     if (Display::display) {
       // lg::debug("run display");
       glfwMakeContextCurrent(Display::display);
