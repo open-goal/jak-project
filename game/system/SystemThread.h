@@ -77,6 +77,7 @@ class SystemThreadManager {
   void print_stats();
   void shutdown();
   void join();
+  bool all_threads_exiting();
 
  private:
   std::array<SystemThread, MAX_SYSTEM_THREADS> threads;

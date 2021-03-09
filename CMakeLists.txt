@@ -72,7 +72,12 @@ add_subdirectory(common)
 # build decompiler
 add_subdirectory(decompiler)
 
+# build glfw library
+add_subdirectory(third-party/glfw)
+
 # build the game code in C++
+include_directories(third-party/glad/include)
+include_directories(third-party/glfw/include)
 add_subdirectory(game)
 
 # build the compiler

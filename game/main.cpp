@@ -34,6 +34,8 @@ int main(int argc, char** argv) {
 
   setup_logging(verbose);
 
+  g_main_thread_id = std::this_thread::get_id();
+
   while (true) {
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);

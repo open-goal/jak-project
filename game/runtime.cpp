@@ -47,10 +47,15 @@
 #include "game/overlord/srpc.h"
 #include "game/overlord/stream.h"
 
+#include "game/graphics/opengl.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/display.h"
+
 #include "common/goal_constants.h"
 #include "common/cross_os_debug/xdbg.h"
 
 u8* g_ee_main_mem = nullptr;
+std::thread::id g_main_thread_id = std::thread::id::id();
 
 namespace {
 
@@ -251,7 +256,35 @@ u32 exec_runtime(int argc, char** argv) {
   ee_thread.start(ee_runner);
   deci_thread.start(deci2_runner);
 
-  // step 4: wait for EE to signal a shutdown, which will cause the DECI thread to join.
+  // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread
+  Gfx::Init();
+  while (!tm.all_threads_exiting()) {
+
+    // run display-specific things
+    // TODO sync game graphics with GIF or something?
+    if (Display::display) {
+      // lg::debug("run display");
+      glfwMakeContextCurrent(Display::display);
+
+      // render graphics
+      glClear(GL_COLOR_BUFFER_BIT);
+
+      glfwSwapBuffers(Display::display);
+
+      // poll events TODO integrate input with cpad
+      glfwPollEvents();
+
+      // exit if display window was closed (TODO improve)
+      if (glfwWindowShouldClose(Display::display)) {
+        // Display::KillDisplay(Display::display);
+        MasterExit = 1;
+      }
+
+    }
+
+  }
+  Gfx::Exit();
+
   deci_thread.join();
   // DECI has been killed, shutdown!
 

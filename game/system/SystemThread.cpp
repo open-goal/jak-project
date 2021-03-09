@@ -69,6 +69,17 @@ void SystemThreadManager::join() {
 }
 
 /*!
+ * Return true if all threads are exiting (manager shutdown)
+ */
+bool SystemThreadManager::all_threads_exiting() {
+  for (int i = 0; i < thread_count; i++) {
+    if (!threads[i].want_exit)
+      return false;
+  }
+  return true;
+}
+
+/*!
  * bootstrap function to call a SystemThread's function
  */
 void* bootstrap_thread_func(void* x) {
