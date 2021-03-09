@@ -11,7 +11,7 @@ namespace Display {
 
 GLFWwindow* display = NULL;
 
-void InitDisplay(int width, int height, char* title, GLFWwindow* &d) {
+void InitDisplay(int width, int height, char* title, GLFWwindow*& d) {
   lg::debug("init display @ #x{}", (uintptr_t)d);
   if (d) {
     lg::warn("InitDisplay has already created a display window");
@@ -39,7 +39,7 @@ void InitDisplay(int width, int height, char* title, GLFWwindow* &d) {
   glfwSwapInterval(1);
 }
 
-void KillDisplay(GLFWwindow* &d) {
+void KillDisplay(GLFWwindow*& d) {
   lg::debug("kill display #x{}", (uintptr_t)d);
   if (!d) {
     lg::warn("KillDisplay called when no display was available");

@@ -15,6 +15,6 @@ namespace Gfx {
 u32 Init();
 u32 Exit();
 
-}
+}  // namespace Gfx
 
 #endif  // RUNTIME_GFX_H
