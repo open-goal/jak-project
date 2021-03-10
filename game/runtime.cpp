@@ -55,7 +55,7 @@
 #include "common/cross_os_debug/xdbg.h"
 
 u8* g_ee_main_mem = nullptr;
-std::thread::id g_main_thread_id = std::thread::id::id();
+std::thread::id g_main_thread_id = std::thread::id();
 
 namespace {
 
