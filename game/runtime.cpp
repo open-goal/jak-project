@@ -236,6 +236,7 @@ void iop_runner(SystemThreadInterface& iface) {
 u32 exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
+  g_main_thread_id = std::this_thread::get_id();
 
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
