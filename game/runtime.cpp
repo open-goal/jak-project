@@ -268,27 +268,7 @@ u32 exec_runtime(int argc, char** argv) {
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
     Gfx::Init();
-    while (!tm.all_threads_exiting()) {
-      // run display-specific things
-      if (Display::display) {
-        // lg::debug("run display");
-        glfwMakeContextCurrent(Display::display);
-
-        // render graphics
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        glfwSwapBuffers(Display::display);
-
-        // poll events TODO integrate input with cpad
-        glfwPollEvents();
-
-        // exit if display window was closed
-        if (glfwWindowShouldClose(Display::display)) {
-          // Display::KillDisplay(Display::display);
-          MasterExit = 1;
-        }
-      }
-    }
+    Gfx::Loop([&tm] { return !tm.all_threads_exiting(); });
     Gfx::Exit();
   }
 
