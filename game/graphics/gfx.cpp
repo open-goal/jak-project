@@ -5,7 +5,7 @@
 
 #include "gfx.h"
 #include "common/log/log.h"
-#include "../runtime.h"
+#include "game/runtime.h"
 #include "display.h"
 
 #include "opengl.h"
