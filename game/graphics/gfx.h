@@ -9,6 +9,7 @@
 #define RUNTIME_GFX_H
 
 #include "common/common_types.h"
+#include "display.h"
 
 namespace Gfx {
 
