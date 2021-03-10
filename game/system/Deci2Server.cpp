@@ -31,6 +31,9 @@ Deci2Server::Deci2Server(std::function<bool()> shutdown_callback) {
 }
 
 Deci2Server::~Deci2Server() {
+  close_server_socket();
+  close_socket(new_sock);
+
   // if accept thread is running, kill it
   if (accept_thread_running) {
     kill_accept_thread = true;
@@ -39,9 +42,6 @@ Deci2Server::~Deci2Server() {
   }
 
   delete[] buffer;
-
-  close_server_socket();
-  close_socket(new_sock);
 }
 
 /*!
