@@ -10,6 +10,7 @@
 
 #include "common/common_types.h"
 #include "display.h"
+#include "kboot.h"
 
 namespace Gfx {
 
