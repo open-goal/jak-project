@@ -121,7 +121,7 @@ void InitParms(int argc, const char* const* argv) {
       DebugSegment = 0;
     }
 
-    // the "debug" mode is used to set GOAL up for debugging/developemtn
+    // the "debug" mode is used to set GOAL up for debugging/development
     if (arg == "-debug") {
       Msg(6, "dkernel: debug mode\n");
       MasterDebug = 1;

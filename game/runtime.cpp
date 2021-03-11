@@ -47,10 +47,15 @@
 #include "game/overlord/srpc.h"
 #include "game/overlord/stream.h"
 
+#include "game/graphics/opengl.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/display.h"
+
 #include "common/goal_constants.h"
 #include "common/cross_os_debug/xdbg.h"
 
 u8* g_ee_main_mem = nullptr;
+std::thread::id g_main_thread_id = std::thread::id();
 
 namespace {
 
@@ -81,8 +86,6 @@ void deci2_runner(SystemThreadInterface& iface) {
   }
 
   lg::debug("[DECI2] Waiting for listener...");
-  // lg::debug("[DECI2] Waiting for listener..."); --> disabled temporarily, some weird race
-  // condition?
   bool saw_listener = false;
   while (!iface.get_want_exit()) {
     if (server.check_for_listener()) {
@@ -233,6 +236,15 @@ void iop_runner(SystemThreadInterface& iface) {
 u32 exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
+  g_main_thread_id = std::this_thread::get_id();
+
+  bool enable_display = true;
+  for (int i = 1; i < argc; i++) {
+    if (std::string("-nodisplay") == argv[i]) {
+      enable_display = false;
+      break;
+    }
+  }
 
   // step 1: sce library prep
   iop::LIBRARY_INIT();
@@ -251,7 +263,15 @@ u32 exec_runtime(int argc, char** argv) {
   ee_thread.start(ee_runner);
   deci_thread.start(deci2_runner);
 
-  // step 4: wait for EE to signal a shutdown, which will cause the DECI thread to join.
+  // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
+  // TODO relegate this to its own function
+  // TODO also sync this up with how the game actually renders things (this is just a placeholder)
+  if (enable_display) {
+    Gfx::Init();
+    Gfx::Loop([&tm] { return !tm.all_threads_exiting(); });
+    Gfx::Exit();
+  }
+
   deci_thread.join();
   // DECI has been killed, shutdown!
 

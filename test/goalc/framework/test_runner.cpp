@@ -99,20 +99,20 @@ void CompilerTestRunner::run_always_pass(const std::string& test_category,
 }
 
 void runtime_no_kernel() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel"};
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel() {
-  constexpr int argc = 3;
-  const char* argv[argc] = {"", "-fakeiso", "-debug"};
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel_no_debug_segment() {
-  constexpr int argc = 3;
-  const char* argv[argc] = {"", "-fakeiso", "-debug-mem"};
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nodisplay"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
