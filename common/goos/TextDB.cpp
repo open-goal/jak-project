@@ -150,7 +150,20 @@ void TextDb::inherit_info(const Object& parent, const Object& child) {
   if (parent.is_pair() && child.is_pair()) {
     auto parent_kv = map.find(parent.heap_obj);
     if (parent_kv != map.end()) {
-      map[child.heap_obj] = parent_kv->second;
+      std::vector<const Object*> children = {&child};
+      // mark all forms as children. This will help with error messages in macros, and makes
+      // (add-macro-to-autocomplete) work properly.
+      while (!children.empty()) {
+        auto top = children.back();
+        children.pop_back();
+        map[top->heap_obj] = parent_kv->second;
+        if (top->as_pair()->car.is_pair()) {
+          children.push_back(&top->as_pair()->car);
+        }
+        if (top->as_pair()->cdr.is_pair()) {
+          children.push_back(&top->as_pair()->cdr);
+        }
+      }
     }
   }
 }

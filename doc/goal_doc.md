@@ -761,6 +761,13 @@ Builds all the DGO files described in the DGO description file. See `goal_src/bu
 
 In the future, this may become part of `asm-data-file`.
 
+## `add-macro-to-autocomplete`
+```lisp
+(add-macro-to-autocomplete macro-name)
+```
+
+Makes the given name show up as a macro in the GOAL REPL. Generating macros may be done programmatically using GOOS and this form can be used to make these show up in the autocomplete. This also makes the macro known to `get-info` which will report that the macro was defined at the location where the macro which expanded to `add-macro-to-autocomplete` is located in GOAL code.  This is used internally by `defmacro`.
+
 # Compiler Forms - Control Flow
 
 ## GOAL "Two Element" Conditions

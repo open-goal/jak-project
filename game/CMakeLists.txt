@@ -21,7 +21,7 @@ if(UNIX)
         -Wshadow \
         -Wsign-promo")
 else()
-		set(CMAKE_CXX_FLAGS "/EHsc")
+        set(CMAKE_CXX_FLAGS "/EHsc")
 endif(UNIX)
 
 enable_language(ASM_NASM)
@@ -70,17 +70,19 @@ set(RUNTIME_SOURCE
         overlord/soundcommon.cpp
         overlord/srpc.cpp
         overlord/ssound.cpp
-        overlord/stream.cpp)
+        overlord/stream.cpp
+        graphics/gfx.cpp
+        graphics/display.cpp)
 
 
 # we build the runtime as a static library.
-add_library(runtime ${RUNTIME_SOURCE})
+add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt)
+target_link_libraries(runtime common fmt glfw)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()
-    target_link_libraries(runtime pthread)
+    target_link_libraries(runtime pthread dl)
 endif()
 
 add_executable(gk main.cpp)

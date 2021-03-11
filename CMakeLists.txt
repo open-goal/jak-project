@@ -1,8 +1,6 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
 project(jak)
 include(CTest)
 if(NOT CMAKE_BUILD_TYPE)
@@ -64,6 +62,7 @@ include_directories(./)
 include_directories(SYSTEM third-party/inja)
 
 # build repl library
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
 
 # build common library
@@ -72,7 +71,12 @@ add_subdirectory(common)
 # build decompiler
 add_subdirectory(decompiler)
 
+# build glfw library
+add_subdirectory(third-party/glfw)
+
 # build the game code in C++
+include_directories(third-party/glad/include)
+include_directories(third-party/glfw/include)
 add_subdirectory(game)
 
 # build the compiler

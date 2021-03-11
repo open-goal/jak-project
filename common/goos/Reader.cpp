@@ -136,21 +136,28 @@ Reader::Reader() {
 /*!
  * Prompt the user and read the result.
  */
-Object Reader::read_from_stdin(const std::string& prompt, ReplWrapper& repl) {
+std::optional<Object> Reader::read_from_stdin(const std::string& prompt, ReplWrapper& repl) {
   // escape code will make sure that we remove any color
   std::string prompt_full = "\033[0m" + prompt;
-  std::string line = repl.readline(prompt_full);
-  repl.add_to_history(line.c_str());
-  // todo, decide if we should keep reading or not.
 
-  // create text fragment and add to the DB
-  auto textFrag = std::make_shared<ReplText>(line);
-  db.insert(textFrag);
+  auto line_from_repl = repl.readline(prompt_full);
 
-  // perform read
-  auto result = internal_read(textFrag);
-  db.link(result, textFrag, 0);
-  return result;
+  if (line_from_repl) {
+    std::string line = line_from_repl;
+    repl.add_to_history(line.c_str());
+    // todo, decide if we should keep reading or not.
+
+    // create text fragment and add to the DB
+    auto textFrag = std::make_shared<ReplText>(line);
+    db.insert(textFrag);
+
+    // perform read
+    auto result = internal_read(textFrag);
+    db.link(result, textFrag, 0);
+    return result;
+  } else {
+    return {};
+  }
 }
 
 /*!
