@@ -1,5 +1,5 @@
 #include <cassert>
-#include "json_comment_strip.h"
+#include "json_util.h"
 
 /*!
  * Strip out // and / * comments
@@ -77,4 +77,24 @@ std::string strip_cpp_style_comments(const std::string& input) {
  */
 nlohmann::json parse_commented_json(const std::string& input) {
   return nlohmann::json::parse(strip_cpp_style_comments(input));
+}
+
+/*!
+ * Parse something like:
+ * 2 -> Range(2, 3)
+ * [2, 3] -> Range(2, 3)
+ * [2, 10] -> Range(2, 10)
+ */
+Range<int> parse_json_optional_integer_range(const nlohmann::json& json) {
+  if (json.is_number_integer()) {
+    auto first = json.get<int>();
+    return Range<int>(first, first + 1);
+  } else if (json.is_array()) {
+    if (json.size() != 2) {
+      throw std::runtime_error("Invalid array size in parse_json_optional_integer_range");
+    }
+    return {json[0].get<int>(), json[1].get<int>()};
+  } else {
+    throw std::runtime_error("Invalid json as input to parse_json_optional_integer_range");
+  }
 }

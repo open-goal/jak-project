@@ -323,7 +323,7 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "    sw t0, 32(v0)\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
-  std::string type = "(function symbol type process symbol int pointer thread)";
+  std::string type = "(function symbol type process symbol int pointer cpu-thread)";
   std::string expected =
       "(let\n"
       "  ((v0-0\n"
@@ -339,19 +339,21 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "    )\n"
       "   )\n"
       "  (set! (-> (the-as cpu-thread v0-0) type) arg1)\n"
-      "  (set! (-> v0-0 name) arg3)\n"
-      "  (set! (-> v0-0 process) arg2)\n"
-      "  (set! (-> v0-0 sp) arg5)\n"
-      "  (set! (-> v0-0 stack-top) arg5)\n"
-      "  (set! (-> v0-0 previous) (-> arg2 top-thread))\n"
-      "  (set! (-> arg2 top-thread) v0-0)\n"
-      "  (set! (-> v0-0 suspend-hook) (method-of-object v0-0 thread-suspend))\n"
-      "  (set! (-> v0-0 resume-hook) (method-of-object v0-0 thread-resume))\n"
-      "  (set! (-> v0-0 stack-size) arg4)\n"
-      "  v0-0\n"
+      "  (set! (-> (the-as cpu-thread v0-0) name) arg3)\n"
+      "  (set! (-> (the-as cpu-thread v0-0) process) arg2)\n"
+      "  (set! (-> (the-as cpu-thread v0-0) sp) arg5)\n"
+      "  (set! (-> (the-as cpu-thread v0-0) stack-top) arg5)\n"
+      "  (set! (-> (the-as cpu-thread v0-0) previous) (-> arg2 top-thread))\n"
+      "  (set! (-> arg2 top-thread) (the-as cpu-thread v0-0))\n"
+      "  (set! (-> (the-as cpu-thread v0-0) suspend-hook) (method-of-object (the-as cpu-thread "
+      "v0-0) thread-suspend))\n"
+      "  (set! (-> (the-as cpu-thread v0-0) resume-hook) (method-of-object (the-as cpu-thread "
+      "v0-0) thread-resume))\n"
+      "  (set! (-> (the-as cpu-thread v0-0) stack-size) arg4)\n"
+      "  (the-as cpu-thread v0-0)\n"
       "  )";
   test_with_expr(func, type, expected, false, "cpu-thread", {},
-                 parse_hint_json("[[13, [\"v0\", \"cpu-thread\"]]]"));
+                 parse_cast_json("[[[13, 28], \"v0\", \"cpu-thread\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprMethod5CpuThread) {
@@ -635,36 +637,37 @@ TEST_F(FormRegressionTest, ExprMethod0Process) {
       "    )\n"
       "   )\n"
       "  (set! (-> (the-as process v0-0) name) arg2)\n"
-      "  (set! (-> v0-0 status) (quote dead))\n"
-      "  (set! (-> v0-0 pid) 0)\n"
-      "  (set! (-> v0-0 pool) #f)\n"
-      "  (set! (-> v0-0 allocated-length) arg3)\n"
-      "  (set! (-> v0-0 top-thread) #f)\n"
-      "  (set! (-> v0-0 main-thread) #f)\n"
+      "  (set! (-> (the-as process v0-0) status) (quote dead))\n"
+      "  (set! (-> (the-as process v0-0) pid) 0)\n"
+      "  (set! (-> (the-as process v0-0) pool) #f)\n"
+      "  (set! (-> (the-as process v0-0) allocated-length) arg3)\n"
+      "  (set! (-> (the-as process v0-0) top-thread) #f)\n"
+      "  (set! (-> (the-as process v0-0) main-thread) #f)\n"
       "  (let\n"
-      "   ((v1-5 (-> v0-0 stack)))\n"
-      "   (set! (-> v0-0 heap-cur) v1-5)\n"
-      "   (set! (-> v0-0 heap-base) v1-5)\n"
+      "   ((v1-5 (-> (the-as process v0-0) stack)))\n"
+      "   (set! (-> (the-as process v0-0) heap-cur) v1-5)\n"
+      "   (set! (-> (the-as process v0-0) heap-base) v1-5)\n"
       "   )\n"
-      "  (set! (-> v0-0 heap-top) (&-> v0-0 stack (-> v0-0 allocated-length)))\n"
-      "  (set! (-> v0-0 stack-frame-top) (-> v0-0 heap-top))\n"
-      "  (set! (-> v0-0 stack-frame-top) #f)\n"
-      "  (set! (-> v0-0 state) #f)\n"
-      "  (set! (-> v0-0 next-state) #f)\n"
-      "  (set! (-> v0-0 entity) #f)\n"
-      "  (set! (-> v0-0 trans-hook) #f)\n"
-      "  (set! (-> v0-0 post-hook) #f)\n"
-      "  (set! (-> v0-0 event-hook) #f)\n"
-      "  (set! (-> v0-0 parent) #f)\n"
-      "  (set! (-> v0-0 brother) #f)\n"
-      "  (set! (-> v0-0 child) #f)\n"
-      "  (set! (-> v0-0 self) v0-0)\n"
-      "  (set! (-> v0-0 ppointer) (&-> v0-0 self))\n"
-      "  v0-0\n"
+      "  (set! (-> (the-as process v0-0) heap-top) (&-> (the-as process v0-0) stack (-> (the-as "
+      "process v0-0) allocated-length)))\n"
+      "  (set! (-> (the-as process v0-0) stack-frame-top) (-> (the-as process v0-0) heap-top))\n"
+      "  (set! (-> (the-as process v0-0) stack-frame-top) #f)\n"
+      "  (set! (-> (the-as process v0-0) state) #f)\n"
+      "  (set! (-> (the-as process v0-0) next-state) #f)\n"
+      "  (set! (-> (the-as process v0-0) entity) #f)\n"
+      "  (set! (-> (the-as process v0-0) trans-hook) #f)\n"
+      "  (set! (-> (the-as process v0-0) post-hook) #f)\n"
+      "  (set! (-> (the-as process v0-0) event-hook) #f)\n"
+      "  (set! (-> (the-as process v0-0) parent) #f)\n"
+      "  (set! (-> (the-as process v0-0) brother) #f)\n"
+      "  (set! (-> (the-as process v0-0) child) #f)\n"
+      "  (set! (-> (the-as process v0-0) self) (the-as process v0-0))\n"
+      "  (set! (-> (the-as process v0-0) ppointer) (&-> (the-as process v0-0) self))\n"
+      "  (the-as process v0-0)\n"
       "  )";
   test_with_expr(func, type, expected, false, "process", {},
-                 parse_hint_json("[\t\t[12, [\"a0\", \"int\"]],\n"
-                                 "\t\t[13, [\"v0\", \"process\"]]]"));
+                 parse_cast_json("[\t\t[12, \"a0\", \"int\"],\n"
+                                 "\t\t[[13, 43], \"v0\", \"process\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
@@ -724,14 +727,14 @@ TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
       "   (while\n"
       "    (< (the-as int s5-0) (the-as int (-> arg0 heap-cur)))\n"
       "    (inspect (the-as basic s5-0))\n"
-      "    (+! (the-as int s5-0) (logand -16 (+ (asize-of s5-0) 15)))\n"
+      "    (+! (the-as int s5-0) (logand -16 (+ (asize-of (the-as basic s5-0)) 15)))\n"
       "    )\n"
       "   )\n"
       "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_hint_json("[\t\t[4, [\"s5\", \"basic\"]],\n"
-                                 "\t\t[17, [\"s5\", \"int\"]]]"));
+                 parse_cast_json("[\t\t[[4,11], \"s5\", \"basic\"],\n"
+                                 "\t\t[17, \"s5\", \"int\"]]"));
 }
 
 // note: skipped method 3 process
@@ -1080,14 +1083,15 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       "   (cond\n"
       "    (s4-0\n"
       "     (set! (-> (the-as (pointer process-tree) s4-0) 0 type) arg1)\n"
-      "     (-> s4-0 0)\n"
+      "     (-> (the-as (pointer process-tree) s4-0) 0)\n"
       "     )\n"
       "    (else\n"
       "     (format\n"
       "      0\n"
       "      \"WARNING: ~A ~A could not be allocated, because ~A was empty.~%\"\n"
       "      arg1\n"
-      "      (if s4-0 (-> s4-0 0 self))\n"
+      "      (if (the-as (pointer process-tree) s4-0) (-> (the-as (pointer process-tree) s4-0) 0 "
+      "self))\n"
       "      (-> arg0 name)\n"
       "      )\n"
       "     #f\n"
@@ -1101,8 +1105,8 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       func, type, expected, false, "dead-pool",
       {{"L315", "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"},
        {"L314", "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"}},
-      parse_hint_json("[\t\t[24, [\"v1\", \"(pointer process-tree)\"]],\n"
-                      "\t\t[30, [\"s4\", \"(pointer process-tree)\"]]]"));
+      parse_cast_json("[\t\t[24, \"v1\", \"(pointer process-tree)\"],\n"
+                      "\t\t[[30,39], \"s4\", \"(pointer process-tree)\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprMethod15DeadPool) {
@@ -1270,16 +1274,17 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPoolHeap) {
       "  (set! (-> v0-0 first-shrink) #f)\n"
       "  (set!\n"
       "   (-> v0-0 heap base)\n"
-      "   (logand -16 (the-as int (&+ (+ (the-as int v0-0) 115) (* 12 arg3))))\n"
+      "   (logand -16 (+ (+ (the-as int v0-0) 115) (* 12 arg3)))\n"
       "   )\n"
       "  (set! (-> v0-0 heap current) (-> v0-0 heap base))\n"
       "  (set! (-> v0-0 heap top) (&+ (-> v0-0 heap base) arg4))\n"
       "  (set! (-> v0-0 heap top-base) (-> v0-0 heap top))\n"
       "  v0-0\n"
       "  )";
-  test_with_expr(func, type, expected, false, "dead-pool-heap", {},
-                 parse_hint_json("[\t\t[60, [\"v0\", \"int\"]],\n"
-                                 "\t\t[61, [\"a0\", \"pointer\"], [\"v0\", \"dead-pool-heap\"]]]"));
+  test_with_expr(
+      func, type, expected, false, "dead-pool-heap", {},
+      parse_cast_json("[\t\t[60, \"v0\", \"int\"],\n"
+                      "\t\t[61, \"a0\", \"pointer\"], [61, \"v0\", \"dead-pool-heap\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprMethod22DeadPoolHeap) {
@@ -1399,9 +1404,9 @@ TEST_F(FormRegressionTest, ExprMethod21DeadPoolHeap) {
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_hint_json("[\t\t[5, [\"v1\", \"pointer\"]],\n"
-                                 "\t\t[13, [\"a0\", \"pointer\"]],\n"
-                                 "\t\t[25, [\"v1\", \"pointer\"]]]"));
+                 parse_cast_json("[\t\t[5, \"v1\", \"pointer\"],\n"
+                                 "\t\t[13, \"a0\", \"pointer\"],\n"
+                                 "\t\t[25, \"v1\", \"pointer\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprMethod3DeadPoolHeap) {
@@ -1595,7 +1600,7 @@ TEST_F(FormRegressionTest, ExprMethod5DeadPoolHeap) {
   std::string type = "(function dead-pool-heap int)";
   std::string expected = "(+ (- -4 (the-as int arg0)) (-> arg0 heap top))";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_hint_json("[[3, [\"v1\", \"int\"], [\"a0\", \"int\"]]]"));
+                 parse_cast_json("[[3, \"v1\", \"int\"], [3, \"a0\", \"int\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprMethod19DeadPoolHeap) {

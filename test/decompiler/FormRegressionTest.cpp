@@ -7,6 +7,7 @@
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/insert_lets.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/util/json_util.h"
 #include "decompiler/IR2/Form.h"
 #include "third-party/json.hpp"
 
@@ -74,7 +75,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     bool allow_pairs,
     const std::string& method_name,
     const std::vector<std::pair<std::string, std::string>>& strings,
-    const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+    const std::unordered_map<int, std::vector<TypeCast>>& casts) {
   dts->type_prop_settings.locked = true;
   dts->type_prop_settings.reset();
   dts->type_prop_settings.allow_pair = allow_pairs;
@@ -112,7 +113,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
 
-  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, hints, {}));
+  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, casts, {}));
 
   test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
 
@@ -167,9 +168,9 @@ void FormRegressionTest::test(const std::string& code,
                               bool allow_pairs,
                               const std::string& method_name,
                               const std::vector<std::pair<std::string, std::string>>& strings,
-                              const std::unordered_map<int, std::vector<TypeHint>>& hints) {
+                              const std::unordered_map<int, std::vector<TypeCast>>& casts) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings, hints);
+  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings, casts);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
@@ -193,9 +194,9 @@ void FormRegressionTest::test_final_function(
     const std::string& expected,
     bool allow_pairs,
     const std::vector<std::pair<std::string, std::string>>& strings,
-    const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints) {
+    const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, true, allow_pairs, "", strings, hints);
+  auto test = make_function(code, ts, true, allow_pairs, "", strings, casts);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
@@ -211,20 +212,22 @@ void FormRegressionTest::test_final_function(
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-std::unordered_map<int, std::vector<decompiler::TypeHint>> FormRegressionTest::parse_hint_json(
+std::unordered_map<int, std::vector<decompiler::TypeCast>> FormRegressionTest::parse_cast_json(
     const std::string& in) {
-  std::unordered_map<int, std::vector<decompiler::TypeHint>> out;
-  auto hints = nlohmann::json::parse(in);
-  for (auto& hint : hints) {
-    auto idx = hint.at(0).get<int>();
-    for (size_t i = 1; i < hint.size(); i++) {
-      auto& assignment = hint.at(i);
-      TypeHint type_hint;
-      type_hint.reg = Register(assignment.at(0).get<std::string>());
-      type_hint.type_name = assignment.at(1).get<std::string>();
-      out[idx].push_back(type_hint);
+  std::unordered_map<int, std::vector<decompiler::TypeCast>> out;
+  auto casts = nlohmann::json::parse(in);
+
+  for (auto& cast : casts) {
+    auto idx_range = parse_json_optional_integer_range(cast.at(0));
+    for (auto idx : idx_range) {
+      TypeCast type_cast;
+      type_cast.atomic_op_idx = idx;
+      type_cast.reg = Register(cast.at(1));
+      type_cast.type_name = cast.at(2).get<std::string>();
+      out[idx].push_back(type_cast);
     }
   }
+
   return out;
 }
 

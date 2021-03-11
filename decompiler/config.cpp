@@ -2,7 +2,7 @@
 #include "third-party/json.hpp"
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
-#include "common/util/json_comment_strip.h"
+#include "common/util/json_util.h"
 
 namespace decompiler {
 Config gConfig;
@@ -83,18 +83,18 @@ void set_config(const std::string& path_to_config_file) {
     gConfig.allowed_objects.insert(x);
   }
 
-  auto type_hints_json = read_json_file_from_config(cfg, "type_hints_file");
-  for (auto& kv : type_hints_json.items()) {
+  auto type_casts_json = read_json_file_from_config(cfg, "type_casts_file");
+  for (auto& kv : type_casts_json.items()) {
     auto& function_name = kv.key();
-    auto& hints = kv.value();
-    for (auto& hint : hints) {
-      auto idx = hint.at(0).get<int>();
-      for (size_t i = 1; i < hint.size(); i++) {
-        auto& assignment = hint.at(i);
-        TypeHint type_hint;
-        type_hint.reg = Register(assignment.at(0).get<std::string>());
-        type_hint.type_name = assignment.at(1).get<std::string>();
-        gConfig.type_hints_by_function_by_idx[function_name][idx].push_back(type_hint);
+    auto& casts = kv.value();
+    for (auto& cast : casts) {
+      auto idx_range = parse_json_optional_integer_range(cast.at(0));
+      for (auto idx : idx_range) {
+        TypeCast type_cast;
+        type_cast.atomic_op_idx = idx;
+        type_cast.reg = Register(cast.at(1));
+        type_cast.type_name = cast.at(2).get<std::string>();
+        gConfig.type_casts_by_function_by_atomic_op_idx[function_name][idx].push_back(type_cast);
       }
     }
   }

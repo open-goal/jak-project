@@ -25,7 +25,7 @@
 #include "decompiler/IR/BasicOpBuilder.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "common/log/log.h"
-#include "common/util/json_comment_strip.h"
+#include "common/util/json_util.h"
 
 namespace decompiler {
 namespace {

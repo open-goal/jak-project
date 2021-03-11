@@ -690,21 +690,21 @@ TEST_F(FormRegressionTest, ExprArrayMethod2) {
                   {"L336", "~A"},
                   {"L335", " ~A"},
                   {"L334", ")"}},
-                 parse_hint_json("["
-                                 "\t\t[23, [\"gp\", \"(array int32)\"]],\n"
-                                 "\t\t[43, [\"gp\", \"(array uint32)\"]],\n"
-                                 "\t\t[63, [\"gp\", \"(array int64)\"]],\n"
-                                 "\t\t[83, [\"gp\", \"(array uint64)\"]],\n"
-                                 "\t\t[102, [\"gp\", \"(array int8)\"]],\n"
-                                 "\t\t[121, [\"gp\", \"(array uint8)\"]],\n"
-                                 "\t\t[141, [\"gp\", \"(array int16)\"]],\n"
-                                 "\t\t[161, [\"gp\", \"(array uint16)\"]],\n"
-                                 "\t\t[186, [\"gp\", \"(array uint128)\"]],\n"
-                                 "\t\t[204, [\"gp\", \"(array int32)\"]],\n"
-                                 "\t\t[223, [\"gp\", \"(array float)\"]],\n"
-                                 "\t\t[232, [\"gp\", \"(array float)\"]],\n"
-                                 "\t\t[249, [\"gp\", \"(array basic)\"]],\n"
-                                 "\t\t[258, [\"gp\", \"(array basic)\"]]]"));
+                 parse_cast_json("["
+                                 "\t\t[23, \"gp\", \"(array int32)\"],\n"
+                                 "\t\t[43, \"gp\", \"(array uint32)\"],\n"
+                                 "\t\t[63, \"gp\", \"(array int64)\"],\n"
+                                 "\t\t[83, \"gp\", \"(array uint64)\"],\n"
+                                 "\t\t[102, \"gp\", \"(array int8)\"],\n"
+                                 "\t\t[121, \"gp\", \"(array uint8)\"],\n"
+                                 "\t\t[141, \"gp\", \"(array int16)\"],\n"
+                                 "\t\t[161, \"gp\", \"(array uint16)\"],\n"
+                                 "\t\t[186, \"gp\", \"(array uint128)\"],\n"
+                                 "\t\t[204, \"gp\", \"(array int32)\"],\n"
+                                 "\t\t[223, \"gp\", \"(array float)\"],\n"
+                                 "\t\t[232, \"gp\", \"(array float)\"],\n"
+                                 "\t\t[249, \"gp\", \"(array basic)\"],\n"
+                                 "\t\t[258, \"gp\", \"(array basic)\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprArrayMethod3) {
@@ -1238,7 +1238,7 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
       "       (else\n"
       "        (dotimes\n"
       "         (s5-9 (-> arg0 length))\n"
-      "         (format #t \"~T  [~D] ~D~%\" s5-9 (-> arg0 s5-9))\n"
+      "         (format #t \"~T  [~D] ~D~%\" s5-9 (-> (the-as (array int32) arg0) s5-9))\n"
       "         )\n"
       "        )\n"
       "       )\n"
@@ -1272,18 +1272,18 @@ TEST_F(FormRegressionTest, ExprArrayMethod3) {
                   {"L327", "~T  [~D] #x~X~%"},
                   {"L326", "~T  [~D] ~f~%"},
                   {"L325", "~T  [~D] ~A~%"}},
-                 parse_hint_json("[\t\t[44, [\"gp\", \"(array int32)\"]],\n"
-                                 "\t\t[62, [\"gp\", \"(array uint32)\"]],\n"
-                                 "\t\t[80, [\"gp\", \"(array int64)\"]],\n"
-                                 "\t\t[98, [\"gp\", \"(array uint64)\"]],\n"
-                                 "\t\t[115, [\"gp\", \"(array int8)\"]],\n"
-                                 "\t\t[132, [\"gp\", \"(array int8)\"]],\n"
-                                 "\t\t[150, [\"gp\", \"(array int16)\"]],\n"
-                                 "\t\t[168, [\"gp\", \"(array uint16)\"]],\n"
-                                 "\t\t[191, [\"gp\", \"(array uint128)\"]],\n"
-                                 "\t\t[204, [\"gp\", \"(array int32)\"]],\n"
-                                 "\t\t[226, [\"gp\", \"(array float)\"]],\n"
-                                 "\t\t[243, [\"gp\", \"(array basic)\"]]]"));
+                 parse_cast_json("[\t\t[44, \"gp\", \"(array int32)\"],\n"
+                                 "\t\t[62, \"gp\", \"(array uint32)\"],\n"
+                                 "\t\t[80, \"gp\", \"(array int64)\"],\n"
+                                 "\t\t[98, \"gp\", \"(array uint64)\"],\n"
+                                 "\t\t[115, \"gp\", \"(array int8)\"],\n"
+                                 "\t\t[132, \"gp\", \"(array int8)\"],\n"
+                                 "\t\t[150, \"gp\", \"(array int16)\"],\n"
+                                 "\t\t[168, \"gp\", \"(array uint16)\"],\n"
+                                 "\t\t[191, \"gp\", \"(array uint128)\"],\n"
+                                 "\t\t[207, \"gp\", \"(array int32)\"],\n"
+                                 "\t\t[226, \"gp\", \"(array float)\"],\n"
+                                 "\t\t[243, \"gp\", \"(array basic)\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprValid) {

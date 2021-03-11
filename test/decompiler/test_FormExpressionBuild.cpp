@@ -2273,15 +2273,17 @@ TEST_F(FormRegressionTest, ExprPrintName) {
       "   (string= (the-as string arg0) (the-as string arg1))\n"
       "   )\n"
       "  ((and (= (-> arg0 type) string) (= (-> arg1 type) symbol))\n"
-      "   (string= (the-as string arg0) (-> (+ 65336 (the-as int arg1)) 0))\n"
+      "   (string= (the-as string arg0) (the-as string (-> (the-as (pointer uint32) (+ 65336 "
+      "(the-as int arg1))))))\n"
       "   )\n"
       "  ((and (= (-> arg1 type) string) (= (-> arg0 type) symbol))\n"
-      "   (string= (the-as string arg1) (-> (+ 65336 (the-as int arg0)) 0))\n"
+      "   (string= (the-as string arg1) (the-as string (-> (the-as (pointer uint32) (+ 65336 "
+      "(the-as int arg0))))))\n"
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_hint_json("[\t\t[24, [\"a1\", \"symbol\"]],\n"
-                                 "\t\t[39, [\"a0\", \"symbol\"]]]"));
+                 parse_cast_json("[\t\t[24, \"a1\", \"symbol\"],\n"
+                                 "\t\t[39, \"a0\", \"symbol\"]]"));
 }
 
 TEST_F(FormRegressionTest, ExprProfileBarMethod9) {

@@ -44,7 +44,7 @@ class Env {
   }
 
   // TODO - remove this.
-  goos::Object get_variable_name(Register reg, int atomic_idx, AccessMode mode) const;
+  goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
   std::string get_variable_name(const RegisterAccess& access) const;
 
   /*!
@@ -92,8 +92,8 @@ class Env {
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
-  void set_type_hints(const std::unordered_map<int, std::vector<TypeHint>>& hints) {
-    m_typehints = hints;
+  void set_type_casts(const std::unordered_map<int, std::vector<TypeCast>>& casts) {
+    m_typecasts = casts;
   }
 
   void set_remap_for_function(int nargs);
@@ -149,7 +149,7 @@ class Env {
 
   bool m_allow_sloppy_pair_typing = false;
 
-  std::unordered_map<int, std::vector<TypeHint>> m_typehints;
+  std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, LabelType> m_label_types;
 

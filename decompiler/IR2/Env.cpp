@@ -71,15 +71,15 @@ const std::string& Env::remapped_name(const std::string& name) const {
   }
 }
 
-goos::Object Env::get_variable_name(Register reg, int atomic_idx, AccessMode mode) const {
+goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const {
   if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
     std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
     auto remapped = m_var_remap.find(lookup_name);
     if (remapped != m_var_remap.end()) {
       lookup_name = remapped->second;
     }
-    auto type_kv = m_typehints.find(atomic_idx);
-    if (type_kv != m_typehints.end()) {
+    auto type_kv = m_typecasts.find(atomic_idx);
+    if (type_kv != m_typecasts.end()) {
       for (auto& x : type_kv->second) {
         if (x.reg == reg) {
           // TODO - redo this!
