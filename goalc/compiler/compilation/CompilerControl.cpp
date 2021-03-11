@@ -188,7 +188,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     printf("\n");
   } else {
     auto total_time = total_timer.getMs();
-    if (total_time > 10.0) {
+    if (total_time > 10.0 && color) {
       fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
     }
   }
@@ -239,9 +239,7 @@ Val* Compiler::compile_listen_to_target(const goos::Object& form,
   return get_none();
 }
 
-Val* Compiler::compile_repl_clear_screen(const goos::Object& form,
-                                         const goos::Object& rest,
-                                         Env* env) {
+Val* Compiler::compile_repl_clear_screen(const goos::Object&, const goos::Object&, Env*) {
   m_repl.get()->clear_screen();
   return get_none();
 }
@@ -410,6 +408,8 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
 Replxx::completions_t Compiler::find_symbols_by_prefix(std::string const& context,
                                                        int& contextLen,
                                                        std::vector<std::string> const& user_data) {
+  (void)contextLen;
+  (void)user_data;
   auto token = m_repl.get()->get_current_repl_token(context);
   auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
   Replxx::completions_t completions;
@@ -423,6 +423,8 @@ Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
                                                int& contextLen,
                                                Replxx::Color& color,
                                                std::vector<std::string> const& user_data) {
+  (void)contextLen;
+  (void)user_data;
   auto token = m_repl.get()->get_current_repl_token(context);
   auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
 
@@ -447,6 +449,7 @@ void Compiler::repl_coloring(
     std::string const& context,
     Replxx::colors_t& colors,
     std::vector<std::pair<std::string, Replxx::Color>> const& regex_color) {
+  (void)regex_color;
   using cl = Replxx::Color;
   // TODO - a proper circular queue would be cleaner to use
   std::deque<cl> paren_colors = {cl::GREEN, cl::CYAN, cl::MAGENTA};
@@ -465,7 +468,7 @@ void Compiler::repl_coloring(
       std::vector<SymbolInfo>* sym_match = m_symbol_info.lookup_exact_name(curr_symbol.second);
       if (sym_match != nullptr && sym_match->size() == 1) {
         SymbolInfo sym_info = sym_match->at(0);
-        for (int pos = curr_symbol.first; pos <= i; pos++) {
+        for (int pos = curr_symbol.first; pos <= int(i); pos++) {
           // TODO - currently just coloring all types brown/gold
           // - would be nice to have a different color for globals, functions, etc
           colors.at(pos) = cl::BROWN;
@@ -525,5 +528,15 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   fmt::print("Autocomplete: {}/{} symbols matched, took {:.2f} ms\n", result.size(),
              m_symbol_info.symbol_count(), time);
 
+  return get_none();
+}
+
+Val* Compiler::compile_add_macro_to_autocomplete(const goos::Object& form,
+                                                 const goos::Object& rest,
+                                                 Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+  m_symbol_info.add_macro(args.unnamed.at(0).as_symbol()->name, form);
   return get_none();
 }

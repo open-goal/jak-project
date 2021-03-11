@@ -15,6 +15,7 @@
 #include <cassert>
 #include <utility>
 #include <unordered_map>
+#include <optional>
 
 #include "common/goos/Object.h"
 #include "common/goos/TextDB.h"
@@ -70,7 +71,7 @@ class Reader {
  public:
   Reader();
   Object read_from_string(const std::string& str, bool add_top_level = true);
-  Object read_from_stdin(const std::string& prompt, ReplWrapper& repl);
+  std::optional<Object> read_from_stdin(const std::string& prompt, ReplWrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path);
 
   std::string get_source_dir();

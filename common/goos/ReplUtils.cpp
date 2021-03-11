@@ -16,7 +16,6 @@ void ReplWrapper::clear_screen() {
 }
 
 void ReplWrapper::print_welcome_message() {
-  clear_screen();
   // Welcome message / brief intro for documentation
   std::string ascii;
   ascii += " _____             _____ _____ _____ __    \n";

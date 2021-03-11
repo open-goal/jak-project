@@ -119,3 +119,4 @@
 - Static type reference link data now has the correct number of methods. This prevents errors like `dkernel: trying to redefine a type 'game-info' with 29 methods when it had 12, try restarting` when you did not actually redefine the number of methods.
 - Added `get-info` to figure out what something is and where it's defined.
 - Added `autocomplete` to get auto-completions for a prefix.
+- Added `add-macro-to-autocomplete` to add a macro to the auto-completer.

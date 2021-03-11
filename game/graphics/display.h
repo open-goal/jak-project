@@ -17,7 +17,7 @@ namespace Display {
 // a single window.
 extern GLFWwindow* display;
 
-void InitDisplay(int width, int height, char* title, GLFWwindow*& d);
+void InitDisplay(int width, int height, const char* title, GLFWwindow*& d);
 void KillDisplay(GLFWwindow*& d);
 
 }  // namespace Display

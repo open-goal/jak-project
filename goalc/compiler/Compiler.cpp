@@ -53,10 +53,13 @@ ReplStatus Compiler::execute_repl() {
         prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
       }
 
-      Object code = m_goos.reader.read_from_stdin(prompt, *m_repl.get());
+      auto code = m_goos.reader.read_from_stdin(prompt, *m_repl.get());
+      if (!code) {
+        continue;
+      }
 
       // 2). compile
-      auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
+      auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
       if (m_settings.debug_print_ir) {
         obj_file->debug_print_tl();
       }

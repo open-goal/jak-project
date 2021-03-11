@@ -11,7 +11,7 @@ namespace Display {
 
 GLFWwindow* display = NULL;
 
-void InitDisplay(int width, int height, char* title, GLFWwindow*& d) {
+void InitDisplay(int width, int height, const char* title, GLFWwindow*& d) {
   if (d) {
     lg::warn("InitDisplay has already created a display window");
     return;
