@@ -407,7 +407,7 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
 
 }  // namespace
 
-TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src) {
+TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) {
   if (src.is_symbol()) {
     return type_system->make_typespec(symbol_string(src));
   } else if (src.is_pair()) {

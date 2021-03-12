@@ -611,6 +611,20 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
       init_types = end_types;
     }
   }
+
+  // override the types of the variables for function arguments:
+  assert(function.type.arg_count() > 0);
+  for (int arg_idx = 0; arg_idx < int(function.type.arg_count()) - 1; arg_idx++) {
+    auto arg_reg = Register::get_arg_reg(arg_idx);
+    if (!program_read_vars[arg_reg].empty()) {
+      program_read_vars[arg_reg].at(0).type = TP_Type::make_from_ts(function.type.get_arg(arg_idx));
+    }
+
+    if (!program_write_vars[arg_reg].empty()) {
+      program_write_vars[arg_reg].at(0).type =
+          TP_Type::make_from_ts(function.type.get_arg(arg_idx));
+    }
+  }
 }
 
 void remap_color_move(

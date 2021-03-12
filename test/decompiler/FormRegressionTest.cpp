@@ -68,6 +68,43 @@ void FormRegressionTest::TestData::add_string_at_label(const std::string& label_
   EXPECT_TRUE(false);
 }
 
+std::pair<std::vector<std::string>, std::unordered_map<std::string, LocalVarOverride>>
+parse_var_json(const std::string& str) {
+  if (str.empty()) {
+    return {};
+  }
+
+  std::vector<std::string> args;
+  std::unordered_map<std::string, LocalVarOverride> var_overrides;
+
+  auto j = parse_commented_json(str);
+
+  auto arg = j.find("args");
+  if (arg != j.end()) {
+    for (auto& x : arg.value()) {
+      args.push_back(x);
+    }
+  }
+
+  auto var = j.find("vars");
+  if (var != j.end()) {
+    for (auto& vkv : var->get<std::unordered_map<std::string, nlohmann::json>>()) {
+      LocalVarOverride override;
+      if (vkv.second.is_string()) {
+        override.name = vkv.second.get<std::string>();
+      } else if (vkv.second.is_array()) {
+        override.name = vkv.second[0].get<std::string>();
+        override.type = vkv.second[1].get<std::string>();
+      } else {
+        throw std::runtime_error("Invalid function var override.");
+      }
+      var_overrides[vkv.first] = override;
+    }
+  }
+
+  return {args, var_overrides};
+}
+
 std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     const std::string& code,
     const TypeSpec& function_type,
@@ -75,7 +112,8 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     bool allow_pairs,
     const std::string& method_name,
     const std::vector<std::pair<std::string, std::string>>& strings,
-    const std::unordered_map<int, std::vector<TypeCast>>& casts) {
+    const std::unordered_map<int, std::vector<TypeCast>>& casts,
+    const std::string& var_map_json) {
   dts->type_prop_settings.locked = true;
   dts->type_prop_settings.reset();
   dts->type_prop_settings.allow_pair = allow_pairs;
@@ -134,8 +172,9 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     test->func.ir2.top_form->collect_vars(vars, true);
 
     if (do_expressions) {
+      auto config = parse_var_json(var_map_json);
       bool success = convert_to_expressions(test->func.ir2.top_form, *test->func.ir2.form_pool,
-                                            test->func, *dts);
+                                            test->func, config.first, config.second, *dts);
 
       EXPECT_TRUE(success);
       if (!success) {
@@ -168,9 +207,11 @@ void FormRegressionTest::test(const std::string& code,
                               bool allow_pairs,
                               const std::string& method_name,
                               const std::vector<std::pair<std::string, std::string>>& strings,
-                              const std::unordered_map<int, std::vector<TypeCast>>& casts) {
+                              const std::unordered_map<int, std::vector<TypeCast>>& casts,
+                              const std::string& var_map_json) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings, casts);
+  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings, casts,
+                            var_map_json);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
@@ -194,9 +235,10 @@ void FormRegressionTest::test_final_function(
     const std::string& expected,
     bool allow_pairs,
     const std::vector<std::pair<std::string, std::string>>& strings,
-    const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts) {
+    const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts,
+    const std::string& var_map_json) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, true, allow_pairs, "", strings, casts);
+  auto test = make_function(code, ts, true, allow_pairs, "", strings, casts, var_map_json);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;

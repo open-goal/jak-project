@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <unordered_set>
 #include <algorithm>
+#include <decompiler/util/DecompilerTypeSystem.h>
 #include "Env.h"
 #include "Form.h"
 #include "decompiler/analysis/atomic_op_builder.h"
@@ -62,6 +63,23 @@ void Env::map_args_from_config(const std::vector<std::string>& args_names,
   }
 }
 
+void Env::map_args_from_config(
+    const std::vector<std::string>& args_names,
+    const std::unordered_map<std::string, LocalVarOverride>& var_overrides) {
+  for (size_t i = 0; i < args_names.size(); i++) {
+    std::string var_name;
+    var_name.push_back(i >= 4 ? 't' : 'a');
+    var_name.push_back('0' + (i % 4));
+    var_name.push_back('-');
+    var_name.push_back('0');
+    m_var_remap[var_name] = args_names[i];
+  }
+
+  for (auto& x : var_overrides) {
+    m_var_remap[x.first] = x.second.name;
+  }
+}
+
 const std::string& Env::remapped_name(const std::string& name) const {
   auto kv = m_var_remap.find(name);
   if (kv != m_var_remap.end()) {
@@ -73,20 +91,78 @@ const std::string& Env::remapped_name(const std::string& name) const {
 
 goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const {
   if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
-    std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
-    auto remapped = m_var_remap.find(lookup_name);
+    auto& var_info = m_var_names.lookup(reg, atomic_idx, mode);
+    // this is a bit of a confusing process.  The first step is to grab the auto-generated name:
+    std::string original_name = var_info.name();
+    auto lookup_name = original_name;
+
+    // and then see if there's a user remapping of it
+    auto remapped = m_var_remap.find(original_name);
     if (remapped != m_var_remap.end()) {
       lookup_name = remapped->second;
     }
+
+    // next, we see if the user has requested a type cast, and add that.
+    // the user requested type case will always "win" here because this is forcefully used
+    // in the type pass. The user typecast should exactly match the most specific register type.
     auto type_kv = m_typecasts.find(atomic_idx);
     if (type_kv != m_typecasts.end()) {
       for (auto& x : type_kv->second) {
         if (x.reg == reg) {
-          // TODO - redo this!
+          // let's make sure the above claim is true
+          if (has_type_analysis()) {
+            auto& type_in_reg = get_types_for_op_mode(atomic_idx, mode).get(reg);
+            if (type_in_reg.typespec().print() != x.type_name) {
+              lg::error(
+                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
+                  "(var {}) to type {}, but the actual type is {} ({})",
+                  reg.to_charp(), atomic_idx, lookup_name, x.type_name,
+                  type_in_reg.typespec().print(), type_in_reg.print());
+              assert(false);
+            }
+          }
+          // TODO - use the when possible?
           return pretty_print::build_list("the-as", x.type_name, lookup_name);
         }
       }
     }
+
+    // we have three concepts of type here. From most specific -> least:
+    // 1). The actual type in the register at runtime. Unknown at compile/decompile time.
+    // 2). The type the decompiler used when decompiling the statement.
+    //       Currently, the decompiler attempts to make this _as specific as possible_ always.
+    //         This may be more specific than the variable type in rare cases.
+    // 3). The variable type.
+    // The decompiler should get the right variable types, but these may disagree with
+    // the register types it used at expression building time. There's a circular depedency on
+    // generalizing types to variables (ie make a variable have the lca type of all sets) and
+    // actually doing type propagation.  So we don't get this 100% right and expressions
+    // may use more specific types than the variables in some cases.  This means we
+    // might need to insert casts, possibly conservatively.
+
+    auto type_of_var = var_info.type.typespec();
+    auto retype_kv = m_var_retype.find(original_name);
+    if (retype_kv != m_var_retype.end()) {
+      type_of_var = retype_kv->second;
+    }
+
+    auto type_of_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
+    if (mode == AccessMode::READ) {
+      // note - this may be stricter than needed. but that's ok.
+      if (type_of_var != type_of_reg) {
+        return pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+      }
+    } else {
+      // if we're setting a variable, we are a little less strict.
+      // let's leave this to set!'s for now. This is tricky with stuff like (if y x) where the move
+      // is eliminated.
+      //      if (!dts->ts.tc(type_of_var, type_of_reg)) {
+      //        fmt::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
+      //        get_types_for_op_mode(atomic_idx, mode).get(reg).print()); return
+      //        pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+      //      }
+    }
+
     return pretty_print::to_symbol(lookup_name);
   } else {
     return pretty_print::to_symbol(reg.to_charp());

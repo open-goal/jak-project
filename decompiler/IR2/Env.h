@@ -60,6 +60,14 @@ class Env {
     return *m_op_init_types.at(atomic_op_id);
   }
 
+  const TypeState& get_types_for_op_mode(int atomic_op_id, AccessMode mode) const {
+    if (mode == AccessMode::READ) {
+      return get_types_before_op(atomic_op_id);
+    } else {
+      return get_types_after_op(atomic_op_id);
+    }
+  }
+
   /*!
    * Get the types in registers at the beginning of this basic block, before any operations
    * have occurred.
@@ -101,6 +109,8 @@ class Env {
   void set_remap_for_new_method(int nargs);
   void map_args_from_config(const std::vector<std::string>& args_names,
                             const std::unordered_map<std::string, std::string>& var_names);
+  void map_args_from_config(const std::vector<std::string>& args_names,
+                            const std::unordered_map<std::string, LocalVarOverride>& var_overrides);
 
   const std::string& remapped_name(const std::string& name) const;
 
@@ -130,6 +140,8 @@ class Env {
 
   void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
 
+  void set_retype_map(const std::unordered_map<std::string, TypeSpec>& map) { m_var_retype = map; }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -151,6 +163,7 @@ class Env {
 
   std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
   std::unordered_map<std::string, std::string> m_var_remap;
+  std::unordered_map<std::string, TypeSpec> m_var_retype;
   std::unordered_map<std::string, LabelType> m_label_types;
 
   std::unordered_set<std::string> m_vars_defined_in_let;

@@ -421,7 +421,17 @@ void ObjectFileDB::ir2_build_expressions() {
     total++;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis() && func.ir2.env.has_local_vars()) {
       attempted++;
-      if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
+      auto name = func.guessed_name.to_string();
+      auto arg_config = get_config().function_arg_names.find(name);
+      auto var_config = get_config().function_var_overrides.find(name);
+      if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
+                                 arg_config != get_config().function_arg_names.end()
+                                     ? arg_config->second
+                                     : std::vector<std::string>{},
+                                 var_config != get_config().function_var_overrides.end()
+                                     ? var_config->second
+                                     : std::unordered_map<std::string, LocalVarOverride>{},
+                                 dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
         func.ir2.expressions_succeeded = true;

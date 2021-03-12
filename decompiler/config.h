@@ -20,6 +20,13 @@ struct LabelType {
   std::optional<int> array_size;
 };
 
+struct LocalVarOverride {
+  std::string name;
+  // this may be left out, indicating that the variable should use the type determined
+  // by the type analysis pass.
+  std::optional<std::string> type;
+};
+
 struct Config {
   int game_version = -1;
   std::vector<std::string> dgo_names;
@@ -51,7 +58,8 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<int, std::string>>
       anon_function_types_by_obj_by_id;
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
-  std::unordered_map<std::string, std::unordered_map<std::string, std::string>> function_var_names;
+  std::unordered_map<std::string, std::unordered_map<std::string, LocalVarOverride>>
+      function_var_overrides;
 
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   bool run_ir2 = false;

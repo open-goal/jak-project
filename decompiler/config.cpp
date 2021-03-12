@@ -121,8 +121,17 @@ void set_config(const std::string& path_to_config_file) {
 
     auto var = kv.value().find("vars");
     if (var != kv.value().end()) {
-      for (auto& vkv : var->get<std::unordered_map<std::string, std::string>>()) {
-        gConfig.function_var_names[function_name][vkv.first] = vkv.second;
+      for (auto& vkv : var->get<std::unordered_map<std::string, nlohmann::json>>()) {
+        LocalVarOverride override;
+        if (vkv.second.is_string()) {
+          override.name = vkv.second.get<std::string>();
+        } else if (vkv.second.is_array()) {
+          override.name = vkv.second[0].get<std::string>();
+          override.type = vkv.second[1].get<std::string>();
+        } else {
+          throw std::runtime_error("Invalid function var override.");
+        }
+        gConfig.function_var_overrides[function_name][vkv.first] = override;
       }
     }
   }
