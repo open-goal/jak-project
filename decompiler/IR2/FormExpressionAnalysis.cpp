@@ -999,7 +999,7 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
   // hack for method stuff
   if (is_dead_set()) {
-    stack.push_value_to_reg_dead(m_dst, m_src, true, m_var_info);
+    stack.push_value_to_reg_dead(m_dst, m_src, true, m_src_type, m_var_info);
     return;
   }
 
@@ -1020,7 +1020,7 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
         auto& info = env.reg_use().op.at(var.idx());
         if (info.consumes.find(var.reg()) != info.consumes.end()) {
           stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
-                                        m_var_info);
+                                        m_src_type, m_var_info);
           return;
         }
       }
@@ -1043,7 +1043,7 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
         // not sure this is the best place for this.
         stack.push_value_to_reg(m_dst,
                                 pool.alloc_single_element_form<ConstantFloatElement>(nullptr, 0.0),
-                                true, m_var_info);
+                                true, m_src_type, m_var_info);
         return;
       }
 
@@ -1058,7 +1058,7 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     }
   }
 
-  stack.push_value_to_reg(m_dst, m_src, true, m_var_info);
+  stack.push_value_to_reg(m_dst, m_src, true, m_src_type, m_var_info);
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
   }
@@ -1648,7 +1648,9 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
   }
 
   if (used_as_value) {
-    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true);
+    // TODO - is this wrong?
+    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true,
+                            env.get_variable_type(final_destination));
   } else {
     stack.push_form_element(this, true);
   }
@@ -1772,7 +1774,8 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     if (set_unused) {
       stack.push_form_element(this, true);
     } else {
-      stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true);
+      stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true,
+                              env.get_variable_type(*last_var));
     }
   } else {
     stack.push_form_element(this, true);
@@ -1830,7 +1833,8 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
 
     assert(used_as_value.has_value());
-    stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true);
+    stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true,
+                            env.get_variable_type(final_result));
     already_rewritten = true;
   }
 }
@@ -2533,7 +2537,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
     lg::warn("Failed to ConditionalMoveFalseElement::push_to_stack");
-    stack.push_value_to_reg(source, popped.at(1), true);
+    stack.push_value_to_reg(source, popped.at(1), true, TypeSpec("symbol"));
     stack.push_form_element(this, true);
     return;
   }
@@ -2543,7 +2547,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
                               GenericOperator::make_compare(on_zero ? IR2_Condition::Kind::NONZERO
                                                                     : IR2_Condition::Kind::ZERO),
                               std::vector<Form*>{popped.at(1)}),
-                          true);
+                          true, TypeSpec("symbol"));
 }
 
 void SimpleAtomElement::update_from_stack(const Env&,

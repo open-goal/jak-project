@@ -188,7 +188,6 @@
   )
 
 ;; definition for method 3 of type dead-pool-heap
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect dead-pool-heap ((obj dead-pool-heap))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tname: ~A~%" (-> obj name))
@@ -277,16 +276,14 @@
   )
 
 ;; definition for method 3 of type handle
-;; INFO: Return type mismatch int vs handle.
 (defmethod inspect handle ((obj handle))
   (format #t "[~8x] ~A~%" obj 'handle)
   (format #t "~Tprocess: #x~X~%" (shr (shl (the-as int obj) 32) 32))
-  (format #t "~Tpid: ~D~%" (sar obj 32))
-  (the-as handle obj)
+  (format #t "~Tpid: ~D~%" (sar (the-as int obj) 32))
+  obj
   )
 
 ;; definition for method 2 of type handle
-;; INFO: Return type mismatch int vs handle.
 ;; WARN: Unsupported inline assembly instruction kind - [5]
 ;; WARN: Unsupported inline assembly instruction kind - [73]
 (defmethod print handle ((obj handle))
@@ -297,34 +294,30 @@
          (a1-0 "#<handle :process ~A :pid ~D>")
          (v1-0 obj)
          )
-    (.subu a2-0 v1-0 s7-0)
-    (let
-     ((a2-1
-       (and
-        (nonzero? a2-0)
-        (begin
-         (.sllv a2-2 v1-0 r0-0)
-         (let ((a3-0 (-> (the-as (pointer process) a2-2) 0)))
-          (set!
-           a2-1
-           (if (= (sar (the-as int v1-0) 32) (-> (the-as process a3-0) pid))
-            a3-0
-            )
+    (.subu a2-0 (the-as handle v1-0) s7-0)
+    (let ((a2-1 (and (nonzero? a2-0) (begin
+                                      (.sllv a2-2 (the-as handle v1-0) r0-0)
+                                      (let ((a3-0 (-> a2-2 0)))
+                                       (set!
+                                        a2-1
+                                        (if (= (sar v1-0 32) (-> a3-0 pid))
+                                         a3-0
+                                         )
+                                        )
+                                       )
+                                      (let ((v1-2 a2-1))
+                                       )
+                                      a2-1
+                                      )
+                 )
            )
           )
-         (let ((v1-2 a2-1))
-          )
-         a2-1
-         )
-        )
-       )
-      )
      (t9-0 a0-1 a1-0 a2-1 (sar (the-as int obj) 32))
      )
     )
    (format #t "#<handle :process 0 :pid 0>")
    )
-  (the-as handle obj)
+  obj
   )
 
 ;; definition of type state

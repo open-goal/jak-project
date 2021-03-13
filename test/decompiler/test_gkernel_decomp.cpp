@@ -723,18 +723,19 @@ TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
   std::string expected =
       "(begin\n"
       "  (let\n"
-      "   ((s5-0 (&+ (-> arg0 heap-base) 4)))\n"
+      "   ((obj (the-as basic (&+ (-> arg0 heap-base) 4))))\n"
       "   (while\n"
-      "    (< (the-as int s5-0) (the-as int (-> arg0 heap-cur)))\n"
-      "    (inspect (the-as basic s5-0))\n"
-      "    (+! (the-as int s5-0) (logand -16 (+ (asize-of (the-as basic s5-0)) 15)))\n"
+      "    (< (the-as int obj) (the-as int (-> arg0 heap-cur)))\n"
+      "    (inspect obj)\n"
+      "    (+! (the-as int obj) (logand -16 (+ (asize-of obj) 15)))\n"
       "    )\n"
       "   )\n"
       "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
                  parse_cast_json("[\t\t[[4,11], \"s5\", \"basic\"],\n"
-                                 "\t\t[17, \"s5\", \"int\"]]"));
+                                 "\t\t[[17,20], \"s5\", \"int\"]]"),
+                 "{\"vars\":{\"s5-0\":[\"obj\", \"basic\"]}}");
 }
 
 // note: skipped method 3 process
@@ -1052,7 +1053,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
   std::string type = "(function dead-pool type int process)";
   // todo - why does one work but not the other??
   std::string expected =
-      "(let ((s4-0 (-> arg0 child)))\n"
+      "(let ((s4-0 (the-as object (-> arg0 child))))\n"
       "  (when\n"
       "   (and\n"
       "    (not (the-as (pointer process-tree) s4-0))\n"
@@ -1984,7 +1985,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPoolHeap) {
   std::string type = "(function dead-pool-heap type int process)";
   std::string expected =
       "(let\n"
-      "  ((s4-0 (-> arg0 dead-list next)) (s3-0 #f))\n"
+      "  ((s4-0 (-> arg0 dead-list next)) (s3-0 (the-as process #f)))\n"
       "  (let\n"
       "   ((s1-0 (find-gap-by-size arg0 (+ (-> process size) (the-as uint arg2)))))\n"
       "   (cond\n"

@@ -46,6 +46,7 @@ class Env {
   // TODO - remove this.
   goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
   std::string get_variable_name(const RegisterAccess& access) const;
+  TypeSpec get_variable_type(const RegisterAccess& access) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.

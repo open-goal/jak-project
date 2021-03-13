@@ -216,6 +216,21 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   // nothing matched.
   return nullptr;
 }
+
+Form* insert_cast_for_let(RegisterAccess dst,
+                          const TypeSpec& src_type,
+                          Form* src,
+                          FormPool& pool,
+                          const Env& env) {
+  auto dst_type = env.get_variable_type(dst);
+
+  if (src_type != dst_type) {
+    // fmt::print("inserting let cast because {} != {}\n", dst_type.print(), src_type.print());
+    return pool.alloc_single_element_form<CastElement>(nullptr, dst_type, src);
+  }
+
+  return src;
+}
 }  // namespace
 
 LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form) {
@@ -407,7 +422,10 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
       }
       assert(elt_idx == let_desc.end_elt);
       auto new_let = pool.alloc_element<LetElement>(pool.alloc_sequence_form(nullptr, body));
-      new_let->add_def(let_desc.set_form->dst(), let_desc.set_form->src());
+      // insert a cast, if needed.
+      auto casted_src = insert_cast_for_let(let_desc.set_form->dst(), let_desc.set_form->src_type(),
+                                            let_desc.set_form->src(), pool, env);
+      new_let->add_def(let_desc.set_form->dst(), casted_src);
       env.set_defined_in_let(let_desc.name);
       lets.at(let_idx) = new_let;
     }

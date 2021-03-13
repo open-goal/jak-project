@@ -102,60 +102,59 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
       lookup_name = remapped->second;
     }
 
-    // next, we see if the user has requested a type cast, and add that.
-    // the user requested type case will always "win" here because this is forcefully used
-    // in the type pass. The user typecast should exactly match the most specific register type.
-    auto type_kv = m_typecasts.find(atomic_idx);
-    if (type_kv != m_typecasts.end()) {
-      for (auto& x : type_kv->second) {
-        if (x.reg == reg) {
-          // let's make sure the above claim is true
-          if (has_type_analysis()) {
-            auto& type_in_reg = get_types_for_op_mode(atomic_idx, mode).get(reg);
-            if (type_in_reg.typespec().print() != x.type_name) {
-              lg::error(
-                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
-                  "(var {}) to type {}, but the actual type is {} ({})",
-                  reg.to_charp(), atomic_idx, lookup_name, x.type_name,
-                  type_in_reg.typespec().print(), type_in_reg.print());
-              assert(false);
-            }
-          }
-          // TODO - use the when possible?
-          return pretty_print::build_list("the-as", x.type_name, lookup_name);
-        }
-      }
-    }
-
-    // we have three concepts of type here. From most specific -> least:
-    // 1). The actual type in the register at runtime. Unknown at compile/decompile time.
-    // 2). The type the decompiler used when decompiling the statement.
-    //       Currently, the decompiler attempts to make this _as specific as possible_ always.
-    //         This may be more specific than the variable type in rare cases.
-    // 3). The variable type.
-    // The decompiler should get the right variable types, but these may disagree with
-    // the register types it used at expression building time. There's a circular depedency on
-    // generalizing types to variables (ie make a variable have the lca type of all sets) and
-    // actually doing type propagation.  So we don't get this 100% right and expressions
-    // may use more specific types than the variables in some cases.  This means we
-    // might need to insert casts, possibly conservatively.
-
+    // get the type of the variable. This is the type of thing if we do no casts.
+    // first, get the type the decompiler found
     auto type_of_var = var_info.type.typespec();
+    // and the user's type.
     auto retype_kv = m_var_retype.find(original_name);
     if (retype_kv != m_var_retype.end()) {
       type_of_var = retype_kv->second;
     }
 
+    // next, we insert type casts that make enforce the user override.
+    auto type_kv = m_typecasts.find(atomic_idx);
+    if (type_kv != m_typecasts.end()) {
+      for (auto& x : type_kv->second) {
+        if (x.reg == reg) {
+          // let's make sure the above claim is true
+          TypeSpec type_in_reg;
+          if (has_type_analysis()) {
+            type_in_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
+            if (type_in_reg.print() != x.type_name) {
+              lg::error(
+                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
+                  "(var {}) to type {}, but the actual type is {} ({})",
+                  reg.to_charp(), atomic_idx, lookup_name, x.type_name, type_in_reg.print(),
+                  type_in_reg.print());
+              assert(false);
+            }
+          }
+
+          if (type_of_var != type_in_reg) {
+            // TODO - use the when possible?
+            return pretty_print::build_list("the-as", x.type_name, lookup_name);
+          }
+        }
+      }
+    }
+
+    // type analysis stuff runs before variable types, so we insert casts that account
+    // for the changing types due to the lca(uses) that is used to generate variable types.
     auto type_of_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
     if (mode == AccessMode::READ) {
       // note - this may be stricter than needed. but that's ok.
+
       if (type_of_var != type_of_reg) {
+        //        fmt::print("casting {} (reg {}, idx {}): reg type {} var type {} remapped var type
+        //        {}\n ",
+        //                   lookup_name, reg.to_charp(), atomic_idx, type_of_reg.print(),
+        //                   var_info.type.typespec().print(), type_of_var.print());
         return pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
       }
     } else {
       // if we're setting a variable, we are a little less strict.
       // let's leave this to set!'s for now. This is tricky with stuff like (if y x) where the move
-      // is eliminated.
+      // is eliminated so the RegisterAccess points to the "wrong" place.
       //      if (!dts->ts.tc(type_of_var, type_of_reg)) {
       //        fmt::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
       //        get_types_for_op_mode(atomic_idx, mode).get(reg).print()); return
@@ -179,6 +178,28 @@ std::string Env::get_variable_name(const RegisterAccess& access) const {
     return lookup_name;
   } else {
     throw std::runtime_error("Cannot store a variable in this reg");
+  }
+}
+
+/*!
+ * Get the type of the variable currently in the register.
+ * NOTE: this is _NOT_ the most specific type known to the decompiler, but instead the type
+ * of the variable.
+ */
+TypeSpec Env::get_variable_type(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    std::string original_name = var_info.name();
+
+    auto type_of_var = var_info.type.typespec();
+    auto retype_kv = m_var_retype.find(original_name);
+    if (retype_kv != m_var_retype.end()) {
+      type_of_var = retype_kv->second;
+    }
+
+    return type_of_var;
+  } else {
+    throw std::runtime_error("Types are not supported for this kind of register");
   }
 }
 

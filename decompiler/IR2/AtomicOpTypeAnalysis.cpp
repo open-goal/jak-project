@@ -465,9 +465,12 @@ TypeState SetVarOp::propagate_types_internal(const TypeState& input,
       m_src.get_arg(0).get_int() == 0) {
     // mtc fX, r0 should be a float type. GOAL was smart enough to do this.
     result.get(m_dst.reg()) = TP_Type::make_from_ts("float");
+    m_source_type = TypeSpec("float");
     return result;
   }
-  result.get(m_dst.reg()) = m_src.get_type(input, env, dts);
+  auto type = m_src.get_type(input, env, dts);
+  result.get(m_dst.reg()) = type;
+  m_source_type = type.typespec();
   return result;
 }
 
@@ -735,7 +738,9 @@ TypeState LoadVarOp::propagate_types_internal(const TypeState& input,
                                               const Env& env,
                                               DecompilerTypeSystem& dts) {
   TypeState result = input;
-  result.get(m_dst.reg()) = get_src_type(input, env, dts);
+  auto load_type = get_src_type(input, env, dts);
+  result.get(m_dst.reg()) = load_type;
+  m_type = load_type.typespec();
   return result;
 }
 
