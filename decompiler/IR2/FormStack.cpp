@@ -41,6 +41,7 @@ std::string FormStack::print(const Env& env) {
 void FormStack::push_value_to_reg(RegisterAccess var,
                                   Form* value,
                                   bool sequence_point,
+                                  TypeSpec type,
                                   const SetVarInfo& info) {
   assert(value);
   StackEntry entry;
@@ -48,6 +49,7 @@ void FormStack::push_value_to_reg(RegisterAccess var,
   entry.sequence_point = sequence_point;
   entry.destination = var;
   entry.source = value;
+  entry.set_type = type;
   entry.set_info = info;
   m_stack.push_back(entry);
 }
@@ -55,6 +57,7 @@ void FormStack::push_value_to_reg(RegisterAccess var,
 void FormStack::push_value_to_reg_dead(RegisterAccess var,
                                        Form* value,
                                        bool sequence_point,
+                                       TypeSpec type,
                                        const SetVarInfo& info) {
   assert(value);
   StackEntry entry;
@@ -62,6 +65,7 @@ void FormStack::push_value_to_reg_dead(RegisterAccess var,
   entry.sequence_point = sequence_point;
   entry.destination = var;
   entry.source = value;
+  entry.set_type = type;
   entry.set_info = info;
   m_stack.push_back(entry);
 }
@@ -69,6 +73,7 @@ void FormStack::push_value_to_reg_dead(RegisterAccess var,
 void FormStack::push_non_seq_reg_to_reg(const RegisterAccess& dst,
                                         const RegisterAccess& src,
                                         Form* src_as_form,
+                                        TypeSpec type,
                                         const SetVarInfo& info) {
   assert(src_as_form);
   StackEntry entry;
@@ -77,6 +82,7 @@ void FormStack::push_non_seq_reg_to_reg(const RegisterAccess& dst,
   entry.destination = dst;
   entry.non_seq_source = src;
   entry.source = src_as_form;
+  entry.set_type = type;
   entry.set_info = info;
   entry.is_compactable = true;
   m_stack.push_back(entry);
@@ -217,7 +223,7 @@ FormElement* FormStack::pop_back(FormPool& pool) {
   } else {
     assert(back.destination.has_value());
     auto elt = pool.alloc_element<SetVarElement>(*back.destination, back.source,
-                                                 back.sequence_point, back.set_info);
+                                                 back.sequence_point, back.set_type, back.set_info);
     back.source->parent_element = elt;
     return elt;
   }
@@ -320,7 +326,7 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
       }
 
       auto elt = pool.alloc_element<SetVarElement>(*e.destination, simplified_source,
-                                                   e.sequence_point, e.set_info);
+                                                   e.sequence_point, e.set_type, e.set_info);
       e.source->parent_element = elt;
 
       auto final_elt = try_rewrites_in_place(elt, env, pool);

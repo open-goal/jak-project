@@ -8,7 +8,8 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-struct TypeHint {
+struct TypeCast {
+  int atomic_op_idx = -1;
   Register reg;
   std::string type_name;
 };
@@ -17,6 +18,13 @@ struct LabelType {
   std::string type_name;
   bool is_const = false;
   std::optional<int> array_size;
+};
+
+struct LocalVarOverride {
+  std::string name;
+  // this may be left out, indicating that the variable should use the type determined
+  // by the type analysis pass.
+  std::optional<std::string> type;
 };
 
 struct Config {
@@ -45,12 +53,13 @@ struct Config {
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_set<std::string> no_type_analysis_functions_by_name;
   std::unordered_set<std::string> allowed_objects;
-  std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeHint>>>
-      type_hints_by_function_by_idx;
+  std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>
+      type_casts_by_function_by_atomic_op_idx;
   std::unordered_map<std::string, std::unordered_map<int, std::string>>
       anon_function_types_by_obj_by_id;
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
-  std::unordered_map<std::string, std::unordered_map<std::string, std::string>> function_var_names;
+  std::unordered_map<std::string, std::unordered_map<std::string, LocalVarOverride>>
+      function_var_overrides;
 
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   bool run_ir2 = false;

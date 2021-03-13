@@ -618,7 +618,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
       dynamic_cast<BranchElement*>(cne->entries.front().condition->try_as_single_element());
   auto condition_replacement = condition.first->op()->get_condition_as_form(pool, f.ir2.env);
   auto crf = pool.alloc_single_form(nullptr, condition_replacement);
-  auto replacement = pool.alloc_element<SetVarElement>(dst, crf, true);
+  auto replacement = pool.alloc_element<SetVarElement>(dst, crf, true, TypeSpec("symbol"));
   replacement->parent_form = cne->parent_form;
 
   if (condition_as_single) {
@@ -1004,7 +1004,7 @@ Form* try_sc_as_abs(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   }
 
   auto src_abs = pool.alloc_single_element_form<AbsElement>(nullptr, input.var(), consumed);
-  auto replacement = pool.alloc_element<SetVarElement>(output, src_abs, true);
+  auto replacement = pool.alloc_element<SetVarElement>(output, src_abs, true, TypeSpec("int"));
   b0_ptr->push_back(replacement);
 
   return b0_ptr;
@@ -1117,7 +1117,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   // setup
   auto ash_form = pool.alloc_single_element_form<AshElement>(
       nullptr, shift_ir.var(), value_ir.var(), clobber_ir, is_arith, consumed);
-  auto set_form = pool.alloc_element<SetVarElement>(dest_ir, ash_form, true);
+  auto set_form = pool.alloc_element<SetVarElement>(dest_ir, ash_form, true, TypeSpec("int"));
   b0_c_ptr->push_back(set_form);
 
   // fix up reg info
@@ -1268,7 +1268,7 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   auto obj = pool.alloc_single_element_form<SimpleExpressionElement>(
       nullptr, shift->expr().get_arg(0).as_expr(), set_shift->dst().idx());
   auto type_op = pool.alloc_single_element_form<TypeOfElement>(nullptr, obj, clobber);
-  auto op = pool.alloc_element<SetVarElement>(else_case->dst(), type_op, true);
+  auto op = pool.alloc_element<SetVarElement>(else_case->dst(), type_op, true, TypeSpec("type"));
   b0_ptr->push_back(op);
 
   // fix register info

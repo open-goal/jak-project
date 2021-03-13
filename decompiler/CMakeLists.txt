@@ -6,6 +6,7 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/reg_usage.cpp
         analysis/variable_naming.cpp
@@ -39,6 +40,7 @@ add_library(
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
         IR2/GenericElementMatcher.cpp
+        IR2/OpenGoalMapping.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
@@ -50,8 +52,7 @@ add_library(
         util/DecompilerTypeSystem.cpp
         util/TP_Type.cpp
 
-        config.cpp
- "analysis/inline_asm_rewrite.cpp" "analysis/inline_asm_rewrite.h" "IR2/OpenGoalMapping.cpp")
+        config.cpp)
 
 target_link_libraries(decomp
         lzokay

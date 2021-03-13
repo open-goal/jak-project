@@ -8,7 +8,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
-struct TypeHint;
+struct TypeCast;
 }
 
 class FormRegressionTest : public ::testing::Test {
@@ -34,7 +34,8 @@ class FormRegressionTest : public ::testing::Test {
       bool allow_pairs = false,
       const std::string& method_name = "",
       const std::vector<std::pair<std::string, std::string>>& strings = {},
-      const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {});
+      const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts = {},
+      const std::string& var_map_json = "");
 
   void test(const std::string& code,
             const std::string& type,
@@ -43,7 +44,8 @@ class FormRegressionTest : public ::testing::Test {
             bool allow_pairs = false,
             const std::string& method_name = "",
             const std::vector<std::pair<std::string, std::string>>& strings = {},
-            const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {});
+            const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts = {},
+            const std::string& var_map_json = "");
 
   void test_no_expr(const std::string& code,
                     const std::string& type,
@@ -51,19 +53,20 @@ class FormRegressionTest : public ::testing::Test {
                     bool allow_pairs = false,
                     const std::string& method_name = "",
                     const std::vector<std::pair<std::string, std::string>>& strings = {},
-                    const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {}) {
-    test(code, type, expected, false, allow_pairs, method_name, strings, hints);
+                    const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts = {},
+                    const std::string& var_map_json = "") {
+    test(code, type, expected, false, allow_pairs, method_name, strings, casts, var_map_json);
   }
 
-  void test_with_expr(
-      const std::string& code,
-      const std::string& type,
-      const std::string& expected,
-      bool allow_pairs = false,
-      const std::string& method_name = "",
-      const std::vector<std::pair<std::string, std::string>>& strings = {},
-      const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {}) {
-    test(code, type, expected, true, allow_pairs, method_name, strings, hints);
+  void test_with_expr(const std::string& code,
+                      const std::string& type,
+                      const std::string& expected,
+                      bool allow_pairs = false,
+                      const std::string& method_name = "",
+                      const std::vector<std::pair<std::string, std::string>>& strings = {},
+                      const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts = {},
+                      const std::string& var_map_json = "") {
+    test(code, type, expected, true, allow_pairs, method_name, strings, casts, var_map_json);
   }
 
   void test_final_function(
@@ -72,7 +75,8 @@ class FormRegressionTest : public ::testing::Test {
       const std::string& expected,
       bool allow_pairs = false,
       const std::vector<std::pair<std::string, std::string>>& strings = {},
-      const std::unordered_map<int, std::vector<decompiler::TypeHint>>& hints = {});
+      const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts = {},
+      const std::string& var_map_json = "");
 
-  std::unordered_map<int, std::vector<decompiler::TypeHint>> parse_hint_json(const std::string& in);
+  std::unordered_map<int, std::vector<decompiler::TypeCast>> parse_cast_json(const std::string& in);
 };

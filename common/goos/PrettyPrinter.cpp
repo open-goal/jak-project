@@ -509,6 +509,10 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
       }
 
+      if (name == "begin") {
+        breakList(pool, node->paren);
+      }
+
       if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
           name == "let*") {
         auto* first_list = getNextListOnLine(node);

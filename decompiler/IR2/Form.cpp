@@ -284,8 +284,13 @@ void SimpleAtomElement::get_modified_regs(RegSet& regs) const {
 SetVarElement::SetVarElement(const RegisterAccess& var,
                              Form* value,
                              bool is_sequence_point,
+                             TypeSpec src_type,
                              const SetVarInfo& info)
-    : m_dst(var), m_src(value), m_is_sequence_point(is_sequence_point), m_var_info(info) {
+    : m_dst(var),
+      m_src(value),
+      m_is_sequence_point(is_sequence_point),
+      m_src_type(src_type),
+      m_var_info(info) {
   value->parent_element = this;
 }
 

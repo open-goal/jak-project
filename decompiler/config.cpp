@@ -2,6 +2,7 @@
 #include "third-party/json.hpp"
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
 
 namespace decompiler {
 Config gConfig;
@@ -18,7 +19,7 @@ namespace {
 nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::string& file_key) {
   auto file_name = cfg.at(file_key).get<std::string>();
   auto file_txt = file_util::read_text_file(file_util::get_file_path({file_name}));
-  return nlohmann::json::parse(file_txt, nullptr, true, true);
+  return parse_commented_json(file_txt);
 }
 }  // namespace
 
@@ -27,8 +28,7 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::
  */
 void set_config(const std::string& path_to_config_file) {
   auto config_str = file_util::read_text_file(path_to_config_file);
-  // to ignore comments in json, which may be useful
-  auto cfg = nlohmann::json::parse(config_str, nullptr, true, true);
+  auto cfg = parse_commented_json(config_str);
 
   gConfig.game_version = cfg.at("game_version").get<int>();
   gConfig.dgo_names = cfg.at("dgo_names").get<std::vector<std::string>>();
@@ -83,18 +83,18 @@ void set_config(const std::string& path_to_config_file) {
     gConfig.allowed_objects.insert(x);
   }
 
-  auto type_hints_json = read_json_file_from_config(cfg, "type_hints_file");
-  for (auto& kv : type_hints_json.items()) {
+  auto type_casts_json = read_json_file_from_config(cfg, "type_casts_file");
+  for (auto& kv : type_casts_json.items()) {
     auto& function_name = kv.key();
-    auto& hints = kv.value();
-    for (auto& hint : hints) {
-      auto idx = hint.at(0).get<int>();
-      for (size_t i = 1; i < hint.size(); i++) {
-        auto& assignment = hint.at(i);
-        TypeHint type_hint;
-        type_hint.reg = Register(assignment.at(0).get<std::string>());
-        type_hint.type_name = assignment.at(1).get<std::string>();
-        gConfig.type_hints_by_function_by_idx[function_name][idx].push_back(type_hint);
+    auto& casts = kv.value();
+    for (auto& cast : casts) {
+      auto idx_range = parse_json_optional_integer_range(cast.at(0));
+      for (auto idx : idx_range) {
+        TypeCast type_cast;
+        type_cast.atomic_op_idx = idx;
+        type_cast.reg = Register(cast.at(1));
+        type_cast.type_name = cast.at(2).get<std::string>();
+        gConfig.type_casts_by_function_by_atomic_op_idx[function_name][idx].push_back(type_cast);
       }
     }
   }
@@ -121,8 +121,17 @@ void set_config(const std::string& path_to_config_file) {
 
     auto var = kv.value().find("vars");
     if (var != kv.value().end()) {
-      for (auto& vkv : var->get<std::unordered_map<std::string, std::string>>()) {
-        gConfig.function_var_names[function_name][vkv.first] = vkv.second;
+      for (auto& vkv : var->get<std::unordered_map<std::string, nlohmann::json>>()) {
+        LocalVarOverride override;
+        if (vkv.second.is_string()) {
+          override.name = vkv.second.get<std::string>();
+        } else if (vkv.second.is_array()) {
+          override.name = vkv.second[0].get<std::string>();
+          override.type = vkv.second[1].get<std::string>();
+        } else {
+          throw std::runtime_error("Invalid function var override.");
+        }
+        gConfig.function_var_overrides[function_name][vkv.first] = override;
       }
     }
   }

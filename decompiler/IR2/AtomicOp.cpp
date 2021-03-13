@@ -32,10 +32,10 @@ goos::Object RegisterAccess::to_form(const Env& env, Print mode) const {
       return pretty_print::to_symbol(fmt::format("{}-{:03d}-{}", m_reg.to_charp(), m_atomic_idx,
                                                  m_mode == AccessMode::READ ? 'r' : 'w'));
     case Print::AS_VARIABLE:
-      return env.get_variable_name(m_reg, m_atomic_idx, m_mode);
+      return env.get_variable_name_with_cast(m_reg, m_atomic_idx, m_mode);
     case Print::AUTOMATIC:
       if (env.has_local_vars()) {
-        return env.get_variable_name(m_reg, m_atomic_idx, m_mode);
+        return env.get_variable_name_with_cast(m_reg, m_atomic_idx, m_mode);
       } else {
         return pretty_print::to_symbol(m_reg.to_string());
       }

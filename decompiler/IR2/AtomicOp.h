@@ -284,6 +284,7 @@ class SetVarOp : public AtomicOp {
  private:
   RegisterAccess m_dst;
   SimpleExpression m_src;
+  std::optional<TypeSpec> m_source_type;
 };
 
 /*!
@@ -464,6 +465,7 @@ class LoadVarOp : public AtomicOp {
   int m_size = -1;
   RegisterAccess m_dst;
   SimpleExpression m_src;
+  std::optional<TypeSpec> m_type;
 };
 
 /*!

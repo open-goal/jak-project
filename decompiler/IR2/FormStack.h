@@ -16,15 +16,19 @@ class FormStack {
   void push_value_to_reg(RegisterAccess var,
                          Form* value,
                          bool sequence_point,
+                         TypeSpec type,
                          const SetVarInfo& info = {});
   void push_non_seq_reg_to_reg(const RegisterAccess& dst,
                                const RegisterAccess& src,
                                Form* src_as_form,
+                               TypeSpec type,
                                const SetVarInfo& info = {});
   void push_value_to_reg_dead(RegisterAccess var,
                               Form* value,
                               bool sequence_point,
+                              TypeSpec type,
                               const SetVarInfo& info = {});
+
   void push_form_element(FormElement* elt, bool sequence_point);
   Form* pop_reg(const RegisterAccess& var,
                 const RegSet& barrier,
@@ -53,10 +57,11 @@ class FormStack {
 
     FormElement* elt = nullptr;
     bool sequence_point = false;
-    TP_Type type;
+    // TP_Type type;
     bool is_compactable = false;
 
     SetVarInfo set_info;
+    TypeSpec set_type;
 
     std::string print(const Env& env) const;
   };

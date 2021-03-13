@@ -198,15 +198,7 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     TypeSpec function_typespec("function");
 
     for_each_in_list(args, [&](const goos::Object& o) {
-      if (o.is_symbol()) {
-        function_typespec.add_arg(parse_typespec(type_system, o));
-      } else {
-        auto next = cdr(&o);
-        function_typespec.add_arg(parse_typespec(type_system, car(next)));
-        if (!cdr(next)->is_empty_list()) {
-          throw std::runtime_error("too many things in method def arg type: " + def.print());
-        };
-      }
+      function_typespec.add_arg(parse_typespec(type_system, o));
     });
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
@@ -415,7 +407,7 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
 
 }  // namespace
 
-TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src) {
+TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) {
   if (src.is_symbol()) {
     return type_system->make_typespec(symbol_string(src));
   } else if (src.is_pair()) {

@@ -293,10 +293,12 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         func.type = ts;
         attempted_functions++;
         // try type analysis here.
-        auto hints = get_config().type_hints_by_function_by_idx[func.guessed_name.to_string()];
+        auto hints =
+            get_config().type_casts_by_function_by_atomic_op_idx[func.guessed_name.to_string()];
         auto label_types = get_config().label_types[data.to_unique_name()];
         if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints, label_types)) {
           successful_functions++;
+          func.ir2.types_succeeded = true;
         } else {
           func.warnings.type_prop_warning("Type analysis failed");
         }
@@ -419,7 +421,17 @@ void ObjectFileDB::ir2_build_expressions() {
     total++;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis() && func.ir2.env.has_local_vars()) {
       attempted++;
-      if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func, dts)) {
+      auto name = func.guessed_name.to_string();
+      auto arg_config = get_config().function_arg_names.find(name);
+      auto var_config = get_config().function_var_overrides.find(name);
+      if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
+                                 arg_config != get_config().function_arg_names.end()
+                                     ? arg_config->second
+                                     : std::vector<std::string>{},
+                                 var_config != get_config().function_var_overrides.end()
+                                     ? var_config->second
+                                     : std::unordered_map<std::string, LocalVarOverride>{},
+                                 dts)) {
         successful++;
         func.ir2.print_debug_forms = true;
         func.ir2.expressions_succeeded = true;

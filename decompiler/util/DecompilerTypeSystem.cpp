@@ -88,7 +88,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
   });
 }
 
-TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) {
+TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
   auto read = m_reader.read_from_string(str);
   auto data = cdr(read);
   return parse_typespec(&ts, car(data));

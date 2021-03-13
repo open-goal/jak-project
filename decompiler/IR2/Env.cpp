@@ -1,6 +1,7 @@
 #include <stdexcept>
 #include <unordered_set>
 #include <algorithm>
+#include <decompiler/util/DecompilerTypeSystem.h>
 #include "Env.h"
 #include "Form.h"
 #include "decompiler/analysis/atomic_op_builder.h"
@@ -62,6 +63,23 @@ void Env::map_args_from_config(const std::vector<std::string>& args_names,
   }
 }
 
+void Env::map_args_from_config(
+    const std::vector<std::string>& args_names,
+    const std::unordered_map<std::string, LocalVarOverride>& var_overrides) {
+  for (size_t i = 0; i < args_names.size(); i++) {
+    std::string var_name;
+    var_name.push_back(i >= 4 ? 't' : 'a');
+    var_name.push_back('0' + (i % 4));
+    var_name.push_back('-');
+    var_name.push_back('0');
+    m_var_remap[var_name] = args_names[i];
+  }
+
+  for (auto& x : var_overrides) {
+    m_var_remap[x.first] = x.second.name;
+  }
+}
+
 const std::string& Env::remapped_name(const std::string& name) const {
   auto kv = m_var_remap.find(name);
   if (kv != m_var_remap.end()) {
@@ -71,22 +89,79 @@ const std::string& Env::remapped_name(const std::string& name) const {
   }
 }
 
-goos::Object Env::get_variable_name(Register reg, int atomic_idx, AccessMode mode) const {
+goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const {
   if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
-    std::string lookup_name = m_var_names.lookup(reg, atomic_idx, mode).name();
-    auto remapped = m_var_remap.find(lookup_name);
+    auto& var_info = m_var_names.lookup(reg, atomic_idx, mode);
+    // this is a bit of a confusing process.  The first step is to grab the auto-generated name:
+    std::string original_name = var_info.name();
+    auto lookup_name = original_name;
+
+    // and then see if there's a user remapping of it
+    auto remapped = m_var_remap.find(original_name);
     if (remapped != m_var_remap.end()) {
       lookup_name = remapped->second;
     }
-    auto type_kv = m_typehints.find(atomic_idx);
-    if (type_kv != m_typehints.end()) {
+
+    // get the type of the variable. This is the type of thing if we do no casts.
+    // first, get the type the decompiler found
+    auto type_of_var = var_info.type.typespec();
+    // and the user's type.
+    auto retype_kv = m_var_retype.find(original_name);
+    if (retype_kv != m_var_retype.end()) {
+      type_of_var = retype_kv->second;
+    }
+
+    // next, we insert type casts that make enforce the user override.
+    auto type_kv = m_typecasts.find(atomic_idx);
+    if (type_kv != m_typecasts.end()) {
       for (auto& x : type_kv->second) {
         if (x.reg == reg) {
-          // TODO - redo this!
-          return pretty_print::build_list("the-as", x.type_name, lookup_name);
+          // let's make sure the above claim is true
+          TypeSpec type_in_reg;
+          if (has_type_analysis() && mode == AccessMode::READ) {
+            type_in_reg = get_types_for_op_mode(atomic_idx, AccessMode::READ).get(reg).typespec();
+            if (type_in_reg.print() != x.type_name) {
+              lg::error(
+                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
+                  "(var {}) to type {}, but the actual type is {} ({})",
+                  reg.to_charp(), atomic_idx, lookup_name, x.type_name, type_in_reg.print(),
+                  type_in_reg.print());
+              assert(false);
+            }
+          }
+
+          if (type_of_var != type_in_reg) {
+            // TODO - use the when possible?
+            return pretty_print::build_list("the-as", x.type_name, lookup_name);
+          }
         }
       }
     }
+
+    // type analysis stuff runs before variable types, so we insert casts that account
+    // for the changing types due to the lca(uses) that is used to generate variable types.
+    auto type_of_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
+    if (mode == AccessMode::READ) {
+      // note - this may be stricter than needed. but that's ok.
+
+      if (type_of_var != type_of_reg) {
+        //        fmt::print("casting {} (reg {}, idx {}): reg type {} var type {} remapped var type
+        //        {}\n ",
+        //                   lookup_name, reg.to_charp(), atomic_idx, type_of_reg.print(),
+        //                   var_info.type.typespec().print(), type_of_var.print());
+        return pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+      }
+    } else {
+      // if we're setting a variable, we are a little less strict.
+      // let's leave this to set!'s for now. This is tricky with stuff like (if y x) where the move
+      // is eliminated so the RegisterAccess points to the "wrong" place.
+      //      if (!dts->ts.tc(type_of_var, type_of_reg)) {
+      //        fmt::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
+      //        get_types_for_op_mode(atomic_idx, mode).get(reg).print()); return
+      //        pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+      //      }
+    }
+
     return pretty_print::to_symbol(lookup_name);
   } else {
     return pretty_print::to_symbol(reg.to_charp());
@@ -103,6 +178,28 @@ std::string Env::get_variable_name(const RegisterAccess& access) const {
     return lookup_name;
   } else {
     throw std::runtime_error("Cannot store a variable in this reg");
+  }
+}
+
+/*!
+ * Get the type of the variable currently in the register.
+ * NOTE: this is _NOT_ the most specific type known to the decompiler, but instead the type
+ * of the variable.
+ */
+TypeSpec Env::get_variable_type(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    std::string original_name = var_info.name();
+
+    auto type_of_var = var_info.type.typespec();
+    auto retype_kv = m_var_retype.find(original_name);
+    if (retype_kv != m_var_retype.end()) {
+      type_of_var = retype_kv->second;
+    }
+
+    return type_of_var;
+  } else {
+    throw std::runtime_error("Types are not supported for this kind of register");
   }
 }
 

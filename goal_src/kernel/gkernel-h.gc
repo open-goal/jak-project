@@ -157,10 +157,9 @@
    )
   
   (:methods
-   ;; todo, triple check these method numbers.
-   (stack-size-set! ((this thread) (stack-size int)) none 9)
-   (thread-suspend ((this _type_)) none 10) ;; only safe on a cpu-thread, but slot exists for thread
-   (thread-resume  ((to-resume _type_)) none 11) ;; only safe on a cpu-thread, but slot exists for thread
+    (stack-size-set! (_type_ int) none 9)
+    (thread-suspend (_type_) none 10)
+    (thread-resume  (_type_) none 11)
    )
   
   :size-assert #x28
@@ -185,9 +184,9 @@
    )
   
   (:methods
-   (new ((allocation symbol) (type-to-make type) (parent-process process) (name symbol) (stack-size int) (stack-top pointer)) _type_ 0)
-   (thread-suspend ((this _type_)) none 10)
-   (thread-resume  ((to-resume _type_)) none 11)
+    (new (symbol type process symbol int pointer) _type_ 0)
+    (thread-suspend (_type_) none 10)
+    (thread-resume  (_type_) none 11)
    )
   
   :size-assert #x80
@@ -209,12 +208,12 @@
    )
   
   (:methods
-   (new ((allocation symbol) (type-to-make type) (name basic)) _type_ 0)
-   (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
-   (deactivate  ((obj _type_)) none 10)
-   (dummy-method-11 () none 11)
-   (run-logic? ((obj _type_)) symbol 12)
-   (dummy-method () none 13)
+    (new (symbol type basic) _type_ 0)
+    (activate (_type_ process-tree basic pointer) process-tree 9)
+    (deactivate  (_type_) none 10)
+    (dummy-method-11 () none 11)
+    (run-logic? (_type_) symbol 12)
+    (dummy-method () none 13)
    )  
   
   :size-assert #x20
@@ -246,12 +245,12 @@
    )
   
   (:methods
-   (new ((allocation symbol) (type-to-make type) (name basic) (stack-size int)) _type_ 0)
-   (activate ((obj _type_) (dest process-tree) (name basic) (stack-top pointer)) process-tree 9)
-   (deactivate  ((obj process)) none 10)
-   (dummy-method-11 () none 11)
-   (run-logic? ((obj process)) symbol 12)
-   (dummy-method () none 13)
+    (new (symbol type basic int) _type_ 0)
+    (activate (_type_ process-tree basic pointer) process-tree 9)
+    (deactivate  (process) none 10)
+    (dummy-method-11 () none 11)
+    (run-logic? (process) symbol 12)
+    (dummy-method () none 13)
    )  
   
   :size-assert #x70
@@ -266,9 +265,9 @@
    ;; nothing new!
    )
   (:methods
-   (new ((allocation symbol) (type-to-make type) (count int) (stack-size int) (name basic)) _type_ 0)
-   (get-process ((pool _type_) (type-to-make type) (stack-size int)) process 14)
-   (return-process ((pool _type_) (proc process)) none 15)
+    (new (symbol type int int basic) _type_ 0)
+    (get-process (_type_ type int) process 14)
+    (return-process ( _type_ process) none 15)
    )
   :size-assert #x20
   :method-count-assert 16
@@ -310,18 +309,18 @@
    (process-list        dead-pool-heap-rec :inline :dynamic :offset-assert 104)
    )
   (:methods
-   (new ((allocation symbol) (type-to-make type) (name basic) (allocated-length int) (heap-size int)) _type_ 0)
-   (compact ((this dead-pool-heap) (count int)) none 16)
-   (shrink-heap ((this dead-pool-heap) (proc process)) dead-pool-heap 17)
-   (churn ((this dead-pool-heap) (count int)) none 18)
-   (memory-used ((this dead-pool-heap)) int 19)
-   (memory-total ((this dead-pool-heap)) int 20)
-   (gap-size ((this dead-pool-heap) (rec dead-pool-heap-rec)) int 21)
-   (gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec)) pointer 22)
-   (find-gap ((this dead-pool-heap) (rec dead-pool-heap-rec)) dead-pool-heap-rec 23)
-   (find-gap-by-size ((this dead-pool-heap) (size int)) dead-pool-heap-rec 24)
-   (memory-free ((this dead-pool-heap)) int 25)
-   (compact-time ((this dead-pool-heap)) uint 26)
+    (new (symbol type basic int int) _type_ 0)
+    (compact (dead-pool-heap int) none 16)
+    (shrink-heap (dead-pool-heap process) dead-pool-heap 17)
+    (churn (dead-pool-heap int) none 18)
+    (memory-used (dead-pool-heap) int 19)
+    (memory-total (dead-pool-heap) int 20)
+    (gap-size (dead-pool-heap dead-pool-heap-rec) int 21)
+    (gap-location (dead-pool-heap dead-pool-heap-rec) pointer 22)
+    (find-gap (dead-pool-heap dead-pool-heap-rec) dead-pool-heap-rec 23)
+    (find-gap-by-size (dead-pool-heap int) dead-pool-heap-rec 24)
+    (memory-free (dead-pool-heap) int 25)
+    (compact-time (dead-pool-heap) uint 26)
    )
   
   :size-assert #x68
@@ -360,7 +359,7 @@
    )
   
   (:methods
-   (new ((allocation symbol) (type-to-make type) (name symbol) (func function) (params (pointer uint64))) object 0)
+   (new (symbol type symbol function (pointer uint64)) object 0)
    )
   :size-assert #xb0
   :method-count-assert 9
@@ -372,7 +371,7 @@
   ((exit (function object) :offset-assert 12)) ;; function to call to clean up
   
   (:methods
-   (new ((allocation symbol) (type-to-make type) (func (function object))) protect-frame)
+   (new (symbol type (function object)) protect-frame)
    )
   :size-assert 16
   :method-count-assert 9
@@ -436,9 +435,11 @@
    (event (function basic int basic event-message-block object)     :offset-assert 32)
    )
   (:methods
-    (new ((allocation symbol) (type-to-make type) (name basic) (code function) 
-          (trans (function object)) (enter (function object object object object object object object)) (exit (function object)) 
-          (event (function basic int basic event-message-block object))) _type_ 0)
+    (new (symbol type basic function
+          (function object) 
+          (function object object object object object object object)
+          (function object)
+          (function basic int basic event-message-block object)) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x24

@@ -410,7 +410,7 @@ TEST_F(FormRegressionTest, SimpleLoopMergeCheck) {
       "    lw v0, -2(a0)\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
-  std::string type = "(function pair int)";
+  std::string type = "(function object int)";
   std::string expected =
       "(begin\n"
       "  (set! v1-0 0)\n"

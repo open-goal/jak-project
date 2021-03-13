@@ -19,6 +19,7 @@ add_library(common
         util/DgoReader.cpp
         util/DgoWriter.cpp
         util/FileUtil.cpp
+        util/json_util.cpp
         util/Timer.cpp
         )
 

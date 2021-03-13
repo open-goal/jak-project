@@ -2,6 +2,8 @@
 #include "common/util/Trie.h"
 #include "gtest/gtest.h"
 #include "test/all_jak1_symbols.h"
+#include "common/util/json_util.h"
+#include "common/util/Range.h"
 #include <string>
 #include <vector>
 
@@ -38,4 +40,41 @@ TEST(CommonUtil, Trie) {
   EXPECT_FALSE(test.lookup("path1") == nullptr);
   EXPECT_TRUE(test.lookup("path-") == nullptr);
   EXPECT_FALSE(test.lookup("path1-k") == nullptr);
+}
+
+TEST(CommonUtil, StripComments) {
+  std::string test_input =
+      R"(
+test "asdf /* y */ /////a\"bcd"
+///////// commented out!
+// /*  also commented out
+
+/* this is a block comment "with an unterminated string.
+*/ and its done
+)";
+
+  std::string test_expected =
+      R"(
+test "asdf /* y */ /////a\"bcd"
+
+
+
+ and its done
+)";
+
+  EXPECT_EQ(strip_cpp_style_comments(test_input), test_expected);
+}
+
+TEST(CommonUtil, RangeIterator) {
+  std::vector<int> result = {}, expected_result = {4, 5, 6, 7};
+
+  for (auto x : Range<int>(4, 8)) {
+    result.push_back(x);
+  }
+
+  EXPECT_EQ(result, expected_result);
+  EXPECT_TRUE(Range<int>().empty());
+  EXPECT_FALSE(Range<int>(3, 4).empty());
+  EXPECT_EQ(1, Range<int>(3, 4).size());
+  EXPECT_EQ(4, Range<int>(4, 8).size());
 }

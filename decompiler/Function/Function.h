@@ -94,7 +94,7 @@ class Function {
   bool run_type_analysis_ir2(const TypeSpec& my_type,
                              DecompilerTypeSystem& dts,
                              LinkedObjectFile& file,
-                             const std::unordered_map<int, std::vector<TypeHint>>& hints,
+                             const std::unordered_map<int, std::vector<TypeCast>>& casts,
                              const std::unordered_map<std::string, LabelType>& label_types);
   BlockTopologicalSort bb_topo_sort();
 
@@ -169,6 +169,7 @@ class Function {
     std::string debug_form_string;
     bool print_debug_forms = false;
     bool expressions_succeeded = false;
+    bool types_succeeded = false;
   } ir2;
 
  private:

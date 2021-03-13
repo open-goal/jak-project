@@ -9,15 +9,14 @@
 
 namespace {
 // the object files to test
-const std::unordered_set<std::string> g_object_files_to_decompile = {
-    "gcommon",
-    "gstring-h",
-};
+const std::unordered_set<std::string> g_object_files_to_decompile = {"gcommon", "gstring-h",
+                                                                     "gkernel-h", "gkernel"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
     "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h"};
+    "gstring-h", "gkernel-h",
+    /*"gkernel"*/};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -34,6 +33,7 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "return-from-thread-dead",  // kernel -> user
     "return-from-thread",       // kernel -> user
     "return-from-exception",    // ps2 exception -> ps2 user
+    "run-function-in-process",  // temp while stack vars aren't supported.
     // pskernel
     "kernel-check-hardwired-addresses",  // ps2 ee kernel debug hook
     "kernel-read-function",              // ps2 ee kernel debug hook
@@ -47,25 +47,50 @@ const std::unordered_set<std::string> skip_in_compiling = {
     //////////////////////
 
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs", "ash", "min", "max", "lognor",
+    "abs",
+    "ash",
+    "min",
+    "max",
+    "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
     // these require 128-bit integers. We want these eventually, but disabling for now to focus
     // on more important issues.
-    "(method 3 vec4s)", "(method 2 vec4s)", "qmem-copy<-!", "qmem-copy->!", "(method 2 array)",
+    "(method 3 vec4s)",
+    "(method 2 vec4s)",
+    "qmem-copy<-!",
+    "qmem-copy->!",
+    "(method 2 array)",
     "(method 3 array)",
     // does weird stuff with the type system.
-    "print", "printl", "inspect",
+    "print",
+    "printl",
+    "inspect",
     // inline assembly
-    "valid?"};
+    "valid?",
+
+    //////////////////////
+    // GKERNEL-H
+    //////////////////////
+    // bitfields, possibly inline assembly
+    "(method 2 handle)",
+};
 
 // The decompiler does not attempt to insert forward definitions, as this would be part of an
 // unimplemented full-program type analysis pass.  For now, we manually specify all functions
 // that should have a forward definition here.
 const std::string g_forward_type_defs =
+    // used out of order
     "(define-extern name= (function basic basic symbol))\n"
-    // todo - check if recursive?
-    "(define-extern fact (function int int))";
+    // recursive
+    "(define-extern fact (function int int))\n"
+    // gkernel-h
+    "(declare-type process basic)\n"
+    "(declare-type stack-frame basic)\n"
+    "(declare-type state basic)\n"
+    "(declare-type cpu-thread basic)\n"
+    "(declare-type dead-pool basic)\n"
+    "(declare-type event-message-block structure)\n";
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -252,7 +277,7 @@ TEST_F(OfflineDecompilation, TypeAnalysis) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
-      if (!func.ir2.env.has_type_analysis()) {
+      if (!func.ir2.env.has_type_analysis() || !func.ir2.types_succeeded) {
         lg::error("Function {} failed types", func.guessed_name.to_string());
         failed_count++;
       }

@@ -59,14 +59,17 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
         }
         auto load =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+
+        return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                 m_source_type.value_or(TypeSpec("object")));
       }
     }
   }
 
   // create element
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
-  auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point());
+  auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point(),
+                                                  m_source_type.value_or(TypeSpec("object")));
 
   // do some analysis to look for coloring moves which are already eliminated,
   // dead sets, and dead set falses.
@@ -101,7 +104,7 @@ FormElement* AsmOp::get_as_form(FormPool& pool, const Env&) const {
 FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) const {
   return pool.alloc_element<SetVarElement>(
       m_dst, pool.alloc_single_form(nullptr, m_condition.get_as_form(pool, env, m_my_idx)),
-      is_sequence_point());
+      is_sequence_point(), TypeSpec("symbol"));
 }
 
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
@@ -309,7 +312,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
             nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
         auto load = pool.alloc_single_element_form<DerefElement>(nullptr, source, false, tokens);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                 m_type.value_or(TypeSpec("object")));
       }
 
       // todo structure method
@@ -321,7 +325,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         // access method vtable. The input is type + (4 * method), and the 16 is the offset
         // of method 0.
         auto load = pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                 m_type.value_or(TypeSpec("object")));
       }
 
       if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
@@ -348,7 +353,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           // different in different cases.
           auto load = pool.alloc_single_element_form<ArrayFieldAccess>(
               nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
-          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+          return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                   m_type.value_or(TypeSpec("object")));
         }
       }
 
@@ -363,7 +369,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           auto load = pool.alloc_single_element_form<GenericElement>(
               nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), source);
           // cdr = another pair.
-          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+          return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                   m_type.value_or(TypeSpec("object")));
         } else if (ro.offset == -2) {
           // car = some object.
           auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
@@ -371,7 +378,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           auto load = pool.alloc_single_element_form<GenericElement>(
               nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), source);
           // cdr = another pair.
-          return pool.alloc_element<SetVarElement>(m_dst, load, true);
+          return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                   m_type.value_or(TypeSpec("object")));
         }
       }
 
@@ -400,7 +408,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
         auto load =
             pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true);
+        return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                 m_type.value_or(TypeSpec("object")));
       }
 
       if (input_type.typespec() == TypeSpec("pointer")) {
@@ -433,7 +442,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
             nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), dest);
         auto deref = pool.alloc_single_element_form<DerefElement>(nullptr, cast_dest, false,
                                                                   std::vector<DerefToken>());
-        return pool.alloc_element<SetVarElement>(m_dst, deref, true);
+        return pool.alloc_element<SetVarElement>(m_dst, deref, true,
+                                                 m_type.value_or(TypeSpec("object")));
       }
     }
   }
@@ -453,7 +463,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           float value;
           memcpy(&value, &word.data, 4);
           auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
-          return pool.alloc_element<SetVarElement>(m_dst, float_elt, true);
+          return pool.alloc_element<SetVarElement>(m_dst, float_elt, true,
+                                                   m_type.value_or(TypeSpec("object")));
         } else if (hint->second.type_name == "uint64" && m_kind != Kind::FLOAT && m_size == 8) {
           assert((label.offset % 8) == 0);
           auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
@@ -466,7 +477,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           memcpy(((u8*)&value) + 4, &word1.data, 4);
           auto val_elt = pool.alloc_single_element_form<ConstantTokenElement>(
               nullptr, fmt::format("#x{:x}", value));
-          return pool.alloc_element<SetVarElement>(m_dst, val_elt, true);
+          return pool.alloc_element<SetVarElement>(m_dst, val_elt, true,
+                                                   m_type.value_or(TypeSpec("object")));
         }
       }
     }
@@ -474,7 +486,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   auto load = pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
-  return pool.alloc_element<SetVarElement>(m_dst, load, true);
+  return pool.alloc_element<SetVarElement>(m_dst, load, true, m_type.value_or(TypeSpec("object")));
 }
 
 FormElement* BranchOp::get_as_form(FormPool& pool, const Env&) const {
@@ -500,7 +512,14 @@ FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
     // this is a little scary in the case that type analysis doesn't run and relies on the fact
     // that CallOp falls back to writing v0 in the case where the function type isn't known.
     RegisterAccess out_var(AccessMode::WRITE, Register(Reg::GPR, Reg::V0), m_my_idx);
-    return pool.alloc_element<SetVarElement>(out_var, pool.alloc_single_form(nullptr, call), true);
+    TypeSpec result_type("object");
+
+    if (m_call_type_set) {
+      result_type = m_call_type.last_arg();
+    }
+
+    return pool.alloc_element<SetVarElement>(out_var, pool.alloc_single_form(nullptr, call), true,
+                                             result_type);
   } else {
     throw std::runtime_error("CallOp::get_as_expr not yet implemented");
   }

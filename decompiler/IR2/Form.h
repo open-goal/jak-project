@@ -243,6 +243,7 @@ class SetVarElement : public FormElement {
   SetVarElement(const RegisterAccess& var,
                 Form* value,
                 bool is_sequence_point,
+                TypeSpec src_type,
                 const SetVarInfo& info = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -266,12 +267,13 @@ class SetVarElement : public FormElement {
   void mark_as_dead_false() { m_var_info.is_dead_false = true; }
 
   const SetVarInfo& info() const { return m_var_info; }
+  const TypeSpec src_type() const { return m_src_type; }
 
  private:
   RegisterAccess m_dst;
   Form* m_src = nullptr;
   bool m_is_sequence_point = true;
-
+  TypeSpec m_src_type;
   SetVarInfo m_var_info;
 };
 

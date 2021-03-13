@@ -6,6 +6,7 @@
  */
 
 #include <cstdint>
+#include <cassert>
 #include <string>
 
 namespace decompiler {
@@ -135,6 +136,10 @@ class Register {
   Register() = default;
   Register(Reg::RegisterKind kind, uint32_t num);
   Register(const std::string& name);
+  static Register get_arg_reg(int idx) {
+    assert(idx >= 0 && idx < 8);
+    return Register(Reg::GPR, Reg::A0 + idx);
+  }
   const char* to_charp() const;
   std::string to_string() const;
   Reg::RegisterKind get_kind() const;

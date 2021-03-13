@@ -25,7 +25,7 @@
 #include "decompiler/IR/BasicOpBuilder.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "common/log/log.h"
-#include "third-party/json.hpp"
+#include "common/util/json_util.h"
 
 namespace decompiler {
 namespace {
@@ -162,7 +162,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
-  auto j = nlohmann::json::parse(map_data, nullptr, true, true);
+  auto j = parse_commented_json(map_data);
 
   for (auto& x : j) {
     auto mapped_name = x[0].get<std::string>();

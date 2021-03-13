@@ -44,8 +44,9 @@ class Env {
   }
 
   // TODO - remove this.
-  goos::Object get_variable_name(Register reg, int atomic_idx, AccessMode mode) const;
+  goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
   std::string get_variable_name(const RegisterAccess& access) const;
+  TypeSpec get_variable_type(const RegisterAccess& access) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -58,6 +59,14 @@ class Env {
   const TypeState& get_types_before_op(int atomic_op_id) const {
     assert(m_has_types);
     return *m_op_init_types.at(atomic_op_id);
+  }
+
+  const TypeState& get_types_for_op_mode(int atomic_op_id, AccessMode mode) const {
+    if (mode == AccessMode::READ) {
+      return get_types_before_op(atomic_op_id);
+    } else {
+      return get_types_after_op(atomic_op_id);
+    }
   }
 
   /*!
@@ -92,8 +101,8 @@ class Env {
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
-  void set_type_hints(const std::unordered_map<int, std::vector<TypeHint>>& hints) {
-    m_typehints = hints;
+  void set_type_casts(const std::unordered_map<int, std::vector<TypeCast>>& casts) {
+    m_typecasts = casts;
   }
 
   void set_remap_for_function(int nargs);
@@ -101,6 +110,8 @@ class Env {
   void set_remap_for_new_method(int nargs);
   void map_args_from_config(const std::vector<std::string>& args_names,
                             const std::unordered_map<std::string, std::string>& var_names);
+  void map_args_from_config(const std::vector<std::string>& args_names,
+                            const std::unordered_map<std::string, LocalVarOverride>& var_overrides);
 
   const std::string& remapped_name(const std::string& name) const;
 
@@ -130,6 +141,8 @@ class Env {
 
   void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
 
+  void set_retype_map(const std::unordered_map<std::string, TypeSpec>& map) { m_var_retype = map; }
+
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -149,8 +162,9 @@ class Env {
 
   bool m_allow_sloppy_pair_typing = false;
 
-  std::unordered_map<int, std::vector<TypeHint>> m_typehints;
+  std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
   std::unordered_map<std::string, std::string> m_var_remap;
+  std::unordered_map<std::string, TypeSpec> m_var_retype;
   std::unordered_map<std::string, LabelType> m_label_types;
 
   std::unordered_set<std::string> m_vars_defined_in_let;
