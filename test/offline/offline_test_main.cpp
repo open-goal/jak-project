@@ -9,17 +9,14 @@
 
 namespace {
 // the object files to test
-const std::unordered_set<std::string> g_object_files_to_decompile = {
-    "gcommon",
-    /*"gstring-h",
-    "gkernel-h",
-    "gkernel",*/
-};
+const std::unordered_set<std::string> g_object_files_to_decompile = {"gcommon", "gstring-h",
+                                                                     "gkernel-h", "gkernel"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
     "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    /*"gstring-h", "gkernel-h", "gkernel"*/};
+    "gstring-h", "gkernel-h",
+    /*"gkernel"*/};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -36,6 +33,7 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "return-from-thread-dead",  // kernel -> user
     "return-from-thread",       // kernel -> user
     "return-from-exception",    // ps2 exception -> ps2 user
+    "run-function-in-process",  // temp while stack vars aren't supported.
     // pskernel
     "kernel-check-hardwired-addresses",  // ps2 ee kernel debug hook
     "kernel-read-function",              // ps2 ee kernel debug hook

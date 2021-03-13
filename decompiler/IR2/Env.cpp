@@ -118,8 +118,8 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
         if (x.reg == reg) {
           // let's make sure the above claim is true
           TypeSpec type_in_reg;
-          if (has_type_analysis()) {
-            type_in_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
+          if (has_type_analysis() && mode == AccessMode::READ) {
+            type_in_reg = get_types_for_op_mode(atomic_idx, AccessMode::READ).get(reg).typespec();
             if (type_in_reg.print() != x.type_name) {
               lg::error(
                   "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
