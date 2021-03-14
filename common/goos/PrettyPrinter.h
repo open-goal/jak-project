@@ -53,4 +53,6 @@ goos::Reader& get_pretty_printer_reader();
 
 goos::Object float_representation(float value);
 
+void append(goos::Object& _in, const goos::Object& add);
+
 }  // namespace pretty_print

@@ -77,6 +77,7 @@ class ObjectFileDB {
   void ir2_build_expressions();
   void ir2_insert_lets();
   void ir2_rewrite_inline_asm_instructions();
+  void ir2_insert_anonymous_functions();
   void ir2_write_results(const std::string& output_dir);
   std::string ir2_to_file(ObjectFileData& data);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);

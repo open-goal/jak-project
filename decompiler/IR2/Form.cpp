@@ -2178,6 +2178,26 @@ void DoTimesElement::get_modified_regs(RegSet& regs) const {
   m_check_value->get_modified_regs(regs);
 }
 
+/////////////////////////////
+// LambdaDefinitionElement
+/////////////////////////////
+
+LambdaDefinitionElement::LambdaDefinitionElement(const goos::Object& def) : m_def(def) {}
+
+goos::Object LambdaDefinitionElement::to_form_internal(const Env&) const {
+  return m_def;
+}
+
+void LambdaDefinitionElement::apply_form(const std::function<void(Form*)>&) {}
+
+void LambdaDefinitionElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void LambdaDefinitionElement::collect_vars(RegAccessSet&, bool) const {}
+
+void LambdaDefinitionElement::get_modified_regs(RegSet&) const {}
+
 std::optional<SimpleAtom> form_as_atom(const Form* f) {
   auto as_single = f->try_as_single_element();
   auto as_atom = dynamic_cast<SimpleAtomElement*>(as_single);
@@ -2192,5 +2212,4 @@ std::optional<SimpleAtom> form_as_atom(const Form* f) {
 
   return {};
 }
-
 }  // namespace decompiler

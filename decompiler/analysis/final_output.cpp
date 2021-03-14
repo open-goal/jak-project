@@ -7,24 +7,23 @@
 
 namespace decompiler {
 
-namespace {
-void append(goos::Object& _in, const goos::Object& add) {
-  auto* in = &_in;
-  while (in->is_pair() && !in->as_pair()->cdr.is_empty_list()) {
-    in = &in->as_pair()->cdr;
+goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
+  std::vector<goos::Object> argument_elts;
+  assert(func.type.arg_count() >= 1);
+  for (size_t i = 0; i < func.type.arg_count() - 1; i++) {
+    auto reg = Register(Reg::GPR, Reg::A0 + i);
+    auto name = fmt::format("{}-0", reg.to_charp());
+    argument_elts.push_back(
+        pretty_print::build_list(env.remapped_name(name), func.type.get_arg(i).print()));
   }
-
-  if (!in->is_pair()) {
-    assert(false);  // invalid list
-  }
-  in->as_pair()->cdr = add;
+  return pretty_print::build_list(argument_elts);
 }
-}  // namespace
 
 std::string final_defun_out(const Function& func,
                             const Env& env,
                             const DecompilerTypeSystem& dts,
                             FunctionDefSpecials special_mode) {
+  using pretty_print::append;
   std::vector<goos::Object> inline_body;
   try {
     func.ir2.top_form->inline_forms(inline_body, env);
@@ -34,16 +33,7 @@ std::string final_defun_out(const Function& func,
 
   int var_count = 0;
   auto var_dec = env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1, &var_count);
-
-  std::vector<goos::Object> argument_elts;
-  assert(func.type.arg_count() >= 1);
-  for (size_t i = 0; i < func.type.arg_count() - 1; i++) {
-    auto reg = Register(Reg::GPR, Reg::A0 + i);
-    auto name = fmt::format("{}-0", reg.to_charp());
-    argument_elts.push_back(
-        pretty_print::build_list(env.remapped_name(name), func.type.get_arg(i).print()));
-  }
-  auto arguments = pretty_print::build_list(argument_elts);
+  auto arguments = get_arg_list_for_function(func, env);
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
     std::string def_name = "defun";

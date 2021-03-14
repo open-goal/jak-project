@@ -109,10 +109,18 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
         if (word.kind == LinkedWord::TYPE_PTR) {
           if (word.symbol_name == "string") {
             return TP_Type::make_from_string(env.file->get_goal_string_by_label(label));
-          } else {
-            // otherwise, some other static basic.
-            return TP_Type::make_from_ts(TypeSpec(word.symbol_name));
+          } else if (word.symbol_name == "function") {
+            // let's see if the user marked this as a lambda and if we can get a more specific type.
+            auto hint_kv = env.label_types().find(label.name);
+            if (hint_kv != env.label_types().end() && hint_kv->second.type_name == "_lambda_") {
+              auto func = env.file->try_get_function_at_label(m_int);
+              if (func) {
+                return TP_Type::make_from_ts(func->type);
+              }
+            }
           }
+          // otherwise, some other static basic.
+          return TP_Type::make_from_ts(TypeSpec(word.symbol_name));
         }
       } else if ((label.offset & 7) == PAIR_OFFSET) {
         return TP_Type::make_from_ts(TypeSpec("pair"));

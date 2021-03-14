@@ -2,6 +2,7 @@ add_library(
         decomp
         SHARED
 
+        analysis/anonymous_function_def.cpp
         analysis/atomic_op_builder.cpp
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
