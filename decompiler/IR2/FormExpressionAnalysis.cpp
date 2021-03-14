@@ -250,6 +250,11 @@ bool is_int_type(const Env& env, int my_idx, RegisterAccess var) {
   return type == TypeSpec("int");
 }
 
+bool is_pointer_type(const Env& env, int my_idx, RegisterAccess var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
+  return type.base_type() == "pointer";
+}
+
 /*!
  * type == uint (exactly)?
  */
@@ -802,6 +807,10 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
   } else {
     auto cast = pool.alloc_single_element_form<CastElement>(
         nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
+    if (kind == FixedOperatorKind::SUBTRACTION &&
+        is_pointer_type(env, m_my_idx, m_expr.get_arg(0).var())) {
+      kind = FixedOperatorKind::SUBTRACTION_PTR;
+    }
     auto new_form =
         pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0), cast);
     result->push_back(new_form);
@@ -1107,38 +1116,39 @@ void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   }
 }
 
+namespace {
+Form* make_optional_cast(const std::optional<TypeSpec>& cast_type, Form* in, FormPool& pool) {
+  if (cast_type) {
+    return pool.alloc_single_element_form<CastElement>(nullptr, *cast_type, in);
+  } else {
+    return in;
+  }
+}
+}  // namespace
+
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   if (m_expr.is_var()) {
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
-    if (m_cast_type.has_value()) {
-      m_dst->set_base(
-          pool.alloc_single_element_form<CastElement>(nullptr, *m_cast_type, popped.at(1)));
-    } else {
-      m_dst->set_base(popped.at(1));
-    }
-
+    m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool));
     m_dst->mark_popped();
     m_dst->inline_nested();
-    auto fr = pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst),
-                                                     popped.at(0));
+    auto fr = pool.alloc_element<SetFormFormElement>(
+        pool.alloc_single_form(nullptr, m_dst),
+        make_optional_cast(m_src_cast_type, popped.at(0), pool));
     fr->mark_popped();
     stack.push_form_element(fr, true);
   } else {
     auto vars = std::vector<RegisterAccess>({m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
-    if (m_cast_type.has_value()) {
-      m_dst->set_base(
-          pool.alloc_single_element_form<CastElement>(nullptr, *m_cast_type, popped.at(1)));
-    } else {
-      m_dst->set_base(popped.at(0));
-    }
+    m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(0), pool));
     m_dst->mark_popped();
     m_dst->inline_nested();
     auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_expr, m_my_idx);
     val->mark_popped();
-    auto fr = pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst), val);
+    auto fr = pool.alloc_element<SetFormFormElement>(
+        pool.alloc_single_form(nullptr, m_dst), make_optional_cast(m_src_cast_type, val, pool));
     fr->mark_popped();
     stack.push_form_element(fr, true);
   }

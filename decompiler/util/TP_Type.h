@@ -40,6 +40,35 @@ class TP_Type {
   bool operator!=(const TP_Type& other) const;
   TypeSpec typespec() const;
 
+  /*!
+   * Returns true if the expression with this type should always be wrapped in a cast.
+   */
+  bool requires_cast() const {
+    switch (kind) {
+      case Kind::TYPESPEC:
+      case Kind::TYPE_OF_TYPE_OR_CHILD:
+      case Kind::TYPE_OF_TYPE_NO_VIRTUAL:
+      case Kind::FALSE_AS_NULL:  // if we want all #f's for references to be cast, move this.
+      case Kind::PRODUCT_WITH_CONSTANT:
+      case Kind::STRING_CONSTANT:
+      case Kind::FORMAT_STRING:
+      case Kind::INTEGER_CONSTANT:
+      case Kind::INTEGER_CONSTANT_PLUS_VAR:
+      case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+      case Kind::VIRTUAL_METHOD:
+      case Kind::NON_VIRTUAL_METHOD:
+        return false;
+      case Kind::UNINITIALIZED:
+      case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+      case Kind::OBJECT_NEW_METHOD:
+      case Kind::DYNAMIC_METHOD_ACCESS:
+        return true;
+      case Kind::INVALID:
+      default:
+        assert(false);
+    }
+  }
+
   bool is_constant_string() const { return kind == Kind::STRING_CONSTANT; }
   bool is_integer_constant() const { return kind == Kind::INTEGER_CONSTANT; }
   bool is_integer_constant(int64_t value) const { return is_integer_constant() && m_int == value; }

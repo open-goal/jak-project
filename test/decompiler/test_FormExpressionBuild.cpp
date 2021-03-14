@@ -2372,7 +2372,7 @@ TEST_F(FormRegressionTest, ExprCopyStringString) {
       "     (set! a1-1 (&-> a1-1 1))\n"
       "     )\n"
       "    )\n"
-      "   (set! (-> v1-0 0) 0)\n"
+      "   (set! (-> v1-0 0) (the-as uint 0))\n"
       "   )\n"
       "  arg0\n"
       "  )";

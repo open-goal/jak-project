@@ -45,6 +45,8 @@ bool convert_to_expressions(
     } else {
       // or just get all the expressions
       new_entries = stack.rewrite(pool, f.ir2.env);
+      new_entries.push_back(
+          pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NONE)));
     }
 
     // if we are a totally empty function, insert a placeholder so we don't have to handle

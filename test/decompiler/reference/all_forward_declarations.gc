@@ -1,0 +1,52 @@
+;; GCOMMON
+(define-extern name= (function basic basic symbol))
+(define-extern fact (function int int))
+
+;; KERNEL
+(declare-type process basic)
+(declare-type stack-frame basic)
+(declare-type state basic)
+(declare-type cpu-thread basic)
+(declare-type dead-pool basic)
+(declare-type event-message-block structure)
+(declare-type thread basic)
+
+(deftype process (process-tree)
+  ((pool dead-pool :offset-assert #x20)
+   (status basic :offset-assert #x24)
+   (pid int32 :offset-assert #x28)
+   (main-thread cpu-thread :offset-assert #x2c)
+   (top-thread thread :offset-assert #x30)
+   (entity basic :offset-assert #x34)
+   (state state :offset-assert #x38)
+   (trans-hook function :offset-assert #x3c)
+   (post-hook function :offset-assert #x40)
+   (event-hook (function basic int basic event-message-block object) :offset-assert #x44)
+   (allocated-length int32 :offset-assert #x48)
+   (next-state state :offset-assert #x4c)
+   (heap-base pointer :offset-assert #x50)
+   (heap-top pointer :offset-assert #x54)
+   (heap-cur pointer :offset-assert #x58)
+   (stack-frame-top stack-frame :offset-assert #x5c)
+   (connection-list connectable :inline :offset-assert #x60)
+   (stack uint8 :dynamic :offset-assert #x70)
+   )
+
+  (:methods
+    (new (symbol type basic int) _type_ 0)
+    (activate (_type_ process-tree basic pointer) process-tree 9)
+    (deactivate  (process) none 10)
+    (dummy-method-11 () none 11)
+    (run-logic? (process) symbol 12)
+    (dummy-method () none 13)
+   )
+
+  :size-assert #x70
+  :method-count-assert 14
+  :no-runtime-type ;; already defined by kscheme. Don't do it again.
+  )
+
+(declare-type dead-pool-heap basic)
+(define-extern *debug-dead-pool* dead-pool-heap)
+(define-extern change-parent (function process-tree process-tree process-tree))
+(define-extern *null-process* process)

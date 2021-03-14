@@ -1415,6 +1415,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "&+!";
     case FixedOperatorKind::SUBTRACTION:
       return "-";
+    case FixedOperatorKind::SUBTRACTION_PTR:
+      return "&-";
     case FixedOperatorKind::MULTIPLICATION:
       return "*";
     case FixedOperatorKind::SQRT:
@@ -1481,6 +1483,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "null?";
     case FixedOperatorKind::PAIRP:
       return "pair?";
+    case FixedOperatorKind::NONE:
+      return "none";
     default:
       assert(false);
       return "";
@@ -1950,22 +1954,35 @@ StorePlainDeref::StorePlainDeref(DerefElement* dst,
                                  SimpleExpression expr,
                                  int my_idx,
                                  RegisterAccess base_var,
-                                 std::optional<TypeSpec> cast_type)
+                                 std::optional<TypeSpec> dst_cast_type,
+                                 std::optional<TypeSpec> src_cast_type)
     : m_dst(dst),
       m_expr(std::move(expr)),
       m_my_idx(my_idx),
-      m_base_var(std::move(base_var)),
-      m_cast_type(cast_type) {}
+      m_base_var(base_var),
+      m_dst_cast_type(std::move(dst_cast_type)),
+      m_src_cast_type(std::move(src_cast_type)) {}
+
 goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
-  if (!m_cast_type.has_value()) {
-    return pretty_print::build_list("set!", m_dst->to_form(env),
-                                    m_expr.to_form(env.file->labels, env));
+  std::vector<goos::Object> lst = {pretty_print::to_symbol("set!")};
+
+  if (m_dst_cast_type) {
+    lst.push_back(
+        pretty_print::build_list("the-as", m_dst_cast_type->print(), m_dst->to_form(env)));
   } else {
-    return pretty_print::build_list(
-        "set!", pretty_print::build_list("the-as", m_cast_type->print(), m_dst->to_form(env)),
-        m_expr.to_form(env.file->labels, env));
+    lst.push_back(m_dst->to_form(env));
   }
+
+  if (m_src_cast_type) {
+    lst.push_back(pretty_print::build_list("the-as", m_src_cast_type->print(),
+                                           m_expr.to_form(env.file->labels, env)));
+  } else {
+    lst.push_back(m_expr.to_form(env.file->labels, env));
+  }
+
+  return pretty_print::build_list(lst);
 }
+
 void StorePlainDeref::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   m_dst->apply(f);
