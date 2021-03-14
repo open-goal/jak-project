@@ -228,6 +228,20 @@ std::vector<Form*> pop_to_forms(const std::vector<RegisterAccess>& vars,
   for (auto& x : forms_out) {
     forms.push_back(pool.alloc_sequence_form(nullptr, x));
   }
+
+  // add casts, if needed.
+  assert(vars.size() == forms.size());
+  for (size_t i = 0; i < vars.size(); i++) {
+    auto atom = form_as_atom(forms[i]);
+    bool is_var = atom && atom->is_var();
+    auto cast = env.get_user_cast_for_access(vars[i]);
+    // only cast if we didn't get a var (compacting expressions).
+    // there is a separate system for casting variables that will do a better job.
+    if (cast && !is_var) {
+      forms[i] = pool.alloc_single_element_form<CastElement>(nullptr, *cast, forms[i]);
+    }
+  }
+
   return forms;
 }
 
@@ -1252,18 +1266,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
-  // assert(is_method == m_op->is_method());
   if (is_virtual_method != m_op->is_method()) {
     lg::error("Disagreement on method!");
     throw std::runtime_error("Disagreement on method");
   }
-
-  // if method, don't pop the obj arg.
-  //  Variable method_obj_var;
-  //  if (is_method) {
-  //    method_obj_var = all_pop_vars.at(1);
-  //    all_pop_vars.erase(all_pop_vars.begin() + 1);
-  //  }
 
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
@@ -1277,20 +1283,39 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   std::vector<Form*> arg_forms;
 
-  for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
-    auto val = unstacked.at(arg_id + 1);  // first is the function itself.
-    auto& var = all_pop_vars.at(arg_id + 1);
-    if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
-      auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-      auto desired_arg_type = function_type.get_arg(arg_id);
-      if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-        arg_forms.push_back(
-            pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+  if (is_virtual_method) {
+    for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
+      auto val = unstacked.at(arg_id + 1);  // first is the function itself.
+      auto& var = all_pop_vars.at(arg_id + 1);
+      if (env.has_type_analysis() && function_type.arg_count() == nargs + 2) {
+        auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+        auto desired_arg_type = function_type.get_arg(arg_id + 1);
+        if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
+          arg_forms.push_back(
+              pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+        } else {
+          arg_forms.push_back(val);
+        }
       } else {
         arg_forms.push_back(val);
       }
-    } else {
-      arg_forms.push_back(val);
+    }
+  } else {
+    for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
+      auto val = unstacked.at(arg_id + 1);  // first is the function itself.
+      auto& var = all_pop_vars.at(arg_id + 1);
+      if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
+        auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+        auto desired_arg_type = function_type.get_arg(arg_id);
+        if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
+          arg_forms.push_back(
+              pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+        } else {
+          arg_forms.push_back(val);
+        }
+      } else {
+        arg_forms.push_back(val);
+      }
     }
   }
 

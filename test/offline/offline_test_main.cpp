@@ -46,25 +46,15 @@ const std::unordered_set<std::string> skip_in_compiling = {
     //////////////////////
 
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs",
-    "ash",
-    "min",
-    "max",
-    "lognor",
+    "abs", "ash", "min", "max", "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
     // these require 128-bit integers. We want these eventually, but disabling for now to focus
     // on more important issues.
-    "(method 3 vec4s)",
-    "(method 2 vec4s)",
-    "qmem-copy<-!",
-    "qmem-copy->!",
-    "(method 2 array)",
+    "(method 3 vec4s)", "(method 2 vec4s)", "qmem-copy<-!", "qmem-copy->!", "(method 2 array)",
     "(method 3 array)",
     // does weird stuff with the type system.
-    "print",
-    "printl",
-    "inspect",
+    "print", "printl", "inspect",
     // inline assembly
     "valid?",
 
@@ -73,6 +63,17 @@ const std::unordered_set<std::string> skip_in_compiling = {
     //////////////////////
     // bitfields, possibly inline assembly
     "(method 2 handle)",
+
+    //////////////////////
+    // GKERNEL
+    //////////////////////
+    // these refer to anonymous functions, which aren't yet implemented.
+    "process-by-name", "process-not-name", "process-count", "kill-by-type", "kill-not-type",
+    "kill-by-name", "kill-not-name", "kernel-dispatcher",
+
+    // asm
+    "(method 10 process)"
+
 };
 
 // default location for the data. It can be changed with a command line argument.

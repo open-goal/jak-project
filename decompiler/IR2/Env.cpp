@@ -168,6 +168,39 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
   }
 }
 
+std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    std::string original_name = var_info.name();
+
+    auto type_kv = m_typecasts.find(access.idx());
+    if (type_kv != m_typecasts.end()) {
+      for (auto& x : type_kv->second) {
+        if (x.reg == access.reg()) {
+          // let's make sure the above claim is true
+          TypeSpec type_in_reg;
+          if (has_type_analysis() && access.mode() == AccessMode::READ) {
+            type_in_reg =
+                get_types_for_op_mode(access.idx(), AccessMode::READ).get(access.reg()).typespec();
+            if (type_in_reg.print() != x.type_name) {
+              lg::error(
+                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
+                  "(var {}) to type {}, but the actual type is {} ({})",
+                  access.reg().to_charp(), access.idx(), original_name, x.type_name,
+                  type_in_reg.print(), type_in_reg.print());
+              assert(false);
+            }
+          }
+
+          auto cast_type = dts->parse_type_spec(x.type_name);
+          return cast_type;
+        }
+      }
+    }
+  }
+  return {};
+}
+
 std::string Env::get_variable_name(const RegisterAccess& access) const {
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     std::string lookup_name = m_var_names.lookup(access.reg(), access.idx(), access.mode()).name();

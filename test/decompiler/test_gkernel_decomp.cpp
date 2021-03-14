@@ -1403,25 +1403,25 @@ TEST_F(FormRegressionTest, ExprMethod21DeadPoolHeap) {
       "    daddu sp, sp, r0";
   std::string type = "(function dead-pool-heap dead-pool-heap-rec int)";
   std::string expected =
-      "(if\n"
-      "  (-> arg1 process)\n"
+      "(if (-> arg1 process)\n"
       "  (let\n"
       "   ((v1-3\n"
       "     (&+\n"
-      "      (&+ (-> arg1 process) (-> process size))\n"
+      "      (&+ (the-as pointer (-> arg1 process)) (-> process size))\n"
       "      (-> arg1 process allocated-length)\n"
       "      )\n"
       "     )\n"
       "    )\n"
-      "   (if\n"
-      "    (-> arg1 next)\n"
-      "    (&- (-> arg1 next process) (the-as uint v1-3))\n"
+      "   (if (-> arg1 next)\n"
+      "    (&- (the-as pointer (-> arg1 next process)) (the-as uint v1-3))\n"
       "    (&- (-> arg0 heap top) (the-as uint (&+ v1-3 4)))\n"
       "    )\n"
       "   )\n"
-      "  (if\n"
-      "   (-> arg1 next)\n"
-      "   (&- (-> arg1 next process) (the-as uint (&+ (-> arg0 heap base) 4)))\n"
+      "  (if (-> arg1 next)\n"
+      "   (&-\n"
+      "    (the-as pointer (-> arg1 next process))\n"
+      "    (the-as uint (&+ (-> arg0 heap base) 4))\n"
+      "    )\n"
       "   (&- (-> arg0 heap top) (the-as uint (-> arg0 heap base)))\n"
       "   )\n"
       "  )";
@@ -1620,7 +1620,8 @@ TEST_F(FormRegressionTest, ExprMethod5DeadPoolHeap) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function dead-pool-heap int)";
-  std::string expected = "(+ (- -4 (the-as int arg0)) (-> arg0 heap top))";
+  std::string expected =
+      "(+ (the-as int (- -4 (the-as int arg0))) (the-as int (-> arg0 heap top)))";
   test_with_expr(func, type, expected, false, "", {},
                  parse_cast_json("[[3, \"v1\", \"int\"], [3, \"a0\", \"int\"]]"));
 }
@@ -2008,7 +2009,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPoolHeap) {
       "(let\n"
       "  ((s4-0 (-> arg0 dead-list next)) (s3-0 (the-as process #f)))\n"
       "  (let\n"
-      "   ((s1-0 (find-gap-by-size arg0 (+ (-> process size) (the-as uint arg2)))))\n"
+      "   ((s1-0 (find-gap-by-size arg0 (the-as int (+ (-> process size) (the-as uint arg2))))))\n"
       "   (cond\n"
       "    ((and s4-0 s1-0)\n"
       "     (set! (-> arg0 dead-list next) (-> s4-0 next))\n"
@@ -2229,7 +2230,7 @@ TEST_F(FormRegressionTest, ExprMethod15DeadPoolHeap) {
       "    (or\n"
       "     (= (-> arg0 first-gap) s5-1)\n"
       "     (<\n"
-      "      (the-as int (gap-location arg0 s5-1))\n"
+      "      (the-as int (gap-location arg0 (the-as dead-pool-heap-rec s5-1)))\n"
       "      (the-as int (gap-location arg0 (-> arg0 first-gap)))\n"
       "      )\n"
       "     )\n"
@@ -2371,7 +2372,7 @@ TEST_F(FormRegressionTest, ExprMethod17DeadPoolHeap) {
       "               (the-as int arg1)\n"
       "               (the-as int (gap-location arg0 (-> arg0 first-gap)))\n"
       "               )\n"
-      "              (set! (-> arg0 first-gap) (find-gap arg0 s5-0))\n"
+      "              (set! (-> arg0 first-gap) (find-gap arg0 (the-as dead-pool-heap-rec s5-0)))\n"
       "              )\n"
       "             (set! (-> arg1 mask) (logior (-> arg1 mask) 512))\n"
       "             )\n"
