@@ -15,8 +15,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {"gcommon", 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
     "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h", "gkernel-h",
-    /*"gkernel"*/};
+    "gstring-h", "gkernel-h", "gkernel"};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -47,25 +46,15 @@ const std::unordered_set<std::string> skip_in_compiling = {
     //////////////////////
 
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs",
-    "ash",
-    "min",
-    "max",
-    "lognor",
+    "abs", "ash", "min", "max", "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
     // these require 128-bit integers. We want these eventually, but disabling for now to focus
     // on more important issues.
-    "(method 3 vec4s)",
-    "(method 2 vec4s)",
-    "qmem-copy<-!",
-    "qmem-copy->!",
-    "(method 2 array)",
+    "(method 3 vec4s)", "(method 2 vec4s)", "qmem-copy<-!", "qmem-copy->!", "(method 2 array)",
     "(method 3 array)",
     // does weird stuff with the type system.
-    "print",
-    "printl",
-    "inspect",
+    "print", "printl", "inspect",
     // inline assembly
     "valid?",
 
@@ -74,23 +63,18 @@ const std::unordered_set<std::string> skip_in_compiling = {
     //////////////////////
     // bitfields, possibly inline assembly
     "(method 2 handle)",
-};
 
-// The decompiler does not attempt to insert forward definitions, as this would be part of an
-// unimplemented full-program type analysis pass.  For now, we manually specify all functions
-// that should have a forward definition here.
-const std::string g_forward_type_defs =
-    // used out of order
-    "(define-extern name= (function basic basic symbol))\n"
-    // recursive
-    "(define-extern fact (function int int))\n"
-    // gkernel-h
-    "(declare-type process basic)\n"
-    "(declare-type stack-frame basic)\n"
-    "(declare-type state basic)\n"
-    "(declare-type cpu-thread basic)\n"
-    "(declare-type dead-pool basic)\n"
-    "(declare-type event-message-block structure)\n";
+    //////////////////////
+    // GKERNEL
+    //////////////////////
+    // these refer to anonymous functions, which aren't yet implemented.
+    "process-by-name", "process-not-name", "process-count", "kill-by-type", "kill-not-type",
+    "kill-by-name", "kill-not-name", "kernel-dispatcher",
+
+    // asm
+    "(method 10 process)"
+
+};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -358,6 +342,10 @@ TEST_F(OfflineDecompilation, Reference) {
 
     std::string src = db->ir2_final_out(obj_l.at(0));
 
+    //    if (file == "gkernel") {
+    //      fmt::print("{}\n", src);
+    //    }
+
     auto reference = file_util::read_text_file(file_util::get_file_path(
         {"test", "decompiler", "reference", fmt::format("{}_REF.gc", file)}));
 
@@ -371,7 +359,8 @@ TEST_F(OfflineDecompilation, Reference) {
 TEST_F(OfflineDecompilation, Compile) {
   Compiler compiler;
 
-  compiler.run_front_end_on_string(g_forward_type_defs);
+  compiler.run_front_end_on_string(file_util::read_text_file(file_util::get_file_path(
+      {"test", "decompiler", "reference", "all_forward_declarations.gc"})));
 
   for (auto& file : g_object_files_to_check_against_reference) {
     auto& obj_l = db->obj_files_by_name.at(file);

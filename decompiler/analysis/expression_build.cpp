@@ -19,6 +19,31 @@ bool convert_to_expressions(
     const DecompilerTypeSystem& dts) {
   assert(top_level_form);
 
+  // set argument names to some reasonable defaults. these will be used if the user doesn't
+  // give us anything more specific.
+  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+    f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
+  } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
+      f.ir2.env.set_remap_for_new_method(f.type.arg_count() - 1);
+    } else {
+      f.ir2.env.set_remap_for_method(f.type.arg_count() - 1);
+    }
+  }
+
+  // get variable names from the user.
+  f.ir2.env.map_args_from_config(arg_names, var_override_map);
+
+  // override variable types from the user.
+
+  std::unordered_map<std::string, TypeSpec> retype;
+  for (auto& remap : var_override_map) {
+    if (remap.second.type) {
+      retype[remap.first] = dts.parse_type_spec(*remap.second.type);
+    }
+  }
+  f.ir2.env.set_retype_map(retype);
+
   try {
     // create the root expression stack for the function
     FormStack stack(true);
@@ -45,6 +70,8 @@ bool convert_to_expressions(
     } else {
       // or just get all the expressions
       new_entries = stack.rewrite(pool, f.ir2.env);
+      new_entries.push_back(
+          pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NONE)));
     }
 
     // if we are a totally empty function, insert a placeholder so we don't have to handle
@@ -69,31 +96,6 @@ bool convert_to_expressions(
     lg::warn("In {}: {}", f.guessed_name.to_string(), e.what());
     return false;
   }
-
-  // set argument names to some reasonable defaults. these will be used if the user doesn't
-  // give us anything more specific.
-  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
-    f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
-  } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
-    if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
-      f.ir2.env.set_remap_for_new_method(f.type.arg_count() - 1);
-    } else {
-      f.ir2.env.set_remap_for_method(f.type.arg_count() - 1);
-    }
-  }
-
-  // get variable names from the user.
-  f.ir2.env.map_args_from_config(arg_names, var_override_map);
-
-  // override variable types from the user.
-
-  std::unordered_map<std::string, TypeSpec> retype;
-  for (auto& remap : var_override_map) {
-    if (remap.second.type) {
-      retype[remap.first] = dts.parse_type_spec(*remap.second.type);
-    }
-  }
-  f.ir2.env.set_retype_map(retype);
 
   return true;
 }

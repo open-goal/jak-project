@@ -168,6 +168,39 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
   }
 }
 
+std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
+    std::string original_name = var_info.name();
+
+    auto type_kv = m_typecasts.find(access.idx());
+    if (type_kv != m_typecasts.end()) {
+      for (auto& x : type_kv->second) {
+        if (x.reg == access.reg()) {
+          // let's make sure the above claim is true
+          TypeSpec type_in_reg;
+          if (has_type_analysis() && access.mode() == AccessMode::READ) {
+            type_in_reg =
+                get_types_for_op_mode(access.idx(), AccessMode::READ).get(access.reg()).typespec();
+            if (type_in_reg.print() != x.type_name) {
+              lg::error(
+                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
+                  "(var {}) to type {}, but the actual type is {} ({})",
+                  access.reg().to_charp(), access.idx(), original_name, x.type_name,
+                  type_in_reg.print(), type_in_reg.print());
+              assert(false);
+            }
+          }
+
+          auto cast_type = dts->parse_type_spec(x.type_name);
+          return cast_type;
+        }
+      }
+    }
+  }
+  return {};
+}
+
 std::string Env::get_variable_name(const RegisterAccess& access) const {
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     std::string lookup_name = m_var_names.lookup(access.reg(), access.idx(), access.mode()).name();
@@ -186,15 +219,17 @@ std::string Env::get_variable_name(const RegisterAccess& access) const {
  * NOTE: this is _NOT_ the most specific type known to the decompiler, but instead the type
  * of the variable.
  */
-TypeSpec Env::get_variable_type(const RegisterAccess& access) const {
+TypeSpec Env::get_variable_type(const RegisterAccess& access, bool using_user_var_types) const {
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     std::string original_name = var_info.name();
 
     auto type_of_var = var_info.type.typespec();
-    auto retype_kv = m_var_retype.find(original_name);
-    if (retype_kv != m_var_retype.end()) {
-      type_of_var = retype_kv->second;
+    if (using_user_var_types) {
+      auto retype_kv = m_var_retype.find(original_name);
+      if (retype_kv != m_var_retype.end()) {
+        type_of_var = retype_kv->second;
+      }
     }
 
     return type_of_var;
@@ -208,7 +243,8 @@ TypeSpec Env::get_variable_type(const RegisterAccess& access) const {
  */
 void Env::set_types(const std::vector<TypeState>& block_init_types,
                     const std::vector<TypeState>& op_end_types,
-                    const FunctionAtomicOps& atomic_ops) {
+                    const FunctionAtomicOps& atomic_ops,
+                    const TypeSpec& my_type) {
   m_block_init_types = block_init_types;
   m_op_end_types = op_end_types;
 
@@ -230,6 +266,16 @@ void Env::set_types(const std::vector<TypeState>& block_init_types,
   }
 
   m_has_types = true;
+
+  // check the actual return type:
+  if (my_type.last_arg() != TypeSpec("none")) {
+    auto as_end = dynamic_cast<const FunctionEndOp*>(atomic_ops.ops.back().get());
+    if (as_end) {
+      m_type_analysis_return_type = get_types_before_op((int)atomic_ops.ops.size() - 1)
+                                        .get(Register(Reg::GPR, Reg::V0))
+                                        .typespec();
+    }
+  }
 }
 
 std::string Env::print_local_var_types(const Form* top_level_form) const {

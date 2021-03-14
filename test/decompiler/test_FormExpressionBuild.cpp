@@ -2372,7 +2372,7 @@ TEST_F(FormRegressionTest, ExprCopyStringString) {
       "     (set! a1-1 (&-> a1-1 1))\n"
       "     )\n"
       "    )\n"
-      "   (set! (-> v1-0 0) 0)\n"
+      "   (set! (-> v1-0 0) (the-as uint 0))\n"
       "   )\n"
       "  arg0\n"
       "  )";
@@ -2575,4 +2575,54 @@ TEST_F(FormRegressionTest, MoveFalse) {
 
   std::string expected = "(nonzero? (logand (+ arg0 12) 1))";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
+}
+
+// Good for testing that in-place ops (+!) check the _variable_ is the same.
+TEST_F(FormRegressionTest, QMemCpy) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L78:\n"
+      "    or v0, a0, r0\n"
+      "    daddiu v1, a2, 15\n"
+      "    dsra v1, v1, 4\n"
+      "    dsll a2, v1, 4\n"
+      "    daddu a0, a0, a2\n"
+      "    dsll a2, v1, 4\n"
+      "    daddu a1, a1, a2\n"
+      "    beq r0, r0, L80\n"
+      "    sll r0, r0, 0\n"
+
+      "L79:\n"
+      "    daddiu v1, v1, -1\n"
+      "    daddiu a0, a0, -16\n"
+      "    daddiu a1, a1, -16\n"
+      "    lq a2, 0(a1)\n"
+      "    sq a2, 0(a0)\n"
+
+      "L80:\n"
+      "    bne v1, r0, L79\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0\n";
+  std::string type = "(function pointer pointer int pointer)";
+  std::string expected =
+      "(let ((v0-0 arg0))\n"
+      "  (let* ((v1-1 (sar (+ arg2 15) 4))\n"
+      "         (a0-1 (&+ arg0 (shl v1-1 4)))\n"
+      "         (a1-1 (&+ arg1 (shl v1-1 4)))\n"
+      "         )\n"
+      "   (while (nonzero? v1-1)\n"
+      "    (+! v1-1 -1)\n"
+      "    (&+! a0-1 -16)\n"
+      "    (&+! a1-1 -16)\n"
+      "    (.lq a2-3 0 a1-1)\n"
+      "    (.sq a2-3 0 a0-1)\n"
+      "    )\n"
+      "   )\n"
+      "  v0-0\n"
+      "  )";
+  test_with_expr(func, type, expected);
 }

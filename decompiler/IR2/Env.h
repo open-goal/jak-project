@@ -46,7 +46,8 @@ class Env {
   // TODO - remove this.
   goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
   std::string get_variable_name(const RegisterAccess& access) const;
-  TypeSpec get_variable_type(const RegisterAccess& access) const;
+  std::optional<TypeSpec> get_user_cast_for_access(const RegisterAccess& access) const;
+  TypeSpec get_variable_type(const RegisterAccess& access, bool using_user_var_types) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -80,7 +81,8 @@ class Env {
 
   void set_types(const std::vector<TypeState>& block_init_types,
                  const std::vector<TypeState>& op_end_types,
-                 const FunctionAtomicOps& atomic_ops);
+                 const FunctionAtomicOps& atomic_ops,
+                 const TypeSpec& my_type);
 
   void set_local_vars(const VariableNames& names) {
     m_var_names = names;
@@ -168,5 +170,6 @@ class Env {
   std::unordered_map<std::string, LabelType> m_label_types;
 
   std::unordered_set<std::string> m_vars_defined_in_let;
+  std::optional<TypeSpec> m_type_analysis_return_type;
 };
 }  // namespace decompiler

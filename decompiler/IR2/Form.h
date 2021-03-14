@@ -1136,7 +1136,8 @@ class StorePlainDeref : public FormElement {
                   SimpleExpression expr,
                   int my_idx,
                   RegisterAccess base_var,
-                  std::optional<TypeSpec> cast_type);
+                  std::optional<TypeSpec> dst_cast_type,
+                  std::optional<TypeSpec> src_cast_type);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1150,7 +1151,7 @@ class StorePlainDeref : public FormElement {
   SimpleExpression m_expr;
   int m_my_idx = -1;
   RegisterAccess m_base_var;
-  std::optional<TypeSpec> m_cast_type;
+  std::optional<TypeSpec> m_dst_cast_type, m_src_cast_type;
 };
 
 class StoreArrayAccess : public FormElement {

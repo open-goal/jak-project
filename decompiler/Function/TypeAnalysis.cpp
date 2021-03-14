@@ -144,7 +144,7 @@ bool Function::run_type_analysis_ir2(
         } catch (std::runtime_error& e) {
           lg::warn("Function {} failed type prop: {}", guessed_name.to_string(), e.what());
           warnings.type_prop_warning("{}", e.what());
-          ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops);
+          ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops, my_type);
           return false;
         }
 
@@ -198,7 +198,7 @@ bool Function::run_type_analysis_ir2(
     }
   }
 
-  ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops);
+  ir2.env.set_types(block_init_types, op_types, *ir2.atomic_ops, my_type);
 
   return true;
 }

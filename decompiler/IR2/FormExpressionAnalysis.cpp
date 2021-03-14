@@ -228,6 +228,20 @@ std::vector<Form*> pop_to_forms(const std::vector<RegisterAccess>& vars,
   for (auto& x : forms_out) {
     forms.push_back(pool.alloc_sequence_form(nullptr, x));
   }
+
+  // add casts, if needed.
+  assert(vars.size() == forms.size());
+  for (size_t i = 0; i < vars.size(); i++) {
+    auto atom = form_as_atom(forms[i]);
+    bool is_var = atom && atom->is_var();
+    auto cast = env.get_user_cast_for_access(vars[i]);
+    // only cast if we didn't get a var (compacting expressions).
+    // there is a separate system for casting variables that will do a better job.
+    if (cast && !is_var) {
+      forms[i] = pool.alloc_single_element_form<CastElement>(nullptr, *cast, forms[i]);
+    }
+  }
+
   return forms;
 }
 
@@ -250,6 +264,11 @@ bool is_int_type(const Env& env, int my_idx, RegisterAccess var) {
   return type == TypeSpec("int");
 }
 
+bool is_pointer_type(const Env& env, int my_idx, RegisterAccess var) {
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
+  return type.base_type() == "pointer";
+}
+
 /*!
  * type == uint (exactly)?
  */
@@ -258,9 +277,18 @@ bool is_uint_type(const Env& env, int my_idx, RegisterAccess var) {
   return type == TypeSpec("uint");
 }
 
-bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var) {
-  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool as_var) {
+  auto type = as_var ? env.get_variable_type(var, true).base_type()
+                     : env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
   return type == "pointer";
+}
+
+bool is_var(Form* form) {
+  auto atom = form_as_atom(form);
+  if (atom) {
+    return atom->is_var();
+  }
+  return false;
 }
 }  // namespace
 
@@ -511,7 +539,6 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       bool allow_side_effects) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
-  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var());
 
   bool arg1_reg = m_expr.get_arg(1).is_var();
   bool arg1_i = true;
@@ -530,6 +557,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
   }
+
+  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), is_var(args.at(0)));
 
   // Look for getting an address inside of an object.
   // (+ <integer 108 + int> process). array style access with a stride of 1.
@@ -802,6 +831,10 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
   } else {
     auto cast = pool.alloc_single_element_form<CastElement>(
         nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
+    if (kind == FixedOperatorKind::SUBTRACTION &&
+        is_pointer_type(env, m_my_idx, m_expr.get_arg(0).var())) {
+      kind = FixedOperatorKind::SUBTRACTION_PTR;
+    }
     auto new_form =
         pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0), cast);
     result->push_back(new_form);
@@ -1107,38 +1140,39 @@ void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   }
 }
 
+namespace {
+Form* make_optional_cast(const std::optional<TypeSpec>& cast_type, Form* in, FormPool& pool) {
+  if (cast_type) {
+    return pool.alloc_single_element_form<CastElement>(nullptr, *cast_type, in);
+  } else {
+    return in;
+  }
+}
+}  // namespace
+
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   if (m_expr.is_var()) {
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
-    if (m_cast_type.has_value()) {
-      m_dst->set_base(
-          pool.alloc_single_element_form<CastElement>(nullptr, *m_cast_type, popped.at(1)));
-    } else {
-      m_dst->set_base(popped.at(1));
-    }
-
+    m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool));
     m_dst->mark_popped();
     m_dst->inline_nested();
-    auto fr = pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst),
-                                                     popped.at(0));
+    auto fr = pool.alloc_element<SetFormFormElement>(
+        pool.alloc_single_form(nullptr, m_dst),
+        make_optional_cast(m_src_cast_type, popped.at(0), pool));
     fr->mark_popped();
     stack.push_form_element(fr, true);
   } else {
     auto vars = std::vector<RegisterAccess>({m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
-    if (m_cast_type.has_value()) {
-      m_dst->set_base(
-          pool.alloc_single_element_form<CastElement>(nullptr, *m_cast_type, popped.at(1)));
-    } else {
-      m_dst->set_base(popped.at(0));
-    }
+    m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(0), pool));
     m_dst->mark_popped();
     m_dst->inline_nested();
     auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_expr, m_my_idx);
     val->mark_popped();
-    auto fr = pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst), val);
+    auto fr = pool.alloc_element<SetFormFormElement>(
+        pool.alloc_single_form(nullptr, m_dst), make_optional_cast(m_src_cast_type, val, pool));
     fr->mark_popped();
     stack.push_form_element(fr, true);
   }
@@ -1232,18 +1266,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
-  // assert(is_method == m_op->is_method());
   if (is_virtual_method != m_op->is_method()) {
     lg::error("Disagreement on method!");
     throw std::runtime_error("Disagreement on method");
   }
-
-  // if method, don't pop the obj arg.
-  //  Variable method_obj_var;
-  //  if (is_method) {
-  //    method_obj_var = all_pop_vars.at(1);
-  //    all_pop_vars.erase(all_pop_vars.begin() + 1);
-  //  }
 
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
@@ -1257,20 +1283,39 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   std::vector<Form*> arg_forms;
 
-  for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
-    auto val = unstacked.at(arg_id + 1);  // first is the function itself.
-    auto& var = all_pop_vars.at(arg_id + 1);
-    if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
-      auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-      auto desired_arg_type = function_type.get_arg(arg_id);
-      if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-        arg_forms.push_back(
-            pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+  if (is_virtual_method) {
+    for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
+      auto val = unstacked.at(arg_id + 1);  // first is the function itself.
+      auto& var = all_pop_vars.at(arg_id + 1);
+      if (env.has_type_analysis() && function_type.arg_count() == nargs + 2) {
+        auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+        auto desired_arg_type = function_type.get_arg(arg_id + 1);
+        if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
+          arg_forms.push_back(
+              pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+        } else {
+          arg_forms.push_back(val);
+        }
       } else {
         arg_forms.push_back(val);
       }
-    } else {
-      arg_forms.push_back(val);
+    }
+  } else {
+    for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
+      auto val = unstacked.at(arg_id + 1);  // first is the function itself.
+      auto& var = all_pop_vars.at(arg_id + 1);
+      if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
+        auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+        auto desired_arg_type = function_type.get_arg(arg_id);
+        if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
+          arg_forms.push_back(
+              pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+        } else {
+          arg_forms.push_back(val);
+        }
+      } else {
+        arg_forms.push_back(val);
+      }
     }
   }
 
@@ -1650,7 +1695,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
   if (used_as_value) {
     // TODO - is this wrong?
     stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true,
-                            env.get_variable_type(final_destination));
+                            env.get_variable_type(final_destination, false));
   } else {
     stack.push_form_element(this, true);
   }
@@ -1775,7 +1820,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       stack.push_form_element(this, true);
     } else {
       stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true,
-                              env.get_variable_type(*last_var));
+                              env.get_variable_type(*last_var, false));
     }
   } else {
     stack.push_form_element(this, true);
@@ -1834,7 +1879,7 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
     assert(used_as_value.has_value());
     stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true,
-                            env.get_variable_type(final_result));
+                            env.get_variable_type(final_result, false));
     already_rewritten = true;
   }
 }

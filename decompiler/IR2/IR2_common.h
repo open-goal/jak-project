@@ -105,6 +105,7 @@ enum class FixedOperatorKind {
   ADDITION_IN_PLACE,
   ADDITION_PTR_IN_PLACE,
   SUBTRACTION,
+  SUBTRACTION_PTR,
   MULTIPLICATION,
   SQRT,
   ARITH_SHIFT,
@@ -138,6 +139,7 @@ enum class FixedOperatorKind {
   METHOD_OF_OBJECT,
   NULLP,
   PAIRP,
+  NONE,
   INVALID
 };
 

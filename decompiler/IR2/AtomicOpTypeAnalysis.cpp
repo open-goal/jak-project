@@ -672,7 +672,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
     }
 
-    if (input_type.typespec() == TypeSpec("pointer")) {
+    if (input_type.typespec() == TypeSpec("pointer") ||
+        input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
       // we got a plain pointer. let's just assume we're loading an integer.
       // perhaps we should disable this feature by default on 4-byte loads if we're getting
       // lots of false positives for loading pointers from plain pointers.

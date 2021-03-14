@@ -722,7 +722,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
       auto cdr_word = words.at(to_print.target_segment).at((to_print.offset + 2) / 4);
       // if empty
       if (cdr_word.kind == LinkedWord::EMPTY_PTR) {
-        return pretty_print::build_list(list_tokens);
+        return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
       }
       // if pointer
       if (cdr_word.kind == LinkedWord::PTR) {
@@ -736,7 +736,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
           "could not find a test case yet.");
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts));
-      return pretty_print::build_list(list_tokens);
+      return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
     } else {
       if ((to_print.offset % 4) != 0) {
         throw std::runtime_error(
@@ -755,7 +755,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         list_tokens.push_back(pretty_print::to_symbol("."));
         list_tokens.push_back(decompile_pair_elt(
             words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts));
-        return pretty_print::build_list(list_tokens);
+        return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
       }
     }
   }

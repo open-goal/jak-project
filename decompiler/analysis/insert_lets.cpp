@@ -222,7 +222,7 @@ Form* insert_cast_for_let(RegisterAccess dst,
                           Form* src,
                           FormPool& pool,
                           const Env& env) {
-  auto dst_type = env.get_variable_type(dst);
+  auto dst_type = env.get_variable_type(dst, true);
 
   if (src_type != dst_type) {
     // fmt::print("inserting let cast because {} != {}\n", dst_type.print(), src_type.print());

@@ -107,6 +107,61 @@ FormElement* SetVarConditionOp::get_as_form(FormPool& pool, const Env& env) cons
       is_sequence_point(), TypeSpec("symbol"));
 }
 
+namespace {
+std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
+                                              const Env& env,
+                                              const TypeSpec& expected_type,
+                                              int my_idx) {
+  auto type_info = env.dts->ts.lookup_type(expected_type);
+  switch (atom.get_kind()) {
+    case SimpleAtom::Kind::VARIABLE: {
+      auto src_type = env.get_types_before_op(my_idx).get(atom.var().reg());
+
+      if (src_type.requires_cast() || !env.dts->ts.tc(expected_type, src_type.typespec())) {
+        // we fail the typecheck for a normal set!, so add a cast.
+        return expected_type;
+      } else {
+        return {};
+      }
+
+    } break;
+    case SimpleAtom::Kind::INTEGER_CONSTANT: {
+      std::optional<TypeSpec> cast_for_set, cast_for_define;
+      bool sym_int_or_uint = env.dts->ts.tc(TypeSpec("integer"), expected_type);
+      bool sym_uint = env.dts->ts.tc(TypeSpec("uinteger"), expected_type);
+      bool sym_int = sym_int_or_uint && !sym_uint;
+
+      if (sym_int) {
+        // do nothing for set.
+        return {};
+      } else {
+        // for uint or other
+        return expected_type;
+      }
+
+    } break;
+
+    case SimpleAtom::Kind::SYMBOL_PTR:
+    case SimpleAtom::Kind::SYMBOL_VAL: {
+      assert(atom.get_str() == "#f");
+
+      if (expected_type != TypeSpec("symbol")) {
+        // explicitly cast if we're not using a reference type, including pointers.
+        // otherwise, we allow setting references to #f.
+        if (!type_info->is_reference()) {
+          return expected_type;
+        }
+        return {};
+      }
+    } break;
+
+    default:
+      assert(false);
+  }
+  return {};
+}
+}  // namespace
+
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
     if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
@@ -248,8 +303,10 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         }
         assert(!rd.addr_of);
         auto addr = pool.alloc_element<DerefElement>(source, rd.addr_of, tokens);
-        return pool.alloc_element<StorePlainDeref>(addr, m_value.as_expr(), m_my_idx, ro.var,
-                                                   std::nullopt);
+
+        return pool.alloc_element<StorePlainDeref>(
+            addr, m_value.as_expr(), m_my_idx, ro.var, std::nullopt,
+            get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx));
       }
 
       std::string cast_type;
@@ -285,7 +342,8 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         auto deref =
             pool.alloc_element<DerefElement>(cast_source, false, std::vector<DerefToken>());
         return pool.alloc_element<StorePlainDeref>(deref, m_value.as_expr(), m_my_idx, ro.var,
-                                                   TypeSpec("pointer", {TypeSpec(cast_type)}));
+                                                   TypeSpec("pointer", {TypeSpec(cast_type)}),
+                                                   std::nullopt);
       }
     }
   }
@@ -412,7 +470,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
                                                  m_type.value_or(TypeSpec("object")));
       }
 
-      if (input_type.typespec() == TypeSpec("pointer")) {
+      if (input_type.typespec() == TypeSpec("pointer") ||
+          input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
         std::string cast_type;
         switch (m_size) {
           case 1:
