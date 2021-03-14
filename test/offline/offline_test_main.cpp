@@ -67,9 +67,6 @@ const std::unordered_set<std::string> skip_in_compiling = {
     //////////////////////
     // GKERNEL
     //////////////////////
-    // these refer to anonymous functions, which aren't yet implemented.
-    "process-by-name", "process-not-name", "process-count", "kill-by-type", "kill-not-type",
-    "kill-by-name", "kill-not-name", "kernel-dispatcher",
 
     // asm
     "(method 10 process)"

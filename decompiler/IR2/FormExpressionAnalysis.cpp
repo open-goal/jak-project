@@ -393,6 +393,8 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
           auto decompiled_data = decompile_at_label_guess_type(lab, env.file->labels,
                                                                env.file->words_by_seg, env.dts->ts);
           result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
+        } else if (type_name == "_lambda_") {
+          result->push_back(this);
         } else {
           auto decompiled_data = decompile_at_label_with_hint(kv->second, lab, env.file->labels,
                                                               env.file->words_by_seg, *env.dts);

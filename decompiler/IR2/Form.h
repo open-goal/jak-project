@@ -1234,6 +1234,19 @@ class DoTimesElement : public FormElement {
   Form* m_body = nullptr;
 };
 
+class LambdaDefinitionElement : public FormElement {
+ public:
+  LambdaDefinitionElement(const goos::Object& def);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  goos::Object m_def;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:

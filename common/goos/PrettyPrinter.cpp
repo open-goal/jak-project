@@ -730,4 +730,16 @@ goos::Object build_list(const std::vector<std::string>& symbols) {
   }
   return build_list(f.data(), f.size());
 }
+
+void append(goos::Object& _in, const goos::Object& add) {
+  auto* in = &_in;
+  while (in->is_pair() && !in->as_pair()->cdr.is_empty_list()) {
+    in = &in->as_pair()->cdr;
+  }
+
+  if (!in->is_pair()) {
+    assert(false);  // invalid list
+  }
+  in->as_pair()->cdr = add;
+}
 }  // namespace pretty_print

@@ -16,6 +16,7 @@
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
+#include "decompiler/analysis/anonymous_function_def.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 
@@ -53,6 +54,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
       lg::info("Inserting lets...");
       ir2_insert_lets();
     }
+    lg::info("Inserting anonymous function definitions...");
+    ir2_insert_anonymous_functions();
   }
 
   if (!output_dir.empty()) {
@@ -478,6 +481,20 @@ void ObjectFileDB::ir2_rewrite_inline_asm_instructions() {
 
   lg::info("{}/{}/{} rewrote inline-asm instructions in {:.2f} ms\n", successful, attempted, total,
            timer.getMs());
+}
+
+void ObjectFileDB::ir2_insert_anonymous_functions() {
+  Timer timer;
+  int total = 0;
+  for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    (void)segment_id;
+    (void)data;
+    if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
+      total += insert_anonymous_functions(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+    }
+  });
+
+  lg::info("Inserted {} anonymous functions in {:.2f} ms\n", total, timer.getMs());
 }
 
 void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
