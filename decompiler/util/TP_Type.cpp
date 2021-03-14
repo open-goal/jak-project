@@ -130,10 +130,13 @@ TypeSpec TP_Type::typespec() const {
     case Kind::PRODUCT_WITH_CONSTANT:
       return m_ts;
     case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+      if (m_ts.base_type() == "pointer") {
+        return TypeSpec("pointer");
+      }
       // this can be part of an array access, so we don't really know the type.
       // probably not a good idea to try to do anything with this as a typespec
       // so let's be very vague
-      return TypeSpec("pointer");
+      return TypeSpec("int");
     case Kind::OBJECT_NEW_METHOD:
       // similar to previous case, being more vague than we need to be because we don't
       // want to assume the return type incorrectly and you shouldn't try to do anything with

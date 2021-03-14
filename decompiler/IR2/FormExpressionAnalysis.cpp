@@ -263,9 +263,18 @@ bool is_uint_type(const Env& env, int my_idx, RegisterAccess var) {
   return type == TypeSpec("uint");
 }
 
-bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var) {
-  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool as_var) {
+  auto type = as_var ? env.get_variable_type(var, true).base_type()
+                     : env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
   return type == "pointer";
+}
+
+bool is_var(Form* form) {
+  auto atom = form_as_atom(form);
+  if (atom) {
+    return atom->is_var();
+  }
+  return false;
 }
 }  // namespace
 
@@ -516,7 +525,6 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       bool allow_side_effects) {
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
-  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var());
 
   bool arg1_reg = m_expr.get_arg(1).is_var();
   bool arg1_i = true;
@@ -535,6 +543,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
   }
+
+  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), is_var(args.at(0)));
 
   // Look for getting an address inside of an object.
   // (+ <integer 108 + int> process). array style access with a stride of 1.
@@ -1660,7 +1670,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
   if (used_as_value) {
     // TODO - is this wrong?
     stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true,
-                            env.get_variable_type(final_destination));
+                            env.get_variable_type(final_destination, false));
   } else {
     stack.push_form_element(this, true);
   }
@@ -1785,7 +1795,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       stack.push_form_element(this, true);
     } else {
       stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true,
-                              env.get_variable_type(*last_var));
+                              env.get_variable_type(*last_var, false));
     }
   } else {
     stack.push_form_element(this, true);
@@ -1844,7 +1854,7 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
     assert(used_as_value.has_value());
     stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true,
-                            env.get_variable_type(final_result));
+                            env.get_variable_type(final_result, false));
     already_rewritten = true;
   }
 }

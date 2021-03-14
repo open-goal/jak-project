@@ -341,9 +341,9 @@ TEST_F(OfflineDecompilation, Reference) {
 
     std::string src = db->ir2_final_out(obj_l.at(0));
 
-    if (file == "gkernel") {
-      fmt::print("{}\n", src);
-    }
+    //    if (file == "gkernel") {
+    //      fmt::print("{}\n", src);
+    //    }
 
     auto reference = file_util::read_text_file(file_util::get_file_path(
         {"test", "decompiler", "reference", fmt::format("{}_REF.gc", file)}));

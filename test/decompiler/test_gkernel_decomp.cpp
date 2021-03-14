@@ -335,36 +335,44 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "    daddu sp, sp, r0";
   std::string type = "(function symbol type process symbol int pointer cpu-thread)";
   std::string expected =
-      "(let\n"
-      "  ((v0-0\n"
-      "    (if\n"
-      "     (-> arg2 top-thread)\n"
-      "     (&+ arg5 -7164)\n"
-      "     (let\n"
-      "      ((v1-2 (logand -16 (the-as int (&+ (-> arg2 heap-cur) 15)))))\n"
-      "      (set! (-> arg2 heap-cur) (the-as pointer (+ (+ v1-2 (the-as int (-> arg1 size))) "
-      "arg4)))\n"
-      "      (+ v1-2 4)\n"
+      "(let ((obj (the-as cpu-thread (if (-> arg2 top-thread)\n"
+      "                              (&+ arg5 -7164)\n"
+      "                              (let\n"
+      "                               ((v1-2\n"
+      "                                 (logand\n"
+      "                                  -16\n"
+      "                                  (the-as int (&+ (-> arg2 heap-cur) 15))\n"
+      "                                  )\n"
+      "                                 )\n"
+      "                                )\n"
+      "                               (set!\n"
+      "                                (-> arg2 heap-cur)\n"
+      "                                (the-as\n"
+      "                                 pointer\n"
+      "                                 (+ (+ v1-2 (the-as int (-> arg1 size))) arg4)\n"
+      "                                 )\n"
+      "                                )\n"
+      "                               (+ v1-2 4)\n"
+      "                               )\n"
+      "                              )\n"
+      "           )\n"
       "      )\n"
       "     )\n"
-      "    )\n"
-      "   )\n"
-      "  (set! (-> (the-as cpu-thread v0-0) type) arg1)\n"
-      "  (set! (-> (the-as cpu-thread v0-0) name) arg3)\n"
-      "  (set! (-> (the-as cpu-thread v0-0) process) arg2)\n"
-      "  (set! (-> (the-as cpu-thread v0-0) sp) arg5)\n"
-      "  (set! (-> (the-as cpu-thread v0-0) stack-top) arg5)\n"
-      "  (set! (-> (the-as cpu-thread v0-0) previous) (-> arg2 top-thread))\n"
-      "  (set! (-> arg2 top-thread) (the-as cpu-thread v0-0))\n"
-      "  (set! (-> (the-as cpu-thread v0-0) suspend-hook) (method-of-object (the-as cpu-thread "
-      "v0-0) thread-suspend))\n"
-      "  (set! (-> (the-as cpu-thread v0-0) resume-hook) (method-of-object (the-as cpu-thread "
-      "v0-0) thread-resume))\n"
-      "  (set! (-> (the-as cpu-thread v0-0) stack-size) arg4)\n"
-      "  (the-as cpu-thread v0-0)\n"
+      "  (set! (-> obj type) arg1)\n"
+      "  (set! (-> obj name) arg3)\n"
+      "  (set! (-> obj process) arg2)\n"
+      "  (set! (-> obj sp) arg5)\n"
+      "  (set! (-> obj stack-top) arg5)\n"
+      "  (set! (-> obj previous) (-> arg2 top-thread))\n"
+      "  (set! (-> arg2 top-thread) obj)\n"
+      "  (set! (-> obj suspend-hook) (method-of-object obj thread-suspend))\n"
+      "  (set! (-> obj resume-hook) (method-of-object obj thread-resume))\n"
+      "  (set! (-> obj stack-size) arg4)\n"
+      "  (the-as cpu-thread (the-as object obj))\n"
       "  )";
   test_with_expr(func, type, expected, false, "cpu-thread", {},
-                 parse_cast_json("[[[13, 28], \"v0\", \"cpu-thread\"]]"));
+                 parse_cast_json("[[[13, 28], \"v0\", \"cpu-thread\"]]"),
+                 "{\"vars\":{\"v0-0\":[\"obj\", \"cpu-thread\"]}}");
 }
 
 TEST_F(FormRegressionTest, ExprMethod5CpuThread) {
@@ -734,20 +742,18 @@ TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
   std::string type = "(function process symbol)";
   std::string expected =
       "(begin\n"
-      "  (let\n"
-      "   ((obj (the-as basic (&+ (-> arg0 heap-base) 4))))\n"
-      "   (while\n"
-      "    (< (the-as int obj) (the-as int (-> arg0 heap-cur)))\n"
-      "    (inspect obj)\n"
-      "    (+! (the-as int obj) (logand -16 (+ (asize-of obj) 15)))\n"
+      "  (let ((obj (&+ (-> arg0 heap-base) 4)))\n"
+      "   (while (< (the-as int obj) (the-as int (-> arg0 heap-cur)))\n"
+      "    (inspect (the-as basic obj))\n"
+      "    (&+! obj (logand -16 (+ (asize-of (the-as basic obj)) 15)))\n"
       "    )\n"
       "   )\n"
       "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
                  parse_cast_json("[\t\t[[4,11], \"s5\", \"basic\"],\n"
-                                 "\t\t[[17,20], \"s5\", \"int\"]]"),
-                 "{\"vars\":{\"s5-0\":[\"obj\", \"basic\"]}}");
+                                 "\t\t[[17,20], \"s5\", \"pointer\"]]"),
+                 "{\"vars\":{\"s5-0\":[\"obj\", \"pointer\"]}}");
 }
 
 // note: skipped method 3 process
@@ -1326,13 +1332,16 @@ TEST_F(FormRegressionTest, ExprMethod22DeadPoolHeap) {
       "    daddu sp, sp, r0";
   std::string type = "(function dead-pool-heap dead-pool-heap-rec pointer)";
   std::string expected =
-      "(if\n"
-      "  (-> arg1 process)\n"
-      "  (+\n"
-      "   (+ (+ (-> arg1 process allocated-length) -4) (the-as int (-> process size)))\n"
-      "   (the-as int (-> arg1 process))\n"
-      "   )\n"
-      "  (-> arg0 heap base)\n"
+      "(the-as pointer (if (-> arg1 process)\n"
+      "                (+\n"
+      "                 (+\n"
+      "                  (+ (-> arg1 process allocated-length) -4)\n"
+      "                  (the-as int (-> process size))\n"
+      "                  )\n"
+      "                 (the-as int (-> arg1 process))\n"
+      "                 )\n"
+      "                (-> arg0 heap base)\n"
+      "                )\n"
       "  )";
   test_with_expr(func, type, expected);
 }

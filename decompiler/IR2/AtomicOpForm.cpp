@@ -470,7 +470,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
                                                  m_type.value_or(TypeSpec("object")));
       }
 
-      if (input_type.typespec() == TypeSpec("pointer")) {
+      if (input_type.typespec() == TypeSpec("pointer") ||
+          input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
         std::string cast_type;
         switch (m_size) {
           case 1:

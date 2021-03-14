@@ -232,7 +232,7 @@ FormElement* FormStack::pop_back(FormPool& pool) {
 namespace {
 bool is_op_in_place(SetVarElement* elt,
                     FixedOperatorKind op,
-                    const Env&,
+                    const Env& env,
                     RegisterAccess* base_out,
                     Form** val_out) {
   auto matcher = Matcher::op(GenericOpMatcher::fixed(op), {Matcher::any_reg(0), Matcher::any(1)});
@@ -240,11 +240,20 @@ bool is_op_in_place(SetVarElement* elt,
   if (result.matched) {
     auto first = result.maps.regs.at(0);
     assert(first.has_value());
+
     if (first->reg() != elt->dst().reg()) {
       return false;
     }
 
     if (first->idx() != elt->dst().idx()) {
+      return false;
+    }
+
+    auto src_var = env.get_variable_name(*first);
+    auto dst_var = env.get_variable_name(elt->dst());
+    if (src_var != dst_var) {
+      // something like daddu a1-1, a1-0, v0 isn't safe to turn into an in-place, but will pass
+      // the previous two checks.
       return false;
     }
 
