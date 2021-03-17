@@ -353,6 +353,10 @@ goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& label
   }
 }
 
+std::string SimpleExpression::to_string(const Env& env) const {
+  return to_form(env.file->labels, env).print();
+}
+
 bool SimpleExpression::operator==(const SimpleExpression& other) const {
   if (m_kind != other.m_kind) {
     return false;

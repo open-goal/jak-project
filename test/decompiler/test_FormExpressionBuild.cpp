@@ -2626,3 +2626,113 @@ TEST_F(FormRegressionTest, QMemCpy) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+TEST_F(FormRegressionTest, StripStripTrailingWhitespace) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L52:\n"
+      "    daddiu sp, sp, -48\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s5, 16(sp)\n"
+      "    sq gp, 32(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or a0, gp, r0\n"
+      "    lw v1, string(s7)\n"
+      "    lwu t9, 32(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    beq v1, r0, L56\n"
+      "    or v1, s7, r0\n"
+
+      "    daddiu s5, gp, 4\n"
+      "    or a0, gp, r0\n"
+      "    lw v1, string(s7)\n"
+      "    lwu t9, 32(v1)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    daddiu v1, v1, -1\n"
+      "    daddu v1, s5, v1\n"
+      "    beq r0, r0, L54\n"
+      "    sll r0, r0, 0\n"
+      "L53:\n"
+      "    daddiu v1, v1, -1\n"
+      "L54:\n"
+      "    daddiu a0, gp, 4\n"
+      "    slt a0, v1, a0\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a0\n"
+      "    beql s7, a1, L55\n"
+      "    or a0, a1, r0\n"
+
+      "    lbu a0, 0(v1)\n"
+      "    daddiu a0, a0, -32\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a0\n"
+      "    bnel s7, a1, L55\n"
+      "    or a0, a1, r0\n"
+
+      "    lbu a0, 0(v1)\n"
+      "    daddiu a0, a0, -9\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a0\n"
+      "    bnel s7, a1, L55\n"
+      "    or a0, a1, r0\n"
+
+      "    lbu a0, 0(v1)\n"
+      "    daddiu a0, a0, -13\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a0\n"
+      "    bnel s7, a1, L55\n"
+      "    or a0, a1, r0\n"
+
+      "    lbu a0, 0(v1)\n"
+      "    daddiu a1, a0, -10\n"
+      "    daddiu a0, s7, 8\n"
+      "    movn a0, s7, a1\n"
+      "L55:\n"
+      "    bne s7, a0, L53\n"
+      "    sll r0, r0, 0\n"
+
+      "    or a0, s7, r0\n"
+      "    sb r0, 1(v1)\n"
+      "    or v1, r0, r0\n"
+      "L56:\n"
+      "    or v0, s7, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 32(sp)\n"
+      "    lq s5, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 48\n";
+
+  std::string type = "(function string symbol)";
+  std::string expected =
+      "(begin\n"
+      "  (when (nonzero? ((method-of-type string length) arg0))\n"
+      "   (let\n"
+      "    ((v1-6 (&+ (-> arg0 data) (+ ((method-of-type string length) arg0) -1))))\n"
+      "    (while\n"
+      "     (and\n"
+      "      (>= (the-as int v1-6) (the-as int (-> arg0 data)))\n"
+      "      (or\n"
+      "       (= (-> v1-6 0) 32)\n"
+      "       (= (-> v1-6 0) 9)\n"
+      "       (= (-> v1-6 0) 13)\n"
+      "       (= (-> v1-6 0) 10)\n"
+      "       )\n"
+      "      )\n"
+      "     (set! v1-6 (&-> v1-6 -1))\n"
+      "     )\n"
+      "    (set! (-> v1-6 1) (the-as uint 0))\n"
+      "    )\n"
+      "   (let ((v1-7 0))\n"
+      "    )\n"
+      "   )\n"
+      "  #f\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
