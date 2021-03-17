@@ -1,10 +1,11 @@
 #include "Form.h"
 
+#include <algorithm>
 #include <utility>
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/type_system/TypeSystem.h"
-#include <algorithm>
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
@@ -289,13 +290,23 @@ SetVarElement::SetVarElement(const RegisterAccess& var,
     : m_dst(var),
       m_src(value),
       m_is_sequence_point(is_sequence_point),
-      m_src_type(src_type),
+      m_src_type(std::move(src_type)),
       m_var_info(info) {
   value->parent_element = this;
 }
 
 goos::Object SetVarElement::to_form_internal(const Env& env) const {
   assert(active());
+  auto reg_kind = m_dst.reg().get_kind();
+  if ((reg_kind == Reg::FPR || reg_kind == Reg::GPR) && env.has_type_analysis()) {
+    auto expected_type = env.get_variable_type(m_dst, true);
+    if (!env.dts->ts.tc(expected_type, m_src_type)) {
+      return pretty_print::build_list(
+          "set!", m_dst.to_form(env),
+          pretty_print::build_list("the-as", expected_type.print(), m_src->to_form(env)));
+    }
+  }
+
   return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
 }
 

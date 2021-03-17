@@ -233,6 +233,7 @@ class SimpleExpression {
   SimpleExpression(Kind kind, const SimpleAtom& arg0);
   SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
+  std::string to_string(const Env& env) const;
   bool operator==(const SimpleExpression& other) const;
   bool is_identity() const { return m_kind == Kind::IDENTITY; }
   bool is_var() const { return is_identity() && get_arg(0).is_var(); }
