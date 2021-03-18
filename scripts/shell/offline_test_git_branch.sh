@@ -8,6 +8,7 @@ echo "======================================="
 echo ""
 echo "  ================= Cloning..."
 
+cd ../..
 ISO_DATA_PATH=${1}
 BRANCH_NAME=${2:-master}
 # Provide a default location to bind the ISO_DATA_PATH
