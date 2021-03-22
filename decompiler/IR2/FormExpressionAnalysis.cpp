@@ -2059,6 +2059,7 @@ FormElement* ConditionElement::make_generic(const Env& env,
     case IR2_Condition::Kind::FALSE:
     case IR2_Condition::Kind::IS_PAIR:
     case IR2_Condition::Kind::IS_NOT_PAIR:
+    case IR2_Condition::Kind::ALWAYS:
       // kind of a hack, we fall back to the old condition operator which is special cased
       // to print the truthy condition in a nice way. and we use it for other things that don't
       // require fancy renaming.
@@ -2285,7 +2286,8 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
   if (as_special) {
     if (as_special->kind() == SpecialOp::Kind::NOP ||
         as_special->kind() == SpecialOp::Kind::BREAK ||
-        as_special->kind() == SpecialOp::Kind::CRASH) {
+        as_special->kind() == SpecialOp::Kind::CRASH ||
+        as_special->kind() == SpecialOp::Kind::SUSPEND) {
       stack.push_form_element(this, true);
       return;
     }

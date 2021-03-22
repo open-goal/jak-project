@@ -159,6 +159,16 @@ struct PrettyPrinterNode {
       nullptr;  // pointer to open paren if in parens.  open paren points to close and vice versa
   explicit PrettyPrinterNode(FormToken* _tok) { tok = _tok; }
   PrettyPrinterNode() = default;
+
+  std::string debug_print() const {
+    std::string result;
+    if (tok) {
+      result += fmt::format("tok: \"{}\"\n", tok->toString());
+    }
+    result += fmt::format("line: {}\nlineIn: {}\noffset: {}\nspecial: {}\nsep?: {}\n", line,
+                          lineIndent, offset, specialIndentDelta, is_line_separator);
+    return result;
+  }
 };
 
 /*!
@@ -343,14 +353,64 @@ PrettyPrinterNode* getNextLine(PrettyPrinterNode* start) {
 PrettyPrinterNode* getNextListOnLine(PrettyPrinterNode* start) {
   int line = start->line;
   assert(!start->is_line_separator);
-  if (!start->next || start->next->is_line_separator)
+  if (!start->next || start->next->is_line_separator) {
     return nullptr;
+  }
+
   start = start->next;
   while (!start->is_line_separator && start->line == line) {
-    if (start->tok->kind == FormToken::TokenKind::OPEN_PAREN)
+    if (start->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
       return start;
-    if (!start->next)
+    }
+    if (!start->next) {
       return nullptr;
+    }
+    start = start->next;
+  }
+  return nullptr;
+}
+
+PrettyPrinterNode* getNextOfKindOrStringOnLine(PrettyPrinterNode* start,
+                                               FormToken::TokenKind kind) {
+  int line = start->line;
+  assert(!start->is_line_separator);
+  if (!start->next || start->next->is_line_separator) {
+    return nullptr;
+  }
+
+  start = start->next;
+  while (!start->is_line_separator && start->line == line) {
+    if (start->tok->kind == kind || start->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+      return start;
+    }
+    if (!start->next) {
+      return nullptr;
+    }
+    start = start->next;
+  }
+  return nullptr;
+}
+
+PrettyPrinterNode* getNextListOrEmptyListOnLine(PrettyPrinterNode* start) {
+  int line = start->line;
+  assert(!start->is_line_separator);
+  if (!start->next || start->next->is_line_separator) {
+    return nullptr;
+  }
+
+  start = start->next;
+  while (!start->is_line_separator && start->line == line) {
+    if (start->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+      return start;
+    }
+
+    if (start->tok->kind == FormToken::TokenKind::EMPTY_PAIR) {
+      return start;
+    }
+
+    if (!start->next) {
+      return nullptr;
+    }
     start = start->next;
   }
   return nullptr;
@@ -515,10 +575,14 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
 
       if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
           name == "let*") {
-        auto* first_list = getNextListOnLine(node);
+        auto* first_list = getNextListOrEmptyListOnLine(node);
         if (first_list) {
-          insertNewlineAfter(pool, first_list->paren, 0);
-          breakList(pool, node->paren, first_list);
+          if (first_list->tok->kind == FormToken::TokenKind::EMPTY_PAIR) {
+            insertNewlineAfter(pool, first_list, 0);
+          } else {
+            insertNewlineAfter(pool, first_list->paren, 0);
+            breakList(pool, node->paren, first_list);
+          }
         }
 
         if ((name == "let" || name == "let*") && first_list) {
@@ -560,10 +624,17 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
       }
 
       if (control_flow_start_forms.find(name) != control_flow_start_forms.end()) {
-        auto* parent_type_dec = getNextListOnLine(node);
+        auto* parent_type_dec = getNextOfKindOrStringOnLine(node, FormToken::TokenKind::STRING);
+
         if (parent_type_dec) {
-          insertNewlineAfter(pool, parent_type_dec->paren, 0);
-          breakList(pool, node->paren, parent_type_dec);
+          if (parent_type_dec->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+            insertNewlineAfter(pool, parent_type_dec->paren, 0);
+            breakList(pool, node->paren, parent_type_dec);
+          } else {
+            insertNewlineAfter(pool, parent_type_dec, 0);
+            breakList(pool, node->paren, parent_type_dec);
+          }
+
           auto open_paren = node->prev;
           if (open_paren && open_paren->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
             if (open_paren->prev && !open_paren->prev->is_line_separator) {

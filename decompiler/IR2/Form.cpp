@@ -298,7 +298,8 @@ SetVarElement::SetVarElement(const RegisterAccess& var,
 goos::Object SetVarElement::to_form_internal(const Env& env) const {
   assert(active());
   auto reg_kind = m_dst.reg().get_kind();
-  if ((reg_kind == Reg::FPR || reg_kind == Reg::GPR) && env.has_type_analysis()) {
+  if ((reg_kind == Reg::FPR || reg_kind == Reg::GPR) && env.has_type_analysis() &&
+      env.has_local_vars()) {
     auto expected_type = env.get_variable_type(m_dst, true);
     if (!env.dts->ts.tc(expected_type, m_src_type)) {
       return pretty_print::build_list(
@@ -1542,6 +1543,9 @@ goos::Object GenericElement::to_form_internal(const Env& env) const {
       m_head.condition_kind() == IR2_Condition::Kind::TRUTHY) {
     assert(m_elts.size() == 1);
     return m_elts.front()->to_form_as_condition(env);
+  } else if (m_head.kind() == GenericOperator::Kind::CONDITION_OPERATOR &&
+             m_head.condition_kind() == IR2_Condition::Kind::ALWAYS) {
+    return pretty_print::to_symbol("#t");
   } else {
     std::vector<goos::Object> result;
     result.push_back(m_head.to_form(env));
