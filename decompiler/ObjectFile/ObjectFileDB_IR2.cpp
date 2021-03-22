@@ -743,16 +743,16 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
               op.reg_type_info_as_string(*init_types, func.ir2.env.get_types_after_op(op_id)), 50);
         }
 
-        if (func.ir2.env.has_reg_use()) {
+        /*if (func.ir2.env.has_reg_use()) {
           std::string regs;
-          for (auto r : func.ir2.env.reg_use().op.at(op_id).consumes) {
+          for (auto r : func.ir2.env.reg_use().op.at(op_id).live_in) {
             regs += r.to_charp();
             regs += ' ';
           }
           if (!regs.empty()) {
-            append_commented(line, printed_comment, "cs: " + regs, 50);
+            append_commented(line, printed_comment, "lvi: " + regs, 50);
           }
-        }
+        }*/
       }
       auto& instr = func.instructions.at(instr_id);
       // print linked strings
