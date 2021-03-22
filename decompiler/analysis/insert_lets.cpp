@@ -344,17 +344,31 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     if (first_form_as_set &&
         env.get_variable_name(first_form_as_set->dst()) == env.get_variable_name(info.access) &&
         !first_form_as_set->info().is_eliminated_coloring_move) {
+      bool allowed = true;
+
+      RegAccessSet ras;
+      first_form_as_set->src()->collect_vars(ras, true);
+      for (auto ra : ras) {
+        if (ra.reg() == first_form_as_set->dst().reg()) {
+          if (env.get_variable_name(ra) == env.get_variable_name(first_form_as_set->dst())) {
+            allowed = false;
+            break;
+          }
+        }
+      }
       // success!
       // fmt::print("Want let for {} range {} to {}\n",
       // env.get_variable_name(first_form_as_set->dst()), info.start_idx, info.end_idx);
-      LetInsertion li;
-      li.form = info.lca_form;
-      li.start_elt = info.start_idx;
-      li.end_elt = info.end_idx;
-      li.set_form = first_form_as_set;
-      li.name = info.var_name;
-      possible_insertions[li.form].push_back(li);
-      stats.vars_in_lets++;
+      if (allowed) {
+        LetInsertion li;
+        li.form = info.lca_form;
+        li.start_elt = info.start_idx;
+        li.end_elt = info.end_idx;
+        li.set_form = first_form_as_set;
+        li.name = info.var_name;
+        possible_insertions[li.form].push_back(li);
+        stats.vars_in_lets++;
+      }
     } else {
       // fmt::print("fail for {} : {}\n", info.var_name, first_form->to_string(env));
     }

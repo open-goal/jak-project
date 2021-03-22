@@ -16,7 +16,7 @@ struct RegUsageInfo {
   };
 
   struct PerOp {
-    RegSet live, dead, consumes, written_and_unused;
+    RegSet live, dead, consumes, written_and_unused, live_in;
   };
 
   int block_count() const { return int(block.size()); }

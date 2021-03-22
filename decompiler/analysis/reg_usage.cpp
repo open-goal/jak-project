@@ -155,6 +155,36 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
     phase3(*ops, blocks, i, &result);
   }
 
+  // compute live in
+  for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
+    int end_op = ops->block_id_to_end_atomic_op.at(block_id);
+    int start_op = ops->block_id_to_first_atomic_op.at(block_id);
+
+    for (int instr_id = start_op + 1; instr_id < end_op; instr_id++) {
+      result.op.at(instr_id).live_in = result.op.at(instr_id - 1).live;
+    }
+
+    if (end_op > start_op) {
+      auto& last_live_out = result.op.at(end_op - 1).live;
+      for (auto succ : {blocks.at(block_id).succ_branch, blocks.at(block_id).succ_ft}) {
+        if (succ != -1) {
+          auto succ_id = ops->block_id_to_first_atomic_op.at(succ);  // todo?
+          result.op.at(succ_id).live_in.insert(last_live_out.begin(), last_live_out.end());
+        }
+      }
+    }
+  }
+
+  // special case for the very first op
+  auto& first_op_live_out = result.op.at(0).live;
+  RegSet first_op_live_in;
+  first_op_live_in.insert(first_op_live_out.begin(), first_op_live_out.end());
+  for (auto reg : ops->ops.at(0)->write_regs()) {
+    first_op_live_in.erase(reg);
+  }
+  first_op_live_in.insert(ops->ops.at(0)->read_regs().begin(), ops->ops.at(0)->read_regs().end());
+  result.op.at(0).live_in = first_op_live_in;
+
   // we want to know if an op "consumes" a register.
   // this means the value of the register coming in is:
   // A. read by the operation
