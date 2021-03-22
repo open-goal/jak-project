@@ -2736,3 +2736,57 @@ TEST_F(FormRegressionTest, StripStripTrailingWhitespace) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+// Let bug (github #328)
+TEST_F(FormRegressionTest, TimeToGround) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+
+      "    mtc1 f0, r0\n"
+      "    addiu v0, r0, 0\n"
+      "    beq r0, r0, L3\n"
+      "    sll r0, r0, 0\n"
+
+      "L2:\n"
+      "    mtc1 f1, a0\n"
+      //"    lwc1 f2, L7(fp)\n"
+      "    mtc1 f2, r0\n"
+      "    mtc1 f3, a1\n"
+      "    mul.s f2, f2, f3\n"
+      "    sub.s f1, f1, f2\n"
+      "    mfc1 a0, f1\n"
+      //"    lwc1 f1, L7(fp)\n"
+      "    mtc1 f1, r0\n"
+      "    mtc1 f2, a0\n"
+      "    mul.s f1, f1, f2\n"
+      "    add.s f0, f0, f1\n"
+      "    daddiu v0, v0, 1\n"
+
+      "L3:\n"
+      "    mtc1 f1, a2\n"
+      "    neg.s f1, f1\n"
+      "    c.lt.s f1, f0\n"
+      "    bc1t L2\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0 \n"
+      "    ld fp, 8(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function float float float float)";
+  std::string expected =
+      "(let ((f0-0 0.0)\n"
+      "     (v0-0 0)\n"
+      "     )\n"
+      "  (while (< (- arg2) f0-0)\n"
+      "   (set! arg0 (- arg0 (* 0.0 arg1)))\n"
+      "   (+! f0-0 (* 0.0 arg0))\n"
+      "   (+! v0-0 1)\n"
+      "   )\n"
+      "  (the-as float v0-0)\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
