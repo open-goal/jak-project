@@ -140,7 +140,7 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
                                              int idx,
                                              int load_size,
                                              LoadVarOp::Kind kind) {
-  if (i0.get_dst(0).is_reg(rra())) {
+  if (i0.get_dst(0).is_reg(rra()) || i0.get_dst(0).is_reg(Register(Reg::GPR, Reg::SP))) {
     return std::make_unique<AsmOp>(i0, idx);
   }
   auto dst = make_dst_var(i0, idx);
@@ -164,6 +164,9 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
                                               int idx,
                                               int store_size,
                                               bool is_float) {
+  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
+    return std::make_unique<AsmOp>(i0, idx);
+  }
   SimpleAtom val;
   SimpleExpression dst;
   if (i0.get_src(0).is_reg(rs7())) {

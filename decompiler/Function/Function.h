@@ -174,6 +174,7 @@ class Function {
 
  private:
   void check_epilogue(const LinkedObjectFile& file);
+  void resize_first_block(int new_start, const LinkedObjectFile& file);
   std::unordered_map<int, int> instruction_to_basic_op;
   std::unordered_map<int, int> basic_op_to_instruction;
 };

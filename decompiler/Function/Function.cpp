@@ -290,10 +290,45 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
   // it's fine to have the entire first basic block be the prologue - you could loop back to the
   // first instruction past the prologue.
   assert(basic_blocks.at(0).end_word >= prologue_end);
-  basic_blocks.at(0).start_word = prologue_end;
+  resize_first_block(prologue_end, file);
   prologue.decoded = true;
 
   check_epilogue(file);
+}
+
+void Function::resize_first_block(int new_start, const LinkedObjectFile&) {
+  basic_blocks.at(0).start_word = new_start;
+
+  if (basic_blocks.size() >= 2 && basic_blocks.at(1).start_word == new_start) {
+    lg::warn("Function {} loops back to the first instruction. This is rare/less tested.",
+             guessed_name.to_string());
+    // block 1 is now zero size, so we should eliminate it
+    auto& block0 = basic_blocks.at(0);
+    auto& block1 = basic_blocks.at(1);
+    block0.succ_ft = block1.succ_ft;
+    block0.succ_branch = block1.succ_branch;
+    block0.end_word = block1.end_word;
+    // it's only safe to this immediately after the basic block pass.
+    // now copy back:
+    for (size_t i = 1; i < basic_blocks.size() - 1; i++) {
+      basic_blocks[i] = basic_blocks[i + 1];
+    }
+
+    for (auto& block : basic_blocks) {
+      if (block.succ_branch > 0) {
+        block.succ_branch--;
+      }
+      if (block.succ_ft > 0) {
+        block.succ_ft--;
+      }
+      for (auto& p : block.pred) {
+        if (p > 0) {
+          p--;
+        }
+      }
+    }
+    basic_blocks.pop_back();
+  }
 }
 
 /*!

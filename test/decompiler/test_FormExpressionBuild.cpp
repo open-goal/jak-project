@@ -2790,3 +2790,36 @@ TEST_F(FormRegressionTest, TimeToGround) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+// Infinite loop bug (github #196)
+TEST_F(FormRegressionTest, LoopingCode) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L1:\n"
+      "    daddiu sp, sp, -16\n"
+      "    sd ra, 0(sp)\n"
+
+      "L2:\n"
+      "    lwu s6, 44(s6)\n"
+      "    mtlo1 s6\n"
+      "    lwu s6, 12(s6)\n"
+      "    jalr ra, s6\n"
+      "    mflo1 s6\n"
+
+      "    beq r0, r0, L2\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v0, s7, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 16";
+  std::string type = "(function symbol)";
+  std::string expected =
+      "(begin\n"
+      "  (while #t\n"
+      "   (suspend)\n"
+      "   )\n"
+      "  (the-as symbol #f)\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
