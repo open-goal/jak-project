@@ -2877,3 +2877,76 @@ TEST_F(FormRegressionTest, AbsAsSideEffect) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+// for github https://github.com/water111/jak-project/issues/332
+// method 11 bit-array
+TEST_F(FormRegressionTest, AshPropagation) {
+  // (ash a2-0 a3-0)
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    dsra v1, a1, 3\n"
+      "    daddu v1, v1, a0\n"
+      "    lbu v1, 8(v1)\n"  // (-> arg0 bytes (sar arg1 3)) [LOAD]
+      "    addiu a2, r0, 1\n"
+      "    andi a3, a1, 7\n"
+      "    bgezl a3, L17\n"  // use
+
+      "    dsllv a2, a2, a3\n"  // use, def
+
+      "    dsubu a3, r0, a3\n"  // use
+      "    dsrav a2, a2, a3\n"  // (ash 1 (logand arg1 7)
+
+      "L17:\n"
+      "    or v1, v1, a2\n"   // (logior (-> arg0 bytes (sar arg1 3)) (ash 1 (logand arg1 7)))
+      "    dsra a1, a1, 3\n"  // compute source.
+      "    daddu a0, a1, a0\n"
+
+      "    sb v1, 8(a0)\n"
+      "    or v0, r0, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function bit-array int int)";
+  std::string expected =
+      "(begin\n"
+      "  (set!\n"
+      "   (-> arg0 bytes (sar arg1 3))\n"
+      "   (logior (-> arg0 bytes (sar arg1 3)) (the-as uint (ash 1 (logand arg1 7))))\n"
+      "   )\n"
+      "  0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+// for github https://github.com/water111/jak-project/issues/332
+// method 9 bit-array
+// also checks output prop.
+TEST_F(FormRegressionTest, AshPropagation2) {
+  // (ash a2-0 a3-0)
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L20:\n"
+      "    dsra v1, a1, 3\n"
+      "    daddu v1, v1, a0\n"
+      "    lbu v1, 8(v1)\n"
+      "    daddiu v0, s7, 8\n"
+      "    addiu a0, r0, 1\n"
+      "    andi a1, a1, 7\n"
+      "    bgezl a1, L21\n"
+
+      "    dsllv a0, a0, a1\n"
+
+      "    dsubu a1, r0, a1\n"
+      "    dsrav a0, a0, a1\n"
+
+      "L21:\n"
+      "    and v1, v1, a0\n"
+      "    movz v0, s7, v1\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function bit-array int symbol)";
+  std::string expected =
+      "(let ((v1-2 (-> arg0 bytes (sar arg1 3))))\n"
+      "  (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg1 7)))))\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}

@@ -209,9 +209,8 @@ Val* Compiler::compile_set(const goos::Object& form, const goos::Object& rest, E
   va_check(form, args, {{}, {}}, {});
 
   auto& destination = args.unnamed.at(0);
-  // todo, I don't know if this is the correct order or not. Right now the value is computed
-  // and to_reg'd first, then the destination is computed, if the destination requires math to
-  // compute.
+  // this is the order I'm using in the decompiler and it seems to be right.
+  // see StorePlainDeref::push_to_stack for example
   auto source = compile_error_guard(args.unnamed.at(1), env);
   auto source_reg = source->to_reg(env);
   auto dest = compile_error_guard(destination, env);

@@ -141,8 +141,8 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           //          fmt::print("Unsafe to pop {}: used {} times, def {} times, expected use {}\n",
           //                     var.to_string(env), use_def.use_count(), use_def.def_count(),
           //                     times);
-          //          if (var.to_string(env) == "v1-3") {
-          //            for (auto& use : use_def.defs) {
+          //          if (var.to_string(env) == "a3-0") {
+          //            for (auto& use : use_def.uses) {
           //              if (!use.disabled) {
           //                fmt::print("  at instruction {}\n", use.op_id);
           //              }
@@ -1155,6 +1155,7 @@ Form* make_optional_cast(const std::optional<TypeSpec>& cast_type, Form* in, For
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   if (m_expr.is_var()) {
+    // this matches the order in Compiler::compile_set
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
     m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool));
