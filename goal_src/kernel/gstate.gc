@@ -17,17 +17,18 @@ The state handlers are:
 - exit  : gets run when leaving a state. must return.
 - event : not sure of the details here yet.
 
-You can "go" to another state.  This causes the current main thread execution to be abandoned.
+You can use "go" to change the state of a process.  This causes the process main thread execution to be abandoned.
 If the main thread has exits/protects on the stack frame, they will be run first to clean up.
 
 There are several ways to "go"
 - go during init: when a process is being initialized with run-function-in-process, you can "go".
-  this causes the run-function-in-process to return, and the next time the process is dispatched
+  this causes the run-function-in-process to return immediately, and the next time the process is dispatched
   it will go into the other state.  This will automatically set the process to waiting-to-run,
   and shrink the process heap, if appropriate
 
 - go from outside the process. You can temporarily set pp to another process, and have that
   process go to another state. The actually go will occur the next time the process is scheduled.
+  Use the go-process macro to do this.
 
 - go from a non-main thread in the right process. You can do a go from a temporary thread, like trans or post.
   If you do it from post, the go returns. If you do it from any other thread, the temporary thread
@@ -36,21 +37,9 @@ There are several ways to "go"
 
 - go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
   to be cleaned up, and the old state's exit to be called.  It will reset the stack, then run the code.
+  Unlike the others, this means you "go" immediately.
 
 |#
-
-;; fancy macro to accept variable arguments for go.
-;; (defmacro go (next-state &rest args)
-;;   (if (< 6 (length args))
-;;       (error "too many arguments to go")
-;;       (let ((zero-args (repeated-list 0 (- 6 (length args)))))
-;;         `(with-pp
-;;            (set! (-> pp next-state) ,next-state)
-;;            (enter-state ,@args ,@zero-args)
-;;            )
-;;         )
-;;       )
-;;   )
 
 ;; cause the current process to change state
 (defmacro go (next-state &rest args)

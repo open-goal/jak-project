@@ -67,6 +67,8 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
         register_class = RegClass::FLOAT;
       } else if (class_name == "vf") {
         register_class = RegClass::VECTOR_FLOAT;
+      } else if (class_name == "i128") {
+        register_class = RegClass::INT_128;
       } else {
         throw_compiler_error(o, "Register class {} is unknown.", class_name);
       }

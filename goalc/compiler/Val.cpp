@@ -149,7 +149,7 @@ RegVal* MemoryOffsetVal::to_reg(Env* fe) {
 }
 
 RegVal* MemoryDerefVal::to_reg(Env* fe) {
-  auto re = fe->make_gpr(coerce_to_reg_type(m_ts));
+  auto re = fe->make_ireg(coerce_to_reg_type(m_ts), info.reg);
   auto base_as_co = dynamic_cast<MemoryOffsetConstantVal*>(base);
   if (base_as_co) {
     s64 offset;

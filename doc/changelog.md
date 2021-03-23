@@ -124,3 +124,4 @@
 ## V0.7
 - There is now an option for `allow-misaligned` which allows the alignment of an struct type to be less than 16-bytes when inlined, without enabling array packing. This seems like a stupid option, but GOAL has this in some places, so we support it too.
 - In method declarations in a `deftype`, you can no longer provide argument names.  There was ambiguity when parsing a compound typespec vs named argument. The names were not used for anything.
+- 128-bit integer register variables (`i128`) are now supported. These work with assembly forms, `set!`s between registers, and `set!`s of memory locations with type `(pointer uint128)` or `(pointer int128)`.
