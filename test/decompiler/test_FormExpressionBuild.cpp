@@ -2823,3 +2823,57 @@ TEST_F(FormRegressionTest, LoopingCode) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+TEST_F(FormRegressionTest, AbsAsSideEffect) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    dsubu v1, a1, a0\n"
+      "    or a3, v1, r0\n"
+      "    bltzl a3, L14\n"
+
+      "    dsubu a3, r0, a3\n"
+
+      "L14:\n"
+      "    slt a3, a2, a3\n"
+      "    bne a3, r0, L15\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v0, a1, r0\n"
+      "    beq r0, r0, L17\n"
+      "    sll r0, r0, 0\n"
+
+      "L15:\n"
+      "    slt v1, v1, r0\n"
+      "    bne v1, r0, L16\n"
+      "    sll r0, r0, 0\n"
+
+      "    daddu v0, a0, a2\n"
+      "    beq r0, r0, L17\n"
+      "    sll r0, r0, 0\n"
+
+      "L16:\n"
+      "    dsubu v0, a0, a2\n"
+
+      "L17:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function int int int int)";
+  std::string expected =
+      "(let* ((v1-0 (- arg1 arg0))\n"
+      "      (a3-0 (abs v1-0))\n"  // modified
+      "      )\n"
+      //"  (set! a3-0 (abs a3-0))\n"
+      "  (cond\n"
+      "   ((>= arg2 a3-0)\n"
+      "    arg1\n"
+      "    )\n"
+      "   ((>= v1-0 0)\n"
+      "    (+ arg0 arg2)\n"
+      "    )\n"
+      "   (else\n"
+      "    (- arg0 arg2)\n"
+      "    )\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}

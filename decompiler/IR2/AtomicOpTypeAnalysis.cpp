@@ -125,6 +125,11 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       } else if ((label.offset & 7) == PAIR_OFFSET) {
         return TP_Type::make_from_ts(TypeSpec("pair"));
       }
+
+      auto hint_kv = env.label_types().find(label.name);
+      if (hint_kv != env.label_types().end()) {
+        return TP_Type::make_from_ts(dts.parse_type_spec(hint_kv->second.type_name));
+      }
       // throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
       lg::error("IR_StaticAddress doesn't know the type of {}", label.name);
       return TP_Type::make_from_ts("object");
