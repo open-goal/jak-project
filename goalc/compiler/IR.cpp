@@ -83,6 +83,9 @@ void regset_common(emitter::ObjectGenerator* gen,
   auto src_class = src->ireg().reg_class;
   auto dst_class = dst->ireg().reg_class;
 
+  bool src_is_xmm128 = (src_class == RegClass::VECTOR_FLOAT || src_class == RegClass::INT_128);
+  bool dst_is_xmm128 = (dst_class == RegClass::VECTOR_FLOAT || dst_class == RegClass::INT_128);
+
   if (src_class == RegClass::GPR_64 && dst_class == RegClass::GPR_64) {
     if (src_reg == dst_reg) {
       // eliminate move
@@ -97,7 +100,7 @@ void regset_common(emitter::ObjectGenerator* gen,
     } else {
       gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
     }
-  } else if (src_class == RegClass::VECTOR_FLOAT && dst_class == RegClass::VECTOR_FLOAT) {
+  } else if (src_is_xmm128 && dst_is_xmm128) {
     if (src_reg == dst_reg) {
       // eliminate move
       gen->add_instr(IGen::null(), irec);
@@ -110,13 +113,13 @@ void regset_common(emitter::ObjectGenerator* gen,
   } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
     // gpr -> xmm 1x
     gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
-  } else if (src_class == RegClass::VECTOR_FLOAT && dst_class == RegClass::FLOAT) {
+  } else if (src_is_xmm128 && dst_class == RegClass::FLOAT) {
     gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
-  } else if (src_class == RegClass::FLOAT && dst_class == RegClass::VECTOR_FLOAT) {
+  } else if (src_class == RegClass::FLOAT && dst_is_xmm128) {
     gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
-  } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::VECTOR_FLOAT) {
+  } else if (src_class == RegClass::GPR_64 && dst_is_xmm128) {
     gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
-  } else if (src_class == RegClass::VECTOR_FLOAT && dst_class == RegClass::GPR_64) {
+  } else if (src_is_xmm128 && dst_class == RegClass::GPR_64) {
     gen->add_instr(IGen::movd_gpr32_xmm32(dst_reg, src_reg), irec);
   } else {
     assert(false);  // unhandled move.
@@ -861,10 +864,13 @@ void IR_LoadConstOffset::do_codegen(emitter::ObjectGenerator* gen,
     gen->add_instr(
         IGen::load_goal_xmm32(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
-  } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT && m_info.size == 16 &&
-             m_info.sign_extend == false && m_info.reg == RegClass::VECTOR_FLOAT) {
+  } else if ((m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT ||
+              m_dest->ireg().reg_class == RegClass::INT_128) &&
+             m_info.size == 16 && m_info.sign_extend == false &&
+             m_info.reg == m_dest->ireg().reg_class) {
     gen->add_instr(
-        IGen::load_goal_vf(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset), irec);
+        IGen::load_goal_xmm128(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
+        irec);
   } else {
     throw std::runtime_error("IR_LoadConstOffset::do_codegen not supported");
   }
@@ -905,7 +911,9 @@ void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
     gen->add_instr(
         IGen::store_goal_xmm32(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
-  } else if (m_value->ireg().reg_class == RegClass::VECTOR_FLOAT && m_size == 16) {
+  } else if ((m_value->ireg().reg_class == RegClass::VECTOR_FLOAT ||
+              m_value->ireg().reg_class == RegClass::INT_128) &&
+             m_size == 16) {
     gen->add_instr(
         IGen::store_goal_vf(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);

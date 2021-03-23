@@ -209,6 +209,14 @@
 
 ;; NOTE: there is a print/inspect for vec4s that is not implemented.
 
+(defmacro print128 (value &key (stream #t))
+  "Print a 128-bit value"
+  `(let ((temp (new 'stack 'array 'uint64 2)))
+     (set! (-> (the (pointer uint128) temp)) ,value)
+     (format ,stream "#x~16X~16X" (-> temp 1) (-> temp 0))
+     )
+  )
+
 ;; A "boxed float" type. Simply a float with type information.
 (deftype bfloat (basic)
   ((data float :offset-assert 4))
@@ -1001,18 +1009,14 @@
    - Ascending address copy."
   (local-vars (result pointer) (qwc int))
   (set! result dst)
+  
   ;; round up to nearest quadword count.
   (set! qwc (sar (+ size 15) 4))
   (while (nonzero? qwc)
     (set! qwc (+ qwc -1))
-    ;; EE quadword loads and stores mask the addresses, so we do too.
-    ;; for now, use the vector float because we don't have 128-bit integer support.
-    ;;(.lq value 0 src)
-    ;;(.sq value 0 dst)
-    (rlet ((value :class vf))
-          (.lvf value (logand #xfffffff0 (the uint src)))
-          (.svf (logand #xfffffff0 (the uint dst)) value)
-          )
+    ;; Use 128-bit OpenGOAL integers to do copy by quadword.
+    (set! (-> (the (pointer uint128) dst))
+          (-> (the (pointer uint128) src)))
 
     (set! dst (&+ dst 16))
     (set! src (&+ src 16))
@@ -1031,23 +1035,19 @@
    (src-ptr pointer)
    (dst-ptr pointer)
    )
+
   (set! result dst)
   (set! qwc (sar (+ size 15) 4))
   ;; start at the end
-  (set! src-ptr (&+ dst (the-as uint (shl qwc 4))))
-  (set! dst-ptr (&+ src (the-as uint (shl qwc 4))))
+  (set! dst-ptr (&+ dst (the-as uint (shl qwc 4))))
+  (set! src-ptr (&+ src (the-as uint (shl qwc 4))))
   (while (nonzero? qwc)
     (set! qwc (+ qwc -1))
     (set! src-ptr (&+ src-ptr (the-as uint -16)))
     (set! dst-ptr (&+ dst-ptr (the-as uint -16)))
 
-    ;; EE quadword loads and stores mask the address, so we do too.
-    ;;(.lq value 0 dst-ptr)
-    ;;(.sq value 0 src-ptr)
-    (rlet ((value :class vf))
-          (.lvf value (logand #xfffffff0 (the uint src)))
-          (.svf (logand #xfffffff0 (the uint dst)) value)
-          )
+    (set! (-> (the (pointer uint128) dst-ptr))
+          (-> (the (pointer uint128) src-ptr)))
     )
   result
   )

@@ -769,7 +769,7 @@ class IGen {
     }
   }
 
-  static Instruction load_goal_vf(Register dst, Register addr, Register off, int offset) {
+  static Instruction load_goal_xmm128(Register dst, Register addr, Register off, int offset) {
     if (offset == 0) {
       return loadvf_gpr64_plus_gpr64(dst, addr, off);
     } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
