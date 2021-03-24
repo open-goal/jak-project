@@ -1205,7 +1205,7 @@ class LetElement : public FormElement {
     RegisterAccess dest;
     Form* src = nullptr;
   };
-  std::vector<Entry> entries() { return m_entries; }
+  std::vector<Entry>& entries() { return m_entries; }
   void add_entry(const Entry& e);
   bool is_star() const { return m_star; }
 

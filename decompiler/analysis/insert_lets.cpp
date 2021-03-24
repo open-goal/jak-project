@@ -199,6 +199,66 @@ FormElement* fix_up_abs(LetElement* in, const Env& env, FormPool& pool) {
                                             src);
 }
 
+FormElement* fix_up_abs_2(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+   * (let ((result in))
+   *   (set! result (abs result))
+   *   ...
+   *   )
+   *
+   * -> should become.
+   *    (let ((result (abs in)))
+   *      )
+   */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  if (in->body()->elts().empty()) {
+    return nullptr;
+  }
+
+  // look for setting a temp.
+  auto temp = in->entries().at(0).dest;
+  auto temp_name = env.get_variable_name(temp);
+
+  Form* src = in->entries().at(0).src;
+
+  auto first_as_set = dynamic_cast<SetVarElement*>(in->body()->elts().front());
+  if (!first_as_set) {
+    return nullptr;
+  }
+
+  auto dest_var_name = env.get_variable_name(first_as_set->dst());
+  if (dest_var_name != temp_name) {
+    return nullptr;
+  }
+
+  auto matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ABS), {Matcher::any_reg(0)});
+
+  auto mr = match(matcher, first_as_set->src());
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  assert(mr.maps.regs.at(0));
+
+  auto abs_var_name = env.get_variable_name(*mr.maps.regs.at(0));
+  if (abs_var_name != temp_name) {
+    return nullptr;
+  }
+
+  // success!
+  // modify the let entry:
+  in->entries().at(0).src = pool.alloc_single_element_form<GenericElement>(
+      nullptr, GenericOperator::make_fixed(FixedOperatorKind::ABS), src);
+  // remove the (set! x (abs x))
+  in->body()->elts().erase(in->body()->elts().begin());
+  return in;
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -211,6 +271,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_abs = fix_up_abs(in, env, pool);
   if (as_abs) {
     return as_abs;
+  }
+
+  auto as_abs_2 = fix_up_abs_2(in, env, pool);
+  if (as_abs_2) {
+    return as_abs_2;
   }
 
   // nothing matched.

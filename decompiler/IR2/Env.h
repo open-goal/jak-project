@@ -24,6 +24,7 @@ struct FunctionAtomicOps;
  */
 class Env {
  public:
+  bool types_succeeded = false;
   bool has_local_vars() const { return m_has_local_vars; }
   bool has_type_analysis() const { return m_has_types; }
   bool has_reg_use() const { return m_has_reg_use; }

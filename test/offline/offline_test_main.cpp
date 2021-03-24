@@ -6,18 +6,29 @@
 #include "decompiler/config.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"
+#include "common/util/Timer.h"
 
 namespace {
 // the object files to test
-const std::unordered_set<std::string> g_object_files_to_decompile = {
-    "gcommon", "gstring-h", "gkernel-h", "gkernel", /*"pskernel",*/ "gstring", "dgo-h", "gstate",
-};
+const std::unordered_set<std::string> g_object_files_to_decompile = {"gcommon",
+                                                                     "gstring-h",
+                                                                     "gkernel-h",
+                                                                     "gkernel",
+                                                                     /*"pskernel",*/ "gstring",
+                                                                     "dgo-h",
+                                                                     "gstate",
+                                                                     "types-h",
+                                                                     "vu1-macros",
+                                                                     "math",
+                                                                     "vector-h",
+                                                                     "bounding-box-h",
+                                                                     /* gap */ "bounding-box"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
     "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h", "gkernel-h", "gkernel", "gstring", "dgo-h", "gstate",
-};
+    "gstring-h", "gkernel-h",  "gkernel", "gstring",  "dgo-h",          "gstate",
+    "types-h",   "vu1-macros", "math",    "vector-h", "bounding-box-h", /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -39,14 +50,16 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "kernel-check-hardwired-addresses",  // ps2 ee kernel debug hook
     "kernel-read-function",              // ps2 ee kernel debug hook
     "kernel-write-function",             // ps2 ee kernel debug hook
-    "kernel-copy-function"               // ps2 ee kernel debug hook
+    "kernel-copy-function",              // ps2 ee kernel debug hook
+    // math
+    "rand-uint31-gen",  // weird and terrible random generator
+    // bounding-box
+    "(method 9 bounding-box)",   // handwritten asm loop
+    "(method 14 bounding-box)",  // handwritten asm loop
 };
 
 const std::unordered_set<std::string> skip_in_compiling = {
-    //////////////////////
-    // GCOMMON
-    //////////////////////
-
+    /// GCOMMON
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
     "abs", "ash", "min", "max", "lognor",
     // weird PS2 specific debug registers:
@@ -60,23 +73,34 @@ const std::unordered_set<std::string> skip_in_compiling = {
     // inline assembly
     "valid?",
 
-    //////////////////////
-    // GKERNEL-H
-    //////////////////////
+    /// GKERNEL-H
     // bitfields, possibly inline assembly
     "(method 2 handle)",
 
-    //////////////////////
-    // GKERNEL
-    //////////////////////
+    /// GKERNEL
     // asm
     "(method 10 process)",
 
-    //////////////////////
-    // GSTATE
-    //////////////////////
+    /// GSTATE
     "enter-state",  // stack pointer asm
 
+    /// MATH
+    "rand-vu-init", "rand-vu", "rand-vu-nostep",  // random hardware
+    "log2",                                       // weird tricky int-as-float stuff
+
+    /// VECTOR-H
+    "(method 3 vector4w)",   // print quad
+    "(method 3 vector8h)",   // print quad
+    "(method 3 vector16b)",  // print quad
+    "(method 3 vector)",     // print quad
+    "(method 3 rgbaf)",      // print quad
+    "(method 3 plane)",      // print quad
+    "(method 3 sphere)",     // print quad
+    "(method 3 qword)",      // print quad
+    "vector-zero!",          // i128
+    "vector-copy!",          // i128
+    "vector-dot",            // fpu acc
+    "vector4-dot",           // fpu acc
 };
 
 // default location for the data. It can be changed with a command line argument.
@@ -264,7 +288,7 @@ TEST_F(OfflineDecompilation, TypeAnalysis) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
-      if (!func.ir2.env.has_type_analysis() || !func.ir2.types_succeeded) {
+      if (!func.ir2.env.has_type_analysis() || !func.ir2.env.types_succeeded) {
         lg::error("Function {} failed types", func.guessed_name.to_string());
         failed_count++;
       }
@@ -359,18 +383,36 @@ TEST_F(OfflineDecompilation, Reference) {
   }
 }
 
+namespace {
+int line_count(const std::string& str) {
+  int result = 0;
+  for (auto& c : str) {
+    if (c == '\n') {
+      result++;
+    }
+  }
+  return result;
+}
+}  // namespace
+
 TEST_F(OfflineDecompilation, Compile) {
   Compiler compiler;
 
   compiler.run_front_end_on_string(file_util::read_text_file(file_util::get_file_path(
       {"test", "decompiler", "reference", "all_forward_declarations.gc"})));
 
+  Timer timer;
+  int total_lines = 0;
   for (auto& file : g_object_files_to_check_against_reference) {
     auto& obj_l = db->obj_files_by_name.at(file);
     ASSERT_EQ(obj_l.size(), 1);
 
     std::string src = db->ir2_final_out(obj_l.at(0), skip_in_compiling);
+    total_lines += line_count(src);
 
     compiler.run_full_compiler_on_string_no_save(src);
   }
+  auto time = timer.getSeconds();
+  lg::info("Total Lines Compiled: {}. Lines/second: {:.1f}\n", total_lines,
+           (float)total_lines / time);
 }

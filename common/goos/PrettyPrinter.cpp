@@ -574,18 +574,19 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
       }
 
       if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
-          name == "let*") {
+          name == "let*" || name == "rlet") {
         auto* first_list = getNextListOrEmptyListOnLine(node);
         if (first_list) {
           if (first_list->tok->kind == FormToken::TokenKind::EMPTY_PAIR) {
             insertNewlineAfter(pool, first_list, 0);
+            breakList(pool, node->paren, first_list);
           } else {
             insertNewlineAfter(pool, first_list->paren, 0);
             breakList(pool, node->paren, first_list);
           }
         }
 
-        if ((name == "let" || name == "let*") && first_list) {
+        if ((name == "let" || name == "let*" || name == "rlet") && first_list) {
           if (first_list->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
             // we only want to break the variable list if it has multiple.
             bool single_var = false;

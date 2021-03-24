@@ -184,6 +184,16 @@ std::string Instruction::cop2_dest_to_char() const {
   return dest;
 }
 
+int Instruction::cop2_dest_mask_intel() const {
+  int mask = 0;
+  for (int i = 0; i < 4; i++) {        // x,y,z,w order
+    if (cop2_dest & (1 << (3 - i))) {  // set for ps2
+      mask |= (1 << i);
+    }
+  }
+  return mask;
+}
+
 /*!
  * Convert just the name of the opcode to a string, omitting src/dst, but including
  * suffixes (interlock, broadcasts and destination)

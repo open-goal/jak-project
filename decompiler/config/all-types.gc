@@ -736,50 +736,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-;; math
-(deftype random-generator (basic)
-  ((seed uint32  :offset-assert 4)
-   )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
-  )
-
 (define-extern truncate (function float float))
 (define-extern integral? (function float symbol))
 (define-extern fractional-part (function float float))
-(define-extern log2 (function int int))
-(define-extern seek (function float float float float))
-(define-extern lerp (function float float float float))
-(define-extern lerp-scale (function float float float float float float))
-(define-extern lerp-clamp (function float float float float))
-(define-extern seekl (function int int int int))
-(define-extern rand-vu-init (function float float))
-(define-extern rand-vu (function float))
-(define-extern rand-vu-nostep (function float))
-(define-extern rand-vu-float-range (function float float float))
-(define-extern rand-vu-percent? (function float symbol))
-(define-extern rand-vu-int-range (function int int int))
-(define-extern rand-vu-int-count (function int int))
-
-; ;;(define-extern xyzwh object) ;; unknown type
-; 
-; 
-; 
-; (define-extern lerp function)
-; (define-extern lerp-scale function)
-; 
-
-; ;;(define-extern random-generator object) ;; unknown type
-; (define-extern integral? function)
-; (define-extern rand-uint31-gen function)
-; 
-; (define-extern fractional-part function)
-; (define-extern seek function)
-; ;;(define-extern xyzw object) ;; unknown type
-; 
-(define-extern *random-generator* random-generator) ;; unknown type
-; 
 
 (deftype rgba (uint32)
   ((r uint8 :offset 0)
@@ -802,6 +761,29 @@
   :flag-assert #x900000010
   )
 
+(define-extern log2 (function int int))
+(define-extern seek (function float float float float))
+(define-extern lerp (function float float float float))
+(define-extern lerp-scale (function float float float float float float))
+(define-extern lerp-clamp (function float float float float))
+(define-extern seekl (function int int int int))
+(define-extern rand-vu-init (function float float))
+(define-extern rand-vu (function float))
+(define-extern rand-vu-nostep (function float))
+(define-extern rand-vu-float-range (function float float float))
+(define-extern rand-vu-percent? (function float symbol))
+(define-extern rand-vu-int-range (function int int int))
+(define-extern rand-vu-int-count (function int int))
+
+(deftype random-generator (basic)
+  ((seed uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+(define-extern *random-generator* random-generator)
+(define-extern rand-uint31-gen (function random-generator uint))
 
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
@@ -1180,13 +1162,13 @@
   :size-assert         #x20
   :flag-assert         #x1000000020
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (add-spheres! (_type_ (pointer sphere) int) int 9)
+    (add-point! (_type_ vector3s) int 10)
+    (set-from-point-offset! (_type_ vector3s vector3s) int 11)
+    (set-from-point-offset-pad! (_type_ vector3s vector3s float) int 12)
+    (set-from-sphere! (_type_ sphere) int 13)
+    (set-from-spheres! (_type_ (pointer sphere) int) int 14)
+    (add-box! (_type_ bounding-box) int 15)
     )
   )
 
@@ -1247,6 +1229,7 @@
   :flag-assert         #x900000020
   )
 
+(define-extern matrix-copy! (function matrix matrix matrix))
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3572,6 +3555,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
+
 ;; level-h
 (deftype level (basic)
   ((name                      basic           :offset-assert 4)
@@ -4225,6 +4209,7 @@
   )
 
 (define-extern *dproc* process)
+(define-extern *display-strip-lines* int)
 
 ;;;;;;;;;;;;;;
 ;; mspace-h
@@ -13637,6 +13622,12 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
+
+
+;;;; level
+
+(define-extern lookup-level-info (function symbol level-load-info))
+(define-extern remap-level-name (function level-load-info object))
 
 ; ;; text
 ; (deftype game-text-info (basic)
@@ -32501,7 +32492,7 @@
 ;;(define-extern bounding-box4w object) ;; unknown type
 ;;(define-extern bounding-box-both object) ;; unknown type
 ;;(define-extern matrix4h object) ;; unknown type
-; (define-extern matrix-copy! function)
+
 ;;(define-extern matrix3 object) ;; unknown type
 ;;(define-extern matrix object) ;; unknown type
 ;;(define-extern *unity-quaternion* object) ;; unknown type
@@ -32889,7 +32880,7 @@
 ;;(define-extern *display-cam-coll-marks* object) ;; unknown type
 ;;(define-extern *display-ambient-hint-marks* object) ;; unknown type
 ;;(define-extern *display-cam-los-debug* object) ;; unknown type
-;;(define-extern *display-strip-lines* object) ;; unknown type
+
 ;;(define-extern *display-process-anim* object) ;; unknown type
 ;;(define-extern *display-actor-marks* object) ;; unknown type
 (define-extern *menu-hook* (function none))
@@ -34371,7 +34362,6 @@
 ;;(define-extern save object) ;; unknown type
 ;;(define-extern restore object) ;; unknown type
 ;;(define-extern mc-unformat object) ;; unknown type
-(define-extern lookup-level-info function)
 ;;(define-extern done object) ;; unknown type
 (define-extern get-aspect-ratio function)
 (define-extern progress-allowed? function)
@@ -34802,7 +34792,6 @@
 (define-extern load-vis-info function)
 (define-extern level-update-after-load function)
 (define-extern update-sound-banks function)
-(define-extern remap-level-name function)
 (define-extern add-bsp-drawable function)
 ;;(define-extern *print-login* object) ;; unknown type
 ;;(define-extern link-resume object) ;; unknown type
