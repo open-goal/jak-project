@@ -102,64 +102,67 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
       lookup_name = remapped->second;
     }
 
-    // get the type of the variable. This is the type of thing if we do no casts.
-    // first, get the type the decompiler found
-    auto type_of_var = var_info.type.typespec();
-    // and the user's type.
-    auto retype_kv = m_var_retype.find(original_name);
-    if (retype_kv != m_var_retype.end()) {
-      type_of_var = retype_kv->second;
-    }
+    if (types_succeeded) {
+      // get the type of the variable. This is the type of thing if we do no casts.
+      // first, get the type the decompiler found
+      auto type_of_var = var_info.type.typespec();
+      // and the user's type.
+      auto retype_kv = m_var_retype.find(original_name);
+      if (retype_kv != m_var_retype.end()) {
+        type_of_var = retype_kv->second;
+      }
 
-    // next, we insert type casts that make enforce the user override.
-    auto type_kv = m_typecasts.find(atomic_idx);
-    if (type_kv != m_typecasts.end()) {
-      for (auto& x : type_kv->second) {
-        if (x.reg == reg) {
-          // let's make sure the above claim is true
-          TypeSpec type_in_reg;
-          if (has_type_analysis() && mode == AccessMode::READ) {
-            type_in_reg = get_types_for_op_mode(atomic_idx, AccessMode::READ).get(reg).typespec();
-            if (type_in_reg.print() != x.type_name) {
-              lg::error(
-                  "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
-                  "(var {}) to type {}, but the actual type is {} ({})",
-                  reg.to_charp(), atomic_idx, lookup_name, x.type_name, type_in_reg.print(),
-                  type_in_reg.print());
-              assert(false);
+      // next, we insert type casts that make enforce the user override.
+      auto type_kv = m_typecasts.find(atomic_idx);
+      if (type_kv != m_typecasts.end()) {
+        for (auto& x : type_kv->second) {
+          if (x.reg == reg) {
+            // let's make sure the above claim is true
+            TypeSpec type_in_reg;
+            if (has_type_analysis() && mode == AccessMode::READ) {
+              type_in_reg = get_types_for_op_mode(atomic_idx, AccessMode::READ).get(reg).typespec();
+              if (type_in_reg.print() != x.type_name) {
+                lg::error(
+                    "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
+                    "(var {}) to type {}, but the actual type is {} ({})",
+                    reg.to_charp(), atomic_idx, lookup_name, x.type_name, type_in_reg.print(),
+                    type_in_reg.print());
+                assert(false);
+              }
             }
-          }
 
-          if (type_of_var != type_in_reg) {
-            // TODO - use the when possible?
-            return pretty_print::build_list("the-as", x.type_name, lookup_name);
+            if (type_of_var != type_in_reg) {
+              // TODO - use the when possible?
+              return pretty_print::build_list("the-as", x.type_name, lookup_name);
+            }
           }
         }
       }
-    }
 
-    // type analysis stuff runs before variable types, so we insert casts that account
-    // for the changing types due to the lca(uses) that is used to generate variable types.
-    auto type_of_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
-    if (mode == AccessMode::READ) {
-      // note - this may be stricter than needed. but that's ok.
+      // type analysis stuff runs before variable types, so we insert casts that account
+      // for the changing types due to the lca(uses) that is used to generate variable types.
+      auto type_of_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
+      if (mode == AccessMode::READ) {
+        // note - this may be stricter than needed. but that's ok.
 
-      if (type_of_var != type_of_reg) {
-        //        fmt::print("casting {} (reg {}, idx {}): reg type {} var type {} remapped var type
-        //        {}\n ",
-        //                   lookup_name, reg.to_charp(), atomic_idx, type_of_reg.print(),
-        //                   var_info.type.typespec().print(), type_of_var.print());
-        return pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+        if (type_of_var != type_of_reg) {
+          //        fmt::print("casting {} (reg {}, idx {}): reg type {} var type {} remapped var
+          //        type
+          //        {}\n ",
+          //                   lookup_name, reg.to_charp(), atomic_idx, type_of_reg.print(),
+          //                   var_info.type.typespec().print(), type_of_var.print());
+          return pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+        }
+      } else {
+        // if we're setting a variable, we are a little less strict.
+        // let's leave this to set!'s for now. This is tricky with stuff like (if y x) where the
+        // move is eliminated so the RegisterAccess points to the "wrong" place.
+        //      if (!dts->ts.tc(type_of_var, type_of_reg)) {
+        //        fmt::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
+        //        get_types_for_op_mode(atomic_idx, mode).get(reg).print()); return
+        //        pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+        //      }
       }
-    } else {
-      // if we're setting a variable, we are a little less strict.
-      // let's leave this to set!'s for now. This is tricky with stuff like (if y x) where the move
-      // is eliminated so the RegisterAccess points to the "wrong" place.
-      //      if (!dts->ts.tc(type_of_var, type_of_reg)) {
-      //        fmt::print("op {} reg {} type {}\n", atomic_idx, reg.to_charp(),
-      //        get_types_for_op_mode(atomic_idx, mode).get(reg).print()); return
-      //        pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
-      //      }
     }
 
     return pretty_print::to_symbol(lookup_name);

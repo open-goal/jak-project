@@ -199,7 +199,8 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
 
   // Handle destination masks
   if (func.allows_modifier(MOD::DEST_MASK) && instr.cop2_dest != 0xff && instr.cop2_dest != 15) {
-    named_args.push_back(pretty_print::to_symbol(fmt::format(":mask #b{:b}", instr.cop2_dest)));
+    named_args.push_back(
+        pretty_print::to_symbol(fmt::format(":mask #b{:b}", instr.cop2_dest_mask_intel())));
   }
 
   // Some functions are configured, or its easiest to swap the source args

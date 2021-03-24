@@ -10,16 +10,25 @@
 
 namespace {
 // the object files to test
-const std::unordered_set<std::string> g_object_files_to_decompile = {
-    "gcommon", "gstring-h",  "gkernel-h", "gkernel",  /*"pskernel",*/ "gstring", "dgo-h", "gstate",
-    "types-h", "vu1-macros", "math",      "vector-h",
-};
+const std::unordered_set<std::string> g_object_files_to_decompile = {"gcommon",
+                                                                     "gstring-h",
+                                                                     "gkernel-h",
+                                                                     "gkernel",
+                                                                     /*"pskernel",*/ "gstring",
+                                                                     "dgo-h",
+                                                                     "gstate",
+                                                                     "types-h",
+                                                                     "vu1-macros",
+                                                                     "math",
+                                                                     "vector-h",
+                                                                     "bounding-box-h",
+                                                                     /* gap */ "bounding-box"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
     "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h", "gkernel-h", "gkernel",    "gstring", "dgo-h",
-    "gstate",    "types-h",   "vu1-macros", "math",    "vector-h"};
+    "gstring-h", "gkernel-h",  "gkernel", "gstring",  "dgo-h",          "gstate",
+    "types-h",   "vu1-macros", "math",    "vector-h", "bounding-box-h", /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -44,6 +53,9 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "kernel-copy-function",              // ps2 ee kernel debug hook
     // math
     "rand-uint31-gen",  // weird and terrible random generator
+    // bounding-box
+    "(method 9 bounding-box)",   // handwritten asm loop
+    "(method 14 bounding-box)",  // handwritten asm loop
 };
 
 const std::unordered_set<std::string> skip_in_compiling = {
@@ -76,7 +88,7 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "rand-vu-init", "rand-vu", "rand-vu-nostep",  // random hardware
     "log2",                                       // weird tricky int-as-float stuff
 
-    /// VECTOR
+    /// VECTOR-H
     "(method 3 vector4w)",   // print quad
     "(method 3 vector8h)",   // print quad
     "(method 3 vector16b)",  // print quad
@@ -276,7 +288,7 @@ TEST_F(OfflineDecompilation, TypeAnalysis) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
-      if (!func.ir2.env.has_type_analysis() || !func.ir2.types_succeeded) {
+      if (!func.ir2.env.has_type_analysis() || !func.ir2.env.types_succeeded) {
         lg::error("Function {} failed types", func.guessed_name.to_string());
         failed_count++;
       }

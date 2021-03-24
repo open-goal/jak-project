@@ -1,12 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bounding-box.gc
-;; name in dgo: bounding-box
-;; dgos: GAME, ENGINE
-
+;; definition for function box-vector-enside?
 (defun box-vector-enside? ((box bounding-box) (pt vector))
-  "Is the point in the box? On the edge doesn't count"
   (and
    (< (-> box min data 0) (-> pt data 0))
    (< (-> box min data 1) (-> pt data 1))
@@ -17,8 +13,8 @@
    )
   )
 
+;; definition for function box-vector-inside?
 (defun box-vector-inside? ((box bounding-box) (pt vector))
-  "Is the point in the box? On the edge counts."
   (and
    (>= (-> pt data 0) (-> box min data 0))
    (>= (-> pt data 1) (-> box min data 1))
@@ -30,9 +26,10 @@
   )
 
 ;; definition for method 11 of type bounding-box
-(defmethod set-from-point-offset! bounding-box
-    ((obj bounding-box) (arg0 vector3s) (arg1 vector3s))
-  "Set box to smallest containing the points arg0, (arg0 + arg1)"
+(defmethod
+  set-from-point-offset!
+  bounding-box
+  ((obj bounding-box) (arg0 vector3s) (arg1 vector3s))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -56,7 +53,6 @@
 
 ;; definition for method 10 of type bounding-box
 (defmethod add-point! bounding-box ((obj bounding-box) (arg0 vector3s))
-  "Expand the box if needed to contain the given point"
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -74,7 +70,6 @@
 
 ;; definition for method 15 of type bounding-box
 (defmethod add-box! bounding-box ((obj bounding-box) (arg0 bounding-box))
-  "Expand the box if needed to contain the given box"
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -93,9 +88,10 @@
   )
 
 ;; definition for method 12 of type bounding-box
-(defmethod set-from-point-offset-pad! bounding-box
-    ((obj bounding-box) (arg0 vector3s) (arg1 vector3s) (arg2 float))
-  "Set the box size to contain pt, pt + offset, with some padding"
+(defmethod
+  set-from-point-offset-pad!
+  bounding-box
+  ((obj bounding-box) (arg0 vector3s) (arg1 vector3s) (arg2 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -123,7 +119,6 @@
 
 ;; definition for method 13 of type bounding-box
 (defmethod set-from-sphere! bounding-box ((obj bounding-box) (arg0 sphere))
-  "Set the box size to contain the given sphere"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -141,70 +136,11 @@
    )
   )
 
-(defmethod add-spheres! bounding-box ((obj bounding-box) (spheres (pointer sphere)) (count int))
-  "Add count spheres."
-  ;; the PS2 implementation is very optimized
-  ;; It is unrolled and 'software pipelined' to do 4 at a time.
-  ;; This is slightly less optimized.
-  (rlet ((current-min :class vf)
-         (current-max :class vf)
-         (sph-min :class vf)
-         (sph-max :class vf)
-         (sph :class vf))
+;; definition for method 14 of type bounding-box
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-    (when (nonzero? count)
-      ;; load these outside the loop
-      (.lvf current-min (-> obj min))
-      (.lvf current-max (-> obj max))
+;; definition for method 9 of type bounding-box
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
-      (dotimes (i count)
-        (.lvf sph (-> spheres i))
-        (.sub.w.vf sph-min sph sph :mask #b111)
-        (.add.w.vf sph-max sph sph :mask #b111)
-        (.min.vf current-min current-min sph-min :mask #b111)
-        (.max.vf current-max current-max sph-max :mask #b111)
-        )
-
-      (.svf (-> obj min) current-min)
-      (.svf (-> obj max) current-max)
-      )
-    )
-  0
-  )
-
-(defmethod set-from-spheres! bounding-box ((obj bounding-box) (spheres (pointer sphere)) (count int))
-  "Reset box to hold the given spheres. Note: this implementation could be optimized."
-  ;; This is also unrolled, but does 7 at a time.
-  (rlet ((vf0 :class vf)
-         (current-min :class vf)
-         (current-max :class vf)
-         (sph-min :class vf)
-         (sph-max :class vf)
-         (sph :class vf))
-    ;; init constant
-    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-    ;; init min/max. in the case we don't have any spheres, we should return (0,0,0,1) for min/max.
-    (set! current-min vf0)
-    (set! current-max vf0)
-
-    (dotimes (i count)
-      (.lvf sph (-> spheres i))
-      (.sub.w.vf sph-min sph sph :mask #b111)
-      (.add.w.vf sph-max sph sph :mask #b111)
-      (cond
-        ((zero? count)
-         (set! current-min sph-min)
-         (set! current-max sph-max)
-         )
-        (else
-         (.min.vf current-min current-min sph-min :mask #b111)
-         (.max.vf current-max current-max sph-max :mask #b111)
-         )
-        )
-      )
-    
-    (.svf (-> obj min) current-min)
-    (.svf (-> obj max) current-max)
-    )
-  0
-  )
+;; failed to figure out what this is:
+(none)

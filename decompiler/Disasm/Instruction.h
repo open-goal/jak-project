@@ -102,12 +102,14 @@ class Instruction {
   bool operator!=(const Instruction& other) const { return !((*this) == other); }
 
   // extra fields for some COP2 instructions.
+  // this is stored like in the PS2 instruction, which is different from intel
   uint8_t cop2_dest = 0xff;  // 0xff indicates "don't print dest"
   uint8_t cop2_bc = 0xff;    // 0xff indicates "don't print bc"
   uint8_t il = 0xff;         // 0xff indicates "don't print il"
 
   char cop2_bc_to_char() const;
   std::string cop2_dest_to_char() const;
+  int cop2_dest_mask_intel() const;
 };
 }  // namespace decompiler
 #endif  // NEXT_INSTRUCTION_H

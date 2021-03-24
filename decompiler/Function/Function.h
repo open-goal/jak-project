@@ -169,7 +169,6 @@ class Function {
     std::string debug_form_string;
     bool print_debug_forms = false;
     bool expressions_succeeded = false;
-    bool types_succeeded = false;
   } ir2;
 
  private:
