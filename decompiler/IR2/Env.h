@@ -108,6 +108,8 @@ class Env {
     m_typecasts = casts;
   }
 
+  const std::unordered_map<int, std::vector<TypeCast>>& casts() const { return m_typecasts; }
+
   void set_remap_for_function(int nargs);
   void set_remap_for_method(int nargs);
   void set_remap_for_new_method(int nargs);

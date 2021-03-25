@@ -3,6 +3,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
+#include "decompiler/util/config_parsers.h"
 
 namespace decompiler {
 Config gConfig;
@@ -151,5 +152,13 @@ void set_config(const std::string& path_to_config_file) {
       }
     }
   }
+
+  auto stack_vars_json = read_json_file_from_config(cfg, "stack_vars_file");
+  for (auto& kv : stack_vars_json.items()) {
+    auto& func_name = kv.key();
+    auto& stack_vars = kv.value();
+    gConfig.stack_var_hints_by_function[func_name] = parse_stack_var_hints(stack_vars);
+  }
 }
+
 }  // namespace decompiler

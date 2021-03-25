@@ -726,7 +726,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
     }
 
     // rd failed, try as pair.
-    if (dts.type_prop_settings.allow_pair) {
+    if (env.allow_sloppy_pair_typing()) {
       // we are strict here - only permit pair-type loads from object or pair.
       // object is permitted for stuff like association lists where the car is also a pair.
       if (m_kind == Kind::SIGNED && m_size == 4 &&

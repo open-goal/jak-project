@@ -211,6 +211,8 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
           return pretty_print::build_list("l.wu", m_addr->to_form(env));
         case 8:
           return pretty_print::build_list("l.d", m_addr->to_form(env));
+        case 16:
+          return pretty_print::build_list("l.q", m_addr->to_form(env));
         default:
           assert(false);
           return {};

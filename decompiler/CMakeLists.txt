@@ -10,6 +10,7 @@ add_library(
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/reg_usage.cpp
+        analysis/type_analysis.cpp
         analysis/variable_naming.cpp
 
         data/game_count.cpp
@@ -27,7 +28,6 @@ add_library(
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
         Function/Function.cpp
-        Function/TypeAnalysis.cpp
         Function/TypeInspector.cpp
 
         IR/BasicOpBuilder.cpp
@@ -48,6 +48,7 @@ add_library(
         ObjectFile/ObjectFileDB.cpp
         ObjectFile/ObjectFileDB_IR2.cpp
 
+        util/config_parsers.cpp
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp

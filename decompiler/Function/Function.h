@@ -90,12 +90,6 @@ class Function {
   const AtomicOp& get_atomic_op_at_instr(int idx);
   int get_basic_op_count();
   int get_failed_basic_op_count();
-
-  bool run_type_analysis_ir2(const TypeSpec& my_type,
-                             DecompilerTypeSystem& dts,
-                             LinkedObjectFile& file,
-                             const std::unordered_map<int, std::vector<TypeCast>>& casts,
-                             const std::unordered_map<std::string, LabelType>& label_types);
   BlockTopologicalSort bb_topo_sort();
 
   TypeSpec type;

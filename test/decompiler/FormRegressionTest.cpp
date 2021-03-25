@@ -1,5 +1,6 @@
 #include "FormRegressionTest.h"
 
+#include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/cfg_builder.h"
@@ -114,9 +115,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     const std::vector<std::pair<std::string, std::string>>& strings,
     const std::unordered_map<int, std::vector<TypeCast>>& casts,
     const std::string& var_map_json) {
-  dts->type_prop_settings.locked = true;
   dts->type_prop_settings.reset();
-  dts->type_prop_settings.allow_pair = allow_pairs;
   dts->type_prop_settings.current_method_type = method_name;
 
   std::vector<std::string> string_label_names;
@@ -152,7 +151,12 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
 
-  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, casts, {}));
+  test->func.ir2.env.set_type_casts(casts);
+  if (allow_pairs) {
+    test->func.ir2.env.set_sloppy_pair_typing();
+  }
+
+  EXPECT_TRUE(run_type_analysis_ir2(function_type, *dts, test->file, test->func));
   test->func.ir2.env.types_succeeded = true;
 
   test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));

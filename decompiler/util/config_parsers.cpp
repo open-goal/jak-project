@@ -1,0 +1,33 @@
+#include "config_parsers.h"
+
+namespace decompiler {
+std::vector<StackVariableHint> parse_stack_var_hints(const nlohmann::json& json) {
+  std::vector<StackVariableHint> result;
+  for (auto& stack_var : json) {
+    StackVariableHint hint;
+    hint.var_name = stack_var.at(0).get<std::string>();
+    hint.stack_offset = stack_var.at(1).get<int>();
+    auto& type_info = stack_var.at(2);
+    if (type_info.is_array()) {
+      auto container_type = type_info.at(0).get<std::string>();
+      if (container_type == "array") {
+        hint.container_type = StackVariableHint::ContainerType::ARRAY;
+      } else if (container_type == "inline-array") {
+        hint.container_type = StackVariableHint::ContainerType::INLINE_ARRAY;
+      } else {
+        throw std::runtime_error("Container type is invalid: " + container_type);
+      }
+      hint.element_type = type_info.at(1).get<std::string>();
+      hint.container_size = type_info.at(2).get<int>();
+    } else if (type_info.is_string()) {
+      hint.container_type = StackVariableHint::ContainerType::NONE;
+      hint.container_size = -1;
+      hint.element_type = type_info.get<std::string>();
+    } else {
+      throw std::runtime_error("Invalid stack var override");
+    }
+    result.push_back(hint);
+  }
+  return result;
+}
+}  // namespace decompiler

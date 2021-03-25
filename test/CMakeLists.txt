@@ -22,6 +22,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_AtomicOpBuilder.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormBeforeExpressions.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild2.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionDecode.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
