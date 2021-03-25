@@ -5,6 +5,7 @@
 #include "decompiler/Function/Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/util/TP_Type.h"
+#include "decompiler/Function/Warnings.h"
 
 namespace decompiler {
 
@@ -716,6 +717,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
       return convert_lw_1(i0, idx);
     case InstructionKind::LD:
       return make_standard_load(i0, idx, 8, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::LQ:
+      return make_standard_load(i0, idx, 16, LoadVarOp::Kind::UNSIGNED);
     case InstructionKind::DSLL:
       return make_2reg_1imm_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx);
     case InstructionKind::DSLL32:
@@ -778,6 +781,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
       return convert_sw_1(i0, idx);
     case InstructionKind::SD:
       return convert_sd_1(i0, idx);
+    case InstructionKind::SQ:
+      return make_standard_store(i0, idx, 16, false);
     case InstructionKind::SWC1:
       return make_standard_store(i0, idx, 4, true);
     case InstructionKind::CVTWS:  // float to int
@@ -1378,7 +1383,8 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 std::vector<Instruction>::const_iterator begin,
                                 std::vector<Instruction>::const_iterator end,
                                 const std::vector<DecompilerLabel>& labels,
-                                FunctionAtomicOps* container) {
+                                FunctionAtomicOps* container,
+                                DecompWarnings& warnings) {
   container->block_id_to_first_atomic_op.push_back(container->ops.size());
   for (auto& instr = begin; instr < end;) {
     // how many instructions can we look at, at most?
@@ -1390,6 +1396,10 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     bool converted = false;
     std::unique_ptr<AtomicOp> op;
+
+    if (instr[0].kind == InstructionKind::SQ || instr[0].kind == InstructionKind::LQ) {
+      warnings.warn_sq_lq();
+    }
 
     if (n_instr >= 5) {
       // try 5 instructions
@@ -1469,7 +1479,8 @@ int convert_block_to_atomic_ops(int begin_idx,
 }
 
 FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
-                                                 const std::vector<DecompilerLabel>& labels) {
+                                                 const std::vector<DecompilerLabel>& labels,
+                                                 DecompWarnings& warnings) {
   FunctionAtomicOps result;
 
   int last_op = 0;
@@ -1479,7 +1490,8 @@ FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
     if (block.end_word > block.start_word) {
       auto begin = func.instructions.begin() + block.start_word;
       auto end = func.instructions.begin() + block.end_word;
-      last_op = convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result);
+      last_op =
+          convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result, warnings);
       if (i == int(func.basic_blocks.size()) - 1) {
         // we're the last block. insert the function end op.
         result.ops.push_back(std::make_unique<FunctionEndOp>(int(result.ops.size())));

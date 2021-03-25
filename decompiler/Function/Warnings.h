@@ -5,6 +5,7 @@
 
 #include "third-party/fmt/core.h"
 
+namespace decompiler {
 class DecompWarnings {
  public:
   DecompWarnings() = default;
@@ -39,7 +40,8 @@ class DecompWarnings {
     warning(Warning::Kind::INFO, str, std::forward<Args>(args)...);
   }
 
-  bool has_warnings() const { return !m_warnings.empty(); }
+  bool has_warnings() const { return !m_warnings.empty() || m_used_lq_sq; }
+  void warn_sq_lq() { m_used_lq_sq = true; }
 
   std::string get_warning_text(bool as_comment) const {
     std::string result;
@@ -48,6 +50,9 @@ class DecompWarnings {
         result += ";; ";
       }
       result += w.print();
+    }
+    if (m_used_lq_sq) {
+      result += ";; Used lq/sq\n";
     }
     return result;
   }
@@ -95,4 +100,6 @@ class DecompWarnings {
   }
 
   std::vector<Warning> m_warnings;
+  bool m_used_lq_sq = false;
 };
+}  // namespace decompiler

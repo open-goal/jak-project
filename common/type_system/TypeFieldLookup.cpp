@@ -339,9 +339,8 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
     }
 
     // otherwise access within the element
-    if (elt_idx != 0) {
-      path->push_back(token);
-    }
+    path->push_back(token);
+
     FieldReverseLookupInput next_input;
     next_input.deref = input.deref;
     next_input.stride = 0;

@@ -1,10 +1,11 @@
+#include <regex>
 #include "gtest/gtest.h"
 #include "decompiler/IR2/AtomicOp.h"
 #include "decompiler/analysis/atomic_op_builder.h"
 #include "decompiler/Disasm/InstructionParser.h"
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
-#include <regex>
+#include "decompiler/Function/Warnings.h"
 
 using namespace decompiler;
 
@@ -42,8 +43,9 @@ void test_case(std::string assembly_lines,
   FunctionAtomicOps container;
 
   // treat the entire program as a single basic block, and convert!
+  DecompWarnings warnings;
   convert_block_to_atomic_ops(0, prg.instructions.begin(), prg.instructions.end(), prg.labels,
-                              &container);
+                              &container, warnings);
 
   // count operations
   EXPECT_EQ(container.ops.size(), output_lines.size());
@@ -126,8 +128,9 @@ TEST(DecompilerAtomicOpBuilder, RegUseDuplication) {
   ParsedProgram prg = parser.parse_program(assembly);
   EXPECT_EQ(prg.print(), assembly);
   FunctionAtomicOps container;
+  DecompWarnings warnings;
   convert_block_to_atomic_ops(0, prg.instructions.begin(), prg.instructions.end(), prg.labels,
-                              &container);
+                              &container, warnings);
   ASSERT_EQ(1, container.ops.size());
   auto& op = container.ops.at(0);
   for (const auto& reg_group : {op->read_regs(), op->write_regs(), op->clobber_regs()}) {
