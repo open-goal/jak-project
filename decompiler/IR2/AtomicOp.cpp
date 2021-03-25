@@ -989,6 +989,9 @@ goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const 
       case 8:
         store_name = "s.d!";
         break;
+      case 16:
+        store_name = "s.q!";
+        break;
       default:
         assert(false);
     }
@@ -1055,6 +1058,9 @@ goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, cons
           break;
         case 8:
           forms.push_back(pretty_print::build_list("l.d", m_src.to_form(labels, env)));
+          break;
+        case 16:
+          forms.push_back(pretty_print::build_list("l.q", m_src.to_form(labels, env)));
           break;
         default:
           assert(false);

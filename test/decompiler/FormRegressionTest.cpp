@@ -146,7 +146,8 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
   }
 
-  auto ops = convert_function_to_atomic_ops(test->func, program.labels);
+  DecompWarnings warnings;
+  auto ops = convert_function_to_atomic_ops(test->func, program.labels, warnings);
   test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());

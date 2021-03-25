@@ -6,6 +6,7 @@ namespace decompiler {
 class Function;
 struct BasicBlock;
 class LinkedObjectFile;
+class DecompWarnings;
 
 /*!
  * A collection of Atomic Ops in a function
@@ -45,11 +46,13 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 std::vector<Instruction>::const_iterator begin,
                                 std::vector<Instruction>::const_iterator end,
                                 const std::vector<DecompilerLabel>& labels,
-                                FunctionAtomicOps* container);
+                                FunctionAtomicOps* container,
+                                DecompWarnings& warnings);
 
 /*!
  * Convert an entire function to AtomicOps
  */
 FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
-                                                 const std::vector<DecompilerLabel>& labels);
+                                                 const std::vector<DecompilerLabel>& labels,
+                                                 DecompWarnings& warnings);
 }  // namespace decompiler

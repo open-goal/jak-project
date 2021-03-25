@@ -699,6 +699,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
             case 4:
             case 8:
               return TP_Type::make_from_ts(TypeSpec("uint"));
+            case 16:
+              return TP_Type::make_from_ts(TypeSpec("uint128"));
             default:
               break;
           }
@@ -710,6 +712,8 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
             case 4:
             case 8:
               return TP_Type::make_from_ts(TypeSpec("int"));
+            case 16:
+              return TP_Type::make_from_ts(TypeSpec("int128"));
             default:
               break;
           }

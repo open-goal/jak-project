@@ -41,6 +41,7 @@ class Val {
   }
   virtual RegVal* to_gpr(Env* fe);
   virtual RegVal* to_fpr(Env* fe);
+  virtual RegVal* to_xmm128(Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
@@ -75,6 +76,7 @@ class RegVal : public Val {
   RegVal* to_reg(Env* fe) override;
   RegVal* to_gpr(Env* fe) override;
   RegVal* to_fpr(Env* fe) override;
+  RegVal* to_xmm128(Env* fe) override;
   void set_rlet_constraint(emitter::Register reg);
   const std::optional<emitter::Register>& rlet_constraint() const;
 
@@ -182,7 +184,13 @@ class StackVarAddrVal : public Val {
 class MemoryOffsetConstantVal : public Val {
  public:
   MemoryOffsetConstantVal(TypeSpec ts, Val* _base, s64 _offset)
-      : Val(std::move(ts)), base(_base), offset(_offset) {}
+      : Val(std::move(ts)), base(_base), offset(_offset) {
+    auto base_as_offset = dynamic_cast<MemoryOffsetConstantVal*>(base);
+    if (base_as_offset) {
+      offset += base_as_offset->offset;
+      base = base_as_offset->base;
+    }
+  }
   std::string print() const override {
     return "(" + base->print() + " + " + std::to_string(offset) + ")";
   }

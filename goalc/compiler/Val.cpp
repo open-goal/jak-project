@@ -32,13 +32,26 @@ RegVal* Val::to_fpr(Env* fe) {
   }
 }
 
+/*!
+ * Fallback to_xmm128 if a more optimized one is not provided.
+ */
+RegVal* Val::to_xmm128(Env* fe) {
+  auto rv = to_reg(fe);
+  if (rv->ireg().reg_class == RegClass::INT_128 || rv->ireg().reg_class == RegClass::VECTOR_FLOAT) {
+    return rv;
+  } else {
+    auto re = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::INT_128);
+    fe->emit(std::make_unique<IR_RegSet>(re, rv));
+    return re;
+  }
+}
+
 RegVal* RegVal::to_reg(Env* fe) {
   (void)fe;
   return this;
 }
 
 RegVal* RegVal::to_gpr(Env* fe) {
-  (void)fe;
   if (m_ireg.reg_class == RegClass::GPR_64) {
     return this;
   } else {
@@ -49,11 +62,20 @@ RegVal* RegVal::to_gpr(Env* fe) {
 }
 
 RegVal* RegVal::to_fpr(Env* fe) {
-  (void)fe;
   if (m_ireg.reg_class == RegClass::FLOAT) {
     return this;
   } else {
     auto re = fe->make_fpr(coerce_to_reg_type(m_ts));
+    fe->emit(std::make_unique<IR_RegSet>(re, this));
+    return re;
+  }
+}
+
+RegVal* RegVal::to_xmm128(Env* fe) {
+  if (m_ireg.reg_class == RegClass::INT_128 || m_ireg.reg_class == RegClass::VECTOR_FLOAT) {
+    return this;
+  } else {
+    auto re = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::INT_128);
     fe->emit(std::make_unique<IR_RegSet>(re, this));
     return re;
   }

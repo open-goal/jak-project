@@ -161,6 +161,14 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
       typecheck_reg_type_allow_false(form, dest_type, src, "set! memory");
     }
 
+    // we want to allow setting a 128-bit field from a 64-bit variable.
+    if (as_mem_deref->info.size == 16) {
+      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto src_128 = fe->make_ireg(src_in_reg->type(), RegClass::INT_128);
+      env->emit_ir<IR_RegSet>(src_128, src_in_reg);
+      src_in_reg = src_128;
+    }
+
     // setting somewhere in memory
     auto base = as_mem_deref->base;
     auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);

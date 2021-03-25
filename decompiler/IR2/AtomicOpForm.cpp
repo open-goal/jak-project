@@ -324,6 +324,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           case 8:
             cast_type = "int64";
             break;
+          case 16:
+            cast_type = "int128";
+            break;
           default:
             assert(false);
         }
@@ -485,6 +488,9 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
             break;
           case 8:
             cast_type = "int64";
+            break;
+          case 16:
+            cast_type = "int128";
             break;
           default:
             assert(false);

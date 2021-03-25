@@ -626,9 +626,8 @@
   )
 
 ;; definition for method 2 of type array
-;; WARN: Inline assembly instruction marked with TODO - [TODO.LQ]
+;; Used lq/sq
 (defmethod print array ((obj array))
-  (local-vars (a2-8 int))
   (format #t "#(")
   (if (type-type? (-> obj content-type) integer)
    (let ((content-type-sym (-> obj content-type symbol)))
@@ -717,19 +716,11 @@
       (cond
        ((or (= content-type-sym 'uint128) (= content-type-sym 'int128))
         (dotimes (s5-8 (-> obj length))
-         (let ((t9-10 format)
-               (a0-21 #t)
-               (a1-11 (if (zero? s5-8)
-                       "#x~X"
-                       " #x~X"
-                       )
-                )
-               )
-          (let
-           ((v1-42 (+ (shl s5-8 4) (the-as int (the-as (array uint128) obj)))))
-           (TODO.LQ a2-8 v1-42 :offset 12)
-           )
-          (t9-10 a0-21 a1-11 a2-8)
+         (format #t (if (zero? s5-8)
+                     "#x~X"
+                     " #x~X"
+                     )
+          (-> (the-as (array uint128) obj) s5-8)
           )
          )
         )
@@ -771,9 +762,8 @@
   )
 
 ;; definition for method 3 of type array
-;; WARN: Inline assembly instruction marked with TODO - [TODO.LQ]
+;; Used lq/sq
 (defmethod inspect array ((obj array))
-  (local-vars (a3-10 int))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
   (format #t "~Tlength: ~D~%" (-> obj length))
@@ -826,15 +816,11 @@
       (cond
        ((or (= content-type-sym 'int128) (= content-type-sym 'uint128))
         (dotimes (s5-8 (-> obj length))
-         (let ((t9-14 format)
-               (a0-25 #t)
-               (a1-15 "~T  [~D] #x~X~%")
-               (a2-13 s5-8)
-               )
-          (let ((v1-42 (+ (shl s5-8 4) (the-as int obj))))
-           (TODO.LQ a3-10 v1-42 :offset 12)
-           )
-          (t9-14 a0-25 a1-15 a2-13 a3-10)
+         (format
+          #t
+          "~T  [~D] #x~X~%"
+          s5-8
+          (-> (the-as (pointer uint128) (+ (shl s5-8 4) (the-as int obj))))
           )
          )
         )
@@ -900,16 +886,16 @@
   )
 
 ;; definition for function qmem-copy<-!
-;; WARN: Inline assembly instruction marked with TODO - [TODO.LQ]
-;; WARN: Inline assembly instruction marked with TODO - [TODO.SQ]
+;; Used lq/sq
 (defun qmem-copy<-! ((dst pointer) (src pointer) (size int))
-  (local-vars (value int))
   (let ((result dst))
    (let ((qwc (sar (+ size 15) 4)))
     (while (nonzero? qwc)
      (+! qwc -1)
-     (TODO.LQ value src)
-     (TODO.SQ value dst)
+     (set!
+      (-> (the-as (pointer uint128) dst))
+      (-> (the-as (pointer uint128) src))
+      )
      (&+! dst 16)
      (&+! src 16)
      )
@@ -919,21 +905,21 @@
   )
 
 ;; definition for function qmem-copy->!
-;; WARN: Inline assembly instruction marked with TODO - [TODO.LQ]
-;; WARN: Inline assembly instruction marked with TODO - [TODO.SQ]
+;; Used lq/sq
 (defun qmem-copy->! ((dst pointer) (src pointer) (size int))
-  (local-vars (value int))
   (let ((result dst))
    (let* ((qwc (sar (+ size 15) 4))
-          (src-ptr (&+ dst (shl qwc 4)))
-          (dst-ptr (&+ src (shl qwc 4)))
+          (dst-ptr (&+ dst (shl qwc 4)))
+          (src-ptr (&+ src (shl qwc 4)))
           )
     (while (nonzero? qwc)
      (+! qwc -1)
-     (&+! src-ptr -16)
      (&+! dst-ptr -16)
-     (TODO.LQ value dst-ptr)
-     (TODO.SQ value src-ptr)
+     (&+! src-ptr -16)
+     (set!
+      (-> (the-as (pointer uint128) dst-ptr))
+      (-> (the-as (pointer uint128) src-ptr))
+      )
      )
     )
    result
