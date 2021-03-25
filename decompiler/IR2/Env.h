@@ -131,6 +131,11 @@ class Env {
     m_label_types = types;
   }
 
+  void set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
+    m_stack_var_hints = hints;
+  }
+  const std::vector<StackVariableHint>& stack_var_hints() const { return m_stack_var_hints; }
+
   const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
   void disable_use(const RegisterAccess& access) {
     if (has_local_vars()) {
@@ -168,6 +173,7 @@ class Env {
   bool m_allow_sloppy_pair_typing = false;
 
   std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
+  std::vector<StackVariableHint> m_stack_var_hints;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;
   std::unordered_map<std::string, LabelType> m_label_types;

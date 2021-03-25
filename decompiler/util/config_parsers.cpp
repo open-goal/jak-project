@@ -1,4 +1,5 @@
 #include "config_parsers.h"
+#include "common/util/json_util.h"
 
 namespace decompiler {
 std::vector<StackVariableHint> parse_stack_var_hints(const nlohmann::json& json) {
@@ -30,4 +31,23 @@ std::vector<StackVariableHint> parse_stack_var_hints(const nlohmann::json& json)
   }
   return result;
 }
+
+std::unordered_map<int, std::vector<decompiler::TypeCast>> parse_cast_hints(
+    const nlohmann::json& casts) {
+  std::unordered_map<int, std::vector<decompiler::TypeCast>> out;
+
+  for (auto& cast : casts) {
+    auto idx_range = parse_json_optional_integer_range(cast.at(0));
+    for (auto idx : idx_range) {
+      TypeCast type_cast;
+      type_cast.atomic_op_idx = idx;
+      type_cast.reg = Register(cast.at(1));
+      type_cast.type_name = cast.at(2).get<std::string>();
+      out[idx].push_back(type_cast);
+    }
+  }
+
+  return out;
+}
+
 }  // namespace decompiler

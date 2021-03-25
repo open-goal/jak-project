@@ -11,8 +11,9 @@ TEST_F(FormRegressionTest, StringTest) {
       "L101:\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
-  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), false, false, "",
-                            {{"L100", "testing-string"}, {"L101", "testing-string-2"}});
+  TestSettings settings;
+  settings.strings = {{"L100", "testing-string"}, {"L101", "testing-string-2"}};
+  auto test = make_function(func, TypeSpec("function", {TypeSpec("none")}), settings);
 
   EXPECT_EQ(test->file.get_goal_string_by_label(test->file.get_label_by_name("L100")),
             "testing-string");

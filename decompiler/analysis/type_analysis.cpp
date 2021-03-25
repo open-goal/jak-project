@@ -63,10 +63,7 @@ void try_modify_input_types_for_casts(
 }
 }  // namespace
 
-bool run_type_analysis_ir2(const TypeSpec& my_type,
-                           DecompilerTypeSystem& dts,
-                           LinkedObjectFile& file,
-                           Function& func) {
+bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, Function& func) {
   // STEP 0 - set decompiler type system settings for this function. In config we can manually
   if (func.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     dts.type_prop_settings.current_method_type = func.guessed_name.type_name;
