@@ -26,6 +26,10 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
         // operations
         AsmOpElement* elem = dynamic_cast<AsmOpElement*>(entry);
         if (!elem) {
+          auto as_load_store = dynamic_cast<VectorFloatLoadStoreElement*>(entry);
+          if (as_load_store) {
+            as_load_store->collect_vf_regs(vf_regs);
+          }
           new_entries.push_back(entry);
           continue;
         }

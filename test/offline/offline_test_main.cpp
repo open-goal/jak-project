@@ -14,30 +14,18 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "gcommon", "gstring-h", "gkernel-h", "gkernel",
     /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
-    "trigonometry-h",
+    "trigonometry-h", /* transformq-h */ "matrix",
     /* gap */
     "bounding-box"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
     "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h",
-    "gkernel-h",
-    "gkernel",
-    "gstring",
-    "dgo-h",
-    "gstate",
-    "types-h",
-    "vu1-macros",
-    "math",
-    "vector-h",
-    "bounding-box-h",
-    "matrix-h",
-    "quaternion-h",
-    "euler-h",
-    "transform-h",
-    "geometry-h",
-    "trigonometry-h",
+    "gstring-h", "gkernel-h", "gkernel", "gstring", "dgo-h", "gstate", "types-h", "vu1-macros",
+    "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
+    "geometry-h", "trigonometry-h",
+    /* transformq-h, */
+    "matrix",
     /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
@@ -66,6 +54,10 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     // bounding-box
     "(method 9 bounding-box)",   // handwritten asm loop
     "(method 14 bounding-box)",  // handwritten asm loop
+    // matrix
+    "(method 9 matrix)",  // handwritten asm loop
+    "matrix-axis-sin-cos!",
+    "matrix-axis-sin-cos-vu!",
 };
 
 const std::unordered_set<std::string> skip_in_compiling = {
@@ -100,6 +92,10 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
     "vector-dot",         // fpu acc
     "vector4-dot",        // fpu acc
+
+    /// MATRIX
+    "matrix-transpose!",    // unsupported asm ops
+    "matrix-4x4-inverse!",  // compiler fails to regalloc this...
 };
 
 // default location for the data. It can be changed with a command line argument.

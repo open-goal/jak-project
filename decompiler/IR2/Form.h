@@ -1276,6 +1276,7 @@ class VectorFloatLoadStoreElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void collect_vf_regs(RegSet& regs) const;
 
  private:
   Register m_vf_reg;
