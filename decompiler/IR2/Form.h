@@ -199,6 +199,7 @@ class LoadSourceElement : public FormElement {
   int size() const { return m_size; }
   LoadVarOp::Kind kind() const { return m_kind; }
   const Form* location() const { return m_addr; }
+  Form* location() { return m_addr; }
   void update_from_stack(const Env& env,
                          FormPool& pool,
                          FormStack& stack,
@@ -1001,6 +1002,7 @@ class DerefElement : public FormElement {
   Form* base() { return m_base; }
   const std::vector<DerefToken>& tokens() const { return m_tokens; }
   void set_base(Form* new_base);
+  void set_addr_of(bool is_addr_of) { m_is_addr_of = is_addr_of; }
 
  private:
   Form* m_base = nullptr;
@@ -1245,6 +1247,41 @@ class LambdaDefinitionElement : public FormElement {
 
  private:
   goos::Object m_def;
+};
+
+class StackVarDefElement : public FormElement {
+ public:
+  StackVarDefElement(const StackVarEntry& entry);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  StackVarEntry m_entry;
+};
+
+class VectorFloatLoadStoreElement : public FormElement {
+ public:
+  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void collect_vf_regs(RegSet& regs) const;
+
+ private:
+  Register m_vf_reg;
+  Form* m_location = nullptr;
+  bool m_is_load = false;
 };
 
 /*!

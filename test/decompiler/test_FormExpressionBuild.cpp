@@ -2282,8 +2282,8 @@ TEST_F(FormRegressionTest, ExprPrintName) {
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_cast_json("[\t\t[24, \"a1\", \"symbol\"],\n"
-                                 "\t\t[39, \"a0\", \"symbol\"]]"));
+                 "[\t\t[24, \"a1\", \"symbol\"],\n"
+                 "\t\t[39, \"a0\", \"symbol\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprProfileBarMethod9) {

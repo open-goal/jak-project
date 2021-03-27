@@ -211,6 +211,8 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
           return pretty_print::build_list("l.wu", m_addr->to_form(env));
         case 8:
           return pretty_print::build_list("l.d", m_addr->to_form(env));
+        case 16:
+          return pretty_print::build_list("l.q", m_addr->to_form(env));
         default:
           assert(false);
           return {};
@@ -228,6 +230,10 @@ goos::Object LoadSourceElement::to_form_internal(const Env& env) const {
           assert(false);
           return {};
       }
+      break;
+    case LoadVarOp::Kind::VECTOR_FLOAT:
+      assert(m_size == 16);
+      return pretty_print::build_list("l.vf", m_addr->to_form(env));
       break;
     default:
       assert(false);
@@ -2212,6 +2218,75 @@ void LambdaDefinitionElement::apply(const std::function<void(FormElement*)>& f) 
 void LambdaDefinitionElement::collect_vars(RegAccessSet&, bool) const {}
 
 void LambdaDefinitionElement::get_modified_regs(RegSet&) const {}
+
+/////////////////////////////
+// StackVarDefElement
+/////////////////////////////
+
+StackVarDefElement::StackVarDefElement(const StackVarEntry& entry) : m_entry(entry) {}
+
+goos::Object StackVarDefElement::to_form_internal(const Env&) const {
+  switch (m_entry.hint.container_type) {
+    case StackVariableHint::ContainerType::NONE:
+      return pretty_print::build_list(fmt::format("new 'stack '{}", m_entry.ref_type.print()));
+    default:
+      assert(false);
+  }
+}
+
+void StackVarDefElement::apply_form(const std::function<void(Form*)>&) {}
+
+void StackVarDefElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void StackVarDefElement::collect_vars(RegAccessSet&, bool) const {}
+
+void StackVarDefElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// VectorFloatLoadStoreElement
+////////////////////////////////
+
+VectorFloatLoadStoreElement::VectorFloatLoadStoreElement(Register vf_reg,
+                                                         Form* location,
+                                                         bool is_load)
+    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {
+  location->parent_element = this;
+}
+
+goos::Object VectorFloatLoadStoreElement::to_form_internal(const Env& env) const {
+  if (m_is_load) {
+    return pretty_print::build_list(".lvf", pretty_print::to_symbol(m_vf_reg.to_charp()),
+                                    m_location->to_form(env));
+  } else {
+    return pretty_print::build_list(".svf", m_location->to_form(env),
+                                    pretty_print::to_symbol(m_vf_reg.to_charp()));
+  }
+}
+
+void VectorFloatLoadStoreElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_location->apply(f);
+}
+
+void VectorFloatLoadStoreElement::apply_form(const std::function<void(Form*)>& f) {
+  m_location->apply_form(f);
+}
+
+void VectorFloatLoadStoreElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_location->collect_vars(vars, recursive);
+  }
+}
+
+void VectorFloatLoadStoreElement::get_modified_regs(RegSet&) const {
+  // vf's dont count
+}
+
+void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
+  regs.insert(m_vf_reg);
+}
 
 std::optional<SimpleAtom> form_as_atom(const Form* f) {
   auto as_single = f->try_as_single_element();

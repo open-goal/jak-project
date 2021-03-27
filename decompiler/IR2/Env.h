@@ -16,6 +16,12 @@ class Form;
 class DecompilerTypeSystem;
 struct FunctionAtomicOps;
 
+struct StackVarEntry {
+  StackVariableHint hint;
+  TypeSpec ref_type;  // the actual type of the address.
+  int size = -1;
+};
+
 /*!
  * An "environment" for a single function.
  * This contains data for an entire function, like which registers are live when, the types of
@@ -108,6 +114,8 @@ class Env {
     m_typecasts = casts;
   }
 
+  const std::unordered_map<int, std::vector<TypeCast>>& casts() const { return m_typecasts; }
+
   void set_remap_for_function(int nargs);
   void set_remap_for_method(int nargs);
   void set_remap_for_new_method(int nargs);
@@ -129,6 +137,9 @@ class Env {
     m_label_types = types;
   }
 
+  void set_stack_var_hints(const std::vector<StackVariableHint>& hints);
+  const std::vector<StackVarEntry>& stack_var_hints() const { return m_stack_vars; }
+
   const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
   void disable_use(const RegisterAccess& access) {
     if (has_local_vars()) {
@@ -146,6 +157,7 @@ class Env {
 
   void set_retype_map(const std::unordered_map<std::string, TypeSpec>& map) { m_var_retype = map; }
 
+  // todo - remove these hacks at some point.
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
 
@@ -166,6 +178,7 @@ class Env {
   bool m_allow_sloppy_pair_typing = false;
 
   std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
+  std::vector<StackVarEntry> m_stack_vars;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;
   std::unordered_map<std::string, LabelType> m_label_types;

@@ -963,38 +963,47 @@ void SetVarConditionOp::collect_vars(RegAccessSet& vars) const {
 // StoreOp
 /////////////////////////////
 
-StoreOp::StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx)
+StoreOp::StoreOp(int size, Kind kind, SimpleExpression addr, SimpleAtom value, int my_idx)
     : AtomicOp(my_idx),
       m_size(size),
-      m_is_float(is_float),
+      m_kind(kind),
       m_addr(std::move(addr)),
       m_value(std::move(value)) {}
 
 goos::Object StoreOp::to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const {
   std::string store_name;
-  if (m_is_float) {
-    assert(m_size == 4);
-    store_name = "s.f!";
-  } else {
-    switch (m_size) {
-      case 1:
-        store_name = "s.b!";
-        break;
-      case 2:
-        store_name = "s.h!";
-        break;
-      case 4:
-        store_name = "s.w!";
-        break;
-      case 8:
-        store_name = "s.d!";
-        break;
-      case 16:
-        store_name = "s.q!";
-        break;
-      default:
-        assert(false);
-    }
+  switch (m_kind) {
+    case Kind::INTEGER:
+      switch (m_size) {
+        case 1:
+          store_name = "s.b!";
+          break;
+        case 2:
+          store_name = "s.h!";
+          break;
+        case 4:
+          store_name = "s.w!";
+          break;
+        case 8:
+          store_name = "s.d!";
+          break;
+        case 16:
+          store_name = "s.q!";
+          break;
+        default:
+          assert(false);
+      }
+      break;
+    case Kind::FLOAT:
+      assert(m_size == 4);
+      store_name = "s.f!";
+      break;
+    case Kind::VECTOR_FLOAT:
+      assert(m_size == 16);
+      store_name = "s.vf!";
+      break;
+    default:
+      assert(false);
   }
 
   return pretty_print::build_list(pretty_print::to_symbol(store_name), m_addr.to_form(labels, env),
@@ -1081,6 +1090,11 @@ goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, cons
           assert(false);
       }
       break;
+    case Kind::VECTOR_FLOAT:
+      assert(m_size == 16);
+      forms.push_back(pretty_print::build_list("l.vf", m_src.to_form(labels, env)));
+      break;
+
     default:
       assert(false);
   }

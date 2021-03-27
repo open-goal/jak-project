@@ -371,7 +371,7 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "  (the-as cpu-thread (the-as object obj))\n"
       "  )";
   test_with_expr(func, type, expected, false, "cpu-thread", {},
-                 parse_cast_json("[[[13, 28], \"v0\", \"cpu-thread\"]]"),
+                 "[[[13, 28], \"v0\", \"cpu-thread\"]]",
                  "{\"vars\":{\"v0-0\":[\"obj\", \"cpu-thread\"]}}");
 }
 
@@ -686,8 +686,8 @@ TEST_F(FormRegressionTest, ExprMethod0Process) {
       "  (the-as process v0-0)\n"
       "  )";
   test_with_expr(func, type, expected, false, "process", {},
-                 parse_cast_json("[\t\t[12, \"a0\", \"int\"],\n"
-                                 "\t\t[[13, 43], \"v0\", \"process\"]]"));
+                 "[\t\t[12, \"a0\", \"int\"],\n"
+                 "\t\t[[13, 43], \"v0\", \"process\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
@@ -751,8 +751,8 @@ TEST_F(FormRegressionTest, ExprInspectProcessHeap) {
       "  #f\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_cast_json("[\t\t[[4,11], \"s5\", \"basic\"],\n"
-                                 "\t\t[[17,20], \"s5\", \"pointer\"]]"),
+                 "[\t\t[[4,11], \"s5\", \"basic\"],\n"
+                 "\t\t[[17,20], \"s5\", \"pointer\"]]",
                  "{\"vars\":{\"s5-0\":[\"obj\", \"pointer\"]}}");
 }
 
@@ -1123,8 +1123,8 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       func, type, expected, false, "dead-pool",
       {{"L315", "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"},
        {"L314", "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"}},
-      parse_cast_json("[\t\t[24, \"v1\", \"(pointer process-tree)\"],\n"
-                      "\t\t[[30,39], \"s4\", \"(pointer process-tree)\"]]"));
+      "[\t\t[24, \"v1\", \"(pointer process-tree)\"],\n"
+      "\t\t[[30,39], \"s4\", \"(pointer process-tree)\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprMethod15DeadPool) {
@@ -1299,11 +1299,10 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPoolHeap) {
       "  (set! (-> obj heap top-base) (-> obj heap top))\n"
       "  obj\n"
       "  )";
-  test_with_expr(
-      func, type, expected, false, "dead-pool-heap", {},
-      parse_cast_json("[\t\t[60, \"v0\", \"int\"],\n"
-                      "\t\t[61, \"a0\", \"pointer\"], [61, \"v0\", \"dead-pool-heap\"]]"),
-      "{\"vars\":{\"v0-0\":[\"obj\", \"dead-pool-heap\"]}}");
+  test_with_expr(func, type, expected, false, "dead-pool-heap", {},
+                 "[\t\t[60, \"v0\", \"int\"],\n"
+                 "\t\t[61, \"a0\", \"pointer\"], [61, \"v0\", \"dead-pool-heap\"]]",
+                 "{\"vars\":{\"v0-0\":[\"obj\", \"dead-pool-heap\"]}}");
 }
 
 TEST_F(FormRegressionTest, ExprMethod22DeadPoolHeap) {
@@ -1426,9 +1425,9 @@ TEST_F(FormRegressionTest, ExprMethod21DeadPoolHeap) {
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_cast_json("[\t\t[5, \"v1\", \"pointer\"],\n"
-                                 "\t\t[13, \"a0\", \"pointer\"],\n"
-                                 "\t\t[25, \"v1\", \"pointer\"]]"));
+                 "[\t\t[5, \"v1\", \"pointer\"],\n"
+                 "\t\t[13, \"a0\", \"pointer\"],\n"
+                 "\t\t[25, \"v1\", \"pointer\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprMethod3DeadPoolHeap) {
@@ -1623,7 +1622,7 @@ TEST_F(FormRegressionTest, ExprMethod5DeadPoolHeap) {
   std::string expected =
       "(+ (the-as int (- -4 (the-as int arg0))) (the-as int (-> arg0 heap top)))";
   test_with_expr(func, type, expected, false, "", {},
-                 parse_cast_json("[[3, \"v1\", \"int\"], [3, \"a0\", \"int\"]]"));
+                 "[[3, \"v1\", \"int\"], [3, \"a0\", \"int\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprMethod19DeadPoolHeap) {

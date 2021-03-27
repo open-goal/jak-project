@@ -27,6 +27,21 @@ struct LocalVarOverride {
   std::optional<std::string> type;
 };
 
+/*!
+ * Information about a variable pointing to some data on the stack.
+ */
+struct StackVariableHint {
+  std::string element_type;  // type of the thing stored
+  // todo - is boxed array on the stack supported?
+  enum class ContainerType {
+    NONE,         // just store the plain thing.
+    ARRAY,        // for refs, array of refs. For values, array of values.
+    INLINE_ARRAY  // for refs, array of values, for values, invalid
+  } container_type = ContainerType::NONE;
+  int container_size = -1;  // if container other than NONE, the number of elements.
+  int stack_offset = 0;     // where it's located on the stack (relative to sp after prologue)
+};
+
 struct Config {
   int game_version = -1;
   std::vector<std::string> dgo_names;
@@ -60,11 +75,12 @@ struct Config {
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
   std::unordered_map<std::string, std::unordered_map<std::string, LocalVarOverride>>
       function_var_overrides;
-
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
+  std::unordered_map<std::string, std::vector<StackVariableHint>> stack_var_hints_by_function;
   bool run_ir2 = false;
 };
 
 Config& get_config();
 void set_config(const std::string& path_to_config_file);
+
 }  // namespace decompiler

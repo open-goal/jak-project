@@ -2600,6 +2600,11 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
                           true, TypeSpec("symbol"));
 }
 
+void VectorFloatLoadStoreElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
+  stack.push_form_element(this, true);
+}
+
 void SimpleAtomElement::update_from_stack(const Env&,
                                           FormPool&,
                                           FormStack&,
@@ -2650,6 +2655,15 @@ void ConstantFloatElement::update_from_stack(const Env&,
                                              FormStack&,
                                              std::vector<FormElement*>* result,
                                              bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void StackVarDefElement::update_from_stack(const Env&,
+                                           FormPool&,
+                                           FormStack&,
+                                           std::vector<FormElement*>* result,
+                                           bool) {
   mark_popped();
   result->push_back(this);
 }

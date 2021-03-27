@@ -9,6 +9,7 @@
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
 #include "decompiler/Function/TypeInspector.h"
+#include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/insert_lets.h"
 #include "decompiler/analysis/variable_naming.h"
@@ -296,10 +297,17 @@ void ObjectFileDB::ir2_type_analysis_pass() {
         func.type = ts;
         attempted_functions++;
         // try type analysis here.
-        auto hints =
-            get_config().type_casts_by_function_by_atomic_op_idx[func.guessed_name.to_string()];
+        auto func_name = func.guessed_name.to_string();
+        auto casts = get_config().type_casts_by_function_by_atomic_op_idx[func_name];
         auto label_types = get_config().label_types[data.to_unique_name()];
-        if (func.run_type_analysis_ir2(ts, dts, data.linked_data, hints, label_types)) {
+        func.ir2.env.set_type_casts(casts);
+        func.ir2.env.set_label_types(label_types);
+        if (get_config().pair_functions_by_name.find(func_name) !=
+            get_config().pair_functions_by_name.end()) {
+          func.ir2.env.set_sloppy_pair_typing();
+        }
+        func.ir2.env.set_stack_var_hints(get_config().stack_var_hints_by_function[func_name]);
+        if (run_type_analysis_ir2(ts, dts, func)) {
           successful_functions++;
           func.ir2.env.types_succeeded = true;
         } else {

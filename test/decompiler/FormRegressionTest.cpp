@@ -1,11 +1,13 @@
 #include "FormRegressionTest.h"
 
+#include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/insert_lets.h"
+#include "decompiler/util/config_parsers.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/json_util.h"
 #include "decompiler/IR2/Form.h"
@@ -108,55 +110,78 @@ parse_var_json(const std::string& str) {
 std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     const std::string& code,
     const TypeSpec& function_type,
-    bool do_expressions,
-    bool allow_pairs,
-    const std::string& method_name,
-    const std::vector<std::pair<std::string, std::string>>& strings,
-    const std::unordered_map<int, std::vector<TypeCast>>& casts,
-    const std::string& var_map_json) {
-  dts->type_prop_settings.locked = true;
+    const TestSettings& settings) {
+  // Set up decompiler type system
   dts->type_prop_settings.reset();
-  dts->type_prop_settings.allow_pair = allow_pairs;
-  dts->type_prop_settings.current_method_type = method_name;
+  dts->type_prop_settings.current_method_type = settings.method_name;
 
+  // set up label names for string constants
   std::vector<std::string> string_label_names;
-  for (auto& x : strings) {
+  for (auto& x : settings.strings) {
     string_label_names.push_back(x.first);
   }
+
+  // parse the assembly
   auto program = parser->parse_program(code, string_label_names);
-  //  printf("prg:\n%s\n\n", program.print().c_str());
+
+  // create the test data collection
   auto test = std::make_unique<TestData>(program.instructions.size());
+  // populate the LinkedObjectFile
   test->file.words_by_seg.resize(3);
   test->file.labels = program.labels;
+  // Set up the environment
   test->func.ir2.env.file = &test->file;
   test->func.ir2.env.dts = dts.get();
+  // Set up the function
   test->func.instructions = program.instructions;
   test->func.guessed_name.set_as_global("test-function");
   test->func.type = function_type;
 
-  for (auto& str : strings) {
+  // set up string constants in the data
+  for (auto& str : settings.strings) {
     test->add_string_at_label(str.first, str.second);
   }
 
+  // find basic blocks
   test->func.basic_blocks = find_blocks_in_function(test->file, 0, test->func);
+  // analyze function prologue/epilogue
   test->func.analyze_prologue(test->file);
+  // build control flow graph
   test->func.cfg = build_cfg(test->file, 0, test->func);
   EXPECT_TRUE(test->func.cfg->is_fully_resolved());
   if (!test->func.cfg->is_fully_resolved()) {
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
   }
 
+  // convert instruction to atomic ops
   DecompWarnings warnings;
   auto ops = convert_function_to_atomic_ops(test->func, program.labels, warnings);
   test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
 
-  EXPECT_TRUE(test->func.run_type_analysis_ir2(function_type, *dts, test->file, casts, {}));
+  // set up type settings
+  if (!settings.casts_json.empty()) {
+    test->func.ir2.env.set_type_casts(parse_cast_hints(nlohmann::json::parse(settings.casts_json)));
+  }
+
+  if (settings.allow_pairs) {
+    test->func.ir2.env.set_sloppy_pair_typing();
+  }
+
+  if (!settings.stack_var_json.empty()) {
+    auto stack_hints = parse_stack_var_hints(nlohmann::json::parse(settings.stack_var_json));
+    test->func.ir2.env.set_stack_var_hints(stack_hints);
+  }
+
+  // analyze types
+  EXPECT_TRUE(run_type_analysis_ir2(function_type, *dts, test->func));
   test->func.ir2.env.types_succeeded = true;
 
+  // analyze registers
   test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
 
+  // split to variables
   auto result = run_variable_renaming(test->func, test->func.ir2.env.reg_use(),
                                       *test->func.ir2.atomic_ops, *dts);
   if (result.has_value()) {
@@ -165,16 +190,18 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     EXPECT_TRUE(false);
   }
 
+  // structure
   build_initial_forms(test->func);
   EXPECT_TRUE(test->func.ir2.top_form);
 
-  // for now, just test that this can at least be called.
   if (test->func.ir2.top_form) {
+    // just make sure this doesn't crash
     RegAccessSet vars;
     test->func.ir2.top_form->collect_vars(vars, true);
 
-    if (do_expressions) {
-      auto config = parse_var_json(var_map_json);
+    if (settings.do_expressions) {
+      auto config = parse_var_json(settings.var_map_json);
+      // build expressions (most of the fancy decompilation happens here)
       bool success = convert_to_expressions(test->func.ir2.top_form, *test->func.ir2.form_pool,
                                             test->func, config.first, config.second, *dts);
 
@@ -182,6 +209,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
       if (!success) {
         return nullptr;
       }
+      // move variables into lets.
       insert_lets(test->func, test->func.ir2.env, *test->func.ir2.form_pool,
                   test->func.ir2.top_form);
     }
@@ -205,15 +233,9 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
 void FormRegressionTest::test(const std::string& code,
                               const std::string& type,
                               const std::string& expected,
-                              bool do_expressions,
-                              bool allow_pairs,
-                              const std::string& method_name,
-                              const std::vector<std::pair<std::string, std::string>>& strings,
-                              const std::unordered_map<int, std::vector<TypeCast>>& casts,
-                              const std::string& var_map_json) {
+                              const TestSettings& settings) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, do_expressions, allow_pairs, method_name, strings, casts,
-                            var_map_json);
+  auto test = make_function(code, ts, settings);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
@@ -237,10 +259,16 @@ void FormRegressionTest::test_final_function(
     const std::string& expected,
     bool allow_pairs,
     const std::vector<std::pair<std::string, std::string>>& strings,
-    const std::unordered_map<int, std::vector<decompiler::TypeCast>>& casts,
+    const std::string& cast_json,
     const std::string& var_map_json) {
   auto ts = dts->parse_type_spec(type);
-  auto test = make_function(code, ts, true, allow_pairs, "", strings, casts, var_map_json);
+  TestSettings settings;
+  settings.allow_pairs = allow_pairs;
+  settings.strings = strings;
+  settings.casts_json = cast_json;
+  settings.var_map_json = var_map_json;
+  settings.do_expressions = true;
+  auto test = make_function(code, ts, settings);
   ASSERT_TRUE(test);
   auto expected_form =
       pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
@@ -256,23 +284,18 @@ void FormRegressionTest::test_final_function(
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-std::unordered_map<int, std::vector<decompiler::TypeCast>> FormRegressionTest::parse_cast_json(
-    const std::string& in) {
-  std::unordered_map<int, std::vector<decompiler::TypeCast>> out;
-  auto casts = nlohmann::json::parse(in);
-
-  for (auto& cast : casts) {
-    auto idx_range = parse_json_optional_integer_range(cast.at(0));
-    for (auto idx : idx_range) {
-      TypeCast type_cast;
-      type_cast.atomic_op_idx = idx;
-      type_cast.reg = Register(cast.at(1));
-      type_cast.type_name = cast.at(2).get<std::string>();
-      out[idx].push_back(type_cast);
-    }
-  }
-
-  return out;
+void FormRegressionTest::test_with_stack_vars(const std::string& code,
+                                              const std::string& type,
+                                              const std::string& expected,
+                                              const std::string& stack_map_json,
+                                              const std::string& cast_json,
+                                              const std::string& var_map_json) {
+  TestSettings settings;
+  settings.do_expressions = true;
+  settings.stack_var_json = stack_map_json;
+  settings.var_map_json = var_map_json;
+  settings.casts_json = cast_json;
+  test(code, type, expected, settings);
 }
 
 std::unique_ptr<InstructionParser> FormRegressionTest::parser;

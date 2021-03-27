@@ -164,17 +164,17 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
 std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
                                               int idx,
                                               int store_size,
-                                              bool is_float) {
+                                              StoreOp::Kind kind) {
   if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
     return std::make_unique<AsmOp>(i0, idx);
   }
   SimpleAtom val;
   SimpleExpression dst;
   if (i0.get_src(0).is_reg(rs7())) {
-    assert(!is_float);
+    assert(kind == StoreOp::Kind::INTEGER);
     val = SimpleAtom::make_sym_val("#f");
   } else if (i0.get_src(0).is_reg(rr0())) {
-    assert(!is_float);
+    assert(kind == StoreOp::Kind::INTEGER);
     val = SimpleAtom::make_int_constant(0);
   } else {
     val = make_src_atom(i0.get_src(0).get_reg(), idx);
@@ -189,7 +189,7 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
                            SimpleAtom::make_int_constant(offset));
   }
 
-  return std::make_unique<StoreOp>(store_size, is_float, dst, val, idx);
+  return std::make_unique<StoreOp>(store_size, kind, dst, val, idx);
 }
 
 std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
@@ -277,8 +277,6 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
       // Moves / Loads / Stores
     case InstructionKind::CTC2:
     case InstructionKind::CFC2:
-    case InstructionKind::SQC2:
-    case InstructionKind::LQC2:
     case InstructionKind::LDR:
     case InstructionKind::LDL:
     case InstructionKind::QMTC2:
@@ -593,9 +591,10 @@ std::unique_ptr<AtomicOp> convert_sw_1(const Instruction& i0, int idx) {
       // store a register.
       val = make_src_atom(i0.get_src(0).get_reg(), idx);
     }
-    return std::make_unique<StoreOp>(4, false, SimpleAtom::make_sym_val(name).as_expr(), val, idx);
+    return std::make_unique<StoreOp>(4, StoreOp::Kind::INTEGER,
+                                     SimpleAtom::make_sym_val(name).as_expr(), val, idx);
   } else {
-    return make_standard_store(i0, idx, 4, false);
+    return make_standard_store(i0, idx, 4, StoreOp::Kind::INTEGER);
   }
 }
 
@@ -603,7 +602,7 @@ std::unique_ptr<AtomicOp> convert_sd_1(const Instruction& i0, int idx) {
   if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_imm(2) && i0.get_src(2).is_reg(rr0())) {
     return std::make_unique<SpecialOp>(SpecialOp::Kind::CRASH, idx);
   } else {
-    return make_standard_store(i0, idx, 8, false);
+    return make_standard_store(i0, idx, 8, StoreOp::Kind::INTEGER);
   }
 }
 
@@ -719,6 +718,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
       return make_standard_load(i0, idx, 8, LoadVarOp::Kind::UNSIGNED);
     case InstructionKind::LQ:
       return make_standard_load(i0, idx, 16, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::LQC2:
+      return make_standard_load(i0, idx, 16, LoadVarOp::Kind::VECTOR_FLOAT);
     case InstructionKind::DSLL:
       return make_2reg_1imm_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx);
     case InstructionKind::DSLL32:
@@ -774,17 +775,19 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
     case InstructionKind::DSLLV:
       return make_3reg_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx);
     case InstructionKind::SB:
-      return make_standard_store(i0, idx, 1, false);
+      return make_standard_store(i0, idx, 1, StoreOp::Kind::INTEGER);
     case InstructionKind::SH:
-      return make_standard_store(i0, idx, 2, false);
+      return make_standard_store(i0, idx, 2, StoreOp::Kind::INTEGER);
     case InstructionKind::SW:
       return convert_sw_1(i0, idx);
     case InstructionKind::SD:
       return convert_sd_1(i0, idx);
     case InstructionKind::SQ:
-      return make_standard_store(i0, idx, 16, false);
+      return make_standard_store(i0, idx, 16, StoreOp::Kind::INTEGER);
+    case InstructionKind::SQC2:
+      return make_standard_store(i0, idx, 16, StoreOp::Kind::VECTOR_FLOAT);
     case InstructionKind::SWC1:
-      return make_standard_store(i0, idx, 4, true);
+      return make_standard_store(i0, idx, 4, StoreOp::Kind::FLOAT);
     case InstructionKind::CVTWS:  // float to int
       return make_2reg_op(i0, SimpleExpression::Kind::FLOAT_TO_INT, idx);
     case InstructionKind::CVTSW:  // int to float

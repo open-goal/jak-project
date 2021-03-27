@@ -420,12 +420,14 @@ class SetVarConditionOp : public AtomicOp {
  */
 class StoreOp : public AtomicOp {
  public:
-  StoreOp(int size, bool is_float, SimpleExpression addr, SimpleAtom value, int my_idx);
+  enum class Kind { INTEGER, FLOAT, VECTOR_FLOAT, INVALID };
+  StoreOp(int size, Kind kind, SimpleExpression addr, SimpleAtom value, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
+  FormElement* get_vf_store_as_form(FormPool& pool, const Env& env) const;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,
@@ -436,7 +438,7 @@ class StoreOp : public AtomicOp {
 
  private:
   int m_size;
-  bool m_is_float;
+  Kind m_kind = Kind::INVALID;
   SimpleExpression m_addr;
   SimpleAtom m_value;
 };
@@ -447,13 +449,14 @@ class StoreOp : public AtomicOp {
  */
 class LoadVarOp : public AtomicOp {
  public:
-  enum class Kind { UNSIGNED, SIGNED, FLOAT };
+  enum class Kind { UNSIGNED, SIGNED, FLOAT, VECTOR_FLOAT };
   LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   RegisterAccess get_set_destination() const override;
   FormElement* get_as_form(FormPool& pool, const Env& env) const override;
+  Form* get_load_src(FormPool& pool, const Env& env) const;
   void update_register_info() override;
   TypeState propagate_types_internal(const TypeState& input,
                                      const Env& env,

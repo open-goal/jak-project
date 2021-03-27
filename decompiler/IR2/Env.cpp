@@ -6,6 +6,7 @@
 #include "Form.h"
 #include "decompiler/analysis/atomic_op_builder.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/util/math_util.h"
 
 namespace decompiler {
 void Env::set_remap_for_function(int nargs) {
@@ -441,4 +442,45 @@ const UseDefInfo& Env::get_use_def_info(const RegisterAccess& ra) const {
   auto var_id = get_program_var_id(ra);
   return m_var_names.use_def_info.at(var_id);
 }
+
+/*!
+ * Set the stack hints. This must be done before type analysis.
+ * This actually parses the types, so it should be done after the dts is set up.
+ */
+void Env::set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
+  for (auto& hint : hints) {
+    StackVarEntry entry;
+    entry.hint = hint;
+    // parse the type spec.
+    TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+    auto type_info = dts->ts.lookup_type(base_typespec);
+
+    switch (hint.container_type) {
+      case StackVariableHint::ContainerType::NONE:
+        // just a plain object on the stack.
+        if (!type_info->is_reference()) {
+          throw std::runtime_error(
+              fmt::format("Stack variable type {} is not a reference and cannot be stored directly "
+                          "on the stack. Use an array instead.",
+                          base_typespec.print()));
+        }
+        entry.ref_type = base_typespec;
+        entry.size = type_info->get_size_in_memory();
+        // sanity check the alignment
+        if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
+            entry.hint.stack_offset) {
+          lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
+                    entry.ref_type.print(), entry.hint.stack_offset,
+                    type_info->get_in_memory_alignment());
+        }
+
+        break;
+      default:
+        assert(false);
+    }
+
+    m_stack_vars.push_back(entry);
+  }
+}
+
 }  // namespace decompiler

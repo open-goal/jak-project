@@ -44,14 +44,10 @@ class DecompilerTypeSystem {
   int get_format_arg_count(const TP_Type& type) const;
   TypeSpec lookup_symbol_type(const std::string& name) const;
 
+  // todo - totally eliminate this.
   struct {
-    bool locked = false;
-    bool allow_pair;
     std::string current_method_type;
-    void reset() {
-      allow_pair = false;
-      current_method_type.clear();
-    }
+    void reset() { current_method_type.clear(); }
   } type_prop_settings;
 
  private:
