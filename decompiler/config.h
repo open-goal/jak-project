@@ -31,7 +31,6 @@ struct LocalVarOverride {
  * Information about a variable pointing to some data on the stack.
  */
 struct StackVariableHint {
-  std::string var_name;      // name to give the variable in the final output
   std::string element_type;  // type of the thing stored
   // todo - is boxed array on the stack supported?
   enum class ContainerType {

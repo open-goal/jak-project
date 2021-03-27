@@ -278,7 +278,6 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::CTC2:
     case InstructionKind::CFC2:
     case InstructionKind::SQC2:
-    case InstructionKind::LQC2:
     case InstructionKind::LDR:
     case InstructionKind::LDL:
     case InstructionKind::QMTC2:
@@ -719,6 +718,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
       return make_standard_load(i0, idx, 8, LoadVarOp::Kind::UNSIGNED);
     case InstructionKind::LQ:
       return make_standard_load(i0, idx, 16, LoadVarOp::Kind::UNSIGNED);
+    case InstructionKind::LQC2:
+      return make_standard_load(i0, idx, 16, LoadVarOp::Kind::VECTOR_FLOAT);
     case InstructionKind::DSLL:
       return make_2reg_1imm_op(i0, SimpleExpression::Kind::LEFT_SHIFT, idx);
     case InstructionKind::DSLL32:

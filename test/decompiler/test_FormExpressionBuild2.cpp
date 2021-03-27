@@ -54,6 +54,6 @@ TEST_F(FormRegressionTest, MatrixPMult) {
       "  )";
   test_with_stack_vars(func, type, expected,
                        "[\n"
-                       "        [\"temp-mat\", 16, \"matrix\"]\n"
+                       "        [16, \"matrix\"]\n"
                        "    ]");
 }

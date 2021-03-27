@@ -469,8 +469,8 @@ void Env::set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
         // sanity check the alignment
         if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
             entry.hint.stack_offset) {
-          lg::error("Misaligned stack variable {} type {} offset {} required align {}\n",
-                    entry.hint.var_name, entry.ref_type.print(), entry.hint.stack_offset,
+          lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
+                    entry.ref_type.print(), entry.hint.stack_offset,
                     type_info->get_in_memory_alignment());
         }
 

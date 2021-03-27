@@ -6,9 +6,8 @@ std::vector<StackVariableHint> parse_stack_var_hints(const nlohmann::json& json)
   std::vector<StackVariableHint> result;
   for (auto& stack_var : json) {
     StackVariableHint hint;
-    hint.var_name = stack_var.at(0).get<std::string>();
-    hint.stack_offset = stack_var.at(1).get<int>();
-    auto& type_info = stack_var.at(2);
+    hint.stack_offset = stack_var.at(0).get<int>();
+    auto& type_info = stack_var.at(1);
     if (type_info.is_array()) {
       auto container_type = type_info.at(0).get<std::string>();
       if (container_type == "array") {

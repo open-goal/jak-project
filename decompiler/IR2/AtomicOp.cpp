@@ -1081,6 +1081,11 @@ goos::Object LoadVarOp::to_form(const std::vector<DecompilerLabel>& labels, cons
           assert(false);
       }
       break;
+    case Kind::VECTOR_FLOAT:
+      assert(m_size == 16);
+      forms.push_back(pretty_print::build_list("l.vf", m_src.to_form(labels, env)));
+      break;
+
     default:
       assert(false);
   }

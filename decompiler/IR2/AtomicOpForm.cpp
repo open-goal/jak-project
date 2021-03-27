@@ -365,7 +365,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   return pool.alloc_element<StoreElement>(this);
 }
 
-FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
+Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
     IR2_RegOffset ro;
     if (get_as_reg_offset(m_src, &ro)) {
@@ -384,9 +384,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         tokens.push_back(DerefToken::make_field_name(method_info.name));
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
             nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-        auto load = pool.alloc_single_element_form<DerefElement>(nullptr, source, false, tokens);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                 m_type.value_or(TypeSpec("object")));
+        return pool.alloc_single_element_form<DerefElement>(nullptr, source, false, tokens);
       }
 
       // todo structure method
@@ -397,9 +395,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
       if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
         // access method vtable. The input is type + (4 * method), and the 16 is the offset
         // of method 0.
-        auto load = pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                 m_type.value_or(TypeSpec("object")));
+        return pool.alloc_single_element_form<DynamicMethodAccess>(nullptr, ro.var);
       }
 
       if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
@@ -424,10 +420,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          auto load = pool.alloc_single_element_form<ArrayFieldAccess>(
+          return pool.alloc_single_element_form<ArrayFieldAccess>(
               nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
-          return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                   m_type.value_or(TypeSpec("object")));
         }
       }
 
@@ -439,20 +433,15 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
         if (ro.offset == 2) {
           auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
               nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-          auto load = pool.alloc_single_element_form<GenericElement>(
+          return pool.alloc_single_element_form<GenericElement>(
               nullptr, GenericOperator::make_fixed(FixedOperatorKind::CDR), source);
-          // cdr = another pair.
-          return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                   m_type.value_or(TypeSpec("object")));
         } else if (ro.offset == -2) {
           // car = some object.
           auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
               nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-          auto load = pool.alloc_single_element_form<GenericElement>(
+          return pool.alloc_single_element_form<GenericElement>(
               nullptr, GenericOperator::make_fixed(FixedOperatorKind::CAR), source);
           // cdr = another pair.
-          return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                   m_type.value_or(TypeSpec("object")));
         }
       }
 
@@ -479,10 +468,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           tokens.push_back(to_token(x));
         }
 
-        auto load =
-            pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
-        return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                 m_type.value_or(TypeSpec("object")));
+        return pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
       }
 
       if (input_type.typespec() == TypeSpec("pointer") ||
@@ -517,10 +503,8 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
             nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
         auto cast_dest = pool.alloc_single_element_form<CastElement>(
             nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), dest);
-        auto deref = pool.alloc_single_element_form<DerefElement>(nullptr, cast_dest, false,
-                                                                  std::vector<DerefToken>());
-        return pool.alloc_element<SetVarElement>(m_dst, deref, true,
-                                                 m_type.value_or(TypeSpec("object")));
+        return pool.alloc_single_element_form<DerefElement>(nullptr, cast_dest, false,
+                                                            std::vector<DerefToken>());
       }
     }
   }
@@ -539,9 +523,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
           assert(word.kind == LinkedWord::PLAIN_DATA);
           float value;
           memcpy(&value, &word.data, 4);
-          auto float_elt = pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
-          return pool.alloc_element<SetVarElement>(m_dst, float_elt, true,
-                                                   m_type.value_or(TypeSpec("object")));
+          return pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
         } else if (hint->second.type_name == "uint64" && m_kind != Kind::FLOAT && m_size == 8) {
           assert((label.offset % 8) == 0);
           auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
@@ -552,18 +534,40 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
           memcpy(&value, &word0.data, 4);
           memcpy(((u8*)&value) + 4, &word1.data, 4);
-          auto val_elt = pool.alloc_single_element_form<ConstantTokenElement>(
-              nullptr, fmt::format("#x{:x}", value));
-          return pool.alloc_element<SetVarElement>(m_dst, val_elt, true,
-                                                   m_type.value_or(TypeSpec("object")));
+          return pool.alloc_single_element_form<ConstantTokenElement>(nullptr,
+                                                                      fmt::format("#x{:x}", value));
         }
       }
     }
   }
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
-  auto load = pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
-  return pool.alloc_element<SetVarElement>(m_dst, load, true, m_type.value_or(TypeSpec("object")));
+  return pool.alloc_single_element_form<LoadSourceElement>(nullptr, source, m_size, m_kind);
+}
+
+FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
+  auto src = get_load_src(pool, env);
+  if (m_kind == Kind::VECTOR_FLOAT) {
+    assert(m_dst.reg().get_kind() == Reg::VF);
+    auto src_as_deref = dynamic_cast<DerefElement*>(src->try_as_single_element());
+    if (src_as_deref) {
+      assert(!src_as_deref->is_addr_of());
+      src_as_deref->set_addr_of(true);
+      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(), src, true);
+    }
+
+    auto src_as_unrecognized = dynamic_cast<LoadSourceElement*>(src->try_as_single_element());
+    if (src_as_unrecognized) {
+      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(),
+                                                             src_as_unrecognized->location(), true);
+    }
+
+    throw std::runtime_error("VF unknown load");
+
+  } else {
+    assert(m_dst.reg().get_kind() != Reg::VF);
+    return pool.alloc_element<SetVarElement>(m_dst, src, true, m_type.value_or(TypeSpec("object")));
+  }
 }
 
 FormElement* BranchOp::get_as_form(FormPool& pool, const Env&) const {

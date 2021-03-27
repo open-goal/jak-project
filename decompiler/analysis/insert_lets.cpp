@@ -296,6 +296,10 @@ Form* insert_cast_for_let(RegisterAccess dst,
 
   return src;
 }
+
+bool register_can_hold_var(const Register& reg) {
+  return reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR;
+}
 }  // namespace
 
 LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form) {
@@ -325,7 +329,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
 
     // and add it.
     for (auto& access : reg_accesses) {
-      if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+      if (register_can_hold_var(access.reg())) {
         auto name = env.get_variable_name(access);
         var_info[name].elts_using_var.insert(elt);
         var_info[name].var_name = name;
@@ -406,7 +410,7 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
   for (auto& info : sorted_info) {
     auto first_form = info.lca_form->at(info.start_idx);
     auto first_form_as_set = dynamic_cast<SetVarElement*>(first_form);
-    if (first_form_as_set &&
+    if (first_form_as_set && register_can_hold_var(first_form_as_set->dst().reg()) &&
         env.get_variable_name(first_form_as_set->dst()) == env.get_variable_name(info.access) &&
         !first_form_as_set->info().is_eliminated_coloring_move) {
       bool allowed = true;

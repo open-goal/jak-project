@@ -803,11 +803,17 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
 TypeState LoadVarOp::propagate_types_internal(const TypeState& input,
                                               const Env& env,
                                               DecompilerTypeSystem& dts) {
-  TypeState result = input;
-  auto load_type = get_src_type(input, env, dts);
-  result.get(m_dst.reg()) = load_type;
-  m_type = load_type.typespec();
-  return result;
+  if (m_dst.reg().get_kind() == Reg::FPR || m_dst.reg().get_kind() == Reg::GPR) {
+    TypeState result = input;
+    auto load_type = get_src_type(input, env, dts);
+    result.get(m_dst.reg()) = load_type;
+    m_type = load_type.typespec();
+    return result;
+  } else {
+    // vector float loads show up as LoadVarOps, but we don't want to track types in the
+    // vector float registers.
+    return input;
+  }
 }
 
 TypeState BranchOp::propagate_types_internal(const TypeState& input,

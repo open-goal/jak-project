@@ -13,9 +13,6 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::PSRAW, {"TODO.PSRAW", {}}},
     {InstructionKind::PSUBW, {"TODO.PSUBW", {}}},
 
-    {InstructionKind::LQ, {"TODO.LQ", {MOD::OFFSET}}},
-    {InstructionKind::SQ, {"TODO.SQ", {MOD::OFFSET}}},
-
     // NOTE - depending on how this is used, this may case issues! Be Warned!
     // lots of implicit logic in OpenGOAL depending on argument types!
     {InstructionKind::MFC1, {".mov", {}}},
