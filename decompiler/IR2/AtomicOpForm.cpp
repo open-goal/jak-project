@@ -127,6 +127,9 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
   auto type_info = env.dts->ts.lookup_type(expected_type);
   switch (atom.get_kind()) {
     case SimpleAtom::Kind::VARIABLE: {
+      if (atom.var().reg().get_kind() == Reg::VF) {
+        return {};  // no casts needed for VF registers.
+      }
       auto src_type = env.get_types_before_op(my_idx).get(atom.var().reg());
 
       if (src_type.requires_cast() || !env.dts->ts.tc(expected_type, src_type.typespec())) {
@@ -174,7 +177,48 @@ std::optional<TypeSpec> get_typecast_for_atom(const SimpleAtom& atom,
 }
 }  // namespace
 
+FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const {
+  assert(m_value.is_var() && m_value.var().reg().get_kind() == Reg::VF);
+  if (env.has_type_analysis()) {
+    IR2_RegOffset ro;
+    if (get_as_reg_offset(m_addr, &ro)) {
+      auto& input_type = env.get_types_before_op(m_my_idx).get(ro.reg);
+
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = true;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+        std::vector<DerefToken> tokens;
+        for (auto& x : rd.tokens) {
+          tokens.push_back(to_token(x));
+        }
+        assert(!rd.addr_of);  // we'll change this to true because .svf uses an address.
+        auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source, true, tokens);
+
+        return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+      }
+    }
+  }
+
+  // nothing worked.
+  throw std::runtime_error("NYI get_vf_store_as_form fallback");
+}
+
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (m_kind == Kind::VECTOR_FLOAT) {
+    return get_vf_store_as_form(pool, env);
+  }
+
   if (env.has_type_analysis()) {
     if (m_addr.is_identity() && m_addr.get_arg(0).is_sym_val()) {
       // we are storing a value in a global symbol. This is something like sw rx, offset(s7)
@@ -549,6 +593,7 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
   auto src = get_load_src(pool, env);
   if (m_kind == Kind::VECTOR_FLOAT) {
     assert(m_dst.reg().get_kind() == Reg::VF);
+
     auto src_as_deref = dynamic_cast<DerefElement*>(src->try_as_single_element());
     if (src_as_deref) {
       assert(!src_as_deref->is_addr_of());

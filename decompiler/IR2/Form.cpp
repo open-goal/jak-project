@@ -2251,7 +2251,9 @@ void StackVarDefElement::get_modified_regs(RegSet&) const {}
 VectorFloatLoadStoreElement::VectorFloatLoadStoreElement(Register vf_reg,
                                                          Form* location,
                                                          bool is_load)
-    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {}
+    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {
+  location->parent_element = this;
+}
 
 goos::Object VectorFloatLoadStoreElement::to_form_internal(const Env& env) const {
   if (m_is_load) {
