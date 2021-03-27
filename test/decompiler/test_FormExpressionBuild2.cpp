@@ -36,24 +36,21 @@ TEST_F(FormRegressionTest, MatrixPMult) {
       "    lq s5, 80(sp)\n"
       "    jr ra\n"
       "    daddiu sp, sp, 112";
-  std::string type = "(function matrix matrix matrix)";
+  std::string type = "(function matrix matrix matrix matrix)";
   std::string expected =
-      "(let ((v0-0 arg0))\n"
-      "  (let* ((v1-1 (sar (+ arg2 15) 4))\n"
-      "         (a0-1 (&+ arg0 (shl v1-1 4)))\n"
-      "         (a1-1 (&+ arg1 (shl v1-1 4)))\n"
-      "         )\n"
-      "   (while (nonzero? v1-1)\n"
-      "    (+! v1-1 -1)\n"
-      "    (&+! a0-1 -16)\n"
-      "    (&+! a1-1 -16)\n"
-      "    (set!\n"
-      "     (-> (the-as (pointer uint128) a0-1))\n"
-      "     (-> (the-as (pointer uint128) a1-1))\n"
-      "     )\n"
-      "    )\n"
+      "(begin\n"
+      "  (let ((s5-0 (new (quote stack) (quote matrix))))\n"
+      "   (set! (-> s5-0 vector 0 quad) (the-as uint128 0))\n"
+      "   (set! (-> s5-0 vector 1 quad) (the-as uint128 0))\n"
+      "   (set! (-> s5-0 vector 2 quad) (the-as uint128 0))\n"
+      "   (set! (-> s5-0 vector 3 quad) (the-as uint128 0))\n"
+      "   (matrix*! s5-0 arg1 arg2)\n"
+      "   (set! (-> arg0 vector 0 quad) (-> s5-0 vector 0 quad))\n"
+      "   (set! (-> arg0 vector 1 quad) (-> s5-0 vector 1 quad))\n"
+      "   (set! (-> arg0 vector 2 quad) (-> s5-0 vector 2 quad))\n"
+      "   (set! (-> arg0 vector 3 quad) (-> s5-0 vector 3 quad))\n"
       "   )\n"
-      "  v0-0\n"
+      "  arg0\n"
       "  )";
   test_with_stack_vars(func, type, expected,
                        "[\n"

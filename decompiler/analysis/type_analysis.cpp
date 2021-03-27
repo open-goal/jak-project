@@ -89,9 +89,6 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
 
   // STEP 2 - initialize type state for the first block to the function argument types.
   block_init_types.at(0) = construct_initial_typestate(my_type);
-  // and add hints from config
-  // TODO - this should be moved into the construct_initial_typestate
-  //  try_apply_hints(0, hints, &block_init_types.at(0), dts);
 
   // STEP 3 - propagate types until the result stops changing
   bool run_again = true;
@@ -103,13 +100,9 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
       TypeState* init_types = &block_init_types.at(block_id);
       for (int op_id = aop->block_id_to_first_atomic_op.at(block_id);
            op_id < aop->block_id_to_end_atomic_op.at(block_id); op_id++) {
-        // apply type hints only if we are not the first op.
-
         std::unordered_map<Register, TP_Type, Register::hash> restore_cast_types;
-        // if (op_id != aop->block_id_to_first_atomic_op.at(block_id)) {
         try_modify_input_types_for_casts(op_id, func.ir2.env.casts(), init_types,
                                          &restore_cast_types, dts);
-        //}
 
         auto& op = aop->ops.at(op_id);
 
@@ -139,11 +132,6 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
       // propagate the types: for each possible succ
       for (auto succ_block_id : {block.succ_ft, block.succ_branch}) {
         if (succ_block_id != -1) {
-          // apply hint
-          //          try_apply_hints(aop->block_id_to_first_atomic_op.at(succ_block_id), hints,
-          //          init_types,
-          //                          dts);
-
           // set types to LCA (current, new)
           if (dts.tp_lca(&block_init_types.at(succ_block_id), *init_types)) {
             // if something changed, run again!

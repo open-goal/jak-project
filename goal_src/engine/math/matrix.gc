@@ -5,7 +5,58 @@
 ;; name in dgo: matrix
 ;; dgos: GAME, ENGINE
 
+(defmethod inspect matrix ((obj matrix))
+  "Print out a matrix"
+  (format #t "[~8x] matrix~%" obj)
+  (format #t "~T[~F] [~F] [~F] [~F]~%"
+   (-> obj data 0)
+   (-> obj data 1)
+   (-> obj data 2)
+   (-> obj data 3)
+   )
+  (format #t  "~T[~F] [~F] [~F] [~F]~%"
+   (-> obj data 4)
+   (-> obj data 5)
+   (-> obj data 6)
+   (-> obj data 7)
+   )
+  (format  #t "~T[~F] [~F] [~F] [~F]~%"
+   (-> obj data 8)
+   (-> obj data 9)
+   (-> obj data 10)
+   (-> obj data 11)
+   )
+  (format  #t "~T[~F] [~F] [~F] [~F]~%"
+   (-> obj data 12)
+   (-> obj data 13)
+   (-> obj data 14)
+   (-> obj data 15)
+   )
+  obj
+  )
+
+(defmethod inspect matrix3 ((obj matrix3))
+  (format #t "[~8x] matrix3~%" obj)
+  (format #t "~T[~F] [~F] [~F]~%"
+   (-> obj data 0)
+   (-> obj data 1)
+   (-> obj data 2)
+   )
+  (format #t "~T[~F] [~F] [~F]~%"
+   (-> obj data 4)
+   (-> obj data 5)
+   (-> obj data 6)
+   )
+  (format #t "~T[~F] [~F] [~F]~%"
+   (-> obj data 8)
+   (-> obj data 9)
+   (-> obj data 10)
+   )
+  obj
+  )
+
 (defun matrix-identity! ((m matrix))
+  "Set m to the identity matrix."
   (rlet ((vf1 :class vf))
     ;; zero
     (.xor.vf vf1 vf1 vf1)
@@ -21,4 +72,88 @@
     (set! (-> m data 0) one)
     )
   m
+  )
+
+(defun matrix+! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set arg0 = arg1 + arg2. Not particularly efficient."
+  (dotimes (v1-0 16)
+   (set! (-> arg0 data v1-0) (+ (-> arg1 data v1-0) (-> arg2 data v1-0)))
+   )
+  arg0
+  )
+
+(defun matrix-! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Set arg0 = arg1 - arg2. Not particularly efficient."
+  (dotimes (v1-0 16)
+   (set! (-> arg0 data v1-0) (- (-> arg1 data v1-0) (-> arg2 data v1-0)))
+   )
+  arg0
+  )
+
+(defun matrix*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "4x4 matrix multiplication. Set arg0 = arg1 * arg2."
+  (declare (print-asm))
+  (rlet ((acc :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf20 :class vf)
+         (vf21 :class vf)
+         )
+   (.lvf vf10 arg1)
+   (.lvf vf14 arg2)
+   (.lvf vf15 arg2 :offset 16)
+   (.lvf vf16 arg2 :offset 32)
+   (.lvf vf17 arg2 :offset 48)
+   (.lvf vf11 arg1 :offset 16)
+   (.lvf vf12 arg1 :offset 32)
+   (.lvf vf13 arg1 :offset 48)
+   (.mul.x.vf acc vf14 vf10)
+   (.add.mul.y.vf acc vf15 vf10 acc)
+   (.add.mul.z.vf acc vf16 vf10 acc)
+   (.add.mul.w.vf vf18 vf17 vf10 acc)
+   (.mul.x.vf acc vf14 vf11)
+   (.add.mul.y.vf acc vf15 vf11 acc)
+   (.add.mul.z.vf acc vf16 vf11 acc)
+   (.add.mul.w.vf vf19 vf17 vf11 acc)
+   (.mul.x.vf acc vf14 vf12)
+   (.add.mul.y.vf acc vf15 vf12 acc)
+   (.add.mul.z.vf acc vf16 vf12 acc)
+   (.add.mul.w.vf vf20 vf17 vf12 acc)
+   (.mul.x.vf acc vf14 vf13)
+   (.add.mul.y.vf acc vf15 vf13 acc)
+   (.add.mul.z.vf acc vf16 vf13 acc)
+   (.add.mul.w.vf vf21 vf17 vf13 acc)
+   (.svf arg0 vf18)
+   (.svf arg0 vf19 :offset 16)
+   (.svf arg0 vf20 :offset 32)
+   (.svf arg0 vf21 :offset 48)
+   arg0
+   )
+  )
+
+(defun matrixp*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+  "Also 4x4 matrix multiplication, but first stores the result in a temporary.
+   So this appears to be a strictly worse version of matrix*!.
+   This function is never used"
+  (declare (print-asm))
+  (let ((s5-0 (new 'stack 'matrix)))
+   (set! (-> s5-0 vector 0 quad) (the-as uint128 0))
+   (set! (-> s5-0 vector 1 quad) (the-as uint128 0))
+   (set! (-> s5-0 vector 2 quad) (the-as uint128 0))
+   (set! (-> s5-0 vector 3 quad) (the-as uint128 0))
+   (matrix*! s5-0 arg1 arg2)
+   (set! (-> arg0 vector 0 quad) (-> s5-0 vector 0 quad))
+   (set! (-> arg0 vector 1 quad) (-> s5-0 vector 1 quad))
+   (set! (-> arg0 vector 2 quad) (-> s5-0 vector 2 quad))
+   (set! (-> arg0 vector 3 quad) (-> s5-0 vector 3 quad))
+   )
+  arg0
   )

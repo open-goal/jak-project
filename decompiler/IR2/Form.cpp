@@ -2215,6 +2215,31 @@ void LambdaDefinitionElement::collect_vars(RegAccessSet&, bool) const {}
 
 void LambdaDefinitionElement::get_modified_regs(RegSet&) const {}
 
+/////////////////////////////
+// StackVarDefElement
+/////////////////////////////
+
+StackVarDefElement::StackVarDefElement(const StackVarEntry& entry) : m_entry(entry) {}
+
+goos::Object StackVarDefElement::to_form_internal(const Env&) const {
+  switch (m_entry.hint.container_type) {
+    case StackVariableHint::ContainerType::NONE:
+      return pretty_print::build_list(fmt::format("new 'stack '{}", m_entry.ref_type.print()));
+    default:
+      assert(false);
+  }
+}
+
+void StackVarDefElement::apply_form(const std::function<void(Form*)>&) {}
+
+void StackVarDefElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void StackVarDefElement::collect_vars(RegAccessSet&, bool) const {}
+
+void StackVarDefElement::get_modified_regs(RegSet&) const {}
+
 std::optional<SimpleAtom> form_as_atom(const Form* f) {
   auto as_single = f->try_as_single_element();
   auto as_atom = dynamic_cast<SimpleAtomElement*>(as_single);

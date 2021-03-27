@@ -223,6 +223,48 @@ TP_Type SimpleExpression::get_type_int1(const TypeState& input,
                            to_form(env.file->labels, env).print() + " " + arg_type.print());
 }
 
+namespace {
+/*!
+ * Get the type of sp + offset.
+ */
+TP_Type get_stack_type_at_constant_offset(int offset,
+                                          const Env& env,
+                                          const DecompilerTypeSystem& dts) {
+  (void)dts;
+  for (auto& var : env.stack_var_hints()) {
+    if (offset < var.hint.stack_offset || offset >= (var.hint.stack_offset + var.size)) {
+      continue;  // reject, it isn't in this variable
+    }
+
+    if (offset == var.hint.stack_offset) {
+      // special case just getting the variable
+      if (var.hint.container_type == StackVariableHint::ContainerType::NONE) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(var.ref_type));
+      }
+    }
+
+    // Note: GOAL doesn't seem to constant propagate memory access on the stack, so the code
+    // below should never be needed.
+    /*
+    // yes, it is in the variable!
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;                     // not a deref
+    rd_in.stride = 0;                               // not a strided access
+    rd_in.offset = offset - var.hint.stack_offset;  // offset into this var
+    rd_in.base_type = var.ref_type;                 // use ref type for ptr.
+    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    if (rd.success) {
+      auto result = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+      fmt::print("Matched a stack variable! {}\n", result.print());
+      return result;
+    }
+     */
+    // if we fail, keep trying others. This lets us have overlays in stack memory.
+  }
+  throw std::runtime_error(fmt::format("Failed to find a stack variable at offset {}", offset));
+}
+}  // namespace
+
 /*!
  * Special case for "integer math".
  */
@@ -267,6 +309,12 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     } break;
 
     case Kind::ADD:
+      // get stack address:
+      if (m_args[0].is_var() && m_args[0].var().reg() == Register(Reg::GPR, Reg::SP) &&
+          m_args[1].is_int()) {
+        return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts);
+      }
+
       if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
         // dynamic access into the method array with shift, add, offset-load
         // no need to track the type because we don't know the method index anyway.

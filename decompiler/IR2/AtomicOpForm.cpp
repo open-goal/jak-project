@@ -40,28 +40,40 @@ ConditionElement* IR2_Condition::get_as_form(FormPool& pool, const Env& env, int
 FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis() && m_src.args() == 2 && m_src.get_arg(1).is_int() &&
       m_src.get_arg(0).is_var() && m_src.kind() == SimpleExpression::Kind::ADD) {
-    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
-    if (arg0_type.kind == TP_Type::Kind::TYPESPEC) {
-      // access a field.
-      FieldReverseLookupInput rd_in;
-      rd_in.deref = std::nullopt;
-      rd_in.stride = 0;
-      rd_in.offset = m_src.get_arg(1).get_int();
-      rd_in.base_type = arg0_type.typespec();
-      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
-
-      if (rd.success) {
-        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
-            nullptr, SimpleAtom::make_var(m_src.get_arg(0).var()).as_expr(), m_my_idx);
-        std::vector<DerefToken> tokens;
-        for (auto& x : rd.tokens) {
-          tokens.push_back(to_token(x));
+    if (m_src.get_arg(0).var().reg() == Register(Reg::GPR, Reg::SP)) {
+      // get a stack variable.
+      for (auto& var : env.stack_var_hints()) {
+        if (var.hint.stack_offset == m_src.get_arg(1).get_int()) {
+          // match!
+          return pool.alloc_element<SetVarElement>(
+              m_dst, pool.alloc_single_element_form<StackVarDefElement>(nullptr, var), true,
+              var.ref_type);
         }
-        auto load =
-            pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+      }
+    } else {
+      // access a field
+      auto arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
+      if (arg0_type.kind == TP_Type::Kind::TYPESPEC) {
+        FieldReverseLookupInput rd_in;
+        rd_in.deref = std::nullopt;
+        rd_in.stride = 0;
+        rd_in.offset = m_src.get_arg(1).get_int();
+        rd_in.base_type = arg0_type.typespec();
+        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
-        return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                 m_source_type.value_or(TypeSpec("object")));
+        if (rd.success) {
+          auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(m_src.get_arg(0).var()).as_expr(), m_my_idx);
+          std::vector<DerefToken> tokens;
+          for (auto& x : rd.tokens) {
+            tokens.push_back(to_token(x));
+          }
+          auto load =
+              pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
+
+          return pool.alloc_element<SetVarElement>(m_dst, load, true,
+                                                   m_source_type.value_or(TypeSpec("object")));
+        }
       }
     }
   }
