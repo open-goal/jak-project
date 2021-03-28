@@ -87,8 +87,12 @@ Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& 
         throw_compiler_error(form, "Cannot declare a local named {}, this already exists.", name);
       }
 
-      if (type == TypeSpec("float")) {
+      if (m_ts.tc(TypeSpec("float"), type)) {
         auto ireg = fe->make_ireg(type, RegClass::FLOAT);
+        ireg->mark_as_settable();
+        fe->params[name] = ireg;
+      } else if (m_ts.tc(TypeSpec("int128"), type) || m_ts.tc(TypeSpec("uint128"), type)) {
+        auto ireg = fe->make_ireg(type, RegClass::INT_128);
         ireg->mark_as_settable();
         fe->params[name] = ireg;
       } else {

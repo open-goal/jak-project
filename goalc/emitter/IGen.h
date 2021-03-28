@@ -2401,6 +2401,54 @@ class IGen {
     instr.set(Imm(1, imm));
     return instr;
   }
+
+  static Instruction pextlw_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 62/r VPUNPCKLDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x62);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pextuw_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 6A/r VPUNPCKHDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x6a);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pcpyld_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 6C/r VPUNPCKLQDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x6c);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pcpyud(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 6D/r VPUNPCKHQDQ xmm1, xmm2, xmm3/m12
+    // reg, vex, r/m
+    Instruction instr(0x6d);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
 };
 }  // namespace emitter
 

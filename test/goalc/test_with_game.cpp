@@ -579,6 +579,15 @@ TEST_F(WithGameTests, I128Simple) {
                           "12344321\n"});
 }
 
+TEST_F(WithGameTests, Pextlw) {
+  runner.run_static_test(env, testCategory, "test-pextlw.gc",
+                         {"#x07060504171615140302010013121110\n"
+                          "#x0f0e0d0c1f1e1d1c0b0a09081b1a1918\n"
+                          "#x07060504030201001716151413121110\n"
+                          "#x1f1e1d1c1b1a19180f0e0d0c0b0a0908\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

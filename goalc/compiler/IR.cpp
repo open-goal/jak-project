@@ -1443,6 +1443,77 @@ void IR_VFMath3Asm::do_codegen(emitter::ObjectGenerator* gen,
 }
 
 ///////////////////////
+// IR_Int128Math3Asm
+///////////////////////
+
+IR_Int128Math3Asm::IR_Int128Math3Asm(bool use_color,
+                                     const RegVal* dst,
+                                     const RegVal* src1,
+                                     const RegVal* src2,
+                                     Kind kind)
+    : IR_Asm(use_color), m_dst(dst), m_src1(src1), m_src2(src2), m_kind(kind) {}
+
+std::string IR_Int128Math3Asm::print() {
+  std::string function = "";
+  switch (m_kind) {
+    case Kind::PEXTLW:
+      function = ".pextlw";
+      break;
+    case Kind::PEXTUW:
+      function = ".pextuw";
+      break;
+    case Kind::PCPYLD:
+      function = ".pcpyld";
+      break;
+    case Kind::PCPYUD:
+      function = ".pcpyud";
+      break;
+    default:
+      assert(false);
+  }
+  return fmt::format("{}{} {}, {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                     m_src1->print(), m_src2->print());
+}
+
+RegAllocInstr IR_Int128Math3Asm::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src1->ireg());
+    rai.read.push_back(m_src2->ireg());
+  }
+  return rai;
+}
+
+void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
+                                   const AllocationResult& allocs,
+                                   emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src1 = get_reg_asm(m_src1, allocs, irec, m_use_coloring);
+  auto src2 = get_reg_asm(m_src2, allocs, irec, m_use_coloring);
+
+  switch (m_kind) {
+    case Kind::PEXTLW:
+      // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
+      gen->add_instr(IGen::pextlw_swapped(dst, src2, src1), irec);
+      break;
+    case Kind::PEXTUW:
+      // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
+      gen->add_instr(IGen::pextuw_swapped(dst, src2, src1), irec);
+      break;
+    case Kind::PCPYLD:
+      // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
+      gen->add_instr(IGen::pcpyld_swapped(dst, src2, src1), irec);
+      break;
+    case Kind::PCPYUD:
+      gen->add_instr(IGen::pcpyud(dst, src1, src2), irec);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+///////////////////////
 // AsmVF2
 ///////////////////////
 

@@ -270,8 +270,38 @@
   arg0
   )
 
-;; todo: matrix-transpose!
-(define-extern matrix-transpose! (function matrix matrix matrix))
+(defun matrix-transpose! ((arg0 matrix) (arg1 matrix))
+  (local-vars
+   (v1-0 uint128)
+   (v1-1 uint128)
+   (v1-2 uint128)
+   (a1-1 uint128)
+   (a2-1 uint128)
+   (a3-1 uint128)
+   (a3-2 uint128)
+   (t0-1 uint128)
+   )
+  (let ((t0-0 (-> arg1 vector 0 quad))
+        (t1-0 (-> arg1 vector 1 quad))
+        (a2-0 (-> arg1 vector 2 quad)))
+    (.pextlw v1-0 t1-0 t0-0)
+    (let ((a3-0 (-> arg1 vector 3 quad)))
+      (.pextuw a1-1 t1-0 t0-0)
+      (.pextlw t0-1 a3-0 a2-0)
+      (.pextuw a2-1 a3-0 a2-0)
+      )
+    )
+  (.pcpyld a3-1 t0-1 v1-0)
+  (.pcpyud v1-1 v1-0 t0-1)
+  (set! (-> arg0 vector 0 quad) a3-1)
+  (.pcpyld a3-2 a2-1 a1-1)
+  (set! (-> arg0 vector 1 quad) v1-1)
+  (.pcpyud v1-2 a1-1 a2-1)
+  (set! (-> arg0 vector 2 quad) a3-2)
+  (set! (-> arg0 vector 3 quad) v1-2)
+  arg0
+  )
+
 
 (defun matrix-inverse-of-rot-trans! ((arg0 matrix) (arg1 matrix))
   "Invert arg1 and store in arg0. This only works if arg1 is a rotation and translation.
@@ -324,113 +354,145 @@
   )
 
 (define-extern matrix-4x4-inverse! (function matrix matrix matrix))
-#|
+
 (defun matrix-4x4-inverse! ((arg0 matrix) (arg1 matrix))
-(rlet ((acc :class vf)
-(Q :class vf)
-(vf0 :class vf)
-(vf1 :class vf)
-(vf10 :class vf)
-(vf11 :class vf)
-(vf12 :class vf)
-(vf13 :class vf)
-(vf14 :class vf)
-(vf15 :class vf)
-(vf16 :class vf)
-(vf17 :class vf)
-(vf18 :class vf)
-(vf19 :class vf)
-(vf2 :class vf)
-(vf20 :class vf)
-(vf23 :class vf)
-(vf24 :class vf)
-(vf25 :class vf)
-(vf26 :class vf)
-(vf27 :class vf)
-(vf28 :class vf)
-(vf29 :class vf)
-(vf3 :class vf)
-(vf30 :class vf)
-(vf31 :class vf)
-(vf4 :class vf)
-(vf5 :class vf)
-(vf6 :class vf)
-(vf7 :class vf)
-(vf8 :class vf)
-(vf9 :class vf)
-)
-(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-(.lvf vf23 (&-> arg1 vector 0 quad))
-(.lvf vf24 (&-> arg1 vector 1 quad))
-(.lvf vf25 (&-> arg1 vector 2 quad))
-(.lvf vf1 (&-> arg1 vector 3 quad))
-(.mul.x.vf vf7 vf24 vf23)
-(.mul.y.vf vf8 vf24 vf23)
-(.mul.z.vf vf9 vf24 vf23)
-(.mul.x.vf vf10 vf25 vf23)
-(.mul.y.vf vf11 vf25 vf23)
-(.mul.z.vf vf12 vf25 vf23)
-(.mul.x.vf vf13 vf25 vf24)
-(.mul.y.vf vf14 vf25 vf24)
-(.mul.z.vf vf15 vf25 vf24)
-(.mul.z.vf vf26 vf7 vf25 :mask #b10)
-(.mul.z.vf vf27 vf11 vf24 :mask #b1)
-(.mul.y.vf vf28 vf9 vf25 :mask #b1)
-(.mul.z.vf vf29 vf14 vf23 :mask #b1)
-(.mul.z.vf vf30 vf8 vf25 :mask #b1)
-(.mul.y.vf vf31 vf7 vf25 :mask #b100)
-(.add.y.vf vf16 vf27 vf26 :mask #b1)
-(.sub.vf vf1 vf0 vf1)
-(.add.x.vf vf17 vf29 vf30 :mask #b1)
-(.sub.z.vf vf18 vf28 vf31 :mask #b1)
-(.sub.y.vf vf23 vf14 vf15 :mask #b100)
-(.sub.z.vf vf26 vf15 vf13 :mask #b1)
-(.sub.x.vf vf29 vf13 vf14 :mask #b10)
-(.sub.vf vf19 vf16 vf17 :mask #b1)
-(.sub.z.vf vf24 vf12 vf11 :mask #b10)
-(.sub.x.vf vf27 vf10 vf12 :mask #b100)
-(.sub.y.vf vf30 vf11 vf10 :mask #b1)
-(.add.vf vf20 vf19 vf18 :mask #b1)
-(.sub.y.vf vf25 vf8 vf9 :mask #b100)
-(.sub.z.vf vf28 vf9 vf7 :mask #b1)
-(.sub.x.vf vf31 vf7 vf8 :mask #b10)
-(.div.vf Q vf0 vf20 :ftf #b11 :fsf #b0)
-;; Added for PC port: zero out these vectors entirely
-(.xor.vf vf3 vf3 vf3)
-(.xor.vf vf4 vf4 vf4)
-(.xor.vf vf5 vf5 vf5)
-;; This has no effect on the result, but prevents use from doing
-;; math on uninitialized values, which can be slow if they happen to
-;; be NaN's
-;; ==================
-;;(.sub.w.vf vf3 vf3 vf3 :mask #b1000)
-;;(.sub.w.vf vf4 vf4 vf4 :mask #b1000)
-;;(.sub.w.vf vf5 vf5 vf5 :mask #b1000)
-(.mov.vf vf6 vf0 :mask #b1000)
-;;(.wait.vf)
-(.add.vf vf2 vf0 Q :mask #b1)
-(.add.x.vf vf2 vf0 vf2 :mask #b111)
-(.mul.z.vf vf3 vf2 vf23 :mask #b1)
-(.mul.x.vf vf4 vf2 vf26 :mask #b1)
-(.mul.y.vf vf5 vf2 vf29 :mask #b1)
-(.mul.y.vf vf3 vf2 vf24 :mask #b10)
-(.mul.z.vf vf4 vf2 vf27 :mask #b10)
-(.mul.x.vf vf5 vf2 vf30 :mask #b10)
-(.mul.z.vf vf3 vf2 vf25 :mask #b100)
-(.mul.x.vf vf4 vf2 vf28 :mask #b100)
-(.mul.y.vf vf5 vf2 vf31 :mask #b100)
-(.mul.x.vf acc vf3 vf1)
-(.svf (&-> arg0 vector 0 quad) vf3)
-(.add.mul.y.vf acc vf4 vf1 acc)
-(.svf (&-> arg0 vector 1 quad) vf4)
-(.add.mul.z.vf vf6 vf5 vf1 acc :mask #b111)
-(.svf (&-> arg0 vector 2 quad) vf5)
-(nop!)
-(.svf (&-> arg0 vector 3 quad) vf6)
-arg0
-)
-)
-|#
+  "This function assumes that the matrix has a right column of [0, 0, 0, 1]."
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf13 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf2 :class vf)
+         (vf20 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    ;; x86 NaN avoidance
+    (.xor.vf vf26 vf26 vf26)
+    (.xor.vf vf27 vf27 vf27)
+    (.xor.vf vf28 vf28 vf28)
+    (.xor.vf vf29 vf29 vf29)
+    (.xor.vf vf30 vf30 vf30)
+    (.xor.vf vf31 vf31 vf31)
+    (.xor.vf vf16 vf16 vf16)
+    (.xor.vf vf17 vf17 vf17)
+    (.xor.vf vf18 vf18 vf18)
+    (.xor.vf vf23 vf23 vf23)
+    (.xor.vf vf19 vf19 vf19)
+    
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))   ;; vf0 = 0, 0, 0, 1
+    (.lvf vf23 (&-> arg1 vector 0 quad))                           ;; vf23 = 1, 1, 1, -1
+    (.lvf vf24 (&-> arg1 vector 1 quad))                           ;; vf24 = 1, 1, -1, 1
+    (.lvf vf25 (&-> arg1 vector 2 quad))                           ;; vf25 = 1, -1, 1, 1
+    (.lvf vf1 (&-> arg1 vector 3 quad))                            ;; vf1 = -1, 1, 1, 1
+    (.mul.x.vf vf7 vf24 vf23) ;; vmulx.xyzw vf7, vf24, vf23 -> vf7 = 1, 1, -1, 1
+    (.mul.y.vf vf8 vf24 vf23) ;; vmuly.xyzw vf8, vf24, vf23 -> vf8 = 1, 1, -1, 1
+    (.mul.z.vf vf9 vf24 vf23)  ;; vmulz.xyzw vf9, vf24, vf23 -> vf9 = 1, 1, -1, 1
+    (.mul.x.vf vf10 vf25 vf23) ;; vmulx.xyzw vf10, vf25, vf23 -> vf10 = 1, -1, 1, 1
+    (.mul.y.vf vf11 vf25 vf23) ;; vmuly.xyzw vf11, vf25, vf23 -> vf11 = 1, -1, 1, 1
+    (.mul.z.vf vf12 vf25 vf23) ;; vmulz.xyzw vf12, vf25, vf23 -> vf12 = 1, -1, 1, 1
+    (.mul.x.vf vf13 vf25 vf24) ;; vmulx.xyzw vf13, vf25, vf24 -> vf13 = 1, -1, 1, 1
+    (.mul.y.vf vf14 vf25 vf24) ;; vmuly.xyzw vf14, vf25, vf24 -> vf14 = 1, -1, 1, 1
+    (.mul.z.vf vf15 vf25 vf24) ;; vmulz.xyzw vf15, vf25, vf24 -> vf15 = -1, 1, -1, -1
+    (.mul.z.vf vf26 vf7 vf25 :mask #b10) ;; vmulz.y vf26, vf7, vf25 -> vf26_y = 1 * 1 = 1
+    (.mul.z.vf vf27 vf11 vf24 :mask #b1) ;; vmulz.x vf27, vf11, vf24 -> vf27_x = 1 * -1 = -1
+    (.mul.y.vf vf28 vf9 vf25 :mask #b1) ;; vmuly.x vf28, vf9, vf25 -> vf28_x = 1 * -1 = -1
+    (.mul.z.vf vf29 vf14 vf23 :mask #b1) ;; vmulz.x vf29, vf14, vf23 -> vf29_x = 1 * 1 = 1
+    (.mul.z.vf vf30 vf8 vf25 :mask #b1) ;; vmulz.x vf30, vf8, vf25 -> vf30_x = 1 * 1 = 1
+    (.mul.y.vf vf31 vf7 vf25 :mask #b100) ;; vmuly.z vf31, vf7, vf25 -> vf31_z = -1 * -1 = 1
+    (.add.y.vf vf16 vf27 vf26 :mask #b1) ;; vaddy.x vf16, vf27, vf26 -> vf16_x = -1 + 1 = 0
+    (.sub.vf vf1 vf0 vf1) ;; vsub.xyzw vf1, vf0, vf1 -> vf1 = 1, -1, -1, 0
+    (.add.x.vf vf17 vf29 vf30 :mask #b1) ;; vaddx.x vf17, vf29, vf30 -> vf17_x = 1 + 1 = 2
+    (.sub.z.vf vf18 vf28 vf31 :mask #b1) ;; vsubz.x vf18, vf28, vf31 -> vf18_x = -1 - 1 = -2
+    (.sub.y.vf vf23 vf14 vf15 :mask #b100) ;; vsuby.z vf23, vf14, vf15
+                                           ;;; vf14 = 1, -1, 1, 1
+                                           ;;; vf15 = -1, 1, -1, -1
+                                           ;;; vf23 = 1, 1, 1, -1
+                                           ;;; vf23 = 1, 1, (1 - 1), -1
+    (.sub.z.vf vf26 vf15 vf13 :mask #b1) ;; vsubz.x vf26, vf15, vf13 -> vf26 = (-1 - 1), 1, 0, 0
+    (.sub.x.vf vf29 vf13 vf14 :mask #b10) ;; vsubx.y vf29, vf13, vf14 -> vf29 = 1, (-1 - 1), 0, 0
+    (.sub.vf vf19 vf16 vf17 :mask #b1) ;; vsub.x vf19, vf16, vf17 -> vf19 = -2, X, X, X
+    (.sub.z.vf vf24 vf12 vf11 :mask #b10) ;; vsubz.y vf24, vf12, vf11 -> vf24 = 1, (-1 - 1), -1, 1
+    (.sub.x.vf vf27 vf10 vf12 :mask #b100) ;; vsubx.z vf27, vf10, vf12 -> vf27 = -1, X, 1 - 1, X
+    (.sub.y.vf vf30 vf11 vf10 :mask #b1) ;; vsuby.x vf30, vf11, vf10 -> vf30_x = 1 - -1, X, X, X
+    (.add.vf vf20 vf19 vf18 :mask #b1) ;; vadd.x vf20, vf19, vf18 -> vf20_x = -2 + -2 = -4
+    ;; (print-vf vf20) OKAY (this is the determinant of the 3x3?)
+    (.sub.y.vf vf25 vf8 vf9 :mask #b100) ;; vsuby.z vf25, vf8, vf9 -> vf25 = 1, -1, -1 - 1, 1
+    (.sub.z.vf vf28 vf9 vf7 :mask #b1) ;; vsubz.x vf28, vf9, vf7 -> vf28_x = 1 - -1 = 2
+    (.sub.x.vf vf31 vf7 vf8 :mask #b10) ;; vsubx.y vf31, vf7, vf8 -> vf31 = X, (1 - 1), 1, X
+    (.div.vf Q vf0 vf20 :fsf #b11 :ftf #b0) ;; vdiv Q, vf0.w, vf20.x -> Q = -0.25, -0.25, -0.25, -0.25
+    ;; Added for PC port: zero out these vectors entirely
+    (.xor.vf vf3 vf3 vf3)
+    (.xor.vf vf4 vf4 vf4)
+    (.xor.vf vf5 vf5 vf5)
+    (.xor.vf vf6 vf6 vf6)
+    ;; This has no effect on the result, but prevents use from doing
+    ;; math on uninitialized values, which can be slow if they happen to
+    ;; be NaN's
+    ;; ==================
+    (.sub.w.vf vf3 vf3 vf3 :mask #b1000) ;; vsubw.w vf3, vf3, vf3
+    (.sub.w.vf vf4 vf4 vf4 :mask #b1000) ;; vsubw.w vf4, vf4, vf4
+    (.sub.w.vf vf5 vf5 vf5 :mask #b1000) ;; vsubw.w vf5, vf5, vf5
+    (.mov.vf vf6 vf0 :mask #b1000) ;; vmove.w vf6, vf0 -> vf6 = X, X, X, 1
+    ;;(.wait.vf)
+    (.add.vf vf2 vf0 Q :mask #b1) ;; vaddq.x vf2, vf0, Q -> vf2 = -0.25, X, X, X
+    (.add.x.vf vf2 vf0 vf2 :mask #b111) ;; vaddx.xyz vf2, vf0, vf2 -> vf2 = -0.25, -0.25, -0.25, X
+    (.mul.z.vf vf3 vf2 vf23 :mask #b1) ;; vmulz.x vf3, vf2, vf23 -> vf3 = -0.25 * 0, 0, 0, 0
+    (.mul.x.vf vf4 vf2 vf26 :mask #b1) ;; vmulx.x vf4, vf2, vf26 -> vf4 = -0.25 * -2 = 0.5, 0, 0,
+
+    (.mul.y.vf vf5 vf2 vf29 :mask #b1) 
+
+    (print-vf vf2)
+    (print-vf vf24)
+    (print-vf vf3)
+    (.mul.y.vf vf3 vf2 vf24 :mask #b10)
+    (print-vf vf3)
+    (.mul.z.vf vf4 vf2 vf27 :mask #b10)
+    (.mul.x.vf vf5 vf2 vf30 :mask #b10)
+    (.mul.z.vf vf3 vf2 vf25 :mask #b100)
+    (.mul.x.vf vf4 vf2 vf28 :mask #b100)
+    (.mul.y.vf vf5 vf2 vf31 :mask #b100)
+
+    ;; vmulax.xyzw acc, vf3, vf1
+    ;;(print-vf vf3)
+    ;;(print-vf vf1)
+    (.mul.x.vf acc vf3 vf1)
+    ;;(print-vf acc) ;; seems legit
+    
+    (.svf (&-> arg0 vector 0 quad) vf3)
+    (.add.mul.y.vf acc vf4 vf1 acc)
+    (.svf (&-> arg0 vector 1 quad) vf4)
+    (.add.mul.z.vf vf6 vf5 vf1 acc :mask #b111)
+    (.svf (&-> arg0 vector 2 quad) vf5)
+    (nop!)
+    (.svf (&-> arg0 vector 3 quad) vf6)
+    arg0
+    )
+  )
+
 
 (defun matrix-translate! ((arg0 matrix) (arg1 vector))
   "Create a translation matrix."
@@ -1026,7 +1088,7 @@ arg0
     (.outer.product.vf vf15 vf10 vf11)
     (.add.y.vf vf1 vf1 vf1 :mask #b1)
     (.add.z.vf vf1 vf1 vf1 :mask #b1)
-    (.div.vf Q vf0 vf1 :ftf #b11 :fsf #b0)
+    (.div.vf Q vf0 vf1 :fsf #b11 :ftf #b0)
     ;;(.wait.vf)
     (.mul.vf vf13 vf13 Q)
     (.mul.vf vf14 vf14 Q)

@@ -95,6 +95,10 @@ const std::unordered_map<
         {".pw.sll", &Compiler::compile_asm_pw_sll},
         {".pw.srl", &Compiler::compile_asm_pw_srl},
         {".pw.sra", &Compiler::compile_asm_pw_sra},
+        {".pextlw", &Compiler::compile_asm_pextlw},
+        {".pextuw", &Compiler::compile_asm_pextuw},
+        {".pcpyld", &Compiler::compile_asm_pcpyld},
+        {".pcpyud", &Compiler::compile_asm_pcpyud},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
