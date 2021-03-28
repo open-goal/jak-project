@@ -7,6 +7,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/OpenGoalMapping.h"
 #include "decompiler/analysis/reg_usage.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
 
@@ -42,7 +43,7 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
           /*lg::warn("[ASM Re-Write] - Unsupported inline assembly instruction kind - [{}]",
                    asmOp.instr.kind);*/
           f.warnings.general_warning("Unsupported inline assembly instruction kind - [{}]",
-                                     asmOp.instr.kind);
+                                     asmOp.instr.to_string(f.ir2.env.file->labels));
           new_entries.push_back(entry);
           continue;
         } else if (elem->op()->instruction().kind == InstructionKind::VOPMULA) {

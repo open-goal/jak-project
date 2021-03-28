@@ -543,8 +543,19 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   TypeState result = input;
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
-    if (kind == Reg::GPR || kind == Reg::FPR) {
-      result.get(m_dst->reg()) = TP_Type::make_from_ts("int");
+    if (kind == Reg::FPR) {
+      result.get(m_dst->reg()) = TP_Type::make_from_ts("float");
+    } else if (kind == Reg::GPR) {
+      for (auto& x : m_src) {
+        if (x && x->reg().get_kind() == Reg::GPR) {
+          auto src_type = result.get(x->reg()).typespec();
+          if (dts.ts.tc(TypeSpec("int128"), src_type) || dts.ts.tc(TypeSpec("uint128"), src_type)) {
+            result.get(m_dst->reg()) = TP_Type::make_from_ts("uint128");
+            return result;
+          }
+        }
+        result.get(m_dst->reg()) = TP_Type::make_from_ts("int");
+      }
     }
   }
   return result;
