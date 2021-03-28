@@ -585,6 +585,8 @@ TEST_F(WithGameTests, Pextlw) {
                           "#x0f0e0d0c1f1e1d1c0b0a09081b1a1918\n"
                           "#x07060504030201001716151413121110\n"
                           "#x1f1e1d1c1b1a19180f0e0d0c0b0a0908\n"
+                          "#x0d0c0908050401001d1c191815141110\n"
+                          "#xffffffff00000000ffffffff00000000\n"
                           "0\n"});
 }
 

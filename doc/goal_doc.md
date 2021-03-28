@@ -1520,6 +1520,26 @@ Wrapper around `vcvtdq2ps` and `vcvtps2dq` to convert packed 32-bit signed integ
 
 Wrapper around `vpsrld`, `vpsrad`, and `vpslld`. Does shifts on each of the 4 32-bit integers in the register.
 
+## `.pextlw`, `.pextuw`, `.pcpyud`, `.pcpyld`, `.pceqw`, `.ppach`
+```
+(.pextlw dst src0 src1 [:color #t|#f])
+(.pextuw dst src0 src1 [:color #t|#f])
+(.pcpyud dst src0 src1 [:color #t|#f])
+(.pcpyld dst src0 src1 [:color #t|#f])
+(.pceqw dst src0 src1 [:color #t|#f])
+(.ppach dest src0 src1)
+```
+
+Equivalents of the EE's MMI instructions with the same name. These can only be used on 128-bit variables.  Most map to single x86 instructions:
+- `pextlw` is `VPUNPCKLDQ` (sources swapped)
+- `pextuw` is `VPUNPCKHDQ` (sources swapped)
+- `pcpyld` is `VPUNPCKLQDQ` (sources swapped)
+- `pcpyud` is `VPUNPCKHQDQ` (sources _not_ swapped)
+- `pceqw` is `VPCMPEQD`
+
+Some map to multiple instructions. These must use the coloring system.
+- `ppach` is a sequence of 7 instructions (`VPSHUFLW`, `VPSHUFHW`, `VPSRLDQ`, `VPUNPCKLQDQ`).
+
 # Compiler Forms - Unsorted
 
 ## `let`

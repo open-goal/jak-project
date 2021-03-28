@@ -548,7 +548,7 @@ class IR_VFMath3Asm : public IR_Asm {
 
 class IR_Int128Math3Asm : public IR_Asm {
  public:
-  enum class Kind { PEXTLW, PEXTUW, PCPYUD, PCPYLD };
+  enum class Kind { PEXTLW, PEXTUW, PCPYUD, PCPYLD, PCEQW };
   IR_Int128Math3Asm(bool use_color,
                     const RegVal* dst,
                     const RegVal* src1,
@@ -569,7 +569,7 @@ class IR_Int128Math3Asm : public IR_Asm {
 
 class IR_VFMath2Asm : public IR_Asm {
  public:
-  enum class Kind { ITOF, FTOI, PW_SLL, PW_SRL, PW_SRA };
+  enum class Kind { ITOF, FTOI, PW_SLL, PW_SRL, PW_SRA, VPSRLDQ, VPSLLDQ, VPSHUFLW, VPSHUFHW };
   IR_VFMath2Asm(bool use_color,
                 const RegVal* dst,
                 const RegVal* src,

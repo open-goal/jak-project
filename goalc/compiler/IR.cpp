@@ -1468,6 +1468,9 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PCPYUD:
       function = ".pcpyud";
       break;
+    case Kind::PCEQW:
+      function = ".pceqw";
+      break;
     default:
       assert(false);
   }
@@ -1508,6 +1511,9 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
     case Kind::PCPYUD:
       gen->add_instr(IGen::pcpyud(dst, src1, src2), irec);
       break;
+    case Kind::PCEQW:
+      gen->add_instr(IGen::pceqw(dst, src1, src2), irec);
+      break;
     default:
       assert(false);
   }
@@ -1545,6 +1551,22 @@ std::string IR_VFMath2Asm::print() {
     case Kind::PW_SRA:
       use_imm = true;
       function = ".pw.sra";
+      break;
+    case Kind::VPSRLDQ:
+      use_imm = true;
+      function = ".VPSRLDQ";
+      break;
+    case Kind::VPSLLDQ:
+      use_imm = true;
+      function = ".VPSLLDQ";
+      break;
+    case Kind::VPSHUFLW:
+      use_imm = true;
+      function = ".VPSHUFLW";
+      break;
+    case Kind::VPSHUFHW:
+      use_imm = true;
+      function = ".VPSHUFHW";
       break;
     default:
       assert(false);
@@ -1600,6 +1622,30 @@ void IR_VFMath2Asm::do_codegen(emitter::ObjectGenerator* gen,
       assert(*m_imm >= 0);
       assert(*m_imm <= 255);
       gen->add_instr(IGen::pw_sra(dst, src, *m_imm), irec);
+      break;
+    case Kind::VPSRLDQ:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::vpsrldq(dst, src, *m_imm), irec);
+      break;
+    case Kind::VPSLLDQ:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::vpslldq(dst, src, *m_imm), irec);
+      break;
+    case Kind::VPSHUFLW:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::vpshuflw(dst, src, *m_imm), irec);
+      break;
+    case Kind::VPSHUFHW:
+      assert(m_imm.has_value());
+      assert(*m_imm >= 0);
+      assert(*m_imm <= 255);
+      gen->add_instr(IGen::vpshufhw(dst, src, *m_imm), irec);
       break;
     default:
       assert(false);
