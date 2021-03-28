@@ -130,3 +130,4 @@
 - Fixed a bug where `uint128` or children defined with `local-vars` would end up using a 64-bit GPR instead of a 128-bit XMM.
 - Fixed a bug where 128-bit variable spills could be misaligned, causing a segfault at `vmovaps`.
 - Added `.ppach` and `.pceqw`
+- Fixed a bug where setting 128-bit / 64-bit variables from each other only did a 32-bit set

@@ -653,6 +653,22 @@ Val* Compiler::compile_asm_ppach(const goos::Object& form, const goos::Object& r
   return get_none();
 }
 
+Val* Compiler::compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {});
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot set destination");
+  }
+
+  env->emit_ir<IR_VFMath3Asm>(true, dest, src1, src2, IR_VFMath3Asm::Kind::XOR);
+  return get_none();
+}
+
 Val* Compiler::compile_asm_itof_vf(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math2(form, rest, IR_VFMath2Asm::Kind::ITOF, env);
 }

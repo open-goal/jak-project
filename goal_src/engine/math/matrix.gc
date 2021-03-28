@@ -505,11 +505,14 @@
     ;; (nop!)
     (.div.vf Q vf0 vf20 :fsf #b11 :ftf #b0)
     ;; (nop!)
-    (.sub.w.vf vf3 vf3 vf3 :mask #b1000)
+    ;;(.sub.w.vf vf3 vf3 vf3 :mask #b1000)
+    (.xor.vf vf3 vf3 vf3)
     ;; (nop!)
-    (.sub.w.vf vf4 vf4 vf4 :mask #b1000)
+    ;;(.sub.w.vf vf4 vf4 vf4 :mask #b1000)
+    (.xor.vf vf4 vf4 vf4)
     ;; (nop!)
-    (.sub.w.vf vf5 vf5 vf5 :mask #b1000)
+    ;;(.sub.w.vf vf5 vf5 vf5 :mask #b1000)
+    (.xor.vf vf5 vf5 vf5)
     ;; (nop!)
     (.mov.vf vf6 vf0 :mask #b1000)
     ;; (nop!)
@@ -893,14 +896,174 @@
 
 (defun matrix-axis-sin-cos-vu! ((dst matrix) (axis vector) (s float) (c float))
   "Create an axis-angle rotation matrix. But given the sin/cos of the angle."
-  ;; TODO
-  dst
+  ;; this is unused and basically identital to the non-VU version, so I'm leaving this out.
+  (/ 0 0)
+  (none)
   )
 
 (defun matrix-axis-sin-cos! ((dst matrix) (axis vector) (s float) (c float))
   "Create an axis-angle rotation matrix. But given the sin/cos of the angle."
-  ;; TODO
-  dst
+  ;;or v0, a0, r0
+  ;;or v1, a1, r0
+  ;;mtc1 f0, a2
+  ;;mtc1 f1, a3
+  ;;sll r0, r0, 0
+
+  ;; input scramble:
+  ;;  - v0 = dst
+  ;;  - v1 = axis
+  ;;  - f0 = sine
+  ;;  - f1 = cosine
+  (rlet ((vf5 :class vf) ;; vf5.x will be sine, vf5.w will be -cosine
+         (vf6 :class vf) ;; vf6.x will be cosine
+         (vf1 :class vf) ;; vector.
+         (vf0 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf11 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         (vf10 :class vf)
+         (a1 :class i128 :type uint128)
+         (r0 :class i128 :type uint128)) ;; will be used for zero check.
+    ;; initialize constant vectors
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    (.xor.p r0 r0 r0)
+
+    ;; this is an overly complicated check to see if xyz = 0.
+
+    (let ((a0 65535)           ;; ori a0, r0, 65535
+          (v1 (-> axis quad))) ;; lq v1, 0(v1)
+
+      ;; this a0 constant has ffff in the upper 16 bits to mask out w, later on.
+      ;; dsll32 a0, a0, 16
+      (set! a0 (shl a0 48)) ;; a0 = ffff'0000'0000'0000
+      
+      ;;mfc1 a1, f1
+      ;;qmtc2.i vf6, a1
+      (.mov vf6 c) ;; will set vf6.x to cosine.
+      
+      ;;pceqw a1, v1, r0
+      ;; compare for equality with zero.
+      ;; this will set 32-bits for each component.
+      (.pceqw a1 v1 r0) 
+      
+      ;; so we pack: [upper64, w0?16, z0?16, y0?16, x0?16]
+      (.ppach a1 r0 a1)
+      
+      ;;qmtc2.i vf1, v1
+      (.mov vf1 v1) ;; should be quad move!
+      
+      ;;or v1, a1, a0
+      ;;  make it seem like w is zero. If x,y,z = 0, but w != 0, we want
+      ;; it to act like zero.
+      (let ((xyz-zero (logior a0 (the uint a1))))
+        ;;mfc1 a0, f0
+        ;;qmtc2.i vf5, a0
+        (.mov vf5 s)
+      
+        ;;daddiu v1, v1, 1
+        ;; if all is zero, this will overflow and give us 0.
+        (+! xyz-zero 1)
+        
+        ;;vsubx.w vf5, vf0, vf6
+        (.sub.x.vf vf5 vf0 vf6 :mask #b1000)
+        
+        ;;beq v1, r0, L15
+        ;;vaddx.y vf5, vf0, vf6
+        (.add.x.vf vf5 vf0 vf6 :mask #b0010)
+        (when-goto (zero? xyz-zero) zero-case)
+        )
+      )
+
+    ;; Nonzero case:
+    ;; vsubw.w vf2, vf0, vf0
+    ;; vsubw.w vf3, vf0, vf0
+    ;; vsubw.w vf4, vf0, vf0
+    (.xor.vf vf2 vf2 vf2)
+    (.xor.vf vf3 vf3 vf3)
+    (.xor.vf vf4 vf4 vf4)
+    
+    ;;vmulx.xyz vf11, vf1, vf5
+    (.mul.x.vf vf11 vf1 vf5 :mask #b0111)
+    
+    ;;vaddy.x vf7, vf0, vf5
+    (.add.y.vf vf7 vf0 vf5 :mask #b0001)
+    
+    ;;vaddy.y vf8, vf0, vf5
+    (.add.y.vf vf8 vf0 vf5 :mask #b0010)
+    
+    ;;vaddy.z vf9, vf0, vf5
+    (.add.y.vf vf9 vf0 vf5 :mask #b0100)
+    
+    ;;vmulw.xyz vf10, vf1, vf5
+    (.mul.w.vf vf10 vf1 vf5 :mask #b0111)
+    
+    ;;vsubz.y vf7, vf0, vf11
+    (.sub.z.vf vf7 vf0 vf11 :mask #b0010)
+    
+    ;;vaddy.z vf7, vf0, vf11
+    (.add.y.vf vf7 vf0 vf11 :mask #b0100)
+    
+    ;;vaddz.x vf8, vf0, vf11
+    (.add.z.vf vf8 vf0 vf11 :mask #b0001)
+               
+    ;;vsubx.z vf8, vf0, vf11
+    (.sub.x.vf vf8 vf0 vf11 :mask #b0100)
+               
+    ;;vmulx.xyz vf2, vf10, vf1
+    (.mul.x.vf vf2 vf10 vf1 :mask #b0111)
+    
+    ;;vmuly.xyz vf3, vf10, vf1
+    (.mul.y.vf vf3 vf10 vf1 :mask #b0111)
+    
+    ;;vmulz.xyz vf4, vf10, vf1
+    (.mul.z.vf vf4 vf10 vf1 :mask #b0111)
+    
+    ;;vsuby.x vf9, vf0, vf11
+    (.sub.y.vf vf9 vf0 vf11 :mask #b0001)
+    
+    ;;vaddx.y vf9, vf0, vf11
+    (.add.x.vf vf9 vf0 vf11 :mask #b0010)
+    
+    ;;vadd.xyz vf2, vf2, vf7
+    (.add.vf vf2 vf2 vf7 :mask #b0111)
+    
+    ;;vadd.xyz vf3, vf3, vf8
+    (.add.vf vf3 vf3 vf8 :mask #b0111)
+    
+    ;;vadd.xyz vf4, vf4, vf9
+    (.add.vf vf4 vf4 vf9 :mask #b0111)
+    
+    ;;sqc2 vf2, 0(v0)
+    ;;sqc2 vf3, 16(v0)
+    ;;sqc2 vf0, 48(v0)
+    ;;sqc2 vf4, 32(v0)
+    (.svf (-> dst vector 0) vf2)
+    (.svf (-> dst vector 1) vf3)
+    (.svf (-> dst vector 3) vf0)
+    (.svf (-> dst vector 2) vf4)
+    (goto end)
+    (label zero-case)
+    ;; overly clever way to set identity matrix
+    ;;lui v1, 16256
+    ;;sqc2 vf0, 48(v0)
+    ;;pcpyld v1, r0, v1
+    ;;mfc1 r0, f31
+    ;;prot3w a0, v1
+    ;;mfc1 r0, f31
+    ;;prot3w a1, a0
+    ;;sq v1, 0(v0)
+    ;;sll r0, r0, 0
+    ;;sq a0, 32(v0)
+    ;;sll r0, r0, 0
+    ;;sq a1, 16(v0)
+    (matrix-identity! dst)
+    (label end)
+    )
+  (none)
   )
 
 (defun matrix-axis-angle! ((dst matrix) (axis vector) (angle-deg float))
@@ -1203,7 +1366,7 @@
   )
 
 (defun matrix-4x4-determinant ((dst matrix))
-  "Take the determinant of a 4x4 matrix"
+  "Take the determinant of a 4x4 matrix. The answer is wrong."
   (let ((f15-0 (-> dst data 0))
         (f14-0 (-> dst data 1))
         (f10-0 (-> dst data 2))
@@ -1221,81 +1384,86 @@
         (f4-0 (-> dst data 14))
         (f12-0 (-> dst data 15))
         )
-    (-
-     (+
-      (+
-       (+
-        (+
-         (+
-          (+
-           (+
-            (+
-             (+
-              (+
-               (+
-                (* (* (* f15-0 f6-0) f8-0) f12-0)
-                (* (* (* f15-0 f3-0) f13-0) f7-0)
-                )
-               (* (* (* f15-0 f11-0) f1-0) f4-0)
-               )
-              (* (* (* f14-0 f9-0) f13-0) f4-0)
-              )
-             (* (* (* f14-0 f3-0) f5-0) f4-0)
-             )
-            (* (* (* f14-0 f11-0) f8-0) f0-0)
+    (let ((result (-
+                   (+
+                    (+
+                     (+
+                      (+
+                       (+
+                        (+
+                         (+
+                          (+
+                           (+
+                            (+
+                             (+
+                              (* (* (* f15-0 f6-0) f8-0) f12-0)
+                              (* (* (* f15-0 f3-0) f13-0) f7-0)
+                              )
+                             (* (* (* f15-0 f11-0) f1-0) f4-0)
+                             )
+                            (* (* (* f14-0 f9-0) f13-0) f4-0)
+                            )
+                           (* (* (* f14-0 f3-0) f5-0) f4-0)
+                           )
+                          (* (* (* f14-0 f11-0) f8-0) f0-0)
+                          )
+                         (* (* (* f10-0 f9-0) f1-0) f12-0)
+                         )
+                        (* (* (* f10-0 f6-0) f13-0) f0-0)
+                        )
+                       (* (* (* f10-0 f11-0) f5-0) f7-0)
+                       )
+                      (* (* (* f2-0 f9-0) f1-0) f4-0)
+                      )
+                     (* (* (* f2-0 f6-0) f8-0) f0-0)
+                     )
+                    (* (* (* f2-0 f3-0) f5-0) f7-0)
+                    )
+                   (+
+                    (+
+                     (+
+                      (+
+                       (+
+                        (+
+                         (+
+                          (+
+                           (+
+                            (+
+                             (+
+                              (* (* (* f15-0 f6-0) f13-0) f4-0)
+                              (* (* (* f15-0 f3-0) f1-0) f12-0)
+                              )
+                             (* (* (* f15-0 f11-0) f8-0) f7-0)
+                             )
+                            (* (* (* f14-0 f9-0) f8-0) f12-0)
+                            )
+                           (* (* (* f14-0 f3-0) f13-0) f0-0)
+                           )
+                          (* (* (* f14-0 f11-0) f5-0) f4-0)
+                          )
+                         (* (* (* f10-0 f9-0) f13-0) f7-0)
+                         )
+                        (* (* (* f10-0 f6-0) f5-0) f12-0)
+                        )
+                       (* (* (* f10-0 f11-0) f1-0) f0-0)
+                       )
+                      (* (* (* f2-0 f9-0) f8-0) f7-0)
+                      )
+                     (* (* (* f2-0 f6-0) f5-0) f4-0)
+                     )
+                    (* (* (* f2-0 f3-0) f1-0) f0-0)
+                    )
+                   )
             )
-           (* (* (* f10-0 f9-0) f1-0) f12-0)
-           )
-          (* (* (* f10-0 f6-0) f13-0) f0-0)
           )
-         (* (* (* f10-0 f11-0) f5-0) f7-0)
-         )
-        (* (* (* f2-0 f9-0) f1-0) f4-0)
-        )
-       (* (* (* f2-0 f6-0) f8-0) f0-0)
-       )
-      (* (* (* f2-0 f3-0) f5-0) f7-0)
+      result
       )
-     (+
-      (+
-       (+
-        (+
-         (+
-          (+
-           (+
-            (+
-             (+
-              (+
-               (+
-                (* (* (* f15-0 f6-0) f13-0) f4-0)
-                (* (* (* f15-0 f3-0) f1-0) f12-0)
-                )
-               (* (* (* f15-0 f11-0) f8-0) f7-0)
-               )
-              (* (* (* f14-0 f9-0) f8-0) f12-0)
-              )
-             (* (* (* f14-0 f3-0) f13-0) f0-0)
-             )
-            (* (* (* f14-0 f11-0) f5-0) f4-0)
-            )
-           (* (* (* f10-0 f9-0) f13-0) f7-0)
-           )
-          (* (* (* f10-0 f6-0) f5-0) f12-0)
-          )
-         (* (* (* f10-0 f11-0) f1-0) f0-0)
-         )
-        (* (* (* f2-0 f9-0) f8-0) f7-0)
-        )
-       (* (* (* f2-0 f6-0) f5-0) f4-0)
-       )
-      (* (* (* f2-0 f3-0) f1-0) f0-0)
-      )
-     )
     )
   )
 
 (defun matrix-4x4-inverse-transpose! ((dst matrix) (src matrix))
-  "Invert and transpose an entire 4x4. I think has no restrictions, other than dst != src. Unused."
+  "Invert and transpose an entire 4x4. I think has no restrictions, other than dst != src. Unused.
+   The answer is wrong. The determinant function is wrong."
   (let ((f0-0 (matrix-4x4-determinant src)))
    (let ((f9-0 (-> src data 5))
          (f2-0 (-> src data 6))
@@ -1756,9 +1924,138 @@
    )
   )
 
-;; definition for method 9 of type matrix
-;; ERROR: function was not converted to expressions. Cannot decompile.
-;; TODO
 
-;; failed to figure out what this is:
-(none)
+(defmethod transform-vectors! matrix ((obj _type_) (dst (inline-array vector)) (src (inline-array vector)) (count int))
+  "Transform many vectors. This acts like w = 1, even if it isn't. The value of w is copied."
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (acc :class vf)
+         (v1 :type int)
+         )
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  
+    ;; blez a3, L3
+    (when-goto (<= count 0) end)
+    
+    ;; lqc2 vf1, 0(a0)
+    (.lvf vf1 (-> obj vector 0))
+
+    ;; lqc2 vf2, 16(a0)
+    (.lvf vf2 (-> obj vector 1))
+    
+    ;; lqc2 vf3, 32(a0)
+    (.lvf vf3 (-> obj vector 2))
+    
+    ;; lqc2 vf4, 48(a0)
+    (.lvf vf4 (-> obj vector 3))
+    
+    ;; lqc2 vf5, 0(a2)
+    (.lvf vf5 (-> src 0))
+    
+    ;; lqc2 vf6, 16(a2)
+    (.lvf vf6 (-> src 1))
+    
+    (label loop-top)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+    
+    ;; lqc2 vf7, 32(a2)
+    (.lvf vf7 (-> src 2))
+    
+    ;;vmaddax.xyzw acc, vf1, vf5
+    (.add.mul.x.vf acc vf1 vf5 acc)
+    
+    ;;lqc2 vf8, 48(a2)
+    (.lvf vf8 (-> src 3))
+    
+    ;;vmadday.xyzw acc, vf2, vf5
+    (.add.mul.y.vf acc vf2 vf5 acc)
+    
+    ;;daddiu a2, a2, 64
+    ;;(&+! src 64)
+    (set! src (the (inline-array vector) (+ 64 (the int src))))
+     
+    ;;vmaddz.xyz vf5, vf3, vf5
+    (.add.mul.z.vf vf5 vf3 vf5 acc :mask #b0111)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    
+    ;;daddiu v1, a3, -1
+    (set! v1 (- count 1))
+    
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+    
+    ;;vmaddax.xyzw acc, vf1, vf6
+    (.add.mul.x.vf acc vf1 vf6 acc)
+    
+    ;; vmadday.xyzw acc, vf2, vf6
+    (.add.mul.y.vf acc vf2 vf6 acc)
+    
+    ;; vmaddz.xyz vf6, vf3, vf6
+    (.add.mul.z.vf vf6 vf3 vf6 acc :mask #b0111)
+    
+    ;;sqc2 vf5, 0(a1)
+    (.svf (-> dst 0) vf5)
+    
+    ;;beq v1, r0, L3
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+    (when-goto (zero? v1) end)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    ;;vmaddax.xyzw acc, vf1, vf7
+    (.add.mul.x.vf acc vf1 vf7 acc)
+    ;;daddiu v1, v1, -1
+    (+! v1 -1)
+    ;;vmadday.xyzw acc, vf2, vf7
+    (.add.mul.y.vf acc vf2 vf7 acc)
+    ;;lqc2 vf5, 0(a2)
+    (.lvf vf5 (-> src 0))
+    ;;vmaddz.xyz vf7, vf3, vf7
+    (.add.mul.z.vf vf7 vf3 vf7 acc :mask #b0111)
+    ;;sqc2 vf6, 16(a1)
+    (.svf (-> dst 1) vf6)
+    
+    ;;beq v1, r0, L3
+    ;;vmulaw.xyzw acc, vf4, vf0
+    (.mul.w.vf acc vf4 vf0)
+    (when-goto (zero? v1) end)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;;vmaddax.xyzw acc, vf1, vf8
+    (.add.mul.x.vf acc vf1 vf8 acc)
+    ;;daddiu v1, v1, -1
+    (+! v1 -1)
+    ;;vmadday.xyzw acc, vf2, vf8
+    (.add.mul.y.vf acc vf2 vf8 acc)
+    ;;lqc2 vf6, 16(a2)
+    (.lvf vf6 (-> src 1))
+    ;;vmaddz.xyz vf8, vf3, vf8
+    (.add.mul.z.vf vf8 vf3 vf8 acc :mask #b0111)
+    ;;sqc2 vf7, 32(a1)
+    (.svf (-> dst 2) vf7)
+    
+    ;;beq v1, r0, L3
+    ;;daddiu a1, a1, 64
+    ;;(&!+ dst 64)
+    (set! dst (the (inline-array vector) (+ 64 (the int dst))))
+    (when-goto (zero? v1) end)
+
+    ;;daddiu a3, v1, -1
+    (set! count (- v1 1))
+    ;;sqc2 vf8, -16(a1)
+    (.svf dst vf8 :offset -16)
+    (when-goto (not (zero? count)) loop-top)
+    (label end)
+    (none)
+    )
+  )

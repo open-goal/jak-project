@@ -106,6 +106,34 @@ class IGen {
   }
 
   /*!
+   * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
+   */
+  static Instruction movq_gpr64_xmm64(Register dst, Register src) {
+    assert(dst.is_gpr());
+    assert(src.is_xmm());
+    Instruction instr(0x66);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x7e);
+    instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
+   */
+  static Instruction movq_xmm64_gpr64(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_gpr());
+    Instruction instr(0x66);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x6e);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
    * Move 32-bits between xmm's
    */
   static Instruction mov_xmm32_xmm32(Register dst, Register src) {

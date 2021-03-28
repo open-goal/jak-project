@@ -35,6 +35,7 @@ const std::unordered_map<
         {".wait.vf", &Compiler::compile_asm_wait_vf},
 
         {".xor.vf", &Compiler::compile_asm_xor_vf},
+        {".xor.p", &Compiler::compile_asm_xorp},
 
         {".max.vf", &Compiler::compile_asm_max_vf},
         {".max.x.vf", &Compiler::compile_asm_max_x_vf},
