@@ -50,37 +50,36 @@
   )
 
 (defun calc-terminal-vel ((arg0 float) (arg1 float) (arg2 float))
-  (- (* (/ (- (* (the-as float #x3c888889) arg0) arg1) arg2) (- 1.000000 arg2))
-     arg1
-     )
+  (- (* (/ (- (* 0.016666668 arg0) arg1) arg2) (- 1.0 arg2))
+     arg1)
   )
 
 (defun calc-terminal2-vel ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (local-vars (f0-4 float))
-  (set! f0-4 (sqrtf (/ (- (* (the-as float #x3c888889) arg0) arg1) arg2)))
-  (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))
+  (let ((f0-4 (sqrtf (/ (- (* 0.016666668 arg0) arg1) arg2))))
+   (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))
+   )
   )
 
 (defun calc-terminal4-vel ((arg0 float) (arg1 float) (arg2 float))
-  (local-vars (f0-5 float))
-  (set! f0-5 (sqrtf (sqrtf (/ (- (* (the-as float #x3c888889) arg0) arg1) arg2))))
-  (- f0-5 (+ arg1 (* arg2 (* (* (* f0-5 f0-5) f0-5) f0-5))))
+  (let ((f0-5 (sqrtf (sqrtf (/ (- (* 0.016666668 arg0) arg1) arg2)))))
+   (- f0-5 (+ arg1 (* arg2 (* (* (* f0-5 f0-5) f0-5) f0-5))))
+   )
   )
 
 (defmethod print surface ((obj surface))
   ;; seems like an off-by-one bug in the format string here.
   (format
-   '#t
+   #t
    "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m"
    (-> obj turnv)
    (-> obj turnvv)
    (-> obj tiltv)
    (-> obj tiltvv)
    (-> obj transv-max)
-   0 ;; seesm to be a bug here
+   0 ;; seems to be a bug here
    )
   (format
-   '#t
+   #t
    "  tm:~m rv:~R rvv:~R @ #x~X>"
    (-> obj target-speed)
    (-> obj seek0)
@@ -92,24 +91,19 @@
 
 (defun surface-interp! ((dst surface) (src0 surface) (src1 surface) (amount float))
   "Create a surface between src0 and src1. For things like hooks/mode, src1 wins."
-  (local-vars (v1-0 int) (v1-3 int) (v1-6 int))
 
-  ;; iterate through floats
-  (set! v1-0 0)
-  (while (< v1-0 30)
+  ;; iterate through surface data
+  (dotimes (v1-0 30)
     ;; interpolate between the two
     (set! (-> dst data v1-0)
           (+ (* (-> src1 data v1-0) amount)
-             (* (-> src0 data v1-0) (- 1.000000 amount))
-             )
-          )
-    (+! v1-0 1)
+             (* (-> src0 data v1-0) (- 1.0 amount)))
+     )
     )
 
   ;; iterate through hooks. Check src1, then src0 for a nonzero and non-nothing hook.
   ;; if there is no good hook, set it to nothing.
-  (set! v1-3 0)
-  (while (< v1-3 4)
+  (dotimes (v1-3 4)
     (set! (-> dst hook v1-3)
           (if (and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing))
               (-> src1 hook v1-3)
@@ -119,45 +113,35 @@
                   )
               )
           )
-    (+! v1-3 1)
     )
 
   ;; just use the dataw's from src1
-  (set! v1-6 0)
-  (while (< v1-6 2)
+  (dotimes (v1-6 2)
     (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
-    (+! v1-6 1)
     )
-  
+
   dst
   )
 
 (defun surface-mult! ((dst surface) (src0 surface) (src1 surface))
   "Multiply src0 by src1, and store the result in dst."
-  (local-vars (v1-0 int) (v1-3 int) (v1-6 int))
-  (set! v1-0 0)
-  (while (< v1-0 30)
+
+  (dotimes (v1-0 30)
     (set! (-> dst data v1-0) (* (-> src1 data v1-0) (-> src0 data v1-0)))
-    (+! v1-0 1)
     )
-  (set! v1-3 0)
-  (while (< v1-3 4)
-    (set!
-     (-> dst hook v1-3)
-     (if (and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing))
-         (-> src1 hook v1-3)
-         (if (and (nonzero? (-> src0 hook v1-3)) (!= (-> src0 hook v1-3) nothing))
-             (-> src0 hook v1-3)
-             nothing
-             )
-         )
-     )
-    (+! v1-3 1)
+  (dotimes (v1-3 4)
+    (set! (-> dst hook v1-3)
+          (if (and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing))
+              (-> src1 hook v1-3)
+              (if (and (nonzero? (-> src0 hook v1-3)) (!= (-> src0 hook v1-3) nothing))
+                  (-> src0 hook v1-3)
+                  nothing
+                  )
+              )
+          )
     )
-  (set! v1-6 0)
-  (while (< v1-6 2)
+  (dotimes (v1-6 2)
     (set! (-> dst dataw v1-6) (-> src1 dataw v1-6))
-    (+! v1-6 1)
     )
   ;; take the or of the flags, I guess
   (set! (-> dst flags) (logior (-> src0 flags) (-> src1 flags)))
@@ -178,28 +162,28 @@
 (define *walk-mods*
     (new 'static 'surface
          :name 'run
-         :turnv 131072.000000
-         :turnvv 524288.000000
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 1.000000
-         :seek90 1.000000
-         :seek180 1.000000
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 524288.0
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 1.0
+         :seek90 1.0
+         :seek180 1.0
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :flags #x1
          )
   )
@@ -207,77 +191,77 @@
 (define *walk-no-turn-mods*
     (new 'static 'surface
          :name 'run
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 1.000000
-         :seek90 1.000000
-         :seek180 1.000000
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 1.0
+         :seek90 1.0
+         :seek180 1.0
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          )
   )
 
 (define *turn-around-mods*
     (new 'static 'surface
          :name 'run
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :fric (the-as float #x3dcccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :fric 0.1
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          )
   )
 
 (let ((a0-3
        (new 'static 'surface
             :name 'duck
-            :turnv 131072.000000
-            :turnvv 524288.000000
-            :tiltv 65536.000000
-            :tiltvv (the-as float #x488e38e4)
-            :transv-max 16384.000000
-            :target-speed 16384.000000
-            :seek0 1.000000
-            :seek90 1.000000
-            :seek180 1.000000
-            :fric 1.000000
-            :nonlin-fric-dist 1.000000
-            :slip-factor 1.000000
-            :slide-factor 1.000000
-            :slope-up-factor 1.000000
-            :slope-down-factor 1.000000
-            :slope-slip-angle 1.000000
-            :impact-fric 1.000000
-            :bend-factor 1.000000
-            :bend-speed 1.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnv 131072.0
+            :turnvv 524288.0
+            :tiltv 65536.0
+            :tiltvv 291271.12
+            :transv-max 16384.0
+            :target-speed 16384.0
+            :seek0 1.0
+            :seek90 1.0
+            :seek180 1.0
+            :fric 1.0
+            :nonlin-fric-dist 1.0
+            :slip-factor 1.0
+            :slide-factor 1.0
+            :slope-up-factor 1.0
+            :slope-down-factor 1.0
+            :slope-slip-angle 1.0
+            :impact-fric 1.0
+            :bend-factor 1.0
+            :bend-speed 1.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             :flags #x2000
             )
         ))
@@ -288,26 +272,26 @@
 (define *duck-attack-mods*
     (new 'static 'surface
          :name 'duck
-         :tiltv 65536.000000
-         :tiltvv (the-as float #x488e38e4)
-         :transv-max 16384.000000
-         :target-speed 16384.000000
-         :seek0 1.000000
-         :seek90 1.000000
-         :seek180 1.000000
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 65536.0
+         :tiltvv 291271.12
+         :transv-max 16384.0
+         :target-speed 16384.0
+         :seek0 1.0
+         :seek90 1.0
+         :seek180 1.0
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'attack
          :flags #x3000
          )
@@ -316,28 +300,28 @@
 (define *jump-mods*
     (new 'static 'surface
          :name 'jump
-         :turnv 131072.000000
-         :turnvv (the-as float #x468e38e4)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 (the-as float #x3e99999a)
-         :seek90 (the-as float #x3e99999a)
-         :seek180 (the-as float #x3e99999a)
-         :fric (the-as float #x3e4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 18204.445
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 0.3
+         :seek90 0.3
+         :seek180 0.3
+         :fric 0.2
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -346,28 +330,28 @@
 (define *double-jump-mods*
     (new 'static 'surface
          :name 'jump-double
-         :turnv 131072.000000
-         :turnvv (the-as float #x468e38e4)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 32768.000000
-         :target-speed 32768.000000
-         :seek0 (the-as float #x3e99999a)
-         :seek90 (the-as float #x3e99999a)
-         :seek180 (the-as float #x3e99999a)
-         :fric (the-as float #x3e4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 18204.445
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 32768.0
+         :target-speed 32768.0
+         :seek0 0.3
+         :seek90 0.3
+         :seek180 0.3
+         :fric 0.2
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -376,28 +360,28 @@
 (define *smack-jump-mods*
     (new 'static 'surface
          :name 'jump
-         :turnv 131072.000000
-         :turnvv (the-as float #x468e38e4)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 (the-as float #x3e99999a)
-         :seek90 (the-as float #x3e99999a)
-         :seek180 (the-as float #x3e99999a)
-         :fric (the-as float #x3d4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 18204.445
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 0.3
+         :seek90 0.3
+         :seek180 0.3
+         :fric 0.05
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -406,28 +390,28 @@
 (define *high-jump-mods*
     (new 'static 'surface
          :name 'high-jump
-         :turnv 131072.000000
-         :turnvv 65536.000000
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 26624.000000
-         :target-speed 26624.000000
-         :seek0 (the-as float #x3f666666)
-         :seek90 (the-as float #x3f666666)
-         :seek180 (the-as float #x3f666666)
-         :fric (the-as float #x3e99999a)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 65536.0
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 26624.0
+         :target-speed 26624.0
+         :seek0 0.9
+         :seek90 0.9
+         :seek180 0.9
+         :fric 0.3
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -436,28 +420,28 @@
 (define *launch-jump-mods*
     (new 'static 'surface
          :name 'launch-jump
-         :turnv (the-as float #x468e38e4)
-         :turnvv 65536.000000
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 61440.000000
-         :target-speed 61440.000000
-         :seek0 (the-as float #x3f666666)
-         :seek90 (the-as float #x3f666666)
-         :seek180 (the-as float #x3f666666)
-         :fric (the-as float #x3e99999a)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 18204.445
+         :turnvv 65536.0
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 61440.0
+         :target-speed 61440.0
+         :seek0 0.9
+         :seek90 0.9
+         :seek180 0.9
+         :fric 0.3
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc80
          )
@@ -466,28 +450,28 @@
 (define *forward-high-jump-mods*
     (new 'static 'surface
          :name 'high-jump
-         :turnv 131072.000000
-         :turnvv 65536.000000
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 45056.000000
-         :target-speed 45056.000000
-         :seek0 (the-as float #x3f666666)
-         :seek90 (the-as float #x3f666666)
-         :seek180 (the-as float #x3f666666)
-         :fric (the-as float #x3e99999a)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 65536.0
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 45056.0
+         :target-speed 45056.0
+         :seek0 0.9
+         :seek90 0.9
+         :seek180 0.9
+         :fric 0.3
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -496,28 +480,28 @@
 (define *flip-jump-mods*
     (new 'static 'surface
          :name 'high-jump
-         :turnv 131072.000000
-         :turnvv 65536.000000
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max (the-as float #x479ccccd)
-         :target-speed 51200.000000
-         :seek0 (the-as float #x3f666666)
-         :seek90 (the-as float #x3f666666)
-         :seek180 (the-as float #x3f666666)
-         :fric (the-as float #x3e99999a)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 65536.0
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 80281.6
+         :target-speed 51200.0
+         :seek0 0.9
+         :seek90 0.9
+         :seek180 0.9
+         :fric 0.3
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -526,28 +510,28 @@
 (define *forward-jump-mods*
     (new 'static 'surface
          :name 'jump
-         :turnv 131072.000000
-         :turnvv (the-as float #x468e38e4)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 65536.000000
-         :target-speed 65536.000000
-         :seek0 (the-as float #x3e99999a)
-         :seek90 (the-as float #x3e99999a)
-         :seek180 (the-as float #x3e99999a)
-         :fric (the-as float #x3d4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 18204.445
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 65536.0
+         :target-speed 65536.0
+         :seek0 0.3
+         :seek90 0.3
+         :seek180 0.3
+         :fric 0.05
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -556,28 +540,28 @@
 (define *forward-pole-jump-mods*
     (new 'static 'surface
          :name 'jump
-         :turnv 131072.000000
-         :turnvv (the-as float #x468e38e4)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 53248.000000
-         :target-speed 53248.000000
-         :seek0 (the-as float #x3e99999a)
-         :seek90 (the-as float #x3e99999a)
-         :seek180 (the-as float #x3e99999a)
-         :fric (the-as float #x3d4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 18204.445
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 53248.0
+         :target-speed 53248.0
+         :seek0 0.3
+         :seek90 0.3
+         :seek180 0.3
+         :fric 0.05
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #xc00
          )
@@ -586,26 +570,26 @@
 (define *attack-mods*
     (new 'static 'surface
          :name 'attack
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 1.000000
-         :seek90 1.000000
-         :seek180 1.000000
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 1.0
+         :seek90 1.0
+         :seek180 1.0
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'attack
          :flags #x1000
          )
@@ -614,27 +598,27 @@
 (define *jump-attack-mods*
     (new 'static 'surface
          :name 'attack
-         :turnvv (the-as float #x468e38e4)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 24576.000000
-         :target-speed 24576.000000
-         :seek0 (the-as float #x3f666666)
-         :seek90 (the-as float #x3f666666)
-         :seek180 (the-as float #x3f666666)
-         :fric (the-as float #x3e4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnvv 18204.445
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 24576.0
+         :target-speed 24576.0
+         :seek0 0.9
+         :seek90 0.9
+         :seek180 0.9
+         :fric 0.2
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'air
          :flags #x1c00
          )
@@ -643,27 +627,27 @@
 (let ((a0-4
        (new 'static 'surface
             :name 'uppercut
-            :turnvv (the-as float #x468e38e4)
-            :tiltv 32768.000000
-            :tiltvv 131072.000000
-            :transv-max 32768.000000
-            :target-speed 32768.000000
-            :seek0 (the-as float #x3e99999a)
-            :seek90 (the-as float #x3e99999a)
-            :seek180 (the-as float #x3e99999a)
-            :fric (the-as float #x3e4ccccd)
-            :nonlin-fric-dist 1.000000
-            :slip-factor 1.000000
-            :slide-factor 1.000000
-            :slope-up-factor 1.000000
-            :slope-down-factor 1.000000
-            :slope-slip-angle 1.000000
-            :impact-fric 1.000000
-            :bend-factor 1.000000
-            :bend-speed 1.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnvv 18204.445
+            :tiltv 32768.0
+            :tiltvv 131072.0
+            :transv-max 32768.0
+            :target-speed 32768.0
+            :seek0 0.3
+            :seek90 0.3
+            :seek180 0.3
+            :fric 0.2
+            :nonlin-fric-dist 1.0
+            :slip-factor 1.0
+            :slide-factor 1.0
+            :slope-up-factor 1.0
+            :slope-down-factor 1.0
+            :slope-slip-angle 1.0
+            :impact-fric 1.0
+            :bend-factor 1.0
+            :bend-speed 1.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             :mode 'air
             :flags #x1c00
             )
@@ -675,23 +659,23 @@
 (define *run-attack-mods*
     (new 'static 'surface
          :name 'wheel-flip
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max (the-as float #x47b33333)
-         :target-speed 122880.000000
-         :seek90 0.500000
-         :seek180 (the-as float #x3e19999a)
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 0.250000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 91750.4
+         :target-speed 122880.0
+         :seek90 0.5
+         :seek180 0.15
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 0.25
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'attack
          :flags #x1018
          )
@@ -700,26 +684,26 @@
 (define *wheel-mods*
     (new 'static 'surface
          :name 'wheel
-         :turnv 131072.000000
-         :turnvv (the-as float #x45aaaaab)
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max (the-as float #x47b33333)
-         :target-speed (the-as float #x46333333)
-         :seek0 1.000000
-         :seek90 1.000000
-         :seek180 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 0.250000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 5461.3335
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 91750.4
+         :target-speed 11468.8
+         :seek0 1.0
+         :seek90 1.0
+         :seek180 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 0.25
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'attack
          :flags #x1000
          )
@@ -728,23 +712,23 @@
 (define *wheel-flip-mods*
     (new 'static 'surface
          :name 'wheel-flip
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max (the-as float #x47b33333)
-         :target-speed (the-as float #x47c99999)
-         :seek90 0.500000
-         :seek180 (the-as float #x3e19999a)
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 0.250000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 91750.4
+         :target-speed 103219.195
+         :seek90 0.5
+         :seek180 0.15
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 0.25
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'attack
          :flags #x1c00
          )
@@ -753,24 +737,24 @@
 (define *flop-mods*
     (new 'static 'surface
          :name 'flop
-         :tiltv 32768.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 1.000000
-         :seek90 (the-as float #x3e99999a)
-         :seek180 (the-as float #x3fc00000)
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 0.250000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :tiltv 32768.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 1.0
+         :seek90 0.3
+         :seek180 1.5
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 0.25
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'attack
          :flags #x1800
          )
@@ -779,28 +763,28 @@
 (let ((a0-5
        (new 'static 'surface
             :name 'flop
-            :turnv (the-as float #x460e38e4)
-            :turnvv (the-as float #x460e38e4)
-            :tiltv 32768.000000
-            :tiltvv 131072.000000
-            :transv-max 40960.000000
-            :target-speed 40960.000000
-            :seek0 (the-as float #x3e99999a)
-            :seek90 (the-as float #x3dcccccd)
-            :seek180 (the-as float #x3e19999a)
-            :fric (the-as float #x3e4ccccd)
-            :nonlin-fric-dist 1.000000
-            :slip-factor 1.000000
-            :slide-factor 1.000000
-            :slope-up-factor 0.250000
-            :slope-down-factor 1.000000
-            :slope-slip-angle 1.000000
-            :impact-fric 1.000000
-            :bend-factor 1.000000
-            :bend-speed 1.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnv 9102.223
+            :turnvv 9102.223
+            :tiltv 32768.0
+            :tiltvv 131072.0
+            :transv-max 40960.0
+            :target-speed 40960.0
+            :seek0 0.3
+            :seek90 0.1
+            :seek180 0.15
+            :fric 0.2
+            :nonlin-fric-dist 1.0
+            :slip-factor 1.0
+            :slide-factor 1.0
+            :slope-up-factor 0.25
+            :slope-down-factor 1.0
+            :slope-slip-angle 1.0
+            :impact-fric 1.0
+            :bend-factor 1.0
+            :bend-speed 1.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             :mode 'air
             :flags #x800
             )
@@ -812,28 +796,28 @@
 (define *wade-mods*
     (new 'static 'surface
          :name 'wade
-         :turnv 131072.000000
-         :turnvv 524288.000000
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :seek0 1.000000
-         :seek90 0.500000
-         :seek180 0.500000
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 524288.0
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :seek0 1.0
+         :seek90 0.5
+         :seek180 0.5
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'wade
          :flags #x1
          )
@@ -842,28 +826,28 @@
 (define *swim-mods*
     (new 'static 'surface
          :name 'swim
-         :turnv 49152.000000
-         :turnvv 524288.000000
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 28672.000000
-         :target-speed 28672.000000
-         :seek0 0.750000
-         :seek90 (the-as float #x3e4ccccd)
-         :seek180 (the-as float #x3e4ccccd)
-         :fric (the-as float #x3d4ccccd)
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 49152.0
+         :turnvv 524288.0
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 28672.0
+         :target-speed 28672.0
+         :seek0 0.75
+         :seek90 0.2
+         :seek180 0.2
+         :fric 0.05
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'swim
          )
   )
@@ -871,22 +855,22 @@
 (define *dive-mods*
     (new 'static 'surface
          :name 'swim
-         :turnv (the-as float #x46aaaaab)
-         :turnvv 32768.000000
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 20480.000000
-         :target-speed 20480.000000
-         :seek0 (the-as float #x3d4ccccd)
-         :seek90 (the-as float #x3d4ccccd)
-         :seek180 (the-as float #x3d4ccccd)
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :align-speed 1.000000
+         :turnv 21845.334
+         :turnvv 32768.0
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 20480.0
+         :target-speed 20480.0
+         :seek0 0.05
+         :seek90 0.05
+         :seek180 0.05
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :align-speed 1.0
          :mode 'dive
          :flags #x2
          )
@@ -895,28 +879,28 @@
 (define *dive-bottom-mods*
     (new 'static 'surface
          :name 'swim-bottom
-         :turnv (the-as float #x46aaaaab)
-         :turnvv 32768.000000
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 20480.000000
-         :target-speed 20480.000000
-         :seek0 (the-as float #x3dcccccd)
-         :seek90 (the-as float #x3d4ccccd)
-         :seek180 (the-as float #x3d4ccccd)
-         :fric 1.000000
-         :nonlin-fric-dist 1.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :alignv 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 21845.334
+         :turnvv 32768.0
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 20480.0
+         :target-speed 20480.0
+         :seek0 0.1
+         :seek90 0.05
+         :seek180 0.05
+         :fric 1.0
+         :nonlin-fric-dist 1.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :alignv 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          :mode 'dive
          :flags #x2
          )
@@ -943,58 +927,58 @@
 (define *empty-mods*
     (new 'static 'surface
          :name 'empty
-         :seek0 1.000000
-         :seek90 1.000000
-         :seek180 1.000000
-         :fric 1.000000
+         :seek0 1.0
+         :seek90 1.0
+         :seek180 1.0
+         :fric 1.0
          )
   )
 
 (define *neutral-mods*
     (new 'static 'surface
          :name 'walk
-         :turnv 131072.000000
-         :turnvv 524288.000000
-         :tiltv 65536.000000
-         :tiltvv 131072.000000
-         :transv-max 40960.000000
-         :target-speed 40960.000000
-         :slip-factor 1.000000
-         :slide-factor 1.000000
-         :slope-up-factor 1.000000
-         :slope-down-factor 1.000000
-         :slope-slip-angle 1.000000
-         :impact-fric 1.000000
-         :bend-factor 1.000000
-         :bend-speed 1.000000
-         :slope-up-traction 1.000000
-         :align-speed 1.000000
+         :turnv 131072.0
+         :turnvv 524288.0
+         :tiltv 65536.0
+         :tiltvv 131072.0
+         :transv-max 40960.0
+         :target-speed 40960.0
+         :slip-factor 1.0
+         :slide-factor 1.0
+         :slope-up-factor 1.0
+         :slope-down-factor 1.0
+         :slope-slip-angle 1.0
+         :impact-fric 1.0
+         :bend-factor 1.0
+         :bend-speed 1.0
+         :slope-up-traction 1.0
+         :align-speed 1.0
          )
   )
 
 (let ((v1-41
        (new 'static 'surface
             :name '*stone-surface*
-            :turnv 1.000000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max 1.000000
-            :target-speed 1.000000
-            :seek0 153600.000000
-            :seek90 153600.000000
-            :seek180 256000.000000
-            :fric 153600.000000
-            :nonlin-fric-dist 5120.000000
-            :slip-factor 1.000000
-            :slope-down-factor 10240.000000
-            :slope-slip-angle 8192.000000
-            :impact-fric 1.000000
-            :bend-factor (the-as float #x3f4ccccd)
-            :bend-speed 4.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnv 1.0
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 1.0
+            :target-speed 1.0
+            :seek0 153600.0
+            :seek90 153600.0
+            :seek180 256000.0
+            :fric 153600.0
+            :nonlin-fric-dist 5120.0
+            :slip-factor 1.0
+            :slope-down-factor 10240.0
+            :slope-slip-angle 8192.0
+            :impact-fric 1.0
+            :bend-factor 0.8
+            :bend-speed 4.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             )
         ))
   (define *stone-surface* v1-41)
@@ -1006,24 +990,24 @@
 (let ((v1-42
        (new 'static 'surface
             :name '*edge-surface*
-            :turnv 1.000000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max 1.000000
-            :target-speed 1.000000
-            :seek0 153600.000000
-            :seek90 153600.000000
-            :seek180 256000.000000
-            :fric 30720.000000
-            :nonlin-fric-dist 5120.000000
-            :slip-factor 1.000000
-            :slope-down-factor 18432.000000
-            :slope-slip-angle 8192.000000
-            :bend-factor (the-as float #x3f4ccccd)
-            :bend-speed 4.000000
-            :alignv 1.000000
-            :align-speed 1.000000
+            :turnv 1.0
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 1.0
+            :target-speed 1.0
+            :seek0 153600.0
+            :seek90 153600.0
+            :seek180 256000.0
+            :fric 30720.0
+            :nonlin-fric-dist 5120.0
+            :slip-factor 1.0
+            :slope-down-factor 18432.0
+            :slope-slip-angle 8192.0
+            :bend-factor 0.8
+            :bend-speed 4.0
+            :alignv 1.0
+            :align-speed 1.0
             )
         ))
   (define *edge-surface* v1-42)
@@ -1035,26 +1019,26 @@
 (let ((v1-43
        (new 'static 'surface
             :name '*wade-surface*
-            :turnv 1.000000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max (the-as float #x3f333333)
-            :target-speed (the-as float #x3f333333)
-            :seek0 153600.000000
-            :seek90 153600.000000
-            :seek180 256000.000000
-            :fric 153600.000000
-            :nonlin-fric-dist 5120.000000
-            :slip-factor 1.000000
-            :slope-down-factor 10240.000000
-            :slope-slip-angle 8192.000000
-            :impact-fric 1.000000
-            :bend-factor (the-as float #x3f4ccccd)
-            :bend-speed 4.000000
-            :alignv (the-as float #x3f19999a)
-            :slope-up-traction 1.000000
-            :align-speed (the-as float #x3f19999a)
+            :turnv 1.0
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 0.7
+            :target-speed 0.7
+            :seek0 153600.0
+            :seek90 153600.0
+            :seek180 256000.0
+            :fric 153600.0
+            :nonlin-fric-dist 5120.0
+            :slip-factor 1.0
+            :slope-down-factor 10240.0
+            :slope-slip-angle 8192.0
+            :impact-fric 1.0
+            :bend-factor 0.8
+            :bend-speed 4.0
+            :alignv 0.6
+            :slope-up-traction 1.0
+            :align-speed 0.6
             )
         ))
   (define *wade-surface* v1-43)
@@ -1066,26 +1050,26 @@
 (let ((v1-44
        (new 'static 'surface
             :name '*slope-surface*
-            :turnv 1.000000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max 1.000000
-            :target-speed 1.000000
-            :seek0 122880.000000
-            :seek90 245760.000000
-            :seek180 409600.000000
-            :fric 122880.000000
-            :nonlin-fric-dist 4096.000000
-            :slip-factor 1.000000
-            :slope-up-factor 40960.000000
-            :slope-down-factor 8192.000000
-            :slope-slip-angle 8192.000000
-            :impact-fric 1.000000
-            :bend-factor (the-as float #x3f4ccccd)
-            :bend-speed 4.000000
-            :alignv 1.000000
-            :align-speed 1.000000
+            :turnv 1.0
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 1.0
+            :target-speed 1.0
+            :seek0 122880.0
+            :seek90 245760.0
+            :seek180 409600.0
+            :fric 122880.0
+            :nonlin-fric-dist 4096.0
+            :slip-factor 1.0
+            :slope-up-factor 40960.0
+            :slope-down-factor 8192.0
+            :slope-slip-angle 8192.0
+            :impact-fric 1.0
+            :bend-factor 0.8
+            :bend-speed 4.0
+            :alignv 1.0
+            :align-speed 1.0
             )
         )
       )
@@ -1098,26 +1082,26 @@
 (let ((v1-45
        (new 'static 'surface
             :name '*quicksand-surface*
-            :turnv 0.250000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max 0.500000
-            :target-speed 0.500000
-            :seek0 81920.000000
-            :seek90 83968.000000
-            :seek180 165888.000000
-            :fric 329728.000000
-            :nonlin-fric-dist 5120.000000
-            :slip-factor 1.000000
-            :slope-down-factor 10240.000000
-            :slope-slip-angle 8192.000000
-            :impact-fric 1.000000
-            :bend-factor (the-as float #x3f4ccccd)
-            :bend-speed 4.000000
-            :alignv 0.500000
-            :slope-up-traction 1.000000
-            :align-speed 0.500000
+            :turnv 0.25
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 0.5
+            :target-speed 0.5
+            :seek0 81920.0
+            :seek90 83968.0
+            :seek180 165888.0
+            :fric 329728.0
+            :nonlin-fric-dist 5120.0
+            :slip-factor 1.0
+            :slope-down-factor 10240.0
+            :slope-slip-angle 8192.0
+            :impact-fric 1.0
+            :bend-factor 0.8
+            :bend-speed 4.0
+            :alignv 0.5
+            :slope-up-traction 1.0
+            :align-speed 0.5
             )
         )
       )
@@ -1130,26 +1114,26 @@
 (let ((v1-46
        (new 'static 'surface
             :name '*tar-surface*
-            :turnv 0.250000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max (the-as float #x3ecccccd)
-            :target-speed (the-as float #x3ecccccd)
-            :seek0 81920.000000
-            :seek90 83968.000000
-            :seek180 165888.000000
-            :fric 329728.000000
-            :nonlin-fric-dist 5120.000000
-            :slip-factor 1.000000
-            :slope-down-factor 10240.000000
-            :slope-slip-angle 8192.000000
-            :impact-fric 1.000000
-            :bend-factor (the-as float #x3f4ccccd)
-            :bend-speed 4.000000
-            :alignv 0.500000
-            :slope-up-traction 1.000000
-            :align-speed 0.500000
+            :turnv 0.25
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 0.4
+            :target-speed 0.4
+            :seek0 81920.0
+            :seek90 83968.0
+            :seek180 165888.0
+            :fric 329728.0
+            :nonlin-fric-dist 5120.0
+            :slip-factor 1.0
+            :slope-down-factor 10240.0
+            :slope-slip-angle 8192.0
+            :impact-fric 1.0
+            :bend-factor 0.8
+            :bend-speed 4.0
+            :alignv 0.5
+            :slope-up-traction 1.0
+            :align-speed 0.5
             )
         )
       )
@@ -1162,24 +1146,24 @@
 (let ((v1-47
        (new 'static 'surface
             :name '*grass-surface*
-            :turnv 1.000000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max 1.000000
-            :target-speed 1.000000
-            :seek0 122880.000000
-            :seek90 122880.000000
-            :seek180 409600.000000
-            :fric 122880.000000
-            :nonlin-fric-dist 4096.000000
-            :slip-factor 1.000000
-            :slope-slip-angle 16384.000000
-            :impact-fric 0.500000
-            :bend-speed 4.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnv 1.0
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 1.0
+            :target-speed 1.0
+            :seek0 122880.0
+            :seek90 122880.0
+            :seek180 409600.0
+            :fric 122880.0
+            :nonlin-fric-dist 4096.0
+            :slip-factor 1.0
+            :slope-slip-angle 16384.0
+            :impact-fric 0.5
+            :bend-speed 4.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             )
         ))
   (define *grass-surface* v1-47)
@@ -1191,23 +1175,23 @@
 (let ((v1-48
        (new 'static 'surface
             :name '*ice-surface*
-            :turnv 0.500000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max (the-as float #x3fc00000)
-            :target-speed (the-as float #x3fc00000)
-            :seek0 24576.000000
-            :seek90 24576.000000
-            :seek180 24576.000000
-            :fric (the-as float #x46b9999a)
-            :nonlin-fric-dist 4091904.000000
-            :slip-factor (the-as float #x3f333333)
-            :slope-slip-angle 16384.000000
-            :bend-speed 4.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnv 0.5
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 1.5
+            :target-speed 1.5
+            :seek0 24576.0
+            :seek90 24576.0
+            :seek180 24576.0
+            :fric 23756.8
+            :nonlin-fric-dist 4091904.0
+            :slip-factor 0.7
+            :slope-slip-angle 16384.0
+            :bend-speed 4.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             :flags #x18
             )
         ))
@@ -1220,25 +1204,25 @@
 (let ((v1-49
        (new 'static 'surface
             :name '*tread-surface*
-            :turnv 1.000000
-            :turnvv 1.000000
-            :tiltv 1.000000
-            :tiltvv 1.000000
-            :transv-max 1.000000
-            :target-speed 1.000000
-            :seek0 122880.000000
-            :seek90 245760.000000
-            :seek180 409600.000000
-            :fric 122880.000000
-            :nonlin-fric-dist 4096.000000
-            :slip-factor 1.000000
-            :slope-up-factor 8192.000000
-            :slope-down-factor 8192.000000
-            :impact-fric 1.000000
-            :bend-speed 4.000000
-            :alignv 1.000000
-            :slope-up-traction 1.000000
-            :align-speed 1.000000
+            :turnv 1.0
+            :turnvv 1.0
+            :tiltv 1.0
+            :tiltvv 1.0
+            :transv-max 1.0
+            :target-speed 1.0
+            :seek0 122880.0
+            :seek90 245760.0
+            :seek180 409600.0
+            :fric 122880.0
+            :nonlin-fric-dist 4096.0
+            :slip-factor 1.0
+            :slope-up-factor 8192.0
+            :slope-down-factor 8192.0
+            :impact-fric 1.0
+            :bend-speed 4.0
+            :alignv 1.0
+            :slope-up-traction 1.0
+            :align-speed 1.0
             )
         )
       )
