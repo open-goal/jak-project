@@ -5,7 +5,7 @@
 ;; name in dgo: matrix-h
 ;; dgos: GAME, ENGINE
 
-;; matrix-h
+;; A 4x4 matrix, stored in row-major order
 (deftype matrix (structure)
   ((data   float 16 :offset-assert 0)
    (vector vector 4 :inline :offset 0)
@@ -15,10 +15,13 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (dummy-9 () none 9)
-    )
+   (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none 9)
+   )
   )
 
+;; A 3x3 matrix, stored in row-major order.
+;; NOTE: the rows each have an extra 4-bytes of padding
+;;  so this is really a 3x4 matrix.
 (deftype matrix3 (structure)
   ((data   float 12 :offset-assert 0)
    (vector vector 3  :inline :offset 0)
@@ -40,16 +43,16 @@
   :flag-assert         #x900000020
   )
 
-(defun matrix-copy! ((arg0 matrix) (arg1 matrix))
-  (let ((v1-0 (-> arg1 vector 0 quad))
-        (a2-0 (-> arg1 vector 1 quad))
-        (a3-0 (-> arg1 vector 2 quad))
-        (a1-1 (-> arg1 vector 3 quad))
+(defun matrix-copy! ((dst matrix) (src matrix))
+  (let ((v1-0 (-> src vector 0 quad))
+        (a2-0 (-> src vector 1 quad))
+        (a3-0 (-> src vector 2 quad))
+        (a1-1 (-> src vector 3 quad))
         )
-   (set! (-> arg0 vector 0 quad) v1-0)
-   (set! (-> arg0 vector 1 quad) a2-0)
-   (set! (-> arg0 vector 2 quad) a3-0)
-   (set! (-> arg0 vector 3 quad) a1-1)
-   )
-  arg0
+    (set! (-> dst vector 0 quad) v1-0)
+    (set! (-> dst vector 1 quad) a2-0)
+    (set! (-> dst vector 2 quad) a3-0)
+    (set! (-> dst vector 3 quad) a1-1)
+    )
+  dst
   )

@@ -484,6 +484,28 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   return get_none();
 }
 
+Val* Compiler::compile_asm_int128_math3(const goos::Object& form,
+                                        const goos::Object& rest,
+                                        IR_Int128Math3Asm::Kind kind,
+                                        Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {{"color", {false, goos::ObjectType::SYMBOL}}});
+  bool color = true;
+  if (args.has_named("color")) {
+    color = get_true_or_false(form, args.named.at("color"));
+  }
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot set destination");
+  }
+  env->emit_ir<IR_Int128Math3Asm>(color, dest, src1, src2, kind);
+  return get_none();
+}
+
 Val* Compiler::compile_asm_vf_math2(const goos::Object& form,
                                     const goos::Object& rest,
                                     IR_VFMath2Asm::Kind kind,
@@ -584,6 +606,67 @@ Val* Compiler::compile_asm_pw_srl(const goos::Object& form, const goos::Object& 
 
 Val* Compiler::compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_vf_math2_imm_u8(form, rest, IR_VFMath2Asm::Kind::PW_SRA, env);
+}
+
+Val* Compiler::compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLW, env);
+}
+
+Val* Compiler::compile_asm_pextuw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUW, env);
+}
+
+Val* Compiler::compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCPYUD, env);
+}
+
+Val* Compiler::compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCPYLD, env);
+}
+
+Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
+}
+
+Val* Compiler::compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {});
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+  auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
+
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot set destination");
+  }
+
+  env->emit_ir<IR_VFMath2Asm>(true, temp, src1, IR_VFMath2Asm::Kind::VPSHUFLW, 0x88);
+  env->emit_ir<IR_VFMath2Asm>(true, dest, src2, IR_VFMath2Asm::Kind::VPSHUFLW, 0x88);
+  env->emit_ir<IR_VFMath2Asm>(true, temp, temp, IR_VFMath2Asm::Kind::VPSHUFHW, 0x88);
+  env->emit_ir<IR_VFMath2Asm>(true, dest, dest, IR_VFMath2Asm::Kind::VPSHUFHW, 0x88);
+  env->emit_ir<IR_VFMath2Asm>(true, temp, temp, IR_VFMath2Asm::Kind::VPSRLDQ, 4);
+  env->emit_ir<IR_VFMath2Asm>(true, dest, dest, IR_VFMath2Asm::Kind::VPSRLDQ, 4);
+  // is actually a VPUNPCKLQDQ with srcs swapped.
+  env->emit_ir<IR_Int128Math3Asm>(true, dest, temp, dest, IR_Int128Math3Asm::Kind::PCPYLD);
+
+  return get_none();
+}
+
+Val* Compiler::compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {});
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot set destination");
+  }
+
+  env->emit_ir<IR_VFMath3Asm>(true, dest, src1, src2, IR_VFMath3Asm::Kind::XOR);
+  return get_none();
 }
 
 Val* Compiler::compile_asm_itof_vf(const goos::Object& form, const goos::Object& rest, Env* env) {

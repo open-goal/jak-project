@@ -125,3 +125,9 @@
 - There is now an option for `allow-misaligned` which allows the alignment of an struct type to be less than 16-bytes when inlined, without enabling array packing. This seems like a stupid option, but GOAL has this in some places, so we support it too.
 - In method declarations in a `deftype`, you can no longer provide argument names.  There was ambiguity when parsing a compound typespec vs named argument. The names were not used for anything.
 - 128-bit integer register variables (`i128`) are now supported. These work with assembly forms, `set!`s between registers, and `set!`s of memory locations with type `(pointer uint128)` or `(pointer int128)`.
+- Fixed a bug where the compiler would abort if had to spill an `xmm` register containing an `i128` value.
+- Added `.pextlw`, `.pextuw`, `.pcpyld`, and `.pcpyud` assembly forms
+- Fixed a bug where `uint128` or children defined with `local-vars` would end up using a 64-bit GPR instead of a 128-bit XMM.
+- Fixed a bug where 128-bit variable spills could be misaligned, causing a segfault at `vmovaps`.
+- Added `.ppach` and `.pceqw`
+- Fixed a bug where setting 128-bit / 64-bit variables from each other only did a 32-bit set

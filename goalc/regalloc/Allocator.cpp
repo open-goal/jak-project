@@ -605,9 +605,31 @@ bool try_assignment_for_var(int var,
 }
 
 int get_stack_slot_for_var(int var, RegAllocCache* cache) {
+  int slot_size;
+  auto& info = cache->iregs.at(var);
+  switch (info.reg_class) {
+    case RegClass::INT_128:
+      slot_size = 2;
+      break;
+    case RegClass::VECTOR_FLOAT:
+      slot_size = 2;
+      break;
+    case RegClass::FLOAT:
+      slot_size = 1;  // todo - this wastes some space
+      break;
+    case RegClass::GPR_64:
+      slot_size = 1;
+      break;
+    default:
+      assert(false);
+  }
   auto kv = cache->var_to_stack_slot.find(var);
   if (kv == cache->var_to_stack_slot.end()) {
-    auto slot = cache->current_stack_slot++;
+    if (slot_size == 2 && (cache->current_stack_slot & 1)) {
+      cache->current_stack_slot++;
+    }
+    auto slot = cache->current_stack_slot;
+    cache->current_stack_slot += slot_size;
     cache->var_to_stack_slot[var] = slot;
     return slot;
   } else {

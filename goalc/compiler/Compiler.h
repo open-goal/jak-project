@@ -87,6 +87,11 @@ class Compiler {
                             emitter::Register::VF_ELEMENT broadcastElement,
                             Env* env);
 
+  Val* compile_asm_int128_math3(const goos::Object& form,
+                                const goos::Object& rest,
+                                IR_Int128Math3Asm::Kind kind,
+                                Env* env);
+
   Val* compile_asm_vf_math2(const goos::Object& form,
                             const goos::Object& rest,
                             IR_VFMath2Asm::Kind kind,
@@ -420,6 +425,13 @@ class Compiler {
   Val* compile_asm_pw_sll(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pw_srl(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pextuw(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms
 

@@ -13,6 +13,11 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::PSRAW, {"TODO.PSRAW", {}}},
     {InstructionKind::PSUBW, {"TODO.PSUBW", {}}},
 
+    {InstructionKind::PEXTUW, {".pextuw", {}}},
+    {InstructionKind::PEXTLW, {".pextlw", {}}},
+    {InstructionKind::PCPYLD, {".pcpyld", {}}},
+    {InstructionKind::PCPYUD, {".pcpyud", {}}},
+
     // NOTE - depending on how this is used, this may case issues! Be Warned!
     // lots of implicit logic in OpenGOAL depending on argument types!
     {InstructionKind::MFC1, {".mov", {}}},
@@ -163,6 +168,7 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
   std::vector<goos::Object> args;
   std::vector<goos::Object> named_args;
 
+  bool got_fsf = false;
   for (int i = 0; i < instr.n_src; i++) {
     auto v = m_src.at(i);
     InstructionAtom atom = instr.get_src(i);
@@ -172,12 +178,23 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
       args.push_back(v.value().to_form(env));
     } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
       // Handle FTF/FSF operations
-      if (func.allows_modifier(MOD::FTF) && named_args.size() == 0) {
-        named_args.push_back(
-            pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_vf_field())));
+      if (func.allows_modifier(MOD::FTF) && func.allows_modifier(MOD::FSF)) {
+        if (got_fsf) {
+          named_args.push_back(
+              pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_vf_field())));
+        } else {
+          got_fsf = true;
+          named_args.push_back(
+              pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_vf_field())));
+        }
       } else if (func.allows_modifier(MOD::FSF)) {
         named_args.push_back(
             pretty_print::to_symbol(fmt::format(":fsf #b{:b}", atom.get_vf_field())));
+      } else if (func.allows_modifier(MOD::FTF)) {
+        named_args.push_back(
+            pretty_print::to_symbol(fmt::format(":ftf #b{:b}", atom.get_vf_field())));
+      } else {
+        assert(false);
       }
     } else if (func.allows_modifier(MOD::OFFSET) && atom.kind == InstructionAtom::AtomKind::IMM) {
       // Handle offsetting

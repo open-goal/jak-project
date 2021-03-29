@@ -92,10 +92,6 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
     "vector-dot",         // fpu acc
     "vector4-dot",        // fpu acc
-
-    /// MATRIX
-    "matrix-transpose!",    // unsupported asm ops
-    "matrix-4x4-inverse!",  // compiler fails to regalloc this...
 };
 
 // default location for the data. It can be changed with a command line argument.

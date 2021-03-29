@@ -546,9 +546,30 @@ class IR_VFMath3Asm : public IR_Asm {
   Kind m_kind;
 };
 
+class IR_Int128Math3Asm : public IR_Asm {
+ public:
+  enum class Kind { PEXTLW, PEXTUW, PCPYUD, PCPYLD, PCEQW };
+  IR_Int128Math3Asm(bool use_color,
+                    const RegVal* dst,
+                    const RegVal* src1,
+                    const RegVal* src2,
+                    Kind kind);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src1 = nullptr;
+  const RegVal* m_src2 = nullptr;
+  Kind m_kind;
+};
+
 class IR_VFMath2Asm : public IR_Asm {
  public:
-  enum class Kind { ITOF, FTOI, PW_SLL, PW_SRL, PW_SRA };
+  enum class Kind { ITOF, FTOI, PW_SLL, PW_SRL, PW_SRA, VPSRLDQ, VPSLLDQ, VPSHUFLW, VPSHUFHW };
   IR_VFMath2Asm(bool use_color,
                 const RegVal* dst,
                 const RegVal* src,

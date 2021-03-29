@@ -35,6 +35,7 @@ const std::unordered_map<
         {".wait.vf", &Compiler::compile_asm_wait_vf},
 
         {".xor.vf", &Compiler::compile_asm_xor_vf},
+        {".xor.p", &Compiler::compile_asm_xorp},
 
         {".max.vf", &Compiler::compile_asm_max_vf},
         {".max.x.vf", &Compiler::compile_asm_max_x_vf},
@@ -95,6 +96,12 @@ const std::unordered_map<
         {".pw.sll", &Compiler::compile_asm_pw_sll},
         {".pw.srl", &Compiler::compile_asm_pw_srl},
         {".pw.sra", &Compiler::compile_asm_pw_sra},
+        {".pextlw", &Compiler::compile_asm_pextlw},
+        {".pextuw", &Compiler::compile_asm_pextuw},
+        {".pcpyld", &Compiler::compile_asm_pcpyld},
+        {".pcpyud", &Compiler::compile_asm_pcpyud},
+        {".pceqw", &Compiler::compile_asm_pceqw},
+        {".ppach", &Compiler::compile_asm_ppach},
 
         // BLOCK FORMS
         {"top-level", &Compiler::compile_top_level},
