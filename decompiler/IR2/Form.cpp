@@ -1438,7 +1438,7 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
     case FixedOperatorKind::MULTIPLICATION:
       return "*";
     case FixedOperatorKind::SQRT:
-      return "sqrt";
+      return "sqrtf";
     case FixedOperatorKind::ARITH_SHIFT:
       return "ash";
     case FixedOperatorKind::MOD:
