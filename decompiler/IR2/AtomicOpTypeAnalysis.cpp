@@ -541,6 +541,13 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   (void)env;
   (void)dts;
   TypeState result = input;
+
+  if (m_instr.kind == InstructionKind::QMFC2) {
+    assert(m_dst);
+    result.get(m_dst->reg()) = TP_Type::make_from_ts("float");
+    return result;
+  }
+
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
     if (kind == Reg::FPR) {

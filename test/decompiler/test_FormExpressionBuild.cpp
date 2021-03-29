@@ -2550,7 +2550,7 @@ TEST_F(FormRegressionTest, ExprTerminal2) {
 
   std::string expected =
       "(let\n"
-      "  ((f0-4 (sqrt (/ (- (* 0.0 arg0) arg1) arg2))))\n"
+      "  ((f0-4 (sqrtf (/ (- (* 0.0 arg0) arg1) arg2))))\n"
       "  (- f0-4 (+ arg1 (* arg2 (* f0-4 f0-4))))\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});

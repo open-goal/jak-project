@@ -3,6 +3,7 @@
 
 using namespace decompiler;
 
+// tests stack variables
 TEST_F(FormRegressionTest, MatrixPMult) {
   std::string func =
       "sll r0, r0, 0\n"
