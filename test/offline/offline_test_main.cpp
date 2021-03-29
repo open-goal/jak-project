@@ -14,7 +14,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "gcommon", "gstring-h", "gkernel-h", "gkernel",
     /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
-    "trigonometry-h", /* transformq-h */ "matrix",
+    "trigonometry-h", /* transformq-h */ "matrix", "transform",
     /* gap */
     "bounding-box"};
 
@@ -25,7 +25,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
     "geometry-h", "trigonometry-h",
     /* transformq-h, */
-    "matrix",
+    "matrix", "transform",
     /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
