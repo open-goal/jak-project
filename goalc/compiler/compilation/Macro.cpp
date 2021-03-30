@@ -194,3 +194,41 @@ Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, 
   });
   return result;
 }
+
+bool Compiler::expand_macro_once(const goos::Object& src, goos::Object* out, Env*) {
+  if (!src.is_pair()) {
+    return false;
+  }
+
+  auto first = src.as_pair()->car;
+  auto rest = src.as_pair()->cdr;
+  if (!first.is_symbol()) {
+    return false;
+  }
+
+  goos::Object macro_obj;
+  if (!try_getting_macro_from_goos(first, &macro_obj)) {
+    return false;
+  }
+
+  auto macro = macro_obj.as_macro();
+  Arguments args = m_goos.get_args(src, rest, macro->args);
+  auto mac_env_obj = EnvironmentObject::make_new();
+  auto mac_env = mac_env_obj.as_env();
+  mac_env->parent_env = m_goos.global_environment.as_env();
+  m_goos.set_args_in_env(src, args, macro->args, mac_env);
+
+  auto goos_result = m_goos.eval_list_return_last(macro->body, macro->body, mac_env);
+  // make the macro expanded form point to the source where the macro was used for error messages.
+  m_goos.reader.db.inherit_info(src, goos_result);
+
+  *out = goos_result;
+  return true;
+}
+
+goos::Object Compiler::expand_macro_completely(const goos::Object& src, Env* env) {
+  goos::Object result = src;
+  while (expand_macro_once(result, &result, env)) {
+  }
+  return result;
+}

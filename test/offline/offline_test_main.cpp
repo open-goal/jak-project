@@ -14,7 +14,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "gcommon", "gstring-h", "gkernel-h", "gkernel",
     /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
-    "trigonometry-h", /* transformq-h */ "matrix", "transform",
+    "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     /* gap */
     "bounding-box"};
 
@@ -25,7 +25,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
     "geometry-h", "trigonometry-h",
     /* transformq-h, */
-    "matrix", "transform",
+    "matrix", "transform", "quaternion",
     /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
@@ -92,6 +92,11 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
     "vector-dot",         // fpu acc
     "vector4-dot",        // fpu acc
+
+    // QUATERNION
+    "matrix-with-scale->quaternion",  // fpu acc
+    "quaternion-delta-y",             // fpu acc
+
 };
 
 // default location for the data. It can be changed with a command line argument.

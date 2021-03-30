@@ -378,7 +378,10 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
                                                          bool allow_side_effects) {
   auto& arg = m_expr.get_arg(0);
   if (arg.is_var()) {
-    pop_helper({arg.var()}, env, pool, stack, {result}, allow_side_effects);
+    auto forms = pop_to_forms({arg.var()}, env, pool, stack, allow_side_effects);
+    for (auto x : forms.at(0)->elts()) {
+      result->push_back(x);
+    }
   } else if (arg.is_static_addr()) {
     auto lab = env.file->labels.at(arg.label());
     if (env.file->is_string(lab.target_segment, lab.offset)) {
@@ -422,7 +425,10 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
   auto src_type = env.get_types_before_op(src.var().idx()).get(src.var().reg());
   std::vector<FormElement*> src_fes;
   if (src.is_var()) {
-    pop_helper({src.var()}, env, pool, stack, {&src_fes}, allow_side_effects);
+    auto forms = pop_to_forms({src.var()}, env, pool, stack, allow_side_effects);
+    for (auto x : forms.at(0)->elts()) {
+      src_fes.push_back(x);
+    }
   } else {
     src_fes = {this};
   }
@@ -965,6 +971,10 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::MOD_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MOD, pool, stack, result,
                                    allow_side_effects, false);
+      break;
+    case SimpleExpression::Kind::MOD_UNSIGNED:
+      update_from_stack_force_ui_2(env, FixedOperatorKind::MOD, pool, stack, result,
+                                   allow_side_effects);
       break;
     case SimpleExpression::Kind::MIN_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MIN, pool, stack, result,
