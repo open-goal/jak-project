@@ -189,6 +189,8 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::NEG:
     case Kind::LOGNOT:
       return get_type_int1(input, env, dts);
+    case Kind::MOD_UNSIGNED:
+      return TP_Type::make_from_ts("uint");
     default:
       throw std::runtime_error("Simple expression can't get_type: " +
                                to_form(env.file->labels, env).print());

@@ -212,6 +212,7 @@ RegUsageInfo analyze_ir2_register_usage(const Function& function) {
     // also useful to know, written and unused.
     for (auto reg : op->write_regs()) {
       if (op_info.live.find(reg) == op_info.live.end()) {
+        // fmt::print("op {} wau {}\n", op->to_string(function.ir2.env), reg.to_string());
         op_info.written_and_unused.insert(reg);
       }
     }

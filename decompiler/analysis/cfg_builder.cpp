@@ -1354,6 +1354,7 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
     auto op_as_set = dynamic_cast<SetVarElement*>(op);
     if (op_as_set) {
       // check for deadness
+
       if (op_as_set->is_dead_set()) {
         // we want to eliminate, but we should we fix up the register info.
         // now adding.
@@ -1362,30 +1363,34 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
             dynamic_cast<SimpleExpressionElement*>(op_as_set->src()->try_as_single_element());
         assert(consumed_expr);
         auto& consumed = consumed_expr->expr().get_arg(0).var();
-        for (int j = i; j-- > start_op;) {
-          auto& ri = f.ir2.env.reg_use().op.at(j);
-          auto& ao = f.ir2.atomic_ops->ops.at(j);
-          if (contains(ao->write_regs(), consumed.reg())) {
-            ri.written_and_unused.insert(consumed.reg());
-            //            fmt::print("GOT 3, making {} wau by {}\n", consumed.reg().to_charp(),
-            //                       ao->to_string(f.ir2.env));
-            // HACK - regenerate:
-            if (add_map.at(j - start_op) != -1) {
-              //              fmt::print("regenerating {} to ", output->at(add_map.at(j -
-              //              start_op))->to_string(f.ir2.env));
-              output->at(add_map.at(j - start_op)) =
-                  f.ir2.atomic_ops->ops.at(j)->get_as_form(pool, f.ir2.env);
-              //              fmt::print("{}\n", output->at(add_map.at(j -
-              //              start_op))->to_string(f.ir2.env));
+        auto& ri_outer = f.ir2.env.reg_use().op.at(consumed.idx());  // meh
+        if (ri_outer.consumes.find(consumed.reg()) != ri_outer.consumes.end()) {
+          for (int j = i; j-- > start_op;) {
+            auto& ri = f.ir2.env.reg_use().op.at(j);
+            auto& ao = f.ir2.atomic_ops->ops.at(j);
+            if (contains(ao->write_regs(), consumed.reg())) {
+              ri.written_and_unused.insert(consumed.reg());
+              //            fmt::print("GOT 3, making {} wau by {}\n", consumed.reg().to_charp(),
+              //                       ao->to_string(f.ir2.env));
+              // HACK - regenerate:
+              if (add_map.at(j - start_op) != -1) {
+                //              fmt::print("regenerating {} to ", output->at(add_map.at(j -
+                //              start_op))->to_string(f.ir2.env));
+                output->at(add_map.at(j - start_op)) =
+                    f.ir2.atomic_ops->ops.at(j)->get_as_form(pool, f.ir2.env);
+                //              fmt::print("{}\n", output->at(add_map.at(j -
+                //              start_op))->to_string(f.ir2.env));
+              }
+              break;
             }
-            break;
-          }
 
-          if (contains(ao->read_regs(), consumed.reg())) {
-            //            fmt::print("GOT 2, making {} consumed by {}\n", consumed.reg().to_charp(),
-            //                       ao->to_string(f.ir2.env));
-            ri.consumes.insert(consumed.reg());
-            break;
+            if (contains(ao->read_regs(), consumed.reg())) {
+              //            fmt::print("GOT 2, making {} consumed by {}\n",
+              //            consumed.reg().to_charp(),
+              //                       ao->to_string(f.ir2.env));
+              ri.consumes.insert(consumed.reg());
+              break;
+            }
           }
         }
       }
