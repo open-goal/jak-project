@@ -1438,7 +1438,7 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
     case FixedOperatorKind::MULTIPLICATION:
       return "*";
     case FixedOperatorKind::SQRT:
-      return "sqrt";
+      return "sqrtf";
     case FixedOperatorKind::ARITH_SHIFT:
       return "ash";
     case FixedOperatorKind::MOD:
@@ -2302,4 +2302,17 @@ std::optional<SimpleAtom> form_as_atom(const Form* f) {
 
   return {};
 }
+
+FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool) {
+  auto as_cast = dynamic_cast<CastElement*>(elt);
+  if (as_cast) {
+    if (as_cast->type() != type) {
+      as_cast->set_type(type);
+    }
+    return as_cast;
+  } else {
+    return pool.alloc_element<CastElement>(type, pool.alloc_single_form(nullptr, elt));
+  }
+}
+
 }  // namespace decompiler

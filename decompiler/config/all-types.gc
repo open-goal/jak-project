@@ -1238,11 +1238,11 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype quaternion (structure)
-  ((data float 4 :do-not-decompile      :offset-assert 0)
-   (x    float           :offset 0)
-   (y    float           :offset 4)
-   (z    float           :offset 8)
-   (w    float           :offset 12)
+  ((x    float           :offset-assert 0)
+   (y    float           :offset-assert 4)
+   (z    float           :offset-assert 8)
+   (w    float           :offset-assert 12)
+   (data float 4 :do-not-decompile :offset 0)
    (vec  vector  :inline :offset 0)
    (quad uint128         :offset 0)
    )
@@ -1290,6 +1290,9 @@
    (rot   vector :inline :offset-assert 32)
    (scale vector :inline :offset-assert 48)
    )
+  (:methods
+    (new (symbol type) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
@@ -1447,9 +1450,78 @@
 
 
 (define-extern matrix-axis-sin-cos-vu! (function matrix vector float float none))
-(define-extern trs-matrix-calc! function)
-(define-extern transform-matrix-parent-calc! function)
-(define-extern transform-matrix-calc! function)
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; TRANSFORM        ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern transform-matrix-calc! (function transform matrix matrix))
+(define-extern transform-matrix-parent-calc! (function transform matrix vector matrix))
+(define-extern trs-matrix-calc! (function trs matrix matrix))
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; QUATERNION       ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern quaternion-axis-angle! (function quaternion float float float float quaternion))
+(define-extern quaternion-vector-angle! (function quaternion vector float quaternion))
+(define-extern vector-angle<-quaternion! (function vector quaternion vector))
+(define-extern quaternion-zero! (function quaternion quaternion))
+(define-extern quaternion-identity! (function quaternion quaternion))
+(define-extern quaternion-i! (function quaternion quaternion))
+(define-extern quaternion-j! (function quaternion quaternion))
+(define-extern quaternion-k! (function quaternion quaternion))
+(define-extern quaternion-copy! (function quaternion quaternion quaternion))
+(define-extern quaternion-set! (function quaternion float float float float quaternion))
+(define-extern quaternion+! (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-! (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-negate! (function quaternion quaternion quaternion))
+(define-extern quaternion-conjugate! (function quaternion quaternion quaternion))
+(define-extern quaternion-float*! (function quaternion quaternion float quaternion))
+(define-extern quaternion-float/! (function quaternion quaternion float quaternion))
+(define-extern quaternion-norm2 (function quaternion float))
+(define-extern quaternion-norm (function quaternion float))
+(define-extern quaternion-normalize! (function quaternion quaternion))
+(define-extern quaternion-inverse! (function quaternion quaternion quaternion))
+(define-extern quaternion-dot (function quaternion quaternion float))
+(define-extern quaternion*! (function quaternion quaternion quaternion quaternion))
+(define-extern quaternion-right-mult-matrix! (function matrix quaternion matrix))
+(define-extern quaternion-left-mult-matrix! (function matrix quaternion matrix))
+(define-extern quaternion->matrix (function matrix quaternion matrix))
+(define-extern matrix->quaternion (function quaternion matrix quaternion))
+(define-extern matrix-with-scale->quaternion (function quaternion matrix quaternion))
+(define-extern quaternion-vector-len (function quaternion float))
+(define-extern quaternion-log! (function quaternion quaternion quaternion))
+(define-extern quaternion-exp! (function quaternion quaternion quaternion))
+(define-extern quaternion-slerp! (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-pseudo-slerp! (function quaternion quaternion quaternion float quaternion))
+(define-extern quaternion-zxy! (function quaternion vector quaternion))
+
+(define-extern vector-x-quaternion! (function vector quaternion vector))
+(define-extern vector-y-quaternion! (function vector quaternion vector))
+(define-extern vector-z-quaternion! (function vector quaternion vector))
+
+(define-extern quaternion-y-angle (function quaternion float))
+(define-extern quaternion-vector-y-angle (function quaternion vector float))
+(define-extern quaternion-rotate-local-x! (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-local-y! (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-local-z! (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-y! (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-x! (function quaternion quaternion float quaternion))
+(define-extern quaternion-rotate-z! (function quaternion quaternion float quaternion))
+(define-extern quaternion-delta-y (function quaternion quaternion float))
+(define-extern quaternion-rotate-y-to-vector! (function quaternion quaternion quaternion float quaternion))
+(define-extern vector-rotate-y! (function vector vector float vector))
+(define-extern vector-y-angle (function vector float))
+(define-extern vector-x-angle (function vector float))
+(define-extern quaterion<-rotate-y-vector (function quaternion vector quaternion))
+(define-extern quaternion-xz-angle (function quaternion float))
+
+(define-extern quaternion-validate (function quaternion none))
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1458,12 +1530,63 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (define-extern set-eul! (function euler-angles float float float int euler-angles))
-(define-extern eul->matrix function)
-(define-extern quat->eul function)
+(define-extern eul->matrix (function matrix euler-angles matrix))
+(define-extern matrix->eul (function euler-angles matrix int euler-angles))
+(define-extern eul->quat (function quaternion euler-angles quaternion))
+(define-extern quat->eul (function euler-angles quaternion int euler-angles))
 
 
-(define-extern eul->quat function)
-(define-extern matrix->eul function)
+
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; GEOMETERY        ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(define-extern vector-flatten! (function vector vector vector vector))
+(define-extern vector-reflect! (function vector vector vector vector))
+(define-extern vector-reflect-flat! (function vector vector vector vector))
+(define-extern vector-reflect-true-flat! (function vector vector vector vector))
+(define-extern vector-reflect-flat-above! (function vector vector vector vector))
+(define-extern vector-segment-distance-point! (function vector vector vector vector float))
+(define-extern vector-line-distance (function vector vector vector float))
+(define-extern vector-line-distance-point! (function vector vector vector vector float))
+(define-extern vector-orient-by-quat! (function vector vector vector vector))
+(define-extern forward-down->inv-matrix (function matrix vector vector matrix))
+(define-extern forward-down-nopitch->inv-matrix (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->inv-matrix (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->quaternion (function quaternion vector vector quaternion))
+(define-extern forward-up->quaternion (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors! (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors-max-angle! (function quaternion vector vector float quaternion))
+(define-extern matrix-from-two-vectors! (function matrix vector vector none))
+(define-extern matrix-from-two-vectors-max-angle! (function matrix vector vector none))
+(define-extern matrix-from-two-vectors-max-angle-partial! (function matrix vector vector float float none))
+(define-extern matrix-from-two-vectors-partial-linear! (function matrix vector vector float float none))
+(define-extern matrix-remove-z-rot (function matrix matrix))
+(define-extern matrix-rot-diff! (function matrix matrix matrix float))
+(define-extern quaternion-seek (function quaternion quaternion quaternion float quaternion))
+(define-extern vector-deg-seek (function vector vector vector none))
+(define-extern vector-deg-slerp (function vector vector vector float float vector))
+(define-extern vector-vector-deg-slerp! function) ;; stack spills!
+(define-extern normal-of-plane (function vector vector vector vector vector))
+(define-extern vector-3pt-cross! (function vector vector vector vector))
+(define-extern closest-pt-in-triangle function) ;; asm branches
+(define-extern point-in-triangle-cross (function vector vector vector vector vector symbol))
+(define-extern point-in-plane-<-point+normal! (function vector vector vector vector))
+(define-extern circle-circle-xz-intersect (function vector vector vector vector int))
+(define-extern circle-test (function none))
+
+(define-extern curve-evaluate! function)
+(define-extern find-knot-span function)
+(define-extern curve-length function)
+(define-extern calculate-basis-functions-vector! function)
+(define-extern vector-circle-tangent function)
+(define-extern vector-plane-distance function)
+(define-extern curve-copy! function)
+(define-extern curve-get-pos! function)
+(define-extern curve-closest-point function)
+(define-extern vector-circle-tangent-new function)
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32506,109 +32629,9 @@
 ;;(define-extern trsqv object) ;; unknown type
 ;;(define-extern trsq object) ;; unknown type
 
-(define-extern vector-y-angle (function vector float))
-
-
-(define-extern quaternion-zero! function)
-(define-extern quaternion-set! function)
-(define-extern matrix->quaternion (function quaternion matrix quaternion))
-(define-extern quaternion-exp! function)
-(define-extern quaternion-axis-angle! function)
-(define-extern quaternion-rotate-x! function)
-(define-extern quaternion-validate function)
-(define-extern quaternion-dot function)
-(define-extern quaternion-normalize! function)
-(define-extern vector-x-angle function)
-(define-extern quaternion-k! function)
-(define-extern quaternion-vector-len function)
-(define-extern quaternion-rotate-local-x! function)
-(define-extern matrix-with-scale->quaternion function)
-(define-extern quaternion-rotate-y! function)
-(define-extern vector-x-quaternion! function)
-(define-extern quaternion-xz-angle function)
-(define-extern quaternion-j! function)
-(define-extern quaternion*! function)
-(define-extern quaternion-right-mult-matrix! function)
-(define-extern quaternion-left-mult-matrix! function)
-(define-extern quaternion-negate! function)
-(define-extern quaternion+! function)
-(define-extern quaternion-norm function)
-(define-extern quaternion-log! function)
-(define-extern quaternion-rotate-local-z! function)
-(define-extern quaternion-float*! function)
-(define-extern quaternion-float/! function)
-(define-extern quaternion-inverse! function)
-(define-extern quaternion-pseudo-slerp! function)
-(define-extern quaternion-vector-angle! function)
-(define-extern quaterion<-rotate-y-vector function)
-(define-extern quaternion-rotate-y-to-vector! function)
-(define-extern quaternion-! function)
-(define-extern vector-z-quaternion! function)
-(define-extern quaternion-rotate-z! function)
-(define-extern quaternion-slerp! function)
-(define-extern quaternion->matrix function)
-(define-extern quaternion-zxy! function)
-(define-extern quaternion-delta-y function)
-(define-extern vector-angle<-quaternion! function)
-(define-extern quaternion-rotate-local-y! function)
-(define-extern quaternion-norm2 function)
-(define-extern quaternion-identity! (function quaternion quaternion))
-(define-extern quaternion-y-angle function)
-(define-extern quaternion-vector-y-angle function)
-(define-extern quaternion-copy! function)
-(define-extern quaternion-conjugate! function)
-(define-extern vector-y-quaternion! function)
-(define-extern vector-rotate-y! function)
-(define-extern quaternion-i! function)
 
 
 
-
-(define-extern quaternion-from-two-vectors-max-angle! function)
-
-
-(define-extern vector-reflect-flat! function)
-(define-extern forward-down->inv-matrix function)
-(define-extern circle-test function)
-(define-extern vector-line-distance-point! function)
-(define-extern curve-evaluate! function)
-(define-extern vector-reflect! function)
-(define-extern matrix-from-two-vectors! function)
-(define-extern matrix-from-two-vectors-partial-linear! function)
-(define-extern forward-up->quaternion function)
-(define-extern find-knot-span function)
-(define-extern vector-vector-deg-slerp! function)
-(define-extern matrix-from-two-vectors-max-angle! function)
-(define-extern curve-length function)
-(define-extern matrix-from-two-vectors-max-angle-partial! function)
-(define-extern vector-deg-slerp function)
-(define-extern vector-segment-distance-point! function)
-(define-extern forward-up-nopitch->inv-matrix function)
-(define-extern normal-of-plane function)
-(define-extern vector-line-distance function)
-(define-extern calculate-basis-functions-vector! function)
-(define-extern vector-deg-seek function)
-(define-extern point-in-plane-<-point+normal! function)
-(define-extern matrix-rot-diff! function)
-(define-extern point-in-triangle-cross function)
-(define-extern matrix-remove-z-rot function)
-(define-extern quaternion-seek function)
-(define-extern vector-3pt-cross! function)
-(define-extern vector-circle-tangent function)
-(define-extern circle-circle-xz-intersect function)
-(define-extern vector-plane-distance function)
-(define-extern quaternion-from-two-vectors! function)
-(define-extern closest-pt-in-triangle function)
-(define-extern vector-flatten! function)
-(define-extern vector-orient-by-quat! function)
-(define-extern vector-reflect-true-flat! function)
-(define-extern forward-up-nopitch->quaternion function)
-(define-extern curve-copy! function)
-(define-extern curve-get-pos! function)
-(define-extern curve-closest-point function)
-(define-extern forward-down-nopitch->inv-matrix function)
-(define-extern vector-reflect-flat-above! function)
-(define-extern vector-circle-tangent-new function)
 
 
 

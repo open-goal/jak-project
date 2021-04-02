@@ -2,6 +2,7 @@
 
 #include "insert_lets.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
@@ -290,7 +291,21 @@ Form* insert_cast_for_let(RegisterAccess dst,
   auto dst_type = env.get_variable_type(dst, true);
 
   if (src_type != dst_type) {
-    // fmt::print("inserting let cast because {} != {}\n", dst_type.print(), src_type.print());
+    /*auto src_as_cast = dynamic_cast<CastElement*>(src->try_as_single_element());
+    if (src_as_cast) {
+      if (env.dts->ts.tc(dst_type, src_as_cast->type())) {
+        return src;  // no need to cast again.
+      } else {
+        // don't nest casts
+        src_as_cast->set_type(dst_type);
+        return src;
+      }
+    }*/
+    auto as_single = src->try_as_single_element();
+    if (as_single) {
+      return pool.alloc_single_form(nullptr, make_cast_using_existing(as_single, dst_type, pool));
+    }
+
     return pool.alloc_single_element_form<CastElement>(nullptr, dst_type, src);
   }
 

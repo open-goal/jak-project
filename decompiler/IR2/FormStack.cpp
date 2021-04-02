@@ -344,6 +344,10 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
       result.push_back(e.elt);
     }
   }
+
+  if (result.empty()) {
+    result.push_back(pool.alloc_element<EmptyElement>());
+  }
   return result;
 }
 
