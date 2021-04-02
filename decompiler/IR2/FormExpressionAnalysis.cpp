@@ -342,6 +342,12 @@ Form* make_cast(Form* in, const TypeSpec& in_type, const TypeSpec& out_type, For
   if (in_type == out_type) {
     return in;
   }
+
+  auto in_as_cast = dynamic_cast<CastElement*>(in->try_as_single_element());
+  if (in_as_cast && in_as_cast->type() == out_type) {
+    return in;
+  }
+
   return pool.alloc_single_element_form<CastElement>(nullptr, out_type, in);
 }
 
@@ -1155,6 +1161,11 @@ void StoreInPairElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 namespace {
 Form* make_optional_cast(const std::optional<TypeSpec>& cast_type, Form* in, FormPool& pool) {
   if (cast_type) {
+    auto in_as_cast = dynamic_cast<CastElement*>(in->try_as_single_element());
+    if (in_as_cast && in_as_cast->type() == cast_type) {
+      return in;
+    }
+
     return pool.alloc_single_element_form<CastElement>(nullptr, *cast_type, in);
   } else {
     return in;
@@ -1778,6 +1789,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
   // check all to see if they write the value.
   std::vector<SetVarElement*> dest_sets;
+  std::vector<TypeSpec> source_types;  // only explicit accesses that aren't move-eliminated
   for (auto form : write_output_forms) {
     auto last_in_body = dynamic_cast<SetVarElement*>(form->elts().back());
     if (last_in_body) {
@@ -1787,6 +1799,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
           rewrite_as_set = false;
           break;
         }
+        source_types.push_back(last_in_body->src_type());
       }
       last_var = last_in_body->dst();
     }  // For now, I am fine with letting this fail. For example, if the set is eliminated by a
@@ -1832,7 +1845,31 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     if (set_unused) {
       stack.push_form_element(this, true);
     } else {
-      stack.push_value_to_reg(*last_var, pool.alloc_single_form(nullptr, this), true,
+      // We may need to insert a cast here.
+
+      // Note:
+      // I think this might skip a cast if you have something like
+      // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
+      // eliminated by GOAL's register allocator.
+
+      //      fmt::print("checking:\n");
+      //      for (auto& t : source_types) {
+      //        fmt::print("  {}\n", t.print());
+      //      }
+
+      auto expected_type = env.get_variable_type(*last_var, true);
+      // fmt::print("The expected type is {}\n", expected_type.print());
+      auto result_type =
+          source_types.empty() ? expected_type : env.dts->ts.lowest_common_ancestor(source_types);
+      // fmt::print("but we actually got {}\n", result_type.print());
+
+      Form* result_value = pool.alloc_single_form(nullptr, this);
+      if (!env.dts->ts.tc(expected_type, result_type)) {
+        result_value =
+            pool.alloc_single_element_form<CastElement>(nullptr, expected_type, result_value);
+      }
+
+      stack.push_value_to_reg(*last_var, result_value, true,
                               env.get_variable_type(*last_var, false));
     }
   } else {

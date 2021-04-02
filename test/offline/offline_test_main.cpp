@@ -82,7 +82,8 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "(method 10 process)",
 
     /// GSTATE
-    "enter-state",  // stack pointer asm
+    "enter-state",          // stack pointer asm
+    "send-event-function",  // pp asm (eventually we should make this work)
 
     /// MATH
     "rand-vu-init", "rand-vu", "rand-vu-nostep",  // random hardware

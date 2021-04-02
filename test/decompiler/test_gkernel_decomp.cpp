@@ -1090,7 +1090,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       "          (v1-6 (the-as process s4-0))\n"
       "          )\n"
       "     (t9-1 a0-2 a1-2 a2-1 (if (the-as process v1-6)\n"
-      "                           (-> (the-as (pointer process-tree) v1-6) 0 self)\n"
+      "                           (-> (the-as (pointer process) v1-6) 0 self)\n"
       "                           )\n"
       "      (-> arg0 name)\n"
       "      )\n"
@@ -1099,16 +1099,16 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       "   )\n"
       "  (the-as process (cond\n"
       "                   (s4-0\n"
-      "                    (set! (-> (the-as (pointer process-tree) s4-0) 0 type) arg1)\n"
-      "                    (-> (the-as (pointer process-tree) s4-0) 0)\n"
+      "                    (set! (-> (the-as (pointer process) s4-0) 0 type) arg1)\n"
+      "                    (-> (the-as (pointer process) s4-0) 0)\n"
       "                    )\n"
       "                   (else\n"
       "                    (format\n"
       "                     0\n"
       "                     \"WARNING: ~A ~A could not be allocated, because ~A was empty.~%\"\n"
       "                     arg1\n"
-      "                     (if (the-as (pointer process-tree) s4-0)\n"
-      "                      (-> (the-as (pointer process-tree) s4-0) 0 self)\n"
+      "                     (if (the-as (pointer process) s4-0)\n"
+      "                      (-> (the-as (pointer process) s4-0) 0 self)\n"
       "                      )\n"
       "                     (-> arg0 name)\n"
       "                     )\n"
@@ -1123,8 +1123,8 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       func, type, expected, false, "dead-pool",
       {{"L315", "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"},
        {"L314", "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"}},
-      "[\t\t[24, \"v1\", \"(pointer process-tree)\"],\n"
-      "\t\t[[30,39], \"s4\", \"(pointer process-tree)\"]]");
+      "[\t\t[24, \"v1\", \"(pointer process)\"],\n"
+      "\t\t[[30,39], \"s4\", \"(pointer process)\"]]");
 }
 
 TEST_F(FormRegressionTest, ExprMethod15DeadPool) {

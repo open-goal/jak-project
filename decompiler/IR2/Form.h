@@ -932,6 +932,7 @@ class CastElement : public FormElement {
                          bool allow_side_effects) override;
   const TypeSpec& type() const { return m_type; }
   const Form* source() const { return m_source; }
+  void set_type(const TypeSpec& ts) { m_type = ts; }
   Form* source() { return m_source; }
 
  private:
@@ -1430,4 +1431,6 @@ class FormPool {
 };
 
 std::optional<SimpleAtom> form_as_atom(const Form* f);
+FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
+FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);
 }  // namespace decompiler
