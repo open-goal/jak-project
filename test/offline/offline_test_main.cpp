@@ -15,6 +15,8 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
+    "euler", /* geometry, trigonometry, */
+    "gsound-h", "timer-h",  "timer",
     /* gap */
     "bounding-box"};
 
@@ -25,7 +27,8 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
     "geometry-h", "trigonometry-h",
     /* transformq-h, */
-    "matrix", "transform", "quaternion",
+    "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
+    "gsound-h", "timer-h",/* timer, */
     /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
@@ -97,6 +100,8 @@ const std::unordered_set<std::string> skip_in_compiling = {
     // QUATERNION
     "matrix-with-scale->quaternion",  // fpu acc
     "quaternion-delta-y",             // fpu acc
+
+    "(method 3 profile-frame)", // double definition.
 
 };
 

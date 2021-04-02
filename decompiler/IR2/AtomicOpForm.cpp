@@ -391,7 +391,8 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
       }
 
       std::string cast_type;
-      if (input_type.typespec() == TypeSpec("pointer") && ro.offset == 0) {
+      if (ro.offset == 0 && (input_type.typespec() == TypeSpec("pointer") ||
+                             input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT)) {
         switch (m_size) {
           case 1:
             cast_type = "int8";
@@ -417,6 +418,10 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           if (env.dts->ts.tc(TypeSpec("uinteger"), input_var_type.typespec())) {
             cast_type.insert(cast_type.begin(), 'u');
           }
+        }
+
+        if (m_kind == Kind::FLOAT) {
+          cast_type = "float";
         }
 
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
@@ -540,8 +545,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         return pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
       }
 
-      if (input_type.typespec() == TypeSpec("pointer") ||
-          input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+      if (ro.offset == 0 && (input_type.typespec() == TypeSpec("pointer") ||
+                             input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT)) {
         std::string cast_type;
         switch (m_size) {
           case 1:
