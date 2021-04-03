@@ -156,6 +156,21 @@ class SimpleExpressionElement : public FormElement {
                                           FormStack& stack,
                                           std::vector<FormElement*>* result,
                                           bool allow_side_effects);
+  void update_from_stack_left_shift(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
+  void update_from_stack_right_shift_logic(const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
+  void update_from_stack_right_shift_arith(const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -1283,6 +1298,58 @@ class VectorFloatLoadStoreElement : public FormElement {
   Register m_vf_reg;
   Form* m_location = nullptr;
   bool m_is_load = false;
+};
+
+struct BitfieldManip {
+  enum class Kind {
+    LEFT_SHIFT,
+    RIGHT_SHIFT_LOGICAL,
+    RIGHT_SHIFT_LOGICAL_32BIT,
+    RIGHT_SHIFT_ARITH,
+    INVALID
+  } kind = Kind::INVALID;
+  int amount = -1;
+
+  bool is_right_shift() const {
+    return kind == Kind::RIGHT_SHIFT_ARITH || kind == Kind::RIGHT_SHIFT_LOGICAL ||
+           kind == Kind::RIGHT_SHIFT_LOGICAL_32BIT;
+  }
+
+  bool right_shift_unsigned() const {
+    assert(is_right_shift());
+    return kind == Kind::RIGHT_SHIFT_LOGICAL || kind == Kind::RIGHT_SHIFT_LOGICAL_32BIT;
+  }
+
+  bool is_64bit_shift() const {
+    return kind == Kind::RIGHT_SHIFT_LOGICAL || kind == Kind::RIGHT_SHIFT_ARITH ||
+           kind == Kind::LEFT_SHIFT;
+  }
+
+  int get_shift_start_bit() const {
+    if (is_64bit_shift()) {
+      return 64;
+    } else {
+      return 32;
+    }
+  }
+
+  BitfieldManip(Kind k, int imm) : kind(k), amount(imm) {}
+};
+
+class BitfieldReadElement : public FormElement {
+ public:
+  BitfieldReadElement(Form* base_value, const TypeSpec& ts);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  FormElement* push_step(const BitfieldManip step, const TypeSystem& ts, FormPool& pool);
+
+ private:
+  Form* m_base = nullptr;
+  TypeSpec m_type;
+  std::vector<BitfieldManip> m_steps;
 };
 
 /*!

@@ -855,6 +855,101 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
   }
 }
 
+void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
+                                                           FormPool& pool,
+                                                           FormStack& stack,
+                                                           std::vector<FormElement*>* result,
+                                                           bool allow_side_effects) {
+  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info && m_expr.get_arg(1).is_int()) {
+    auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
+    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    assert(!other);  // shouldn't be complete.
+    result->push_back(read_elt);
+  } else {
+    update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
+                                       allow_side_effects);
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env,
+                                                                  FormPool& pool,
+                                                                  FormStack& stack,
+                                                                  std::vector<FormElement*>* result,
+                                                                  bool allow_side_effects) {
+  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info && m_expr.get_arg(1).is_int()) {
+    auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL, m_expr.get_arg(1).get_int());
+    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    assert(other);  // should be a high field.
+    result->push_back(other);
+  } else {
+    auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+    auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+    if (m_expr.get_arg(1).is_int()) {
+      auto arg =
+          pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+      auto as_bitfield_access = dynamic_cast<BitfieldReadElement*>(arg->try_as_single_element());
+
+      if (as_bitfield_access) {
+        BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL, m_expr.get_arg(1).get_int());
+        auto next = as_bitfield_access->push_step(step, env.dts->ts, pool);
+        if (next) {
+          result->push_back(next);
+        } else {
+          result->push_back(as_bitfield_access);
+        }
+      } else {
+        if (!arg0_i && !arg0_u) {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::SHR),
+              pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), arg),
+              pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+          result->push_back(new_form);
+        } else {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::SHR), arg,
+              pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+          result->push_back(new_form);
+        }
+      }
+    } else {
+      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHR, pool, stack, result,
+                                         allow_side_effects);
+    }
+  }
+}
+
+void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env,
+                                                                  FormPool& pool,
+                                                                  FormStack& stack,
+                                                                  std::vector<FormElement*>* result,
+                                                                  bool allow_side_effects) {
+  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info && m_expr.get_arg(1).is_int()) {
+    auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_ARITH, m_expr.get_arg(1).get_int());
+    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    assert(other);  // should be a high field.
+    result->push_back(other);
+  } else {
+    update_from_stack_copy_first_int_2(env, FixedOperatorKind::SAR, pool, stack, result,
+                                       allow_side_effects);
+  }
+}
+
 void SimpleExpressionElement::update_from_stack_lognot(const Env& env,
                                                        FormPool& pool,
                                                        FormStack& stack,
@@ -1010,16 +1105,13 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_lognot(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::LEFT_SHIFT:
-      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
-                                         allow_side_effects);
+      update_from_stack_left_shift(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_LOGIC:
-      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHR, pool, stack, result,
-                                         allow_side_effects);
+      update_from_stack_right_shift_logic(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::RIGHT_SHIFT_ARITH:
-      update_from_stack_copy_first_int_2(env, FixedOperatorKind::SAR, pool, stack, result,
-                                         allow_side_effects);
+      update_from_stack_right_shift_arith(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::MUL_UNSIGNED:
       update_from_stack_force_ui_2(env, FixedOperatorKind::MULTIPLICATION, pool, stack, result,
@@ -2322,7 +2414,42 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   stack.push_form_element(this, true);
 }
 
-void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack) {
+namespace {
+void push_asm_srl_to_stack(const AsmOp* op,
+                           FormElement* form_elt,
+                           const Env& env,
+                           FormPool& pool,
+                           FormStack& stack) {
+  // we will try to convert this into a bitfield operation. If this fails, fall back to assembly.
+  auto var = op->src(0);
+  assert(var.has_value());  // srl should always have this.
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto integer_atom = op->instruction().get_src(1);
+  assert(integer_atom.is_imm());
+  auto integer = integer_atom.get_imm();
+
+  auto arg0_type = env.get_variable_type(*var, true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info) {
+    auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
+    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL_32BIT, integer);
+    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    assert(other);  // should be a high field.
+    stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                            env.get_variable_type(*dst, true));
+  } else {
+    stack.push_form_element(form_elt, true);
+  }
+}
+
+}  // namespace
+
+void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   auto as_end = dynamic_cast<const FunctionEndOp*>(m_op);
   if (as_end) {
@@ -2343,15 +2470,30 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool&, FormStack& stack)
 
   auto as_asm = dynamic_cast<const AsmOp*>(m_op);
   if (as_asm) {
-    stack.push_form_element(this, true);
+    switch (as_asm->instruction().kind) {
+      case InstructionKind::SRL:
+        push_asm_srl_to_stack(as_asm, this, env, pool, stack);
+        break;
+      default:
+        stack.push_form_element(this, true);
+        break;
+    }
     return;
   }
   throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
 }
 
-void AsmOpElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+void AsmOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
-  stack.push_form_element(this, true);
+
+  switch (m_op->instruction().kind) {
+    case InstructionKind::SRL:
+      push_asm_srl_to_stack(m_op, this, env, pool, stack);
+      break;
+    default:
+      stack.push_form_element(this, true);
+      break;
+  }
 }
 
 void GenericElement::update_from_stack(const Env& env,

@@ -16,7 +16,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     "euler", /* geometry, trigonometry, */
-    "gsound-h", "timer-h",  "timer",
+    "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h",
     /* gap */
     "bounding-box"};
 
@@ -28,7 +28,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "geometry-h", "trigonometry-h",
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
-    "gsound-h", "timer-h",/* timer, */
+    "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h",
     /* gap */ "bounding-box"};
 
 // the functions we expect the decompiler to skip
@@ -59,9 +59,10 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "(method 14 bounding-box)",  // handwritten asm loop
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
-    "matrix-axis-sin-cos!",
-    "matrix-axis-sin-cos-vu!",
-};
+    "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
+    // dma-h
+    "dma-count-until-done",  // dma asm loop
+    "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast"};
 
 const std::unordered_set<std::string> skip_in_compiling = {
     /// GCOMMON
@@ -101,7 +102,7 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "matrix-with-scale->quaternion",  // fpu acc
     "quaternion-delta-y",             // fpu acc
 
-    "(method 3 profile-frame)", // double definition.
+    "(method 3 profile-frame)",  // double definition.
 
 };
 

@@ -326,3 +326,291 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
       "  )";
   test_with_stack_vars(func, type, expected, "[]");
 }
+
+TEST_F(FormRegressionTest, InspectVifStatBitfield) {
+  std::string func =
+      "sll r0, r0, 0\n"
+
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L37\n"
+      "    or a2, gp, r0\n"
+      "    daddiu a3, s7, vif-stat\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L36\n"
+      "    dsll32 v1, gp, 30\n"
+      "    dsrl32 a2, v1, 30\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L35\n"
+      "    dsll32 v1, gp, 29\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L34\n"
+      "    dsll32 v1, gp, 25\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L33\n"
+      "    dsll32 v1, gp, 23\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L32\n"
+      "    dsll32 v1, gp, 22\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L31\n"
+      "    dsll32 v1, gp, 21\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L30\n"
+      "    dsll32 v1, gp, 20\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L29\n"
+      "    dsll32 v1, gp, 19\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L28\n"
+      "    dsll32 v1, gp, 18\n"
+      "    dsrl32 a2, v1, 31\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L27\n"
+      "    dsll32 v1, gp, 4\n"
+      "    dsrl32 a2, v1, 28\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function vif-stat vif-stat)";
+  std::string expected =
+      "(begin\n"
+      "  (format #t \"[~8x] ~A~%\" arg0 (quote vif-stat))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 vps))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 vew))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 mrk))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 vss))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 vfs))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 vis))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 int))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 er0))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 er1))\n"
+      "  (format #t \"~T ~D~%\" (-> arg0 fqc))\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "",
+                 {{"L37", "[~8x] ~A~%"},
+                  {"L36", "~T ~D~%"},
+                  {"L35", "~T ~D~%"},
+                  {"L34", "~T ~D~%"},
+                  {"L33", "~T ~D~%"},
+                  {"L32", "~T ~D~%"},
+                  {"L31", "~T ~D~%"},
+                  {"L30", "~T ~D~%"},
+                  {"L29", "~T ~D~%"},
+                  {"L28", "~T ~D~%"},
+                  {"L27", "~T ~D~%"}});
+}
+
+TEST_F(FormRegressionTest, InspectHandleBitfield) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L79\n"
+      "    or a2, gp, r0\n"
+      "    daddiu a3, s7, handle\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L32\n"
+      "    dsll32 v1, gp, 0\n"
+      "    dsrl32 a2, v1, 0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L31\n"
+      "    dsra32 a2, gp, 0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function handle handle)";
+  std::string expected =
+      "(begin\n"
+      "  (format #t \"[~8x] ~A~%\" arg0 (quote handle))\n"
+      "  (format #t \"~Tprocess: #x~X~%\" (-> arg0 process))\n"
+      "  (format #t \"~Tpid: ~D~%\" (-> arg0 pid))\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "",
+                 {{"L79", "[~8x] ~A~%"}, {"L32", "~Tprocess: #x~X~%"}, {"L31", "~Tpid: ~D~%"}});
+}
+
+TEST_F(FormRegressionTest, InspectDmaTagBitfield) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L65\n"
+      "    or a2, gp, r0\n"
+      "    daddiu a3, s7, dma-tag\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L37\n"
+      "    dsll32 v1, gp, 16\n"
+      "    dsrl32 a2, v1, 16\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L36\n"
+      "    dsll32 v1, gp, 4\n"
+      "    dsrl32 a2, v1, 30\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L35\n"
+      "    dsll32 v1, gp, 1\n"
+      "    dsrl32 a2, v1, 29\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L34\n"
+      "    srl a2, gp, 31\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L33\n"
+      "    dsll v1, gp, 1\n"
+      "    dsrl32 a2, v1, 1\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L32\n"
+      "    dsrl32 a2, gp, 31\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function dma-tag dma-tag)";
+  std::string expected =
+      "(begin\n"
+      "  (format #t \"[~8x] ~A~%\" arg0 (quote dma-tag))\n"
+      "  (format #t \"~Ta: ~D~%\" (-> arg0 qwc))\n"
+      "  (format #t \"~Ta: ~D~%\" (-> arg0 pce))\n"
+      "  (format #t \"~Ta: ~D~%\" (-> arg0 id))\n"
+      "  (format #t \"~Ta: ~D~%\" (-> arg0 irq))\n"
+      "  (format #t \"~Ta: ~D~%\" (-> arg0 addr))\n"
+      "  (format #t \"~Ta: ~D~%\" (-> arg0 spr))\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "",
+                 {
+                     {"L65", "[~8x] ~A~%"},
+                     {"L37", "~Ta: ~D~%"},
+                     {"L36", "~Ta: ~D~%"},
+                     {"L35", "~Ta: ~D~%"},
+                     {"L34", "~Ta: ~D~%"},
+                     {"L33", "~Ta: ~D~%"},
+                     {"L32", "~Ta: ~D~%"},
+                 });
+}

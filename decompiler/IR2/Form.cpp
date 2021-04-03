@@ -2288,6 +2288,10 @@ void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
   regs.insert(m_vf_reg);
 }
 
+////////////////////////////////
+// Utilities
+////////////////////////////////
+
 std::optional<SimpleAtom> form_as_atom(const Form* f) {
   auto as_single = f->try_as_single_element();
   auto as_atom = dynamic_cast<SimpleAtomElement*>(as_single);
