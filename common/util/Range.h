@@ -24,6 +24,10 @@ class Range {
   bool contains(T& val) const { return val >= m_start && val < m_end; }
   bool empty() const { return m_end <= m_start; }
   T size() const { return m_end - m_start; }
+  bool operator==(const Range<T>& other) const {
+    return m_start == other.m_start && m_end == other.m_end;
+  }
+  bool operator!=(const Range<T>& other) const { return !((*this) == other); }
 
   struct Iterator {
     using iterator_category = std::input_iterator_tag;

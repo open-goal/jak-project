@@ -614,3 +614,178 @@ TEST_F(FormRegressionTest, InspectDmaTagBitfield) {
                      {"L32", "~Ta: ~D~%"},
                  });
 }
+
+// Tests nonzero-check on bitfield
+TEST_F(FormRegressionTest, DmaSyncCrash) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L46:\n"
+      "    lui v1, 76\n"
+      "    ori v1, v1, 19264\n"
+      "    beq r0, r0, L49\n"
+      "    sll r0, r0, 0\n"
+
+      "L47:\n"
+      "    bne v1, r0, L48\n"
+      "    sll r0, r0, 0\n"
+
+      "    sd r0, 2(r0)\n"
+      "    or a1, r0, r0\n"
+      "    beq r0, r0, L49\n"
+      "    sll r0, r0, 0\n"
+
+      "L48:\n"
+      "    daddiu v1, v1, -1\n"
+      "    or a1, v1, r0\n"
+
+      "L49:\n"
+      "    lwu a1, 0(a0)\n"
+      "    andi a1, a1, 256\n"
+      "    bne a1, r0, L47\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v0, r0, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function dma-bank int)";
+  std::string expected =
+      "(begin\n"
+      "  (let ((v1-0 #x4c4b40))\n"
+      "   (while (nonzero? (-> arg0 chcr str))\n"
+      "    (cond\n"
+      "     ((zero? v1-0)\n"
+      "      (crash!)\n"
+      "      (let ((a1-0 0))\n"
+      "       )\n"
+      "      )\n"
+      "     (else\n"
+      "      (+! v1-0 -1)\n"
+      "      )\n"
+      "     )\n"
+      "    )\n"
+      "   )\n"
+      "  0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, DmaSend) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s4, 16(sp)\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or s4, a1, r0\n"
+      "    or s5, a2, r0\n"
+      "    lw t9, dma-sync(s7)\n"
+      "    or a0, gp, r0\n"
+      "    addiu a1, r0, 0\n"
+      "    addiu a2, r0, 0\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, flush-cache(s7)\n"
+      "    addiu a0, r0, 0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    sync.l\n"
+      "    lui v1, 4095\n"
+      "    ori v1, v1, 65535\n"
+      "    and v1, v1, s4\n"
+      "    lui a0, 28672\n"
+      "    lui a1, 28672\n"
+      "    and a1, a1, s4\n"
+      "    bne a1, a0, L44\n"
+      "    sll r0, r0, 0\n"
+
+      "    ori a0, r0, 32768\n"
+      "    dsll a0, a0, 16\n"
+      "    beq r0, r0, L45\n"
+      "    sll r0, r0, 0\n"
+
+      "L44:\n"
+      "    addiu a0, r0, 0\n"
+
+      "L45:\n"
+      "    or v1, v1, a0\n"
+      "    sw v1, 16(gp)\n"
+      "    sw s5, 32(gp)\n"
+      "    sync.l\n"
+      "    addiu v1, r0, 256\n"
+      "    sw v1, 0(gp)\n"
+      "    sync.l\n"
+      "    or v0, r0, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    lq s4, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64";
+  std::string type = "(function dma-bank uint uint int)";
+  std::string expected =
+      "(begin\n"
+      "  (dma-sync (the-as pointer arg0) 0 0)\n"
+      "  (flush-cache 0)\n"
+      "  (.sync.l)\n"
+      "  (set!\n"
+      "   (-> arg0 madr)\n"
+      "   (logior\n"
+      "    (logand #xfffffff (the-as int arg1))\n"
+      "    (the-as uint (if (= (logand #x70000000 (the-as int arg1)) #x70000000)\n"
+      "                  (shl #x8000 16)\n"  // note: maybe this should be #x80000000? Not sure.
+      "                  0\n"
+      "                  )\n"
+      "     )\n"
+      "    )\n"
+      "   )\n"
+      "  (set! (-> arg0 qwc) arg2)\n"
+      "  (.sync.l)\n"
+      "  (set! (-> arg0 chcr) (new 'static 'dma-chcr :str 1))\n"
+      "  (.sync.l)\n"
+      "  0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, DmaInitialize) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    lui v1, 4096\n"
+      "    ori v1, v1, 14336\n"
+      "    lwu v1, 32(v1)\n"
+      "    addiu a0, r0, -3\n"
+      "    and v1, v1, a0\n"
+      "    ori v1, v1, 2\n"
+      "    lui a0, 4096\n"
+      "    ori a0, a0, 14336\n"
+      "    sw v1, 32(a0)\n"
+      "    lui v1, 4096\n"
+      "    ori v1, v1, 15360\n"
+      "    lwu v1, 32(v1)\n"
+      "    addiu a0, r0, -3\n"
+      "    and v1, v1, a0\n"
+      "    ori v1, v1, 2\n"
+      "    lui a0, 4096\n"
+      "    ori a0, a0, 15360\n"
+      "    sw v1, 32(a0)\n"
+      "    or v0, r0, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function int)";
+  std::string expected =
+      "(begin\n"
+      "  (set! (-> (the-as vif-bank #x10003800) err me0) 1)\n"
+      "  (set! (-> (the-as vif-bank #x10003c00) err me0) 1)\n"
+      "  0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {},
+                 "[[1, \"v1\", \"vif-bank\"], [8, \"v1\", \"vif-bank\"], [6, \"a0\", "
+                 "\"vif-bank\"], [13, \"a0\", \"vif-bank\"]]");
+}

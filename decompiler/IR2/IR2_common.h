@@ -64,10 +64,11 @@ class RegisterAccess {
   RegisterAccess(AccessMode mode, Register reg, int atomic_idx, bool allow_all = false);
 
   enum class Print {
-    AS_REG,       // print as a PS2 register name
-    FULL,         // print as a register name, plus an index, plus read or write
-    AS_VARIABLE,  // print local variable name, error if impossible
-    AUTOMATIC,    // print as variable, but if that's not possible print as reg.
+    AS_REG,               // print as a PS2 register name
+    FULL,                 // print as a register name, plus an index, plus read or write
+    AS_VARIABLE,          // print local variable name, error if impossible
+    AS_VARIABLE_NO_CAST,  // same as above, but no cast
+    AUTOMATIC,            // print as variable, but if that's not possible print as reg.
   };
 
   goos::Object to_form(const Env& env, Print mode = Print::AUTOMATIC) const;
