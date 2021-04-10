@@ -117,3 +117,103 @@
 (declare-type quaternion structure)
 (define-extern quaternion-from-two-vectors-max-angle! (function quaternion vector vector float quaternion))
 (define-extern vector-xz-length (function vector float))
+
+;; display-h
+(deftype display-env (structure)
+  ((pmode   uint64  :offset-assert 0)
+   (smode2  uint64  :offset-assert 8)
+   (dspfb   uint64  :offset-assert 16)
+   (display uint64  :offset-assert 24)
+   (bgcolor uint64  :offset-assert 32)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
+(deftype draw-env (structure)
+  ((frame1         uint64  :offset-assert 0)
+   (frame1addr     uint64  :offset-assert 8)
+   (zbuf1          uint64  :offset-assert 16)
+   (zbuf1addr      uint64  :offset-assert 24)
+   (xyoffset1      uint64  :offset-assert 32)
+   (xyoffset1addr  uint64  :offset-assert 40)
+   (scissor1       uint64  :offset-assert 48)
+   (scissor1addr   uint64  :offset-assert 56)
+   (prmodecont     uint64  :offset-assert 64)
+   (prmodecontaddr uint64  :offset-assert 72)
+   (colclamp       uint64  :offset-assert 80)
+   (colclampaddr   uint64  :offset-assert 88)
+   (dthe           uint64  :offset-assert 96)
+   (dtheaddr       uint64  :offset-assert 104)
+   (test1          uint64  :offset-assert 112)
+   (test1addr      uint64  :offset-assert 120)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+(declare-type display-frame basic)
+
+(deftype virtual-frame (structure)
+  ((display      display-env    :offset-assert 0)
+   (display-last display-env    :offset-assert 4)
+   (gif          pointer        :offset-assert 8)
+   (draw         draw-env       :offset-assert 12)
+   (frame        display-frame  :offset-assert 16)
+   )
+  
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype display (basic)
+  ((display-env0                    display-env :inline :offset-assert 8)
+   (display-env1                    display-env :inline :offset-assert 48)
+   (display-env2                    display-env :inline :offset-assert 88)
+   (gif-tag0                        uint128             :offset-assert 128)
+   (draw0                           draw-env    :inline :offset-assert 144)
+   (gif-tag1                        uint128             :offset-assert 272)
+   (draw1                           draw-env    :inline :offset-assert 288)
+   (gif-tag2                        uint128             :offset-assert 416)
+   (draw2                           draw-env    :inline :offset-assert 432)
+   (on-screen                       int32               :offset-assert 560)
+   (last-screen                     int32               :offset-assert 564)
+   (frames                          virtual-frame 6 :inline :offset-assert 568)
+   (bg-clear-color                  uint32       4      :offset-assert 760)
+   (real-frame-counter              uint64              :offset-assert 776)
+   (base-frame-counter              uint64              :offset-assert 784)
+   (game-frame-counter              uint64              :offset-assert 792)
+   (integral-frame-counter          uint64              :offset-assert 800)
+   (real-integral-frame-counter     uint64              :offset-assert 808)
+   (actual-frame-counter            uint64              :offset-assert 816)
+   (real-actual-frame-counter       uint64              :offset-assert 824)
+   (part-frame-counter              uint64              :offset-assert 832)
+   (old-real-frame-counter          uint64              :offset-assert 840)
+   (old-base-frame-counter          uint64              :offset-assert 848)
+   (old-game-frame-counter          uint64              :offset-assert 856)
+   (old-integral-frame-counter      uint64              :offset-assert 864)
+   (old-real-integral-frame-counter uint64              :offset-assert 872)
+   (old-actual-frame-counter        uint64              :offset-assert 880)
+   (old-real-actual-frame-counter   uint64              :offset-assert 888)
+   (old-part-frame-counter          uint64              :offset-assert 896)
+   (time-ratio                      float               :offset-assert 904)
+   (seconds-per-frame               float               :offset-assert 908)
+   (frames-per-second               float               :offset-assert 912)
+   (time-factor                     float               :offset-assert 916)
+   (time-adjust-ratio               float               :offset-assert 920)
+   )
+  :method-count-assert 10
+  :size-assert         #x39c
+  :flag-assert         #xa0000039c
+  (:methods
+    (new (symbol type int int int int int) _type_ 0)
+    (dummy-9 () none 9)
+    )
+  )
+
+(define-extern *display* display)
