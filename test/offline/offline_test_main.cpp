@@ -61,12 +61,11 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "(method 14 bounding-box)",  // handwritten asm loop
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
-    "matrix-axis-sin-cos!",
-    "matrix-axis-sin-cos-vu!",
+    "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
     // sync-info
-    "(method 15 sync-info)",        // needs *res-static-buf*
-    "(method 15 sync-info-eased)",  // needs *res-static-buf*
-    "(method 15 sync-info-paused)", // needs *res-static-buf*
+    "(method 15 sync-info)",         // needs *res-static-buf*
+    "(method 15 sync-info-eased)",   // needs *res-static-buf*
+    "(method 15 sync-info-paused)",  // needs *res-static-buf*
 };
 
 const std::unordered_set<std::string> skip_in_compiling = {
