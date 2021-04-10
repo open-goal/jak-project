@@ -150,6 +150,7 @@ class Register {
   Reg::Cop0 get_cop0() const;
   uint32_t get_pcr() const;
   Reg::Cop2MacroSpecial get_cop2_macro_special() const;
+  bool allowed_local_gpr() const;
 
   bool operator==(const Register& other) const;
   bool operator!=(const Register& other) const;

@@ -1,25 +1,28 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: transform.gc
-;; name in dgo: transform
-;; dgos: GAME, ENGINE
-
+;; definition for method 2 of type transform
 (defmethod print transform ((obj transform))
   (format #t "#<transform @ #x~X~%" obj)
-  (format #t "~T~Ttrans:~F ~F ~F ~F ~%"
+  (format
+   #t
+   "~T~Ttrans:~F ~F ~F ~F ~%"
    (-> obj trans data 0)
    (-> obj trans data 1)
    (-> obj trans data 2)
    (-> obj trans data 3)
    )
-  (format #t "~T~Trot:  ~F ~F ~F ~F ~%"
+  (format
+   #t
+   "~T~Trot:  ~F ~F ~F ~F ~%"
    (-> obj rot data 0)
    (-> obj rot data 1)
    (-> obj rot data 2)
    (-> obj rot data 3)
    )
-  (format #t "~T~Tscale:~F ~F ~F ~F>"
+  (format
+   #t
+   "~T~Tscale:~F ~F ~F ~F>"
    (-> obj scale data 0)
    (-> obj scale data 1)
    (-> obj scale data 2)
@@ -28,9 +31,13 @@
   obj
   )
 
+;; definition for method 0 of type trs
 (defmethod new trs ((allocation symbol) (type-to-make type))
-  "Create a new trs and set it equal to identity."
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+  (let
+   ((obj
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
    (set! (-> obj trans data 3) 1.0)
    (set! (-> obj rot data 3) 1.0)
    (vector-identity! (-> obj scale))
@@ -38,8 +45,9 @@
    )
   )
 
+;; definition for function transform-matrix-calc!
+;; Used lq/sq
 (defun transform-matrix-calc! ((tf transform) (dst-mat matrix))
-  "Convert a transform to a matrix. This is not particularly efficient."
   (let ((s4-0 (new 'stack 'matrix)))
    (set! (-> s4-0 vector 0 quad) (the-as uint128 0))
    (set! (-> s4-0 vector 1 quad) (the-as uint128 0))
@@ -50,28 +58,25 @@
     (set! (-> s3-0 vector 1 quad) (the-as uint128 0))
     (set! (-> s3-0 vector 2 quad) (the-as uint128 0))
     (set! (-> s3-0 vector 3 quad) (the-as uint128 0))
-    ;; start with identity
     (matrix-identity! dst-mat)
-    ;; set translation (which also sets identity...)
     (matrix-translate! dst-mat (-> tf trans))
-    ;; rotate y axis (this is first, so yaw is "world aligned"
     (matrix-rotate-y! s4-0 (-> tf rot data 1))
     (matrix*! s3-0 s4-0 dst-mat)
-    ;; rotate x axis
     (matrix-rotate-x! s4-0 (-> tf rot data 0))
     (matrix*! dst-mat s4-0 s3-0)
-    ;; rotate z axis
     (matrix-rotate-z! s4-0 (-> tf rot data 2))
     (matrix*! s3-0 s4-0 dst-mat)
-    ;; apply scale
     (matrix-scale! s4-0 (-> tf scale))
     (matrix*! dst-mat s4-0 s3-0)
     )
    )
   )
 
-(defun transform-matrix-parent-calc! ((tf transform) (dst-mat matrix) (inv-scale vector))
-  "Convert a transform to a matrix, applying an inverse scaling."
+;; definition for function transform-matrix-parent-calc!
+;; Used lq/sq
+(defun
+  transform-matrix-parent-calc!
+  ((tf transform) (dst-mat matrix) (inv-scale vector))
   (let ((s4-0 (new 'stack 'matrix)))
    (set! (-> s4-0 vector 0 quad) (the-as uint128 0))
    (set! (-> s4-0 vector 1 quad) (the-as uint128 0))
@@ -98,8 +103,14 @@
    )
   )
 
+;; definition for function trs-matrix-calc!
 (defun trs-matrix-calc! ((tf trs) (dst-mat matrix))
-  "Convert a trs to a matrix"
-  ;; this relies on the fact that trs and transform both have the same memory layout.
   (transform-matrix-calc! (the-as transform (-> tf trans)) dst-mat)
   )
+
+;; failed to figure out what this is:
+(none)
+
+
+
+

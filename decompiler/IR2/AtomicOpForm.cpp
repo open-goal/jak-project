@@ -85,23 +85,48 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
   // do some analysis to look for coloring moves which are already eliminated,
   // dead sets, and dead set falses.
-  if (m_src.kind() == SimpleExpression::Kind::IDENTITY && env.has_local_vars() &&
-      env.has_reg_use()) {
-    if (env.op_id_is_eliminated_coloring_move(m_my_idx)) {
-      result->eliminate_as_coloring_move();
-    } else if (m_src.get_arg(0).is_var()) {
-      auto& src_var = m_src.get_arg(0).var();
-      auto& ri = env.reg_use().op.at(m_my_idx);
-      if (ri.consumes.find(src_var.reg()) != ri.consumes.end() &&
-          ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
-        result->mark_as_dead_set();
-        // fmt::print("marked {} as dead set\n", to_string(env));
+  if (env.has_local_vars() && env.has_reg_use()) {
+    if (m_src.kind() == SimpleExpression::Kind::IDENTITY) {
+      if (env.op_id_is_eliminated_coloring_move(m_my_idx)) {
+        result->eliminate_as_coloring_move();
+      } else if (m_src.get_arg(0).is_var()) {
+        auto& src_var = m_src.get_arg(0).var();
+        auto& ri = env.reg_use().op.at(m_my_idx);
+        // Note: we don't technically need to require consumes here.
+        // however, the coloring used by the GOAL compiler seems to always satisfy this, so until
+        // I find a counterexample, I'm going to leave it like this.
+        if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end() &&
+            src_var.reg().allowed_local_gpr() && m_dst.reg().allowed_local_gpr()) {
+          result->mark_as_dead_set();
+          auto menv = const_cast<Env*>(&env);
+
+          if (ri.consumes.find(src_var.reg()) == ri.consumes.end()) {
+            menv->disable_use(src_var);
+          }
+
+          // fmt::print("marked {} as dead set\n", to_string(env));
+        }
+      } else if (m_src.get_arg(0).is_sym_val() && m_src.get_arg(0).get_str() == "#f" &&
+                 m_dst.reg().allowed_local_gpr()) {
+        auto& ri = env.reg_use().op.at(m_my_idx);
+        if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
+          result->mark_as_dead_false();
+          // fmt::print("marked {} as dead set false\n", to_string(env));
+        }
       }
-    } else if (m_src.get_arg(0).is_sym_val() && m_src.get_arg(0).get_str() == "#f") {
+    }
+
+    if (m_src.kind() == SimpleExpression::Kind::FPR_TO_GPR) {
       auto& ri = env.reg_use().op.at(m_my_idx);
-      if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end()) {
-        result->mark_as_dead_false();
-        // fmt::print("marked {} as dead set false\n", to_string(env));
+      // Note: unlike the GPR case, there are sometimes dead moves that don't consume.
+      if (ri.written_and_unused.find(dst().reg()) != ri.written_and_unused.end() &&
+          m_dst.reg().allowed_local_gpr()) {
+        result->mark_as_dead_set();
+        auto& src_var = m_src.get_arg(0).var();
+        auto menv = const_cast<Env*>(&env);
+        if (ri.consumes.find(src_var.reg()) == ri.consumes.end()) {
+          menv->disable_use(src_var);
+        }
       }
     }
   }

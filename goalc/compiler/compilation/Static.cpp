@@ -434,7 +434,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
  *  - a constant
  *  - #t or #f
  */
-StaticResult Compiler::compile_static(const goos::Object& form, Env* env) {
+StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env* env) {
+  auto form = expand_macro_completely(form_before_macro, env);
   auto fie = get_parent_env_of_type<FileEnv>(env);
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   auto segment = fe->segment;

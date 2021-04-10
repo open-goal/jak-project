@@ -189,6 +189,8 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::NEG:
     case Kind::LOGNOT:
       return get_type_int1(input, env, dts);
+    case Kind::MOD_UNSIGNED:
+      return TP_Type::make_from_ts("uint");
     default:
       throw std::runtime_error("Simple expression can't get_type: " +
                                to_form(env.file->labels, env).print());
@@ -541,6 +543,13 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   (void)env;
   (void)dts;
   TypeState result = input;
+
+  if (m_instr.kind == InstructionKind::QMFC2) {
+    assert(m_dst);
+    result.get(m_dst->reg()) = TP_Type::make_from_ts("float");
+    return result;
+  }
+
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
     if (kind == Reg::FPR) {

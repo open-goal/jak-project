@@ -582,7 +582,6 @@
   )
 
 ;; definition for method 14 of type dead-pool
-;; INFO: Return type mismatch process-tree vs process.
 (defmethod get-process dead-pool ((obj dead-pool) (arg0 type) (arg1 int))
   (let ((s4-0 (the-as object (-> obj child))))
    (when
@@ -602,7 +601,7 @@
            (v1-6 (the-as process s4-0))
            )
       (t9-1 a0-2 a1-2 a2-1 (if (the-as process v1-6)
-                            (-> (the-as (pointer process-tree) v1-6) 0 self)
+                            (-> (the-as (pointer process) v1-6) 0 self)
                             )
        (-> obj name)
        )
@@ -611,19 +610,16 @@
     )
    (the-as process (cond
                     (s4-0
-                     (set!
-                      (-> (the-as (pointer process-tree) s4-0) 0 type)
-                      arg0
-                      )
-                     (-> (the-as (pointer process-tree) s4-0) 0)
+                     (set! (-> (the-as (pointer process) s4-0) 0 type) arg0)
+                     (-> (the-as (pointer process) s4-0) 0)
                      )
                     (else
                      (format
                       0
                       "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"
                       arg0
-                      (if (the-as (pointer process-tree) s4-0)
-                       (-> (the-as (pointer process-tree) s4-0) 0 self)
+                      (if (the-as (pointer process) s4-0)
+                       (-> (the-as (pointer process) s4-0) 0 self)
                        )
                       (-> obj name)
                       )
@@ -886,17 +882,13 @@
       (let ((v1-5 (-> s1-0 next)))
        (set! (-> s1-0 next) s4-0)
        (set! (-> s4-0 next) v1-5)
-       (when v1-5
+       (if v1-5
         (set! (-> v1-5 prev) s4-0)
-        (let ((v1-6 s4-0))
-         )
         )
        )
       (set! (-> s4-0 prev) s1-0)
-      (when (= s1-0 (-> obj alive-list prev))
+      (if (= s1-0 (-> obj alive-list prev))
        (set! (-> obj alive-list prev) s4-0)
-       (let ((v1-9 s4-0))
-        )
        )
       (let ((a0-4 (gap-location obj s1-0)))
        (set!
@@ -914,14 +906,12 @@
       (if (= (-> obj first-gap) s1-0)
        (set! (-> obj first-gap) (find-gap obj s4-0))
        )
-      (when
+      (if
        (or
         (not (-> obj first-shrink))
         (< (the-as int s3-0) (the-as int (-> obj first-shrink process)))
         )
        (set! (-> obj first-shrink) s4-0)
-       (let ((v1-22 s4-0))
-        )
        )
       (set! (-> s3-0 parent) (-> obj ppointer))
       (set! (-> s3-0 pool) obj)
@@ -1048,13 +1038,9 @@
      )
     ((< f0-2 0.2)
      (set! arg0 (shl arg0 2))
-     (let ((v1-10 arg0))
-      )
      )
     ((< f0-2 0.3)
      (set! arg0 (shl arg0 1))
-     (let ((v1-12 arg0))
-      )
      )
     )
    )
@@ -1066,8 +1052,6 @@
     (when (not v1-13)
      (set! v1-13 (-> obj alive-list next))
      (set! (-> obj first-shrink) v1-13)
-     (let ((a0-5 v1-13))
-      )
      )
     (if v1-13
      (shrink-heap obj (-> v1-13 process))
@@ -1130,10 +1114,8 @@
       (let ((v1-19 (-> a1-3 next)))
        (set! (-> a1-3 next) s4-0)
        (set! (-> s4-0 next) v1-19)
-       (when v1-19
+       (if v1-19
         (set! (-> v1-19 prev) s4-0)
-        (let ((v1-20 s4-0))
-         )
         )
        )
       (set! (-> s4-0 prev) a1-3)
@@ -1285,8 +1267,6 @@
         (iterate-process-tree (-> v1-4 0) arg1 arg2)
         (set! v1-4 s3-1)
         )
-       (let ((a0-4 v1-4))
-        )
        )
       )
      )
@@ -1323,8 +1303,6 @@
         (execute-process-tree (-> v1-8 0) arg1 arg2)
         (set! v1-8 s4-1)
         )
-       (let ((a0-6 v1-8))
-        )
        )
       )
      )
@@ -1352,8 +1330,6 @@
        )
       )
      (set! v1-5 s5-1)
-     )
-    (let ((a0-5 v1-5))
      )
     )
    )
@@ -1395,7 +1371,7 @@
                                  )
                                 )
                                (when (-> a0-0 trans-hook)
-                                (let*
+                                (let
                                  ((s4-0
                                    (new
                                     'process
@@ -1406,13 +1382,14 @@
                                     (-> a0-0 main-thread stack-top)
                                     )
                                    )
-                                  (v0-1
-                                   (reset-and-call s4-0 (-> a0-0 trans-hook))
+                                  )
+                                 (let
+                                  ((v0-1
+                                    (reset-and-call s4-0 (-> a0-0 trans-hook))
+                                    )
                                    )
                                   )
                                  (delete s4-0)
-                                 (let ((v1-12 v0-1))
-                                  )
                                  )
                                 (if (= (-> a0-0 status) 'dead)
                                  (return (begin
@@ -1617,52 +1594,44 @@
            (v1-4 (the-as (pointer process-tree) #f))
            )
       (let ((t1-0 t0-0))
-       (when (= (if t1-0
-                 (-> t1-0 0 self)
-                 )
-              arg0
-              )
+       (if (= (if t1-0
+               (-> t1-0 0 self)
+               )
+            arg0
+            )
         (set! a3-1 a2-1)
-        (let ((t1-3 a3-1))
-         )
         )
        )
       (let ((t1-4 t0-0))
-       (when (= (if t1-4
-                 (-> t1-4 0 self)
-                 )
-              arg1
-              )
+       (if (= (if t1-4
+               (-> t1-4 0 self)
+               )
+            arg1
+            )
         (set! v1-4 a2-1)
-        (let ((t1-7 v1-4))
-         )
         )
        )
       (while (and (-> t0-0 0 brother) (or (not a3-1) (not v1-4)))
        (let ((t1-8 t0-0))
-        (when (= (-> (if t1-8
-                      (-> t1-8 0 self)
-                      )
-                  brother
-                  )
-               arg1
-               )
+        (if (= (-> (if t1-8
+                    (-> t1-8 0 self)
+                    )
+                brother
+                )
+             arg1
+             )
          (set! v1-4 t0-0)
-         (let ((t1-12 v1-4))
-          )
          )
         )
        (let ((t1-13 t0-0))
-        (when (= (-> (if t1-13
-                      (-> t1-13 0 self)
-                      )
-                  brother
-                  )
-               arg0
-               )
+        (if (= (-> (if t1-13
+                    (-> t1-13 0 self)
+                    )
+                brother
+                )
+             arg0
+             )
          (set! a3-1 t0-0)
-         (let ((t1-17 a3-1))
-          )
          )
         )
        (set! t0-0 (-> t0-0 0 brother))
@@ -1842,31 +1811,29 @@
                 (entity-deactivate-handler obj (-> obj entity))
                 )
                (let ((s5-0 pp))
-                )
-               (let ((s4-0 (-> obj stack-frame-top)))
-                (while (the-as protect-frame s4-0)
-                 (let ((v1-5 (-> s4-0 type)))
-                  (if (or (= v1-5 protect-frame) (= v1-5 state))
-                   ((-> (the-as protect-frame s4-0) exit))
+                (let ((s4-0 (-> obj stack-frame-top)))
+                 (while (the-as protect-frame s4-0)
+                  (let ((v1-5 (-> s4-0 type)))
+                   (if (or (= v1-5 protect-frame) (= v1-5 state))
+                    ((-> (the-as protect-frame s4-0) exit))
+                    )
+                   )
+                  (set!
+                   (the-as protect-frame s4-0)
+                   (-> (the-as protect-frame s4-0) next)
                    )
                   )
-                 (set!
-                  (the-as protect-frame s4-0)
-                  (-> (the-as protect-frame s4-0) next)
-                  )
+                 )
+                (let ((s6-2 s5-0))
                  )
                 )
-               (let ((v0-2 (process-disconnect obj))
-                     (v1-11 (-> obj child))
-                     )
+               (let ((v0-2 (process-disconnect obj)))
+                )
+               (let ((v1-11 (-> obj child)))
                 (while v1-11
                  (let ((s5-1 (-> v1-11 0 brother)))
                   (deactivate (-> v1-11 0))
-                  (let ((v1-13 v0-2))
-                   )
                   (set! v1-11 s5-1)
-                  )
-                 (let ((a0-8 v1-11))
                   )
                  )
                 )

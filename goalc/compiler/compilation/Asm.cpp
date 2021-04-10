@@ -1210,18 +1210,19 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
   // Init two temp registers
   auto temp1 = env->make_vfr(dest->type());
   auto temp2 = env->make_vfr(dest->type());
+  auto temp_dst = env->make_vfr(dest->type());
 
   // First Portion
   // - Swizzle src1 appropriately
   env->emit_ir<IR_SwizzleVF>(color, temp1, src1, 0b00001001);
   // - Move it into 'dest' safely (avoid mutating `w`)
-  env->emit_ir<IR_BlendVF>(color, dest, dest, temp1, 0b0111);
+  env->emit_ir<IR_BlendVF>(color, temp_dst, temp_dst, temp1, 0b0111);
   // - Swizzle src2 appropriately
   env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00010010);
   // - Multiply - Result in `dest`
-  env->emit_ir<IR_VFMath3Asm>(color, temp1, dest, temp1, IR_VFMath3Asm::Kind::MUL);
+  env->emit_ir<IR_VFMath3Asm>(color, temp1, temp_dst, temp1, IR_VFMath3Asm::Kind::MUL);
   // - Move it into 'dest' safely (avoid mutating `w`)
-  env->emit_ir<IR_BlendVF>(color, dest, dest, temp1, 0b0111);
+  env->emit_ir<IR_BlendVF>(color, temp_dst, temp_dst, temp1, 0b0111);
 
   // Second Portion
   // - Swizzle src2 appropriately
@@ -1233,7 +1234,7 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
 
   // Finalize
   // - Subtract
-  env->emit_ir<IR_VFMath3Asm>(color, temp2, dest, temp1, IR_VFMath3Asm::Kind::SUB);
+  env->emit_ir<IR_VFMath3Asm>(color, temp2, temp_dst, temp1, IR_VFMath3Asm::Kind::SUB);
   // - Blend result, as to avoid not modifying dest's `w` component
   env->emit_ir<IR_BlendVF>(color, dest, dest, temp2, 0b0111);
   return get_none();

@@ -269,4 +269,11 @@ bool Register::operator==(const Register& other) const {
 bool Register::operator!=(const Register& other) const {
   return id != other.id;
 }
+
+bool Register::allowed_local_gpr() const {
+  if (get_kind() != Reg::GPR) {
+    return false;
+  }
+  return Reg::allowed_local_gprs[get_gpr()];
+}
 }  // namespace decompiler

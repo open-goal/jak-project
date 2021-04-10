@@ -63,6 +63,9 @@ class Compiler {
  private:
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
+  bool expand_macro_once(const goos::Object& src, goos::Object* out, Env* env);
+  goos::Object expand_macro_completely(const goos::Object& src, Env* env);
+
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
   Val* do_set(const goos::Object& form, Val* dst, RegVal* src_in_reg, Val* src, Env* env);
   Val* compile_goos_macro(const goos::Object& o,
