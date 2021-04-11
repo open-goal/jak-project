@@ -783,13 +783,11 @@ Val* Compiler::compile_static_new(const goos::Object& form,
     }
 
     if (is_bitfield(type_of_object)) {
-      return compile_new_static_bitfield(form, type_of_object, *rest, env);
+      return compile_bitfield_definition(form, type_of_object, *rest, true, env);
     }
   }
 
-  throw_compiler_error(form,
-                       "Cannot do a static new of a {} because it is not a bitfield or structure.",
-                       type.print());
+  throw_compiler_error(form, "Cannot allocate a static object of type {}", type.print());
   return get_none();
 }
 

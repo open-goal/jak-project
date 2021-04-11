@@ -1729,9 +1729,11 @@ Because these objects are uninitialized, you cannot provide constructor argument
 You cannot use this on dynamically sized member types. However, the array size can be determined at runtime.
 
 ### Static Objects
-You can create a static object with `(new 'static 'obj-type [field-def]...)`. For now it must be a structure or basic.
-Each field def looks like `:field-name field-value`. The `field-value` is evaluated at compile time. For now, fields
-can only be integers, floats, or symbols.
+You can create a static object with `(new 'static 'obj-type [field-def]...)`. It can be a structure, basic, bitfield, array, boxed array, or inline array.
+Each field def looks like `:field-name field-value`. The `field-value` is evaluated at compile time. Fields
+can be integers, floats, symbols, pairs, strings, or other statics. These field values may come from macros or GOAL constants.
+
+For bitfields, there is an exception, and fields can be set to expression that are not known at compile time.  The compiler will generate the appropriate code to combine the values known at compile time and run time. This exception does not apply to a bitfield inside of another `(new 'static ...)`.
 
 Fields which aren't explicitly initialized are zeroed, except for the type field of basics, which is properly initialized to the correct type.
 

@@ -231,7 +231,7 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
   return false;
 }
 
-float Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
+bool Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
   (void)env;
   if (in.is_float()) {
     *out = in.as_float();

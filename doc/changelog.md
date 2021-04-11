@@ -131,3 +131,4 @@
 - Fixed a bug where 128-bit variable spills could be misaligned, causing a segfault at `vmovaps`.
 - Added `.ppach` and `.pceqw`
 - Fixed a bug where setting 128-bit / 64-bit variables from each other only did a 32-bit set
+- Added support for creating a static bitfield where fields may not be known at compile time.
