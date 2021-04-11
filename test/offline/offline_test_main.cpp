@@ -16,7 +16,9 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     /* gap */
-    "bounding-box"};
+    "bounding-box",
+    /* gap */
+    "sync-info-h", "sync-info"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
@@ -26,7 +28,10 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "geometry-h", "trigonometry-h",
     /* transformq-h, */
     "matrix", "transform", "quaternion",
-    /* gap */ "bounding-box"};
+    /* gap */
+    "bounding-box",
+    /* gap */
+    "sync-info-h", "sync-info"};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -56,8 +61,11 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "(method 14 bounding-box)",  // handwritten asm loop
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
-    "matrix-axis-sin-cos!",
-    "matrix-axis-sin-cos-vu!",
+    "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
+    // sync-info
+    "(method 15 sync-info)",         // needs *res-static-buf*
+    "(method 15 sync-info-eased)",   // needs *res-static-buf*
+    "(method 15 sync-info-paused)",  // needs *res-static-buf*
 };
 
 const std::unordered_set<std::string> skip_in_compiling = {
@@ -97,6 +105,11 @@ const std::unordered_set<std::string> skip_in_compiling = {
     // QUATERNION
     "matrix-with-scale->quaternion",  // fpu acc
     "quaternion-delta-y",             // fpu acc
+
+    // sync-info
+    "(method 15 sync-info)",         // needs display stuff first
+    "(method 15 sync-info-eased)",   // needs display stuff first
+    "(method 15 sync-info-paused)",  // needs display stuff first
 
 };
 
