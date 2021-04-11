@@ -115,7 +115,7 @@ const std::unordered_set<std::string> skip_in_compiling = {
 
     "(method 3 profile-frame)",  // double definition.
 
-  // sync-info
+    // sync-info
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
     "(method 15 sync-info-paused)",  // needs display stuff first
