@@ -10,14 +10,17 @@
 ;; The PS2 supports several types of DMA, including simple chunk transfer and more complicated
 ;; "chain" transfers, where the hardware can follow a linked data-structure.
 
-;; In OpenGOAL, "DMA" will be instant. By default, DMA syncs will be disabled by this flag.
+;; In OpenGOAL, "DMA" will be instant, meaning the game code will stop, wait until the
+;; DMA is finished, and then continue. As a result, there is no need for DMA synchronization.
+;; When this flag is set, all DMA syncs will be instantaneous.
 (defglobalconstant INSTANT_DMA #t)
 
-;; count returned by dma-sync-with-count
-;; when instant dma is enabled.
+;; Some DMA sync functions return a count for how long it took.
+;; When INSTANT_DMA is enabled, these functions will return this value.
 (defglobalconstant INSTANT_DMA_COUNT 123)
 
 ;; DMA Channel Control Register. This starts the DMA and can be checked to see if it done.
+;; There is one CHCR per DMA channel.
 (deftype dma-chcr (uint32)
   ((dir uint8 :offset 0 :size 1) ;; 1 - from memory
    (mod uint8 :offset 2 :size 2) ;; normal, chain, interleave
@@ -43,7 +46,8 @@
   obj
   )
 
-;; Most basic DMA register layout
+;; Each DMA Channel has a bank of registers with the following layout.
+;; Some channels have more advanced features, but all support at least these three.
 (deftype dma-bank (structure)
   ((chcr dma-chcr  :offset 0) ;; control register
    (madr uint32  :offset 16)  ;; memory address
@@ -84,6 +88,8 @@
   :flag-assert         #x900000084
   )
 
+;; These addresses are the location of DMA banks for each channel.
+;; These do not exist in OpenGOAL.
 (defconstant VIF0_DMA_BANK (the dma-bank-vif #x10008000))
 (defconstant VIF1_DMA_BANK (the dma-bank-vif #x10009000))
 (defconstant GIF_DMA_BANK (the dma-bank #x1000a000))
@@ -91,7 +97,14 @@
 (defconstant SPR_FROM_BANK (the dma-bank-spr #x1000d000))
 (defconstant SPR_TO_BANK (the dma-bank-spr #x1000d400))
 
-;; D_CTRL, master DMA control register, shraed for all channels.
+(defconstant VU0_DATA_MEM_MAP (the (pointer uint32) #x11004000))
+(defconstant VU1_DATA_MEM_MAP (the (pointer uint32) #x1100c000))
+
+
+;; The DMA system also has some shared control registers that
+;; apply to all channels.
+
+;; D_CTRL, master DMA control register, shared for all channels.
 (deftype dma-ctrl (uint32)
   ()
   :method-count-assert 9
@@ -202,9 +215,9 @@
 (deftype vif-tag (uint32)
   ((imm uint16 :offset 0 :size 16)
    (num uint8 :offset 16 :size 8)
-   (cmd uint8 :offset 24 :size 8)
+   (cmd uint8 :offset 24 :size 7)
+   (msk uint8 :offset 28 :size 1)
    (irq uint8 :offset 31 :size 1) ;;?
-   (msk uint8 :offset 15 :size 1)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -252,7 +265,8 @@
    Makes sure any ongoing transfer on the channel is done
    Flushes the cache. Sets dir to 0, so I don't expect
    this to be used for VIF1 transfers.
-   Madr should not be a scratchpad address."
+   Madr should not be a scratchpad address.
+   This function is unused."
   ((inline dma-sync-fast) bank)
   (flush-cache 0)
   ;; (.sync.l)
@@ -272,7 +286,8 @@
                             (count (pointer int32)))
   "Wait for DMA to finish, incrementing count.
    This doesn't seem like a very accurate way
-   to find out how long it takes..."
+   to find out how long it takes...
+   This function is unused."
   (#cond
     (INSTANT_DMA
      (set! (-> count) INSTANT_DMA_COUNT)
@@ -294,7 +309,8 @@
 
 (defun dma-count-until-done ((bank dma-bank)
                              (count (pointer int32)))
-  "Like the previous one, kinda"
+  "Like the previous one, kinda.
+   This function is unused."
   (#cond
     (INSTANT_DMA
      (set! (-> count) INSTANT_DMA_COUNT)

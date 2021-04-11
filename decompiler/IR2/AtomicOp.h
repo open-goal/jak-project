@@ -310,6 +310,11 @@ class AsmOp : public AtomicOp {
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(RegAccessSet& vars) const override;
   const Instruction& instruction() const { return m_instr; }
+  const std::optional<RegisterAccess> dst() const { return m_dst; }
+  const std::optional<RegisterAccess> src(int i) const {
+    assert(i < 4);
+    return m_src[i];
+  }
 
  private:
   Instruction m_instr;

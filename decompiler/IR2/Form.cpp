@@ -2097,7 +2097,9 @@ goos::Object LetElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> def_list;
 
   for (auto& entry : m_entries) {
-    def_list.push_back(pretty_print::build_list(entry.dest.to_form(env), entry.src->to_form(env)));
+    def_list.push_back(pretty_print::build_list(
+        entry.dest.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST),
+        entry.src->to_form(env)));
   }
 
   outer.push_back(pretty_print::build_list(def_list));
@@ -2287,6 +2289,10 @@ void VectorFloatLoadStoreElement::get_modified_regs(RegSet&) const {
 void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
   regs.insert(m_vf_reg);
 }
+
+////////////////////////////////
+// Utilities
+////////////////////////////////
 
 std::optional<SimpleAtom> form_as_atom(const Form* f) {
   auto as_single = f->try_as_single_element();

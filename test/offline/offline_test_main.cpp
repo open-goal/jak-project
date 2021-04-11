@@ -15,6 +15,8 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
     "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
+    "euler", /* geometry, trigonometry, */
+    "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
     /* gap */
     "bounding-box",
     /* gap */
@@ -27,9 +29,9 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
     "geometry-h", "trigonometry-h",
     /* transformq-h, */
-    "matrix", "transform", "quaternion",
-    /* gap */
-    "bounding-box",
+    "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
+    "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
+    /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
 
@@ -62,6 +64,11 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
     "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
+    // dma-h
+    "dma-count-until-done",  // dma asm loop
+    "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
+    // dma
+    "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
     // sync-info
     "(method 15 sync-info)",         // needs *res-static-buf*
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
@@ -106,11 +113,12 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "matrix-with-scale->quaternion",  // fpu acc
     "quaternion-delta-y",             // fpu acc
 
+    "(method 3 profile-frame)",  // double definition.
+
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
     "(method 15 sync-info-paused)",  // needs display stuff first
-
 };
 
 // default location for the data. It can be changed with a command line argument.

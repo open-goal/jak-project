@@ -17,14 +17,12 @@
 ;; these functions are just here for completeness and won't work properly on PC.
 ;; DMA sync functions will succeed and return instantly, so it's safe to leave those in.
 
-(defconstant SPR_FROM_BANK (the dma-bank-spr #x100D000))
-(defconstant SPR_TO_BANK (the dma-bank-spr #x1000D400))
-
 (defun dma-sync-hang ((bank dma-bank))
   "Hang here until the dma transfer is completed.
    This is worse than the dma-sync-fast because it ends
    up spamming the DMA bank register more often, and reduces
-   the speed of the DMA transfer."
+   the speed of the DMA transfer.
+   This function is unused."
   (#cond
     (INSTANT_DMA
      0)
@@ -38,59 +36,68 @@
   )
 
 (defun dma-sync-crash ((arg0 dma-bank))
-  "Try to sync DMA for a bit, then crash if we can't"
-  (local-vars (count int))
-  (#when INSTANT_DMA
-    (return 0)
+  "Wait for DMA to finish for a while, then crash if we can't.
+   This function is unused."
+  (#cond
+    (INSTANT_DMA
+     (return 0)
+     )
     )
-  (set! count 5000000)
-  ;; checking str
-  (while (nonzero? (logand (the-as int (-> arg0 chcr)) 256))
-    (if (zero? count)
-        (segfault)
-        (set! count (+ count -1))
-        )
+  (let ((v1-0 5000000))
+    (while (nonzero? (-> arg0 chcr str))
+      (if (zero? v1-0)
+          (crash!)
+          (+! v1-0 -1)
+          )
+      )
+    (none)
     )
-  (none)
   )
 
+(defmacro make-madr-addr (addr)
+  "Convert an address to one suitable for MADR.
+   This works with Main RAM (all mappings) and for spad"
+  `(let ((int-addr (the-as int ,addr)))
+     (logior (logand #xfffffff int-addr) ;; mask off spad/mapping bits
+             (if (= (logand #x70000000 int-addr) #x70000000)
+                 #x80000000 ;; if we're in spad, set high bit.
+                 0          ;; otherwise nothing.
+                 )
+             )
+     )
+  )
+
+
+
 (defun dma-send ((arg0 dma-bank) (madr uint) (qwc uint))
-  "Send DMA! madr can be a scratchpad address.
-   Like dma-send-no-scratch, this sets chcr to zero, which may be undesirable."
+  "Send DMA given an address and a quadword count.
+   The madr can be in main memory or scratchpad.
+   This is appropriate for VIF0/GIF transfers.
+   It can be used for VIF1, but will do VIF -> madr, which is probably
+   not what you want."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
   (.sync.l)
-  (set! (-> arg0 madr)
-        (logior (logand #xfffffff (the-as int madr)) ;; lower 28 bits are untouched
-                ;; if we are transferring to the scratchpad (at 70000000)
-                ;; we should set bit 31 in madr, per the manual.
-                (if (= (logand #x70000000 (the-as int madr)) #x70000000)
-                    (shl #x8000 16) ;; set bit 31
-                    0)
-                )
-        )
+  (set! (-> arg0 madr) (make-madr-addr madr))
   (set! (-> arg0 qwc) qwc)
   (.sync.l)
-  ;; set str!
+  ;; begin DMA!
   (set! (-> arg0 chcr) (new 'static 'dma-chcr :str 1))
   (.sync.l)
   (none)
   )
 
 (defun dma-send-chain ((arg0 dma-bank-source) (tadr uint))
-  "Send DMA! tadr should be a tag address, possibly in spad ram."
+  "Send DMA! tadr should be a tag address, possibly in spad ram.
+   This is useful for sending to VIF.
+   Tag transfer is enabled, and DIR is set so a VIF1 transfer
+   goes from tadr -> VIF."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
   (.sync.l)
   (set! (-> arg0 qwc) 0)
   ;; adjust address
-  (set! (-> arg0 tadr)
-   (logior (logand #xfffffff (the-as int tadr))
-           (if (= (logand #x70000000 (the-as int tadr)) #x70000000)
-               (shl #x8000 16)
-               0)
-    )
-   )
+  (set! (-> arg0 tadr) (make-madr-addr tadr))
   (.sync.l)
   ;;(set! (-> arg0 chcr) 325)
   (set! (-> arg0 chcr)
@@ -105,21 +112,13 @@
   )
 
 (defun dma-send-chain-no-tte ((arg0 dma-bank-source) (arg1 uint))
-  "Send DMA chain! TTE bit is not set, don't transfer tags."
+  "Send DMA chain! TTE bit is not set, don't transfer tags.
+   This is never used."
   (dma-sync (the-as pointer arg0) 0 0)
   (flush-cache 0)
   (.sync.l)
   (set! (-> arg0 qwc) 0)
-  (set!
-   (-> arg0 tadr)
-   (logior
-    (logand #xfffffff (the-as int arg1))
-    (the-as
-     uint
-     (if (= (logand #x70000000 (the-as int arg1)) #x70000000) (shl #x8000 16) 0)
-     )
-    )
-   )
+  (set! (-> arg0 tadr) (make-madr-addr arg1))
   (.sync.l)
   (set! (-> arg0 chcr)
         (new 'static 'dma-chcr
@@ -138,16 +137,7 @@
   (dma-sync (the-as pointer arg0) 0 0)
   (.sync.l)
   (set! (-> arg0 qwc) 0)
-  (set!
-   (-> arg0 tadr)
-   (logior
-    (logand #xfffffff (the-as int arg1))
-    (the-as
-     uint
-     (if (= (logand #x70000000 (the-as int arg1)) #x70000000) (shl #x8000 16) 0)
-     )
-    )
-   )
+  (set! (-> arg0 tadr) arg1)
   (.sync.l)
   ;;(set! (-> arg0 chcr) 325)
   (set! (-> arg0 chcr)
@@ -158,7 +148,6 @@
              :str 1)
         )
   (.sync.l)
-  (set! v0-1 0)
   (none)
   )
 
@@ -232,49 +221,35 @@
 (defun dma-initialize ()
   "Due to a bug in the PS2 hardware, you must always disable the DMAtag mismatch
    error. This is done here."
+
+  ;; (declare (print-asm))
   (#when PC_PORT
     (format 0 "[dma.gc] skipping dma-initialize for PC port~%")
     (return 0)
     )
   
-  (set! (-> VIF0_BANK err)
-        (logior (logand (-> VIF0_BANK err) (the-as uint -3)) 2)
-        )
-  (set! (-> (the vif-bank #x10003c00) err)
-        (logior (logand (-> VIF1_BANK err) (the-as uint -3)) 2)
-        )
+  (set! (-> (the-as vif-bank #x10003800) err me0) 1)
+  (set! (-> (the-as vif-bank #x10003c00) err me0) 1)
   (none)
   )
 
 (defun clear-vu0-mem ()
-  "Clear the data memory of VU0, filling it with abadbeef
-   This uses the slow memory mapping of VU0's data memory at 0x11004000"
-  (local-vars
-   (v1-0 (pointer uint32))
-   (a0-0 int)
-   )
-  (set! v1-0 (the (pointer uint32) #x11004000))
-  (set! a0-0 0)
-  (while (< a0-0 1024)
+  "Set the vu0 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory."
+  (let ((v1-0 VU0_DATA_MEM_MAP))
+   (dotimes (a0-0 1024)
     (set! (-> v1-0 a0-0) #xabadbeef)
-    (set! a0-0 (+ a0-0 1))
     )
+   )
   (none)
   )
 
 (defun clear-vu1-mem ()
-  "Clear the data memory of VU1, filling it with abadbeef
-   This uses the slow memory mapping of VU1's data memory at 0x1100C000"
-  (local-vars
-   (v1-0 (pointer uint32))
-   (a0-0 int)
-   )
-  (set! v1-0 (the (pointer uint32) #x1100c000))
-  (set! a0-0 0)
-  (while (< a0-0 4096)
+  "Set the vu1 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory."
+  (let ((v1-0 VU1_DATA_MEM_MAP))
+   (dotimes (a0-0 4096)
     (set! (-> v1-0 a0-0) #xabadbeef)
-    (set! a0-0 (+ a0-0 1))
     )
+   )
   (none)
   )
 

@@ -1,0 +1,179 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function timer-reset
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+(defun timer-reset ((arg0 timer-bank))
+  (.sync.l)
+  (set! (-> arg0 count) (the-as uint 0))
+  (.sync.l)
+  (let ((v0-0 0))
+   )
+  (none)
+  )
+
+;; definition for function timer-count
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+;; WARN: Unsupported inline assembly instruction kind - [sync.l]
+(defun timer-count ((arg0 timer-bank))
+  (.sync.l)
+  (let ((v0-0 (-> arg0 count)))
+   (.sync.l)
+   v0-0
+   )
+  )
+
+;; definition for function disable-irq
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v0, Status]
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Status, v0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+(defun disable-irq ()
+  (local-vars (v0-0 int))
+  (let ((v1-0 (l.d L21)))
+   (.mfc0 v0-0 Status)
+   (let ((v0-1 (logand v0-0 (the-as int v1-0))))
+    (.mtc0 Status v0-1)
+    )
+   )
+  (.sync.p)
+  (let ((v0-2 0))
+   )
+  (none)
+  )
+
+;; definition for function enable-irq
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v0, Status]
+;; WARN: Unsupported inline assembly instruction kind - [mtc0 Status, v0]
+;; WARN: Unsupported inline assembly instruction kind - [sync.p]
+(defun enable-irq ()
+  (local-vars (v0-0 int))
+  (.mfc0 v0-0 Status)
+  (let ((v0-1 (logior v0-0 1)))
+   (.mtc0 Status v0-1)
+   )
+  (.sync.p)
+  (let ((v0-2 0))
+   )
+  (none)
+  )
+
+;; definition for function stopwatch-init
+(defun stopwatch-init ((arg0 stopwatch))
+  (set! (-> arg0 begin-level) 0)
+  (set! (-> arg0 prev-time-elapsed) (the-as uint 0))
+  0
+  )
+
+;; definition for function stopwatch-reset
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-reset ((arg0 stopwatch))
+  (local-vars (v1-3 int))
+  (set! (-> arg0 prev-time-elapsed) (the-as uint 0))
+  (when (> (-> arg0 begin-level) 0)
+   (let ((v1-2 0))
+    )
+   (.mfc0 v1-3 Count)
+   (set! (-> arg0 start-time) (the-as uint v1-3))
+   )
+  0
+  )
+
+;; definition for function stopwatch-start
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-start ((arg0 stopwatch))
+  (local-vars (v1-4 int))
+  (when (zero? (-> arg0 begin-level))
+   (set! (-> arg0 begin-level) 1)
+   (let ((v1-3 0))
+    )
+   (.mfc0 v1-4 Count)
+   (set! (-> arg0 start-time) (the-as uint v1-4))
+   )
+  0
+  )
+
+;; definition for function stopwatch-stop
+;; INFO: Return type mismatch int vs uint.
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
+(defun stopwatch-stop ((arg0 stopwatch))
+  (local-vars (a1-0 int))
+  (when (> (-> arg0 begin-level) 0)
+   (set! (-> arg0 begin-level) 0)
+   (let ((v1-2 0))
+    )
+   (.mfc0 a1-0 Count)
+   (set!
+    (-> arg0 prev-time-elapsed)
+    (+
+     (-> arg0 prev-time-elapsed)
+     (the-as uint (- a1-0 (the-as int (-> arg0 start-time))))
+     )
+    )
+   )
+  (the-as uint 0)
+  )
+
+;; definition for function stopwatch-begin
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-begin ((arg0 stopwatch))
+  (local-vars (v1-3 int))
+  (when (zero? (-> arg0 begin-level))
+   (let ((v1-2 0))
+    )
+   (.mfc0 v1-3 Count)
+   (set! (-> arg0 start-time) (the-as uint v1-3))
+   )
+  (set! (-> arg0 begin-level) (+ (-> arg0 begin-level) 1))
+  0
+  )
+
+;; definition for function stopwatch-end
+;; INFO: Return type mismatch int vs uint.
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
+(defun stopwatch-end ((arg0 stopwatch))
+  (local-vars (a1-0 int))
+  (set! (-> arg0 begin-level) (+ (-> arg0 begin-level) -1))
+  (when (zero? (-> arg0 begin-level))
+   (let ((v1-4 0))
+    )
+   (.mfc0 a1-0 Count)
+   (set!
+    (-> arg0 prev-time-elapsed)
+    (+
+     (-> arg0 prev-time-elapsed)
+     (the-as uint (- a1-0 (the-as int (-> arg0 start-time))))
+     )
+    )
+   )
+  (the-as uint 0)
+  )
+
+;; definition for function stopwatch-elapsed-ticks
+;; WARN: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-elapsed-ticks ((arg0 stopwatch))
+  (local-vars (v1-3 int))
+  (let ((v0-0 (-> arg0 prev-time-elapsed)))
+   (when (> (-> arg0 begin-level) 0)
+    (let ((v1-2 0))
+     )
+    (.mfc0 v1-3 Count)
+    (+! v0-0 (the-as uint (- v1-3 (the-as int (-> arg0 start-time)))))
+    )
+   v0-0
+   )
+  )
+
+;; definition for function stopwatch-elapsed-seconds
+(defun stopwatch-elapsed-seconds ((arg0 stopwatch))
+  (let ((v1-0 (stopwatch-elapsed-ticks arg0)))
+   (* 0.0000000033333334 (the float v1-0))
+   )
+  )
+
+;; failed to figure out what this is:
+(none)
+

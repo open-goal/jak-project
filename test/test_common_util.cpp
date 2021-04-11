@@ -1,11 +1,14 @@
+#include <string>
+#include <vector>
+
 #include "common/util/FileUtil.h"
 #include "common/util/Trie.h"
+#include "common/util/BitUtils.h"
 #include "gtest/gtest.h"
 #include "test/all_jak1_symbols.h"
 #include "common/util/json_util.h"
 #include "common/util/Range.h"
-#include <string>
-#include <vector>
+#include "third-party/fmt/core.h"
 
 TEST(CommonUtil, get_file_path) {
   std::vector<std::string> test = {"cabbage", "banana", "apple"};
@@ -77,4 +80,18 @@ TEST(CommonUtil, RangeIterator) {
   EXPECT_FALSE(Range<int>(3, 4).empty());
   EXPECT_EQ(1, Range<int>(3, 4).size());
   EXPECT_EQ(4, Range<int>(4, 8).size());
+}
+
+TEST(CommonUtil, BitRange) {
+  for (int x : {0, 0b1001, 0b1010, 0b01110001, 0b000100110}) {
+    EXPECT_EQ(get_bit_range(x), std::nullopt);  // invalids
+  }
+
+  EXPECT_EQ(get_bit_range(0b1), Range<int>(0, 1));
+  EXPECT_EQ(get_bit_range(0b10), Range<int>(1, 2));
+  EXPECT_EQ(get_bit_range(0b11), Range<int>(0, 2));
+  EXPECT_EQ(get_bit_range(0b110), Range<int>(1, 3));
+  EXPECT_EQ(get_bit_range(UINT64_MAX), Range<int>(0, 64));
+  EXPECT_EQ(get_bit_range(UINT64_MAX - 1), Range<int>(1, 64));
+  EXPECT_EQ(get_bit_range(UINT64_MAX / 2), Range<int>(0, 63));
 }

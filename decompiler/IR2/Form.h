@@ -156,6 +156,27 @@ class SimpleExpressionElement : public FormElement {
                                           FormStack& stack,
                                           std::vector<FormElement*>* result,
                                           bool allow_side_effects);
+  void update_from_stack_left_shift(const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
+  void update_from_stack_right_shift_logic(const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
+  void update_from_stack_right_shift_arith(const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
+  void update_from_stack_logor_or_logand(const Env& env,
+                                         FixedOperatorKind kind,
+                                         FormPool& pool,
+                                         FormStack& stack,
+                                         std::vector<FormElement*>* result,
+                                         bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -443,6 +464,10 @@ class ConditionElement : public FormElement {
                                        FormPool& pool,
                                        const std::vector<Form*>& source_forms,
                                        const std::vector<TypeSpec>& types);
+  FormElement* make_nonzero_check_generic(const Env& env,
+                                          FormPool& pool,
+                                          const std::vector<Form*>& source_forms,
+                                          const std::vector<TypeSpec>& types);
   FormElement* make_equal_check_generic(const Env& env,
                                         FormPool& pool,
                                         const std::vector<Form*>& source_forms,
@@ -1283,6 +1308,115 @@ class VectorFloatLoadStoreElement : public FormElement {
   Register m_vf_reg;
   Form* m_location = nullptr;
   bool m_is_load = false;
+};
+
+struct BitfieldManip {
+  enum class Kind {
+    LEFT_SHIFT,
+    RIGHT_SHIFT_LOGICAL,
+    RIGHT_SHIFT_LOGICAL_32BIT,
+    RIGHT_SHIFT_ARITH,
+    LOGAND,
+    LOGIOR_WITH_CONSTANT_INT,
+    NONZERO_COMPARE,
+    INVALID
+  } kind = Kind::INVALID;
+  s64 amount = -1;
+
+  bool is_right_shift() const {
+    return kind == Kind::RIGHT_SHIFT_ARITH || kind == Kind::RIGHT_SHIFT_LOGICAL ||
+           kind == Kind::RIGHT_SHIFT_LOGICAL_32BIT;
+  }
+
+  bool right_shift_unsigned() const {
+    assert(is_right_shift());
+    return kind == Kind::RIGHT_SHIFT_LOGICAL || kind == Kind::RIGHT_SHIFT_LOGICAL_32BIT;
+  }
+
+  bool is_64bit_shift() const {
+    return kind == Kind::RIGHT_SHIFT_LOGICAL || kind == Kind::RIGHT_SHIFT_ARITH ||
+           kind == Kind::LEFT_SHIFT;
+  }
+
+  int get_shift_start_bit() const {
+    if (is_64bit_shift()) {
+      return 64;
+    } else {
+      return 32;
+    }
+  }
+
+  BitfieldManip(Kind k, s64 imm) : kind(k), amount(imm) {}
+};
+
+class BitfieldReadElement : public FormElement {
+ public:
+  BitfieldReadElement(Form* base_value, const TypeSpec& ts);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  FormElement* push_step(const BitfieldManip step, const TypeSystem& ts, FormPool& pool);
+
+ private:
+  Form* m_base = nullptr;
+  TypeSpec m_type;
+  std::vector<BitfieldManip> m_steps;
+};
+
+struct BitFieldDef {
+  bool is_signed = false;
+  u64 value = -1;
+  std::string field_name;
+};
+
+std::vector<BitFieldDef> decompile_static_bitfield(const TypeSpec& type,
+                                                   const TypeSystem& ts,
+                                                   u64 value);
+
+class BitfieldStaticDefElement : public FormElement {
+ public:
+  BitfieldStaticDefElement(const TypeSpec& type, const std::vector<BitFieldDef>& field_defs);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  TypeSpec m_type;
+  std::vector<BitFieldDef> m_field_defs;
+};
+
+struct BitfieldFormDef {
+  Form* value;
+  std::string field_name;
+};
+
+/*!
+ * This represents copying a bitfield object, then modifying the type.
+ * It's an intermediate step to modifying a bitfield in place and it's not expected to appear
+ * in the final output.
+ */
+class ModifiedCopyBitfieldElement : public FormElement {
+ public:
+  ModifiedCopyBitfieldElement(const TypeSpec& type,
+                              Form* base,
+                              const std::vector<BitfieldFormDef>& field_modifications);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+
+  Form* base() const { return m_base; }
+  const std::vector<BitfieldFormDef> mods() const { return m_field_modifications; }
+
+ private:
+  TypeSpec m_type;
+  Form* m_base = nullptr;
+  std::vector<BitfieldFormDef> m_field_modifications;
 };
 
 /*!
