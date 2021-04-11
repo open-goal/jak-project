@@ -18,7 +18,9 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
     /* gap */
-    "bounding-box"};
+    "bounding-box",
+    /* gap */
+    "sync-info-h", "sync-info"};
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
@@ -29,7 +31,9 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    /* gap */ "bounding-box"};
+    /* gap */ "bounding-box",
+    /* gap */
+    "sync-info-h", "sync-info"};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -64,7 +68,11 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "dma-count-until-done",  // dma asm loop
     "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
     // dma
-    "symlink2", "symlink3", "dma-sync-hang"  // handwritten asm
+    "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
+    // sync-info
+    "(method 15 sync-info)",         // needs *res-static-buf*
+    "(method 15 sync-info-eased)",   // needs *res-static-buf*
+    "(method 15 sync-info-paused)",  // needs *res-static-buf*
 };
 
 const std::unordered_set<std::string> skip_in_compiling = {
@@ -107,6 +115,10 @@ const std::unordered_set<std::string> skip_in_compiling = {
 
     "(method 3 profile-frame)",  // double definition.
 
+  // sync-info
+    "(method 15 sync-info)",         // needs display stuff first
+    "(method 15 sync-info-eased)",   // needs display stuff first
+    "(method 15 sync-info-paused)",  // needs display stuff first
 };
 
 // default location for the data. It can be changed with a command line argument.
