@@ -167,7 +167,7 @@ class Compiler {
                                   const std::string& method_type_name = "");
 
   bool try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env);
-  float try_getting_constant_float(const goos::Object& in, float* out, Env* env);
+  bool try_getting_constant_float(const goos::Object& in, float* out, Env* env);
   Val* compile_heap_new(const goos::Object& form,
                         const std::string& allocation,
                         const goos::Object& type,
@@ -286,17 +286,15 @@ class Compiler {
                                              const TypeSpec& type,
                                              const goos::Object& field_defs,
                                              Env* env);
-  Val* compile_new_static_bitfield(const goos::Object& form,
-                                   const TypeSpec& type,
-                                   const goos::Object& field_defs,
-                                   Env* env);
   Val* compile_static_pair(const goos::Object& form, Env* env);
   StaticResult compile_static(const goos::Object& form, Env* env);
   StaticResult compile_static_no_eval_for_pairs(const goos::Object& form, Env* env);
-  StaticResult compile_static_bitfield(const goos::Object& form,
-                                       const TypeSpec& type,
-                                       const goos::Object& _field_defs,
-                                       Env* env);
+
+  Val* compile_bitfield_definition(const goos::Object& form,
+                                   const TypeSpec& type,
+                                   const goos::Object& _field_defs,
+                                   bool allow_dynamic_construction,
+                                   Env* env);
   StaticResult compile_new_static_structure(const goos::Object& form,
                                             const TypeSpec& type,
                                             const goos::Object& _field_defs,

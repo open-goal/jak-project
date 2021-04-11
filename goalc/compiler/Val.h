@@ -243,6 +243,7 @@ class IntegerConstantVal : public Val {
   IntegerConstantVal(TypeSpec ts, s64 value) : Val(std::move(ts)), m_value(value) {}
   std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
   RegVal* to_reg(Env* fe) override;
+  s64 value() const { return m_value; }
 
  protected:
   s64 m_value = -1;

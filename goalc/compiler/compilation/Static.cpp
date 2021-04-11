@@ -297,16 +297,40 @@ StaticResult Compiler::compile_new_static_structure(const goos::Object& form,
   return result;
 }
 
-StaticResult Compiler::compile_static_bitfield(const goos::Object& form,
-                                               const TypeSpec& type,
-                                               const goos::Object& _field_defs,
-                                               Env* env) {
-  u64 as_int = 0;
+/*!
+ * Convert a bitfield definition to a StaticResult.
+ * If allow_dynamic_construction is not set, this must happen entirely at compile time, and the
+ * result will always be a constant integer.
+ *
+ * If allow_dynamic_construction is set, this may emit code to generate the value.
+ */
+Val* Compiler::compile_bitfield_definition(const goos::Object& form,
+                                           const TypeSpec& type,
+                                           const goos::Object& _field_defs,
+                                           bool allow_dynamic_construction,
+                                           Env* env) {
+  // unset fields are 0, so initialize our constant value to 0 here.
+  u64 constant_integer_part = 0;
 
+  // look up the bitfield type we're working with. For now, make sure it's under 8 bytes.
   auto type_info = dynamic_cast<BitFieldType*>(m_ts.lookup_type(type));
   assert(type_info);
   assert(type_info->get_load_size() <= 8);
 
+  // We will construct this bitfield in two passes.
+  // The first pass loops through definitions. If they can be evaluated at compile time, it adds
+  // them to the constant. Definitions that must be evaluated at runtime are added to the
+  // dynamic_defs list below. The second pass will combine the constant and dynamic defs to build
+  // the final value.
+  struct DynamicDef {
+    goos::Object definition;
+    int field_offset, field_size;
+    std::string field_name;  // for error message
+    TypeSpec expected_type;
+  };
+  std::vector<DynamicDef> dynamic_defs;
+
+  // iterate through definitions:
   auto* field_defs = &_field_defs;
   while (!field_defs->is_empty_list()) {
     auto field_name_def = symbol_string(pair_car(*field_defs));
@@ -328,26 +352,42 @@ StaticResult Compiler::compile_static_bitfield(const goos::Object& form,
     assert(field_offset + field_size <= type_info->get_load_size() * 8);
 
     if (is_integer(field_info.result_type)) {
+      // first, try as a constant
       s64 value = 0;
       if (!try_getting_constant_integer(field_value, &value, env)) {
-        throw_compiler_error(form,
-                             "Field {} is an integer, but the value given couldn't be "
-                             "converted to an integer at compile time.",
-                             field_name_def);
+        // failed to get as constant, add to dynamic or error.
+        if (allow_dynamic_construction) {
+          DynamicDef dyn;
+          dyn.definition = field_value;
+          dyn.field_offset = field_offset;
+          dyn.field_size = field_size;
+          dyn.field_name = field_name_def;
+          dyn.expected_type = coerce_to_reg_type(field_info.result_type);
+          // allow mismatched int/uint - there's too much code that gets this wrong already.
+          if (m_ts.tc(TypeSpec("integer"), dyn.expected_type)) {
+            dyn.expected_type = TypeSpec("integer");
+          }
+          dynamic_defs.push_back(dyn);
+        } else {
+          throw_compiler_error(form,
+                               "Field {} is an integer, but the value given couldn't be "
+                               "converted to an integer at compile time.",
+                               field_name_def);
+        }
+      } else {
+        u64 unsigned_value = value;
+        u64 or_value = unsigned_value;
+        // shift us all the way left to clear upper bits.
+        or_value <<= (64 - field_size);
+        // and back right.
+        or_value >>= (64 - field_size);
+        if (or_value != unsigned_value) {
+          throw_compiler_error(form, "Field {}'s value doesn't fit.", field_name_def);
+        }
+
+        constant_integer_part |= (or_value << field_offset);
       }
 
-      // todo, check the integer fits!
-      u64 unsigned_value = value;
-      u64 or_value = unsigned_value;
-      // shift us all the way left to clear upper bits.
-      or_value <<= (64 - field_size);
-      // and back right.
-      or_value >>= (64 - field_size);
-      if (or_value != unsigned_value) {
-        throw_compiler_error(form, "Field {}'s value doesn't fit.", field_name_def);
-      }
-
-      as_int |= (or_value << field_offset);
     } else if (is_float(field_info.result_type)) {
       if (field_size != 32) {
         throw_compiler_error(form,
@@ -363,15 +403,49 @@ StaticResult Compiler::compile_static_bitfield(const goos::Object& form,
                              field_name_def);
       }
       u64 float_value = float_as_u32(value);
-      as_int |= (float_value << field_offset);
+      constant_integer_part |= (float_value << field_offset);
     }
 
     else {
-      assert(false);  // for now
+      throw_compiler_error(form, "Bitfield field {} with type {} cannot be set statically.",
+                           field_name_def, field_info.result_type.print());
     }
   }
 
-  return StaticResult::make_constant_data(as_int, type);
+  if (dynamic_defs.empty()) {
+    auto integer = compile_integer(constant_integer_part, env);
+    integer->set_type(type);
+    return integer;
+  } else {
+    assert(allow_dynamic_construction);
+    auto integer = compile_integer(constant_integer_part, env)->to_gpr(env);
+
+    for (auto& def : dynamic_defs) {
+      auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+      if (!m_ts.tc(def.expected_type, field_val->type())) {
+        throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
+                             def.field_name, field_val->type().print(), def.expected_type.print());
+      }
+      int left_shift_amnt = 64 - def.field_size;
+      int right_shift_amnt = (64 - def.field_size) - def.field_offset;
+      assert(right_shift_amnt >= 0);
+
+      if (left_shift_amnt > 0) {
+        env->emit(
+            std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val, left_shift_amnt));
+      }
+
+      if (right_shift_amnt > 0) {
+        env->emit(
+            std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val, right_shift_amnt));
+      }
+
+      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, integer, field_val));
+    }
+
+    integer->set_type(type);
+    return integer;
+  }
 }
 
 /*!
@@ -528,7 +602,10 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
             throw_compiler_error(form, "Invalid new static string");
           }
         } else if (is_bitfield(ts)) {
-          return compile_static_bitfield(form, ts, constructor_args, env);
+          auto val = dynamic_cast<const IntegerConstantVal*>(
+              compile_bitfield_definition(form, ts, constructor_args, false, env));
+          assert(val);
+          return StaticResult::make_constant_data(val->value(), val->type());
         } else if (is_structure(ts)) {
           return compile_new_static_structure(form, ts, constructor_args, env);
         } else {
@@ -741,16 +818,6 @@ StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
   auto result = StaticResult::make_structure_reference(obj.get(), result_type);
   fie->add_static(std::move(obj));
   return result;
-}
-
-Val* Compiler::compile_new_static_bitfield(const goos::Object& form,
-                                           const TypeSpec& type,
-                                           const goos::Object& _field_defs,
-                                           Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto sr = compile_static_bitfield(form, type, _field_defs, env);
-  assert(sr.is_constant_data());
-  return fe->alloc_val<IntegerConstantVal>(sr.typespec(), sr.constant_data());
 }
 
 Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
