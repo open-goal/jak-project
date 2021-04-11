@@ -160,7 +160,7 @@ std::string base_name(const std::string& filename) {
   size_t pos = 0;
   assert(!filename.empty());
   for (size_t i = filename.size() - 1; i-- > 0;) {
-    if (filename.at(i) == '/') {
+    if (filename.at(i) == '/' || filename.at(i) == '\\') {
       pos = (i + 1);
       break;
     }
