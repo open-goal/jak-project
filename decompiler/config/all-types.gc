@@ -3671,13 +3671,16 @@
 ;; texture-h
 ;;;;;;;;;;;;;;
 
-;; texture-h
+(define-extern *texture-enable-user-menu* int)
+(define-extern *texture-enable-user* int)
+
 (deftype texture-id (uint32)
-  ()
+  ((index  uint16 :offset 8  :size 12)
+   (page   uint16 :offset 20 :size 12)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype texture-pool-segment (structure)
@@ -3785,6 +3788,13 @@
     )
   )
 
+(deftype shader-ptr (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
 ;; texture-h
 (deftype texture-link (structure)
   ((next uint32  :offset-assert 0)
@@ -3807,6 +3817,15 @@
   )
 
 ;; texture-h
+(deftype texture-page-dir (basic)
+  ((pad uint8 #x10))
+  (:methods
+   (dummy-9 () none 9)
+   )
+  :flag-assert #xa00000014
+  )
+
+;; texture-h
 (deftype texture-relocate-later (basic)
   ((memcpy basic                   :offset-assert 4)
    (dest   uint32                  :offset-assert 8)
@@ -3820,12 +3839,13 @@
   :flag-assert         #x90000001c
   )
 
+(define-extern *texture-page-dir* texture-page-dir)
+
 ;; texture-h
 (deftype adgif-shader (structure)
-  (
-   ;;(quad       UNKNOWN 5  :offset-assert 0)
-   ;;(prims      UNKNOWN 10 :offset-assert 0)
-   (tex0       uint64     :offset-assert 0)
+  ((quad       uint128 5  :offset 0)
+   (prims      uint64 10  :offset 0)
+   (tex0       uint64     :offset 0)
    (tex1       uint64     :offset 16)
    (miptbp1    uint64     :offset 32)
    (clamp      uint64     :offset 48)
@@ -3834,7 +3854,6 @@
    (link-test  uint32     :offset 8)
    (texture-id uint32     :offset 24)
    (next       uint32     :offset 40)
-   (_pad uint64)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -3850,6 +3869,19 @@
   )
 
 (define-extern *texture-relocate-later* texture-relocate-later)
+
+(define-extern *sky-base-vram-word* int)
+(define-extern *sky-base-block* int)
+(define-extern *sky-base-page* int)
+(define-extern *depth-cue-base-vram-word* int)
+(define-extern *depth-cue-base-block* int)
+(define-extern *depth-cue-base-page* int)
+(define-extern *eyes-base-vram-word* int)
+(define-extern *eyes-base-block* int)
+(define-extern *eyes-base-page* int)
+(define-extern *ocean-base-vram-word* int)
+(define-extern *ocean-base-block* int)
+(define-extern *ocean-base-page* int)
 
 ;;;;;;;;;;;;;;
 ;; level-h
