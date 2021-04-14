@@ -2107,10 +2107,7 @@
 (deftype profile-frame (structure)
   ((name       basic   :offset-assert 0)
    (time-stamp uint32  :offset-assert 4)
-   (color      uint32  :offset-assert 8)
-   (r          uint8   :offset 8) ;; TODO : verify colors
-   (g          uint8   :offset 9) ;; TODO (again) : these are actually bitfields
-   (b          uint8   :offset 10)
+   (color      rgba    :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -2126,7 +2123,7 @@
   :size-assert         #x4010
   :flag-assert         #xe00004010
   (:methods
-    (get-last-frame-time-stamp (profile-bar) uint 9)
+    (get-last-frame-time-stamp (_type_) uint 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -3260,63 +3257,28 @@
   )
 
 
-;;(define-extern gs-trxreg object) ;; unknown type
 ;;(define-extern gif-packet object) ;; unknown type
-;;(define-extern gs-fogcol object) ;; unknown type
-;;(define-extern gs-zbuf object) ;; unknown type
 ;;(define-extern gif-bank object) ;; unknown type
-;; ;; unknown type
-;;(define-extern gs-trxpos object) ;; unknown type
-;;(define-extern gs-xy-offset object) ;; unknown type
-;;(define-extern gs-tex1 object) ;; unknown type
-;;(define-extern gs-prim object) ;; unknown type
 ;;(define-extern gif-tag object) ;; unknown type
-;;(define-extern gs-display object) ;; unknown type
-;;(define-extern gs-prmode-cont object) ;; unknown type
-;;(define-extern gs-scissor object) ;; unknown type
-;;(define-extern gs-st object) ;; unknown type
-;;(define-extern gs-smode2 object) ;; unknown type
 (define-extern add-reg-gif-packet (function gif-packet int int none))
 ;;(define-extern draw-context object) ;; unknown type
-;;(define-extern gs-texclut object) ;; unknown type
-;;(define-extern gs-bgcolor object) ;; unknown type
 (define-extern open-gif-packet (function gif-packet gif-packet))
 ;;(define-extern gif-tag-count object) ;; unknown type
-;;(define-extern gs-test object) ;; unknown type
-;;(define-extern gs-tex0 object) ;; unknown type
 ;;(define-extern gif-tag64 object) ;; unknown type
-;;(define-extern gs-alpha object) ;; unknown type
-;;(define-extern gs-miptbp object) ;; unknown type
-;;(define-extern gs-color-clamp object) ;; unknown type
 ;;(define-extern gif-p3cnt object) ;; unknown type
-;;(define-extern gs-clamp object) ;; unknown type
-;;(define-extern gs-uv object) ;; unknown type
 ;;(define-extern gif-stat object) ;; unknown type
 
 ;;(define-extern gif-mode object) ;; unknown type
 
-;;(define-extern gs-trxdir object) ;; unknown type
-;;(define-extern gs-xyzf object) ;; unknown type
-;;(define-extern gs-csr object) ;; unknown type
 (define-extern draw-context-set-xy (function draw-context int int none))
 
-;;(define-extern gs-frame object) ;; unknown type
-;;(define-extern gs-texa object) ;; unknown type
-;;(define-extern gs-bank object) ;; unknown type
 ;;(define-extern gif-cnt object) ;; unknown type
 ;;(define-extern gif-ctrl object) ;; unknown type
 ;;(define-extern gs-gif-tag object) ;; unknown type
-;;(define-extern gs-pmode object) ;; unknown type
-;;(define-extern gs-dthe object) ;; unknown type
-;;(define-extern gs-fog object) ;; unknown type
-;;(define-extern gs-xyz object) ;; unknown type
 
 ;;(define-extern gif-tag-prim object) ;; unknown type
 ;;(define-extern gif-p3tag object) ;; unknown type
 (define-extern close-gif-packet (function gif-packet int gif-packet))
-;;(define-extern gs-display-fb object) ;; unknown type
-;;(define-extern gs-bitbltbuf object) ;; unknown type
-;;(define-extern gs-rgbaq object) ;; unknown type
 
 
 ;;;;;;;;;;;;;;;
@@ -3324,11 +3286,11 @@
 ;;;;;;;;;;;;;;;
 
 (deftype display-env (structure)
-  ((pmode   uint64  :offset-assert 0)
-   (smode2  uint64  :offset-assert 8)
-   (dspfb   uint64  :offset-assert 16)
-   (display uint64  :offset-assert 24)
-   (bgcolor uint64  :offset-assert 32)
+  ((pmode   gs-pmode      :offset-assert 0)
+   (smode2  gs-smode2     :offset-assert 8)
+   (dspfb   gs-display-fb :offset-assert 16)
+   (display gs-display    :offset-assert 24)
+   (bgcolor gs-bgcolor    :offset-assert 32)
    )
   :pack-me
   :method-count-assert 9
@@ -3409,7 +3371,7 @@
    (on-screen                       int32               :offset-assert 560)
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
-   (bg-clear-color                  uint32       4      :offset-assert 760)
+   (bg-clear-color                  rgba        4      :offset-assert 760)
    (real-frame-counter              uint64              :offset-assert 776)
    (base-frame-counter              uint64              :offset-assert 784)
    (game-frame-counter              uint64              :offset-assert 792)
@@ -3671,13 +3633,16 @@
 ;; texture-h
 ;;;;;;;;;;;;;;
 
-;; texture-h
+(define-extern *texture-enable-user-menu* int)
+(define-extern *texture-enable-user* int)
+
 (deftype texture-id (uint32)
-  ()
+  ((index  uint16 :offset 8  :size 12)
+   (page   uint16 :offset 20 :size 12)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype texture-pool-segment (structure)
@@ -3785,6 +3750,13 @@
     )
   )
 
+(deftype shader-ptr (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
 ;; texture-h
 (deftype texture-link (structure)
   ((next uint32  :offset-assert 0)
@@ -3807,6 +3779,15 @@
   )
 
 ;; texture-h
+(deftype texture-page-dir (basic)
+  ((pad uint8 #x10))
+  (:methods
+   (dummy-9 () none 9)
+   )
+  :flag-assert #xa00000014
+  )
+
+;; texture-h
 (deftype texture-relocate-later (basic)
   ((memcpy basic                   :offset-assert 4)
    (dest   uint32                  :offset-assert 8)
@@ -3820,12 +3801,13 @@
   :flag-assert         #x90000001c
   )
 
+(define-extern *texture-page-dir* texture-page-dir)
+
 ;; texture-h
 (deftype adgif-shader (structure)
-  (
-   ;;(quad       UNKNOWN 5  :offset-assert 0)
-   ;;(prims      UNKNOWN 10 :offset-assert 0)
-   (tex0       uint64     :offset-assert 0)
+  ((quad       uint128 5  :offset 0)
+   (prims      uint64 10  :offset 0)
+   (tex0       uint64     :offset 0)
    (tex1       uint64     :offset 16)
    (miptbp1    uint64     :offset 32)
    (clamp      uint64     :offset 48)
@@ -3834,7 +3816,6 @@
    (link-test  uint32     :offset 8)
    (texture-id uint32     :offset 24)
    (next       uint32     :offset 40)
-   (_pad uint64)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -3850,6 +3831,19 @@
   )
 
 (define-extern *texture-relocate-later* texture-relocate-later)
+
+(define-extern *sky-base-vram-word* int)
+(define-extern *sky-base-block* int)
+(define-extern *sky-base-page* int)
+(define-extern *depth-cue-base-vram-word* int)
+(define-extern *depth-cue-base-block* int)
+(define-extern *depth-cue-base-page* int)
+(define-extern *eyes-base-vram-word* int)
+(define-extern *eyes-base-block* int)
+(define-extern *eyes-base-page* int)
+(define-extern *ocean-base-vram-word* int)
+(define-extern *ocean-base-block* int)
+(define-extern *ocean-base-page* int)
 
 ;;;;;;;;;;;;;;
 ;; level-h
