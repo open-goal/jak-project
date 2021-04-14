@@ -189,6 +189,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::NEG:
     case Kind::LOGNOT:
       return get_type_int1(input, env, dts);
+    case Kind::DIV_UNSIGNED:
     case Kind::MOD_UNSIGNED:
       return TP_Type::make_from_ts("uint");
     default:
@@ -411,14 +412,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier());
   }
 
-  if (m_kind == Kind::ADD && arg0_type.typespec().base_type() == "pointer" &&
-      tc(dts, TypeSpec("integer"), arg1_type)) {
+  if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
+      arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
-  if (m_kind == Kind::ADD && arg1_type.typespec().base_type() == "pointer" &&
-      tc(dts, TypeSpec("integer"), arg0_type)) {
+  if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
+      arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg1_type.typespec());
   }
@@ -445,7 +446,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
-  if (m_kind == Kind::SUB && tc(dts, TypeSpec("pointer"), arg0_type) &&
+  if ((m_kind == Kind::ADD || m_kind == Kind::SUB) && tc(dts, TypeSpec("pointer"), arg0_type) &&
       tc(dts, TypeSpec("pointer"), arg1_type)) {
     return TP_Type::make_from_ts(TypeSpec("int"));
   }

@@ -55,6 +55,7 @@
 (define-extern *listener-function* (function object))
 (define-extern *enable-method-set* int)
 (define-extern install-debug-handler (function int object symbol))
+(define-extern install-handler (function int (function int) none))
 
 (define-extern file-stream-open (function file-stream basic basic file-stream))
 (define-extern file-stream-length (function file-stream int))
@@ -2114,6 +2115,7 @@
   :flag-assert         #x90000000c
   )
 
+(declare-type dma-buffer basic)
 (deftype profile-bar (basic)
   ((profile-frame-count int32        :offset-assert 4)
    (cache-time          uint64       :offset-assert 8)
@@ -2124,10 +2126,10 @@
   :flag-assert         #xe00004010
   (:methods
     (get-last-frame-time-stamp (_type_) uint 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (reset (_type_) _type_ 10)
+    (add-frame (_type_ symbol rgba) profile-frame 11)
+    (add-end-frame (_type_ symbol rgba) profile-frame 12)
+    (draw (_type_ dma-buffer int) float 13)
     )
   )
 
@@ -2714,9 +2716,6 @@
   :flag-assert         #x900000010
   )
 
-;; display
-(define-extern get-current-time (function uint))
-(define-extern get-integral-current-time (function uint))
 ;; in the kernel.
 (define-extern cpad-open (function cpad-info int cpad-info))
 (define-extern cpad-get-data (function cpad-info cpad-info))
@@ -2906,16 +2905,7 @@
 ;; the GS's PRIM register specifies the types of drawing primitives and various attributes, and
 ;; initializes the contents of the vertex queue.
 (deftype gs-prim (uint64)
-  (;; type of primitive:
-   ;; - 0: point
-   ;; - 1: line
-   ;; - 2: line strip
-   ;; - 3: tri
-   ;; - 4: tri strip
-   ;; - 5: tri fan
-   ;; - 6: sprite (what?)
-   ;; - 7: dark magic?
-   (prim  uint8 :offset 0  :size 3)
+  ((prim  uint8 :offset 0  :size 3)
    (iip   uint8 :offset 3  :size 1)
    (tme   uint8 :offset 4  :size 1)
    (fge   uint8 :offset 5  :size 1)
@@ -3246,10 +3236,10 @@
    (orgz   int32     :offset-assert 12)
    (width  int32     :offset-assert 16)
    (height int32     :offset-assert 20)
-   (color  int32 4 :offset-assert 24)
+   (color  rgba    4 :offset-assert 24)
    )
   (:methods 
-    (new (symbol type int int int int int) _type_ 0)
+    (new (symbol type int int int int rgba) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x28
@@ -3261,7 +3251,6 @@
 ;;(define-extern gif-bank object) ;; unknown type
 ;;(define-extern gif-tag object) ;; unknown type
 (define-extern add-reg-gif-packet (function gif-packet int int none))
-;;(define-extern draw-context object) ;; unknown type
 (define-extern open-gif-packet (function gif-packet gif-packet))
 ;;(define-extern gif-tag-count object) ;; unknown type
 ;;(define-extern gif-tag64 object) ;; unknown type
@@ -3298,23 +3287,24 @@
   :flag-assert         #x900000028
   )
 
+;; the "addr" fields represent GS register addresses
 (deftype draw-env (structure)
-  ((frame1         uint64  :offset-assert 0)
-   (frame1addr     uint64  :offset-assert 8)
-   (zbuf1          uint64  :offset-assert 16)
-   (zbuf1addr      uint64  :offset-assert 24)
-   (xyoffset1      uint64  :offset-assert 32)
-   (xyoffset1addr  uint64  :offset-assert 40)
-   (scissor1       uint64  :offset-assert 48)
-   (scissor1addr   uint64  :offset-assert 56)
-   (prmodecont     uint64  :offset-assert 64)
-   (prmodecontaddr uint64  :offset-assert 72)
-   (colclamp       uint64  :offset-assert 80)
-   (colclampaddr   uint64  :offset-assert 88)
-   (dthe           uint64  :offset-assert 96)
-   (dtheaddr       uint64  :offset-assert 104)
-   (test1          uint64  :offset-assert 112)
-   (test1addr      uint64  :offset-assert 120)
+  ((frame1         gs-frame        :offset-assert 0)
+   (frame1addr     int64           :offset-assert 8)
+   (zbuf1          gs-zbuf         :offset-assert 16)
+   (zbuf1addr      int64           :offset-assert 24)
+   (xyoffset1      gs-xy-offset    :offset-assert 32)
+   (xyoffset1addr  int64           :offset-assert 40)
+   (scissor1       gs-scissor      :offset-assert 48)
+   (scissor1addr   int64           :offset-assert 56)
+   (prmodecont     gs-prmode-cont  :offset-assert 64)
+   (prmodecontaddr int64           :offset-assert 72)
+   (colclamp       gs-color-clamp  :offset-assert 80)
+   (colclampaddr   int64           :offset-assert 88)
+   (dthe           gs-dthe         :offset-assert 96)
+   (dtheaddr       int64           :offset-assert 104)
+   (test1          gs-test         :offset-assert 112)
+   (test1addr      int64           :offset-assert 120)
    )
   :method-count-assert 9
   :size-assert         #x80
@@ -3371,7 +3361,7 @@
    (on-screen                       int32               :offset-assert 560)
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
-   (bg-clear-color                  rgba        4      :offset-assert 760)
+   (bg-clear-color                  rgba         4      :offset-assert 760)
    (real-frame-counter              uint64              :offset-assert 776)
    (base-frame-counter              uint64              :offset-assert 784)
    (game-frame-counter              uint64              :offset-assert 792)
@@ -3398,13 +3388,50 @@
   :size-assert         #x39c
   :flag-assert         #xa0000039c
   (:methods
-    (new (symbol type int int int int int) _type_ 0)
-    (dummy-9 () none 9)
-    )
+   (new (symbol type int int int int int) _type_ 0)
+   (set-video-time-params (_type_ float) float 9)
+   )
   )
 
 (define-extern *display* display)
+
+;;;;;;;;;;;;;;;
+;; display
+;;;;;;;;;;;;;;;
+
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
+(define-extern set-draw-env (function draw-env int int int int int int draw-env))
+(define-extern set-draw-env-offset (function draw-env int int int draw-env))
+(define-extern put-display-alpha-env (function draw-env none))
 (define-extern set-display (function display int int int int int display))
+(define-extern set-display2 (function display int int int int int display))
+(define-extern allocate-dma-buffers (function display display))
+
+(define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba none))
+(define-extern draw-quad2d (function dma-buffer draw-context none))
+(define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none))
+
+(define-extern vif1-handler-debug (function int))
+(define-extern vif1-handler (function int))
+(define-extern vblank-handler (function int))
+
+(define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
+(define-extern set-display-gs-state-offset (function dma-buffer int int int int int int none))
+(define-extern reset-display-gs-state (function display dma-buffer int none))
+
+(define-extern *profile-x* int)
+(define-extern *profile-y* int)
+(define-extern *profile-w* int)
+(define-extern *profile-h* int)
+(define-extern *profile-ticks* symbol)
+(define-extern *vblank-counter* int)
+(define-extern *oddeven* int)
+(define-extern *vu0-dma-list* dma-buffer)
+
+(declare-type font-context basic)
+(define-extern *font-context* font-context)
+(define-extern *pause-context* font-context)
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32904,8 +32931,6 @@
 ;;(define-extern error object) ;; unknown type
 ;;(define-extern details object) ;; unknown type
 
-(define-extern get-integral-current-time (function uint))
-(define-extern get-current-time (function uint))
 ;;(define-extern cpad-get-data object) ;; unknown type
 ;;(define-extern cpad-open object) ;; unknown type
 
@@ -32965,33 +32990,7 @@
 ;;(define-extern font-context object) ;; unknown type
 ;;(define-extern *font-work* object) ;; unknown type
 ;;(define-extern decomp-work object) ;; unknown type
-;;(define-extern install-handler object) ;; unknown type
-;;(define-extern *oddeven* object) ;; unknown type
-;;(define-extern *profile-y* object) ;; unknown type
-(define-extern vif1-handler function)
-;;(define-extern *pause-context* object) ;; unknown type
-;;(define-extern *profile-h* object) ;; unknown type
-;;(define-extern *profile-x* object) ;; unknown type
-(define-extern set-draw-env-offset function)
-;;(define-extern *vblank-counter* object) ;; unknown type
-;;(define-extern *vu0-dma-list* object) ;; unknown type
-;;(define-extern *profile-w* object) ;; unknown type
-(define-extern set-display-gs-state function)
-(define-extern draw-quad2d function)
-(define-extern put-display-alpha-env function)
-(define-extern set-display-gs-state-offset function)
-(define-extern screen-gradient function)
-(define-extern draw-sprite2d-xy function)
-(define-extern set-draw-env function)
-(define-extern reset-display-gs-state function)
-(define-extern vblank-handler function)
-;;(define-extern *profile-ticks* object) ;; unknown type
-;;(define-extern *font-context* object) ;; unknown type
-(define-extern vif1-handler-debug function)
-(define-extern set-display-env (function display-env int int int int int int display-env))
-(define-extern set-display2 function)
-(define-extern allocate-dma-buffers function)
-(define-extern draw-string-xy function)
+(define-extern draw-string-xy (function string dma-buffer int int int none))
 ;;(define-extern end-draw object) ;; unknown type
 (define-extern start function)
 ;;(define-extern pal object) ;; unknown type
