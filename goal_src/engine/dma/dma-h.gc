@@ -106,7 +106,13 @@
 
 ;; D_CTRL, master DMA control register, shared for all channels.
 (deftype dma-ctrl (uint32)
-  ()
+  ((dmae  uint8 :offset 0 :size 1)
+   (rele  uint8 :offset 1 :size 1)
+   (mfd   uint8 :offset 2 :size 2)
+   (sts   uint8 :offset 4 :size 2)
+   (std   uint8 :offset 6 :size 2)
+   (rcyc  uint8 :offset 8 :size 3)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -114,13 +120,15 @@
 
 ;; D_ENABLEW, D_ENABLER?
 (deftype dma-enable (uint32)
-  ()
+  ((cpnd  uint8 :offset 16 :size 1))
   :flag-assert #x900000004
   )
 
 ;; D_SQWC
 (deftype dma-sqwc (uint32)
-  ()
+  ((sqwc  uint8 :offset 0  :size 8)
+   (tqwc  uint8 :offset 16 :size 8)
+   )
   :flag-assert #x900000004
   )
 
@@ -269,12 +277,12 @@
    This function is unused."
   ((inline dma-sync-fast) bank)
   (flush-cache 0)
-  ;; (.sync.l)
+  (.sync.l)
   (set! (-> bank madr) madr)
   (set! (-> bank qwc) qwc)
-  ;; (.sync.l)
+  (.sync.l)
 
-  ;; this seems wrong, the set everything to 0,
+  ;; this seems wrong, they set everything to 0,
   ;; including dir, which is the to-memory direction
   (set! (-> bank chcr)
         (new 'static 'dma-chcr :str 1)
