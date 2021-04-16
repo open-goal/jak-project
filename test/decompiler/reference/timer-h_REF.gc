@@ -21,7 +21,7 @@
 
 ;; definition of type timer-bank
 (deftype timer-bank (structure)
-  ((count uint32                 :offset-assert 0)
+  ((count uint32     :offset   0)
    (mode  timer-mode :offset  16)
    (comp  uint32     :offset  32)
    )
@@ -93,12 +93,9 @@
 
 ;; definition of type profile-frame
 (deftype profile-frame (structure)
-  ((name       basic              :offset-assert 0)
-   (time-stamp uint32             :offset-assert 4)
-   (color      uint32             :offset-assert 8)
-   (r          uint8  :offset   8)
-   (g          uint8  :offset   9)
-   (b          uint8  :offset  10)
+  ((name       basic   :offset-assert 0)
+   (time-stamp uint32  :offset-assert 4)
+   (color      rgba    :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -124,9 +121,9 @@
   (format
    #t
    "~Tcolor: ~D ~D ~D~%"
-   (shr (shl (-> obj color) 56) 56)
-   (shr (shl (-> obj color) 48) 56)
-   (shr (shl (-> obj color) 40) 56)
+   (-> (-> obj color) r)
+   (-> (-> obj color) g)
+   (-> (-> obj color) b)
    )
   obj
   )
@@ -141,11 +138,11 @@
   :size-assert         #x4010
   :flag-assert         #xe00004010
   (:methods
-    (get-last-frame-time-stamp (profile-bar) uint 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (get-last-frame-time-stamp (_type_) uint 9)
+    (reset (_type_) _type_ 10)
+    (add-frame (_type_ symbol rgba) profile-frame 11)
+    (add-end-frame (_type_ symbol rgba) profile-frame 12)
+    (draw (_type_ dma-buffer int) float 13)
     )
   )
 

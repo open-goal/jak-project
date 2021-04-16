@@ -1175,6 +1175,10 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_force_si_2(env, FixedOperatorKind::DIVISION, pool, stack, result,
                                    allow_side_effects, false);
       break;
+    case SimpleExpression::Kind::DIV_UNSIGNED:
+      update_from_stack_force_ui_2(env, FixedOperatorKind::DIVISION, pool, stack, result,
+                                   allow_side_effects);
+      break;
     case SimpleExpression::Kind::MOD_SIGNED:
       update_from_stack_force_si_2(env, FixedOperatorKind::MOD, pool, stack, result,
                                    allow_side_effects, false);

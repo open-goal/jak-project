@@ -5,15 +5,12 @@
 ;; name in dgo: display-h
 ;; dgos: GAME, ENGINE
 
-(declare-type display basic)
-(define-extern set-display (function display int int int int int display))
-
 (deftype display-env (structure)
-  ((pmode   uint64  :offset-assert 0)
-   (smode2  uint64  :offset-assert 8)
-   (dspfb   uint64  :offset-assert 16)
-   (display uint64  :offset-assert 24)
-   (bgcolor uint64  :offset-assert 32)
+  ((pmode   gs-pmode      :offset-assert 0)
+   (smode2  gs-smode2     :offset-assert 8)
+   (dspfb   gs-display-fb :offset-assert 16)
+   (display gs-display    :offset-assert 24)
+   (bgcolor gs-bgcolor    :offset-assert 32)
    )
   :pack-me
   :method-count-assert 9
@@ -21,23 +18,24 @@
   :flag-assert         #x900000028
   )
 
+;; the "addr" fields represent GS register addresses
 (deftype draw-env (structure)
-  ((frame1         uint64  :offset-assert 0)
-   (frame1addr     uint64  :offset-assert 8)
-   (zbuf1          uint64  :offset-assert 16)
-   (zbuf1addr      uint64  :offset-assert 24)
-   (xyoffset1      uint64  :offset-assert 32)
-   (xyoffset1addr  uint64  :offset-assert 40)
-   (scissor1       uint64  :offset-assert 48)
-   (scissor1addr   uint64  :offset-assert 56)
-   (prmodecont     uint64  :offset-assert 64)
-   (prmodecontaddr uint64  :offset-assert 72)
-   (colclamp       uint64  :offset-assert 80)
-   (colclampaddr   uint64  :offset-assert 88)
-   (dthe           uint64  :offset-assert 96)
-   (dtheaddr       uint64  :offset-assert 104)
-   (test1          uint64  :offset-assert 112)
-   (test1addr      uint64  :offset-assert 120)
+  ((frame1         gs-frame        :offset-assert 0)
+   (frame1addr     int64           :offset-assert 8)
+   (zbuf1          gs-zbuf         :offset-assert 16)
+   (zbuf1addr      int64           :offset-assert 24)
+   (xyoffset1      gs-xy-offset    :offset-assert 32)
+   (xyoffset1addr  int64           :offset-assert 40)
+   (scissor1       gs-scissor      :offset-assert 48)
+   (scissor1addr   int64           :offset-assert 56)
+   (prmodecont     gs-prmode-cont  :offset-assert 64)
+   (prmodecontaddr int64           :offset-assert 72)
+   (colclamp       gs-color-clamp  :offset-assert 80)
+   (colclampaddr   int64           :offset-assert 88)
+   (dthe           gs-dthe         :offset-assert 96)
+   (dtheaddr       int64           :offset-assert 104)
+   (test1          gs-test         :offset-assert 112)
+   (test1addr      int64           :offset-assert 120)
    )
   :method-count-assert 9
   :size-assert         #x80
@@ -110,7 +108,7 @@
    (on-screen                       int32               :offset-assert 560)
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
-   (bg-clear-color                  uint32       4      :offset-assert 760)
+   (bg-clear-color                  rgba         4      :offset-assert 760)
    (real-frame-counter              uint64              :offset-assert 776)
    (base-frame-counter              uint64              :offset-assert 784)
    (game-frame-counter              uint64              :offset-assert 792)
@@ -138,12 +136,13 @@
   :flag-assert         #xa0000039c
   (:methods
    (new (symbol type int int int int int) _type_ 0)
-   (dummy-9 () none 9)
+   (set-video-time-params (_type_ float) float 9)
    )
   )
 
 (define-extern *display* display)
 
+(define-extern set-display (function display int int int int int display))
 (defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
   (local-vars (obj display))
   (set! obj
@@ -181,10 +180,10 @@
   (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
   (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
   (default-buffer-init *default-regs-buffer*)
-  (set! (-> obj bg-clear-color 0) #x80808080)
-  (set! (-> obj bg-clear-color 1) #x80808080)
-  (set! (-> obj bg-clear-color 2) #x80808080)
-  (set! (-> obj bg-clear-color 3) #x80808080)
+  (set! (-> obj bg-clear-color 0) (new-rgba #x80 #x80 #x80 #x80))
+  (set! (-> obj bg-clear-color 1) (new-rgba #x80 #x80 #x80 #x80))
+  (set! (-> obj bg-clear-color 2) (new-rgba #x80 #x80 #x80 #x80))
+  (set! (-> obj bg-clear-color 3) (new-rgba #x80 #x80 #x80 #x80))
   obj
   )
 

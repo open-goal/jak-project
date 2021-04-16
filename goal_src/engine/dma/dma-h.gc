@@ -106,7 +106,13 @@
 
 ;; D_CTRL, master DMA control register, shared for all channels.
 (deftype dma-ctrl (uint32)
-  ()
+  ((dmae  uint8 :offset 0 :size 1)
+   (rele  uint8 :offset 1 :size 1)
+   (mfd   uint8 :offset 2 :size 2)
+   (sts   uint8 :offset 4 :size 2)
+   (std   uint8 :offset 6 :size 2)
+   (rcyc  uint8 :offset 8 :size 3)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -114,13 +120,15 @@
 
 ;; D_ENABLEW, D_ENABLER?
 (deftype dma-enable (uint32)
-  ()
+  ((cpnd  uint8 :offset 16 :size 1))
   :flag-assert #x900000004
   )
 
 ;; D_SQWC
 (deftype dma-sqwc (uint32)
-  ()
+  ((sqwc  uint8 :offset 0  :size 8)
+   (tqwc  uint8 :offset 16 :size 8)
+   )
   :flag-assert #x900000004
   )
 
@@ -192,32 +200,53 @@
   :flag-assert         #x900000010
   )
 
-;; ??
+;; guess - VIF_MASK register?
 (deftype vif-mask (uint32)
-  ()
+  ((m0  uint8 :offset 0  :size 2)
+   (m1  uint8 :offset 2  :size 2)
+   (m2  uint8 :offset 4  :size 2)
+   (m3  uint8 :offset 6  :size 2)
+   (m4  uint8 :offset 8  :size 2)
+   (m5  uint8 :offset 10 :size 2)
+   (m6  uint8 :offset 12 :size 2)
+   (m7  uint8 :offset 14 :size 2)
+   (m8  uint8 :offset 16 :size 2)
+   (m9  uint8 :offset 18 :size 2)
+   (m10 uint8 :offset 20 :size 2)
+   (m11 uint8 :offset 22 :size 2)
+   (m12 uint8 :offset 24 :size 2)
+   (m13 uint8 :offset 26 :size 2)
+   (m14 uint8 :offset 28 :size 2)
+   (m15 uint8 :offset 30 :size 2)
+   )
   :flag-assert #x900000004
   )
 
-;; ??
+;; the IMM field of a VIF STCYCL instruction
 (deftype vif-stcycl-imm (uint16)
-  ()
+  ((cl  uint8 :offset 0 :size 8)
+   (wl  uint8 :offset 8 :size 8)
+   )
   :flag-assert #x900000002
   )
 
-;; ??
+;; the IMM field of a VIF UNPACK instruction
 (deftype vif-unpack-imm (uint16)
-  ()
+  ((addr  uint16 :offset 0  :size 10)
+   (usn   uint8  :offset 14 :size 1)
+   (flg   uint8  :offset 15 :size 1)
+   )
   :flag-assert #x900000002
   )
 
 ;; The VIF also has tags to control it.
-;; Different VIF commands (called VIFCode) have different tag layouts.
+;; Different VIF commands (called VIFcode) have different tag layouts.
 (deftype vif-tag (uint32)
   ((imm uint16 :offset 0 :size 16)
    (num uint8 :offset 16 :size 8)
    (cmd uint8 :offset 24 :size 7)
+   (irq uint8 :offset 31 :size 1)
    (msk uint8 :offset 28 :size 1)
-   (irq uint8 :offset 31 :size 1) ;;?
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -269,12 +298,12 @@
    This function is unused."
   ((inline dma-sync-fast) bank)
   (flush-cache 0)
-  ;; (.sync.l)
+  (.sync.l)
   (set! (-> bank madr) madr)
   (set! (-> bank qwc) qwc)
-  ;; (.sync.l)
+  (.sync.l)
 
-  ;; this seems wrong, the set everything to 0,
+  ;; this seems wrong, they set everything to 0,
   ;; including dir, which is the to-memory direction
   (set! (-> bank chcr)
         (new 'static 'dma-chcr :str 1)

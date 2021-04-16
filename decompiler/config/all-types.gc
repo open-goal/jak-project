@@ -55,6 +55,7 @@
 (define-extern *listener-function* (function object))
 (define-extern *enable-method-set* int)
 (define-extern install-debug-handler (function int object symbol))
+(define-extern install-handler (function int (function int) none))
 
 (define-extern file-stream-open (function file-stream basic basic file-stream))
 (define-extern file-stream-length (function file-stream int))
@@ -139,9 +140,9 @@
    (data             uint8  :dynamic :offset-assert 12) ;; might not be here...
    (_pad             uint8 4) ;; ???
    )
-  
+
   (:methods (new (symbol type int) _type_ 0))
-    
+
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -220,13 +221,13 @@
    (stack-top    pointer :offset-assert 32)
    (stack-size   int32   :offset-assert 36)
    )
-    
+
   (:methods
     (stack-size-set! (_type_ int) none 9)
     (thread-suspend (_type_) none 10)
     (thread-resume  (_type_) none 11)
     )
-  
+
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
@@ -242,13 +243,13 @@
    (freg float 8)
    (stack uint8 :dynamic :offset-assert 128)
    )
-  
+
   (:methods
     (new (symbol type process symbol int pointer) _type_ 0)
     (thread-suspend (_type_) none 10)
     (thread-resume  (_type_) none 11)
     )
-    
+
   :method-count-assert 12
   :size-assert         #x80
   :flag-assert         #xc00000080
@@ -264,7 +265,7 @@
    (ppointer (pointer process-tree) :offset-assert 24)
    (self process-tree :offset-assert 28)
    )
-  
+
   (:methods
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
@@ -272,8 +273,8 @@
     (dummy-method-11 () none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
-    )  
-  
+    )
+
   :size-assert #x20
   :method-count-assert 14
   :no-runtime-type
@@ -300,8 +301,8 @@
    (connection-list connectable :inline :offset-assert #x60)
    (stack uint8 :dynamic :offset-assert #x70)
    )
-  
-  
+
+
   (:methods
     (new (symbol type basic int) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
@@ -309,8 +310,8 @@
     (dummy-method-11 () none 11)
     (run-logic? (process) symbol 12)
     (dummy-method () none 13)
-    )  
-  
+    )
+
   :size-assert #x70
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
@@ -358,7 +359,7 @@
    (dead-list          dead-pool-heap-rec :inline  :offset-assert 92)
    (process-list       dead-pool-heap-rec :inline :dynamic :offset-assert 104)
    )
-  
+
   (:methods
     (new (symbol type basic int int) _type_ 0)
     (compact (dead-pool-heap int) none 16)
@@ -373,7 +374,7 @@
     (memory-free (dead-pool-heap) int 25)
     (compact-time (dead-pool-heap) uint 26)
     )
-  
+
   :method-count-assert 27
   :size-assert         #x68
   :flag-assert         #x1b00000068
@@ -383,7 +384,7 @@
   ((name basic :offset 4)
    (next stack-frame :offset 8) ;; which way does this point?
    )
-  
+
   :size-assert #xc
   :method-count-assert 9
   :flag-assert #x90000000c
@@ -395,14 +396,14 @@
    ;; changed from GOAL, see gkernel-h.gc
    (freg float 10 :offset-assert 20)
    (rreg uint128 7)
-   ;;(freg float 6 :offset-assert 20) 
-   ;;(rreg uint128 8 :offset-assert 48) 
+   ;;(freg float 6 :offset-assert 20)
+   ;;(rreg uint128 8 :offset-assert 48)
    )
-  
+
   (:methods
     (new (symbol type symbol function (pointer uint64)) object 0)
     )
-  
+
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
@@ -414,7 +415,7 @@
   (:methods
     (new (symbol type (function object)) protect-frame)
     )
-  
+
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -439,7 +440,7 @@
    )
   (:methods
     (new (symbol type basic function
-          (function object) 
+          (function object)
           (function object object object object object object object)
           (function object)
           (function basic int basic event-message-block object)) _type_ 0)
@@ -1606,7 +1607,7 @@
 (define-extern deg-lerp-clamp (function float float float float))
 (define-extern sin (function float float))
 (define-extern sin-rad (function float float))
-(define-extern *sin-poly-vec* vector) 
+(define-extern *sin-poly-vec* vector)
 (define-extern *sin-poly-vec2* vector)
 (define-extern vector-sin-rad! (function vector vector vector))
 (define-extern cos-rad (function float float))
@@ -2074,7 +2075,7 @@
   )
 
 (deftype timer-bank (structure)
-  ((count uint32      :offset-assert 0)
+  ((count uint32      :offset 0)
    (mode  timer-mode  :offset 16)
    (comp  uint32      :offset 32)
    )
@@ -2084,7 +2085,7 @@
   )
 
 (deftype timer-hold-bank (timer-bank)
-  ((hold  uint32  :offset 48) 
+  ((hold  uint32  :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -2107,16 +2108,14 @@
 (deftype profile-frame (structure)
   ((name       basic   :offset-assert 0)
    (time-stamp uint32  :offset-assert 4)
-   (color      uint32  :offset-assert 8)
-   (r          uint8   :offset 8) ;; TODO : verify colors
-   (g          uint8   :offset 9) ;; TODO (again) : these are actually bitfields
-   (b          uint8   :offset 10)
+   (color      rgba    :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
+(declare-type dma-buffer basic)
 (deftype profile-bar (basic)
   ((profile-frame-count int32        :offset-assert 4)
    (cache-time          uint64       :offset-assert 8)
@@ -2126,11 +2125,11 @@
   :size-assert         #x4010
   :flag-assert         #xe00004010
   (:methods
-    (get-last-frame-time-stamp (profile-bar) uint 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (get-last-frame-time-stamp (_type_) uint 9)
+    (reset (_type_) _type_ 10)
+    (add-frame (_type_ symbol rgba) profile-frame 11)
+    (add-end-frame (_type_ symbol rgba) profile-frame 12)
+    (draw (_type_ dma-buffer int) float 13)
     )
   )
 
@@ -2172,7 +2171,7 @@
    (er1 uint8 :offset 13 :size 1)
    (fqc uint8 :offset 24 :size 4)
    )
-   
+
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -2238,7 +2237,9 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype dma-sqwc (uint32)
-  ()
+  ((sqwc  uint8 :offset 0  :size 8)
+   (tqwc  uint8 :offset 16 :size 8)
+   )
   :flag-assert #x900000004
   )
 
@@ -2258,7 +2259,13 @@
   )
 
 (deftype dma-ctrl (uint32)
-  ()
+  ((dmae  uint8 :offset 0 :size 1)
+   (rele  uint8 :offset 1 :size 1)
+   (mfd   uint8 :offset 2 :size 2)
+   (sts   uint8 :offset 4 :size 2)
+   (std   uint8 :offset 6 :size 2)
+   (rcyc  uint8 :offset 8 :size 3)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -2358,8 +2365,8 @@
   ((imm uint16 :offset 0 :size 16)
    (num uint8 :offset 16 :size 8)
    (cmd uint8 :offset 24 :size 7)
+   (irq uint8 :offset 31 :size 1)
    (msk uint8 :offset 28 :size 1)
-   (irq uint8 :offset 31 :size 1) ;;?
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -2367,7 +2374,7 @@
   )
 
 (deftype dma-enable (uint32)
-  ()
+  ((cpnd  uint8 :offset 16 :size 1))
   :flag-assert #x900000004
   )
 
@@ -2378,17 +2385,38 @@
   )
 
 (deftype vif-mask (uint32)
-  ()
+  ((m0  uint8 :offset 0  :size 2)
+   (m1  uint8 :offset 2  :size 2)
+   (m2  uint8 :offset 4  :size 2)
+   (m3  uint8 :offset 6  :size 2)
+   (m4  uint8 :offset 8  :size 2)
+   (m5  uint8 :offset 10 :size 2)
+   (m6  uint8 :offset 12 :size 2)
+   (m7  uint8 :offset 14 :size 2)
+   (m8  uint8 :offset 16 :size 2)
+   (m9  uint8 :offset 18 :size 2)
+   (m10 uint8 :offset 20 :size 2)
+   (m11 uint8 :offset 22 :size 2)
+   (m12 uint8 :offset 24 :size 2)
+   (m13 uint8 :offset 26 :size 2)
+   (m14 uint8 :offset 28 :size 2)
+   (m15 uint8 :offset 30 :size 2)
+   )
   :flag-assert #x900000004
   )
 
 (deftype vif-stcycl-imm (uint16)
-  ()
+  ((cl  uint8 :offset 0 :size 8)
+   (wl  uint8 :offset 8 :size 8)
+   )
   :flag-assert #x900000002
   )
 
 (deftype vif-unpack-imm (uint16)
-  ()
+  ((addr  uint16 :offset 0  :size 10)
+   (usn   uint8  :offset 14 :size 1)
+   (flg   uint8  :offset 15 :size 1)
+   )
   :flag-assert #x900000002
   )
 
@@ -2717,9 +2745,6 @@
   :flag-assert         #x900000010
   )
 
-;; display
-(define-extern get-current-time (function uint))
-(define-extern get-integral-current-time (function uint))
 ;; in the kernel.
 (define-extern cpad-open (function cpad-info int cpad-info))
 (define-extern cpad-get-data (function cpad-info cpad-info))
@@ -2743,17 +2768,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-;; L139 - #x900000008
-;; L138 - 
-;; L137 - 
-
 (deftype gs-pmode (uint64)
-  ()
+  ((en1    uint8 :offset 0 :size 1)
+   (en2    uint8 :offset 1 :size 1)
+   (crtmd  uint8 :offset 2 :size 3)
+   (mmod   uint8 :offset 5 :size 1)
+   (amod   uint8 :offset 6 :size 1)
+   (slbg   uint8 :offset 7 :size 1)
+   (alp    uint8 :offset 8 :size 8)
+   )
   :flag-assert #x900000008
   )
 
 (deftype gs-smode2 (uint64)
-  ()
+  ((int   uint8 :offset 0 :size 1)
+   (ffmd  uint8 :offset 1 :size 1)
+   (dpms  uint8 :offset 2 :size 2)
+   )
   :flag-assert #x900000008
   )
 
@@ -2762,25 +2793,59 @@
 (define-extern psm->string (function int string))
 
 (deftype gs-display-fb (uint64)
-  ()
+  ((fbp  uint16 :offset 0  :size 9)
+   (fbw  uint8  :offset 9  :size 6)
+   (psm  uint8  :offset 15 :size 5)
+   (dbx  uint16 :offset 32 :size 11)
+   (dby  uint16 :offset 43 :size 11)
+   )
   :flag-assert #x900000008
   )
-
+;; the GS's DISPLAY registers make settings for the display position on the screen regarding
+;; information on Rectangular Area Read Output Circuit n for the PCRTC.
+;; write-only
 (deftype gs-display (uint64)
-  ()
+  ((dx    uint16 :offset 0  :size 12)
+   (dy    uint16 :offset 12 :size 11)
+   (magh  uint8  :offset 23 :size 4)
+   (magv  uint8  :offset 27 :size 2)
+   (dw    uint16 :offset 32 :size 12)
+   (dh    uint16 :offset 44 :size 11)
+   )
   :flag-assert #x900000008
   )
-
+;; the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
+;; write-only
 (deftype gs-bgcolor (uint64)
-  ()
+  ((r  uint8 :offset 0 :size 8)
+   (g  uint8 :offset 0 :size 8)
+   (b  uint8 :offset 0 :size 8)
+   )
   :flag-assert #x900000008
   )
-
+;; the GS's CSR register sets and obtains various GS statuses.
+;; read-write. the fields have different effects depending on whether they're being read from
+;; or written to.
+;; bits 5 and 6 (0x20 and 0x40) should be zero
 (deftype gs-csr (uint64)
-  ()
+  ((signal  uint8 :offset 0  :size 1)
+   (finish  uint8 :offset 1  :size 1)
+   (hsint   uint8 :offset 2  :size 1)
+   (vsint   uint8 :offset 3  :size 1)
+   (edwint  uint8 :offset 4  :size 1)
+   (flush   uint8 :offset 8  :size 1)
+   (reset   uint8 :offset 9  :size 1)
+   (nfield  uint8 :offset 12 :size 1)
+   (field   uint8 :offset 13 :size 1)
+   (fifo    uint8 :offset 14 :size 2)
+   (rev     uint8 :offset 16 :size 8)
+   (id      uint8 :offset 24 :size 8)
+   )
   :flag-assert #x900000008
   )
 
+;; memory layout of the GS's privileged registers
+;; it is missing the SIGLBLID/LABELID register at 4224 (useless anyway?)
 (deftype gs-bank (structure)
   ((pmode    gs-pmode  :offset-assert 0)
    (smode2   gs-smode2  :offset 32)
@@ -2800,134 +2865,308 @@
   :size-assert         #x1048
   :flag-assert         #x900001048
   )
-
+;; the GS's FRAME registers store various settings related to the frame buffer.
 (deftype gs-frame (uint64)
-  ()
+  ((fbp    uint16 :offset 0  :size 9)
+   (fbw    uint8  :offset 16 :size 6)
+   (psm    uint8  :offset 24 :size 6)
+   (fbmsk  uint32 :offset 32 :size 32)
+   )
   :flag-assert #x900000008
   )
+;; the GS's ZBUF registers make various settings regarding Z buffer.
 (deftype gs-zbuf (uint64)
-  ()
+  ((zbp   uint16 :offset 0  :size 9)
+   (psm   uint8  :offset 24 :size 4)
+   (zmsk  uint8  :offset 32 :size 1)
+   )
   :flag-assert #x900000008
   )
+;; the GS's XYOFFSET registers set the offset value for converting from the primitive coordinate
+;; system to the window coordinate system.
 (deftype gs-xy-offset (uint64)
-  ()
+  ((ofx  uint16 :offset 0  :size 16)
+   (ofy  uint16 :offset 32 :size 16)
+   )
   :flag-assert #x900000008
   )
+;; the GS's SCISSOR registers specify the scissoring area.  The coordinate values for
+;; the upper-left/lower-right points of the enabled drawing area are specified by the window
+;; coordinate system.
 (deftype gs-scissor (uint64)
-  ()
+  ((scax0  uint16 :offset 0  :size 11)
+   (scax1  uint16 :offset 16 :size 11)
+   (scay0  uint16 :offset 32 :size 11)
+   (scay1  uint16 :offset 48 :size 11)
+   )
   :flag-assert #x900000008
   )
+;; the GS's PRMODECONT register sets whether to use primitive attributes (IIP, TME, FGE, ABE,
+;; AA1, FST, CTXT, FIX) specified by the PRMODE register or the PRIM register.
 (deftype gs-prmode-cont (uint64)
-  ()
+  ((ac  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
+;; the GS's COLCLAMP register stores settings as to whether clamping for the RGB value of the
+;; pixel is performed.
 (deftype gs-color-clamp (uint64)
-  ()
+  ((clamp  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
+;; the GS's DTHE register stores settings for dithering (performed/not performed).
 (deftype gs-dthe (uint64)
-  ()
+  ((dthe  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
+;; the GS's TEST register performs settings related to the pixel test.
 (deftype gs-test (uint64)
-  ()
+  ((ate    uint8 :offset 0  :size 1) ;; alpha test enable
+   (atst   uint8 :offset 1  :size 3) ;; alpha test method
+   (aref   uint8 :offset 4  :size 8) ;; alpha val reference
+   (afail  uint8 :offset 12 :size 2) ;; processing method on alpha test fail
+   (date   uint8 :offset 14 :size 1) ;; dest alpha test enable
+   (datm   uint8 :offset 15 :size 1) ;; dest alpha test mode
+   (zte    uint8 :offset 16 :size 1) ;; depth test enable
+   (ztst   uint8 :offset 17 :size 2) ;; depth test method
+   )
   :flag-assert #x900000008
   )
+;; the GS's PRIM register specifies the types of drawing primitives and various attributes, and
+;; initializes the contents of the vertex queue.
 (deftype gs-prim (uint64)
-  ()
+  ((prim  uint8 :offset 0  :size 3)
+   (iip   uint8 :offset 3  :size 1)
+   (tme   uint8 :offset 4  :size 1)
+   (fge   uint8 :offset 5  :size 1)
+   (abe   uint8 :offset 6  :size 1)
+   (aa1   uint8 :offset 7  :size 1)
+   (fst   uint8 :offset 8  :size 1)
+   (ctxt  uint8 :offset 9  :size 1)
+   (fix   uint8 :offset 10 :size 1)
+   )
   :flag-assert #x900000008
   )
+;; the GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
+;; texture coordinates.
 (deftype gs-rgbaq (uint64)
-  ()
+  ((r  uint8 :offset 0  :size 8)
+   (g  uint8 :offset 8  :size 8)
+   (b  uint8 :offset 16 :size 8)
+   (a  uint8 :offset 24 :size 8) ;; 0x80 --> 1.0
+   (q  float :offset 32 :size 32) ;; affects some LOD behavior apparently?
+   )
   :flag-assert #x900000008
   )
+;; GS XYZ registers
 (deftype gs-xyz (uint64)
-  ()
+  ((x  uint16 :offset 0  :size 16) ;; Q4 fixed point
+   (y  uint16 :offset 16 :size 16) ;; Q4 fixed point
+   (z  uint32 :offset 32 :size 32)
+   )
   :flag-assert #x900000008
   )
+;; the GS's UV register specifies the texel coordinate (UV) values of the vertex.
 (deftype gs-uv (uint64)
-  ()
+  ((u  uint16 :offset 0  :size 14) ;; Q4 fixed point
+   (v  uint16 :offset 16 :size 14) ;; Q4 fixed point
+   )
   :flag-assert #x900000008
   )
+;; the GS's ST register sets the S and T values of the vertex texture coordinates.
+;; The value Q is specified by the RGBAQ register.
 (deftype gs-st (uint64)
-  ()
+  ((s  float :offset 0  :size 32)
+   (t  float :offset 32 :size 32)
+   )
   :flag-assert #x900000008
   )
+;; GS XYZF registers
 (deftype gs-xyzf (uint64)
-  ()
+  ((x  uint16 :offset 0  :size 16) ;; Q4 fixed point
+   (y  uint16 :offset 16 :size 16) ;; Q4 fixed point
+   (z  uint32 :offset 32 :size 24)
+   (f  uint8  :offset 56 :size 8) ;; fog coeff
+   )
   :flag-assert #x900000008
   )
+;; the GS's TRXPOS register specifies the position and scanning direction of the rectangular area
+;; in each buffer where buffer transmission is performed.
 (deftype gs-trxpos (uint64)
-  ()
+  ((ssax  uint16 :offset 0  :size 11)
+   (ssay  uint16 :offset 16 :size 11)
+   (dsax  uint16 :offset 32 :size 11)
+   (dsay  uint16 :offset 48 :size 11)
+   (dir   uint8 :offset 59 :size 2)
+   )
   :flag-assert #x900000008
   )
+;; the GS's TRXREG register specifies the size of the rectangular area, where the transmission
+;; between buffers is implemented, in units of pixels.
+;; The pixel mode must be the one set by the BITBLTBUF register.
 (deftype gs-trxreg (uint64)
-  ()
+  ((rrw  uint16 :offset 0  :size 12)
+   (rrh  uint16 :offset 32 :size 12)
+   )
   :flag-assert #x900000008
   )
+;; the GS's TRXDIR register specifies the transmission direction in the transmission between
+;; buffers, and activates transmission.
+;; Appropriate settings must be made by the BITBLTBUF/TRXPOS/TRXREG before activating
+;; the transmission.
 (deftype gs-trxdir (uint64)
-  ()
+  ((xdir  uint8 :offset 0 :size 2))
   :flag-assert #x900000008
   )
+;; the GS's BITBLTBUF register stores buffer-related settings for transmission source and
+;; destination during transmission between buffers.
 (deftype gs-bitbltbuf (uint64)
-  ()
+  ((sbp   uint16 :offset 0  :size 14)
+   (sbw   uint8  :offset 16 :size 6)
+   (spsm  uint8  :offset 24 :size 6)
+   (dbp   uint16 :offset 32 :size 14)
+   (dbw   uint8  :offset 48 :size 6)
+   (dpsm  uint8  :offset 56 :size 6)
+   )
   :flag-assert #x900000008
   )
+;; the GS's TEX0 registers set various kinds of information regarding the textures to be used.
 (deftype gs-tex0 (uint64)
-  ()
+  ((tbp0  uint16 :offset 0 :size 14)
+   (tbw   uint8  :offset 14 :size 6)
+   (psm   uint8  :offset 20 :size 6)
+   (tw    uint8  :offset 26 :size 4)
+   (th    uint8  :offset 30 :size 4)
+   (tcc   uint8  :offset 34 :size 1)
+   (tfx   uint8  :offset 35 :size 2)
+   (cbp   uint16 :offset 37 :size 14)
+   (cpsm  uint8  :offset 51 :size 4)
+   (csm   uint8  :offset 55 :size 1)
+   (csa   uint8  :offset 56 :size 5)
+   (cld   uint8  :offset 61 :size 3)
+   )
   :flag-assert #x900000008
   )
+;; the GS's TEX1 registers set information on the sampling method of the textures.
 (deftype gs-tex1 (uint64)
-  ()
+  ((lcm   uint8 :offset 0  :size 1)
+   (mxl   uint8 :offset 2  :size 3)
+   (mmag  uint8 :offset 5  :size 1)
+   (mmin  uint8 :offset 6  :size 3)
+   (mtba  uint8 :offset 9  :size 1)
+   (l     uint8 :offset 19 :size 2)
+   (k     int16 :offset 32 :size 12)
+   )
   :flag-assert #x900000008
   )
+;; the GS's TEXA register sets the Alpha value to be referred to when the Alpha value of the
+;; texture is not an 8-bit value.
 (deftype gs-texa (uint64)
-  ()
+  ((ta0  uint8 :offset 0  :size 8)
+   (aem  uint8 :offset 15 :size 1)
+   (ta1  uint8 :offset 32 :size 8)
+   )
   :flag-assert #x900000008
   )
+;; the GS's TEXCLUT register specifies the CLUT position in the buffer when the CLUT storage mode
+;; is CSM=1 (CSM2 mode).
 (deftype gs-texclut (uint64)
-  ()
+  ((cbw  uint8  :offset 0  :size 6)
+   (cou  uint8  :offset 6  :size 6)
+   (cov  uint16 :offset 12 :size 10)
+   )
   :flag-assert #x900000008
   )
+;; the GS's MIPTBP registers set the buffer pointer and buffer width of textures when performing
+;; MIPMAP.
+;; MIPTBP1 sets levels 1 to 3, MIPTBP2 sets levels 4 to 6.
 (deftype gs-miptbp (uint64)
-  ()
+  ((tbp1  uint16 :offset 0  :size 14)
+   (tbw1  uint8  :offset 14 :size 6)
+   (tbp2  uint16 :offset 20 :size 14)
+   (tbw2  uint8  :offset 34 :size 6)
+   (tbp3  uint16 :offset 40 :size 14)
+   (tbw3  uint8  :offset 54 :size 6)
+   )
   :flag-assert #x900000008
   )
+;; the GS's ALPHA registers define the blend function of alpha blending
 (deftype gs-alpha (uint64)
-  ()
+  ((a    uint8 :offset 0  :size 2)
+   (b    uint8 :offset 2  :size 2)
+   (c    uint8 :offset 4  :size 2)
+   (d    uint8 :offset 6  :size 2)
+   (fix  uint8 :offset 32 :size 8)
+   )
   :flag-assert #x900000008
   )
+
+(deftype gs-clamp (uint64)
+  ((wms   uint8  :offset 0  :size 2)
+   (wmt   uint8  :offset 2  :size 2)
+   (minu  uint16 :offset 4  :size 10)
+   (maxu  uint16 :offset 14 :size 10)
+   (minv  uint16 :offset 24 :size 10)
+   (maxv  uint16 :offset 34 :size 10)
+   )
+  :flag-assert #x900000008
+  )
+
 (deftype gs-fog (uint64)
-  ()
+  ((f  uint8 :offset 56 :size 8))
   :flag-assert #x900000008
   )
+
 (deftype gs-fogcol (uint64)
-  ()
+  ((fcr  uint8 :offset 0  :size 8)
+   (fcg  uint8 :offset 8  :size 8)
+   (fcb  uint8 :offset 16 :size 8)
+   )
   :flag-assert #x900000008
   )
 
 (deftype gif-ctrl (uint32)
-  ()
+  ((rst  uint8 :offset 0 :size 1)
+   (pse  uint8 :offset 3 :size 1)
+   )
   :flag-assert #x900000004
   )
 (deftype gif-mode (uint32)
-  ()
+  ((m3r  uint8 :offset 0 :size 1)
+   (imt  uint8 :offset 2 :size 1)
+   )
   :flag-assert #x900000004
   )
 (deftype gif-stat (uint32)
-  ()
+  ((m3r    uint8 :offset 0  :size 1)
+   (m3p    uint8 :offset 1  :size 1)
+   (imt    uint8 :offset 2  :size 1)
+   (pse    uint8 :offset 3  :size 1)
+   (ip3    uint8 :offset 5  :size 1)
+   (p3q    uint8 :offset 6  :size 1)
+   (p2q    uint8 :offset 7  :size 1)
+   (p1q    uint8 :offset 8  :size 1)
+   (oph    uint8 :offset 9  :size 1)
+   (apath  uint8 :offset 10 :size 2)
+   (dir    uint8 :offset 12 :size 1)
+   (fqc    uint8 :offset 24 :size 5)
+   )
   :flag-assert #x900000004
   )
 (deftype gif-cnt (uint32)
-  ()
+  ((loopcnt  uint16 :offset 0  :size 15)
+   (regcnt   uint8  :offset 16 :size 4)
+   (vuaddr   uint16 :offset 20 :size 10)
+   )
   :flag-assert #x900000004
   )
 (deftype gif-p3cnt (uint32)
-  ()
+  ((p3cnt  uint16 :offset 0 :size 15))
   :flag-assert #x900000004
   )
 (deftype gif-p3tag (uint32)
-  ()
+  ((loopcnt  uint16 :offset 0  :size 15)
+   (eop      uint8  :offset 15 :size 1)
+   )
   :flag-assert #x900000004
   )
 
@@ -2961,7 +3200,30 @@
   :flag-assert #x900000008
   )
 (deftype gif-tag (uint128)
-  ()
+  ((nloop   uint16 :offset 0   :size 15)
+   (eop     uint8  :offset 15  :size 1)
+   (id      uint16 :offset 32  :size 14)
+   (pre     uint8  :offset 46  :size 1)
+   (prim    uint16 :offset 47  :size 11)
+   (flg     uint8  :offset 58  :size 2)
+   (nreg    uint8  :offset 60  :size 4)
+   (regs0   uint8 :offset 64  :size 4)
+   (regs1   uint8 :offset 68  :size 4)
+   (regs2   uint8 :offset 72  :size 4)
+   (regs3   uint8 :offset 76  :size 4)
+   (regs4   uint8 :offset 80  :size 4)
+   (regs5   uint8 :offset 84  :size 4)
+   (regs6   uint8 :offset 88  :size 4)
+   (regs7   uint8 :offset 92  :size 4)
+   (regs8   uint8 :offset 96  :size 4)
+   (regs9   uint8 :offset 100 :size 4)
+   (regs10  uint8 :offset 104 :size 4)
+   (regs11  uint8 :offset 108 :size 4)
+   (regs12  uint8 :offset 112 :size 4)
+   (regs13  uint8 :offset 116 :size 4)
+   (regs14  uint8 :offset 120 :size 4)
+   (regs15  uint8 :offset 124 :size 4)
+   )
   :flag-assert #x900000010
   )
 
@@ -2979,7 +3241,7 @@
 
 (define-extern *fog-color* int)
 (define-extern default-buffer-init (function dma-buffer none))
-(define-extern *default-regs-buffer* dma-buffer) 
+(define-extern *default-regs-buffer* dma-buffer)
 
 
 (deftype gif-packet (basic)
@@ -2987,7 +3249,7 @@
    (gif-tag0  uint128   :offset-assert 16)
    (gif-tag   gs-gif-tag :inline :offset 16) ;; note- added
    (args      uint64 1 :offset-assert 32)
-   
+
    )
   (:methods
     (new (symbol type int) _type_ 0)
@@ -3003,10 +3265,10 @@
    (orgz   int32     :offset-assert 12)
    (width  int32     :offset-assert 16)
    (height int32     :offset-assert 20)
-   (color  int32 4 :offset-assert 24)
+   (color  rgba    4 :offset-assert 24)
    )
-  (:methods 
-    (new (symbol type int int int int int) _type_ 0)
+  (:methods
+    (new (symbol type int int int int rgba) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x28
@@ -3014,63 +3276,27 @@
   )
 
 
-;;(define-extern gs-trxreg object) ;; unknown type
 ;;(define-extern gif-packet object) ;; unknown type
-;;(define-extern gs-fogcol object) ;; unknown type
-;;(define-extern gs-zbuf object) ;; unknown type
 ;;(define-extern gif-bank object) ;; unknown type
-;; ;; unknown type
-;;(define-extern gs-trxpos object) ;; unknown type
-;;(define-extern gs-xy-offset object) ;; unknown type
-;;(define-extern gs-tex1 object) ;; unknown type
-;;(define-extern gs-prim object) ;; unknown type
 ;;(define-extern gif-tag object) ;; unknown type
-;;(define-extern gs-display object) ;; unknown type
-;;(define-extern gs-prmode-cont object) ;; unknown type
-;;(define-extern gs-scissor object) ;; unknown type
-;;(define-extern gs-st object) ;; unknown type
-;;(define-extern gs-smode2 object) ;; unknown type
 (define-extern add-reg-gif-packet (function gif-packet int int none))
-;;(define-extern draw-context object) ;; unknown type
-;;(define-extern gs-texclut object) ;; unknown type
-;;(define-extern gs-bgcolor object) ;; unknown type
 (define-extern open-gif-packet (function gif-packet gif-packet))
 ;;(define-extern gif-tag-count object) ;; unknown type
-;;(define-extern gs-test object) ;; unknown type
-;;(define-extern gs-tex0 object) ;; unknown type
 ;;(define-extern gif-tag64 object) ;; unknown type
-;;(define-extern gs-alpha object) ;; unknown type
-;;(define-extern gs-miptbp object) ;; unknown type
-;;(define-extern gs-color-clamp object) ;; unknown type
 ;;(define-extern gif-p3cnt object) ;; unknown type
-;;(define-extern gs-clamp object) ;; unknown type
-;;(define-extern gs-uv object) ;; unknown type
 ;;(define-extern gif-stat object) ;; unknown type
 
 ;;(define-extern gif-mode object) ;; unknown type
 
-;;(define-extern gs-trxdir object) ;; unknown type
-;;(define-extern gs-xyzf object) ;; unknown type
-;;(define-extern gs-csr object) ;; unknown type
 (define-extern draw-context-set-xy (function draw-context int int none))
 
-;;(define-extern gs-frame object) ;; unknown type
-;;(define-extern gs-texa object) ;; unknown type
-;;(define-extern gs-bank object) ;; unknown type
 ;;(define-extern gif-cnt object) ;; unknown type
 ;;(define-extern gif-ctrl object) ;; unknown type
 ;;(define-extern gs-gif-tag object) ;; unknown type
-;;(define-extern gs-pmode object) ;; unknown type
-;;(define-extern gs-dthe object) ;; unknown type
-;;(define-extern gs-fog object) ;; unknown type
-;;(define-extern gs-xyz object) ;; unknown type
 
 ;;(define-extern gif-tag-prim object) ;; unknown type
 ;;(define-extern gif-p3tag object) ;; unknown type
 (define-extern close-gif-packet (function gif-packet int gif-packet))
-;;(define-extern gs-display-fb object) ;; unknown type
-;;(define-extern gs-bitbltbuf object) ;; unknown type
-;;(define-extern gs-rgbaq object) ;; unknown type
 
 
 ;;;;;;;;;;;;;;;
@@ -3078,11 +3304,11 @@
 ;;;;;;;;;;;;;;;
 
 (deftype display-env (structure)
-  ((pmode   uint64  :offset-assert 0)
-   (smode2  uint64  :offset-assert 8)
-   (dspfb   uint64  :offset-assert 16)
-   (display uint64  :offset-assert 24)
-   (bgcolor uint64  :offset-assert 32)
+  ((pmode   gs-pmode      :offset-assert 0)
+   (smode2  gs-smode2     :offset-assert 8)
+   (dspfb   gs-display-fb :offset-assert 16)
+   (display gs-display    :offset-assert 24)
+   (bgcolor gs-bgcolor    :offset-assert 32)
    )
   :pack-me
   :method-count-assert 9
@@ -3090,32 +3316,33 @@
   :flag-assert         #x900000028
   )
 
+;; the "addr" fields represent GS register addresses
 (deftype draw-env (structure)
-  ((frame1         uint64  :offset-assert 0)
-   (frame1addr     uint64  :offset-assert 8)
-   (zbuf1          uint64  :offset-assert 16)
-   (zbuf1addr      uint64  :offset-assert 24)
-   (xyoffset1      uint64  :offset-assert 32)
-   (xyoffset1addr  uint64  :offset-assert 40)
-   (scissor1       uint64  :offset-assert 48)
-   (scissor1addr   uint64  :offset-assert 56)
-   (prmodecont     uint64  :offset-assert 64)
-   (prmodecontaddr uint64  :offset-assert 72)
-   (colclamp       uint64  :offset-assert 80)
-   (colclampaddr   uint64  :offset-assert 88)
-   (dthe           uint64  :offset-assert 96)
-   (dtheaddr       uint64  :offset-assert 104)
-   (test1          uint64  :offset-assert 112)
-   (test1addr      uint64  :offset-assert 120)
+  ((frame1         gs-frame        :offset-assert 0)
+   (frame1addr     int64           :offset-assert 8)
+   (zbuf1          gs-zbuf         :offset-assert 16)
+   (zbuf1addr      int64           :offset-assert 24)
+   (xyoffset1      gs-xy-offset    :offset-assert 32)
+   (xyoffset1addr  int64           :offset-assert 40)
+   (scissor1       gs-scissor      :offset-assert 48)
+   (scissor1addr   int64           :offset-assert 56)
+   (prmodecont     gs-prmode-cont  :offset-assert 64)
+   (prmodecontaddr int64           :offset-assert 72)
+   (colclamp       gs-color-clamp  :offset-assert 80)
+   (colclampaddr   int64           :offset-assert 88)
+   (dthe           gs-dthe         :offset-assert 96)
+   (dtheaddr       int64           :offset-assert 104)
+   (test1          gs-test         :offset-assert 112)
+   (test1addr      int64           :offset-assert 120)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
 
-;;(define-extern *post-draw-hook* object) ;; unknown type
+(define-extern *post-draw-hook* (function none)) ;; unknown type
 (define-extern put-draw-env (function dma-packet none))
-;;(define-extern *pre-draw-hook* object) ;; unknown type
+(define-extern *pre-draw-hook* (function none)) ;; unknown type
 
 
 (deftype display-frame (basic)
@@ -3128,7 +3355,7 @@
    (profile-bar  basic    2  :offset 48)
    (run-time     uint64        :offset 56)
    )
-    (:methods
+  (:methods
    (new (symbol type) _type_ 0)
    )
   :method-count-assert 9
@@ -3143,7 +3370,7 @@
    (draw         draw-env       :offset-assert 12)
    (frame        display-frame  :offset-assert 16)
    )
-  
+
   :allow-misaligned
   :method-count-assert 9
   :size-assert         #x14
@@ -3163,7 +3390,7 @@
    (on-screen                       int32               :offset-assert 560)
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
-   (bg-clear-color                  uint32       4      :offset-assert 760)
+   (bg-clear-color                  rgba         4      :offset-assert 760)
    (real-frame-counter              uint64              :offset-assert 776)
    (base-frame-counter              uint64              :offset-assert 784)
    (game-frame-counter              uint64              :offset-assert 792)
@@ -3190,13 +3417,51 @@
   :size-assert         #x39c
   :flag-assert         #xa0000039c
   (:methods
-    (new (symbol type int int int int int) _type_ 0)
-    (dummy-9 () none 9)
-    )
+   (new (symbol type int int int int int) _type_ 0)
+   (set-video-time-params (_type_ float) float 9)
+   )
   )
 
 (define-extern *display* display)
+
+;;;;;;;;;;;;;;;
+;; display
+;;;;;;;;;;;;;;;
+
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
+(define-extern set-display-env (function display-env int int int int int int display-env))
+(define-extern set-draw-env (function draw-env int int int int int int draw-env))
+(define-extern set-draw-env-offset (function draw-env int int int draw-env))
+(define-extern put-display-alpha-env (function draw-env none))
 (define-extern set-display (function display int int int int int display))
+(define-extern set-display2 (function display int int int int int display))
+(define-extern allocate-dma-buffers (function display display))
+
+(define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba none))
+(define-extern draw-quad2d (function dma-buffer draw-context none))
+(define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none))
+
+(define-extern vif1-handler-debug (function int))
+(define-extern vif1-handler (function int))
+(define-extern vblank-handler (function int))
+
+(define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
+(define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
+(define-extern reset-display-gs-state (function display dma-buffer int none))
+
+(define-extern *profile-x* int)
+(define-extern *profile-y* int)
+(define-extern *profile-w* int)
+(define-extern *profile-h* int)
+(define-extern *profile-ticks* symbol)
+(define-extern *vblank-counter* int)
+(define-extern *oddeven* int)
+(define-extern *vu0-dma-list* dma-buffer)
+
+(declare-type font-context basic)
+(define-extern *font-context* font-context)
+(define-extern *pause-context* font-context)
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -3425,13 +3690,16 @@
 ;; texture-h
 ;;;;;;;;;;;;;;
 
-;; texture-h
+(define-extern *texture-enable-user-menu* int)
+(define-extern *texture-enable-user* int)
+
 (deftype texture-id (uint32)
-  ()
+  ((index  uint16 :offset 8  :size 12)
+   (page   uint16 :offset 20 :size 12)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  ;; likely a bitfield type
   )
 
 (deftype texture-pool-segment (structure)
@@ -3539,6 +3807,13 @@
     )
   )
 
+(deftype shader-ptr (uint32)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
 ;; texture-h
 (deftype texture-link (structure)
   ((next uint32  :offset-assert 0)
@@ -3561,6 +3836,15 @@
   )
 
 ;; texture-h
+(deftype texture-page-dir (basic)
+  ((pad uint8 #x10))
+  (:methods
+   (dummy-9 () none 9)
+   )
+  :flag-assert #xa00000014
+  )
+
+;; texture-h
 (deftype texture-relocate-later (basic)
   ((memcpy basic                   :offset-assert 4)
    (dest   uint32                  :offset-assert 8)
@@ -3574,12 +3858,13 @@
   :flag-assert         #x90000001c
   )
 
+(define-extern *texture-page-dir* texture-page-dir)
+
 ;; texture-h
 (deftype adgif-shader (structure)
-  (
-   ;;(quad       UNKNOWN 5  :offset-assert 0)
-   ;;(prims      UNKNOWN 10 :offset-assert 0)
-   (tex0       uint64     :offset-assert 0)
+  ((quad       uint128 5  :offset 0)
+   (prims      uint64 10  :offset 0)
+   (tex0       uint64     :offset 0)
    (tex1       uint64     :offset 16)
    (miptbp1    uint64     :offset 32)
    (clamp      uint64     :offset 48)
@@ -3588,7 +3873,6 @@
    (link-test  uint32     :offset 8)
    (texture-id uint32     :offset 24)
    (next       uint32     :offset 40)
-   (_pad uint64)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -3604,6 +3888,19 @@
   )
 
 (define-extern *texture-relocate-later* texture-relocate-later)
+
+(define-extern *sky-base-vram-word* int)
+(define-extern *sky-base-block* int)
+(define-extern *sky-base-page* int)
+(define-extern *depth-cue-base-vram-word* int)
+(define-extern *depth-cue-base-block* int)
+(define-extern *depth-cue-base-page* int)
+(define-extern *eyes-base-vram-word* int)
+(define-extern *eyes-base-block* int)
+(define-extern *eyes-base-page* int)
+(define-extern *ocean-base-vram-word* int)
+(define-extern *ocean-base-block* int)
+(define-extern *ocean-base-page* int)
 
 ;;;;;;;;;;;;;;
 ;; level-h
@@ -3768,15 +4065,15 @@
    (receiving-level basic                :offset-assert 32)
    (load-commands   pair                :offset-assert 36)
    (play?           basic                :offset-assert 40)
-   ;; there's something? from 40 -> 96. 
+   ;; there's something? from 40 -> 96.
    (hack-pad        uint8                :offset 90)
-   
+
    ;(level           level 3 :inline      :offset-assert 96)
    ;(data            level 3 :inline      :offset-assert 100)
    (level0          level        :inline :offset-assert 96) ;; inline basic
    (level1          level        :inline :offset-assert 2704) ;; inline basic
    (level-default   level        :inline :offset-assert 5312) ;; inline basic
-   ;; this actually went earlier, 
+   ;; this actually went earlier,
    (level           level 3      :inline :offset 96)
    (pad uint32)
    )
@@ -4061,7 +4358,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load field param3 is a basic loaded with a signed load 
+  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load field param3 is a basic loaded with a signed load
   (:methods
     (print (connection) _type_ 2)
     (get-engine (connection) engine 9)
@@ -4093,18 +4390,18 @@
   :flag-assert         #x1800000080
   (:methods
     (new (symbol type basic int) _type_ 0)
-    (inspect-all-connections (engine) none 9)
-    (apply-to-connections (engine (function connectable none)) none 10)
-    (apply-to-connections-reverse (engine (function connectable none)) none 11)
-    (execute-connections (engine object) none 12)
-    (execute-connections-and-move-to-dead (engine object) none 13)
-    (execute-connections-if-needed (engine object) none 14)
+    (inspect-all-connections (engine) engine 9)
+    (apply-to-connections (engine (function connectable none)) int 10)
+    (apply-to-connections-reverse (engine (function connectable none)) int 11)
+    (execute-connections (engine object) int 12)
+    (execute-connections-and-move-to-dead (engine object) int 13)
+    (execute-connections-if-needed (engine object) int 14)
     (add-connection (engine process (function object object object object object) object object object) connection 15)
-    (remove-from-process (engine process) none 16)
-    (remove-matching (engine (function connection engine symbol)) none 17)
-    (remove-all (engine) none 18)
-    (remove-by-param1 (engine object) none 19)
-    (remove-by-param2 (engine int) none 20)
+    (remove-from-process (engine process) int 16)
+    (remove-matching (engine (function connection engine symbol)) int 17)
+    (remove-all (engine) int 18)
+    (remove-by-param1 (engine object) int 19)
+    (remove-by-param2 (engine int) int 20)
     (get-first-connectable (engine) connectable 21)
     (get-last-connectable (engine) connectable 22)
     (unknown-1 (engine (pointer uint32)) uint 23)
@@ -4184,7 +4481,7 @@
    (ambient-volume-movie float :offset-assert 144)
    (dialog-volume-hint float :offset-assert 148)
    (dummy uint32 11 :offset-assert 152)
-   
+
    )
   :method-count-assert 10
   :size-assert         #xc4
@@ -4236,26 +4533,25 @@
 ;;;;;;;;;;;;;;;;;
 
 (deftype gs-store-image-packet (structure)
-  ((vifcode        uint32 4 :offset-assert 0)
-   (giftag         uint128   :offset-assert 16)
-   (bitbltbuf      uint64    :offset-assert 32)
-   (bitbltbuf-addr uint64    :offset-assert 40)
-   (trxpos         uint64    :offset-assert 48)
-   (trxpos-addr    uint64    :offset-assert 56)
-   (trxreg         uint64    :offset-assert 64)
-   (trxreg-addr    uint64    :offset-assert 72)
-   (finish         uint64    :offset-assert 80)
-   (finish-addr    uint64    :offset-assert 88)
-   (trxdir         uint64    :offset-assert 96)
-   (trxdir-addr    uint64    :offset-assert 104)
+  ((vifcode        vif-tag 4 :offset-assert 0)
+   (giftag         gif-tag   :offset-assert 16)
+   (bitbltbuf      gs-bitbltbuf    :offset-assert 32)
+   (bitbltbuf-addr int64    :offset-assert 40)
+   (trxpos         gs-trxpos    :offset-assert 48)
+   (trxpos-addr    int64    :offset-assert 56)
+   (trxreg         gs-trxreg    :offset-assert 64)
+   (trxreg-addr    int64    :offset-assert 72)
+   (finish         int64    :offset-assert 80) ;; gs-finish
+   (finish-addr    int64    :offset-assert 88)
+   (trxdir         gs-trxdir    :offset-assert 96)
+   (trxdir-addr    int64    :offset-assert 104)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
 
-(define-extern store-image function)
-;;(define-extern gs-store-image-packet object) ;; unknown type
+(define-extern store-image (function int int int int))
 (define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
 
 ;;;;;;;;;;;;;;;;;;
@@ -4393,7 +4689,7 @@
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
-  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load 
+  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load
   (:methods
     (dummy-9 () none 9)
     )
@@ -4493,7 +4789,7 @@
   :method-count-assert 18
   :size-assert         #x20
   :flag-assert         #x1200000020
-  ;; field distance is a float printed as hex? 
+  ;; field distance is a float printed as hex?
   (:methods
     (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
@@ -5700,7 +5996,7 @@
    ;; (state                UNKNOWN           16      :offset-assert 1920)
    (num-stars            float                     :offset 1936)
    )
-  (:methods 
+  (:methods
     (new (symbol type) _type_ 0)
     )
   :method-count-assert 9
@@ -6363,7 +6659,7 @@
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; field xyz-scale is a float printed as hex? 
+  ;; field xyz-scale is a float printed as hex?
   )
 
 ;; merc-h
@@ -6438,7 +6734,7 @@
    (send-query              basic  :offset-assert 32)
    (query                   basic  :offset-assert 36)
    )
-  (:methods 
+  (:methods
     (new (symbol type) _type_ 0)
     )
   :method-count-assert 9
@@ -7280,7 +7576,7 @@
   :method-count-assert 29
   :size-assert         #x144
   :flag-assert         #x1d00000144
-  ;; field dummy is a basic loaded with a signed load 
+  ;; field dummy is a basic loaded with a signed load
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
@@ -7735,7 +8031,7 @@
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field extra is a basic loaded with a signed load 
+  ;; field extra is a basic loaded with a signed load
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
@@ -7826,7 +8122,7 @@
    ;; dataw went here
    (mode              basic      :offset-assert 144)
    (flags             uint32     :offset-assert 148)
-   
+
    (data              float 30 :offset 8)
    (hook              basic 4  :offset 128)
    (dataw             uint32 2  :offset 144)
@@ -7994,12 +8290,12 @@
 ;; fact-h
 (deftype fact-info-enemy (fact-info)
   ((speed               float   :offset-assert 40)
-   (idle-distance       float  :offset-assert 44) ; meters 
-   (notice-top          float  :offset-assert 48) ; meters 
-   (notice-bottom       float  :offset-assert 52) ; meters 
-   (cam-horz            float  :offset-assert 56) ; meters 
-   (cam-vert            float  :offset-assert 60) ; meters 
-   (cam-notice-dist     float  :offset-assert 64) ; meters 
+   (idle-distance       float  :offset-assert 44) ; meters
+   (notice-top          float  :offset-assert 48) ; meters
+   (notice-bottom       float  :offset-assert 52) ; meters
+   (cam-horz            float  :offset-assert 56) ; meters
+   (cam-vert            float  :offset-assert 60) ; meters
+   (cam-notice-dist     float  :offset-assert 64) ; meters
    )
   :method-count-assert 12
   :size-assert         #x44
@@ -8269,7 +8565,7 @@
   :method-count-assert 15
   :size-assert         #xe0
   :flag-assert         #xf007000e0
-  ;; inherited inspect of processfield ~Tuserdata is a basic loaded with a signed load 
+  ;; inherited inspect of processfield ~Tuserdata is a basic loaded with a signed load
   (:methods
     (dummy-14 () none 14)
     )
@@ -11345,7 +11641,7 @@
 ;   :method-count-assert 9
 ;   :size-assert         #x8c
 ;   :flag-assert         #x90000008c
-;   ;; field key is a basic loaded with a signed load 
+;   ;; field key is a basic loaded with a signed load
 ;   )
 
 ; ;; sparticle-h
@@ -17532,7 +17828,7 @@
 ;   :method-count-assert 20
 ;   :size-assert         #x160
 ;   :flag-assert         #x1400f00160
-;   ;; inherited inspect of process-drawablefield ~Tstate-object is a basic loaded with a signed load 
+;   ;; inherited inspect of process-drawablefield ~Tstate-object is a basic loaded with a signed load
 ;   (:methods
 ;     (dummy-9 () none 9)
 ;     (dummy-10 () none 10)
@@ -32664,8 +32960,6 @@
 ;;(define-extern error object) ;; unknown type
 ;;(define-extern details object) ;; unknown type
 
-(define-extern get-integral-current-time (function uint))
-(define-extern get-current-time (function uint))
 ;;(define-extern cpad-get-data object) ;; unknown type
 ;;(define-extern cpad-open object) ;; unknown type
 
@@ -32725,33 +33019,7 @@
 ;;(define-extern font-context object) ;; unknown type
 ;;(define-extern *font-work* object) ;; unknown type
 ;;(define-extern decomp-work object) ;; unknown type
-;;(define-extern install-handler object) ;; unknown type
-;;(define-extern *oddeven* object) ;; unknown type
-;;(define-extern *profile-y* object) ;; unknown type
-(define-extern vif1-handler function)
-;;(define-extern *pause-context* object) ;; unknown type
-;;(define-extern *profile-h* object) ;; unknown type
-;;(define-extern *profile-x* object) ;; unknown type
-(define-extern set-draw-env-offset function)
-;;(define-extern *vblank-counter* object) ;; unknown type
-;;(define-extern *vu0-dma-list* object) ;; unknown type
-;;(define-extern *profile-w* object) ;; unknown type
-(define-extern set-display-gs-state function)
-(define-extern draw-quad2d function)
-(define-extern put-display-alpha-env function)
-(define-extern set-display-gs-state-offset function)
-(define-extern screen-gradient function)
-(define-extern draw-sprite2d-xy function)
-(define-extern set-draw-env function)
-(define-extern reset-display-gs-state function)
-(define-extern vblank-handler function)
-;;(define-extern *profile-ticks* object) ;; unknown type
-;;(define-extern *font-context* object) ;; unknown type
-(define-extern vif1-handler-debug function)
-(define-extern set-display-env (function display-env int int int int int int display-env))
-(define-extern set-display2 function)
-(define-extern allocate-dma-buffers function)
-(define-extern draw-string-xy function)
+(define-extern draw-string-xy (function string dma-buffer int int int none))
 ;;(define-extern end-draw object) ;; unknown type
 (define-extern start function)
 ;;(define-extern pal object) ;; unknown type

@@ -7,30 +7,18 @@
 
 ;; mask for different texture things.
 ;; these are the ones that will be displayed in the menu
-(define *texture-enable-user-menu* 31)
+(define *texture-enable-user-menu* #x1f)
 
 ;; enabled textures.
 (define *texture-enable-user* 0)
 
 (deftype texture-id (uint32)
-  ()
+  ((index  uint16 :offset 8  :size 12)
+   (page   uint16 :offset 20 :size 12)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
-  )
-
-(defmethod inspect texture-id ((obj texture-id))
-  (format #t "[~8x] ~A~%" obj 'texture-id)
-  (format #t "~Tindex: ~D~%" (shr (shl (the-as int obj) 44) 52))
-  
-  ;; you aren't supposed to do this.
-  (format #t "~Tpage: ~D~%" (shr (logand #xffffffff obj) 20))
-  ;; (set! t9-2 format)
-  ;; (set! a0-3 '#t)
-  ;; (set! a1-2 "~Tpage: ~D~%")
-  ;; (.srl a2-2 obj 20)
-  ;; (t9-2 a0-3 a1-2 a2-2)
-  obj
   )
 
 (deftype texture-pool-segment (structure)
@@ -185,13 +173,12 @@
 
 (define *texture-relocate-later* (new 'global 'texture-relocate-later))
 (set! (-> *texture-relocate-later* memcpy) #f)
-(define *texture-page-dir* #f)
+(define *texture-page-dir* (the texture-page-dir #f))
 
 (deftype adgif-shader (structure)
-  (
-   ;;(quad       UNKNOWN 5  :offset-assert 0)
-   ;;(prims      UNKNOWN 10 :offset-assert 0)
-   (tex0       uint64     :offset-assert 0)
+  ((quad       uint128 5  :offset 0)
+   (prims      uint64 10  :offset 0)
+   (tex0       uint64     :offset 0)
    (tex1       uint64     :offset 16)
    (miptbp1    uint64     :offset 32)
    (clamp      uint64     :offset 48)
@@ -200,7 +187,6 @@
    (link-test  uint32     :offset 8)
    (texture-id uint32     :offset 24)
    (next       uint32     :offset 40)
-   (_pad uint64)
    )
   :method-count-assert 9
   :size-assert         #x50
