@@ -324,58 +324,63 @@
   )
 
 (defun ultimate-memcpy ((dst pointer) (src pointer) (size-bytes uint))
-  "Fast memcpy using the scratchpad. Will blow away everything in scratch.
-   Rounds to nearest quadword for size, dst and source should be aligned 16-bytes."
-  (local-vars
-   (qwc-transferred-now uint)
-   (qwc-remaining uint)
-   (spr-from-bank dma-bank-spr)
-   (spr-to-bank dma-bank-spr)
-   )
-  (set! spr-to-bank (the dma-bank-spr #x1000d400))
-  (set! spr-from-bank (the dma-bank-spr #x1000d000))
-  (set! qwc-remaining (shr size-bytes 4))
-  (flush-cache 0)
-  (dma-sync (the-as pointer spr-to-bank) 0 0)
-  (dma-sync (the-as pointer spr-from-bank) 0 0)
-  (while (> qwc-remaining 0)
-    ;; figure out how much to transfer, limited by 1024 quadword size of spad.
-    (set! qwc-transferred-now qwc-remaining)
-    (when (< (the-as uint 1024) qwc-transferred-now)
-      (set! qwc-transferred-now (the uint 1024))
-      )
-    (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
-    
-    (.sync.l)
-    ;; set up dma
-    (set! (-> spr-to-bank madr) (the uint src))
-    (set! (-> spr-to-bank sadr) 0)
-    (set! (-> spr-to-bank qwc) qwc-transferred-now)
-    (.sync.l)
-    ;; start dma
-    (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str 1))
-    (.sync.l)
-    ;; sync
+  "The Fastest Memory Copy, for larger transfers.
+   Memory is copied in ascending order, in 4 kB blocks.
+   The size should be a multiple of 16 bytes."
+
+  ;; ultimate-memcpy works by DMAing to the scratchpad and back.
+  ;; surprisingly this seems to be the fastest memcpy on larger
+  ;; transfers.  This is a nice example of how DMA is used from GOAL.
+  (let ((spr-to-bank (the-as dma-bank-spr #x1000d400))
+        (spr-from-bank (the-as dma-bank-spr #x1000d000))
+        (qwc-remaining (shr size-bytes 4))
+        )
+
+    ;; Flush all data in the dcache to main memory. DMA bypasses the dcache.
+    (flush-cache 0)
+    ;; Complete all pending DMA transfers using the spad.
+    ;; (this uses the Sony library DMA sync, which is bad)
     (dma-sync (the-as pointer spr-to-bank) 0 0)
-
-    ;; advance source pointer.
-    (set! src (&+ src (the-as uint (shl qwc-transferred-now 4))))
-
-    ;; setup transfer back
-    (set! (-> spr-from-bank madr) (the uint dst))
-    (set! (-> spr-from-bank sadr) 0)
-    (set! (-> spr-from-bank qwc) qwc-transferred-now)
-    ;; transfer!
-    (.sync.l)
-    (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str 1))
-    (.sync.l)
-    ;; sync!
     (dma-sync (the-as pointer spr-from-bank) 0 0)
-    ;; advance dst.
-    (set! dst (&+ dst (the-as uint (shl qwc-transferred-now 4))))
+
+    ;; transfer loop
+    (while (> qwc-remaining 0)
+      ;; copy up to 1024 quadwords - limited by the 4kB spad size.
+      (let ((qwc-transferred-now (the-as int qwc-remaining)))
+        (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
+            (set! qwc-transferred-now 1024)
+            )
+        (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
+        ;; set up the "to spad" transfer
+        (.sync.l)
+        (set! (-> spr-to-bank madr) (the-as uint src))
+        (set! (-> spr-to-bank sadr) (the-as uint 0))
+        (set! (-> spr-to-bank qwc) (the-as uint qwc-transferred-now))
+        (.sync.l)
+        ;; activate!
+        (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str #x1))
+        (.sync.l)
+        ;; wait for it to finish...
+        (dma-sync (the-as pointer spr-to-bank) 0 0)
+        (&+! src (shl qwc-transferred-now 4))
+        ;; and copy back...
+        (set! (-> spr-from-bank madr) (the-as uint dst))
+        (set! (-> spr-from-bank sadr) (the-as uint 0))
+        (set! (-> spr-from-bank qwc) (the-as uint qwc-transferred-now))
+        (.sync.l)
+        (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
+        (.sync.l)
+        (dma-sync (the-as pointer spr-from-bank) 0 0)
+        (&+! dst (shl qwc-transferred-now 4))
+        )
+      )
+    )
+  (let ((v0-4 0))
     )
   (none)
   )
+
+
 
 (defun symlink2 ()
   "symlink2 is a handwritten assembly version of the v2 linking routine.
@@ -392,6 +397,6 @@
   (none)
   )
 
-;; configuration required to work around hardware bug.
+;; configuration required to work around hardware bug on the PS2.
 ;; doesn't do anything important
 (dma-initialize)

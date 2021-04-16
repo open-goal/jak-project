@@ -285,6 +285,11 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         assert(m_args[1].get_int() < 64);
         return TP_Type::make_from_product(1ull << m_args[1].get_int(), is_signed(dts, arg0_type));
       }
+
+      if (m_args[1].is_int() && dts.ts.tc(TypeSpec("pointer"), arg0_type.typespec())) {
+        // allow shifting a pointer to put it in a bitfield.
+        return TP_Type::make_from_ts(TypeSpec("uint"));
+      }
       break;
 
     case Kind::MUL_SIGNED: {
