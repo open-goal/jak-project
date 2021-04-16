@@ -241,19 +241,20 @@
    )
   :flag-assert #x900000008
   )
+
+(defenum gs-prim-type :bitfield #f
+  (point 0)
+  (line 1)
+  (line-strip 2)
+  (tri 3)
+  (tri-strip 4)
+  (tri-fan 5)
+  (sprite 6)
+  )
 ;; the GS's PRIM register specifies the types of drawing primitives and various attributes, and
 ;; initializes the contents of the vertex queue.
 (deftype gs-prim (uint64)
-  (;; type of primitive:
-   ;; - 0: point
-   ;; - 1: line
-   ;; - 2: line strip
-   ;; - 3: tri
-   ;; - 4: tri strip
-   ;; - 5: tri fan
-   ;; - 6: sprite (what?)
-   ;; - 7: dark magic?
-   (prim  uint8 :offset 0  :size 3)
+  ((prim  uint8 :offset 0  :size 3)
    (iip   uint8 :offset 3  :size 1)
    (tme   uint8 :offset 4  :size 1)
    (fge   uint8 :offset 5  :size 1)
@@ -706,10 +707,10 @@
    (orgz   int32   :offset-assert 12)
    (width  int32   :offset-assert 16)
    (height int32   :offset-assert 20)
-   (color  int32 4 :offset-assert 24)
+   (color  rgba  4 :offset-assert 24)
    )
   (:methods
-   (new (symbol type int int int int int) _type_ 0)
+   (new (symbol type int int int int rgba) _type_ 0)
    )
   :method-count-assert 9
   :size-assert         #x28
@@ -722,7 +723,7 @@
                              (org-y int)
                              (width int)
                              (height int)
-                             (color-0 int)
+                             (color-0 rgba)
                              )
   "Allocate and initialize a draw-context"
   (let

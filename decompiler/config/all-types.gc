@@ -55,6 +55,7 @@
 (define-extern *listener-function* (function object))
 (define-extern *enable-method-set* int)
 (define-extern install-debug-handler (function int object symbol))
+(define-extern install-handler (function int (function int) none))
 
 (define-extern file-stream-open (function file-stream basic basic file-stream))
 (define-extern file-stream-length (function file-stream int))
@@ -139,9 +140,9 @@
    (data             uint8  :dynamic :offset-assert 12) ;; might not be here...
    (_pad             uint8 4) ;; ???
    )
-  
+
   (:methods (new (symbol type int) _type_ 0))
-    
+
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -220,13 +221,13 @@
    (stack-top    pointer :offset-assert 32)
    (stack-size   int32   :offset-assert 36)
    )
-    
+
   (:methods
     (stack-size-set! (_type_ int) none 9)
     (thread-suspend (_type_) none 10)
     (thread-resume  (_type_) none 11)
     )
-  
+
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
@@ -242,13 +243,13 @@
    (freg float 8)
    (stack uint8 :dynamic :offset-assert 128)
    )
-  
+
   (:methods
     (new (symbol type process symbol int pointer) _type_ 0)
     (thread-suspend (_type_) none 10)
     (thread-resume  (_type_) none 11)
     )
-    
+
   :method-count-assert 12
   :size-assert         #x80
   :flag-assert         #xc00000080
@@ -264,7 +265,7 @@
    (ppointer (pointer process-tree) :offset-assert 24)
    (self process-tree :offset-assert 28)
    )
-  
+
   (:methods
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
@@ -272,8 +273,8 @@
     (dummy-method-11 () none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
-    )  
-  
+    )
+
   :size-assert #x20
   :method-count-assert 14
   :no-runtime-type
@@ -300,8 +301,8 @@
    (connection-list connectable :inline :offset-assert #x60)
    (stack uint8 :dynamic :offset-assert #x70)
    )
-  
-  
+
+
   (:methods
     (new (symbol type basic int) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
@@ -309,8 +310,8 @@
     (dummy-method-11 () none 11)
     (run-logic? (process) symbol 12)
     (dummy-method () none 13)
-    )  
-  
+    )
+
   :size-assert #x70
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
@@ -358,7 +359,7 @@
    (dead-list          dead-pool-heap-rec :inline  :offset-assert 92)
    (process-list       dead-pool-heap-rec :inline :dynamic :offset-assert 104)
    )
-  
+
   (:methods
     (new (symbol type basic int int) _type_ 0)
     (compact (dead-pool-heap int) none 16)
@@ -373,7 +374,7 @@
     (memory-free (dead-pool-heap) int 25)
     (compact-time (dead-pool-heap) uint 26)
     )
-  
+
   :method-count-assert 27
   :size-assert         #x68
   :flag-assert         #x1b00000068
@@ -383,7 +384,7 @@
   ((name basic :offset 4)
    (next stack-frame :offset 8) ;; which way does this point?
    )
-  
+
   :size-assert #xc
   :method-count-assert 9
   :flag-assert #x90000000c
@@ -395,14 +396,14 @@
    ;; changed from GOAL, see gkernel-h.gc
    (freg float 10 :offset-assert 20)
    (rreg uint128 7)
-   ;;(freg float 6 :offset-assert 20) 
-   ;;(rreg uint128 8 :offset-assert 48) 
+   ;;(freg float 6 :offset-assert 20)
+   ;;(rreg uint128 8 :offset-assert 48)
    )
-  
+
   (:methods
     (new (symbol type symbol function (pointer uint64)) object 0)
     )
-  
+
   :method-count-assert 9
   :size-assert         #xb0
   :flag-assert         #x9000000b0
@@ -414,7 +415,7 @@
   (:methods
     (new (symbol type (function object)) protect-frame)
     )
-  
+
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -439,7 +440,7 @@
    )
   (:methods
     (new (symbol type basic function
-          (function object) 
+          (function object)
           (function object object object object object object object)
           (function object)
           (function basic int basic event-message-block object)) _type_ 0)
@@ -1606,7 +1607,7 @@
 (define-extern deg-lerp-clamp (function float float float float))
 (define-extern sin (function float float))
 (define-extern sin-rad (function float float))
-(define-extern *sin-poly-vec* vector) 
+(define-extern *sin-poly-vec* vector)
 (define-extern *sin-poly-vec2* vector)
 (define-extern vector-sin-rad! (function vector vector vector))
 (define-extern cos-rad (function float float))
@@ -2074,7 +2075,7 @@
   )
 
 (deftype timer-bank (structure)
-  ((count uint32      :offset-assert 0)
+  ((count uint32      :offset 0)
    (mode  timer-mode  :offset 16)
    (comp  uint32      :offset 32)
    )
@@ -2084,7 +2085,7 @@
   )
 
 (deftype timer-hold-bank (timer-bank)
-  ((hold  uint32  :offset 48) 
+  ((hold  uint32  :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -2114,6 +2115,7 @@
   :flag-assert         #x90000000c
   )
 
+(declare-type dma-buffer basic)
 (deftype profile-bar (basic)
   ((profile-frame-count int32        :offset-assert 4)
    (cache-time          uint64       :offset-assert 8)
@@ -2124,10 +2126,10 @@
   :flag-assert         #xe00004010
   (:methods
     (get-last-frame-time-stamp (_type_) uint 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (reset (_type_) _type_ 10)
+    (add-frame (_type_ symbol rgba) profile-frame 11)
+    (add-end-frame (_type_ symbol rgba) profile-frame 12)
+    (draw (_type_ dma-buffer int) float 13)
     )
   )
 
@@ -2169,7 +2171,7 @@
    (er1 uint8 :offset 13 :size 1)
    (fqc uint8 :offset 24 :size 4)
    )
-   
+
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -2235,7 +2237,9 @@
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (deftype dma-sqwc (uint32)
-  ()
+  ((sqwc  uint8 :offset 0  :size 8)
+   (tqwc  uint8 :offset 16 :size 8)
+   )
   :flag-assert #x900000004
   )
 
@@ -2255,7 +2259,13 @@
   )
 
 (deftype dma-ctrl (uint32)
-  ()
+  ((dmae  uint8 :offset 0 :size 1)
+   (rele  uint8 :offset 1 :size 1)
+   (mfd   uint8 :offset 2 :size 2)
+   (sts   uint8 :offset 4 :size 2)
+   (std   uint8 :offset 6 :size 2)
+   (rcyc  uint8 :offset 8 :size 3)
+   )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -2355,8 +2365,8 @@
   ((imm uint16 :offset 0 :size 16)
    (num uint8 :offset 16 :size 8)
    (cmd uint8 :offset 24 :size 7)
+   (irq uint8 :offset 31 :size 1)
    (msk uint8 :offset 28 :size 1)
-   (irq uint8 :offset 31 :size 1) ;;?
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -2364,7 +2374,7 @@
   )
 
 (deftype dma-enable (uint32)
-  ()
+  ((cpnd  uint8 :offset 16 :size 1))
   :flag-assert #x900000004
   )
 
@@ -2375,17 +2385,38 @@
   )
 
 (deftype vif-mask (uint32)
-  ()
+  ((m0  uint8 :offset 0  :size 2)
+   (m1  uint8 :offset 2  :size 2)
+   (m2  uint8 :offset 4  :size 2)
+   (m3  uint8 :offset 6  :size 2)
+   (m4  uint8 :offset 8  :size 2)
+   (m5  uint8 :offset 10 :size 2)
+   (m6  uint8 :offset 12 :size 2)
+   (m7  uint8 :offset 14 :size 2)
+   (m8  uint8 :offset 16 :size 2)
+   (m9  uint8 :offset 18 :size 2)
+   (m10 uint8 :offset 20 :size 2)
+   (m11 uint8 :offset 22 :size 2)
+   (m12 uint8 :offset 24 :size 2)
+   (m13 uint8 :offset 26 :size 2)
+   (m14 uint8 :offset 28 :size 2)
+   (m15 uint8 :offset 30 :size 2)
+   )
   :flag-assert #x900000004
   )
 
 (deftype vif-stcycl-imm (uint16)
-  ()
+  ((cl  uint8 :offset 0 :size 8)
+   (wl  uint8 :offset 8 :size 8)
+   )
   :flag-assert #x900000002
   )
 
 (deftype vif-unpack-imm (uint16)
-  ()
+  ((addr  uint16 :offset 0  :size 10)
+   (usn   uint8  :offset 14 :size 1)
+   (flg   uint8  :offset 15 :size 1)
+   )
   :flag-assert #x900000002
   )
 
@@ -2714,9 +2745,6 @@
   :flag-assert         #x900000010
   )
 
-;; display
-(define-extern get-current-time (function uint))
-(define-extern get-integral-current-time (function uint))
 ;; in the kernel.
 (define-extern cpad-open (function cpad-info int cpad-info))
 (define-extern cpad-get-data (function cpad-info cpad-info))
@@ -2906,16 +2934,7 @@
 ;; the GS's PRIM register specifies the types of drawing primitives and various attributes, and
 ;; initializes the contents of the vertex queue.
 (deftype gs-prim (uint64)
-  (;; type of primitive:
-   ;; - 0: point
-   ;; - 1: line
-   ;; - 2: line strip
-   ;; - 3: tri
-   ;; - 4: tri strip
-   ;; - 5: tri fan
-   ;; - 6: sprite (what?)
-   ;; - 7: dark magic?
-   (prim  uint8 :offset 0  :size 3)
+  ((prim  uint8 :offset 0  :size 3)
    (iip   uint8 :offset 3  :size 1)
    (tme   uint8 :offset 4  :size 1)
    (fge   uint8 :offset 5  :size 1)
@@ -3222,7 +3241,7 @@
 
 (define-extern *fog-color* int)
 (define-extern default-buffer-init (function dma-buffer none))
-(define-extern *default-regs-buffer* dma-buffer) 
+(define-extern *default-regs-buffer* dma-buffer)
 
 
 (deftype gif-packet (basic)
@@ -3230,7 +3249,7 @@
    (gif-tag0  uint128   :offset-assert 16)
    (gif-tag   gs-gif-tag :inline :offset 16) ;; note- added
    (args      uint64 1 :offset-assert 32)
-   
+
    )
   (:methods
     (new (symbol type int) _type_ 0)
@@ -3246,10 +3265,10 @@
    (orgz   int32     :offset-assert 12)
    (width  int32     :offset-assert 16)
    (height int32     :offset-assert 20)
-   (color  int32 4 :offset-assert 24)
+   (color  rgba    4 :offset-assert 24)
    )
-  (:methods 
-    (new (symbol type int int int int int) _type_ 0)
+  (:methods
+    (new (symbol type int int int int rgba) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x28
@@ -3261,7 +3280,6 @@
 ;;(define-extern gif-bank object) ;; unknown type
 ;;(define-extern gif-tag object) ;; unknown type
 (define-extern add-reg-gif-packet (function gif-packet int int none))
-;;(define-extern draw-context object) ;; unknown type
 (define-extern open-gif-packet (function gif-packet gif-packet))
 ;;(define-extern gif-tag-count object) ;; unknown type
 ;;(define-extern gif-tag64 object) ;; unknown type
@@ -3298,23 +3316,24 @@
   :flag-assert         #x900000028
   )
 
+;; the "addr" fields represent GS register addresses
 (deftype draw-env (structure)
-  ((frame1         uint64  :offset-assert 0)
-   (frame1addr     uint64  :offset-assert 8)
-   (zbuf1          uint64  :offset-assert 16)
-   (zbuf1addr      uint64  :offset-assert 24)
-   (xyoffset1      uint64  :offset-assert 32)
-   (xyoffset1addr  uint64  :offset-assert 40)
-   (scissor1       uint64  :offset-assert 48)
-   (scissor1addr   uint64  :offset-assert 56)
-   (prmodecont     uint64  :offset-assert 64)
-   (prmodecontaddr uint64  :offset-assert 72)
-   (colclamp       uint64  :offset-assert 80)
-   (colclampaddr   uint64  :offset-assert 88)
-   (dthe           uint64  :offset-assert 96)
-   (dtheaddr       uint64  :offset-assert 104)
-   (test1          uint64  :offset-assert 112)
-   (test1addr      uint64  :offset-assert 120)
+  ((frame1         gs-frame        :offset-assert 0)
+   (frame1addr     int64           :offset-assert 8)
+   (zbuf1          gs-zbuf         :offset-assert 16)
+   (zbuf1addr      int64           :offset-assert 24)
+   (xyoffset1      gs-xy-offset    :offset-assert 32)
+   (xyoffset1addr  int64           :offset-assert 40)
+   (scissor1       gs-scissor      :offset-assert 48)
+   (scissor1addr   int64           :offset-assert 56)
+   (prmodecont     gs-prmode-cont  :offset-assert 64)
+   (prmodecontaddr int64           :offset-assert 72)
+   (colclamp       gs-color-clamp  :offset-assert 80)
+   (colclampaddr   int64           :offset-assert 88)
+   (dthe           gs-dthe         :offset-assert 96)
+   (dtheaddr       int64           :offset-assert 104)
+   (test1          gs-test         :offset-assert 112)
+   (test1addr      int64           :offset-assert 120)
    )
   :method-count-assert 9
   :size-assert         #x80
@@ -3336,7 +3355,7 @@
    (profile-bar  basic    2  :offset 48)
    (run-time     uint64        :offset 56)
    )
-    (:methods
+  (:methods
    (new (symbol type) _type_ 0)
    )
   :method-count-assert 9
@@ -3351,7 +3370,7 @@
    (draw         draw-env       :offset-assert 12)
    (frame        display-frame  :offset-assert 16)
    )
-  
+
   :allow-misaligned
   :method-count-assert 9
   :size-assert         #x14
@@ -3371,7 +3390,7 @@
    (on-screen                       int32               :offset-assert 560)
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
-   (bg-clear-color                  rgba        4      :offset-assert 760)
+   (bg-clear-color                  rgba         4      :offset-assert 760)
    (real-frame-counter              uint64              :offset-assert 776)
    (base-frame-counter              uint64              :offset-assert 784)
    (game-frame-counter              uint64              :offset-assert 792)
@@ -3398,13 +3417,51 @@
   :size-assert         #x39c
   :flag-assert         #xa0000039c
   (:methods
-    (new (symbol type int int int int int) _type_ 0)
-    (dummy-9 () none 9)
-    )
+   (new (symbol type int int int int int) _type_ 0)
+   (set-video-time-params (_type_ float) float 9)
+   )
   )
 
 (define-extern *display* display)
+
+;;;;;;;;;;;;;;;
+;; display
+;;;;;;;;;;;;;;;
+
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
+(define-extern set-display-env (function display-env int int int int int int display-env))
+(define-extern set-draw-env (function draw-env int int int int int int draw-env))
+(define-extern set-draw-env-offset (function draw-env int int int draw-env))
+(define-extern put-display-alpha-env (function draw-env none))
 (define-extern set-display (function display int int int int int display))
+(define-extern set-display2 (function display int int int int int display))
+(define-extern allocate-dma-buffers (function display display))
+
+(define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba none))
+(define-extern draw-quad2d (function dma-buffer draw-context none))
+(define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none))
+
+(define-extern vif1-handler-debug (function int))
+(define-extern vif1-handler (function int))
+(define-extern vblank-handler (function int))
+
+(define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
+(define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
+(define-extern reset-display-gs-state (function display dma-buffer int none))
+
+(define-extern *profile-x* int)
+(define-extern *profile-y* int)
+(define-extern *profile-w* int)
+(define-extern *profile-h* int)
+(define-extern *profile-ticks* symbol)
+(define-extern *vblank-counter* int)
+(define-extern *oddeven* int)
+(define-extern *vu0-dma-list* dma-buffer)
+
+(declare-type font-context basic)
+(define-extern *font-context* font-context)
+(define-extern *pause-context* font-context)
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -4008,15 +4065,15 @@
    (receiving-level basic                :offset-assert 32)
    (load-commands   pair                :offset-assert 36)
    (play?           basic                :offset-assert 40)
-   ;; there's something? from 40 -> 96. 
+   ;; there's something? from 40 -> 96.
    (hack-pad        uint8                :offset 90)
-   
+
    ;(level           level 3 :inline      :offset-assert 96)
    ;(data            level 3 :inline      :offset-assert 100)
    (level0          level        :inline :offset-assert 96) ;; inline basic
    (level1          level        :inline :offset-assert 2704) ;; inline basic
    (level-default   level        :inline :offset-assert 5312) ;; inline basic
-   ;; this actually went earlier, 
+   ;; this actually went earlier,
    (level           level 3      :inline :offset 96)
    (pad uint32)
    )
@@ -4301,7 +4358,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load field param3 is a basic loaded with a signed load 
+  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load field param3 is a basic loaded with a signed load
   (:methods
     (print (connection) _type_ 2)
     (get-engine (connection) engine 9)
@@ -4333,18 +4390,18 @@
   :flag-assert         #x1800000080
   (:methods
     (new (symbol type basic int) _type_ 0)
-    (inspect-all-connections (engine) none 9)
-    (apply-to-connections (engine (function connectable none)) none 10)
-    (apply-to-connections-reverse (engine (function connectable none)) none 11)
-    (execute-connections (engine object) none 12)
-    (execute-connections-and-move-to-dead (engine object) none 13)
-    (execute-connections-if-needed (engine object) none 14)
+    (inspect-all-connections (engine) engine 9)
+    (apply-to-connections (engine (function connectable none)) int 10)
+    (apply-to-connections-reverse (engine (function connectable none)) int 11)
+    (execute-connections (engine object) int 12)
+    (execute-connections-and-move-to-dead (engine object) int 13)
+    (execute-connections-if-needed (engine object) int 14)
     (add-connection (engine process (function object object object object object) object object object) connection 15)
-    (remove-from-process (engine process) none 16)
-    (remove-matching (engine (function connection engine symbol)) none 17)
-    (remove-all (engine) none 18)
-    (remove-by-param1 (engine object) none 19)
-    (remove-by-param2 (engine int) none 20)
+    (remove-from-process (engine process) int 16)
+    (remove-matching (engine (function connection engine symbol)) int 17)
+    (remove-all (engine) int 18)
+    (remove-by-param1 (engine object) int 19)
+    (remove-by-param2 (engine int) int 20)
     (get-first-connectable (engine) connectable 21)
     (get-last-connectable (engine) connectable 22)
     (unknown-1 (engine (pointer uint32)) uint 23)
@@ -4424,7 +4481,7 @@
    (ambient-volume-movie float :offset-assert 144)
    (dialog-volume-hint float :offset-assert 148)
    (dummy uint32 11 :offset-assert 152)
-   
+
    )
   :method-count-assert 10
   :size-assert         #xc4
@@ -4476,26 +4533,25 @@
 ;;;;;;;;;;;;;;;;;
 
 (deftype gs-store-image-packet (structure)
-  ((vifcode        uint32 4 :offset-assert 0)
-   (giftag         uint128   :offset-assert 16)
-   (bitbltbuf      uint64    :offset-assert 32)
-   (bitbltbuf-addr uint64    :offset-assert 40)
-   (trxpos         uint64    :offset-assert 48)
-   (trxpos-addr    uint64    :offset-assert 56)
-   (trxreg         uint64    :offset-assert 64)
-   (trxreg-addr    uint64    :offset-assert 72)
-   (finish         uint64    :offset-assert 80)
-   (finish-addr    uint64    :offset-assert 88)
-   (trxdir         uint64    :offset-assert 96)
-   (trxdir-addr    uint64    :offset-assert 104)
+  ((vifcode        vif-tag 4 :offset-assert 0)
+   (giftag         gif-tag   :offset-assert 16)
+   (bitbltbuf      gs-bitbltbuf    :offset-assert 32)
+   (bitbltbuf-addr int64    :offset-assert 40)
+   (trxpos         gs-trxpos    :offset-assert 48)
+   (trxpos-addr    int64    :offset-assert 56)
+   (trxreg         gs-trxreg    :offset-assert 64)
+   (trxreg-addr    int64    :offset-assert 72)
+   (finish         int64    :offset-assert 80) ;; gs-finish
+   (finish-addr    int64    :offset-assert 88)
+   (trxdir         gs-trxdir    :offset-assert 96)
+   (trxdir-addr    int64    :offset-assert 104)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
 
-(define-extern store-image function)
-;;(define-extern gs-store-image-packet object) ;; unknown type
+(define-extern store-image (function int int int int))
 (define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
 
 ;;;;;;;;;;;;;;;;;;
@@ -4633,7 +4689,7 @@
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
-  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load 
+  ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load
   (:methods
     (dummy-9 () none 9)
     )
@@ -4733,7 +4789,7 @@
   :method-count-assert 18
   :size-assert         #x20
   :flag-assert         #x1200000020
-  ;; field distance is a float printed as hex? 
+  ;; field distance is a float printed as hex?
   (:methods
     (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
@@ -5940,7 +5996,7 @@
    ;; (state                UNKNOWN           16      :offset-assert 1920)
    (num-stars            float                     :offset 1936)
    )
-  (:methods 
+  (:methods
     (new (symbol type) _type_ 0)
     )
   :method-count-assert 9
@@ -6603,7 +6659,7 @@
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
-  ;; field xyz-scale is a float printed as hex? 
+  ;; field xyz-scale is a float printed as hex?
   )
 
 ;; merc-h
@@ -6678,7 +6734,7 @@
    (send-query              basic  :offset-assert 32)
    (query                   basic  :offset-assert 36)
    )
-  (:methods 
+  (:methods
     (new (symbol type) _type_ 0)
     )
   :method-count-assert 9
@@ -7520,7 +7576,7 @@
   :method-count-assert 29
   :size-assert         #x144
   :flag-assert         #x1d00000144
-  ;; field dummy is a basic loaded with a signed load 
+  ;; field dummy is a basic loaded with a signed load
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
@@ -7975,7 +8031,7 @@
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field extra is a basic loaded with a signed load 
+  ;; field extra is a basic loaded with a signed load
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
@@ -8066,7 +8122,7 @@
    ;; dataw went here
    (mode              basic      :offset-assert 144)
    (flags             uint32     :offset-assert 148)
-   
+
    (data              float 30 :offset 8)
    (hook              basic 4  :offset 128)
    (dataw             uint32 2  :offset 144)
@@ -8234,12 +8290,12 @@
 ;; fact-h
 (deftype fact-info-enemy (fact-info)
   ((speed               float   :offset-assert 40)
-   (idle-distance       float  :offset-assert 44) ; meters 
-   (notice-top          float  :offset-assert 48) ; meters 
-   (notice-bottom       float  :offset-assert 52) ; meters 
-   (cam-horz            float  :offset-assert 56) ; meters 
-   (cam-vert            float  :offset-assert 60) ; meters 
-   (cam-notice-dist     float  :offset-assert 64) ; meters 
+   (idle-distance       float  :offset-assert 44) ; meters
+   (notice-top          float  :offset-assert 48) ; meters
+   (notice-bottom       float  :offset-assert 52) ; meters
+   (cam-horz            float  :offset-assert 56) ; meters
+   (cam-vert            float  :offset-assert 60) ; meters
+   (cam-notice-dist     float  :offset-assert 64) ; meters
    )
   :method-count-assert 12
   :size-assert         #x44
@@ -8509,7 +8565,7 @@
   :method-count-assert 15
   :size-assert         #xe0
   :flag-assert         #xf007000e0
-  ;; inherited inspect of processfield ~Tuserdata is a basic loaded with a signed load 
+  ;; inherited inspect of processfield ~Tuserdata is a basic loaded with a signed load
   (:methods
     (dummy-14 () none 14)
     )
@@ -11585,7 +11641,7 @@
 ;   :method-count-assert 9
 ;   :size-assert         #x8c
 ;   :flag-assert         #x90000008c
-;   ;; field key is a basic loaded with a signed load 
+;   ;; field key is a basic loaded with a signed load
 ;   )
 
 ; ;; sparticle-h
@@ -17772,7 +17828,7 @@
 ;   :method-count-assert 20
 ;   :size-assert         #x160
 ;   :flag-assert         #x1400f00160
-;   ;; inherited inspect of process-drawablefield ~Tstate-object is a basic loaded with a signed load 
+;   ;; inherited inspect of process-drawablefield ~Tstate-object is a basic loaded with a signed load
 ;   (:methods
 ;     (dummy-9 () none 9)
 ;     (dummy-10 () none 10)
@@ -32904,8 +32960,6 @@
 ;;(define-extern error object) ;; unknown type
 ;;(define-extern details object) ;; unknown type
 
-(define-extern get-integral-current-time (function uint))
-(define-extern get-current-time (function uint))
 ;;(define-extern cpad-get-data object) ;; unknown type
 ;;(define-extern cpad-open object) ;; unknown type
 
@@ -32965,33 +33019,7 @@
 ;;(define-extern font-context object) ;; unknown type
 ;;(define-extern *font-work* object) ;; unknown type
 ;;(define-extern decomp-work object) ;; unknown type
-;;(define-extern install-handler object) ;; unknown type
-;;(define-extern *oddeven* object) ;; unknown type
-;;(define-extern *profile-y* object) ;; unknown type
-(define-extern vif1-handler function)
-;;(define-extern *pause-context* object) ;; unknown type
-;;(define-extern *profile-h* object) ;; unknown type
-;;(define-extern *profile-x* object) ;; unknown type
-(define-extern set-draw-env-offset function)
-;;(define-extern *vblank-counter* object) ;; unknown type
-;;(define-extern *vu0-dma-list* object) ;; unknown type
-;;(define-extern *profile-w* object) ;; unknown type
-(define-extern set-display-gs-state function)
-(define-extern draw-quad2d function)
-(define-extern put-display-alpha-env function)
-(define-extern set-display-gs-state-offset function)
-(define-extern screen-gradient function)
-(define-extern draw-sprite2d-xy function)
-(define-extern set-draw-env function)
-(define-extern reset-display-gs-state function)
-(define-extern vblank-handler function)
-;;(define-extern *profile-ticks* object) ;; unknown type
-;;(define-extern *font-context* object) ;; unknown type
-(define-extern vif1-handler-debug function)
-(define-extern set-display-env (function display-env int int int int int int display-env))
-(define-extern set-display2 function)
-(define-extern allocate-dma-buffers function)
-(define-extern draw-string-xy function)
+(define-extern draw-string-xy (function string dma-buffer int int int none))
 ;;(define-extern end-draw object) ;; unknown type
 (define-extern start function)
 ;;(define-extern pal object) ;; unknown type

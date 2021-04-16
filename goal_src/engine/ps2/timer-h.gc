@@ -7,10 +7,10 @@
 
 
 ;; The Emotion Engine has 4 hardware timers.
-(defconstant EE_TIMER0 #x10000000) ;; has HOLD register!
-(defconstant EE_TIMER1 #x10000800) ;; has HOLD register!
-(defconstant EE_TIMER2 #x10001000) ;; does NOT have HOLD register!
-(defconstant EE_TIMER3 #x10001800) ;; does NOT have HOLD register!
+(defconstant TIMER0_BANK #x10000000) ;; has HOLD register!
+(defconstant TIMER1_BANK #x10000800) ;; has HOLD register!
+(defconstant TIMER2_BANK #x10001000) ;; does NOT have HOLD register!
+(defconstant TIMER3_BANK #x10001800) ;; does NOT have HOLD register!
 
 ;; this matches the Tn_MODE register structure of the ps2 EE timers.
 ;; Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero
@@ -45,7 +45,7 @@
 ;; Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
 ;; 16-bits of that are hardwired to zero.
 (deftype timer-bank (structure)
-  ((count uint32      :offset-assert 0)
+  ((count uint32      :offset 0)
    (mode  timer-mode  :offset 16)
    (comp  uint32      :offset 32)
    )
@@ -85,7 +85,7 @@
 
 ;; segfaults OpenGOAL as it does not support ps2 EE timers
 (#unless PC_PORT
-  (timer-init (the-as timer-bank EE_TIMER1) (the-as timer-mode #x82))
+  (timer-init (the-as timer-bank TIMER1_BANK) (the-as timer-mode #x82))
   )
 
 
@@ -109,7 +109,7 @@
   obj
   )
 
-
+(declare-type dma-buffer basic)
 (deftype profile-bar (basic)
   ((profile-frame-count int32        :offset-assert 4)
    (cache-time          uint64       :offset-assert 8)
@@ -120,10 +120,10 @@
   :flag-assert         #xe00004010
   (:methods
     (get-last-frame-time-stamp (_type_) uint 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (reset (_type_) _type_ 10)
+    (add-frame (_type_ symbol rgba) profile-frame 11)
+    (add-end-frame (_type_ symbol rgba) profile-frame 12)
+    (draw (_type_ dma-buffer int) float 13)
     )
   )
 
