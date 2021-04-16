@@ -60,7 +60,7 @@
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
-  ;; the params are loaded with a signed load, which is kinda weird... 
+  ;; the params are loaded with a signed load, which is kinda weird...
   (:methods
     (print (connection) _type_ 2)
     (get-engine (connection) engine 9)
@@ -100,18 +100,18 @@
   :flag-assert         #x1800000080
   (:methods
     (new (symbol type basic int) _type_ 0)
-    (inspect-all-connections (engine) none 9)
-    (apply-to-connections (engine (function connectable none)) none 10)
-    (apply-to-connections-reverse (engine (function connectable none)) none 11)
-    (execute-connections (engine object) none 12)
-    (execute-connections-and-move-to-dead (engine object) none 13)
-    (execute-connections-if-needed (engine object) none 14)
+    (inspect-all-connections (engine) engine 9)
+    (apply-to-connections (engine (function connectable none)) int 10)
+    (apply-to-connections-reverse (engine (function connectable none)) int 11)
+    (execute-connections (engine object) int 12)
+    (execute-connections-and-move-to-dead (engine object) int 13)
+    (execute-connections-if-needed (engine object) int 14)
     (add-connection (engine process (function object object object object object) object object object) connection 15)
-    (remove-from-process (engine process) none 16)
-    (remove-matching (engine (function connection engine symbol)) none 17)
-    (remove-all (engine) none 18)
-    (remove-by-param1 (engine object) none 19)
-    (remove-by-param2 (engine int) none 20)
+    (remove-from-process (engine process) int 16)
+    (remove-matching (engine (function connection engine symbol)) int 17)
+    (remove-all (engine) int 18)
+    (remove-by-param1 (engine object) int 19)
+    (remove-by-param2 (engine int) int 20)
     (get-first-connectable (engine) connectable 21)
     (get-last-connectable (engine) connectable 22)
     (unknown-1 (engine (pointer uint32)) uint 23)
@@ -125,7 +125,7 @@
 
 (defmethod print connection ((obj connection))
   "Print a connection and its parameters"
-  (format '#t "#<connection (~A ~A ~A ~A) @ #x~X>"
+  (format #t "#<connection (~A ~A ~A ~A) @ #x~X>"
    (-> obj param0)
    (-> obj param1)
    (-> obj param2)
@@ -245,38 +245,38 @@
 
 (defmethod print engine ((obj engine))
   "Print an engine and its name"
-  (format '#t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
+  (format #t "#<~A ~A @ #x~X>" (-> obj type) (-> obj name) obj)
   obj
   )
 
 (defmethod inspect engine ((obj engine))
   (local-vars (s5-0 binteger) (s5-1 binteger) (s5-2 binteger) (s5-3 binteger))
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tname: ~A~%" (-> obj name))
-  (format '#t "~Tengine-time: ~D~%" (-> obj engine-time))
-  (format '#t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format '#t "~Tlength: ~D~%" (-> obj length))
-  (format '#t "~Talive-list:~%")
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tengine-time: ~D~%" (-> obj engine-time))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Talive-list:~%")
   (set! s5-0 *print-column*)
   (set! *print-column* (+ *print-column* 8))
   ((method-of-type connectable inspect) (-> obj alive-list))
   (set! *print-column* s5-0)
-  (format '#t "~Talive-list-end:~%")
+  (format #t "~Talive-list-end:~%")
   (set! s5-1 *print-column*)
   (set! *print-column* (+ *print-column* 8))
   ((method-of-type connectable inspect) (-> obj alive-list-end))
   (set! *print-column* s5-1)
-  (format '#t "~Tdead-list:~%")
+  (format #t "~Tdead-list:~%")
   (set! s5-2 *print-column*)
   (set! *print-column* (+ *print-column* 8))
   ((method-of-type connectable inspect) (-> obj dead-list))
   (set! *print-column* s5-2)
-  (format '#t "~Tdead-list-end:~%")
+  (format #t "~Tdead-list-end:~%")
   (set! s5-3 *print-column*)
   (set! *print-column* (+ *print-column* 8))
   ((method-of-type connectable inspect) (-> obj dead-list-end))
   (set! *print-column* s5-3)
-  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   obj
   )
 
@@ -305,18 +305,18 @@
     (set! iter next)
     (set! next (-> next next0))
     )
-  (none)
+  0
   )
 
 (defmethod apply-to-connections-reverse engine ((obj engine) (arg0 (function connectable none)))
   "Apply the given function to all the live conntables in the engine, iterating backward."
-  (local-vars (s4-0 connectable))
-  (set! s4-0 (-> obj alive-list-end prev0))
-  (while (!= s4-0 (-> obj alive-list))
+  (let ((s4-0 (-> obj alive-list-end prev0)))
+   (while (!= s4-0 (-> obj alive-list))
     (arg0 s4-0)
     (set! s4-0 (-> s4-0 prev0))
     )
-  (none)
+   )
+  0
   )
 
 (defmethod execute-connections engine ((obj engine) (arg0 object))
@@ -337,8 +337,7 @@
      )
     (set! s4-0 (-> s4-0 prev0))
     )
-  (none)
-  )
+  0)
 
 (defmethod execute-connections-and-move-to-dead engine ((obj engine) (arg0 object))
   "Execute connections, but remove dead connections from the list."
@@ -364,8 +363,7 @@
        (move-to-dead (the-as connection (-> s4-0 next0)))
        )
    )
-  (none)
-  )
+  0)
 
 (defmethod execute-connections-if-needed engine ((obj engine) (arg0 object))
   "Execute connections, but only if it hasn't been done on this frame."
@@ -376,13 +374,13 @@
 
 (defun connection-process-apply ((proc process) (func (function object none)))
   "Apply a function to all connectables of a process."
-  (local-vars (iter connectable))
   (when proc
     ;; iterate with next1 to stay in the process list.
-    (set! iter (-> proc connection-list next1))
-    (while iter
-      (func iter)
-      (set! iter (-> iter next1))
+    (let ((iter (-> proc connection-list next1)))
+      (while iter
+        (func iter)
+        (set! iter (-> iter next1))
+        )
       )
     #f
     )
@@ -393,6 +391,7 @@
              "inspect all of the connections."
              (apply-to-connections obj
                                    (the (function connection none) (method-of-type connection inspect)))
+             obj
              )
   )
 
@@ -493,8 +492,7 @@
       (set! iter (the connection (-> iter next1)))
       )
     )
-  (none)
-  )
+  0)
 
 (defmethod remove-matching engine ((obj engine) (arg0 (function connection engine symbol)))
   "call the given function on each connection and the engine.
@@ -513,8 +511,7 @@
     (set! s4-0 s3-0)
     (set! s3-0 (-> s3-0 next0))
     )
-  (none)
-  )
+  0)
 
 (defmethod remove-all engine ((obj engine))
   "Remove all connections from an engine"
@@ -530,8 +527,7 @@
    (set! a0-1 s5-0)
    (set! s5-0 (-> s5-0 next0))
    )
-  (none)
-  )
+  0)
 
 
 (defmethod remove-by-param1 engine ((obj engine) (arg0 object))
@@ -549,8 +545,7 @@
    (set! a0-1 s4-0)
    (set! s4-0 (-> s4-0 next0))
    )
-  (none)
-  )
+  0)
 
 (defmethod remove-by-param2 engine ((obj engine) (arg0 int))
   "Remove all connections with param2 matching arg0"
@@ -567,5 +562,4 @@
    (set! a0-1 s4-0)
    (set! s4-0 (-> s4-0 next0))
    )
-  (none)
-  )
+  0)
