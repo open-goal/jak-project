@@ -995,6 +995,5 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
       "   )\n"
       "  #f\n"
       "  )";
-  test_with_expr(func, type, expected, false, "", {},
-                 "[[[9, 33], \"t2\", \"dma-packet\"]]");
+  test_with_expr(func, type, expected, false, "", {}, "[[[9, 33], \"t2\", \"dma-packet\"]]");
 }

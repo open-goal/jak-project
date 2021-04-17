@@ -221,7 +221,9 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
 
     int size = 64 - step.amount;
     int start_bit = end_bit - size;
-    assert(start_bit >= 0);
+    if (start_bit < 0) {
+      throw std::runtime_error("Bad bitfield start bit");
+    }
 
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -395,6 +397,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
                        FormPool& pool,
                        const Env& env,
                        Form* in) {
+  in = strip_int_or_uint_cast(in);
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom) {
