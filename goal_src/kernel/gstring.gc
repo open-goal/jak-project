@@ -649,7 +649,7 @@
        (set! str-ptr (&-> str-ptr 1))
        (set! a1-47 str-ptr)
        )
-     
+
      (while (and
           (>= (-> str-ptr 0) (the-as uint 48))
           (>= (the-as uint 57) (-> str-ptr 0))
@@ -717,3 +717,14 @@
 
 ;; shared temporary string.
 (define *temp-string* (new 'global 'string 256 (the string #f)))
+
+(defmacro string-format (&rest args)
+  "Formats into *temp-string* and returns it, for in-place string formating.
+   DO NOT USE *temp-string* WITH THIS MACRO! It is read as input AFTER all of the args evaluate."
+
+  `(begin
+     (format (clear *temp-string*) ,@args)
+     *temp-string*
+     )
+  )
+
