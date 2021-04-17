@@ -605,16 +605,17 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         return TP_Type::make_from_ts("float");
       }
 
+      auto label_name = env.file->labels.at(src.label()).name;
+      auto hint = env.label_types().find(label_name);
+      if (hint != env.label_types().end()) {
+        return TP_Type::make_from_ts(
+            coerce_to_reg_type(env.dts->parse_type_spec(hint->second.type_name)));
+      }
+
       if (m_size == 8) {
         // 8 byte integer constants are always loaded from a static pool
         // this could technically hide loading a different type from inside of a static basic.
         return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
-      }
-
-      auto label_name = env.file->labels.at(src.label()).name;
-      auto hint = env.label_types().find(label_name);
-      if (hint != env.label_types().end()) {
-        return TP_Type::make_from_ts(env.dts->parse_type_spec(hint->second.type_name));
       }
     }
   }

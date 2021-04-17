@@ -342,3 +342,18 @@ TEST_F(DataDecompTest, FloatArray) {
                     "(new 'static 'array 'float 7\n"
                     "1.0 0.0 1.0 0.0 1.0 0.0 1.0)");
 }
+
+TEST_F(DataDecompTest, Bitfield) {
+  // this is for testing bitfields from a 64-bit static constant.
+  std::string input =
+      "L80:\n"
+      "    .word 0x80400040\n"
+      "    .word 0x0";
+  auto parsed = parse_data(input);
+  auto& ts = dts->ts;
+  auto typespec = ts.make_typespec("rgba");
+  auto info = dynamic_cast<BitFieldType*>(ts.lookup_type(typespec));
+  auto decomp =
+      decompile_bitfield(typespec, info, parsed.label("L80"), parsed.labels, {parsed.words}, ts);
+  check_forms_equal(decomp.print(), "(new 'static 'rgba :r #x40 :b #x40 :a #x80)");
+}

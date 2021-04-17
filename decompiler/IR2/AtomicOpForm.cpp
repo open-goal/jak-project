@@ -3,6 +3,8 @@
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/data_decompile.h"
+#include "decompiler/IR2/bitfields.h"
 
 namespace decompiler {
 
@@ -605,11 +607,34 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
           assert(word0.kind == LinkedWord::PLAIN_DATA);
           assert(word1.kind == LinkedWord::PLAIN_DATA);
           u64 value;
-
           memcpy(&value, &word0.data, 4);
           memcpy(((u8*)&value) + 4, &word1.data, 4);
           return pool.alloc_single_element_form<ConstantTokenElement>(nullptr,
                                                                       fmt::format("#x{:x}", value));
+        }
+
+        // is it a constant bitfield?
+        auto& ts = env.dts->ts;
+        auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(hint->second.type_name));
+        if (as_bitfield && m_kind != Kind::FLOAT && m_size == 8) {
+          // get the data
+          assert((label.offset % 8) == 0);
+          auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+          auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+          assert(word0.kind == LinkedWord::PLAIN_DATA);
+          assert(word1.kind == LinkedWord::PLAIN_DATA);
+          u64 value;
+          memcpy(&value, &word0.data, 4);
+          memcpy(((u8*)&value) + 4, &word1.data, 4);
+          // for some reason, GOAL would use a 64-bit constant for all bitfields, even if they are
+          // smaller. We should check that the higher bits are all zero.
+          int bits = as_bitfield->get_size_in_memory() * 8;
+          assert(bits <= 64);
+          assert((value >> bits) == 0);
+          TypeSpec typespec(hint->second.type_name);
+          auto defs = decompile_bitfield_from_int(typespec, ts, value);
+          return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, defs,
+                                                                          pool);
         }
       }
     }

@@ -17,6 +17,16 @@ BitfieldStaticDefElement::BitfieldStaticDefElement(const TypeSpec& type,
                                                    const std::vector<BitFieldDef>& field_defs)
     : m_type(type), m_field_defs(field_defs) {}
 
+BitfieldStaticDefElement::BitfieldStaticDefElement(
+    const TypeSpec& type,
+    const std::vector<BitFieldConstantDef>& field_defs,
+    FormPool& pool)
+    : m_type(type) {
+  for (auto& x : field_defs) {
+    m_field_defs.push_back(BitFieldDef::from_constant(x, pool));
+  }
+}
+
 goos::Object BitfieldStaticDefElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> result;
 
@@ -170,12 +180,6 @@ std::optional<BitField> find_field_from_mask(const TypeSystem& ts,
   return find_field(ts, type, mask_range->first(), mask_range->size(), {});
 }
 
-template <typename T>
-T extract_bitfield(T input, int start_bit, int size) {
-  int end_bit = start_bit + size;
-  T left_shifted = input << (64 - end_bit);
-  return left_shifted >> (64 - size);
-}
 }  // namespace
 
 /*!
@@ -201,8 +205,10 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
-    return pool.alloc_element<DerefElement>(m_base, false,
-                                            DerefToken::make_field_name(field.name()));
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
   }
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LEFT_SHIFT) {
@@ -221,8 +227,10 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
-    return pool.alloc_element<DerefElement>(m_base, false,
-                                            DerefToken::make_field_name(field.name()));
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
   }
 
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LOGAND) {
@@ -283,53 +291,6 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
   }
 
   throw std::runtime_error("Unknown state in BitfieldReadElement");
-}
-
-std::vector<BitFieldDef> decompile_static_bitfield(const TypeSpec& type,
-                                                   const TypeSystem& ts,
-                                                   FormPool& pool,
-                                                   u64 value) {
-  u64 touched_bits = 0;
-  std::vector<BitFieldDef> result;
-
-  auto type_info = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
-  assert(type_info);
-
-  for (auto& field : type_info->fields()) {
-    u64 bitfield_value;
-    bool is_signed = ts.tc(TypeSpec("int"), field.type()) && !ts.tc(TypeSpec("uint"), field.type());
-    if (is_signed) {
-      // signed
-      s64 signed_value = value;
-      bitfield_value = extract_bitfield<s64>(signed_value, field.offset(), field.size());
-    } else {
-      // unsigned
-      bitfield_value = extract_bitfield<u64>(value, field.offset(), field.size());
-    }
-
-    if (bitfield_value != 0) {
-      BitFieldDef def;
-      def.value = pool.alloc_single_element_form<SimpleAtomElement>(
-          nullptr, SimpleAtom::make_int_constant(bitfield_value));
-      def.field_name = field.name();
-      def.is_signed = is_signed;
-      result.push_back(def);
-    }
-
-    for (int i = field.offset(); i < field.offset() + field.size(); i++) {
-      touched_bits |= (u64(1) << i);
-    }
-  }
-
-  u64 untouched_but_set = value & (~touched_bits);
-
-  if (untouched_but_set) {
-    throw std::runtime_error(
-        fmt::format("Failed to decompile static bitfield of type {}. Original value is 0x{:x} but "
-                    "we didn't touch",
-                    type.print(), value, untouched_but_set));
-  }
-  return result;
 }
 
 namespace {
@@ -408,6 +369,15 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 
 }  // namespace
 
+BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, FormPool& pool) {
+  BitFieldDef bfd;
+  bfd.field_name = constant.field_name;
+  bfd.is_signed = constant.is_signed;
+  bfd.value = pool.alloc_single_element_form<SimpleAtomElement>(
+      nullptr, SimpleAtom::make_int_constant(constant.value));
+  return bfd;
+}
+
 /*!
  * Cast the given form to a bitfield.
  * If the form could have been a (new 'static 'bitfieldtype ...) it will attempt to generate this.
@@ -420,8 +390,9 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom) {
-    auto fields = decompile_static_bitfield(typespec, env.dts->ts, pool, in_as_atom->get_int());
-    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, fields);
+    auto fields = decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int());
+    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, fields,
+                                                                    pool);
   }
 
   auto in_as_generic = in->try_as_element<GenericElement>();
@@ -434,7 +405,11 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
       for (auto it = args.begin(); it != args.end(); it++) {
         auto constant = get_goal_integer_constant(*it, env);
         if (constant) {
-          field_defs = decompile_static_bitfield(typespec, env.dts->ts, pool, *constant);
+          auto constant_defs = decompile_bitfield_from_int(typespec, env.dts->ts, *constant);
+          for (auto& x : constant_defs) {
+            field_defs.push_back(BitFieldDef::from_constant(x, pool));
+          }
+
           args.erase(it);
           break;
         }

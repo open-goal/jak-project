@@ -4,6 +4,7 @@
 
 #include "common/common_types.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 struct BitfieldManip {
@@ -65,21 +66,29 @@ struct BitFieldDef {
   bool is_signed = false;
   Form* value = nullptr;
   std::string field_name;
-};
 
-std::vector<BitFieldDef> decompile_static_bitfield(const TypeSpec& type,
-                                                   const TypeSystem& ts,
-                                                   FormPool& pool,
-                                                   u64 value);
+  static BitFieldDef from_constant(const BitFieldConstantDef& constant, FormPool& pool);
+};
 
 class BitfieldStaticDefElement : public FormElement {
  public:
   BitfieldStaticDefElement(const TypeSpec& type, const std::vector<BitFieldDef>& field_defs);
+  BitfieldStaticDefElement(const TypeSpec& type,
+                           const std::vector<BitFieldConstantDef>& field_defs,
+                           FormPool& pool);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env&,
+                         FormPool&,
+                         FormStack&,
+                         std::vector<FormElement*>* result,
+                         bool) override {
+    mark_popped();
+    result->push_back(this);
+  }
 
  private:
   TypeSpec m_type;
