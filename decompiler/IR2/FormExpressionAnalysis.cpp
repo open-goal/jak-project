@@ -5,6 +5,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/data_decompile.h"
+#include "decompiler/IR2/bitfields.h"
 
 /*
  * TODO
@@ -209,18 +210,10 @@ Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& e
     return in;
   }
 
-  auto in_as_atom = form_as_atom(in);
-  if (in_as_atom && in_as_atom->is_int()) {
-    auto type_info = env.dts->ts.lookup_type(new_type);
-    auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-    if (bitfield_info) {
-      // GOT BITFIELD:
-      //      fmt::print("Integer constant {} is likely a static bitfield of type {}\n",
-      //                 in_as_atom->get_int(), bitfield_info->get_name());
-
-      auto fields = decompile_static_bitfield(new_type, env.dts->ts, in_as_atom->get_int());
-      return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, new_type, fields);
-    }
+  auto type_info = env.dts->ts.lookup_type(new_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info) {
+    return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
   return pool.alloc_single_element_form<CastElement>(nullptr, new_type, in);
@@ -2473,8 +2466,11 @@ void ConditionElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
       } else {
         source_types.push_back(TypeSpec("int"));
       }
+    } else if (m_src[i]->is_sym_val() && m_src[i]->get_str() == "#f") {
+      source_types.push_back(TypeSpec("symbol"));
     } else {
-      throw std::runtime_error("Unsupported atom in ConditionElement::push_to_stack");
+      throw std::runtime_error(fmt::format(
+          "Unsupported atom in ConditionElement::push_to_stack: {}", m_src[i]->to_string(env)));
     }
   }
   if (m_flipped) {
@@ -2524,7 +2520,7 @@ void ConditionElement::update_from_stack(const Env& env,
         source_types.push_back(TypeSpec("int"));
       }
     } else {
-      throw std::runtime_error("Unsupported atom in ConditionElement::push_to_stack");
+      throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack");
     }
   }
   if (m_flipped) {

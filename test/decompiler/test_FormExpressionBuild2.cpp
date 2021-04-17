@@ -789,3 +789,62 @@ TEST_F(FormRegressionTest, DmaInitialize) {
                  "[[1, \"v1\", \"vif-bank\"], [8, \"v1\", \"vif-bank\"], [6, \"a0\", "
                  "\"vif-bank\"], [13, \"a0\", \"vif-bank\"]]");
 }
+
+// Dynamic bitfield stuff.
+TEST_F(FormRegressionTest, SetDisplayEnv) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    ori v1, r0, 65441\n"
+      "    sd v1, 0(a0)\n"
+      "    addiu v1, r0, 3\n"
+      "    sd v1, 8(a0)\n"
+      "    dsll32 v1, t2, 23\n"
+      "    dsrl32 v1, v1, 23\n"
+      "    dsra t2, a2, 6\n"
+      "    dsll32 t2, t2, 26\n"
+      "    dsrl32 t2, t2, 17\n"
+      "    or v1, v1, t2\n"
+      "    dsll32 a1, a1, 27\n"
+      "    dsrl32 a1, a1, 12\n"
+      "    or v1, v1, a1\n"
+      "    sd v1, 16(a0)\n"
+      "    addiu v1, r0, 2559\n"
+      "    dsll32 v1, v1, 0\n"
+      "    daddiu a1, a2, 2559\n"
+      "    div a1, a2\n"
+      "    mflo a1\n"
+      "    daddiu a1, a1, -1\n"
+      "    dsll32 a1, a1, 28\n"
+      "    dsrl32 a1, a1, 5\n"
+      "    or v1, v1, a1\n"
+      "    dsll a1, a3, 1\n"
+      "    daddiu a1, a1, -1\n"
+      "    dsll32 a1, a1, 21\n"
+      "    dsrl a1, a1, 9\n"
+      "    or v1, v1, a1\n"
+      "    addiu a1, r0, 2560\n"
+      "    div a1, a2\n"
+      "    mflo a1\n"
+      "    mult3 a1, t0, a1\n"
+      "    daddiu a1, a1, 652\n"
+      "    dsll32 a1, a1, 20\n"
+      "    dsrl32 a1, a1, 20\n"
+      "    or v1, v1, a1\n"
+      "    daddiu a1, t1, 50\n"
+      "    dsll32 a1, a1, 21\n"
+      "    dsrl32 a1, a1, 9\n"
+      "    or v1, v1, a1\n"
+      "    sd v1, 24(a0)\n"
+      "    sd r0, 32(a0)\n"
+      "    or v0, a0, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function display-env int int int int int int display-env)";
+  std::string expected =
+      "(begin\n"
+      "  (set! (-> (the-as vif-bank #x10003800) err me0) 1)\n"
+      "  (set! (-> (the-as vif-bank #x10003c00) err me0) 1)\n"
+      "  0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
