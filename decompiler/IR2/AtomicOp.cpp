@@ -160,6 +160,14 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
   }
 }
 
+goos::Object SimpleAtom::to_form(const Env& env) const {
+  return to_form(env.file->labels, env);
+}
+
+std::string SimpleAtom::to_string(const Env& env) const {
+  return to_form(env).print();
+}
+
 void SimpleAtom::collect_vars(RegAccessSet& vars) const {
   if (is_var()) {
     vars.insert(var());

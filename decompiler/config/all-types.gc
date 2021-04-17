@@ -55,7 +55,7 @@
 (define-extern *listener-function* (function object))
 (define-extern *enable-method-set* int)
 (define-extern install-debug-handler (function int object symbol))
-(define-extern install-handler (function int (function int) none))
+(define-extern install-handler (function int (function int) int))  ;; GOAL thinks it returns something.
 
 (define-extern file-stream-open (function file-stream basic basic file-stream))
 (define-extern file-stream-length (function file-stream int))
@@ -2351,7 +2351,7 @@
 ; ;; dma-h
 (deftype dma-bucket (structure)
   ((tag   dma-tag  :offset-assert 0)     ;; the DMA tag to transfer the bucket's data
-   (last  (pointer uint64)  :offset-assert 8)  ;; the last tag of this bucket.
+   (last  (pointer dma-tag)  :offset-assert 8)  ;; the last tag of this bucket.
    (dummy uint32  :offset-assert 12)     ;; empty space.
    (next  uint32  :offset 4)             ;; this overlaps with the addr bit-field of the dma-tag
    )
@@ -3433,7 +3433,7 @@
 (define-extern set-display-env (function display-env int int int int int int display-env))
 (define-extern set-draw-env (function draw-env int int int int int int draw-env))
 (define-extern set-draw-env-offset (function draw-env int int int draw-env))
-(define-extern put-display-alpha-env (function draw-env none))
+(define-extern put-display-alpha-env (function display-env none))
 (define-extern set-display (function display int int int int int display))
 (define-extern set-display2 (function display int int int int int display))
 (define-extern allocate-dma-buffers (function display display))
@@ -4265,7 +4265,7 @@
   :size-assert         #x58
   :flag-assert         #x1400000058
   (:methods
-    (new (symbol type int int int float int int) _type_ 0)
+    (new (symbol type matrix int int float int int) _type_ 0)
     (set-mat! (font-context matrix) font-context 9)
     (set-origin! (font-context int int) font-context 10)
     (set-depth! (font-context int) font-context 11)

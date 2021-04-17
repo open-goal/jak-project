@@ -761,4 +761,92 @@ goos::Object decompile_pair(const DecompilerLabel& label,
   }
 }
 
+goos::Object decompile_bitfield(const TypeSpec& type,
+                                const BitFieldType* type_info,
+                                const DecompilerLabel& label,
+                                const std::vector<DecompilerLabel>&,
+                                const std::vector<std::vector<LinkedWord>>& words,
+                                const TypeSystem& ts) {
+  // read memory
+  int start_byte = label.offset;
+  int end_byte = start_byte + type_info->get_size_in_memory();
+  std::vector<u8> elt_bytes;
+  for (int j = start_byte; j < end_byte; j++) {
+    auto& word = words.at(label.target_segment).at(j / 4);
+    if (word.kind != LinkedWord::PLAIN_DATA) {
+      throw std::runtime_error("Got bad word in static bitfield");
+    }
+    elt_bytes.push_back(word.get_byte(j % 4));
+  }
+
+  // pad bytes array to 64-bits:
+  while (elt_bytes.size() < 8) {
+    elt_bytes.push_back(0);
+  }
+  assert(elt_bytes.size() == 8);
+
+  // read as u64
+  u64 value = *(u64*)(elt_bytes.data());
+  auto defs = decompile_bitfield_from_int(type, ts, value);
+
+  std::vector<goos::Object> result;
+  result.push_back(pretty_print::to_symbol(fmt::format("new 'static '{}", type.print())));
+  for (auto& def : defs) {
+    if (def.is_signed) {
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
+    } else {
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
+    }
+  }
+
+  return pretty_print::build_list(result);
+}
+
+std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
+                                                             const TypeSystem& ts,
+                                                             u64 value) {
+  u64 touched_bits = 0;
+  std::vector<BitFieldConstantDef> result;
+
+  auto type_info = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
+  assert(type_info);
+
+  for (auto& field : type_info->fields()) {
+    u64 bitfield_value;
+    bool is_signed = ts.tc(TypeSpec("int"), field.type()) && !ts.tc(TypeSpec("uint"), field.type());
+    if (is_signed) {
+      // signed
+      s64 signed_value = value;
+      bitfield_value = extract_bitfield<s64>(signed_value, field.offset(), field.size());
+    } else {
+      // unsigned
+      bitfield_value = extract_bitfield<u64>(value, field.offset(), field.size());
+    }
+
+    if (bitfield_value != 0) {
+      BitFieldConstantDef def;
+      def.value = bitfield_value;
+      def.field_name = field.name();
+      def.is_signed = is_signed;
+      result.push_back(def);
+    }
+
+    for (int i = field.offset(); i < field.offset() + field.size(); i++) {
+      touched_bits |= (u64(1) << i);
+    }
+  }
+
+  u64 untouched_but_set = value & (~touched_bits);
+
+  if (untouched_but_set) {
+    throw std::runtime_error(
+        fmt::format("Failed to decompile static bitfield of type {}. Original value is 0x{:x} but "
+                    "we didn't touch",
+                    type.print(), value, untouched_but_set));
+  }
+  return result;
+}
+
 }  // namespace decompiler

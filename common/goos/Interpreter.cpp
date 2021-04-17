@@ -126,6 +126,7 @@ Object Interpreter::intern(const std::string& name) {
  * Display the REPL, which will run until the user executes exit.
  */
 void Interpreter::execute_repl(ReplWrapper& repl) {
+  want_exit = false;
   while (!want_exit) {
     try {
       // read something from the user

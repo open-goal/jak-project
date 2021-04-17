@@ -36,7 +36,7 @@ add_library(
         IR2/AtomicOp.cpp
         IR2/AtomicOpForm.cpp
         IR2/AtomicOpTypeAnalysis.cpp
-        IR2/BitfieldForms.cpp
+        IR2/bitfields.cpp
         IR2/Env.cpp
         IR2/Form.cpp
         IR2/FormExpressionAnalysis.cpp

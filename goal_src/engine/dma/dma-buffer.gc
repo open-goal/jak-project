@@ -5,11 +5,16 @@
 ;; name in dgo: dma-buffer
 ;; dgos: GAME, ENGINE
 
-;; DMA buffers are used per frame to store DMA data.
-;; The dma-buffer manages the memory and dma-bucket organizes the stuff within.
+;; DMA buffers store data to be sent over DMA.
+;; They are a very simple wrapper around the data.
+;; Typically a dma-buffer will store dma-buckets or other more complicated data structures.
 
-;; The DMA system reads dma-tags.  A common trick is to set the dma in tte mode, which transfers
-;; the upper 64-bits of the 128-bit "packet" to the VIF, and you can put your vifcode there:
+;; The main display list uses a "chain transfer". In this mode, the DMA system reads dma-tags which
+;; tell it what to transfer next. This can be used to construct linked lists of DMA data.
+
+;; If the DMA is configured correctly, it is possible to make the first quadword contain
+;; both a dma-tag and a tag for the peripheral. This allows you to have a single quadword
+;; tag that controls both the DMA and peripheral. We call these a "dma-packet" for some reason.
 
 ;; Ex:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -20,7 +25,9 @@
 ;; note that the second vifcode can also hold other stuff depending on the mode.
 
 
-;; first quadword of a DMA with vif packet
+;; A dma-tag plus two vif-tags in a single quadword.
+;; Most DMA stuff goes directly to the VIF, so this is the
+;; most common.
 (deftype dma-packet (structure)
   ((dma  dma-tag   :offset-assert 0)
    (vif0 vif-tag   :offset-assert 8)
@@ -32,7 +39,7 @@
   :flag-assert         #x900000010
   )
 
-;; seems to be unused?
+;; seems to be unused? Also, it seems to be broken. Do not use this.
 (deftype dma-packet-array (inline-array-class)
   ()
   :method-count-assert 9
@@ -52,16 +59,16 @@
   :flag-assert         #x900000020
   )
 
-;; dma-buffer holds per-frame data for dma.
-;; the allocated-length is in bytes.
-;; the base points to the first unused memory in the buffer
-;; it is a dynamically sized type.
+;; dma-buffer is a dynamically sized container for storing DMA data.
+;; It seems like this was not actually implemented as a proper dynamic type.
+;; I added a data-buffer field that overlaps with data to get at the array of
+;; bytes more easily.
 (deftype dma-buffer (basic)
-  ((allocated-length int32     :offset-assert 4)
-   (base             pointer   :offset-assert 8)
-   (end              pointer    :offset-assert 12)
-   (data             uint64 1 :offset-assert 16) ;; weird, I guess this aligns the data?
-   (data-buffer      uint8 :dynamic :offset 16)
+  ((allocated-length int32    :offset-assert 4)    ;; number of bytes.
+   (base             pointer  :offset-assert 8)    ;; first unused memory.
+   (end              pointer  :offset-assert 12)   ;; ?? unused ??
+   (data             uint64 1 :offset-assert 16)   ;; start of memory.
+   (data-buffer      uint8    :dynamic :offset 16) ;; the actual dynamic array backing it.
    )
   (:methods
    (new (symbol type int) _type_  0)
@@ -71,29 +78,29 @@
   :flag-assert         #x900000018
   )
 
-(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (size int))
-  "Allocate a new dma-buffer with size bytes of space"
-  (local-vars (v0-0 dma-buffer))
-  ;; we really get size + 4 bytes I think...
-  (set! v0-0
-   (object-new allocation type-to-make
-    (+ (+ size -4) (the-as int (-> type-to-make size)))
+(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (arg0 int))
+  "Create a new dma-buffer with enough room to store arg0 bytes.
+   Note that this does not set the end field."
+  (let ((v0-0 (object-new allocation type-to-make
+                          (+ (+ arg0 -4) (the-as int (-> type-to-make size)))
+                          )
+          )
+        )
+    (set! (-> v0-0 base) (-> v0-0 data))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
     )
-   )
-  (set! (-> v0-0 base) (-> v0-0 data))
-  (set! (-> v0-0 allocated-length) size)
-  v0-0
   )
 
 (defun dma-buffer-inplace-new ((obj dma-buffer) (size int))
-  "Initialize a DMA buffer in place. Doesn't set the type of the memory"
+  "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
   (set! (-> obj base) (-> obj data))
   (set! (-> obj allocated-length) size)
   obj
   )
 
 (defmethod length dma-buffer ((obj dma-buffer))
-  "Get the size of the buffer"
+  "Get the amount of data the buffer can hold, in bytes."
   (-> obj allocated-length)
   )
 
@@ -108,80 +115,53 @@
   )
 
 (defun dma-buffer-free ((arg0 dma-buffer))
-  "Get the number of free quadwords, rounded down."
-  (the-as int
-          (shr (+ (&- (-> arg0 end) (-> arg0 base)) 15) 4)
+  "Get the number of free quadwords, rounded down, between base and end pointers."
+  (shr (+ (&- (-> arg0 end) (-> arg0 base)) 15) 4)
+  )
+
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (flush-path-3 int))
+  "Add DMA tags to load the given VU function. The destination in vu instruction memory
+   is specific inside the vu-function. This does NOT copy the vu-function into the buffer,
+   but creates a reference to the existing VU function."
+
+  ;; The first 4 bytes of a vu-function object's data are discarded because they aren't aligned.
+  (let ((func-ptr (the-as pointer (&-> vu-func data 4)))
+        (qlen (-> vu-func qlength)) ;; number of quadwords
+        (origin (-> vu-func origin)) ;; destination address in VU instruction memory.
+        )
+    ;; loop until whole program is transferred.
+    (while (> qlen 0)
+      ;; transfer up to 127 quadwords at a single time.
+      (let ((qwc-now (min 127 qlen)))
+        ;; grab the next dma-packet:
+        (let* ((dma-buf-2 dma-buf)
+               (buf-ptr (the-as dma-packet (-> dma-buf-2 base)))
+               )
+          ;; Set up DMA to transfer the data from the vu-function
+          ;; ref id = reference to data outside of the buffer.
+          (set! (-> buf-ptr dma)
+                (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int func-ptr) :qwc qwc-now)
+                )
+          ;; Set up first vifcode as a flush.
+          (set! (-> buf-ptr vif0)
+                (new 'static 'vif-tag :cmd (if (zero? flush-path-3) (vif-cmd flushe) (vif-cmd flusha)))
+                )
+          ;; next vifcode, transfer microprogram. This is in 64-bit units (VU instructions)
+          (set! (-> buf-ptr vif1)
+                (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (shl qwc-now 1) :imm origin)
+                )
+          (set! (-> dma-buf-2 base) (&+ (the-as pointer buf-ptr) 16))
           )
+        ;; increment by qwc-now quadwords.
+        (&+! func-ptr (shl qwc-now 4))
+        (set! qlen (- qlen qwc-now))
+        (+! origin (shl qwc-now 1))
+        )
+      )
+    )
+  #f
   )
 
-(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (arg2 int))
-  "Add DMA chain instructions to load the given VU function to VU program memory.
-   The destination address in VU memory is specified inside of the vu-function.
-   if arg2 = 0, then use FLUSHE, otherwise use FLUSHA, I think it runs _before_ the program upload.
-   Should run with TTE."
-  (local-vars
-   (func-ptr uint)
-   (origin int)
-   (qlen int)
-   (qwc-now int)
-   (dma-buf-2 dma-buffer)
-   (buf-ptr pointer)
-   )
-  ;; our strategy is to upload the program in chunks, as we can only upload 127 or 128 quadwords at a time.
-  ;; it is not clear why they did 127 quadword chunks, it seems like 128 would have worked too.
-  
-  ;; the actual data to upload.
-  (set! func-ptr (the uint (&-> vu-func data 4)))
-  ;; how long it is
-  (set! qlen (-> vu-func qlength))
-  ;; where to upload to. In 64-bit units because the PS2 is annoying.
-  (set! origin (-> vu-func origin))
-
-  ;; while we still have stuff to transfer...
-  (while (> qlen 0)
-    ;; get up to 127 quadwords. maybe they thought they lost one for the dmatag + 2 vif tags?
-   (set! qwc-now (min 127 qlen))
-   (set! dma-buf-2 dma-buf)
-   ;; grab a pointer to the next free memory
-   (set! buf-ptr (-> dma-buf-2 base))
-
-   ;; We will add the following tags
-   ;; | 32-bit MPG VIFCode | 32-bit FLUSHX VIFCode | 64-bit DMATag |
-   ;;  DMA Tag will the REF - indicating to transfer some other data (the program), then advance to
-   ;;   the next quadword in this buffer for the next steps.
-   ;; FLUSHX makes sure the VU isn't running while we upload a program.
-   ;; MPG tells VIF to upload the program to the VU.
-   
-   ;; put in a DMA Tag, REF
-   (set! (-> (the-as (pointer int64) buf-ptr))
-         (logior (logior #x30000000 ;; tag id = ref
-                         (shr (shl qwc-now 48) 48)) ;; qwc = qwc-now
-                 (the-as int (shr (shl (the-as uint func-ptr) 33) 1)) ;; addr = func-ptr
-                 )
-         )
-   ;; VIFCODE - FLUSHE or FLUSHA, wait for previous program to finish?
-   (set! (-> (the-as (pointer int32) buf-ptr) 2)
-    (shr (shl (if (zero? arg2) 16 19) 57) 33)
-    )
-   ;; MPG - Transfers the microgram!
-   ;; sets num to 0, which means 256x 64 bit units, or 128 quadwords.
-   ;; I think this transfers one quadword too many, but it's okay.
-   (set! (-> (the-as (pointer int32) buf-ptr) 3)
-    (logior (logior #x4a000000 (shr (shl origin 48) 48))
-     (shr (shl (shl qwc-now 1) 56) 40)
-     )
-    )
-   ;; advance buffer pointer to next quadword.
-   (set! (-> dma-buf-2 base) (&-> (the (pointer uint32) buf-ptr) 4))
-   ;; advance data pointer
-   (set! func-ptr (+ func-ptr (the-as uint (shl qwc-now 4))))
-   ;; count down transfered quads
-   (set! qlen (- qlen qwc-now))
-   ;; source pointer advances by doublewords...
-   (set! origin (+ origin (shl qwc-now 1)))
-   )
-  '#f
-  )
 
 (defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
   "Send the DMA buffer! DOES NOT TRANSFER TAG."
@@ -191,8 +171,7 @@
     ;; oops. we overflowed the DMA buffer. die.
     (segfault)
     )
-  (dma-send
-   chan
+  (dma-send chan
    (the-as uint (-> buf data))
    (the-as uint (dma-buffer-length buf))
    )
@@ -206,8 +185,7 @@
     ;; oops. we overflowed the DMA buffer. die.
     (segfault)
     )
-  (dma-send-chain
-   chan
+  (dma-send-chain chan
    (the-as uint (-> buf data))
    )
   )

@@ -52,4 +52,28 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
                                    int offset,
                                    const std::vector<LinkedWord>& obj_words,
                                    const TypeSystem& ts);
+goos::Object decompile_bitfield(const TypeSpec& type,
+                                const BitFieldType* type_info,
+                                const DecompilerLabel& label,
+                                const std::vector<DecompilerLabel>& labels,
+                                const std::vector<std::vector<LinkedWord>>& words,
+                                const TypeSystem& ts);
+
+struct BitFieldConstantDef {
+  bool is_signed = false;
+  u64 value = -1;
+  std::string field_name;
+};
+
+template <typename T>
+T extract_bitfield(T input, int start_bit, int size) {
+  int end_bit = start_bit + size;
+  T left_shifted = input << (64 - end_bit);
+  return left_shifted >> (64 - size);
+}
+
+std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
+                                                             const TypeSystem& ts,
+                                                             u64 value);
+
 }  // namespace decompiler

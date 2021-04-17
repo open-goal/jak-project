@@ -28,16 +28,16 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
 
 ReplStatus Compiler::execute_repl() {
   // init repl
-  m_repl.get()->print_welcome_message();
-  auto examples = m_repl.get()->examples;
-  auto regex_colors = m_repl.get()->regex_colors;
-  m_repl.get()->init_default_settings();
+  m_repl->print_welcome_message();
+  auto examples = m_repl->examples;
+  auto regex_colors = m_repl->regex_colors;
+  m_repl->init_default_settings();
   using namespace std::placeholders;
-  m_repl.get()->get_repl().set_completion_callback(
+  m_repl->get_repl().set_completion_callback(
       std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
-  m_repl.get()->get_repl().set_hint_callback(
+  m_repl->get_repl().set_hint_callback(
       std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
-  m_repl.get()->get_repl().set_highlighter_callback(
+  m_repl->get_repl().set_highlighter_callback(
       std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
 
   while (!m_want_exit && !m_want_reload) {
@@ -53,7 +53,7 @@ ReplStatus Compiler::execute_repl() {
         prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
       }
 
-      auto code = m_goos.reader.read_from_stdin(prompt, *m_repl.get());
+      auto code = m_goos.reader.read_from_stdin(prompt, *m_repl);
       if (!code) {
         continue;
       }

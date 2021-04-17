@@ -185,13 +185,25 @@
   :flag-assert         #x900000008
   )
 
+(defenum dma-tag-id
+    :bitfield #f
+    (refe 0)      ;; addr=ADDR, ends after this transfer
+    (cnt 1)       ;; addr=after tag, next-tag=after data
+    (next 2)      ;; addr=after tag, next-tag=ADDR
+    (ref 3)       ;; addr=ADDR, next-tag=after tag
+    (refs 4)      ;; ref, but stall controled
+    (call 5)      ;;  
+    (ret 6)       ;;
+    (end 7)       ;; next, but ends.
+    )
+
 ;; A DMA bucket is a way of organizing data within a dma buffer.
 ;; The buckets themselves live inside in the dma buffer.
 ;; the addr field of their tag should point to the next bucket.
 ;; This is not a PS2 hardware thing
 (deftype dma-bucket (structure)
   ((tag   dma-tag  :offset-assert 0)     ;; the DMA tag to transfer the bucket's data
-   (last  (pointer uint64)  :offset-assert 8)  ;; the last tag of this bucket.
+   (last  (pointer dma-tag) :offset-assert 8)  ;; the last tag of this bucket.
    (dummy uint32  :offset-assert 12)     ;; empty space.
    (next  uint32  :offset 4)             ;; this overlaps with the addr bit-field of the dma-tag
    )
@@ -238,6 +250,31 @@
    )
   :flag-assert #x900000002
   )
+
+
+(defenum vif-cmd
+    :bitfield #f
+    (nop 0)           ;; no-op, can still have irq set.
+    (stcycl 1)        ;; set write recycle register
+    (offset 2)        ;; set offset register
+    (base 3)          ;; set base register
+    (itop 4)          ;; set data pointer register (itops)
+    (stmod 5)         ;; set mode register
+    (mskpath3 6)      ;; set path 3 mask
+    (mark 7)          ;; set mark register
+    (flushe 16)       ;; wait for end of microprogram
+    (flush 17) ;; wait for end of microprogram and transfer (path1/path2)
+    (flusha 19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+    (mscal 20)  ;; activate microprogram (call)
+    (mscalf 21) ;; flushe and activate (call)
+    (mscnt 23)  ;; activate microprogram (continue)
+    (stmask 32) ;; set MASK register.
+    (strow 48)  ;; set filling data
+    (strow 49)  ;; set filling data
+    (mpg 74)    ;; transfer microprogram
+    ;; there's more...
+    )
+         
 
 ;; The VIF also has tags to control it.
 ;; Different VIF commands (called VIFcode) have different tag layouts.

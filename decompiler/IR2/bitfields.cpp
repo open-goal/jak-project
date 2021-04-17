@@ -1,7 +1,11 @@
-#include "Form.h"
+#include "bitfields.h"
+
+#include "decompiler/IR2/Form.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/Range.h"
 #include "common/util/BitUtils.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/IR2/GenericElementMatcher.h"
 
 namespace decompiler {
 
@@ -13,18 +17,34 @@ BitfieldStaticDefElement::BitfieldStaticDefElement(const TypeSpec& type,
                                                    const std::vector<BitFieldDef>& field_defs)
     : m_type(type), m_field_defs(field_defs) {}
 
-goos::Object BitfieldStaticDefElement::to_form_internal(const Env&) const {
+BitfieldStaticDefElement::BitfieldStaticDefElement(
+    const TypeSpec& type,
+    const std::vector<BitFieldConstantDef>& field_defs,
+    FormPool& pool)
+    : m_type(type) {
+  for (auto& x : field_defs) {
+    m_field_defs.push_back(BitFieldDef::from_constant(x, pool));
+  }
+}
+
+goos::Object BitfieldStaticDefElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> result;
 
   result.push_back(pretty_print::to_symbol(fmt::format("new 'static '{}", m_type.print())));
 
   for (auto& def : m_field_defs) {
-    if (def.is_signed) {
-      result.push_back(
-          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
+    auto def_as_atom = form_as_atom(def.value);
+    if (def_as_atom && def_as_atom->is_int()) {
+      u64 v = def_as_atom->get_int();
+      if (def.is_signed) {
+        result.push_back(pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)v)));
+      } else {
+        result.push_back(pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, v)));
+      }
     } else {
-      result.push_back(
-          pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
+      // TODO: will this make ugly massive lines?
+      result.push_back(pretty_print::to_symbol(
+          fmt::format(":{} {}", def.field_name, def.value->to_string(env))));
     }
   }
 
@@ -160,12 +180,6 @@ std::optional<BitField> find_field_from_mask(const TypeSystem& ts,
   return find_field(ts, type, mask_range->first(), mask_range->size(), {});
 }
 
-template <typename T>
-T extract_bitfield(T input, int start_bit, int size) {
-  int end_bit = start_bit + size;
-  T left_shifted = input << (64 - end_bit);
-  return left_shifted >> (64 - size);
-}
 }  // namespace
 
 /*!
@@ -191,8 +205,10 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
-    return pool.alloc_element<DerefElement>(m_base, false,
-                                            DerefToken::make_field_name(field.name()));
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
   }
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LEFT_SHIFT) {
@@ -205,14 +221,18 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
 
     int size = 64 - step.amount;
     int start_bit = end_bit - size;
-    assert(start_bit >= 0);
+    if (start_bit < 0) {
+      throw std::runtime_error("Bad bitfield start bit");
+    }
 
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
     auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
-    return pool.alloc_element<DerefElement>(m_base, false,
-                                            DerefToken::make_field_name(field.name()));
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
   }
 
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LOGAND) {
@@ -275,49 +295,155 @@ FormElement* BitfieldReadElement::push_step(const BitfieldManip step,
   throw std::runtime_error("Unknown state in BitfieldReadElement");
 }
 
-std::vector<BitFieldDef> decompile_static_bitfield(const TypeSpec& type,
-                                                   const TypeSystem& ts,
-                                                   u64 value) {
-  u64 touched_bits = 0;
-  std::vector<BitFieldDef> result;
+namespace {
+/*!
+ * Nested on the left, will reverse the order.
+ */
+std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
+  std::vector<Form*> result;
+  GenericElement* next = input;
 
-  auto type_info = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
-  assert(type_info);
-
-  for (auto& field : type_info->fields()) {
-    u64 bitfield_value;
-    bool is_signed = ts.tc(TypeSpec("int"), field.type()) && !ts.tc(TypeSpec("uint"), field.type());
-    if (is_signed) {
-      // signed
-      s64 signed_value = value;
-      bitfield_value = extract_bitfield<s64>(signed_value, field.offset(), field.size());
-    } else {
-      // unsigned
-      bitfield_value = extract_bitfield<u64>(value, field.offset(), field.size());
-    }
-
-    if (bitfield_value != 0) {
-      BitFieldDef def;
-      def.value = bitfield_value;
-      def.field_name = field.name();
-      def.is_signed = is_signed;
-      result.push_back(def);
-    }
-
-    for (int i = field.offset(); i < field.offset() + field.size(); i++) {
-      touched_bits |= (u64(1) << i);
+  while (next) {
+    assert(next->elts().size() == 2);
+    result.push_back(next->elts().at(1));
+    auto next_next = next->elts().at(0);
+    next = next_next->try_as_element<GenericElement>();
+    if (!next || !next->op().is_fixed(FixedOperatorKind::LOGIOR)) {
+      result.push_back(next_next);
+      break;
     }
   }
 
-  u64 untouched_but_set = value & (~touched_bits);
-
-  if (untouched_but_set) {
-    throw std::runtime_error(
-        fmt::format("Failed to decompile static bitfield of type {}. Original value is 0x{:x} but "
-                    "we didn't touch",
-                    type.print(), value, untouched_but_set));
-  }
   return result;
+}
+
+/*!
+ * If this could be an integer constant, figure out what the value is.
+ * TODO move this somewhere more general.
+ */
+std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
+  auto as_atom = form_as_atom(in);
+  if (as_atom && as_atom->is_int()) {
+    return as_atom->get_int();
+  }
+
+  // also (shl <something> 32)
+  auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                             {Matcher::any(1), Matcher::integer(32)});
+  auto mr = match(matcher, in);
+  if (mr.matched) {
+    auto arg_as_atom = form_as_atom(mr.maps.forms.at(1));
+    if (arg_as_atom && arg_as_atom->is_int()) {
+      u64 result = arg_as_atom->get_int();
+      result <<= 32ull;
+      return result;
+    }
+  }
+  return {};
+}
+
+Form* strip_int_or_uint_cast(Form* in) {
+  auto as_cast = in->try_as_element<CastElement>();
+  if (as_cast && (as_cast->type() == TypeSpec("int") || as_cast->type() == TypeSpec("uint"))) {
+    return as_cast->source();
+  }
+  return in;
+}
+
+std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
+                                                    const BitFieldType* type,
+                                                    const TypeSystem& ts,
+                                                    const Env&) {
+  // (shr (shl arg1 59) 44) for example
+  auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHR),
+                             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                          {Matcher::any(0), Matcher::any_integer(1)}),
+                              Matcher::any_integer(2)});
+  auto mr = match(matcher, strip_int_or_uint_cast(form));
+  if (mr.matched) {
+    auto value = mr.maps.forms.at(0);
+    int left = mr.maps.ints.at(1);
+    int right = mr.maps.ints.at(2);
+    int size = 64 - left;
+    int offset = left - right;
+    auto& f = find_field(ts, type, offset, size, {});
+    BitFieldDef def;
+    def.value = value;
+    def.field_name = f.name();
+    def.is_signed = false;  // we don't know.
+    return def;
+  }
+
+  return {};
+}
+
+}  // namespace
+
+BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, FormPool& pool) {
+  BitFieldDef bfd;
+  bfd.field_name = constant.field_name;
+  bfd.is_signed = constant.is_signed;
+  bfd.value = pool.alloc_single_element_form<SimpleAtomElement>(
+      nullptr, SimpleAtom::make_int_constant(constant.value));
+  return bfd;
+}
+
+/*!
+ * Cast the given form to a bitfield.
+ * If the form could have been a (new 'static 'bitfieldtype ...) it will attempt to generate this.
+ */
+Form* cast_to_bitfield(const BitFieldType* type_info,
+                       const TypeSpec& typespec,
+                       FormPool& pool,
+                       const Env& env,
+                       Form* in) {
+  in = strip_int_or_uint_cast(in);
+  // check if it's just a constant:
+  auto in_as_atom = form_as_atom(in);
+  if (in_as_atom) {
+    auto fields = decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int());
+    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, fields,
+                                                                    pool);
+  }
+
+  auto in_as_generic = strip_int_or_uint_cast(in)->try_as_element<GenericElement>();
+  std::vector<Form*> args;
+  if (in_as_generic && in_as_generic->op().is_fixed(FixedOperatorKind::LOGIOR)) {
+    args = compact_nested_logiors(in_as_generic, env);
+  } else {
+    args = {strip_int_or_uint_cast(in)};
+  }
+
+  if (!args.empty()) {
+    std::vector<BitFieldDef> field_defs;
+
+    for (auto it = args.begin(); it != args.end(); it++) {
+      auto constant = get_goal_integer_constant(*it, env);
+      if (constant) {
+        auto constant_defs = decompile_bitfield_from_int(typespec, env.dts->ts, *constant);
+        for (auto& x : constant_defs) {
+          field_defs.push_back(BitFieldDef::from_constant(x, pool));
+        }
+
+        args.erase(it);
+        break;
+      }
+    }
+
+    // now variables
+    for (auto& arg : args) {
+      auto maybe_field = get_bitfield_initial_set(arg, type_info, env.dts->ts, env);
+      if (!maybe_field) {
+        // failed, just return cast.
+        return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+      }
+      field_defs.push_back(*maybe_field);
+    }
+    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, field_defs);
+  }
+
+  // all failed, just return whatever.
+  return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
 }
 
 }  // namespace decompiler

@@ -286,6 +286,11 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         assert(m_args[1].get_int() < 64);
         return TP_Type::make_from_product(1ull << m_args[1].get_int(), is_signed(dts, arg0_type));
       }
+
+      if (m_args[1].is_int() && dts.ts.tc(TypeSpec("pointer"), arg0_type.typespec())) {
+        // allow shifting a pointer to put it in a bitfield.
+        return TP_Type::make_from_ts(TypeSpec("uint"));
+      }
       break;
 
     case Kind::MUL_SIGNED: {
@@ -600,16 +605,17 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         return TP_Type::make_from_ts("float");
       }
 
+      auto label_name = env.file->labels.at(src.label()).name;
+      auto hint = env.label_types().find(label_name);
+      if (hint != env.label_types().end()) {
+        return TP_Type::make_from_ts(
+            coerce_to_reg_type(env.dts->parse_type_spec(hint->second.type_name)));
+      }
+
       if (m_size == 8) {
         // 8 byte integer constants are always loaded from a static pool
         // this could technically hide loading a different type from inside of a static basic.
         return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
-      }
-
-      auto label_name = env.file->labels.at(src.label()).name;
-      auto hint = env.label_types().find(label_name);
-      if (hint != env.label_types().end()) {
-        return TP_Type::make_from_ts(env.dts->parse_type_spec(hint->second.type_name));
       }
     }
   }

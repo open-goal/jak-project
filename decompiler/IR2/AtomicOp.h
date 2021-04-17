@@ -129,6 +129,8 @@ class SimpleAtom {
   static SimpleAtom make_int_constant(s64 value);
   static SimpleAtom make_static_address(int static_label_id);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
+  goos::Object to_form(const Env& env) const;
+  std::string to_string(const Env& env) const;
   void collect_vars(RegAccessSet& vars) const;
 
   bool is_var() const { return m_kind == Kind::VARIABLE; }
