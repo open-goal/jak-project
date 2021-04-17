@@ -353,6 +353,20 @@
   `(none)
   )
 
+(defmacro case (switch &rest cases)
+  "A switch-case construct. switch is saved onto a local variable and compared against each case, sequentially.
+   else can be used as the default case, but it must be the last one."
+
+  (with-gensyms (sw)
+    `(let ((sw ,switch))
+        (cond ,@(apply
+                  (lambda (x) `(,@(if (eq? (first x) 'else) `(else ,@(rest x)) `((= sw ,(first x)) ,@(rest x)))))
+                   cases)
+                   )
+        )
+    )
+  )
+
 ;;;;;;;;;;;;;;;;;;;
 ;; Math Macros
 ;;;;;;;;;;;;;;;;;;;
@@ -531,7 +545,7 @@
 ;; (Fake) MIPS Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; these are macros for MIPS instructions which we may want to keep in the source code for 
+;; these are macros for MIPS instructions which we may want to keep in the source code for
 ;; readibility/curiosity/documentation, but will not translate into any actual instructions at all
 
 ;; A macro that generates a macro for the specified instruction
