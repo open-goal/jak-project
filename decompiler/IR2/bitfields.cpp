@@ -340,6 +340,14 @@ std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
   return {};
 }
 
+Form* strip_int_or_uint_cast(Form* in) {
+  auto as_cast = in->try_as_element<CastElement>();
+  if (as_cast && (as_cast->type() == TypeSpec("int") || as_cast->type() == TypeSpec("uint"))) {
+    return as_cast->source();
+  }
+  return in;
+}
+
 std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
                                                     const BitFieldType* type,
                                                     const TypeSystem& ts,
@@ -349,7 +357,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
                              {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
                                           {Matcher::any(0), Matcher::any_integer(1)}),
                               Matcher::any_integer(2)});
-  auto mr = match(matcher, form);
+  auto mr = match(matcher, strip_int_or_uint_cast(form));
   if (mr.matched) {
     auto value = mr.maps.forms.at(0);
     int left = mr.maps.ints.at(1);
@@ -395,38 +403,40 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
                                                                     pool);
   }
 
-  auto in_as_generic = in->try_as_element<GenericElement>();
+  auto in_as_generic = strip_int_or_uint_cast(in)->try_as_element<GenericElement>();
+  std::vector<Form*> args;
   if (in_as_generic && in_as_generic->op().is_fixed(FixedOperatorKind::LOGIOR)) {
-    auto args = compact_nested_logiors(in_as_generic, env);
+    args = compact_nested_logiors(in_as_generic, env);
+  } else {
+    args = {strip_int_or_uint_cast(in)};
+  }
 
-    if (!args.empty()) {
-      std::vector<BitFieldDef> field_defs;
+  if (!args.empty()) {
+    std::vector<BitFieldDef> field_defs;
 
-      for (auto it = args.begin(); it != args.end(); it++) {
-        auto constant = get_goal_integer_constant(*it, env);
-        if (constant) {
-          auto constant_defs = decompile_bitfield_from_int(typespec, env.dts->ts, *constant);
-          for (auto& x : constant_defs) {
-            field_defs.push_back(BitFieldDef::from_constant(x, pool));
-          }
-
-          args.erase(it);
-          break;
+    for (auto it = args.begin(); it != args.end(); it++) {
+      auto constant = get_goal_integer_constant(*it, env);
+      if (constant) {
+        auto constant_defs = decompile_bitfield_from_int(typespec, env.dts->ts, *constant);
+        for (auto& x : constant_defs) {
+          field_defs.push_back(BitFieldDef::from_constant(x, pool));
         }
-      }
 
-      // now variables
-      for (auto& arg : args) {
-        auto maybe_field = get_bitfield_initial_set(arg, type_info, env.dts->ts, env);
-        if (!maybe_field) {
-          // failed, just return cast.
-          return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
-        }
-        field_defs.push_back(*maybe_field);
+        args.erase(it);
+        break;
       }
-      return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec,
-                                                                      field_defs);
     }
+
+    // now variables
+    for (auto& arg : args) {
+      auto maybe_field = get_bitfield_initial_set(arg, type_info, env.dts->ts, env);
+      if (!maybe_field) {
+        // failed, just return cast.
+        return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+      }
+      field_defs.push_back(*maybe_field);
+    }
+    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, field_defs);
   }
 
   // all failed, just return whatever.

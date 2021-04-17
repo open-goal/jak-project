@@ -297,9 +297,11 @@ bool is_uint_type(const Env& env, int my_idx, RegisterAccess var) {
   return type == TypeSpec("uint");
 }
 
-bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool as_var) {
-  auto type = as_var ? env.get_variable_type(var, true).base_type()
-                     : env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool) {
+  // Now that decompiler types are synced up properly, we don't want this.
+  //  auto type = as_var ? env.get_variable_type(var, true).base_type()
+  //                     : env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+  auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
   return type == "pointer";
 }
 
