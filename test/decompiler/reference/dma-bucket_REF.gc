@@ -1,0 +1,60 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function dma-buffer-add-buckets
+;; INFO: Return type mismatch pointer vs none.
+(defun dma-buffer-add-buckets ((dma-buf dma-buffer) (count int))
+  (let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
+   (dotimes (i count)
+    (set!
+     (-> current-bucket tag)
+     (new 'static 'dma-tag
+      :id #x2
+      :addr (the-as int (&+ (the-as pointer current-bucket) 16))
+      )
+     )
+    (set! (-> current-bucket last) (the-as (pointer dma-tag) current-bucket))
+    (set!
+     current-bucket
+     (the-as dma-bucket (&+ (the-as pointer current-bucket) 16))
+     )
+    )
+   (set! (-> dma-buf base) (the-as pointer current-bucket))
+   )
+  (none)
+  )
+
+;; definition for function dma-buffer-patch-buckets
+(defun dma-buffer-patch-buckets ((bucket dma-bucket) (count int))
+  (when (nonzero? bucket)
+   (dotimes (i count)
+    (set! (-> bucket last 0 addr) (the-as int (&+ (the-as pointer bucket) 16)))
+    (set! (-> bucket last) (the-as (pointer dma-tag) 0))
+    (set! bucket (the-as dma-bucket (&+ (the-as pointer bucket) 16)))
+    )
+   )
+  bucket
+  )
+
+;; definition for function dma-bucket-insert-tag
+(defun
+  dma-bucket-insert-tag
+  ((base dma-bucket) (idx int) (tag-start pointer) (tag-end (pointer dma-tag)))
+  (let
+   ((bucket
+     (the-as dma-bucket (+ (the-as uint base) (the-as uint (shl idx 4))))
+     )
+    )
+   (set! (-> (the-as dma-bucket (-> bucket last)) next) (the-as uint tag-start))
+   (set! (-> bucket last) tag-end)
+   )
+  tag-start
+  )
+
+;; failed to figure out what this is:
+(let ((v0-0 0))
+  )
+
+;; failed to figure out what this is:
+(none)
+

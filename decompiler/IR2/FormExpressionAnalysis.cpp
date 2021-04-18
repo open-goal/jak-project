@@ -712,10 +712,19 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
-    auto cast = pool.alloc_single_element_form<CastElement>(
+    auto casted0 = args.at(0);
+
+    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger")) {
+      casted0 = pool.alloc_single_element_form<CastElement>(
+          nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(0));
+    }
+
+    auto casted1 = pool.alloc_single_element_form<CastElement>(
         nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
+
     auto new_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), cast);
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), casted0, casted1);
     result->push_back(new_form);
   }
 }
@@ -2884,7 +2893,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                  new_val->to_string(env));
       }
 
-      auto base = mr.maps.forms.at(1);
+      auto base = strip_int_or_uint_cast(mr.maps.forms.at(1));
       auto idx = mr.maps.forms.at(0);
 
       assert(idx && base);

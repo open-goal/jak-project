@@ -90,6 +90,10 @@ const std::string& Env::remapped_name(const std::string& name) const {
   }
 }
 
+goos::Object Env::get_variable_name_with_cast(const RegisterAccess& access) const {
+  return get_variable_name_with_cast(access.reg(), access.idx(), access.mode());
+}
+
 goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const {
   if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(reg, atomic_idx, mode);

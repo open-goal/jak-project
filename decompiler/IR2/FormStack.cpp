@@ -257,6 +257,13 @@ bool is_op_in_place(SetVarElement* elt,
       return false;
     }
 
+    // also check with casts. This avoid something like
+    // (set! x (+ (the <blah> x) 1))
+    auto src_var_cast = env.get_variable_name_with_cast(*first);
+    if (src_var_cast.print() != dst_var) {
+      return false;
+    }
+
     *val_out = result.maps.forms.at(1);
     *base_out = first.value();
     return true;

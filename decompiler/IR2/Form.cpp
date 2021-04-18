@@ -309,7 +309,7 @@ goos::Object SetVarElement::to_form_internal(const Env& env) const {
     auto expected_type = env.get_variable_type(m_dst, true);
     if (!env.dts->ts.tc(expected_type, m_src_type)) {
       return pretty_print::build_list(
-          "set!", m_dst.to_form(env),
+          "set!", m_dst.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST),
           pretty_print::build_list("the-as", expected_type.print(), m_src->to_form(env)));
     }
   }
