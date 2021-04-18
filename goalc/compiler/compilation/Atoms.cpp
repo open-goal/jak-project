@@ -172,6 +172,7 @@ const std::unordered_map<
         {"method-of-object", &Compiler::compile_method_of_object},
         {"declare-type", &Compiler::compile_declare_type},
         {"none", &Compiler::compile_none},
+        {"size-of", &Compiler::compile_size_of},
 
         // LAMBDA
         {"lambda", &Compiler::compile_lambda},

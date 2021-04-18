@@ -312,6 +312,7 @@ class Compiler {
                                std::vector<std::pair<std::string, RegVal*>> args);
   u8 ftf_fsf_to_blend_mask(u8 val);
   emitter::Register::VF_ELEMENT ftf_fsf_to_vector_element(u8 val);
+  int get_size_for_size_of(const goos::Object& form, const goos::Object& rest);
 
   template <typename... Args>
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
@@ -539,6 +540,7 @@ class Compiler {
   Val* compile_declare_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_none(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 extern const std::unordered_map<

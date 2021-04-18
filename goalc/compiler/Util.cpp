@@ -214,6 +214,11 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
           return true;
         }
       }
+
+      if (head_sym->name == "size-of") {
+        *out = get_size_for_size_of(in, in.as_pair()->cdr);
+        return true;
+      }
     }
   }
 
@@ -227,7 +232,6 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
     }
   }
 
-  // todo, try more things like constants before giving up.
   return false;
 }
 

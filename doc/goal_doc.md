@@ -1259,6 +1259,22 @@ Example:
 
 None of the edge cases of `the` apply to `the-as`.
 
+## `size-of`
+Get the size of a type, in bytes.
+```lisp
+(size-of <type-name>)
+```
+Get the size of a type, by name. The type must be a plain name, like `pointer` or `dma-bucket`. Compound types are not supported. It works on value and structure types and returns the size in memory. For dynamic types, it returns the size if there if the dynamic part has 0 size.  For weird types like `none` it throws an error.
+
+This value can be used in most places where the compiler is expecting a constant integer as well, such as the size of a stack array, which must be known at compile time.
+
+Example:
+```lisp
+(size-of dma-bucket)
+```
+Returns the size of the `dma-bucket` type which is 16 bytes.
+
+
 
 ## Pointer Math
 Not implemented well yet.
