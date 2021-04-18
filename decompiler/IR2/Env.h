@@ -52,6 +52,7 @@ class Env {
 
   // TODO - remove this.
   goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
+  goos::Object get_variable_name_with_cast(const RegisterAccess& access) const;
   std::string get_variable_name(const RegisterAccess& access) const;
   std::optional<TypeSpec> get_user_cast_for_access(const RegisterAccess& access) const;
   TypeSpec get_variable_type(const RegisterAccess& access, bool using_user_var_types) const;

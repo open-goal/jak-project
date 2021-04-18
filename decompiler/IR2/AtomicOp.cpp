@@ -140,8 +140,15 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
   switch (m_kind) {
     case Kind::VARIABLE:
       return m_variable.to_form(env);
-    case Kind::INTEGER_CONSTANT:
-      return goos::Object::make_integer(m_int);
+    case Kind::INTEGER_CONSTANT: {
+      if (std::abs(m_int) > INT32_MAX) {
+        u64 v = m_int;
+        return pretty_print::to_symbol(fmt::format("#x{:x}", v));
+      } else {
+        return goos::Object::make_integer(m_int);
+      }
+    }
+
     case Kind::SYMBOL_PTR:
       if (m_string == "#t") {
         return pretty_print::to_symbol("#t");

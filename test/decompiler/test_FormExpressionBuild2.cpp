@@ -997,3 +997,30 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
       "  )";
   test_with_expr(func, type, expected, false, "", {}, "[[[9, 33], \"t2\", \"dma-packet\"]]");
 }
+
+TEST_F(FormRegressionTest, DmaBucketInsertTag) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    dsll v1, a1, 4\n"
+      "    daddu v1, a0, v1\n"
+      "    lwu a0, 8(v1)\n"
+      "    sw a2, 4(a0)\n"
+      "    sw a3, 8(v1)\n"
+      "    or v0, a2, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function dma-bucket int pointer (pointer dma-tag) pointer)";
+  std::string expected =
+      "(begin\n"
+      "  (let ((v1-1 (the-as dma-bucket (+ (the-as uint arg0) (the-as uint (shl arg1 4))))))\n"
+      "   (set! (-> (the-as dma-bucket (-> v1-1 last)) next) (the-as uint arg2))\n"
+      "   (set! (-> v1-1 last) arg3)\n"
+      "   )\n"
+      "  arg2\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {},
+                 "[\n"
+                 "    [[2, 6], \"v1\", \"dma-bucket\"],\n"
+                 "    [3, \"a0\", \"dma-bucket\"]\n"
+                 "  ]");
+}

@@ -712,10 +712,19 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
-    auto cast = pool.alloc_single_element_form<CastElement>(
+    auto casted0 = args.at(0);
+
+    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger")) {
+      casted0 = pool.alloc_single_element_form<CastElement>(
+          nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(0));
+    }
+
+    auto casted1 = pool.alloc_single_element_form<CastElement>(
         nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
+
     auto new_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), cast);
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), casted0, casted1);
     result->push_back(new_form);
   }
 }
@@ -877,6 +886,16 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
   }
 }
 
+namespace {
+Form* strip_int_or_uint_cast(Form* in) {
+  auto as_cast = in->try_as_element<CastElement>();
+  if (as_cast && (as_cast->type() == TypeSpec("int") || as_cast->type() == TypeSpec("uint"))) {
+    return as_cast->source();
+  }
+  return in;
+}
+}  // namespace
+
 void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
                                                                 FixedOperatorKind kind,
                                                                 FormPool& pool,
@@ -884,24 +903,26 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
                                                                 std::vector<FormElement*>* result,
                                                                 bool allow_side_effects) {
   auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
-  BitfieldManip::Kind manip_kind;
-  if (kind == FixedOperatorKind::LOGAND) {
-    manip_kind = BitfieldManip::Kind::LOGAND;
-  } else if (kind == FixedOperatorKind::LOGIOR) {
-    manip_kind = BitfieldManip::Kind::LOGIOR_WITH_CONSTANT_INT;
-  } else {
-    assert(false);
-  }
 
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info && m_expr.get_arg(1).is_int()) {
-    // andi, bitfield
+    // andi, ori with bitfield.
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-    auto read_elt = dynamic_cast<BitfieldReadElement*>(base->try_as_single_element());
+    auto read_elt = dynamic_cast<BitfieldAccessElement*>(base->try_as_single_element());
     if (!read_elt) {
-      read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+      read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     }
+
+    BitfieldManip::Kind manip_kind;
+    if (kind == FixedOperatorKind::LOGAND) {
+      manip_kind = BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT;
+    } else if (kind == FixedOperatorKind::LOGIOR) {
+      manip_kind = BitfieldManip::Kind::LOGIOR_WITH_CONSTANT_INT;
+    } else {
+      assert(false);
+    }
+
     BitfieldManip step(manip_kind, m_expr.get_arg(1).get_int());
     auto other = read_elt->push_step(step, env.dts->ts, pool);
     if (other) {
@@ -925,17 +946,44 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
                              allow_side_effects);
 
     if (bitfield_info) {
-      // mask didn't fit in imm
-      auto arg1_atom = form_as_atom(args.at(1));
+      // either the immediate didn't fit in the 16-bit imm or it's with a variable
+      auto read_elt = dynamic_cast<BitfieldAccessElement*>(args.at(0)->try_as_single_element());
+      if (!read_elt) {
+        read_elt = pool.alloc_element<BitfieldAccessElement>(args.at(0), arg0_type);
+      }
+
+      auto stripped_arg1 = strip_int_or_uint_cast(args.at(1));
+      auto arg1_atom = form_as_atom(strip_int_or_uint_cast(args.at(1)));
       if (arg1_atom && arg1_atom->is_int()) {
-        auto read_elt = dynamic_cast<BitfieldReadElement*>(args.at(0)->try_as_single_element());
-        if (!read_elt) {
-          read_elt = pool.alloc_element<BitfieldReadElement>(args.at(0), arg0_type);
+        BitfieldManip::Kind manip_kind;
+        if (kind == FixedOperatorKind::LOGAND) {
+          manip_kind = BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT;
+        } else if (kind == FixedOperatorKind::LOGIOR) {
+          manip_kind = BitfieldManip::Kind::LOGIOR_WITH_CONSTANT_INT;
+        } else {
+          assert(false);
         }
         BitfieldManip step(manip_kind, arg1_atom->get_int());
         auto other = read_elt->push_step(step, env.dts->ts, pool);
         assert(!other);  // shouldn't be complete.
         result->push_back(read_elt);
+        return;
+      } else {
+        BitfieldManip::Kind manip_kind;
+        if (kind == FixedOperatorKind::LOGAND) {
+          manip_kind = BitfieldManip::Kind::LOGAND_WITH_FORM;
+        } else if (kind == FixedOperatorKind::LOGIOR) {
+          manip_kind = BitfieldManip::Kind::LOGIOR_WITH_FORM;
+        } else {
+          assert(false);
+        }
+        auto step = BitfieldManip::from_form(manip_kind, stripped_arg1);
+        auto other = read_elt->push_step(step, env.dts->ts, pool);
+        if (other) {
+          result->push_back(other);
+        } else {
+          result->push_back(read_elt);
+        }
         return;
       }
     }
@@ -967,7 +1015,7 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info && m_expr.get_arg(1).is_int()) {
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
     auto other = read_elt->push_step(step, env.dts->ts, pool);
     assert(!other);  // shouldn't be complete.
@@ -988,7 +1036,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info && m_expr.get_arg(1).is_int()) {
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL, m_expr.get_arg(1).get_int());
     auto other = read_elt->push_step(step, env.dts->ts, pool);
     assert(other);  // should be a high field.
@@ -999,7 +1047,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env
     if (m_expr.get_arg(1).is_int()) {
       auto arg =
           pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-      auto as_bitfield_access = dynamic_cast<BitfieldReadElement*>(arg->try_as_single_element());
+      auto as_bitfield_access = dynamic_cast<BitfieldAccessElement*>(arg->try_as_single_element());
 
       if (as_bitfield_access) {
         BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL, m_expr.get_arg(1).get_int());
@@ -1040,7 +1088,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info && m_expr.get_arg(1).is_int()) {
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_ARITH, m_expr.get_arg(1).get_int());
     auto other = read_elt->push_step(step, env.dts->ts, pool);
     assert(other);  // should be a high field.
@@ -1325,12 +1373,14 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     if (dst_form == src_form) {
       // success!
       auto value = src_as_bf_set->mods().at(0).value;
+      value->parent_element = this;
 
       // make the (-> thing bitfield)
       auto field_token = DerefToken::make_field_name(src_as_bf_set->mods().at(0).field_name);
       auto loc_elt = pool.alloc_element<DerefElement>(m_dst, false, field_token);
       loc_elt->inline_nested();
       auto loc = pool.alloc_single_form(nullptr, loc_elt);
+      loc->parent_element = this;
 
       m_dst = loc;
       m_src = value;
@@ -2218,7 +2268,7 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
   FormElement* bitfield_compare = nullptr;
   assert(source_forms.size() == 1);
   auto as_bitfield_op =
-      dynamic_cast<BitfieldReadElement*>(source_forms.at(0)->try_as_single_element());
+      dynamic_cast<BitfieldAccessElement*>(source_forms.at(0)->try_as_single_element());
   if (as_bitfield_op) {
     bitfield_compare = as_bitfield_op->push_step(
         BitfieldManip(BitfieldManip::Kind::NONZERO_COMPARE, 0), env.dts->ts, pool);
@@ -2587,7 +2637,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info) {
     auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
-    auto read_elt = pool.alloc_element<BitfieldReadElement>(base, arg0_type);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL_32BIT, integer);
     auto other = read_elt->push_step(step, env.dts->ts, pool);
     assert(other);  // should be a high field.
@@ -2843,7 +2893,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                  new_val->to_string(env));
       }
 
-      auto base = mr.maps.forms.at(1);
+      auto base = strip_int_or_uint_cast(mr.maps.forms.at(1));
       auto idx = mr.maps.forms.at(0);
 
       assert(idx && base);

@@ -17,6 +17,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
+    "dma-bucket",
     /* gap */
     "bounding-box",
     /* gap */
@@ -31,7 +32,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    "dma-buffer",
+    "dma-buffer", "dma-bucket",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
