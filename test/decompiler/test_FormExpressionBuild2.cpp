@@ -40,7 +40,7 @@ TEST_F(FormRegressionTest, MatrixPMult) {
   std::string type = "(function matrix matrix matrix matrix)";
   std::string expected =
       "(begin\n"
-      "  (let ((s5-0 (new (quote stack) (quote matrix))))\n"
+      "  (let ((s5-0 (new (quote stack-no-clear) (quote matrix))))\n"
       "   (set! (-> s5-0 vector 0 quad) (the-as uint128 0))\n"
       "   (set! (-> s5-0 vector 1 quad) (the-as uint128 0))\n"
       "   (set! (-> s5-0 vector 2 quad) (the-as uint128 0))\n"
@@ -93,7 +93,7 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
   std::string type = "(function quaternion quaternion quaternion)";
   std::string expected =
       "(begin\n"
-      "  (let ((s5-0 (new (quote stack) (quote matrix))))\n"
+      "  (let ((s5-0 (new (quote stack-no-clear) (quote matrix))))\n"
       "   (set! (-> s5-0 vector 0 quad) (the-as uint128 0))\n"
       "   (set! (-> s5-0 vector 1 quad) (the-as uint128 0))\n"
       "   (set! (-> s5-0 vector 2 quad) (the-as uint128 0))\n"

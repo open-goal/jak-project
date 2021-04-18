@@ -394,6 +394,13 @@ TEST_F(WithGameTests, StaticBoxedArray) {
                          {"4 asdf \"test\" (a b) 0 object 12 12\n0\n"});
 }
 
+TEST_F(WithGameTests, SizeOf) {
+  runner.run_static_test(env, testCategory, "test-size-of.gc",
+                         {"size of dma-bucket is 16\n"
+                          "size of ints: 2 4 16\n"
+                          "size of stack array is 16\n0\n"});
+}
+
 TEST_F(WithGameTests, Trig) {
   runner.run_static_test(env, testCategory, "test-trig.gc",
                          {"2.0000\n"    // 2 deg

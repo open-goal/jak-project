@@ -24,6 +24,11 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   for (auto& builtin : g_goal_forms) {
     m_symbol_info.add_builtin(builtin.first);
   }
+
+  // load auto-complete history, only if we are running in the interactive mode.
+  if (m_repl) {
+    m_repl->load_history();
+  }
 }
 
 ReplStatus Compiler::execute_repl() {

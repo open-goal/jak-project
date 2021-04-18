@@ -812,6 +812,10 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
       throw_compiler_error(form, "Cannot create a dynamically sized stack array");
     }
 
+    if (constant_count <= 0) {
+      throw_compiler_error(form, "Cannot create a stack array with size {}", constant_count);
+    }
+
     if (!rest->is_empty_list()) {
       // got extra arguments
       throw_compiler_error(form, "New array form got more arguments than expected");
@@ -1134,4 +1138,34 @@ bool GoalEnum::operator==(const GoalEnum& other) const {
 
 bool GoalEnum::operator!=(const GoalEnum& other) const {
   return !(*this == other);
+}
+
+int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object& rest) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+
+  if (!m_ts.fully_defined_type_exists(args.unnamed.at(0).as_symbol()->name)) {
+    throw_compiler_error(
+        form, "The type {} given to size-of could not be found, or was not fully defined",
+        args.unnamed.at(0).print());
+  }
+
+  auto type = m_ts.lookup_type(args.unnamed.at(0).as_symbol()->name);
+  auto as_value = dynamic_cast<ValueType*>(type);
+  auto as_structure = dynamic_cast<StructureType*>(type);
+
+  if (as_value) {
+    return as_value->get_load_size();
+
+  } else if (as_structure) {
+    return as_structure->get_size_in_memory();
+
+  } else {
+    throw_compiler_error(form, "The type {} does not have a size.", args.unnamed.at(0).print());
+    return -1;
+  }
+}
+
+Val* Compiler::compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_integer(get_size_for_size_of(form, rest), env);
 }

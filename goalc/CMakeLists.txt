@@ -12,6 +12,7 @@ add_library(compiler
         compiler/CompilerSettings.cpp
         compiler/CodeGenerator.cpp
         compiler/StaticObject.cpp
+        compiler/compilation/Asm.cpp
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
         compiler/compilation/Block.cpp
@@ -35,8 +36,6 @@ add_library(compiler
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
         regalloc/allocate_common.cpp
-        compiler/Compiler.cpp
-        compiler/compilation/Asm.cpp
         )
 
 target_link_libraries(compiler common Zydis)

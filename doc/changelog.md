@@ -132,3 +132,6 @@
 - Added `.ppach` and `.pceqw`
 - Fixed a bug where setting 128-bit / 64-bit variables from each other only did a 32-bit set
 - Added support for creating a static bitfield where fields may not be known at compile time.
+- Added support for `(size-of <typename>)`
+- Fixed a bug where creating a stack array of 0 sized caused a compiler assertion. It is now a normal compiler error.
+- Fixed a bug where the repl history was not loaded on compiler start
