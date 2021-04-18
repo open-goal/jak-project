@@ -2230,7 +2230,8 @@ StackVarDefElement::StackVarDefElement(const StackVarEntry& entry) : m_entry(ent
 goos::Object StackVarDefElement::to_form_internal(const Env&) const {
   switch (m_entry.hint.container_type) {
     case StackVariableHint::ContainerType::NONE:
-      return pretty_print::build_list(fmt::format("new 'stack '{}", m_entry.ref_type.print()));
+      return pretty_print::build_list(
+          fmt::format("new 'stack-no-clear '{}", m_entry.ref_type.print()));
     default:
       assert(false);
   }
