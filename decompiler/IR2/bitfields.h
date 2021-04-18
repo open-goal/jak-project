@@ -13,12 +13,15 @@ struct BitfieldManip {
     RIGHT_SHIFT_LOGICAL,
     RIGHT_SHIFT_LOGICAL_32BIT,
     RIGHT_SHIFT_ARITH,
-    LOGAND,
+    LOGAND_WITH_CONSTANT_INT,
     LOGIOR_WITH_CONSTANT_INT,
+    LOGIOR_WITH_FORM,
+    LOGAND_WITH_FORM,
     NONZERO_COMPARE,
     INVALID
   } kind = Kind::INVALID;
   s64 amount = -1;
+  Form* value = nullptr;
 
   bool is_right_shift() const {
     return kind == Kind::RIGHT_SHIFT_ARITH || kind == Kind::RIGHT_SHIFT_LOGICAL ||
@@ -44,11 +47,20 @@ struct BitfieldManip {
   }
 
   BitfieldManip(Kind k, s64 imm) : kind(k), amount(imm) {}
+  static BitfieldManip from_form(Kind k, Form* val) {
+    BitfieldManip result;
+    result.kind = k;
+    result.value = val;
+    return result;
+  }
+
+ private:
+  BitfieldManip() = default;
 };
 
-class BitfieldReadElement : public FormElement {
+class BitfieldAccessElement : public FormElement {
  public:
-  BitfieldReadElement(Form* base_value, const TypeSpec& ts);
+  BitfieldAccessElement(Form* base_value, const TypeSpec& ts);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -95,11 +107,6 @@ class BitfieldStaticDefElement : public FormElement {
   std::vector<BitFieldDef> m_field_defs;
 };
 
-struct BitfieldFormDef {
-  Form* value;
-  std::string field_name;
-};
-
 /*!
  * This represents copying a bitfield object, then modifying the type.
  * It's an intermediate step to modifying a bitfield in place and it's not expected to appear
@@ -109,7 +116,7 @@ class ModifiedCopyBitfieldElement : public FormElement {
  public:
   ModifiedCopyBitfieldElement(const TypeSpec& type,
                               Form* base,
-                              const std::vector<BitfieldFormDef>& field_modifications);
+                              const std::vector<BitFieldDef>& field_modifications);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -117,12 +124,12 @@ class ModifiedCopyBitfieldElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
 
   Form* base() const { return m_base; }
-  const std::vector<BitfieldFormDef> mods() const { return m_field_modifications; }
+  const std::vector<BitFieldDef> mods() const { return m_field_modifications; }
 
  private:
   TypeSpec m_type;
   Form* m_base = nullptr;
-  std::vector<BitfieldFormDef> m_field_modifications;
+  std::vector<BitFieldDef> m_field_modifications;
 };
 
 Form* cast_to_bitfield(const BitFieldType* type_info,

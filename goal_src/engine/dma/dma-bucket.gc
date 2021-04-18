@@ -52,35 +52,31 @@
 
 
 (defun dma-buffer-patch-buckets ((bucket dma-bucket) (count int))
-  "Patch last pointers in a sequence of buckets.
-   Call this after you have added everything to buckets."
-  (local-vars (i int))
+  "After adding all data to buckets, call this to stitch together the chains for
+   count consecutive buckets"
   (when (nonzero? bucket)
-    (set! i 0)
-    (while (< i count)
-      ;; make last tag of this bucket point to the next bucket.
-      (set! (-> bucket last 0)
-            (logior (logand (-> bucket last 0) #x80000000ffffffff)
-                    (shr (shl (+ (the-as uint bucket) 16) 33) 1)
-                    )
-            )
-      ;; clear last, and move on to the next bucket.
-      (set! (-> bucket last) (the (pointer dma-tag) 0))
+    (dotimes (i count)
+      ;; set last tag's address to the next bucket.
+      (set! (-> bucket last 0 addr) (the-as int (&+ (the-as pointer bucket) 16)))
+      ;; clear last pointer.
+      (set! (-> bucket last) (the-as (pointer dma-tag) 0))
+      ;; next bucket
       (set! bucket (&+ bucket 16))
-      (set! i (+ i 1))
       )
     )
-  (the-as int bucket)
+  bucket
   )
 
-(defun dma-bucket-insert-tag ((base dma-bucket) (idx int) (tag-start dma-bucket) (tag-end (pointer uint64)))
-  "Splice in a tag."
-  (local-vars (bucket dma-bucket))
-  ;; seek to bucket we want to splice before.
-  (set! bucket (&+ base (shl idx 4)))
-  ;; append to last tag (kind of a hack here with the types)
-  (set! (-> (the dma-bucket (-> bucket last)) next) (the uint tag-start))
-  ;; make prev = end of tag so we can add more.
-  (set! (-> bucket last) (the (pointer dma-tag) tag-end))
+(defun dma-bucket-insert-tag ((base dma-bucket) (idx int) (tag-start pointer) (tag-end (pointer dma-tag)))
+  "Add a dma chain to the idx bucket"
+
+  ;; find the bucket
+  (let ((bucket (the-as dma-bucket (&+ base (the-as uint (shl idx 4))))))
+    ;; update our last bucket to point to this one.
+    ;; this is abusing the dma-bucket type to set the "addr" field of the dma-tag.
+    (set! (-> (the-as dma-bucket (-> bucket last)) next) (the-as uint tag-start))
+    ;; remember this as the last tag in the bucket.
+    (set! (-> bucket last) tag-end)
+    )
   tag-start
   )
