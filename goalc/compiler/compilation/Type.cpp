@@ -1,7 +1,8 @@
 #include "goalc/compiler/Compiler.h"
 #include "third-party/fmt/core.h"
+#include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
-#include "goalc/compiler/Enum.h"
+#include "common/type_system/Enum.h"
 
 namespace {
 
@@ -230,7 +231,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   auto kv = m_symbol_types.find(result.type.base_type());
   if (kv != m_symbol_types.end() && kv->second.base_type() != "type") {
     // we already have something that's not a type with the same name, this is bad.
-    fmt::print("[Warning] deftype will redefined {} from {} to a type.\n", result.type.base_type(),
+    fmt::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
                kv->second.print());
   }
   // remember that this is a type
@@ -993,69 +994,20 @@ Val* Compiler::compile_none(const goos::Object& form, const goos::Object& rest, 
   return get_none();
 }
 
-Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& _rest, Env* env) {
+Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env) {
   // format is (defenum name [options] [entries])
+  (void)form;
   (void)env;
-  auto* rest = &_rest;
-
-  // name
-  auto enum_name = symbol_string(pair_car(*rest));
-  rest = &pair_cdr(*rest);
-
-  // default enum type will be int32.
-  auto enum_type = m_ts.make_typespec("int32");
-  bool is_bitfield = false;
-
-  auto current = pair_car(*rest);
-  while (current.is_symbol() && symbol_string(current).at(0) == ':') {
-    auto option_name = symbol_string(current);
-    rest = &pair_cdr(*rest);
-    auto option_value = pair_car(*rest);
-    rest = &pair_cdr(*rest);
-    current = pair_car(*rest);
-
-    if (option_name == ":type") {
-      enum_type = parse_typespec(option_value);
-    } else if (option_name == ":bitfield") {
-      if (symbol_string(option_value) == "#t") {
-        is_bitfield = true;
-      } else if (symbol_string(option_value) == "#f") {
-        is_bitfield = false;
-      } else {
-        throw_compiler_error(form, "Invalid option {} to :bitfield option.", option_value.print());
-      }
-    } else {
-      throw_compiler_error(form, "Unknown option {} for defenum.", option_name);
-    }
-  }
 
   GoalEnum new_enum;
-  new_enum.base_type = enum_type;
-  new_enum.is_bitfield = is_bitfield;
+  parse_defenum(rest, &m_ts, new_enum);
 
-  while (!rest->is_empty_list()) {
-    auto def = pair_car(*rest);
-    auto name = symbol_string(pair_car(def));
-    def = pair_cdr(def);
-    auto value = pair_car(def);
-    if (!value.is_int()) {
-      throw_compiler_error(def, "Expected integer for enum value, got {}", value.print());
-    }
-
-    def = pair_cdr(def);
-    if (!def.is_empty_list()) {
-      throw_compiler_error(def, "Got too many items in defenum defintion.");
-    }
-
-    new_enum.entries[name] = value.integer_obj.value;
-    rest = &pair_cdr(*rest);
-  }
-
-  auto existing_kv = m_enums.find(enum_name);
+  auto existing_kv = m_enums.find(new_enum.name);
   if (existing_kv != m_enums.end() && existing_kv->second != new_enum) {
-    print_compiler_warning("defenum changes the definition of existing enum {}", enum_name.c_str());
+    print_compiler_warning("defenum changes the definition of existing enum {}",
+                           new_enum.name.c_str());
   }
-  m_enums[enum_name] = new_enum;
+  m_enums[new_enum.name] = new_enum;
 
   return get_none();
 }
@@ -1144,13 +1096,18 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  if (!m_ts.fully_defined_type_exists(args.unnamed.at(0).as_symbol()->name)) {
+  auto type_to_look_for = args.unnamed.at(0).as_symbol()->name;
+  if (m_ts.enum_type_exists(type_to_look_for)) {
+    type_to_look_for = m_ts.get_enum_type_name(type_to_look_for);
+  }
+
+  if (!m_ts.fully_defined_type_exists(type_to_look_for)) {
     throw_compiler_error(
-        form, "The type {} given to size-of could not be found, or was not fully defined",
+        form, "The type or enum {} given to size-of could not be found, or was not fully defined",
         args.unnamed.at(0).print());
   }
 
-  auto type = m_ts.lookup_type(args.unnamed.at(0).as_symbol()->name);
+  auto type = m_ts.lookup_type(type_to_look_for);
   auto as_value = dynamic_cast<ValueType*>(type);
   auto as_structure = dynamic_cast<StructureType*>(type);
 

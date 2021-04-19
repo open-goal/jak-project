@@ -17,7 +17,7 @@
 #include "third-party/fmt/color.h"
 #include "CompilerException.h"
 #include "goalc/compiler/SymbolInfo.h"
-#include "Enum.h"
+#include "common/type_system/Enum.h"
 #include "common/goos/ReplUtils.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };

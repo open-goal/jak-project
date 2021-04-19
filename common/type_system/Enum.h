@@ -6,6 +6,7 @@
 #include "common/type_system/TypeSpec.h"
 
 struct GoalEnum {
+  std::string name;
   TypeSpec base_type;
   bool is_bitfield = false;
   std::unordered_map<std::string, s64> entries;
