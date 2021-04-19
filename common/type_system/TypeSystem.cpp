@@ -71,7 +71,8 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
 }
 
 /*!
- * Add a new 'enum type'. This maps enum names to the their type's name, allowing the enum name to be used as if it were a type name.
+ * Add a new 'enum type'. This maps enum names to the their type's name, allowing the enum name to
+ * be used as if it were a type name.
  */
 Type* TypeSystem::add_enum_type(const std::string& name, const std::string& type) {
   auto t = lookup_type(type);
@@ -370,8 +371,7 @@ MethodInfo TypeSystem::add_method(const std::string& type_name,
 std::string TypeSystem::get_enum_type_name(const std::string& name) const {
   if (m_enum_types.find(name) != m_enum_types.end()) {
     return m_enum_types.at(name);
-  }
-  else {
+  } else {
     throw std::runtime_error("get_enum_type_name failed");
   }
 }
