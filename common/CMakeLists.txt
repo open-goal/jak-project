@@ -10,6 +10,7 @@ add_library(common
         goos/TextDB.cpp
         goos/ReplUtils.cpp
         log/log.cpp
+        type_system/defenum.cpp
         type_system/deftype.cpp
         type_system/Type.cpp
         type_system/TypeFieldLookup.cpp

@@ -91,6 +91,7 @@ class TypeSystem {
   TypeSystem();
 
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
+  Type* add_enum_type(const std::string& name, const std::string& type);
   void forward_declare_type(const std::string& name);
   void forward_declare_type_as_basic(const std::string& name);
   void forward_declare_type_as_structure(const std::string& name);
@@ -101,6 +102,7 @@ class TypeSystem {
 
   bool fully_defined_type_exists(const std::string& name) const;
   bool partially_defined_type_exists(const std::string& name) const;
+  bool enum_type_exists(const std::string& name) const;
   TypeSpec make_typespec(const std::string& name) const;
   TypeSpec make_array_typespec(const TypeSpec& element_type) const;
   TypeSpec make_function_typespec(const std::vector<std::string>& arg_types,
@@ -116,6 +118,8 @@ class TypeSystem {
 
   Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
   Type* lookup_type_allow_partial_def(const std::string& name) const;
+
+  std::string get_enum_type_name(const std::string& name) const;
 
   MethodInfo add_method(const std::string& type_name,
                         const std::string& method_name,
@@ -229,6 +233,7 @@ class TypeSystem {
   enum ForwardDeclareKind { TYPE, STRUCTURE, BASIC };
 
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
+  std::unordered_map<std::string, std::string> m_enum_types;
   std::unordered_map<std::string, ForwardDeclareKind> m_forward_declared_types;
   std::vector<std::unique_ptr<Type>> m_old_types;
 

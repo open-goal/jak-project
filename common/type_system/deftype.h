@@ -8,7 +8,6 @@
 
 #include "TypeSystem.h"
 #include "common/goos/Object.h"
-#include "common/type_system/TypeSystem.h"
 
 struct DeftypeResult {
   TypeFlags flags;

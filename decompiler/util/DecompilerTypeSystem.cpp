@@ -1,7 +1,9 @@
 #include "DecompilerTypeSystem.h"
 #include "common/goos/Reader.h"
+#include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "decompiler/Disasm/Register.h"
+#include "common/type_system/Enum.h"
 #include "common/log/log.h"
 #include "TP_Type.h"
 
@@ -77,6 +79,10 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         } else {
           throw std::runtime_error("bad declare-type");
         }
+      } else if (car(o).as_symbol()->name == "defenum") {
+        GoalEnum new_enum;
+        parse_defenum(cdr(o), &ts, new_enum);
+        // TODO we do nothing with the enum for now
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
       }

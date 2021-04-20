@@ -1264,7 +1264,7 @@ Get the size of a type, in bytes.
 ```lisp
 (size-of <type-name>)
 ```
-Get the size of a type, by name. The type must be a plain name, like `pointer` or `dma-bucket`. Compound types are not supported. It works on value and structure types and returns the size in memory. For dynamic types, it returns the size if there if the dynamic part has 0 size.  For weird types like `none` it throws an error.
+Get the size of a type, by name. The type must be a plain name, like `pointer` or `dma-bucket`. Compound types are not supported. It works on value and structure types and returns the size in memory. For dynamic types, it returns the size as if the dynamic part has 0 size. For weird types like `none` it throws an error.
 
 This value can be used in most places where the compiler is expecting a constant integer as well, such as the size of a stack array, which must be known at compile time.
 
