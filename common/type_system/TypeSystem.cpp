@@ -75,8 +75,6 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
  * be used as if it were a type name.
  */
 Type* TypeSystem::add_enum_type(const std::string& name, const std::string& type) {
-  auto t = lookup_type(type);
-  assert(t);
   auto kv = m_enum_types.find(name);
   if (kv != m_enum_types.end()) {
     // exists already
@@ -89,22 +87,15 @@ Type* TypeSystem::add_enum_type(const std::string& name, const std::string& type
       throw std::runtime_error("Enum type was redefined.");
     }
   } else {
-    // Should forward declaring enums be forbidden? would it even necessarily break anything? I'll
-    // keep it allowed for now, though it is a weird thing to do...
-    // if (m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
-    //  fmt::print(
-    //      "[TypeSystem] Enum type {} was forward-declared, enums cannot be forward-declared\n");
-    //}
+    // an enum has been forward declared, which is only allowed for types
+    if (m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
+      fmt::print("[TypeSystem] Enum {} was forward-declared, enums cannot be forward-declared\n",
+                 name);
 
-    // newly defined!
-
-    if (m_types.find(t->get_parent()) == m_types.end()) {
-      fmt::print("[TypeSystem] Type {} has undefined parent {}\n", t->get_name(), t->get_parent());
-      throw std::runtime_error("add_enum_type failed");
+      throw std::runtime_error("Enum was forward-declared.");
     }
 
     m_enum_types[name] = type;
-    m_forward_declared_types.erase(name);
   }
 
   return lookup_type(m_enum_types[name]);
