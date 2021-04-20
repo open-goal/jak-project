@@ -368,6 +368,9 @@ MethodInfo TypeSystem::add_method(const std::string& type_name,
   return add_method(lookup_type(make_typespec(type_name)), method_name, ts, allow_new_method);
 }
 
+/*!
+ * Return the type name of an enum. Throws if the enum does not exist.
+ */
 std::string TypeSystem::get_enum_type_name(const std::string& name) const {
   if (m_enum_types.find(name) != m_enum_types.end()) {
     return m_enum_types.at(name);
