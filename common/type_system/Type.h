@@ -5,11 +5,11 @@
  * Representation of a GOAL type in the type system.
  */
 
-#ifndef JAK_TYPE_H
-#define JAK_TYPE_H
+#pragma once
 
 #include <string>
 #include <cassert>
+#include <unordered_map>
 #include "common/goal_constants.h"
 #include "TypeSpec.h"
 
@@ -90,6 +90,8 @@ class Type {
       return nullptr;
     }
   }
+
+  bool is_boxed() const { return m_is_boxed; }
 
  protected:
   Type(std::string parent, std::string name, bool is_boxed);
@@ -312,4 +314,19 @@ class BitFieldType : public ValueType {
   std::vector<BitField> m_fields;
 };
 
-#endif  // JAK_TYPE_H
+class EnumType : public ValueType {
+ public:
+  EnumType(const ValueType* parent,
+           std::string name,
+           bool is_bitfield,
+           const std::unordered_map<std::string, s64>& entries);
+  std::string print() const override;
+  bool operator==(const Type& other) const override;
+  const std::unordered_map<std::string, s64>& entries() const { return m_entries; }
+  bool is_bitfield() const { return m_is_bitfield; }
+
+ private:
+  friend class TypeSystem;
+  bool m_is_bitfield = false;
+  std::unordered_map<std::string, s64> m_entries;
+};

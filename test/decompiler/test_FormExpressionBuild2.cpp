@@ -307,7 +307,7 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
       "    daddiu sp, sp, 80";
   std::string type = "(function process-tree (function object object) kernel-context object)";
   std::string expected =
-      "(let ((s4-0 (or (nonzero? (logand (-> arg0 mask) 256)) (arg1 arg0))))\n"
+      "(let ((s4-0 (or (nonzero? (logand (the-as int (-> arg0 mask)) 256)) (arg1 arg0))))\n"
       "  (cond\n"
       "   ((= s4-0 (quote dead))\n"
       "    )\n"

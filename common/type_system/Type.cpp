@@ -516,15 +516,6 @@ bool StructureType::operator==(const Type& other) const {
   // clang-format on
 }
 
-bool BitFieldType::operator==(const Type& other) const {
-  if (typeid(*this) != typeid(other)) {
-    return false;
-  }
-
-  auto* p_other = dynamic_cast<const BitFieldType*>(&other);
-  return other.is_equal(*this) && m_fields == p_other->m_fields;
-}
-
 int StructureType::get_size_in_memory() const {
   return m_size_in_mem;
 }
@@ -669,4 +660,44 @@ std::string BitFieldType::print() const {
   result += fmt::format("Mem size: {}, load size: {}, signed {}, align {}\n", get_size_in_memory(),
                         get_load_size(), get_load_signed(), get_in_memory_alignment());
   return result;
+}
+
+bool BitFieldType::operator==(const Type& other) const {
+  if (typeid(*this) != typeid(other)) {
+    return false;
+  }
+
+  auto* p_other = dynamic_cast<const BitFieldType*>(&other);
+  return other.is_equal(*this) && m_fields == p_other->m_fields;
+}
+
+/////////////////
+// Enum
+/////////////////
+
+EnumType::EnumType(const ValueType* parent,
+                   std::string name,
+                   bool is_bitfield,
+                   const std::unordered_map<std::string, s64>& entries)
+    : ValueType(parent->get_name(),
+                std::move(name),
+                parent->is_boxed(),
+                parent->get_load_size(),
+                parent->get_load_signed(),
+                parent->get_preferred_reg_class()),
+      m_is_bitfield(is_bitfield),
+      m_entries(entries) {}
+
+std::string EnumType::print() const {
+  return fmt::format("Enum Type {}", m_name);
+}
+
+bool EnumType::operator==(const Type& other) const {
+  if (typeid(*this) != typeid(other)) {
+    return false;
+  }
+
+  auto* p_other = dynamic_cast<const EnumType*>(&other);
+  return other.is_equal(*this) && (m_entries == p_other->m_entries) &&
+         (m_is_bitfield == p_other->m_is_bitfield);
 }

@@ -216,6 +216,11 @@ Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& e
     return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
+  auto enum_info = dynamic_cast<EnumType*>(type_info);
+  if (enum_info && enum_info->is_bitfield()) {
+    return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
+  }
+
   return pool.alloc_single_element_form<CastElement>(nullptr, new_type, in);
 }
 

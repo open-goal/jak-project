@@ -474,4 +474,26 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
 }
 
+Form* cast_to_bitfield_enum(const EnumType* type_info,
+                            const TypeSpec& typespec,
+                            FormPool& pool,
+                            const Env& env,
+                            Form* in) {
+  auto integer = get_goal_integer_constant(strip_int_or_uint_cast(in), env);
+  if (integer) {
+    auto elts =
+        decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, *integer);
+    auto oper = GenericOperator::make_function(
+        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
+    std::vector<Form*> form_elts;
+    for (auto& x : elts) {
+      form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
+    }
+    return pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
+  } else {
+    // all failed, just return whatever.
+    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+  }
+}
+
 }  // namespace decompiler

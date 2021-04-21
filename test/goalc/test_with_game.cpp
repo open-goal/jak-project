@@ -401,6 +401,19 @@ TEST_F(WithGameTests, SizeOf) {
                           "size of stack array is 16\n0\n"});
 }
 
+TEST_F(WithGameTests, EnumAndBitfieldTypes) {
+  runner.run_static_test(env, testCategory, "test-bitfield-and-enum-types.gc",
+                         {"content type: uint16\n"  // runtime type is u16
+                          "content type: uint16\n"
+                          "bitfield spacing: 2\n"        // u16 spacing
+                          "enum spacing: 2\n"            // u16 spacing
+                          "bitfield array spacing: 2\n"  // u16 spacing
+                          "enum array spacing: 2\n"      // u16 spacing
+                          "9\n"                          // 4 + 5
+                          "sizes: 2 2\n"                 // size-of should work
+                          "0\n"});
+}
+
 TEST_F(WithGameTests, Trig) {
   runner.run_static_test(env, testCategory, "test-trig.gc",
                          {"2.0000\n"    // 2 deg

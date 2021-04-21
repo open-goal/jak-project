@@ -7,7 +7,6 @@
  */
 
 #include "TypeSystem.h"
-#include "Enum.h"
 #include "common/goos/Object.h"
 
-void parse_defenum(const goos::Object& defenum, TypeSystem* ts, GoalEnum& goalenum);
+EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts);

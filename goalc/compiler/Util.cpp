@@ -205,10 +205,10 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
     auto head = in.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
-      auto enum_kv = m_enums.find(head_sym->name);
-      if (enum_kv != m_enums.end()) {
+      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+      if (enum_type) {
         bool success;
-        u64 as_enum = enum_lookup(in, enum_kv->second, in.as_pair()->cdr, false, &success);
+        u64 as_enum = enum_lookup(in, enum_type, in.as_pair()->cdr, false, &success);
         if (success) {
           *out = as_enum;
           return true;

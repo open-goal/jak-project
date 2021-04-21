@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "data_decompile.h"
 #include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
@@ -846,6 +848,37 @@ std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& typ
                     "we didn't touch",
                     type.print(), value, untouched_but_set));
   }
+  return result;
+}
+
+std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                          const TypeSystem& ts,
+                                                          u64 value) {
+  u64 reconstructed = 0;
+  std::vector<std::string> result;
+  auto type_info = ts.try_enum_lookup(type.base_type());
+  assert(type_info);
+  assert(type_info->is_bitfield());
+
+  for (auto& field : type_info->entries()) {
+    u64 mask = ((u64)1) << field.second;
+    if (value & mask) {
+      reconstructed |= mask;
+      result.push_back(field.first);
+    }
+  }
+
+  if (reconstructed != value) {
+    throw std::runtime_error(
+        fmt::format("Failed to decompile bitfield enum. Original value is 0x{:x} but we could only "
+                    "make 0x{:x} using the available fields.",
+                    value, reconstructed));
+  }
+
+  // unordered map will give us these fields in a weird order, let's order them explicitly.
+  std::sort(result.begin(), result.end(), [&](const std::string& a, const std::string& b) {
+    return type_info->entries().at(a) < type_info->entries().at(b);
+  });
   return result;
 }
 
