@@ -2047,13 +2047,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
+(defenum timer-clock-selection
+  :type uint8
+  (busclk 0)
+  (busclk/16 1)
+  (busclk/256 2)
+  (hblank 3)
+  )
 (deftype timer-mode (uint32)
-  (;; clock selection:
-   ;;  0: BUSCLK
-   ;;  1: BUSCLK/16
-   ;;  2: BUSCLK/256
-   ;;  3: hblank
-   (clks  uint8 :offset 0 :size 2)
+  ((clks  timer-clock-selection :offset 0 :size 2)
    (gate  uint8 :offset 2 :size 1) ;; gate function enable
    (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
    ;; gate mode:
@@ -2106,7 +2108,7 @@
 (define-extern timer-init (function timer-bank timer-mode int))
 
 (deftype profile-frame (structure)
-  ((name       basic   :offset-assert 0)
+  ((name       symbol  :offset-assert 0)
    (time-stamp uint32  :offset-assert 4)
    (color      rgba    :offset-assert 8)
    )
