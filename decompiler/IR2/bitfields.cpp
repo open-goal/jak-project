@@ -380,9 +380,10 @@ std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
   return result;
 }
 
+}  // namespace
+
 /*!
  * If this could be an integer constant, figure out what the value is.
- * TODO move this somewhere more general.
  */
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
   auto as_atom = form_as_atom(in);
@@ -404,8 +405,6 @@ std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
   }
   return {};
 }
-
-}  // namespace
 
 BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, FormPool& pool) {
   BitFieldDef bfd;

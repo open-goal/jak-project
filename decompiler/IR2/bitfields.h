@@ -144,4 +144,5 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
                             const Env& env,
                             Form* in);
 
+std::optional<u64> get_goal_integer_constant(Form* in, const Env&);
 }  // namespace decompiler

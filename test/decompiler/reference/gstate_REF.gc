@@ -63,8 +63,11 @@
    (arg5 object)
    )
   (local-vars (pp process) (s7-0 none) (sp-0 none) (sp-1 int) (ra-0 int))
-  (set! (-> pp mask) (logand -193 (the-as int (-> pp mask))))
-  (set! (-> pp mask) (logior (-> pp mask) 1024))
+  (set!
+   (-> pp mask)
+   (logand (lognot (process-mask sleep sleep-code)) (-> pp mask))
+   )
+  (set! (-> pp mask) (logior (-> pp mask) (process-mask going)))
   (cond
    ((= (-> pp status) 'initialize)
     (set! (-> pp trans-hook) #f)
@@ -93,7 +96,7 @@
       (set! s0-1 (-> s0-1 next))
       )
      )
-    (set! (-> pp mask) (logand -1025 (the-as int (-> pp mask))))
+    (set! (-> pp mask) (logand (lognot (process-mask going)) (-> pp mask)))
     (let ((s0-2 (-> pp state)))
      (set! (-> pp event-hook) (-> s0-2 event))
      (cond
