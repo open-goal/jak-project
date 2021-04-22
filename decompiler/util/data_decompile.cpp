@@ -513,8 +513,6 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   std::vector<goos::Object> result_def = {
       pretty_print::to_symbol(fmt::format("new 'static '{}", actual_type.print()))};
-  //      pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-  //      pretty_print::to_symbol(fmt::format("'{}", actual_type.print()))};
   for (auto& f : field_defs_out) {
     auto str = f.second.print();
     if (str.length() < 40) {
@@ -531,6 +529,20 @@ goos::Object decompile_structure(const TypeSpec& type,
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts) {
+  auto bitfield_enum = ts.try_enum_lookup(type);
+  if (bitfield_enum) {
+    assert((int)bytes.size() == bitfield_enum->get_load_size());
+    assert(bytes.size() <= 8);
+    u64 value = 0;
+    memcpy(&value, bytes.data(), bytes.size());
+    auto defs = decompile_bitfield_enum_from_int(type, ts, value);
+    std::vector<goos::Object> result_def = {pretty_print::to_symbol(type.print())};
+    for (auto& x : defs) {
+      result_def.push_back(pretty_print::to_symbol(x));
+    }
+    return pretty_print::build_list(result_def);
+  }
+
   // try as common integer types:
   if (ts.tc(TypeSpec("uint32"), type)) {
     assert(bytes.size() == 4);

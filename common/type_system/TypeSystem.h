@@ -184,7 +184,7 @@ class TypeSystem {
   }
 
   EnumType* try_enum_lookup(const std::string& type_name) const;
-
+  EnumType* try_enum_lookup(const TypeSpec& type) const;
   TypeSpec lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) const;
   TypeSpec lowest_common_ancestor_reg(const TypeSpec& a, const TypeSpec& b) const;
   TypeSpec lowest_common_ancestor(const std::vector<TypeSpec>& types) const;

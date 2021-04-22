@@ -1110,6 +1110,10 @@ EnumType* TypeSystem::try_enum_lookup(const std::string& type_name) const {
   return nullptr;
 }
 
+EnumType* TypeSystem::try_enum_lookup(const TypeSpec& type) const {
+  return try_enum_lookup(type.base_type());
+}
+
 /*!
  * Get a path from type to object.
  */

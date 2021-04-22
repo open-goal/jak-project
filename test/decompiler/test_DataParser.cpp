@@ -20,7 +20,7 @@ class DataDecompTest : public ::testing::Test {
 
   static void TearDownTestCase() { dts.reset(); }
 
-  void check_forms_equal(const std::string& expected, const std::string& actual) {
+  void check_forms_equal(const std::string& actual, const std::string& expected) {
     auto expected_form =
         pretty_print::get_pretty_printer_reader().read_from_string(expected, false).as_pair()->car;
     auto actual_form =
@@ -356,4 +356,31 @@ TEST_F(DataDecompTest, Bitfield) {
   auto decomp =
       decompile_bitfield(typespec, info, parsed.label("L80"), parsed.labels, {parsed.words}, ts);
   check_forms_equal(decomp.print(), "(new 'static 'rgba :r #x40 :b #x40 :a #x80)");
+}
+
+TEST_F(DataDecompTest, KernelContext) {
+  std::string input =
+      "    .type kernel-context\n"
+      "L345:\n"
+      "    .word 0x41\n"
+      "    .word 0x0\n"
+      "    .word 0x0\n"
+      "    .word 0x2\n"
+      "    .word 0x0\n"
+      "    .symbol #f\n"
+      "    .symbol #f\n"
+      "    .word 0x0\n"
+      "    .word 0x0\n"
+      "    .word 0x0\n"
+      "    .symbol #t\n";
+  auto parsed = parse_data(input);
+  auto decomp =
+      decompile_at_label_guess_type(parsed.label("L345"), parsed.labels, {parsed.words}, dts->ts);
+  check_forms_equal(decomp.print(),
+                    "(new 'static 'kernel-context\n"
+                    "  :prevent-from-run (process-mask execute sleep)\n"
+                    "  :next-pid 2\n"
+                    "  :current-process #f\n"
+                    "  :relocating-process #f\n"
+                    "  :low-memory-message #t)\n");
 }
