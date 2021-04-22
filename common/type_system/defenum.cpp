@@ -4,7 +4,7 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
-#include "Enum.h"
+#include "common/goos/ParseHelpers.h"
 #include "defenum.h"
 #include "deftype.h"
 #include "third-party/fmt/core.h"
@@ -58,20 +58,6 @@ bool integer_fits(s64 in, int size, bool is_signed) {
   }
 }
 
-template <typename T>
-void for_each_in_list(const goos::Object& list, T f) {
-  const goos::Object* iter = &list;
-  while (iter->is_pair()) {
-    auto lap = iter->as_pair();
-    f(lap->car);
-    iter = &lap->cdr;
-  }
-
-  if (!iter->is_empty_list()) {
-    throw std::runtime_error("invalid list in for_each_in_list: " + list.print());
-  }
-}
-
 std::string symbol_string(const goos::Object& obj) {
   if (obj.is_symbol()) {
     return obj.as_symbol()->name;
@@ -81,10 +67,11 @@ std::string symbol_string(const goos::Object& obj) {
 
 }  // namespace
 
-void parse_defenum(const goos::Object& defenum, TypeSystem* ts, GoalEnum& goalenum) {
+EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
   // default enum type will be int32.
-  goalenum.base_type = ts->make_typespec("int32");
-  goalenum.is_bitfield = false;
+  TypeSpec base_type = ts->make_typespec("int32");
+  bool is_bitfield = false;
+  std::unordered_map<std::string, s64> entries;
 
   auto iter = &defenum;
 
@@ -94,7 +81,7 @@ void parse_defenum(const goos::Object& defenum, TypeSystem* ts, GoalEnum& goalen
   if (!enum_name_obj.is_symbol()) {
     throw std::runtime_error("defenum must be given a symbol as its name");
   }
-  goalenum.name = enum_name_obj.as_symbol()->name;
+  std::string name = enum_name_obj.as_symbol()->name;
 
   auto current = car(iter);
   while (current.is_symbol() && symbol_string(current).at(0) == ':') {
@@ -105,12 +92,12 @@ void parse_defenum(const goos::Object& defenum, TypeSystem* ts, GoalEnum& goalen
     current = car(iter);
 
     if (option_name == ":type") {
-      goalenum.base_type = parse_typespec(ts, option_value);
+      base_type = parse_typespec(ts, option_value);
     } else if (option_name == ":bitfield") {
       if (symbol_string(option_value) == "#t") {
-        goalenum.is_bitfield = true;
+        is_bitfield = true;
       } else if (symbol_string(option_value) == "#f") {
-        goalenum.is_bitfield = false;
+        is_bitfield = false;
       } else {
         fmt::print("Invalid option {} to :bitfield option.\n", option_value.print());
         throw std::runtime_error("invalid bitfield option");
@@ -121,10 +108,10 @@ void parse_defenum(const goos::Object& defenum, TypeSystem* ts, GoalEnum& goalen
     }
   }
 
-  auto type = ts->lookup_type(goalenum.base_type);
+  auto type = ts->lookup_type(base_type);
   while (!iter->is_empty_list()) {
     auto field = car(iter);
-    auto name = symbol_string(car(&field));
+    auto entry_name = symbol_string(car(&field));
     auto rest = cdr(&field);
     auto& value = car(rest);
     if (!value.is_int()) {
@@ -138,17 +125,20 @@ void parse_defenum(const goos::Object& defenum, TypeSystem* ts, GoalEnum& goalen
 
     rest = cdr(rest);
     if (!rest->is_empty_list()) {
-      fmt::print("Got too many items in defenum {} entry {}\n", goalenum.name, name);
+      fmt::print("Got too many items in defenum {} entry {}\n", name, entry_name);
     }
 
-    goalenum.entries[name] = entry_val;
+    entries[entry_name] = entry_val;
     iter = cdr(iter);
   }
 
-  if (is_type("integer", goalenum.base_type, ts)) {
-    ts->add_enum_type(goalenum.name, goalenum.base_type.base_type());
+  if (is_type("integer", base_type, ts)) {
+    auto parent = ts->get_type_of_type<ValueType>(base_type.base_type());
+    auto new_type = std::make_unique<EnumType>(parent, name, is_bitfield, entries);
+    new_type->set_runtime_type(parent->get_runtime_name());
+    return dynamic_cast<EnumType*>(ts->add_type(name, std::move(new_type)));
   } else {
-    throw std::runtime_error("Creating an enum with type " + goalenum.base_type.print() +
+    throw std::runtime_error("Creating an enum with type " + base_type.print() +
                              " is not allowed or not supported yet.");
   }
 }

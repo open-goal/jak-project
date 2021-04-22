@@ -10,7 +10,6 @@
 #include <third-party/fmt/core.h>
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
-#include "deftype.h"
 
 TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.
@@ -68,37 +67,6 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
   }
 
   return m_types[name].get();
-}
-
-/*!
- * Add a new 'enum type'. This maps enum names to the their type's name, allowing the enum name to
- * be used as if it were a type name.
- */
-Type* TypeSystem::add_enum_type(const std::string& name, const std::string& type) {
-  auto kv = m_enum_types.find(name);
-  if (kv != m_enum_types.end()) {
-    // exists already
-
-    if (kv->second != type) {
-      // exists, and we are trying to change it!
-      fmt::print("[TypeSystem] Enum {} was originally\n{}\nand is redefined as\n{}\n", name,
-                 kv->second, type);
-
-      throw std::runtime_error("Enum type was redefined.");
-    }
-  } else {
-    // an enum has been forward declared, which is only allowed for types
-    if (m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
-      fmt::print("[TypeSystem] Enum {} was forward-declared, enums cannot be forward-declared\n",
-                 name);
-
-      throw std::runtime_error("Enum was forward-declared.");
-    }
-
-    m_enum_types[name] = type;
-  }
-
-  return lookup_type(m_enum_types[name]);
 }
 
 /*!
@@ -216,9 +184,6 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) const {
   if (m_types.find(name) != m_types.end() ||
       m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
     return TypeSpec(name);
-  } else if (m_enum_types.find(name) != m_enum_types.end()) {
-    // simply return the enum's type instead
-    return TypeSpec(m_enum_types.at(name));
   } else {
     fmt::print("[TypeSystem] The type {} is unknown.\n", name);
     throw std::runtime_error("make_typespec failed");
@@ -231,10 +196,6 @@ bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
 
 bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
   return m_forward_declared_types.find(name) != m_forward_declared_types.end();
-}
-
-bool TypeSystem::enum_type_exists(const std::string& name) const {
-  return m_enum_types.find(name) != m_enum_types.end();
 }
 
 TypeSpec TypeSystem::make_array_typespec(const TypeSpec& element_type) const {
@@ -357,17 +318,6 @@ MethodInfo TypeSystem::add_method(const std::string& type_name,
                                   const TypeSpec& ts,
                                   bool allow_new_method) {
   return add_method(lookup_type(make_typespec(type_name)), method_name, ts, allow_new_method);
-}
-
-/*!
- * Return the type name of an enum. Throws if the enum does not exist.
- */
-std::string TypeSystem::get_enum_type_name(const std::string& name) const {
-  if (m_enum_types.find(name) != m_enum_types.end()) {
-    return m_enum_types.at(name);
-  } else {
-    throw std::runtime_error("get_enum_type_name failed");
-  }
 }
 
 /*!
@@ -1152,6 +1102,18 @@ bool TypeSystem::typecheck_base_types(const std::string& expected,
   return false;
 }
 
+EnumType* TypeSystem::try_enum_lookup(const std::string& type_name) const {
+  auto it = m_types.find(type_name);
+  if (it != m_types.end()) {
+    return dynamic_cast<EnumType*>(it->second.get());
+  }
+  return nullptr;
+}
+
+EnumType* TypeSystem::try_enum_lookup(const TypeSpec& type) const {
+  return try_enum_lookup(type.base_type());
+}
+
 /*!
  * Get a path from type to object.
  */
@@ -1246,6 +1208,9 @@ TypeSpec TypeSystem::lowest_common_ancestor(const std::vector<TypeSpec>& types) 
   return result;
 }
 
+/*!
+ * Converts a type in memory to the type you'll get in a register after loading it.
+ */
 TypeSpec coerce_to_reg_type(const TypeSpec& in) {
   if (in.arg_count() == 0) {
     if (in.base_type() == "int8" || in.base_type() == "int16" || in.base_type() == "int32" ||

@@ -216,6 +216,11 @@ Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& e
     return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
+  auto enum_info = dynamic_cast<EnumType*>(type_info);
+  if (enum_info && enum_info->is_bitfield()) {
+    return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
+  }
+
   return pool.alloc_single_element_form<CastElement>(nullptr, new_type, in);
 }
 
@@ -843,17 +848,27 @@ void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
                                                                  FormStack& stack,
                                                                  std::vector<FormElement*>* result,
                                                                  bool allow_side_effects) {
+  auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
   auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
   auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
   if (!m_expr.get_arg(1).is_var()) {
     auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
 
     if (!arg0_i && !arg0_u) {
-      auto new_form = pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(kind),
-          pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
-          pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
-      result->push_back(new_form);
+      auto bti = dynamic_cast<EnumType*>(env.dts->ts.lookup_type(arg0_type));
+      if (bti) {
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(kind), args.at(0),
+            cast_form(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)),
+                      arg0_type, pool, env));
+        result->push_back(new_form);
+      } else {
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(kind),
+            pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
+            pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+        result->push_back(new_form);
+      }
     } else {
       auto new_form = pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(kind), args.at(0),
@@ -993,8 +1008,38 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
                                                          args.at(0), args.at(1));
       result->push_back(new_form);
-    } else {
       // types bad, insert cast.
+    } else {
+      // this is an ugly hack to make (logand (lognot (enum-bitfield xxxx)) work.
+      // I have only one example for this, so I think this unlikely to work in all cases.
+      if (m_expr.get_arg(1).is_var()) {
+        auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
+        auto eti = env.dts->ts.try_enum_lookup(arg1_type.base_type());
+        if (eti) {
+          auto integer = get_goal_integer_constant(args.at(0), env);
+          if (integer && ((s64)*integer) < 0) {
+            // clearing a bitfield.
+            auto elts = decompile_bitfield_enum_from_int(arg1_type, env.dts->ts, ~*integer);
+            auto oper =
+                GenericOperator::make_function(pool.alloc_single_element_form<ConstantTokenElement>(
+                    nullptr, arg1_type.base_type()));
+            std::vector<Form*> form_elts;
+            for (auto& x : elts) {
+              form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
+            }
+            auto inverted =
+                pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
+            auto normal = pool.alloc_single_element_form<GenericElement>(
+                nullptr, GenericOperator::make_fixed(FixedOperatorKind::LOGNOT), inverted);
+            auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
+                                                               normal, args.at(1));
+            result->push_back(new_form);
+            //                assert(false);
+            return;
+          }
+        }
+      }
+
       auto cast = pool.alloc_single_element_form<CastElement>(
           nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
       auto new_form =

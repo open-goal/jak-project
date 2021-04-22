@@ -718,7 +718,8 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
     // 8 - 12 allocated length
     memcpy(obj->data.data() + 8, &length, 4);
     // 12 - 16 content type
-    obj->add_type_record(content_type.base_type(), 12);
+    auto runtime_type = m_ts.lookup_type(content_type.base_type())->get_runtime_name();
+    obj->add_type_record(runtime_type, 12);
   }
 
   // now add arguments:

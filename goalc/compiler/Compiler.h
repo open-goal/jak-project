@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_COMPILER_H
-#define JAK_COMPILER_H
-
 #include <functional>
 #include <optional>
 #include "common/type_system/TypeSystem.h"
@@ -17,7 +14,6 @@
 #include "third-party/fmt/color.h"
 #include "CompilerException.h"
 #include "goalc/compiler/SymbolInfo.h"
-#include "common/type_system/Enum.h"
 #include "common/goos/ReplUtils.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
@@ -216,7 +212,6 @@ class Compiler {
   Debugger m_debugger;
   goos::Interpreter m_goos;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<std::string, GoalEnum> m_enums;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
   std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
@@ -237,12 +232,12 @@ class Compiler {
   bool is_none(Val* in);
   emitter::Register parse_register(const goos::Object& code);
   u64 enum_lookup(const goos::Object& form,
-                  const GoalEnum& e,
+                  const EnumType* e,
                   const goos::Object& rest,
                   bool throw_on_error,
                   bool* success);
   Val* compile_enum_lookup(const goos::Object& form,
-                           const GoalEnum& e,
+                           const EnumType* e,
                            const goos::Object& rest,
                            Env* env);
 
@@ -547,5 +542,3 @@ extern const std::unordered_map<
     std::string,
     Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>
     g_goal_forms;
-
-#endif  // JAK_COMPILER_H

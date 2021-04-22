@@ -272,9 +272,10 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
       return compile_goos_macro(code, macro_obj, rest, env);
     }
 
-    auto enum_kv = m_enums.find(head_sym->name);
-    if (enum_kv != m_enums.end()) {
-      return compile_enum_lookup(code, enum_kv->second, rest, env);
+    // next try as an enum
+    auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+    if (enum_type) {
+      return compile_enum_lookup(code, enum_type, rest, env);
     }
   }
 

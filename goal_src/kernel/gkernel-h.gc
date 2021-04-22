@@ -56,7 +56,7 @@
 
 ;; bitfield enum to indicate proprties about a process-tree
 (defenum process-mask
-    :bitfield #t :type int32
+    :bitfield #t :type uint32
     (execute         0) ;; 1
     (draw            1) ;; 2
     (pause           2) ;; 4
@@ -112,17 +112,17 @@
 
 ;; this stores the current state of the kernel.
 (deftype kernel-context (basic)
-  ((prevent-from-run   uint32  :offset-assert 4)
-   (require-for-run    uint32  :offset-assert 8)
-   (allow-to-run       uint32  :offset-assert 12)
-   (next-pid           int32   :offset-assert 16)
-   (fast-stack-top     pointer :offset-assert 20)
-   (current-process    basic   :offset-assert 24)
-   (relocating-process basic   :offset-assert 28)
-   (relocating-min     int32   :offset-assert 32)
-   (relocating-max     int32   :offset-assert 36)
-   (relocating-offset  int32   :offset-assert 40)
-   (low-memory-message basic   :offset-assert 44)
+  ((prevent-from-run   process-mask  :offset-assert 4)
+   (require-for-run    process-mask  :offset-assert 8)
+   (allow-to-run       process-mask  :offset-assert 12)
+   (next-pid           int32         :offset-assert 16)
+   (fast-stack-top     pointer       :offset-assert 20)
+   (current-process    basic         :offset-assert 24)
+   (relocating-process basic         :offset-assert 28)
+   (relocating-min     int32         :offset-assert 32)
+   (relocating-max     int32         :offset-assert 36)
+   (relocating-offset  int32         :offset-assert 40)
+   (low-memory-message basic         :offset-assert 44)
    )
   
   :size-assert #x30
@@ -199,7 +199,7 @@
 ;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
-   (mask uint32 :offset-assert 8)
+   (mask process-mask :offset-assert 8)
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)

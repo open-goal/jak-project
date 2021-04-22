@@ -3,7 +3,6 @@
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "decompiler/Disasm/Register.h"
-#include "common/type_system/Enum.h"
 #include "common/log/log.h"
 #include "TP_Type.h"
 
@@ -63,7 +62,10 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
 
       } else if (car(o).as_symbol()->name == "deftype") {
         auto dtr = parse_deftype(cdr(o), &ts);
-        add_symbol(dtr.type.base_type(), "type");
+        if (dtr.create_runtime_type) {
+          add_symbol(dtr.type.base_type(), "type");
+        }
+
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);
         auto type_name = car(*rest);
@@ -80,9 +82,8 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
           throw std::runtime_error("bad declare-type");
         }
       } else if (car(o).as_symbol()->name == "defenum") {
-        GoalEnum new_enum;
-        parse_defenum(cdr(o), &ts, new_enum);
-        // TODO we do nothing with the enum for now
+        parse_defenum(cdr(o), &ts);
+        // so far, enums are never runtime types so there's no symbol for them.
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
       }

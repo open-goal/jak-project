@@ -58,7 +58,7 @@
 (define
   *kernel-context*
   (new 'static 'kernel-context
-   :prevent-from-run #x41
+   :prevent-from-run (process-mask execute sleep)
    :next-pid 2
    :current-process #f
    :relocating-process #f
@@ -317,7 +317,7 @@
      )
     )
    (set! (-> v0-0 name) arg0)
-   (set! (-> v0-0 mask) (the-as uint 256))
+   (set! (-> v0-0 mask) (process-mask process-tree))
    (set! (-> v0-0 parent) (the-as (pointer process-tree) #f))
    (set! (-> v0-0 brother) (the-as (pointer process-tree) #f))
    (set! (-> v0-0 child) (the-as (pointer process-tree) #f))
@@ -551,7 +551,7 @@
      )
     )
    (set! (-> s3-0 name) arg2)
-   (set! (-> s3-0 mask) (the-as uint 256))
+   (set! (-> s3-0 mask) (process-mask process-tree))
    (set! (-> s3-0 parent) (the-as (pointer process-tree) #f))
    (set! (-> s3-0 brother) (the-as (pointer process-tree) #f))
    (set! (-> s3-0 child) (the-as (pointer process-tree) #f))
@@ -658,7 +658,7 @@
      )
     )
    (set! (-> obj name) arg0)
-   (set! (-> obj mask) (the-as uint 256))
+   (set! (-> obj mask) (process-mask process-tree))
    (set! (-> obj allocated-length) arg1)
    (set! (-> obj parent) (the-as (pointer process-tree) #f))
    (set! (-> obj brother) (the-as (pointer process-tree) #f))
@@ -979,7 +979,7 @@
     )
    (set! (-> s5-1 1 parent) (the-as (pointer process-tree) (-> s5-1 2)))
    (if (-> s5-1 2)
-    (set! (-> s5-1 2 mask) (the-as uint (-> s5-1 1)))
+    (set! (-> s5-1 2 mask) (the-as process-mask (-> s5-1 1)))
     (set! (-> obj alive-list prev) (the-as dead-pool-heap-rec (-> s5-1 1)))
     )
    (set! (-> s5-1 2) (the-as process-tree (-> obj dead-list next)))
@@ -998,7 +998,7 @@
     (when
      (not
       (or
-       (nonzero? (logand (-> arg0 mask) 512))
+       (nonzero? (logand (-> arg0 mask) (process-mask heap-shrunk)))
        (and (not (-> arg0 next-state)) (not (-> arg0 state)))
        )
       )
@@ -1011,7 +1011,7 @@
       (< (the-as int arg0) (the-as int (gap-location obj (-> obj first-gap))))
       (set! (-> obj first-gap) (find-gap obj (the-as dead-pool-heap-rec s5-0)))
       )
-     (set! (-> arg0 mask) (logior (-> arg0 mask) 512))
+     (set! (-> arg0 mask) (logior (-> arg0 mask) (process-mask heap-shrunk)))
      )
     (if (= (-> obj first-shrink) s5-0)
      (set! (-> obj first-shrink) (the-as dead-pool-heap-rec (-> s5-0 2)))
@@ -1256,7 +1256,14 @@
 (defun
   iterate-process-tree
   ((arg0 process-tree) (arg1 (function object object)) (arg2 kernel-context))
-  (let ((s4-0 (or (nonzero? (logand (-> arg0 mask) 256)) (arg1 arg0))))
+  (let
+   ((s4-0
+     (or
+      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+      (arg1 arg0)
+      )
+     )
+    )
    (cond
     ((= s4-0 'dead)
      )
@@ -1282,10 +1289,10 @@
   (let
    ((s3-0
      (or
-      (nonzero? (logand (-> arg0 mask) 256))
+      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
       (not
        (and
-        (zero? (logand (-> arg2 prevent-from-run) (-> arg0 mask)))
+        (zero? (logand (-> arg2 prevent-from-run) (the-as uint (-> arg0 mask))))
         (run-logic? arg0)
         )
        )
@@ -1316,7 +1323,7 @@
 (defun
   search-process-tree
   ((arg0 process-tree) (arg1 (function process-tree object)))
-  (if (zero? (logand (-> arg0 mask) 256))
+  (if (zero? (logand (-> arg0 mask) (process-mask process-tree)))
    (if (arg1 arg0)
     (return arg0)
     )
@@ -1361,7 +1368,9 @@
                               ((or (= v1-0 'waiting-to-run) (= v1-0 'suspended))
                                (set! (-> s5-0 current-process) a0-0)
                                (cond
-                                ((nonzero? (logand (-> a0-0 mask) 4))
+                                ((nonzero?
+                                  (logand (-> a0-0 mask) (process-mask pause))
+                                  )
                                  (set! *stdcon* *stdcon1*)
                                  (set! *debug-draw-pauseable* #t)
                                  )
@@ -1399,7 +1408,13 @@
                                   )
                                  )
                                 )
-                               (if (nonzero? (logand (-> a0-0 mask) 128))
+                               (if
+                                (nonzero?
+                                 (logand
+                                  (-> a0-0 mask)
+                                  (process-mask sleep-code)
+                                  )
+                                 )
                                 (set! (-> a0-0 status) 'suspended)
                                 ((-> a0-0 main-thread resume-hook)
                                  (-> a0-0 main-thread)
@@ -1700,7 +1715,13 @@
   activate
   process
   ((obj process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
-  (set! (-> obj mask) (logand -961 (the-as int (-> arg0 mask))))
+  (set!
+   (-> obj mask)
+   (logand
+    (lognot (process-mask sleep sleep-code process-tree heap-shrunk))
+    (-> arg0 mask)
+    )
+   )
   (set! (-> obj status) 'ready)
   (let ((v1-4 (-> *kernel-context* next-pid)))
    (set! (-> obj pid) v1-4)
@@ -1721,7 +1742,7 @@
   (set! (-> obj state) #f)
   (set! (-> obj next-state) #f)
   (cond
-   ((nonzero? (logand (-> arg0 mask) 256))
+   ((nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
     (set! (-> obj entity) #f)
     )
    (else
@@ -1952,7 +1973,7 @@
 (let ((gp-2 change-parent)
      (a0-57 (new 'global 'process-tree 'camera-pool))
      )
-  (set! (-> a0-57 mask) (the-as uint #x4011c))
+  (set! (-> a0-57 mask) (process-mask pause menu progress process-tree camera))
   (set! *camera-pool* a0-57)
   (gp-2 a0-57 *active-pool*)
   )
@@ -1961,7 +1982,7 @@
 (let ((gp-3 change-parent)
      (a0-59 (new 'global 'process-tree 'target-pool))
      )
-  (set! (-> a0-59 mask) (the-as uint 284))
+  (set! (-> a0-59 mask) (process-mask pause menu progress process-tree))
   (set! *target-pool* a0-59)
   (gp-3 a0-59 *active-pool*)
   )
@@ -1970,7 +1991,7 @@
 (let ((gp-4 change-parent)
      (a0-61 (new 'global 'process-tree 'entity-pool))
      )
-  (set! (-> a0-61 mask) (the-as uint #x20011c))
+  (set! (-> a0-61 mask) (process-mask pause menu progress process-tree entity))
   (set! *entity-pool* a0-61)
   (gp-4 a0-61 *active-pool*)
   )
@@ -1979,7 +2000,7 @@
 (let ((gp-5 change-parent)
      (a0-63 (new 'global 'process-tree 'default-pool))
      )
-  (set! (-> a0-63 mask) (the-as uint 284))
+  (set! (-> a0-63 mask) (process-mask pause menu progress process-tree))
   (set! *default-pool* a0-63)
   (gp-5 a0-63 *active-pool*)
   )

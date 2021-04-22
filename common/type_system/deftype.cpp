@@ -4,6 +4,7 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
+#include "common/goos/ParseHelpers.h"
 #include "deftype.h"
 #include "third-party/fmt/core.h"
 
@@ -54,20 +55,6 @@ std::string deftype_parent_list(const goos::Object& list) {
 
 bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSystem* ts) {
   return ts->tc(ts->make_typespec(expected), actual);
-}
-
-template <typename T>
-void for_each_in_list(const goos::Object& list, T f) {
-  const goos::Object* iter = &list;
-  while (iter->is_pair()) {
-    auto lap = iter->as_pair();
-    f(lap->car);
-    iter = &lap->cdr;
-  }
-
-  if (!iter->is_empty_list()) {
-    throw std::runtime_error("invalid list in for_each_in_list: " + list.print());
-  }
 }
 
 std::string symbol_string(const goos::Object& obj) {
@@ -486,6 +473,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     assert(pto);
     auto new_type = std::make_unique<BitFieldType>(
         parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
+    new_type->set_runtime_type(pto->get_runtime_name());
     auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;

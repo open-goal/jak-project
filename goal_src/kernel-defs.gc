@@ -169,9 +169,38 @@
 ;;  - not set up in GOAL code
 ;;  So these deftypes generate no code.
 
+(defenum process-mask
+    :bitfield #t :type uint32
+    (execute         0) ;; 1
+    (draw            1) ;; 2
+    (pause           2) ;; 4
+    (menu            3) ;; 8
+    (progress        4) ;; 16
+    (actor-pause     5) ;; 32
+    (sleep           6) ;; 64
+    (sleep-code      7) ;; 128
+    (process-tree    8) ;; 256        not an actual process, just a "tree node" for organization
+    (heap-shrunk     9) ;; 512
+    (going          10) ;; 1024
+    (movie          11) ;; 2048
+    (movie-subject  12) ;; 4096
+    (target         13) ;; 8192
+    (sidekick       14) ;; 16384
+    (crate          15) ;; 32768
+    (collectable    16) ;; 65536
+    (enemy          17) ;; 131072
+    (camera         18) ;; 262144
+    (platform       19) ;; 524288
+    (ambient        20) ;; 1048576
+    (entity         21) ;; 2097152
+    (projectile     22) ;; 4194304
+    (attackable     23) ;; 8388608
+    (death          24) ;; 16777216
+    )
+
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
-   (mask uint32 :offset-assert 8)
+   (mask process-mask :offset-assert 8)
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
@@ -192,6 +221,7 @@
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
   )
+
 
 (deftype stack-frame (basic)
   ((name basic :offset 4)

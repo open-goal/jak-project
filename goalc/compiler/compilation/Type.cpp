@@ -2,7 +2,6 @@
 #include "third-party/fmt/core.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
-#include "common/type_system/Enum.h"
 
 namespace {
 
@@ -995,34 +994,24 @@ Val* Compiler::compile_none(const goos::Object& form, const goos::Object& rest, 
 }
 
 Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env) {
-  // format is (defenum name [options] [entries])
   (void)form;
   (void)env;
 
-  GoalEnum new_enum;
-  parse_defenum(rest, &m_ts, new_enum);
-
-  auto existing_kv = m_enums.find(new_enum.name);
-  if (existing_kv != m_enums.end() && existing_kv->second != new_enum) {
-    print_compiler_warning("defenum changes the definition of existing enum {}",
-                           new_enum.name.c_str());
-  }
-  m_enums[new_enum.name] = new_enum;
-
+  parse_defenum(rest, &m_ts);
   return get_none();
 }
 
 u64 Compiler::enum_lookup(const goos::Object& form,
-                          const GoalEnum& e,
+                          const EnumType* e,
                           const goos::Object& rest,
                           bool throw_on_error,
                           bool* success) {
   *success = true;
-  if (e.is_bitfield) {
+  if (e->is_bitfield()) {
     uint64_t value = 0;
     for_each_in_list(rest, [&](const goos::Object& o) {
-      auto kv = e.entries.find(symbol_string(o));
-      if (kv == e.entries.end()) {
+      auto kv = e->entries().find(symbol_string(o));
+      if (kv == e->entries().end()) {
         if (throw_on_error) {
           throw_compiler_error(form, "The value {} was not found in enum.", o.print());
         } else {
@@ -1046,8 +1035,8 @@ u64 Compiler::enum_lookup(const goos::Object& form,
           return;
         }
       }
-      auto kv = e.entries.find(symbol_string(o));
-      if (kv == e.entries.end()) {
+      auto kv = e->entries().find(symbol_string(o));
+      if (kv == e->entries().end()) {
         if (throw_on_error) {
           throw_compiler_error(form, "The value {} was not found in enum.", o.print());
         } else {
@@ -1072,24 +1061,15 @@ u64 Compiler::enum_lookup(const goos::Object& form,
 }
 
 Val* Compiler::compile_enum_lookup(const goos::Object& form,
-                                   const GoalEnum& e,
+                                   const EnumType* e,
                                    const goos::Object& rest,
                                    Env* env) {
   bool success;
   u64 value = enum_lookup(form, e, rest, true, &success);
   assert(success);
   auto result = compile_integer(value, env);
-  result->set_type(e.base_type);
+  result->set_type(TypeSpec(e->get_name()));
   return result;
-}
-
-bool GoalEnum::operator==(const GoalEnum& other) const {
-  return base_type == other.base_type && is_bitfield == other.is_bitfield &&
-         entries == other.entries;
-}
-
-bool GoalEnum::operator!=(const GoalEnum& other) const {
-  return !(*this == other);
 }
 
 int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object& rest) {
@@ -1097,9 +1077,6 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
   auto type_to_look_for = args.unnamed.at(0).as_symbol()->name;
-  if (m_ts.enum_type_exists(type_to_look_for)) {
-    type_to_look_for = m_ts.get_enum_type_name(type_to_look_for);
-  }
 
   if (!m_ts.fully_defined_type_exists(type_to_look_for)) {
     throw_compiler_error(

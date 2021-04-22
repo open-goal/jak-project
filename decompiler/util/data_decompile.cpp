@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "data_decompile.h"
 #include "third-party/fmt/core.h"
 #include "common/goos/PrettyPrinter.h"
@@ -511,8 +513,6 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   std::vector<goos::Object> result_def = {
       pretty_print::to_symbol(fmt::format("new 'static '{}", actual_type.print()))};
-  //      pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-  //      pretty_print::to_symbol(fmt::format("'{}", actual_type.print()))};
   for (auto& f : field_defs_out) {
     auto str = f.second.print();
     if (str.length() < 40) {
@@ -529,6 +529,20 @@ goos::Object decompile_structure(const TypeSpec& type,
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts) {
+  auto bitfield_enum = ts.try_enum_lookup(type);
+  if (bitfield_enum) {
+    assert((int)bytes.size() == bitfield_enum->get_load_size());
+    assert(bytes.size() <= 8);
+    u64 value = 0;
+    memcpy(&value, bytes.data(), bytes.size());
+    auto defs = decompile_bitfield_enum_from_int(type, ts, value);
+    std::vector<goos::Object> result_def = {pretty_print::to_symbol(type.print())};
+    for (auto& x : defs) {
+      result_def.push_back(pretty_print::to_symbol(x));
+    }
+    return pretty_print::build_list(result_def);
+  }
+
   // try as common integer types:
   if (ts.tc(TypeSpec("uint32"), type)) {
     assert(bytes.size() == 4);
@@ -846,6 +860,37 @@ std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& typ
                     "we didn't touch",
                     type.print(), value, untouched_but_set));
   }
+  return result;
+}
+
+std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                          const TypeSystem& ts,
+                                                          u64 value) {
+  u64 reconstructed = 0;
+  std::vector<std::string> result;
+  auto type_info = ts.try_enum_lookup(type.base_type());
+  assert(type_info);
+  assert(type_info->is_bitfield());
+
+  for (auto& field : type_info->entries()) {
+    u64 mask = ((u64)1) << field.second;
+    if (value & mask) {
+      reconstructed |= mask;
+      result.push_back(field.first);
+    }
+  }
+
+  if (reconstructed != value) {
+    throw std::runtime_error(
+        fmt::format("Failed to decompile bitfield enum. Original value is 0x{:x} but we could only "
+                    "make 0x{:x} using the available fields.",
+                    value, reconstructed));
+  }
+
+  // unordered map will give us these fields in a weird order, let's order them explicitly.
+  std::sort(result.begin(), result.end(), [&](const std::string& a, const std::string& b) {
+    return type_info->entries().at(a) < type_info->entries().at(b);
+  });
   return result;
 }
 

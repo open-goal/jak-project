@@ -76,4 +76,8 @@ std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& typ
                                                              const TypeSystem& ts,
                                                              u64 value);
 
+std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                          const TypeSystem& ts,
+                                                          u64 value);
+
 }  // namespace decompiler
