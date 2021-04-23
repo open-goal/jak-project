@@ -95,13 +95,21 @@ ObjectFileData ObjectGenerator::generate_data_v3(const TypeSystem* ts) {
     handle_temp_static_ptr_links(seg);
   }
 
-  // actual linking?
+  // step 4, generate the link table
   for (int seg = N_SEG; seg-- > 0;) {
     emit_link_table(seg, ts);
   }
 
-  // emit header
+  // step 4.5, collect final result of code/object generation for compiler debugging disassembly
+  for (int seg = 0; seg < N_SEG; seg++) {
+    for (auto& function : m_function_data_by_seg.at(seg)) {
+      auto start = m_data_by_seg.at(seg).begin() + function.instruction_to_byte_in_data.at(0);
+      auto end = start + function.debug->length;
+      function.debug->generated_code = {start, end};
+    }
+  }
 
+  // step 5, build header and combine sections
   out.header = generate_header_v3();
   out.segment_data = std::move(m_data_by_seg);
   out.link_tables = std::move(m_link_by_seg);

@@ -8,6 +8,11 @@
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
 
+/*!
+ * FunctionDebugInfo stores per-function debugging information.
+ * For now, it is pretty basic, but it will eventually contain stuff like stack frame info
+ * and which var is in each register at each instruction.
+ */
 struct FunctionDebugInfo {
   u32 offset_in_seg;  // not including type tag.
   u32 length;
@@ -15,7 +20,10 @@ struct FunctionDebugInfo {
   std::string name;
 
   std::vector<std::string> irs;
-  std::vector<InstructionInfo> instructions;
+  std::vector<InstructionInfo> instructions;  // contains mapping to IRs
+
+  // the actual bytes in the object file.
+  std::vector<u8> generated_code;
 
   std::string disassemble_debug_info(bool* had_failure);
 };
