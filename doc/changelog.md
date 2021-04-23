@@ -135,3 +135,6 @@
 - Added support for `(size-of <typename>)`
 - Fixed a bug where creating a stack array of 0 sized caused a compiler assertion. It is now a normal compiler error.
 - Fixed a bug where the repl history was not loaded on compiler start
+- `defenum` now creates real types. Boxed arrays of enums and bitfields correctly have runtime type of the parent integer.
+- Added a `:copy-entries <typename>` to copy entries from a previous bitfield.
+- Adding a duplicate entry to an enum now generates a compiler error.

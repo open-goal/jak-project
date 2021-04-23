@@ -163,7 +163,31 @@ std::string write_from_top_level(const Function& top_level,
     return ";; ERROR: top level has no register use analysis. Cannot decompile.\n\n";
   }
 
+  std::vector<FormElement*> forms = top_form->elts();
+  assert(!forms.empty());
+
+  // remove a (none) from the end, if it exists.
+  auto back_as_generic_op = dynamic_cast<GenericElement*>(forms.back());
+  if (back_as_generic_op && back_as_generic_op->op().is_fixed(FixedOperatorKind::NONE)) {
+    forms.pop_back();
+  }
+
   std::string result;
+  // look for the whole thing being in a (when *debug-segment* ....)
+  bool in_debug_only_file = false;
+  if (forms.size() == 1) {
+    auto as_cne = dynamic_cast<CondNoElseElement*>(forms.at(0));
+    if (as_cne && as_cne->entries.size() == 1) {
+      auto& entry = as_cne->entries.at(0);
+      // a bit gross...
+      if (entry.condition->to_string(env) == "*debug-segment*") {
+        forms = entry.body->elts();
+        result += ";; this file is debug only\n";
+        result += "(when *debug-segment*\n";
+        in_debug_only_file = true;
+      }
+    }
+  }
 
   // (set! identity L312)
   constexpr int func_name = 1;
@@ -195,7 +219,7 @@ std::string write_from_top_level(const Function& top_level,
   // (set! sym-val <expr>)
   auto define_symbol_matcher = Matcher::set(Matcher::any_symbol(0), Matcher::any(1));
 
-  for (auto& x : top_form->elts()) {
+  for (auto& x : forms) {
     bool something_matched = false;
     Form f;
     f.elts().push_back(x);
@@ -289,6 +313,10 @@ std::string write_from_top_level(const Function& top_level,
       result += pretty_print::to_string(x->to_form(env));
       result += "\n\n";
     }
+  }
+
+  if (in_debug_only_file) {
+    result += ")\n";
   }
 
   return result;

@@ -148,9 +148,9 @@ TEST_F(DataDecompTest, SimpleStructure) {
   auto parsed = parse_data(input);
   auto decomp = decompile_at_label(TypeSpec("vif-disasm-element"), parsed.label("L217"),
                                    parsed.labels, {parsed.words}, dts->ts);
-  check_forms_equal(
-      decomp.print(),
-      "(new 'static 'vif-disasm-element :mask #x7f :tag #x1 :print #x2 :string1 \"stcycl\")");
+  check_forms_equal(decomp.print(),
+                    "(new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 stcycl) :print "
+                    "#x2 :string1 \"stcycl\")");
 }
 
 TEST_F(DataDecompTest, VifDisasmArray) {
@@ -209,13 +209,14 @@ TEST_F(DataDecompTest, VifDisasmArray) {
   auto parsed = parse_data(input);
   auto decomp =
       decompile_at_label_guess_type(parsed.label("L148"), parsed.labels, {parsed.words}, dts->ts);
-  check_forms_equal(
-      decomp.print(),
-      "(new 'static 'boxed-array vif-disasm-element 3\n"
-      "  (new 'static 'vif-disasm-element :mask #x7f :string1 \"nop\")\n"
-      "  (new 'static 'vif-disasm-element :mask #x7f :tag #x1 :print #x2 :string1 \"stcycl\")\n"
-      "  (new 'static 'vif-disasm-element :mask #x7f :tag #x2 :print #x1 :string1 \"offset\" "
-      "      :string2 \"offset\"))");
+  check_forms_equal(decomp.print(),
+                    "(new 'static 'boxed-array vif-disasm-element 3\n"
+                    "  (new 'static 'vif-disasm-element :mask #x7f :string1 \"nop\")\n"
+                    "  (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 stcycl) :print "
+                    "#x2 :string1 \"stcycl\")\n"
+                    "  (new 'static 'vif-disasm-element :mask #x7f :tag (vif-cmd-32 offset) :print "
+                    "#x1 :string1 \"offset\" "
+                    "      :string2 \"offset\"))");
 }
 
 TEST_F(DataDecompTest, ContinuePoint) {
