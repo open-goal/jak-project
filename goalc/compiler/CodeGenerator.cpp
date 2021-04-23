@@ -45,7 +45,7 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
     do_function(m_fe->functions().at(i).get(), i);
   }
 
-  // generate a v3 object. TODO - support for v4 "data" objects.
+  // generate a v3 object.
   return m_gen.generate_data_v3(ts).to_vector();
 }
 
