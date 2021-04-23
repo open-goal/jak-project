@@ -169,33 +169,35 @@
   :flag-assert #x900000008
   )
 
+
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0) ;; addr=ADDR, ends after this transfer
+    (cnt 1)  ;; addr=after tag, next-tag=after data
+    (next 2) ;; addr=after tag, next-tag=ADDR
+    (ref 3)  ;; addr=ADDR, next-tag=after tag
+    (refs 4) ;; ref, but stall controled
+    (call 5) ;;  
+    (ret 6)  ;;
+    (end 7)  ;; next, but ends.
+    )
+
 ;; In source chain mode, the DMA controller reads "DMAtag"s to determine addresses
 ;; sizes, and the next thing to transfer.
 ;; A tag is 8 bytes.
 (deftype dma-tag (uint64)
-  ((qwc uint16 :offset 0)          ;; quadword count
-   (pce uint8 :offset 26 :size 2)  ;; priority (source mode)
-   (id uint8 :offset 28 :size 3)   ;; ID (what the tag means)
-   (irq uint8 :offset 31 :size 1)  ;; interrupt at the end?
-   (addr uint32 :offset 32 :size 31) ;; address (31 bits)
-   (spr uint8 :offset 63 :size 1)    ;; spr or not flag.
+  ((qwc uint16    :offset 0)           ;; quadword count
+   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
+   (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
+   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8     :offset 63 :size 1)  ;; spr or not flag.
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-
-(defenum dma-tag-id
-    :bitfield #f
-    (refe 0)      ;; addr=ADDR, ends after this transfer
-    (cnt 1)       ;; addr=after tag, next-tag=after data
-    (next 2)      ;; addr=after tag, next-tag=ADDR
-    (ref 3)       ;; addr=ADDR, next-tag=after tag
-    (refs 4)      ;; ref, but stall controled
-    (call 5)      ;;  
-    (ret 6)       ;;
-    (end 7)       ;; next, but ends.
-    )
 
 ;; A DMA bucket is a way of organizing data within a dma buffer.
 ;; The buckets themselves live inside in the dma buffer.

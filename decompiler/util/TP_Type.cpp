@@ -131,7 +131,7 @@ TypeSpec TP_Type::typespec() const {
       return m_ts;
     case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
       if (m_ts.base_type() == "pointer") {
-        return TypeSpec("pointer");
+        return m_ts;
       }
       // this can be part of an array access, so we don't really know the type.
       // probably not a good idea to try to do anything with this as a typespec

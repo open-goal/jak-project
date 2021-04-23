@@ -484,6 +484,12 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         rd_in.deref = dk;
         rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
         rd_in.stride = input_type.get_multiplier();
+        // this is a bit of a hack to prevent something like arr_of_bytes[val * 4] getting stuck
+        // with the stride of 4 bytes but load size of 1 byte.  I _believe_ it only applies when
+        // the load size is 1.
+        if (rd_in.base_type == env.dts->ts.make_pointer_typespec("uint8") && rd_in.stride != 0) {
+          rd_in.stride = 1;
+        }
         rd_in.offset = ro.offset;
         auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
@@ -496,8 +502,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          return pool.alloc_single_element_form<ArrayFieldAccess>(
-              nullptr, ro.var, tokens, input_type.get_multiplier(), ro.offset);
+          return pool.alloc_single_element_form<ArrayFieldAccess>(nullptr, ro.var, tokens,
+                                                                  rd_in.stride, ro.offset);
         }
       }
 

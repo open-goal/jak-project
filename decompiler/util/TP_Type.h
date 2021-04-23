@@ -59,10 +59,11 @@ class TP_Type {
       case Kind::NON_VIRTUAL_METHOD:
         return false;
       case Kind::UNINITIALIZED:
-      case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
       case Kind::OBJECT_NEW_METHOD:
       case Kind::DYNAMIC_METHOD_ACCESS:
         return true;
+      case Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT:
+        return m_ts.base_type() != "pointer";
       case Kind::INVALID:
       default:
         assert(false);

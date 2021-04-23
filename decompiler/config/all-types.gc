@@ -2365,14 +2365,27 @@
   :flag-assert         #x900000014
   )
 
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0)      ;; addr=ADDR, ends after this transfer
+    (cnt 1)       ;; addr=after tag, next-tag=after data
+    (next 2)      ;; addr=after tag, next-tag=ADDR
+    (ref 3)       ;; addr=ADDR, next-tag=after tag
+    (refs 4)      ;; ref, but stall controled
+    (call 5)      ;;  
+    (ret 6)       ;;
+    (end 7)       ;; next, but ends.
+    )
+
 ; ;; dma-h
 (deftype dma-tag (uint64)
-  ((qwc uint16 :offset 0)          ;; quadword count
-   (pce uint8 :offset 26 :size 2)  ;; priority (source mode)
-   (id uint8 :offset 28 :size 3)   ;; ID (what the tag means)
-   (irq uint8 :offset 31 :size 1)  ;; interrupt at the end?
-   (addr uint32 :offset 32 :size 31) ;; address (31 bits)
-   (spr uint8 :offset 63 :size 1)    ;; spr or not flag.
+  ((qwc uint16    :offset 0)          ;; quadword count
+   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
+   (id dma-tag-id :offset 28 :size 3)   ;; ID (what the tag means)
+   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8     :offset 63 :size 1)    ;; spr or not flag.
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -2760,8 +2773,8 @@
 
 (define-extern *vif-disasm-table* (array vif-disasm-element)) ;; unknown type
 ;;(define-extern disasm-vif-tag (function (pointer uint32) int symbol int symbol))
-(define-extern disasm-dma-tag (function uint symbol int))
-(define-extern disasm-vif-details (function symbol (pointer uint8) int int symbol))
+(define-extern disasm-dma-tag (function dma-tag symbol int))
+(define-extern disasm-vif-details (function symbol (pointer uint8) vif-cmd int symbol))
 (define-extern vif-disasm-element type)
 (define-extern *dma-disasm* symbol)
 (define-extern disasm-dma-list function)

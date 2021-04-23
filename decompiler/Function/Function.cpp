@@ -137,23 +137,12 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
     while (is_no_link_gpr_store(instructions.at(gpr_idx), 16, {}, {}, make_gpr(Reg::SP))) {
       auto store_reg = instructions.at(gpr_idx).get_src(0).get_reg();
 
-      // sometimes stack memory is zeroed immediately after gpr backups, and this fools the previous
-      // check.
-      if (store_reg == make_gpr(Reg::R0)) {
-        lg::warn("Function {} has stack zeroing, manually check prologue!",
-                 guessed_name.to_string());
-        warnings.general_warning("Stack zeroing, check prologue!");
+      // sometimes stack memory is zeroed or a register is spilled immediately after gpr backups,
+      // and this fools the previous check.
+      if (store_reg == make_gpr(Reg::R0) || store_reg == make_gpr(Reg::A0)) {
+        warnings.general_warning("Check prologue - tricky store of {}", store_reg.to_string());
         expect_nothing_after_gprs = true;
         break;
-      }
-
-      // this also happens a few times per game.  this a0/r0 check seems to be all that's needed to
-      // avoid false positives here!
-      if (store_reg == make_gpr(Reg::A0)) {
-        suspected_asm = true;
-        lg::warn("Function {} stores a0 on the stack, flagging as asm!", guessed_name.to_string());
-        warnings.general_warning("Flagged as asm due to storing a0 on stack");
-        return;
       }
 
       n_gpr_backups++;
