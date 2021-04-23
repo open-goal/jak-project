@@ -33,7 +33,9 @@ Val* Compiler::compile_exit(const goos::Object& form, const goos::Object& rest, 
   }
   // flag for the REPL.
   m_want_exit = true;
-  m_repl->save_history();
+  if (m_repl) {
+    m_repl->save_history();
+  }
   return get_none();
 }
 
