@@ -260,6 +260,7 @@ class TP_Type {
 struct TypeState {
   TP_Type gpr_types[32];
   TP_Type fpr_types[32];
+  std::unordered_map<int, TP_Type> spill_slots;
 
   std::string print_gpr_masked(u32 mask) const;
   TP_Type& get(const Register& r) {
@@ -285,6 +286,16 @@ struct TypeState {
         throw std::runtime_error("TP_Type::get failed");
     }
   }
+
+  const TP_Type& get_slot(int offset) const {
+    auto result = spill_slots.find(offset);
+    if (result == spill_slots.end()) {
+      throw std::runtime_error("TP_Type::get_slot failed: " + std::to_string(offset));
+    }
+    return result->second;
+  }
+
+  TP_Type& get_slot(int offset) { return spill_slots[offset]; }
 };
 
 u32 regs_to_gpr_mask(const std::vector<Register>& regs);

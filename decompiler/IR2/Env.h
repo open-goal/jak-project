@@ -5,6 +5,7 @@
 #include <cassert>
 #include <common/goos/Object.h>
 #include "decompiler/util/TP_Type.h"
+#include "decompiler/util/StackSpillMap.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
@@ -34,15 +35,14 @@ class Env {
   bool has_local_vars() const { return m_has_local_vars; }
   bool has_type_analysis() const { return m_has_types; }
   bool has_reg_use() const { return m_has_reg_use; }
+  const RegUsageInfo& reg_use() const {
+    assert(m_has_reg_use);
+    return m_reg_use;
+  }
 
   void set_reg_use(const RegUsageInfo& info) {
     m_reg_use = info;
     m_has_reg_use = true;
-  }
-
-  const RegUsageInfo& reg_use() const {
-    assert(m_has_reg_use);
-    return m_reg_use;
   }
 
   RegUsageInfo& reg_use() {
@@ -158,6 +158,9 @@ class Env {
 
   void set_retype_map(const std::unordered_map<std::string, TypeSpec>& map) { m_var_retype = map; }
 
+  void set_stack_spills(const StackSpillMap& map) { m_stack_spill_map = map; }
+  const StackSpillMap& stack_spills() const { return m_stack_spill_map; }
+
   // todo - remove these hacks at some point.
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
@@ -186,5 +189,7 @@ class Env {
 
   std::unordered_set<std::string> m_vars_defined_in_let;
   std::optional<TypeSpec> m_type_analysis_return_type;
+
+  StackSpillMap m_stack_spill_map;
 };
 }  // namespace decompiler

@@ -367,6 +367,20 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
     }
   }
 
+  for (auto& x : add.spill_slots) {
+    //    auto existing = combined->spill_slots.find(x.first);
+    //    if (existing == combined->spill_slots.end()) {
+    //      result = true;
+    //      combined->spill_slots.insert({existing->first, existing->second});
+    //    }
+    bool diff = false;
+    auto new_type = tp_lca(combined->spill_slots[x.first], x.second, &diff);
+    if (diff) {
+      result = true;
+      combined->spill_slots[x.first] = new_type;
+    }
+  }
+
   return result;
 }
 

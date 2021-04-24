@@ -559,6 +559,15 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
     return result;
   }
 
+  if (m_instr.kind == InstructionKind::SQ) {
+    auto src_reg = m_instr.get_src(2).get_reg();
+    if (src_reg == Register(Reg::GPR, Reg::SP)) {
+      assert(m_src[0].has_value());
+      result.spill_slots[m_instr.get_src(1).get_imm()] = input.get(m_src[0]->reg());
+      return result;
+    }
+  }
+
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
     if (kind == Reg::FPR) {
@@ -820,6 +829,23 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
           return TP_Type::make_from_ts(TypeSpec("object"));
         }
       }
+    }
+    // stack slot load
+    if (ro.reg == Register(Reg::GPR, Reg::SP)) {
+      auto info = env.stack_spills().lookup(ro.offset);
+      if (info.size != m_size) {
+        throw std::runtime_error(fmt::format(
+            "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size));
+      }
+
+      if (info.is_signed && m_kind != Kind::SIGNED) {
+        throw std::runtime_error("Stack slot signed mismatch");
+      }
+
+      if (m_kind == Kind::FLOAT) {
+        throw std::runtime_error("Stack slot float load is believed to never happen.");
+      }
+      return input.get_slot(ro.offset);
     }
   }
 

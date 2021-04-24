@@ -6,9 +6,6 @@
  * Can print itself (within the context of a LinkedObjectFile).
  */
 
-#ifndef NEXT_INSTRUCTION_H
-#define NEXT_INSTRUCTION_H
-
 #include <vector>
 #include "OpcodeInfo.h"
 #include "Register.h"
@@ -112,4 +109,3 @@ class Instruction {
   int cop2_dest_mask_intel() const;
 };
 }  // namespace decompiler
-#endif  // NEXT_INSTRUCTION_H
