@@ -2741,20 +2741,6 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     return;
   }
 
-  auto as_stack_load = dynamic_cast<const StackSpillLoadOp*>(m_op);
-  if (as_stack_load) {
-    // todo - not this.
-    stack.push_form_element(this, true);
-    return;
-  }
-
-  auto as_stack_store = dynamic_cast<const StackSpillStoreOp*>(m_op);
-  if (as_stack_store) {
-    // todo - not this
-    stack.push_form_element(this, true);
-    return;
-  }
-
   throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
 }
 
@@ -3094,6 +3080,18 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
                           true, TypeSpec("symbol"));
 }
 
+///////////////////////////
+// StackSpillStoreElement
+///////////////////////////
+void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
+  auto src = pop_to_forms({m_value}, env, pool, stack, true).at(0);
+  auto dst = pool.alloc_single_element_form<ConstantTokenElement>(
+      nullptr, fmt::format("sv-{}", m_stack_offset));
+  // todo - types here.
+  stack.push_form_element(pool.alloc_element<SetFormFormElement>(dst, src), true);
+}
+
 void VectorFloatLoadStoreElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   mark_popped();
   stack.push_form_element(this, true);
@@ -3158,6 +3156,15 @@ void StackVarDefElement::update_from_stack(const Env&,
                                            FormStack&,
                                            std::vector<FormElement*>* result,
                                            bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void StackSpillValueElement::update_from_stack(const Env&,
+                                               FormPool&,
+                                               FormStack&,
+                                               std::vector<FormElement*>* result,
+                                               bool) {
   mark_popped();
   result->push_back(this);
 }

@@ -6,6 +6,7 @@
 #include "decompiler/analysis/cfg_builder.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/final_output.h"
+#include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/insert_lets.h"
 #include "decompiler/util/config_parsers.h"
 #include "common/goos/PrettyPrinter.h"
@@ -152,6 +153,11 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   if (!test->func.cfg->is_fully_resolved()) {
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
   }
+
+  // find stack spill slots
+  auto spill_map = build_spill_map(test->func.instructions,
+                                   {test->func.prologue_end, test->func.epilogue_start});
+  test->func.ir2.env.set_stack_spills(spill_map);
 
   // convert instruction to atomic ops
   DecompWarnings warnings;

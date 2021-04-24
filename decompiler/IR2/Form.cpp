@@ -2292,6 +2292,48 @@ void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
 }
 
 ////////////////////////////////
+// StackSpillStoreElement
+////////////////////////////////
+
+StackSpillStoreElement::StackSpillStoreElement(RegisterAccess value, int size, int stack_offset)
+    : m_value(value), m_size(size), m_stack_offset(stack_offset) {}
+
+goos::Object StackSpillStoreElement::to_form_internal(const Env& env) const {
+  return pretty_print::build_list(fmt::format("set! sv-{}", m_stack_offset), m_value.to_form(env));
+}
+
+void StackSpillStoreElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void StackSpillStoreElement::apply_form(const std::function<void(Form*)>&) {}
+
+void StackSpillStoreElement::collect_vars(RegAccessSet& vars, bool) const {
+  vars.insert(m_value);
+}
+
+void StackSpillStoreElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// StackSpillValueElement
+////////////////////////////////
+
+StackSpillValueElement::StackSpillValueElement(int size, int stack_offset, bool is_signed)
+    : m_size(size), m_stack_offset(stack_offset), m_is_signed(is_signed) {}
+
+goos::Object StackSpillValueElement::to_form_internal(const Env&) const {
+  return pretty_print::to_symbol(fmt::format("sv-{}", m_stack_offset));
+}
+
+void StackSpillValueElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void StackSpillValueElement::apply_form(const std::function<void(Form*)>&) {}
+void StackSpillValueElement::collect_vars(RegAccessSet&, bool) const {}
+void StackSpillValueElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
 // Utilities
 ////////////////////////////////
 

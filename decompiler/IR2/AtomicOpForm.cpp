@@ -725,10 +725,14 @@ FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
 }
 
 FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  // todo - better types here.
+  return pool.alloc_element<SetVarElement>(m_dst,
+                                           pool.alloc_single_element_form<StackSpillValueElement>(
+                                               nullptr, m_size, m_offset, m_is_signed),
+                                           true, TypeSpec("object"));
 }
 
 FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<StackSpillStoreElement>(m_value, m_size, m_offset);
 }
 }  // namespace decompiler
