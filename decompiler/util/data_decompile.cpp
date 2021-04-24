@@ -526,21 +526,55 @@ goos::Object decompile_structure(const TypeSpec& type,
   return pretty_print::build_list(result_def);
 }
 
+namespace {
+goos::Object bitfield_defs_print(const TypeSpec& type,
+                                 const std::vector<BitFieldConstantDef>& defs) {
+  std::vector<goos::Object> result;
+  result.push_back(pretty_print::to_symbol(fmt::format("new 'static '{}", type.print())));
+  for (auto& def : defs) {
+    if (def.is_signed) {
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
+    } else {
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
+    }
+  }
+  return pretty_print::build_list(result);
+}
+
+}  // namespace
+
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts) {
-  auto bitfield_enum = ts.try_enum_lookup(type);
-  if (bitfield_enum) {
-    assert((int)bytes.size() == bitfield_enum->get_load_size());
+  auto as_enum = ts.try_enum_lookup(type);
+  if (as_enum) {
+    assert((int)bytes.size() == as_enum->get_load_size());
     assert(bytes.size() <= 8);
     u64 value = 0;
     memcpy(&value, bytes.data(), bytes.size());
-    auto defs = decompile_bitfield_enum_from_int(type, ts, value);
-    std::vector<goos::Object> result_def = {pretty_print::to_symbol(type.print())};
-    for (auto& x : defs) {
-      result_def.push_back(pretty_print::to_symbol(x));
+    if (as_enum->is_bitfield()) {
+      auto defs = decompile_bitfield_enum_from_int(type, ts, value);
+      std::vector<goos::Object> result_def = {pretty_print::to_symbol(type.print())};
+      for (auto& x : defs) {
+        result_def.push_back(pretty_print::to_symbol(x));
+      }
+      return pretty_print::build_list(result_def);
+    } else {
+      auto def = decompile_int_enum_from_int(type, ts, value);
+      return pretty_print::build_list(type.print(), def);
     }
-    return pretty_print::build_list(result_def);
+  }
+
+  auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
+  if (as_bitfield) {
+    assert((int)bytes.size() == as_bitfield->get_load_size());
+    assert(bytes.size() <= 8);
+    u64 value = 0;
+    memcpy(&value, bytes.data(), bytes.size());
+    auto defs = decompile_bitfield_from_int(type, ts, value);
+    return bitfield_defs_print(type, defs);
   }
 
   // try as common integer types:
@@ -802,20 +836,7 @@ goos::Object decompile_bitfield(const TypeSpec& type,
   // read as u64
   u64 value = *(u64*)(elt_bytes.data());
   auto defs = decompile_bitfield_from_int(type, ts, value);
-
-  std::vector<goos::Object> result;
-  result.push_back(pretty_print::to_symbol(fmt::format("new 'static '{}", type.print())));
-  for (auto& def : defs) {
-    if (def.is_signed) {
-      result.push_back(
-          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
-    } else {
-      result.push_back(
-          pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
-    }
-  }
-
-  return pretty_print::build_list(result);
+  return bitfield_defs_print(type, defs);
 }
 
 std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
@@ -894,4 +915,17 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
   return result;
 }
 
+std::string decompile_int_enum_from_int(const TypeSpec& type, const TypeSystem& ts, u64 value) {
+  auto type_info = ts.try_enum_lookup(type.base_type());
+  assert(type_info);
+  assert(!type_info->is_bitfield());
+  for (auto& field : type_info->entries()) {
+    if ((u64)field.second == value) {
+      return field.first;
+    }
+  }
+  throw std::runtime_error(
+      fmt::format("Failed to decompile integer enum. Value {} wasn't found in enum {}", value,
+                  type_info->get_name()));
+}
 }  // namespace decompiler

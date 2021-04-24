@@ -129,7 +129,69 @@
   (busclk/256 2)
   (hblank 3)
   )
+
+;; dma
 (declare-type dma-buffer basic)
+
+(defenum vif-cmd
+    :bitfield #f
+    :type uint8
+    (nop          0)  ;; no-op, can still have irq set.
+    (stcycl       1)  ;; set write recycle register
+    (offset       2)  ;; set offset register
+    (base         3)  ;; set base register
+    (itop         4)  ;; set data pointer register (itops)
+    (stmod        5)  ;; set mode register
+    (mskpath3     6)  ;; set path 3 mask
+    (mark         7)  ;; set mark register
+    (flushe       16) ;; wait for end of microprogram
+    (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
+    (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+    (mscal        20) ;; activate microprogram (call)
+    (mscalf       21) ;; flushe and activate (call)
+    (mscnt        23) ;; activate microprogram (continue)
+    (stmask       32) ;; set MASK register.
+    (strow        48) ;; set filling data
+    (stcol        49) ;; set filling data
+    (mpg          74) ;; transfer microprogram
+    (direct       80) ;; straight to GIF.
+    (directhl     81)
+    (unpack-s-32  96)
+    (unpack-s-16  97)
+    (unpack-s-8   98)
+    ;; 99 is invllid
+    (unpack-v2-32 100)
+    (unpack-v2-16 101)
+    (unpack-v2-8  102)
+    ;; 103 is invalid
+    (unpack-v3-32 104)
+    (unpack-v3-16 105)
+    (unpack-v3-8  106)
+    ;; 107 is invalid
+    (unpack-v4-32 108)
+    (unpack-v4-16 109)
+    (unpack-v4-8  110)
+    (unpack-v4-5  111)
+    )
+
+(defenum vif-cmd-32
+    :bitfield #f
+    :type uint32
+    :copy-entries vif-cmd
+    )
+
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0)      ;; addr=ADDR, ends after this transfer
+    (cnt 1)       ;; addr=after tag, next-tag=after data
+    (next 2)      ;; addr=after tag, next-tag=ADDR
+    (ref 3)       ;; addr=ADDR, next-tag=after tag
+    (refs 4)      ;; ref, but stall controled
+    (call 5)      ;;
+    (ret 6)       ;;
+    (end 7)       ;; next, but ends.
+    )
 
 ;; display-h
 (deftype display-env (structure)

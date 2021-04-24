@@ -89,7 +89,6 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
     iter = cdr(iter);
     auto option_value = car(iter);
     iter = cdr(iter);
-    current = car(iter);
 
     if (option_name == ":type") {
       base_type = parse_typespec(ts, option_value);
@@ -102,9 +101,27 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
         fmt::print("Invalid option {} to :bitfield option.\n", option_value.print());
         throw std::runtime_error("invalid bitfield option");
       }
+    } else if (option_name == ":copy-entries") {
+      auto other_info = ts->try_enum_lookup(parse_typespec(ts, option_value));
+      if (!other_info) {
+        throw std::runtime_error(fmt::format(
+            "Cannot copy entries from {}, it is not a valid enum type", option_value.print()));
+      }
+      for (auto& e : other_info->entries()) {
+        if (entries.find(e.first) != entries.end()) {
+          throw std::runtime_error(fmt::format("Entry {} appears multiple times.", e.first));
+        }
+        entries[e.first] = e.second;
+      }
     } else {
       fmt::print("Unknown option {} for defenum.\n", option_name);
       throw std::runtime_error("unknown option for defenum");
+    }
+
+    if (iter->is_pair()) {
+      current = car(iter);
+    } else {
+      break;
     }
   }
 
@@ -126,6 +143,10 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
     rest = cdr(rest);
     if (!rest->is_empty_list()) {
       fmt::print("Got too many items in defenum {} entry {}\n", name, entry_name);
+    }
+
+    if (entries.find(entry_name) != entries.end()) {
+      throw std::runtime_error(fmt::format("Entry {} appears multiple times.", entry_name));
     }
 
     entries[entry_name] = entry_val;

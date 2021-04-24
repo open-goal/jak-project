@@ -952,7 +952,7 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
   std::string type = "(function dma-buffer vu-function int symbol)";
   std::string expected =
       "(begin\n"
-      "  (let ((v1-0 (the-as pointer (&-> arg1 data 4)))\n"
+      "  (let ((v1-0 (&-> arg1 data 4))\n"
       "        (a3-0 (-> arg1 qlength))\n"
       "        (a1-1 (-> arg1 origin))\n"
       "        )\n"

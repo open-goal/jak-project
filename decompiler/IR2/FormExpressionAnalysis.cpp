@@ -217,8 +217,12 @@ Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& e
   }
 
   auto enum_info = dynamic_cast<EnumType*>(type_info);
-  if (enum_info && enum_info->is_bitfield()) {
-    return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
+  if (enum_info) {
+    if (enum_info->is_bitfield()) {
+      return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
+    } else {
+      return cast_to_int_enum(enum_info, new_type, pool, env, in);
+    }
   }
 
   return pool.alloc_single_element_form<CastElement>(nullptr, new_type, in);
@@ -2326,10 +2330,10 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
   }
 }
 
-FormElement* ConditionElement::make_equal_check_generic(const Env&,
+FormElement* ConditionElement::make_equal_check_generic(const Env& env,
                                                         FormPool& pool,
                                                         const std::vector<Form*>& source_forms,
-                                                        const std::vector<TypeSpec>&) {
+                                                        const std::vector<TypeSpec>& source_types) {
   assert(source_forms.size() == 2);
   // (= thing '())
   auto ref = source_forms.at(1);
@@ -2339,8 +2343,18 @@ FormElement* ConditionElement::make_equal_check_generic(const Env&,
     return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NULLP),
                                               source_forms.at(0));
   } else {
-    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
-                                              source_forms);
+    auto int_val = get_goal_integer_constant(source_forms.at(1), env);
+    auto src0_as_enum = env.dts->ts.try_enum_lookup(source_types.at(0));
+    if (src0_as_enum && int_val) {
+      // if comparing an enum against a constant integer, rewrite the enum.
+      auto forms_with_cast = source_forms;
+      forms_with_cast.at(1) = cast_form(source_forms.at(1), source_types.at(0), pool, env);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                                forms_with_cast);
+    } else {
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
+                                                source_forms);
+    }
   }
 }
 
@@ -2812,7 +2826,37 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
 
   if (m_constant_offset == 0) {
     if (m_expected_stride == 1) {
-      throw std::runtime_error("One case, not yet implemented (no offset)");
+      auto base_matcher =
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                             Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
+      auto offset_matcher =
+          Matcher::match_or({Matcher::cast("int", Matcher::any(1)),
+                             Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
+
+      // (&+ data-ptr <idx>)
+      auto matcher = Matcher::match_or(
+          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {base_matcher, offset_matcher}),
+           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {base_matcher, offset_matcher})});
+
+      auto match_result = match(matcher, new_val);
+      if (!match_result.matched) {
+        throw std::runtime_error(
+            fmt::format("Failed to match array stride 1 load {}", new_val->to_string(env)));
+      }
+      auto idx = match_result.maps.forms.at(1);
+      auto base = match_result.maps.forms.at(0);
+      assert(idx && base);
+
+      std::vector<DerefToken> tokens = m_deref_tokens;
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+      //      tokens.push_back(DerefToken::make_int_expr(idx));
+
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
+      result->push_back(deref);
     } else if (is_power_of_two(m_expected_stride, &power_of_two)) {
       // reg0 is base
       // reg1 is idx
