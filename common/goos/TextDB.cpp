@@ -156,7 +156,9 @@ void TextDb::inherit_info(const Object& parent, const Object& child) {
       while (!children.empty()) {
         auto top = children.back();
         children.pop_back();
-        map[top->heap_obj] = parent_kv->second;
+        if (map.find(top->heap_obj) == map.end()) {
+          map[top->heap_obj] = parent_kv->second;
+        }
         if (top->as_pair()->car.is_pair()) {
           children.push_back(&top->as_pair()->car);
         }

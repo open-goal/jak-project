@@ -420,9 +420,22 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
     }
 
     count++;
-
     elts.push_back(pretty_print::build_list(lookup_name, x.type.typespec().print()));
   }
+
+  // sort in increasing offset.
+  // it looks like this is the order the GOAL compiler itself used.
+  std::vector<StackSpillEntry> spills;
+  for (auto& x : stack_slot_entries) {
+    spills.push_back(x.second);
+  }
+  std::sort(spills.begin(), spills.end(),
+            [](const StackSpillEntry& a, const StackSpillEntry& b) { return a.offset < b.offset; });
+  for (auto& x : spills) {
+    elts.push_back(pretty_print::build_list(x.name(), x.typespec.print()));
+    count++;
+  }
+
   if (count_out) {
     *count_out = count;
   }

@@ -167,6 +167,35 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
     }
   }
 
+  // figure out the types of stack spill variables:
+  auto& env = func.ir2.env;
+  bool changed;
+  for (auto& type_info : op_types) {
+    for (auto& spill : type_info.spill_slots) {
+      auto& slot_info = env.stack_slot_entries[spill.first];
+      slot_info.tp_type =
+          dts.tp_lca(env.stack_slot_entries[spill.first].tp_type, spill.second, &changed);
+      slot_info.offset = spill.first;
+    }
+  }
+
+  for (auto& type_info : block_init_types) {
+    for (auto& spill : type_info.spill_slots) {
+      auto& slot_info = env.stack_slot_entries[spill.first];
+      slot_info.tp_type =
+          dts.tp_lca(env.stack_slot_entries[spill.first].tp_type, spill.second, &changed);
+      slot_info.offset = spill.first;
+    }
+  }
+
+  // convert to typespec
+  for (auto& info : env.stack_slot_entries) {
+    info.second.typespec = info.second.tp_type.typespec();
+    //     debug
+    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    //         info.second.tp_type.print());
+  }
+
   func.ir2.env.set_types(block_init_types, op_types, *func.ir2.atomic_ops, my_type);
 
   return true;

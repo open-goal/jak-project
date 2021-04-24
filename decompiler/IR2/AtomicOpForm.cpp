@@ -724,12 +724,16 @@ FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
   return pool.alloc_element<AtomicOpElement>(this);
 }
 
-FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env&) const {
-  // todo - better types here.
+FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const {
+  TypeSpec type("object");
+  auto kv = env.stack_slot_entries.find(m_offset);
+  if (kv != env.stack_slot_entries.end()) {
+    type = kv->second.typespec;
+  }
   return pool.alloc_element<SetVarElement>(m_dst,
                                            pool.alloc_single_element_form<StackSpillValueElement>(
                                                nullptr, m_size, m_offset, m_is_signed),
-                                           true, TypeSpec("object"));
+                                           true, type);
 }
 
 FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env&) const {

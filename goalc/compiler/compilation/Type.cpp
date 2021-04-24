@@ -53,9 +53,20 @@ RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
 RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
                                                RegVal* object,
                                                const std::string& method_name,
-                                               Env* env) {
+                                               Env* env,
+                                               bool error_message_function_or_method) {
   auto& compile_time_type = object->type();
-  auto method_info = m_ts.lookup_method(compile_time_type.base_type(), method_name);
+  MethodInfo method_info;
+  if (!m_ts.try_lookup_method(compile_time_type.base_type(), method_name, &method_info)) {
+    if (error_message_function_or_method) {
+      throw_compiler_error(form, "No method or function named {} for type {}", method_name,
+                           compile_time_type.print());
+    } else {
+      throw_compiler_error(form, "Type {} has no method {}", compile_time_type.print(),
+                           method_name);
+    }
+  }
+
   method_info.type = method_info.type.substitute_for_method_call(compile_time_type.base_type());
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 

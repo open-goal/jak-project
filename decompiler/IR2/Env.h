@@ -23,6 +23,20 @@ struct StackVarEntry {
   int size = -1;
 };
 
+struct StackSpillEntry {
+  TP_Type tp_type;
+  TypeSpec typespec;
+  int offset;
+  std::optional<std::string> name_override;
+  std::string name() const {
+    if (name_override) {
+      return *name_override;
+    } else {
+      return fmt::format("sv-{}", offset);
+    }
+  }
+};
+
 /*!
  * An "environment" for a single function.
  * This contains data for an entire function, like which registers are live when, the types of
@@ -164,6 +178,16 @@ class Env {
   // todo - remove these hacks at some point.
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
+  std::unordered_map<int, StackSpillEntry> stack_slot_entries;
+
+  std::string get_spill_slot_var_name(int offset) const {
+    auto kv = stack_slot_entries.find(offset);
+    if (kv == stack_slot_entries.end()) {
+      return fmt::format("sv-{}", offset);
+    } else {
+      return kv->second.name();
+    }
+  }
 
  private:
   RegisterAccess m_end_var;

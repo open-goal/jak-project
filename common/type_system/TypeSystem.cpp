@@ -437,6 +437,37 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name,
   throw std::runtime_error("lookup_method failed");
 }
 
+bool TypeSystem::try_lookup_method(const std::string& type_name,
+                                   const std::string& method_name,
+                                   MethodInfo* info) const {
+  auto kv = m_types.find(type_name);
+  if (kv == m_types.end()) {
+    return false;
+  }
+
+  auto* iter_type = kv->second.get();
+  // look up the method
+  while (true) {
+    if (method_name == "new") {
+      if (iter_type->get_my_new_method(info)) {
+        return true;
+      }
+    } else {
+      if (iter_type->get_my_method(method_name, info)) {
+        return true;
+      }
+    }
+
+    if (iter_type->has_parent()) {
+      iter_type = lookup_type(iter_type->get_parent());
+    } else {
+      // couldn't find method.
+      break;
+    }
+  }
+  return false;
+}
+
 /*!
  * Like lookup_method, but won't throw or print an error when things go wrong.
  */

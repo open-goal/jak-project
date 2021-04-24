@@ -2299,7 +2299,8 @@ StackSpillStoreElement::StackSpillStoreElement(RegisterAccess value, int size, i
     : m_value(value), m_size(size), m_stack_offset(stack_offset) {}
 
 goos::Object StackSpillStoreElement::to_form_internal(const Env& env) const {
-  return pretty_print::build_list(fmt::format("set! sv-{}", m_stack_offset), m_value.to_form(env));
+  return pretty_print::build_list(
+      fmt::format("set! {}", env.get_spill_slot_var_name(m_stack_offset)), m_value.to_form(env));
 }
 
 void StackSpillStoreElement::apply(const std::function<void(FormElement*)>& f) {
@@ -2321,8 +2322,8 @@ void StackSpillStoreElement::get_modified_regs(RegSet&) const {}
 StackSpillValueElement::StackSpillValueElement(int size, int stack_offset, bool is_signed)
     : m_size(size), m_stack_offset(stack_offset), m_is_signed(is_signed) {}
 
-goos::Object StackSpillValueElement::to_form_internal(const Env&) const {
-  return pretty_print::to_symbol(fmt::format("sv-{}", m_stack_offset));
+goos::Object StackSpillValueElement::to_form_internal(const Env& env) const {
+  return pretty_print::to_symbol(env.get_spill_slot_var_name(m_stack_offset));
 }
 
 void StackSpillValueElement::apply(const std::function<void(FormElement*)>& f) {
