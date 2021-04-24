@@ -697,8 +697,7 @@ struct IR2_RegOffset {
 class FunctionEndOp : public AtomicOp {
  public:
   explicit FunctionEndOp(int my_idx);
-  virtual goos::Object to_form(const std::vector<DecompilerLabel>& labels,
-                               const Env& env) const override;
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
   RegisterAccess get_set_destination() const override;
@@ -717,6 +716,53 @@ class FunctionEndOp : public AtomicOp {
  private:
   bool m_function_has_return_value = true;
   RegisterAccess m_return_reg;
+};
+
+/*!
+ * An operation to store a variable from the stack.
+ */
+class StackSpillStoreOp : public AtomicOp {
+ public:
+  StackSpillStoreOp(RegisterAccess value, int size, int offset, int my_idx);
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_sequence_point() const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
+  RegisterAccess get_set_destination() const override;
+  void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) override;
+  void collect_vars(RegAccessSet& vars) const override;
+
+ private:
+  RegisterAccess m_value;
+  int m_size;
+  int m_offset;
+};
+
+/*!
+ * An operation to load a variable from the stack.
+ */
+class StackSpillLoadOp : public AtomicOp {
+ public:
+  StackSpillLoadOp(RegisterAccess dst, int size, int offset, bool is_signed, int my_idx);
+  goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
+  bool operator==(const AtomicOp& other) const override;
+  bool is_sequence_point() const override;
+  FormElement* get_as_form(FormPool& pool, const Env& env) const override;
+  RegisterAccess get_set_destination() const override;
+  void update_register_info() override;
+  TypeState propagate_types_internal(const TypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) override;
+  void collect_vars(RegAccessSet& vars) const override;
+
+ private:
+  RegisterAccess m_dst;
+  int m_size;
+  int m_offset;
+  bool m_is_signed;
 };
 
 bool get_as_reg_offset(const SimpleExpression& expr, IR2_RegOffset* out);

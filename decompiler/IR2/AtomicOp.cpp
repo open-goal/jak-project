@@ -1639,4 +1639,94 @@ void FunctionEndOp::collect_vars(RegAccessSet& vars) const {
     vars.insert(m_return_reg);
   }
 }
+
+/////////////////////////////
+// StackSpillStoreOp
+/////////////////////////////
+
+StackSpillStoreOp::StackSpillStoreOp(RegisterAccess value, int size, int offset, int my_idx)
+    : AtomicOp(my_idx), m_value(value), m_size(size), m_offset(offset) {
+  assert(m_value.mode() == AccessMode::READ);
+}
+
+goos::Object StackSpillStoreOp::to_form(const std::vector<DecompilerLabel>&, const Env& env) const {
+  return pretty_print::build_list(
+      fmt::format("stack-store {} :offset {} :sz {}", m_value.to_string(env), m_offset, m_size));
+}
+
+bool StackSpillStoreOp::operator==(const AtomicOp& other) const {
+  if (typeid(StackSpillStoreOp) != typeid(other)) {
+    return false;
+  }
+
+  auto po = dynamic_cast<const StackSpillStoreOp*>(&other);
+  assert(po);
+  return m_size == po->m_size && m_value == po->m_value && m_offset == po->m_offset;
+}
+
+bool StackSpillStoreOp::is_sequence_point() const {
+  return true;  // this might not be totally true, but it seems kind of scary to allow it to
+                // reorder.
+}
+
+void StackSpillStoreOp::update_register_info() {
+  m_read_regs.push_back(m_value.reg());
+}
+
+void StackSpillStoreOp::collect_vars(RegAccessSet& vars) const {
+  vars.insert(m_value);
+}
+
+RegisterAccess StackSpillStoreOp::get_set_destination() const {
+  throw std::runtime_error("StackSpillStoreOp cannot be treated as a set! operation");
+}
+
+/////////////////////////////
+// StackSpillLoadOp
+/////////////////////////////
+
+StackSpillLoadOp::StackSpillLoadOp(RegisterAccess dst,
+                                   int size,
+                                   int offset,
+                                   bool is_signed,
+                                   int my_idx)
+    : AtomicOp(my_idx), m_dst(dst), m_size(size), m_offset(offset), m_is_signed(is_signed) {
+  assert(m_dst.mode() == AccessMode::WRITE);
+}
+
+goos::Object StackSpillLoadOp::to_form(const std::vector<DecompilerLabel>&, const Env& env) const {
+  return pretty_print::build_list(fmt::format("stack-load {} :offset {} :sz {} :sext #{}",
+                                              m_dst.to_string(env), m_offset, m_size,
+                                              m_is_signed ? 't' : 'f'));
+}
+
+bool StackSpillLoadOp::operator==(const AtomicOp& other) const {
+  if (typeid(StackSpillStoreOp) != typeid(other)) {
+    return false;
+  }
+
+  auto po = dynamic_cast<const StackSpillLoadOp*>(&other);
+  assert(po);
+  return m_size == po->m_size && m_dst == po->m_dst && m_offset == po->m_offset &&
+         m_is_signed == po->m_is_signed;
+}
+
+bool StackSpillLoadOp::is_sequence_point() const {
+  return true;  // this might not be totally true, but it seems kind of scary to allow it to
+                // reorder.
+}
+
+void StackSpillLoadOp::update_register_info() {
+  m_write_regs.push_back(m_dst.reg());
+}
+
+void StackSpillLoadOp::collect_vars(RegAccessSet& vars) const {
+  vars.insert(m_dst);
+}
+
+RegisterAccess StackSpillLoadOp::get_set_destination() const {
+  // todo!
+  throw std::runtime_error("StackSpillLoadOp cannot be treated as a set! operation");
+}
+
 }  // namespace decompiler

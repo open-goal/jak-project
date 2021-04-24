@@ -723,4 +723,12 @@ FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
 FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
   return pool.alloc_element<AtomicOpElement>(this);
 }
+
+FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env&) const {
+  return pool.alloc_element<AtomicOpElement>(this);
+}
+
+FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env&) const {
+  return pool.alloc_element<AtomicOpElement>(this);
+}
 }  // namespace decompiler
