@@ -943,7 +943,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     }
 
     BitfieldManip step(manip_kind, m_expr.get_arg(1).get_int());
-    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
     if (other) {
       result->push_back(other);
     } else {
@@ -983,7 +983,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
           assert(false);
         }
         BitfieldManip step(manip_kind, arg1_atom->get_int());
-        auto other = read_elt->push_step(step, env.dts->ts, pool);
+        auto other = read_elt->push_step(step, env.dts->ts, pool, env);
         assert(!other);  // shouldn't be complete.
         result->push_back(read_elt);
         return;
@@ -997,7 +997,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
           assert(false);
         }
         auto step = BitfieldManip::from_form(manip_kind, stripped_arg1);
-        auto other = read_elt->push_step(step, env.dts->ts, pool);
+        auto other = read_elt->push_step(step, env.dts->ts, pool, env);
         if (other) {
           result->push_back(other);
         } else {
@@ -1066,7 +1066,7 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
-    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
     assert(!other);  // shouldn't be complete.
     result->push_back(read_elt);
   } else {
@@ -1087,7 +1087,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL, m_expr.get_arg(1).get_int());
-    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
     assert(other);  // should be a high field.
     result->push_back(other);
   } else {
@@ -1100,7 +1100,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env
 
       if (as_bitfield_access) {
         BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL, m_expr.get_arg(1).get_int());
-        auto next = as_bitfield_access->push_step(step, env.dts->ts, pool);
+        auto next = as_bitfield_access->push_step(step, env.dts->ts, pool, env);
         if (next) {
           result->push_back(next);
         } else {
@@ -1139,7 +1139,7 @@ void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_ARITH, m_expr.get_arg(1).get_int());
-    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
     assert(other);  // should be a high field.
     result->push_back(other);
   } else {
@@ -2068,6 +2068,12 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         form->push_back(stack.pop_back(pool));
       } else {
         FormStack temp_stack(false);
+        if (form == entry.body) {
+          auto as_setvar = dynamic_cast<SetVarElement*>(form->elts().back());
+          if (as_setvar && as_setvar->is_dead_set() && as_setvar->src_type() != TypeSpec("float")) {
+            rewrite_as_set = false;
+          }
+        }
         for (auto& elt : form->elts()) {
           elt->push_to_stack(env, pool, temp_stack);
         }
@@ -2119,8 +2125,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
         source_types.push_back(last_in_body->src_type());
       }
       last_var = last_in_body->dst();
-    }  // For now, I am fine with letting this fail. For example, if the set is eliminated by a
-       // coloring move.  If this makes really ugly code later on, we could use this to disable
+    }
+    // For now, I am fine with letting this fail. For example, if the set is eliminated by a
+    // coloring move.  If this makes really ugly code later on, we could use this to disable
     // write as set.
   }
 
@@ -2320,7 +2327,7 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
       dynamic_cast<BitfieldAccessElement*>(source_forms.at(0)->try_as_single_element());
   if (as_bitfield_op) {
     bitfield_compare = as_bitfield_op->push_step(
-        BitfieldManip(BitfieldManip::Kind::NONZERO_COMPARE, 0), env.dts->ts, pool);
+        BitfieldManip(BitfieldManip::Kind::NONZERO_COMPARE, 0), env.dts->ts, pool, env);
   }
 
   if (bitfield_compare) {
@@ -2698,7 +2705,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
     auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
     BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL_32BIT, integer);
-    auto other = read_elt->push_step(step, env.dts->ts, pool);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
     assert(other);  // should be a high field.
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                             env.get_variable_type(*dst, true));
@@ -3087,7 +3094,7 @@ void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormS
   mark_popped();
   auto src = pop_to_forms({m_value}, env, pool, stack, true).at(0);
   auto dst = pool.alloc_single_element_form<ConstantTokenElement>(
-      nullptr, fmt::format("sv-{}", m_stack_offset));
+      nullptr, env.get_spill_slot_var_name(m_stack_offset));
   // todo - types here.
   stack.push_form_element(pool.alloc_element<SetFormFormElement>(dst, src), true);
 }

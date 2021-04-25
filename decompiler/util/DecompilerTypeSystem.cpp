@@ -385,6 +385,10 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
 }
 
 int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
+  // temporary hack, remove this.
+  if (str == "ERROR: dma tag has data in reserved bits ~X~%") {
+    return 0;
+  }
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {

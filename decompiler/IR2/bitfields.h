@@ -66,7 +66,10 @@ class BitfieldAccessElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
-  FormElement* push_step(const BitfieldManip step, const TypeSystem& ts, FormPool& pool);
+  FormElement* push_step(const BitfieldManip step,
+                         const TypeSystem& ts,
+                         FormPool& pool,
+                         const Env& env);
 
  private:
   Form* m_base = nullptr;
@@ -151,4 +154,10 @@ Form* cast_to_int_enum(const EnumType* type_info,
                        Form* in);
 
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&);
+
+const BitField& find_field(const TypeSystem& ts,
+                           const BitFieldType* type,
+                           int start_bit,
+                           int size,
+                           std::optional<bool> looking_for_unsigned);
 }  // namespace decompiler

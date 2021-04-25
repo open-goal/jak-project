@@ -59,6 +59,8 @@ std::string TP_Type::print() const {
       return fmt::format("<vmethod {}>", m_ts.print());
     case Kind::NON_VIRTUAL_METHOD:
       return fmt::format("<method {}>", m_ts.print());
+    case Kind::LEFT_SHIFTED_BITFIELD:
+      return fmt::format("(<{}> << {})", m_ts.print(), m_int);
     case Kind::INVALID:
     default:
       assert(false);
@@ -105,6 +107,8 @@ bool TP_Type::operator==(const TP_Type& other) const {
     case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
       return m_int == other.m_int && m_ts == other.m_ts &&
              m_extra_multiplier == other.m_extra_multiplier;
+    case Kind::LEFT_SHIFTED_BITFIELD:
+      return m_int == other.m_int && m_ts == other.m_ts;
     case Kind::INVALID:
     default:
       assert(false);
@@ -157,6 +161,8 @@ TypeSpec TP_Type::typespec() const {
       return m_ts;
     case Kind::NON_VIRTUAL_METHOD:
       return m_ts;
+    case Kind::LEFT_SHIFTED_BITFIELD:
+      return TypeSpec("int");  // ideally this is never used.
     case Kind::INVALID:
     default:
       assert(false);

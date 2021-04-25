@@ -32,6 +32,7 @@ class TP_Type {
     DYNAMIC_METHOD_ACCESS,           // partial access into a
     VIRTUAL_METHOD,
     NON_VIRTUAL_METHOD,
+    LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -57,6 +58,7 @@ class TP_Type {
       case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
       case Kind::VIRTUAL_METHOD:
       case Kind::NON_VIRTUAL_METHOD:
+      case Kind::LEFT_SHIFTED_BITFIELD:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -209,6 +211,14 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_from_left_shift_bitfield(const TypeSpec& ts, int amount) {
+    TP_Type result;
+    result.kind = Kind::LEFT_SHIFTED_BITFIELD;
+    result.m_ts = ts;
+    result.m_int = amount;
+    return result;
+  }
+
   const TypeSpec& get_objects_typespec() const {
     assert(kind == Kind::TYPESPEC || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_ts;
@@ -247,6 +257,16 @@ class TP_Type {
   u64 get_mult_int_constant() const {
     assert(kind == Kind::INTEGER_CONSTANT_PLUS_VAR_MULT);
     return m_extra_multiplier;
+  }
+
+  int get_left_shift() const {
+    assert(kind == Kind::LEFT_SHIFTED_BITFIELD);
+    return m_int;
+  }
+
+  const TypeSpec& get_bitfield_type() const {
+    assert(kind == Kind::LEFT_SHIFTED_BITFIELD);
+    return m_ts;
   }
 
  private:

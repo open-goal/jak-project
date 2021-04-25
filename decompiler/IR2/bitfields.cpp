@@ -143,7 +143,6 @@ void BitfieldAccessElement::get_modified_regs(RegSet& regs) const {
   m_base->get_modified_regs(regs);
 }
 
-namespace {
 const BitField& find_field(const TypeSystem& ts,
                            const BitFieldType* type,
                            int start_bit,
@@ -172,6 +171,7 @@ const BitField& find_field(const TypeSystem& ts,
                   !looking_for_unsigned, type->get_name()));
 }
 
+namespace {
 std::optional<BitField> find_field_from_mask(const TypeSystem& ts,
                                              const BitFieldType* type,
                                              uint64_t mask) {
@@ -227,7 +227,8 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
  */
 FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                               const TypeSystem& ts,
-                                              FormPool& pool) {
+                                              FormPool& pool,
+                                              const Env& env) {
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // for left/right shift combo to get a field.
     m_steps.push_back(step);
@@ -351,8 +352,6 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
     return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base,
                                                            std::vector<BitFieldDef>{*val});
-
-    // todo check that the mask and the set are compatible with eachother
   }
 
   throw std::runtime_error("Unknown state in BitfieldReadElement");

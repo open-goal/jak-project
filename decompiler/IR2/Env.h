@@ -17,6 +17,11 @@ class Form;
 class DecompilerTypeSystem;
 struct FunctionAtomicOps;
 
+struct VariableWithCast {
+  std::string name;
+  std::optional<TypeSpec> cast;
+};
+
 struct StackVarEntry {
   StackVariableHint hint;
   TypeSpec ref_type;  // the actual type of the address.
@@ -68,6 +73,7 @@ class Env {
   goos::Object get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const;
   goos::Object get_variable_name_with_cast(const RegisterAccess& access) const;
   std::string get_variable_name(const RegisterAccess& access) const;
+  VariableWithCast get_variable_and_cast(const RegisterAccess& access) const;
   std::optional<TypeSpec> get_user_cast_for_access(const RegisterAccess& access) const;
   TypeSpec get_variable_type(const RegisterAccess& access, bool using_user_var_types) const;
 
@@ -188,6 +194,8 @@ class Env {
       return kv->second.name();
     }
   }
+
+  const std::unordered_map<std::string, std::string>& var_remap_map() const { return m_var_remap; }
 
  private:
   RegisterAccess m_end_var;
