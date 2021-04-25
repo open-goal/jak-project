@@ -10,6 +10,7 @@ add_library(
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/reg_usage.cpp
+        analysis/stack_spill.cpp
         analysis/type_analysis.cpp
         analysis/variable_naming.cpp
 

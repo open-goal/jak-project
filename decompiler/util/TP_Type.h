@@ -32,6 +32,7 @@ class TP_Type {
     DYNAMIC_METHOD_ACCESS,           // partial access into a
     VIRTUAL_METHOD,
     NON_VIRTUAL_METHOD,
+    LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -57,6 +58,7 @@ class TP_Type {
       case Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
       case Kind::VIRTUAL_METHOD:
       case Kind::NON_VIRTUAL_METHOD:
+      case Kind::LEFT_SHIFTED_BITFIELD:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -209,6 +211,14 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_from_left_shift_bitfield(const TypeSpec& ts, int amount) {
+    TP_Type result;
+    result.kind = Kind::LEFT_SHIFTED_BITFIELD;
+    result.m_ts = ts;
+    result.m_int = amount;
+    return result;
+  }
+
   const TypeSpec& get_objects_typespec() const {
     assert(kind == Kind::TYPESPEC || kind == Kind::INTEGER_CONSTANT_PLUS_VAR);
     return m_ts;
@@ -249,6 +259,16 @@ class TP_Type {
     return m_extra_multiplier;
   }
 
+  int get_left_shift() const {
+    assert(kind == Kind::LEFT_SHIFTED_BITFIELD);
+    return m_int;
+  }
+
+  const TypeSpec& get_bitfield_type() const {
+    assert(kind == Kind::LEFT_SHIFTED_BITFIELD);
+    return m_ts;
+  }
+
  private:
   TypeSpec m_ts;
   std::string m_str;
@@ -260,6 +280,7 @@ class TP_Type {
 struct TypeState {
   TP_Type gpr_types[32];
   TP_Type fpr_types[32];
+  std::unordered_map<int, TP_Type> spill_slots;
 
   std::string print_gpr_masked(u32 mask) const;
   TP_Type& get(const Register& r) {
@@ -285,6 +306,16 @@ struct TypeState {
         throw std::runtime_error("TP_Type::get failed");
     }
   }
+
+  const TP_Type& get_slot(int offset) const {
+    auto result = spill_slots.find(offset);
+    if (result == spill_slots.end()) {
+      throw std::runtime_error("TP_Type::get_slot failed: " + std::to_string(offset));
+    }
+    return result->second;
+  }
+
+  TP_Type& get_slot(int offset) { return spill_slots[offset]; }
 };
 
 u32 regs_to_gpr_mask(const std::vector<Register>& regs);

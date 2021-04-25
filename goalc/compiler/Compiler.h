@@ -270,7 +270,8 @@ class Compiler {
   RegVal* compile_get_method_of_object(const goos::Object& form,
                                        RegVal* object,
                                        const std::string& method_name,
-                                       Env* env);
+                                       Env* env,
+                                       bool error_message_function_or_method = false);
   Val* compile_define_constant(const goos::Object& form,
                                const goos::Object& rest,
                                Env* env,

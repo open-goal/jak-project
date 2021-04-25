@@ -17,6 +17,7 @@
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
+#include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/anonymous_function_def.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
@@ -34,6 +35,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_top_level_pass();
   lg::info("Processing basic blocks and control flow graph...");
   ir2_basic_block_pass();
+  lg::info("Finding stack spills...");
+  ir2_stack_spill_slot_pass();
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass();
   lg::info("Running type analysis...");
@@ -237,6 +240,23 @@ void ObjectFileDB::ir2_basic_block_pass() {
            100.f * suspected_asm / total_functions);
   lg::info(" {} functions ({:.2f}%) were inspect methods\n", inspect_methods,
            100.f * inspect_methods / total_functions);
+}
+
+void ObjectFileDB::ir2_stack_spill_slot_pass() {
+  Timer timer;
+  int functions_with_spills = 0;
+  int total_slots = 0;
+  for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
+    auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
+    auto map_size = spill_map.size();
+    if (map_size) {
+      functions_with_spills++;
+      total_slots += map_size;
+    }
+    func.ir2.env.set_stack_spills(spill_map);
+  });
+  lg::info("Analyzed stack spills: found {} functions will spills (total {} vars), took {:.2f} ms",
+           functions_with_spills, total_slots, timer.getMs());
 }
 
 /*!

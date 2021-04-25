@@ -2,7 +2,7 @@
 
 namespace decompiler {
 namespace {
-TypeState construct_initial_typestate(const TypeSpec& f_ts) {
+TypeState construct_initial_typestate(const TypeSpec& f_ts, const Env& env) {
   TypeState result;
   int goal_args[] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3, Reg::T0, Reg::T1, Reg::T2, Reg::T3};
   assert(f_ts.base_type() == "function");
@@ -11,11 +11,16 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts) {
   for (int i = 0; i < int(f_ts.arg_count()) - 1; i++) {
     auto reg_id = goal_args[i];
     auto reg_type = f_ts.get_arg(i);
-    result.gpr_types[reg_id] = TP_Type::make_from_ts(reg_type);
+    result.get(Register(Reg::GPR, reg_id)) = TP_Type::make_from_ts(reg_type);
   }
 
   // todo, more specific process types for behaviors.
-  result.gpr_types[Reg::S6] = TP_Type::make_from_ts(TypeSpec("process"));
+  result.get(Register(Reg::GPR, Reg::S6)) = TP_Type::make_from_ts(TypeSpec("process"));
+
+  // initialize stack slots as uninitialized
+  for (auto slot_info : env.stack_spills().map()) {
+    result.spill_slots.insert({slot_info.first, {}});
+  }
   return result;
 }
 
@@ -80,7 +85,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
   op_types.resize(func.ir2.atomic_ops->ops.size());
   auto& aop = func.ir2.atomic_ops;
 
-  // STEP 1 - topologocial sort the blocks. This gives us an order where we:
+  // STEP 1 - topological sort the blocks. This gives us an order where we:
   // - never visit unreachable blocks (we can't type propagate these)
   // - always visit at least one predecessor of a block before that block
   auto order = func.bb_topo_sort();
@@ -88,7 +93,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
   assert(order.vist_order.front() == 0);
 
   // STEP 2 - initialize type state for the first block to the function argument types.
-  block_init_types.at(0) = construct_initial_typestate(my_type);
+  block_init_types.at(0) = construct_initial_typestate(my_type, func.ir2.env);
 
   // STEP 3 - propagate types until the result stops changing
   bool run_again = true;
@@ -109,7 +114,8 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
         try {
           op_types.at(op_id) = op->propagate_types(*init_types, func.ir2.env, dts);
         } catch (std::runtime_error& e) {
-          lg::warn("Function {} failed type prop: {}", func.guessed_name.to_string(), e.what());
+          lg::warn("Function {} failed type prop at op {}: {}", func.guessed_name.to_string(),
+                   op_id, e.what());
           func.warnings.type_prop_warning("{}", e.what());
           func.ir2.env.set_types(block_init_types, op_types, *func.ir2.atomic_ops, my_type);
           return false;
@@ -160,6 +166,35 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
                                          nullptr, dts);
       }
     }
+  }
+
+  // figure out the types of stack spill variables:
+  auto& env = func.ir2.env;
+  bool changed;
+  for (auto& type_info : op_types) {
+    for (auto& spill : type_info.spill_slots) {
+      auto& slot_info = env.stack_slot_entries[spill.first];
+      slot_info.tp_type =
+          dts.tp_lca(env.stack_slot_entries[spill.first].tp_type, spill.second, &changed);
+      slot_info.offset = spill.first;
+    }
+  }
+
+  for (auto& type_info : block_init_types) {
+    for (auto& spill : type_info.spill_slots) {
+      auto& slot_info = env.stack_slot_entries[spill.first];
+      slot_info.tp_type =
+          dts.tp_lca(env.stack_slot_entries[spill.first].tp_type, spill.second, &changed);
+      slot_info.offset = spill.first;
+    }
+  }
+
+  // convert to typespec
+  for (auto& info : env.stack_slot_entries) {
+    info.second.typespec = info.second.tp_type.typespec();
+    //     debug
+    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    //         info.second.tp_type.print());
   }
 
   func.ir2.env.set_types(block_init_types, op_types, *func.ir2.atomic_ops, my_type);

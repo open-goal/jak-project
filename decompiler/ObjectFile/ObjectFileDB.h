@@ -67,6 +67,7 @@ class ObjectFileDB {
   void analyze_functions_ir1();
   void analyze_functions_ir2(const std::string& output_dir);
   void ir2_top_level_pass();
+  void ir2_stack_spill_slot_pass();
   void ir2_basic_block_pass();
   void ir2_atomic_op_pass();
   void ir2_type_analysis_pass();

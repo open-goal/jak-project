@@ -34,8 +34,18 @@ bool convert_to_expressions(
   // get variable names from the user.
   f.ir2.env.map_args_from_config(arg_names, var_override_map);
 
-  // override variable types from the user.
+  // convert to typespec
+  for (auto& info : f.ir2.env.stack_slot_entries) {
+    auto rename = f.ir2.env.var_remap_map().find(info.second.name());
+    if (rename != f.ir2.env.var_remap_map().end()) {
+      info.second.name_override = rename->second;
+    }
+    //     debug
+    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    //         info.second.tp_type.print());
+  }
 
+  // override variable types from the user.
   std::unordered_map<std::string, TypeSpec> retype;
   for (auto& remap : var_override_map) {
     if (remap.second.type) {

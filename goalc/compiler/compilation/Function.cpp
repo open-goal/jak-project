@@ -472,9 +472,10 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       if (eval_args.empty()) {
         throw_compiler_error(form, "Unrecognized symbol {} as head of form.", uneval_head.print());
       }
+
       // get the method function pointer
-      head = compile_get_method_of_object(form, eval_args.front(), symbol_string(uneval_head), env);
-      fmt::format("method of object {} {}\n", head->print(), head->type().print());
+      head = compile_get_method_of_object(form, eval_args.front(), symbol_string(uneval_head), env,
+                                          true);
     }
 
     // convert the head to a GPR (if function, this is already done)

@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "AtomicOp.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/IR2/bitfields.h"
 
 namespace decompiler {
 
@@ -284,7 +285,13 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       if (m_args[1].is_int() && is_int_or_uint(dts, arg0_type)) {
         assert(m_args[1].get_int() >= 0);
         assert(m_args[1].get_int() < 64);
-        return TP_Type::make_from_product(1ull << m_args[1].get_int(), is_signed(dts, arg0_type));
+        // this could be a bitfield access or a multiply.
+        // we pick bitfield access if the parent is a bitfield.
+        if (dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()))) {
+          return TP_Type::make_from_left_shift_bitfield(arg0_type.typespec(), m_args[1].get_int());
+        } else {
+          return TP_Type::make_from_product(1ull << m_args[1].get_int(), is_signed(dts, arg0_type));
+        }
       }
 
       if (m_args[1].is_int() && dts.ts.tc(TypeSpec("pointer"), arg0_type.typespec())) {
@@ -292,6 +299,27 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         return TP_Type::make_from_ts(TypeSpec("uint"));
       }
       break;
+
+    case Kind::RIGHT_SHIFT_ARITH:
+    case Kind::RIGHT_SHIFT_LOGIC: {
+      bool is_unsigned = m_kind == Kind::RIGHT_SHIFT_LOGIC;
+      if (arg0_type.kind == TP_Type::Kind::LEFT_SHIFTED_BITFIELD && m_args[1].is_int()) {
+        // second op in left/right shift combo
+        int end_bit = 64 - arg0_type.get_left_shift();
+
+        int size = 64 - m_args[1].get_int();
+        int start_bit = end_bit - size;
+        if (start_bit < 0) {
+          throw std::runtime_error("Bad bitfield start bit");
+        }
+
+        auto type = dts.ts.lookup_type(arg0_type.get_bitfield_type());
+        auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+        assert(as_bitfield);
+        auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
+        return TP_Type::make_from_ts(field.type());
+      }
+    } break;
 
     case Kind::MUL_SIGNED: {
       if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
@@ -1021,6 +1049,41 @@ TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
     output.get(x) = TP_Type::make_from_ts("uint");
   }
   return output;
+}
+
+TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
+                                                     const Env& env,
+                                                     DecompilerTypeSystem&) {
+  // stack slot load
+  auto info = env.stack_spills().lookup(m_offset);
+  if (info.size != m_size) {
+    throw std::runtime_error(fmt::format(
+        "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size));
+  }
+
+  if (info.is_signed != m_is_signed) {
+    throw std::runtime_error("Stack slot signed mismatch");
+  }
+
+  auto& loaded_type = input.get_slot(m_offset);
+  auto result = input;
+  result.get(m_dst.reg()) = loaded_type;
+  return result;
+}
+
+TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
+                                                      const Env& env,
+                                                      DecompilerTypeSystem&) {
+  auto info = env.stack_spills().lookup(m_offset);
+  if (info.size != m_size) {
+    throw std::runtime_error(fmt::format(
+        "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size));
+  }
+
+  auto& stored_type = input.get(m_value.reg());
+  auto result = input;
+  result.spill_slots[m_offset] = stored_type;
+  return result;
 }
 
 }  // namespace decompiler

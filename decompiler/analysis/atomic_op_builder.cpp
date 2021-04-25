@@ -41,6 +41,10 @@ Register rv0() {
   return make_gpr(Reg::V0);
 }
 
+Register rsp() {
+  return make_gpr(Reg::SP);
+}
+
 /////////////////////////
 // Variable Helpers
 /////////////////////////
@@ -149,6 +153,12 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
   if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(rfp())) {
     // it's an FP relative load.
     src = SimpleAtom::make_static_address(i0.get_src(0).get_label()).as_expr();
+  } else if (i0.get_src(0).is_imm() && i0.get_src(1).is_reg(rsp()) &&
+             (kind == LoadVarOp::Kind::SIGNED || kind == LoadVarOp::Kind::UNSIGNED)) {
+    // it's a stack spill.
+    return std::make_unique<StackSpillLoadOp>(make_dst_var(i0, idx), load_size,
+                                              i0.get_src(0).get_imm(),
+                                              kind == LoadVarOp::Kind::SIGNED, idx);
   } else if (i0.get_src(0).is_imm() && i0.get_src(0).get_imm() == 0) {
     // the offset is 0
     src = make_src_atom(i0.get_src(1).get_reg(), idx).as_expr();
@@ -165,8 +175,17 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
                                               int idx,
                                               int store_size,
                                               StoreOp::Kind kind) {
-  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
-    return std::make_unique<AsmOp>(i0, idx);
+  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP)) && kind == StoreOp::Kind::INTEGER) {
+    if (kind == StoreOp::Kind::INTEGER && store_size == 4 && i0.get_src(1).get_imm() == 0) {
+      // this is a bit of a hack. enter-state does a sw onto the stack that's not a spill, but
+      // instead manipulates the stores "ra" register that will later be restored.
+      // I believe sw is never used for stack spills, and no stack variable is ever located at
+      // sp + 0, so this should be safe.
+      return std::make_unique<AsmOp>(i0, idx);
+    }
+    // it's a stack spill.
+    return std::make_unique<StackSpillStoreOp>(make_src_var(i0.get_src(0).get_reg(), idx),
+                                               store_size, i0.get_src(1).get_imm(), idx);
   }
   SimpleAtom val;
   SimpleExpression dst;

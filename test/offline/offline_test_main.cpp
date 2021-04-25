@@ -17,7 +17,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
-    "dma-bucket",
+    "dma-bucket", "dma-disasm",
     /* gap */
     "bounding-box",
     /* gap */
@@ -32,7 +32,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    "dma-buffer", "dma-bucket",
+    "dma-buffer", "dma-bucket", "dma-disasm",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -116,6 +116,9 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "quaternion-delta-y",             // fpu acc
 
     "(method 3 profile-frame)",  // double definition.
+
+    // dma-disasm
+    "disasm-dma-list",
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
@@ -389,9 +392,9 @@ TEST_F(OfflineDecompilation, Reference) {
 
     std::string src = db->ir2_final_out(obj_l.at(0));
 
-    // if (file == "gstate") {
-    //   fmt::print("{}\n", src);
-    // }
+    /*     if (file == "gstring") {
+           fmt::print("{}\n", src);
+         }*/
 
     auto reference = file_util::read_text_file(file_util::get_file_path(
         {"test", "decompiler", "reference", fmt::format("{}_REF.gc", file)}));

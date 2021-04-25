@@ -91,12 +91,17 @@ const std::string& Env::remapped_name(const std::string& name) const {
 }
 
 goos::Object Env::get_variable_name_with_cast(const RegisterAccess& access) const {
-  return get_variable_name_with_cast(access.reg(), access.idx(), access.mode());
+  auto result = get_variable_and_cast(access);
+  if (result.cast) {
+    return pretty_print::build_list("the-as", result.cast->print(), result.name);
+  } else {
+    return pretty_print::to_symbol(result.name);
+  }
 }
 
-goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const {
-  if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
-    auto& var_info = m_var_names.lookup(reg, atomic_idx, mode);
+VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
+  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
+    auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     // this is a bit of a confusing process.  The first step is to grab the auto-generated name:
     std::string original_name = var_info.name();
     auto lookup_name = original_name;
@@ -118,27 +123,32 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
       }
 
       // next, we insert type casts that make enforce the user override.
-      auto type_kv = m_typecasts.find(atomic_idx);
+      auto type_kv = m_typecasts.find(access.idx());
       if (type_kv != m_typecasts.end()) {
         for (auto& x : type_kv->second) {
-          if (x.reg == reg) {
+          if (x.reg == access.reg()) {
             // let's make sure the above claim is true
             TypeSpec type_in_reg;
-            if (has_type_analysis() && mode == AccessMode::READ) {
-              type_in_reg = get_types_for_op_mode(atomic_idx, AccessMode::READ).get(reg).typespec();
+            if (has_type_analysis() && access.mode() == AccessMode::READ) {
+              type_in_reg = get_types_for_op_mode(access.idx(), AccessMode::READ)
+                                .get(access.reg())
+                                .typespec();
               if (type_in_reg.print() != x.type_name) {
                 lg::error(
                     "Decompiler type consistency error. There was a typecast for reg {} at idx {} "
                     "(var {}) to type {}, but the actual type is {} ({})",
-                    reg.to_charp(), atomic_idx, lookup_name, x.type_name, type_in_reg.print(),
-                    type_in_reg.print());
+                    access.reg().to_charp(), access.idx(), lookup_name, x.type_name,
+                    type_in_reg.print(), type_in_reg.print());
                 assert(false);
               }
             }
 
             if (type_of_var != type_in_reg) {
               // TODO - use the when possible?
-              return pretty_print::build_list("the-as", x.type_name, lookup_name);
+              VariableWithCast result;
+              result.cast = TypeSpec(x.type_name);
+              result.name = lookup_name;
+              return result;
             }
           }
         }
@@ -146,8 +156,9 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
 
       // type analysis stuff runs before variable types, so we insert casts that account
       // for the changing types due to the lca(uses) that is used to generate variable types.
-      auto type_of_reg = get_types_for_op_mode(atomic_idx, mode).get(reg).typespec();
-      if (mode == AccessMode::READ) {
+      auto type_of_reg =
+          get_types_for_op_mode(access.idx(), access.mode()).get(access.reg()).typespec();
+      if (access.mode() == AccessMode::READ) {
         // note - this may be stricter than needed. but that's ok.
 
         if (type_of_var != type_of_reg) {
@@ -156,7 +167,10 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
           //        {}\n ",
           //                   lookup_name, reg.to_charp(), atomic_idx, type_of_reg.print(),
           //                   var_info.type.typespec().print(), type_of_var.print());
-          return pretty_print::build_list("the-as", type_of_reg.print(), lookup_name);
+          VariableWithCast result;
+          result.cast = type_of_reg;
+          result.name = lookup_name;
+          return result;
         }
       } else {
         // if we're setting a variable, we are a little less strict.
@@ -170,10 +184,19 @@ goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, Acce
       }
     }
 
-    return pretty_print::to_symbol(lookup_name);
+    VariableWithCast result;
+    result.name = lookup_name;
+    return result;
+
   } else {
-    return pretty_print::to_symbol(reg.to_charp());
+    VariableWithCast result;
+    result.name = access.reg().to_charp();
+    return result;
   }
+}
+
+goos::Object Env::get_variable_name_with_cast(Register reg, int atomic_idx, AccessMode mode) const {
+  return get_variable_name_with_cast(RegisterAccess(mode, reg, atomic_idx, true));
 }
 
 std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& access) const {
@@ -420,9 +443,22 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
     }
 
     count++;
-
     elts.push_back(pretty_print::build_list(lookup_name, x.type.typespec().print()));
   }
+
+  // sort in increasing offset.
+  // it looks like this is the order the GOAL compiler itself used.
+  std::vector<StackSpillEntry> spills;
+  for (auto& x : stack_slot_entries) {
+    spills.push_back(x.second);
+  }
+  std::sort(spills.begin(), spills.end(),
+            [](const StackSpillEntry& a, const StackSpillEntry& b) { return a.offset < b.offset; });
+  for (auto& x : spills) {
+    elts.push_back(pretty_print::build_list(x.name(), x.typespec.print()));
+    count++;
+  }
+
   if (count_out) {
     *count_out = count;
   }
