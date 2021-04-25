@@ -2295,8 +2295,11 @@ void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
 // StackSpillStoreElement
 ////////////////////////////////
 
-StackSpillStoreElement::StackSpillStoreElement(RegisterAccess value, int size, int stack_offset)
-    : m_value(value), m_size(size), m_stack_offset(stack_offset) {}
+StackSpillStoreElement::StackSpillStoreElement(RegisterAccess value,
+                                               int size,
+                                               int stack_offset,
+                                               const std::optional<TypeSpec>& cast_type)
+    : m_value(value), m_size(size), m_stack_offset(stack_offset), m_cast_type(cast_type) {}
 
 goos::Object StackSpillStoreElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list(

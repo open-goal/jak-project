@@ -736,7 +736,16 @@ FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const
                                            true, type);
 }
 
-FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<StackSpillStoreElement>(m_value, m_size, m_offset);
+FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env& env) const {
+  auto& slot_type = env.stack_slot_entries.at(m_offset).typespec;
+  auto src_type = env.get_types_before_op(m_my_idx).get(m_value.reg()).typespec();
+  std::optional<TypeSpec> cast_type;
+
+  if (!env.dts->ts.tc(slot_type, src_type)) {
+    // we fail the typecheck for a normal set!, so add a cast.
+    cast_type = slot_type;
+  }
+
+  return pool.alloc_element<StackSpillStoreElement>(m_value, m_size, m_offset, cast_type);
 }
 }  // namespace decompiler

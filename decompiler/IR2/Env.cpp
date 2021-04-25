@@ -100,7 +100,6 @@ goos::Object Env::get_variable_name_with_cast(const RegisterAccess& access) cons
 }
 
 VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
-  bool debug = false;
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
     // this is a bit of a confusing process.  The first step is to grab the auto-generated name:
@@ -113,18 +112,10 @@ VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const 
       lookup_name = remapped->second;
     }
 
-    if (lookup_name == "debug-var") {
-      fmt::print("here read? {}!\n", access.mode() == AccessMode::READ);
-      debug = true;
-    }
-
     if (types_succeeded) {
       // get the type of the variable. This is the type of thing if we do no casts.
       // first, get the type the decompiler found
       auto type_of_var = var_info.type.typespec();
-      if (debug) {
-        fmt::print("type of var: {}\n", type_of_var.print());
-      }
       // and the user's type.
       auto retype_kv = m_var_retype.find(original_name);
       if (retype_kv != m_var_retype.end()) {

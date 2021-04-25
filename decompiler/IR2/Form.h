@@ -1318,18 +1318,23 @@ class VectorFloatLoadStoreElement : public FormElement {
 
 class StackSpillStoreElement : public FormElement {
  public:
-  StackSpillStoreElement(RegisterAccess value, int size, int stack_offset);
+  StackSpillStoreElement(RegisterAccess value,
+                         int size,
+                         int stack_offset,
+                         const std::optional<TypeSpec>& cast_type);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  const std::optional<TypeSpec>& cast_type() const { return m_cast_type; }
 
  private:
   RegisterAccess m_value;
   int m_size = -1;
   int m_stack_offset = -1;
+  std::optional<TypeSpec> m_cast_type;
 };
 
 // the value from a stack load.

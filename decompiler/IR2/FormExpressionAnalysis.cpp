@@ -308,8 +308,8 @@ bool is_uint_type(const Env& env, int my_idx, RegisterAccess var) {
 
 bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool) {
   // Now that decompiler types are synced up properly, we don't want this.
-  //  auto type = as_var ? env.get_variable_type(var, true).base_type()
-  //                     : env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
+  //    auto type = as_var ? env.get_variable_type(var, true).base_type()
+  //                       : env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec().base_type();
   return type == "pointer";
 }
@@ -603,7 +603,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     args.push_back(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
   }
 
-  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), is_var(args.at(0)));
+  bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), true);
 
   // Look for getting an address inside of an object.
   // (+ <integer 108 + int> process). array style access with a stride of 1.
@@ -3095,7 +3095,9 @@ void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormS
   auto src = pop_to_forms({m_value}, env, pool, stack, true).at(0);
   auto dst = pool.alloc_single_element_form<ConstantTokenElement>(
       nullptr, env.get_spill_slot_var_name(m_stack_offset));
-  // todo - types here.
+  if (m_cast_type) {
+    src = cast_form(src, *m_cast_type, pool, env);
+  }
   stack.push_form_element(pool.alloc_element<SetFormFormElement>(dst, src), true);
 }
 
