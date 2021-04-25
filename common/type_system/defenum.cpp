@@ -126,30 +126,42 @@ EnumType* parse_defenum(const goos::Object& defenum, TypeSystem* ts) {
   }
 
   auto type = ts->lookup_type(base_type);
+  s64 highest = -1;
   while (!iter->is_empty_list()) {
     auto field = car(iter);
     auto entry_name = symbol_string(car(&field));
-    auto rest = cdr(&field);
-    auto& value = car(rest);
-    if (!value.is_int()) {
-      fmt::print("Expected integer for enum value, got {}\n", value.print());
-    }
-
-    auto entry_val = value.integer_obj.value;
-    if (!integer_fits(entry_val, type->get_load_size(), type->get_load_signed())) {
-      fmt::print("Integer {} does not fit inside a {}\n", entry_val, type->get_name());
-    }
-
-    rest = cdr(rest);
-    if (!rest->is_empty_list()) {
-      fmt::print("Got too many items in defenum {} entry {}\n", name, entry_name);
-    }
 
     if (entries.find(entry_name) != entries.end()) {
       throw std::runtime_error(fmt::format("Entry {} appears multiple times.", entry_name));
     }
 
-    entries[entry_name] = entry_val;
+    auto rest = cdr(&field);
+    if (!rest->is_empty_list()) {
+      auto& value = car(rest);
+      if (!value.is_int()) {
+        fmt::print("Expected integer for enum value, got {}\n", value.print());
+      }
+
+      auto entry_val = value.integer_obj.value;
+      if (!integer_fits(entry_val, type->get_load_size(), type->get_load_signed())) {
+        fmt::print("Integer {} does not fit inside a {}\n", entry_val, type->get_name());
+      }
+
+      if (!entries.size()) {
+        highest = entry_val;
+      }
+      highest = std::max(highest, entry_val);
+
+      rest = cdr(rest);
+      if (!rest->is_empty_list()) {
+        fmt::print("Got too many items in defenum {} entry {}\n", name, entry_name);
+      }
+
+      entries[entry_name] = entry_val;
+    } else {
+      entries[entry_name] = ++highest;
+    }
+
     iter = cdr(iter);
   }
 
