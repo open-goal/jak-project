@@ -2910,9 +2910,9 @@
 ;; the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
 ;; write-only
 (deftype gs-bgcolor (uint64)
-  ((r  uint8 :offset 0 :size 8)
-   (g  uint8 :offset 0 :size 8)
-   (b  uint8 :offset 0 :size 8)
+  ((r  uint8 :offset 0)
+   (g  uint8 :offset 8)
+   (b  uint8 :offset 16)
    )
   :flag-assert #x900000008
   )
@@ -3448,15 +3448,14 @@
 (define-extern put-draw-env (function dma-packet none))
 (define-extern *pre-draw-hook* (function none)) ;; unknown type
 
-
 (deftype display-frame (basic)
-  ((buffer       int32    11 :offset-assert 4) ;; no idea
-   (calc-buf     basic         :offset 8)
-   (vu1-buf      basic         :offset 8)
-   (debug-buf    basic         :offset 36)
-   (global-buf   basic         :offset 40)
+  ((calc-buf     dma-buffer    :offset 8)
+   (vu1-buf      dma-buffer    :offset 8)
+   (debug-buf    dma-buffer    :offset 36)
+   (global-buf   dma-buffer    :offset 40)
+   (buffer       uint32    11  :offset 4) ;; for debugging?
    (bucket-group dma-bucket    :offset 44)
-   (profile-bar  basic    2  :offset 48)
+   (profile-bar  profile-bar 2 :offset 48)
    (run-time     uint64        :offset 56)
    )
   (:methods
@@ -4719,15 +4718,109 @@
 
 (deftype screen-filter (basic)
   ((draw? basic   :offset-assert 4)
-   (color uint32  :offset-assert 8)
+   (color rgba    :offset-assert 8)
    )
   :method-count-assert 10
   :size-assert         #xc
   :flag-assert         #xa0000000c
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) none 9)
     )
   )
+
+(define-extern *display-split-boxes* symbol)
+(define-extern *artist-fix-visible* symbol)
+(define-extern *ambient-sound-class* symbol)
+(define-extern *display-art-control* symbol)
+(define-extern *display-camera-info* symbol)
+(define-extern *display-profile* symbol)
+(define-extern *display-ambient-poi-marks* symbol)
+(define-extern *artist-all-visible* symbol)
+(define-extern *display-edge-collision-marks* symbol)
+(define-extern *stats-poly* symbol)
+(define-extern *display-ambient-light-marks* symbol)
+(define-extern *display-cam-other* symbol)
+(define-extern *frame-stats* frame-stats)
+(define-extern *display-lights* symbol)
+(define-extern *display-instance-info* symbol)
+(define-extern *stats-memory* symbol)
+(define-extern *display-ambient-music-marks* symbol)
+(define-extern *weather-off* symbol)
+(define-extern *debug-pause* symbol)
+(define-extern *progress-hook* (function none))
+(define-extern *display-ambient-dark-marks* symbol)
+(define-extern *time-of-day-effects* symbol)
+(define-extern *display-file-info* symbol)
+(define-extern *display-iop-info* symbol)
+(define-extern *display-geo-marks* symbol)
+(define-extern *ocean-subdivide-draw-mode* int)
+(define-extern *time-of-day-fast* symbol)
+(define-extern *stats-dma-test* symbol)
+(define-extern *subdivide-draw-mode* int)
+(define-extern *display-split-box-info* symbol)
+(define-extern *display-ground-stats* symbol)
+(define-extern *teleport-count* int)
+(define-extern *stats-target* symbol)
+(define-extern *sync-dma* symbol)
+(define-extern *stats-memory-short* symbol)
+(define-extern *display-entity-errors* symbol)
+(define-extern *display-collide-history* int)
+(define-extern *display-sidekick-stats* symbol)
+(define-extern *display-nav-marks* symbol)
+(define-extern *display-camera-old-stats* symbol)
+(define-extern *display-perf-stats* symbol)
+(define-extern *draw-hook* (function none))
+(define-extern *stats-collide* symbol)
+(define-extern *display-cam-collide-history* symbol)
+(define-extern *debug-hook* (function none))
+(define-extern *artist-error-spheres* symbol)
+(define-extern *display-quad-stats* symbol)
+(define-extern *display-cam-los-info* symbol)
+(define-extern *display-camera-last-attacker* symbol)
+(define-extern *display-collide-cache* symbol)
+(define-extern *display-collision-marks* symbol)
+(define-extern *display-actor-anim* symbol)
+(define-extern *display-tri-stats* symbol)
+(define-extern *run* symbol)
+(define-extern *display-cam-coll-marks* symbol)
+(define-extern *display-ambient-hint-marks* symbol)
+(define-extern *display-cam-los-debug* symbol)
+(define-extern *display-process-anim* symbol)
+(define-extern *display-actor-marks* symbol)
+(define-extern *menu-hook* (function none))
+(define-extern *display-load-boundaries* symbol)
+(define-extern *display-water-marks* symbol)
+(define-extern *artist-flip-visible* symbol)
+(define-extern *display-level-spheres* symbol)
+(define-extern *teleport* symbol)
+(define-extern *display-cam-master-marks* symbol)
+(define-extern *display-ambient-sound-marks* symbol)
+(define-extern *artist-fix-frustum* symbol)
+(define-extern *display-ambient-weather-off-marks* symbol)
+(define-extern *display-cam-los-marks* symbol)
+(define-extern *stats-bsp* symbol)
+(define-extern *display-ambient-ocean-near-off-marks* symbol)
+(define-extern *display-texture-download* symbol)
+(define-extern *artist-use-menu-subdiv* symbol)
+(define-extern *display-xyz-axes* symbol)
+(define-extern *record-cam-collide-history* symbol)
+(define-extern *display-deci-count* symbol)
+(define-extern *display-memcard-info* symbol)
+(define-extern *slow-frame-rate* symbol)
+(define-extern *display-ambient-ocean-off-marks* symbol)
+(define-extern *display-target-marks* symbol)
+(define-extern *camera-no-mip-correction* symbol)
+(define-extern *display-path-marks* symbol)
+(define-extern *dma-timeout-hook* (function none))
+(define-extern *display-camera-marks* symbol)
+(define-extern *display-level-border* symbol)
+(define-extern *display-hipri-collision-marks* symbol)
+(define-extern *display-sprite-info* symbol)
+(define-extern *display-actor-graph* symbol)
+(define-extern *stats-buffer* symbol)
+(define-extern *display-vol-marks* symbol)
+(define-extern *display-actor-vis* symbol)
+(define-extern *display-render-collision* symbol)
 
 (define-extern *dproc* process)
 (define-extern *display-strip-lines* int)
@@ -33206,106 +33299,9 @@
 ;;(define-extern full object) ;; unknown type
 ;;(define-extern active object) ;; unknown type
 ;;(define-extern loado object) ;; unknown type
-(define-extern movie? function)
+(define-extern movie? (function symbol))
 (define-extern level-remap-texture function)
 ;;(define-extern loading-level object) ;; unknown type
-;;(define-extern *display-split-boxes* object) ;; unknown type
-;;(define-extern frame-stats object) ;; unknown type
-;;(define-extern *artist-fix-visible* object) ;; unknown type
-;;(define-extern *ambient-sound-class* object) ;; unknown type
-;;(define-extern *display-art-control* object) ;; unknown type
-;;(define-extern *display-camera-info* object) ;; unknown type
-;;(define-extern *display-profile* object) ;; unknown type
-;;(define-extern *display-ambient-poi-marks* object) ;; unknown type
-;;(define-extern *artist-all-visible* object) ;; unknown type
-;;(define-extern *display-edge-collision-marks* object) ;; unknown type
-;;(define-extern *stats-poly* object) ;; unknown type
-;;(define-extern *dproc* object) ;; unknown type
-;;(define-extern *display-ambient-light-marks* object) ;; unknown type
-;;(define-extern *display-cam-other* object) ;; unknown type
-;;(define-extern *frame-stats* object) ;; unknown type
-;;(define-extern *display-lights* object) ;; unknown type
-;;(define-extern *display-instance-info* object) ;; unknown type
-;;(define-extern *stats-memory* object) ;; unknown type
-;;(define-extern *display-ambient-music-marks* object) ;; unknown type
-;;(define-extern *weather-off* object) ;; unknown type
-;;(define-extern *debug-pause* object) ;; unknown type
-;;(define-extern *progress-hook* object) ;; unknown type
-;;(define-extern *display-ambient-dark-marks* object) ;; unknown type
-;;(define-extern *time-of-day-effects* object) ;; unknown type
-;;(define-extern *display-file-info* object) ;; unknown type
-;;(define-extern *display-iop-info* object) ;; unknown type
-;;(define-extern *display-geo-marks* object) ;; unknown type
-;;(define-extern *ocean-subdivide-draw-mode* object) ;; unknown type
-(define-extern screen-filter type)
-;;(define-extern *time-of-day-fast* object) ;; unknown type
-;;(define-extern *stats-dma-test* object) ;; unknown type
-;;(define-extern *subdivide-draw-mode* object) ;; unknown type
-;;(define-extern *display-split-box-info* object) ;; unknown type
-;;(define-extern *display-ground-stats* object) ;; unknown type
-;;(define-extern *teleport-count* object) ;; unknown type
-;;(define-extern *stats-target* object) ;; unknown type
-;;(define-extern *sync-dma* object) ;; unknown type
-;;(define-extern *stats-memory-short* object) ;; unknown type
-;;(define-extern *display-entity-errors* object) ;; unknown type
-;;(define-extern *display-collide-history* object) ;; unknown type
-;;(define-extern *display-sidekick-stats* object) ;; unknown type
-;;(define-extern *display-nav-marks* object) ;; unknown type
-;;(define-extern *display-camera-old-stats* object) ;; unknown type
-;;(define-extern *display-perf-stats* object) ;; unknown type
-;;(define-extern *draw-hook* object) ;; unknown type
-;;(define-extern *stats-collide* object) ;; unknown type
-;;(define-extern *display-cam-collide-history* object) ;; unknown type
-;;(define-extern *debug-hook* object) ;; unknown type
-;;(define-extern *artist-error-spheres* object) ;; unknown type
-;;(define-extern *display-quad-stats* object) ;; unknown type
-;;(define-extern *display-cam-los-info* object) ;; unknown type
-;;(define-extern *display-camera-last-attacker* object) ;; unknown type
-;;(define-extern *display-collide-cache* object) ;; unknown type
-;;(define-extern *display-collision-marks* object) ;; unknown type
-;;(define-extern *display-actor-anim* object) ;; unknown type
-;;(define-extern *display-tri-stats* object) ;; unknown type
-;;(define-extern *run* object) ;; unknown type
-;;(define-extern *display-cam-coll-marks* object) ;; unknown type
-;;(define-extern *display-ambient-hint-marks* object) ;; unknown type
-;;(define-extern *display-cam-los-debug* object) ;; unknown type
-
-;;(define-extern *display-process-anim* object) ;; unknown type
-;;(define-extern *display-actor-marks* object) ;; unknown type
-(define-extern *menu-hook* (function none))
-;;(define-extern *display-load-boundaries* object) ;; unknown type
-;;(define-extern *display-water-marks* object) ;; unknown type
-;;(define-extern *artist-flip-visible* object) ;; unknown type
-;;(define-extern *display-level-spheres* object) ;; unknown type
-;;(define-extern *teleport* object) ;; unknown type
-;;(define-extern *display-cam-master-marks* object) ;; unknown type
-;;(define-extern *display-ambient-sound-marks* object) ;; unknown type
-;;(define-extern *artist-fix-frustum* object) ;; unknown type
-;;(define-extern *display-ambient-weather-off-marks* object) ;; unknown type
-;;(define-extern *display-cam-los-marks* object) ;; unknown type
-;;(define-extern *stats-bsp* object) ;; unknown type
-;;(define-extern *display-ambient-ocean-near-off-marks* object) ;; unknown type
-;;(define-extern *display-texture-download* object) ;; unknown type
-;;(define-extern *artist-use-menu-subdiv* object) ;; unknown type
-;;(define-extern *display-xyz-axes* object) ;; unknown type
-;;(define-extern *record-cam-collide-history* object) ;; unknown type
-;;(define-extern *display-deci-count* object) ;; unknown type
-;;(define-extern *display-memcard-info* object) ;; unknown type
-;;(define-extern *slow-frame-rate* object) ;; unknown type
-;;(define-extern *display-ambient-ocean-off-marks* object) ;; unknown type
-;;(define-extern *display-target-marks* object) ;; unknown type
-;;(define-extern *camera-no-mip-correction* object) ;; unknown type
-;;(define-extern *display-path-marks* object) ;; unknown type
-;;(define-extern *dma-timeout-hook* object) ;; unknown type
-;;(define-extern *display-camera-marks* object) ;; unknown type
-;;(define-extern *display-level-border* object) ;; unknown type
-;;(define-extern *display-hipri-collision-marks* object) ;; unknown type
-;;(define-extern *display-sprite-info* object) ;; unknown type
-;;(define-extern *display-actor-graph* object) ;; unknown type
-;;(define-extern *stats-buffer* object) ;; unknown type
-;;(define-extern *display-vol-marks* object) ;; unknown type
-;;(define-extern *display-actor-vis* object) ;; unknown type
-;;(define-extern *display-render-collision* object) ;; unknown type
 ;;(define-extern cspace object) ;; unknown type
 ;;(define-extern bone object) ;; unknown type
 ;;(define-extern cspace-array object) ;; unknown type
@@ -34381,7 +34377,7 @@
 (define-extern draw-bones-shadow function)
 ;;(define-extern texscroll-globals object) ;; unknown type
 (define-extern dump-mem function)
-(define-extern paused? function)
+(define-extern paused? (function symbol))
 ;;(define-extern death-end object) ;; unknown type
 ;;(define-extern generic-vu0-block object) ;; unknown type
 (define-extern generic-sink function)
@@ -34718,9 +34714,8 @@
 ;;(define-extern eval object) ;; unknown type
 ;;(define-extern event object) ;; unknown type
 ;;(define-extern health object) ;; unknown type
-(define-extern set-master-mode function)
+(define-extern set-master-mode (function symbol none))
 ;;(define-extern allow-progress object) ;; unknown type
-; (define-extern set-blackout-frames function)
 (define-extern reset-actors function)
 (define-extern get-task-control function)
 ;;(define-extern *kernel-boot-message* object) ;; unknown type
@@ -34743,7 +34738,7 @@
 ;;(define-extern mc-unformat object) ;; unknown type
 ;;(define-extern done object) ;; unknown type
 (define-extern get-aspect-ratio function)
-(define-extern progress-allowed? function)
+(define-extern progress-allowed? (function symbol))
 ;;(define-extern *level-task-data* object) ;; unknown type
 ;;(define-extern format-card object) ;; unknown type
 ;;(define-extern mc-format object) ;; unknown type
@@ -35097,7 +35092,7 @@
 ;;(define-extern deg object) ;; unknown type
 ;;(define-extern want-force-vis object) ;; unknown type
 ;;(define-extern static-vectorm object) ;; unknown type
-(define-extern blackout function)
+(define-extern blackout (function none))
 ;;(define-extern setting-unset object) ;; unknown type
 ;;(define-extern parent object) ;; unknown type
 ;;(define-extern send-event object) ;; unknown type
@@ -36254,15 +36249,15 @@
 (define-extern drawable-sphere-box-intersect? function)
 (define-extern set-hud-aspect-ratio function)
 (define-extern main-cheats function)
-;;(define-extern *progress-cheat* object) ;; unknown type
+(define-extern *progress-cheat* symbol)
 (define-extern display-loop function)
 (define-extern letterbox (function none))
-;;(define-extern *cheat-temp* object) ;; unknown type
-;;(define-extern *master-exit* object) ;; unknown type
-;;(define-extern *last-master-mode* object) ;; unknown type
+(define-extern *cheat-temp* pointer)
+(define-extern *master-exit* symbol)
+(define-extern *last-master-mode* symbol)
 (define-extern off function)
-;;(define-extern *screen-filter* object) ;; unknown type
-(define-extern set-letterbox-frames (function int none))
+(define-extern *screen-filter* screen-filter)
+(define-extern set-letterbox-frames (function uint none))
 (define-extern entity-by-type function)
 ;;(define-extern scf-get-timeout object) ;; unknown type
 (define-extern pause-allowed? function)
