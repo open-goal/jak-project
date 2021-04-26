@@ -409,8 +409,14 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   BitFieldDef bfd;
   bfd.field_name = constant.field_name;
   bfd.is_signed = constant.is_signed;
-  bfd.value = pool.alloc_single_element_form<SimpleAtomElement>(
-      nullptr, SimpleAtom::make_int_constant(constant.value));
+  if (constant.enum_constant) {
+    bfd.value =
+        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, *constant.enum_constant);
+  } else {
+    bfd.value = pool.alloc_single_element_form<SimpleAtomElement>(
+        nullptr, SimpleAtom::make_int_constant(constant.value));
+  }
+
   return bfd;
 }
 
@@ -426,7 +432,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   in = strip_int_or_uint_cast(in);
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
-  if (in_as_atom) {
+  if (in_as_atom && in_as_atom->is_int()) {
     auto fields = decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int());
     return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, fields,
                                                                     pool);
@@ -503,16 +509,19 @@ Form* cast_to_int_enum(const EnumType* type_info,
   assert(!type_info->is_bitfield());
   auto integer = get_goal_integer_constant(strip_int_or_uint_cast(in), env);
   if (integer) {
-    auto entry =
-        decompile_int_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, *integer);
-    auto oper = GenericOperator::make_function(
-        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
-    return pool.alloc_single_element_form<GenericElement>(
-        nullptr, oper, pool.alloc_single_element_form<ConstantTokenElement>(nullptr, entry));
+    return cast_to_int_enum(type_info, pool, env, *integer);
   } else {
     // all failed, just return whatever.
     return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
   }
+}
+
+Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
+  auto entry = decompile_int_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
+  auto oper = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
+  return pool.alloc_single_element_form<GenericElement>(
+      nullptr, oper, pool.alloc_single_element_form<ConstantTokenElement>(nullptr, entry));
 }
 
 }  // namespace decompiler

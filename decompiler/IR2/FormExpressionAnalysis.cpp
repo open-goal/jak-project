@@ -2292,14 +2292,20 @@ void ShortCircuitElement::update_from_stack(const Env& env,
   already_rewritten = true;
 }
 
+namespace {
+Matcher make_int_uint_cast_matcher(const Matcher& thing) {
+  return Matcher::match_or({Matcher::cast("uint", thing), Matcher::cast("int", thing), thing});
+}
+}  // namespace
+
 ///////////////////
 // ConditionElement
 ///////////////////
 
-FormElement* ConditionElement::make_zero_check_generic(const Env&,
+FormElement* ConditionElement::make_zero_check_generic(const Env& env,
                                                        FormPool& pool,
                                                        const std::vector<Form*>& source_forms,
-                                                       const std::vector<TypeSpec>&) {
+                                                       const std::vector<TypeSpec>& source_types) {
   // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
   assert(source_forms.size() == 1);
   auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
@@ -2311,9 +2317,26 @@ FormElement* ConditionElement::make_zero_check_generic(const Env&,
         nullptr, SimpleAtom::make_int_constant(value));
     return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
                                               std::vector<Form*>{mr.maps.forms.at(0), value_form});
-  } else {
-    return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
   }
+
+  auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
+  if (enum_type_info && !enum_type_info->is_bitfield()) {
+    // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
+    mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                           {make_int_uint_cast_matcher(Matcher::any(0)),
+                            make_int_uint_cast_matcher(Matcher::any_integer(1))}),
+               source_forms.at(0));
+    if (mr.matched) {
+      s64 value = mr.maps.ints.at(1);
+      value = -value;
+      auto enum_constant = cast_to_int_enum(enum_type_info, pool, env, value);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
+    }
+  }
+
+  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
 }
 
 FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,

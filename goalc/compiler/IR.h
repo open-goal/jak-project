@@ -567,14 +567,14 @@ class IR_Int128Math3Asm : public IR_Asm {
   Kind m_kind;
 };
 
-class IR_VFMath2Asm : public IR_Asm {
+class IR_Int128Math2Asm : public IR_Asm {
  public:
-  enum class Kind { ITOF, FTOI, PW_SLL, PW_SRL, PW_SRA, VPSRLDQ, VPSLLDQ, VPSHUFLW, VPSHUFHW };
-  IR_VFMath2Asm(bool use_color,
-                const RegVal* dst,
-                const RegVal* src,
-                Kind kind,
-                std::optional<int64_t> = std::nullopt);
+  enum class Kind { PW_SLL, PW_SRL, PW_SRA, VPSRLDQ, VPSLLDQ, VPSHUFLW, VPSHUFHW };
+  IR_Int128Math2Asm(bool use_color,
+                    const RegVal* dst,
+                    const RegVal* src,
+                    Kind kind,
+                    std::optional<int64_t> = std::nullopt);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -586,6 +586,22 @@ class IR_VFMath2Asm : public IR_Asm {
   const RegVal* m_src = nullptr;
   Kind m_kind;
   std::optional<int64_t> m_imm;
+};
+
+class IR_VFMath2Asm : public IR_Asm {
+ public:
+  enum class Kind { ITOF, FTOI };
+  IR_VFMath2Asm(bool use_color, const RegVal* dst, const RegVal* src, Kind kind);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dst = nullptr;
+  const RegVal* m_src = nullptr;
+  Kind m_kind;
 };
 
 class IR_BlendVF : public IR_Asm {

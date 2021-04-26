@@ -63,7 +63,17 @@
 (define-extern *listener-process* process)
 (define-extern *active-pool* process-tree)
 (define-extern reset-and-call (function thread function object))
-(define-extern ash (function int int int))
+(defun ash ((value int) (shift-amount int))
+  "Arithmetic shift value by shift-amount.
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
+  (declare (inline))
+  (if (> shift-amount 0)
+      (shl value shift-amount)
+      (sar value (- shift-amount))
+      )
+  )
 (define-extern inspect-process-tree (function process-tree int int symbol process-tree))
 (define-extern set-to-run-bootstrap (function none))
 (define-extern dead-state state)
@@ -87,6 +97,11 @@
   '(none)
   )
 
+(defmacro gpr->fpr (in)
+  in)
+
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
 
 ;; math
 (define-extern fabs (function float float))
