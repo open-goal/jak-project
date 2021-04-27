@@ -47,12 +47,14 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 std::vector<Instruction>::const_iterator end,
                                 const std::vector<DecompilerLabel>& labels,
                                 FunctionAtomicOps* container,
-                                DecompWarnings& warnings);
+                                DecompWarnings& warnings,
+                                bool inline_asm_hint = false);
 
 /*!
  * Convert an entire function to AtomicOps
  */
 FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
                                                  const std::vector<DecompilerLabel>& labels,
-                                                 DecompWarnings& warnings);
+                                                 DecompWarnings& warnings,
+                                                 bool hint_inline_asm);
 }  // namespace decompiler

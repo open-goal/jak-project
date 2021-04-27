@@ -289,6 +289,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "max.si";
     case SimpleExpression::Kind::MAX_UNSIGNED:
       return "max.ui";
+    case SimpleExpression::Kind::PCPYLD:
+      return "pcypld";
     default:
       assert(false);
       return {};
@@ -338,6 +340,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::MIN_UNSIGNED:
     case SimpleExpression::Kind::MAX_SIGNED:
     case SimpleExpression::Kind::MAX_UNSIGNED:
+    case SimpleExpression::Kind::PCPYLD:
       return 2;
     default:
       assert(false);

@@ -2881,14 +2881,32 @@
   :flag-assert #x900000008
   )
 
-(define-extern psm-size (function int int))
-(define-extern psm-page-height (function int int))
-(define-extern psm->string (function int string))
+(defenum gs-psm
+    :bitfield #f
+    :type uint8
+    (ct32 0)
+    (ct24 1)
+    (ct16 2)
+    (ct16s 10)
+    (mt8 19)
+    (mt4 20)
+    (mt8h 27)
+    (mt4hl 36)
+    (mt4hh 44)
+    (mz32 48)
+    (mz24 49)
+    (mz16 50)
+    (mz16s 58)
+    )
+
+(define-extern psm-size (function gs-psm int))
+(define-extern psm-page-height (function gs-psm int))
+(define-extern psm->string (function gs-psm string))
 
 (deftype gs-display-fb (uint64)
   ((fbp  uint16 :offset 0  :size 9)
    (fbw  uint8  :offset 9  :size 6)
-   (psm  uint8  :offset 15 :size 5)
+   (psm  gs-psm :offset 15 :size 5)
    (dbx  uint16 :offset 32 :size 11)
    (dby  uint16 :offset 43 :size 11)
    )
@@ -3300,7 +3318,13 @@
   :flag-assert #x900000004
   )
 (deftype gif-tag64 (uint64)
-  ()
+  ((nloop   uint16 :offset 0   :size 15)
+   (eop     uint8  :offset 15  :size 1)
+   (id      uint16 :offset 32  :size 14)
+   (pre     uint8  :offset 46  :size 1)
+   (prim    uint16 :offset 47  :size 11)
+   (flg     uint8  :offset 58  :size 2)
+   (nreg    uint8  :offset 60  :size 4))
   :flag-assert #x900000008
   )
 (deftype gif-tag (uint128)
@@ -3331,12 +3355,55 @@
   :flag-assert #x900000010
   )
 
+(defenum gs-reg-id
+  :bitfield #f
+  :type uint8
+  (prim 0)
+  (rgbaq 1)
+  (st 2)
+  (uv 3)
+  (xyzf2 4)
+  (xyz2 5)
+  (tex0-1 6)
+  (tex0-2 7)
+  (clamp-1 8)
+  (clamp-2 9)
+  (fog 10)
+  (xyzf3 12)
+  (xyz3 13)
+  (a+d 14)
+  (nop 15)
+  )
+
+(deftype gif-tag-regs (uint64)
+  ((regs0   gs-reg-id :offset 0  :size 4)
+   (regs1   gs-reg-id :offset 4  :size 4)
+   (regs2   gs-reg-id :offset 8  :size 4)
+   (regs3   gs-reg-id :offset 12  :size 4)
+   (regs4   gs-reg-id :offset 16  :size 4)
+   (regs5   gs-reg-id :offset 20  :size 4)
+   (regs6   gs-reg-id :offset 24  :size 4)
+   (regs7   gs-reg-id :offset 28  :size 4)
+   (regs8   gs-reg-id :offset 32  :size 4)
+   (regs9   gs-reg-id :offset 36 :size 4)
+   (regs10  gs-reg-id :offset 40 :size 4)
+   (regs11  gs-reg-id :offset 44 :size 4)
+   (regs12  gs-reg-id :offset 48 :size 4)
+   (regs13  gs-reg-id :offset 52 :size 4)
+   (regs14  gs-reg-id :offset 56 :size 4)
+   (regs15  gs-reg-id :offset 60 :size 4)
+   )
+  )
+
+
 (deftype gs-gif-tag (structure)
   ((qword uint128   :offset-assert 0) ;; is "qword" and inline? in game
-   (dword uint64 2       :offset 0)
-   (word  uint32 4       :offset 0)
-   (tag   uint64          :offset 0)
-   (regs  uint64          :offset 8)
+   
+   (tag   gif-tag64    :offset 0)
+   (regs  gif-tag-regs :offset 8)
+   
+   (dword uint64 2     :offset 0)
+   (word  uint32 4     :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -3350,8 +3417,9 @@
 
 (deftype gif-packet (basic)
   ((reg-count int32     :offset-assert 4)
-   (gif-tag0  uint128   :offset-assert 16)
-   (gif-tag   gs-gif-tag :inline :offset 16) ;; note- added
+   
+   (gif-tag   gs-gif-tag :inline :offset-assert 16) ;; note- added
+   (gif-tag0  uint128   :offset 16)
    (args      uint64 1 :offset-assert 32)
 
    )
@@ -3627,15 +3695,15 @@
 (define-extern vector-cvt.s.w! (function vector vector vector))
 (define-extern rot-zxy-from-vector! (function vector vector vector))
 (define-extern rot-zyx-from-vector! (function vector vector vector))
-(define-extern vector-lerp! (function vector vector vector))
-(define-extern vector-lerp-clamp! (function vector vector float float vector))
-(define-extern vector4-lerp! (function vector vector vector))
-(define-extern vector4-lerp-clamp! (function vector vector float float vector))
+(define-extern vector-lerp! (function vector vector vector float vector))
+(define-extern vector-lerp-clamp! (function vector vector vector float vector))
+(define-extern vector4-lerp! (function vector vector vector float vector))
+(define-extern vector4-lerp-clamp! (function vector vector vector float vector))
 (define-extern vector-degi (function vector vector vector))
 (define-extern vector-degf (function vector vector vector))
 (define-extern vector-degmod (function vector vector vector))
 (define-extern vector-deg-diff (function vector vector vector vector))
-(define-extern vector-deg-lerp-clamp! function) ;; todo
+(define-extern vector-deg-lerp-clamp! (function vector vector vector float vector)) ;; todo
 (define-extern vector3s-copy! (function vector vector vector))
 (define-extern vector3s+! (function vector vector vector vector))
 (define-extern vector3s*float! (function vector vector float vector))
@@ -3643,7 +3711,7 @@
 (define-extern spheres-overlap? (function vector vector symbol))
 (define-extern sphere<-vector! (function sphere vector sphere))
 (define-extern sphere<-vector+r! (function sphere vector float sphere))
-(define-extern rand-vu-sphere-point! function) ;; todo
+(define-extern rand-vu-sphere-point! (function vector sphere vector)) ;; todo
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

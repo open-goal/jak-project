@@ -55,6 +55,8 @@ void set_config(const std::string& path_to_config_file) {
   gConfig.analyze_expressions = cfg.at("analyze_expressions").get<bool>();
   gConfig.run_ir2 = cfg.at("run_ir2").get<bool>();
   gConfig.insert_lets = cfg.at("insert_lets").get<bool>();
+  gConfig.hint_inline_assembly_functions =
+      cfg.at("inline_asm_hint").get<std::unordered_set<std::string>>();
 
   std::vector<std::string> asm_functions_by_name =
       cfg.at("asm_functions_by_name").get<std::vector<std::string>>();

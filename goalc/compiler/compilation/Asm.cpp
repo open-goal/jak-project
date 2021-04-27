@@ -546,10 +546,10 @@ Val* Compiler::compile_asm_vf_math2(const goos::Object& form,
   return get_none();
 }
 
-Val* Compiler::compile_asm_vf_math2_imm_u8(const goos::Object& form,
-                                           const goos::Object& rest,
-                                           IR_VFMath2Asm::Kind kind,
-                                           Env* env) {
+Val* Compiler::compile_asm_int128_math2_imm_u8(const goos::Object& form,
+                                               const goos::Object& rest,
+                                               IR_Int128Math2Asm::Kind kind,
+                                               Env* env) {
   auto args = get_va(form, rest);
   va_check(
       form, args, {{}, {}, {}},
@@ -561,7 +561,6 @@ Val* Compiler::compile_asm_vf_math2_imm_u8(const goos::Object& form,
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
   auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
   s64 imm;
   if (!try_getting_constant_integer(args.unnamed.at(2), &imm, env)) {
     throw_compiler_error(form, "Could not evaluate {} as a compile-time integer.",
@@ -584,11 +583,11 @@ Val* Compiler::compile_asm_vf_math2_imm_u8(const goos::Object& form,
 
   // If the entire destination is to be copied, we can optimize out the blend
   if (mask == 0b1111) {
-    env->emit_ir<IR_VFMath2Asm>(color, dest, src, kind, imm);
+    env->emit_ir<IR_Int128Math2Asm>(color, dest, src, kind, imm);
   } else {
     auto temp_reg = env->make_vfr(dest->type());
     // Perform the arithmetic operation on the two vectors into a temporary register
-    env->emit_ir<IR_VFMath2Asm>(color, temp_reg, src, kind, imm);
+    env->emit_ir<IR_Int128Math2Asm>(color, temp_reg, src, kind, imm);
     // Blend the result back into the destination register using the mask
     env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
   }
@@ -597,15 +596,15 @@ Val* Compiler::compile_asm_vf_math2_imm_u8(const goos::Object& form,
 }
 
 Val* Compiler::compile_asm_pw_sll(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math2_imm_u8(form, rest, IR_VFMath2Asm::Kind::PW_SLL, env);
+  return compile_asm_int128_math2_imm_u8(form, rest, IR_Int128Math2Asm::Kind::PW_SLL, env);
 }
 
 Val* Compiler::compile_asm_pw_srl(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math2_imm_u8(form, rest, IR_VFMath2Asm::Kind::PW_SRL, env);
+  return compile_asm_int128_math2_imm_u8(form, rest, IR_Int128Math2Asm::Kind::PW_SRL, env);
 }
 
 Val* Compiler::compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_vf_math2_imm_u8(form, rest, IR_VFMath2Asm::Kind::PW_SRA, env);
+  return compile_asm_int128_math2_imm_u8(form, rest, IR_Int128Math2Asm::Kind::PW_SRA, env);
 }
 
 Val* Compiler::compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -641,12 +640,12 @@ Val* Compiler::compile_asm_ppach(const goos::Object& form, const goos::Object& r
     throw_compiler_error(form, "Cannot set destination");
   }
 
-  env->emit_ir<IR_VFMath2Asm>(true, temp, src1, IR_VFMath2Asm::Kind::VPSHUFLW, 0x88);
-  env->emit_ir<IR_VFMath2Asm>(true, dest, src2, IR_VFMath2Asm::Kind::VPSHUFLW, 0x88);
-  env->emit_ir<IR_VFMath2Asm>(true, temp, temp, IR_VFMath2Asm::Kind::VPSHUFHW, 0x88);
-  env->emit_ir<IR_VFMath2Asm>(true, dest, dest, IR_VFMath2Asm::Kind::VPSHUFHW, 0x88);
-  env->emit_ir<IR_VFMath2Asm>(true, temp, temp, IR_VFMath2Asm::Kind::VPSRLDQ, 4);
-  env->emit_ir<IR_VFMath2Asm>(true, dest, dest, IR_VFMath2Asm::Kind::VPSRLDQ, 4);
+  env->emit_ir<IR_Int128Math2Asm>(true, temp, src1, IR_Int128Math2Asm::Kind::VPSHUFLW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(true, dest, src2, IR_Int128Math2Asm::Kind::VPSHUFLW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(true, temp, temp, IR_Int128Math2Asm::Kind::VPSHUFHW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(true, dest, dest, IR_Int128Math2Asm::Kind::VPSHUFHW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(true, temp, temp, IR_Int128Math2Asm::Kind::VPSRLDQ, 4);
+  env->emit_ir<IR_Int128Math2Asm>(true, dest, dest, IR_Int128Math2Asm::Kind::VPSRLDQ, 4);
   // is actually a VPUNPCKLQDQ with srcs swapped.
   env->emit_ir<IR_Int128Math3Asm>(true, dest, temp, dest, IR_Int128Math3Asm::Kind::PCPYLD);
 

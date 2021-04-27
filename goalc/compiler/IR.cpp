@@ -1523,16 +1523,11 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
 // AsmVF2
 ///////////////////////
 
-IR_VFMath2Asm::IR_VFMath2Asm(bool use_color,
-                             const RegVal* dst,
-                             const RegVal* src,
-                             Kind kind,
-                             std::optional<int64_t> imm)
-    : IR_Asm(use_color), m_dst(dst), m_src(src), m_kind(kind), m_imm(std::move(imm)) {}
+IR_VFMath2Asm::IR_VFMath2Asm(bool use_color, const RegVal* dst, const RegVal* src, Kind kind)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_kind(kind) {}
 
 std::string IR_VFMath2Asm::print() {
   std::string function;
-  bool use_imm = false;
   switch (m_kind) {
     case Kind::ITOF:
       function = ".itof.vf";
@@ -1540,6 +1535,56 @@ std::string IR_VFMath2Asm::print() {
     case Kind::FTOI:
       function = ".ftoi.vf";
       break;
+    default:
+      assert(false);
+  }
+
+  return fmt::format("{}{} {}, {}", function, get_color_suffix_string(), m_dst->print(),
+                     m_src->print());
+}
+
+RegAllocInstr IR_VFMath2Asm::to_rai() {
+  RegAllocInstr rai;
+  if (m_use_coloring) {
+    rai.write.push_back(m_dst->ireg());
+    rai.read.push_back(m_src->ireg());
+  }
+  return rai;
+}
+
+void IR_VFMath2Asm::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
+  auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
+  auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
+
+  switch (m_kind) {
+    case Kind::ITOF:
+      gen->add_instr(IGen::itof_vf(dst, src), irec);
+      break;
+    case Kind::FTOI:
+      gen->add_instr(IGen::ftoi_vf(dst, src), irec);
+      break;
+    default:
+      assert(false);
+  }
+}
+
+///////////////////////
+// AsmInt128-2
+///////////////////////
+
+IR_Int128Math2Asm::IR_Int128Math2Asm(bool use_color,
+                                     const RegVal* dst,
+                                     const RegVal* src,
+                                     Kind kind,
+                                     std::optional<int64_t> imm)
+    : IR_Asm(use_color), m_dst(dst), m_src(src), m_kind(kind), m_imm(std::move(imm)) {}
+
+std::string IR_Int128Math2Asm::print() {
+  std::string function;
+  bool use_imm = false;
+  switch (m_kind) {
     case Kind::PW_SLL:
       use_imm = true;
       function = ".pw.sll";
@@ -1582,7 +1627,7 @@ std::string IR_VFMath2Asm::print() {
   }
 }
 
-RegAllocInstr IR_VFMath2Asm::to_rai() {
+RegAllocInstr IR_Int128Math2Asm::to_rai() {
   RegAllocInstr rai;
   if (m_use_coloring) {
     rai.write.push_back(m_dst->ireg());
@@ -1591,19 +1636,13 @@ RegAllocInstr IR_VFMath2Asm::to_rai() {
   return rai;
 }
 
-void IR_VFMath2Asm::do_codegen(emitter::ObjectGenerator* gen,
-                               const AllocationResult& allocs,
-                               emitter::IR_Record irec) {
+void IR_Int128Math2Asm::do_codegen(emitter::ObjectGenerator* gen,
+                                   const AllocationResult& allocs,
+                                   emitter::IR_Record irec) {
   auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
   auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
 
   switch (m_kind) {
-    case Kind::ITOF:
-      gen->add_instr(IGen::itof_vf(dst, src), irec);
-      break;
-    case Kind::FTOI:
-      gen->add_instr(IGen::ftoi_vf(dst, src), irec);
-      break;
     case Kind::PW_SLL:
       // you are technically allowed to put values > 32 in here.
       assert(m_imm.has_value());

@@ -532,7 +532,11 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
   std::vector<goos::Object> result;
   result.push_back(pretty_print::to_symbol(fmt::format("new 'static '{}", type.print())));
   for (auto& def : defs) {
-    if (def.is_signed) {
+    if (def.enum_constant) {
+      assert(false);  // this is untested.
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, *def.enum_constant)));
+    } else if (def.is_signed) {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
     } else {
@@ -865,6 +869,11 @@ std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& typ
       def.value = bitfield_value;
       def.field_name = field.name();
       def.is_signed = is_signed;
+      auto enum_info = ts.try_enum_lookup(field.type());
+      if (enum_info && !enum_info->is_bitfield()) {
+        auto name = decompile_int_enum_from_int(field.type(), ts, bitfield_value);
+        def.enum_constant = fmt::format("({} {})", field.type().print(), name);
+      }
       result.push_back(def);
     }
 

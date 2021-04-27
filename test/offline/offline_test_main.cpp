@@ -17,7 +17,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
-    "dma-bucket", "dma-disasm",
+    "dma-bucket", "dma-disasm", "pad", "gs",
     /* gap */
     "bounding-box",
     /* gap */
@@ -32,7 +32,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    "dma-buffer", "dma-bucket", "dma-disasm",
+    "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -118,7 +118,10 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "(method 3 profile-frame)",  // double definition.
 
     // dma-disasm
-    "disasm-dma-list",
+    "disasm-dma-list",  // missing a single cast :(
+
+    // gs
+    "(method 3 gif-tag)",  // inspect for a 128-bit type.
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first

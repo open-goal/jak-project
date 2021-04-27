@@ -34,69 +34,81 @@
 ;; 50 = PSMZ16
 ;; 58 = PSMZ16S
 
-(defconstant TEX_MZ16S 58)
-(defconstant TEX_MZ16  50)
-(defconstant TEX_MZ24  49)
-(defconstant TEX_MZ32  48)
-(defconstant TEX_MT4HH 44)
-(defconstant TEX_MT4HL 36)
-(defconstant TEX_MT8H  27)
-(defconstant TEX_MT4   20)
-(defconstant TEX_MT8   19)
-(defconstant TEX_CT16S 10)
-(defconstant TEX_CT16   2)
-(defconstant TEX_CT24   1)
-(defconstant TEX_CT32   0)
-
-(defun psm-size ((arg0 int))
-  "Not sure exactly what 'size' means, but this likely takes a texture format as an input."
-  (cond
-   ((= arg0 TEX_MT8) 64)
-   ((= arg0 TEX_MT4) 32)
-   (else
-    (if (or (= arg0 TEX_CT16) (= arg0 TEX_CT16S) (= arg0 TEX_MZ16) (= arg0 TEX_MZ16S))
-        128
-        256
-        )
+(defenum gs-psm
+    :bitfield #f
+    :type uint8
+    (ct32 0)
+    (ct24 1)
+    (ct16 2)
+    (ct16s 10)
+    (mt8 19)
+    (mt4 20)
+    (mt8h 27)
+    (mt4hl 36)
+    (mt4hh 44)
+    (mz32 48)
+    (mz24 49)
+    (mz16 50)
+    (mz16s 58)
     )
-   )
+
+(defun psm-size ((arg0 gs-psm))
+  "Convert texture format to some type of size."
+  (cond
+    ((= arg0 (gs-psm mt8)) 64)
+    ((= arg0 (gs-psm mt4)) 32)
+    (else
+     (if (or (= arg0 (gs-psm ct16))
+             (= arg0 (gs-psm ct16s))
+             (= arg0 (gs-psm mz16))
+             (= arg0 (gs-psm mz16s))
+             )
+         128
+         256
+         )
+     )
+    )
   )
 
-(defun psm-page-height ((arg0 int))
-  "texture format -> page height?"
+(defun psm-page-height ((arg0 gs-psm))
+  "Convert texture format to some type of page height"
   (cond
-   ((= arg0 TEX_MT8) 64)
-   ((= arg0 TEX_MT4) 128)
-   (else
-    (if (or (= arg0 TEX_CT16) (= arg0 TEX_CT16S) (= arg0 TEX_MZ16) (= arg0 TEX_MZ16S))
-        64
-        32
-        )
+    ((= arg0 (gs-psm mt8)) 64)
+    ((= arg0 (gs-psm mt4)) 128)
+    (else
+     (if (or (= arg0 (gs-psm ct16))
+             (= arg0 (gs-psm ct16s))
+             (= arg0 (gs-psm mz16))
+             (= arg0 (gs-psm mz16s))
+             )
+         64
+         32
+         )
+     )
     )
-   )
   )
 
 
-(defun psm->string ((arg0 int))
-  "Convert texture format to its name"
-  (local-vars (v1-0 int))
-  (set! v1-0 arg0)
-  (cond
-   ((= v1-0 TEX_MZ16S) "mz16s")
-   ((= v1-0 TEX_MZ16) "mz16")
-   ((= v1-0 TEX_MZ24) "mz24")
-   ((= v1-0 TEX_MZ32) "mz32")
-   ((= v1-0 TEX_MT4HH) "mt4hh")
-   ((= v1-0 TEX_MT4HL) "mt4hl")
-   ((= v1-0 TEX_MT8H) "mt8h")
-   ((= v1-0 TEX_MT4) "mt4")
-   ((= v1-0 TEX_MT8) "mt8")
-   ((= v1-0 TEX_CT16S) "ct16s")
-   ((= v1-0 TEX_CT16) "ct16")
-   ((= v1-0 TEX_CT24) "ct24")
-   ((zero? v1-0) "ct32")
-   (else "*unknown*")
-   )
+(defun psm->string ((arg0 gs-psm))
+  "Get the name of a texture format."
+  (let ((v1-0 arg0))
+    (cond
+      ((= v1-0 (gs-psm mz16s)) "mz16s")
+      ((= v1-0 (gs-psm mz16)) "mz16")
+      ((= v1-0 (gs-psm mz24)) "mz24")
+      ((= v1-0 (gs-psm mz32)) "mz32")
+      ((= v1-0 (gs-psm mt4hh)) "mt4hh")
+      ((= v1-0 (gs-psm mt4hl)) "mt4hl")
+      ((= v1-0 (gs-psm mt8h)) "mt8h")
+      ((= v1-0 (gs-psm mt4)) "mt4")
+      ((= v1-0 (gs-psm mt8)) "mt8")
+      ((= v1-0 (gs-psm ct16s)) "ct16s")
+      ((= v1-0 (gs-psm ct16)) "ct16")
+      ((= v1-0 (gs-psm ct24)) "ct24")
+      ((zero? v1-0) "ct32")
+      (else "*unknown*")
+      )
+    )
   )
 
 ;; the GS's DISPFB registers make settings for the frame buffer regarding information on
@@ -105,12 +117,13 @@
 (deftype gs-display-fb (uint64)
   ((fbp  uint16 :offset 0  :size 9)
    (fbw  uint8  :offset 9  :size 6)
-   (psm  uint8  :offset 15 :size 5)
+   (psm  gs-psm :offset 15 :size 5)
    (dbx  uint16 :offset 32 :size 11)
    (dby  uint16 :offset 43 :size 11)
    )
   :flag-assert #x900000008
   )
+
 ;; the GS's DISPLAY registers make settings for the display position on the screen regarding
 ;; information on Rectangular Area Read Output Circuit n for the PCRTC.
 ;; write-only
@@ -124,6 +137,7 @@
    )
   :flag-assert #x900000008
   )
+
 ;; the GS's BGCOLOR register sets the background color of the PCRTC with RGB value.
 ;; write-only
 (deftype gs-bgcolor (uint64)
@@ -133,6 +147,7 @@
    )
   :flag-assert #x900000008
   )
+
 ;; the GS's CSR register sets and obtains various GS statuses.
 ;; read-write. the fields have different effects depending on whether they're being read from
 ;; or written to.
@@ -175,6 +190,7 @@
   :size-assert         #x1048
   :flag-assert         #x900001048
   )
+
 ;; the GS's FRAME registers store various settings related to the frame buffer.
 (deftype gs-frame (uint64)
   ((fbp    uint16 :offset 0  :size 9)
@@ -184,6 +200,7 @@
    )
   :flag-assert #x900000008
   )
+
 ;; the GS's ZBUF registers make various settings regarding Z buffer.
 (deftype gs-zbuf (uint64)
   ((zbp   uint16 :offset 0  :size 9)
@@ -517,7 +534,13 @@
   :flag-assert #x900000004
   )
 (deftype gif-tag64 (uint64)
-  ()
+  ((nloop   uint16 :offset 0   :size 15)
+   (eop     uint8  :offset 15  :size 1)
+   (id      uint16 :offset 32  :size 14)
+   (pre     uint8  :offset 46  :size 1)
+   (prim    uint16 :offset 47  :size 11)
+   (flg     uint8  :offset 58  :size 2)
+   (nreg    uint8  :offset 60  :size 4))
   :flag-assert #x900000008
   )
 (deftype gif-tag (uint128)
@@ -548,12 +571,52 @@
   :flag-assert #x900000010
   )
 
+(defenum gs-reg-id
+  :bitfield #f
+  :type uint8
+  (prim 0)
+  (rgbaq 1)
+  (st 2)
+  (uv 3)
+  (xyzf2 4)
+  (xyz2 5)
+  (tex0-1 6)
+  (tex0-2 7)
+  (clamp-1 8)
+  (clamp-2 9)
+  (fog 10)
+  (xyzf3 12)
+  (xyz3 13)
+  (a+d 14)
+  (nop 15)
+  )
+
+(deftype gif-tag-regs (uint64)
+  ((regs0   gs-reg-id :offset 0  :size 4)
+   (regs1   gs-reg-id :offset 4  :size 4)
+   (regs2   gs-reg-id :offset 8  :size 4)
+   (regs3   gs-reg-id :offset 12  :size 4)
+   (regs4   gs-reg-id :offset 16  :size 4)
+   (regs5   gs-reg-id :offset 20  :size 4)
+   (regs6   gs-reg-id :offset 24  :size 4)
+   (regs7   gs-reg-id :offset 28  :size 4)
+   (regs8   gs-reg-id :offset 32  :size 4)
+   (regs9   gs-reg-id :offset 36 :size 4)
+   (regs10  gs-reg-id :offset 40 :size 4)
+   (regs11  gs-reg-id :offset 44 :size 4)
+   (regs12  gs-reg-id :offset 48 :size 4)
+   (regs13  gs-reg-id :offset 52 :size 4)
+   (regs14  gs-reg-id :offset 56 :size 4)
+   (regs15  gs-reg-id :offset 60 :size 4)
+   )
+  )
+
 (deftype gs-gif-tag (structure)
   ((qword uint128   :offset-assert 0) ;; is "qword" and inline? in game
+   (tag   gif-tag64      :offset 0)
+   (regs  gif-tag-regs   :offset 8)
    (dword uint64 2       :offset 0)
    (word  uint32 4       :offset 0)
-   (tag   uint64          :offset 0)
-   (regs  uint64          :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -570,65 +633,107 @@
 (define *default-regs-buffer* (new 'global 'dma-buffer 1024))
 
 (defun default-buffer-init ((buff dma-buffer))
-  "Puts some currently unknown gif tags in the buffer."
-  (local-vars
-   (tag3 gs-gif-tag)
-   (tag gs-gif-tag)
-   (tag2 gs-gif-tag)
-   (data (pointer uint64))
-   )
-  ;; reset the buffer base and end.
-  (set! (-> buff base) (-> buff data))
-  (set! (-> buff end) (&-> buff data-buffer (-> buff allocated-length)))
+  "Set some GS registers back to default values. Ends with a ret dma-tag.
+   This is intended to live in its own separate dma-buffer and not be added
+   to the global buffer.  Calling this will reset this dma-buffer."
 
-  ;; make a tag (maybe this is actually a dma/vif tag?)
-  (set! tag (the gs-gif-tag (-> buff base)))
-  (set! (-> tag dword 0) #x1000000a)
-  (set! (-> tag word 2) #x13000000)
-  (set! (-> tag word 3) #x5000000a)
-  (set! (-> buff base) (&+ (the-as pointer tag) 16))
+  ;; reset the buffer.
+  (let ((buff-ptr buff))
+    (set! (-> buff-ptr base) (-> buff-ptr data))
+    (set! (-> buff-ptr end)
+          (&-> buff-ptr data-buffer (-> buff-ptr allocated-length))
+          )
+    )
 
-  ;; make another tag.
-  (set! tag2 (the gs-gif-tag (-> buff base)))
-  ;; no idea what this is about, it doesn't matter.
-  ;;(set! a2-3 (l.d L53))
-  ;;(.pcpyld a2-4 r0-0 a2-3)
-  (set! (-> tag2 dword 0) #x9000000000008001)
-  (set! (-> tag2 dword 1) #xeeeeeeeeeeeeeeee)
-  (set! (-> buff base) (&+ (the-as pointer tag2) 16))
+  ;; set up a GIF transfer
+  (let* ((buff-ptr2 buff)
+         (tag (the-as dma-gif-packet (-> buff-ptr2 base)))
+         )
+    ;; transfer 10 quadwords
+    (set! (-> tag dma-vif dma)
+          (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt))
+          )
+    ;; flush the VIF
+    (set! (-> tag dma-vif vif0)
+          (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1)
+          )
+    ;; DIRECT transfer to GIF.
+    (set! (-> tag dma-vif vif1)
+          (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1)
+          )
+    (set! (-> buff-ptr2 base) (&+ (the-as pointer tag) 16))
+    )
 
-  ;; now some payload.
-  (set! data (the (pointer uint64) (-> buff base)))
-  (set! (-> data 0) 68)
-  (set! (-> data 1) 66)
-  (set! (-> data 2) #x10001c0)
-  (set! (-> data 3) 78)
-  (set! (-> data 4) #x5000e)
-  (set! (-> data 5) 71)
-  (set! (-> data 6) 0)
-  (set! (-> data 7) 73)
-  (set! (-> data 8) 5)
-  (set! (-> data 9) 8)
-  (set! (-> data 10) 96)
-  (set! (-> data 11) 20)
-  (set! (-> data 12) (shl 128 32))
-  (set! (-> data 13) 59)
-  (set! (-> data 14) 4)
-  (set! (-> data 15) 28)
-  (set! (-> data 16) *fog-color*)
-  (set! (-> data 17) 61)
-  (set! (-> buff base) (&-> data 18))
+  ;; set up for 9 registers (each reg is 1 qw + 1 qw for this tag)
+  (let* ((buff-ptr5 buff)
+         (gif-tag (the-as gs-gif-tag (-> buff-ptr5 base)))
+         )
+    ;; nreg = 9 here.
+    (set! (-> gif-tag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
+    ;; this sets all the regs to a+d, but the ones after 9 are ignored.
+    (set! (-> gif-tag regs)
+          (new 'static 'gif-tag-regs
+               :regs0 (gs-reg-id a+d)
+               :regs1 (gs-reg-id a+d)
+               :regs2 (gs-reg-id a+d)
+               :regs3 (gs-reg-id a+d)
+               :regs4 (gs-reg-id a+d)
+               :regs5 (gs-reg-id a+d)
+               :regs6 (gs-reg-id a+d)
+               :regs7 (gs-reg-id a+d)
+               :regs8 (gs-reg-id a+d)
+               :regs9 (gs-reg-id a+d)
+               :regs10 (gs-reg-id a+d)
+               :regs11 (gs-reg-id a+d)
+               :regs12 (gs-reg-id a+d)
+               :regs13 (gs-reg-id a+d)
+               :regs14 (gs-reg-id a+d)
+               :regs15 (gs-reg-id a+d)
+               )
+          )
+    (set! (-> buff-ptr5 base) (&+ (the-as pointer gif-tag) 16))
+    )
 
-  ;; and a final tag.
-  (set! tag3 (the gs-gif-tag (-> buff base)))
-  (set! (-> tag3 dword 0) #x60000000)
-  (set! (-> tag3 word 2) 0)
-  (set! (-> tag3 word 3) 0)
-  (set! (-> buff base) (&+ (the-as pointer tag3) 16))
+  ;; the actual address + register data.
+  (let* ((buff-ptr3 buff)
+         (data (the-as (pointer uint64) (-> buff-ptr3 base)))
+         )
+    (set! (-> data 0) (the-as uint 68))
+    (set! (-> data 1) (the-as uint 66))
+    (set! (-> data 2) (the-as uint #x10001c0))
+    (set! (-> data 3) (the-as uint 78))
+    (set! (-> data 4) (the-as uint #x5000e))
+    (set! (-> data 5) (the-as uint 71))
+    (set! (-> data 6) (the-as uint 0))
+    (set! (-> data 7) (the-as uint 73))
+    (set! (-> data 8) (the-as uint 5))
+    (set! (-> data 9) (the-as uint 8))
+    (set! (-> data 10) (the-as uint 96))
+    (set! (-> data 11) (the-as uint 20))
+    (set! (-> data 12) (the-as uint (shl 128 32)))
+    (set! (-> data 13) (the-as uint 59))
+    (set! (-> data 14) (the-as uint 4))
+    (set! (-> data 15) (the-as uint 28))
+    (set! (-> data 16) (the-as uint *fog-color*))
+    (set! (-> data 17) (the-as uint 61))
+    (set! (-> buff-ptr3 base) (&+ (the-as pointer data) 144))
+    )
+
+  ;; return dma-tag.
+  (let* ((buff-ptr4 buff)
+         (ret-packet (the-as dma-packet (-> buff-ptr4 base)))
+         )
+    (set! (-> ret-packet dma) (new 'static 'dma-tag :id (dma-tag-id ret)))
+    (set! (-> ret-packet vif0) (new 'static 'vif-tag))
+    (set! (-> ret-packet vif1) (new 'static 'vif-tag))
+    (set! (-> buff-ptr4 base) (&+ (the-as pointer ret-packet) 16))
+    )
   (none)
   )
 
+
 (default-buffer-init *default-regs-buffer*)
+
 
 ;; This isn't a dynamic type in the type system, but it's used as one.
 ;; the array at the end is used as a dynamic array.
@@ -644,8 +749,8 @@
 
 (deftype gif-packet (basic)
   ((reg-count int32     :offset-assert 4)
-   (gif-tag0  uint128   :offset-assert 16)
-   (gif-tag gs-gif-tag :inline :offset 16)
+   (gif-tag gs-gif-tag :inline :offset-assert 16)
+   (gif-tag0  uint128   :offset 16)
    (args      uint64 1 :offset-assert 32) ;; there's one here already.
    )
   (:methods
@@ -664,40 +769,38 @@
   )
 
 (defun open-gif-packet ((arg0 gif-packet))
-  "Initialize a gif packet"
+  "Initialize an existing gif-packet for 0 registers"
   (set! (-> arg0 reg-count) 0)
-  (set! (-> arg0 gif-tag dword 1) 0)
+  (set! (-> arg0 gif-tag regs) (new 'static 'gif-tag-regs))
   arg0
   )
 
 (defun add-reg-gif-packet ((packet gif-packet) (reg-idx int) (reg-val int))
-  "Adds a register to reglist packet."
-  (local-vars (tag gs-gif-tag))
-  (set! tag (-> packet gif-tag))
-  ;; dword 1 contains the list of registers to set. each is 4-bits.
-  (set! (-> tag dword 1)
-   (logior (-> tag dword 1)
-    (the-as uint (ash reg-idx (shl (-> packet reg-count) 2))) ;; shift to the correct spot
+  "Add a register to the packet"
+  (let ((tag (-> packet gif-tag)))
+    ;; shift the register index into the right slot
+    (set! (-> tag regs) (logior
+                         (-> tag regs)
+                         (the-as uint (ash reg-idx (shl (-> packet reg-count) 2)))
+                         )
+          )
     )
-   )
-  ;; ?? (-> packet args (-> packet reg-count))
-  ;; store the value for the register.
-  (set! (-> (&-> packet args (-> packet reg-count)) 0) reg-val)
-  ;; increment the reg we're on.
+  ;; set register value and increment count.
+  (set! (-> packet args (-> packet reg-count)) (the-as uint reg-val))
   (set! (-> packet reg-count) (+ (-> packet reg-count) 1))
   (none)
   )
 
-(defun close-gif-packet ((arg0 gif-packet) (arg1 int))
-  "Sets the lower dword of the giftag for reglist"
-  (local-vars  (v1-2 int) (v1-3 int))
-  (set! v1-2
-   (logior (logior #x400000000000001 (the-as uint (shl (-> arg0 reg-count) 60)))
-    (the-as uint (shr (shl arg1 63) 48))
-    )
-   )
-  ;;(.pcpyld v1-3 r0-0 v1-2)?? GOAL compiler is confused.
-  (set! (-> arg0 gif-tag dword 0) v1-2)
+(defun close-gif-packet ((arg0 gif-packet) (eop int))
+  "Finish adding registers."
+  (set! (-> arg0 gif-tag tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :flg #x1
+             :eop eop
+             :nreg (-> arg0 reg-count)
+             )
+        )
   arg0
   )
 
@@ -727,24 +830,19 @@
                              (color-0 rgba)
                              )
   "Allocate and initialize a draw-context"
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
+          (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
+          )
+      (set! (-> obj orgx) org-x)
+      (set! (-> obj orgy) v1-3)
+      (set! (-> obj orgz) #xffffff)
+      (set! (-> obj width) width)
+      (set! (-> obj height) a0-2)
+      )
+    (set! (-> obj color 0) color-0)
+    obj
     )
-   (let
-    ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
-     (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale))))
-     )
-    (set! (-> obj orgx) org-x)
-    (set! (-> obj orgy) v1-3)
-    (set! (-> obj orgz) #xffffff)
-    (set! (-> obj width) width)
-    (set! (-> obj height) a0-2)
-    )
-   (set! (-> obj color 0) color-0)
-   obj
-   )
   )
 
 (defun draw-context-set-xy ((arg0 draw-context) (x int) (y int))

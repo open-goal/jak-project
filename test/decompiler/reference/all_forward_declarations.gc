@@ -63,7 +63,17 @@
 (define-extern *listener-process* process)
 (define-extern *active-pool* process-tree)
 (define-extern reset-and-call (function thread function object))
-(define-extern ash (function int int int))
+(defun ash ((value int) (shift-amount int))
+  "Arithmetic shift value by shift-amount.
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
+  (declare (inline))
+  (if (> shift-amount 0)
+      (shl value shift-amount)
+      (sar value (- shift-amount))
+      )
+  )
 (define-extern inspect-process-tree (function process-tree int int symbol process-tree))
 (define-extern set-to-run-bootstrap (function none))
 (define-extern dead-state state)
@@ -87,6 +97,11 @@
   '(none)
   )
 
+(defmacro gpr->fpr (in)
+  in)
+
+(define-extern get-current-time (function uint))
+(define-extern get-integral-current-time (function uint))
 
 ;; math
 (define-extern fabs (function float float))
@@ -198,6 +213,75 @@
     (ret 6)       ;;
     (end 7)       ;; next, but ends.
     )
+
+(defenum gs-psm
+    :bitfield #f
+    :type uint8
+    (ct32 0)
+    (ct24 1)
+    (ct16 2)
+    (ct16s 10)
+    (mt8 19)
+    (mt4 20)
+    (mt8h 27)
+    (mt4hl 36)
+    (mt4hh 44)
+    (mz32 48)
+    (mz24 49)
+    (mz16 50)
+    (mz16s 58)
+    )
+(defenum gs-prim-type
+  :type uint8
+  (point 0)
+  (line 1)
+  (line-strip 2)
+  (tri 3)
+  (tri-strip 4)
+  (tri-fan 5)
+  (sprite 6)
+  )
+
+(defenum gs-reg-id
+  :bitfield #f
+  :type uint8
+  (prim 0)
+  (rgbaq 1)
+  (st 2)
+  (uv 3)
+  (xyzf2 4)
+  (xyz2 5)
+  (tex0-1 6)
+  (tex0-2 7)
+  (clamp-1 8)
+  (clamp-2 9)
+  (fog 10)
+  (xyzf3 12)
+  (xyz3 13)
+  (a+d 14)
+  (nop 15)
+  )
+
+(deftype gif-tag-regs (uint64)
+  ((regs0   gs-reg-id :offset 0  :size 4)
+   (regs1   gs-reg-id :offset 4  :size 4)
+   (regs2   gs-reg-id :offset 8  :size 4)
+   (regs3   gs-reg-id :offset 12  :size 4)
+   (regs4   gs-reg-id :offset 16  :size 4)
+   (regs5   gs-reg-id :offset 20  :size 4)
+   (regs6   gs-reg-id :offset 24  :size 4)
+   (regs7   gs-reg-id :offset 28  :size 4)
+   (regs8   gs-reg-id :offset 32  :size 4)
+   (regs9   gs-reg-id :offset 36 :size 4)
+   (regs10  gs-reg-id :offset 40 :size 4)
+   (regs11  gs-reg-id :offset 44 :size 4)
+   (regs12  gs-reg-id :offset 48 :size 4)
+   (regs13  gs-reg-id :offset 52 :size 4)
+   (regs14  gs-reg-id :offset 56 :size 4)
+   (regs15  gs-reg-id :offset 60 :size 4)
+   )
+  )
+
 
 ;; display-h
 (deftype display-env (structure)

@@ -96,10 +96,10 @@ class Compiler {
                             IR_VFMath2Asm::Kind kind,
                             Env* env);
 
-  Val* compile_asm_vf_math2_imm_u8(const goos::Object& form,
-                                   const goos::Object& rest,
-                                   IR_VFMath2Asm::Kind kind,
-                                   Env* env);
+  Val* compile_asm_int128_math2_imm_u8(const goos::Object& form,
+                                       const goos::Object& rest,
+                                       IR_Int128Math2Asm::Kind kind,
+                                       Env* env);
 
   Val* compile_asm_vf_math4_two_operation(const goos::Object& form,
                                           const goos::Object& rest,

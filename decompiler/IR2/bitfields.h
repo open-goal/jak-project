@@ -54,6 +54,30 @@ struct BitfieldManip {
     return result;
   }
 
+  std::string print() const {
+    switch (kind) {
+      case Kind::LEFT_SHIFT:
+        return "left-shift";
+      case Kind::RIGHT_SHIFT_LOGICAL:
+        return "right-shift-logical";
+      case Kind::RIGHT_SHIFT_LOGICAL_32BIT:
+        return "right-shift-logical32";
+      case Kind::LOGAND_WITH_CONSTANT_INT:
+        return "logand-constant";
+      case Kind::LOGIOR_WITH_CONSTANT_INT:
+        return "logior-constant";
+      case Kind::LOGIOR_WITH_FORM:
+        return "logior-form";
+      case Kind::LOGAND_WITH_FORM:
+        return "logand-form";
+      case Kind::NONZERO_COMPARE:
+        return "nonzero-compare";
+      case Kind::INVALID:
+      default:
+        assert(false);
+    }
+  }
+
  private:
   BitfieldManip() = default;
 };
@@ -152,6 +176,8 @@ Form* cast_to_int_enum(const EnumType* type_info,
                        FormPool& pool,
                        const Env& env,
                        Form* in);
+
+Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in);
 
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&);
 

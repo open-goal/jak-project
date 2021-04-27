@@ -11,7 +11,7 @@ namespace decompiler {
 
 namespace {
 
-std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx);
+std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_inline_asm);
 
 //////////////////////
 // Register Helpers
@@ -67,6 +67,9 @@ RegisterAccess make_dst_var(const Instruction& i, int idx) {
 ////////////////////////
 
 SimpleAtom make_src_atom(Register reg, int idx) {
+  if (reg == Register(Reg::GPR, Reg::R0)) {
+    return SimpleAtom::make_int_constant(0);
+  }
   return SimpleAtom::make_var(make_src_var(reg, idx));
 }
 
@@ -399,7 +402,7 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
   if (branch_delay.is_known()) {
     return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
   } else {
-    auto delay_op = std::shared_ptr<AtomicOp>(convert_1(delay, my_idx));
+    auto delay_op = std::shared_ptr<AtomicOp>(convert_1(delay, my_idx, false));
     return std::make_unique<AsmBranchOp>(likely, condition, dest_label, delay_op, my_idx);
   }
 }
@@ -707,7 +710,7 @@ std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0, int idx, bool li
   return make_branch_no_delay(condition, likely, dest, idx);
 }
 
-std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
+std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_inline_asm) {
   switch (i0.kind) {
     case InstructionKind::OR:
       return convert_or_1(i0, idx);
@@ -715,6 +718,12 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
       return convert_ori_1(i0, idx);
     case InstructionKind::AND:
       return make_3reg_op(i0, SimpleExpression::Kind::AND, idx);
+    case InstructionKind::PCPYLD:
+      if (hint_inline_asm) {
+        break;
+      } else {
+        return make_3reg_op(i0, SimpleExpression::Kind::PCPYLD, idx);
+      }
     case InstructionKind::MTC1:
       return convert_mtc1_1(i0, idx);
     case InstructionKind::MFC1:
@@ -835,6 +844,7 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx) {
     default:
       return nullptr;
   }
+  return nullptr;
 }
 
 ///////////////////////
@@ -1406,7 +1416,8 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 std::vector<Instruction>::const_iterator end,
                                 const std::vector<DecompilerLabel>& labels,
                                 FunctionAtomicOps* container,
-                                DecompWarnings& warnings) {
+                                DecompWarnings& warnings,
+                                bool hint_inline_asm) {
   container->block_id_to_first_atomic_op.push_back(container->ops.size());
   for (auto& instr = begin; instr < end;) {
     // how many instructions can we look at, at most?
@@ -1461,7 +1472,7 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted) {
       // try 1 instruction
-      op = convert_1(*instr, op_idx);
+      op = convert_1(*instr, op_idx, hint_inline_asm);
       if (op) {
         converted = true;
         length = 1;
@@ -1502,7 +1513,8 @@ int convert_block_to_atomic_ops(int begin_idx,
 
 FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
                                                  const std::vector<DecompilerLabel>& labels,
-                                                 DecompWarnings& warnings) {
+                                                 DecompWarnings& warnings,
+                                                 bool hint_inline_asm) {
   FunctionAtomicOps result;
 
   int last_op = 0;
@@ -1512,8 +1524,8 @@ FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
     if (block.end_word > block.start_word) {
       auto begin = func.instructions.begin() + block.start_word;
       auto end = func.instructions.begin() + block.end_word;
-      last_op =
-          convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result, warnings);
+      last_op = convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result, warnings,
+                                            hint_inline_asm);
       if (i == int(func.basic_blocks.size()) - 1) {
         // we're the last block. insert the function end op.
         result.ops.push_back(std::make_unique<FunctionEndOp>(int(result.ops.size())));

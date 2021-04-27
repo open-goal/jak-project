@@ -9,8 +9,8 @@ typedef OpenGOALAsm::InstructionModifiers MOD;
 const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUNCS = {
     // ----- EE -------
     // TODO - these are waiting on proper 128-bit int support in OpenGOAL
-    {InstructionKind::PSLLW, {"TODO.PSLLW", {}}},
-    {InstructionKind::PSRAW, {"TODO.PSRAW", {}}},
+    {InstructionKind::PSLLW, {".pw.sll", {}}},
+    {InstructionKind::PSRAW, {".pw.sra", {}}},
     {InstructionKind::PSUBW, {"TODO.PSUBW", {}}},
 
     {InstructionKind::PEXTUW, {".pextuw", {}}},

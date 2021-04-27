@@ -636,7 +636,10 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
           // smaller. We should check that the higher bits are all zero.
           int bits = as_bitfield->get_size_in_memory() * 8;
           assert(bits <= 64);
-          assert((value >> bits) == 0);
+          if (bits < 64) {
+            assert((value >> bits) == 0);
+            // technically ub if bits == 64.
+          }
           TypeSpec typespec(hint->second.type_name);
           auto defs = decompile_bitfield_from_int(typespec, ts, value);
           return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, defs,
