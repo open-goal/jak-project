@@ -17,7 +17,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
-    "dma-bucket", "dma-disasm", "pad", "gs",
+    "dma-bucket", "dma-disasm", "pad", "gs", "display-h",
     /* gap */
     "bounding-box",
     /* gap */
@@ -32,7 +32,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs",
+    "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -122,6 +122,9 @@ const std::unordered_set<std::string> skip_in_compiling = {
 
     // gs
     "(method 3 gif-tag)",  // inspect for a 128-bit type.
+
+    // display-h
+    "put-draw-env",
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
