@@ -5,6 +5,7 @@
 ;; name in dgo: display-h
 ;; dgos: GAME, ENGINE
 
+;; display-env stores the GS settings for displaying a framebuffer on screen.
 (deftype display-env (structure)
   ((pmode   gs-pmode      :offset-assert 0)
    (smode2  gs-smode2     :offset-assert 8)
@@ -18,6 +19,7 @@
   :flag-assert         #x900000028
   )
 
+;; draw-env stores the GS settings for drawing to somewhere in VRAM.
 ;; the "addr" fields represent GS register addresses
 (deftype draw-env (structure)
   ((frame1         gs-frame        :offset-assert 0)
@@ -42,10 +44,17 @@
   :flag-assert         #x900000080
   )
 
-(defun put-draw-env ((packet dma-packet))
-  "Uses the qwc stored in the packet."
-  ;; TODO - good spot to patch for PC, or maybe just exclude.
-  (dma-send GIF_DMA_BANK (the uint packet) (+ (the uint 1) (-> packet dma qwc)))
+(defun put-draw-env ((packet (pointer gif-tag)))
+  "Begin DMA transfer to the GIF/GS to send a draw env packet.
+   The length of the transfer is taken from the nloop field of the tag."
+  ;; this is a workaround for OpenGOAL not supporting 128-bitfield access yet.
+  (let ((packet64 (the-as (pointer gif-tag64) packet)))
+    (dma-send GIF_DMA_BANK
+              (the-as uint packet)
+              (the-as uint (+ (the-as uint (-> packet64 0 nloop)) (the-as uint 1)))
+              )
+    )
+  (none)
   )
 
 (deftype display-frame (basic)
@@ -67,17 +76,18 @@
   )
 
 (defmethod new display-frame ((allocation symbol) (type-to-make type))
-  "Allocate a new display-frame"
-  (local-vars (obj display-frame))
-  (set! obj (object-new allocation type-to-make (the-as int (-> type-to-make size))))
-  (set! (-> obj buffer 1) 0)
-  (set! (-> obj buffer 9) 0)
-  (set! (-> obj buffer 8) 0)
-  (when *debug-segment*
-   (set! (-> obj profile-bar 0) (new 'debug 'profile-bar))
-   (set! (-> obj profile-bar 1) (new 'debug 'profile-bar))
-   )
-  obj
+  "Allocate a new display frame"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj calc-buf) (the-as dma-buffer 0))
+    (set! (-> obj global-buf) (the-as dma-buffer 0))
+    (set! (-> obj debug-buf) (the-as dma-buffer 0))
+    ;; allocate profile-bars in the debug heap, if we're debugging.
+    (when *debug-segment*
+      (set! (-> obj profile-bar 0) (new 'debug 'profile-bar))
+      (set! (-> obj profile-bar 1) (new 'debug 'profile-bar))
+      )
+    obj
+    )
   )
 
 (deftype virtual-frame (structure)
@@ -141,50 +151,60 @@
   )
 
 (define-extern *display* display)
-
 (define-extern set-display (function display int int int int int display))
+
 (defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
-  (local-vars (obj display))
-  (set! obj
-        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-        )
-  (set-display obj psm w h ztest zpsm)
-  (set! (-> obj frames 0 display) (-> obj display-env0))
-  (set! (-> obj frames 1 display) (-> obj display-env1))
-  (set! (-> obj frames 2 display) (-> obj display-env2))
-  (set! (-> obj frames 3 display) (-> obj display-env0))
-  (set! (-> obj frames 4 display) (-> obj display-env1))
-  (set! (-> obj frames 5 display) (-> obj display-env2))
-  (set! (-> obj frames 0 display-last) (-> obj display-env2))
-  (set! (-> obj frames 1 display-last) (-> obj display-env0))
-  (set! (-> obj frames 2 display-last) (-> obj display-env1))
-  (set! (-> obj frames 3 display-last) (-> obj display-env2))
-  (set! (-> obj frames 4 display-last) (-> obj display-env0))
-  (set! (-> obj frames 5 display-last) (-> obj display-env1))
-  (set! (-> obj frames 0 gif) (&-> obj gif-tag0))
-  (set! (-> obj frames 1 gif) (&-> obj gif-tag1))
-  (set! (-> obj frames 2 gif) (&-> obj gif-tag2))
-  (set! (-> obj frames 3 gif) (&-> obj gif-tag0))
-  (set! (-> obj frames 4 gif) (&-> obj gif-tag1))
-  (set! (-> obj frames 5 gif) (&-> obj gif-tag2))
-  (set! (-> obj frames 0 draw) (-> obj draw0))
-  (set! (-> obj frames 1 draw) (-> obj draw1))
-  (set! (-> obj frames 2 draw) (-> obj draw2))
-  (set! (-> obj frames 3 draw) (-> obj draw0))
-  (set! (-> obj frames 4 draw) (-> obj draw1))
-  (set! (-> obj frames 5 draw) (-> obj draw2))
-  (set! (-> obj frames 0 frame) (new 'global 'display-frame))
-  (set! (-> obj frames 1 frame) (new 'global 'display-frame))
-  (set! (-> obj frames 2 frame) (-> obj frames 0 frame))
-  (set! (-> obj frames 3 frame) (-> obj frames 1 frame))
-  (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
-  (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
-  (default-buffer-init *default-regs-buffer*)
-  (set! (-> obj bg-clear-color 0) (new-rgba #x80 #x80 #x80 #x80))
-  (set! (-> obj bg-clear-color 1) (new-rgba #x80 #x80 #x80 #x80))
-  (set! (-> obj bg-clear-color 2) (new-rgba #x80 #x80 #x80 #x80))
-  (set! (-> obj bg-clear-color 3) (new-rgba #x80 #x80 #x80 #x80))
-  obj
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    ;; set the display size, texture format, zbuffer format, etc.
+    (set-display obj psm w h ztest zpsm)
+    ;; set up frames.
+    (set! (-> obj frames 0 display) (-> obj display-env0))
+    (set! (-> obj frames 1 display) (-> obj display-env1))
+    (set! (-> obj frames 2 display) (-> obj display-env2))
+    (set! (-> obj frames 3 display) (-> obj display-env0))
+    (set! (-> obj frames 4 display) (-> obj display-env1))
+    (set! (-> obj frames 5 display) (-> obj display-env2))
+    (set! (-> obj frames 0 display-last) (-> obj display-env2))
+    (set! (-> obj frames 1 display-last) (-> obj display-env0))
+    (set! (-> obj frames 2 display-last) (-> obj display-env1))
+    (set! (-> obj frames 3 display-last) (-> obj display-env2))
+    (set! (-> obj frames 4 display-last) (-> obj display-env0))
+    (set! (-> obj frames 5 display-last) (-> obj display-env1))
+    (set! (-> obj frames 0 gif) (&-> obj gif-tag0))
+    (set! (-> obj frames 1 gif) (&-> obj gif-tag1))
+    (set! (-> obj frames 2 gif) (&-> obj gif-tag2))
+    (set! (-> obj frames 3 gif) (&-> obj gif-tag0))
+    (set! (-> obj frames 4 gif) (&-> obj gif-tag1))
+    (set! (-> obj frames 5 gif) (&-> obj gif-tag2))
+    (set! (-> obj frames 0 draw) (-> obj draw0))
+    (set! (-> obj frames 1 draw) (-> obj draw1))
+    (set! (-> obj frames 2 draw) (-> obj draw2))
+    (set! (-> obj frames 3 draw) (-> obj draw0))
+    (set! (-> obj frames 4 draw) (-> obj draw1))
+    (set! (-> obj frames 5 draw) (-> obj draw2))
+    (set! (-> obj frames 0 frame) (new 'global 'display-frame))
+    (set! (-> obj frames 1 frame) (new 'global 'display-frame))
+    (set! (-> obj frames 2 frame) (-> obj frames 0 frame))
+    (set! (-> obj frames 3 frame) (-> obj frames 1 frame))
+    (set! (-> obj frames 4 frame) (-> obj frames 0 frame))
+    (set! (-> obj frames 5 frame) (-> obj frames 1 frame))
+    ;; do this again. just in case.
+    (default-buffer-init *default-regs-buffer*)
+    ;; set the default gray color.
+    (set! (-> obj bg-clear-color 0)
+          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+          )
+    (set! (-> obj bg-clear-color 1)
+          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+          )
+    (set! (-> obj bg-clear-color 2)
+          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+          )
+    (set! (-> obj bg-clear-color 3)
+          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+          )
+    obj
+    )
   )
 
 (define *pre-draw-hook* nothing)
