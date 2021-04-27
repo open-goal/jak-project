@@ -1503,6 +1503,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "pair?";
     case FixedOperatorKind::NONE:
       return "none";
+    case FixedOperatorKind::PCPYLD:
+      return ".pcpyld";
     default:
       assert(false);
       return "";

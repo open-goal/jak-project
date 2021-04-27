@@ -749,8 +749,8 @@
 
 (deftype gif-packet (basic)
   ((reg-count int32     :offset-assert 4)
-   (gif-tag0  uint128   :offset-assert 16)
-   (gif-tag gs-gif-tag :inline :offset 16)
+   (gif-tag gs-gif-tag :inline :offset-assert 16)
+   (gif-tag0  uint128   :offset 16)
    (args      uint64 1 :offset-assert 32) ;; there's one here already.
    )
   (:methods
@@ -769,40 +769,38 @@
   )
 
 (defun open-gif-packet ((arg0 gif-packet))
-  "Initialize a gif packet"
+  "Initialize an existing gif-packet for 0 registers"
   (set! (-> arg0 reg-count) 0)
-  (set! (-> arg0 gif-tag dword 1) 0)
+  (set! (-> arg0 gif-tag regs) (new 'static 'gif-tag-regs))
   arg0
   )
 
 (defun add-reg-gif-packet ((packet gif-packet) (reg-idx int) (reg-val int))
-  "Adds a register to reglist packet."
-  (local-vars (tag gs-gif-tag))
-  (set! tag (-> packet gif-tag))
-  ;; dword 1 contains the list of registers to set. each is 4-bits.
-  (set! (-> tag dword 1)
-   (logior (-> tag dword 1)
-    (the-as uint (ash reg-idx (shl (-> packet reg-count) 2))) ;; shift to the correct spot
+  "Add a register to the packet"
+  (let ((tag (-> packet gif-tag)))
+    ;; shift the register index into the right slot
+    (set! (-> tag regs) (logior
+                         (-> tag regs)
+                         (the-as uint (ash reg-idx (shl (-> packet reg-count) 2)))
+                         )
+          )
     )
-   )
-  ;; ?? (-> packet args (-> packet reg-count))
-  ;; store the value for the register.
-  (set! (-> (&-> packet args (-> packet reg-count)) 0) reg-val)
-  ;; increment the reg we're on.
+  ;; set register value and increment count.
+  (set! (-> packet args (-> packet reg-count)) (the-as uint reg-val))
   (set! (-> packet reg-count) (+ (-> packet reg-count) 1))
   (none)
   )
 
-(defun close-gif-packet ((arg0 gif-packet) (arg1 int))
-  "Sets the lower dword of the giftag for reglist"
-  (local-vars  (v1-2 int) (v1-3 int))
-  (set! v1-2
-   (logior (logior #x400000000000001 (the-as uint (shl (-> arg0 reg-count) 60)))
-    (the-as uint (shr (shl arg1 63) 48))
-    )
-   )
-  ;;(.pcpyld v1-3 r0-0 v1-2)?? GOAL compiler is confused.
-  (set! (-> arg0 gif-tag dword 0) v1-2)
+(defun close-gif-packet ((arg0 gif-packet) (eop int))
+  "Finish adding registers."
+  (set! (-> arg0 gif-tag tag)
+        (new 'static 'gif-tag64
+             :nloop #x1
+             :flg #x1
+             :eop eop
+             :nreg (-> arg0 reg-count)
+             )
+        )
   arg0
   )
 

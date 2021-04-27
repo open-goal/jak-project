@@ -275,7 +275,11 @@ void ObjectFileDB::ir2_atomic_op_pass() {
       func.ir2.atomic_ops_attempted = true;
       attempted++;
       try {
-        auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings);
+        bool inline_asm =
+            get_config().hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
+            get_config().hint_inline_assembly_functions.end();
+        auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings,
+                                                  inline_asm);
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
         func.ir2.atomic_ops_succeeded = true;
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());

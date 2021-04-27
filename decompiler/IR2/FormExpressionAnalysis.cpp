@@ -201,6 +201,19 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
   }
 }
 
+namespace {
+Form* strip_pcypld_64(Form* in) {
+  auto m = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::PCPYLD),
+                             {Matcher::integer(0), Matcher::any(0)}),
+                 in);
+  if (m.matched) {
+    return m.maps.forms.at(0);
+  } else {
+    return in;
+  }
+}
+}  // namespace
+
 /*!
  * This should be used to generate all casts.
  */
@@ -213,6 +226,9 @@ Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& e
   auto type_info = env.dts->ts.lookup_type(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info) {
+    if (bitfield_info->get_load_size() == 8) {
+      in = strip_pcypld_64(in);
+    }
     return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
   }
 
@@ -314,13 +330,6 @@ bool is_ptr_or_child(const Env& env, int my_idx, RegisterAccess var, bool) {
   return type == "pointer";
 }
 
-bool is_var(Form* form) {
-  auto atom = form_as_atom(form);
-  if (atom) {
-    return atom->is_var();
-  }
-  return false;
-}
 }  // namespace
 
 /*!
@@ -846,6 +855,36 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
+                                                       FormPool& pool,
+                                                       FormStack& stack,
+                                                       std::vector<FormElement*>* result,
+                                                       bool allow_side_effects) {
+  std::vector<Form*> args;
+  std::vector<RegisterAccess> ras;
+  for (int arg_idx = 0; arg_idx < m_expr.args(); arg_idx++) {
+    if (m_expr.get_arg(arg_idx).is_var()) {
+      ras.push_back(m_expr.get_arg(arg_idx).var());
+    }
+  }
+  auto popped_args = pop_to_forms(ras, env, pool, stack, allow_side_effects);
+
+  int ras_idx = 0;
+  for (int arg_idx = 0; arg_idx < m_expr.args(); arg_idx++) {
+    if (m_expr.get_arg(arg_idx).is_var()) {
+      args.push_back(popped_args.at(ras_idx));
+      ras_idx++;
+    } else {
+      args.push_back(
+          pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(arg_idx)));
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::PCPYLD), args.at(0), args.at(1));
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
                                                                  FixedOperatorKind kind,
                                                                  FormPool& pool,
@@ -966,9 +1005,11 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
 
     if (bitfield_info) {
       // either the immediate didn't fit in the 16-bit imm or it's with a variable
+      bool made_new_read_elt = false;
       auto read_elt = dynamic_cast<BitfieldAccessElement*>(args.at(0)->try_as_single_element());
       if (!read_elt) {
         read_elt = pool.alloc_element<BitfieldAccessElement>(args.at(0), arg0_type);
+        made_new_read_elt = true;
       }
 
       auto stripped_arg1 = strip_int_or_uint_cast(args.at(1));
@@ -987,7 +1028,7 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
         assert(!other);  // shouldn't be complete.
         result->push_back(read_elt);
         return;
-      } else {
+      } else if (!made_new_read_elt) {
         BitfieldManip::Kind manip_kind;
         if (kind == FixedOperatorKind::LOGAND) {
           manip_kind = BitfieldManip::Kind::LOGAND_WITH_FORM;
@@ -1324,6 +1365,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::FLOAT_TO_INT:
       update_from_stack_float_to_int(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::PCPYLD:
+      update_from_stack_pcypld(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -2705,6 +2749,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 }
 
 namespace {
+
 void push_asm_srl_to_stack(const AsmOp* op,
                            FormElement* form_elt,
                            const Env& env,
@@ -2737,6 +2782,21 @@ void push_asm_srl_to_stack(const AsmOp* op,
   }
 }
 
+void push_asm_to_stack(const AsmOp* op,
+                       FormElement* form_elt,
+                       const Env& env,
+                       FormPool& pool,
+                       FormStack& stack) {
+  switch (op->instruction().kind) {
+    case InstructionKind::SRL:
+      push_asm_srl_to_stack(op, form_elt, env, pool, stack);
+      break;
+    default:
+      stack.push_form_element(form_elt, true);
+      break;
+  }
+}
+
 }  // namespace
 
 void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
@@ -2760,14 +2820,7 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& s
 
   auto as_asm = dynamic_cast<const AsmOp*>(m_op);
   if (as_asm) {
-    switch (as_asm->instruction().kind) {
-      case InstructionKind::SRL:
-        push_asm_srl_to_stack(as_asm, this, env, pool, stack);
-        break;
-      default:
-        stack.push_form_element(this, true);
-        break;
-    }
+    push_asm_to_stack(as_asm, this, env, pool, stack);
     return;
   }
 
@@ -2776,15 +2829,7 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& s
 
 void AsmOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
-
-  switch (m_op->instruction().kind) {
-    case InstructionKind::SRL:
-      push_asm_srl_to_stack(m_op, this, env, pool, stack);
-      break;
-    default:
-      stack.push_form_element(this, true);
-      break;
-  }
+  push_asm_to_stack(m_op, this, env, pool, stack);
 }
 
 void GenericElement::update_from_stack(const Env& env,

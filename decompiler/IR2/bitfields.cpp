@@ -216,6 +216,24 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     return def;
   }
 
+  // also possible to omit the shr if it would be zero:
+  auto matcher_no_shr = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                    {Matcher::any(0), Matcher::any_integer(1)});
+  auto mr_no_shr = match(matcher_no_shr, strip_int_or_uint_cast(form));
+  if (mr_no_shr.matched) {
+    auto value = mr_no_shr.maps.forms.at(0);
+    int left = mr_no_shr.maps.ints.at(1);
+    int right = 0;
+    int size = 64 - left;
+    int offset = left - right;
+    auto& f = find_field(ts, type, offset, size, {});
+    BitFieldDef def;
+    def.value = value;
+    def.field_name = f.name();
+    def.is_signed = false;  // we don't know.
+    return def;
+  }
+
   return {};
 }
 
@@ -228,7 +246,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                               const TypeSystem& ts,
                                               FormPool& pool,
-                                              const Env& env) {
+                                              const Env&) {
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // for left/right shift combo to get a field.
     m_steps.push_back(step);
@@ -354,6 +372,12 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                                            std::vector<BitFieldDef>{*val});
   }
 
+  lg::error("Invalid state in BitfieldReadElement. Previous steps:");
+  for (auto& old_step : m_steps) {
+    lg::error("  {}", old_step.print());
+  }
+  lg::error("Current: {}\n", step.print());
+
   throw std::runtime_error("Unknown state in BitfieldReadElement");
 }
 
@@ -464,7 +488,8 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
 
     // now variables
     for (auto& arg : args) {
-      auto maybe_field = get_bitfield_initial_set(arg, type_info, env.dts->ts);
+      auto maybe_field =
+          get_bitfield_initial_set(strip_int_or_uint_cast(arg), type_info, env.dts->ts);
       if (!maybe_field) {
         // failed, just return cast.
         return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);

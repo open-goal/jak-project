@@ -192,6 +192,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return get_type_int1(input, env, dts);
     case Kind::DIV_UNSIGNED:
     case Kind::MOD_UNSIGNED:
+    case Kind::PCPYLD:
       return TP_Type::make_from_ts("uint");
     default:
       throw std::runtime_error("Simple expression can't get_type: " +

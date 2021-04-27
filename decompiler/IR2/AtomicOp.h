@@ -221,7 +221,8 @@ class SimpleExpression {
     MIN_SIGNED,
     MAX_SIGNED,
     MIN_UNSIGNED,
-    MAX_UNSIGNED
+    MAX_UNSIGNED,
+    PCPYLD,
   };
 
   // how many arguments?

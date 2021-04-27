@@ -78,6 +78,8 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   std::unordered_map<std::string, std::vector<StackVariableHint>> stack_var_hints_by_function;
   bool run_ir2 = false;
+
+  std::unordered_set<std::string> hint_inline_assembly_functions;
 };
 
 Config& get_config();
