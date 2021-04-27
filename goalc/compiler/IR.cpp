@@ -1471,6 +1471,9 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PCEQW:
       function = ".pceqw";
       break;
+    case Kind::PSUBW:
+      function = ".psubw";
+      break;
     default:
       assert(false);
   }
@@ -1513,6 +1516,10 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
       break;
     case Kind::PCEQW:
       gen->add_instr(IGen::pceqw(dst, src1, src2), irec);
+      break;
+    case Kind::PSUBW:
+      // psubW on mips is psubD on x86...
+      gen->add_instr(IGen::vpsubd(dst, src1, src2), irec);
       break;
     default:
       assert(false);
