@@ -2391,9 +2391,10 @@ class IGen {
   static Instruction ftoi_vf(Register dst, Register src) {
     assert(dst.is_xmm());
     assert(src.is_xmm());
-    Instruction instr(0x5b);  // VCVTDQ2PS
+    // VEX.128.F3.0F.WIG 5B /r VCVTTPS2DQ xmm1, xmm2/m128
+    Instruction instr(0x5b);  // VCVTTPS2DQ
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
-                                VexPrefix::P_66);
+                                VexPrefix::P_F3);
     return instr;
   }
 

@@ -340,7 +340,7 @@ TEST(EmitterAVX, FTOI) {
   tester.emit(IGen::ftoi_vf(XMM0 + 3, XMM0 + 14));
   tester.emit(IGen::ftoi_vf(XMM0 + 13, XMM0 + 4));
   tester.emit(IGen::ftoi_vf(XMM0 + 13, XMM0 + 14));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "C5F95BDCC4C1795BDEC5795BECC441795BEE");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5FA5BDCC4C17A5BDEC57A5BECC4417A5BEE");
 }
 
 TEST(EmitterAVX, VPSRAD) {
