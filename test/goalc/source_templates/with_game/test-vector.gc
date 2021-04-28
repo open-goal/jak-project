@@ -1,0 +1,75 @@
+(defmacro stack-vec-xyzw (x y z w)
+  `(let ((vec (new 'stack 'vector)))
+     (set! (-> vec x) ,x)
+     (set! (-> vec y) ,y)
+     (set! (-> vec z) ,z)
+     (set! (-> vec w) ,w)
+     vec
+     )
+  )
+
+(defmacro print-vec (x)
+  `(begin
+    (format #t "[~F] [~F] [~F] [~F]~%" (-> ,x x) (-> ,x y) (-> ,x z) (-> ,x w))
+    )
+  )
+
+
+
+
+(let ((v1 (stack-vec-xyzw 1. 2. 3. 4.))
+      (v2 (stack-vec-xyzw 5. 6. 7. 8.))
+      (v3 (new 'stack 'vector)))
+  ;; part 1
+  (vector-cross! v3 v1 v2) (print-vec v3)
+  (vector+float! v3 v1 2.0) (print-vec v3)
+  (vector*! v3 v1 v2) (print-vec v3)
+  (vector+*! v3 v1 v2 2.0) (print-vec v3)
+  (vector-*! v3 v1 v2 2.0) (print-vec v3)
+  (vector/! v3 v1 v2) (print-vec v3)
+  (vector-float*! v3 v1 -2.0) (print-vec v3)
+  (vector-average! v3 v1 v2) (print-vec v3)
+  (vector+float*! v3 v1 v2 2.0) (print-vec v3)
+  (vector--float*! v3 v1 v2 2.0) (print-vec v3)
+  (vector-float/! v3 v1 -2.0) (print-vec v3)
+  (vector-negate! v3 v1) (print-vec v3)
+
+  
+  ;; part 2
+  (format #t "part 2~%")
+  (vector-negate-in-place! v1) (print-vec v1)
+  (vector-negate-in-place! v1)
+
+  (format #t "~A ~A ~A ~A~%"
+          (vector= v1 v2)                            ;; no
+          (vector= v1 v1)                            ;; yes
+          (vector= v1 (stack-vec-xyzw 1. 2. 3. 5.))  ;; yes
+          (vector= v1 (stack-vec-xyzw 1. 2. 3.1 4.)) ;; no
+          )
+
+  (format #t "~f~%" (vector-delta (stack-vec-xyzw 1.0 -2.0 3.0 -4.0)
+                                  (stack-vec-xyzw 2.0 -3.0 1.0 -20.0)))
+
+  ;; part 3
+  (format #t "part 3~%")
+  (vector-copy! v3 v1)
+  (vector-seek! v3 v2 0.5)
+  (print-vec v3)
+  (vector-seek! v3 v2 100.0)
+  (print-vec v3)
+
+  ;; 2,3,6 -> 7 pythagorean quadruple (is that even a thing)
+  (format #t "~f~%" (vector-length (stack-vec-xyzw 2.0 3.0 6.0 99.99)))
+  (format #t "~f~%" (vector-length-squared (stack-vec-xyzw 2.0 3.0 6.0 99.99)))
+  (format #t "~f~%" (vector-vector-distance
+                     (stack-vec-xyzw 4.0 5.0 7.0 1.0)
+                     (stack-vec-xyzw 6.0 2.0 1.0 99.99)))
+  (print-vec (vector-normalize!
+              (stack-vec-xyzw 1.0 1.5 3. 10.0)
+              49.0))
+
+  (format #t "~f~%" (vector-normalize-ret-len!
+                     (stack-vec-xyzw 1.0 1.5 3. 10.0)
+                     49.0))
+  
+  )

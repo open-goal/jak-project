@@ -320,9 +320,13 @@
    (.lvf vf2 (&-> arg1 quad))
    (.sub.vf vf1 vf2 vf1)
    (.abs.vf vf1 vf1)
+   ;; put abs.x in acc.w
    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+   ;; add abs.y
    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
+   ;; add abs.z
    (.add.mul.z.vf vf3 vf0 vf1 acc :mask #b1000)
+   ;; set acc.x = acc.w
    (.add.w.vf vf3 vf0 vf3 :mask #b1)
    (.mov v0-0 vf3)
    v0-0
@@ -354,125 +358,144 @@
    )
   )
 
-(defun vector-seek-2d-xz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
-  (let ((f0-1 (- (-> arg1 data 0) (-> arg0 data 0)))
-        (f2-1 (- (-> arg1 data 2) (-> arg0 data 2)))
+(defun vector-seek-2d-xz-smooth! ((vec vector) (target vector) (max-step float) (alpha float))
+  "Smoothly seek vec's x and z components toward target.
+   The step always points toward the target and has length (dist * alpha)
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch y or w."
+  ;; how much we have to go to get to the target
+  (let ((x-diff (- (-> target data 0) (-> vec data 0)))
+        (z-diff (- (-> target data 2) (-> vec data 2)))
         )
-   (if (or (!= f0-1 0.0) (!= f2-1 0.0))
-    (let* ((f1-5 (* f0-1 arg3))
-           (f0-3 (* f2-1 arg3))
-           (f2-4 (sqrtf (+ (* f1-5 f1-5) (* f0-3 f0-3))))
-           )
-     (cond
-      ((>= arg2 f2-4)
-       (set! (-> arg0 data 0) (+ (-> arg0 data 0) f1-5))
-       (let ((f0-4 (+ (-> arg0 data 2) f0-3)))
-        (set! (-> arg0 data 2) f0-4)
+    ;; do we have to move?
+    (if (or (!= x-diff 0.0) (!= z-diff 0.0))
+        ;; if so, scale by alpha,
+        (let* ((x-step (* x-diff alpha))
+               (z-step (* z-diff alpha))
+               ;; and get the length of this step
+               (step-len (sqrtf (+ (* x-step x-step) (* z-step z-step))))
+               )
+          (cond
+            ((>= max-step step-len)
+             ;; step is within max-step, just do it.
+             (+! (-> vec data 0) x-step)
+             (+! (-> vec data 2) z-step)
+             )
+            (else
+             ;; not in range. 
+             (let ((f2-6 (/ max-step step-len)))
+               (+! (-> vec data 0) (* f2-6 x-step))
+               (+! (-> vec data 2) (* f2-6 z-step))
+               )
+             )
+            )
+          )
         )
-       )
-      (else
-       (let ((f2-6 (/ arg2 f2-4)))
-        (set! (-> arg0 data 0) (+ (-> arg0 data 0) (* f2-6 f1-5)))
-        (let ((f0-6 (+ (-> arg0 data 2) (* f2-6 f0-3))))
-         (set! (-> arg0 data 2) f0-6)
-         )
-        )
-       )
-      )
-     )
     )
-   )
-  arg0
+  vec
   )
 
-(defun vector-seek-2d-yz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
-  (let ((f0-1 (- (-> arg1 data 1) (-> arg0 data 1)))
-        (f2-1 (- (-> arg1 data 2) (-> arg0 data 2)))
+
+(defun vector-seek-2d-yz-smooth! ((vec vector) (target vector) (max-step float) (alpha float))
+  "Smoothly seek vec's y and z components toward target.
+   The step always points toward the target and has length (dist * alpha)
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch x or w."
+  (let ((y-diff (- (-> target data 1) (-> vec data 1)))
+        (z-diff (- (-> target data 2) (-> vec data 2)))
         )
-   (if (or (!= f0-1 0.0) (!= f2-1 0.0))
-    (let* ((f1-5 (* f0-1 arg3))
-           (f0-3 (* f2-1 arg3))
-           (f2-4 (sqrtf (+ (* f1-5 f1-5) (* f0-3 f0-3))))
-           )
-     (cond
-      ((>= arg2 f2-4)
-       (set! (-> arg0 data 1) (+ (-> arg0 data 1) f1-5))
-       (let ((f0-4 (+ (-> arg0 data 2) f0-3)))
-        (set! (-> arg0 data 2) f0-4)
+    (if (or (!= y-diff 0.0) (!= z-diff 0.0))
+        (let* ((y-step (* y-diff alpha))
+               (z-step (* z-diff alpha))
+               (step-len (sqrtf (+ (* y-step y-step) (* z-step z-step))))
+               )
+          (cond
+            ((>= max-step step-len)
+             (set! (-> vec data 1) (+ (-> vec data 1) y-step))
+             (let ((f0-4 (+ (-> vec data 2) z-step)))
+               (set! (-> vec data 2) f0-4)
+               )
+             )
+            (else
+             (let ((step-scale (/ max-step step-len)))
+               (set! (-> vec data 1) (+ (-> vec data 1) (* step-scale y-step)))
+               (let ((f0-6 (+ (-> vec data 2) (* step-scale z-step))))
+                 (set! (-> vec data 2) f0-6)
+                 )
+               )
+             )
+            )
+          )
         )
-       )
-      (else
-       (let ((f2-6 (/ arg2 f2-4)))
-        (set! (-> arg0 data 1) (+ (-> arg0 data 1) (* f2-6 f1-5)))
-        (let ((f0-6 (+ (-> arg0 data 2) (* f2-6 f0-3))))
-         (set! (-> arg0 data 2) f0-6)
-         )
-        )
-       )
-      )
-     )
     )
-   )
-  arg0
+  vec
   )
 
-(defun vector-seek-3d-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
-  (let ((f0-1 (- (-> arg1 data 0) (-> arg0 data 0)))
-        (f1-2 (- (-> arg1 data 1) (-> arg0 data 1)))
-        (f3-1 (- (-> arg1 data 2) (-> arg0 data 2)))
+(defun vector-seek-3d-smooth! ((vec vector) (target vector) (max-step float) (alpha float))
+  "Smoothly seek vec's x, y, and z components toward target.
+   The step always points toward the target and has length (dist * alpha)
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch  w."
+  (let ((x-diff (- (-> target data 0) (-> vec data 0)))
+        (y-diff (- (-> target data 1) (-> vec data 1)))
+        (z-diff (- (-> target data 2) (-> vec data 2)))
         )
-   (if (or (!= f0-1 0.0) (!= f1-2 0.0) (!= f3-1 0.0))
-    (let* ((f2-6 (* f0-1 arg3))
-           (f1-3 (* f1-2 arg3))
-           (f0-4 (* f3-1 arg3))
-           (f3-5 (sqrtf (+ (+ (* f2-6 f2-6) (* f1-3 f1-3)) (* f0-4 f0-4))))
-           )
-     (cond
-      ((>= arg2 f3-5)
-       (set! (-> arg0 data 0) (+ (-> arg0 data 0) f2-6))
-       (set! (-> arg0 data 1) (+ (-> arg0 data 1) f1-3))
-       (let ((f0-5 (+ (-> arg0 data 2) f0-4)))
-        (set! (-> arg0 data 2) f0-5)
+    (if (or (!= x-diff 0.0) (!= y-diff 0.0) (!= z-diff 0.0))
+        (let* ((x-step (* x-diff alpha))
+               (y-step (* y-diff alpha))
+               (z-step (* z-diff alpha))
+               (step-len (sqrtf (+ (+ (* x-step x-step) (* y-step y-step)) (* z-step z-step))))
+               )
+          (cond
+            ((>= max-step step-len)
+             (set! (-> vec data 0) (+ (-> vec data 0) x-step))
+             (set! (-> vec data 1) (+ (-> vec data 1) y-step))
+             (let ((f0-5 (+ (-> vec data 2) z-step)))
+               (set! (-> vec data 2) f0-5)
+               )
+             )
+            (else
+             (let ((step-scale (/ max-step step-len)))
+               (set! (-> vec data 0) (+ (-> vec data 0) (* step-scale x-step)))
+               (set! (-> vec data 1) (+ (-> vec data 1) (* step-scale y-step)))
+               (let ((f0-7 (+ (-> vec data 2) (* step-scale z-step))))
+                 (set! (-> vec data 2) f0-7)
+                 )
+               )
+             )
+            )
+          )
         )
-       )
-      (else
-       (let ((f3-7 (/ arg2 f3-5)))
-        (set! (-> arg0 data 0) (+ (-> arg0 data 0) (* f3-7 f2-6)))
-        (set! (-> arg0 data 1) (+ (-> arg0 data 1) (* f3-7 f1-3)))
-        (let ((f0-7 (+ (-> arg0 data 2) (* f3-7 f0-4))))
-         (set! (-> arg0 data 2) f0-7)
-         )
-        )
-       )
-      )
-     )
     )
-   )
-  arg0
+  vec
   )
 
-(defun seek-with-smooth ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
-  (let ((f0-1 (- arg1 arg0)))
-   (if (>= arg4 (fabs f0-1))
-    arg1
-    (let ((f0-2 (* f0-1 arg3)))
-     (let ((f1-4 (- arg2)))
-      (cond
-       ((< f0-2 f1-4)
-        (set! f0-2 f1-4)
+(defun seek-with-smooth ((value float) (target float) (max-step float) (alpha float) (deadband float))
+  "Move value closer to target.
+   If we are within deadband, just go straight to target.
+   If not, try to go alpha*err. If that is a larger step than max-step, limit to max-step"
+  (let ((diff (- target value)))
+    (if (>= deadband (fabs diff))
+        target
+        (let ((step (* diff alpha)))
+          (let ((min-step (- max-step)))
+            (cond
+              ((< step min-step)
+               (set! step min-step)
+               )
+              ((< max-step step)
+               (set! step max-step)
+               )
+              )
+            )
+          (+ step value)
+          )
         )
-       ((< arg2 f0-2)
-        (set! f0-2 arg2)
-        )
-       )
-      )
-     (+ f0-2 arg0)
-     )
     )
-   )
   )
 
 (defun vector-identity! ((arg0 vector))
+  "Set arg0 to 1, 1, 1, 1"
   (set! (-> arg0 data 0) 1.0)
   (set! (-> arg0 data 1) 1.0)
   (set! (-> arg0 data 2) 1.0)
@@ -481,20 +504,23 @@
   )
 
 (defun vector-seconds ((arg0 vector) (arg1 vector))
-  (set! (-> arg0 data 0) (* 300.0 (-> arg1 data 0)))
-  (set! (-> arg0 data 1) (* 300.0 (-> arg1 data 1)))
-  (set! (-> arg0 data 2) (* 300.0 (-> arg1 data 2)))
+  "Convert from actual seconds to the seconds unit."
+  (set! (-> arg0 data 0) (seconds (-> arg1 data 0)))
+  (set! (-> arg0 data 1) (seconds (-> arg1 data 1)))
+  (set! (-> arg0 data 2) (seconds (-> arg1 data 2)))
   arg0
   )
 
 (defun vector-seconds! ((arg0 vector))
-  (set! (-> arg0 data 0) (* 300.0 (-> arg0 data 0)))
-  (set! (-> arg0 data 1) (* 300.0 (-> arg0 data 1)))
-  (set! (-> arg0 data 2) (* 300.0 (-> arg0 data 2)))
+  "Convert from actual seconds to seconds, in place"
+  (set! (-> arg0 data 0) (seconds (-> arg0 data 0)))
+  (set! (-> arg0 data 1) (seconds (-> arg0 data 1)))
+  (set! (-> arg0 data 2) (seconds (-> arg0 data 2)))
   arg0
   )
 
 (defun vector-v! ((arg0 vector))
+  "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -517,50 +543,58 @@
     )
   )
 
-(defun vector-v+! ((arg0 vector) (arg1 vector) (arg2 vector))
-  (vector+float*! arg0 arg1 arg2 (-> *display* seconds-per-frame))
-  arg0
+(defun vector-v+! ((result vector) (position vector) (velocity vector))
+  "Euler forward step, using the current display time settings"
+  (vector+float*! result position velocity (-> *display* seconds-per-frame))
+  result
   )
 
-(defun vector-v*float+! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
-  (vector+float*! arg0 arg1 arg2 (* arg3 (-> *display* seconds-per-frame)))
-  arg0
+
+(defun vector-v*float+! ((result vector) (position vector) (velocity vector) (velocity-scale float))
+  "Euler forward step, scaling velocity by velocity-scale"
+  (vector+float*! result position velocity (* velocity-scale (-> *display* seconds-per-frame)))
+  result
   )
 
-(defun vector-v++! ((arg0 vector) (arg1 vector))
-  (vector+float*! arg0 arg0 arg1 (-> *display* seconds-per-frame))
-  arg0
+(defun vector-v++! ((position vector) (velocity vector))
+  "Update position in place, using display's current timing"
+  (vector+float*! position position velocity (-> *display* seconds-per-frame))
+  position
   )
 
-(defun vector-v*float! ((arg0 vector) (arg1 float) (arg2 float))
+(defun vector-v*float! ((delta-p vector) (velocity vector) (scale float))
+  "Go from velocity to delta-p per frame, scaling by scale"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (let ((v0-0 arg0))
-    (let ((v1-0 arg1)
-          (f0-1 (* arg2 (-> *display* seconds-per-frame)))
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    (let ((v0-0 delta-p))
+      (let ((v1-0 velocity)
+            (f0-1 (* scale (-> *display* seconds-per-frame)))
+            )
+        (.lvf vf1 (&-> v1-0 quad))
+        (let ((v1-1 f0-1))
+          (.mov vf2 v1-1)
           )
-     (.lvf vf1 v1-0)
-     (let ((v1-1 f0-1))
-      (.mov vf2 v1-1)
+        )
+      (.add.x.vf vf1 vf0 vf0 :mask #b1000)
+      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.svf (&-> v0-0 quad) vf1)
+      v0-0
       )
-     )
-    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
-    (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-    (.svf (&-> v0-0 quad) vf1)
-    v0-0
     )
-   )
   )
 
-(defun vector-v*float++! ((arg0 vector) (arg1 vector) (arg2 float))
-  (vector+float*! arg0 arg0 arg1 (* arg2 (-> *display* seconds-per-frame)))
-  arg0
+(defun vector-v*float++! ((position vector) (velocity vector) (scale float))
+  "update position with given velocity, scaled by scale."
+  (vector+float*! position position velocity (* scale (-> *display* seconds-per-frame)))
+  position
   )
+
 
 (defun vector-to-ups! ((arg0 vector) (arg1 vector))
+  "Go from units per frame to units per second?"
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -580,6 +614,7 @@
   )
 
 (defun vector-from-ups! ((arg0 vector) (arg1 vector))
+  "Go from units per second to units per frame?"
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -599,65 +634,67 @@
   )
 
 (defun vector-length ((arg0 vector))
+  "Get the length of the xyz part."
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (.lvf vf1 (&-> arg0 quad))
-   (.mul.vf vf1 vf1 vf1)
-   (.mul.x.vf acc vf0 vf1 :mask #b1000)
-   (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-   (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-   (.sqrt.vf Q vf1 :ftf #b11)
-   (.add.w.vf vf1 vf0 vf0 :mask #b1)
-   (.wait.vf)
-   (.mul.vf vf1 vf1 Q :mask #b1)
-   (.nop.vf)
-   (.nop.vf)
-   (.mov v0-0 vf1)
-   v0-0
-   )
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    (.lvf vf1 (&-> arg0 quad))
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
+    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.sqrt.vf Q vf1 :ftf #b11)
+    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov v0-0 vf1)
+    v0-0
+    )
   )
 
 (defun vector-length-squared ((arg0 vector))
+  "Get the squared length of the xyz part."
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (.lvf vf1 (&-> arg0 quad))
-   (.add.w.vf vf2 vf0 vf0 :mask #b1)
-   (.mul.vf vf1 vf1 vf1)
-   (.mul.x.vf acc vf2 vf1 :mask #b1)
-   (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-   (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-   (.mov v0-0 vf1)
-   v0-0
-   )
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    (.lvf vf1 (&-> arg0 quad))
+    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf2 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
   )
 
 (defun vector-xz-length-squared ((arg0 vector))
-  (+
-   (* (-> arg0 data 0) (-> arg0 data 0))
-   (* (-> arg0 data 2) (-> arg0 data 2))
-   )
+  "Get the length of the xz part, squared."
+  (+ (* (-> arg0 data 0) (-> arg0 data 0))
+     (* (-> arg0 data 2) (-> arg0 data 2))
+     )
   )
 
 (defun vector-xz-length ((arg0 vector))
-  (sqrtf
-   (+
-    (* (-> arg0 data 0) (-> arg0 data 0))
-    (* (-> arg0 data 2) (-> arg0 data 2))
-    )
-   )
+  "Get the length of the xz part, squared"
+  (sqrtf (+ (* (-> arg0 data 0) (-> arg0 data 0))
+            (* (-> arg0 data 2) (-> arg0 data 2))
+            )
+         )
   )
 
 (defun vector-vector-distance ((arg0 vector) (arg1 vector))
+  "Subtract the xyz parts and get the norm"
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -666,43 +703,45 @@
          (vf2 :class vf)
          (vf3 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (.lvf vf2 (&-> arg0 quad))
-   (.lvf vf3 (&-> arg1 quad))
-   (.sub.vf vf1 vf3 vf2)
-   (.mul.vf vf1 vf1 vf1)
-   (.mul.x.vf acc vf0 vf1 :mask #b1000)
-   (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-   (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-   (.sqrt.vf Q vf1 :ftf #b11)
-   (.add.w.vf vf1 vf0 vf0 :mask #b1)
-   (.wait.vf)
-   (.mul.vf vf1 vf1 Q :mask #b1)
-   (.nop.vf)
-   (.nop.vf)
-   (.mov v0-0 vf1)
-   v0-0
-   )
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
+    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.sqrt.vf Q vf1 :ftf #b11)
+    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov v0-0 vf1)
+    v0-0
+    )
   )
 
 (defun vector-vector-distance-squared ((arg0 vector) (arg1 vector))
+  "Squared norm of the difference of the xyz parts"
   (local-vars (v0-0 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          )
-   (.lvf vf2 (&-> arg0 quad))
-   (.lvf vf3 (&-> arg1 quad))
-   (.sub.vf vf1 vf3 vf2)
-   (.mul.vf vf1 vf1 vf1)
-   (.add.y.vf vf1 vf1 vf1 :mask #b1)
-   (.add.z.vf vf1 vf1 vf1 :mask #b1)
-   (.mov v0-0 vf1)
-   v0-0
-   )
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
   )
 
 (defun vector-vector-xz-distance ((arg0 vector) (arg1 vector))
+  "Distance on the xz plane"
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -711,41 +750,43 @@
          (vf2 :class vf)
          (vf3 :class vf)
          )
-   (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-   (.lvf vf2 (&-> arg0 quad))
-   (.lvf vf3 (&-> arg1 quad))
-   (.sub.vf vf1 vf3 vf2)
-   (.mul.vf vf1 vf1 vf1)
-   (.mul.x.vf acc vf0 vf1 :mask #b1000)
-   (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
-   (.sqrt.vf Q vf1 :ftf #b11)
-   (.add.w.vf vf1 vf0 vf0 :mask #b1)
-   (.wait.vf)
-   (.mul.vf vf1 vf1 Q :mask #b1)
-   (.nop.vf)
-   (.nop.vf)
-   (.mov v0-0 vf1)
-   v0-0
-   )
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf0 vf1 :mask #b1000)
+    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.sqrt.vf Q vf1 :ftf #b11)
+    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.wait.vf)
+    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.nop.vf)
+    (.nop.vf)
+    (.mov v0-0 vf1)
+    v0-0
+    )
   )
 
 (defun vector-vector-xz-distance-squared ((arg0 vector) (arg1 vector))
+  "Squared distance on the xz plane"
   (local-vars (v0-0 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
          )
-   (.lvf vf2 (&-> arg0 quad))
-   (.lvf vf3 (&-> arg1 quad))
-   (.sub.vf vf1 vf3 vf2)
-   (.mul.vf vf1 vf1 vf1)
-   (.add.z.vf vf1 vf1 vf1 :mask #b1)
-   (.mov v0-0 vf1)
-   v0-0
-   )
+    (.lvf vf2 (&-> arg0 quad))
+    (.lvf vf3 (&-> arg1 quad))
+    (.sub.vf vf1 vf3 vf2)
+    (.mul.vf vf1 vf1 vf1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
   )
 
 (defun vector-normalize! ((arg0 vector) (arg1 float))
+  "Modify arg0 in place to have length arg1 for its xyz components. The w part is not changed."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -774,6 +815,8 @@
   )
 
 (defun vector-normalize-ret-len! ((arg0 vector) (arg1 float))
+  "Modify arg0 in place to have length arg1 for its xyz components.
+   The w part isn't changed and the _original_ length is returned."
   (local-vars (v1-1 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -807,49 +850,52 @@
   )
 
 (defun vector-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
+  "Normalize, but not in place.
+   This implementation is very good compared to the vector-normalize! one.
+   The w component is set to 1."
   (let ((f0-0 (vector-length arg1)))
-   (if (= f0-0 0.0)
-    (set! (-> arg0 quad) (-> arg1 quad))
-    (let ((v1-1 (/ arg2 f0-0)))
-     (set! (-> arg0 data 0) (* (-> arg1 data 0) v1-1))
-     (set! (-> arg0 data 1) (* (-> arg1 data 1) v1-1))
-     (let ((f0-7 (* (-> arg1 data 2) v1-1)))
-      (set! (-> arg0 data 2) f0-7)
-      )
-     )
+    (if (= f0-0 0.0)
+        (set! (-> arg0 quad) (-> arg1 quad))
+        (let ((v1-1 (/ arg2 f0-0)))
+          (set! (-> arg0 data 0) (* (-> arg1 data 0) v1-1))
+          (set! (-> arg0 data 1) (* (-> arg1 data 1) v1-1))
+          (let ((f0-7 (* (-> arg1 data 2) v1-1)))
+            (set! (-> arg0 data 2) f0-7)
+            )
+          )
+        )
     )
-   )
   (set! (-> arg0 data 3) 1.0)
   arg0
   )
 
 (defun vector-xz-normalize! ((arg0 vector) (arg1 float))
+  "Normalize, xz components only"
   (let ((f0-0 (vector-xz-length arg0)))
-   (if (!= f0-0 0.0)
-    (let ((v1-1 (/ arg1 f0-0)))
-     (set! (-> arg0 data 0) (* (-> arg0 data 0) v1-1))
-     (let ((f0-5 (* (-> arg0 data 2) v1-1)))
-      (set! (-> arg0 data 2) f0-5)
-      )
-     )
+    (if (!= f0-0 0.0)
+        (let ((v1-1 (/ arg1 f0-0)))
+          (set! (-> arg0 data 0) (* (-> arg0 data 0) v1-1))
+          (set! (-> arg0 data 2) (* (-> arg0 data 2) v1-1))
+          )
+        )
     )
-   )
   arg0
   )
 
 (defun vector-length-max! ((arg0 vector) (arg1 float))
+  "Make vector at most arg1 length (xyz only).
+   If it is larger, project onto sphere.
+   Doesn't touch w"
   (let ((f0-0 (vector-length arg0)))
-   (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
-    (set! f0-0 (/ f0-0 arg1))
-    (when (!= f0-0 0.0)
-     (set! (-> arg0 data 0) (/ (-> arg0 data 0) f0-0))
-     (set! (-> arg0 data 1) (/ (-> arg0 data 1) f0-0))
-     (let ((f0-1 (/ (-> arg0 data 2) f0-0)))
-      (set! (-> arg0 data 2) f0-1)
+    (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
+      (set! f0-0 (/ f0-0 arg1))
+      (when (!= f0-0 0.0)
+        (set! (-> arg0 data 0) (/ (-> arg0 data 0) f0-0))
+        (set! (-> arg0 data 1) (/ (-> arg0 data 1) f0-0))
+        (set! (-> arg0 data 2) (/ (-> arg0 data 2) f0-0))
+        )
       )
-     )
     )
-   )
   arg0
   )
 
