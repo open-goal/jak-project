@@ -71,7 +71,7 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
     // dma
     "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
-    "vector=", // asm branching
+    "vector=",                                // asm branching
     // sync-info
     "(method 15 sync-info)",         // needs *res-static-buf*
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
@@ -129,10 +129,7 @@ const std::unordered_set<std::string> skip_in_compiling = {
 
     // vector
     // bad decisions on float vs int128
-    "vector-degf",
-    "vector-degmod",
-    "vector-deg-diff",
-    "vector-degi",
+    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
