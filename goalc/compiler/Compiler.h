@@ -429,6 +429,7 @@ class Compiler {
   Val* compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // Atoms

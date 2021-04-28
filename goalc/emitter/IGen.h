@@ -2391,9 +2391,10 @@ class IGen {
   static Instruction ftoi_vf(Register dst, Register src) {
     assert(dst.is_xmm());
     assert(src.is_xmm());
-    Instruction instr(0x5b);  // VCVTDQ2PS
+    // VEX.128.F3.0F.WIG 5B /r VCVTTPS2DQ xmm1, xmm2/m128
+    Instruction instr(0x5b);  // VCVTTPS2DQ
     instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
-                                VexPrefix::P_66);
+                                VexPrefix::P_F3);
     return instr;
   }
 
@@ -2489,6 +2490,18 @@ class IGen {
     // VEX.128.66.0F.WIG 76 /r VPCMPEQD xmm1, xmm2, xmm3/m128
     // reg, vex, r/m
     Instruction instr(0x76);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction vpsubd(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG FA /r VPSUBD xmm1, xmm2, xmm3/m128
+    // reg, vec, r/m
+    Instruction instr(0xfa);
     instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
                                 false, VexPrefix::P_66);
     return instr;

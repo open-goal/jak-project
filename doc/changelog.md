@@ -140,3 +140,5 @@
 - `defenum` now creates real types. Boxed arrays of enums and bitfields correctly have runtime type of the parent integer.
 - Added a `:copy-entries <typename>` to copy entries from a previous bitfield.
 - Adding a duplicate entry to an enum now generates a compiler error.
+- Added `.psubw` assembly form
+- Changed `.ftoi` to `VCVTTPS2DQ` to make the rounding behavior match the PS2 (truncate).

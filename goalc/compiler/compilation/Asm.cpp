@@ -627,6 +627,10 @@ Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& r
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
 }
 
+Val* Compiler::compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PSUBW, env);
+}
+
 Val* Compiler::compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}}, {});

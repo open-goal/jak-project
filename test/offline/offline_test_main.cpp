@@ -17,7 +17,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
-    "dma-bucket", "dma-disasm", "pad", "gs", "display-h",
+    "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector",
     /* gap */
     "bounding-box",
     /* gap */
@@ -32,7 +32,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* transformq-h, */
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h",
+    "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -71,6 +71,7 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
     // dma
     "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
+    "vector=",                                // asm branching
     // sync-info
     "(method 15 sync-info)",         // needs *res-static-buf*
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
@@ -125,6 +126,10 @@ const std::unordered_set<std::string> skip_in_compiling = {
 
     // display-h
     "put-draw-env",
+
+    // vector
+    // bad decisions on float vs int128
+    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first

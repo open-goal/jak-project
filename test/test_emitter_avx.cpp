@@ -340,7 +340,7 @@ TEST(EmitterAVX, FTOI) {
   tester.emit(IGen::ftoi_vf(XMM0 + 3, XMM0 + 14));
   tester.emit(IGen::ftoi_vf(XMM0 + 13, XMM0 + 4));
   tester.emit(IGen::ftoi_vf(XMM0 + 13, XMM0 + 14));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "C5F95BDCC4C1795BDEC5795BECC441795BEE");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "C5FA5BDCC4C17A5BDEC57A5BECC4417A5BEE");
 }
 
 TEST(EmitterAVX, VPSRAD) {
@@ -488,7 +488,7 @@ TEST(EmitterAVX, VPSHUFHW) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "C5FA70DC03C4C17A70DE04C57A70EC05C4417A70EE06");
 }
 
-TEST(EmitrerAVX, movq_to_gpr_from_xmm) {
+TEST(EmitterAVX, movq_to_gpr_from_xmm) {
   CodeTester tester;
   tester.init_code_buffer(1024);
   tester.emit(IGen::movq_gpr64_xmm64(RSP, XMM0 + 3));
@@ -498,7 +498,7 @@ TEST(EmitrerAVX, movq_to_gpr_from_xmm) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "66480F7EDC664C0F7EEC66490F7EDC664D0F7EEC");
 }
 
-TEST(EmitrerAVX, movq_to_xmm_from_gpr) {
+TEST(EmitterAVX, movq_to_xmm_from_gpr) {
   CodeTester tester;
   tester.init_code_buffer(1024);
   tester.emit(IGen::movq_xmm64_gpr64(XMM0 + 3, RSP));
@@ -506,4 +506,19 @@ TEST(EmitrerAVX, movq_to_xmm_from_gpr) {
   tester.emit(IGen::movq_xmm64_gpr64(XMM0 + 3, R12));
   tester.emit(IGen::movq_xmm64_gpr64(XMM0 + 13, R12));
   EXPECT_EQ(tester.dump_to_hex_string(true), "66480F6EDC664C0F6EEC66490F6EDC664D0F6EEC");
+}
+
+TEST(EmitterAVX, VPSUBD) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::vpsubd(XMM0 + 3, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::vpsubd(XMM0 + 3, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::vpsubd(XMM0 + 3, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::vpsubd(XMM0 + 3, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::vpsubd(XMM0 + 13, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::vpsubd(XMM0 + 13, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::vpsubd(XMM0 + 13, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::vpsubd(XMM0 + 13, XMM0 + 13, XMM0 + 13));
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "C5E1FADBC4C161FADDC591FADBC4C111FADDC561FAEBC44161FAEDC511FAEBC44111FAED");
 }
