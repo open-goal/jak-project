@@ -1198,7 +1198,8 @@ class StoreArrayAccess : public FormElement {
   StoreArrayAccess(ArrayFieldAccess* dst,
                    SimpleExpression expr,
                    int my_idx,
-                   RegisterAccess array_src);
+                   RegisterAccess array_src,
+                   std::optional<TypeSpec> src_cast_type);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1211,6 +1212,7 @@ class StoreArrayAccess : public FormElement {
   SimpleExpression m_expr;
   int m_my_idx = -1;
   RegisterAccess m_base_var;
+  std::optional<TypeSpec> m_src_cast_type;
 };
 
 class DecompiledDataElement : public FormElement {

@@ -10,8 +10,8 @@
 ;; This type didn't have an inspect method, so these field names are made up.
 (deftype load-dir (basic)
   ((unknown basic)
-   (string-array (array string))
-   (data-array (array basic))
+   (string-array (array string)) ;; these are the names
+   (data-array (array basic))    ;; this is the file data.
    )
   :flag-assert #xb00000010
   (:methods
@@ -21,6 +21,7 @@
    )
   )
 
+;; specialization of load-dir where the data-array holds art-groups.
 (deftype load-dir-art-group (load-dir)
   ()
   (:methods
@@ -30,29 +31,36 @@
   )
 
 
-(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (arg1 basic))
-  (local-vars (obj load-dir))
-  (set! obj (object-new allocation type-to-make (the-as int (-> type-to-make size))) )
-  (set! (-> obj unknown) arg1)
-  (set! (-> obj string-array)
-        (the (array string) ((method-of-type array new) allocation array string length))
-        )
-  (set! (-> obj string-array length) 0)
-  (set! (-> obj data-array)
-        (the (array basic) ((method-of-type array new) allocation array basic length))
-        )
-  (set! (-> obj data-array length) 0)
-  obj
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (unk basic))
+  "Allocate a new load-dir with room for length entries"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj unknown) unk)
+    ;; create the name array
+    (set! (-> obj string-array)
+          (the-as (array string)
+                  ((method-of-type array new) allocation array string length)
+                  )
+          )
+    (set! (-> obj string-array length) 0)
+    ;; create the data array
+    (set! (-> obj data-array)
+          (the-as (array basic)
+                  ((method-of-type array new) allocation array basic length)
+                  ))
+    (set! (-> obj data-array length) 0)
+    obj
+    )
   )
 
-(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (arg0 int) (arg1 basic))
-  (local-vars (v0-0 load-dir))
-  ;; call parent constructor...
-  (set! v0-0 ((method-of-type load-dir new) allocation type-to-make arg0 arg1))
-  ;; change our content type to art-group
-  (set! (-> v0-0 data-array content-type) art-group)
-  ;; cast us to a load-dir-art-group.
-  (the-as load-dir-art-group v0-0)
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (unk basic))
+  "Allocate a new load-dir with room for length art-groups"
+  ;; call parent ctor.
+  (let ((obj ((method-of-type load-dir new) allocation type-to-make length unk)))
+    ;; override the content type
+    (set! (-> obj data-array content-type) art-group)
+    ;; and cast to child.
+    (the-as load-dir-art-group obj)
+    )
   )
 
 (deftype external-art-buffer (basic)
@@ -89,23 +97,24 @@
    )
   )
 
-(defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (arg0 int))
-  (local-vars (v0-0 external-art-buffer))
-  (set! v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
-  (set! (-> v0-0 index) arg0)
-  (set! (-> v0-0 load-file) #f)
-  (set! (-> v0-0 load-file-part) -1)
-  (set! (-> v0-0 load-file-owner) (the uint64 #f))
-  (set! (-> v0-0 load-file-priority) 100000000.0)
-  (set! (-> v0-0 pending-load-file) #f)
-  (set! (-> v0-0 pending-load-file-part) -1)
-  (set! (-> v0-0 pending-load-file-owner) (the uint64 #f))
-  (set! (-> v0-0 pending-load-file-priority) 100000000.0)
-  (set! (-> v0-0 art-group) #f)
-  (set! (-> v0-0 status) 'initialize)
-  (set! (-> v0-0 locked?) #f)
-  (set! (-> v0-0 other) #f)
-  v0-0
+(defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (idx int))
+  "Allocate a new external-art-buffer"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+   (set! (-> obj index) idx)
+   (set! (-> obj load-file) #f)
+   (set! (-> obj load-file-part) -1)
+   (set! (-> obj load-file-owner) (the-as uint #f))
+   (set! (-> obj load-file-priority) 100000000.0)
+   (set! (-> obj pending-load-file) #f)
+   (set! (-> obj pending-load-file-part) -1)
+   (set! (-> obj pending-load-file-owner) (the-as uint #f))
+   (set! (-> obj pending-load-file-priority) 100000000.0)
+   (set! (-> obj art-group) #f)
+   (set! (-> obj status) 'initialize)
+   (set! (-> obj locked?) #f)
+   (set! (-> obj other) #f)
+   obj
+   )
   )
 
 (deftype spool-anim (basic)
@@ -150,39 +159,32 @@
   )
 
 (defmethod new external-art-control ((allocation symbol) (type-to-make type))
-  (local-vars (v1-9 int) (s4-0 int) (obj external-art-control))
-  (set! obj
-        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-        )
-  (set! s4-0 0)
-  (while (< s4-0 2)
-    ;; construct buffers.
-    (set! (-> obj buffer s4-0)
-          ((method-of-type external-art-buffer new) allocation external-art-buffer s4-0 )
-          )
-    (+! s4-0 1)
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    ;; allocate buffers.
+    (dotimes (buff-idx 2)
+      (set! (-> obj buffer buff-idx)
+            ((method-of-type external-art-buffer new) allocation external-art-buffer buff-idx)
+            )
+      )
+    ;; point buffers to each other
+    (set! (-> obj buffer 0 other) (-> obj buffer 1))
+    (set! (-> obj buffer 1 other) (-> obj buffer 0))
+    ;; set up recs
+    (dotimes (rec-idx 3)
+      (set! (-> obj rec rec-idx name) #f)
+      (set! (-> obj rec rec-idx priority) 100000000.0)
+      (set! (-> obj rec rec-idx owner) (the-as uint #f))
+      )
+    ;; set up defaults.
+    (set! (-> obj spool-lock) (the-as uint #f))
+    (set! (-> obj reserve-buffer) #f)
+    (set! (-> obj active-stream) #f)
+    (set! (-> obj preload-stream name) #f)
+    (set! (-> obj preload-stream priority) 100000000.0)
+    (set! (-> obj preload-stream owner) (the-as uint #f))
+    (set! (-> obj last-preload-stream name) #f)
+    (set! (-> obj last-preload-stream priority) 100000000.0)
+    (set! (-> obj last-preload-stream owner) (the-as uint #f))
+    obj
     )
-  ;; point buffers to each other
-  (set! (-> obj buffer 0 other) (-> obj buffer 1))
-  (set! (-> obj buffer 1 other) (-> obj buffer 0))
-  (set! v1-9 0)
-  ;; setup recs
-  (while (< v1-9 3)
-    (set! (-> obj rec v1-9 name) #f)
-    (set! (-> obj rec v1-9 priority) 100000000.000000)
-    (set! (-> obj rec v1-9 owner) (the uint64 #f))
-    (+! v1-9 1)
-    )
-  ;; setup 
-  (set! (-> obj spool-lock) (the uint64 #f))
-  (set! (-> obj reserve-buffer) #f)
-  (set! (-> obj active-stream) #f)
-  ;; setup streams
-  (set! (-> obj preload-stream name) #f)
-  (set! (-> obj preload-stream priority) 100000000.000000)
-  (set! (-> obj preload-stream owner) (the uint64 #f))
-  (set! (-> obj last-preload-stream name) #f)
-  (set! (-> obj last-preload-stream priority) 100000000.000000)
-  (set! (-> obj last-preload-stream owner) (the uint64 #f))
-  obj
   )

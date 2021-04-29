@@ -2029,8 +2029,13 @@ void StorePlainDeref::get_modified_regs(RegSet& regs) const {
 StoreArrayAccess::StoreArrayAccess(ArrayFieldAccess* dst,
                                    SimpleExpression expr,
                                    int my_idx,
-                                   RegisterAccess array_src)
-    : m_dst(dst), m_expr(expr), m_my_idx(my_idx), m_base_var(array_src) {}
+                                   RegisterAccess array_src,
+                                   std::optional<TypeSpec> src_cast_type)
+    : m_dst(dst),
+      m_expr(expr),
+      m_my_idx(my_idx),
+      m_base_var(array_src),
+      m_src_cast_type(src_cast_type) {}
 
 goos::Object StoreArrayAccess::to_form_internal(const Env& env) const {
   return pretty_print::build_list("set!", m_dst->to_form(env),

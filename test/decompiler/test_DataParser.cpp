@@ -305,7 +305,7 @@ TEST_F(DataDecompTest, ContinuePoint) {
                     "                        :z -19435708.0\n"
                     "                        :w 1.0\n"
                     "                        )\n"
-                    "     :camera-rot (new 'static 'array 'float 9\n"
+                    "     :camera-rot (new 'static 'array float 9\n"
                     "                      0.5883\n"
                     "                      0.0\n"
                     "                      -0.8085\n"
@@ -340,7 +340,7 @@ TEST_F(DataDecompTest, FloatArray) {
   auto decomp = decompile_at_label_with_hint({"(pointer float)", true, 7}, parsed.label("L63"),
                                              parsed.labels, {parsed.words}, *dts);
   check_forms_equal(decomp.print(),
-                    "(new 'static 'array 'float 7\n"
+                    "(new 'static 'array float 7\n"
                     "1.0 0.0 1.0 0.0 1.0 0.0 1.0)");
 }
 

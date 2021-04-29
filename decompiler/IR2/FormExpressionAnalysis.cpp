@@ -1585,7 +1585,8 @@ void StoreArrayAccess::push_to_stack(const Env& env, FormPool& pool, FormStack& 
   m_dst->update_with_val(array_form, env, pool, &forms_out, true);
   auto form_out = pool.alloc_sequence_form(nullptr, forms_out);
 
-  auto fr = pool.alloc_element<SetFormFormElement>(form_out, expr_form);
+  auto fr = pool.alloc_element<SetFormFormElement>(
+      form_out, make_optional_cast(m_src_cast_type, expr_form, pool, env));
   fr->mark_popped();
   stack.push_form_element(fr, true);
 }
