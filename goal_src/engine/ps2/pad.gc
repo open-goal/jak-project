@@ -5,6 +5,27 @@
 ;; name in dgo: pad
 ;; dgos: GAME, ENGINE
 
+(defenum pad-buttons
+    :bitfield #t
+    :type uint32
+    (select   0)
+    (l3       1)
+    (r3       2)
+    (start    3)
+    (up       4)
+    (right    5)
+    (down     6)
+    (left     7)
+    (l2       8)
+    (r2       9)
+    (l1       10)
+    (r1       11)
+    (triangle 12)
+    (circle   13)
+    (x        14)
+    (square   15)
+    )
+    
 ;; these forward declarations should probably go somewhere else...
 (define-extern get-current-time (function uint))
 (define-extern get-integral-current-time (function uint))
@@ -31,22 +52,22 @@
 
 ;; data from hardware + additional info calculated here.
 (deftype cpad-info (hw-cpad)
-  ((number             int32      :offset-assert 36)
-   (cpad-file          int32      :offset-assert 40)
-   (button0-abs        uint32 3   :offset-assert 44) ;; bitmask of buttons, pressed or not, with history
-   (button0-shadow-abs uint32 1   :offset-assert 56) ;; modify this to change button history in the future.
-   (button0-rel        uint32 3   :offset-assert 60) ;; bitmask of if button going down.
-   (stick0-dir         float      :offset-assert 72)
-   (stick0-speed       float      :offset-assert 76)
-   (new-pad            int32      :offset-assert 80)
-   (state              int32      :offset-assert 84)
-   (align              uint8 6    :offset-assert 88)
-   (direct             uint8 6    :offset-assert 94) ;; hardware control of buzzing.
-   (buzz-val           uint8 2    :offset-assert 100) ;; intensity for buzzing
-   (buzz-time          uint64 2   :offset-assert 104) ;; when to stop buzzing
-   (buzz               basic      :offset-assert 120) ;; is vibration enabled?
-   (buzz-act           int32      :offset-assert 124)
-   (change-time        uint64     :offset-assert 128)
+  ((number             int32           :offset-assert 36)
+   (cpad-file          int32           :offset-assert 40)
+   (button0-abs        pad-buttons 3   :offset-assert 44) ;; bitmask of buttons, pressed or not, with history
+   (button0-shadow-abs pad-buttons 1   :offset-assert 56) ;; modify this to change button history in the future.
+   (button0-rel        pad-buttons 3   :offset-assert 60) ;; bitmask of if button going down.
+   (stick0-dir         float           :offset-assert 72)
+   (stick0-speed       float           :offset-assert 76)
+   (new-pad            int32           :offset-assert 80)
+   (state              int32           :offset-assert 84)
+   (align              uint8 6         :offset-assert 88)
+   (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
+   (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
+   (buzz-time          uint64 2        :offset-assert 104) ;; when to stop buzzing
+   (buzz               basic           :offset-assert 120) ;; is vibration enabled?
+   (buzz-act           int32           :offset-assert 124)
+   (change-time        uint64          :offset-assert 128)
    )
   (:methods
    (new (symbol type int) _type_ 0)
@@ -60,9 +81,9 @@
   "Reset all data in a cpad-info"
   (set! (-> pad valid) (logior (-> pad valid) 128))
   (set! (-> pad button0) (the-as uint 0))
-  (set! (-> pad button0-abs 0) (the-as uint 0))
-  (set! (-> pad button0-shadow-abs 0) (the-as uint 0))
-  (set! (-> pad button0-rel 0) (the-as uint 0))
+  (set! (-> pad button0-abs 0) (pad-buttons))
+  (set! (-> pad button0-shadow-abs 0) (pad-buttons))
+  (set! (-> pad button0-rel 0) (pad-buttons))
   (dotimes (v1-2 12)
     (nop!)
     (set! (-> pad abutton v1-2) 0)
@@ -238,7 +259,7 @@
            (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
            (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
            ;; update current button
-           (let ((current-button0 (-> pad button0)))
+           (let ((current-button0 (the pad-buttons (-> pad button0))))
              (set! (-> pad button0-shadow-abs 0) current-button0)
              (set! (-> pad button0-abs 0) current-button0)
              )
