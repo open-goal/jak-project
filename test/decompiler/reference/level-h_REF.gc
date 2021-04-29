@@ -1,0 +1,508 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type level-vis-info
+(deftype level-vis-info (basic)
+  ((level              basic           :offset-assert 4)
+   (from-level         basic           :offset-assert 8)
+   (from-bsp           basic           :offset-assert 12)
+   (flags              uint32          :offset-assert 16)
+   (length             uint32          :offset-assert 20)
+   (allocated-length   uint32          :offset-assert 24)
+   (dictionary-length  uint32          :offset-assert 28)
+   (dictionary         uint32          :offset-assert 32)
+   (string-block       uint32          :offset-assert 36)
+   (ramdisk            uint32          :offset-assert 40)
+   (vis-bits           uint32          :offset-assert 44)
+   (current-vis-string uint32          :offset-assert 48)
+   (vis-string         uint8  :dynamic :offset-assert 52)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+;; definition for method 3 of type level-vis-info
+(defmethod inspect level-vis-info ((obj level-vis-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlevel: ~A~%" (-> obj level))
+  (format #t "~Tfrom-level: ~A~%" (-> obj from-level))
+  (format #t "~Tfrom-bsp: ~A~%" (-> obj from-bsp))
+  (format #t "~Tflags: #x~X~%" (-> obj flags))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdictionary-length: ~D~%" (-> obj dictionary-length))
+  (format #t "~Tdictionary: #x~X~%" (-> obj dictionary))
+  (format #t "~Tstring-block: #x~X~%" (-> obj string-block))
+  (format #t "~Tramdisk: ~D~%" (-> obj ramdisk))
+  (format #t "~Tvis-bits: #x~X~%" (-> obj vis-bits))
+  (format #t "~Tcurrent-vis-string: ~D~%" (-> obj current-vis-string))
+  (format #t "~Tvis-string[0] @ #x~X~%" (-> obj vis-string))
+  obj
+  )
+
+;; definition for method 5 of type level-vis-info
+;; INFO: Return type mismatch uint vs int.
+(defmethod asize-of level-vis-info ((obj level-vis-info))
+  (the-as int (+ (-> level-vis-info size) (-> obj dictionary-length)))
+  )
+
+;; definition of type level-load-info
+(deftype level-load-info (basic)
+  ((name-list         basic  3           :offset-assert 4)
+   (index             int32              :offset-assert 16)
+   (name              basic  :offset   4)
+   (visname           basic  :offset   8)
+   (nickname          basic  :offset  12)
+   (packages          pair               :offset-assert 20)
+   (sound-banks       pair               :offset-assert 24)
+   (music-bank        basic              :offset-assert 28)
+   (ambient-sounds    pair               :offset-assert 32)
+   (mood              basic              :offset-assert 36)
+   (mood-func         basic              :offset-assert 40)
+   (ocean             basic              :offset-assert 44)
+   (sky               basic              :offset-assert 48)
+   (sun-fade          float              :offset-assert 52)
+   (continues         pair               :offset-assert 56)
+   (tasks             pair               :offset-assert 60)
+   (priority          int32              :offset-assert 64)
+   (load-commands     pair               :offset-assert 68)
+   (alt-load-commands pair               :offset-assert 72)
+   (bsp-mask          uint64             :offset-assert 80)
+   (bsphere           sphere             :offset-assert 88)
+   (buzzer            int32              :offset-assert 92)
+   (bottom-height     float              :offset-assert 96)
+   (run-packages      pair               :offset-assert 100)
+   (prev-level        basic              :offset-assert 104)
+   (next-level        basic              :offset-assert 108)
+   (wait-for-load     basic              :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x74
+  :flag-assert         #x900000074
+  )
+
+;; definition for method 3 of type level-load-info
+(defmethod inspect level-load-info ((obj level-load-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname-list[3] @ #x~X~%" (-> obj name-list))
+  (format #t "~Tindex: ~D~%" (-> obj index))
+  (format #t "~Tname: ~A~%" (-> obj name-list 0))
+  (format #t "~Tvisname: ~A~%" (-> obj name-list 1))
+  (format #t "~Tnickname: ~A~%" (-> obj name-list 2))
+  (format #t "~Tpackages: ~A~%" (-> obj packages))
+  (format #t "~Tsound-banks: ~A~%" (-> obj sound-banks))
+  (format #t "~Tmusic-bank: ~A~%" (-> obj music-bank))
+  (format #t "~Tambient-sounds: ~A~%" (-> obj ambient-sounds))
+  (format #t "~Tmood: ~A~%" (-> obj mood))
+  (format #t "~Tmood-func: ~A~%" (-> obj mood-func))
+  (format #t "~Tocean: ~A~%" (-> obj ocean))
+  (format #t "~Tsky: ~A~%" (-> obj sky))
+  (format #t "~Tsun-fade: ~f~%" (-> obj sun-fade))
+  (format #t "~Tcontinues: ~A~%" (-> obj continues))
+  (format #t "~Ttasks: ~A~%" (-> obj tasks))
+  (format #t "~Tpriority: ~D~%" (-> obj priority))
+  (format #t "~Tload-commands: ~A~%" (-> obj load-commands))
+  (format #t "~Talt-load-commands: ~A~%" (-> obj alt-load-commands))
+  (format #t "~Tbsp-mask: ~D~%" (-> obj bsp-mask))
+  (format #t "~Tbsphere: #<sphere @ #x~X>~%" (-> obj bsphere))
+  (format #t "~Tbuzzer: ~D~%" (-> obj buzzer))
+  (format #t "~Tbottom-height: (meters ~m)~%" (-> obj bottom-height))
+  (format #t "~Trun-packages: ~A~%" (-> obj run-packages))
+  (format #t "~Tprev-level: ~A~%" (-> obj prev-level))
+  (format #t "~Tnext-level: ~A~%" (-> obj next-level))
+  (format #t "~Twait-for-load: ~A~%" (-> obj wait-for-load))
+  obj
+  )
+
+;; definition of type login-state
+(deftype login-state (basic)
+  ((state int32     :offset-assert 4)
+   (pos   uint32    :offset-assert 8)
+   (elts  uint32    :offset-assert 12)
+   (elt   uint32 16 :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; definition for method 3 of type login-state
+(defmethod inspect login-state ((obj login-state))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tstate: ~D~%" (-> obj state))
+  (format #t "~Tpos: ~D~%" (-> obj pos))
+  (format #t "~Telts: ~D~%" (-> obj elts))
+  (format #t "~Telt[16] @ #x~X~%" (-> obj elt))
+  obj
+  )
+
+;; definition of type level
+(deftype level (basic)
+  ((name                      basic                               :offset-assert 4)
+   (load-name                 basic                               :offset-assert 8)
+   (nickname                  basic                               :offset-assert 12)
+   (index                     int32                               :offset-assert 16)
+   (status                    basic                               :offset-assert 20)
+   (other                     basic                               :offset-assert 24)
+   (heap                      kheap                     :inline   :offset-assert 32)
+   (bsp                       basic                               :offset-assert 48)
+   (art-group                 basic                               :offset-assert 52)
+   (info                      basic                               :offset-assert 56)
+   (texture-page              basic                     9         :offset-assert 60)
+   (loaded-texture-page       basic                     16        :offset-assert 96)
+   (loaded-texture-page-count int32                               :offset-assert 160)
+   (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176)
+   (foreground-draw-engine    basic                     3         :offset-assert 272)
+   (entity                    basic                               :offset-assert 284)
+   (ambient                   basic                               :offset-assert 288)
+   (closest-object            basic                     9         :offset-assert 292)
+   (upload-size               uint32                    9         :offset-assert 328)
+   (level-distance            float                               :offset-assert 364)
+   (inside-sphere?            basic                               :offset-assert 368)
+   (inside-boxes?             basic                               :offset-assert 372)
+   (display?                  basic                               :offset-assert 376)
+   (meta-inside?              basic                               :offset-assert 380)
+   (mood                      basic                               :offset-assert 384)
+   (mood-func                 basic                               :offset-assert 388)
+   (vis-bits                  uint32                              :offset-assert 392)
+   (all-visible?              basic                               :offset-assert 396)
+   (force-all-visible?        basic                               :offset-assert 400)
+   (linking                   basic                               :offset-assert 404)
+   (vis-info                  level-vis-info            8         :offset-assert 408)
+   (vis-self-index            int32                               :offset-assert 440)
+   (vis-adj-index             int32                               :offset-assert 444)
+   (vis-buffer                uint8                     2048      :offset-assert 448)
+   (mem-usage-block           basic                               :offset-assert 2496)
+   (mem-usage                 int32                               :offset-assert 2500)
+   (code-memory-start         uint32                              :offset-assert 2504)
+   (code-memory-end           uint32                              :offset-assert 2508)
+   (texture-mask              uint32                    9         :offset-assert 2512)
+   (force-inside?             basic                               :offset-assert 2548)
+   (pad                       uint8                     56        :offset-assert 2552)
+   )
+  :method-count-assert 29
+  :size-assert         #xa30
+  :flag-assert         #x1d00000a30
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    )
+  )
+
+;; definition for method 3 of type level
+(defmethod inspect level ((obj level))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tload-name: ~A~%" (-> obj load-name))
+  (format #t "~Tnickname: ~A~%" (-> obj nickname))
+  (format #t "~Tindex: ~D~%" (-> obj index))
+  (format #t "~Tstatus: ~A~%" (-> obj status))
+  (format #t "~Tother: ~A~%" (-> obj other))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (-> obj heap))
+  (format #t "~Tbsp: ~A~%" (-> obj bsp))
+  (format #t "~Tart-group: ~A~%" (-> obj art-group))
+  (format #t "~Tinfo: ~A~%" (-> obj info))
+  (format #t "~Ttexture-page[9] @ #x~X~%" (-> obj texture-page))
+  (format #t "~Tloaded-texture-page[16] @ #x~X~%" (-> obj loaded-texture-page))
+  (format
+   #t
+   "~Tloaded-texture-page-count: ~D~%"
+   (-> obj loaded-texture-page-count)
+   )
+  (format
+   #t
+   "~Tforeground-sink-group[3] @ #x~X~%"
+   (-> obj foreground-sink-group)
+   )
+  (format
+   #t
+   "~Tforeground-draw-engine[3] @ #x~X~%"
+   (-> obj foreground-draw-engine)
+   )
+  (format #t "~Tentity: ~A~%" (-> obj entity))
+  (format #t "~Tambient: ~A~%" (-> obj ambient))
+  (format #t "~Tclosest-object[9] @ #x~X~%" (-> obj closest-object))
+  (format #t "~Tupload-size[9] @ #x~X~%" (-> obj upload-size))
+  (format #t "~Tlevel-distance: (meters ~m)~%" (-> obj level-distance))
+  (format #t "~Tinside-sphere?: ~A~%" (-> obj inside-sphere?))
+  (format #t "~Tinside-boxes?: ~A~%" (-> obj inside-boxes?))
+  (format #t "~Tdisplay?: ~A~%" (-> obj display?))
+  (format #t "~Tmeta-inside?: ~A~%" (-> obj meta-inside?))
+  (format #t "~Tmood: ~A~%" (-> obj mood))
+  (format #t "~Tmood-func: ~A~%" (-> obj mood-func))
+  (format #t "~Tvis-bits: #x~X~%" (-> obj vis-bits))
+  (format #t "~Tall-visible?: ~A~%" (-> obj all-visible?))
+  (format #t "~Tforce-all-visible?: ~A~%" (-> obj force-all-visible?))
+  (format #t "~Tlinking: ~A~%" (-> obj linking))
+  (format #t "~Tvis-info[8] @ #x~X~%" (-> obj vis-info))
+  (format #t "~Tvis-self-index: ~D~%" (-> obj vis-self-index))
+  (format #t "~Tvis-adj-index: ~D~%" (-> obj vis-adj-index))
+  (format #t "~Tvis-buffer[2048] @ #x~X~%" (-> obj vis-buffer))
+  (format #t "~Tmem-usage-block: ~A~%" (-> obj mem-usage-block))
+  (format #t "~Tmem-usage: ~D~%" (-> obj mem-usage))
+  (format #t "~Tcode-memory-start: #x~X~%" (-> obj code-memory-start))
+  (format #t "~Tcode-memory-end: #x~X~%" (-> obj code-memory-end))
+  (format #t "~Ttexture-mask[9] @ #x~X~%" (-> obj texture-mask))
+  (format #t "~Tforce-inside?: ~A~%" (-> obj force-inside?))
+  obj
+  )
+
+;; definition of type level-group
+(deftype level-group (basic)
+  ((length          int32                              :offset-assert 4)
+   (unknown-field-1 basic                              :offset-assert 8)
+   (unknown-field-2 basic                              :offset-assert 12)
+   (entity-link     entity-links :offset  16)
+   (border?         basic                              :offset-assert 20)
+   (vis?            basic                              :offset-assert 24)
+   (want-level      basic                              :offset-assert 28)
+   (receiving-level basic                              :offset-assert 32)
+   (load-commands   pair                               :offset-assert 36)
+   (play?           basic                              :offset-assert 40)
+   (hack-pad        uint8        :offset  90)
+   (level0          level        :inline               :offset-assert 96)
+   (level1          level        :inline               :offset-assert 2704)
+   (level-default   level        :inline               :offset-assert 5312)
+   (level           level        3 :inline :offset  96)
+   (pad             uint32                             :offset-assert 7920)
+   )
+  :method-count-assert 27
+  :size-assert         #x1ef4
+  :flag-assert         #x1b00001ef4
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    )
+  )
+
+;; definition for method 3 of type level-group
+(defmethod inspect level-group ((obj level-group))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tentity-link: ~`entity-links`P~%" (-> obj entity-link))
+  (format #t "~Tborder?: ~A~%" (-> obj border?))
+  (format #t "~Tvis?: ~A~%" (-> obj vis?))
+  (format #t "~Twant-level: ~A~%" (-> obj want-level))
+  (format #t "~Treceiving-level: ~A~%" (-> obj receiving-level))
+  (format #t "~Tload-commands: ~A~%" (-> obj load-commands))
+  (format #t "~Tplay?: ~A~%" (-> obj play?))
+  (format #t "~Tlevel[3] @ #x~X~%" (-> obj level0))
+  (format #t "~Tdata[3] @ #x~X~%" (-> obj level0))
+  (format #t "~Tlevel0: ~`level`P~%" (-> obj level0))
+  (format #t "~Tlevel1: ~`level`P~%" (-> obj level1))
+  (format #t "~Tlevel-default: ~`level`P~%" (-> obj level-default))
+  obj
+  )
+
+;; failed to figure out what this is:
+(if (zero? *level*)
+  (set!
+   *level*
+   (new 'static 'level-group
+    :length 2
+    :unknown-field-1 #f
+    :unknown-field-2 #f
+    :entity-link #f
+    :border? #f
+    :want-level #f
+    :load-commands '()
+    :play? #f
+    :level0
+    (new 'static 'level
+     :name #f
+     :status 'inactive
+     :foreground-sink-group
+     (new 'static 'inline-array dma-foreground-sink-group 3
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink :bucket 10)
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 11
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink :bucket 49 :foreground-texture-page 1)
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 50
+         :foreground-texture-page 1
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink :bucket 58 :foreground-texture-page 2)
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 59
+         :foreground-texture-page 2
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      )
+     :inside-sphere? #f
+     :inside-boxes? #f
+     :force-inside? #f
+     )
+    :level1
+    (new 'static 'level
+     :name #f
+     :index 1
+     :status 'inactive
+     :foreground-sink-group
+     (new 'static 'inline-array dma-foreground-sink-group 3
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink
+         :bucket 17
+         :foreground-texture-level 1
+         )
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 18
+         :foreground-texture-level 1
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink
+         :bucket 52
+         :foreground-texture-page 1
+         :foreground-texture-level 1
+         )
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 53
+         :foreground-texture-page 1
+         :foreground-texture-level 1
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink
+         :bucket 61
+         :foreground-texture-page 2
+         :foreground-texture-level 1
+         )
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 62
+         :foreground-texture-page 2
+         :foreground-texture-level 1
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      )
+     :inside-sphere? #f
+     :inside-boxes? #f
+     :force-inside? #f
+     )
+    :level-default
+    (new 'static 'level
+     :name 'default
+     :index 2
+     :status 'reserved
+     :foreground-sink-group
+     (new 'static 'inline-array dma-foreground-sink-group 3
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink
+         :bucket 45
+         :foreground-texture-level 2
+         )
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 46
+         :foreground-texture-level 2
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink
+         :bucket 55
+         :foreground-texture-page 1
+         :foreground-texture-level 2
+         )
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 56
+         :foreground-texture-page 1
+         :foreground-texture-level 2
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      (new 'static 'dma-foreground-sink-group
+       :sink
+       (new 'static 'array dma-foreground-sink 3
+        (new 'static 'dma-foreground-sink
+         :bucket 58
+         :foreground-texture-page 2
+         :foreground-texture-level 2
+         )
+        (new 'static 'generic-dma-foreground-sink
+         :bucket 59
+         :foreground-texture-page 2
+         :foreground-texture-level 2
+         :foreground-output-bucket 1
+         )
+        )
+       )
+      )
+     :inside-sphere? #f
+     :inside-boxes? #f
+     :force-inside? #f
+     )
+    )
+   )
+  )
+
+

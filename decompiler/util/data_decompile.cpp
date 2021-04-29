@@ -59,7 +59,7 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
       }
 
       std::vector<goos::Object> array_def = {pretty_print::to_symbol(fmt::format(
-          "new 'static 'inline-array '{} {}", type.get_single_arg().print(), *hint.array_size))};
+          "new 'static 'inline-array {} {}", type.get_single_arg().print(), *hint.array_size))};
       for (int elt = 0; elt < len; elt++) {
         DecompilerLabel fake_label;
         fake_label.target_segment = label.target_segment;
@@ -218,7 +218,7 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
                                    const std::vector<LinkedWord>& obj_words,
                                    const TypeSystem& ts) {
   std::vector<goos::Object> array_def = {
-      pretty_print::to_symbol(fmt::format("new 'static 'array '{} {}", elt_type.print(), length))};
+      pretty_print::to_symbol(fmt::format("new 'static 'array {} {}", elt_type.print(), length))};
 
   for (int i = 0; i < length; i++) {
     auto start = offset + stride * i;
@@ -421,7 +421,7 @@ goos::Object decompile_structure(const TypeSpec& type,
                                field_type_info->get_inline_array_stride_alignment()));
 
         std::vector<goos::Object> array_def = {pretty_print::to_symbol(fmt::format(
-            "new 'static 'inline-array '{} {}", field.type().print(), field.array_size()))};
+            "new 'static 'inline-array {} {}", field.type().print(), field.array_size()))};
         for (int elt = 0; elt < len; elt++) {
           DecompilerLabel fake_label;
           fake_label.target_segment = label.target_segment;
@@ -441,8 +441,19 @@ goos::Object decompile_structure(const TypeSpec& type,
         assert(stride == 4);
 
         std::vector<goos::Object> array_def = {pretty_print::to_symbol(
-            fmt::format("new 'static 'array '{} {}", field.type().print(), field.array_size()))};
-        for (int elt = 0; elt < len; elt++) {
+            fmt::format("new 'static 'array {} {}", field.type().print(), field.array_size()))};
+
+        int end_elt = 0;
+        for (int elt = len; elt-- > 0;) {
+          auto& word = obj_words.at((field_start / 4) + elt);
+          if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
+            continue;
+          }
+          end_elt = elt + 1;
+          break;
+        }
+
+        for (int elt = 0; elt < end_elt; elt++) {
           auto& word = obj_words.at((field_start / 4) + elt);
 
           if (word.kind == LinkedWord::PTR) {
