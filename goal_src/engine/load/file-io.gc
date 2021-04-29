@@ -75,44 +75,59 @@
 ;; allocate a temporary string
 (define *file-temp-string* (new 'global 'string 128 (the string #f)))
 
-(defconstant LEVEL_BT_FILE 0) ;; aka bsp-header
+
+(defenum file-kind
+    :bitfield #f
+    (level-bt 0) ;; aka bsp-header.
+    (art-group 1)
+    (tpage 2)
+    (dir-tpage 3)
+    (level-vs 4)
+    (tx 5)
+    (vis 6)
+    )
+
+
 (defconstant LEVEL_BT_FILE_VERSION 30)
-(defconstant ART_GROUP_FILE 1)
 (defconstant ART_GROUP_FILE_VERSION 6)
-(defconstant TPAGE_FILE 2)
 (defconstant TPAGE_FILE_VERSION 7) ;; also used for dir
-(defconstant DIR_TPAGE_FILE 3)
-(defconstant LEVEL_VS_FILE 4)
 (defconstant LEVEL_VS_FILE_VERSION 30)
-(defconstant TX_FILE 5)
 (defconstant TX_FILE_VERSION 1)
-(defconstant VIS_FILE 6)
 
-
-
-(defun make-file-name ((kind int) (name string) (art-group-version int))
-  "Make a file name. Similar to MakeFileName in C.
-	Note: file type enum is different between C and GOAL.
-	File versions should match those in versions.h.
-	Uses a single *file-temp-string* buffer, shared with make-vfile-name."
-
+(defun make-file-name ((kind file-kind) (name string) (art-group-version int))
+  "Get a file name to open a file with the given kind and name.
+   The art-group-version argument can be used to override the version
+   of the art-group. Set it to 0 or less to use the default version
+   Similar to MakeFileName in C.
+   Note: file type enum is different between C and GOAL.
+   File versions should match those in versions.h.
+   Uses a single *file-temp-string* buffer, shared with make-vfile-name"
   (clear *file-temp-string*)
   (cond
-    ((= kind DIR_TPAGE_FILE) 
-     (format *file-temp-string* "texture-page~D/dir-tpages" TPAGE_FILE_VERSION))
-    ((= kind TPAGE_FILE) 
-     (format *file-temp-string* "texture-page~D/tpage-~S" TPAGE_FILE_VERSION name))
-    ((= kind LEVEL_BT_FILE) 
-     (format *file-temp-string* "level~D/~S-bt" LEVEL_BT_FILE_VERSION name))
-    ((= kind TX_FILE) 
-     (format *file-temp-string* "res~D/~S-tx" TX_FILE_VERSION name))
-    ((= kind LEVEL_VS_FILE) 
-     (format *file-temp-string* "level~D/~S-vs" LEVEL_VS_FILE_VERSION name))
-    ((= kind VIS_FILE) 
-     (format *file-temp-string* "~S.VIS" name))
-    ((= kind ART_GROUP_FILE)
+    ((= kind (file-kind dir-tpage))
+     (format *file-temp-string* "texture-page~D/dir-tpages" TPAGE_FILE_VERSION)
+     )
+    ((= kind (file-kind tpage))
+     (format *file-temp-string* "texture-page~D/tpage-~S" TPAGE_FILE_VERSION name)
+     )
+    ((= kind (file-kind level-bt))
+     (format *file-temp-string* "level~D/~S-bt" LEVEL_VS_FILE_VERSION name)
+     )
+    ((= kind (file-kind tx))
+     (format *file-temp-string* "res~D/~S-tx" TX_FILE_VERSION name)
+     )
+    ((= kind (file-kind level-vs))
+     (format *file-temp-string* "level~D/~S-vs" LEVEL_BT_FILE_VERSION name)
+     )
+    ((= kind (file-kind vis))
+     (format *file-temp-string* "~S.VIS" name)
+     )
+    ((= kind (file-kind art-group))
      (format *file-temp-string* "art-group~D/~S-ag"
-             (if (> art-group-version 0) art-group-version ART_GROUP_FILE_VERSION)
+             (if (> art-group-version 0)
+                 art-group-version
+                 ART_GROUP_FILE_VERSION
+                 )
              name
              )
      )
@@ -120,83 +135,80 @@
   *file-temp-string*
   )
 
-
-
-(defun make-vfile-name ((a0-0 int) (a1-0 string))
-  "Make another type of file name."
-  (local-vars
-   (s5-0 int)
-   (gp-0 string)
-   )
-  (set! s5-0 a0-0)
-  (set! gp-0 a1-0)
+(defun make-vfile-name ((kind file-kind) (name string))
+  "Make virtual? file name. This makes a name that the kernel knows how to
+   handle in a specific way. This function is not used."
   (clear *file-temp-string*)
   (cond
-    ((zero? s5-0) (format *file-temp-string* "$LEVEL/~S" gp-0))
-    ((= s5-0 1) (format *file-temp-string* "$ART_GROUP/~S" gp-0))
+    ((= kind (file-kind level-bt))
+     (format *file-temp-string* "$LEVEL/~S" name)
+     )
+    ((= kind (file-kind art-group))
+     (format *file-temp-string* "$ART_GROUP/~S" name)
+     )
     )
   *file-temp-string*
   )
 
-(defun file-info-correct-version? ((info file-info) (kind int) (version int))
-  "Check if the file info is valid. If you call this with version = 0,
-  it will pick the right version for the kind automatically."
-  (local-vars
-   (v1-0 int)
-   (v1-1 int)
-   (expected-kind string)
-   (expected-version int)
-   )
-
-  ;; figure out the expected major version
-  (set! expected-version 
-        (cond
-          ((zero? version) ;; version not specified.
-           (set! v1-0 kind)
-           (cond
-             ((or (= v1-0 TPAGE_FILE) (= v1-0 DIR_TPAGE_FILE)) TPAGE_FILE_VERSION) ;; textures.
-             ((= v1-0 LEVEL_BT_FILE) LEVEL_BT_FILE_VERSION) ;; level
-             ((= v1-0 ART_GROUP_FILE) ART_GROUP_FILE_VERSION) ;; art-group
-             )
+(defun file-info-correct-version? ((info file-info) (kind file-kind) (version-override int))
+  "Check if the version and kind in the info is valid.  The version-override can specify a
+   non-default version, or set to 0 for the default version"
+  (let* ((expected-version
+          (if (zero? version-override)
+              (let ((v1-0 kind))
+                (cond
+                  ((or (= v1-0 (file-kind tpage)) (= v1-0 (file-kind dir-tpage)))
+                   TPAGE_FILE_VERSION
+                   )
+                  ((= kind (file-kind level-vs))
+                   LEVEL_BT_FILE_VERSION
+                   )
+                  ((= v1-0 (file-kind art-group))
+                   ART_GROUP_FILE_VERSION
+                   )
+                  )
+                )
+              version-override
+              )
            )
-          (else version) ;; version was specified
-          )
-        )
-  
-  ;; figure out the expected kind
-  (set! expected-kind
-        (begin
-         (set! v1-1 kind)
-         (cond ((= v1-1 TPAGE_FILE) "texture-page") 
-               ((= v1-1 LEVEL_BT_FILE) "bsp-header") 
-               ((= v1-1 ART_GROUP_FILE) "art-group"))
-         )
-        )
-  
-  ;; check:
-  (cond
-    ;; first, check the name is right:
-    ;; not clear why we dereference the symbol like this.
-    ((not (name= (the-as basic (-> info file-type value)) expected-kind))
-     
-     (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" 
-             (-> info file-name) (-> info file-type) expected-kind)
-     ;; FAIL
-     '#f
-     )
-    
-    ;; check versions (only major)
-    ((!= expected-version (-> info major-version))
-     (format 0 "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
-             (-> info file-name)
-             (-> info major-version)
-             (-> info minor-version)
-             expected-version
+         (v1-1 kind)
+         (kind-name
+          (cond
+            ((= v1-1 (file-kind tpage))
+             "texture-page"
              )
-     '#f
-     )
-    
-    ;; both tests pass!
-    (else '#t)
+            ((= kind (file-kind level-vs))
+             "bsp-header"
+             )
+            ((= v1-1 (file-kind art-group))
+             "art-group"
+             )
+            )
+           )
+         )
+    (cond
+      ((not (name= (the-as basic (-> info file-type value)) kind-name))
+       (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%"
+        (-> info file-name)
+        (-> info file-type)
+        kind-name
+        )
+       #f
+       )
+      ((!= expected-version (-> info major-version))
+       (format 0 "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
+        (-> info file-name)
+        (-> info major-version)
+        (-> info minor-version)
+        expected-version
+        )
+       #f
+       )
+      (else
+       ;; all checks passed!
+       #t
+       )
+      )
     )
   )
+

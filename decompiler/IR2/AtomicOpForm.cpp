@@ -362,7 +362,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
           //              nullptr, m_value.as_expr(), m_my_idx);
 
           assert(!rd.addr_of);
-          return pool.alloc_element<StoreArrayAccess>(source, m_value.as_expr(), m_my_idx, ro.var);
+          return pool.alloc_element<StoreArrayAccess>(
+              source, m_value.as_expr(), m_my_idx, ro.var,
+              get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx));
         }
       }
 

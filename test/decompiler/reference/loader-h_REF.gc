@@ -1,0 +1,280 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type load-dir
+(deftype load-dir (basic)
+  ((unknown      basic           :offset-assert 4)
+   (string-array (array string)  :offset-assert 8)
+   (data-array   (array basic)   :offset-assert 12)
+   )
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int basic) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+;; definition of type load-dir-art-group
+(deftype load-dir-art-group (load-dir)
+  ()
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
+  (:methods
+    (new (symbol type int basic) _type_ 0)
+    )
+  )
+
+;; definition for method 0 of type load-dir
+(defmethod
+  new
+  load-dir
+  ((allocation symbol) (type-to-make type) (length int) (unk basic))
+  (let
+   ((obj
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
+   (set! (-> obj unknown) unk)
+   (set!
+    (-> obj string-array)
+    (the-as
+     (array string)
+     ((method-of-type array new) allocation array string length)
+     )
+    )
+   (set! (-> obj string-array length) 0)
+   (set!
+    (-> obj data-array)
+    (the-as
+     (array basic)
+     ((method-of-type array new) allocation array basic length)
+     )
+    )
+   (set! (-> obj data-array length) 0)
+   obj
+   )
+  )
+
+;; definition for method 0 of type load-dir-art-group
+;; INFO: Return type mismatch load-dir vs load-dir-art-group.
+(defmethod
+  new
+  load-dir-art-group
+  ((allocation symbol) (type-to-make type) (length int) (unk basic))
+  (let
+   ((obj ((method-of-type load-dir new) allocation type-to-make length unk)))
+   (set! (-> obj data-array content-type) art-group)
+   (the-as load-dir-art-group obj)
+   )
+  )
+
+;; definition of type external-art-buffer
+(deftype external-art-buffer (basic)
+  ((index                      int32                       :offset-assert 4)
+   (other                      external-art-buffer         :offset-assert 8)
+   (status                     basic                       :offset-assert 12)
+   (locked?                    basic                       :offset-assert 16)
+   (frame-lock                 basic                       :offset-assert 20)
+   (heap                       kheap               :inline :offset-assert 32)
+   (pending-load-file          basic                       :offset-assert 48)
+   (pending-load-file-part     int32                       :offset-assert 52)
+   (pending-load-file-owner    uint64                      :offset-assert 56)
+   (pending-load-file-priority float                       :offset-assert 64)
+   (load-file                  basic                       :offset-assert 68)
+   (load-file-part             int32                       :offset-assert 72)
+   (load-file-owner            uint64                      :offset-assert 80)
+   (load-file-priority         float                       :offset-assert 88)
+   (buf                        uint32                      :offset-assert 92)
+   (len                        int32                       :offset-assert 96)
+   (art-group                  basic                       :offset-assert 100)
+   )
+  :method-count-assert 16
+  :size-assert         #x68
+  :flag-assert         #x1000000068
+  (:methods
+    (new (symbol type int) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    )
+  )
+
+;; definition for method 3 of type external-art-buffer
+(defmethod inspect external-art-buffer ((obj external-art-buffer))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tindex: ~D~%" (-> obj index))
+  (format #t "~Tother: ~A~%" (-> obj other))
+  (format #t "~Tstatus: ~A~%" (-> obj status))
+  (format #t "~Tlocked?: ~A~%" (-> obj locked?))
+  (format #t "~Tframe-lock: ~A~%" (-> obj frame-lock))
+  (format #t "~Theap: #<kheap @ #x~X>~%" (-> obj heap))
+  (format #t "~Tpending-load-file: ~A~%" (-> obj pending-load-file))
+  (format #t "~Tpending-load-file-part: ~D~%" (-> obj pending-load-file-part))
+  (format #t "~Tpending-load-file-owner: ~D~%" (-> obj pending-load-file-owner))
+  (format
+   #t
+   "~Tpending-load-file-priority: ~f~%"
+   (-> obj pending-load-file-priority)
+   )
+  (format #t "~Tload-file: ~A~%" (-> obj load-file))
+  (format #t "~Tload-file-part: ~D~%" (-> obj load-file-part))
+  (format #t "~Tload-file-owner: ~D~%" (-> obj load-file-owner))
+  (format #t "~Tload-file-priority: ~f~%" (-> obj load-file-priority))
+  (format #t "~Tbuf: #x~X~%" (-> obj buf))
+  (format #t "~Tlen: ~D~%" (-> obj len))
+  (format #t "~Tart-group: ~A~%" (-> obj art-group))
+  obj
+  )
+
+;; definition for method 0 of type external-art-buffer
+(defmethod
+  new
+  external-art-buffer
+  ((allocation symbol) (type-to-make type) (idx int))
+  (let
+   ((obj
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
+   (set! (-> obj index) idx)
+   (set! (-> obj load-file) #f)
+   (set! (-> obj load-file-part) -1)
+   (set! (-> obj load-file-owner) (the-as uint #f))
+   (set! (-> obj load-file-priority) 100000000.0)
+   (set! (-> obj pending-load-file) #f)
+   (set! (-> obj pending-load-file-part) -1)
+   (set! (-> obj pending-load-file-owner) (the-as uint #f))
+   (set! (-> obj pending-load-file-priority) 100000000.0)
+   (set! (-> obj art-group) #f)
+   (set! (-> obj status) 'initialize)
+   (set! (-> obj locked?) #f)
+   (set! (-> obj other) #f)
+   obj
+   )
+  )
+
+;; definition of type spool-anim
+(deftype spool-anim (basic)
+  ((name         basic  :offset  16)
+   (index        int32              :offset-assert 20)
+   (parts        int32              :offset-assert 24)
+   (priority     float              :offset-assert 28)
+   (owner        uint64             :offset-assert 32)
+   (command-list basic              :offset-assert 40)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+;; definition for method 3 of type spool-anim
+(defmethod inspect spool-anim ((obj spool-anim))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tindex: ~D~%" (-> obj index))
+  (format #t "~Tparts: ~D~%" (-> obj parts))
+  (format #t "~Tpriority: ~f~%" (-> obj priority))
+  (format #t "~Towner: ~D~%" (-> obj owner))
+  (format #t "~Tcommand-list: ~A~%" (-> obj command-list))
+  obj
+  )
+
+;; definition of type external-art-control
+(deftype external-art-control (basic)
+  ((buffer               external-art-buffer 2         :offset-assert 4)
+   (rec                  spool-anim          3 :inline :offset-assert 16)
+   (spool-lock           uint64                        :offset-assert 160)
+   (reserve-buffer       basic                         :offset-assert 168)
+   (reserve-buffer-count int32                         :offset-assert 172)
+   (active-stream        basic                         :offset-assert 176)
+   (preload-stream       spool-anim          :inline   :offset-assert 184)
+   (last-preload-stream  spool-anim          :inline   :offset-assert 232)
+   (end-pad              uint32                        :offset-assert 276)
+   )
+  :method-count-assert 17
+  :size-assert         #x118
+  :flag-assert         #x1100000118
+  (:methods
+    (new (symbol type) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    )
+  )
+
+;; definition for method 3 of type external-art-control
+(defmethod inspect external-art-control ((obj external-art-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tbuffer[2] @ #x~X~%" (-> obj buffer))
+  (format #t "~Trec[3] @ #x~X~%" (-> obj rec))
+  (format #t "~Tspool-lock: ~D~%" (-> obj spool-lock))
+  (format #t "~Treserve-buffer: ~A~%" (-> obj reserve-buffer))
+  (format #t "~Treserve-buffer-count: ~D~%" (-> obj reserve-buffer-count))
+  (format #t "~Tactive-stream: ~A~%" (-> obj active-stream))
+  (format #t "~Tpreload-stream: #<spool-anim @ #x~X>~%" (-> obj preload-stream))
+  (format
+   #t
+   "~Tlast-preload-stream: #<spool-anim @ #x~X>~%"
+   (-> obj last-preload-stream)
+   )
+  obj
+  )
+
+;; definition for method 0 of type external-art-control
+(defmethod new external-art-control ((allocation symbol) (type-to-make type))
+  (let
+   ((obj
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
+   (dotimes (buff-idx 2)
+    (set!
+     (-> obj buffer buff-idx)
+     ((method-of-type external-art-buffer new)
+      allocation
+      external-art-buffer
+      buff-idx
+      )
+     )
+    )
+   (set! (-> obj buffer 0 other) (-> obj buffer 1))
+   (set! (-> obj buffer 1 other) (-> obj buffer 0))
+   (dotimes (rec-idx 3)
+    (set! (-> obj rec rec-idx name) #f)
+    (set! (-> obj rec rec-idx priority) 100000000.0)
+    (set! (-> obj rec rec-idx owner) (the-as uint #f))
+    )
+   (set! (-> obj spool-lock) (the-as uint #f))
+   (set! (-> obj reserve-buffer) #f)
+   (set! (-> obj active-stream) #f)
+   (set! (-> obj preload-stream name) #f)
+   (set! (-> obj preload-stream priority) 100000000.0)
+   (set! (-> obj preload-stream owner) (the-as uint #f))
+   (set! (-> obj last-preload-stream name) #f)
+   (set! (-> obj last-preload-stream priority) 100000000.0)
+   (set! (-> obj last-preload-stream owner) (the-as uint #f))
+   obj
+   )
+  )
+
+;; failed to figure out what this is:
+(let ((v0-5 0))
+  )
+
+
+
+

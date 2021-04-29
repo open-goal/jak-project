@@ -483,6 +483,12 @@ const UseDefInfo& Env::get_use_def_info(const RegisterAccess& ra) const {
   return m_var_names.use_def_info.at(var_id);
 }
 
+void Env::disable_def(const RegisterAccess& access) {
+  if (has_local_vars()) {
+    m_var_names.disable_def(access);
+  }
+}
+
 /*!
  * Set the stack hints. This must be done before type analysis.
  * This actually parses the types, so it should be done after the dts is set up.

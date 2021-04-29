@@ -994,6 +994,13 @@ Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object
     throw_compiler_error(form, "Invalid declare-type form: unrecognized option {}.", kind);
   }
 
+  auto existing_type = m_symbol_types.find(type_name);
+  if (existing_type != m_symbol_types.end() && existing_type->second != TypeSpec("type")) {
+    throw_compiler_error(form, "Cannot forward declare {} as a type: it is already a {}", type_name,
+                         existing_type->second.print());
+  }
+  m_symbol_types[type_name] = TypeSpec("type");
+
   return get_none();
 }
 

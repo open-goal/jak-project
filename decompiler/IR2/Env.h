@@ -168,11 +168,7 @@ class Env {
     }
   }
 
-  void disable_def(const RegisterAccess& access) {
-    if (has_local_vars()) {
-      m_var_names.disable_def(access);
-    }
-  }
+  void disable_def(const RegisterAccess& access);
 
   void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
 
