@@ -69,8 +69,6 @@ extern Ptr<DmaChannelRegisters> dmac_ch[10];
 
 static_assert(sizeof(DmaChannelRegisters) == 0x90, "DmaChannelRegisters wrong size");
 static_assert(alignof(DmaChannelRegisters) == 0x10, "DmaChannelRegisters unaligned");
-static_assert(u64(&(((DmaChannelRegisters*)0)->sadr)) % 0x10 == 0,
-              "DmaChannelRegisters unaligned reg");
 
 void dmac_init_globals();
 
