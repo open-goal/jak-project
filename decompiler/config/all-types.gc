@@ -991,7 +991,7 @@
   )
 
 (deftype vector16b (structure)
-  ((data int8 8 :offset-assert 0)
+  ((data int8 16 :offset-assert 0)
    (quad uint128   :offset 0)
    )
   :method-count-assert 9
@@ -2786,16 +2786,38 @@
 ;;;; PAD                 ;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(defenum pad-buttons
+    :bitfield #t
+    :type uint32
+    (select   0)
+    (l3       1)
+    (r3       2)
+    (start    3)
+    (up       4)
+    (right    5)
+    (down     6)
+    (left     7)
+    (l2       8)
+    (r2       9)
+    (l1       10)
+    (r1       11)
+    (triangle 12)
+    (circle   13)
+    (x        14)
+    (square   15)
+    )
+
 (deftype hw-cpad (basic)
-  ((valid   uint8      :offset-assert 4)
-   (status  uint8      :offset-assert 5)
-   (button0 uint16     :offset-assert 6)
-   (rightx  uint8      :offset-assert 8)
-   (righty  uint8      :offset-assert 9)
-   (leftx   uint8      :offset-assert 10)
-   (lefty   uint8      :offset-assert 11)
-   (abutton uint8 12 :offset-assert 12)
-   (dummy   uint8 12 :offset-assert 24)
+  ((valid   uint8       :offset-assert 4)
+   (status  uint8       :offset-assert 5)
+   (button0 uint16      :offset-assert 6)
+   (rightx  uint8       :offset-assert 8)
+   (righty  uint8       :offset-assert 9)
+   (leftx   uint8       :offset-assert 10)
+   (lefty   uint8       :offset-assert 11)
+   (abutton uint8 12    :offset-assert 12)
+   (dummy   uint8 12    :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -2805,9 +2827,9 @@
 (deftype cpad-info (hw-cpad)
   ((number             int32      :offset-assert 36)
    (cpad-file          int32      :offset-assert 40)
-   (button0-abs        uint32 3  :offset-assert 44) ;; guess
-   (button0-shadow-abs uint32 1  :offset-assert 56) ;; guess
-   (button0-rel        uint32 3  :offset-assert 60) ;; guess
+   (button0-abs        pad-buttons 3  :offset-assert 44) ;; guess
+   (button0-shadow-abs pad-buttons 1  :offset-assert 56) ;; guess
+   (button0-rel        pad-buttons 3  :offset-assert 60) ;; guess
    (stick0-dir         float      :offset-assert 72)
    (stick0-speed       float      :offset-assert 76)
    (new-pad            int32      :offset-assert 80)
@@ -4399,7 +4421,7 @@
 (define-extern *math-camera* math-camera) ;; unknown type
 (define-extern *math-camera-fog-correction* fog-corrector) ;; unknown type
 (define-extern init-for-transform function)
-(define-extern move-target-from-pad (function (pointer float) int none))
+(define-extern move-target-from-pad (function transform int none))
 (define-extern transform-point-vector! function)
 (define-extern fog-corrector-setup (function fog-corrector math-camera float))
 ;;(define-extern fog-corrector object) ;; unknown type
@@ -4487,7 +4509,7 @@
    (dest-verts         char-verts     :inline :offset-assert 752)
    (justify            vector        64   :inline   :offset-assert 944)
    (color-shadow       vector4w       :inline :offset-assert 1968)
-   (color-table        vector        64  :inline    :offset-assert 1984)
+   (color-table        vector16b       64  :inline    :offset-assert 1984)
    (last-color         uint64                 :offset-assert 3008)
    (save-last-color    uint64                 :offset-assert 3016)
    (buf                basic                  :offset-assert 3024)
@@ -33289,12 +33311,12 @@
 
 ;;(define-extern aspect4x3 object) ;; unknown type
 ;;(define-extern font-work object) ;; unknown type
-(define-extern font-set-tex0 (function font-work texture uint uint uint none))
+(define-extern font-set-tex0 (function (pointer gs-tex0) texture uint uint uint none))
 (define-extern *font-default-matrix* matrix) ;; unknown type
 ;;(define-extern char-verts object) ;; unknown type
 ;;(define-extern char-color object) ;; unknown type
 ;;(define-extern font-context object) ;; unknown type
-;;(define-extern *font-work* object) ;; unknown type
+(define-extern *font-work* font-work) ;; unknown type
 ;;(define-extern decomp-work object) ;; unknown type
 (define-extern draw-string-xy (function string dma-buffer int int int none))
 ;;(define-extern end-draw object) ;; unknown type

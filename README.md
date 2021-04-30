@@ -21,6 +21,7 @@
 - [ASan Build](#asan-build)
   - [On Windows / Visual Studio](#on-windows--visual-studio)
 <!-- tocstop -->
+
 ## Project Description
 
 This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
@@ -30,7 +31,7 @@ This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of t
 - create tools to repack game assets into a format that our port uses.
 
 Our objectives are:
-- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled. 
+- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled.
 - Our GOAL compiler's performance should be around the same as unoptimized C.
 - try to match things from the original game and development as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
 - support modifications. It should be possible to make edits to the code without everything else breaking.
@@ -121,19 +122,19 @@ git submodule update --init --recursive
 
 Open the project as a CMake project, browse for the root level `CMakeLists.txt`:
 
-![](./doc/imgs/open-cmake-vs.png)
+![](./docs/markdown/imgs/open-cmake-vs.png)
 
 In the toolbar, you should be able to select an individual component to compile, or combine within the root CMakeLists.txt. In the future we will pre-define configurations to make this easier.
 
-![](./doc/imgs/cmake-build-vs.png)
+![](./docs/markdown/imgs/cmake-build-vs.png)
 
 You may also wish to view the files that pertain to each CMake target, rather than the project as it is normally:
 
-![](./doc/imgs/cmake-target-view.png)
+![](./docs/markdown/imgs/cmake-target-view.png)
 
 
 ## Project Layout
-There are four main components to the project. 
+There are four main components to the project.
 
 The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of GOAL is called OpenGOAL. All of the compiler source code is in `goalc`. To run the compiler on Linux, there is a script `gc.sh`.  The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
 

@@ -544,7 +544,6 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
   result.push_back(pretty_print::to_symbol(fmt::format("new 'static '{}", type.print())));
   for (auto& def : defs) {
     if (def.enum_constant) {
-      assert(false);  // this is untested.
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, *def.enum_constant)));
     } else if (def.is_signed) {
