@@ -72,7 +72,9 @@ set(RUNTIME_SOURCE
         overlord/ssound.cpp
         overlord/stream.cpp
         graphics/gfx.cpp
-        graphics/display.cpp)
+        graphics/display.cpp
+        system/vm/dmac.cpp
+        system/vm/vm.cpp)
 
 
 # we build the runtime as a static library.

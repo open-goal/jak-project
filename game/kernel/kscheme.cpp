@@ -23,6 +23,8 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 
+#include "game/system/vm/vm.h"
+
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
 u32 FastLink;
@@ -1962,6 +1964,12 @@ s32 InitHeapAndSymbol() {
 
   // set *boot-video-mode*
   intern_from_c("*boot-video-mode*")->value = 0;
+
+  // OpenGOAL only - init ps2 VM
+  if (VM::use) {
+    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
+    VM::vm_init();
+  }
 
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!
