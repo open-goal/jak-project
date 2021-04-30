@@ -1,5 +1,5 @@
 /*!
- * @file vm.h
+ * @file vm.cpp
  * Base "PS2 virtual machine" code.
  * Simulates the existence of select PS2 components, for inspection & debugging.
  * Not an emulator!

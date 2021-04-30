@@ -1,11 +1,11 @@
 #pragma once
 
 /*!
-  * @file vm.h
-  * Base "PS2 virtual machine" code.
-  * Simulates the existence of select PS2 components, for inspection & debugging.
-  * Not an emulator!
-  */
+ * @file vm.h
+ * Base "PS2 virtual machine" code.
+ * Simulates the existence of select PS2 components, for inspection & debugging.
+ * Not an emulator!
+ */
 
 #ifndef VM_H
 #define VM_H
