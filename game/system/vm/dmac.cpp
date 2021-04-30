@@ -4,8 +4,8 @@
  * Not meant to work as a full DMAC emulator, just enough to inspect DMA packets.
  */
 
-#include "vm.h"
 #include "dmac.h"
+#include "vm.h"
 #include "game/runtime.h"
 #include "game/kernel/kmalloc.h"
 #include "common/log/log.h"
@@ -20,10 +20,9 @@ void dmac_init_globals() {
              .cast<DmaCommonRegisters>();
 
   for (int i = 0; i < 10; ++i) {
-    std::string name = "dmach" + i;
-    dmac_ch[i] = kmalloc(kdebugheap, sizeof(DmaChannelRegisters), KMALLOC_ALIGN_16 | KMALLOC_MEMSET,
-                         name.c_str())
-                     .cast<DmaChannelRegisters>();
+    dmac_ch[i] =
+        kmalloc(kdebugheap, sizeof(DmaChannelRegisters), KMALLOC_ALIGN_16 | KMALLOC_MEMSET, "dmach")
+            .cast<DmaChannelRegisters>();
   }
 }
 
