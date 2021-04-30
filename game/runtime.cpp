@@ -256,7 +256,8 @@ void dmac_runner(SystemThreadInterface& iface) {
   while (!iface.get_want_exit() && !VM::vm_want_exit()) {
     for (int i = 0; i < 10; ++i) {
       if (VM::dmac_ch[i]->chcr.str) {
-        lg::info("DMA detected on channel {}", i);
+        lg::info("DMA detected on channel {}, clearing", i);
+        VM::dmac_ch[i]->chcr.str = 0;
       }
     }
     // avoid running the DMAC on full blast (this does not sync to its clockrate)
