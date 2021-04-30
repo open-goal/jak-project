@@ -1,5 +1,5 @@
 * [Home](/README.md)
-* [Compiler Example](guide.md)
+* [Compiler Example](compiler_example.md)
 * [Type System](type_system.md)
 * [Emitter](emitter.md)
 * [GOAL Debugging](goal_dbg_doc.md)
