@@ -23,6 +23,13 @@
             </v-btn>
           </v-col>
           <v-col cols="auto">
+            <v-btn href="/jak-project/api-docs.html"
+            target="_blank" rounded color="deep-purple">
+              <v-icon>mdi-file-document</v-icon>
+              Documentation
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
             <v-btn href="https://github.com/water111/jak-project"
             target="_blank" rounded color="accent">
               <v-icon>mdi-git</v-icon>
@@ -101,7 +108,7 @@
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
-  min-height: 500px;
+  min-height: 50vh;
 }
 </style>
 
