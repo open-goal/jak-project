@@ -359,7 +359,8 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       auto as_set = dynamic_cast<const SetVarOp*>(op.get());
       if (as_set) {
         auto dst = as_set->dst().reg();
-        if (as_set->src().is_var()) {
+        if (as_set->src().is_var() ||
+            (as_set->src().kind() == SimpleExpression::Kind::FPR_TO_GPR)) {
           auto src = as_set->src().get_arg(0).var().reg();
           auto& ri = rui.op.at(op_id);
           if (ri.consumes.find(src) != ri.consumes.end() &&
