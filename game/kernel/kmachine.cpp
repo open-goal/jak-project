@@ -29,6 +29,8 @@
 #include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+
+#include "game/system/vm/vm.h"
 using namespace ee;
 
 /*!
@@ -369,6 +371,12 @@ int ShutdownMachine() {
   CloseListener();
   ShutdownSound();
   ShutdownGoalProto();
+
+  // OpenGOAL only - kill ps2 VM
+  if (VM::use) {
+    VM::vm_kill();
+  }
+
   Msg(6, "kernel: machine shutdown\n");
   return 0;
 }
