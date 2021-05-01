@@ -18,7 +18,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
     "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io", "loader-h",
-    "level-h", "math-camera-h",
+    "texture-h", "level-h", "math-camera-h", /* math-camera,  "font-h",*/ "decomp-h", "display",
     /* gap */
     "bounding-box",
     /* gap */
@@ -34,10 +34,15 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
     "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io",
-    "loader-h", "level-h", "math-camera-h",
+    "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera,  "font-h",*/ "decomp-h",
+    "display",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
+
+const std::unordered_set<std::string> skip_files_in_compiling = {
+    "display"  // interrupt handler setup
+};
 
 // the functions we expect the decompiler to skip
 const std::unordered_set<std::string> expected_skip_in_decompiler = {
@@ -74,6 +79,10 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     // dma
     "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
     "vector=",                                // asm branching
+    // displyy
+    "vblank-handler",  // asm
+    "vif1-handler", "vif1-handler-debug",
+
     // sync-info
     "(method 15 sync-info)",         // needs *res-static-buf*
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
@@ -440,6 +449,9 @@ TEST_F(OfflineDecompilation, Compile) {
   Timer timer;
   int total_lines = 0;
   for (auto& file : g_object_files_to_check_against_reference) {
+    if (skip_files_in_compiling.find(file) != skip_files_in_compiling.end()) {
+      continue;
+    }
     auto& obj_l = db->obj_files_by_name.at(file);
     ASSERT_EQ(obj_l.size(), 1);
 
