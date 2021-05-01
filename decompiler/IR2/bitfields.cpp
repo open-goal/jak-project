@@ -15,7 +15,11 @@ namespace decompiler {
 
 BitfieldStaticDefElement::BitfieldStaticDefElement(const TypeSpec& type,
                                                    const std::vector<BitFieldDef>& field_defs)
-    : m_type(type), m_field_defs(field_defs) {}
+    : m_type(type), m_field_defs(field_defs) {
+  for (auto& x : field_defs) {
+    x.value->parent_element = this;
+  }
+}
 
 BitfieldStaticDefElement::BitfieldStaticDefElement(
     const TypeSpec& type,
@@ -53,11 +57,28 @@ goos::Object BitfieldStaticDefElement::to_form_internal(const Env& env) const {
 
 void BitfieldStaticDefElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
+  for (auto& x : m_field_defs) {
+    x.value->apply(f);
+  }
 }
 
-void BitfieldStaticDefElement::apply_form(const std::function<void(Form*)>&) {}
-void BitfieldStaticDefElement::collect_vars(RegAccessSet&, bool) const {}
-void BitfieldStaticDefElement::get_modified_regs(RegSet&) const {}
+void BitfieldStaticDefElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& x : m_field_defs) {
+    x.value->apply_form(f);
+  }
+}
+void BitfieldStaticDefElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& x : m_field_defs) {
+      x.value->collect_vars(vars, recursive);
+    }
+  }
+}
+void BitfieldStaticDefElement::get_modified_regs(RegSet& regs) const {
+  for (auto& x : m_field_defs) {
+    x.value->get_modified_regs(regs);
+  }
+}
 
 ModifiedCopyBitfieldElement::ModifiedCopyBitfieldElement(
     const TypeSpec& type,
