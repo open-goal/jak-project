@@ -369,6 +369,10 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
   auto corrected_offset = input.offset + type_info->get_offset();
   // loop over fields. We may need to try multiple fields.
   for (auto& field : structure_type->fields()) {
+    if (field.skip_in_decomp()) {
+      continue;
+    }
+
     auto field_deref = lookup_field_info(type_info->get_name(), field.name());
 
     // how many bytes do we look at? In the case where we're just getting an address, we assume
