@@ -146,15 +146,16 @@
   obj
   )
 
-(defmethod new font-context ((allocation symbol) (type-to-make type) (mat matrix) (x int) (y int) (z int) (color uint) (flags uint))
+(define-extern *math-camera* math-camera)
+(defmethod new font-context ((allocation symbol) (type-to-make type) (mat matrix) (x int) (y int) (z float) (color uint) (flags uint))
   "Allocate a new font-context with the given parameters"
 
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set-mat! obj mat)
     (set-origin! obj x y)
     (if (= z 0)
-      (set-depth! obj z);(-> *math-camera* isometric data 14)) ;; needs math-camera
-      (set-depth! obj z)
+      (set! (-> obj origin z) (-> *math-camera* isometric data 14)) ;; inlined set-depth!
+      (set! (-> obj origin z) z) ;; inlined set-depth!
       )
     (set-w! obj 1.0)
     (set-width! obj 512)
