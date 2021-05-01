@@ -51,6 +51,9 @@
 #include "game/graphics/gfx.h"
 #include "game/graphics/display.h"
 
+#include "game/system/vm/vm.h"
+#include "game/system/vm/dmac.h"
+
 #include "common/goal_constants.h"
 #include "common/cross_os_debug/xdbg.h"
 
@@ -230,19 +233,60 @@ void iop_runner(SystemThreadInterface& iface) {
 }  // namespace
 
 /*!
+ * SystemThread function for running NothingTM.
+ */
+void null_runner(SystemThreadInterface& iface) {
+  iface.initialization_complete();
+
+  return;
+}
+
+/*!
+ * SystemThread function for running the PS2 DMA controller.
+ * This does not actually emulate the DMAC, it only fakes its existence enough that we can debug
+ * the DMA packets the original game sends. The port will replace all DMAC code.
+ */
+void dmac_runner(SystemThreadInterface& iface) {
+  VM::subscribe_component();
+
+  VM::dmac_init_globals();
+
+  iface.initialization_complete();
+
+  while (!iface.get_want_exit() && !VM::vm_want_exit()) {
+    for (int i = 0; i < 10; ++i) {
+      if (VM::dmac_ch[i]->chcr.str) {
+        lg::info("DMA detected on channel {}, clearing", i);
+        VM::dmac_ch[i]->chcr.str = 0;
+      }
+    }
+    // avoid running the DMAC on full blast (this does not sync to its clockrate)
+    std::this_thread::sleep_for(std::chrono::microseconds(50));
+  }
+
+  VM::unsubscribe_component();
+
+  return;
+}
+
+/*!
  * Main function to launch the runtime.
- * Arguments are currently ignored.
+ * GOAL kernel arguments are currently ignored.
  */
 u32 exec_runtime(int argc, char** argv) {
   g_argc = argc;
   g_argv = argv;
   g_main_thread_id = std::this_thread::get_id();
 
+  // parse opengoal arguments
   bool enable_display = true;
   for (int i = 1; i < argc; i++) {
-    if (std::string("-nodisplay") == argv[i]) {
+    if (std::string("-nodisplay") == argv[i]) {  // disable video display
       enable_display = false;
-      break;
+    } else if (std::string("-vm") == argv[i]) {  // enable debug ps2 VM
+      VM::use = true;
+    } else if (std::string("-novm") == argv[i]) {  // disable debug ps2 VM
+      VM::use = false;
     }
   }
 
@@ -253,15 +297,22 @@ u32 exec_runtime(int argc, char** argv) {
   ee::LIBRARY_INIT_sceSif();
 
   // step 2: system prep
+  VM::vm_prepare();  // our fake ps2 VM needs to be prepared
   SystemThreadManager tm;
   auto& deci_thread = tm.create_thread("DMP");
   auto& iop_thread = tm.create_thread("IOP");
   auto& ee_thread = tm.create_thread("EE");
+  auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
 
   // step 3: start the EE!
   iop_thread.start(iop_runner);
   ee_thread.start(ee_runner);
   deci_thread.start(deci2_runner);
+  if (VM::use) {
+    vm_dmac_thread.start(dmac_runner);
+  } else {
+    vm_dmac_thread.start(null_runner);
+  }
 
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.
   // TODO relegate this to its own function
