@@ -146,7 +146,7 @@ void Compiler::generate_field_description(const goos::Object& form,
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("integer"), f.type())) {
     // Integer
-    if (f.type().print() == "uint128") {
+    if (m_ts.lookup_type(f.type())->get_load_size() > 8) {
       str_template += fmt::format("~T{}: <cannot-print>~%", f.name());
     } else {
       str_template += fmt::format("~T{}: ~D~%", f.name());

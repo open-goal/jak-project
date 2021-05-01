@@ -44,6 +44,7 @@
 (define-extern int128 type)
 (define-extern float type)
 (define-extern nothing (function none))
+(define-extern kheap type)
 
 
 ;; functions defined in C. TODO - this will end up being a duplicate of kernel-defs.gc?
@@ -3681,9 +3682,11 @@
 
 (define-extern *display* display)
 
-;;;;;;;;;;;;;;;
-;; display
-;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; DISPLAY             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (define-extern get-current-time (function uint))
 (define-extern get-integral-current-time (function uint))
@@ -4510,7 +4513,7 @@
   )
 
 (deftype char-color (structure)
-  ((color uint32 4 :offset-assert 0)
+  ((color rgba 4 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -4537,13 +4540,13 @@
     (set-mat! (font-context matrix) font-context 9)
     (set-origin! (font-context int int) font-context 10)
     (set-depth! (font-context int) font-context 11)
-    (set-w! (font-context int) font-context 12)
+    (set-w! (font-context float) font-context 12)
     (set-width! (font-context int) font-context 13)
     (set-height! (font-context int) font-context 14)
     (set-projection! (font-context float) font-context 15)
-    (set-color! (font-context uint64) font-context 16)
-    (set-flags! (font-context uint32) font-context 17)
-    (set-start-line! (font-context uint32) font-context 18)
+    (set-color! (font-context uint) font-context 16)
+    (set-flags! (font-context uint) font-context 17)
+    (set-start-line! (font-context uint) font-context 18)
     (set-scale! (font-context float) font-context 19)
     )
   )
@@ -4572,7 +4575,7 @@
    (dest-verts         char-verts     :inline :offset-assert 752)
    (justify            vector        64   :inline   :offset-assert 944)
    (color-shadow       vector4w       :inline :offset-assert 1968)
-   (color-table        vector16b       64  :inline    :offset-assert 1984)
+   (color-table        char-color    64  :inline    :offset-assert 1984)
    (last-color         uint64                 :offset-assert 3008)
    (save-last-color    uint64                 :offset-assert 3016)
    (buf                basic                  :offset-assert 3024)
@@ -4704,6 +4707,9 @@
     )
   )
 
+(define-extern *text-group-names* (array string))
+(define-extern *common-text-heap* kheap)
+(define-extern *common-text* symbol)
 ;;;;;;;;;;;;;;;;
 ;; settings-h
 ;;;;;;;;;;;;;;;;
@@ -4804,23 +4810,27 @@
   ((vifcode        vif-tag 4 :offset-assert 0)
    (giftag         gif-tag   :offset-assert 16)
    (bitbltbuf      gs-bitbltbuf    :offset-assert 32)
-   (bitbltbuf-addr int64    :offset-assert 40)
+   (bitbltbuf-addr gs-reg64    :offset-assert 40)
    (trxpos         gs-trxpos    :offset-assert 48)
-   (trxpos-addr    int64    :offset-assert 56)
+   (trxpos-addr    gs-reg64    :offset-assert 56)
    (trxreg         gs-trxreg    :offset-assert 64)
-   (trxreg-addr    int64    :offset-assert 72)
+   (trxreg-addr    gs-reg64    :offset-assert 72)
    (finish         int64    :offset-assert 80) ;; gs-finish
-   (finish-addr    int64    :offset-assert 88)
+   (finish-addr    gs-reg64    :offset-assert 88)
    (trxdir         gs-trxdir    :offset-assert 96)
-   (trxdir-addr    int64    :offset-assert 104)
+   (trxdir-addr    gs-reg64    :offset-assert 104)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
 
-(define-extern store-image (function int int int int))
+(define-extern gs-store-image (function object object object))
+(define-extern store-image (function int int))
+(define-extern sync-path (function int int none))
 (define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
+(define-extern file-stream-close (function file-stream file-stream))
+(define-extern file-stream-write (function file-stream pointer uint uint))
 
 ;;;;;;;;;;;;;;;;;;
 ;; memory-usage-h
@@ -4846,11 +4856,15 @@
   :size-assert         #x6e0
   :flag-assert         #xc000006e0
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (reset! (_type_) _type_ 9)
+    (calculate-total (_type_) int 10)
     (dummy-11 () none 11)
     )
   )
+
+(define-extern *mem-usage* memory-usage-block)
+(define-extern *dma-mem-usage* memory-usage-block)
+(define-extern *temp-mem-usage* symbol)
 
 ;;;;;;;;;;;;;;
 ;; texture

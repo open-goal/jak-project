@@ -255,7 +255,7 @@ void ObjectFileDB::ir2_stack_spill_slot_pass() {
     }
     func.ir2.env.set_stack_spills(spill_map);
   });
-  lg::info("Analyzed stack spills: found {} functions will spills (total {} vars), took {:.2f} ms",
+  lg::info("Analyzed stack spills: found {} functions with spills (total {} vars), took {:.2f} ms",
            functions_with_spills, total_slots, timer.getMs());
 }
 

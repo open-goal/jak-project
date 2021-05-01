@@ -1504,7 +1504,7 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
     case FixedOperatorKind::NONE:
       return "none";
     case FixedOperatorKind::PCPYLD:
-      return ".pcpyld";
+      return "make-u128";
     default:
       assert(false);
       return "";
