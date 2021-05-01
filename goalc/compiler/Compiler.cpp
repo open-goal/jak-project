@@ -31,7 +31,7 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   }
 }
 
-ReplStatus Compiler::execute_repl() {
+ReplStatus Compiler::execute_repl(bool auto_listen) {
   // init repl
   m_repl->print_welcome_message();
   auto examples = m_repl->examples;
@@ -44,6 +44,10 @@ ReplStatus Compiler::execute_repl() {
       std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
   m_repl->get_repl().set_highlighter_callback(
       std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
+
+  if (auto_listen) {
+    m_listener.connect_to_target();
+  }
 
   while (!m_want_exit && !m_want_reload) {
     try {
