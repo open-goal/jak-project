@@ -1,3 +1,3 @@
 @echo off
 cd ..\..
-out\build\Release\bin\goalc -v
+out\build\Release\bin\goalc -v -auto-lt
