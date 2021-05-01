@@ -5,3 +5,296 @@
 ;; name in dgo: texture
 ;; dgos: GAME, ENGINE
 
+(defmethod print texture-page ((obj texture-page))
+  "Print a texture page."
+  (format #t "#<texture-page ~S :length ~D :dest #x~X :size ~DK @ #x~X>"
+          (-> obj name)
+          (-> obj length)
+          (shr (-> obj segment 0 dest) 6)
+          (shr (-> obj size) 8)
+          obj
+          )
+  obj
+  )
+
+(defmethod length texture-page ((obj texture-page))
+  "Get the length (number of entires) in a texture page"
+  (-> obj length)
+  )
+
+(defmethod asize-of texture-page ((obj texture-page))
+  "Get the size in memory of a texture page"
+  (the-as int (+ (-> obj type size) (the-as uint (shl (-> obj length) 2))))
+  )
+
+(defun texture-bpp ((arg0 gs-psm))
+  "Get the number of bits per pixel for the given texture format"
+  (let ((v1-0 arg0))
+    (cond
+      ((= v1-0 (gs-psm mt8)) 8)
+      ((= v1-0 (gs-psm mt4)) 4)
+      (else
+       (if (or (= v1-0 (gs-psm ct16))
+               (= v1-0 (gs-psm ct16s))
+               (= v1-0 (gs-psm mz16))
+               (= v1-0 (gs-psm mz16s))
+               )
+           16
+           32
+           )
+       )
+      )
+    )
+  )
+
+(defun texture-qwc ((w int) (h int) (tex-format gs-psm))
+  "Get the number of quadwords in a texture. Round up."
+  (let ((v1-0 (texture-bpp tex-format)))
+   (sar (+ (* (* w h) v1-0) 127) 7)
+   )
+  )
+
+(defun physical-address ((arg0 pointer))
+  "Convert a pointer to a physical address than can be used for DMA"
+  (the-as pointer (logand #xfffffff (the-as int arg0)))
+  )
+
+(defun dma-buffer-add-ref-texture ((buf dma-buffer) (data pointer) (tex-w int) (tex-h int) (tex-format gs-psm))
+  "Add texture data to a dma buffer"
+
+  ;; get pointer and size (quadwords)
+  (let ((data-ptr (physical-address data))
+        (qwc (texture-qwc tex-w tex-h tex-format))
+        )
+    ;; do transfers until its all gone.
+    (while (> qwc 0)
+      ;; only #x7fff quadwords/transfer is allowed.
+      (let ((qwc-this-time (min #x7fff qwc)))
+        ;; is this the last transfer?
+        (let ((eop (if (= qwc qwc-this-time) 1 0)))
+          ;; set up dma/vif for a single giftag
+          (let* ((a2-2 buf)
+                 (setup-dma (the-as dma-packet (-> a2-2 base)))
+                 )
+            (set! (-> setup-dma dma)
+                  (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt))
+                  )
+            (set! (-> setup-dma vif0) (new 'static 'vif-tag))
+            (set! (-> setup-dma vif1)
+                  (new 'static 'vif-tag :imm #x1 :cmd (vif-cmd direct) :msk #x1)
+                  )
+            (set! (-> a2-2 base) (&+ (the-as pointer setup-dma) 16))
+            )
+
+          ;; set up IMAGE mode!
+          (let* ((a2-3 buf)
+                 (setup-dif (the-as gs-gif-tag (-> a2-3 base)))
+                 )
+            (set! (-> setup-dif tag) (new 'static 'gif-tag64 :flg #x2 :eop eop :nloop qwc-this-time))
+            (set! (-> setup-dif regs) (new 'static 'gif-tag-regs))
+            (set! (-> a2-3 base) (&+ (the-as pointer setup-dif) 16))
+            )
+          )
+
+        ;; and send the data.
+        (let* ((a1-9 buf)
+               (data-dma (the-as dma-packet (-> a1-9 base)))
+               )
+          (set! (-> data-dma dma)
+                (new 'static 'dma-tag
+                     :id (dma-tag-id ref)
+                     :addr (the-as int data-ptr)
+                     :qwc qwc-this-time
+                     )
+                )
+          (set! (-> data-dma vif0) (new 'static 'vif-tag))
+          (set! (-> data-dma vif1)
+                (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm qwc-this-time)
+                )
+          (set! (-> a1-9 base) (&+ (the-as pointer data-dma) 16))
+          )
+
+        ;; seek to next data.
+        (&+! data-ptr (shl qwc-this-time 4))
+        (set! qwc (- qwc qwc-this-time))
+        )
+      )
+    )
+  (none)
+  )
+
+(defun gs-find-block ((bx int) (by int) (tex-format gs-psm))
+  "Block index lookup."
+  (cond
+    ((zero? tex-format)
+     (-> ct32-24-block-table (+ bx (shl by 3)))
+     )
+    ((= tex-format (gs-psm ct24))
+     (-> ct32-24-block-table (+ bx (shl by 3)))
+     )
+    ((= tex-format (gs-psm ct16))
+     (-> ct16-block-table (+ bx (shl by 2)))
+     )
+    ((= tex-format (gs-psm ct16s))
+     (-> ct16s-block-table (+ bx (shl by 2)))
+     )
+    ((= tex-format (gs-psm mz32))
+     (-> mz32-24-block-table (+ bx (shl by 3)))
+     )
+    ((= tex-format (gs-psm mz24))
+     (-> mz32-24-block-table (+ bx (shl by 3)))
+     )
+    ((= tex-format (gs-psm mz16))
+     (-> mz16-block-table (+ bx (shl by 2)))
+     )
+    ((= tex-format (gs-psm mz16s))
+     (-> mz16s-block-table (+ bx (shl by 2)))
+     )
+    ((= tex-format (gs-psm mt8))
+     (-> mt8-block-table (+ bx (shl by 3)))
+     )
+    ((= tex-format (gs-psm mt4))
+     (-> mt4-block-table (+ bx (shl by 2)))
+     )
+    (else
+     0
+     )
+    )
+  )
+
+(defun gs-page-width ((arg0 gs-psm))
+  (let ((v1-0 arg0))
+    (if (or (zero? v1-0)
+            (= v1-0 (gs-psm ct24))
+            (= v1-0 (gs-psm ct16))
+            (= v1-0 (gs-psm ct16s))
+            )
+        64
+        (cond
+          ((or (= v1-0 (gs-psm mt8)) (= v1-0 (gs-psm mt4)))
+           128
+           )
+          (else
+           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+           1
+           )
+          )
+        )
+    )
+  )
+
+(defun gs-page-height ((arg0 gs-psm))
+  (let ((v1-0 arg0))
+    (if (or (zero? v1-0) (= v1-0 (gs-psm ct24)))
+        32
+        (cond
+          ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)))
+           64
+           )
+          ((= v1-0 (gs-psm mt8))
+           64
+           )
+          ((= v1-0 (gs-psm mt4))
+           128
+           )
+          (else
+           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+           1
+           )
+          )
+        )
+    )
+  )
+
+(defun gs-block-width ((arg0 gs-psm))
+  (let ((v1-0 arg0))
+   (if (or (zero? v1-0) (= v1-0 (gs-psm ct24)))
+    8
+    (cond
+     ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)) (= v1-0 (gs-psm mt8)))
+      16
+      )
+     ((= v1-0 (gs-psm mt4))
+      32
+      )
+     (else
+      (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+      1
+      )
+     )
+    )
+   )
+  )
+
+(defun gs-block-height ((arg0 gs-psm))
+  (let ((v1-0 arg0))
+    (if (or (zero? v1-0)
+            (= v1-0 (gs-psm ct24))
+            (= v1-0 (gs-psm ct16))
+            (= v1-0 (gs-psm ct16s))
+            )
+        8
+        (cond
+          ((or (= v1-0 (gs-psm mt8)) (= v1-0 (gs-psm mt4)))
+           16
+           )
+          (else
+           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+           1
+           )
+          )
+        )
+    )
+  )
+
+(defun gs-largest-block ((tex-width int) (tex-height int) (tex-format gs-psm))
+  "Determine the largest block occupied by the given texture"
+  (let* ((block-width (gs-block-width tex-format))
+         (block-height (gs-block-height tex-format))
+         ;; round up to neaest block.
+         (real-width
+          (* (/ (+ (+ block-width -1) tex-width) block-width) block-width)
+           )
+         (real-height
+          (* (/ (+ (+ block-height -1) tex-height) block-height) block-height)
+           )
+         ;; and now convert to actual blocks
+         (width-blocks (/ real-width block-width))
+         (height-blocks (/ real-height block-height))
+         (max-block 0)
+         )
+    ;; loop over each block...
+    (dotimes (x width-blocks)
+      (dotimes (y height-blocks)
+        ;; and see where it is.
+        (set! max-block (max max-block (gs-find-block x y tex-format)))
+        )
+      )
+    max-block
+    )
+  )
+
+(defun gs-blocks-used ((tex-width int) (tex-height int) (tex-format gs-psm))
+  "This function doesn't make much sense...  It's unused so maybe it's just wrong?"
+  (let* ((page-width (gs-page-width tex-format))
+         (page-height (gs-page-height tex-format))
+         (real-width
+          (* (/ (+ (+ page-width -1) tex-width) page-width) page-width)
+           )
+         (real-height
+          (* (/ (+ (+ page-height -1) tex-height) page-height) page-height)
+           )
+         (width-blocks (/ real-width page-width))
+         (height-blocks (/ real-height page-height))
+         (a0-9 (- tex-width (* (+ width-blocks -1) page-width)))
+         (a1-7 (- tex-height (* (+ height-blocks -1) page-height)))
+         )
+    (if (or (< a0-9 page-width) (< a1-7 page-height))
+        (+
+         (+ (gs-largest-block a0-9 a1-7 tex-format) 1)
+         (shl (+ (* width-blocks height-blocks) -1) 5)
+         )
+        (shl (* height-blocks width-blocks) 5)
+        )
+    )
+  )

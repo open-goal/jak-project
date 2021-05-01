@@ -4000,7 +4000,7 @@
   :size-assert         #x2b0
   :flag-assert         #x17000002b0
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) _type_ 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -4016,6 +4016,8 @@
     (dummy-22 () none 22)
     )
   )
+
+(define-extern *texture-pool* texture-pool)
 
 ;; texture-h
 (deftype texture (basic)
@@ -4087,7 +4089,7 @@
 
 ;; texture-h
 (deftype texture-link (structure)
-  ((next uint32  :offset-assert 0)
+  ((next texture-link  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -4099,8 +4101,9 @@
   ((length int16   :offset-assert 0)
    (status uint16  :offset-assert 2)
    (page   basic   :offset-assert 4)
-   (link   uint32  :offset-assert 8)
+   (link   texture-link  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -4108,7 +4111,8 @@
 
 ;; texture-h
 (deftype texture-page-dir (basic)
-  ((pad uint8 #x10))
+  ((length int32)
+   (entries texture-page-dir-entry 1 :inline))
   (:methods
    (dummy-9 () none 9)
    )
@@ -4870,9 +4874,85 @@
 ;; texture
 ;;;;;;;;;;;;;;
 
-; ;; texture
+(define-extern ct32-24-block-table (array int32))
+(define-extern mz32-24-block-table (array int32))
+(define-extern ct16-block-table (array int32))
+(define-extern ct16s-block-table (array int32))
+(define-extern mz16-block-table (array int32))
+(define-extern mz16s-block-table (array int32))
+(define-extern mt8-block-table (array int32))
+(define-extern mt4-block-table (array int32))
+
+(define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
+
+(define-extern texture-bpp (function gs-psm int))
+(define-extern texture-qwc (function int int gs-psm int))
+(define-extern physical-address (function pointer pointer))
+(define-extern dma-buffer-add-ref-texture (function dma-buffer pointer int int gs-psm none))
+(define-extern gs-find-block (function int int gs-psm int))
+(define-extern gs-page-width (function gs-psm int))
+(define-extern gs-page-height (function gs-psm int))
+(define-extern gs-block-width (function gs-psm int))
+(define-extern gs-block-height (function gs-psm int))
+(define-extern gs-largest-block (function int int gs-psm int))
+(define-extern gs-blocks-used (function int int gs-psm int))
+
+
+
+(define-extern upload-vram-pages function)
+;;(define-extern *shader-list* object) ;; unknown type
+(define-extern adgif-shader-login-no-remap-fast function)
+;;(define-extern mt8-block-table object) ;; unknown type
+
+
+(define-extern relocate-later function)
+
+(define-extern upload-vram-pages-pris function)
+;;(define-extern ct16s-block-table object) ;; unknown type
+;;(define-extern *txt-dma-list* object) ;; unknown type
+(define-extern adgif-shader-login-fast function)
+
+;;(define-extern mz16s-block-table object) ;; unknown type
+(define-extern lookup-texture-by-id function)
+;;(define-extern *texture-pool* object) ;; unknown type
+
+(define-extern link-texture-by-id function)
+;;(define-extern mt4-block-table object) ;; unknown type
+;;(define-extern *edit-shader* object) ;; unknown type
+(define-extern adgif-shader-update! function)
+;;(define-extern ct16-block-table object) ;; unknown type
+(define-extern texture-page-common-boot-allocate function)
+
+(define-extern texture-page-level-allocate function)
+(define-extern texture-page-common-allocate function)
+(define-extern texture-page-login function)
+
+
+(define-extern adgif-shader-login function)
+(define-extern adgif-shader-login-no-remap function)
+;;(define-extern mz16-block-table object) ;; unknown type
+
+;;;; unknown type
+
+(define-extern adgif-shader<-texture-simple! function)
+(define-extern texture-relocate function)
+(define-extern adgif-shader<-texture! function)
+(define-extern update-vram-pages function)
+(define-extern texture-page-near-allocate-0 function)
+;;(define-extern mz32-24-block-table object) ;; unknown type
+(define-extern texture-page-default-allocate function)
+(define-extern texture-page-size-check function)
+
+
+(define-extern upload-vram-data function)
+(define-extern texture-page-near-allocate-1 function)
+;;(define-extern *font-texture* object) ;; unknown type
+
+
+;; texture
 ; (deftype texture-page-dir (basic)
-;   ()
+;   ((length int32)
+;    (pad uint8 12))
 ;   :method-count-assert 10
 ;   :size-assert         #x14
 ;   :flag-assert         #xa00000014
@@ -33426,54 +33506,7 @@
 ;;(define-extern memory-usage-block object) ;; unknown type
 ;;(define-extern *dma-mem-usage* object) ;; unknown type
 ;;(define-extern memory-usage-info object) ;; unknown type
-(define-extern upload-vram-pages function)
-;;(define-extern *shader-list* object) ;; unknown type
-(define-extern adgif-shader-login-no-remap-fast function)
-;;(define-extern mt8-block-table object) ;; unknown type
-(define-extern texture-bpp function)
-(define-extern gs-blocks-used function)
-(define-extern relocate-later function)
-(define-extern gs-page-width function)
-(define-extern upload-vram-pages-pris function)
-;;(define-extern ct16s-block-table object) ;; unknown type
-;;(define-extern *txt-dma-list* object) ;; unknown type
-(define-extern adgif-shader-login-fast function)
-(define-extern gs-page-height function)
-;;(define-extern mz16s-block-table object) ;; unknown type
-(define-extern lookup-texture-by-id function)
-;;(define-extern *texture-pool* object) ;; unknown type
-(define-extern dma-buffer-add-ref-texture function)
-(define-extern link-texture-by-id function)
-;;(define-extern mt4-block-table object) ;; unknown type
-;;(define-extern *edit-shader* object) ;; unknown type
-(define-extern adgif-shader-update! function)
-;;(define-extern ct16-block-table object) ;; unknown type
-(define-extern texture-page-common-boot-allocate function)
-(define-extern gs-find-block function)
-(define-extern texture-page-level-allocate function)
-(define-extern texture-page-common-allocate function)
-(define-extern texture-page-login function)
-(define-extern texture-page-dir-inspect function)
-(define-extern texture-qwc function)
-(define-extern adgif-shader-login function)
-(define-extern adgif-shader-login-no-remap function)
-;;(define-extern mz16-block-table object) ;; unknown type
-(define-extern gs-largest-block function)
-;;(define-extern ct32-24-block-table object) ;; unknown type
-(define-extern gs-block-width function)
-(define-extern adgif-shader<-texture-simple! function)
-(define-extern texture-relocate function)
-(define-extern adgif-shader<-texture! function)
-(define-extern update-vram-pages function)
-(define-extern texture-page-near-allocate-0 function)
-;;(define-extern mz32-24-block-table object) ;; unknown type
-(define-extern texture-page-default-allocate function)
-(define-extern texture-page-size-check function)
-(define-extern gs-block-height function)
-(define-extern physical-address function)
-(define-extern upload-vram-data function)
-(define-extern texture-page-near-allocate-1 function)
-;;(define-extern *font-texture* object) ;; unknown type
+
 (define-extern adgif-shader<-texture-with-update! function)
 ;;(define-extern full object) ;; unknown type
 ;;(define-extern active object) ;; unknown type
