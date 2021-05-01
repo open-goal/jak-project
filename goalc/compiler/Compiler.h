@@ -113,6 +113,11 @@ class Compiler {
                               const std::string& field_name,
                               Env* env);
 
+  Val* get_field_of_bitfield(const BitFieldType* type,
+                             Val* object,
+                             const std::string& field_name,
+                             Env* env);
+
   SymbolVal* compile_get_sym_obj(const std::string& name, Env* env);
   void color_object_file(FileEnv* env);
   std::vector<u8> codegen_object_file(FileEnv* env);
@@ -262,7 +267,10 @@ class Compiler {
                                   Env* env,
                                   RegVal* reg,
                                   const Field& f);
-  Val* generate_inspector_for_type(const goos::Object& form, Env* env, Type* type);
+  Val* generate_inspector_for_structured_type(const goos::Object& form,
+                                              Env* env,
+                                              StructureType* type);
+  Val* generate_inspector_for_bitfield_type(const goos::Object& form, Env* env, BitFieldType* type);
   RegVal* compile_get_method_of_type(const goos::Object& form,
                                      const TypeSpec& type,
                                      const std::string& method_name,
