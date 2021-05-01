@@ -27,5 +27,3 @@ void dmac_init_globals() {
 }
 
 }  // namespace VM
-
-#undef from_ee_mem
