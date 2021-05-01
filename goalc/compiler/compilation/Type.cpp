@@ -315,7 +315,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
     generate_inspector_for_structured_type(form, env, as_structure_type);
   } else {
     auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
-    if (as_bitfield_type) {
+    if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields
       generate_inspector_for_bitfield_type(form, env, as_bitfield_type);
     }
   }
@@ -503,7 +503,6 @@ Val* Compiler::get_field_of_bitfield(const BitFieldType* type,
                                      Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   Val* result = nullptr;
-  int offset = -type->get_offset();
   auto bitfield_info = m_ts.lookup_bitfield_info(type->get_name(), field_name);
   result = fe->alloc_val<BitFieldVal>(bitfield_info.result_type, object, bitfield_info.offset,
                                       bitfield_info.size, bitfield_info.sign_extend);
