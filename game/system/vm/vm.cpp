@@ -90,6 +90,7 @@ void unsubscribe_component() {
  * Return the GOAL pointer to a specified PS2 VM component based on the EE address.
  */
 u64 get_vm_ptr(u32 ptr) {
+  // currently, only DMAC and DMA channel banks are implemented. add more as necessary.
   if (ptr == 0x10008000) {
     return VM::dmac_ch[0].offset;
   } else if (ptr == 0x10009000) {
@@ -113,8 +114,11 @@ u64 get_vm_ptr(u32 ptr) {
   } else if (ptr == 0x1000e000) {
     return VM::dmac.offset;
   } else {
+    // return zero, using this result will segfault GOAL!
+    // we could die immediately, but it might be worth it to keep going just on the off chance more
+    // errors are reported, and not just only this one.
     lg::error("unknown EE register for VM at #x{:08x}", ptr);
-    return intern_from_c("#f").offset;
+    return 0;
   }
 }
 
