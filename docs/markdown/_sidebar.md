@@ -1,9 +1,20 @@
-* [Home](/README.md)
-* [Compiler Example](compiler_example.md)
-* [Type System](type_system.md)
-* [Emitter](emitter.md)
-* [GOAL Debugging](goal_dbg_doc.md)
-* [GOOS](goos.md)
-* [Object File Generation](object_file_generation.md)
-* [Porting to x86](porting_to_x86.md)
-* [Registers](registers.md)
+- OpenGOAL Reference
+  - [Overview](/README.md)
+  - [Type System](/type_system.md)
+  - [Method System](/method_system.md)
+  - [Language Syntax & Features](/syntax.md)
+  - [Standard Library](/lib.md)
+  - [The Reader](/reader.md)
+  - [Macro Support](/goos.md)
+  - [Object File Formats](/object_file_formats.md)
+
+- Working with OpenGOAL
+  - [The REPL](/repl.md)
+  - [Debugging](/debugging.md)
+  - [Editor Configuration](/editor_setup.md)
+
+- Developing OpenGOAL
+  - [Compiler Walkthrough](/compiler_example.md)
+  - [Assembly Emitter](/asm_emitter.md)
+  - [Porting to x86](/porting_to_x86.md)
+  - [Register Handling](/registers.md)
