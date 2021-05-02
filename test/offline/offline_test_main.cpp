@@ -418,6 +418,8 @@ TEST_F(OfflineDecompilation, Reference) {
            fmt::print("{}\n", src);
          }*/
 
+    lg::info("Comparing {}...", file);
+
     auto reference = file_util::read_text_file(file_util::get_file_path(
         {"test", "decompiler", "reference", fmt::format("{}_REF.gc", file)}));
 

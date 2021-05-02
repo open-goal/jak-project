@@ -924,7 +924,7 @@
   )
 
 (deftype vector4w (structure)
-  ((data  int32 4 :offset-assert 0)
+  ((data  int32 4 :do-not-decompile :offset-assert 0)
    (x     int32     :offset 0)
    (y     int32     :offset 4)
    (z     int32     :offset 8)
@@ -2379,7 +2379,7 @@
     (end 7)       ;; next, but ends.
     )
 
-; ;; dma-h
+;; dma-h
 (deftype dma-tag (uint64)
   ((qwc uint16    :offset 0)          ;; quadword count
    (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
@@ -2393,7 +2393,7 @@
   :flag-assert         #x900000008
   )
 
-; ;; dma-h
+;; dma-h
 (deftype dma-bucket (structure)
   ((tag   dma-tag  :offset-assert 0)     ;; the DMA tag to transfer the bucket's data
    (last  (pointer dma-tag)  :offset-assert 8)  ;; the last tag of this bucket.
@@ -2432,7 +2432,7 @@
     (unpack-s-32  96)
     (unpack-s-16  97)
     (unpack-s-8   98)
-    ;; 99 is invllid
+    ;; 99 is invalid
     (unpack-v2-32 100)
     (unpack-v2-16 101)
     (unpack-v2-8  102)
@@ -2520,7 +2520,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
-; ;; video-h
 (deftype video-parms (structure)
   ((set-video-mode              basic  :offset-assert 0)
    (reset-video-mode            basic  :offset-assert 4)
@@ -2709,9 +2708,92 @@
   :flag-assert         #x900000010
   )
 
+;; moved these here for the decompiler for now!
+;; gs
+(defenum gs-prim-type
+  :type uint8
+  (point 0)
+  (line 1)
+  (line-strip 2)
+  (tri 3)
+  (tri-strip 4)
+  (tri-fan 5)
+  (sprite 6)
+  )
+
+(deftype gs-prim (uint64)
+  ((prim  gs-prim-type :offset 0  :size 3)
+   (iip   uint8        :offset 3  :size 1)
+   (tme   uint8        :offset 4  :size 1)
+   (fge   uint8        :offset 5  :size 1)
+   (abe   uint8        :offset 6  :size 1)
+   (aa1   uint8        :offset 7  :size 1)
+   (fst   uint8        :offset 8  :size 1)
+   (ctxt  uint8        :offset 9  :size 1)
+   (fix   uint8        :offset 10 :size 1)
+   )
+  :flag-assert #x900000008
+  )
+
+(deftype gif-tag64 (uint64)
+  ((nloop   uint16  :offset 0   :size 15)
+   (eop     uint8   :offset 15  :size 1)
+   (id      uint16  :offset 32  :size 14)
+   (pre     uint8   :offset 46  :size 1)
+   (prim    gs-prim :offset 47  :size 11)
+   (flg     uint8   :offset 58  :size 2)
+   (nreg    uint8   :offset 60  :size 4))
+  :flag-assert #x900000008
+  )
+
+(defenum gif-reg-id
+  :bitfield #f
+  :type uint8
+  (prim 0)
+  (rgbaq 1)
+  (st 2)
+  (uv 3)
+  (xyzf2 4)
+  (xyz2 5)
+  (tex0-1 6)
+  (tex0-2 7)
+  (clamp-1 8)
+  (clamp-2 9)
+  (fog 10)
+  (xyzf3 12)
+  (xyz3 13)
+  (a+d 14)
+  (nop 15)
+  )
+
+(deftype gif-tag-regs (uint64)
+  ((regs0   gif-reg-id :offset 0  :size 4)
+   (regs1   gif-reg-id :offset 4  :size 4)
+   (regs2   gif-reg-id :offset 8  :size 4)
+   (regs3   gif-reg-id :offset 12  :size 4)
+   (regs4   gif-reg-id :offset 16  :size 4)
+   (regs5   gif-reg-id :offset 20  :size 4)
+   (regs6   gif-reg-id :offset 24  :size 4)
+   (regs7   gif-reg-id :offset 28  :size 4)
+   (regs8   gif-reg-id :offset 32  :size 4)
+   (regs9   gif-reg-id :offset 36 :size 4)
+   (regs10  gif-reg-id :offset 40 :size 4)
+   (regs11  gif-reg-id :offset 44 :size 4)
+   (regs12  gif-reg-id :offset 48 :size 4)
+   (regs13  gif-reg-id :offset 52 :size 4)
+   (regs14  gif-reg-id :offset 56 :size 4)
+   (regs15  gif-reg-id :offset 60 :size 4)
+   )
+  )
+
+;; change this type when you want the decompiler to output nice gif-tags,
+;; change it back when you're done or other stuff breaks.
+;; ND did something REALLY strange with these and now we have to suffer from it
 (deftype dma-gif-packet (structure)
   ((dma-vif dma-packet :inline :offset-assert 0)
-   (gif     uint64    2       :offset-assert 16) ;; guess
+   ;(gif      gif-tag64    :offset-assert 16)
+   ;(gif-regs gif-tag-regs  :offset-assert 24)
+   (gif     uint64    2       :offset-assert 16)
    (quad    uint128    2       :offset 0)
    )
   :method-count-assert 9
@@ -3066,31 +3148,8 @@
   :flag-assert #x900000008
   )
 
-(defenum gs-prim-type
-  :type uint8
-  (point 0)
-  (line 1)
-  (line-strip 2)
-  (tri 3)
-  (tri-strip 4)
-  (tri-fan 5)
-  (sprite 6)
-  )
-;; the GS's PRIM register specifies the types of drawing primitives and various attributes, and
-;; initializes the contents of the vertex queue.
-(deftype gs-prim (uint64)
-  ((prim  gs-prim-type :offset 0  :size 3)
-   (iip   uint8        :offset 3  :size 1)
-   (tme   uint8        :offset 4  :size 1)
-   (fge   uint8        :offset 5  :size 1)
-   (abe   uint8        :offset 6  :size 1)
-   (aa1   uint8        :offset 7  :size 1)
-   (fst   uint8        :offset 8  :size 1)
-   (ctxt  uint8        :offset 9  :size 1)
-   (fix   uint8        :offset 10 :size 1)
-   )
-  :flag-assert #x900000008
-  )
+;; gap!
+
 ;; the GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
 ;; texture coordinates.
 (deftype gs-rgbaq (uint64)
@@ -3340,16 +3399,6 @@
   ()
   :flag-assert #x900000004
   )
-(deftype gif-tag64 (uint64)
-  ((nloop   uint16 :offset 0   :size 15)
-   (eop     uint8  :offset 15  :size 1)
-   (id      uint16 :offset 32  :size 14)
-   (pre     uint8  :offset 46  :size 1)
-   (prim    uint16 :offset 47  :size 11)
-   (flg     uint8  :offset 58  :size 2)
-   (nreg    uint8  :offset 60  :size 4))
-  :flag-assert #x900000008
-  )
 (deftype gif-tag (uint128)
   ((nloop   uint16 :offset 0   :size 15)
    (eop     uint8  :offset 15  :size 1)
@@ -3376,46 +3425,6 @@
    (regs15  uint8 :offset 124 :size 4)
    )
   :flag-assert #x900000010
-  )
-
-(defenum gs-reg-id
-  :bitfield #f
-  :type uint8
-  (prim 0)
-  (rgbaq 1)
-  (st 2)
-  (uv 3)
-  (xyzf2 4)
-  (xyz2 5)
-  (tex0-1 6)
-  (tex0-2 7)
-  (clamp-1 8)
-  (clamp-2 9)
-  (fog 10)
-  (xyzf3 12)
-  (xyz3 13)
-  (a+d 14)
-  (nop 15)
-  )
-
-(deftype gif-tag-regs (uint64)
-  ((regs0   gs-reg-id :offset 0  :size 4)
-   (regs1   gs-reg-id :offset 4  :size 4)
-   (regs2   gs-reg-id :offset 8  :size 4)
-   (regs3   gs-reg-id :offset 12  :size 4)
-   (regs4   gs-reg-id :offset 16  :size 4)
-   (regs5   gs-reg-id :offset 20  :size 4)
-   (regs6   gs-reg-id :offset 24  :size 4)
-   (regs7   gs-reg-id :offset 28  :size 4)
-   (regs8   gs-reg-id :offset 32  :size 4)
-   (regs9   gs-reg-id :offset 36 :size 4)
-   (regs10  gs-reg-id :offset 40 :size 4)
-   (regs11  gs-reg-id :offset 44 :size 4)
-   (regs12  gs-reg-id :offset 48 :size 4)
-   (regs13  gs-reg-id :offset 52 :size 4)
-   (regs14  gs-reg-id :offset 56 :size 4)
-   (regs15  gs-reg-id :offset 60 :size 4)
-   )
   )
 
 
@@ -3675,7 +3684,7 @@
   :flag-assert         #xa0000039c
   (:methods
    (new (symbol type int int int int int) _type_ 0)
-   (set-video-time-params (_type_ float) float 9)
+   (set-time-ratios (_type_ float) float 9)
    )
   )
 
@@ -4510,7 +4519,7 @@
   )
 
 (deftype char-color (structure)
-  ((color uint32 4 :offset-assert 0)
+  ((color rgba 4 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -4523,7 +4532,7 @@
    (width      float          :offset-assert 48)
    (height     float          :offset-assert 52)
    (projection float          :offset-assert 56)
-   (color      uint64         :offset-assert 64)
+   (color      int64          :offset-assert 64)
    (flags      uint32         :offset-assert 72)
    (mat        matrix         :offset-assert 76)
    (start-line uint32         :offset-assert 80)
@@ -4533,17 +4542,17 @@
   :size-assert         #x58
   :flag-assert         #x1400000058
   (:methods
-    (new (symbol type matrix int int float int int) _type_ 0)
+    (new (symbol type matrix int int float int uint) _type_ 0)
     (set-mat! (font-context matrix) font-context 9)
     (set-origin! (font-context int int) font-context 10)
     (set-depth! (font-context int) font-context 11)
-    (set-w! (font-context int) font-context 12)
+    (set-w! (font-context float) font-context 12)
     (set-width! (font-context int) font-context 13)
     (set-height! (font-context int) font-context 14)
     (set-projection! (font-context float) font-context 15)
-    (set-color! (font-context uint64) font-context 16)
-    (set-flags! (font-context uint32) font-context 17)
-    (set-start-line! (font-context uint32) font-context 18)
+    (set-color! (font-context int) font-context 16)
+    (set-flags! (font-context uint) font-context 17)
+    (set-start-line! (font-context uint) font-context 18)
     (set-scale! (font-context float) font-context 19)
     )
   )
@@ -4572,7 +4581,7 @@
    (dest-verts         char-verts     :inline :offset-assert 752)
    (justify            vector        64   :inline   :offset-assert 944)
    (color-shadow       vector4w       :inline :offset-assert 1968)
-   (color-table        vector16b       64  :inline    :offset-assert 1984)
+   (color-table        char-color       64  :inline    :offset-assert 1984)
    (last-color         uint64                 :offset-assert 3008)
    (save-last-color    uint64                 :offset-assert 3016)
    (buf                basic                  :offset-assert 3024)

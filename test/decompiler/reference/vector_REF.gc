@@ -106,7 +106,7 @@
    (.div.vf Q vf0 vf5 :fsf #b11 :ftf #b1)
    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
    (.lvf vf4 (&-> arg1 quad))
-   (let ((v1-0 (/ (-> arg1 data 0) (-> arg2 data 0))))
+   (let ((v1-0 (/ (-> arg1 x) (-> arg2 x))))
     (.wait.vf)
     (.mul.vf vf6 vf4 Q :mask #b10)
     (.nop.vf)
@@ -309,8 +309,8 @@
 (defun
   vector-seek-2d-xz-smooth!
   ((vec vector) (target vector) (max-step float) (alpha float))
-  (let ((x-diff (- (-> target data 0) (-> vec data 0)))
-        (z-diff (- (-> target data 2) (-> vec data 2)))
+  (let ((x-diff (- (-> target x) (-> vec x)))
+        (z-diff (- (-> target z) (-> vec z)))
         )
    (if (or (!= x-diff 0.0) (!= z-diff 0.0))
     (let* ((x-step (* x-diff alpha))
@@ -319,13 +319,13 @@
            )
      (cond
       ((>= max-step step-len)
-       (set! (-> vec data 0) (+ (-> vec data 0) x-step))
-       (set! (-> vec data 2) (+ (-> vec data 2) z-step))
+       (set! (-> vec x) (+ (-> vec x) x-step))
+       (set! (-> vec z) (+ (-> vec z) z-step))
        )
       (else
        (let ((f2-6 (/ max-step step-len)))
-        (set! (-> vec data 0) (+ (-> vec data 0) (* f2-6 x-step)))
-        (set! (-> vec data 2) (+ (-> vec data 2) (* f2-6 z-step)))
+        (set! (-> vec x) (+ (-> vec x) (* f2-6 x-step)))
+        (set! (-> vec z) (+ (-> vec z) (* f2-6 z-step)))
         )
        )
       )
@@ -339,8 +339,8 @@
 (defun
   vector-seek-2d-yz-smooth!
   ((vec vector) (target vector) (max-step float) (alpha float))
-  (let ((y-diff (- (-> target data 1) (-> vec data 1)))
-        (z-diff (- (-> target data 2) (-> vec data 2)))
+  (let ((y-diff (- (-> target y) (-> vec y)))
+        (z-diff (- (-> target z) (-> vec z)))
         )
    (if (or (!= y-diff 0.0) (!= z-diff 0.0))
     (let* ((y-step (* y-diff alpha))
@@ -349,13 +349,13 @@
            )
      (cond
       ((>= max-step step-len)
-       (set! (-> vec data 1) (+ (-> vec data 1) y-step))
-       (set! (-> vec data 2) (+ (-> vec data 2) z-step))
+       (set! (-> vec y) (+ (-> vec y) y-step))
+       (set! (-> vec z) (+ (-> vec z) z-step))
        )
       (else
        (let ((step-scale (/ max-step step-len)))
-        (set! (-> vec data 1) (+ (-> vec data 1) (* step-scale y-step)))
-        (set! (-> vec data 2) (+ (-> vec data 2) (* step-scale z-step)))
+        (set! (-> vec y) (+ (-> vec y) (* step-scale y-step)))
+        (set! (-> vec z) (+ (-> vec z) (* step-scale z-step)))
         )
        )
       )
@@ -369,9 +369,9 @@
 (defun
   vector-seek-3d-smooth!
   ((vec vector) (target vector) (max-step float) (alpha float))
-  (let ((x-diff (- (-> target data 0) (-> vec data 0)))
-        (y-diff (- (-> target data 1) (-> vec data 1)))
-        (z-diff (- (-> target data 2) (-> vec data 2)))
+  (let ((x-diff (- (-> target x) (-> vec x)))
+        (y-diff (- (-> target y) (-> vec y)))
+        (z-diff (- (-> target z) (-> vec z)))
         )
    (if (or (!= x-diff 0.0) (!= y-diff 0.0) (!= z-diff 0.0))
     (let* ((x-step (* x-diff alpha))
@@ -385,15 +385,15 @@
            )
      (cond
       ((>= max-step step-len)
-       (set! (-> vec data 0) (+ (-> vec data 0) x-step))
-       (set! (-> vec data 1) (+ (-> vec data 1) y-step))
-       (set! (-> vec data 2) (+ (-> vec data 2) z-step))
+       (set! (-> vec x) (+ (-> vec x) x-step))
+       (set! (-> vec y) (+ (-> vec y) y-step))
+       (set! (-> vec z) (+ (-> vec z) z-step))
        )
       (else
        (let ((step-scale (/ max-step step-len)))
-        (set! (-> vec data 0) (+ (-> vec data 0) (* step-scale x-step)))
-        (set! (-> vec data 1) (+ (-> vec data 1) (* step-scale y-step)))
-        (set! (-> vec data 2) (+ (-> vec data 2) (* step-scale z-step)))
+        (set! (-> vec x) (+ (-> vec x) (* step-scale x-step)))
+        (set! (-> vec y) (+ (-> vec y) (* step-scale y-step)))
+        (set! (-> vec z) (+ (-> vec z) (* step-scale z-step)))
         )
        )
       )
@@ -429,26 +429,26 @@
 
 ;; definition for function vector-identity!
 (defun vector-identity! ((arg0 vector))
-  (set! (-> arg0 data 0) 1.0)
-  (set! (-> arg0 data 1) 1.0)
-  (set! (-> arg0 data 2) 1.0)
-  (set! (-> arg0 data 3) 1.0)
+  (set! (-> arg0 x) 1.0)
+  (set! (-> arg0 y) 1.0)
+  (set! (-> arg0 z) 1.0)
+  (set! (-> arg0 w) 1.0)
   arg0
   )
 
 ;; definition for function vector-seconds
 (defun vector-seconds ((arg0 vector) (arg1 vector))
-  (set! (-> arg0 data 0) (* 300.0 (-> arg1 data 0)))
-  (set! (-> arg0 data 1) (* 300.0 (-> arg1 data 1)))
-  (set! (-> arg0 data 2) (* 300.0 (-> arg1 data 2)))
+  (set! (-> arg0 x) (* 300.0 (-> arg1 x)))
+  (set! (-> arg0 y) (* 300.0 (-> arg1 y)))
+  (set! (-> arg0 z) (* 300.0 (-> arg1 z)))
   arg0
   )
 
 ;; definition for function vector-seconds!
 (defun vector-seconds! ((arg0 vector))
-  (set! (-> arg0 data 0) (* 300.0 (-> arg0 data 0)))
-  (set! (-> arg0 data 1) (* 300.0 (-> arg0 data 1)))
-  (set! (-> arg0 data 2) (* 300.0 (-> arg0 data 2)))
+  (set! (-> arg0 x) (* 300.0 (-> arg0 x)))
+  (set! (-> arg0 y) (* 300.0 (-> arg0 y)))
+  (set! (-> arg0 z) (* 300.0 (-> arg0 z)))
   arg0
   )
 
@@ -623,20 +623,12 @@
 
 ;; definition for function vector-xz-length-squared
 (defun vector-xz-length-squared ((arg0 vector))
-  (+
-   (* (-> arg0 data 0) (-> arg0 data 0))
-   (* (-> arg0 data 2) (-> arg0 data 2))
-   )
+  (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 z) (-> arg0 z)))
   )
 
 ;; definition for function vector-xz-length
 (defun vector-xz-length ((arg0 vector))
-  (sqrtf
-   (+
-    (* (-> arg0 data 0) (-> arg0 data 0))
-    (* (-> arg0 data 2) (-> arg0 data 2))
-    )
-   )
+  (sqrtf (+ (* (-> arg0 x) (-> arg0 x)) (* (-> arg0 z) (-> arg0 z))))
   )
 
 ;; definition for function vector-vector-distance
@@ -801,13 +793,13 @@
    (if (= f0-0 0.0)
     (set! (-> arg0 quad) (-> arg1 quad))
     (let ((v1-1 (/ arg2 f0-0)))
-     (set! (-> arg0 data 0) (* (-> arg1 data 0) v1-1))
-     (set! (-> arg0 data 1) (* (-> arg1 data 1) v1-1))
-     (set! (-> arg0 data 2) (* (-> arg1 data 2) v1-1))
+     (set! (-> arg0 x) (* (-> arg1 x) v1-1))
+     (set! (-> arg0 y) (* (-> arg1 y) v1-1))
+     (set! (-> arg0 z) (* (-> arg1 z) v1-1))
      )
     )
    )
-  (set! (-> arg0 data 3) 1.0)
+  (set! (-> arg0 w) 1.0)
   arg0
   )
 
@@ -816,8 +808,8 @@
   (let ((f0-0 (vector-xz-length arg0)))
    (if (!= f0-0 0.0)
     (let ((v1-1 (/ arg1 f0-0)))
-     (set! (-> arg0 data 0) (* (-> arg0 data 0) v1-1))
-     (set! (-> arg0 data 2) (* (-> arg0 data 2) v1-1))
+     (set! (-> arg0 x) (* (-> arg0 x) v1-1))
+     (set! (-> arg0 z) (* (-> arg0 z) v1-1))
      )
     )
    )
@@ -830,9 +822,9 @@
    (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
     (set! f0-0 (/ f0-0 arg1))
     (when (!= f0-0 0.0)
-     (set! (-> arg0 data 0) (/ (-> arg0 data 0) f0-0))
-     (set! (-> arg0 data 1) (/ (-> arg0 data 1) f0-0))
-     (set! (-> arg0 data 2) (/ (-> arg0 data 2) f0-0))
+     (set! (-> arg0 x) (/ (-> arg0 x) f0-0))
+     (set! (-> arg0 y) (/ (-> arg0 y) f0-0))
+     (set! (-> arg0 z) (/ (-> arg0 z) f0-0))
      )
     )
    )
@@ -845,8 +837,8 @@
    (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
     (set! f0-0 (/ f0-0 arg1))
     (when (!= f0-0 0.0)
-     (set! (-> arg0 data 0) (/ (-> arg0 data 0) f0-0))
-     (set! (-> arg0 data 2) (/ (-> arg0 data 2) f0-0))
+     (set! (-> arg0 x) (/ (-> arg0 x) f0-0))
+     (set! (-> arg0 z) (/ (-> arg0 z) f0-0))
      )
     )
    )
@@ -856,24 +848,21 @@
 ;; definition for function vector-rotate-around-y!
 ;; Used lq/sq
 (defun vector-rotate-around-y! ((arg0 vector) (arg1 vector) (arg2 float))
-  (let ((f26-0 (-> arg1 data 2))
-        (f30-0 (-> arg1 data 0))
+  (let ((f26-0 (-> arg1 z))
+        (f30-0 (-> arg1 x))
         (f28-0 (cos arg2))
         (f0-0 (sin arg2))
         )
    (set! (-> arg0 quad) (-> arg1 quad))
-   (set! (-> arg0 data 2) (- (* f26-0 f28-0) (* f30-0 f0-0)))
-   (set! (-> arg0 data 0) (+ (* f26-0 f0-0) (* f30-0 f28-0)))
+   (set! (-> arg0 z) (- (* f26-0 f28-0) (* f30-0 f0-0)))
+   (set! (-> arg0 x) (+ (* f26-0 f0-0) (* f30-0 f28-0)))
    )
   arg0
   )
 
 ;; definition for function rotate-y<-vector+vector
 (defun rotate-y<-vector+vector ((arg0 vector) (arg1 vector))
-  (atan
-   (- (-> arg1 data 0) (-> arg0 data 0))
-   (- (-> arg1 data 2) (-> arg0 data 2))
-   )
+  (atan (- (-> arg1 x) (-> arg0 x)) (- (-> arg1 z) (-> arg0 z)))
   )
 
 ;; definition for function vector-cvt.w.s!
@@ -898,35 +887,35 @@
 
 ;; definition for function rot-zxy-from-vector!
 (defun rot-zxy-from-vector! ((arg0 vector) (arg1 vector))
-  (let* ((f28-0 (-> arg1 data 2))
-         (f30-0 (-> arg1 data 0))
+  (let* ((f28-0 (-> arg1 z))
+         (f30-0 (-> arg1 x))
          (f0-0 (atan f30-0 f28-0))
          )
-   (set! (-> arg0 data 1) f0-0)
+   (set! (-> arg0 y) f0-0)
    (let* ((f26-0 (- f0-0))
           (f0-4 (- (* f28-0 (cos f26-0)) (* f30-0 (sin f26-0))))
           )
-    (set! (-> arg0 data 0) (atan (- (-> arg1 data 1)) f0-4))
+    (set! (-> arg0 x) (atan (- (-> arg1 y)) f0-4))
     )
    )
-  (set! (-> arg0 data 2) 0.0)
+  (set! (-> arg0 z) 0.0)
   arg0
   )
 
 ;; definition for function rot-zyx-from-vector!
 (defun rot-zyx-from-vector! ((arg0 vector) (arg1 vector))
-  (let* ((f28-0 (-> arg1 data 2))
-         (f30-0 (- (-> arg1 data 1)))
+  (let* ((f28-0 (-> arg1 z))
+         (f30-0 (- (-> arg1 y)))
          (f0-1 (atan f30-0 f28-0))
          )
-   (set! (-> arg0 data 0) f0-1)
+   (set! (-> arg0 x) f0-1)
    (let* ((f26-0 (- f0-1))
           (f0-5 (- (* f28-0 (cos f26-0)) (* f30-0 (sin f26-0))))
           )
-    (set! (-> arg0 data 1) (atan (-> arg1 data 0) f0-5))
+    (set! (-> arg0 y) (atan (-> arg1 x) f0-5))
     )
    )
-  (set! (-> arg0 data 2) 0.0)
+  (set! (-> arg0 z) 0.0)
   arg0
   )
 
@@ -1137,19 +1126,10 @@
      )
     )
    (else
-    (set!
-     (-> out data 0)
-     (deg-lerp-clamp (-> min-val data 0) (-> max-val data 0) in)
-     )
-    (set!
-     (-> out data 1)
-     (deg-lerp-clamp (-> min-val data 1) (-> max-val data 1) in)
-     )
-    (set!
-     (-> out data 2)
-     (deg-lerp-clamp (-> min-val data 2) (-> max-val data 2) in)
-     )
-    (set! (-> out data 3) 1.0)
+    (set! (-> out x) (deg-lerp-clamp (-> min-val x) (-> max-val x) in))
+    (set! (-> out y) (deg-lerp-clamp (-> min-val y) (-> max-val y) in))
+    (set! (-> out z) (deg-lerp-clamp (-> min-val z) (-> max-val z) in))
+    (set! (-> out w) 1.0)
     )
    )
   out
@@ -1159,9 +1139,9 @@
 (defun vector3s-copy! ((arg0 vector) (arg1 vector))
   (let ((v1-0 "Copy a vector3s"))
    )
-  (set! (-> arg0 data 0) (-> arg1 data 0))
-  (set! (-> arg0 data 1) (-> arg1 data 1))
-  (set! (-> arg0 data 2) (-> arg1 data 2))
+  (set! (-> arg0 x) (-> arg1 x))
+  (set! (-> arg0 y) (-> arg1 y))
+  (set! (-> arg0 z) (-> arg1 z))
   arg0
   )
 
@@ -1169,9 +1149,9 @@
 (defun vector3s+! ((arg0 vector) (arg1 vector) (arg2 vector))
   (let ((v1-0 "Add 2 vectors3."))
    )
-  (set! (-> arg0 data 0) (+ (-> arg1 data 0) (-> arg2 data 0)))
-  (set! (-> arg0 data 1) (+ (-> arg1 data 1) (-> arg2 data 1)))
-  (set! (-> arg0 data 2) (+ (-> arg1 data 2) (-> arg2 data 2)))
+  (set! (-> arg0 x) (+ (-> arg1 x) (-> arg2 x)))
+  (set! (-> arg0 y) (+ (-> arg1 y) (-> arg2 y)))
+  (set! (-> arg0 z) (+ (-> arg1 z) (-> arg2 z)))
   arg0
   )
 
@@ -1179,9 +1159,9 @@
 (defun vector3s*float! ((arg0 vector) (arg1 vector) (arg2 float))
   (let ((v1-0 "mult vectors3 by float"))
    )
-  (set! (-> arg0 data 0) (* (-> arg1 data 0) arg2))
-  (set! (-> arg0 data 1) (* (-> arg1 data 1) arg2))
-  (set! (-> arg0 data 2) (* (-> arg1 data 2) arg2))
+  (set! (-> arg0 x) (* (-> arg1 x) arg2))
+  (set! (-> arg0 y) (* (-> arg1 y) arg2))
+  (set! (-> arg0 z) (* (-> arg1 z) arg2))
   arg0
   )
 
@@ -1189,9 +1169,9 @@
 (defun vector3s-! ((arg0 vector) (arg1 vector) (arg2 vector))
   (let ((v1-0 "Subtract 2 vectors3: c = (a - b)."))
    )
-  (set! (-> arg0 data 0) (- (-> arg1 data 0) (-> arg2 data 0)))
-  (set! (-> arg0 data 1) (- (-> arg1 data 1) (-> arg2 data 1)))
-  (set! (-> arg0 data 2) (- (-> arg1 data 2) (-> arg2 data 2)))
+  (set! (-> arg0 x) (- (-> arg1 x) (-> arg2 x)))
+  (set! (-> arg0 y) (- (-> arg1 y) (-> arg2 y)))
+  (set! (-> arg0 z) (- (-> arg1 z) (-> arg2 z)))
   arg0
   )
 
@@ -1223,9 +1203,9 @@
 ;; definition for function sphere<-vector!
 ;; Used lq/sq
 (defun sphere<-vector! ((arg0 sphere) (arg1 vector))
-  (let ((f0-0 (-> arg0 data 3)))
+  (let ((f0-0 (-> arg0 w)))
    (set! (-> arg0 quad) (-> arg1 quad))
-   (set! (-> arg0 data 3) f0-0)
+   (set! (-> arg0 w) f0-0)
    )
   arg0
   )
@@ -1234,17 +1214,17 @@
 ;; Used lq/sq
 (defun sphere<-vector+r! ((arg0 sphere) (arg1 vector) (arg2 float))
   (set! (-> arg0 quad) (-> arg1 quad))
-  (set! (-> arg0 data 3) arg2)
+  (set! (-> arg0 w) arg2)
   arg0
   )
 
 ;; definition for function rand-vu-sphere-point!
 (defun rand-vu-sphere-point! ((arg0 vector) (arg1 float))
   (let ((s4-0 arg0))
-   (set! (-> s4-0 data 0) (rand-vu-float-range -1.0 1.0))
-   (set! (-> s4-0 data 1) (rand-vu-float-range -1.0 1.0))
-   (set! (-> s4-0 data 2) (rand-vu-float-range -1.0 1.0))
-   (set! (-> s4-0 data 3) 1.0)
+   (set! (-> s4-0 x) (rand-vu-float-range -1.0 1.0))
+   (set! (-> s4-0 y) (rand-vu-float-range -1.0 1.0))
+   (set! (-> s4-0 z) (rand-vu-float-range -1.0 1.0))
+   (set! (-> s4-0 w) 1.0)
    )
   (vector-normalize! arg0 (rand-vu-float-range 0.0 arg1))
   )

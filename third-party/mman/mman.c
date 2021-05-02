@@ -22,7 +22,7 @@ static DWORD __map_mmap_prot_page(const int prot)
     DWORD protect = 0;
     
     if (prot == PROT_NONE)
-        return protect;
+        return PAGE_NOACCESS;
         
     if ((prot & PROT_EXEC) != 0)
     {
