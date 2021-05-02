@@ -768,9 +768,8 @@ void TypeSystem::add_builtin_types() {
   add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
   add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
-  add_method(
-      obj_type, "mem-usage",
-      make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));  // todo - this is a guess.
+  add_method(obj_type, "mem-usage",
+             make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
