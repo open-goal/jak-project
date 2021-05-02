@@ -756,6 +756,7 @@ void TypeSystem::add_builtin_types() {
   uint_type->disallow_in_runtime();
 
   // Methods and Fields
+  forward_declare_type_as_structure("memory-usage-block");
 
   // OBJECT
   add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
@@ -767,8 +768,9 @@ void TypeSystem::add_builtin_types() {
   add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
   add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
-  add_method(obj_type, "mem-usage",
-             make_function_typespec({"_type_"}, "int32"));  // todo - this is a guess.
+  add_method(
+      obj_type, "mem-usage",
+      make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));  // todo - this is a guess.
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from

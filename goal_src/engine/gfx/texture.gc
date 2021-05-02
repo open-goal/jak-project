@@ -27,6 +27,29 @@
   (the-as int (+ (-> obj type size) (the-as uint (shl (-> obj length) 2))))
   )
 
+(defmethod mem-usage texture-page ((obj texture-page) (arg0 memory-usage-block))
+  "Update the mem-usage for a texture."
+  (set! (-> arg0 length) (max 80 (-> arg0 length)))
+  (set! (-> arg0 data 79 name) "texture")
+  ;; it seems like each "count" is worth 4 bytes, so we can subtract off length * 4.
+  (set! (-> arg0 data 79 count) (+ (-> arg0 data 79 count) (-> obj length)))
+  (let ((v1-7 (- (asize-of obj) (the-as int (shl (-> obj size) 2)))))
+    ;; add 64-bytes for each entry.
+    (dotimes (a0-6 (-> obj length))
+      (if (-> obj data a0-6)
+          (+! v1-7 64)
+          )
+      )
+    ;; update used and total.
+    (set! (-> arg0 data 79 used) (+ (-> arg0 data 79 used) v1-7))
+    ;; total assumes 16-byte alignment.
+    (set! (-> arg0 data 79 total)
+          (+ (-> arg0 data 79 total) (logand -16 (+ v1-7 15)))
+          )
+    )
+  obj
+  )
+
 (defun texture-bpp ((arg0 gs-psm))
   "Get the number of bits per pixel for the given texture format"
   (let ((v1-0 arg0))
@@ -122,6 +145,58 @@
     )
   (none)
   )
+
+(defmethod print texture ((obj texture))
+  (format #t "#<texture ~20S psm: ~6S  ~4D x ~4D  num-mips: ~D :size ~4DK "
+          (-> obj name)
+          (psm->string (the-as gs-psm (-> obj psm)))
+          (-> obj w)
+          (-> obj h)
+          (-> obj num-mips)
+          (shr (-> obj size) 8)
+          )
+  (dotimes (s5-1 (the-as int (-> obj num-mips)))
+    (format #t " #x~X/~X" (-> obj dest s5-1) (-> obj width s5-1))
+    )
+  (if (< (texture-bpp (the-as gs-psm (-> obj psm))) 16)
+      (format #t " :clut #x~X/1" (-> obj clutdest))
+      )
+  (format #t " @ #x~X>" obj)
+  obj
+  )
+
+(define ct32-24-block-table
+    (new 'static 'boxed-array int32
+         32 0 1 4 5 16 17 20 21 2 3 6 7 18 19 22 23 8 9 12 13 24 25 28 29 10 11 14 15 26 27 30 31))
+
+(define mz32-24-block-table
+    (new 'static 'boxed-array int32
+         32 16 17 20 21 0 1 4 5 18 19 22 23 2 3 6 7 24 25 28 29 8 9 12 13 26 27 30 31 10 11 14 15))
+
+(define ct16-block-table
+    (new 'static 'boxed-array int32
+         32 0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15 16 18 24 26 17 19 25 27 20 22 28 30 21 23 29 31))
+
+(define ct16s-block-table
+    (new 'static 'boxed-array int32
+         32 0 2 16 18 1 3 17 19 8 10 24 26 9 11 25 27 4 6 20 22 5 7 21 23 12 14 28 30 13 15 29 31))
+  
+
+(define mz16-block-table
+    (new 'static 'boxed-array int32
+         32 16 18 24 26 17 19 25 27 20 22 28 30 21 23 29 31 0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15))
+
+(define mz16s-block-table
+    (new 'static 'boxed-array int32
+         32 16 18 0 2 17 19 1 3 24 26 8 10 25 27 9 11 20 22 4 6 21 23 5 7 28 30 12 14 29 31 13 15))
+
+(define mt8-block-table
+    (new 'static 'boxed-array int32
+         32 0 1 4 5 16 17 20 21 2 3 6 7 18 19 22 23 8 9 12 13 24 25 28 29 10 11 14 15 26 27 30 31))
+
+(define mt4-block-table
+    (new 'static 'boxed-array int32
+         32 0 2 8 10 1 3 9 11 4 6 12 14 5 7 13 15 16 18 24 26 17 19 25 27 20 22 28 30 21 23 29 31))
 
 (defun gs-find-block ((bx int) (by int) (tex-format gs-psm))
   "Block index lookup."
@@ -297,4 +372,53 @@
         (shl (* height-blocks width-blocks) 5)
         )
     )
+  )
+
+
+(defmethod new texture-pool ((allocation symbol) (type-to-make type))
+  "Allocate and Initialize a texture-pool"
+  (initialize!
+   (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+   )
+  )
+
+(defmethod allocate! texture-pool ((obj texture-pool) (arg0 int))
+  "Allocate arg0 ids. Returns the first."
+  (let ((v0-0 (-> obj cur)))
+   (set! (-> obj cur) (+ (-> obj cur) arg0))
+   v0-0
+   )
+  )
+
+(defmethod lookup-tpage-id texture-pool ((obj texture-pool) (arg0 int))
+  "Convert a tpage file name to an id. If it fails, return -1."
+  (let ((v1-0 arg0))
+   (cond
+    ((= v1-0 1032) 0)
+    ((= v1-0 1119) 1)
+    ((= v1-0 1478) 2)
+    ((= v1-0 1485) 3)
+    ((= v1-0 1486) 4)
+    ((= v1-0 1487) 5)
+    (else
+     (cond
+      ((or (= v1-0 635) (= v1-0 1609)) 6)
+      ((= v1-0 636) 7)
+      ((= v1-0 637) 8)
+      ((= v1-0 752) 9)
+      ((= v1-0 1598) 10)
+      ((= v1-0 1599) 11)
+      ((= v1-0 1600) 12)
+      ((= v1-0 1601) 13)
+      ((= v1-0 1602) 14)
+      ((= v1-0 1603) 15)
+      ((= v1-0 1604) 16)
+      ((= v1-0 1605) 17)
+      ((= v1-0 1606) 18)
+      ((= v1-0 1607) 19)
+      (else -1)
+      )
+     )
+    )
+   )
   )
