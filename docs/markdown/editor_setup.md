@@ -1,3 +1,10 @@
+# Editor Configuration
+
+## EMacs
+
+The following EMacs config file should get you started and configure OpenGOAL's formatting style
+
+```lisp
 ;; make gc files use lisp-mode
 (add-to-list 'auto-mode-alist '("\\.gc\\'" . lisp-mode))
 ;; run setup-goal when we enter lisp mode
@@ -22,3 +29,5 @@
     (setq-default indent-tabs-mode nil)
     )
   )
+
+```

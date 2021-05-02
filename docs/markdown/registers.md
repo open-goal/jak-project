@@ -1,8 +1,9 @@
-## Registers
+# Registers
+
 Although modern computers are much faster than the PS2, and we could probably get away with a really inefficient register allocation scheme, I think it's worth it to get this right.
 
-
 ## Register differences between MIPS and x86-64
+
 The PS2's MIPS processor has these categories of register:
 - General Purpose. They are 128-bit, but usually only lower 64 bits are used. 32 registers, each 128-bits.
 - Floating point registers. 32 registers, each for a 32-bit float.
@@ -75,8 +76,8 @@ And the x86-64 GPR map
 - `r14`: symbol table
 - `r15`: offset pointer
 
-
 ### Plan for Memory Access
+
 The PS2 uses 32-bit pointers, and changing the pointer size is likely to introduce bugs, so we will keep using 32-bit pointers.  Also, GOAL has some hardcoded checks on the value for pointers, so we need to make sure the memory appears to the program at the correct address.
 
 To do this, we have separate "GOAL Pointers" and "real pointers".  The "real pointers" are just normal x86-64 pointers, and the "GOAL Pointer" is an offset into a main memory array.  A "real pointer" to the main memory array is stored in `r15` (offset pointer) when GOAL code is executing, and the GOAL compiler will automatically add this to all memory accesses.
@@ -96,6 +97,7 @@ The other registers are less clear.  The process pointer can probably be a real 
 Right now I'm leaning toward 2, but it shouldn't be a huge amount of work to change if I'm wrong.
 
 ### Plan for Function Call and Arguments
+
 In GOAL for MIPS, function calls are weird.  Functions are always called by register using `t9`. There seems to be a different register allocator for function pointers, as nested function calls have really wacky register allocation.  In GOAL-x86-64, this restriction will be removed, and a function can be called from any register. (see next section for why we can do this)
 
 Unfortunately, GOAL's 128-bit function arguments present a big challenge.  When calling a function, we can't know if the function we're calling is expecting an integer, float, or 128-bit integer. In fact, the caller may not even know if it has an integer, float, or 128-bit integer. The easy and foolproof way to get this right is to use 128-bit `xmm` registers for all arguments and return values, but this will cause a massive performance hit and increase code size, as we'll have to move values between register types constantly. The current plan is this:
@@ -104,8 +106,10 @@ Unfortunately, GOAL's 128-bit function arguments present a big challenge.  When 
 - We'll compromise for 128-bit function calls. When the compiler can figure out that the function being called expects or returns a 128-bit value, it will use the 128-bit calling convention.  In all other cases, it will use 64-bit. There aren't many places where 128-bit integer are used outside of inline assembly, so I suspect this will just work. If there are more complicated instances (call a function pointer and get either a 64 or 128-bit result), we will need to special case them.
 
 ### Plan for Static Data
+
 The original GOAL implementation always called functions by using the `t9` register. So, on entry to a function, the `t9` register contains the address of the function. If the function needs to access static data, it will move this `fp`, then do `fp` relative addressing to load data. Example:
-```
+
+```nasm
 function-start:
     daddiu sp, sp, -16  ;; allocate space on stack
     sd fp, 8(sp)        ;; back up old fp on stack
@@ -116,8 +120,9 @@ function-start:
 To copy this exactly on x86 would require reserving two registers equivalent to `t9` and `gp`.  A better approach for x86-64 is to use "RIP relative addressing". This can be used to load memory relative to the current instruction pointer.  This addressing mode can be used with "load effective address" (`lea`) to create pointers to static data as well.
 
 ### Plan for Memory
+
 Access memory by GOAL pointer in `rx` with constant offset (optionally zero):
-```
+
+```nasm
 mov rdest, [roff + rx + offset]
 ```
-

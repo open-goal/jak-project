@@ -1,10 +1,15 @@
 # OpenGOAL Debugger
+
 Currently the debugger only works on Linux. All the platform specific stuff is in `xdbg.cpp`.
 
-## `(dbs)`
+## Commands
+
+### `(dbs)`
+
 Print the status of the debugger and listener.  The listener status is whether or not there is a socket connection open between the compiler and the target. The "debug context" is information that the runtime sends to the compiler so it can find the correct thread to debug. In order to debug, you need both.
 
-## `(dbg)`
+### `(dbg)`
+
 Attach the debugger. This will stop the target.
 
 Example of connecting to the target for debugging:
@@ -37,28 +42,35 @@ gc> (dbs)
  Context: valid = true, s7 = 0x147d24, base = 0x2000000000, tid = 1062568
 ```
 
-## `(:cont)`
+### `(:cont)`
+
 Continue the target if it has been stopped.
 
-## `(:break)`
+### `(:break)`
+
 Immediately stop the target if it is running. Will print some registers.
 
-## `(:dump-all-mem <path>)`
+### `(:dump-all-mem <path>)`
+
 Dump all GOAL memory to a file. Must be stopped.
-```
+
+```lisp
 (:dump-all-mem "mem.bin")
 ```
+
 The path is relative to the Jak project folder.
 
 The file will be the exact size of `EE_MAIN_MEM_SIZE`, but the first `EE_LOW_MEM_PROTECT` bytes are zero, as these cannot be written or read.
 
 ## Address Spec
+
 Anywhere an address can be used, you can also use an "address spec", which gives you easier ways to input addresses. For now, the address spec is pretty simple, but there will be more features in the future.
 
 - `(sym-val <sym-name>)`. Get the address stored in the symbol with the given name. Currently there's no check to see if the symbol actually stores an address or not. This is like "evaluate `<sym-name>`, then treat the value as an address"
 - `(sym <sym-name>)`. Get the address of the symbol object itself, including the basic offset.
 
 Example to show the difference:
+
 ```lisp
 
 ;; the symbol is at 0x142d1c
@@ -88,37 +100,37 @@ gc> (inspect *kernel-context*)
 ;; break, so we can debug
 gc> (:break)
 Read symbol table (159872 bytes, 226 reads, 225 symbols, 1.96 ms)
-rax: 0xfffffffffffffdfc rcx: 0x00007f745b508361 rdx: 0x00007f745b3ffca0 rbx: 0x0000000000147d24 
-rsp: 0x00007f745b3ffc40 rbp: 0x00007f745b3ffcc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
- r8: 0x0000000000000000  r9: 0x0000000000000008 r10: 0x00007f745b3ffca0 r11: 0x0000000000000293 
-r12: 0x0000000000147d24 r13: 0x00007ffdff32cfaf r14: 0x00007ffdff32cfb0 r15: 0x00007f745b3fffc0 
+rax: 0xfffffffffffffdfc rcx: 0x00007f745b508361 rdx: 0x00007f745b3ffca0 rbx: 0x0000000000147d24
+rsp: 0x00007f745b3ffc40 rbp: 0x00007f745b3ffcc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000
+ r8: 0x0000000000000000  r9: 0x0000000000000008 r10: 0x00007f745b3ffca0 r11: 0x0000000000000293
+r12: 0x0000000000147d24 r13: 0x00007ffdff32cfaf r14: 0x00007ffdff32cfb0 r15: 0x00007f745b3fffc0
 rip: 0x00007f745b508361
 
 ;; reads the symbol's memory:
 ;; at 0x142d1c there is the value 0x164a84
 gc> (dw (sym *kernel-context*) 1)
- 0x00142d1c: 0x00164a84 
+ 0x00142d1c: 0x00164a84
 
 ;; treat the symbol's value as an address and read the memory there.
 ;; notice that the 0x41 in the first word is decimal 65, the first field of the kernel-context.
 gc> (dw (sym-val *kernel-context*) 10)
- 0x00164a84: 0x00000041 0x00000000 0x00000000 0x00000002 
- 0x00164a94: 0x70004000 0x00147d24 0x00147d24 0x00000000 
- 0x00164aa4: 0x00000000 0x00000000 
+ 0x00164a84: 0x00000041 0x00000000 0x00000000 0x00000002
+ 0x00164a94: 0x70004000 0x00147d24 0x00147d24 0x00000000
+ 0x00164aa4: 0x00000000 0x00000000
 ```
 
 
-## `(:pm)`
+### `(:pm)`
+
 Print memory
 
-```
+```lisp
 (:pm elt-size addr elt-count [:print-mode mode])
 ```
 
 The element size is the size of each word to print. It can be 1, 2, 4, 8 currently.  The address is the GOAL Address to print at. The elt-count is the number of words to print.  The print mode is option and defaults to `hex`. There is also an `unsigned-decimal`, a `signed-decimal`, and `float`. The `float` mode only works when `elt-size` is 4.
 
 There are some useful macros inspired by the original PS2 TOOL debugger (`dsedb`) for the different sizes. They are `db`, `dh`, `dw`, and `dd` for 1, 2, 4, and 8 byte hex prints which follows the naming convention of MIPS load/stores. There is also a `df` for printing floats. See the example below.
-
 
 ```lisp
 OpenGOAL Compiler 0.1
@@ -144,28 +156,28 @@ gc> (set! (-> x 2) 2.0)
 ;; attach the debugger (halts the target)
 gc> (dbg)
 [Debugger] PTRACE_ATTACHED! Waiting for process to stop...
-rax: 0xfffffffffffffdfc rcx: 0x00007f6b94964361 rdx: 0x00007f6b8fffeca0 rbx: 0x0000000000147d24 
-rsp: 0x00007f6b8fffec40 rbp: 0x00007f6b8fffecc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
- r8: 0x0000000000000000  r9: 0x000000000000000b r10: 0x00007f6b8fffeca0 r11: 0x0000000000000293 
-r12: 0x0000000000147d24 r13: 0x00007ffd16fb117f r14: 0x00007ffd16fb1180 r15: 0x00007f6b8fffefc0 
+rax: 0xfffffffffffffdfc rcx: 0x00007f6b94964361 rdx: 0x00007f6b8fffeca0 rbx: 0x0000000000147d24
+rsp: 0x00007f6b8fffec40 rbp: 0x00007f6b8fffecc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000
+ r8: 0x0000000000000000  r9: 0x000000000000000b r10: 0x00007f6b8fffeca0 r11: 0x0000000000000293
+r12: 0x0000000000147d24 r13: 0x00007ffd16fb117f r14: 0x00007ffd16fb1180 r15: 0x00007f6b8fffefc0
 rip: 0x00007f6b94964361
 Debugger connected.
 
 ;; print memory as 10 bytes
 gc> (db 1452224 10)
- 0x001628c0: 0x00 0x00 0x80 0x3f 0x00 0x00 0x00 0x00 0x00 0x00 
+ 0x001628c0: 0x00 0x00 0x80 0x3f 0x00 0x00 0x00 0x00 0x00 0x00
 
 ;; print memory as 10 words (32-bit words)
 gc> (dw 1452224 10)
- 0x001628c0: 0x3f800000 0x00000000 0x40000000 0x00000000 
- 0x001628d0: 0x00000000 0x00000000 0x00000000 0x00000000 
- 0x001628e0: 0x00000000 0x00000000 
+ 0x001628c0: 0x3f800000 0x00000000 0x40000000 0x00000000
+ 0x001628d0: 0x00000000 0x00000000 0x00000000 0x00000000
+ 0x001628e0: 0x00000000 0x00000000
 
 ;; print memory as 10 floats
 gc> (df 1452224 10)
- 0x001628c0:   1.0000   0.0000   2.0000   0.0000 
- 0x001628d0:   0.0000   0.0000   0.0000   0.0000 
- 0x001628e0:   0.0000   0.0000 
+ 0x001628c0:   1.0000   0.0000   2.0000   0.0000
+ 0x001628d0:   0.0000   0.0000   0.0000   0.0000
+ 0x001628e0:   0.0000   0.0000
 
 ;; set some more values, must unbreak first
 gc> (:cont)
@@ -174,31 +186,32 @@ gc> (set! (-> x 1) (the-as float -12))
 
 ;; break and print as decimal
 gc> (:break)
-rax: 0xfffffffffffffdfc rcx: 0x00007f6b94964361 rdx: 0x00007f6b8fffeca0 rbx: 0x0000000000147d24 
-rsp: 0x00007f6b8fffec40 rbp: 0x00007f6b8fffecc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
- r8: 0x0000000000000000  r9: 0x0000000000000004 r10: 0x00007f6b8fffeca0 r11: 0x0000000000000293 
-r12: 0x0000000000147d24 r13: 0x00007ffd16fb117f r14: 0x00007ffd16fb1180 r15: 0x00007f6b8fffefc0 
+rax: 0xfffffffffffffdfc rcx: 0x00007f6b94964361 rdx: 0x00007f6b8fffeca0 rbx: 0x0000000000147d24
+rsp: 0x00007f6b8fffec40 rbp: 0x00007f6b8fffecc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000
+ r8: 0x0000000000000000  r9: 0x0000000000000004 r10: 0x00007f6b8fffeca0 r11: 0x0000000000000293
+r12: 0x0000000000147d24 r13: 0x00007ffd16fb117f r14: 0x00007ffd16fb1180 r15: 0x00007f6b8fffefc0
 rip: 0x00007f6b94964361
 gc> (:pm 4 1452224 10 :print-mode unsigned-dec)
- 0x001628c0:   1065353216   4294967284   1073741824            0 
- 0x001628d0:            0            0            0            0 
- 0x001628e0:            0            0 
+ 0x001628c0:   1065353216   4294967284   1073741824            0
+ 0x001628d0:            0            0            0            0
+ 0x001628e0:            0            0
 gc> (:pm 4 1452224 10 :print-mode signed-dec)
- 0x001628c0:   1065353216          -12   1073741824            0 
- 0x001628d0:            0            0            0            0 
- 0x001628e0:            0            0 
+ 0x001628c0:   1065353216          -12   1073741824            0
+ 0x001628d0:            0            0            0            0
+ 0x001628e0:            0            0
 ```
 
+### `(:disasm)`
 
-## `(:disasm)`
 Disassembly instructions in memory
 
-```
+```lisp
 (:disasm addr len)
 ```
 
 Example (after doing a `(lt)`, `(blg)`, `(dbg)`):
-```asm
+
+```nasm
 gc> (:disasm (sym-val basic-type?) 80)
 [0x2000162ae4] mov eax, [r15+rdi*1-0x04]
 [0x2000162ae9] mov ecx, [r15+r14*1+0x38]
@@ -216,14 +229,13 @@ gc> (:disasm (sym-val basic-type?) 80)
 [0x2000162b24] jnz 0x0000002000162AF4
 [0x2000162b2a] mov eax, [r15+r14*1]
 [0x2000162b32] ret
-
 ```
 
 For now, the disassembly is pretty basic, but it should eventually support GOAL symbols.
 
 ## Breakpoints
 
-```
+```lisp
 OpenGOAL Compiler 0.1
 
 ;; first, connect to the target
@@ -247,10 +259,10 @@ gc > (dbg)
 [Debugger] PTRACE_ATTACHED! Waiting for process to stop...
 Target has stopped. Run (:di) to get more information.
 Read symbol table (146816 bytes, 124 reads, 123 symbols, 2.02 ms)
-rax: 0x000000000000000a rcx: 0x0000000000000005 rdx: 0x0000000000000000 rbx: 0x0000002000000000 
-rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
- r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000 
-r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000 
+rax: 0x000000000000000a rcx: 0x0000000000000005 rdx: 0x0000000000000000 rbx: 0x0000002000000000
+rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000
+ r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000
+r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000
 rip: 0x0000002007ffbf3b
   [0x2007ffbf1b] add [rax], al
   [0x2007ffbf1d] add [rcx+0x02], bh
@@ -292,10 +304,10 @@ Target has stopped. Run (:di) to get more information.
 ;; get some info:
 gcs> (:di)
 Read symbol table (146816 bytes, 124 reads, 123 symbols, 1.46 ms)
-rax: 0x0000000000000015 rcx: 0x0000000000000007 rdx: 0x0000000000000000 rbx: 0x0000002000000000 
-rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
- r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000 
-r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000 
+rax: 0x0000000000000015 rcx: 0x0000000000000007 rdx: 0x0000000000000000 rbx: 0x0000002000000000
+rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000
+ r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000
+r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000
 rip: 0x0000002007ffbf4c
   [0x2007ffbf2c] add eax, ecx
   [0x2007ffbf2e] mov ecx, 0x04
@@ -334,16 +346,16 @@ gcs> (:ubp #x2007ffbf4b)
 
 ;; continue, it stays running
 gcs> (:cont)
-gcr> 
+gcr>
 
 ;; break and check, the code is back to normal!
 gcr> (:break)
 Target has stopped. Run (:di) to get more information.
 Read symbol table (146816 bytes, 124 reads, 123 symbols, 1.28 ms)
-rax: 0x0000000000000015 rcx: 0x0000000000000007 rdx: 0x0000000000000000 rbx: 0x0000002000000000 
-rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000 
- r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000 
-r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000 
+rax: 0x0000000000000015 rcx: 0x0000000000000007 rdx: 0x0000000000000000 rbx: 0x0000002000000000
+rsp: 0x00007fddcde75c58 rbp: 0x00007fddcde75cc0 rsi: 0x0000000000000000 rdi: 0x0000000000000000
+ r8: 0x0000000000147d24  r9: 0x0000002000000000 r10: 0x00007fddcde75ca0 r11: 0x0000000000000000
+r12: 0x0000000000147d24 r13: 0x0000002007ffbf14 r14: 0x0000000000147d24 r15: 0x0000002000000000
 rip: 0x0000002007ffbf4b
   [0x2007ffbf2b] add rax, rcx
   [0x2007ffbf2e] mov ecx, 0x04
@@ -375,7 +387,7 @@ rip: 0x0000002007ffbf4b
   [0x2007ffbf86] add [rbx], al
   [0x2007ffbf88] add [rax], al
 
-gcs> 
+gcs>
 
 ;; we can still properly exit from the target, even in this state!
 gcs> (e)
