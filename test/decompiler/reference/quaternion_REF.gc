@@ -62,9 +62,9 @@
          (f30-0 (sin f28-0))
          (f0-1 (cos f28-0))
          )
-   (set! (-> quat x) (* (-> axis data 0) f30-0))
-   (set! (-> quat y) (* (-> axis data 1) f30-0))
-   (set! (-> quat z) (* (-> axis data 2) f30-0))
+   (set! (-> quat x) (* (-> axis x) f30-0))
+   (set! (-> quat y) (* (-> axis y) f30-0))
+   (set! (-> quat z) (* (-> axis z) f30-0))
    (set! (-> quat w) f0-1)
    )
   quat
@@ -78,10 +78,10 @@
          (f30-0 (/ f0-0 (sqrtf (- f1-0 (* f2-0 f2-0)))))
          (f0-3 (* 2.0 (acos-rad (-> arg1 w))))
          )
-   (set! (-> arg0 data 0) (* (-> arg1 x) f30-0))
-   (set! (-> arg0 data 1) (* (-> arg1 y) f30-0))
-   (set! (-> arg0 data 2) (* (-> arg1 z) f30-0))
-   (set! (-> arg0 data 3) f0-3)
+   (set! (-> arg0 x) (* (-> arg1 x) f30-0))
+   (set! (-> arg0 y) (* (-> arg1 y) f30-0))
+   (set! (-> arg0 z) (* (-> arg1 z) f30-0))
+   (set! (-> arg0 w) f0-3)
    )
   arg0
   )
@@ -518,7 +518,10 @@
          )
         )
        )
-      (set! (-> arg0 data a2-0) (* 0.5 f0-12))
+      (set!
+       (-> (the-as (pointer float) (+ (shl a2-0 2) (the-as int arg0))))
+       (* 0.5 f0-12)
+       )
       (if (!= f0-12 0.0)
        (set! f0-12 (/ 0.5 f0-12))
        )
@@ -543,7 +546,7 @@
         )
        )
       (set!
-       (-> arg0 data a3-0)
+       (-> (the-as (pointer float) (+ (shl a3-0 2) (the-as int arg0))))
        (*
         (+
          (->
@@ -563,7 +566,7 @@
         )
        )
       (set!
-       (-> arg0 data v1-1)
+       (-> (the-as (pointer float) (+ (shl v1-1 2) (the-as int arg0))))
        (*
         (+
          (->
@@ -733,12 +736,12 @@
     (else
      (let ((s5-0 (new 'stack-no-clear 'vector)))
       (sincos-rad! (the-as (pointer float) s5-0) f30-0)
-      (let ((f0-6 (/ (-> s5-0 data 0) f30-0)))
+      (let ((f0-6 (/ (-> s5-0 x) f30-0)))
        (set! (-> arg0 x) (* (-> arg1 x) f0-6))
        (set! (-> arg0 y) (* (-> arg1 y) f0-6))
        (set! (-> arg0 z) (* (-> arg1 z) f0-6))
        )
-      (set! (-> arg0 w) (-> s5-0 data 1))
+      (set! (-> arg0 w) (-> s5-0 y))
       )
      )
     )
@@ -789,8 +792,8 @@
        (let ((f0-7 (atan-series-rad f0-6))
              (s2-0 (new 'stack-no-clear 'vector))
              )
-        (set! (-> s2-0 data 0) (* (- 1.0 arg3) f0-7))
-        (set! (-> s2-0 data 1) (* (* arg3 f0-7) f30-0))
+        (set! (-> s2-0 x) (* (- 1.0 arg3) f0-7))
+        (set! (-> s2-0 y) (* (* arg3 f0-7) f30-0))
         (vector-sin-rad! s2-0 s2-0)
         (.lvf vf1 (&-> s2-0 quad))
         )
@@ -930,14 +933,14 @@
 ;; definition for function quaternion-y-angle
 (defun quaternion-y-angle ((arg0 quaternion))
   (let ((v1-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0)))
-   (atan (-> v1-1 data 0) (-> v1-1 data 2))
+   (atan (-> v1-1 x) (-> v1-1 z))
    )
   )
 
 ;; definition for function quaternion-vector-y-angle
 (defun quaternion-vector-y-angle ((arg0 quaternion) (arg1 vector))
   (let ((f30-0 (quaternion-y-angle arg0))
-        (f0-2 (atan (-> arg1 data 0) (-> arg1 data 2)))
+        (f0-2 (atan (-> arg1 x) (-> arg1 z)))
         )
    (deg-diff f30-0 f0-2)
    )
@@ -1046,12 +1049,12 @@
   (let ((gp-0 acos))
    (let* ((s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0))
           (v1-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg1))
-          (f0-0 (-> s5-0 data 0))
-          (f1-0 (-> s5-0 data 1))
-          (f2-0 (-> s5-0 data 2))
-          (f3-0 (-> v1-1 data 0))
-          (f4-0 (-> v1-1 data 1))
-          (f5-0 (-> v1-1 data 2))
+          (f0-0 (-> s5-0 x))
+          (f1-0 (-> s5-0 y))
+          (f2-0 (-> s5-0 z))
+          (f3-0 (-> v1-1 x))
+          (f4-0 (-> v1-1 y))
+          (f5-0 (-> v1-1 z))
           )
     (.mula.s f0-0 f3-0)
     (.madda.s f1-0 f4-0)
@@ -1069,10 +1072,10 @@
    (let ((t9-0 vector-xz-normalize!)
          (a0-1 (new 'stack-no-clear 'vector))
          )
-    (set! (-> a0-1 data 0) (-> arg2 x))
-    (set! (-> a0-1 data 1) 0.0)
-    (set! (-> a0-1 data 2) (-> arg2 z))
-    (set! (-> a0-1 data 3) 1.0)
+    (set! (-> a0-1 x) (-> arg2 x))
+    (set! (-> a0-1 y) 0.0)
+    (set! (-> a0-1 z) (-> arg2 z))
+    (set! (-> a0-1 w) 1.0)
     (let ((s0-0 (t9-0 a0-1 1.0)))
      (quaternion-from-two-vectors-max-angle!
       s5-0
@@ -1108,12 +1111,12 @@
 
 ;; definition for function vector-y-angle
 (defun vector-y-angle ((arg0 vector))
-  (atan (-> arg0 data 0) (-> arg0 data 2))
+  (atan (-> arg0 x) (-> arg0 z))
   )
 
 ;; definition for function vector-x-angle
 (defun vector-x-angle ((arg0 vector))
-  (atan (-> arg0 data 1) (vector-xz-length arg0))
+  (atan (-> arg0 y) (vector-xz-length arg0))
   )
 
 ;; definition for function quaterion<-rotate-y-vector
@@ -1150,13 +1153,16 @@
         )
    (quaternion->matrix gp-0 arg0)
    (let ((v1-1 s5-0))
-    (set! (-> v1-1 data 0) 0.0)
-    (set! (-> v1-1 data 1) 0.0)
-    (set! (-> v1-1 data 2) 1.0)
-    (set! (-> v1-1 data 3) 1.0)
+    (set! (-> v1-1 x) 0.0)
+    (set! (-> v1-1 y) 0.0)
+    (set! (-> v1-1 z) 1.0)
+    (set! (-> v1-1 w) 1.0)
     )
    (vector-matrix*! s5-0 s5-0 gp-0)
    (vector-y-angle s5-0)
    )
   )
+
+
+
 
