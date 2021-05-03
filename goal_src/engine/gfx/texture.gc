@@ -5,50 +5,94 @@
 ;; name in dgo: texture
 ;; dgos: GAME, ENGINE
 
+;; Texture System:
+;;  texture-page is what is stored on the DVD.  Each tpage file contains a single texture-page.
+;;  each texture-page has between 1 and 3 segments containing the actual texture data to load into vram
+;;  Data is loaded into VRAM by segment. You must load the whole segment, and you cannot split up a segment.
+;;  Each segment contains a number of textures.
+;; The "texture" objects are just a record that tells you where the texture is within the segment.
+;; This is the "dest", specified as a vram word (32-bit) index, relative to the start of the texture page data.
+
+;; Generally, "dest" refers to a location in vram, specified in 32-bit words.
+;; block-data is a pointer to EE memory containing texture data.
+
+;; There is a single "texture-pool" which is responsible for managing the vram.
+;; It can allocate vram.
+;; It also can allocate "texture-pool-segment"s, which is just a chunk of vram that has a "pointer + size"
+
+;; There are three main units to describe VRAM:
+;;  words: 32-bit words, interally this is how the GS addresses things.
+;;  blocks: 256 bytes, or 64 words. Some things in the GS must be block aligned, like transfers of textures.
+;;  KB: kilobytes, used only for diagnostic printing. 2^10 bytes (1024)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; texture-page basics
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; texture-page = metadata about all the textures.
+;; the texture-page doesn't "own" the texture objects or the texture data.
+
 (defmethod print texture-page ((obj texture-page))
-  "Print a texture page."
+  "Print a short description of a texture page."
   (format #t "#<texture-page ~S :length ~D :dest #x~X :size ~DK @ #x~X>"
           (-> obj name)
-          (-> obj length)
-          (shr (-> obj segment 0 dest) 6)
-          (shr (-> obj size) 8)
+          (-> obj length) ;; number of textures.
+          (shr (-> obj segment 0 dest) 6) ;; destination (vram words -> blocks)
+          (shr (-> obj size) 8) ;; size (vram words -> kilobytes)
           obj
           )
   obj
   )
 
 (defmethod length texture-page ((obj texture-page))
-  "Get the length (number of entires) in a texture page"
+  "Get the number of textures in a texture page"
   (-> obj length)
   )
 
 (defmethod asize-of texture-page ((obj texture-page))
-  "Get the size in memory of a texture page"
+  "Get the size in memory of a texture page object, not including the actual texture objects or texture data"
   (the-as int (+ (-> obj type size) (the-as uint (shl (-> obj length) 2))))
   )
 
 (defmethod mem-usage texture-page ((obj texture-page) (arg0 memory-usage-block))
   "Update the mem-usage for a texture."
-  (set! (-> arg0 length) (max 80 (-> arg0 length)))
-  (set! (-> arg0 data 79 name) "texture")
-  ;; it seems like each "count" is worth 4 bytes, so we can subtract off length * 4.
-  (set! (-> arg0 data 79 count) (+ (-> arg0 data 79 count) (-> obj length)))
+
+  ;; some setup for texture memory usage.
+  (set! (-> arg0 length) (max (+ 1 (mem-usage-id-int texture)) (-> arg0 length)))
+  (set! (-> arg0 data (mem-usage-id texture) name) "texture")
+
+  ;; count will hold the number of textures.
+  (set! (-> arg0 data (mem-usage-id texture) count)
+        (+ (-> arg0 data (mem-usage-id texture) count) (-> obj length)))
+
+  ;; The size is set to size of texture-page object + size of texture objects - size of texture data.
+  ;; this makes the size of the texture come out negative... which matches what you see in game, but doesn't
+  ;; make sense to me yet. The texture data _shouldn't_ count toward mem-usage, but why is it negative?
   (let ((v1-7 (- (asize-of obj) (the-as int (shl (-> obj size) 2)))))
-    ;; add 64-bytes for each entry.
+    ;; add 64-bytes for each entry, the size of texture.
     (dotimes (a0-6 (-> obj length))
       (if (-> obj data a0-6)
           (+! v1-7 64)
           )
       )
     ;; update used and total.
-    (set! (-> arg0 data 79 used) (+ (-> arg0 data 79 used) v1-7))
+    (set! (-> arg0 data (mem-usage-id texture) used) (+ (-> arg0 data (mem-usage-id texture) used) v1-7))
     ;; total assumes 16-byte alignment.
-    (set! (-> arg0 data 79 total)
-          (+ (-> arg0 data 79 total) (logand -16 (+ v1-7 15)))
+    (set! (-> arg0 data (mem-usage-id texture) total)
+          (+ (-> arg0 data (mem-usage-id texture) total) (logand -16 (+ v1-7 15)))
           )
     )
   obj
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Texture Data Load
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; functions for loading texture data.
+;; these assume the GS is set up and ready to receive IMAGE data.
 
 (defun texture-bpp ((arg0 gs-psm))
   "Get the number of bits per pixel for the given texture format"
@@ -83,7 +127,8 @@
   )
 
 (defun dma-buffer-add-ref-texture ((buf dma-buffer) (data pointer) (tex-w int) (tex-h int) (tex-format gs-psm))
-  "Add texture data to a dma buffer"
+  "Add texture data to a dma buffer.  You must first set up the GS transfer in the correct destination.
+   This just sets IMAGE mode and sends data."
 
   ;; get pointer and size (quadwords)
   (let ((data-ptr (physical-address data))
@@ -147,23 +192,31 @@
   )
 
 (defmethod print texture ((obj texture))
+  "Print out texture object, describing the texture format."
   (format #t "#<texture ~20S psm: ~6S  ~4D x ~4D  num-mips: ~D :size ~4DK "
           (-> obj name)
-          (psm->string (the-as gs-psm (-> obj psm)))
+          (psm->string (-> obj psm))
           (-> obj w)
           (-> obj h)
           (-> obj num-mips)
-          (shr (-> obj size) 8)
+          (shr (-> obj size) 8) ;; (vram words -> kb)
           )
+  ;; print each level
   (dotimes (s5-1 (the-as int (-> obj num-mips)))
     (format #t " #x~X/~X" (-> obj dest s5-1) (-> obj width s5-1))
     )
-  (if (< (texture-bpp (the-as gs-psm (-> obj psm))) 16)
+  ;; for < 16 bpp textures, there is a color look-up table.
+  (if (< (texture-bpp (-> obj psm)) 16)
       (format #t " :clut #x~X/1" (-> obj clutdest))
       )
   (format #t " @ #x~X>" obj)
   obj
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Unused and partially broken texture format utils
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define ct32-24-block-table
     (new 'static 'boxed-array int32
@@ -180,7 +233,6 @@
 (define ct16s-block-table
     (new 'static 'boxed-array int32
          32 0 2 16 18 1 3 17 19 8 10 24 26 9 11 25 27 4 6 20 22 5 7 21 23 12 14 28 30 13 15 29 31))
-  
 
 (define mz16-block-table
     (new 'static 'boxed-array int32
@@ -361,6 +413,7 @@
            )
          (width-blocks (/ real-width page-width))
          (height-blocks (/ real-height page-height))
+         ;; past here, it doesn't make much sense to me.
          (a0-9 (- tex-width (* (+ width-blocks -1) page-width)))
          (a1-7 (- tex-height (* (+ height-blocks -1) page-height)))
          )
@@ -373,7 +426,12 @@
         )
     )
   )
+;;;;;;;;;;;;;; end of weird gs functions that are unused.
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Texture Pool
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod new texture-pool ((allocation symbol) (type-to-make type))
   "Allocate and Initialize a texture-pool"
@@ -382,16 +440,18 @@
    )
   )
 
-(defmethod allocate! texture-pool ((obj texture-pool) (arg0 int))
-  "Allocate arg0 ids. Returns the first."
+(defmethod allocate-vram-words! texture-pool ((obj texture-pool) (word-count int))
+  "Allocate words in vram. Returns the index of the first word."
   (let ((v0-0 (-> obj cur)))
-   (set! (-> obj cur) (+ (-> obj cur) arg0))
-   v0-0
-   )
+    (set! (-> obj cur) (+ (-> obj cur) word-count))
+    v0-0
+    )
   )
 
-(defmethod lookup-tpage-id texture-pool ((obj texture-pool) (arg0 int))
-  "Convert a tpage file name to an id. If it fails, return -1."
+
+(defmethod lookup-common-tpage-id texture-pool ((obj texture-pool) (arg0 int))
+  "There are a set of 'common' texture pages. This maps common tpage id's to common tpage index between 0 and 19.
+   If the texture page is not 'common', returns -1."
   (let ((v1-0 arg0))
    (cond
     ((= v1-0 1032) 0)
@@ -421,4 +481,85 @@
      )
     )
    )
+  )
+
+(defmethod initialize! texture-pool ((obj texture-pool))
+  "Initialize (or maybe reinitialize) a texture pool."
+  ;; reset allocator
+  (set! (-> obj cur) 0)
+  ;; this seems like it should be set to the top of vram, not the bottom?
+  (set! (-> obj top) (-> obj cur))
+  ;; by default, use the default allocator.
+  (set! (-> obj allocate-func) texture-page-default-allocate)
+  ;; allocate the stuff we always want (font, sky, etc)
+  (allocate-defaults! obj)
+  (set! (-> obj font-palette) (allocate-vram-words! obj 64))
+
+  ;; clear out common pages.
+  (dotimes (v1-6 32)
+    (set! (-> obj common-page v1-6) (the-as texture-page 0))
+    )
+  (set! (-> obj common-page-mask) 0)
+
+  ;; clear ids.
+  (dotimes (v1-9 160)
+    (set! (-> obj ids v1-9) (the-as uint 0))
+    )
+  obj
+  )
+
+(defmethod get-leftover-block-count texture-page ((obj texture-page) (segment-count int) (additional-size int))
+  "This _almost_ returns how many blocks are used in the last page.
+   It uses 64 blocks per 'page', but GS pages are actually 32 blocks.
+   Might be unused?"
+  (let ((v1-0 additional-size))
+   (dotimes (a2-1 segment-count)
+    (+! v1-0 (the-as int (-> obj segment a2-1 size)))
+    )
+   ;; the sar 6 gets us blocks, but
+   ;; not sure why we have this logand 63 here.
+   (logand (sar v1-0 6) 63)
+   )
+  )
+
+(defmethod print-usage texture-pool ((obj texture-pool))
+  "Print out VRAM usage."
+  (format #t "--------------------~%")
+  (format #t "texture pool ~DK - ~DK (~DK used, ~DK free)~%"
+   (sar (-> obj top) 8) ;; vram words to kb
+   (sar (-> obj cur) 8) ;; vram words to kb
+   (sar (- (-> obj cur) (-> obj top)) 8)
+   (sar (- #xfa000 (-> obj cur)) 8)
+   )
+  (format #t "--------------------~%")
+  obj
+  )
+
+(defmethod allocate-segment! texture-pool ((obj texture-pool) (segment texture-pool-segment) (size int))
+  "Allocate a segment of the given size. The segment is an output here, containing size/dest."
+  (set! (-> segment size) (the-as uint size))
+  (set! (-> segment dest) (the-as uint (allocate-vram-words! obj size)))
+  segment
+  )
+
+(defmethod allocate-defaults! texture-pool ((obj texture-pool))
+  "Allocate default segments"
+  ;; allocate the "common" segment
+  (allocate-segment! obj (-> obj segment-common) #x1c000) ;; ~0.5 MB
+  ;; what is the near segment for?
+  (allocate-segment! obj (-> obj segment-near) #x62000) ;; ~1.6 MB
+  ;; allocate special "global" textures.
+  (set! *sky-base-vram-word* (allocate-vram-words! obj #x7000))
+  (set! *sky-base-block* (sar *sky-base-vram-word* 6))
+  (set! *sky-base-page* (sar *sky-base-vram-word* 11))
+  (set! *eyes-base-vram-word* (+ *sky-base-vram-word* 6144))
+  (set! *eyes-base-block* (sar *eyes-base-vram-word* 6))
+  (set! *eyes-base-page* (sar *eyes-base-vram-word* 11))
+  (set! *ocean-base-vram-word* (+ *sky-base-vram-word* 6144))
+  (set! *ocean-base-block* (sar *ocean-base-vram-word* 6))
+  (set! *ocean-base-page* (sar *ocean-base-vram-word* 11))
+  (set! *depth-cue-base-vram-word* (+ *sky-base-vram-word* 6144))
+  (set! *depth-cue-base-block* (sar *depth-cue-base-vram-word* 6))
+  (set! *depth-cue-base-page* (sar *depth-cue-base-vram-word* 11))
+  (none)
   )

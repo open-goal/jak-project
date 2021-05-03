@@ -3971,6 +3971,8 @@
 (define-extern *texture-enable-user-menu* int)
 (define-extern *texture-enable-user* int)
 
+(declare-type level basic)
+
 (deftype texture-id (uint32)
   ((index  uint16 :offset 8  :size 12)
    (page   uint16 :offset 20 :size 12)
@@ -3990,37 +3992,41 @@
   :flag-assert         #x900000008
   )
 
+(declare-type texture-page basic)
+(declare-type texture-page-segment structure)
+(declare-type texture-relocate-later basic)
+
 ;; texture-h
 (deftype texture-pool (basic)
   ((top              int32                        :offset-assert 4)
    (cur              int32                        :offset-assert 8)
-   (allocate-func    basic                        :offset-assert 12)
-   (font-palette     int32                        :offset-assert 16)
+   (allocate-func    (function texture-pool texture-page texture-relocate-later int texture-page)                        :offset-assert 12)
+   (font-palette     int32                        :offset-assert 16) ;; vram word idx
    (segment          texture-pool-segment 4 :inline :offset-assert 20)
    (segment-near     texture-pool-segment :inline :offset 20)
    (segment-common   texture-pool-segment :inline :offset 28)
-   (common-page      int32              32      :offset-assert 52)
+   (common-page      texture-page              32      :offset-assert 52)
    (common-page-mask int32                        :offset-assert 180)
-   (ids              int32              126     :offset-assert 184)
+   (ids              uint32              126     :offset-assert 184)
    )
   :method-count-assert 23
   :size-assert         #x2b0
   :flag-assert         #x17000002b0
   (:methods
     (initialize! (_type_) _type_ 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 (_type_) none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (allocate! (_type_ int) int 15)
-    (dummy-16 (_type_ texture-pool-segment) none 16)
+    (print-usage (_type_) _type_ 10)
+    (dummy-11 (_type_) none 11)
+    (allocate-defaults! (_type_) none 12)
+    (dummy-13 (_type_ level int (pointer texture-id)) none 13) ;; loading level...
+    (dummy-14 () none 14) ;; very mysterious arg types.
+    (allocate-vram-words! (_type_ int) int 15)
+    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
     (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (lookup-tpage-id (_type_ int) int 22)
+    (upload-one-common! (_type_) symbol 21)
+    (lookup-common-tpage-id (_type_ int) int 22)
     )
   )
 
@@ -4031,13 +4037,13 @@
   ((w            int16     :offset-assert 4)
    (h            int16     :offset-assert 6)
    (num-mips     uint8     :offset-assert 8)
-   (tex1-control uint8     :offset-assert 9)
-   (psm          uint8     :offset-assert 10)
+   (tex1-control uint8     :offset-assert 9)   ;; each level has a dest and a width
+   (psm          gs-psm    :offset-assert 10)
    (mip-shift    uint8     :offset-assert 11)
    (clutpsm      uint16    :offset-assert 12)
-   (dest         uint16 7 :offset-assert 14)
-   (clutdest     uint16    :offset-assert 28)
-   (width        uint8 7 :offset-assert 30)
+   (dest         uint16 7 :offset-assert 14)  ;; dest vram word addr, per leve
+   (clutdest     uint16    :offset-assert 28) ;; destination vram word addr of clut.
+   (width        uint8 7 :offset-assert 30)   ;; mip widths
    (name         basic     :offset-assert 40)
    (size         uint32    :offset-assert 44)
    (uv-dist      float     :offset-assert 48)
@@ -4050,7 +4056,7 @@
 
 ;; texture-h
 (deftype texture-page-segment (structure)
-  ((block-data pointer :offset-assert 0)
+  ((block-data uint32 :offset-assert 0)
    (size       uint32  :offset-assert 4)
    (dest       uint32  :offset-assert 8)
    )
@@ -4067,9 +4073,9 @@
   ((info      basic            :offset-assert 4)
    (name      basic            :offset-assert 8)
    (id        uint32           :offset-assert 12)
-   (length    int32            :offset-assert 16)
+   (length    int32            :offset-assert 16) ;; number of texture
    (mip0-size uint32           :offset-assert 20)
-   (size      uint32           :offset-assert 24)
+   (size      uint32           :offset-assert 24) ;; in vram words.
    (segment   texture-page-segment 3 :inline :offset-assert 28)
    (pad       uint32 16       :offset-assert 64)
    (data      texture :dynamic :offset-assert 128)
@@ -4078,12 +4084,12 @@
   :size-assert         #x80
   :flag-assert         #xf00000080
   (:methods
-    (dummy-9 () none 9)
-    (get-total-size (_type_ int int) int 10)
+    (setup-relocate-later (_type_ texture-relocate-later) _type_ 9)
+    (get-leftover-block-count (_type_ int int) int 10)
     (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (update-dests! (_type_ int int) none 12)
+    (add-to-dma-buffer (_type_ dma-buffer int) none 13)
+    (send-now! (_type_ int) none 14)
     )
   )
 
@@ -4107,7 +4113,7 @@
 (deftype texture-page-dir-entry (structure)
   ((length int16   :offset-assert 0)
    (status uint16  :offset-assert 2)
-   (page   basic   :offset-assert 4)
+   (page   texture-page   :offset-assert 4)
    (link   texture-link  :offset-assert 8)
    )
   :pack-me
@@ -4133,7 +4139,7 @@
    (source uint32                  :offset-assert 12)
    (move   uint32                  :offset-assert 16)
    (entry  texture-page-dir-entry  :offset-assert 20)
-   (page   basic                   :offset-assert 24)
+   (page   texture-page                   :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
@@ -4268,7 +4274,7 @@
    (bsp                       basic           :offset-assert 48)
    (art-group                 basic           :offset-assert 52)
    (info                      basic           :offset-assert 56)
-   (texture-page              basic 9       :offset-assert 60)
+   (texture-page              texture-page 9       :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
    ; (foreground-sink-group-0   dma-foreground-sink-group :inline :offset-assert 176)
@@ -4310,7 +4316,7 @@
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
-    (dummy-11 () none 11)
+    (dummy-11 (_type_) none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
@@ -4338,8 +4344,8 @@
 ;; level-h
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (unknown-field-1 basic                :offset-assert 8)
-   (unknown-field-2 basic                :offset-assert 12)
+   (unknown-field-1 level                :offset-assert 8)
+   (unknown-field-2 level                :offset-assert 12)
    (entity-link     entity-links         :offset 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -4881,6 +4887,8 @@
 ;; texture
 ;;;;;;;;;;;;;;
 
+(define-extern loado (function string kheap int))
+
 (define-extern ct32-24-block-table (array int32))
 (define-extern mz32-24-block-table (array int32))
 (define-extern ct16-block-table (array int32))
@@ -4904,55 +4912,65 @@
 (define-extern gs-largest-block (function int int gs-psm int))
 (define-extern gs-blocks-used (function int int gs-psm int))
 
+;; arg2 in these is not an int, but something else. Not sure what it is yet.
+;; all these texture-page-segment might actually be texture-relocate-later!
+(define-extern texture-page-default-allocate (function texture-pool texture-page texture-relocate-later int texture-page))
+(define-extern texture-page-common-allocate (function texture-pool texture-page texture-relocate-later int texture-page))
+(define-extern texture-page-common-boot-allocate (function texture-pool texture-page texture-relocate-later int texture-page))
+(define-extern upload-vram-data (function dma-buffer int pointer int none))
+(define-extern upload-vram-pages (function texture-pool texture-pool-segment texture-page int int int))
+(define-extern update-vram-pages (function texture-pool texture-pool-segment texture-page int int)) ;; todo
+(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page int int int))
 
+(define-extern texture-page-near-allocate-0 (function texture-pool texture-page texture-page-segment int texture-page))
+(define-extern texture-page-near-allocate-1 (function texture-pool texture-page texture-page-segment int texture-page))
+(define-extern texture-page-level-allocate (function texture-pool texture-page texture-page-segment int int))
+(define-extern texture-page-size-check (function texture-pool level symbol int))
+(define-extern texture-relocate (function dma-buffer texture int int int int))
 
-(define-extern upload-vram-pages function)
 (define-extern *shader-list* pair) ;; unknown type
 (define-extern adgif-shader-login-no-remap-fast function)
-;;(define-extern mt8-block-table object) ;; unknown type
 
 
-(define-extern relocate-later function)
 
-(define-extern upload-vram-pages-pris function)
-;;(define-extern ct16s-block-table object) ;; unknown type
+(define-extern relocate-later (function none))
+
+
+
 (define-extern *txt-dma-list* dma-buffer) ;; unknown type
 (define-extern adgif-shader-login-fast function)
 
-;;(define-extern mz16s-block-table object) ;; unknown type
-(define-extern lookup-texture-by-id function)
+
+(define-extern lookup-texture-by-id (function texture-id texture))
 ;;(define-extern *texture-pool* object) ;; unknown type
 
 (define-extern link-texture-by-id function)
-;;(define-extern mt4-block-table object) ;; unknown type
+
 (define-extern *edit-shader* int) ;; unknown type
 (define-extern adgif-shader-update! function)
-;;(define-extern ct16-block-table object) ;; unknown type
-(define-extern texture-page-common-boot-allocate function)
 
-(define-extern texture-page-level-allocate function)
-(define-extern texture-page-common-allocate function)
-(define-extern texture-page-login function)
+
+(define-extern loading-level kheap)
+
+(define-extern texture-page-login (function texture-id function kheap texture-page-dir-entry))
 
 
 (define-extern adgif-shader-login function)
 (define-extern adgif-shader-login-no-remap function)
-;;(define-extern mz16-block-table object) ;; unknown type
+
 
 ;;;; unknown type
 
 (define-extern adgif-shader<-texture-simple! function)
-(define-extern texture-relocate function)
+
 (define-extern adgif-shader<-texture! function)
-(define-extern update-vram-pages function)
-(define-extern texture-page-near-allocate-0 function)
-;;(define-extern mz32-24-block-table object) ;; unknown type
+
+
 (define-extern texture-page-default-allocate function)
-(define-extern texture-page-size-check function)
 
 
-(define-extern upload-vram-data function)
-(define-extern texture-page-near-allocate-1 function)
+
+
 (define-extern *font-texture* texture)
 
 

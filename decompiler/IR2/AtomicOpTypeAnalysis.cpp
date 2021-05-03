@@ -1074,14 +1074,14 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
 
 TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       const Env& env,
-                                                      DecompilerTypeSystem&) {
+                                                      DecompilerTypeSystem& dts) {
   auto info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
     throw std::runtime_error(fmt::format(
         "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size));
   }
 
-  auto& stored_type = input.get(m_value.reg());
+  auto stored_type = m_value.get_type(input, env, dts);
   auto result = input;
   result.spill_slots[m_offset] = stored_type;
   return result;

@@ -187,7 +187,7 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
       return std::make_unique<AsmOp>(i0, idx);
     }
     // it's a stack spill.
-    return std::make_unique<StackSpillStoreOp>(make_src_var(i0.get_src(0).get_reg(), idx),
+    return std::make_unique<StackSpillStoreOp>(make_src_atom(i0.get_src(0).get_reg(), idx),
                                                store_size, i0.get_src(1).get_imm(), idx);
   }
   SimpleAtom val;

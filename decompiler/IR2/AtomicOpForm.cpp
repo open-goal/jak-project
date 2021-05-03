@@ -744,7 +744,11 @@ FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const
 FormElement* StackSpillStoreOp::get_as_form(FormPool& pool, const Env& env) const {
   std::optional<TypeSpec> cast_type;
 
-  auto src_type = env.get_types_before_op(m_my_idx).get(m_value.reg()).typespec();
+  // if we aren't a var, we're 0.
+  TypeSpec src_type = TypeSpec("int");
+  if (m_value.is_var() && env.has_type_analysis()) {
+    src_type = env.get_types_before_op(m_my_idx).get(m_value.var().reg()).typespec();
+  }
 
   auto kv = env.stack_slot_entries.find(m_offset);
   if (kv != env.stack_slot_entries.end()) {

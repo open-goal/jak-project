@@ -3167,7 +3167,13 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
 ///////////////////////////
 void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
-  auto src = pop_to_forms({m_value}, env, pool, stack, true).at(0);
+  Form* src;
+  if (m_value.is_var()) {
+    src = pop_to_forms({m_value.var()}, env, pool, stack, true).at(0);
+  } else {
+    src = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_value);
+  }
+
   auto dst = pool.alloc_single_element_form<ConstantTokenElement>(
       nullptr, env.get_spill_slot_var_name(m_stack_offset));
   if (m_cast_type) {

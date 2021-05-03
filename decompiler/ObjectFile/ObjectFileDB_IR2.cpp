@@ -614,7 +614,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
         }
       }
 
-      if (func.ir2.print_debug_forms) {
+      if (false && func.ir2.print_debug_forms) {
         result += '\n';
         result += ";; DEBUG OUTPUT BELOW THIS LINE:\n";
         result += func.ir2.debug_form_string;
@@ -815,9 +815,8 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   }
 
   if (func.cfg) {
-    result += func.cfg->to_form_string();
-
     if (!func.cfg->is_fully_resolved()) {
+      result += func.cfg->to_form_string();
       result += "\n";
       result += func.cfg->to_dot();
       result += "\n";
