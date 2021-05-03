@@ -61,7 +61,16 @@
 (define-extern file-stream-length (function file-stream int))
 (define-extern file-stream-read (function file-stream pointer int int))
 
-(define-extern kmalloc (function kheap int int string pointer))
+(defenum kmalloc-flags
+  :bitfield #t
+  (align-16    4)
+  (align-64    6)
+  (align-256   8)
+  (memset     12)
+  (top        13)
+  )
+
+(define-extern kmalloc (function kheap int kmalloc-flags string pointer))
 (define-extern global kheap)
 
 (define-extern dma-sync (function pointer int int int))
@@ -5119,10 +5128,16 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;
+;; drawable-group-h
+;;;;;;;;;;;;;;;;;;;;;
+
 (deftype drawable-group (drawable)
   ((pad uint8 4))
   :flag-assert #x1200000024
   )
+
+(define-extern *collide-nodes* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drawable-inline-array-h
@@ -5561,7 +5576,7 @@
 ;; generic-h
 (deftype generic-consts (structure)
   ((dma-header        dma-packet            :inline :offset-assert 0)
-   (vif-header        uint32               4       :offset-assert 16)
+   (vif-header        uint32               4        :offset-assert 16)
    (dma-ref-vtxs      dma-packet            :inline :offset-assert 32)
    (dma-cnt-call      dma-packet            :inline :offset-assert 48)
    (matrix            matrix                :inline :offset-assert 64)
@@ -5570,8 +5585,8 @@
    (alpha-translucent ad-cmd                :inline :offset-assert 160)
    (ztest-normal      ad-cmd                :inline :offset-assert 176)
    (ztest-opaque      ad-cmd                :inline :offset-assert 192)
-   (adcmd-offsets     uint8               16      :offset-assert 208)
-   ;;(adcmds            UNKNOWN               4       :offset-assert 144)
+   (adcmd-offsets     uint8               16        :offset-assert 208)
+   (adcmds            ad-cmd               4        :offset 144)
    (stcycle-tag       uint32                        :offset-assert 224)
    (unpack-vtx-tag    uint32                        :offset-assert 228)
    (unpack-clr-tag    uint32                        :offset-assert 232)
@@ -5583,7 +5598,7 @@
    (dma-tag-cnt       uint64                        :offset-assert 256)
    (envmap            generic-envmap-consts :inline :offset-assert 272)
    (light-consts      vector                :inline :offset-assert 400)
-   (texture-offset    uint16               8       :offset-assert 416)
+   (texture-offset    uint16               8        :offset-assert 416)
    )
   :method-count-assert 9
   :size-assert         #x1b0
@@ -5744,7 +5759,7 @@
 
 ;; ocean-h
 (deftype ocean-spheres (structure)
-  ((spheres uint128 36 :offset-assert 0)
+  ((spheres sphere 36 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x240
@@ -5753,7 +5768,7 @@
 
 ;; ocean-h
 (deftype ocean-colors (structure)
-  ((colors uint32 2548 :offset-assert 0)
+  ((colors rgba  2548 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x27d0
@@ -33476,16 +33491,6 @@
 (define-extern movie? (function symbol))
 (define-extern level-remap-texture function)
 ;;(define-extern loading-level object) ;; unknown type
-;;(define-extern cspace object) ;; unknown type
-;;(define-extern bone object) ;; unknown type
-;;(define-extern cspace-array object) ;; unknown type
-;;(define-extern bone-cache object) ;; unknown type
-(define-extern joint type)
-;;(define-extern skeleton object) ;; unknown type
-;;(define-extern drawable-error object) ;; unknown type
-;;(define-extern drawable object) ;; unknown type
-;;(define-extern *collide-nodes* object) ;; unknown type
-;;(define-extern drawable-group object) ;; unknown type
 ;;(define-extern drawable-inline-array object) ;; unknown type
 ;;(define-extern draw-node-dma object) ;; unknown type
 (define-extern draw-node type)
@@ -33509,7 +33514,6 @@
 ;;(define-extern gsf-vertex object) ;; unknown type
 ;;(define-extern gsf-ik object) ;; unknown type
 ;;(define-extern generic-gif-tag object) ;; unknown type
-;;(define-extern kmalloc object) ;; unknown type
 ;;(define-extern gsf-fx-vertex-array object) ;; unknown type
 ;;(define-extern generic-envmap-saves object) ;; unknown type
 ;;(define-extern generic-storage object) ;; unknown type
@@ -33537,20 +33541,20 @@
 ;;(define-extern ocean-mid-upload object) ;; unknown type
 ;;(define-extern ocean-vertex object) ;; unknown type
 ;;(define-extern ocean-mid-mask object) ;; unknown type
-;;(define-extern *ocean-facing* object) ;; unknown type
+(define-extern *ocean-facing* int) ;; unknown type
 (define-extern ocean-mid-masks type)
 ;;(define-extern ocean-mid-vertex object) ;; unknown type
-;;(define-extern *ocean-mid-off* object) ;; unknown type
-;;(define-extern *ocean-verts* object) ;; unknown type
+(define-extern *ocean-mid-off* symbol) ;; unknown type
+(define-extern *ocean-verts* symbol) ;; unknown type
 ;;(define-extern ocean-trans-strip object) ;; unknown type
-;;(define-extern *ocean-heights* object) ;; unknown type
+(define-extern *ocean-heights* symbol) ;; unknown type
 ;;(define-extern ocean-colors object) ;; unknown type
 ;;(define-extern ocean-vu0-work object) ;; unknown type
 ;;(define-extern ocean-corner object) ;; unknown type
 ;;(define-extern ocean-trans-index object) ;; unknown type
 ;;(define-extern ocean-texture-constants object) ;; unknown type
 (define-extern ocean-map type)
-;;(define-extern *ocean-near-off* object) ;; unknown type
+(define-extern *ocean-near-off* symbol) ;; unknown type
 (define-extern ocean-mid-indices type)
 ;;(define-extern ocean-trans-strip-array object) ;; unknown type
 ;;(define-extern ocean-mid-upload2 object) ;; unknown type
@@ -33561,54 +33565,53 @@
 ;;(define-extern ocean-near-index object) ;; unknown type
 ;;(define-extern ocean-wave-info object) ;; unknown type
 ;;(define-extern ocean-mid-work object) ;; unknown type
-;;(define-extern *ocean-off* object) ;; unknown type
+(define-extern *ocean-off* symbol) ;; unknown type
 ;;(define-extern ocean-near-work object) ;; unknown type
-;;(define-extern *ocean-work* object) ;; unknown type
+(define-extern *ocean-work* ocean-work) ;; unknown type
 ;;(define-extern ocean-wave-data object) ;; unknown type
 (define-extern ocean-near-indices type)
 ;;(define-extern ocean-wave-frames object) ;; unknown type
-;;(define-extern ocean-spheres object) ;; unknown type
 ;;(define-extern ocean-trans-mask object) ;; unknown type
 ;;(define-extern ocean-mid-constants object) ;; unknown type
 ;;(define-extern ocean-near-vertex object) ;; unknown type
-;;(define-extern *ocean-trans-down-left-table* object) ;; unknown type
-;;(define-extern *ocean-up-table* object) ;; unknown type
-;;(define-extern *ocean-up-left-table* object) ;; unknown type
-;;(define-extern *ocean-trans-up-left-table* object) ;; unknown type
-;;(define-extern *ocean-trans-st-table* object) ;; unknown type
-;;(define-extern *ocean-down-left-table* object) ;; unknown type
-;;(define-extern *ocean-trans-down-table* object) ;; unknown type
-;;(define-extern *ocean-trans-right-table* object) ;; unknown type
-;;(define-extern *ocean-trans-down-right-table* object) ;; unknown type
-;;(define-extern *ocean-trans-left-table* object) ;; unknown type
-;;(define-extern *ocean-down-right-table* object) ;; unknown type
-;;(define-extern *ocean-trans-up-right-table* object) ;; unknown type
-;;(define-extern *ocean-trans-strip-array* object) ;; unknown type
-;;(define-extern *ocean-left-table* object) ;; unknown type
-;;(define-extern *ocean-trans-up-table* object) ;; unknown type
-;;(define-extern *ocean-up-right-table* object) ;; unknown type
-;;(define-extern *ocean-trans-corner-table* object) ;; unknown type
-;;(define-extern *ocean-right-table* object) ;; unknown type
-;;(define-extern *ocean-down-table* object) ;; unknown type
-;;(define-extern *ocean-trans-indices-village2* object) ;; unknown type
-;;(define-extern *ocean-trans-indices-village1* object) ;; unknown type
-;;(define-extern *ocean-near-indices-village2* object) ;; unknown type
-;;(define-extern *ocean-colors-village1* object) ;; unknown type
-;;(define-extern *ocean-map-village2* object) ;; unknown type
-;;(define-extern *ocean-trans-indices-sunken* object) ;; unknown type
-;;(define-extern *ocean-map-sunken* object) ;; unknown type
-;;(define-extern *ocean-mid-indices-sunken* object) ;; unknown type
-;;(define-extern *ocean-mid-masks-village2* object) ;; unknown type
-;;(define-extern *ocean-mid-indices-village1* object) ;; unknown type
-;;(define-extern *ocean-near-indices-village1* object) ;; unknown type
-;;(define-extern *ocean-spheres-village2* object) ;; unknown type
-;;(define-extern *ocean-colors-village2* object) ;; unknown type
-;;(define-extern *ocean-mid-masks-village1* object) ;; unknown type
-;;(define-extern *ocean-near-indices-sunken* object) ;; unknown type
-;;(define-extern *ocean-mid-indices-village2* object) ;; unknown type
-;;(define-extern *ocean-mid-masks-sunken* object) ;; unknown type
-;;(define-extern *ocean-map-village1* object) ;; unknown type
-(define-extern *ocean-spheres-village1* (inline-array sphere)) ;; unknown type
+(define-extern *ocean-trans-down-left-table* (pointer float)) ;; unknown type
+(define-extern *ocean-up-table* (pointer float)) ;; unknown type
+(define-extern *ocean-up-left-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-up-left-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-st-table* (pointer float)) ;; unknown type
+(define-extern *ocean-down-left-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-down-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-right-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-down-right-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-left-table* (pointer float)) ;; unknown type
+(define-extern *ocean-down-right-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-up-right-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-strip-array* (pointer float)) ;; unknown type
+(define-extern *ocean-left-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-up-table* (pointer float)) ;; unknown type
+(define-extern *ocean-up-right-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-corner-table* (pointer float)) ;; unknown type
+(define-extern *ocean-right-table* (pointer float)) ;; unknown type
+(define-extern *ocean-down-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-indices-village2* ocean-trans-indices) ;; unknown type
+(define-extern *ocean-trans-indices-village1* ocean-trans-indices) ;; unknown type
+(define-extern *ocean-near-indices-village2* ocean-near-indices) ;; unknown type
+(define-extern *ocean-colors-village1* ocean-colors) ;; unknown type
+(define-extern *ocean-map-village2* ocean-map) ;; unknown type
+(define-extern *ocean-trans-indices-sunken* ocean-trans-indices) ;; unknown type
+(define-extern *ocean-map-sunken* ocean-map) ;; unknown type
+(define-extern *ocean-mid-indices-sunken* ocean-mid-indices) ;; unknown type
+(define-extern *ocean-mid-masks-village2* ocean-mid-masks) ;; unknown type
+(define-extern *ocean-mid-indices-village1* ocean-mid-indices) ;; unknown type
+(define-extern *ocean-near-indices-village1* ocean-near-indices) ;; unknown type
+(define-extern *ocean-spheres-village2* ocean-spheres) ;; unknown type
+(define-extern *ocean-colors-village2* ocean-colors) ;; unknown type
+(define-extern *ocean-mid-masks-village1* ocean-mid-masks) ;; unknown type
+(define-extern *ocean-near-indices-sunken* ocean-near-indices) ;; unknown type
+(define-extern *ocean-mid-indices-village2* ocean-mid-indices) ;; unknown type
+(define-extern *ocean-mid-masks-sunken* ocean-mid-masks) ;; unknown type
+(define-extern *ocean-map-village1* ocean-map) ;; unknown type
+(define-extern *ocean-spheres-village1* ocean-spheres) ;; unknown type
 ;;(define-extern *ocean-wave-frames* object) ;; unknown type
 ;;(define-extern sky-color-hour object) ;; unknown type
 ;;(define-extern sky-circle-data object) ;; unknown type
