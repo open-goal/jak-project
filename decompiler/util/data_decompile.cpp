@@ -606,6 +606,20 @@ goos::Object decompile_value(const TypeSpec& type,
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
     }
+  } else if (ts.tc(TypeSpec("uint16"), type)) {
+    assert(bytes.size() == 2);
+    u16 value;
+    memcpy(&value, bytes.data(), 2);
+    return pretty_print::to_symbol(fmt::format("#x{:x}", u64(value)));
+  } else if (ts.tc(TypeSpec("int16"), type)) {
+    assert(bytes.size() == 2);
+    s16 value;
+    memcpy(&value, bytes.data(), 2);
+    if (value > 100 && value <= INT16_MAX) {
+      return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+    } else {
+      return pretty_print::to_symbol(fmt::format("{}", value));
+    }
   } else if (ts.tc(TypeSpec("int8"), type)) {
     assert(bytes.size() == 1);
     s8 value;
