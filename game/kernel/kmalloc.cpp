@@ -167,7 +167,7 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
 
     heap->top.offset = memstart;
 
-    if (flags & 0x1000)
+    if (flags & KMALLOC_MEMSET)
       std::memset(Ptr<u8>(memstart).c(), 0, (size_t)size);
     return Ptr<u8>(memstart);
   }
