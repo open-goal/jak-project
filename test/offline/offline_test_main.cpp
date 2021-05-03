@@ -21,6 +21,8 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h", "display",
     "connect", "text-h", "settings-h", "capture", "memory-usage-h",
     /* gap */
+    "mspace-h", "drawable-h", "drawable-group-h",
+    /* gap */
     "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -37,6 +39,8 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io",
     "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h",
     "display", "connect", "text-h", "settings-h", "capture", "memory-usage-h",
+    /* gap */
+    "mspace-h", "drawable-h", "drawable-group-h",
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -461,6 +465,9 @@ TEST_F(OfflineDecompilation, Compile) {
     if (skip_files_in_compiling.find(file) != skip_files_in_compiling.end()) {
       continue;
     }
+
+    lg::info("Compiling {}...", file);
+
     auto& obj_l = db->obj_files_by_name.at(file);
     ASSERT_EQ(obj_l.size(), 1);
 
