@@ -22,6 +22,10 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     /* gap */
     "mspace-h", "drawable-h", "drawable-group-h",
     /* gap */
+    "lights-h",
+    /* gap */
+    "sky-h", "mood-h", /* "time-of-day-h", */
+    /* gap */
     "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -40,6 +44,10 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "display",
     /* gap */
     "mspace-h", "drawable-h", "drawable-group-h",
+    /* gap */
+    "lights-h",
+    /* gap */
+    "sky-h", "mood-h", /* "time-of-day-h", */
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
