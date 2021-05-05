@@ -1,0 +1,326 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type sky-color-hour
+(deftype sky-color-hour (structure)
+  ((snapshot1   int32  :offset-assert 0)
+   (snapshot2   int32  :offset-assert 4)
+   (morph-start float  :offset-assert 8)
+   (morph-end   float  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type sky-color-hour
+(defmethod inspect sky-color-hour ((obj sky-color-hour))
+  (format #t "[~8x] ~A~%" obj 'sky-color-hour)
+  (format #t "~Tsnapshot1: ~D~%" (-> obj snapshot1))
+  (format #t "~Tsnapshot2: ~D~%" (-> obj snapshot2))
+  (format #t "~Tmorph-start: ~f~%" (-> obj morph-start))
+  (format #t "~Tmorph-end: ~f~%" (-> obj morph-end))
+  obj
+  )
+
+;; definition of type sky-color-day
+(deftype sky-color-day (structure)
+  ((hour sky-color-hour 24 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
+
+;; definition for method 3 of type sky-color-day
+(defmethod inspect sky-color-day ((obj sky-color-day))
+  (format #t "[~8x] ~A~%" obj 'sky-color-day)
+  (format #t "~Thour[24] @ #x~X~%" (-> obj hour))
+  obj
+  )
+
+;; definition of type sky-circle-data
+(deftype sky-circle-data (structure)
+  ((data vector 17 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x110
+  :flag-assert         #x900000110
+  )
+
+;; definition for method 3 of type sky-circle-data
+(defmethod inspect sky-circle-data ((obj sky-circle-data))
+  (format #t "[~8x] ~A~%" obj 'sky-circle-data)
+  (format #t "~Tdata[17] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition of type sky-sun-data
+(deftype sky-sun-data (structure)
+  ((data           uint128 4                   :offset-assert 0)
+   (pos            vector  :inline :offset   0)
+   (r-sun          float   :offset  16)
+   (r-halo         float   :offset  20)
+   (r-aurora       float   :offset  24)
+   (c-sun-start    uint32  :offset  32)
+   (c-sun-end      uint32  :offset  48)
+   (c-halo-start   uint32  :offset  36)
+   (c-halo-end     uint32  :offset  52)
+   (c-aurora-start uint32  :offset  40)
+   (c-aurora-end   uint32  :offset  56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type sky-sun-data
+(defmethod inspect sky-sun-data ((obj sky-sun-data))
+  (format #t "[~8x] ~A~%" obj 'sky-sun-data)
+  (format #t "~Tdata[4] @ #x~X~%" (-> obj data))
+  (format #t "~Tpos: #<vector @ #x~X>~%" (-> obj data))
+  (format #t "~Tr-sun: ~f~%" (-> obj r-sun))
+  (format #t "~Tr-halo: ~f~%" (-> obj r-halo))
+  (format #t "~Tr-aurora: ~f~%" (-> obj r-aurora))
+  (format #t "~Tc-sun-start: ~D~%" (-> obj c-sun-start))
+  (format #t "~Tc-sun-end: ~D~%" (-> obj c-sun-end))
+  (format #t "~Tc-halo-start: ~D~%" (-> obj c-halo-start))
+  (format #t "~Tc-halo-end: ~D~%" (-> obj c-halo-end))
+  (format #t "~Tc-aurora-start: ~D~%" (-> obj c-aurora-start))
+  (format #t "~Tc-aurora-end: ~D~%" (-> obj c-aurora-end))
+  obj
+  )
+
+;; definition of type sky-moon-data
+(deftype sky-moon-data (structure)
+  ((data  uint128 2                   :offset-assert 0)
+   (pos   vector  :inline :offset   0)
+   (scale vector  :inline :offset  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; definition for method 3 of type sky-moon-data
+(defmethod inspect sky-moon-data ((obj sky-moon-data))
+  (format #t "[~8x] ~A~%" obj 'sky-moon-data)
+  (format #t "~Tdata[2] @ #x~X~%" (-> obj data))
+  (format #t "~Tpos: #<vector @ #x~X>~%" (-> obj data))
+  (format #t "~Tscale: #<vector @ #x~X>~%" (&-> obj data 1))
+  obj
+  )
+
+;; definition of type sky-orbit
+(deftype sky-orbit (structure)
+  ((high-noon float  :offset-assert 0)
+   (tilt      float  :offset-assert 4)
+   (rise      float  :offset-assert 8)
+   (dist      float  :offset-assert 12)
+   (min-halo  float  :offset-assert 16)
+   (max-halo  float  :offset-assert 20)
+   )
+  :allow-misaligned  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; definition for method 3 of type sky-orbit
+(defmethod inspect sky-orbit ((obj sky-orbit))
+  (format #t "[~8x] ~A~%" obj 'sky-orbit)
+  (format #t "~Thigh-noon: ~f~%" (-> obj high-noon))
+  (format #t "~Ttilt: ~f~%" (-> obj tilt))
+  (format #t "~Trise: ~f~%" (-> obj rise))
+  (format #t "~Tdist: ~f~%" (-> obj dist))
+  (format #t "~Tmin-halo: ~f~%" (-> obj min-halo))
+  (format #t "~Tmax-halo: ~f~%" (-> obj max-halo))
+  obj
+  )
+
+;; definition of type sky-upload-data
+(deftype sky-upload-data (basic)
+  ((circle sky-circle-data :inline        :offset-assert 16)
+   (sun    sky-sun-data    2 :inline      :offset-assert 288)
+   (moon   sky-moon-data   :inline        :offset-assert 416)
+   (data   uint128         27 :offset  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c0
+  :flag-assert         #x9000001c0
+  )
+
+;; definition for method 3 of type sky-upload-data
+(defmethod inspect sky-upload-data ((obj sky-upload-data))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tdata[27] @ #x~X~%" (-> obj circle))
+  (format #t "~Tcircle: #<sky-circle-data @ #x~X>~%" (-> obj circle))
+  (format #t "~Tsun[2] @ #x~X~%" (-> obj sun))
+  (format #t "~Tmoon: #<sky-moon-data @ #x~X>~%" (-> obj moon))
+  obj
+  )
+
+;; definition of type sky-parms
+(deftype sky-parms (basic)
+  ((orbit             sky-orbit       3 :inline :offset-assert 4)
+   (upload-data       sky-upload-data :inline   :offset-assert 112)
+   (sun-lights        light-group     :inline   :offset-assert 560)
+   (moon-lights       light-group     :inline   :offset-assert 752)
+   (default-lights    light-group     :inline   :offset-assert 944)
+   (default-vu-lights vu-lights       :inline   :offset-assert 1136)
+   )
+  :method-count-assert 9
+  :size-assert         #x4e0
+  :flag-assert         #x9000004e0
+  (:methods
+    (new (symbol type) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type sky-parms
+(defmethod inspect sky-parms ((obj sky-parms))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Torbit[3] @ #x~X~%" (-> obj orbit))
+  (format #t "~Tupload-data: #<sky-upload-data @ #x~X>~%" (-> obj upload-data))
+  (format #t "~Tsun-lights: #<light-group @ #x~X>~%" (-> obj sun-lights))
+  (format #t "~Tmoon-lights: #<light-group @ #x~X>~%" (-> obj moon-lights))
+  (format
+   #t
+   "~Tdefault-lights: #<light-group @ #x~X>~%"
+   (-> obj default-lights)
+   )
+  (format
+   #t
+   "~Tdefault-vu-lights: #<vu-lights @ #x~X>~%"
+   (-> obj default-vu-lights)
+   )
+  obj
+  )
+
+;; definition for method 0 of type sky-parms
+(defmethod new sky-parms ((allocation symbol) (type-to-make type))
+  (let
+   ((v0-0
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
+   (set! (-> v0-0 upload-data type) sky-upload-data)
+   v0-0
+   )
+  )
+
+;; definition for symbol *sky-parms*, type sky-parms
+(define *sky-parms* (new 'global 'sky-parms))
+
+;; definition for symbol *sky-upload-data*, type sky-upload-data
+(define
+  *sky-upload-data*
+  (the-as sky-upload-data (new 'global 'sky-upload-data))
+  )
+
+;; failed to figure out what this is:
+(dotimes (gp-0 17)
+  (let ((f30-0 (+ MINUS_PI (* 0.39269906 (the float (logand gp-0 15))))))
+   (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
+   (set! (-> *sky-upload-data* circle data gp-0 y) (cos-rad f30-0))
+   )
+  (set! (-> *sky-upload-data* circle data gp-0 z) 0.0)
+  (set! (-> *sky-upload-data* circle data gp-0 w) 0.0)
+  )
+
+;; failed to figure out what this is:
+(empty-form)
+
+;; failed to figure out what this is:
+(empty-form)
+
+;; definition of type sky-tng-data
+(deftype sky-tng-data (basic)
+  ((giftag-base  qword  :inline :offset-assert 16)
+   (giftag-roof  qword  :inline :offset-assert 32)
+   (giftag-ocean qword  :inline :offset-assert 48)
+   (fog          vector :inline :offset-assert 64)
+   (sky          uint32 8       :offset-assert 80)
+   (time         float          :offset-assert 112)
+   (off-s-0      uint16         :offset-assert 116)
+   (off-t-0      uint16         :offset-assert 118)
+   (off-s-1      uint16         :offset-assert 120)
+   (off-t-1      uint16         :offset-assert 122)
+   )
+  :method-count-assert 9
+  :size-assert         #x7c
+  :flag-assert         #x90000007c
+  )
+
+;; definition for method 3 of type sky-tng-data
+(defmethod inspect sky-tng-data ((obj sky-tng-data))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tgiftag-base: #<qword @ #x~X>~%" (-> obj giftag-base))
+  (format #t "~Tgiftag-roof: #<qword @ #x~X>~%" (-> obj giftag-roof))
+  (format #t "~Tgiftag-ocean: #<qword @ #x~X>~%" (-> obj giftag-ocean))
+  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj fog))
+  (format #t "~Tsky[8] @ #x~X~%" (-> obj sky))
+  (format #t "~Ttime: ~f~%" (-> obj time))
+  (format #t "~Toff-s-0: ~D~%" (-> obj off-s-0))
+  (format #t "~Toff-t-0: ~D~%" (-> obj off-t-0))
+  (format #t "~Toff-s-1: ~D~%" (-> obj off-s-1))
+  (format #t "~Toff-t-1: ~D~%" (-> obj off-t-1))
+  obj
+  )
+
+;; definition of type sky-work
+(deftype sky-work (structure)
+  ((adgif-tmpl dma-gif-packet :inline :offset-assert 0)
+   (draw-tmpl  dma-gif-packet :inline :offset-assert 32)
+   (blend-tmpl dma-gif-packet :inline :offset-assert 64)
+   (sky-data   uint128        5       :offset-assert 96)
+   (cloud-data uint128        5       :offset-assert 176)
+   )
+  :method-count-assert 9
+  :size-assert         #x100
+  :flag-assert         #x900000100
+  )
+
+;; definition for method 3 of type sky-work
+(defmethod inspect sky-work ((obj sky-work))
+  (format #t "[~8x] ~A~%" obj 'sky-work)
+  (format #t "~Tadgif-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj adgif-tmpl))
+  (format #t "~Tdraw-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj draw-tmpl))
+  (format #t "~Tblend-tmpl: #<dma-gif-packet @ #x~X>~%" (-> obj blend-tmpl))
+  (format #t "~Tsky-data[5] @ #x~X~%" (-> obj sky-data))
+  (format #t "~Tcloud-data[5] @ #x~X~%" (-> obj cloud-data))
+  obj
+  )
+
+;; definition of type sky-vertex
+(deftype sky-vertex (structure)
+  ((pos vector :inline :offset-assert 0)
+   (stq vector :inline :offset-assert 16)
+   (col vector :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type sky-vertex
+(defmethod inspect sky-vertex ((obj sky-vertex))
+  (format #t "[~8x] ~A~%" obj 'sky-vertex)
+  (format #t "~Tpos: #<vector @ #x~X>~%" (-> obj pos))
+  (format #t "~Tstq: #<vector @ #x~X>~%" (-> obj stq))
+  (format #t "~Tcol: #<vector @ #x~X>~%" (-> obj col))
+  obj
+  )
+
+;; definition for symbol *sky-drawn*, type symbol
+(define *sky-drawn* #f)
+
+;; definition for symbol *cloud-drawn*, type symbol
+(define *cloud-drawn* #f)
+
+;; failed to figure out what this is:
+(let ((v0-15 0))
+  )
+
+
+
+
