@@ -1647,7 +1647,7 @@ void FunctionEndOp::collect_vars(RegAccessSet& vars) const {
 // StackSpillStoreOp
 /////////////////////////////
 
-StackSpillStoreOp::StackSpillStoreOp(SimpleAtom value, int size, int offset, int my_idx)
+StackSpillStoreOp::StackSpillStoreOp(const SimpleAtom& value, int size, int offset, int my_idx)
     : AtomicOp(my_idx), m_value(value), m_size(size), m_offset(offset) {
   if (m_value.is_var()) {
     assert(m_value.var().mode() == AccessMode::READ);

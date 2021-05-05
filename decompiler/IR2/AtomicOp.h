@@ -724,7 +724,7 @@ class FunctionEndOp : public AtomicOp {
  */
 class StackSpillStoreOp : public AtomicOp {
  public:
-  StackSpillStoreOp(SimpleAtom value, int size, int offset, int my_idx);
+  StackSpillStoreOp(const SimpleAtom& value, int size, int offset, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
