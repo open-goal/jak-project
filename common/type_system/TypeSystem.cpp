@@ -767,7 +767,7 @@ void TypeSystem::add_builtin_types() {
              make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
   add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
-  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
+  add_method(obj_type, "relocate", make_function_typespec({"_type_", "kheap"}, "_type_"));
   add_method(obj_type, "mem-usage",
              make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));
 
