@@ -962,7 +962,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
     if (field.is_inline()) {
       if (!allow_inline(field_type)) {
         fmt::print(
-            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted.\n",
             field_type->get_name());
         throw std::runtime_error("bad get size in type");
       }
@@ -982,7 +982,8 @@ int TypeSystem::get_size_in_type(const Field& field) const {
     if (field.is_inline()) {
       if (!allow_inline(field_type)) {
         fmt::print(
-            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted. Type "
+            "may not be defined fully.\n",
             field_type->get_name());
         throw std::runtime_error("bad get size in type");
       }

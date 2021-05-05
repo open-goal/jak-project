@@ -6375,12 +6375,12 @@
    (current-prt-color    vector            :inline :offset-assert 112)
    (current-shadow       vector            :inline :offset-assert 128)
    (current-shadow-color vector            :inline :offset-assert 144)
-   ;; (light-group          UNKNOWN           8       :offset-assert 160)
-   (times                vector  8 :inline       :offset 1696)
-   (sky-times            float           8       :offset-assert 1824)
-   ;; (itimes               UNKNOWN           4       :offset-assert 1856)
-   ;; (state                UNKNOWN           16      :offset-assert 1920)
-   (num-stars            float                     :offset 1936)
+   (light-group          light-group     8 :inline :offset-assert 160)
+   (times                vector  8 :inline         :offset-assert 1696)
+   (sky-times            float           8         :offset-assert 1824)
+   (itimes               vector4w        4 :inline :offset-assert 1856)
+   (state                uint8             16      :offset-assert 1920)
+   (num-stars            float                     :offset-assert 1936)
    )
   (:methods
     (new (symbol type) _type_ 0)
@@ -6456,46 +6456,46 @@
   :flag-assert         #x900000014
   )
 
-; ;; time-of-day-h
-; (deftype time-of-day-context (basic)
-;   ((active-count         uint32              :offset-assert 4)
-;    (interp               float               :offset-assert 8)
-;    (current-interp       float               :offset-assert 12)
-;    (moods                UNKNOWN     2       :offset-assert 16)
-;    (current-fog          mood-fog    :inline :offset-assert 32)
-;    (current-sun          mood-sun    :inline :offset-assert 80)
-;    (current-prt-color    vector      :inline :offset-assert 112)
-;    (current-shadow       vector      :inline :offset-assert 128)
-;    (current-shadow-color vector      :inline :offset-assert 144)
-;    (light-group          UNKNOWN     9       :offset-assert 160)
-;    (title-light-group    light-group :inline :offset-assert 1888)
-;    (time                 float               :offset-assert 2080)
-;    (target-interp        float               :offset-assert 2084)
-;    (erase-color          uint32              :offset-assert 2088)
-;    (num-stars            float               :offset-assert 2092)
-;    (light-masks-0        UNKNOWN     2       :offset-assert 2096)
-;    (light-masks-1        UNKNOWN     2       :offset-assert 2098)
-;    (light-interp         UNKNOWN     2       :offset-assert 2100)
-;    (sky                  basic               :offset-assert 2108)
-;    (sun-fade             float               :offset-assert 2112)
-;    (title-updated        basic               :offset-assert 2116)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x848
-;   :flag-assert         #x900000848
-;   )
+;; time-of-day-h
+(deftype time-of-day-context (basic)
+  ((active-count         uint32                :offset-assert 4)
+   (interp               float                 :offset-assert 8)
+   (current-interp       float                 :offset-assert 12)
+   (moods                uint64      2         :offset-assert 16)
+   (current-fog          mood-fog      :inline :offset-assert 32)
+   (current-sun          mood-sun      :inline :offset-assert 80)
+   (current-prt-color    vector        :inline :offset-assert 112)
+   (current-shadow       vector        :inline :offset-assert 128)
+   (current-shadow-color vector        :inline :offset-assert 144)
+   (light-group          light-group 9 :inline :offset-assert 160)
+   (title-light-group    light-group   :inline :offset-assert 1888)
+   (time                 float                 :offset-assert 2080)
+   (target-interp        float                 :offset-assert 2084)
+   (erase-color          uint32                :offset-assert 2088)
+   (num-stars            float                 :offset-assert 2092)
+   (light-masks-0        uint8       2         :offset-assert 2096)
+   (light-masks-1        uint8       2         :offset-assert 2098)
+   (light-interp         uint32      2         :offset-assert 2100)
+   (sky                  basic                 :offset-assert 2108)
+   (sun-fade             float                 :offset-assert 2112)
+   (title-updated        symbol                :offset-assert 2116)
+   )
+  :method-count-assert 9
+  :size-assert         #x848
+  :flag-assert         #x900000848
+  )
 
-; ;; time-of-day-h
-; (deftype time-of-day-dma (structure)
-;   ((outa  UNKNOWN 256 :offset-assert 0)
-;    (outb  UNKNOWN 256 :offset-assert 1024)
-;    (banka UNKNOWN 256 :offset-assert 2048)
-;    (bankb UNKNOWN 256 :offset-assert 3072)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1000
-;   :flag-assert         #x900001000
-;   )
+;; time-of-day-h
+(deftype time-of-day-dma (structure)
+  ((outa  uint32 256 :offset-assert 0)
+   (outb  uint32 256 :offset-assert 1024)
+   (banka uint32 256 :offset-assert 2048)
+   (bankb uint32 256 :offset-assert 3072)
+   )
+  :method-count-assert 9
+  :size-assert         #x1000
+  :flag-assert         #x900001000
+  )
 
 ;; art-h
 (deftype joint-anim (basic)
@@ -6508,17 +6508,32 @@
   :flag-assert         #x90000000c
   )
 
-; ;; art-h
-; (deftype joint-anim-drawable (joint-anim)
-;   ((name   basic            :offset-assert 4)
-;    (number int16            :offset-assert 8)
-;    (length int16            :offset-assert 10)
-;    (data   UNKNOWN :dynamic :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xc
-;   :flag-assert         #x90000000c
-;   )
+; art-h
+(deftype joint-anim-matrix (joint-anim)
+  ((matrix matrix :offset-assert 12)) ;; guess
+  ;; inspect in joint
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype joint-anim-transformq (joint-anim)
+  ((transformq transformq :offset-assert 12)) ;; guess
+  ;; inspect in joint
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  ;;  too many basic blocks
+  )
+
+;; art-h
+(deftype joint-anim-drawable (joint-anim)
+  ((data   uint32 :inline :dynamic :offset-assert 12) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
 
 ;; art-h
 (deftype joint-anim-compressed (joint-anim)
@@ -6528,66 +6543,69 @@
   :flag-assert         #x90000000c
   )
 
-; ;; art-h
-; (deftype joint-anim-frame (structure)
-;   ((matrices UNKNOWN 2        :offset-assert 0)
-;    (data     UNKNOWN :dynamic :offset-assert 128)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x80
-;   :flag-assert         #x900000080
-;   )
+;; art-h
+(deftype joint-anim-frame (structure)
+  ((matrices matrix 2 :inline :offset-assert 0)
+   (data     uint32   :dynamic :offset-assert 128) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  )
 
-; ;; art-h
-; (deftype joint-anim-compressed-hdr (structure)
-;   ((control-bits UNKNOWN 14 :offset-assert 0)
-;    (num-joints   uint32     :offset-assert 56)
-;    (matrix-bits  uint32     :offset-assert 60)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40
-;   :flag-assert         #x900000040
-;   )
+;; art-h
+(deftype joint-anim-compressed-hdr (structure)
+  ((control-bits uint32 14  :offset-assert 0)
+   (num-joints   uint32     :offset-assert 56)
+   (matrix-bits  uint32     :offset-assert 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
 
-; ;; art-h
-; (deftype joint-anim-compressed-fixed (structure)
-;   ((hdr       joint-anim-compressed-hdr :inline :offset-assert 0)
-;    (offset-64 uint32                            :offset-assert 64)
-;    (offset-32 uint32                            :offset-assert 68)
-;    (offset-16 uint32                            :offset-assert 72)
-;    (reserved  uint32                            :offset-assert 76)
-;    (data      UNKNOWN                   133     :offset-assert 80)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8a0
-;   :flag-assert         #x9000008a0
-;   )
+;; art-h
+(deftype joint-anim-compressed-fixed (structure)
+  ((hdr       joint-anim-compressed-hdr :inline :offset-assert 0)
+   (offset-64 uint32                            :offset-assert 64)
+   (offset-32 uint32                            :offset-assert 68)
+   (offset-16 uint32                            :offset-assert 72)
+   (reserved  uint32                            :offset-assert 76)
+   (data      vector                133 :inline :offset-assert 80) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x8a0
+  :flag-assert         #x9000008a0
+  )
 
-; ;; art-h
-; (deftype joint-anim-compressed-frame (structure)
-;   ((offset-64 uint32      :offset-assert 0)
-;    (offset-32 uint32      :offset-assert 4)
-;    (offset-16 uint32      :offset-assert 8)
-;    (reserved  uint32      :offset-assert 12)
-;    (data      UNKNOWN 133 :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x860
-;   :flag-assert         #x900000860
-;   )
+;; art-h
+(deftype joint-anim-compressed-frame (structure)
+  ((offset-64 uint32      :offset-assert 0)
+   (offset-32 uint32      :offset-assert 4)
+   (offset-16 uint32      :offset-assert 8)
+   (reserved  uint32      :offset-assert 12)
+   (data      vector 133 :inline :offset-assert 16) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x860
+  :flag-assert         #x900000860
+  )
 
-; ;; art-h
-; (deftype joint-anim-compressed-control (structure)
-;   ((num-frames uint32                        :offset-assert 0)
-;    (fixed-qwc  uint32                        :offset-assert 4)
-;    (frame-qwc  uint32                        :offset-assert 8)
-;    (fixed      joint-anim-compressed-fixed   :offset-assert 12)
-;    (data       UNKNOWN                     1 :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x14
-;   :flag-assert         #x900000014
-;   )
+;; art-h
+(deftype joint-anim-compressed-control (structure)
+  ((num-frames uint32                        :offset-assert 0)
+   (fixed-qwc  uint32                        :offset-assert 4)
+   (frame-qwc  uint32                        :offset-assert 8)
+   (fixed      joint-anim-compressed-fixed   :offset-assert 12)
+   (data       uint32 1                      :offset-assert 16) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
 
 ;; art-h
 (deftype art (basic)
@@ -6620,102 +6638,150 @@
     )
   )
 
-; ;; art-h
-; (deftype skeleton-group (basic)
-;   ((art-group-name basic           :offset-assert 4)
-;    (jgeo           int32           :offset-assert 8)
-;    (janim          int32           :offset-assert 12)
-;    (bounds         vector  :inline :offset-assert 16)
-;    (radius         meters          :offset-assert 28)
-;    (mgeo           UNKNOWN 4       :offset-assert 32)
-;    (max-lod        int32           :offset-assert 40)
-;    (lod-dist       UNKNOWN 4       :offset-assert 44)
-;    (longest-edge   meters          :offset-assert 60)
-;    (texture-level  int8            :offset-assert 64)
-;    (version        int8            :offset-assert 65)
-;    (shadow         int8            :offset-assert 66)
-;    (sort           int8            :offset-assert 67)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x48
-;   :flag-assert         #x900000048
-;   )
+(deftype art-mesh-anim (art-element)
+  ()
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+(deftype art-joint-anim (art-element)
+  ((pad2 uint8 16))
+  ;; inspect in join
+  :method-count-assert 13
+  :size-assert         #x30
+  :flag-assert         #xd00000030
+  )
+
+(deftype art-group (art)
+  ((pad2 uint8 12))
+  ;; inspect in join
+  :method-count-assert 15
+  :size-assert         #x20
+  :flag-assert         #xf00000020
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    )
+  )
+
+(deftype art-mesh-geo (art-element)
+  ()
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+(deftype art-joint-geo (art-element)
+  ()
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  )
+
+;; art-h
+(deftype skeleton-group (basic)
+  ((art-group-name basic           :offset-assert 4)
+   (jgeo           int32           :offset-assert 8)
+   (janim          int32           :offset-assert 12)
+   (bounds         vector  :inline :offset-assert 16)
+   (radius         float           :offset 28) ;; meters
+   (mgeo           uint16 4        :offset-assert 32)
+   (max-lod        int32           :offset-assert 40)
+   (lod-dist       float   4       :offset-assert 44)
+   (longest-edge   float           :offset-assert 60) ;; meters
+   (texture-level  int8            :offset-assert 64)
+   (version        int8            :offset-assert 65)
+   (shadow         int8            :offset-assert 66)
+   (sort           int8            :offset-assert 67)
+   (_pad uint8 4) ;; what was here?
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
 
 ;; art-h
 (deftype lod-group (structure)
   ((geo  basic   :offset-assert 0)
    (dist float  :offset-assert 4) ;; meters
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
 
-; ;; art-h
-; (deftype lod-set (structure)
-;   ((lod     UNKNOWN 4 :offset-assert 0)
-;    (max-lod int8      :offset-assert 32)
-;    )
-;   :method-count-assert 10
-;   :size-assert         #x21
-;   :flag-assert         #xa00000021
-;   (:methods
-;     (dummy-9 () none 9)
-;     )
-;   )
+;; art-h
+(deftype lod-set (structure)
+  ((lod     lod-group 4 :inline :offset-assert 0)
+   (max-lod int8      :offset-assert 32)
+   )
+  :pack-me
+  :method-count-assert 10
+  :size-assert         #x21
+  :flag-assert         #xa00000021
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
 
-; ;; art-h
-; (deftype draw-control (basic)
-;   ((status                   uint8           :offset-assert 4)
-;    (matrix-type              uint8           :offset-assert 5)
-;    (data-format              uint8           :offset-assert 6)
-;    (global-effect            uint8           :offset-assert 7)
-;    (art-group                basic           :offset-assert 8)
-;    (jgeo                     basic           :offset-assert 12)
-;    (mgeo                     basic           :offset-assert 16)
-;    (dma-add-func             basic           :offset-assert 20)
-;    (skeleton                 basic           :offset-assert 24)
-;    (lod-set                  lod-set :inline :offset-assert 28)
-;    (lod                      UNKNOWN 4       :offset-assert 28)
-;    (max-lod                  int8            :offset-assert 60)
-;    (force-lod                int8            :offset-assert 61)
-;    (cur-lod                  int8            :offset-assert 62)
-;    (desired-lod              int8            :offset-assert 63)
-;    (ripple                   basic           :offset-assert 64)
-;    (longest-edge             meters          :offset-assert 68)
-;    (longest-edge?            uint32          :offset-assert 68)
-;    (light-index              uint8           :offset-assert 72)
-;    (dummy                    UNKNOWN 2       :offset-assert 73)
-;    (death-draw-overlap       uint8           :offset-assert 75)
-;    (death-timer              uint8           :offset-assert 76)
-;    (death-timer-org          uint8           :offset-assert 77)
-;    (death-vertex-skip        uint16          :offset-assert 78)
-;    (death-effect             uint32          :offset-assert 80)
-;    (sink-group               basic           :offset-assert 84)
-;    (process                  basic           :offset-assert 88)
-;    (shadow                   basic           :offset-assert 92)
-;    (shadow-ctrl              basic           :offset-assert 96)
-;    (origin                   vector  :inline :offset-assert 112)
-;    (bounds                   vector  :inline :offset-assert 128)
-;    (radius                   meters          :offset-assert 140)
-;    (color-mult               rgbaf   :inline :offset-assert 144)
-;    (color-emissive           rgbaf   :inline :offset-assert 160)
-;    (secondary-interp         float           :offset-assert 176)
-;    (current-secondary-interp float           :offset-assert 180)
-;    (shadow-mask              uint8           :offset-assert 184)
-;    (level-index              uint8           :offset-assert 185)
-;    (origin-joint-index       uint8           :offset-assert 186)
-;    (shadow-joint-index       uint8           :offset-assert 187)
-;    )
-;   :method-count-assert 12
-;   :size-assert         #xbc
-;   :flag-assert         #xc000000bc
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     )
-;   )
+;; art-h
+(deftype draw-control (basic)
+  ((status                   uint8           :offset-assert 4)
+   (matrix-type              uint8           :offset-assert 5)
+   (data-format              uint8           :offset-assert 6)
+   (global-effect            uint8           :offset-assert 7)
+   (art-group                art-group       :offset-assert 8)
+   (jgeo                     art-joint-geo   :offset-assert 12)
+   (mgeo                     art-mesh-geo    :offset-assert 16)
+   (dma-add-func             function        :offset-assert 20)
+   (skeleton                 skeleton-group  :offset-assert 24)
+   (lod-set                  lod-set :inline :offset-assert 28)
+   (lod                      lod-group 4 :inline :offset 28)
+   (max-lod                  int8                :offset 60)
+   (force-lod                int8            :offset-assert 61)
+   (cur-lod                  int8            :offset-assert 62)
+   (desired-lod              int8            :offset-assert 63)
+   (ripple                   basic           :offset-assert 64)
+   (longest-edge             float           :offset-assert 68) ;; meters
+   (longest-edge?            uint32          :offset 68)
+   (light-index              uint8           :offset-assert 72)
+   (dummy                    uint8 2         :offset-assert 73)
+   (death-draw-overlap       uint8           :offset-assert 75)
+   (death-timer              uint8           :offset-assert 76)
+   (death-timer-org          uint8           :offset-assert 77)
+   (death-vertex-skip        uint16          :offset-assert 78)
+   (death-effect             uint32          :offset-assert 80)
+   (sink-group               basic           :offset-assert 84) ;; dma-foreground-sink-group?
+   (process                  basic           :offset-assert 88)
+   (shadow                   basic           :offset-assert 92)
+   (shadow-ctrl              basic           :offset-assert 96)
+   (origin                   vector  :inline :offset-assert 112)
+   (bounds                   vector  :inline :offset-assert 128)
+   (radius                   float           :offset 140) ;; meters
+   (color-mult               rgbaf   :inline :offset-assert 144)
+   (color-emissive           rgbaf   :inline :offset-assert 160)
+   (secondary-interp         float           :offset-assert 176)
+   (current-secondary-interp float           :offset-assert 180)
+   (shadow-mask              uint8           :offset-assert 184)
+   (level-index              uint8           :offset-assert 185)
+   (origin-joint-index       uint8           :offset-assert 186)
+   (shadow-joint-index       uint8           :offset-assert 187)
+   )
+  :method-count-assert 12
+  :size-assert         #xbc
+  :flag-assert         #xc000000bc
+  (:methods
+    (dummy-9 (_type_) pointer 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    )
+  )
 
 ;; generic-vu1-h
 (deftype pris-mtx (structure)
@@ -13150,23 +13216,6 @@
 ;   :method-count-assert 9
 ;   :size-assert         #x508
 ;   :flag-assert         #x900000508
-;   )
-
-;; joint
-; (deftype joint-anim-matrix (joint-anim)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
-
-; ;; joint
-; (deftype joint-anim-transformq (joint-anim)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   ;;  too many basic blocks
 ;   )
 
 ; ;; joint
@@ -33615,15 +33664,15 @@
 ;;(define-extern *ocean-wave-frames* object) ;; unknown type
 ;;(define-extern sky-color-hour object) ;; unknown type
 ;;(define-extern sky-circle-data object) ;; unknown type
-;;(define-extern *sky-drawn* object) ;; unknown type
+(define-extern *sky-drawn* symbol) ;; unknown type
 ;;(define-extern sky-vertex object) ;; unknown type
 ;;(define-extern sky-sun-data object) ;; unknown type
 ;;(define-extern sky-color-day object) ;; unknown type
-;;(define-extern *cloud-drawn* object) ;; unknown type
+(define-extern *cloud-drawn* symbol) ;; unknown type
 ;;(define-extern sky-tng-data object) ;; unknown type
 ;;(define-extern sky-orbit object) ;; unknown type
 ;;(define-extern sky-upload-data object) ;; unknown type
-;;(define-extern *sky-parms* object) ;; unknown type
+(define-extern *sky-parms* sky-parms) ;; unknown type
 ;;(define-extern sky-moon-data object) ;; unknown type
 (define-extern *sky-upload-data* sky-upload-data) ;; unknown type
 ;;(define-extern sky-work object) ;; unknown type
@@ -33635,10 +33684,9 @@
 ;;(define-extern mood-sun-table object) ;; unknown type
 ;;(define-extern mood-lights object) ;; unknown type
 ;;(define-extern mood-sun object) ;; unknown type
-(define-extern time-of-day-context type)
-;;(define-extern *time-of-day-context* object) ;; unknown type
+(define-extern *time-of-day-context* time-of-day-context) ;; unknown type
 ;;(define-extern palette-fade-control object) ;; unknown type
-;;(define-extern *time-of-day-mode* object) ;; unknown type
+(define-extern *time-of-day-mode* int) ;; unknown type
 ;;(define-extern time-of-day-dma object) ;; unknown type
 ;;(define-extern palette-fade-controls object) ;; unknown type
 (define-extern *palette-fade-controls* palette-fade-controls) ;; unknown type
@@ -33664,7 +33712,7 @@
 ;;(define-extern joint-anim-frame object) ;; unknown type
 ;;(define-extern joint-anim-transformq object) ;; unknown type
 ;;(define-extern lod-set object) ;; unknown type
-;;(define-extern new-dynamic-structure object) ;; unknown type
+(define-extern new-dynamic-structure (function kheap type int structure)) ;; unknown type
 ;;(define-extern generic-pris-mtx-save object) ;; unknown type
 ;;(define-extern generic-constants object) ;; unknown type
 ;;(define-extern pris-mtx object) ;; unknown type
