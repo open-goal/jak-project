@@ -1325,7 +1325,7 @@ class VectorFloatLoadStoreElement : public FormElement {
 
 class StackSpillStoreElement : public FormElement {
  public:
-  StackSpillStoreElement(RegisterAccess value,
+  StackSpillStoreElement(SimpleAtom value,
                          int size,
                          int stack_offset,
                          const std::optional<TypeSpec>& cast_type);
@@ -1338,7 +1338,7 @@ class StackSpillStoreElement : public FormElement {
   const std::optional<TypeSpec>& cast_type() const { return m_cast_type; }
 
  private:
-  RegisterAccess m_value;
+  SimpleAtom m_value;
   int m_size = -1;
   int m_stack_offset = -1;
   std::optional<TypeSpec> m_cast_type;

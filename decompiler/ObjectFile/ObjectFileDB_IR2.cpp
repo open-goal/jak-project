@@ -255,7 +255,7 @@ void ObjectFileDB::ir2_stack_spill_slot_pass() {
     }
     func.ir2.env.set_stack_spills(spill_map);
   });
-  lg::info("Analyzed stack spills: found {} functions will spills (total {} vars), took {:.2f} ms",
+  lg::info("Analyzed stack spills: found {} functions with spills (total {} vars), took {:.2f} ms",
            functions_with_spills, total_slots, timer.getMs());
 }
 
@@ -614,7 +614,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
         }
       }
 
-      if (func.ir2.print_debug_forms) {
+      if (false && func.ir2.print_debug_forms) {
         result += '\n';
         result += ";; DEBUG OUTPUT BELOW THIS LINE:\n";
         result += func.ir2.debug_form_string;
@@ -815,9 +815,8 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
   }
 
   if (func.cfg) {
-    result += func.cfg->to_form_string();
-
     if (!func.cfg->is_fully_resolved()) {
+      result += func.cfg->to_form_string();
       result += "\n";
       result += func.cfg->to_dot();
       result += "\n";

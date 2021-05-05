@@ -44,6 +44,7 @@
 (define-extern int128 type)
 (define-extern float type)
 (define-extern nothing (function none))
+(define-extern kheap type)
 
 
 ;; functions defined in C. TODO - this will end up being a duplicate of kernel-defs.gc?
@@ -2800,9 +2801,7 @@
 ;; ND did something REALLY strange with these and now we have to suffer from it
 (deftype dma-gif-packet (structure)
   ((dma-vif dma-packet :inline :offset-assert 0)
-   ;(gif      gif-tag64    :offset-assert 16)
-   ;(gif-regs gif-tag-regs  :offset-assert 24)
-   (gif     uint64    2       :offset-assert 16)
+   (gif     uint64    2       :offset-assert 16) ;; guess
    (quad    uint128    2       :offset 0)
    )
   :method-count-assert 9
@@ -3625,8 +3624,10 @@
    (vu1-buf      dma-buffer    :offset 8)
    (debug-buf    dma-buffer    :offset 36)
    (global-buf   dma-buffer    :offset 40)
-   (buffer       uint32    11  :offset 4) ;; for debugging?
    (bucket-group dma-bucket    :offset 44)
+   (buffer       uint32    11  :offset 4) ;; for debugging?
+   
+   
    (profile-bar  profile-bar 2 :offset 48)
    (run-time     uint64        :offset 56)
    )
@@ -3699,9 +3700,11 @@
 
 (define-extern *display* display)
 
-;;;;;;;;;;;;;;;
-;; display
-;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; DISPLAY             ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 
 (define-extern get-current-time (function uint))
 (define-extern get-integral-current-time (function uint))
@@ -3979,6 +3982,8 @@
 (define-extern *texture-enable-user-menu* int)
 (define-extern *texture-enable-user* int)
 
+(declare-type level basic)
+
 (deftype texture-id (uint32)
   ((index  uint16 :offset 8  :size 12)
    (page   uint16 :offset 20 :size 12)
@@ -3998,52 +4003,62 @@
   :flag-assert         #x900000008
   )
 
+(declare-type texture-page basic)
+(declare-type texture-page-segment structure)
+(declare-type texture-relocate-later basic)
+
 ;; texture-h
 (deftype texture-pool (basic)
   ((top              int32                        :offset-assert 4)
    (cur              int32                        :offset-assert 8)
-   (allocate-func    basic                        :offset-assert 12)
-   (font-palette     int32                        :offset-assert 16)
-   (segment          texture-pool-segment 4 :inline :offset-assert 20)
-   (segment-near     texture-pool-segment :inline :offset 20)
-   (segment-common   texture-pool-segment :inline :offset 28)
-   (common-page      int32              32      :offset-assert 52)
+   (allocate-func    (function texture-pool texture-page kheap int texture-page)                        :offset-assert 12)
+   (font-palette     int32                        :offset-assert 16) ;; vram word idx
+   
+   ;; these were reordered
+   (segment-near     texture-pool-segment :inline :offset-assert 20)
+   (segment-common   texture-pool-segment :inline :offset-assert 28)
+   (segment          texture-pool-segment 4 :inline :offset 20)
+   
+   (common-page      texture-page              32      :offset-assert 52)
    (common-page-mask int32                        :offset-assert 180)
-   (ids              int32              126     :offset-assert 184)
+   (ids              uint32              126     :offset-assert 184)
    )
   :method-count-assert 23
   :size-assert         #x2b0
   :flag-assert         #x17000002b0
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
+    (new (symbol type) _type_ 0)
+    (initialize! (_type_) _type_ 9)
+    (print-usage (_type_) _type_ 10)
+    (dummy-11 (_type_) none 11)
+    (allocate-defaults! (_type_) none 12)
+    (login-level-textures (_type_ level int (pointer texture-id)) none 13) ;; loading level...
+    (add-tex-to-dma! (_type_ level int) none 14) ;; very mysterious arg types.
+    (allocate-vram-words! (_type_ int) int 15)
+    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
     (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
+    (upload-one-common! (_type_) symbol 21)
+    (lookup-boot-common-id (_type_ int) int 22)
     )
   )
+
+(define-extern *texture-pool* texture-pool)
 
 ;; texture-h
 (deftype texture (basic)
   ((w            int16     :offset-assert 4)
    (h            int16     :offset-assert 6)
    (num-mips     uint8     :offset-assert 8)
-   (tex1-control uint8     :offset-assert 9)
-   (psm          uint8     :offset-assert 10)
+   (tex1-control uint8     :offset-assert 9)   ;; each level has a dest and a width
+   (psm          gs-psm    :offset-assert 10)
    (mip-shift    uint8     :offset-assert 11)
    (clutpsm      uint16    :offset-assert 12)
-   (dest         uint16 7 :offset-assert 14)
-   (clutdest     uint16    :offset-assert 28)
-   (width        uint8 7 :offset-assert 30)
+   (dest         uint16 7 :offset-assert 14)  ;; dest vram word addr, per leve
+   (clutdest     uint16    :offset-assert 28) ;; destination vram word addr of clut.
+   (width        uint8 7 :offset-assert 30)   ;; mip widths
    (name         basic     :offset-assert 40)
    (size         uint32    :offset-assert 44)
    (uv-dist      float     :offset-assert 48)
@@ -4073,28 +4088,30 @@
   ((info      basic            :offset-assert 4)
    (name      basic            :offset-assert 8)
    (id        uint32           :offset-assert 12)
-   (length    int32            :offset-assert 16)
+   (length    int32            :offset-assert 16) ;; number of texture
    (mip0-size uint32           :offset-assert 20)
-   (size      uint32           :offset-assert 24)
+   (size      uint32           :offset-assert 24) ;; in vram words.
    (segment   texture-page-segment 3 :inline :offset-assert 28)
    (pad       uint32 16       :offset-assert 64)
-   (data      uint8 :dynamic :offset-assert 128)
+   (data      texture :dynamic :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (remove-from-heap (_type_ kheap) _type_ 9)
+    (get-leftover-block-count (_type_ int int) int 10)
     (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (relocate-dests! (_type_ int int) none 12)
+    (add-to-dma-buffer (_type_ dma-buffer int) none 13)
+    (upload-now! (_type_ int) none 14)
     )
   )
 
+(declare-type adgif-shader structure)
+
 (deftype shader-ptr (uint32)
-  ()
+  ((shader uint32 :offset 8 :size 24))
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -4102,7 +4119,7 @@
 
 ;; texture-h
 (deftype texture-link (structure)
-  ((next uint32  :offset-assert 0)
+  ((next shader-ptr 1 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -4113,9 +4130,10 @@
 (deftype texture-page-dir-entry (structure)
   ((length int16   :offset-assert 0)
    (status uint16  :offset-assert 2)
-   (page   basic   :offset-assert 4)
-   (link   uint32  :offset-assert 8)
+   (page   texture-page   :offset-assert 4)
+   (link   texture-link  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -4123,7 +4141,8 @@
 
 ;; texture-h
 (deftype texture-page-dir (basic)
-  ((pad uint8 #x10))
+  ((length int32)
+   (entries texture-page-dir-entry 1 :inline))
   (:methods
    (dummy-9 () none 9)
    )
@@ -4137,7 +4156,7 @@
    (source uint32                  :offset-assert 12)
    (move   uint32                  :offset-assert 16)
    (entry  texture-page-dir-entry  :offset-assert 20)
-   (page   basic                   :offset-assert 24)
+   (page   texture-page                   :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
@@ -4158,7 +4177,7 @@
    (alpha      uint64     :offset 64)
    (link-test  uint32     :offset 8)
    (texture-id uint32     :offset 24)
-   (next       uint32     :offset 40)
+   (next       shader-ptr :offset 40)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -4272,7 +4291,7 @@
    (bsp                       basic           :offset-assert 48)
    (art-group                 basic           :offset-assert 52)
    (info                      basic           :offset-assert 56)
-   (texture-page              basic 9       :offset-assert 60)
+   (texture-page              texture-page 9       :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
    ; (foreground-sink-group-0   dma-foreground-sink-group :inline :offset-assert 176)
@@ -4283,8 +4302,8 @@
    (foreground-draw-engine    basic 3       :offset-assert 272)
    (entity                    basic           :offset-assert 284)
    (ambient                   basic           :offset-assert 288)
-   (closest-object            basic 9       :offset-assert 292)
-   (upload-size               uint32 9       :offset-assert 328)
+   (closest-object            float 9       :offset-assert 292)
+   (upload-size               int32 9       :offset-assert 328)
    (level-distance            float          :offset-assert 364) ; meters
    (inside-sphere?            basic           :offset-assert 368)
    (inside-boxes?             basic           :offset-assert 372)
@@ -4314,7 +4333,7 @@
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
-    (dummy-11 () none 11)
+    (dummy-11 (_type_) none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
@@ -4342,8 +4361,8 @@
 ;; level-h
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (unknown-field-1 basic                :offset-assert 8)
-   (unknown-field-2 basic                :offset-assert 12)
+   (unknown-level-1 level                :offset-assert 8)
+   (unknown-level-2 level                :offset-assert 12)
    (entity-link     entity-links         :offset 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -4722,6 +4741,9 @@
     )
   )
 
+(define-extern *text-group-names* (array string))
+(define-extern *common-text-heap* kheap)
+(define-extern *common-text* symbol)
 ;;;;;;;;;;;;;;;;
 ;; settings-h
 ;;;;;;;;;;;;;;;;
@@ -4822,23 +4844,27 @@
   ((vifcode        vif-tag 4 :offset-assert 0)
    (giftag         gif-tag   :offset-assert 16)
    (bitbltbuf      gs-bitbltbuf    :offset-assert 32)
-   (bitbltbuf-addr int64    :offset-assert 40)
+   (bitbltbuf-addr gs-reg64    :offset-assert 40)
    (trxpos         gs-trxpos    :offset-assert 48)
-   (trxpos-addr    int64    :offset-assert 56)
+   (trxpos-addr    gs-reg64    :offset-assert 56)
    (trxreg         gs-trxreg    :offset-assert 64)
-   (trxreg-addr    int64    :offset-assert 72)
+   (trxreg-addr    gs-reg64    :offset-assert 72)
    (finish         int64    :offset-assert 80) ;; gs-finish
-   (finish-addr    int64    :offset-assert 88)
+   (finish-addr    gs-reg64    :offset-assert 88)
    (trxdir         gs-trxdir    :offset-assert 96)
-   (trxdir-addr    int64    :offset-assert 104)
+   (trxdir-addr    gs-reg64    :offset-assert 104)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
 
-(define-extern store-image (function int int int int))
+(define-extern gs-store-image (function object object object))
+(define-extern store-image (function int int))
+(define-extern sync-path (function int int none))
 (define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
+(define-extern file-stream-close (function file-stream file-stream))
+(define-extern file-stream-write (function file-stream pointer uint uint))
 
 ;;;;;;;;;;;;;;;;;;
 ;; memory-usage-h
@@ -4864,19 +4890,108 @@
   :size-assert         #x6e0
   :flag-assert         #xc000006e0
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (reset! (_type_) _type_ 9)
+    (calculate-total (_type_) int 10)
     (dummy-11 () none 11)
     )
   )
+
+(define-extern *mem-usage* memory-usage-block)
+(define-extern *dma-mem-usage* memory-usage-block)
+(define-extern *temp-mem-usage* symbol)
 
 ;;;;;;;;;;;;;;
 ;; texture
 ;;;;;;;;;;;;;;
 
-; ;; texture
+(define-extern loado (function string kheap object))
+
+(define-extern ct32-24-block-table (array int32))
+(define-extern mz32-24-block-table (array int32))
+(define-extern ct16-block-table (array int32))
+(define-extern ct16s-block-table (array int32))
+(define-extern mz16-block-table (array int32))
+(define-extern mz16s-block-table (array int32))
+(define-extern mt8-block-table (array int32))
+(define-extern mt4-block-table (array int32))
+
+(define-extern texture-page-dir-inspect (function texture-page-dir symbol none))
+
+(define-extern texture-bpp (function gs-psm int))
+(define-extern texture-qwc (function int int gs-psm int))
+(define-extern physical-address (function pointer pointer))
+(define-extern dma-buffer-add-ref-texture (function dma-buffer pointer int int gs-psm none))
+(define-extern gs-find-block (function int int gs-psm int))
+(define-extern gs-page-width (function gs-psm int))
+(define-extern gs-page-height (function gs-psm int))
+(define-extern gs-block-width (function gs-psm int))
+(define-extern gs-block-height (function gs-psm int))
+(define-extern gs-largest-block (function int int gs-psm int))
+(define-extern gs-blocks-used (function int int gs-psm int))
+
+;; arg2 in these is not an int, but something else. Not sure what it is yet.
+;; all these texture-page-segment might actually be texture-relocate-later!
+(define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-common-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-common-boot-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern upload-vram-data (function dma-buffer int pointer int none))
+(define-extern upload-vram-pages (function texture-pool texture-pool-segment texture-page int int int))
+(define-extern update-vram-pages (function texture-pool texture-pool-segment texture-page int int)) ;; todo
+(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page int int int))
+
+(define-extern texture-page-near-allocate-0 (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-near-allocate-1 (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
+(define-extern texture-page-size-check (function texture-pool level symbol int))
+(define-extern texture-relocate (function dma-buffer texture int int int int))
+
+(define-extern *shader-list* pair) ;; unknown type
+(define-extern adgif-shader-login-no-remap-fast function)
+
+
+
+(define-extern relocate-later (function none))
+
+
+
+(define-extern *txt-dma-list* dma-buffer) ;; unknown type
+(define-extern adgif-shader-login-fast function)
+
+
+(define-extern lookup-texture-by-id (function texture-id texture))
+;;(define-extern *texture-pool* object) ;; unknown type
+
+(define-extern link-texture-by-id (function adgif-shader texture-id int))
+
+(define-extern *edit-shader* int) ;; unknown type
+(define-extern adgif-shader-update! function)
+
+
+(define-extern loading-level kheap)
+
+(define-extern texture-page-login (function texture-id function kheap texture-page-dir-entry))
+
+
+(define-extern adgif-shader-login function)
+(define-extern adgif-shader-login-no-remap function)
+
+
+;;;; unknown type
+
+(define-extern adgif-shader<-texture-simple! function)
+
+(define-extern adgif-shader<-texture! function)
+
+
+
+
+(define-extern *font-texture* texture)
+
+
+;; texture
 ; (deftype texture-page-dir (basic)
-;   ()
+;   ((length int32)
+;    (pad uint8 12))
 ;   :method-count-assert 10
 ;   :size-assert         #x14
 ;   :flag-assert         #xa00000014
@@ -7895,8 +8010,9 @@
   :flag-assert         #x90000012c
   )
 
-(define-extern show-mc-info (function none))
+(define-extern show-mc-info (function dma-buffer none))
 (define-extern mc-sync (function int))
+(define-extern mc-get-slot-info (function int mc-slot-info))
 
 ;; game-info-h
 (deftype game-bank (basic)
@@ -33485,54 +33601,7 @@
 ;;(define-extern memory-usage-block object) ;; unknown type
 ;;(define-extern *dma-mem-usage* object) ;; unknown type
 ;;(define-extern memory-usage-info object) ;; unknown type
-(define-extern upload-vram-pages function)
-;;(define-extern *shader-list* object) ;; unknown type
-(define-extern adgif-shader-login-no-remap-fast function)
-;;(define-extern mt8-block-table object) ;; unknown type
-(define-extern texture-bpp function)
-(define-extern gs-blocks-used function)
-(define-extern relocate-later function)
-(define-extern gs-page-width function)
-(define-extern upload-vram-pages-pris function)
-;;(define-extern ct16s-block-table object) ;; unknown type
-;;(define-extern *txt-dma-list* object) ;; unknown type
-(define-extern adgif-shader-login-fast function)
-(define-extern gs-page-height function)
-;;(define-extern mz16s-block-table object) ;; unknown type
-(define-extern lookup-texture-by-id function)
-;;(define-extern *texture-pool* object) ;; unknown type
-(define-extern dma-buffer-add-ref-texture function)
-(define-extern link-texture-by-id function)
-;;(define-extern mt4-block-table object) ;; unknown type
-;;(define-extern *edit-shader* object) ;; unknown type
-(define-extern adgif-shader-update! function)
-;;(define-extern ct16-block-table object) ;; unknown type
-(define-extern texture-page-common-boot-allocate function)
-(define-extern gs-find-block function)
-(define-extern texture-page-level-allocate function)
-(define-extern texture-page-common-allocate function)
-(define-extern texture-page-login function)
-(define-extern texture-page-dir-inspect function)
-(define-extern texture-qwc function)
-(define-extern adgif-shader-login function)
-(define-extern adgif-shader-login-no-remap function)
-;;(define-extern mz16-block-table object) ;; unknown type
-(define-extern gs-largest-block function)
-;;(define-extern ct32-24-block-table object) ;; unknown type
-(define-extern gs-block-width function)
-(define-extern adgif-shader<-texture-simple! function)
-(define-extern texture-relocate function)
-(define-extern adgif-shader<-texture! function)
-(define-extern update-vram-pages function)
-(define-extern texture-page-near-allocate-0 function)
-;;(define-extern mz32-24-block-table object) ;; unknown type
-(define-extern texture-page-default-allocate function)
-(define-extern texture-page-size-check function)
-(define-extern gs-block-height function)
-(define-extern physical-address function)
-(define-extern upload-vram-data function)
-(define-extern texture-page-near-allocate-1 function)
-;;(define-extern *font-texture* object) ;; unknown type
+
 (define-extern adgif-shader<-texture-with-update! function)
 ;;(define-extern full object) ;; unknown type
 ;;(define-extern active object) ;; unknown type
@@ -33848,7 +33917,7 @@
 ;;(define-extern task object) ;; unknown type
 ;;(define-extern base object) ;; unknown type
 ;;(define-extern rot object) ;; unknown type
-(define-extern vu-lights-default! function)
+(define-extern vu-lights-default! (function light-group none))
 (define-extern light-group-slerp function)
 (define-extern light-slerp function)
 (define-extern light-group-process! function)
@@ -34472,7 +34541,7 @@
 ;;(define-extern *sprite-array-2d* object) ;; unknown type
 (define-extern sprite-allocate-user-hvdf function)
 (define-extern sprite-draw-distorters function)
-;;(define-extern *shadow-middot-texture* object) ;; unknown type
+(define-extern *shadow-middot-texture* texture) ;; unknown type
 (define-extern sprite-init-distorter function)
 ;;(define-extern sprite-distorter-sine-tables object) ;; unknown type
 ;;(define-extern *sprite-distorter-sine-tables* object) ;; unknown type
@@ -34641,7 +34710,7 @@
 (define-extern generic-prepare-dma-double function)
 (define-extern generic-upload-vu0 function)
 (define-extern generic-work-init function)
-;;(define-extern *generic-envmap-texture* object) ;; unknown type
+(define-extern *generic-envmap-texture* texture) ;; unknown type
 (define-extern mercneric-shader-asm function)
 ;;(define-extern *inv-init-table* object) ;; unknown type
 (define-extern mercneric-bittable-asm function)
@@ -37196,7 +37265,7 @@
 ;;(define-extern at-pick-object object) ;; unknown type
 ;;(define-extern far object) ;; unknown type
 ;;(define-extern anim-speed object) ;; unknown type
-;;(define-extern *ocean-texture* object) ;; unknown type
+(define-extern *ocean-texture* texture) ;; unknown type
 ;;(define-extern texture-level object) ;; unknown type
 ;;(define-extern breath-in object) ;; unknown type
 ;;(define-extern breath-in-loud object) ;; unknown type

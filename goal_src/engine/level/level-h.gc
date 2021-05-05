@@ -5,6 +5,43 @@
 ;; name in dgo: level-h
 ;; dgos: GAME, ENGINE
 
+(defenum bucket-id
+    :type uint32
+    :bitfield #f
+    
+    (tfrag-tex0 5)
+    ;; merc0 10
+    ;; generic0 11
+    
+    (tfrag-tex1 12)
+    ;; merc1 17
+    ;; generic1 18
+    
+    (shrub-tex0 19)
+    
+    (shrub-tex1 25)
+    
+    (alpha-tex0 31)
+    
+    (alpha-tex1 38)
+    
+    (pris-tex0 48)
+    ;; merc0 49
+    ;; generic0 50
+    
+    (pris-tex1 51)
+    ;; merc1 52
+    ;; generic1 53
+    
+    (water-tex0 57)
+    ;; merc0 58     (+ default)
+    ;; generic0 59  (+ default)
+    
+    (water-tex1 60)
+    ;; merc1 61
+    ;; generic1 62
+    )
+
 ;; Information related to visibility data for a level.
 ;; Unclear why there are 8 of these per level.
 ;; Perhaps there are up to 8 "chunks" of the visibility loaded at a single time?
@@ -94,15 +131,15 @@
    (bsp                       basic           :offset-assert 48)
    (art-group                 basic           :offset-assert 52)
    (info                      basic           :offset-assert 56)
-   (texture-page              basic 9       :offset-assert 60)
+   (texture-page              texture-page 9  :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
    (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic, todo check stride.
    (foreground-draw-engine    basic 3       :offset-assert 272)
    (entity                    basic           :offset-assert 284)
    (ambient                   basic           :offset-assert 288)
-   (closest-object            basic 9       :offset-assert 292)
-   (upload-size               uint32 9       :offset-assert 328)
+   (closest-object            float  9       :offset-assert 292)
+   (upload-size               int32  9       :offset-assert 328)
    (level-distance            float          :offset-assert 364) ; meters
    (inside-sphere?            basic           :offset-assert 368)
    (inside-boxes?             basic           :offset-assert 372)
@@ -132,7 +169,7 @@
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
-    (dummy-11 () none 11)
+    (dummy-11 (_type_) none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
@@ -161,8 +198,8 @@
 ;; don't belong to any level, for example to render Jak.
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (unknown-field-1 basic                :offset-assert 8)
-   (unknown-field-2 basic                :offset-assert 12)
+   (unknown-level-1 level                :offset-assert 8)
+   (unknown-level-2 level                :offset-assert 12)
    (entity-link     entity-links         :offset 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -211,8 +248,8 @@
     (set! *level*
           (new 'static 'level-group
                :length 2
-               :unknown-field-1 #f
-               :unknown-field-2 #f
+               :unknown-level-1 #f
+               :unknown-level-2 #f
                :entity-link #f
                :border? #f
                :want-level #f

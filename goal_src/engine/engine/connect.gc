@@ -137,18 +137,21 @@
 
 (defmethod get-engine connection ((obj connection))
   "Get the engine for this connection. This must be used on a live connection."
+
+  ;; back up, until we get to the node that's inline on the engine.
   (while (-> obj prev0)
     (nop!)
     (nop!)
     (set! obj (the connection (-> obj prev0)))
     )
-  ;; the alive-list node has prev0 = #f, so we can just do an offset trick.
+  ;; obj is now alive-list field in an engine, so we can do an offset trick:
   (the-as engine (&+ obj -28))
   )
 
 (defmethod get-process connection ((obj connection))
   "Get the process for this connection"
-  ;; use prev1 to iterate through the process list.
+
+  ;; same trick as get-engine, but backs up using prev1 until we hit the process.
   (while (-> obj prev1)
    (nop!)
    (nop!)
@@ -250,32 +253,35 @@
   )
 
 (defmethod inspect engine ((obj engine))
-  (local-vars (s5-0 binteger) (s5-1 binteger) (s5-2 binteger) (s5-3 binteger))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tname: ~A~%" (-> obj name))
   (format #t "~Tengine-time: ~D~%" (-> obj engine-time))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Talive-list:~%")
-  (set! s5-0 *print-column*)
-  (set! *print-column* (+ *print-column* 8))
-  ((method-of-type connectable inspect) (-> obj alive-list))
-  (set! *print-column* s5-0)
+  (let ((s5-0 *print-column*))
+    (set! *print-column* (+ *print-column* 8))
+    ((method-of-type connectable inspect) (-> obj alive-list))
+    (set! *print-column* s5-0)
+    )
   (format #t "~Talive-list-end:~%")
-  (set! s5-1 *print-column*)
-  (set! *print-column* (+ *print-column* 8))
-  ((method-of-type connectable inspect) (-> obj alive-list-end))
-  (set! *print-column* s5-1)
+  (let ((s5-1 *print-column*))
+    (set! *print-column* (+ *print-column* 8))
+    ((method-of-type connectable inspect) (-> obj alive-list-end))
+    (set! *print-column* s5-1)
+    )
   (format #t "~Tdead-list:~%")
-  (set! s5-2 *print-column*)
-  (set! *print-column* (+ *print-column* 8))
-  ((method-of-type connectable inspect) (-> obj dead-list))
-  (set! *print-column* s5-2)
+  (let ((s5-2 *print-column*))
+    (set! *print-column* (+ *print-column* 8))
+    ((method-of-type connectable inspect) (-> obj dead-list))
+    (set! *print-column* s5-2)
+    )
   (format #t "~Tdead-list-end:~%")
-  (set! s5-3 *print-column*)
-  (set! *print-column* (+ *print-column* 8))
-  ((method-of-type connectable inspect) (-> obj dead-list-end))
-  (set! *print-column* s5-3)
+  (let ((s5-3 *print-column*))
+    (set! *print-column* (+ *print-column* 8))
+    ((method-of-type connectable inspect) (-> obj dead-list-end))
+    (set! *print-column* s5-3)
+    )
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   obj
   )
@@ -292,78 +298,68 @@
    )
   )
 
-(defmethod apply-to-connections engine ((obj engine) (arg0 (function connectable none)))
-  "Apply the given function to all the live connectables in an engine"
-  (local-vars
-   (iter connectable)
-   (next connectable)
-   )
-  (set! iter (-> obj alive-list next0))
-  (set! next (-> iter next0))
-  (while (!= iter (-> obj alive-list-end))
-    (arg0 iter)
-    (set! iter next)
-    (set! next (-> next next0))
+(defmethod apply-to-connections engine ((obj engine) (f (function connectable none)))
+  "Apply f to all connections for the engine. It's okay to have f remove the connection."
+  (let* ((current (-> obj alive-list next0))
+         ;; need to get this _before_ running f, in case we remove.
+         (next (-> current next0))
+         )
+    (while (!= current (-> obj alive-list-end))
+      (f current)
+      (set! current next)
+      (set! next (-> next next0))
+      )
     )
   0
   )
 
-(defmethod apply-to-connections-reverse engine ((obj engine) (arg0 (function connectable none)))
-  "Apply the given function to all the live conntables in the engine, iterating backward."
-  (let ((s4-0 (-> obj alive-list-end prev0)))
-   (while (!= s4-0 (-> obj alive-list))
-    (arg0 s4-0)
-    (set! s4-0 (-> s4-0 prev0))
+(defmethod apply-to-connections-reverse engine ((obj engine) (f (function connectable none)))
+  "Apply f to all connections, reverse order.
+   Do not use f to remove yourself from the list."
+  (let ((iter (-> obj alive-list-end prev0)))
+    (while (!= iter (-> obj alive-list))
+      (f iter)
+      (set! iter (-> iter prev0))
+      )
     )
-   )
   0
   )
 
 (defmethod execute-connections engine ((obj engine) (arg0 object))
-  "Iterate through all live connectables and execute them."
-  (local-vars (s4-0 connectable))
+  "Run the engine!"
 
-  ;; update the engine-time
+  ;; remember when
   (set! (-> obj engine-time) (-> *display* real-frame-counter))
-  ;; iterate!
-  (set! s4-0 (-> obj alive-list-end prev0))
-  (while (!= s4-0 (-> obj alive-list))
-    ;; Execute!
-    ((-> (the-as connection s4-0) param0)
-     (-> (the-as connection s4-0) param1)
-     (-> (the-as connection s4-0) param2)
-     (-> (the-as connection s4-0) param3)
-     arg0
-     )
-    (set! s4-0 (-> s4-0 prev0))
+  ;; go through the connection list, in reverse.
+  (let ((ct (the-as connection (-> obj alive-list-end prev0))))
+    (while (!= ct (-> obj alive-list))
+      ;; execute!
+      ((-> ct param0) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
+      ;; advance to previous.
+      (set! ct (the-as connection (-> ct prev0)))
+      )
     )
-  0)
+  0
+  )
 
 (defmethod execute-connections-and-move-to-dead engine ((obj engine) (arg0 object))
-  "Execute connections, but remove dead connections from the list."
-  (local-vars (v0-2 int) (v1-2 object) (s4-0 connectable))
-
-  ;; update the engine time
+  "Run the engine! If any objects return 'dead, then remove them"
   (set! (-> obj engine-time) (-> *display* real-frame-counter))
-  (set! s4-0 (-> obj alive-list-end prev0))
-
-  ;; iterate through alive list in reverse
-  (while (!= s4-0 (-> obj alive-list))
-   (set! v1-2
-    ((-> (the-as connection s4-0) param0)
-     (-> (the-as connection s4-0) param1)
-     (-> (the-as connection s4-0) param2)
-     (-> (the-as connection s4-0) param3)
-     arg0
-     )
+  (let ((ct (the-as connection (-> obj alive-list-end prev0))))
+    (while (!= ct (-> obj alive-list))
+      ;; execute function
+      (let ((result ((-> ct param0) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
+        ;; set the next one, _before_ removing
+        (set! ct (the-as connection (-> ct prev0)))
+        ;; remove if desired.
+        (if (= result 'dead)
+            ((method-of-type connection move-to-dead) (the-as connection (-> ct next0)))
+            )
+        )
+      )
     )
-   (set! s4-0 (-> s4-0 prev0))
-   ;; if we died, move us to the dead list.
-   (if (= v1-2 'dead)
-       (move-to-dead (the-as connection (-> s4-0 next0)))
-       )
-   )
-  0)
+  0
+  )
 
 (defmethod execute-connections-if-needed engine ((obj engine) (arg0 object))
   "Execute connections, but only if it hasn't been done on this frame."
@@ -529,37 +525,36 @@
    )
   0)
 
-
-(defmethod remove-by-param1 engine ((obj engine) (arg0 object))
-  "Remove all connections with param1 matching arg0."
-  (local-vars
-   (a0-1 connectable)
-   (s4-0 connectable)
-   )
-  (set! a0-1 (-> obj alive-list next0))
-  (set! s4-0 (-> a0-1 next0))
-  (while (!= a0-1 (-> obj alive-list-end))
-   (if (= (-> (the-as connection a0-1) param1) arg0)
-    ((method-of-type connection move-to-dead) (the connection a0-1))
+(defmethod remove-by-param1 engine ((obj engine) (p1-value object))
+  "Remove all connections with param1 matching arg0"
+  (let* ((current (-> obj alive-list next0))
+         (next (-> current next0))
+         )
+   (while (!= current (-> obj alive-list-end))
+    (if (= (-> (the-as connection current) param1) p1-value)
+     ((method-of-type connection move-to-dead) (the-as connection current))
+     )
+    (set! current next)
+    (set! next (-> next next0))
     )
-   (set! a0-1 s4-0)
-   (set! s4-0 (-> s4-0 next0))
    )
-  0)
+  0
+  )
 
-(defmethod remove-by-param2 engine ((obj engine) (arg0 int))
-  "Remove all connections with param2 matching arg0"
-  (local-vars
-   (a0-1 connectable)
-   (s4-0 connectable)
-   )
-  (set! a0-1 (-> obj alive-list next0))
-  (set! s4-0 (-> a0-1 next0))
-  (while (!= a0-1 (-> obj alive-list-end))
-   (if (= (-> (the-as connection a0-1) param2) arg0)
-    ((method-of-type connection move-to-dead) (the connection a0-1))
+
+
+(defmethod remove-by-param2 engine ((obj engine) (p2-value int))
+  "Remove all connections with param2 matching p2-value"
+  (let* ((current (-> obj alive-list next0))
+         (next (-> current next0))
+         )
+    (while (!= current (-> obj alive-list-end))
+      (if (= (-> (the-as connection current) param2) p2-value)
+          ((method-of-type connection move-to-dead) (the-as connection current))
+          )
+      (set! current next)
+      (set! next (-> next next0))
+      )
     )
-   (set! a0-1 s4-0)
-   (set! s4-0 (-> s4-0 next0))
-   )
-  0)
+  0
+  )

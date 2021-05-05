@@ -18,7 +18,8 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "euler", /* geometry, trigonometry, */
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
     "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io", "loader-h",
-    "texture-h", "level-h", "math-camera-h", /* math-camera,  "font-h",*/ "decomp-h", "display",
+    "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h", "display",
+    "connect", "text-h", "settings-h", "capture", "memory-usage-h",
     /* gap */
     "mspace-h", "drawable-h", "drawable-group-h",
     /* gap */
@@ -40,8 +41,8 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
     "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io",
-    "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera,  "font-h",*/ "decomp-h",
-    "display",
+    "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h",
+    "display", "connect", "text-h", "settings-h", "capture", "memory-usage-h",
     /* gap */
     "mspace-h", "drawable-h", "drawable-group-h",
     /* gap */
@@ -91,7 +92,7 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     // dma
     "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
     "vector=",                                // asm branching
-    // displyy
+    // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
 
@@ -153,6 +154,12 @@ const std::unordered_set<std::string> skip_in_compiling = {
     // vector
     // bad decisions on float vs int128
     "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
+
+    // connect
+    "(method 9 engine)",  // methods-by-name stuff.
+
+    // capture
+    "(method 3 gs-store-image-packet)",  // print giftag weirdness
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first

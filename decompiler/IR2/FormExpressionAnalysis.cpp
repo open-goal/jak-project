@@ -1855,6 +1855,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
                 fmt::format("Inconsistent types in method call: {} and {}", type_1, type_2));
           }
 
+          if (type_2 == "array") {
+            type_2 = "boxed-array";
+          }
+
           auto quoted_type = pool.alloc_single_element_form<SimpleAtomElement>(
               nullptr, SimpleAtom::make_sym_ptr(type_2));
 
@@ -2052,13 +2056,15 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
     x->push_to_stack(env, pool, stack);
   }
 
+  bool first = true;
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
       if (form == first_condition) {
         form->clear();
         form->push_back(stack.pop_back(pool));
       } else {
-        FormStack temp_stack(false);
+        FormStack temp_stack(first && stack.is_root());
+        first = false;
         for (auto& elt : form->elts()) {
           elt->push_to_stack(env, pool, temp_stack);
         }
@@ -3161,7 +3167,13 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
 ///////////////////////////
 void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
-  auto src = pop_to_forms({m_value}, env, pool, stack, true).at(0);
+  Form* src;
+  if (m_value.is_var()) {
+    src = pop_to_forms({m_value.var()}, env, pool, stack, true).at(0);
+  } else {
+    src = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_value);
+  }
+
   auto dst = pool.alloc_single_element_form<ConstantTokenElement>(
       nullptr, env.get_spill_slot_var_name(m_stack_offset));
   if (m_cast_type) {

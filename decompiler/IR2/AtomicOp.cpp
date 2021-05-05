@@ -1647,9 +1647,11 @@ void FunctionEndOp::collect_vars(RegAccessSet& vars) const {
 // StackSpillStoreOp
 /////////////////////////////
 
-StackSpillStoreOp::StackSpillStoreOp(RegisterAccess value, int size, int offset, int my_idx)
+StackSpillStoreOp::StackSpillStoreOp(const SimpleAtom& value, int size, int offset, int my_idx)
     : AtomicOp(my_idx), m_value(value), m_size(size), m_offset(offset) {
-  assert(m_value.mode() == AccessMode::READ);
+  if (m_value.is_var()) {
+    assert(m_value.var().mode() == AccessMode::READ);
+  }
 }
 
 goos::Object StackSpillStoreOp::to_form(const std::vector<DecompilerLabel>&, const Env& env) const {
@@ -1673,11 +1675,13 @@ bool StackSpillStoreOp::is_sequence_point() const {
 }
 
 void StackSpillStoreOp::update_register_info() {
-  m_read_regs.push_back(m_value.reg());
+  if (m_value.is_var()) {
+    m_read_regs.push_back(m_value.var().reg());
+  }
 }
 
 void StackSpillStoreOp::collect_vars(RegAccessSet& vars) const {
-  vars.insert(m_value);
+  m_value.collect_vars(vars);
 }
 
 RegisterAccess StackSpillStoreOp::get_set_destination() const {

@@ -778,7 +778,7 @@
     "args": ["packet", "reg-idx", "reg-val"],
     "vars": { "v1-0": "tag" }
   },
-  
+
   "(method 9 font-context)": {
     "args": ["obj", "mat"]
   },
@@ -813,7 +813,16 @@
     "args": ["obj", "scale"]
   },
   "(method 0 font-context)": {
-    "args": ["allocation", "type-to-make", "mat", "x", "y", "z", "color", "flags"],
+    "args": [
+      "allocation",
+      "type-to-make",
+      "mat",
+      "x",
+      "y",
+      "z",
+      "color",
+      "flags"
+    ],
     "vars": { "v0-0": "obj" }
   },
   "font-set-tex0": {
@@ -991,7 +1000,32 @@
   },
 
   "gs-set-default-store-image": {
-    "args": ["packet"]
+    "args": [
+      "packet",
+      "src-fbp",
+      "src-w",
+      "src-psm",
+      "ssax",
+      "ssay",
+      "rrw",
+      "rrh"
+    ]
+  },
+
+  "store-image": {
+    "args": ["oddeven"],
+    "vars": {
+      "s4-0": "buff0",
+      "s1-0": "buff1",
+      "s0-0": "packet",
+      "gp-0": "file",
+      "s3-0": "width",
+      "s2-0": "height",
+      "s0-1": "ptr-0",
+      "sv-16": "ptr-1",
+      "sv-32": "y-idx",
+      "sv-48": "y-idx-2"
+    }
   },
 
   "(method 0 draw-context)": {
@@ -1009,6 +1043,241 @@
 
   "draw-context-set-xy": {
     "args": ["ctxt", "x", "y"]
+  },
+
+  "texture-qwc": {
+    "args": ["w", "h", "tex-format"]
+  },
+
+  "gs-find-block": {
+    "args": ["bx", "by", "tex-format"]
+  },
+
+  "gs-largest-block": {
+    "args": ["tex-width", "tex-height", "tex-format"],
+    "vars": {
+      "s5-0": "block-width",
+      "v1-0": "block-height",
+      "a0-6": "real-width",
+      "a1-4": "real-height",
+      "s5-1": "width-blocks",
+      "s3-1": "height-blocks",
+      "s2-0": "x",
+      "s1-0": "y",
+      "s4-1": "max-block"
+    }
+  },
+
+  "gs-blocks-used": {
+    "args": ["tex-width", "tex-height", "tex-format"],
+    "vars": {
+      "s4-0": "page-width",
+      "v1-0": "page-height",
+      "a0-6": "real-width",
+      "a1-4": "real-height",
+      "s3-0": "width-blocks",
+      "s1-0": "height-blocks"
+    }
+  },
+
+  "dma-buffer-add-ref-texture": {
+    "args": ["buf", "data", "tex-w", "tex-h", "tex-format"],
+    "vars": {
+      "s5-0": "data-ptr",
+      "v1-0": "qwc",
+      "a0-4": "qwc-this-time",
+      "a1-3": "eop",
+      "a3-1": ["setup-dma", "dma-packet"],
+      "a3-3": ["setup-dif", "gs-gif-tag"],
+      "a2-4": ["data-dma", "dma-packet"]
+    }
+  },
+
+  "(method 15 texture-pool)": {
+    "args": ["obj", "word-count"]
+  },
+
+  "(method 22 texture-pool)": {
+    "args": ["obj", "tpage-id"]
+  },
+
+  "(method 10 texture-page)": {
+    "args": ["obj", "segment-count", "additional-size"]
+  },
+
+  "(method 16 texture-pool)": {
+    "args": ["obj", "segment", "size"]
+  },
+
+  "(method 9 texture-page)": {
+    "args": ["obj", "seg"]
+  },
+
+  "texture-page-default-allocate": {
+    "args": ["pool", "page", "seg", "tpage-id"],
+    "vars": { "s3-0": "seg-id" }
+  },
+
+  "texture-page-common-allocate": {
+    "args": ["pool", "page", "seg", "tpage-id"],
+    "vars": { "s4-0": "seg-id" }
+  },
+
+  "(method 12 texture-page)": {
+    "args": ["obj", "new-dest", "seg-id"],
+    "vars": {
+      "a3-4": "dst-block",
+      "t0-1": "tex-id",
+      "t1-6": "tex",
+      "t2-0": "num-mips",
+      "t3-4": "mip-id"
+    }
+  },
+
+  "texture-page-common-boot-allocate": {
+    "args": ["pool", "page", "heap", "tpage-id"],
+    "vars": { "s2-0": "tex-id" }
+  },
+
+  "upload-vram-data": {
+    "args": ["buf", "dest", "tex-data", "tex-h"],
+    "vars": {
+      "a3-2": "height-this-time",
+      "a0-1": ["dma", "dma-packet"],
+      "a0-3": ["gif", "gs-gif-tag"],
+      "a0-5": "gs-data"
+    }
+  },
+
+  "upload-vram-pages": {
+    "args": ["pool", "segment", "page", "mode", "bucket-idx"],
+    "vars": {
+      "s3-0": "dma-buf",
+      "sv-16": "tex-data",
+      "sv-20": "tex-dest-base-chunk",
+      "sv-24": "chunk-count",
+      "sv-48": "tex-id",
+      "s1-0": "upload-chunk-idx",
+      "v1-24": "current-dest-chunk",
+      "sv-32": "chunks-to-upload-count",
+      "sv-40": "first-chunk-idx-to-upload",
+      "gp-0": "total-upload-size",
+      "s4-0": "dma-start",
+      "a0-26": ["dma", "dma-packet"],
+      "a0-28": ["gif", "gs-gif-tag"],
+      "a0-30": "gif-data",
+      "v1-50": ["dma-end", "dma-packet"]
+    }
+  },
+
+  "update-vram-pages": {
+    "args": ["pool", "pool-segment", "page", "mode"],
+    "vars": {
+      "t1-0": "dest-block",
+      "t2-0": "sz",
+      "t0-1": "page-id",
+      "a1-4": "upload-chunks",
+      "a2-3": "chunk-idx",
+      "v1-2": "modified-chunk-count",
+      "a3-8": "vram-chunk"
+    }
+  },
+
+  "upload-vram-pages-pris": {
+    "args": ["pool", "segment", "page", "bucket-idx", "allow-cache-mask"],
+    "vars": {
+      "s3-0": "dma-buf",
+      "sv-16": "tex-data",
+      "sv-20": "tex-dest-base-chunk",
+      "sv-24": "chunk-count",
+      "sv-32": "chunks-to-upload-count",
+      "sv-40": "first-chunk-idx-to-upload",
+      "sv-48": "page-id",
+      "s0-0": "upload-chunk-idx",
+      "sv-52": "current-dest-chunk",
+      "sv-56": "allow-cached",
+      "gp-0":"total-upload-size",
+      "a0-21":["dma", "dma-packet"],
+      "a0-23":["gif", "gs-gif-tag"],
+      "v1-55":["dma-end", "dma-packet"]
+    }
+  },
+
+  "texture-page-near-allocate-0": {
+    "args": ["pool", "page", "heap", "mode"],
+    "vars": {
+      "s3-0":"common-dest",
+      "s2-0":"page-seg-idx",
+      "a1-5":"page-seg-2-size",
+      "v1-15":"after-seg-2-data",
+      "a0-8":"seg-2-data"
+    }
+  },
+
+  "texture-page-near-allocate-1": {
+    "args": ["pool", "page", "heap", "mode"],
+    "vars": {
+      "s4-0":"seg2-size",
+      "a1-1":"seg2-dest",
+      "s2-0":"common-dest",
+      "s1-0":"page-seg-idx"
+    }
+  },
+
+  "texture-page-level-allocate": {
+    "args": ["pool", "page", "heap", "mode"],
+    "vars": {
+      "s2-0":"common-id",
+      "v1-6":"level-idx"
+    }
+  },
+
+  "texture-page-size-check": {
+    "args": ["pool", "level", "hide-prints"],
+    "vars": {
+      "gp-0":"oversize",
+      "s3-0":"tfrag-page",
+      "v1-0":"tfrag-mip0-size",
+      "v1-3":"pris-page",
+      "v1-5":"shrub-page",
+      "v1-7":"alpha-page",
+      "v1-9":"water-page"
+    }
+  },
+
+  "(method 13 texture-pool)": {
+    "args":["obj", "level", "max-page-kind", "id-array"],
+    "vars": {
+      "v1-0":"page-idx",
+      "v1-5":"tfrag-dir-entry",
+      "v1-7":"pris-dir-entry",
+      "v1-9":"shrub-dir-entry",
+      "v1-11":"alpha-dir-entry",
+      "v1-13":"water-dir-entry",
+      "a2-7":"overflow-bits"
+    }
+  },
+
+  "(method 14 texture-pool)": {
+    "args":["obj", "level", "tex-page-kind"],
+    "vars": {
+      "s3-0":"tfrag-page",
+      "s2-0":"tfrag-bucket",
+      "f30-0":"distance",
+      "a2-4":"pris-page",
+      "a3-3":"pris-bucket",
+      "a2-5":"shrub-page",
+      "f0-5":"shrub-closest",
+      "t0-4":"shrub-bucket",
+      "a3-4":"shrub-mode",
+      "s3-1":"alpha-page",
+      "f0-6":"alpha-closest",
+      "s2-1":"alpha-bucket",
+      "s1-3":"alpha-mode",
+      "s0-0":"alpha-dest-chunk",
+      "a2-7":"water-page",
+      "a3-6":"water-bucket"
+    }
   },
 
   "(method 9 __assert-info-private-struct)": {
@@ -1194,6 +1463,34 @@
   "(method 0 engine)": {
     "args": ["allocation", "type-to-make", "name", "length"],
     "vars": { "v0-0": "obj", "v1-11": "idx-to-link", "a0-1": "end-idx" }
+  },
+
+  "(method 10 engine)": {
+    "args": ["obj", "f"],
+    "vars": { "a0-1": "current", "s4-0": "next" }
+  },
+
+  "(method 11 engine)": {
+    "args": ["obj", "f"],
+    "vars": { "s4-0": "iter" }
+  },
+
+  "(method 12 engine)": {
+    "vars": { "s4-0": ["ct", "connection"] }
+  },
+
+  "(method 13 engine)": {
+    "vars": { "s4-0": ["ct", "connection"], "v1-2": "result" }
+  },
+
+  "(method 19 engine)": {
+    "args": ["obj", "p1-value"],
+    "vars": { "a0-1": "current", "s4-0": "next" }
+  },
+
+  "(method 20 engine)": {
+    "args": ["obj", "p2-value"],
+    "vars": { "a0-1": "current", "s4-0": "next" }
   },
 
   "connection-process-apply": {
