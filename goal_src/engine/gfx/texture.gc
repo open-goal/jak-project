@@ -616,7 +616,7 @@
   ;; allocate the common and near segments
   (allocate-segment! obj (-> obj segment-common) COMMON_SEGMENT_WORDS) ;; ~0.5 MB
   (allocate-segment! obj (-> obj segment-near) NEAR_SEGMENT_WORDS) ;; ~1.6 MB.
-  (set! *sky-base-vram-word* (allocate-vram-words! obj SPECIAL_VRAM_WORDS))y
+  (set! *sky-base-vram-word* (allocate-vram-words! obj SPECIAL_VRAM_WORDS))
   (set! *sky-base-block* (sar *sky-base-vram-word* 6))
   (set! *sky-base-page* (sar *sky-base-vram-word* 11))
   (set! *eyes-base-vram-word* (+ *sky-base-vram-word* 6144))
@@ -829,7 +829,7 @@
 
       ;; make sure we don't overflow the segment we're loading to.
       (set! chunk-count
-            (shr (min (the-as int (-> segment size)) (the-as int (+ chunk-count 4095))) 12)
+            (the uint (shr (min (the-as int (-> segment size)) (the-as int (+ chunk-count 4095))) 12))
             )
 
       ;; next, loop over each chunk to upload.
@@ -857,7 +857,7 @@
                  ;; and the run ends, we found a chunk that's already loaded.
                  ;; so we upload the run:
                  (upload-vram-data dma-buf
-                                   (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6)
+                                   (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
                                    (&+ tex-data (shl first-chunk-idx-to-upload 14))
                                    (shl chunks-to-upload-count 5)
                                    )
@@ -879,7 +879,7 @@
       (when (nonzero? chunks-to-upload-count)
         (upload-vram-data
          dma-buf
-         (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6)
+         (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
          (&+ tex-data (shl first-chunk-idx-to-upload 14))
          (shl chunks-to-upload-count 5)
          )
@@ -997,7 +997,7 @@
         )
 
       ;; don't overflow.
-      (let ((upload-chunks (shr (min (the-as int (-> a1-1 size)) (the-as int (+ sz 4095))) 12)))
+      (let ((upload-chunks (shr (min (the-as int (-> pool-segment size)) (the-as int (+ sz 4095))) 12)))
 
         ;; for each chunk we might want to upload...
         (dotimes (chunk-idx (the-as int upload-chunks))
@@ -1054,7 +1054,7 @@
      (set! page-id (-> page id))
 
      ;; don't overflow.
-     (set! chunk-count (shr (min (the-as int (-> segment size)) (the-as int (+ chunk-count 4095))) 12))
+     (set! chunk-count (the uint (shr (min (the-as int (-> segment size)) (the-as int (+ chunk-count 4095))) 12)))
 
      ;; iterate through chunks to possibly upload
      (dotimes (upload-chunk-idx (the-as int chunk-count))
@@ -1078,7 +1078,7 @@
              ((or (= (-> pool ids current-dest-chunk) page-id) (not allow-cached))
               ;; end of run. upload the run.
               (upload-vram-data dma-buf
-                                (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6)
+                                (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
                                 (&+ tex-data (shl first-chunk-idx-to-upload 14))
                                 (shl chunks-to-upload-count 5)
                                 )
@@ -1098,7 +1098,7 @@
      (when (nonzero? chunks-to-upload-count)
        (upload-vram-data
         dma-buf
-        (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6)
+        (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
         (&+ tex-data (shl first-chunk-idx-to-upload 14))
         (shl chunks-to-upload-count 5)
         )
@@ -1505,6 +1505,9 @@
     )
   (none)
   )
+
+;; for movie hack.
+(defun-extern movie? symbol)
 
 (defmethod add-tex-to-dma! texture-pool ((obj texture-pool) (level level) (tex-page-kind int))
   "For the given tpage-kind, upload as needed for the level"
