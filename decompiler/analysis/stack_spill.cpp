@@ -69,8 +69,7 @@ constexpr StackInstrInfo stack_instrs[] = {{InstructionKind::SQ, false, 16, fals
                                            {InstructionKind::LQ, true, 16, false},
                                            {InstructionKind::SW, false, 4, false},
                                            //{InstructionKind::LWU, true, 4, false}
-                                           {InstructionKind::SD, false, 8, false}
-     };
+                                           {InstructionKind::SD, false, 8, false}};
 }  // namespace
 
 StackSpillMap build_spill_map(const std::vector<Instruction>& instructions, Range<int> range) {
