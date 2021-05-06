@@ -17,15 +17,21 @@ namespace pretty_print {
 namespace {
 // the integer representation is used here instead, wouldn't want really long numbers
 const std::unordered_set<u32> banned_floats = {};
+
+// print these floats (shown as ints here) as a named constant instead
+const std::unordered_map<u32, std::string> const_floats = {{0x40490fda, "PI"},
+                                                           {0xc0490fda, "MINUS_PI"}};
 }  // namespace
 /*!
- * Print a float in a nice representation if possibly, or an exact 32-bit integer constant to
+ * Print a float in a nice representation if possible, or an exact 32-bit integer constant to
  * be reinterpreted.
  */
 goos::Object float_representation(float value) {
   u32 int_value;
   memcpy(&int_value, &value, 4);
-  if (banned_floats.find(int_value) == banned_floats.end()) {
+  if (const_floats.find(int_value) != const_floats.end()) {
+    return pretty_print::to_symbol(const_floats.at(int_value));
+  } else if (banned_floats.find(int_value) == banned_floats.end()) {
     return goos::Object::make_float(value);
   } else {
     return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));

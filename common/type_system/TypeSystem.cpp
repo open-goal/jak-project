@@ -756,6 +756,7 @@ void TypeSystem::add_builtin_types() {
   uint_type->disallow_in_runtime();
 
   // Methods and Fields
+  forward_declare_type_as_structure("memory-usage-block");
 
   // OBJECT
   add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
@@ -768,7 +769,7 @@ void TypeSystem::add_builtin_types() {
   add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
   add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
   add_method(obj_type, "mem-usage",
-             make_function_typespec({"_type_"}, "int32"));  // todo - this is a guess.
+             make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
@@ -962,7 +963,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
     if (field.is_inline()) {
       if (!allow_inline(field_type)) {
         fmt::print(
-            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted.\n",
             field_type->get_name());
         throw std::runtime_error("bad get size in type");
       }
@@ -982,7 +983,8 @@ int TypeSystem::get_size_in_type(const Field& field) const {
     if (field.is_inline()) {
       if (!allow_inline(field_type)) {
         fmt::print(
-            "[Type System] Attempted to use {} inline, this probably isn't what you wanted.\n",
+            "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted. Type "
+            "may not be defined fully.\n",
             field_type->get_name());
         throw std::runtime_error("bad get size in type");
       }

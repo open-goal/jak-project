@@ -1504,7 +1504,7 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
     case FixedOperatorKind::NONE:
       return "none";
     case FixedOperatorKind::PCPYLD:
-      return ".pcpyld";
+      return "make-u128";
     default:
       assert(false);
       return "";
@@ -2302,7 +2302,7 @@ void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
 // StackSpillStoreElement
 ////////////////////////////////
 
-StackSpillStoreElement::StackSpillStoreElement(RegisterAccess value,
+StackSpillStoreElement::StackSpillStoreElement(SimpleAtom value,
                                                int size,
                                                int stack_offset,
                                                const std::optional<TypeSpec>& cast_type)
@@ -2320,7 +2320,9 @@ void StackSpillStoreElement::apply(const std::function<void(FormElement*)>& f) {
 void StackSpillStoreElement::apply_form(const std::function<void(Form*)>&) {}
 
 void StackSpillStoreElement::collect_vars(RegAccessSet& vars, bool) const {
-  vars.insert(m_value);
+  if (m_value.is_var()) {
+    vars.insert(m_value.var());
+  }
 }
 
 void StackSpillStoreElement::get_modified_regs(RegSet&) const {}

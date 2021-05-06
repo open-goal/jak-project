@@ -1397,3 +1397,16 @@
   ;; Copies the contents of a gpr to a cop0 (system control) register
   (fake-asm .mtc0 dest src)
   )
+
+
+(defmacro make-u128 (upper lower)
+  "Make a i128 from two 64-bit values."
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     result
+     )
+  )

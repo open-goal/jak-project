@@ -41,7 +41,7 @@ def main():
 
 	file_stats = []
 	total_gc_files = 0
-	excluded_files = {"all_files.gc", "goal-lib.gc", "ocean-trans-tables.gc", "ocean-frames.gc"}
+	excluded_files = {"all_files.gc", "goal-lib.gc", "ocean-trans-tables.gc", "ocean-frames.gc", "ocean-tables.gc"}
 
 
 	for fn in all_files:

@@ -1,0 +1,63 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type game-text
+(deftype game-text (structure)
+  ((id   uint32  :offset-assert 0)
+   (text string  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type game-text
+(defmethod inspect game-text ((obj game-text))
+  (format #t "[~8x] ~A~%" obj 'game-text)
+  (format #t "~Tid: ~D~%" (-> obj id))
+  (format #t "~Ttext: ~A~%" (-> obj text))
+  obj
+  )
+
+;; definition of type game-text-info
+(deftype game-text-info (basic)
+  ((length      int32                      :offset-assert 4)
+   (language-id int32                      :offset-assert 8)
+   (group-name  string                     :offset-assert 12)
+   (data        game-text :inline :dynamic :offset-assert 16)
+   )
+  :method-count-assert 10
+  :size-assert         #x10
+  :flag-assert         #xa00000010
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+;; definition for method 3 of type game-text-info
+(defmethod inspect game-text-info ((obj game-text-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tlanguage-id: ~D~%" (-> obj language-id))
+  (format #t "~Tgroup-name: ~A~%" (-> obj group-name))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition for symbol *text-group-names*, type (array string)
+(define
+  *text-group-names*
+  (the-as (array string) (new 'static 'boxed-array string 1 "common"))
+  )
+
+;; definition for symbol *common-text-heap*, type kheap
+(define *common-text-heap* (the-as kheap (new 'global 'kheap)))
+
+;; definition for symbol *common-text*, type symbol
+(define *common-text* #f)
+
+;; failed to figure out what this is:
+(let ((v0-3 0))
+  )
+
