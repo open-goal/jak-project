@@ -85,7 +85,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       // look up the type of the symbol
       auto type = dts.symbol_types.find(m_string);
       if (type == dts.symbol_types.end()) {
-        throw std::runtime_error("Don't have the type of symbol " + m_string);
+        throw std::runtime_error("Do not have the type of symbol " + m_string);
       }
 
       if (type->second == TypeSpec("type")) {
@@ -131,8 +131,8 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       if (hint_kv != env.label_types().end()) {
         return TP_Type::make_from_ts(dts.parse_type_spec(hint_kv->second.type_name));
       }
-      // throw std::runtime_error("IR_StaticAddress couldn't figure out the type: " + label.name);
-      lg::error("IR_StaticAddress doesn't know the type of {}", label.name);
+      // throw std::runtime_error("IR_StaticAddress could not figure out the type: " + label.name);
+      lg::error("IR_StaticAddress does not know the type of {}", label.name);
       return TP_Type::make_from_ts("object");
     }
     case Kind::INVALID:
@@ -195,7 +195,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::PCPYLD:
       return TP_Type::make_from_ts("uint");
     default:
-      throw std::runtime_error("Simple expression can't get_type: " +
+      throw std::runtime_error("Simple expression cannot get_type: " +
                                to_form(env.file->labels, env).print());
   }
   return {};
@@ -488,7 +488,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
-  throw std::runtime_error(fmt::format("Can't get_type_int2: {}, args {} and {}",
+  throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));
 }
@@ -855,7 +855,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   throw std::runtime_error(
       fmt::format("Could not get type of load: {}. ", to_form(env.file->labels, env).print()));
 
-  throw std::runtime_error("LoadVarOp can't get_src_type: " +
+  throw std::runtime_error("LoadVarOp cannot get_src_type: " +
                            to_form(env.file->labels, env).print());
 }
 
@@ -935,11 +935,11 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   auto in_type = in_tp.typespec();
 
   if (in_type.base_type() != "function") {
-    throw std::runtime_error("Called something that wasn't a function: " + in_type.print());
+    throw std::runtime_error("Called something that was not a function: " + in_type.print());
   }
 
   if (in_type.arg_count() < 1) {
-    throw std::runtime_error("Called a function, but we don't know its type");
+    throw std::runtime_error("Called a function, but we do not know its type");
   }
 
   if (in_type.arg_count() == 2 && in_type.get_arg(0) == TypeSpec("_varargs_")) {
