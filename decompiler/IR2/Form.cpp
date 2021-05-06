@@ -1497,6 +1497,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "!=";
     case FixedOperatorKind::METHOD_OF_OBJECT:
       return "method-of-object";
+    case FixedOperatorKind::METHOD_OF_TYPE:
+      return "method-of-type";
     case FixedOperatorKind::NULLP:
       return "null?";
     case FixedOperatorKind::PAIRP:
@@ -2345,6 +2347,31 @@ void StackSpillValueElement::apply(const std::function<void(FormElement*)>& f) {
 void StackSpillValueElement::apply_form(const std::function<void(Form*)>&) {}
 void StackSpillValueElement::collect_vars(RegAccessSet&, bool) const {}
 void StackSpillValueElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// MethodOfTypeElement
+///////////////////////////////
+
+MethodOfTypeElement::MethodOfTypeElement(RegisterAccess type_reg,
+                                         const TypeSpec& type_at_decompile,
+                                         const MethodInfo& method_info)
+    : m_type_reg(type_reg), m_type_at_decompile(type_at_decompile), m_method_info(method_info) {}
+
+goos::Object MethodOfTypeElement::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("method-of-type", m_type_reg.to_form(env), m_method_info.name);
+}
+
+void MethodOfTypeElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void MethodOfTypeElement::apply_form(const std::function<void(Form*)>&) {}
+
+void MethodOfTypeElement::collect_vars(RegAccessSet& vars, bool) const {
+  vars.insert(m_type_reg);
+}
+
+void MethodOfTypeElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////
 // Utilities
