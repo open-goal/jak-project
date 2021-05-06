@@ -22,9 +22,8 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "connect", "text-h", "settings-h", "capture", "memory-usage-h", /* "texture", */ "main-h",
     "mspace-h", "drawable-h", "drawable-group-h", "drawable-inline-array-h", "draw-node-h",
     "drawable-tree-h", "drawable-actor-h", "drawable-ambient-h", "game-task-h", "hint-control-h",
-    "generic-h", "lights-h",
-    /* gap */
-    "sky-h", "mood-h", /* "time-of-day-h", */
+    "generic-h", "lights-h", "ocean-h", "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
+    "sky-h", "mood-h",                                        /* "time-of-day-h", */
     /* gap */
     "bounding-box",
     /* gap */
@@ -32,21 +31,20 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
-    "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h", "gkernel-h", "gkernel", "gstring", "dgo-h", "gstate", "types-h", "vu1-macros",
-    "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
-    "geometry-h", "trigonometry-h",
-    /* transformq-h, */
-    "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
+    "gcommon", "gstring-h", "gkernel-h", "gkernel",
+    /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
+    "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
+    "trigonometry-h", /* transformq-h, */ "matrix", "transform", "quaternion",
+    "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
     "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io",
     "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h",
     "display", "connect", "text-h", "settings-h", "capture", "memory-usage-h",
     /* "texture", */ "main-h", "mspace-h", "drawable-h", "drawable-group-h",
     "drawable-inline-array-h", "draw-node-h", "drawable-tree-h", "drawable-actor-h",
-    "drawable-ambient-h", "game-task-h", "hint-control-h", "generic-h", "lights-h",
-    /* gap */
-    "sky-h", "mood-h", /* "time-of-day-h", */
+    "drawable-ambient-h", "game-task-h", "hint-control-h", "generic-h", "lights-h", "ocean-h",
+    "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
+    "sky-h", "mood-h",    /* "time-of-day-h", */
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
