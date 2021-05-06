@@ -784,9 +784,9 @@ TEST_F(FormRegressionTest, NewMethod) {
       "(begin (when\n"
       "  (begin\n"
       "   (set! v1-0 object)\n"
-      "   (set! t9-0 (-> v1-0 methods-by-name new))\n"  // object new
-      "   (set! v1-1 a1-0)\n"                           // ?
-      "   (set! a2-1 (-> a1-0 size))\n"                 // math
+      "   (set! t9-0 (method-of-type v1-0 new))\n"  // object new
+      "   (set! v1-1 a1-0)\n"                       // ?
+      "   (set! a2-1 (-> a1-0 size))\n"             // math
       "   (set! a1-1 (-> a1-0 heap-base))\n"
       "   (set! a1-2 (*.ui a2-0 a1-1))\n"
       "   (set! a2-2 (+ a2-1 a1-2))\n"
@@ -875,7 +875,7 @@ TEST_F(FormRegressionTest, TypeOf) {
   std::string expected =
       "(begin\n"
       "  (set! v1-1 (rtype-of a0-0))\n"
-      "  (set! t9-0 (-> v1-1 methods-by-name print))\n"  // print method.
+      "  (set! t9-0 (method-of-type v1-1 print))\n"  // print method.
       "  (set! v0-0 (call! a0-0))\n"
       "  (ret-value v0-0)\n"
       "  )";

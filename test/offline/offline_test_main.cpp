@@ -19,13 +19,11 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
     "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io", "loader-h",
     "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h", "display",
-    "connect", "text-h", "settings-h", "capture", "memory-usage-h",
-    /* gap */
-    "mspace-h", "drawable-h", "drawable-group-h",
-    /* gap */
-    "lights-h",
-    /* gap */
-    "sky-h", "mood-h", /* "time-of-day-h", */
+    "connect", "text-h", "settings-h", "capture", "memory-usage-h", /* "texture", */ "main-h",
+    "mspace-h", "drawable-h", "drawable-group-h", "drawable-inline-array-h", "draw-node-h",
+    "drawable-tree-h", "drawable-actor-h", "drawable-ambient-h", "game-task-h", "hint-control-h",
+    "generic-h", "lights-h", "ocean-h", "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
+    "sky-h", "mood-h",                                        /* "time-of-day-h", */
     /* gap */
     "bounding-box",
     /* gap */
@@ -33,22 +31,20 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
 
 // the object files to check against a reference in test/decompiler/reference
 const std::vector<std::string> g_object_files_to_check_against_reference = {
-    "gcommon",  // NOTE: this file needs work, but adding it for now just to test the framework.
-    "gstring-h", "gkernel-h", "gkernel", "gstring", "dgo-h", "gstate", "types-h", "vu1-macros",
-    "math", "vector-h", "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h",
-    "geometry-h", "trigonometry-h",
-    /* transformq-h, */
-    "matrix", "transform", "quaternion", "euler", /* geometry, trigonometry */
+    "gcommon", "gstring-h", "gkernel-h", "gkernel",
+    /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
+    "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
+    "trigonometry-h", /* transformq-h, */ "matrix", "transform", "quaternion",
+    "euler", /* geometry, trigonometry */
     "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
     "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io",
     "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h",
     "display", "connect", "text-h", "settings-h", "capture", "memory-usage-h",
-    /* gap */
-    "mspace-h", "drawable-h", "drawable-group-h",
-    /* gap */
-    "lights-h",
-    /* gap */
-    "sky-h", "mood-h", /* "time-of-day-h", */
+    /* "texture", */ "main-h", "mspace-h", "drawable-h", "drawable-group-h",
+    "drawable-inline-array-h", "draw-node-h", "drawable-tree-h", "drawable-actor-h",
+    "drawable-ambient-h", "game-task-h", "hint-control-h", "generic-h", "lights-h", "ocean-h",
+    "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
+    "sky-h", "mood-h",    /* "time-of-day-h", */
     /* gap */ "bounding-box",
     /* gap */
     "sync-info-h", "sync-info"};
@@ -155,9 +151,6 @@ const std::unordered_set<std::string> skip_in_compiling = {
     // bad decisions on float vs int128
     "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
 
-    // connect
-    "(method 9 engine)",  // methods-by-name stuff.
-
     // capture
     "(method 3 gs-store-image-packet)",  // print giftag weirdness
 
@@ -170,6 +163,8 @@ const std::unordered_set<std::string> skip_in_compiling = {
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
 
+bool g_dump_mode = false;
+
 }  // namespace
 int main(int argc, char** argv) {
   lg::initialize();
@@ -178,6 +173,10 @@ int main(int argc, char** argv) {
   bool got_arg = false;
   for (int i = 1; i < argc; i++) {
     auto arg = std::string(argv[i]);
+    if (arg == "--dump-mode") {
+      g_dump_mode = true;
+      continue;
+    }
     if (arg.length() > 2 && arg[0] == '-' && arg[1] == '-') {
       continue;
     }
@@ -445,7 +444,15 @@ TEST_F(OfflineDecompilation, Reference) {
     strip_trailing_newlines(reference);
     strip_trailing_newlines(src);
 
-    EXPECT_EQ(reference, src);
+    if (g_dump_mode) {
+      if (reference != src) {
+        fmt::print("----------------- {}\n", file);
+        fmt::print("{}\n", src);
+        EXPECT_TRUE(false);
+      }
+    } else {
+      EXPECT_EQ(reference, src);
+    }
   }
 }
 

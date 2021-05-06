@@ -130,6 +130,13 @@ Matcher Matcher::while_loop(const Matcher& condition, const Matcher& body) {
   return m;
 }
 
+Matcher Matcher::any_constant_token(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_CONSTANT_TOKEN;
+  m.m_string_out_id = match_id;
+  return m;
+}
+
 bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::ANY:
@@ -249,6 +256,18 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
       return false;
+    } break;
+
+    case Kind::ANY_CONSTANT_TOKEN: {
+      auto as_ct = input->try_as_element<ConstantTokenElement>();
+      if (as_ct) {
+        if (m_string_out_id != -1) {
+          maps_out->strings[m_string_out_id] = as_ct->value();
+        }
+        return true;
+      } else {
+        return false;
+      }
     } break;
 
     case Kind::CAST: {

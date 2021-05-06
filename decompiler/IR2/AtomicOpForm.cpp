@@ -457,12 +457,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         auto method_id = (ro.offset - 16) / 4;
         auto method_info = env.dts->ts.lookup_method(type_name, method_id);
 
-        std::vector<DerefToken> tokens;
-        tokens.push_back(DerefToken::make_field_name("methods-by-name"));
-        tokens.push_back(DerefToken::make_field_name(method_info.name));
-        auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
-            nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
-        return pool.alloc_single_element_form<DerefElement>(nullptr, source, false, tokens);
+        return pool.alloc_single_element_form<MethodOfTypeElement>(
+            nullptr, ro.var, input_type.get_type_objects_typespec(), method_info);
       }
 
       // todo structure method
