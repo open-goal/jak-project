@@ -122,7 +122,7 @@ goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            const TypeSystem& ts) {
   auto guessed_type = get_type_of_label(label, words);
   if (!guessed_type.has_value()) {
-    throw std::runtime_error("Couldn't guess the type of " + label.name);
+    throw std::runtime_error("Could not guess the type of " + label.name);
   }
   return decompile_at_label(*guessed_type, label, labels, words, ts);
 }
@@ -317,7 +317,7 @@ goos::Object decompile_structure(const TypeSpec& type,
       assert(field.name() == "type" && field.offset() == 0);
       auto& word = obj_words.at(0);
       if (word.kind != LinkedWord::TYPE_PTR) {
-        throw std::runtime_error("Basic doesn't start with type pointer");
+        throw std::runtime_error("Basic does not start with type pointer");
       }
 
       if (word.symbol_name != actual_type.base_type()) {

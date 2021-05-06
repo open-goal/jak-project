@@ -1024,6 +1024,6 @@ const DecompilerLabel& LinkedObjectFile::get_label_by_name(const std::string& na
       return label;
     }
   }
-  throw std::runtime_error("Can't find label " + name);
+  throw std::runtime_error("Cannot find label " + name);
 }
 }  // namespace decompiler
