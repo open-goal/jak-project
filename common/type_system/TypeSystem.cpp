@@ -783,7 +783,7 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(basic_type, "type", make_typespec("type"));
   // the default new basic doesn't support dynamic sizing. anything dynamic will override this
   // and then call (method object new) to do the dynamically-sized allocation.
-  add_method(basic_type, "new", make_function_typespec({"symbol", "type"}, "basic"));
+  add_method(basic_type, "new", make_function_typespec({"symbol", "type"}, "_type_"));
 
   // SYMBOL
   builtin_structure_inherit(symbol_type);

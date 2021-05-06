@@ -997,6 +997,10 @@ class DerefToken {
   void apply_form(const std::function<void(Form*)>& f);
   void get_modified_regs(RegSet& regs) const;
 
+  bool is_field_name(const std::string& name) const {
+    return m_kind == Kind::FIELD_NAME && m_name == name;
+  }
+
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
     assert(m_kind == Kind::FIELD_NAME);
@@ -1038,6 +1042,7 @@ class DerefElement : public FormElement {
   const Form* base() const { return m_base; }
   Form* base() { return m_base; }
   const std::vector<DerefToken>& tokens() const { return m_tokens; }
+  std::vector<DerefToken>& tokens() { return m_tokens; }
   void set_base(Form* new_base);
   void set_addr_of(bool is_addr_of) { m_is_addr_of = is_addr_of; }
 
@@ -1146,6 +1151,7 @@ class ConstantTokenElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  const std::string& value() const { return m_value; }
 
  private:
   std::string m_value;
@@ -1363,6 +1369,28 @@ class StackSpillValueElement : public FormElement {
   int m_size = -1;
   int m_stack_offset = -1;
   bool m_is_signed = false;
+};
+
+class MethodOfTypeElement : public FormElement {
+ public:
+  MethodOfTypeElement(RegisterAccess type_reg,
+                      const TypeSpec& type_at_decompile,
+                      const MethodInfo& method_info);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  RegisterAccess m_type_reg;
+  TypeSpec m_type_at_decompile;
+  MethodInfo m_method_info;
 };
 
 /*!

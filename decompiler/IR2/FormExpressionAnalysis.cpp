@@ -1677,8 +1677,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
         auto desired_arg_type = function_type.get_arg(arg_id + 1);
         if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-          arg_forms.push_back(
-              pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+          arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
         } else {
           arg_forms.push_back(val);
         }
@@ -1694,8 +1693,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
         auto desired_arg_type = function_type.get_arg(arg_id);
         if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-          arg_forms.push_back(
-              pool.alloc_single_element_form<CastElement>(nullptr, desired_arg_type, val));
+          arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
         } else {
           arg_forms.push_back(val);
         }
@@ -1791,13 +1789,13 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   {
     // detect method calls:
-    // ex: ((-> pair methods-by-name new) (quote global) pair gp-0 a3-0)
+    // ex: ((method-of-type pair new) (quote global) pair gp-0 a3-0)
     constexpr int type_for_method = 0;
     constexpr int method_name = 1;
 
-    auto deref_matcher = Matcher::deref(
-        Matcher::any_symbol(type_for_method), false,
-        {DerefTokenMatcher::string("methods-by-name"), DerefTokenMatcher::any_string(method_name)});
+    auto deref_matcher = Matcher::op(
+        GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_TYPE),
+        {Matcher::any_symbol(type_for_method), Matcher::any_constant_token(method_name)});
 
     auto matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher), {});
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
@@ -1893,13 +1891,13 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   {
     // detect method calls:
-    // ex: ((-> XXX methods-by-name new) (quote global) pair gp-0 a3-0)
+    // ex: ((method-of-type x new) (quote global) pair gp-0 a3-0)
     constexpr int method_name = 0;
     constexpr int type_source = 1;
 
-    auto deref_matcher = Matcher::deref(
-        Matcher::any(type_source), false,
-        {DerefTokenMatcher::string("methods-by-name"), DerefTokenMatcher::any_string(method_name)});
+    auto deref_matcher =
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_TYPE),
+                    {Matcher::any(type_source), Matcher::any_constant_token(method_name)});
 
     auto matcher = Matcher::op_with_rest(GenericOpMatcher::func(deref_matcher), {});
     auto temp_form = pool.alloc_single_form(nullptr, new_form);
@@ -1942,52 +1940,7 @@ void DerefElement::update_from_stack(const Env& env,
   // merge nested ->'s
   inline_nested();
 
-  if (m_tokens.size() >= 3) {
-    auto& method_name = m_tokens.at(m_tokens.size() - 1);
-    auto& mbn = m_tokens.at(m_tokens.size() - 2);
-    auto& type = m_tokens.at(m_tokens.size() - 3);
-    if (method_name.kind() == DerefToken::Kind::FIELD_NAME &&
-        mbn.kind() == DerefToken::Kind::FIELD_NAME && mbn.field_name() == "methods-by-name" &&
-        type.kind() == DerefToken::Kind::FIELD_NAME && type.field_name() == "type") {
-      std::string name = method_name.field_name();
-      m_tokens.pop_back();
-      m_tokens.pop_back();
-      m_tokens.pop_back();
-
-      if (m_tokens.empty()) {
-        auto method_op = pool.alloc_element<GenericElement>(
-            GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT), m_base,
-            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
-        result->push_back(method_op);
-      } else {
-        auto method_op = pool.alloc_element<GenericElement>(
-            GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT),
-            pool.alloc_single_form(nullptr, this),
-            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
-        result->push_back(method_op);
-      }
-      return;
-    }
-  }
-
-  // rewrite access to the method table to use method-of-object
-  // (-> <some-object> type methods-by-name <method-name>)
-  // (method-of-object <some-object> <method-name>)
-  auto get_method_matcher = Matcher::deref(
-      Matcher::any(0), false,
-      {DerefTokenMatcher::string("type"), DerefTokenMatcher::string("methods-by-name"),
-       DerefTokenMatcher::any_string(1)});
-  Form hack_form;
-  hack_form.elts() = {this};
-  auto mr = match(get_method_matcher, &hack_form);
-  if (mr.matched) {
-    auto method_op = pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT), mr.maps.forms.at(0),
-        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, mr.maps.strings.at(1)));
-    result->push_back(method_op);
-  } else {
-    result->push_back(this);
-  }
+  result->push_back(this);
 }
 
 void DerefElement::inline_nested() {
@@ -3185,6 +3138,41 @@ void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormS
 void VectorFloatLoadStoreElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   mark_popped();
   stack.push_form_element(this, true);
+}
+
+void MethodOfTypeElement::update_from_stack(const Env& env,
+                                            FormPool& pool,
+                                            FormStack& stack,
+                                            std::vector<FormElement*>* result,
+                                            bool allow_side_effects) {
+  mark_popped();
+  auto type = pop_to_forms({m_type_reg}, env, pool, stack, allow_side_effects).at(0);
+
+  auto type_as_deref = type->try_as_element<DerefElement>();
+  if (type_as_deref) {
+    if (type_as_deref->tokens().size() > 1 &&
+        type_as_deref->tokens().back().is_field_name("type")) {
+      type_as_deref->tokens().pop_back();
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+          std::vector<Form*>{type, pool.alloc_single_element_form<ConstantTokenElement>(
+                                       nullptr, m_method_info.name)}));
+      return;
+    } else if (type_as_deref->tokens().size() == 1 &&
+               type_as_deref->tokens().back().is_field_name("type")) {
+      result->push_back(pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+          std::vector<Form*>{
+              type_as_deref->base(),
+              pool.alloc_single_element_form<ConstantTokenElement>(nullptr, m_method_info.name)}));
+      return;
+    }
+  }
+
+  result->push_back(pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::METHOD_OF_TYPE),
+      std::vector<Form*>{type, pool.alloc_single_element_form<ConstantTokenElement>(
+                                   nullptr, m_method_info.name)}));
 }
 
 void SimpleAtomElement::update_from_stack(const Env&,

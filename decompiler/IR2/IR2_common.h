@@ -138,6 +138,7 @@ enum class FixedOperatorKind {
   NEQ,
   CONS,
   METHOD_OF_OBJECT,
+  METHOD_OF_TYPE,
   NULLP,
   PAIRP,
   NONE,

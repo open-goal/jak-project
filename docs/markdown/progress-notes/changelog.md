@@ -143,3 +143,4 @@
 - Added `.psubw` assembly form
 - Changed `.ftoi` to `VCVTTPS2DQ` to make the rounding behavior match the PS2 (truncate).
 - Forward declaring a type with `declare-type` also forward declares the global holding the runtime type object.
+- The `new` method of basic now has a method return type of `_type_`. Previously it was `basic`, meaning you always needed to declare `new` with the right type.
