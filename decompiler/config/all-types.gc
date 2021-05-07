@@ -5606,6 +5606,7 @@
    (morph-z  uint16  :offset-assert 12)
    (morph-w  uint16  :offset-assert 14)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -6876,7 +6877,7 @@
    (death-vertex-skip        uint16          :offset-assert 78)
    (death-effect             uint32          :offset-assert 80)
    (sink-group               basic           :offset-assert 84) ;; dma-foreground-sink-group?
-   (process                  basic           :offset-assert 88)
+   (process                  process         :offset-assert 88)
    (shadow                   basic           :offset-assert 92)
    (shadow-ctrl              basic           :offset-assert 96)
    (origin                   vector  :inline :offset-assert 112)
@@ -6895,7 +6896,7 @@
   :size-assert         #xbc
   :flag-assert         #xc000000bc
   (:methods
-    (dummy-9 (_type_) pointer 9)
+    (dummy-9 (_type_) (pointer int8) 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     )
@@ -7119,7 +7120,7 @@
   :flag-assert         #x900000010
   )
 
-; ;; merc-h
+;; merc-h
 (deftype merc-effect (structure)
   ((frag-geo         merc-fragment          :offset-assert 0)
    (frag-ctrl        merc-fragment-control  :offset-assert 4)
@@ -7148,10 +7149,10 @@
   ((eye-slot      int8                 :offset-assert 0)
    (shader-offset int8                 :offset-assert 1)
    (shader-count  int8                 :offset-assert 2)
-   ;(shader        UNKNOWN      3       :offset-assert 16)
    (iris-shader   adgif-shader :inline :offset-assert 16)
    (pupil-shader  adgif-shader :inline :offset-assert 96)
    (lid-shader    adgif-shader :inline :offset-assert 176)
+   (shader        adgif-shader 3 :inline :offset 16) ;; moved
    )
   :method-count-assert 9
   :size-assert         #x100
@@ -7369,416 +7370,419 @@
   :flag-assert         #x900000ba0
   )
 
-; ;; generic-merc-h
-; (deftype generic-merc-output (structure)
-;   ((info             gsf-info   :inline :offset-assert 0)
-;    (header           gsf-header :inline :offset-assert 16)
-;    (index-kick-table UNKNOWN    80      :offset-assert 32)
-;    (index-table      UNKNOWN    160     :offset-assert 32)
-;    (inverse-table    UNKNOWN    256     :offset-assert 192)
-;    (vertex-table     UNKNOWN    72      :offset-assert 448)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xac0
-;   :flag-assert         #x900000ac0
-;   )
+;; generic-merc-h
+(deftype generic-merc-output (structure)
+  ((info             gsf-info   :inline :offset-assert 0)
+   (header           gsf-header :inline :offset-assert 16)
+   (index-kick-table uint16     80      :offset-assert 32)
+   (index-table      uint8      160     :offset 32)
+   (inverse-table    uint8      256     :offset-assert 192)
+   (vertex-table     gsf-vertex 72 :inline :offset-assert 448)
+   )
+  :method-count-assert 9
+  :size-assert         #xac0
+  :flag-assert         #x900000ac0
+  )
 
-; ;; generic-merc-h
-; (deftype generic-merc-dcache (structure)
-;   ((output-a    generic-merc-output :inline :offset-assert 0)
-;    (output-b    generic-merc-output :inline :offset-assert 2752)
-;    (inv-table-1 UNKNOWN             544     :offset-assert 5504)
-;    (inv-table-7 UNKNOWN             544     :offset-assert 6048)
-;    (inv-safety  UNKNOWN             16      :offset-assert 6592)
-;    (effect-data UNKNOWN             1584    :offset-assert 6608)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x2000
-;   :flag-assert         #x900002000
-;   )
+;; generic-merc-h
+(deftype generic-merc-dcache (structure)
+  ((output-a    generic-merc-output :inline :offset-assert 0)
+   (output-b    generic-merc-output :inline :offset-assert 2752)
+   (inv-table-1 uint8               544     :offset-assert 5504)
+   (inv-table-7 uint8               544     :offset-assert 6048)
+   (inv-safety  uint8               16      :offset-assert 6592)
+   (effect-data uint8               1584    :offset-assert 6608)
+   )
+  :method-count-assert 9
+  :size-assert         #x2000
+  :flag-assert         #x900002000
+  )
 
-; ;; generic-merc-h
-; (deftype gm-shadow (structure)
-;   ((perspective                matrix              :inline :offset-assert 0)
-;    (isometric                  matrix              :inline :offset-assert 64)
-;    (inv-camera-rot             matrix              :inline :offset-assert 128)
-;    (envmap-shader              adgif-shader        :inline :offset-assert 192)
-;    (current-chain              uint32                      :offset-assert 272)
-;    (next-chain                 uint32                      :offset-assert 276)
-;    (buf-index                  uint32                      :offset-assert 280)
-;    (fragment-count             uint32                      :offset-assert 284)
-;    (write-limit                int32                       :offset-assert 288)
-;    (indexed-input-base         generic-merc-input          :offset-assert 292)
-;    (other-input-base           generic-merc-input          :offset-assert 296)
-;    (indexed-output-base        generic-merc-output         :offset-assert 300)
-;    (other-output-base          generic-merc-output         :offset-assert 304)
-;    (p-input                    uint32                      :offset-assert 308)
-;    (gsf-buf                    generic-merc-dcache         :offset-assert 312)
-;    (p-fheader                  merc-fp-header              :offset-assert 316)
-;    (mercneric-convert          basic                       :offset-assert 320)
-;    (generic-prepare-dma-single basic                       :offset-assert 324)
-;    (generic-prepare-dma-double basic                       :offset-assert 328)
-;    (generic-light-proc         basic                       :offset-assert 332)
-;    (generic-envmap-proc        basic                       :offset-assert 336)
-;    (high-speed-reject          basic                       :offset-assert 340)
-;    (hsr-xmult                  vector              :inline :offset-assert 352)
-;    (hsr-ymult                  vector              :inline :offset-assert 368)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x180
-;   :flag-assert         #x900000180
-;   )
+;; generic-merc-h
+(deftype gm-shadow (structure)
+  ((perspective                matrix              :inline :offset-assert 0)
+   (isometric                  matrix              :inline :offset-assert 64)
+   (inv-camera-rot             matrix              :inline :offset-assert 128)
+   (envmap-shader              adgif-shader        :inline :offset-assert 192)
+   (current-chain              uint32                      :offset-assert 272)
+   (next-chain                 uint32                      :offset-assert 276)
+   (buf-index                  uint32                      :offset-assert 280)
+   (fragment-count             uint32                      :offset-assert 284)
+   (write-limit                int32                       :offset-assert 288)
+   (indexed-input-base         generic-merc-input          :offset-assert 292)
+   (other-input-base           generic-merc-input          :offset-assert 296)
+   (indexed-output-base        generic-merc-output         :offset-assert 300)
+   (other-output-base          generic-merc-output         :offset-assert 304)
+   (p-input                    uint32                      :offset-assert 308)
+   (gsf-buf                    generic-merc-dcache         :offset-assert 312)
+   (p-fheader                  merc-fp-header              :offset-assert 316)
+   (mercneric-convert          basic                       :offset-assert 320)
+   (generic-prepare-dma-single basic                       :offset-assert 324)
+   (generic-prepare-dma-double basic                       :offset-assert 328)
+   (generic-light-proc         basic                       :offset-assert 332)
+   (generic-envmap-proc        basic                       :offset-assert 336)
+   (high-speed-reject          basic                       :offset-assert 340)
+   (hsr-xmult                  vector              :inline :offset-assert 352)
+   (hsr-ymult                  vector              :inline :offset-assert 368)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
 
-; ;; generic-merc-h
-; (deftype generic-merc-work (structure)
-;   ((input-a generic-merc-input         :inline :offset-assert 0)
-;    (input-b generic-merc-input         :inline :offset-assert 2976)
-;    (ctrl    generic-merc-ctrl-with-sfx :inline :offset-assert 5952)
-;    (shadow  gm-shadow                  :inline :offset-assert 6368)
-;    (stack   UNKNOWN                    16      :offset-assert 6752)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1b60
-;   :flag-assert         #x900001b60
-;   )
+;; generic-merc-h
+(deftype generic-merc-work (structure)
+  ((input-a generic-merc-input         :inline :offset-assert 0)
+   (input-b generic-merc-input         :inline :offset-assert 2976)
+   (ctrl    generic-merc-ctrl-with-sfx :inline :offset-assert 5952)
+   (shadow  gm-shadow                  :inline :offset-assert 6368)
+   (stack   uint128                    16      :offset-assert 6752)
+   )
+  :method-count-assert 9
+  :size-assert         #x1b60
+  :flag-assert         #x900001b60
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-instance (structure)
-;   ((matrix-tag  dma-packet :inline :offset-assert 0)
-;    (matrix-data UNKNOWN    6       :offset-assert 16)
-;    (index-tag   dma-packet :inline :offset-assert 112)
-;    (indices     UNKNOWN    224     :offset-assert 128)
-;    (end-tag     dma-packet :inline :offset-assert 352)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x170
-;   :flag-assert         #x900000170
-;   )
+;; generic-tie-h
+(deftype generic-tie-instance (structure)
+  ((matrix-tag  dma-packet :inline :offset-assert 0)
+   (matrix-data vector   6 :inline :offset-assert 16)
+   (index-tag   dma-packet :inline :offset-assert 112)
+   (indices     uint8      224     :offset-assert 128)
+   (end-tag     dma-packet :inline :offset-assert 352)
+   )
+  :method-count-assert 9
+  :size-assert         #x170
+  :flag-assert         #x900000170
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-input (structure)
-;   ((palette-tag dma-packet :inline :offset-assert 0)
-;    (palette     UNKNOWN    128     :offset-assert 16)
-;    (model-tag   dma-packet :inline :offset-assert 528)
-;    (model       UNKNOWN    146     :offset-assert 544)
-;    (matrix-tag  dma-packet :inline :offset-assert 2880)
-;    (matrix-data UNKNOWN    6       :offset-assert 2896)
-;    (index-tag   dma-packet :inline :offset-assert 2992)
-;    (indices     UNKNOWN    224     :offset-assert 3008)
-;    (end-tag     dma-packet :inline :offset-assert 3232)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xcb0
-;   :flag-assert         #x900000cb0
-;   )
+;; generic-tie-h
+(deftype generic-tie-input (structure)
+  ((palette-tag dma-packet :inline :offset-assert 0)
+   (palette     rgba       128 :offset-assert 16)
+   (model-tag   dma-packet :inline :offset-assert 528)
+   (model       vector     146 :inline :offset-assert 544)
+   (matrix-tag  dma-packet :inline :offset-assert 2880)
+   (matrix-data vector     6 :inline :offset-assert 2896)
+   (index-tag   dma-packet :inline :offset-assert 2992)
+   (indices     uint8      224     :offset-assert 3008)
+   (end-tag     dma-packet :inline :offset-assert 3232)
+   )
+  :method-count-assert 9
+  :size-assert         #xcb0
+  :flag-assert         #x900000cb0
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-run-control (structure)
-;   ((skip-bp2    uint8  :offset-assert 0)
-;    (skip-ips    uint8  :offset-assert 1)
-;    (gifbuf-skip uint8  :offset-assert 2)
-;    (strips      uint8  :offset-assert 3)
-;    (target-bp1  uint8  :offset-assert 4)
-;    (target-bp2  uint8  :offset-assert 5)
-;    (target-ip1  uint8  :offset-assert 6)
-;    (target-ip2  uint8  :offset-assert 7)
-;    (target-bps  uint8  :offset-assert 8)
-;    (target-ips  uint8  :offset-assert 9)
-;    (is-generic  uint8  :offset-assert 10)
-;    (reserved    uint8  :offset-assert 11)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xc
-;   :flag-assert         #x90000000c
-;   )
+;; generic-tie-h
+(deftype generic-tie-run-control (structure)
+  ((skip-bp2    uint8  :offset-assert 0)
+   (skip-ips    uint8  :offset-assert 1)
+   (gifbuf-skip uint8  :offset-assert 2)
+   (strips      uint8  :offset-assert 3)
+   (target-bp1  uint8  :offset-assert 4)
+   (target-bp2  uint8  :offset-assert 5)
+   (target-ip1  uint8  :offset-assert 6)
+   (target-ip2  uint8  :offset-assert 7)
+   (target-bps  uint8  :offset-assert 8)
+   (target-ips  uint8  :offset-assert 9)
+   (is-generic  uint8  :offset-assert 10)
+   (reserved    uint8  :offset-assert 11)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-base-point (structure)
-;   ((data UNKNOWN 8 :offset-assert 0)
-;    (quad uint128   :offset-assert 0)
-;    (x    int16     :offset-assert 0)
-;    (y    int16     :offset-assert 2)
-;    (z    int16     :offset-assert 4)
-;    (d0   int16     :offset-assert 6)
-;    (vtx  uint64    :offset-assert 0)
-;    (u    int16     :offset-assert 8)
-;    (v    int16     :offset-assert 10)
-;    (tex  uint32    :offset-assert 8)
-;    (w    int16     :offset-assert 12)
-;    (d1   int16     :offset-assert 14)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+;; generic-tie-h
+(deftype generic-tie-base-point (structure)
+  ((x    int16     :offset-assert 0)
+   (y    int16     :offset-assert 2)
+   (z    int16     :offset-assert 4)
+   (d0   int16     :offset-assert 6)
+   (vtx  uint64    :offset 0)
+   (u    int16     :offset-assert 8)
+   (v    int16     :offset-assert 10)
+   (tex  uint32    :offset 8)
+   (w    int16     :offset-assert 12)
+   (d1   int16     :offset-assert 14)
+   (data uint16  8 :offset 0) ;; moved
+   (quad uint128   :offset 0) ;; moved
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-bps (structure)
-;   ((bp UNKNOWN 4 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40
-;   :flag-assert         #x900000040
-;   )
+;; generic-tie-h
+(deftype generic-tie-bps (structure)
+  ((bp generic-tie-base-point 4 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-interp-point (structure)
-;   ((data   UNKNOWN 12 :offset-assert 0)
-;    (quad   uint128    :offset-assert 0)
-;    (x      int16      :offset-assert 0)
-;    (y      int16      :offset-assert 2)
-;    (z      int16      :offset-assert 4)
-;    (d0     int16      :offset-assert 6)
-;    (vtx0   uint64     :offset-assert 0)
-;    (dx     int16      :offset-assert 8)
-;    (dy     int16      :offset-assert 10)
-;    (dz     int16      :offset-assert 12)
-;    (unused int16      :offset-assert 14)
-;    (vtx1   uint64     :offset-assert 8)
-;    (u      int16      :offset-assert 16)
-;    (v      int16      :offset-assert 18)
-;    (tex    uint32     :offset-assert 16)
-;    (w      int16      :offset-assert 20)
-;    (d1     int16      :offset-assert 22)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x18
-;   :flag-assert         #x900000018
-;   )
+;; generic-tie-h
+(deftype generic-tie-interp-point (structure)
+  ((x      int16      :offset-assert 0)
+   (y      int16      :offset-assert 2)
+   (z      int16      :offset-assert 4)
+   (d0     int16      :offset-assert 6)
+   (vtx0   uint64     :offset 0)
+   (dx     int16      :offset-assert 8)
+   (dy     int16      :offset-assert 10)
+   (dz     int16      :offset-assert 12)
+   (unused int16      :offset-assert 14)
+   (vtx1   uint64     :offset 8)
+   (u      int16      :offset-assert 16)
+   (v      int16      :offset-assert 18)
+   (tex    uint32     :offset 16)
+   (w      int16      :offset-assert 20)
+   (d1     int16      :offset-assert 22)
+   (data   uint16  12 :offset 0)
+   ;(quad   uint128    :offset 0)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-ips (structure)
-;   ((ip UNKNOWN 2 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+;; generic-tie-h
+(deftype generic-tie-ips (structure)
+  ((ip generic-tie-interp-point 2 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-header (structure)
-;   ((effect              uint8              :offset-assert 0)
-;    (interp-table-size   uint8              :offset-assert 1)
-;    (num-bps             uint8              :offset-assert 2)
-;    (num-ips             uint8              :offset-assert 3)
-;    (tint-color          uint32             :offset-assert 4)
-;    (index-table-offset  uint16             :offset-assert 8)
-;    (kick-table-offset   uint16             :offset-assert 10)
-;    (normal-table-offset uint16             :offset-assert 12)
-;    (interp-table-offset uint16             :offset-assert 14)
-;    (gsf-header          gsf-header :inline :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+;; generic-tie-h
+(deftype generic-tie-header (structure)
+  ((effect              uint8              :offset-assert 0)
+   (interp-table-size   uint8              :offset-assert 1)
+   (num-bps             uint8              :offset-assert 2)
+   (num-ips             uint8              :offset-assert 3)
+   (tint-color          uint32             :offset-assert 4)
+   (index-table-offset  uint16             :offset-assert 8)
+   (kick-table-offset   uint16             :offset-assert 10)
+   (normal-table-offset uint16             :offset-assert 12)
+   (interp-table-offset uint16             :offset-assert 14)
+   (gsf-header          gsf-header :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-matrix (structure)
-;   ((matrix matrix :inline :offset-assert 0)
-;    (morph  vector :inline :offset-assert 64)
-;    (fog    qword  :inline :offset-assert 80)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x60
-;   :flag-assert         #x900000060
-;   )
+;; generic-tie-h
+(deftype generic-tie-matrix (structure)
+  ((matrix matrix :inline :offset-assert 0)
+   (morph  vector :inline :offset-assert 64)
+   (fog    qword  :inline :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-normal (structure)
-;   ((x     int8  :offset-assert 0)
-;    (y     int8  :offset-assert 1)
-;    (z     int8  :offset-assert 2)
-;    (dummy int8  :offset-assert 3)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   )
+;; generic-tie-h
+(deftype generic-tie-normal (structure)
+  ((x     int8  :offset-assert 0)
+   (y     int8  :offset-assert 1)
+   (z     int8  :offset-assert 2)
+   (dummy int8  :offset-assert 3)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-control (structure)
-;   ((ptr-palette   uint32                   :offset-assert 0)
-;    (ptr-shaders   uint32                   :offset-assert 4)
-;    (ptr-runctrl   generic-tie-run-control  :offset-assert 8)
-;    (ptr-verts     uint32                   :offset-assert 12)
-;    (ptr-generic   generic-tie-header       :offset-assert 16)
-;    (ptr-dps       uint32                   :offset-assert 20)
-;    (ptr-kicks     uint32                   :offset-assert 24)
-;    (ptr-normals   uint32                   :offset-assert 28)
-;    (ptr-interp    uint32                   :offset-assert 32)
-;    (ptr-mtxs      generic-tie-matrix       :offset-assert 36)
-;    (ptr-cinds     uint32                   :offset-assert 40)
-;    (next-instance uint32                   :offset-assert 44)
-;    (next-model    uint32                   :offset-assert 48)
-;    (next-is-model uint32                   :offset-assert 52)
-;    (tie-type      uint32                   :offset-assert 56)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x3c
-;   :flag-assert         #x90000003c
-;   )
+;; generic-tie-h
+(deftype generic-tie-control (structure)
+  ((ptr-palette   uint32                   :offset-assert 0)
+   (ptr-shaders   uint32                   :offset-assert 4)
+   (ptr-runctrl   generic-tie-run-control  :offset-assert 8)
+   (ptr-verts     uint32                   :offset-assert 12)
+   (ptr-generic   generic-tie-header       :offset-assert 16)
+   (ptr-dps       uint32                   :offset-assert 20)
+   (ptr-kicks     uint32                   :offset-assert 24)
+   (ptr-normals   uint32                   :offset-assert 28)
+   (ptr-interp    uint32                   :offset-assert 32)
+   (ptr-mtxs      generic-tie-matrix       :offset-assert 36)
+   (ptr-cinds     uint32                   :offset-assert 40)
+   (next-instance uint32                   :offset-assert 44)
+   (next-model    uint32                   :offset-assert 48)
+   (next-is-model uint32                   :offset-assert 52)
+   (tie-type      uint32                   :offset-assert 56)
+   )
+  :method-count-assert 9
+  :size-assert         #x3c
+  :flag-assert         #x90000003c
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-stats (structure)
-;   ((num-bps       uint32  :offset-assert 0)
-;    (num-ips       uint32  :offset-assert 4)
-;    (num-dps       uint32  :offset-assert 8)
-;    (num-shaders   uint32  :offset-assert 12)
-;    (num-models    uint32  :offset-assert 16)
-;    (num-instances uint32  :offset-assert 20)
-;    (num-waits     uint32  :offset-assert 24)
-;    (num-qwc       uint32  :offset-assert 28)
-;    (max-qwc       uint32  :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x24
-;   :flag-assert         #x900000024
-;   )
+;; generic-tie-h
+(deftype generic-tie-stats (structure)
+  ((num-bps       uint32  :offset-assert 0)
+   (num-ips       uint32  :offset-assert 4)
+   (num-dps       uint32  :offset-assert 8)
+   (num-shaders   uint32  :offset-assert 12)
+   (num-models    uint32  :offset-assert 16)
+   (num-instances uint32  :offset-assert 20)
+   (num-waits     uint32  :offset-assert 24)
+   (num-qwc       uint32  :offset-assert 28)
+   (max-qwc       uint32  :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-calls (structure)
-;   ((generic-prepare-dma-double basic  :offset-assert 0)
-;    (generic-envmap-dproc       basic  :offset-assert 4)
-;    (generic-interp-dproc       basic  :offset-assert 8)
-;    (generic-no-light-dproc     basic  :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+;; generic-tie-h
+(deftype generic-tie-calls (structure)
+  ((generic-prepare-dma-double basic  :offset-assert 0)
+   (generic-envmap-dproc       basic  :offset-assert 4)
+   (generic-interp-dproc       basic  :offset-assert 8)
+   (generic-no-light-dproc     basic  :offset-assert 12)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-shadow (structure)
-;   ((out-buf      gsf-buffer                :offset-assert 0)
-;    (cur-buf      uint32                    :offset-assert 4)
-;    (tie-type     int32                     :offset-assert 8)
-;    (ptr-inst     uint32                    :offset-assert 12)
-;    (ptr-buf      uint32                    :offset-assert 16)
-;    (inst-xor     int32                     :offset-assert 20)
-;    (end-of-chain uint32                    :offset-assert 24)
-;    (write-limit  uint32                    :offset-assert 28)
-;    (calls        generic-tie-calls :inline :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+;; generic-tie-h
+(deftype generic-tie-shadow (structure)
+  ((out-buf      gsf-buffer                :offset-assert 0)
+   (cur-buf      uint32                    :offset-assert 4)
+   (tie-type     int32                     :offset-assert 8)
+   (ptr-inst     uint32                    :offset-assert 12)
+   (ptr-buf      uint32                    :offset-assert 16)
+   (inst-xor     int32                     :offset-assert 20)
+   (end-of-chain uint32                    :offset-assert 24)
+   (write-limit  uint32                    :offset-assert 28)
+   (calls        generic-tie-calls :inline :offset-assert 32)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; ;; generic-tie-h
-; (deftype generic-tie-work (structure)
-;   ((control     generic-tie-control  :inline :offset-assert 0)
-;    (interp-job  generic-interp-job   :inline :offset-assert 60)
-;    (shadow      generic-tie-shadow   :inline :offset-assert 76)
-;    (input-a     generic-tie-input    :inline :offset-assert 128)
-;    (input-b     generic-tie-input    :inline :offset-assert 3376)
-;    (inst-buf    generic-tie-instance :inline :offset-assert 6624)
-;    (palette-buf UNKNOWN              128     :offset-assert 6992)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1d50
-;   :flag-assert         #x900001d50
-;   )
+;; generic-tie-h
+(deftype generic-tie-work (structure)
+  ((control     generic-tie-control  :inline :offset-assert 0)
+   (interp-job  generic-interp-job   :inline :offset-assert 60)
+   (shadow      generic-tie-shadow   :inline :offset-assert 76)
+   (input-a     generic-tie-input    :inline :offset-assert 128)
+   (input-b     generic-tie-input    :inline :offset-assert 3376)
+   (inst-buf    generic-tie-instance :inline :offset-assert 6624)
+   (palette-buf rgba                 128     :offset-assert 6992)
+   )
+  :method-count-assert 9
+  :size-assert         #x1d50
+  :flag-assert         #x900001d50
+  )
 
-; ;; generic-work-h
-; (deftype generic-input-buffer (structure)
-;   ((data UNKNOWN           472     :offset-assert 0)
-;    (merc generic-merc-work :inline :offset-assert 0)
-;    (tie  generic-tie-work  :inline :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1d80
-;   :flag-assert         #x900001d80
-;   )
+;; generic-work-h
+(deftype generic-input-buffer (structure)
+  ((merc generic-merc-work :inline :offset 0)
+   (tie  generic-tie-work  :inline :offset 0)
+   (data uint128           472     :offset 0) ;; moved
+   )
+  :method-count-assert 9
+  :size-assert         #x1d80
+  :flag-assert         #x900001d80
+  )
 
-; ;; generic-work-h
-; (deftype generic-debug (structure)
-;   ((locks      UNKNOWN 4  :offset-assert 0)
-;    (timer      UNKNOWN 32 :offset-assert 16)
-;    (count      UNKNOWN 32 :offset-assert 144)
-;    (vps        UNKNOWN 32 :offset-assert 272)
-;    (buffer     int32      :offset-assert 400)
-;    (start-addr int32      :offset-assert 404)
-;    (lock       int32      :offset-assert 408)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x19c
-;   :flag-assert         #x90000019c
-;   )
+;; generic-work-h
+(deftype generic-debug (structure)
+  ((locks      uint32  4  :offset-assert 0)
+   (timer      uint32  32 :offset-assert 16)
+   (count      uint32  32 :offset-assert 144)
+   (vps        uint32  32 :offset-assert 272)
+   (buffer     int32      :offset-assert 400)
+   (start-addr int32      :offset-assert 404)
+   (lock       int32      :offset-assert 408)
+   )
+  :method-count-assert 9
+  :size-assert         #x19c
+  :flag-assert         #x90000019c
+  )
 
-; ;; generic-work-h
-; (deftype generic-vu1-header (structure)
-;   ((matrix  matrix          :inline :offset-assert 0)
-;    (strgif  generic-gif-tag :inline :offset-assert 64)
-;    (adcmds  UNKNOWN         2       :offset-assert 80)
-;    (adnop1  ad-cmd          :inline :offset-assert 80)
-;    (adnop2  ad-cmd          :inline :offset-assert 96)
-;    (dps     uint16                  :offset-assert 92)
-;    (kickoff uint16                  :offset-assert 108)
-;    (strips  uint16                  :offset-assert 76)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x70
-;   :flag-assert         #x900000070
-;   )
+;; generic-work-h
+(deftype generic-vu1-header (structure)
+  ((matrix  matrix          :inline :offset-assert 0)
+   (strgif  generic-gif-tag :inline :offset-assert 64)
+   (adnop1  ad-cmd          :inline :offset-assert 80)
+   (adnop2  ad-cmd          :inline :offset-assert 96)
+   (adcmds  ad-cmd        2 :inline :offset 80) ;; moved
+   (dps     uint16                  :offset 92)
+   (kickoff uint16                  :offset 108)
+   (strips  uint16                  :offset 76)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
 
-; ;; generic-work-h
-; (deftype generic-vu1-texbuf (structure)
-;   ((header generic-vu1-header :inline  :offset-assert 0)
-;    (shader UNKNOWN            :dynamic :offset-assert 112)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x70
-;   :flag-assert         #x900000070
-;   )
+;; generic-work-h
+(deftype generic-vu1-texbuf (structure)
+  ((header generic-vu1-header :inline  :offset-assert 0)
+   (shader uint32             :dynamic :offset-assert 112) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
 
-; ;; generic-work-h
-; (deftype generic-texbuf (structure)
-;   ((tag    dma-packet         :inline  :offset-assert 0)
-;    (header generic-vu1-header :inline  :offset-assert 16)
-;    (shader UNKNOWN            :dynamic :offset-assert 128)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x80
-;   :flag-assert         #x900000080
-;   )
+;; generic-work-h
+(deftype generic-texbuf (structure)
+  ((tag    dma-packet         :inline  :offset-assert 0)
+   (header generic-vu1-header :inline  :offset-assert 16)
+   (shader uint32             :dynamic :offset-assert 128) ;; guess
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
 
-; ;; generic-work-h
-; (deftype generic-effect-work (structure)
-;   ((consts   generic-consts  :inline :offset-assert 0)
-;    (storage  generic-storage :inline :offset-assert 432)
-;    (storage2 generic-storage :inline :offset-assert 688)
-;    (lights   vu-lights       :inline :offset-assert 944)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x420
-;   :flag-assert         #x900000420
-;   )
+;; generic-work-h
+(deftype generic-effect-work (structure)
+  ((consts   generic-consts  :inline :offset-assert 0)
+   (storage  generic-storage :inline :offset-assert 432)
+   (storage2 generic-storage :inline :offset-assert 688)
+   (lights   vu-lights       :inline :offset-assert 944)
+   )
+  :method-count-assert 9
+  :size-assert         #x420
+  :flag-assert         #x900000420
+  )
 
-; ;; generic-work-h
-; (deftype generic-effect-buffer (structure)
-;   ((outbuf-0 UNKNOWN             3552    :offset-assert 0)
-;    (work     generic-effect-work :inline :offset-assert 3552)
-;    (outbuf-1 UNKNOWN             3552    :offset-assert 4608)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1fe0
-;   :flag-assert         #x900001fe0
-;   )
+;; generic-work-h
+(deftype generic-effect-buffer (structure)
+  ((outbuf-0 uint8               3552    :offset-assert 0)
+   (work     generic-effect-work :inline :offset-assert 3552)
+   (outbuf-1 uint8               3552    :offset-assert 4608)
+   )
+  :method-count-assert 9
+  :size-assert         #x1fe0
+  :flag-assert         #x900001fe0
+  )
 
-; ;; generic-work-h
-; (deftype generic-work (structure)
-;   ((saves   generic-saves         :inline :offset-assert 0)
-;    (storage generic-storage       :inline :offset-assert 368)
-;    (in-buf  generic-input-buffer  :inline :offset-assert 624)
-;    (fx-buf  generic-effect-buffer :inline :offset-assert 8176)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x3fd0
-;   :flag-assert         #x900003fd0
-;   )
+;; generic-work-h
+(deftype generic-work (structure)
+  ((saves   generic-saves         :inline :offset-assert 0)
+   (storage generic-storage       :inline :offset-assert 368)
+   (in-buf  generic-input-buffer  :inline :offset-assert 624)
+   (fx-buf  generic-effect-buffer :inline :offset-assert 8176)
+   )
+  :method-count-assert 9
+  :size-assert         #x3fd0
+  :flag-assert         #x900003fd0
+  )
 
-; ;; shadow-cpu-h
+;; shadow-cpu-h
 (deftype shadow-settings (structure)
   ((center        vector :inline :offset-assert 0)
    (flags         int32          :offset 12)
@@ -7796,7 +7800,7 @@
   :flag-assert         #x900000050
   )
 
-; ;; shadow-cpu-h
+;; shadow-cpu-h
 (deftype shadow-control (basic)
   ((settings shadow-settings :inline :offset-assert 16)
    )
@@ -7805,10 +7809,10 @@
   :flag-assert         #x1000000060
   (:methods
     (new (symbol type float float float float float) _type_ 0)
-    (clear-offset-bit (shadow-control) none 9)
-    (set-offset-bit (shadow-control) none 10)
-    (set-top-plane-offset (shadow-control float) none 11)
-    (set-bottom-plane-offset (shadow-control float) none 12)
+    (clear-offset-bit (shadow-control) int 9)
+    (set-offset-bit (shadow-control) int 10)
+    (set-top-plane-offset (shadow-control float) int 11)
+    (set-bottom-plane-offset (shadow-control float) int 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
     (dummy-15 () none 15)
@@ -7867,12 +7871,11 @@
   )
 
 (define-extern shadow-queue-append (function shadow-queue uint))
-;;(define-extern shadow-work object) ;; unknown type
-;;(define-extern shadow-queue object) ;; unknown type
-;;(define-extern *shadow-queue* object) ;; unknown type
-;;(define-extern *shadow* object) ;; unknown type
+(define-extern *shadow-queue* shadow-queue) ;; unknown type
 ;;(define-extern shadow-settings object) ;; unknown type
-;;(define-extern *shadow-object* object) ;; unknown type
+(define-extern *shadow* symbol) ;; unknown type
+(define-extern *shadow-object* symbol) ;; unknown type
+(define-extern *shadow-debug* symbol) ;; unknown type
 (define-extern shadow-queue-reset (function shadow-queue int))
 
 
@@ -7898,7 +7901,7 @@
   :flag-assert         #x900000002
   )
 
-;; shadow-cpu-h
+; ;; shadow-cpu-h
 ; (deftype shadow-edge (structure)
 ;   ((ind-0 uint16  :offset-assert 0)
 ;    (ind-1 uint16  :offset-assert 2)
@@ -7965,12 +7968,6 @@
   :method-count-assert 13
   :size-assert         #x50
   :flag-assert         #xd00000050
-  (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    )
   )
 
 ;; memcard-h
@@ -8051,7 +8048,7 @@
   :flag-assert         #x900000010
   )
 
-; ;; game-info-h
+;; game-info-h
 (deftype load-state (basic)
   ((want          level-buffer-state  2 :inline  :offset-assert 4)
    (vis-nick      basic       :offset-assert 36)
@@ -8329,204 +8326,208 @@
     )
   )
 
-; ;; joint-h
-; (deftype joint-control-channel (structure)
-;   ((parent           basic     :offset-assert 0)
-;    (command          basic     :offset-assert 4)
-;    (frame-interp     float     :offset-assert 8)
-;    (frame-group      basic     :offset-assert 12)
-;    (frame-num        float     :offset-assert 16)
-;    (num-func         basic     :offset-assert 20)
-;    (param            UNKNOWN 2 :offset-assert 24)
-;    (group-sub-index  int16     :offset-assert 32)
-;    (group-size       int16     :offset-assert 34)
-;    (dist             meters    :offset-assert 36)
-;    (eval-time        uint32    :offset-assert 40)
-;    (inspector-amount float     :offset-assert 44)
-;    )
-;   :method-count-assert 10
-;   :size-assert         #x30
-;   :flag-assert         #xa00000030
-;   (:methods
-;     (dummy-9 () none 9)
-;     )
-;   )
+;; joint-h
+(deftype joint-control-channel (structure)
+  ((parent           basic     :offset-assert 0)
+   (command          basic     :offset-assert 4)
+   (frame-interp     float     :offset-assert 8)
+   (frame-group      basic     :offset-assert 12)
+   (frame-num        float     :offset-assert 16)
+   (num-func         basic     :offset-assert 20)
+   (param            uint32  2 :offset-assert 24)
+   (group-sub-index  int16     :offset-assert 32)
+   (group-size       int16     :offset-assert 34)
+   (dist             float     :offset-assert 36) ;; meters
+   (eval-time        uint32    :offset-assert 40)
+   (inspector-amount float     :offset-assert 44)
+   )
+  :method-count-assert 10
+  :size-assert         #x30
+  :flag-assert         #xa00000030
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
 
-; ;; joint-h
-; (deftype joint-control (basic)
-;   ((status                  uint16           :offset-assert 4)
-;    (allocated-length        int16            :offset-assert 6)
-;    (root-channel            uint32           :offset-assert 16)
-;    (blend-index             int32            :offset-assert 20)
-;    (active-channels         int32            :offset-assert 24)
-;    (generate-frame-function basic            :offset-assert 28)
-;    (prebind-function        basic            :offset-assert 32)
-;    (postbind-function       basic            :offset-assert 36)
-;    (effect                  basic            :offset-assert 40)
-;    (channel                 UNKNOWN :dynamic :offset-assert 48)
-;    (frame-group0            basic            :offset-assert 60)
-;    (frame-num0              float            :offset-assert 64)
-;    (frame-interp0           float            :offset-assert 56)
-;    (frame-group1            basic            :offset-assert 108)
-;    (frame-num1              float            :offset-assert 112)
-;    (frame-interp1           float            :offset-assert 104)
-;    (frame-group2            basic            :offset-assert 156)
-;    (frame-num2              float            :offset-assert 160)
-;    (frame-interp2           float            :offset-assert 152)
-;    )
-;   :method-count-assert 11
-;   :size-assert         #xc0
-;   :flag-assert         #xb000000c0
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     )
-;   )
+;; joint-h
+(deftype joint-control (basic)
+  ((status                  uint16           :offset-assert 4)
+   (allocated-length        int16            :offset-assert 6)
+   (root-channel            uint32           :offset 16)
+   (blend-index             int32            :offset-assert 20)
+   (active-channels         int32            :offset-assert 24)
+   (generate-frame-function basic            :offset-assert 28)
+   (prebind-function        basic            :offset-assert 32)
+   (postbind-function       basic            :offset-assert 36)
+   (effect                  basic            :offset-assert 40)
+   (channel                 joint-control-channel 3 :inline :offset-assert 48) ;; actually dynamic?
+   (frame-group0            basic            :offset 60)
+   (frame-num0              float            :offset 64)
+   (frame-interp0           float            :offset 56)
+   (frame-group1            basic            :offset 108)
+   (frame-num1              float            :offset 112)
+   (frame-interp1           float            :offset 104)
+   (frame-group2            basic            :offset 156)
+   (frame-num2              float            :offset 160)
+   (frame-interp2           float            :offset 152)
+   )
+  :method-count-assert 11
+  :size-assert         #xc0
+  :flag-assert         #xb000000c0
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
 
-; ;; joint-h
-; (deftype matrix-stack (structure)
-;   ((top  matrix     :offset-assert 0)
-;    (data UNKNOWN 24 :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x610
-;   :flag-assert         #x900000610
-;   )
+;; joint-h
+(deftype matrix-stack (structure)
+  ((top  matrix     :offset-assert 0)
+   (data matrix 24 :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x610
+  :flag-assert         #x900000610
+  )
 
-; ;; joint-h
-; (deftype channel-upload-info (structure)
-;   ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
-;    (fixed-qwc int32                        :offset-assert 4)
-;    (frame     joint-anim-compressed-frame  :offset-assert 8)
-;    (frame-qwc int32                        :offset-assert 12)
-;    (amount    float                        :offset-assert 16)
-;    (interp    float                        :offset-assert 20)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x18
-;   :flag-assert         #x900000018
-;   )
+;; joint-h
+(deftype channel-upload-info (structure)
+  ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
+   (fixed-qwc int32                        :offset-assert 4)
+   (frame     joint-anim-compressed-frame  :offset-assert 8)
+   (frame-qwc int32                        :offset-assert 12)
+   (amount    float                        :offset-assert 16)
+   (interp    float                        :offset-assert 20)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
 
-; ;; joint-h
-; (deftype joint-work (structure)
-;   ((temp-mtx       matrix                      :inline :offset-assert 0)
-;    (joint-stack    matrix-stack                :inline :offset-assert 64)
-;    (fix-jmp-table  UNKNOWN                     16      :offset-assert 1616)
-;    (frm-jmp-table  UNKNOWN                     16      :offset-assert 1680)
-;    (pair-jmp-table UNKNOWN                     16      :offset-assert 1744)
-;    (uploads        UNKNOWN                     24      :offset-assert 1808)
-;    (num-uploads    int32                               :offset-assert 2384)
-;    (mtx-acc        UNKNOWN                     2       :offset-assert 2400)
-;    (tq-acc         UNKNOWN                     100     :offset-assert 2528)
-;    (jacp-hdr       joint-anim-compressed-hdr   :inline :offset-assert 7328)
-;    (fixed-data     joint-anim-compressed-fixed :inline :offset-assert 7392)
-;    (frame-data     UNKNOWN                     2       :offset-assert 9600)
-;    (flatten-array  UNKNOWN                     576     :offset-assert 2400)
-;    (flattened      UNKNOWN                     24      :offset-assert 2400)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x3640
-;   :flag-assert         #x900003640
-;   )
+;; joint-h
+(deftype joint-work (structure)
+  ((temp-mtx       matrix                      :inline :offset-assert 0)
+   (joint-stack    matrix-stack                :inline :offset-assert 64)
+   (fix-jmp-table  uint32                      16      :offset-assert 1616)
+   (frm-jmp-table  uint32                      16      :offset-assert 1680)
+   (pair-jmp-table uint32                      16      :offset-assert 1744)
+   (uploads        channel-upload-info      24 :inline :offset-assert 1808)
+   (num-uploads    int32                               :offset-assert 2384)
+   (mtx-acc        matrix                    2 :inline :offset-assert 2400)
+   (tq-acc         transformq              100 :inline :offset-assert 2528)
+   (jacp-hdr       joint-anim-compressed-hdr   :inline :offset-assert 7328)
+   (fixed-data     joint-anim-compressed-fixed :inline :offset-assert 7392)
+   (frame-data     joint-anim-compressed-frame 2 :inline :offset-assert 9600)
+   ;(flatten-array  UNKNOWN                     576     :offset-assert 2400) no clue!
+   ;(flattened      UNKNOWN                     24      :offset-assert 2400) no clue!
+   )
+  :method-count-assert 9
+  :size-assert         #x3640
+  :flag-assert         #x900003640
+  )
 
-; ;; bones-h
-; (deftype bone-buffer (structure)
-;   ((joint  UNKNOWN 16 :offset-assert 0)
-;    (bone   UNKNOWN 16 :offset-assert 1024)
-;    (output UNKNOWN 16 :offset-assert 2560)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1200
-;   :flag-assert         #x900001200
-;   )
+;; bones-h
+(deftype bone-buffer (structure)
+  ((joint  joint-anim-compressed-hdr 16 :inline :offset-assert 0) ;; might be something else
+   (bone   bone 16 :inline :offset-assert 1024)
+   ;(output UNKNOWN 16 :offset-assert 2560) no clue either :-(
+   
+   (_pad uint8 #x800)
+   )
+  :method-count-assert 9
+  :size-assert         #x1200
+  :flag-assert         #x900001200
+  )
 
-; ;; bones-h
-; (deftype bone-layout (structure)
-;   ((data   UNKNOWN 8 :offset-assert 0)
-;    (joint  UNKNOWN 2 :offset-assert 0)
-;    (bone   UNKNOWN 2 :offset-assert 8)
-;    (output UNKNOWN 2 :offset-assert 16)
-;    (cache  UNKNOWN 2 :offset-assert 24)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+;; bones-h
+(deftype bone-layout (structure)
+  ((joint  joint   2 :offset-assert 0)
+   (bone   bone    2 :offset-assert 8)
+   (data   uint16  8 :offset 0) ;; moved
+   (output uint32  2 :offset-assert 16)
+   (cache  uint32  2 :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 ;; bones-h
 (deftype bone-regs (structure)
-  ((joint-ptr uint32  :offset-assert 0)
-   (bone-ptr  uint32  :offset-assert 4)
-   (num-bones uint32  :offset-assert 8)
+  ((joint-ptr (pointer joint) :offset-assert 0)
+   (bone-ptr  (pointer bone)  :offset-assert 4)
+   (num-bones uint32          :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
-; ;; bones-h
-; (deftype bone-work (structure)
-;   ((layout     bone-layout :inline :offset-assert 0)
-;    (bounds     sphere      :inline :offset-assert 32)
-;    (lights     vu-lights   :inline :offset-assert 48)
-;    (distance   vector      :inline :offset-assert 160)
-;    (next-tag   dma-packet  :inline :offset-assert 176)
-;    (dma-buf    basic               :offset-assert 192)
-;    (sink-group basic               :offset-assert 196)
-;    (next-pris  dma-packet          :offset-assert 200)
-;    (next-merc  dma-packet          :offset-assert 204)
-;    (wait-count uint32              :offset-assert 208)
-;    (in-count   uint32              :offset-assert 212)
-;    (sp-size    uint32              :offset-assert 216)
-;    (sp-bufnum  uint32              :offset-assert 220)
-;    (regs       bone-regs   :inline :offset-assert 224)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xec
-;   :flag-assert         #x9000000ec
-;   )
+;; bones-h
+(deftype bone-work (structure)
+  ((layout     bone-layout :inline :offset-assert 0)
+   (bounds     sphere      :inline :offset-assert 32)
+   (lights     vu-lights   :inline :offset-assert 48)
+   (distance   vector      :inline :offset-assert 160)
+   (next-tag   dma-packet  :inline :offset-assert 176)
+   (dma-buf    dma-buffer          :offset-assert 192)
+   (sink-group basic               :offset-assert 196) ;; dma sink
+   (next-pris  dma-packet          :offset-assert 200)
+   (next-merc  dma-packet          :offset-assert 204)
+   (wait-count uint32              :offset-assert 208)
+   (in-count   uint32              :offset-assert 212)
+   (sp-size    uint32              :offset-assert 216)
+   (sp-bufnum  uint32              :offset-assert 220)
+   (regs       bone-regs   :inline :offset-assert 224)
+   )
+  :method-count-assert 9
+  :size-assert         #xec
+  :flag-assert         #x9000000ec
+  )
 
-; ;; bones-h
-; (deftype bone-debug (structure)
-;   ((time-ctr uint32      :offset-assert 0)
-;    (timing   UNKNOWN 360 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x5a4
-;   :flag-assert         #x9000005a4
-;   )
+;; bones-h
+(deftype bone-debug (structure)
+  ((time-ctr uint32      :offset-assert 0)
+   (timing   uint32  360 :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5a4
+  :flag-assert         #x9000005a4
+  )
 
-; ;; bones-h
-; (deftype bone-memory (structure)
-;   ((work     bone-work  :inline :offset-assert 0)
-;    (buffer   UNKNOWN    2       :offset-assert 240)
-;    (dma-list dma-packet :inline :offset-assert 240)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x24f0
-;   :flag-assert         #x9000024f0
-;   )
+;; bones-h
+(deftype bone-memory (structure)
+  ((work     bone-work       :inline :offset-assert 0)
+   (buffer   bone-buffer  2  :inline :offset-assert 240)
+   (dma-list dma-packet      :inline :offset 240) ;; what?
+   )
+  :method-count-assert 9
+  :size-assert         #x24f0
+  :flag-assert         #x9000024f0
+  )
 
 ;; bones-h
 (deftype merc-globals (structure)
   ((first uint32  :offset-assert 0)
    (next  uint32  :offset-assert 4)
-   (sink  basic   :offset-assert 8)
+   (sink  basic   :offset-assert 8) ;; dma sink
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
-; ;; bones-h
-; (deftype merc-global-array (structure)
-;   ((count   uint32    :offset-assert 0)
-;    (globals UNKNOWN 8 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x84
-;   :flag-assert         #x900000084
-;   )
+;; bones-h
+(deftype merc-global-array (structure)
+  ((count   uint32    :offset-assert 0)
+   (globals merc-globals 8 :inline :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
 
 ;; bones-h
 (deftype shadow-dma-packet (structure)
@@ -33836,10 +33837,9 @@
 ;;(define-extern generic-input-buffer object) ;; unknown type
 ;;(define-extern generic-effect-buffer object) ;; unknown type
 ;;(define-extern generic-vu1-texbuf object) ;; unknown type
-;;(define-extern *generic-debug* object) ;; unknown type
+(define-extern *generic-debug* generic-debug) ;; unknown type
 
 ;;(define-extern shadow-matrix-ref object) ;; unknown type
-;;(define-extern *shadow-debug* object) ;; unknown type
 (define-extern shadow-geo type)
 ;;(define-extern shadow-data object) ;; unknown type
 ;;(define-extern shadow-vertex object) ;; unknown type
@@ -33878,7 +33878,7 @@
 ;;(define-extern joint-control-channel object) ;; unknown type
 ;;(define-extern matrix-stack object) ;; unknown type
 ;;(define-extern joint-work object) ;; unknown type
-(define-extern invalidate-cache-line function)
+(define-extern invalidate-cache-line (function pointer int))
 ;;(define-extern merc-globals object) ;; unknown type
 ;;(define-extern bone-memory object) ;; unknown type
 ;;(define-extern bone-work object) ;; unknown type
@@ -33888,7 +33888,7 @@
 ;;(define-extern bone-regs object) ;; unknown type
 ;;(define-extern bone-buffer object) ;; unknown type
 ;;(define-extern merc-global-array object) ;; unknown type
-;;(define-extern *merc-globals* object) ;; unknown type
+(define-extern *merc-globals* symbol) ;; unknown type
 (define-extern *matrix-engine* (array handle)) ;; unknown type
 ;;(define-extern camera-eng object) ;; unknown type
 ;;(define-extern *camera-engine* object) ;; unknown type
