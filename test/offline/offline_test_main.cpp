@@ -22,7 +22,7 @@ const std::unordered_set<std::string> g_object_files_to_decompile = {
     "connect", "text-h", "settings-h", "capture", "memory-usage-h", /* "texture", */ "main-h",
     "mspace-h", "drawable-h", "drawable-group-h", "drawable-inline-array-h", "draw-node-h",
     "drawable-tree-h", "drawable-actor-h", "drawable-ambient-h", "game-task-h", "hint-control-h",
-    "generic-h", "lights-h", "lights", "ocean-h",
+    "generic-h", "lights-h", "lights", "ocean-h", "pov-camera-h",
     "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
     "sky-h", "mood-h",    /* "time-of-day-h", */
     /* gap */
@@ -44,7 +44,7 @@ const std::vector<std::string> g_object_files_to_check_against_reference = {
     /* "texture", */ "main-h", "mspace-h", "drawable-h", "drawable-group-h",
     "drawable-inline-array-h", "draw-node-h", "drawable-tree-h", "drawable-actor-h",
     "drawable-ambient-h", "game-task-h", "hint-control-h", "generic-h", "lights-h", "lights",
-    "ocean-h", "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
+    "ocean-h", "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */ "pov-camera-h",
     "sky-h", "mood-h",               /* "time-of-day-h", */
     /* gap */ "bounding-box",
     /* gap */
