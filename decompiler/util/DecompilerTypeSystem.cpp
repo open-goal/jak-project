@@ -18,7 +18,7 @@ goos::Object& car(goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->car;
   } else {
-    throw std::runtime_error("car called on something that wasn't a pair: " + pair.print());
+    throw std::runtime_error("car called on something that was not a pair: " + pair.print());
   }
 }
 
@@ -26,7 +26,7 @@ goos::Object& cdr(goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->cdr;
   } else {
-    throw std::runtime_error("cdr called on something that wasn't a pair");
+    throw std::runtime_error("cdr called on something that was not a pair");
   }
 }
 

@@ -289,13 +289,13 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   if (!dgo_obj_name_map.empty()) {
     auto dgo_kv = dgo_obj_name_map.find(strip_dgo_extension(dgo_name));
     if (dgo_kv == dgo_obj_name_map.end()) {
-      lg::error("Object {} is from DGO {}, but this DGO wasn't in the map.", obj_name, dgo_name);
+      lg::error("Object {} is from DGO {}, but this DGO was not in the map.", obj_name, dgo_name);
       assert(false);
     }
 
     auto name_kv = dgo_kv->second.find(obj_name);
     if (name_kv == dgo_kv->second.end()) {
-      lg::error("Object {} from DGO {} wasn't found in the name map.", obj_name, dgo_name);
+      lg::error("Object {} from DGO {} was not found in the name map.", obj_name, dgo_name);
       assert(false);
     }
     data.name_from_map = name_kv->second;

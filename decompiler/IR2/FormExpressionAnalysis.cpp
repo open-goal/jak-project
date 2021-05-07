@@ -2784,7 +2784,7 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     return;
   }
 
-  throw std::runtime_error("Can't push atomic op to stack: " + m_op->to_string(env));
+  throw std::runtime_error("Cannot push atomic op to stack: " + m_op->to_string(env));
 }
 
 void AsmOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
@@ -2834,7 +2834,7 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
   auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
   auto match_result = match(matcher, new_val);
   if (!match_result.matched) {
-    throw std::runtime_error("Couldn't match DynamicMethodAccess values: " +
+    throw std::runtime_error("Could not match DynamicMethodAccess values: " +
                              new_val->to_string(env));
   }
 
@@ -2950,7 +2950,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
-        throw std::runtime_error("Couldn't match ArrayFieldAccess (stride 1) values: " +
+        throw std::runtime_error("Could not match ArrayFieldAccess (stride 1) values: " +
                                  new_val->to_string(env));
       }
       auto idx = match_result.maps.forms.at(0);
@@ -2985,7 +2985,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
         matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg1_matcher, sll_matcher});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
-          throw std::runtime_error("Couldn't match ArrayFieldAccess (stride power of 2) values: " +
+          throw std::runtime_error("Could not match ArrayFieldAccess (stride power of 2) values: " +
                                    new_val->to_string(env));
         }
       }
