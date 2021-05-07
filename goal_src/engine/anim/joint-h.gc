@@ -5,3 +5,96 @@
 ;; name in dgo: joint-h
 ;; dgos: GAME, ENGINE
 
+(deftype joint-control-channel (structure)
+  ((parent           basic    :offset-assert 0)
+   (command          basic    :offset-assert 4)
+   (frame-interp     float    :offset-assert 8)
+   (frame-group      basic    :offset-assert 12)
+   (frame-num        float    :offset-assert 16)
+   (num-func         basic    :offset-assert 20)
+   (param            uint32 2 :offset-assert 24)
+   (group-sub-index  int16    :offset-assert 32)
+   (group-size       int16    :offset-assert 34)
+   (dist             float    :offset-assert 36)
+   (eval-time        uint32   :offset-assert 40)
+   (inspector-amount float    :offset-assert 44)
+   )
+  :method-count-assert 10
+  :size-assert         #x30
+  :flag-assert         #xa00000030
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+(deftype joint-control (basic)
+  ((status                  uint16                            :offset-assert 4)
+   (allocated-length        int16                             :offset-assert 6)
+   (root-channel            uint32                :offset  16)
+   (blend-index             int32                             :offset-assert 20)
+   (active-channels         int32                             :offset-assert 24)
+   (generate-frame-function basic                             :offset-assert 28)
+   (prebind-function        basic                             :offset-assert 32)
+   (postbind-function       basic                             :offset-assert 36)
+   (effect                  basic                             :offset-assert 40)
+   (channel                 joint-control-channel 3 :inline   :offset-assert 48)
+   (frame-group0            basic                 :offset  60)
+   (frame-num0              float                 :offset  64)
+   (frame-interp0           float                 :offset  56)
+   (frame-group1            basic                 :offset 108)
+   (frame-num1              float                 :offset 112)
+   (frame-interp1           float                 :offset 104)
+   (frame-group2            basic                 :offset 156)
+   (frame-num2              float                 :offset 160)
+   (frame-interp2           float                 :offset 152)
+   )
+  :method-count-assert 11
+  :size-assert         #xc0
+  :flag-assert         #xb000000c0
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+(deftype matrix-stack (structure)
+  ((top  matrix            :offset-assert 0)
+   (data matrix 24 :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x610
+  :flag-assert         #x900000610
+  )
+
+(deftype channel-upload-info (structure)
+  ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
+   (fixed-qwc int32                        :offset-assert 4)
+   (frame     joint-anim-compressed-frame  :offset-assert 8)
+   (frame-qwc int32                        :offset-assert 12)
+   (amount    float                        :offset-assert 16)
+   (interp    float                        :offset-assert 20)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+(deftype joint-work (structure)
+  ((temp-mtx       matrix                      :inline     :offset-assert 0)
+   (joint-stack    matrix-stack                :inline     :offset-assert 64)
+   (fix-jmp-table  uint32                      16          :offset-assert 1616)
+   (frm-jmp-table  uint32                      16          :offset-assert 1680)
+   (pair-jmp-table uint32                      16          :offset-assert 1744)
+   (uploads        channel-upload-info         24 :inline  :offset-assert 1808)
+   (num-uploads    int32                                   :offset-assert 2384)
+   (mtx-acc        matrix                      2 :inline   :offset-assert 2400)
+   (tq-acc         transformq                  100 :inline :offset-assert 2528)
+   (jacp-hdr       joint-anim-compressed-hdr   :inline     :offset-assert 7328)
+   (fixed-data     joint-anim-compressed-fixed :inline     :offset-assert 7392)
+   (frame-data     joint-anim-compressed-frame 2 :inline   :offset-assert 9600)
+   )
+  :method-count-assert 9
+  :size-assert         #x3640
+  :flag-assert         #x900003640
+  )

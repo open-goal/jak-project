@@ -30,10 +30,10 @@
   :flag-assert         #x1000000060
   (:methods
    (new (symbol type float float float float float) _type_ 0)
-   (clear-offset-bit (shadow-control) none 9)
-   (set-offset-bit (shadow-control) none 10)
-   (set-top-plane-offset (shadow-control float) none 11)
-   (set-bottom-plane-offset (shadow-control float) none 12)
+   (clear-offset-bit (shadow-control) int 9)
+   (set-offset-bit (shadow-control) int 10)
+   (set-top-plane-offset (shadow-control float) int 11)
+   (set-bottom-plane-offset (shadow-control float) int 12)
    (dummy-13 () none 13)
    (dummy-14 () none 14)
    (dummy-15 () none 15)
@@ -43,30 +43,30 @@
 (defmethod clear-offset-bit shadow-control ((obj shadow-control))
   "Clear a bit in w for the center of the shadow."
   (set! (-> obj settings center w)
-        (the-as float (logand -33 (the-as int (-> obj settings center w))))
+        (the-as float (logand (lognot #x20)
+                              (the-as int (-> obj settings center w))))
         )
-  (none)
+  0
   )
 
 (defmethod set-offset-bit shadow-control ((obj shadow-control))
   "Set a bit in w for the center position of the shadow"
   (set! (-> obj settings center w)
         (the-as float (logior (the-as int (-> obj settings center w))
-                              32)
-                )
+                              #x20))
         )
-  (none)
+  0
   )
 
 
 (defmethod set-bottom-plane-offset shadow-control ((obj shadow-control) (arg0 float))
   (set! (-> obj settings bot-plane d) (- arg0))
-  (none)
+  0
   )
 
 (defmethod set-top-plane-offset shadow-control ((obj shadow-control) (arg0 float))
   (set! (-> obj settings top-plane d) (- arg0))
-  (none)
+  0
   )
 
 (deftype shadow-data (structure)
@@ -118,16 +118,12 @@
 
 (defun shadow-queue-append ((arg0 shadow-queue))
   "Increment the run counter"
-  (local-vars (v0-0 uint))
-  (set! v0-0 (+ (-> arg0 cur-run) 1))
-  (set! (-> arg0 cur-run) v0-0)
-  v0-0
+  (set! (-> arg0 cur-run) (+ (-> arg0 cur-run) 1))
   )
 
 (defun shadow-queue-reset ((arg0 shadow-queue))
   "Reset the run counter"
   (set! (-> arg0 cur-run) 0)
-  0
   )
 
 (define *shadow-queue* (new 'global 'shadow-queue))
@@ -221,43 +217,17 @@
   :method-count-assert 13
   :size-assert         #x50
   :flag-assert         #xd00000050
-  (:methods
-   (dummy-9 () none 9)
-   (dummy-10 () none 10)
-   (dummy-11 () none 11)
-   (dummy-12 () none 12)
-   )
   )
 
-(defmethod new shadow-control ((allocation symbol) (type-to-make type)
-                               (bottom-offset float)
-                               (top-offset float)
-                               (dir float)
-                               (center float)
-                               (fade float)
-                               )
-  (local-vars (v0-0 shadow-control) (v1-2 vector) (v1-3 plane) (v1-4 plane))
-  (set! v0-0
-        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-        )
-  (set! (-> v0-0 settings center data 3) center)
-  (set! v1-2 (-> v0-0 settings shadow-dir))
-  (set! (-> v1-2 x) 0.000000)
-  (set! (-> v1-2 y) -1.000000)
-  (set! (-> v1-2 z) 0.000000)
-  (set! (-> v1-2 w) dir)
-  (set! v1-3 (-> v0-0 settings bot-plane))
-  (set! (-> v1-3 a) 0.000000)
-  (set! (-> v1-3 b) 1.000000)
-  (set! (-> v1-3 c) 0.000000)
-  (set! (-> v1-3 d) (- bottom-offset))
-  (set! v1-4 (-> v0-0 settings top-plane))
-  (set! (-> v1-4 a) 0.000000)
-  (set! (-> v1-4 b) 1.000000)
-  (set! (-> v1-4 c) 0.000000)
-  (set! (-> v1-4 d) (- top-offset))
-  (set! (-> v0-0 settings fade-dist) fade)
-  v0-0
+(defmethod new shadow-control ((allocation symbol) (type-to-make type) (bottom-offset float) (top-offset float) (dir float) (center float) (fade float))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj settings center w) center)
+    (set-vector! (-> obj settings shadow-dir) 0.0 -1.0 0.0 dir)
+    (set-vector! (-> obj settings bot-plane) 0.0 1.0 0.0 (- bottom-offset))
+    (set-vector! (-> obj settings top-plane) 0.0 1.0 0.0 (- top-offset))
+    (set! (-> obj settings fade-dist) fade)
+    obj
+    )
   )
 
 (define *shadow* #f)
