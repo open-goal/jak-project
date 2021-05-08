@@ -1607,7 +1607,7 @@
 (define-extern matrix-rot-diff! (function matrix matrix matrix float))
 (define-extern quaternion-seek (function quaternion quaternion quaternion float quaternion))
 (define-extern vector-deg-seek (function vector vector vector none))
-(define-extern vector-deg-slerp (function vector vector vector float float vector))
+(define-extern vector-deg-slerp (function vector vector vector float vector))
 (define-extern vector-vector-deg-slerp! function) ;; stack spills!
 (define-extern normal-of-plane (function vector vector vector vector vector))
 (define-extern vector-3pt-cross! (function vector vector vector vector))
@@ -5737,9 +5737,9 @@
 
 ;; lights-h
 (deftype vu-lights (structure)
-  ((direction uint128 3       :offset-assert 0)
-   (color     uint128 3       :offset-assert 48)
-   (ambient   vector  :inline :offset-assert 96)
+  ((direction vector 3 :inline :offset-assert 0)
+   (color     vector 3 :inline :offset-assert 48)
+   (ambient   vector :inline   :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #x70
@@ -5824,11 +5824,17 @@
    (dir1 light :inline :offset-assert 48)
    (dir2 light :inline :offset-assert 96)
    (ambi light :inline :offset-assert 144)
+   (lights light 4 :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
+
+;; lights
+
+
+
 
 ;;;;;;;;;;;
 ;; ocean-h
@@ -7355,7 +7361,7 @@
   :flag-assert         #x9000001a0
   )
 
-; generic-merc-h
+;; generic-merc-h
 (deftype generic-merc-input (structure)
   ((geo-tag     generic-merc-tag           :inline :offset-assert 0)
    (geo-block   uint8                    1296    :offset-assert 16)
@@ -33642,15 +33648,6 @@
 ;;(define-extern *gsf-buffer* object) ;; unknown type
 ;;(define-extern generic-consts object) ;; unknown type
 ;;(define-extern generic-envmap-consts object) ;; unknown type
-;;(define-extern vu-lights object) ;; unknown type
-;;(define-extern light-ellipse object) ;; unknown type
-;;(define-extern light-array object) ;; unknown type
-;;(define-extern light-volume-array object) ;; unknown type
-;;(define-extern light-volume object) ;; unknown type
-;;(define-extern light-group object) ;; unknown type
-;;(define-extern light object) ;; unknown type
-;;(define-extern light-volume-sphere object) ;; unknown type
-;;(define-extern light-volume-planes object) ;; unknown type
 (define-extern ocean-trans-indices type)
 (define-extern ocean-work type)
 ;;(define-extern ocean-mid-upload object) ;; unknown type
@@ -33851,7 +33848,6 @@
 ;;(define-extern mc-file-info object) ;; unknown type
 
 ;;(define-extern mc-run object) ;; unknown type
-;;(define-extern mc-get-slot-info object) ;; unknown type
 ;;(define-extern mc-check-result object) ;; unknown type
 (define-extern game-bank type)
 ;;(define-extern load-state object) ;; unknown type
@@ -33911,12 +33907,12 @@
 ;;(define-extern task object) ;; unknown type
 ;;(define-extern base object) ;; unknown type
 ;;(define-extern rot object) ;; unknown type
-(define-extern vu-lights-default! (function light-group none))
-(define-extern light-group-slerp function)
-(define-extern light-slerp function)
-(define-extern light-group-process! function)
-;;(define-extern *default-lights* object) ;; unknown type
-(define-extern vu-lights<-light-group! function)
+(define-extern vu-lights-default! (function vu-lights vu-lights))
+(define-extern light-group-slerp (function light-group light-group light-group float light-group))
+(define-extern light-slerp (function light light light float light))
+(define-extern light-group-process! (function vu-lights light-group vector vector none))
+(define-extern *default-lights* vu-lights)
+(define-extern vu-lights<-light-group! (function vu-lights light-group none))
 (define-extern time-to-apex (function float float int))
 (define-extern time-to-ground (function float float float int))
 (define-extern *standard-dynamics* dynamics)

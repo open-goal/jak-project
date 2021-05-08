@@ -1,0 +1,96 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function light-slerp
+(defun light-slerp ((arg0 light) (arg1 light) (arg2 light) (arg3 float))
+  (let ((s3-0 (fmax 0.0 (fmin 1.0 arg3))))
+   (vector-lerp! (-> arg0 color) (-> arg1 color) (-> arg2 color) s3-0)
+   (vector-deg-slerp
+    (-> arg0 direction)
+    (-> arg1 direction)
+    (-> arg2 direction)
+    s3-0
+    )
+   (let ((f0-2 (-> arg1 levels x))
+         (f1-2 (-> arg2 levels x))
+         )
+    (set! (-> arg0 levels x) (+ f0-2 (* s3-0 (- f1-2 f0-2))))
+    )
+   )
+  arg0
+  )
+
+;; definition for function light-group-slerp
+(defun
+  light-group-slerp
+  ((arg0 light-group) (arg1 light-group) (arg2 light-group) (arg3 float))
+  (dotimes (s2-0 4)
+   (light-slerp
+    (the-as light (+ (+ (* 48 s2-0) 0) (the-as int arg0)))
+    (the-as light (+ (+ (* 48 s2-0) 0) (the-as int arg1)))
+    (the-as light (+ (+ (* 48 s2-0) 0) (the-as int arg2)))
+    arg3
+    )
+   )
+  arg0
+  )
+
+;; definition for function light-group-process!
+(defun
+  light-group-process!
+  ((arg0 vu-lights) (arg1 light-group) (arg2 vector) (arg3 vector))
+  (let ((f0-0 (rotate-y<-vector+vector arg3 arg2)))
+   )
+  (vu-lights<-light-group! arg0 arg1)
+  (none)
+  )
+
+;; definition for symbol *default-lights*, type vu-lights
+(define *default-lights* (the-as vu-lights (new 'global 'vu-lights)))
+
+;; definition for function vu-lights-default!
+(defun vu-lights-default! ((arg0 vu-lights))
+  (let ((v1-0 (-> arg0 ambient)))
+   (set! (-> v1-0 x) 0.3)
+   (set! (-> v1-0 y) 0.3)
+   (set! (-> v1-0 z) 0.3)
+   (set! (-> v1-0 w) 1.0)
+   )
+  (let ((v1-1 (-> arg0 color)))
+   (set! (-> v1-1 0 x) 1.0)
+   (set! (-> v1-1 0 y) 1.0)
+   (set! (-> v1-1 0 z) 1.0)
+   (set! (-> v1-1 0 w) 1.0)
+   )
+  (let ((v1-2 (-> arg0 color 1)))
+   (set! (-> v1-2 x) 0.2)
+   (set! (-> v1-2 y) 0.2)
+   (set! (-> v1-2 z) 0.2)
+   (set! (-> v1-2 w) 1.0)
+   )
+  (let ((v1-3 (-> arg0 color 2)))
+   (set! (-> v1-3 x) 0.0)
+   (set! (-> v1-3 y) 0.0)
+   (set! (-> v1-3 z) 0.0)
+   (set! (-> v1-3 w) 1.0)
+   )
+  (let ((v1-4 (-> arg0 direction)))
+   (set! (-> v1-4 0 x) 1.0)
+   (set! (-> v1-4 0 y) 0.0)
+   (set! (-> v1-4 0 z) 0.0)
+   (set! (-> v1-4 0 w) 1.0)
+   )
+  (let ((v1-5 (-> arg0 direction 1)))
+   (set! (-> v1-5 x) 0.0)
+   (set! (-> v1-5 y) 1.0)
+   (set! (-> v1-5 z) 0.0)
+   (set! (-> v1-5 w) 1.0)
+   )
+  (let ((v1-6 (-> arg0 direction 2)))
+   (set! (-> v1-6 x) 0.0)
+   (set! (-> v1-6 y) 0.0)
+   (set! (-> v1-6 z) 1.0)
+   (set! (-> v1-6 w) 1.0)
+   )
+  arg0
+  )
