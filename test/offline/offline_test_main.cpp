@@ -15,21 +15,12 @@ namespace {
 
 // list of object files to ignore during reference checks
 const std::unordered_set<std::string> g_object_files_to_ignore_ref_checks = {
-    // formatting
-    "pskernel",
-    "transformq-h",
-    "geometry",
-    "trigonometry",
-    "math-camera",
-    "timer",
-    "texture",
-    "ocean-tables",
-    "ocean-frames",
-    "time-of-day",
-    "display"};
+    "pskernel", "transformq-h", "geometry",     "trigonometry", "math-camera", "timer",
+    "texture",  "ocean-tables", "ocean-frames", "time-of-day",  "display"};
 
 const std::unordered_set<std::string> g_object_files_to_ignore_decompiling = {
-    // TODO - not implemented, if you want to ignore decompiling something currently, don't include it in the reference folder
+    // TODO - not implemented, if you want to ignore decompiling something currently, don't include
+    // it in the reference folder
 };
 
 // the functions we expect the decompiler to skip
@@ -504,7 +495,8 @@ TEST_F(OfflineDecompilation, Compile) {
   Timer timer;
   int total_lines = 0;
   for (auto& file : g_object_files_to_decompile_or_ref_check) {
-    if (g_object_files_to_ignore_ref_checks.find(file.first) != g_object_files_to_ignore_ref_checks.end()) {
+    if (g_object_files_to_ignore_ref_checks.find(file.first) !=
+        g_object_files_to_ignore_ref_checks.end()) {
       continue;
     }
 
