@@ -33,9 +33,14 @@ void wait_vm_init() {
 }
 
 void wait_vm_dead() {
+  if (status != Status::Kill) {
+    lg::warn("[VM] Tried to die without being killed. There are {} components running", components);
+    status = Status::Kill;
+  }
+
   std::unique_lock<std::mutex> lk(dead_mutex);
 
-  vm_dead_cv.wait(lk, [&] { return status == Status::Dead; });
+  vm_dead_cv.wait(lk, [&] { return components == 0; });
 }
 
 bool vm_want_exit() {
@@ -65,6 +70,8 @@ void vm_kill() {
 
   // stall caller until VM is done dying
   wait_vm_dead();
+
+  status = Status::Dead;
 }
 
 void subscribe_component() {
@@ -78,12 +85,7 @@ void subscribe_component() {
 
 void unsubscribe_component() {
   --components;
-
-  // the VM is "killed" when there's no more components running
-  if (status == Status::Kill && components == 0) {
-    status = Status::Dead;
-    vm_dead_cv.notify_all();
-  }
+  vm_dead_cv.notify_all();
 }
 
 /*!
