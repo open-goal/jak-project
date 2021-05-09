@@ -491,8 +491,9 @@ StructureType::StructureType(std::string parent,
 std::string StructureType::print() const {
   std::string result = fmt::format(
       "[StructureType] {}\n parent: {}\n boxed: {}\n dynamic: {}\n size: {}\n pack: {}\n misalign: "
-      "{}\n fields:\n",
-      m_name, m_parent, m_is_boxed, m_dynamic, m_size_in_mem, m_pack, m_allow_misalign);
+      "{}\n heap-base: {}\n fields:\n",
+      m_name, m_parent, m_is_boxed, m_dynamic, m_size_in_mem, m_pack, m_allow_misalign,
+      m_heap_base);
   for (auto& x : m_fields) {
     result += "   " + x.print() + "\n";
   }
@@ -599,9 +600,9 @@ BasicType::BasicType(std::string parent, std::string name, bool dynamic, int hea
     : StructureType(std::move(parent), std::move(name), true, dynamic, false, heap_base) {}
 
 std::string BasicType::print() const {
-  std::string result =
-      fmt::format("[BasicType] {}\n parent: {}\n dynamic: {}\n size: {}\n fields:\n", m_name,
-                  m_parent, m_dynamic, m_size_in_mem);
+  std::string result = fmt::format(
+      "[BasicType] {}\n parent: {}\n dynamic: {}\n size: {}\n heap-base: {}\n fields:\n", m_name,
+      m_parent, m_dynamic, m_size_in_mem, m_heap_base);
   for (auto& x : m_fields) {
     result += "   " + x.print() + "\n";
   }
