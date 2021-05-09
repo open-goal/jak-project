@@ -20,20 +20,19 @@ namespace {
 Status status;
 std::condition_variable vm_init_cv;
 std::condition_variable vm_dead_cv;
-std::mutex init_mutex;
-std::mutex dead_mutex;
+std::mutex status_mutex;
 
 int components = 0;
 }  // namespace
 
 void wait_vm_init() {
-  std::unique_lock<std::mutex> lk(init_mutex);
+  std::unique_lock<std::mutex> lk(status_mutex);
 
   vm_init_cv.wait(lk, [&] { return status == Status::Inited; });
 }
 
 void wait_vm_dead() {
-  std::unique_lock<std::mutex> lk(dead_mutex);
+  std::unique_lock<std::mutex> lk(status_mutex);
 
   vm_dead_cv.wait(lk, [&] { return status == Status::Dead; });
 }
@@ -44,7 +43,10 @@ bool vm_want_exit() {
 
 void vm_prepare() {
   lg::debug("[VM] Preparing...");
-  status = Status::Uninited;
+  {
+    std::unique_lock<std::mutex> lk(status_mutex);
+    status = Status::Uninited;
+  }
   lg::debug("[VM] Prepared");
 }
 
@@ -54,14 +56,20 @@ void vm_init() {
   }
 
   lg::debug("[VM] Inited");
-  status = Status::Inited;
+  {
+    std::unique_lock<std::mutex> lk(status_mutex);
+    status = Status::Inited;
+  }
   vm_init_cv.notify_all();
 }
 
 void vm_kill() {
   lg::debug("[VM] Killing");
 
-  status = Status::Kill;
+  {
+    std::unique_lock<std::mutex> lk(status_mutex);
+    status = Status::Kill;
+  }
 
   // stall caller until VM is done dying
   wait_vm_dead();
@@ -81,7 +89,10 @@ void unsubscribe_component() {
 
   // the VM is "killed" when there's no more components running
   if (status == Status::Kill && components == 0) {
-    status = Status::Dead;
+    {
+      std::unique_lock<std::mutex> lk(status_mutex);
+      status = Status::Dead;
+    }
     vm_dead_cv.notify_all();
   }
 }
