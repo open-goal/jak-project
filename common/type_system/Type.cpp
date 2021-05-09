@@ -103,8 +103,11 @@ bool Field::operator==(const Field& other) const {
 
 // parent class of types, also has method logic.
 
-Type::Type(std::string parent, std::string name, bool is_boxed)
-    : m_parent(std::move(parent)), m_name(std::move(name)), m_is_boxed(is_boxed) {
+Type::Type(std::string parent, std::string name, bool is_boxed, int heap_base)
+    : m_parent(std::move(parent)),
+      m_name(std::move(name)),
+      m_is_boxed(is_boxed),
+      m_heap_base(heap_base) {
   m_runtime_name = m_name;
 }
 
@@ -143,7 +146,8 @@ std::string Type::get_parent() const {
 bool Type::is_equal(const Type& other) const {
   return m_parent == other.m_parent && m_name == other.m_name && m_is_boxed == other.m_is_boxed &&
          m_methods == other.m_methods && m_new_method_info == other.m_new_method_info &&
-         m_new_method_info_defined == other.m_new_method_info_defined;
+         m_new_method_info_defined == other.m_new_method_info_defined &&
+         m_heap_base == other.m_heap_base;
 }
 
 /*!
@@ -253,7 +257,7 @@ std::string Type::print_method_info() const {
 // Special Type for both "none" and "_type_" types
 // it's an error to try to do anything with Null.
 
-NullType::NullType(std::string name) : Type("", std::move(name), false) {}
+NullType::NullType(std::string name) : Type("", std::move(name), false, 0) {}
 
 bool NullType::is_reference() const {
   throw std::runtime_error("is_reference called on NullType");
@@ -314,7 +318,7 @@ ValueType::ValueType(std::string parent,
                      int size,
                      bool sign_extend,
                      RegClass reg)
-    : Type(std::move(parent), std::move(name), is_boxed),
+    : Type(std::move(parent), std::move(name), is_boxed, 0),
       m_size(size),
       m_sign_extend(sign_extend),
       m_reg_kind(reg) {}
@@ -431,8 +435,8 @@ bool ValueType::operator==(const Type& other) const {
 // This means this type behaves like a C pointer - the thing that's passed around is a reference
 // to some memory somewhere.
 
-ReferenceType::ReferenceType(std::string parent, std::string name, bool is_boxed)
-    : Type(std::move(parent), std::move(name), is_boxed) {}
+ReferenceType::ReferenceType(std::string parent, std::string name, bool is_boxed, int heap_base)
+    : Type(std::move(parent), std::move(name), is_boxed, heap_base) {}
 
 /*!
  * By definition, this is a reference!
@@ -478,8 +482,11 @@ StructureType::StructureType(std::string parent,
                              std::string name,
                              bool boxed,
                              bool dynamic,
-                             bool pack)
-    : ReferenceType(std::move(parent), std::move(name), boxed), m_dynamic(dynamic), m_pack(pack) {}
+                             bool pack,
+                             int heap_base)
+    : ReferenceType(std::move(parent), std::move(name), boxed, heap_base),
+      m_dynamic(dynamic),
+      m_pack(pack) {}
 
 std::string StructureType::print() const {
   std::string result = fmt::format(
@@ -588,8 +595,8 @@ bool StructureType::lookup_field(const std::string& name, Field* out) {
 // BasicType
 /////////////////
 
-BasicType::BasicType(std::string parent, std::string name, bool dynamic)
-    : StructureType(std::move(parent), std::move(name), true, dynamic) {}
+BasicType::BasicType(std::string parent, std::string name, bool dynamic, int heap_base)
+    : StructureType(std::move(parent), std::move(name), true, dynamic, false, heap_base) {}
 
 std::string BasicType::print() const {
   std::string result =

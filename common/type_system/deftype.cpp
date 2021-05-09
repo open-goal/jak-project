@@ -433,7 +433,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   DeftypeResult result;
 
   if (is_type("basic", parent_type, ts)) {
-    auto new_type = std::make_unique<BasicType>(parent_type_name, name);
+    auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
@@ -451,9 +451,10 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
           name);
       throw std::runtime_error("invalid pack option on basic");
     }
+    new_type->set_heap_base(result.flags.heap_base);
     ts->add_type(name, std::move(new_type));
   } else if (is_type("structure", parent_type, ts)) {
-    auto new_type = std::make_unique<StructureType>(parent_type_name, name);
+    auto new_type = std::make_unique<StructureType>(parent_type_name, name, false, false, false, 0);
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
@@ -467,6 +468,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     if (sr.allow_misaligned) {
       new_type->set_allow_misalign(true);
     }
+    new_type->set_heap_base(result.flags.heap_base);
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
     auto pto = ts->lookup_type(parent_type);
