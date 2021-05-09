@@ -7,52 +7,20 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "goalc/compiler/Compiler.h"
 #include "common/util/Timer.h"
+#include <common/util/json_util.h>
+
+namespace fs = std::filesystem;
 
 namespace {
-// the object files to test
-const std::unordered_set<std::string> g_object_files_to_decompile = {
-    "gcommon", "gstring-h", "gkernel-h", "gkernel",
-    /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
-    "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
-    "trigonometry-h", /* transformq-h */ "matrix", "transform", "quaternion",
-    "euler", /* geometry, trigonometry, */
-    "gsound-h", "timer-h", "timer", "vif-h", "dma-h", "video-h", "vu1-user-h", "dma", "dma-buffer",
-    "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io", "loader-h",
-    "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h", "display",
-    "connect", "text-h", "settings-h", "capture", "memory-usage-h", /* "texture", */ "main-h",
-    "mspace-h", "drawable-h", "drawable-group-h", "drawable-inline-array-h", "draw-node-h",
-    "drawable-tree-h", "drawable-actor-h", "drawable-ambient-h", "game-task-h", "hint-control-h",
-    "generic-h", "lights-h", "lights", "ocean-h", "pov-camera-h",
-    "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */
-    "sky-h", "mood-h",    /* "time-of-day-h", */
-    "hud-h",
-    /* gap */
-    "bounding-box",
-    /* gap */
-    "sync-info-h", "sync-info"};
 
-// the object files to check against a reference in test/decompiler/reference
-const std::vector<std::string> g_object_files_to_check_against_reference = {
-    "gcommon", "gstring-h", "gkernel-h", "gkernel",
-    /*"pskernel",*/ "gstring", "dgo-h", "gstate", "types-h", "vu1-macros", "math", "vector-h",
-    "bounding-box-h", "matrix-h", "quaternion-h", "euler-h", "transform-h", "geometry-h",
-    "trigonometry-h", /* transformq-h, */ "matrix", "transform", "quaternion",
-    "euler", /* geometry, trigonometry */
-    "gsound-h", "timer-h", /* timer, */ "vif-h", "dma-h", "video-h", "vu1-user-h", "dma",
-    "dma-buffer", "dma-bucket", "dma-disasm", "pad", "gs", "display-h", "vector", "file-io",
-    "loader-h", "texture-h", "level-h", "math-camera-h", /* math-camera, */ "font-h", "decomp-h",
-    "display", "connect", "text-h", "settings-h", "capture", "memory-usage-h",
-    /* "texture", */ "main-h", "mspace-h", "drawable-h", "drawable-group-h",
-    "drawable-inline-array-h", "draw-node-h", "drawable-tree-h", "drawable-actor-h",
-    "drawable-ambient-h", "game-task-h", "hint-control-h", "generic-h", "lights-h", "lights",
-    "ocean-h", "ocean-trans-tables", /* "ocean-tables", "ocean-frames", */ "pov-camera-h", "sky-h",
-    "mood-h", /* "time-of-day-h", */
-    /* gap */ "bounding-box", "hud-h",
-    /* gap */
-    "sync-info-h", "sync-info"};
+// list of object files to ignore during reference checks
+const std::unordered_set<std::string> g_object_files_to_ignore_ref_checks = {
+    "pskernel", "transformq-h", "geometry",     "trigonometry", "math-camera", "timer",
+    "texture",  "ocean-tables", "ocean-frames", "time-of-day",  "display"};
 
-const std::unordered_set<std::string> skip_files_in_compiling = {
-    "display"  // interrupt handler setup
+const std::unordered_set<std::string> g_object_files_to_ignore_decompiling = {
+    // TODO - not implemented, if you want to ignore decompiling something currently, don't include
+    // it in the reference folder
 };
 
 // the functions we expect the decompiler to skip
@@ -167,9 +135,49 @@ std::string g_iso_data_path = "";
 
 bool g_dump_mode = false;
 
+std::vector<std::pair<std::string, fs::path>> g_object_files_to_decompile_or_ref_check;
+
 }  // namespace
+
+std::string replaceFirstOccurrence(std::string& s,
+                                   const std::string& toReplace,
+                                   const std::string& replaceWith) {
+  std::size_t pos = s.find(toReplace);
+  if (pos == std::string::npos)
+    return s;
+  return s.replace(pos, toReplace.length(), replaceWith);
+}
+
 int main(int argc, char** argv) {
   lg::initialize();
+
+  // Determine the files to decompile and reference check by scanning the reference directory
+  // All relevant files are assumed to end with `_REF.g[c|d]`
+  // First rough order them
+  std::vector<std::pair<std::string, fs::path>> reference_files_rough_order;
+  for (auto& p : fs::recursive_directory_iterator(
+           file_util::get_file_path({"test", "decompiler", "reference"}))) {
+    if (p.is_regular_file()) {
+      std::string file_name = fs::path(p.path()).replace_extension().filename().string();
+      if (file_name.find("_REF") == std::string::npos) {
+        continue;
+      }
+      std::string object_name = replaceFirstOccurrence(file_name, "_REF", "");
+      reference_files_rough_order.push_back({object_name, p.path()});
+    }
+  }
+  // use the all_objs.json file to place them in the correct build order
+  auto j = parse_commented_json(
+      file_util::read_text_file(file_util::get_file_path({"goal_src", "build", "all_objs.json"})));
+  for (auto& x : j) {
+    auto mapped_name = x[0].get<std::string>();
+    for (auto& p : reference_files_rough_order) {
+      if (p.first == mapped_name) {
+        g_object_files_to_decompile_or_ref_check.push_back(p);
+        break;
+      }
+    }
+  }
 
   // look for an argument that's not a gtest option
   bool got_arg = false;
@@ -198,7 +206,6 @@ int main(int argc, char** argv) {
 class OfflineDecompilation : public ::testing::Test {
  protected:
   static std::unique_ptr<decompiler::ObjectFileDB> db;
-
   static void SetUpTestCase() {
     // global setup
     file_util::init_crc();
@@ -206,7 +213,11 @@ class OfflineDecompilation : public ::testing::Test {
     decompiler::set_config(
         file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}));
 
-    decompiler::get_config().allowed_objects = g_object_files_to_decompile;
+    std::unordered_set<std::string> object_files;
+    for (auto& p : g_object_files_to_decompile_or_ref_check) {
+      object_files.insert(p.first);
+    }
+    decompiler::get_config().allowed_objects = object_files;
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO"};
     std::vector<std::string> dgo_paths;
@@ -428,8 +439,13 @@ void strip_trailing_newlines(std::string& in) {
 }  // namespace
 
 TEST_F(OfflineDecompilation, Reference) {
-  for (auto& file : g_object_files_to_check_against_reference) {
-    auto& obj_l = db->obj_files_by_name.at(file);
+  for (auto& file : g_object_files_to_decompile_or_ref_check) {
+    if (g_object_files_to_ignore_ref_checks.find(file.first) !=
+        g_object_files_to_ignore_ref_checks.end()) {
+      continue;
+    }
+
+    auto& obj_l = db->obj_files_by_name.at(file.first);
     ASSERT_EQ(obj_l.size(), 1);
 
     std::string src = db->ir2_final_out(obj_l.at(0));
@@ -438,17 +454,17 @@ TEST_F(OfflineDecompilation, Reference) {
            fmt::print("{}\n", src);
          }*/
 
-    lg::info("Comparing {}...", file);
+    lg::info("Comparing {}...", file.first);
 
-    auto reference = file_util::read_text_file(file_util::get_file_path(
-        {"test", "decompiler", "reference", fmt::format("{}_REF.gc", file)}));
+    // NOTE - currently only handles .gc files!
+    auto reference = file_util::read_text_file(file.second.string());
 
     strip_trailing_newlines(reference);
     strip_trailing_newlines(src);
 
     if (g_dump_mode) {
       if (reference != src) {
-        fmt::print("----------------- {}\n", file);
+        fmt::print("----------------- {}\n", file.first);
         fmt::print("{}\n", src);
         EXPECT_TRUE(false);
       }
@@ -478,14 +494,15 @@ TEST_F(OfflineDecompilation, Compile) {
 
   Timer timer;
   int total_lines = 0;
-  for (auto& file : g_object_files_to_check_against_reference) {
-    if (skip_files_in_compiling.find(file) != skip_files_in_compiling.end()) {
+  for (auto& file : g_object_files_to_decompile_or_ref_check) {
+    if (g_object_files_to_ignore_ref_checks.find(file.first) !=
+        g_object_files_to_ignore_ref_checks.end()) {
       continue;
     }
 
-    lg::info("Compiling {}...", file);
+    lg::info("Compiling {}...", file.first);
 
-    auto& obj_l = db->obj_files_by_name.at(file);
+    auto& obj_l = db->obj_files_by_name.at(file.first);
     ASSERT_EQ(obj_l.size(), 1);
 
     std::string src = db->ir2_final_out(obj_l.at(0), skip_in_compiling);
