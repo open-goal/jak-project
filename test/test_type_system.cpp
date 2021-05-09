@@ -207,10 +207,10 @@ TEST(TypeSystem, AddMethodAndLookupMethod) {
 TEST(TypeSystem, NewMethod) {
   TypeSystem ts;
   ts.add_builtin_types();
-  ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1"));
+  ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1", false, 0));
   ts.add_method(ts.lookup_type("test-1"), "new",
                 ts.make_function_typespec({"symbol", "string"}, "test-1"));
-  ts.add_type("test-2", std::make_unique<BasicType>("test-1", "test-2"));
+  ts.add_type("test-2", std::make_unique<BasicType>("test-1", "test-2", false, 0));
   ts.add_method(ts.lookup_type("test-2"), "new",
                 ts.make_function_typespec({"symbol", "string", "symbol"}, "test-2"));
 
@@ -218,10 +218,10 @@ TEST(TypeSystem, NewMethod) {
   EXPECT_EQ(ts.lookup_method("test-2", "new").type.print(),
             "(function symbol string symbol test-2)");
 
-  ts.add_type("test-3", std::make_unique<BasicType>("test-1", "test-3"));
+  ts.add_type("test-3", std::make_unique<BasicType>("test-1", "test-3", false, 0));
   EXPECT_EQ(ts.lookup_method("test-3", "new").type.print(), "(function symbol string test-1)");
 
-  ts.add_type("test-4", std::make_unique<BasicType>("test-2", "test-4"));
+  ts.add_type("test-4", std::make_unique<BasicType>("test-2", "test-4", false, 0));
   EXPECT_EQ(ts.lookup_method("test-4", "new").type.print(),
             "(function symbol string symbol test-2)");
 }
@@ -229,7 +229,7 @@ TEST(TypeSystem, NewMethod) {
 TEST(TypeSystem, MethodSubstitute) {
   TypeSystem ts;
   ts.add_builtin_types();
-  ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1"));
+  ts.add_type("test-1", std::make_unique<BasicType>("basic", "test-1", false, 0));
   ts.add_method(ts.lookup_type("test-1"), "new",
                 ts.make_function_typespec({"symbol", "string", "_type_"}, "_type_"));
 
