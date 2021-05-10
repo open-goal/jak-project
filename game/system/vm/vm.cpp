@@ -25,6 +25,11 @@ std::mutex status_mutex;
 int components = 0;
 }  // namespace
 
+static void vm_change_status(Status new_status) {
+  std::unique_lock<std::mutex> lk(status_mutex);
+  status = new_status;
+}
+
 void wait_vm_init() {
   std::unique_lock<std::mutex> lk(status_mutex);
 
@@ -32,9 +37,13 @@ void wait_vm_init() {
 }
 
 void wait_vm_dead() {
+  if (status != Status::Kill && status != Status::Dead) {
+    lg::warn("[VM] Dying without being killed! There are {} component(s) running", components);
+  }
+
   std::unique_lock<std::mutex> lk(status_mutex);
 
-  vm_dead_cv.wait(lk, [&] { return status == Status::Dead; });
+  vm_dead_cv.wait(lk, [&] { return components == 0; });
 }
 
 bool vm_want_exit() {
@@ -43,10 +52,7 @@ bool vm_want_exit() {
 
 void vm_prepare() {
   lg::debug("[VM] Preparing...");
-  {
-    std::unique_lock<std::mutex> lk(status_mutex);
-    status = Status::Uninited;
-  }
+  vm_change_status(Status::Uninited);
   lg::debug("[VM] Prepared");
 }
 
@@ -56,26 +62,26 @@ void vm_init() {
   }
 
   lg::debug("[VM] Inited");
-  {
-    std::unique_lock<std::mutex> lk(status_mutex);
-    status = Status::Inited;
-  }
+  vm_change_status(Status::Inited);
   vm_init_cv.notify_all();
 }
 
 void vm_kill() {
   lg::debug("[VM] Killing");
 
-  {
-    std::unique_lock<std::mutex> lk(status_mutex);
-    status = Status::Kill;
-  }
+  vm_change_status(Status::Kill);
 
   // stall caller until VM is done dying
   wait_vm_dead();
+
+  vm_change_status(Status::Dead);
 }
 
 void subscribe_component() {
+  if (status == Status::Dead) {
+    throw std::runtime_error("[VM] Cannot add new components when VM is dead!");
+  }
+
   ++components;
 
   // stall component until VM is ready
@@ -86,15 +92,7 @@ void subscribe_component() {
 
 void unsubscribe_component() {
   --components;
-
-  // the VM is "killed" when there's no more components running
-  if (status == Status::Kill && components == 0) {
-    {
-      std::unique_lock<std::mutex> lk(status_mutex);
-      status = Status::Dead;
-    }
-    vm_dead_cv.notify_all();
-  }
+  vm_dead_cv.notify_all();
 }
 
 /*!
