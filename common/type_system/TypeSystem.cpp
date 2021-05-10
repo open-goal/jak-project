@@ -1009,7 +1009,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
 StructureType* TypeSystem::add_builtin_structure(const std::string& parent,
                                                  const std::string& type_name,
                                                  bool boxed) {
-  add_type(type_name, std::make_unique<StructureType>(parent, type_name, boxed));
+  add_type(type_name, std::make_unique<StructureType>(parent, type_name, boxed, false, false, 0));
   return get_type_of_type<StructureType>(type_name);
 }
 
@@ -1018,7 +1018,7 @@ StructureType* TypeSystem::add_builtin_structure(const std::string& parent,
  * things in the wrong order.
  */
 BasicType* TypeSystem::add_builtin_basic(const std::string& parent, const std::string& type_name) {
-  add_type(type_name, std::make_unique<BasicType>(parent, type_name));
+  add_type(type_name, std::make_unique<BasicType>(parent, type_name, false, 0));
   return get_type_of_type<BasicType>(type_name);
 }
 
@@ -1339,11 +1339,15 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     }
   }
 
+  if (type->heap_base()) {
+    result.append(fmt::format("  :heap-base #x{:x}\n", type->heap_base()));
+  }
+
   auto method_count = get_next_method_id(type);
   result.append(fmt::format("  :method-count-assert {}\n", get_next_method_id(type)));
   result.append(fmt::format("  :size-assert         #x{:x}\n", type->get_size_in_memory()));
   TypeFlags flags;
-  flags.heap_base = 0;
+  flags.heap_base = type->heap_base();
   flags.size = type->get_size_in_memory();
   flags.pad = 0;
   flags.methods = method_count;

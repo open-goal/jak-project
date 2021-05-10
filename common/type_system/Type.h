@@ -93,8 +93,10 @@ class Type {
 
   bool is_boxed() const { return m_is_boxed; }
 
+  int heap_base() const { return m_heap_base; }
+
  protected:
-  Type(std::string parent, std::string name, bool is_boxed);
+  Type(std::string parent, std::string name, bool is_boxed, int heap_base);
 
   std::vector<MethodInfo> m_methods;
   MethodInfo m_new_method_info;
@@ -105,6 +107,8 @@ class Type {
   bool m_allow_in_runtime = true;
   std::string m_runtime_name;
   bool m_is_boxed = false;  // does this have runtime type information?
+
+  int m_heap_base = 0;
 };
 
 /*!
@@ -170,7 +174,7 @@ class ValueType : public Type {
  */
 class ReferenceType : public Type {
  public:
-  ReferenceType(std::string parent, std::string name, bool is_boxed);
+  ReferenceType(std::string parent, std::string name, bool is_boxed, int heap_base);
   bool is_reference() const override;
   int get_load_size() const override;
   bool get_load_signed() const override;
@@ -232,9 +236,10 @@ class StructureType : public ReferenceType {
  public:
   StructureType(std::string parent,
                 std::string name,
-                bool boxed = false,
-                bool dynamic = false,
-                bool pack = false);
+                bool boxed,
+                bool dynamic,
+                bool pack,
+                int heap_base);
   std::string print() const override;
   void inherit(StructureType* parent);
   const std::vector<Field>& fields() const { return m_fields; }
@@ -248,6 +253,7 @@ class StructureType : public ReferenceType {
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
   void set_pack(bool pack) { m_pack = pack; }
+  void set_heap_base(int hb) { m_heap_base = hb; }
   bool is_packed() const { return m_pack; }
   bool is_allowed_misalign() const { return m_allow_misalign; };
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
@@ -276,7 +282,7 @@ class StructureType : public ReferenceType {
 
 class BasicType : public StructureType {
  public:
-  BasicType(std::string parent, std::string name, bool dynamic = false);
+  BasicType(std::string parent, std::string name, bool dynamic, int heap_base);
   int get_offset() const override;
   int get_inline_array_start_alignment() const override;
   std::string print() const override;
