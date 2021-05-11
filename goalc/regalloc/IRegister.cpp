@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include "third-party/fmt/core.h"
 #include "IRegister.h"
 

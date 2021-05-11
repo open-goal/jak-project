@@ -5,7 +5,7 @@
 
 #include <string>
 #include <vector>
-#include <cassert>
+#include "common/util/assert.h"
 
 namespace goos {
 class Object;

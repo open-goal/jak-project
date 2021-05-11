@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

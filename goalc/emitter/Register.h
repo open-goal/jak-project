@@ -8,7 +8,7 @@
 #ifndef JAK_REGISTER_H
 #define JAK_REGISTER_H
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <array>
 #include <vector>
 #include <string>

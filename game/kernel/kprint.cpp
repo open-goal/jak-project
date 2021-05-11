@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#include <cassert>
+#include "common/util/assert.h"
 
 #include "common/goal_constants.h"
 #include "common/common_types.h"

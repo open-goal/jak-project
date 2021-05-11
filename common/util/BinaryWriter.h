@@ -5,7 +5,7 @@
  * Write raw data like a stream.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <stdexcept>
 #include <vector>
 #include <cstdint>

@@ -12,7 +12,7 @@
  */
 
 #include <memory>
-#include <cassert>
+#include "common/util/assert.h"
 #include <utility>
 #include <unordered_map>
 #include <optional>

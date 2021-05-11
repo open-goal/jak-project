@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
-#include <cassert>
+#include "common/util/assert.h"
 #include <mutex>
 #include "third-party/fmt/color.h"
 #include "log.h"

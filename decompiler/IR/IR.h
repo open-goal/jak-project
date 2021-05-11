@@ -1,7 +1,7 @@
 #ifndef JAK_IR_H
 #define JAK_IR_H
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <utility>
 #include <memory>
 #include <unordered_map>

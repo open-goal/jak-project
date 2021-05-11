@@ -9,7 +9,7 @@
 #include <cstdio> /* defines FILENAME_MAX */
 #include <fstream>
 #include <sstream>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdlib>
 #include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"

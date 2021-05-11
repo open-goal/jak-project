@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"

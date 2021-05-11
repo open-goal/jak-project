@@ -4,7 +4,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include "kscheme.h"
 #include "common/common_types.h"
 #include "common/goal_constants.h"

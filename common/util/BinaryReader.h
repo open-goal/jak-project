@@ -6,7 +6,7 @@
  */
 
 #include <cstdint>
-#include <cassert>
+#include "common/util/assert.h"
 #include <vector>
 
 class BinaryReader {

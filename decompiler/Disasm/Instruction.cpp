@@ -7,7 +7,7 @@
 #include "Instruction.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "third-party/fmt/core.h"
-#include <cassert>
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!

@@ -8,7 +8,7 @@
 #ifndef JAK_PTR_H
 #define JAK_PTR_H
 
-#include <cassert>
+#include "common/util/assert.h"
 #include "game/runtime.h"
 #include "common/common_types.h"
 

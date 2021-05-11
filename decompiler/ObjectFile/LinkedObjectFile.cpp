@@ -4,7 +4,7 @@
  */
 
 #include <algorithm>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <numeric>
 #include "decompiler/IR/IR.h"

@@ -2,7 +2,7 @@
 
 #include <string>
 #include <optional>
-#include <cassert>
+#include "common/util/assert.h"
 #include <utility>
 #include "common/goos/Object.h"
 #include "decompiler/Disasm/Register.h"
