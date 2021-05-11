@@ -5,6 +5,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/TP_Type.h"
 #include "third-party/fmt/core.h"
+#include "decompiler/Function/Warnings.h"
 
 namespace decompiler {
 enum class AccessMode : u8 {
@@ -172,13 +173,13 @@ struct UseDefInfo {
     throw std::runtime_error("Invalid disable use");
   }
 
-  void disable_def(int op_id) {
+  void disable_def(int op_id, DecompWarnings& warnings) {
     for (auto& x : defs) {
       if (x.op_id == op_id) {
         if (x.disabled) {
-          lg::warn(
+          warnings.general_warning(
               "disable def twice: {}. This may happen when a cond (no else) is nested inside of "
-              "another conditional, but it should be rare.\n",
+              "another conditional, but it should be rare.",
               x.op_id);
         }
         x.disabled = true;
@@ -240,10 +241,10 @@ struct VariableNames {
     use_def_info.at(RegId(access.reg(), var_id)).disable_use(access.idx());
   }
 
-  void disable_def(const RegisterAccess& access) {
+  void disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
     assert(access.mode() == AccessMode::WRITE);
     auto var_id = write_opid_to_varid.at(access.reg()).at(access.idx());
-    use_def_info.at(RegId(access.reg(), var_id)).disable_def(access.idx());
+    use_def_info.at(RegId(access.reg(), var_id)).disable_def(access.idx(), warnings);
   }
 
   const VarInfo& lookup(Register reg, int op_id, AccessMode mode) const {

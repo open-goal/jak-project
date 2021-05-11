@@ -168,7 +168,7 @@ class Env {
     }
   }
 
-  void disable_def(const RegisterAccess& access);
+  void disable_def(const RegisterAccess& access, DecompWarnings& warnings);
 
   void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
 
@@ -180,6 +180,8 @@ class Env {
   // todo - remove these hacks at some point.
   LinkedObjectFile* file = nullptr;
   DecompilerTypeSystem* dts = nullptr;
+  Function* func = nullptr;
+
   std::unordered_map<int, StackSpillEntry> stack_slot_entries;
 
   std::string get_spill_slot_var_name(int offset) const {

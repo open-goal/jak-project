@@ -324,8 +324,6 @@ goos::Object decompile_structure(const TypeSpec& type,
         // we can specify a more specific type.
         auto got_type = TypeSpec(word.symbol_name);
         if (ts.tc(actual_type, got_type)) {
-          lg::info("For type {}, got more specific type {}\n", actual_type.print(),
-                   got_type.print());
           actual_type = got_type;
           if (actual_type == TypeSpec("string")) {
             return decompile_string_at_label(label, words);

@@ -183,6 +183,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
     total_functions++;
     func.ir2.env.file = &data.linked_data;
     func.ir2.env.dts = &dts;
+    func.ir2.env.func = &func;
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
