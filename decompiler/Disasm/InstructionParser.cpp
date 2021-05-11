@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include <algorithm>
 #include <stdexcept>
 #include "common/common_types.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cassert>
+#include "common/util/assert.h"
 
 #include "common/common_types.h"
 #include "decompiler/IR2/Form.h"

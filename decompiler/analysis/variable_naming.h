@@ -19,7 +19,7 @@
 #include <vector>
 #include <optional>
 #include <unordered_map>
-#include <cassert>
+#include "common/util/assert.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/IR2/IR2_common.h"

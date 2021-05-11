@@ -14,7 +14,7 @@
  * The space used is (highest_set_reg + 63) / 64 + constant overhead (vector + int)
  */
 #include <vector>
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/common_types.h"
 
 class IRegSet {

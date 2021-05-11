@@ -10,7 +10,7 @@
 #ifndef JAK2_DISASSEMBLER_OBJECTFILEDB_H
 #define JAK2_DISASSEMBLER_OBJECTFILEDB_H
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <string>
 #include <unordered_map>
 #include <vector>

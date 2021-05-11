@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include "libpad.h"
 
 namespace ee {

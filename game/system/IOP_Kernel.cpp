@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "IOP_Kernel.h"
 #include "game/sce/iop.h"

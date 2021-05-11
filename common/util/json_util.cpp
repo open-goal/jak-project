@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include "json_util.h"
 
 /*!

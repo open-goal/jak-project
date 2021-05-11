@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <cassert>
+#include "common/util/assert.h"
 #include <common/goos/Object.h>
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/util/StackSpillMap.h"

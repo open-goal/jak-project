@@ -4,7 +4,7 @@
  * This implements a decoder for the GOAL linking format.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"

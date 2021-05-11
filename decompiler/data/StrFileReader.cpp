@@ -3,7 +3,7 @@
  * Utility class to read a .STR file and extract the full file name.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "common/util/FileUtil.h"
 #include "game/common/overlord_common.h"

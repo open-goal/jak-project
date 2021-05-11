@@ -5,7 +5,7 @@
  */
 
 #include <cstdio>
-#include <cassert>
+#include "common/util/assert.h"
 #include <utility>
 
 // TODO - i think im not including the dependency right..?

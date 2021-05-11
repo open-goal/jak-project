@@ -4,7 +4,7 @@
  * It is not very good, but significantly better than putting everything on one line
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <stdexcept>
 #include <utility>
 #include <cstring>

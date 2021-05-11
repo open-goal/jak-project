@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <vector>
 #include <string>
 

@@ -1,5 +1,5 @@
 #include <stdexcept>
-#include <cassert>
+#include "common/util/assert.h"
 #include "DataParser.h"
 #include "third-party/fmt/core.h"
 

@@ -5,7 +5,7 @@
  * access types, and reverse type lookups.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <stdexcept>
 #include <third-party/fmt/core.h>
 #include "TypeSystem.h"

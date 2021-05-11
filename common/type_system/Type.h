@@ -8,7 +8,7 @@
 #pragma once
 
 #include <string>
-#include <cassert>
+#include "common/util/assert.h"
 #include <unordered_map>
 #include "common/goal_constants.h"
 #include "TypeSpec.h"

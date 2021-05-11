@@ -3,7 +3,7 @@
 #ifndef JAK_V2_TIMER_H
 #define JAK_V2_TIMER_H
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdint>
 #include <ctime>
 

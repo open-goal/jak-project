@@ -10,7 +10,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include "fake_iso.h"
 #include "game/sce/iop.h"
 #include "isocommon.h"

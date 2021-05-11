@@ -21,7 +21,7 @@
 #include "common/cross_sockets/xsocket.h"
 
 #include <stdexcept>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <chrono>
 #include <thread>

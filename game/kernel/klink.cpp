@@ -7,7 +7,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdio>
 #include <common/versions.h>
 #include "klink.h"

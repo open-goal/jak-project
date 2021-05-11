@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <string>
-#include <cassert>
+#include "common/util/assert.h"
 
 #include "common/common_types.h"
 

@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <cassert>
+#include "common/util/assert.h"
 #include "BasicBlocks.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/Disasm/InstructionMatching.h"
