@@ -194,6 +194,10 @@ bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
   return m_types.find(name) != m_types.end();
 }
 
+bool TypeSystem::fully_defined_type_exists(const TypeSpec& type) const {
+  return fully_defined_type_exists(type.base_type());
+}
+
 bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
   return m_forward_declared_types.find(name) != m_forward_declared_types.end();
 }
@@ -961,6 +965,11 @@ int TypeSystem::get_size_in_type(const Field& field) const {
 
   if (field.is_array()) {
     if (field.is_inline()) {
+      if (!fully_defined_type_exists(field.type())) {
+        fmt::print("Cannot use the forward-declared type {} in an inline array.\n",
+                   field.type().print());
+        throw std::runtime_error("Cannot compute size of inline array.");
+      }
       if (!allow_inline(field_type)) {
         fmt::print(
             "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted.\n",
@@ -981,6 +990,10 @@ int TypeSystem::get_size_in_type(const Field& field) const {
   } else {
     // not an array
     if (field.is_inline()) {
+      if (!fully_defined_type_exists(field.type())) {
+        fmt::print("Cannot use the forward-declared type {} inline.\n", field.type().print());
+        throw std::runtime_error("Cannot compute size of inline field.");
+      }
       if (!allow_inline(field_type)) {
         fmt::print(
             "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted. Type "

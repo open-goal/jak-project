@@ -1386,8 +1386,6 @@ bool ControlFlowGraph::find_cond_w_empty_else() {
       new_cwe->prev->next = new_cwe;
     }
 
-    lg::error("There is a very strange control flow here, please check it manually.");
-
     // link new_cwe <-> end
     std::vector<CfgVtx*> to_replace;
     // to_replace.push_back(else_block);

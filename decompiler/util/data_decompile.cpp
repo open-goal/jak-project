@@ -601,7 +601,7 @@ goos::Object decompile_value(const TypeSpec& type,
     assert(bytes.size() == 4);
     s32 value;
     memcpy(&value, bytes.data(), 4);
-    if (value > 100 && value <= INT32_MAX) {
+    if (value > 100) {
       return pretty_print::to_symbol(fmt::format("#x{:x}", value));
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
@@ -615,7 +615,7 @@ goos::Object decompile_value(const TypeSpec& type,
     assert(bytes.size() == 2);
     s16 value;
     memcpy(&value, bytes.data(), 2);
-    if (value > 100 && value <= INT16_MAX) {
+    if (value > 100) {
       return pretty_print::to_symbol(fmt::format("#x{:x}", value));
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));

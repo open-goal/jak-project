@@ -100,6 +100,7 @@ class TypeSystem {
   FieldReverseLookupOutput reverse_field_lookup(const FieldReverseLookupInput& input) const;
 
   bool fully_defined_type_exists(const std::string& name) const;
+  bool fully_defined_type_exists(const TypeSpec& type) const;
   bool partially_defined_type_exists(const std::string& name) const;
   TypeSpec make_typespec(const std::string& name) const;
   TypeSpec make_array_typespec(const TypeSpec& element_type) const;

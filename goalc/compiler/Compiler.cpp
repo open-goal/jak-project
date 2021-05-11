@@ -329,11 +329,20 @@ bool Compiler::connect_to_target() {
 
 /*!
  * Just run the front end on a string. Will not do register allocation or code generation.
- * Useful for typechecking or running strings that invoke the compiler again.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
  */
 void Compiler::run_front_end_on_string(const std::string& src) {
   auto code = m_goos.reader.read_from_string({src});
   compile_object_file("run-on-string", code, true);
+}
+
+/*!
+ * Just run the front end on a file. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
+void Compiler::run_front_end_on_file(const std::vector<std::string>& path) {
+  auto code = m_goos.reader.read_from_file(path);
+  compile_object_file("run-on-file", code, true);
 }
 
 /*!
