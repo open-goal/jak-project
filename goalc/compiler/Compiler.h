@@ -38,6 +38,7 @@ class Compiler {
   std::vector<std::string> run_test_no_load(const std::string& source_code);
   void compile_and_send_from_string(const std::string& source_code);
   void run_front_end_on_string(const std::string& src);
+  void run_front_end_on_file(const std::vector<std::string>& path);
   void run_full_compiler_on_string_no_save(const std::string& src);
   void shutdown_target();
   void enable_throw_on_redefines() { m_throw_on_define_extern_redefinition = true; }

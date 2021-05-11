@@ -483,9 +483,9 @@ const UseDefInfo& Env::get_use_def_info(const RegisterAccess& ra) const {
   return m_var_names.use_def_info.at(var_id);
 }
 
-void Env::disable_def(const RegisterAccess& access) {
+void Env::disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
   if (has_local_vars()) {
-    m_var_names.disable_def(access);
+    m_var_names.disable_def(access, warnings);
   }
 }
 

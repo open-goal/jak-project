@@ -10,6 +10,21 @@
 #include <third-party/fmt/core.h>
 #include "TypeSystem.h"
 #include "common/util/math_util.h"
+#include "third-party/fmt/color.h"
+
+namespace {
+template <typename... Args>
+[[noreturn]] void throw_typesystem_error(const std::string& str, Args&&... args) {
+  fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Type Error! --\n");
+  if (!str.empty() && str.back() == '\n') {
+    fmt::print(fg(fmt::color::yellow), str, std::forward<Args>(args)...);
+  } else {
+    fmt::print(fg(fmt::color::yellow), str + '\n', std::forward<Args>(args)...);
+  }
+
+  throw std::runtime_error("Type Error");
+}
+}  // namespace
 
 TypeSystem::TypeSystem() {
   // the "none" and "_type_" types are included by default.
@@ -29,10 +44,10 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
 
     if (*kv->second != *type) {
       // exists, and we are trying to change it!
-      fmt::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
-                 kv->second->get_name(), kv->second->print(), type->print());
 
       if (m_allow_redefinition) {
+        fmt::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
+                   kv->second->get_name(), kv->second->print(), type->print());
         // extra dangerous, we have allowed type redefinition!
 
         // keep the unique_ptr around, just in case somebody references this old type pointer.
@@ -41,7 +56,9 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
         // update the type
         m_types[name] = std::move(type);
       } else {
-        throw std::runtime_error("Type was redefined with throw_on_redefine set.");
+        throw_typesystem_error(
+            "Inconsistent type definition. Type {} was originally\n{}\nand is redefined as\n{}\n",
+            kv->second->get_name(), kv->second->print(), type->print());
       }
     }
   } else {
@@ -50,15 +67,14 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     // none/object get to skip these checks because they are roots.
     if (name != "object" && name != "none" && name != "_type_" && name != "_varargs_") {
       if (m_forward_declared_types.find(type->get_parent()) != m_forward_declared_types.end()) {
-        fmt::print("[TypeSystem] Type {} has incompletely defined parent {}\n", type->get_name(),
-                   type->get_parent());
-        throw std::runtime_error("add_type failed");
+        throw_typesystem_error(
+            "Cannot create new type {}. The parent type {} is not fully defined.\n",
+            type->get_name(), type->get_parent());
       }
 
       if (m_types.find(type->get_parent()) == m_types.end()) {
-        fmt::print("[TypeSystem] Type {} has undefined parent {}\n", type->get_name(),
-                   type->get_parent());
-        throw std::runtime_error("add_type failed");
+        throw_typesystem_error("Cannot create new type {}. The parent type {} is not defined.\n",
+                               type->get_name(), type->get_parent());
       }
     }
 
@@ -185,13 +201,16 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) const {
       m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
     return TypeSpec(name);
   } else {
-    fmt::print("[TypeSystem] The type {} is unknown.\n", name);
-    throw std::runtime_error("make_typespec failed");
+    throw_typesystem_error("Type {} is unknown\n", name);
   }
 }
 
 bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
   return m_types.find(name) != m_types.end();
+}
+
+bool TypeSystem::fully_defined_type_exists(const TypeSpec& type) const {
+  return fully_defined_type_exists(type.base_type());
 }
 
 bool TypeSystem::partially_defined_type_exists(const std::string& name) const {
@@ -257,9 +276,9 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
   }
 
   if (m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
-    fmt::print("[TypeSystem] The type {} is not fully defined.\n", name);
+    throw_typesystem_error("Type {} is not fully defined.\n", name);
   } else {
-    fmt::print("[TypeSystem] The type {} is not defined.\n", name);
+    throw_typesystem_error("Type {} is not defined.\n", name);
   }
   throw std::runtime_error("lookup_type failed");
 }
@@ -300,17 +319,13 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
     } else if (fwd_dec->second == BASIC) {
       return lookup_type("basic");
     } else {
-      fmt::print(
-          "[TypeSystem] The type {} is known to be a type, but has not been defined with deftype "
+      throw_typesystem_error(
+          "The type {} is known to be a type, but has not been defined with deftype "
           "or properly forward declared with declare-type\n",
           name);
     }
-
-  } else {
-    fmt::print("[TypeSystem] The type {} is not defined.\n", name);
   }
-
-  throw std::runtime_error("lookup_type_allow_partial_def failed");
+  throw_typesystem_error("The type {} is unknown.\n", name);
 }
 
 MethodInfo TypeSystem::add_method(const std::string& type_name,
@@ -359,21 +374,17 @@ MethodInfo TypeSystem::add_method(Type* type,
   if (got_existing) {
     // make sure we aren't changing anything.
     if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
-      fmt::print(
-          "[TypeSystem] The method {} of type {} was originally defined as {}, but has been "
+      throw_typesystem_error(
+          "The method {} of type {} was originally defined as {}, but has been "
           "redefined as {}\n",
           method_name, type->get_name(), existing_info.type.print(), ts.print());
-      // unlike type re-definition, method re-definition is almost certain to go wrong.
-      // probably better to give up.
-      throw std::runtime_error("method redefinition");
     }
 
     return existing_info;
   } else {
     if (!allow_new_method) {
-      fmt::print("[TypeSystem] Attempted to add method {} to type {} but it was not declared.\n",
-                 method_name, type->get_name());
-      throw std::runtime_error("illegal method definition");
+      throw_typesystem_error("Cannot add method {} to type {} because it was not declared.\n",
+                             method_name, type->get_name());
     }
     // add a new method!
     return type->add_method({get_next_method_id(type), method_name, ts, type->get_name()});
@@ -390,11 +401,10 @@ MethodInfo TypeSystem::add_new_method(Type* type, const TypeSpec& ts) {
   if (type->get_my_new_method(&existing)) {
     // it exists!
     if (!existing.type.is_compatible_child_method(ts, type->get_name())) {
-      fmt::print(
-          "[TypeSystem] The new method of {} was originally defined as {}, but has been redefined "
-          "as {}\n",
+      throw_typesystem_error(
+          "Cannot add new method. Type does not match declaration. The new method of {} was "
+          "originally defined as {}, but has been redefined as {}\n",
           type->get_name(), existing.type.print(), ts.print());
-      throw std::runtime_error("add_new_method failed");
     }
 
     return existing;
@@ -433,8 +443,7 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name,
     }
   }
 
-  fmt::print("[TypeSystem] The method {} of type {} could not be found.\n", method_name, type_name);
-  throw std::runtime_error("lookup_method failed");
+  throw_typesystem_error("The method {} of type {} could not be found.\n", method_name, type_name);
 }
 
 bool TypeSystem::try_lookup_method(const std::string& type_name,
@@ -531,9 +540,8 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id
     }
   }
 
-  fmt::print("[TypeSystem] The method with id {} of type {} could not be found.\n", method_id,
-             type_name);
-  throw std::runtime_error("lookup_method failed");
+  throw_typesystem_error("The method with id {} of type {} could not be found.\n", method_id,
+                         type_name);
 }
 
 /*!
@@ -560,8 +568,7 @@ MethodInfo TypeSystem::lookup_new_method(const std::string& type_name) const {
     }
   }
 
-  fmt::print("[TypeSystem] The new method of type {} could not be found.\n", type_name);
-  throw std::runtime_error("lookup_new_method failed");
+  throw_typesystem_error("The new method of type {} could not be found.\n", type_name);
 }
 
 /*!
@@ -572,9 +579,9 @@ void TypeSystem::assert_method_id(const std::string& type_name,
                                   int id) {
   auto info = lookup_method(type_name, method_name);
   if (info.id != id) {
-    fmt::print(
-        "[TypeSystem] Method ID assertion failed: type {}, method {} id was {}, expected {}\n",
-        type_name, method_name, info.id, id);
+    throw_typesystem_error(
+        "Method ID assertion failed: type {}, method {} id was {}, expected {}\n", type_name,
+        method_name, info.id, id);
   }
 }
 
@@ -634,8 +641,8 @@ void TypeSystem::assert_field_offset(const std::string& type_name,
                                      int offset) {
   Field field = lookup_field(type_name, field_name);
   if (field.offset() != offset) {
-    fmt::print("[TypeSystem] assert_field_offset({}, {}, {}) failed - got {}\n", type_name,
-               field_name, offset);
+    throw_typesystem_error("assert_field_offset({}, {}, {}) failed - got {}\n", type_name,
+                           field_name, offset);
     throw std::runtime_error("assert_field_offset failed");
   }
 }
@@ -652,8 +659,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   int offset_override,
                                   bool skip_in_static_decomp) {
   if (type->lookup_field(field_name, nullptr)) {
-    fmt::print("[TypeSystem] Type {} already has a field named {}\n", type->get_name(), field_name);
-    throw std::runtime_error("add_field_to_type duplicate field names");
+    throw_typesystem_error("Type {} already has a field named {}\n", type->get_name(), field_name);
   }
 
   // first, construct the field
@@ -681,11 +687,8 @@ int TypeSystem::add_field_to_type(StructureType* type,
     int aligned_offset = align(offset, field_alignment);
     field.mark_as_user_placed();
     if (offset != aligned_offset) {
-      fmt::print(
-          "[TypeSystem] Tried to overwrite offset of field to be {}, but it is not aligned "
-          "correctly\n",
-          offset);
-      throw std::runtime_error("add_field_to_type bad offset_override");
+      throw_typesystem_error("Tried to place field {} at {}, but it is not aligned correctly\n",
+                             field_name, offset);
     }
   }
 
@@ -909,8 +912,7 @@ Field TypeSystem::lookup_field(const std::string& type_name, const std::string& 
   auto type = get_type_of_type<StructureType>(type_name);
   Field field;
   if (!type->lookup_field(field_name, &field)) {
-    fmt::print("[TypeSystem] Type {} has no field named {}\n", type_name, field_name);
-    throw std::runtime_error("lookup_field failed");
+    throw_typesystem_error("Type {} has no field named {}\n", type_name, field_name);
   }
   return field;
 }
@@ -961,11 +963,14 @@ int TypeSystem::get_size_in_type(const Field& field) const {
 
   if (field.is_array()) {
     if (field.is_inline()) {
+      if (!fully_defined_type_exists(field.type())) {
+        throw_typesystem_error("Cannot use the forward-declared type {} in an inline array.\n",
+                               field.type().print());
+      }
       if (!allow_inline(field_type)) {
-        fmt::print(
-            "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted.\n",
+        throw_typesystem_error(
+            "Attempted to use `{}` inline, this probably isn't what you wanted.\n",
             field_type->get_name());
-        throw std::runtime_error("bad get size in type");
       }
       assert(field_type->is_reference());
       return field.array_size() * align(field_type->get_size_in_memory(),
@@ -981,12 +986,15 @@ int TypeSystem::get_size_in_type(const Field& field) const {
   } else {
     // not an array
     if (field.is_inline()) {
+      if (!fully_defined_type_exists(field.type())) {
+        throw_typesystem_error("Cannot use the forward-declared type {} inline.\n",
+                               field.type().print());
+      }
       if (!allow_inline(field_type)) {
-        fmt::print(
-            "[Type System] Attempted to use `{}` inline, this probably isn't what you wanted. Type "
+        throw_typesystem_error(
+            "Attempted to use `{}` inline, this probably isn't what you wanted. Type "
             "may not be defined fully.\n",
             field_type->get_name());
-        throw std::runtime_error("bad get size in type");
       }
       assert(field_type->is_reference());
       // return align(field_type->get_size_in_memory(), field_type->get_in_memory_alignment());
@@ -1275,8 +1283,7 @@ BitfieldLookupInfo TypeSystem::lookup_bitfield_info(const std::string& type_name
   auto type = get_type_of_type<BitFieldType>(type_name);
   BitField f;
   if (!type->lookup_field(field_name, &f)) {
-    fmt::print("[TypeSystem] Type {} has no bitfield named {}\n", type_name, field_name);
-    throw std::runtime_error("lookup_bitfield failed");
+    throw_typesystem_error("Type {} has no bitfield named {}\n", type_name, field_name);
   }
 
   BitfieldLookupInfo result;
@@ -1303,19 +1310,17 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
   }
 
   if (field_size > load_size) {
-    fmt::print(
-        "[TypeSystem] Type {}'s bitfield {}'s set size is {}, which is larger than the actual "
+    throw_typesystem_error(
+        "Type {}'s bitfield {}'s set size is {}, which is larger than the actual "
         "type: {}\n",
         type->get_name(), field_name, field_size, load_size);
-    throw std::runtime_error("Failed to add bitfield to type");
   }
 
   if (field_size + offset > type->get_load_size() * 8) {
-    fmt::print(
-        "[TypeSystem] Type {}'s bitfield {} will run off the end of the type (ends at {} bits, "
+    throw_typesystem_error(
+        "Type {}'s bitfield {} will run off the end of the type (ends at {} bits, "
         "type is {} bits)\n",
         type->get_name(), field_name, field_size + offset, type->get_load_size() * 8);
-    throw std::runtime_error("Failed to add bitfield to type");
   }
   BitField field(field_type, field_name, offset, field_size);
   type->m_fields.push_back(field);

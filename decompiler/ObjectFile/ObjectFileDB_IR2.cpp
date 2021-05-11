@@ -183,6 +183,7 @@ void ObjectFileDB::ir2_basic_block_pass() {
     total_functions++;
     func.ir2.env.file = &data.linked_data;
     func.ir2.env.dts = &dts;
+    func.ir2.env.func = &func;
 
     // first, find basic blocks.
     auto blocks = find_blocks_in_function(data.linked_data, segment_id, func);
@@ -206,14 +207,12 @@ void ObjectFileDB::ir2_basic_block_pass() {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
-      //      if (func.guessed_name.to_string() == "abs") {
       func.cfg = build_cfg(data.linked_data, segment_id, func);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
         failed_to_build_cfg++;
       }
-      //      }
 
       // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
@@ -317,7 +316,8 @@ void ObjectFileDB::ir2_type_analysis_pass() {
     if (!func.suspected_asm) {
       non_asm_functions++;
       TypeSpec ts;
-      if (lookup_function_type(func.guessed_name, data.to_unique_name(), &ts)) {
+      if (lookup_function_type(func.guessed_name, data.to_unique_name(), &ts) &&
+          func.ir2.atomic_ops_succeeded) {
         func.type = ts;
         attempted_functions++;
         // try type analysis here.

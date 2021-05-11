@@ -133,6 +133,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // Set up the environment
   test->func.ir2.env.file = &test->file;
   test->func.ir2.env.dts = dts.get();
+  test->func.ir2.env.func = &test->func;
   // Set up the function
   test->func.instructions = program.instructions;
   test->func.guessed_name.set_as_global("test-function");

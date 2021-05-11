@@ -489,8 +489,8 @@ int line_count(const std::string& str) {
 TEST_F(OfflineDecompilation, Compile) {
   Compiler compiler;
 
-  compiler.run_front_end_on_string(file_util::read_text_file(file_util::get_file_path(
-      {"test", "decompiler", "reference", "all_forward_declarations.gc"})));
+  compiler.run_front_end_on_file(
+      {"test", "decompiler", "reference", "all_forward_declarations.gc"});
 
   Timer timer;
   int total_lines = 0;
