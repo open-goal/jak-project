@@ -58,11 +58,10 @@ class ObjectFileDB {
   void find_and_write_scripts(const std::string& output_dir);
   void dump_raw_objects(const std::string& output_dir);
 
-  void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
+  void write_object_file_words(const std::string& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const std::string& output_dir,
-                         bool disassemble_objects_without_functions,
-                         bool write_json,
-                         const std::string& file_suffix = "");
+                         bool disassemble_data,
+                         bool disassemble_code);
 
   void analyze_functions_ir1();
   void analyze_functions_ir2(const std::string& output_dir);

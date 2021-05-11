@@ -423,18 +423,17 @@ void ObjectFileDB::process_labels() {
 /*!
  * Dump object files and their linking data to text files for debugging
  */
-void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool dump_v3_only) {
-  if (dump_v3_only) {
-    lg::info("- Writing object file dumps (v3 only)...");
-  } else {
-    lg::info("- Writing object file dumps (all)...");
-  }
+void ObjectFileDB::write_object_file_words(const std::string& output_dir,
+                                           bool dump_data,
+                                           bool dump_code) {
+  lg::info("- Writing object file dumps (code? {} data? {})...", dump_code, dump_data);
 
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.segments == 3 || !dump_v3_only) {
+    if ((obj.linked_data.segments == 3 && dump_code) ||
+        (obj.linked_data.segments != 3 && dump_data)) {
       auto file_text = obj.linked_data.print_words();
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".txt");
       total_bytes += file_text.size();
@@ -448,16 +447,14 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   lg::info(" Total {:.3f} MB", total_bytes / ((float)(1u << 20u)));
   lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
            total_bytes / ((1u << 20u) * timer.getSeconds()));
-  // printf("\n");
 }
 
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
-                                     bool disassemble_objects_without_functions,
-                                     bool write_json,
-                                     const std::string& file_suffix) {
+                                     bool disassemble_data,
+                                     bool disassemble_code) {
   lg::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -465,20 +462,10 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   std::string asm_functions;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
+    if ((obj.obj_version == 3 && disassemble_code) || (obj.obj_version != 3 && disassemble_data)) {
       auto file_text = obj.linked_data.print_disassembly();
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + file_suffix + ".asm");
-
-      if (get_config().analyze_functions && write_json) {
-        auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
-        auto json_asm_file_name =
-            file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
-        file_util::write_text_file(json_asm_file_name, json_asm_text);
-        total_files++;
-        total_bytes += json_asm_text.size();
-      }
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);

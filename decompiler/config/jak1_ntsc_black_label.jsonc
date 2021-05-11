@@ -2,20 +2,25 @@
 
 {
   "game_version":1,
-  // the order here matters (not sure that this is true any more...). KERNEL and GAME should go first
-  "dgo_names":["CGO/KERNEL.CGO","CGO/GAME.CGO",
-     "CGO/ENGINE.CGO"
-     , "CGO/ART.CGO", "DGO/BEA.DGO", "DGO/CIT.DGO", "CGO/COMMON.CGO", "DGO/DAR.DGO", "DGO/DEM.DGO",
+
+
+  //////////////////////
+  // INPUT FILES
+  //////////////////////
+
+  // input is GOAL object files, possibly in containers.
+  // most objects are part of CGO/DGO files (both go in dgo_names). This includes levels and the engine
+  // the DGOs will be processed in this order. Usually it's best to have KERNEL, ENGINE, then the levels when
+  // you want to run on the entire game.
+  "dgo_names":["CGO/KERNEL.CGO","CGO/ENGINE.CGO", "CGO/GAME.CGO",
+     "CGO/ART.CGO", "DGO/BEA.DGO", "DGO/CIT.DGO", "CGO/COMMON.CGO", "DGO/DAR.DGO", "DGO/DEM.DGO",
      "DGO/FIN.DGO", "DGO/INT.DGO", "DGO/JUB.DGO", "DGO/JUN.DGO", "CGO/JUNGLE.CGO", "CGO/L1.CGO", "DGO/FIC.DGO",
      "DGO/LAV.DGO", "DGO/MAI.DGO", "CGO/MAINCAVE.CGO", "DGO/MIS.DGO", "DGO/OGR.DGO", "CGO/RACERP.CGO", "DGO/ROB.DGO", "DGO/ROL.DGO",
      "DGO/SNO.DGO", "DGO/SUB.DGO", "DGO/SUN.DGO", "CGO/SUNKEN.CGO", "DGO/SWA.DGO", "DGO/TIT.DGO", "DGO/TRA.DGO", "DGO/VI1.DGO",
      "DGO/VI2.DGO", "DGO/VI3.DGO", "CGO/VILLAGEP.CGO", "CGO/WATER-AN.CGO"
  ],
-  "dgo_names_":["CGO/KERNEL.CGO"],
 
-  "object_file_names":["TEXT/0COMMON.TXT", "TEXT/1COMMON.TXT", "TEXT/2COMMON.TXT", "TEXT/3COMMON.TXT", "TEXT/4COMMON.TXT",
-      "TEXT/5COMMON.TXT", "TEXT/6COMMON.TXT"],
-
+  // some objects are part of STR files (streaming data). In Jak 1 this is just animations
   "str_file_names":["STR/BAFCELL.STR", "STR/SWTE4.STR", "STR/SWTE3.STR", "STR/SWTE2.STR", "STR/SWTE1.STR",
       "STR/SNRBSBFC.STR", "STR/SNRBIPFC.STR", "STR/SNRBICFC.STR", "STR/ORR3.STR", "STR/ORR2.STR", "STR/MICANNON.STR",
       "STR/BECANNON.STR", "STR/SWTS4.STR", "STR/SWTS3.STR", "STR/SWTS2.STR", "STR/SW4.STR", "STR/SW3.STR", "STR/SW2.STR",
@@ -50,8 +55,67 @@
       "STR/SAISA.STR","STR/SIHISC.STR","STR/MIIORBS.STR","STR/WAINTROD.STR","STR/SAISD2.STR","STR/GRSOPREB.STR",
       "STR/GRSOBBB.STR","STR/SA3INTRO.STR"
   ],
-  "str_file_names_":[],
-  "allowed_objects":["gstate"],
+
+  // some objects are directly stored as files on the DVD. This is just text files.
+  "object_file_names":["TEXT/0COMMON.TXT", "TEXT/1COMMON.TXT", "TEXT/2COMMON.TXT", "TEXT/3COMMON.TXT", "TEXT/4COMMON.TXT",
+      "TEXT/5COMMON.TXT", "TEXT/6COMMON.TXT"],
+ 
+  // if you want to filter to only some object names.
+  // it will make the decompiler much faster.
+  "allowed_objects":[],
+
+  ////////////////////////////
+  // CODE ANALYSIS OPTIONS
+  ////////////////////////////
+
+  // set to true to generate plain .asm files with MIPS disassembly, with no fancy decompilation.
+  // this is fast and should succeed 100% of the time.
+  "disassemble_code":false,
+
+  // Run the decompiler
+  "decompile_code":true,
+
+  ////////////////////////////
+  // DATA ANALYSIS OPTIONS
+  ////////////////////////////
+
+  // set to true to generate plain .asm files for data files.
+  // this will display most data as hex, but will add labels/references/type pointers/strings
+  // this generates a huge amount of output if you run it on the entire game.
+  "disassemble_data":false,
+
+  // unpack textures to assets folder
+  "process_tpages":true,
+  // unpack game text to assets folder
+  "process_game_text":true,
+  // unpack game count to assets folder
+  "process_game_count":true,
+
+  ///////////////////////////
+  // WEIRD OPTIONS
+  ///////////////////////////
+
+  // these options are used rarely and should usually be left at false
+
+  // output a file type_defs.gc which is used the types part of all-types.gc
+  "regenerate_all_types":false,
+
+  // debug option for instruction decoder
+  "write_hex_near_instructions":false,
+
+  // experimental tool to extract linked lists used for region scripting in Jak 2 and Jak 3.
+  "write_scripts":false,
+
+  // hex dump of code/data files.
+  "hexdump_code":false,
+  "hexdump_data":false,
+  // dump raw obj files
+  "dump_objs":false,
+
+  
+  ////////////////////////////
+  // CONFIG FILES
+  ////////////////////////////
 
   "type_casts_file":"decompiler/config/jak1_ntsc_black_label/type_casts.jsonc",
   "anonymous_function_types_file":"decompiler/config/jak1_ntsc_black_label/anonymous_function_types.jsonc",
@@ -59,35 +123,14 @@
   "label_types_file":"decompiler/config/jak1_ntsc_black_label/label_types.jsonc",
   "stack_vars_file":"decompiler/config/jak1_ntsc_black_label/stack_vars.jsonc",
 
-  "analyze_functions":true,
-  "analyze_expressions":true,
-  "function_type_prop":true,
-  "insert_lets":true,
-  "write_disassembly":true,
-  "write_hex_near_instructions":false,
-
-  "run_ir2":true,
-
-  // if false, skips printing disassembly of object with functions, as these are usually large (~1 GB) and not interesting yet.
-  "disassemble_objects_without_functions":false,
-
-  "process_tpages":true,
-  "process_game_text":true,
-  "process_game_count":true,
-  "dump_objs":false,
-  "write_func_json":false,
-
-  // to write out data of each object file
-  "write_hexdump":false,
-  // to write out hexdump on the v3 only, to avoid the huge level data files. Only if write_hexdump is true.
-  "write_hexdump_on_v3_only":true,
-
-  // to write out "scripts", which are currently just all the linked lists found. mostly a jak 2/3 thing
-  "write_scripts":false,
-
-  // optional: a predetermined object file name map from a file. Useful if you want to run only on some DGOs but have consistent names
+  // optional: a predetermined object file name map from a file.
+  // this will make decompilation naming consistent even if you only run on some objects.
   "obj_file_name_map_file":"goal_src/build/all_objs.json",
 
+
+  ////////////////////////////
+  // HACKS and ASM FUNCTIONS
+  ////////////////////////////
 
   "types_with_bad_inspect_methods":[
     "engine",

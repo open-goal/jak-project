@@ -47,47 +47,54 @@ int main(int argc, char** argv) {
   // build file database
   lg::info("Setting up object file DB...");
   ObjectFileDB db(dgos, get_config().obj_file_name_map_file, objs, strs);
+
+  // write out DGO file info
   file_util::write_text_file(file_util::combine_path(out_folder, "dgo.txt"),
                              db.generate_dgo_listing());
+  // write out object file map (used for future decompilations, if desired)
   file_util::write_text_file(file_util::combine_path(out_folder, "obj.txt"),
                              db.generate_obj_listing());
 
+  // dump raw objs
   if (get_config().dump_objs) {
     auto path = file_util::combine_path(out_folder, "raw_obj");
     file_util::create_dir_if_needed(path);
     db.dump_raw_objects(path);
   }
 
-  // process files (basic)
+  // process files (required for all analysis)
   db.process_link_data();
   db.find_code();
   db.process_labels();
 
-  // IR1 or IR2 function analysis
-  if (get_config().run_ir2) {
-    db.analyze_functions_ir2(out_folder);
-  } else {
-    if (get_config().analyze_functions) {
-      db.analyze_functions_ir1();
-    }
-
-    if (get_config().write_disassembly) {
-      db.write_disassembly(out_folder, get_config().disassemble_objects_without_functions,
-                           get_config().write_func_json);
-    }
+  // print disassembly
+  if (get_config().disassemble_code || get_config().disassemble_data) {
+    db.write_disassembly(out_folder, get_config().disassemble_data, get_config().disassemble_code);
   }
 
-  // common IR1 and IR2 function stuff:
+  // regenerate all-types if needed
+  if (get_config().regenerate_all_types) {
+    db.analyze_functions_ir1();
+    file_util::write_text_file(file_util::combine_path(out_folder, "type_defs.gc"),
+                               db.all_type_defs);
+  }
+
+  // main decompile.
+  if (get_config().decompile_code) {
+    db.analyze_functions_ir2(out_folder);
+  }
+
+  // write out all symbols TODO - organize by file
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
+
+  if (get_config().hexdump_code || get_config().hexdump_data) {
+    db.write_object_file_words(out_folder, get_config().hexdump_data, get_config().hexdump_code);
+  }
 
   // data stuff
   if (get_config().write_scripts) {
     db.find_and_write_scripts(out_folder);
-  }
-
-  if (get_config().write_hexdump) {
-    db.write_object_file_words(out_folder, get_config().write_hexdump_on_v3_only);
   }
 
   if (get_config().process_game_text) {
@@ -103,9 +110,6 @@ int main(int argc, char** argv) {
     auto result = db.process_game_count_file();
     file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
   }
-
-  // todo print type summary
-  // printf("%s\n", get_type_info().get_summary().c_str());
 
   lg::info("Disassembly has completed successfully.");
   return 0;
