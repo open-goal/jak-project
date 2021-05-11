@@ -47,7 +47,6 @@ else:
           update_file(file)
           break
       elif not args.list and len(lines) <= 7:
-        print("wat")
         skip_count = skip_count - 1
   if len(list_of_eligible) > 0:
     print("The next 10 files that need to be decompiled:")
