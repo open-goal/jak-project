@@ -38,23 +38,18 @@ void set_config(const std::string& path_to_config_file) {
   if (cfg.contains("obj_file_name_map_file")) {
     gConfig.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
   }
-  gConfig.write_disassembly = cfg.at("write_disassembly").get<bool>();
-  gConfig.write_hexdump = cfg.at("write_hexdump").get<bool>();
-  gConfig.write_scripts = cfg.at("write_scripts").get<bool>();
-  gConfig.write_hexdump_on_v3_only = cfg.at("write_hexdump_on_v3_only").get<bool>();
-  gConfig.disassemble_objects_without_functions =
-      cfg.at("disassemble_objects_without_functions").get<bool>();
+  gConfig.disassemble_code = cfg.at("disassemble_code").get<bool>();
+  gConfig.decompile_code = cfg.at("decompile_code").get<bool>();
+  gConfig.regenerate_all_types = cfg.at("regenerate_all_types").get<bool>();
   gConfig.write_hex_near_instructions = cfg.at("write_hex_near_instructions").get<bool>();
-  gConfig.analyze_functions = cfg.at("analyze_functions").get<bool>();
+  gConfig.write_scripts = cfg.at("write_scripts").get<bool>();
+  gConfig.disassemble_data = cfg.at("disassemble_data").get<bool>();
   gConfig.process_tpages = cfg.at("process_tpages").get<bool>();
   gConfig.process_game_text = cfg.at("process_game_text").get<bool>();
   gConfig.process_game_count = cfg.at("process_game_count").get<bool>();
+  gConfig.hexdump_code = cfg.at("hexdump_code").get<bool>();
+  gConfig.hexdump_data = cfg.at("hexdump_data").get<bool>();
   gConfig.dump_objs = cfg.at("dump_objs").get<bool>();
-  gConfig.write_func_json = cfg.at("write_func_json").get<bool>();
-  gConfig.function_type_prop = cfg.at("function_type_prop").get<bool>();
-  gConfig.analyze_expressions = cfg.at("analyze_expressions").get<bool>();
-  gConfig.run_ir2 = cfg.at("run_ir2").get<bool>();
-  gConfig.insert_lets = cfg.at("insert_lets").get<bool>();
   gConfig.hint_inline_assembly_functions =
       cfg.at("inline_asm_hint").get<std::unordered_set<std::string>>();
 

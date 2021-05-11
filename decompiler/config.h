@@ -49,21 +49,21 @@ struct Config {
   std::vector<std::string> str_file_names;
   std::unordered_set<std::string> bad_inspect_types;
   std::string obj_file_name_map_file;
-  bool write_disassembly = false;
-  bool write_hexdump = false;
+
+  bool disassemble_code = false;
+  bool decompile_code = false;
   bool write_scripts = false;
-  bool write_hexdump_on_v3_only = false;
-  bool disassemble_objects_without_functions = false;
-  bool write_hex_near_instructions = false;
-  bool analyze_functions = false;
+  bool disassemble_data = false;
   bool process_tpages = false;
   bool process_game_text = false;
   bool process_game_count = false;
+
+  bool regenerate_all_types = false;
+  bool write_hex_near_instructions = false;
+  bool hexdump_code = false;
+  bool hexdump_data = false;
   bool dump_objs = false;
-  bool write_func_json = false;
-  bool function_type_prop = false;
-  bool analyze_expressions = false;
-  bool insert_lets = false;
+
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_set<std::string> no_type_analysis_functions_by_name;
@@ -77,7 +77,6 @@ struct Config {
       function_var_overrides;
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   std::unordered_map<std::string, std::vector<StackVariableHint>> stack_var_hints_by_function;
-  bool run_ir2 = false;
 
   std::unordered_set<std::string> hint_inline_assembly_functions;
 };

@@ -47,20 +47,19 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   ir2_variable_pass();
   lg::info("Initial structuring...");
   ir2_cfg_build_pass();
-  if (get_config().analyze_expressions) {
-    lg::info("Storing temporary form result...");
-    ir2_store_current_forms();
-    lg::info("Expression building...");
-    ir2_build_expressions();
-    lg::info("Re-writing inline asm instructions...");
-    ir2_rewrite_inline_asm_instructions();
-    if (get_config().insert_lets) {
-      lg::info("Inserting lets...");
-      ir2_insert_lets();
-    }
-    lg::info("Inserting anonymous function definitions...");
-    ir2_insert_anonymous_functions();
-  }
+
+  lg::info("Storing temporary form result...");
+  ir2_store_current_forms();
+  lg::info("Expression building...");
+  ir2_build_expressions();
+  lg::info("Re-writing inline asm instructions...");
+  ir2_rewrite_inline_asm_instructions();
+
+  lg::info("Inserting lets...");
+  ir2_insert_lets();
+
+  lg::info("Inserting anonymous function definitions...");
+  ir2_insert_anonymous_functions();
 
   if (!output_dir.empty()) {
     lg::info("Writing results...");
@@ -212,14 +211,6 @@ void ObjectFileDB::ir2_basic_block_pass() {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
         failed_to_build_cfg++;
-      }
-
-      // if we got an inspect method, inspect it.
-      if (func.is_inspect_method) {
-        auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
-        all_type_defs += ";; " + data.to_unique_name() + "\n";
-        all_type_defs += result.print_as_deftype() + "\n";
-        inspect_methods++;
       }
     }
 
