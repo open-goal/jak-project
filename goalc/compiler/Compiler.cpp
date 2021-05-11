@@ -94,7 +94,10 @@ ReplStatus Compiler::execute_repl(bool auto_listen) {
     }
   }
 
-  m_listener.disconnect();
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(false);  // reset the target
+    m_listener.disconnect();
+  }
 
   if (m_want_exit) {
     return ReplStatus::WANT_EXIT;
