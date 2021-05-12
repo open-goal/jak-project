@@ -49,32 +49,34 @@ class ObjectFileDB {
   ObjectFileDB(const std::vector<std::string>& _dgos,
                const std::string& obj_file_name_map_file,
                const std::vector<std::string>& object_files,
-               const std::vector<std::string>& str_files);
+               const std::vector<std::string>& str_files,
+               const Config& config);
   std::string generate_dgo_listing();
   std::string generate_obj_listing();
-  void process_link_data();
+  void process_link_data(const Config& config);
   void process_labels();
-  void find_code();
+  void find_code(const Config& config);
   void find_and_write_scripts(const std::string& output_dir);
   void dump_raw_objects(const std::string& output_dir);
 
   void write_object_file_words(const std::string& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const std::string& output_dir,
                          bool disassemble_data,
-                         bool disassemble_code);
+                         bool disassemble_code,
+                         bool print_hex);
 
-  void analyze_functions_ir1();
-  void analyze_functions_ir2(const std::string& output_dir);
-  void ir2_top_level_pass();
+  void analyze_functions_ir1(const Config& config);
+  void analyze_functions_ir2(const std::string& output_dir, const Config& config);
+  void ir2_top_level_pass(const Config& config);
   void ir2_stack_spill_slot_pass();
   void ir2_basic_block_pass();
-  void ir2_atomic_op_pass();
-  void ir2_type_analysis_pass();
+  void ir2_atomic_op_pass(const Config& config);
+  void ir2_type_analysis_pass(const Config& config);
   void ir2_register_usage_pass();
   void ir2_variable_pass();
   void ir2_cfg_build_pass();
   void ir2_store_current_forms();
-  void ir2_build_expressions();
+  void ir2_build_expressions(const Config& config);
   void ir2_insert_lets();
   void ir2_rewrite_inline_asm_instructions();
   void ir2_insert_anonymous_functions();
@@ -94,16 +96,18 @@ class ObjectFileDB {
 
   bool lookup_function_type(const FunctionName& name,
                             const std::string& obj_name,
+                            const Config& config,
                             TypeSpec* result);
 
  public:
   void load_map_file(const std::string& map_data);
-  void get_objs_from_dgo(const std::string& filename);
+  void get_objs_from_dgo(const std::string& filename, const Config& config);
   void add_obj_from_dgo(const std::string& obj_name,
                         const std::string& name_in_dgo,
                         const uint8_t* obj_data,
                         uint32_t obj_size,
-                        const std::string& dgo_name);
+                        const std::string& dgo_name,
+                        const Config& config);
 
   /*!
    * Apply f to all ObjectFileData's. Does it in the right order.

@@ -6,16 +6,12 @@
  * This implements a decoder for the GOAL linking format.
  */
 
-#ifndef NEXT_LINKEDOBJECTFILECREATION_H
-#define NEXT_LINKEDOBJECTFILECREATION_H
-
 #include "LinkedObjectFile.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
 LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
                                        const std::string& name,
-                                       DecompilerTypeSystem& dts);
+                                       DecompilerTypeSystem& dts,
+                                       int game_version);
 }  // namespace decompiler
-
-#endif  // NEXT_LINKEDOBJECTFILECREATION_H
