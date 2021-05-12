@@ -206,18 +206,19 @@ int main(int argc, char** argv) {
 class OfflineDecompilation : public ::testing::Test {
  protected:
   static std::unique_ptr<decompiler::ObjectFileDB> db;
+  static std::unique_ptr<decompiler::Config> config;
   static void SetUpTestCase() {
     // global setup
     file_util::init_crc();
     decompiler::init_opcode_info();
-    decompiler::set_config(
-        file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"}));
+    config = std::make_unique<decompiler::Config>(decompiler::read_config_file(
+        file_util::get_file_path({"decompiler", "config", "jak1_ntsc_black_label.jsonc"})));
 
     std::unordered_set<std::string> object_files;
     for (auto& p : g_object_files_to_decompile_or_ref_check) {
       object_files.insert(p.first);
     }
-    decompiler::get_config().allowed_objects = object_files;
+    config->allowed_objects = object_files;
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO"};
     std::vector<std::string> dgo_paths;
@@ -231,23 +232,27 @@ class OfflineDecompilation : public ::testing::Test {
       }
     }
 
-    db = std::make_unique<decompiler::ObjectFileDB>(
-        dgo_paths, decompiler::get_config().obj_file_name_map_file, std::vector<std::string>{},
-        std::vector<std::string>{});
+    db = std::make_unique<decompiler::ObjectFileDB>(dgo_paths, config->obj_file_name_map_file,
+                                                    std::vector<std::string>{},
+                                                    std::vector<std::string>{}, *config);
 
     // basic processing to find functions/data/disassembly
-    db->process_link_data();
-    db->find_code();
+    db->process_link_data(*config);
+    db->find_code(*config);
     db->process_labels();
 
     // fancy decompilation.
-    db->analyze_functions_ir2({});
+    db->analyze_functions_ir2({}, *config);
   }
 
-  static void TearDownTestCase() { db.reset(); }
+  static void TearDownTestCase() {
+    db.reset();
+    config.reset();
+  }
 };
 
 std::unique_ptr<decompiler::ObjectFileDB> OfflineDecompilation::db;
+std::unique_ptr<decompiler::Config> OfflineDecompilation::config;
 
 /*!
  * Check that the most basic disassembly into files/functions/instructions has succeeded.
@@ -263,7 +268,7 @@ TEST_F(OfflineDecompilation, CheckBasicDecode) {
     EXPECT_EQ(stats.n_fp_reg_use, stats.n_fp_reg_use_resolved);
   });
 
-  EXPECT_EQ(obj_count, decompiler::get_config().allowed_objects.size());
+  EXPECT_EQ(obj_count, config->allowed_objects.size());
 }
 
 /*!
@@ -302,7 +307,7 @@ TEST_F(OfflineDecompilation, FunctionDetect) {
       });
 
   // one login per object file
-  EXPECT_EQ(decompiler::get_config().allowed_objects.size(), login_count);
+  EXPECT_EQ(config->allowed_objects.size(), login_count);
 
   // not many lambdas.
   EXPECT_TRUE(unknown_count < 10);

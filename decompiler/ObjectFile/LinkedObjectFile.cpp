@@ -680,8 +680,7 @@ std::string LinkedObjectFile::print_asm_function_disassembly(const std::string& 
 /*!
  * Print disassembled functions and data segments.
  */
-std::string LinkedObjectFile::print_disassembly() {
-  bool write_hex = get_config().write_hex_near_instructions;
+std::string LinkedObjectFile::print_disassembly(bool write_hex) {
   std::string result;
 
   assert(segments <= 3);

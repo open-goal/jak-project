@@ -42,12 +42,20 @@ struct StackVariableHint {
   int stack_offset = 0;     // where it's located on the stack (relative to sp after prologue)
 };
 
+struct DecompileHacks {
+  std::unordered_set<std::string> types_with_bad_inspect_methods;
+  std::unordered_set<std::string> no_type_analysis_functions_by_name;
+  std::unordered_set<std::string> hint_inline_assembly_functions;
+  std::unordered_set<std::string> asm_functions_by_name;
+  std::unordered_set<std::string> pair_functions_by_name;
+};
+
 struct Config {
   int game_version = -1;
   std::vector<std::string> dgo_names;
   std::vector<std::string> object_file_names;
   std::vector<std::string> str_file_names;
-  std::unordered_set<std::string> bad_inspect_types;
+
   std::string obj_file_name_map_file;
 
   bool disassemble_code = false;
@@ -64,9 +72,6 @@ struct Config {
   bool hexdump_data = false;
   bool dump_objs = false;
 
-  std::unordered_set<std::string> asm_functions_by_name;
-  std::unordered_set<std::string> pair_functions_by_name;
-  std::unordered_set<std::string> no_type_analysis_functions_by_name;
   std::unordered_set<std::string> allowed_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>
       type_casts_by_function_by_atomic_op_idx;
@@ -78,10 +83,9 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   std::unordered_map<std::string, std::vector<StackVariableHint>> stack_var_hints_by_function;
 
-  std::unordered_set<std::string> hint_inline_assembly_functions;
+  DecompileHacks hacks;
 };
 
-Config& get_config();
-void set_config(const std::string& path_to_config_file);
+Config read_config_file(const std::string& path_to_config_file);
 
 }  // namespace decompiler

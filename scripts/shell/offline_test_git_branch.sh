@@ -42,19 +42,22 @@ make -j
 echo " ================ Running unit tests..."
 ../test.sh
 
+echo " ================ Running offline decompiler tests..."
+./offline-test
+
 echo " ================ Decompiling..."
-../decomp.sh
+../scripts/shell/decomp.sh
 
 echo " ================ Building assets..."
-../gc.sh -cmd \(build-data\)
+../scripts/shell/gc.sh -cmd \(build-data\)
 
 echo " ================ Checking assets..."
-../check.sh
+../scripts/shell/check.sh
 
 echo " ================ Building game..."
-../gc.sh -cmd \(build-game\)
+../scripts/shell/gc.sh -cmd \(build-game\)
 
 echo " ================ Booting game..."
-../boot_game.sh
+../scripts/shell/boot_game.sh
 
 echo "Offline test has completed successfully!"

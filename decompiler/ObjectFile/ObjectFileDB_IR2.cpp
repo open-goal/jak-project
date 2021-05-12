@@ -29,18 +29,18 @@ namespace decompiler {
  * At this point, we assume that the files are loaded and we've run find_code to locate all
  * functions, but nothing else.
  */
-void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
+void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Config& config) {
   lg::info("Using IR2 analysis...");
   lg::info("Processing top-level functions...");
-  ir2_top_level_pass();
+  ir2_top_level_pass(config);
   lg::info("Processing basic blocks and control flow graph...");
   ir2_basic_block_pass();
   lg::info("Finding stack spills...");
   ir2_stack_spill_slot_pass();
   lg::info("Converting to atomic ops...");
-  ir2_atomic_op_pass();
+  ir2_atomic_op_pass(config);
   lg::info("Running type analysis...");
-  ir2_type_analysis_pass();
+  ir2_type_analysis_pass(config);
   lg::info("Register usage analysis...");
   ir2_register_usage_pass();
   lg::info("Variable analysis...");
@@ -51,7 +51,7 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
   lg::info("Storing temporary form result...");
   ir2_store_current_forms();
   lg::info("Expression building...");
-  ir2_build_expressions();
+  ir2_build_expressions(config);
   lg::info("Re-writing inline asm instructions...");
   ir2_rewrite_inline_asm_instructions();
 
@@ -74,7 +74,7 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir) {
  * - Find method definitions
  * - Warn for non-unique function names.
  */
-void ObjectFileDB::ir2_top_level_pass() {
+void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   Timer timer;
   int total_functions = 0;
   int total_named_global_functions = 0;
@@ -134,8 +134,8 @@ void ObjectFileDB::ir2_top_level_pass() {
 
         unique_names.insert(name);
 
-        if (get_config().asm_functions_by_name.find(name) !=
-            get_config().asm_functions_by_name.end()) {
+        if (config.hacks.asm_functions_by_name.find(name) !=
+            config.hacks.asm_functions_by_name.end()) {
           func.warnings.info("Flagged as asm by config");
           func.suspected_asm = true;
         }
@@ -253,7 +253,7 @@ void ObjectFileDB::ir2_stack_spill_slot_pass() {
  * Conversion of MIPS instructions into AtomicOps. The AtomicOps represent what we
  * think are IR of the original GOAL compiler.
  */
-void ObjectFileDB::ir2_atomic_op_pass() {
+void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
   Timer timer;
   int total_functions = 0;
   int attempted = 0;
@@ -266,8 +266,8 @@ void ObjectFileDB::ir2_atomic_op_pass() {
       attempted++;
       try {
         bool inline_asm =
-            get_config().hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
-            get_config().hint_inline_assembly_functions.end();
+            config.hacks.hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
+            config.hacks.hint_inline_assembly_functions.end();
         auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings,
                                                   inline_asm);
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
@@ -288,13 +288,23 @@ void ObjectFileDB::ir2_atomic_op_pass() {
            100.f * attempted / total_functions, 100.f * successful / attempted);
 }
 
+template <typename Key, typename Value>
+Value try_lookup(const std::unordered_map<Key, Value>& map, const Key& key) {
+  auto lookup = map.find(key);
+  if (lookup == map.end()) {
+    return Value();
+  } else {
+    return lookup->second;
+  }
+}
+
 /*!
  * Analyze registers and determine the type in each register at each instruction.
  * - Figure out the type of each function, from configs.
  * - Propagate types.
  * - NOTE: this will update register info usage more accurately for functions.
  */
-void ObjectFileDB::ir2_type_analysis_pass() {
+void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
   Timer timer;
   int total_functions = 0;
   int non_asm_functions = 0;
@@ -307,21 +317,21 @@ void ObjectFileDB::ir2_type_analysis_pass() {
     if (!func.suspected_asm) {
       non_asm_functions++;
       TypeSpec ts;
-      if (lookup_function_type(func.guessed_name, data.to_unique_name(), &ts) &&
+      if (lookup_function_type(func.guessed_name, data.to_unique_name(), config, &ts) &&
           func.ir2.atomic_ops_succeeded) {
         func.type = ts;
         attempted_functions++;
         // try type analysis here.
         auto func_name = func.guessed_name.to_string();
-        auto casts = get_config().type_casts_by_function_by_atomic_op_idx[func_name];
-        auto label_types = get_config().label_types[data.to_unique_name()];
+        auto casts = try_lookup(config.type_casts_by_function_by_atomic_op_idx, func_name);
+        auto label_types = try_lookup(config.label_types, data.to_unique_name());
         func.ir2.env.set_type_casts(casts);
         func.ir2.env.set_label_types(label_types);
-        if (get_config().pair_functions_by_name.find(func_name) !=
-            get_config().pair_functions_by_name.end()) {
+        if (config.hacks.pair_functions_by_name.find(func_name) !=
+            config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
         }
-        func.ir2.env.set_stack_var_hints(get_config().stack_var_hints_by_function[func_name]);
+        func.ir2.env.set_stack_var_hints(try_lookup(config.stack_var_hints_by_function, func_name));
         if (run_type_analysis_ir2(ts, dts, func)) {
           successful_functions++;
           func.ir2.env.types_succeeded = true;
@@ -436,7 +446,7 @@ void ObjectFileDB::ir2_store_current_forms() {
   lg::info("Stored debug forms for {} functions in {:.2f} ms\n", total, timer.getMs());
 }
 
-void ObjectFileDB::ir2_build_expressions() {
+void ObjectFileDB::ir2_build_expressions(const Config& config) {
   Timer timer;
   int total = 0;
   int attempted = 0;
@@ -449,13 +459,13 @@ void ObjectFileDB::ir2_build_expressions() {
         func.ir2.env.types_succeeded) {
       attempted++;
       auto name = func.guessed_name.to_string();
-      auto arg_config = get_config().function_arg_names.find(name);
-      auto var_config = get_config().function_var_overrides.find(name);
+      auto arg_config = config.function_arg_names.find(name);
+      auto var_config = config.function_var_overrides.find(name);
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
-                                 arg_config != get_config().function_arg_names.end()
+                                 arg_config != config.function_arg_names.end()
                                      ? arg_config->second
                                      : std::vector<std::string>{},
-                                 var_config != get_config().function_var_overrides.end()
+                                 var_config != config.function_var_overrides.end()
                                      ? var_config->second
                                      : std::unordered_map<std::string, LocalVarOverride>{},
                                  dts)) {
@@ -826,12 +836,11 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
  */
 bool ObjectFileDB::lookup_function_type(const FunctionName& name,
                                         const std::string& obj_name,
+                                        const Config& config,
                                         TypeSpec* result) {
-  auto& cfg = get_config();
-
   // don't return function types that are explictly flagged as bad in config.
-  if (cfg.no_type_analysis_functions_by_name.find(name.to_string()) !=
-      cfg.no_type_analysis_functions_by_name.end()) {
+  if (config.hacks.no_type_analysis_functions_by_name.find(name.to_string()) !=
+      config.hacks.no_type_analysis_functions_by_name.end()) {
     return false;
   }
 
@@ -867,7 +876,7 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
     return true;
   } else if (name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
     // try looking up the object
-    const auto& map = get_config().anon_function_types_by_obj_by_id;
+    const auto& map = config.anon_function_types_by_obj_by_id;
     auto obj_kv = map.find(obj_name);
     if (obj_kv != map.end()) {
       auto func_kv = obj_kv->second.find(name.get_anon_id());

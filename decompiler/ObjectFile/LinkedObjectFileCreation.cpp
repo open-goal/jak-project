@@ -609,7 +609,8 @@ static void link_v5(LinkedObjectFile& f,
 static void link_v3(LinkedObjectFile& f,
                     const std::vector<uint8_t>& data,
                     const std::string& name,
-                    DecompilerTypeSystem& dts) {
+                    DecompilerTypeSystem& dts,
+                    int game_version) {
   auto header = (const LinkHeaderV3*)(&data.at(0));
   assert(name == header->name);
   assert(header->segments == 3);
@@ -656,11 +657,11 @@ static void link_v3(LinkedObjectFile& f,
     // HACK!
     // why is this a thing?
     // HACK!
-    if (get_config().game_version == 1 && name == "level-h" && seg_id == 0) {
+    if (game_version == 1 && name == "level-h" && seg_id == 0) {
       segment_size++;
     }
 
-    if (get_config().game_version == 2) {
+    if (game_version == 2) {
       bool adjusted = false;
       while (segment_size % 4) {
         segment_size++;
@@ -800,14 +801,15 @@ static void link_v3(LinkedObjectFile& f,
  */
 LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
                                        const std::string& name,
-                                       DecompilerTypeSystem& dts) {
+                                       DecompilerTypeSystem& dts,
+                                       int game_version) {
   LinkedObjectFile result;
   const auto* header = (const LinkHeaderCommon*)&data.at(0);
 
   // use appropriate linker
   if (header->version == 3) {
     assert(header->type_tag == 0);
-    link_v3(result, data, name, dts);
+    link_v3(result, data, name, dts, game_version);
   } else if (header->version == 4 || header->version == 2) {
     assert(header->type_tag == 0xffffffff);
     link_v2_or_v4(result, data, name, dts);
