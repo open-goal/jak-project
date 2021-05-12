@@ -1436,6 +1436,22 @@ class Form {
     return nullptr;
   }
 
+  FormElement* try_as_single_active_element() const {
+    int active_count = 0;
+    FormElement* result = nullptr;
+    for (auto& elt : m_elements) {
+      if (elt->active()) {
+        active_count++;
+        result = elt;
+      }
+    }
+    if (active_count == 1) {
+      return result;
+    } else {
+      return nullptr;
+    }
+  }
+
   template <typename T>
   T* try_as_element() const {
     return dynamic_cast<T*>(try_as_single_element());
