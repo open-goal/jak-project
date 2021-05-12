@@ -109,6 +109,7 @@ class Function {
   std::vector<Instruction> instructions;
   std::vector<BasicBlock> basic_blocks;
   std::shared_ptr<ControlFlowGraph> cfg = nullptr;
+  bool cfg_ok = false;
 
   int prologue_start = -1;
   int prologue_end = -1;
