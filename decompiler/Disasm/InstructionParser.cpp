@@ -43,7 +43,7 @@ InstructionParser::InstructionParser() {
                  InstructionKind::BGTZ,   InstructionKind::BLTZL,  InstructionKind::BGTZL,
                  InstructionKind::BGEZL,  InstructionKind::MTC1,   InstructionKind::MFC1,
                  InstructionKind::MFLO,   InstructionKind::MFHI,   InstructionKind::MTLO1,
-                 InstructionKind::MFLO1,  InstructionKind::SYNCL}) {
+                 InstructionKind::MFLO1,  InstructionKind::SYNCL,  InstructionKind::PCPYUD}) {
     auto& info = gOpcodeInfo[int(i)];
     if (info.defined) {
       m_opcode_name_lookup[info.name] = int(i);

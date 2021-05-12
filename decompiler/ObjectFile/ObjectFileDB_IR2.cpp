@@ -211,6 +211,8 @@ void ObjectFileDB::ir2_basic_block_pass() {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
         failed_to_build_cfg++;
+      } else {
+        func.cfg_ok = true;
       }
     }
 
@@ -237,6 +239,9 @@ void ObjectFileDB::ir2_stack_spill_slot_pass() {
   int functions_with_spills = 0;
   int total_slots = 0;
   for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
+    if (!func.cfg_ok) {
+      return;
+    }
     auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
     auto map_size = spill_map.size();
     if (map_size) {
@@ -259,6 +264,9 @@ void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
   int attempted = 0;
   int successful = 0;
   for_each_function_def_order([&](Function& func, int segment_id, ObjectFileData& data) {
+    if (!func.cfg_ok) {
+      return;
+    }
     (void)segment_id;
     total_functions++;
     if (!func.suspected_asm) {
