@@ -80,7 +80,7 @@ parse_var_json(const std::string& str) {
   std::vector<std::string> args;
   std::unordered_map<std::string, LocalVarOverride> var_overrides;
 
-  auto j = parse_commented_json(str);
+  auto j = parse_commented_json(str, "Regression Test variable map");
 
   auto arg = j.find("args");
   if (arg != j.end()) {
