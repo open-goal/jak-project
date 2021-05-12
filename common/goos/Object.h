@@ -41,7 +41,7 @@
  */
 
 #include <string>
-#include <cassert>
+#include "common/util/assert.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>

@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -1385,8 +1385,6 @@ bool ControlFlowGraph::find_cond_w_empty_else() {
     if (new_cwe->prev) {
       new_cwe->prev->next = new_cwe;
     }
-
-    lg::error("There is a very strange control flow here, please check it manually.");
 
     // link new_cwe <-> end
     std::vector<CfgVtx*> to_replace;

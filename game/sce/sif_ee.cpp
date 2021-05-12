@@ -1,5 +1,5 @@
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdio>
 #include <unordered_map>
 #include "common/util/FileUtil.h"

@@ -4,7 +4,7 @@
  * Uses xdbg functions to debug an OpenGOAL target.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include "Debugger.h"
 #include "common/util/Timer.h"
 #include "common/goal_constants.h"

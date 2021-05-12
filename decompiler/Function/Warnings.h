@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <cassert>
+#include "common/util/assert.h"
 
 #include "third-party/fmt/core.h"
 

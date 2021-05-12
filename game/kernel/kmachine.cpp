@@ -7,7 +7,7 @@
 
 #include <string>
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include "kmachine.h"
 #include "kboot.h"
 #include "kprint.h"

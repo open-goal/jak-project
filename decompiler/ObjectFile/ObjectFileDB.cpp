@@ -110,7 +110,8 @@ ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
                            const std::string& obj_file_name_map_file,
                            const std::vector<std::string>& object_files,
-                           const std::vector<std::string>& str_files) {
+                           const std::vector<std::string>& str_files,
+                           const Config& config) {
   Timer timer;
 
   lg::info("-Loading types...");
@@ -128,14 +129,14 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
-    get_objs_from_dgo(dgo);
+    get_objs_from_dgo(dgo, config);
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());
   for (auto& obj : object_files) {
     auto data = file_util::read_binary_file(obj);
     auto name = obj_filename_to_name(obj);
-    add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
+    add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
   }
 
   lg::info("-Loading {} streaming object files...", str_files.size());
@@ -149,7 +150,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
       // append the chunk ID to the full name
       std::string name = obj_name + fmt::format("+{}", i);
       auto& data = reader.get_chunk(i);
-      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
+      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
     }
   }
 
@@ -162,7 +163,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
-  auto j = parse_commented_json(map_data);
+  auto j = parse_commented_json(map_data, "ObjectFileDB Map File");
 
   for (auto& x : j) {
     auto mapped_name = x[0].get<std::string>();
@@ -190,7 +191,7 @@ constexpr int MAX_CHUNK_SIZE = 0x8000;
 /*!
  * Load the objects stored in the given DGO into the ObjectFileDB
  */
-void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
+void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& config) {
   auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
@@ -221,7 +222,8 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
 
     auto name = get_object_file_name(obj_header.name, reader.here(), obj_header.object_count);
 
-    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name);
+    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name,
+                     config);
     reader.ffwd(obj_header.object_count);
   }
 
@@ -236,8 +238,8 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     const std::string& name_in_dgo,
                                     const uint8_t* obj_data,
                                     uint32_t obj_size,
-                                    const std::string& dgo_name) {
-  const auto& config = get_config();
+                                    const std::string& dgo_name,
+                                    const Config& config) {
   if (!config.allowed_objects.empty()) {
     if (config.allowed_objects.find(obj_name) == config.allowed_objects.end()) {
       return;
@@ -390,14 +392,14 @@ std::string ObjectFileDB::generate_obj_listing() {
 /*!
  * Process all of the linking data of all objects.
  */
-void ObjectFileDB::process_link_data() {
+void ObjectFileDB::process_link_data(const Config& config) {
   lg::info("Processing Link Data...");
   Timer process_link_timer;
 
   LinkedObjectFile::Stats combined_stats;
 
   for_each_obj([&](ObjectFileData& obj) {
-    obj.linked_data = to_linked_object_file(obj.data, obj.record.name, dts);
+    obj.linked_data = to_linked_object_file(obj.data, obj.record.name, dts, config.game_version);
     combined_stats.add(obj.linked_data.stats);
   });
 
@@ -423,18 +425,17 @@ void ObjectFileDB::process_labels() {
 /*!
  * Dump object files and their linking data to text files for debugging
  */
-void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool dump_v3_only) {
-  if (dump_v3_only) {
-    lg::info("- Writing object file dumps (v3 only)...");
-  } else {
-    lg::info("- Writing object file dumps (all)...");
-  }
+void ObjectFileDB::write_object_file_words(const std::string& output_dir,
+                                           bool dump_data,
+                                           bool dump_code) {
+  lg::info("- Writing object file dumps (code? {} data? {})...", dump_code, dump_data);
 
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.segments == 3 || !dump_v3_only) {
+    if ((obj.linked_data.segments == 3 && dump_code) ||
+        (obj.linked_data.segments != 3 && dump_data)) {
       auto file_text = obj.linked_data.print_words();
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".txt");
       total_bytes += file_text.size();
@@ -448,16 +449,15 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   lg::info(" Total {:.3f} MB", total_bytes / ((float)(1u << 20u)));
   lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
            total_bytes / ((1u << 20u) * timer.getSeconds()));
-  // printf("\n");
 }
 
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
-                                     bool disassemble_objects_without_functions,
-                                     bool write_json,
-                                     const std::string& file_suffix) {
+                                     bool disassemble_data,
+                                     bool disassemble_code,
+                                     bool print_hex) {
   lg::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -465,20 +465,10 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   std::string asm_functions;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
-      auto file_text = obj.linked_data.print_disassembly();
+    if ((obj.obj_version == 3 && disassemble_code) || (obj.obj_version != 3 && disassemble_data)) {
+      auto file_text = obj.linked_data.print_disassembly(print_hex);
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + file_suffix + ".asm");
-
-      if (get_config().analyze_functions && write_json) {
-        auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
-        auto json_asm_file_name =
-            file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
-        file_util::write_text_file(json_asm_file_name, json_asm_text);
-        total_files++;
-        total_bytes += json_asm_text.size();
-      }
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -501,7 +491,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
 /*!
  * Find code/data zones, identify functions, and disassemble
  */
-void ObjectFileDB::find_code() {
+void ObjectFileDB::find_code(const Config& config) {
   lg::info("Finding code in object files...");
   LinkedObjectFile::Stats combined_stats;
   Timer timer;
@@ -512,7 +502,7 @@ void ObjectFileDB::find_code() {
     obj.linked_data.find_functions();
     obj.linked_data.disassemble_functions();
 
-    if (get_config().game_version == 1 || obj.to_unique_name() != "effect-control-v0") {
+    if (config.game_version == 1 || obj.to_unique_name() != "effect-control-v0") {
       obj.linked_data.process_fp_relative_links();
     } else {
       lg::warn("Skipping process_fp_relative_links in {}", obj.to_unique_name().c_str());
@@ -632,12 +622,11 @@ std::string ObjectFileDB::process_game_count_file() {
 /*!
  * This is the main decompiler routine which runs after we've identified functions.
  */
-void ObjectFileDB::analyze_functions_ir1() {
+void ObjectFileDB::analyze_functions_ir1(const Config& config) {
   lg::info("- Analyzing Functions...");
   Timer timer;
 
   int total_functions = 0;
-  const auto& config = get_config();
 
   // Step 1 - analyze the "top level" or "login" code for each object file.
   // this will give us type definitions, method definitions, and function definitions...
@@ -678,7 +667,8 @@ void ObjectFileDB::analyze_functions_ir1() {
 
         unique_names.insert(name);
 
-        if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
+        if (config.hacks.asm_functions_by_name.find(name) !=
+            config.hacks.asm_functions_by_name.end()) {
           func.warnings.info("Flagged as asm by config");
           func.suspected_asm = true;
         }
@@ -748,7 +738,10 @@ void ObjectFileDB::analyze_functions_ir1() {
 
       // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
-        auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
+        auto result = inspect_inspect_method(
+            func, func.method_of_type, dts, data.linked_data,
+            config.hacks.types_with_bad_inspect_methods.find(func.method_of_type) !=
+                config.hacks.types_with_bad_inspect_methods.end());
         all_type_defs += ";; " + data.to_unique_name() + "\n";
         all_type_defs += result.print_as_deftype() + "\n";
       }

@@ -4,7 +4,7 @@
  */
 
 #include "OpcodeInfo.h"
-#include <cassert>
+#include "common/util/assert.h"
 
 namespace decompiler {
 OpcodeInfo gOpcodeInfo[(uint32_t)InstructionKind::EE_OP_MAX];

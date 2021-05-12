@@ -3,7 +3,7 @@
  * Utilities for checking if an instruction matches some criteria.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include "InstructionMatching.h"
 
 namespace decompiler {

@@ -5,7 +5,7 @@
  */
 
 #include "InstructionDecode.h"
-#include <cassert>
+#include "common/util/assert.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {

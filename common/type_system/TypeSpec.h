@@ -10,7 +10,7 @@
 
 #include <vector>
 #include <string>
-#include <cassert>
+#include "common/util/assert.h"
 
 class Type;
 

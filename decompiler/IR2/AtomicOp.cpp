@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include <utility>
 #include <stdexcept>
 #include "common/goal_constants.h"

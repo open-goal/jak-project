@@ -727,7 +727,8 @@ int detect(int idx, Function& function, LinkedObjectFile& file, TypeInspectorRes
 TypeInspectorResult inspect_inspect_method(Function& inspect,
                                            const std::string& type_name,
                                            DecompilerTypeSystem& dts,
-                                           LinkedObjectFile& file) {
+                                           LinkedObjectFile& file,
+                                           bool skip_fields) {
   TypeInspectorResult result;
   TypeFlags flags;
   flags.flag = 0;
@@ -740,9 +741,8 @@ TypeInspectorResult inspect_inspect_method(Function& inspect,
   result.type_heap_base = flags.heap_base;
   assert(flags.pad == 0);
 
-  auto& bad_set = get_config().bad_inspect_types;
   int idx = get_start_idx(inspect, file, &result, result.parent_type_name);
-  if (idx == 0 || bad_set.find(type_name) != bad_set.end()) {
+  if (idx == 0 || skip_fields) {
     // printf("was weird: %s\n", result.warnings.c_str());
     return result;
   }

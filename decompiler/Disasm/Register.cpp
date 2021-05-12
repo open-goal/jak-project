@@ -4,7 +4,7 @@
  */
 
 #include "Register.h"
-#include <cassert>
+#include "common/util/assert.h"
 #include <stdexcept>
 
 namespace decompiler {

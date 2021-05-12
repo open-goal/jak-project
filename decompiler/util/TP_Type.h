@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <cassert>
+#include "common/util/assert.h"
 #include <stdexcept>
 #include "common/log/log.h"
 #include "common/type_system/TypeSpec.h"

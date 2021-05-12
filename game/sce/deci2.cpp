@@ -3,7 +3,7 @@
  * Implementation of SCE DECI2 library.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdio>
 #include <cstring>
 #include "common/log/log.h"

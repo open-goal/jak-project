@@ -52,6 +52,10 @@
 
 namespace decompiler {
 
+namespace {
+bool debug_method_calls = false;
+}
+
 bool Form::has_side_effects() {
   bool has_side_effect = false;
   apply([&](FormElement* elt) {
@@ -1740,16 +1744,20 @@ void FunctionCallElement::update_from_stack(const Env& env,
         if (unsafe->try_as_single_element()->to_form(env) ==
             mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
           resolved = true;
-          lg::warn(
-              fmt::format("Rare method call (type 1). {} vs {}. Not an error, but check carefully",
-                          unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+          if (debug_method_calls) {
+            lg::warn(fmt::format(
+                "Rare method call (type 1). {} vs {}. Not an error, but check carefully",
+                unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+          }
         }
       }
 
       if (!resolved) {
-        lg::warn(
-            fmt::format("Rare method call (type 2). {} vs {}. Not an error, but check carefully",
-                        unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+        if (debug_method_calls) {
+          lg::warn(
+              fmt::format("Rare method call (type 2). {} vs {}. Not an error, but check carefully",
+                          unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+        }
 
         auto unsafe_as_se = dynamic_cast<SimpleExpressionElement*>(unsafe->try_as_single_element());
         if (unsafe_as_se && unsafe_as_se->expr().is_identity() &&
@@ -1763,7 +1771,9 @@ void FunctionCallElement::update_from_stack(const Env& env,
             } else {
               if (unsafe_2->try_as_single_element()->to_form(env) ==
                   mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
-                lg::warn("Check even more carefully");
+                if (debug_method_calls) {
+                  lg::warn("Check even more carefully");
+                }
                 resolved = true;
                 unsafe = unsafe_2;
               }
@@ -1879,12 +1889,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
             result->push_back(new_op);
             return;
           }
-        } else {
-          lg::warn("Got a suspicious new method. This may be fine, but should be uncommon: {}",
-                   temp_form->to_string(env));
-          //          throw std::runtime_error("Failed to match new method: " +
-          //          temp_form->to_string(env));
         }
+        // possible else case here to catch fixed-type new's in a nicer way
       }
     }
   }
@@ -2165,7 +2171,7 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     for (size_t i = 0; i < dest_sets.size() - 1; i++) {
       auto var = dest_sets.at(i)->dst();
       auto* env2 = const_cast<Env*>(&env);
-      env2->disable_def(var);
+      env2->disable_def(var, env2->func->warnings);
     }
   }
 

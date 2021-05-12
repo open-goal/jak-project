@@ -80,7 +80,7 @@ parse_var_json(const std::string& str) {
   std::vector<std::string> args;
   std::unordered_map<std::string, LocalVarOverride> var_overrides;
 
-  auto j = parse_commented_json(str);
+  auto j = parse_commented_json(str, "Regression Test variable map");
 
   auto arg = j.find("args");
   if (arg != j.end()) {
@@ -133,6 +133,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // Set up the environment
   test->func.ir2.env.file = &test->file;
   test->func.ir2.env.dts = dts.get();
+  test->func.ir2.env.func = &test->func;
   // Set up the function
   test->func.instructions = program.instructions;
   test->func.guessed_name.set_as_global("test-function");

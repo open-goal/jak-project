@@ -51,10 +51,9 @@ class LinkedObjectFile {
   void disassemble_functions();
   void process_fp_relative_links();
   std::string print_scripts();
-  std::string print_disassembly();
+  std::string print_disassembly(bool write_hex);
   bool has_any_functions();
   void append_word_to_string(std::string& dest, const LinkedWord& word) const;
-  std::string to_asm_json(const std::string& obj_file_name);
   std::string print_function_disassembly(Function& func,
                                          int seg,
                                          bool write_hex,

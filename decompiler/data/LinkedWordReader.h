@@ -1,5 +1,5 @@
 #pragma once
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <vector>
 #include <string>

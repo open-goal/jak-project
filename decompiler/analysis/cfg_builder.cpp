@@ -341,11 +341,11 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
           } else {
             // lg::warn("Disabling def of {} in final or delay slot",
             // as_set->to_string(func.ir2.env));
-            func.ir2.env.disable_def(as_set->dst());
+            func.ir2.env.disable_def(as_set->dst(), func.warnings);
           }
         } else {
           // lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
-          func.ir2.env.disable_def(as_set->dst());
+          func.ir2.env.disable_def(as_set->dst(), func.warnings);
         }
       }
 
@@ -464,12 +464,12 @@ bool try_clean_up_sc_as_or(FormPool& pool, Function& func, ShortCircuitElement* 
           } else {
             // lg::warn("Disabling def of {} in final or delay slot",
             // as_set->to_string(func.ir2.env));
-            func.ir2.env.disable_def(as_set->dst());
+            func.ir2.env.disable_def(as_set->dst(), func.warnings);
           }
 
         } else {
           // lg::warn("Disabling def of {} in or delay slot", as_set->to_string(func.ir2.env));
-          func.ir2.env.disable_def(as_set->dst());
+          func.ir2.env.disable_def(as_set->dst(), func.warnings);
         }
       }
 
@@ -612,7 +612,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
   assert(cne->entries.size() == 1);
 
   // safe to do this here because we never give up on this.
-  f.ir2.env.disable_def(condition.first->op()->branch_delay().var(0));
+  f.ir2.env.disable_def(condition.first->op()->branch_delay().var(0), f.warnings);
 
   auto condition_as_single =
       dynamic_cast<BranchElement*>(cne->entries.front().condition->try_as_single_element());
@@ -692,7 +692,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       if (func.ir2.env.has_reg_use()) {
         auto reg = cne->entries.at(i).false_destination;
         // lg::warn("Disable def of {} at {}\n", reg->to_string(func.ir2.env), reg->idx());
-        func.ir2.env.disable_def(*reg);
+        func.ir2.env.disable_def(*reg, func.warnings);
       }
     }
   }
@@ -1132,7 +1132,7 @@ Form* try_sc_as_ash(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   f.ir2.env.disable_use(dsubu_var);
 
   // and the def too
-  f.ir2.env.disable_def(dsrav_set->dst());
+  f.ir2.env.disable_def(dsrav_set->dst(), f.warnings);
 
   return b0_c_ptr;
 }
@@ -1283,8 +1283,8 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx) {
   b0_ptr->push_back(op);
 
   // fix register info
-  f.ir2.env.disable_def(b0_delay_op.dst());
-  f.ir2.env.disable_def(b1_delay_op.dst());
+  f.ir2.env.disable_def(b0_delay_op.dst(), f.warnings);
+  f.ir2.env.disable_def(b1_delay_op.dst(), f.warnings);
   f.ir2.env.disable_use(shift->expr().get_arg(0).var());
 
   return b0_ptr;
