@@ -721,174 +721,189 @@
         )
        (disasm-dma-tag current-tag stream-2)
        )
-      (if end-condition
-       (empty-form)
-       (cond
-        ((or
-          (= (-> current-tag id) (dma-tag-id ref))
-          (= (-> current-tag id) (dma-tag-id refs))
-          (zero? (-> current-tag id))
-          )
-         (set! addr (-> current-tag addr))
-         (set! qwc (the-as int (-> current-tag qwc)))
-         (if mode-2
-          (let
-           ((v0-9
-             (disasm-vif-tag (&-> data-2 vif0) 2 stream-2 (= mode-2 'details))
-             )
-            )
-           (disasm-vif-tag
-            (the-as (pointer vif-tag) (+ (the-as uint addr) (the-as uint v0-9)))
-            (the-as int (- (shl (the-as int qwc) 2) (the-as uint (sar v0-9 2))))
-            stream-2
-            (= mode-2 'details)
-            )
+      (cond
+       (end-condition
+        )
+       (else
+        (cond
+         ((or
+           (= (-> current-tag id) (dma-tag-id ref))
+           (= (-> current-tag id) (dma-tag-id refs))
+           (zero? (-> current-tag id))
            )
-          )
-         (set!
-          data-2
-          (the-as dma-packet (&-> (the-as (pointer uint64) data-2) 2))
-          )
-         (if (zero? (-> current-tag id))
-          (set! end-condition #t)
-          )
-         )
-        (else
-         (cond
-          ((= (-> current-tag id) (dma-tag-id cnt))
-           (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-           (set! qwc (the-as int (-> current-tag qwc)))
-           (if mode-2
+          (set! addr (-> current-tag addr))
+          (set! qwc (the-as int (-> current-tag qwc)))
+          (when mode-2
+           (let
+            ((v0-9
+              (disasm-vif-tag (&-> data-2 vif0) 2 stream-2 (= mode-2 'details))
+              )
+             )
             (disasm-vif-tag
-             (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-             (the-as int (+ (shl (the-as int qwc) 2) 2))
+             (the-as
+              (pointer vif-tag)
+              (+ (the-as uint addr) (the-as uint v0-9))
+              )
+             (the-as
+              int
+              (- (shl (the-as int qwc) 2) (the-as uint (sar v0-9 2)))
+              )
              stream-2
              (= mode-2 'details)
              )
             )
-           (set!
-            data-2
-            (the-as
-             dma-packet
-             (+
-              (the-as uint data-2)
+           )
+          (set!
+           data-2
+           (the-as dma-packet (&-> (the-as (pointer uint64) data-2) 2))
+           )
+          (if (zero? (-> current-tag id))
+           (set! end-condition #t)
+           )
+          )
+         (else
+          (cond
+           ((= (-> current-tag id) (dma-tag-id cnt))
+            (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+            (set! qwc (the-as int (-> current-tag qwc)))
+            (if mode-2
+             (disasm-vif-tag
               (the-as
-               uint
-               (shl (the-as int (+ (the-as uint qwc) (the-as uint 1))) 4)
+               (pointer vif-tag)
+               (&-> (the-as (pointer uint64) data-2) 1)
                )
+              (the-as int (+ (shl (the-as int qwc) 2) 2))
+              stream-2
+              (= mode-2 'details)
               )
              )
-            )
-           (let ((v1-68 data-2))
-            )
-           )
-          ((= (-> current-tag id) (dma-tag-id next))
-           (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-           (set! qwc (the-as int (-> current-tag qwc)))
-           (if mode-2
-            (disasm-vif-tag
-             (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-             (the-as int (+ (shl (the-as int qwc) 2) 2))
-             stream-2
-             (= mode-2 'details)
-             )
-            )
-           (when (= data-2 (-> current-tag addr))
-            (format stream-2 "ERROR: next tag creates infinite loop.~%")
-            (set! end-condition 'error)
-            )
-           (set! data-2 (the-as dma-packet (-> current-tag addr)))
-           (let ((v1-88 data-2))
-            )
-           )
-          (else
-           (cond
-            ((= (-> current-tag id) (dma-tag-id call))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (if mode-2
-              (disasm-vif-tag
+            (set!
+             data-2
+             (the-as
+              dma-packet
+              (+
+               (the-as uint data-2)
                (the-as
-                (pointer vif-tag)
-                (&-> (the-as (pointer uint64) data-2) 1)
-                )
-               (the-as int (+ (shl (the-as int qwc) 2) 2))
-               stream-2
-               (= mode-2 'details)
-               )
-              )
-             (set! data-2 (the-as dma-packet (-> current-tag addr)))
-             (set! call-depth (+ call-depth 1))
-             (cond
-              ((zero? call-depth)
-               (set! ra-1 (&+ addr qwc))
-               (let ((v1-108 (the-as (pointer uint64) ra-1)))
-                )
-               )
-              (else
-               (set! ra-2 (&+ addr qwc))
-               (let ((v1-111 (the-as (pointer uint64) ra-2)))
+                uint
+                (shl (the-as int (+ (the-as uint qwc) (the-as uint 1))) 4)
                 )
                )
               )
              )
-            ((= (-> current-tag id) (dma-tag-id ret))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (if mode-2
-              (disasm-vif-tag
-               (the-as
-                (pointer vif-tag)
-                (&-> (the-as (pointer uint64) data-2) 1)
-                )
-               (the-as int (+ (shl (the-as int qwc) 2) 2))
-               stream-2
-               (= mode-2 'details)
+            (let ((v1-68 data-2))
+             )
+            )
+           ((= (-> current-tag id) (dma-tag-id next))
+            (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+            (set! qwc (the-as int (-> current-tag qwc)))
+            (if mode-2
+             (disasm-vif-tag
+              (the-as
+               (pointer vif-tag)
+               (&-> (the-as (pointer uint64) data-2) 1)
                )
+              (the-as int (+ (shl (the-as int qwc) 2) 2))
+              stream-2
+              (= mode-2 'details)
               )
-             (let ((v1-123 call-depth))
-              (cond
-               ((zero? v1-123)
-                (set! data-2 (the-as dma-packet ra-1))
-                (let ((v1-125 data-2))
+             )
+            (when (= data-2 (-> current-tag addr))
+             (format stream-2 "ERROR: next tag creates infinite loop.~%")
+             (set! end-condition 'error)
+             )
+            (set! data-2 (the-as dma-packet (-> current-tag addr)))
+            (let ((v1-88 data-2))
+             )
+            )
+           (else
+            (cond
+             ((= (-> current-tag id) (dma-tag-id call))
+              (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+              (set! qwc (the-as int (-> current-tag qwc)))
+              (if mode-2
+               (disasm-vif-tag
+                (the-as
+                 (pointer vif-tag)
+                 (&-> (the-as (pointer uint64) data-2) 1)
                  )
+                (the-as int (+ (shl (the-as int qwc) 2) 2))
+                stream-2
+                (= mode-2 'details)
                 )
-               ((= v1-123 1)
-                (set! data-2 (the-as dma-packet ra-2))
-                (let ((v1-127 data-2))
+               )
+              (set! data-2 (the-as dma-packet (-> current-tag addr)))
+              (set! call-depth (+ call-depth 1))
+              (cond
+               ((zero? call-depth)
+                (set! ra-1 (&+ addr qwc))
+                (let ((v1-108 (the-as (pointer uint64) ra-1)))
                  )
                 )
                (else
-                (set! end-condition #t)
+                (set! ra-2 (&+ addr qwc))
+                (let ((v1-111 (the-as (pointer uint64) ra-2)))
+                 )
                 )
                )
               )
-             (set! call-depth (+ call-depth -1))
-             (let ((v1-131 call-depth))
+             ((= (-> current-tag id) (dma-tag-id ret))
+              (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+              (set! qwc (the-as int (-> current-tag qwc)))
+              (if mode-2
+               (disasm-vif-tag
+                (the-as
+                 (pointer vif-tag)
+                 (&-> (the-as (pointer uint64) data-2) 1)
+                 )
+                (the-as int (+ (shl (the-as int qwc) 2) 2))
+                stream-2
+                (= mode-2 'details)
+                )
+               )
+              (let ((v1-123 call-depth))
+               (cond
+                ((zero? v1-123)
+                 (set! data-2 (the-as dma-packet ra-1))
+                 (let ((v1-125 data-2))
+                  )
+                 )
+                ((= v1-123 1)
+                 (set! data-2 (the-as dma-packet ra-2))
+                 (let ((v1-127 data-2))
+                  )
+                 )
+                (else
+                 (set! end-condition #t)
+                 )
+                )
+               )
+              (set! call-depth (+ call-depth -1))
+              (let ((v1-131 call-depth))
+               )
               )
-             )
-            ((= (-> current-tag id) (dma-tag-id end))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (set! end-condition #t)
-             (let ((v0-16 (if mode-2
-                           (disasm-vif-tag
-                            (the-as
-                             (pointer vif-tag)
-                             (&-> (the-as (pointer uint64) data-2) 1)
+             ((= (-> current-tag id) (dma-tag-id end))
+              (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+              (set! qwc (the-as int (-> current-tag qwc)))
+              (set! end-condition #t)
+              (let ((v0-16 (if mode-2
+                            (disasm-vif-tag
+                             (the-as
+                              (pointer vif-tag)
+                              (&-> (the-as (pointer uint64) data-2) 1)
+                              )
+                             (the-as int (+ (shl (the-as int qwc) 2) 2))
+                             stream-2
+                             (= mode-2 'details)
                              )
-                            (the-as int (+ (shl (the-as int qwc) 2) 2))
-                            stream-2
-                            (= mode-2 'details)
                             )
-                           )
+                     )
                     )
-                   )
+               )
               )
-             )
-            (else
-             (format stream-2 "ERROR: Unknown DMA TAG command.~%")
-             (set! end-condition 'error)
+             (else
+              (format stream-2 "ERROR: Unknown DMA TAG command.~%")
+              (set! end-condition 'error)
+              )
              )
             )
            )
@@ -914,4 +929,3 @@
   )
 
 )
-

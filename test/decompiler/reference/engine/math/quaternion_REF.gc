@@ -455,134 +455,138 @@
 ;; definition for function matrix->quaternion
 (defun matrix->quaternion ((arg0 quaternion) (arg1 matrix))
   (let ((f0-2 (+ (+ (-> arg1 data 0) (-> arg1 data 5)) (-> arg1 data 10))))
-   (if (< 0.0 f0-2)
-    (let ((f0-4 (sqrtf (+ 1.0 f0-2))))
-     (set! (-> arg0 w) (* 0.5 f0-4))
-     (let ((f0-5 (/ 0.5 f0-4)))
-      (set! (-> arg0 x) (* f0-5 (- (-> arg1 data 6) (-> arg1 data 9))))
-      (set! (-> arg0 y) (* f0-5 (- (-> arg1 data 8) (-> arg1 data 2))))
-      (set! (-> arg0 z) (* f0-5 (- (-> arg1 data 1) (-> arg1 data 4))))
+   (cond
+    ((< 0.0 f0-2)
+     (let ((f0-4 (sqrtf (+ 1.0 f0-2))))
+      (set! (-> arg0 w) (* 0.5 f0-4))
+      (let ((f0-5 (/ 0.5 f0-4)))
+       (set! (-> arg0 x) (* f0-5 (- (-> arg1 data 6) (-> arg1 data 9))))
+       (set! (-> arg0 y) (* f0-5 (- (-> arg1 data 8) (-> arg1 data 2))))
+       (set! (-> arg0 z) (* f0-5 (- (-> arg1 data 1) (-> arg1 data 4))))
+       )
       )
      )
-    (let ((a2-0 0)
-          (a3-0 1)
-          (v1-1 2)
+    (else
+     (let ((a2-0 0)
+           (a3-0 1)
+           (v1-1 2)
+           )
+      (when (< (-> arg1 data 0) (-> arg1 data 5))
+       (set! a2-0 1)
+       (set! a3-0 2)
+       (set! v1-1 0)
+       )
+      (when
+       (<
+        (->
+         (the-as
+          (pointer float)
+          (+ (+ (shl a2-0 2) (shl a2-0 4)) (the-as int arg1))
           )
-     (when (< (-> arg1 data 0) (-> arg1 data 5))
-      (set! a2-0 1)
-      (set! a3-0 2)
-      (set! v1-1 0)
-      )
-     (when
-      (<
-       (->
-        (the-as
-         (pointer float)
-         (+ (+ (shl a2-0 2) (shl a2-0 4)) (the-as int arg1))
+         )
+        (-> arg1 data 10)
+        )
+       (set! a2-0 2)
+       (set! a3-0 0)
+       (set! v1-1 1)
+       )
+      (let
+       ((f0-12
+         (sqrtf
+          (+
+           (-
+            1.0
+            (+
+             (->
+              (the-as
+               (pointer float)
+               (+ (+ (shl a3-0 2) (shl a3-0 4)) (the-as int arg1))
+               )
+              )
+             (->
+              (the-as
+               (pointer float)
+               (+ (+ (shl v1-1 2) (shl v1-1 4)) (the-as int arg1))
+               )
+              )
+             )
+            )
+           (->
+            (the-as
+             (pointer float)
+             (+ (+ (shl a2-0 2) (shl a2-0 4)) (the-as int arg1))
+             )
+            )
+           )
+          )
          )
         )
-       (-> arg1 data 10)
-       )
-      (set! a2-0 2)
-      (set! a3-0 0)
-      (set! v1-1 1)
-      )
-     (let
-      ((f0-12
-        (sqrtf
-         (+
-          (-
-           1.0
-           (+
-            (->
-             (the-as
-              (pointer float)
-              (+ (+ (shl a3-0 2) (shl a3-0 4)) (the-as int arg1))
-              )
-             )
-            (->
-             (the-as
-              (pointer float)
-              (+ (+ (shl v1-1 2) (shl v1-1 4)) (the-as int arg1))
-              )
-             )
+       (set!
+        (-> (the-as (pointer float) (+ (shl a2-0 2) (the-as int arg0))))
+        (* 0.5 f0-12)
+        )
+       (if (!= f0-12 0.0)
+        (set! f0-12 (/ 0.5 f0-12))
+        )
+       (set!
+        (-> arg0 w)
+        (*
+         (-
+          (->
+           (the-as
+            (pointer float)
+            (+ (+ (shl v1-1 2) (shl a3-0 4)) (the-as int arg1))
             )
            )
           (->
            (the-as
             (pointer float)
-            (+ (+ (shl a2-0 2) (shl a2-0 4)) (the-as int arg1))
+            (+ (+ (shl a3-0 2) (shl v1-1 4)) (the-as int arg1))
             )
            )
           )
+         f0-12
          )
         )
-       )
-      (set!
-       (-> (the-as (pointer float) (+ (shl a2-0 2) (the-as int arg0))))
-       (* 0.5 f0-12)
-       )
-      (if (!= f0-12 0.0)
-       (set! f0-12 (/ 0.5 f0-12))
-       )
-      (set!
-       (-> arg0 w)
-       (*
-        (-
-         (->
-          (the-as
-           (pointer float)
-           (+ (+ (shl v1-1 2) (shl a3-0 4)) (the-as int arg1))
+       (set!
+        (-> (the-as (pointer float) (+ (shl a3-0 2) (the-as int arg0))))
+        (*
+         (+
+          (->
+           (the-as
+            (pointer float)
+            (+ (+ (shl a3-0 2) (shl a2-0 4)) (the-as int arg1))
+            )
+           )
+          (->
+           (the-as
+            (pointer float)
+            (+ (+ (shl a2-0 2) (shl a3-0 4)) (the-as int arg1))
+            )
            )
           )
-         (->
-          (the-as
-           (pointer float)
-           (+ (+ (shl a3-0 2) (shl v1-1 4)) (the-as int arg1))
-           )
-          )
+         f0-12
          )
-        f0-12
         )
-       )
-      (set!
-       (-> (the-as (pointer float) (+ (shl a3-0 2) (the-as int arg0))))
-       (*
-        (+
-         (->
-          (the-as
-           (pointer float)
-           (+ (+ (shl a3-0 2) (shl a2-0 4)) (the-as int arg1))
+       (set!
+        (-> (the-as (pointer float) (+ (shl v1-1 2) (the-as int arg0))))
+        (*
+         (+
+          (->
+           (the-as
+            (pointer float)
+            (+ (+ (shl v1-1 2) (shl a2-0 4)) (the-as int arg1))
+            )
+           )
+          (->
+           (the-as
+            (pointer float)
+            (+ (+ (shl a2-0 2) (shl v1-1 4)) (the-as int arg1))
+            )
            )
           )
-         (->
-          (the-as
-           (pointer float)
-           (+ (+ (shl a2-0 2) (shl a3-0 4)) (the-as int arg1))
-           )
-          )
+         f0-12
          )
-        f0-12
-        )
-       )
-      (set!
-       (-> (the-as (pointer float) (+ (shl v1-1 2) (the-as int arg0))))
-       (*
-        (+
-         (->
-          (the-as
-           (pointer float)
-           (+ (+ (shl v1-1 2) (shl a2-0 4)) (the-as int arg1))
-           )
-          )
-         (->
-          (the-as
-           (pointer float)
-           (+ (+ (shl a2-0 2) (shl v1-1 4)) (the-as int arg1))
-           )
-          )
-         )
-        f0-12
         )
        )
       )
@@ -1162,7 +1166,3 @@
    (vector-y-angle s5-0)
    )
   )
-
-
-
-

@@ -39,30 +39,34 @@
   new
   string
   ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
-  (if arg1
-   (let* ((s2-1 (max ((method-of-type string length) arg1) arg0))
-          (a0-4
-           (object-new
-            allocation
-            type-to-make
-            (+ (+ s2-1 1) (the-as int (-> type-to-make size)))
+  (cond
+   (arg1
+    (let* ((s2-1 (max ((method-of-type string length) arg1) arg0))
+           (a0-4
+            (object-new
+             allocation
+             type-to-make
+             (+ (+ s2-1 1) (the-as int (-> type-to-make size)))
+             )
             )
            )
-          )
-    (set! (-> a0-4 allocated-length) s2-1)
-    (copy-string<-string a0-4 arg1)
+     (set! (-> a0-4 allocated-length) s2-1)
+     (copy-string<-string a0-4 arg1)
+     )
     )
-   (let
-    ((v0-2
-      (object-new
-       allocation
-       type-to-make
-       (+ (+ arg0 1) (the-as int (-> type-to-make size)))
+   (else
+    (let
+     ((v0-2
+       (object-new
+        allocation
+        type-to-make
+        (+ (+ arg0 1) (the-as int (-> type-to-make size)))
+        )
        )
       )
+     (set! (-> v0-2 allocated-length) arg0)
+     v0-2
      )
-    (set! (-> v0-2 allocated-length) arg0)
-    v0-2
     )
    )
   )
@@ -562,35 +566,38 @@
             (>= (the-as uint 102) (-> next-char-2 0))
             )
            )
-          (if
-           (and
-            (>= (-> next-char-2 0) (the-as uint 65))
-            (>= (the-as uint 70) (-> next-char-2 0))
-            )
-           (set!
-            result
-            (the-as
-             int
-             (+ (+ (-> next-char-2 0) -55) (the-as uint (shl result 4)))
-             )
-            )
-           (if
-            (and
-             (>= (-> next-char-2 0) (the-as uint 97))
-             (>= (the-as uint 102) (-> next-char-2 0))
+          (cond
+           ((and
+             (>= (-> next-char-2 0) (the-as uint 65))
+             (>= (the-as uint 70) (-> next-char-2 0))
              )
             (set!
              result
              (the-as
               int
-              (+ (+ (-> next-char-2 0) -87) (the-as uint (shl result 4)))
+              (+ (+ (-> next-char-2 0) -55) (the-as uint (shl result 4)))
               )
              )
-            (set!
-             result
-             (the-as
-              int
-              (+ (+ (-> next-char-2 0) -48) (the-as uint (shl result 4)))
+            )
+           (else
+            (if
+             (and
+              (>= (-> next-char-2 0) (the-as uint 97))
+              (>= (the-as uint 102) (-> next-char-2 0))
+              )
+             (set!
+              result
+              (the-as
+               int
+               (+ (+ (-> next-char-2 0) -87) (the-as uint (shl result 4)))
+               )
+              )
+             (set!
+              result
+              (the-as
+               int
+               (+ (+ (-> next-char-2 0) -48) (the-as uint (shl result 4)))
+               )
               )
              )
             )
@@ -687,20 +694,24 @@
    (first-flag string)
    (second-flag string)
    )
-  (if (string-get-arg!! *string-tmp-str* in)
-   (cond
-    ((or
-      (string= *string-tmp-str* first-flag)
-      (string= *string-tmp-str* second-flag)
+  (cond
+   ((string-get-arg!! *string-tmp-str* in)
+    (cond
+     ((or
+       (string= *string-tmp-str* first-flag)
+       (string= *string-tmp-str* second-flag)
+       )
+      (set! (-> result 0) (string= *string-tmp-str* first-flag))
+      #t
       )
-     (set! (-> result 0) (string= *string-tmp-str* first-flag))
-     #t
-     )
-    (else
-     #f
+     (else
+      #f
+      )
      )
     )
-   #f
+   (else
+    #f
+    )
    )
   )
 
@@ -718,5 +729,3 @@
 
 ;; definition for symbol *temp-string*, type string
 (define *temp-string* (new 'global 'string 256 (the-as string #f)))
-
-
