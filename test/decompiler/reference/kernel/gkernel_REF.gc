@@ -157,30 +157,34 @@
    (arg2 int)
    (arg3 pointer)
    )
-  (let ((obj (the-as cpu-thread (if (-> arg0 top-thread)
-                                 (&+ arg3 -7164)
-                                 (let
-                                  ((v1-2
-                                    (logand
-                                     -16
-                                     (the-as int (&+ (-> arg0 heap-cur) 15))
-                                     )
-                                    )
-                                   )
-                                  (set!
-                                   (-> arg0 heap-cur)
-                                   (the-as
-                                    pointer
-                                    (+
-                                     (+
-                                      v1-2
-                                      (the-as int (-> type-to-make size))
+  (let ((obj (the-as cpu-thread (cond
+                                 ((-> arg0 top-thread)
+                                  (&+ arg3 -7164)
+                                  )
+                                 (else
+                                  (let
+                                   ((v1-2
+                                     (logand
+                                      -16
+                                      (the-as int (&+ (-> arg0 heap-cur) 15))
                                       )
-                                     arg2
                                      )
                                     )
+                                   (set!
+                                    (-> arg0 heap-cur)
+                                    (the-as
+                                     pointer
+                                     (+
+                                      (+
+                                       v1-2
+                                       (the-as int (-> type-to-make size))
+                                       )
+                                      arg2
+                                      )
+                                     )
+                                    )
+                                   (+ v1-2 4)
                                    )
-                                  (+ v1-2 4)
                                   )
                                  )
               )
@@ -209,7 +213,7 @@
 ;; definition for function remove-exit
 (defun remove-exit ()
   (local-vars (pp process))
-  (if (-> pp stack-frame-top)
+  (when (-> pp stack-frame-top)
    (let ((v0-0 (-> pp stack-frame-top next)))
     (set! (-> pp stack-frame-top) v0-0)
     v0-0
@@ -591,7 +595,7 @@
      (!= obj *debug-dead-pool*)
      )
     (set! s4-0 (get-process *debug-dead-pool* arg0 arg1))
-    (if (the-as process s4-0)
+    (when (the-as process s4-0)
      (let ((t9-1 format)
            (a0-2 0)
            (a1-2
@@ -720,26 +724,30 @@
   gap-size
   dead-pool-heap
   ((obj dead-pool-heap) (arg0 dead-pool-heap-rec))
-  (if (-> arg0 process)
-   (let
-    ((v1-3
-      (&+
-       (&+ (the-as pointer (-> arg0 process)) (-> process size))
-       (-> arg0 process allocated-length)
+  (cond
+   ((-> arg0 process)
+    (let
+     ((v1-3
+       (&+
+        (&+ (the-as pointer (-> arg0 process)) (-> process size))
+        (-> arg0 process allocated-length)
+        )
        )
       )
-     )
-    (if (-> arg0 next)
-     (&- (the-as pointer (-> arg0 next process)) (the-as uint v1-3))
-     (&- (-> obj heap top) (the-as uint (&+ v1-3 4)))
+     (if (-> arg0 next)
+      (&- (the-as pointer (-> arg0 next process)) (the-as uint v1-3))
+      (&- (-> obj heap top) (the-as uint (&+ v1-3 4)))
+      )
      )
     )
-   (if (-> arg0 next)
-    (&-
-     (the-as pointer (-> arg0 next process))
-     (the-as uint (&+ (-> obj heap base) 4))
+   (else
+    (if (-> arg0 next)
+     (&-
+      (the-as pointer (-> arg0 next process))
+      (the-as uint (&+ (-> obj heap base) 4))
+      )
+     (&- (-> obj heap top) (the-as uint (-> obj heap base)))
      )
-    (&- (-> obj heap top) (the-as uint (-> obj heap base)))
     )
    )
   )
@@ -973,7 +981,7 @@
     )
    (when (= (-> obj first-shrink) s5-1)
     (set! (-> obj first-shrink) (the-as dead-pool-heap-rec (-> s5-1 1)))
-    (when (not (-> obj first-shrink process))
+    (if (not (-> obj first-shrink process))
      (set! (-> obj first-shrink) #f)
      )
     )
@@ -993,7 +1001,7 @@
 
 ;; definition for method 17 of type dead-pool-heap
 (defmethod shrink-heap dead-pool-heap ((obj dead-pool-heap) (arg0 process))
-  (if arg0
+  (when arg0
    (let ((s5-0 (-> arg0 ppointer)))
     (when
      (not
@@ -1058,7 +1066,7 @@
      )
     )
    (let ((s4-1 (-> obj first-gap)))
-    (if (-> s4-1 next)
+    (when (-> s4-1 next)
      (let ((s3-0 (-> s4-1 next process))
            (s2-0 (gap-size obj s4-1))
            )
@@ -1101,7 +1109,7 @@
       )
      (when (= (-> obj first-shrink) s4-0)
       (set! (-> obj first-shrink) (-> s4-0 prev))
-      (when (not (-> obj first-shrink process))
+      (if (not (-> obj first-shrink process))
        (set! (-> obj first-shrink) #f)
        )
       )
@@ -1323,7 +1331,7 @@
 (defun
   search-process-tree
   ((arg0 process-tree) (arg1 (function process-tree object)))
-  (if (zero? (logand (-> arg0 mask) (process-mask process-tree)))
+  (when (zero? (logand (-> arg0 mask) (process-mask process-tree)))
    (if (arg1 arg0)
     (return arg0)
     )
@@ -1562,7 +1570,7 @@
 ;; definition for function change-parent
 (defun change-parent ((arg0 process-tree) (arg1 process-tree))
   (let ((a2-0 (-> arg0 parent)))
-   (if a2-0
+   (when a2-0
     (let* ((v1-2 (-> a2-0 0 child))
            (a3-0 v1-2)
            )
@@ -1601,9 +1609,9 @@
 
 ;; definition for function change-brother
 (defun change-brother ((arg0 process-tree) (arg1 process-tree))
-  (if (and arg0 (!= (-> arg0 brother) arg1) (!= arg0 arg1))
+  (when (and arg0 (!= (-> arg0 brother) arg1) (!= arg0 arg1))
    (let ((a2-1 (-> arg0 parent)))
-    (if a2-1
+    (when a2-1
      (let ((t0-0 (-> a2-1 0 child))
            (a3-1 (the-as (pointer process-tree) #f))
            (v1-4 (the-as (pointer process-tree) #f))
@@ -1651,11 +1659,15 @@
         )
        (set! t0-0 (-> t0-0 0 brother))
        )
-      (if (or (not a3-1) (not v1-4))
-       (return 0)
-       (if (= a3-1 a2-1)
-        (set! (-> a3-1 4) (the-as process-tree (-> arg0 brother)))
-        (set! (-> a3-1 3) (the-as process-tree (-> arg0 brother)))
+      (cond
+       ((or (not a3-1) (not v1-4))
+        (return 0)
+        )
+       (else
+        (if (= a3-1 a2-1)
+         (set! (-> a3-1 4) (the-as process-tree (-> arg0 brother)))
+         (set! (-> a3-1 3) (the-as process-tree (-> arg0 brother)))
+         )
         )
        )
       (cond
@@ -1741,13 +1753,9 @@
   (set! (-> obj event-hook) #f)
   (set! (-> obj state) #f)
   (set! (-> obj next-state) #f)
-  (cond
-   ((nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
-    (set! (-> obj entity) #f)
-    )
-   (else
-    (set! (-> obj entity) (-> (the-as process arg0) entity))
-    )
+  (if (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+   (set! (-> obj entity) #f)
+   (set! (-> obj entity) (-> (the-as process arg0) entity))
    )
   (set! (-> obj connection-list next1) #f)
   (set! (-> obj connection-list prev1) #f)
@@ -2004,4 +2012,3 @@
   (set! *default-pool* a0-63)
   (gp-5 a0-63 *active-pool*)
   )
-

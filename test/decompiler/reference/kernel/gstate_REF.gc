@@ -106,13 +106,9 @@
     (set! (-> pp mask) (logand (lognot (process-mask going)) (-> pp mask)))
     (let ((s0-2 (-> pp state)))
      (set! (-> pp event-hook) (-> s0-2 event))
-     (cond
-      ((-> s0-2 exit)
-       (set! (-> pp stack-frame-top) s0-2)
-       )
-      (else
-       (set! (-> pp stack-frame-top) #f)
-       )
+     (if (-> s0-2 exit)
+      (set! (-> pp stack-frame-top) s0-2)
+      (set! (-> pp stack-frame-top) #f)
       )
      (set! (-> pp post-hook) (-> s0-2 post))
      (set! (-> pp trans-hook) (-> s0-2 trans))
@@ -139,7 +135,7 @@
    (else
     (set! (-> pp trans-hook) #f)
     (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
-    (if (!= (-> pp top-thread name) 'post)
+    (when (!= (-> pp top-thread name) 'post)
      (let ((v0-2 (the-as object return-from-thread)))
       (.sw (the-as (function none) v0-2) 0 sp-0)
       v0-2
@@ -151,7 +147,7 @@
 
 ;; definition for function send-event-function
 (defun send-event-function ((arg0 process) (arg1 event-message-block))
-  (if (and arg0 (!= (-> arg0 type) process-tree) (-> arg0 event-hook))
+  (when (and arg0 (!= (-> arg0 type) process-tree) (-> arg0 event-hook))
    (let ((gp-0 pp))
     (let ((s6-1 arg0))
      )
@@ -181,4 +177,3 @@
    )
   (the-as symbol #f)
   )
-

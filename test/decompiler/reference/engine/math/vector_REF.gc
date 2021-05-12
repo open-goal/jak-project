@@ -312,7 +312,7 @@
   (let ((x-diff (- (-> target x) (-> vec x)))
         (z-diff (- (-> target z) (-> vec z)))
         )
-   (if (or (!= x-diff 0.0) (!= z-diff 0.0))
+   (when (or (!= x-diff 0.0) (!= z-diff 0.0))
     (let* ((x-step (* x-diff alpha))
            (z-step (* z-diff alpha))
            (step-len (sqrtf (+ (* x-step x-step) (* z-step z-step))))
@@ -342,7 +342,7 @@
   (let ((y-diff (- (-> target y) (-> vec y)))
         (z-diff (- (-> target z) (-> vec z)))
         )
-   (if (or (!= y-diff 0.0) (!= z-diff 0.0))
+   (when (or (!= y-diff 0.0) (!= z-diff 0.0))
     (let* ((y-step (* y-diff alpha))
            (z-step (* z-diff alpha))
            (step-len (sqrtf (+ (* y-step y-step) (* z-step z-step))))
@@ -373,7 +373,7 @@
         (y-diff (- (-> target y) (-> vec y)))
         (z-diff (- (-> target z) (-> vec z)))
         )
-   (if (or (!= x-diff 0.0) (!= y-diff 0.0) (!= z-diff 0.0))
+   (when (or (!= x-diff 0.0) (!= y-diff 0.0) (!= z-diff 0.0))
     (let* ((x-step (* x-diff alpha))
            (y-step (* y-diff alpha))
            (z-step (* z-diff alpha))
@@ -408,20 +408,24 @@
   seek-with-smooth
   ((value float) (target float) (max-step float) (alpha float) (deadband float))
   (let ((diff (- target value)))
-   (if (>= deadband (fabs diff))
-    target
-    (let ((step (* diff alpha)))
-     (let ((min-step (- max-step)))
-      (cond
-       ((< step min-step)
-        (set! step min-step)
-        )
-       ((< max-step step)
-        (set! step max-step)
+   (cond
+    ((>= deadband (fabs diff))
+     target
+     )
+    (else
+     (let ((step (* diff alpha)))
+      (let ((min-step (- max-step)))
+       (cond
+        ((< step min-step)
+         (set! step min-step)
+         )
+        ((< max-step step)
+         (set! step max-step)
+         )
         )
        )
+      (+ step value)
       )
-     (+ step value)
      )
     )
    )
@@ -790,12 +794,16 @@
 ;; Used lq/sq
 (defun vector-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
   (let ((f0-0 (vector-length arg1)))
-   (if (= f0-0 0.0)
-    (set! (-> arg0 quad) (-> arg1 quad))
-    (let ((v1-1 (/ arg2 f0-0)))
-     (set! (-> arg0 x) (* (-> arg1 x) v1-1))
-     (set! (-> arg0 y) (* (-> arg1 y) v1-1))
-     (set! (-> arg0 z) (* (-> arg1 z) v1-1))
+   (cond
+    ((= f0-0 0.0)
+     (set! (-> arg0 quad) (-> arg1 quad))
+     )
+    (else
+     (let ((v1-1 (/ arg2 f0-0)))
+      (set! (-> arg0 x) (* (-> arg1 x) v1-1))
+      (set! (-> arg0 y) (* (-> arg1 y) v1-1))
+      (set! (-> arg0 z) (* (-> arg1 z) v1-1))
+      )
      )
     )
    )
@@ -806,7 +814,7 @@
 ;; definition for function vector-xz-normalize!
 (defun vector-xz-normalize! ((arg0 vector) (arg1 float))
   (let ((f0-0 (vector-xz-length arg0)))
-   (if (!= f0-0 0.0)
+   (when (!= f0-0 0.0)
     (let ((v1-1 (/ arg1 f0-0)))
      (set! (-> arg0 x) (* (-> arg0 x) v1-1))
      (set! (-> arg0 z) (* (-> arg0 z) v1-1))
@@ -1228,7 +1236,3 @@
    )
   (vector-normalize! arg0 (rand-vu-float-range 0.0 arg1))
   )
-
-
-
-

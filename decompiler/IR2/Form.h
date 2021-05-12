@@ -33,6 +33,14 @@ class FormElement {
   virtual void get_modified_regs(RegSet& regs) const = 0;
   virtual bool active() const;
 
+  // is this element reasonable to put directly in an if?
+  // of course it's possible to put whatever you want, but it looks weird to do something like
+  // (if (condition?)
+  //   <some huge thing hundreds of lines long>
+  //   <some other huge thing>
+  //   )
+  virtual bool allow_in_if() const { return true; }
+
   std::string to_string(const Env& env) const;
   bool has_side_effects();
 
@@ -489,6 +497,7 @@ class ConditionElement : public FormElement {
                                                   FormPool& pool,
                                                   const std::vector<Form*>& source_forms,
                                                   const std::vector<TypeSpec>& types);
+  bool allow_in_if() const override { return false; }
 
  private:
   IR2_Condition::Kind m_kind;
@@ -621,6 +630,7 @@ class CondWithElseElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
 };
 
 /*!
@@ -673,6 +683,7 @@ class WhileElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
   Form* condition = nullptr;
   Form* body = nullptr;
   bool cleaned = false;
@@ -692,6 +703,7 @@ class UntilElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
   Form* condition = nullptr;
   Form* body = nullptr;
 };
@@ -764,6 +776,7 @@ class CondNoElseElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  bool allow_in_if() const override { return false; }
 };
 
 /*!
@@ -1247,6 +1260,7 @@ class LetElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   Form* body() { return m_body; }
   void set_body(Form* new_body);
+  bool allow_in_if() const override { return false; }
 
   struct Entry {
     RegisterAccess dest;
@@ -1274,6 +1288,7 @@ class DoTimesElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
 
  private:
   RegisterAccess m_var_init, m_var_check, m_var_inc;
@@ -1421,12 +1436,51 @@ class Form {
     return nullptr;
   }
 
+  FormElement* try_as_single_active_element() const {
+    int active_count = 0;
+    FormElement* result = nullptr;
+    for (auto& elt : m_elements) {
+      if (elt->active()) {
+        active_count++;
+        result = elt;
+      }
+    }
+    if (active_count == 1) {
+      return result;
+    } else {
+      return nullptr;
+    }
+  }
+
   template <typename T>
   T* try_as_element() const {
     return dynamic_cast<T*>(try_as_single_element());
   }
 
   bool is_single_element() const { return m_elements.size() == 1; }
+  bool is_single_active_element() const {
+    int active_count = 0;
+    for (auto& elt : m_elements) {
+      if (elt->active()) {
+        active_count++;
+      }
+    }
+    return active_count == 1;
+  }
+
+  bool is_reasonable_for_if() const {
+    int active_count = 0;
+    for (auto& elt : m_elements) {
+      if (elt->active()) {
+        if (!elt->allow_in_if()) {
+          return false;
+        }
+        active_count++;
+      }
+    }
+    return active_count == 1;
+  }
+
   FormElement* operator[](int idx) { return m_elements.at(idx); }
   FormElement*& at(int idx) { return m_elements.at(idx); }
   const FormElement* operator[](int idx) const { return m_elements.at(idx); }

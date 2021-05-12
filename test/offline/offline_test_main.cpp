@@ -470,8 +470,8 @@ TEST_F(OfflineDecompilation, Reference) {
 
     if (g_dump_mode) {
       if (reference != src) {
-        fmt::print("----------------- {}\n", file.first);
-        fmt::print("{}\n", src);
+        file_util::create_dir_if_needed("./failures");
+        file_util::write_text_file("./failures/" + file.first + "_REF.gc", src);
         EXPECT_TRUE(false);
       }
     } else {
