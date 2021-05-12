@@ -168,7 +168,8 @@ int main(int argc, char** argv) {
   }
   // use the all_objs.json file to place them in the correct build order
   auto j = parse_commented_json(
-      file_util::read_text_file(file_util::get_file_path({"goal_src", "build", "all_objs.json"})));
+      file_util::read_text_file(file_util::get_file_path({"goal_src", "build", "all_objs.json"})),
+      "all_objs.json");
   for (auto& x : j) {
     auto mapped_name = x[0].get<std::string>();
     for (auto& p : reference_files_rough_order) {
