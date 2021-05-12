@@ -123,7 +123,7 @@ TEST_F(FormRegressionTest, Min) {
   std::string func =
       "    sll r0, r0, 0\n"
       "    or v0, a0, r0\n"
-      "    or v1, a1, r0 \n"
+      "    or v1, a1, r0\n"
       "    slt a0, v0, v1\n"
       "    movz v0, v1, a0\n"
       "    jr ra\n"
@@ -179,7 +179,7 @@ TEST_F(FormRegressionTest, FormatString) {
       "    jalr ra, t9\n"
       "    sll v0, ra, 0\n"
 
-      "    or v0, gp, r0 \n"
+      "    or v0, gp, r0\n"
       "    ld ra, 0(sp)\n"
       "    ld fp, 8(sp)\n"
       "    lq gp, 16(sp)\n"

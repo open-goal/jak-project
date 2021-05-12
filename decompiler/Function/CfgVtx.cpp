@@ -1248,7 +1248,7 @@ bool ControlFlowGraph::find_cond_w_empty_else() {
       return true;
     }
 
-    //        printf("cwe try %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
+    // printf("cwe try %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
 
     // first condition should have the _option_ to fall through to first body
     if (c0->succ_ft != b0 || c0->end_branch.kind != CfgVtx::DelaySlotKind::NOP) {
@@ -1290,11 +1290,10 @@ bool ControlFlowGraph::find_cond_w_empty_else() {
       else_block = end_block;
     }
 
-    if (else_block->succ_branch) {
-      return true;
-    }
-
-    assert(!else_block->end_branch.has_branch);
+    // the else code is empty, so the else block is the same as the end block.
+    // in this empty else case, we don't care what the "else" block end conditions are.
+    // else must fall through to end with no possible branch.
+    // it's not our problem to deal with the end block's branching.;
 
     std::vector<CondWithElse::Entry> entries = {{c0, b0}};
     auto* prev_condition = c0;
