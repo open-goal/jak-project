@@ -645,6 +645,18 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         }
       }
     }
+
+    if (m_kind == Kind::FLOAT && m_size == 4) {
+      assert((label.offset % 4) == 0);
+      const auto& words = env.file->words_by_seg.at(label.target_segment);
+      if ((int)words.size() > label.offset / 4) {
+        auto word = words.at(label.offset / 4);
+        assert(word.kind == LinkedWord::PLAIN_DATA);
+        float value;
+        memcpy(&value, &word.data, 4);
+        return pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
+      }
+    }
   }
 
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);

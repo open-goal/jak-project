@@ -163,7 +163,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
-  auto j = parse_commented_json(map_data);
+  auto j = parse_commented_json(map_data, "ObjectFileDB Map File");
 
   for (auto& x : j) {
     auto mapped_name = x[0].get<std::string>();

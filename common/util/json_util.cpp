@@ -1,3 +1,4 @@
+#include "common/log/log.h"
 #include "common/util/assert.h"
 #include "json_util.h"
 
@@ -75,8 +76,17 @@ std::string strip_cpp_style_comments(const std::string& input) {
  * Parse JSON file with comments stripped. Unlike the default comment stripping feature
  * of nlohmann::json, this allows you to have multiple comments in a row!
  */
-nlohmann::json parse_commented_json(const std::string& input) {
-  return nlohmann::json::parse(strip_cpp_style_comments(input));
+nlohmann::json parse_commented_json(const std::string& input, const std::string& source_name) {
+  try {
+    return nlohmann::json::parse(strip_cpp_style_comments(input));
+  } catch (const std::exception& e) {
+    if (source_name.empty()) {
+      lg::error("Error parsing JSON file: {}", e.what());
+    } else {
+      lg::error("Error parsing JSON in file {}: {}", source_name, e.what());
+    }
+    throw;
+  }
 }
 
 /*!

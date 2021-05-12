@@ -15,7 +15,7 @@ namespace {
 nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::string& file_key) {
   auto file_name = cfg.at(file_key).get<std::string>();
   auto file_txt = file_util::read_text_file(file_util::get_file_path({file_name}));
-  return parse_commented_json(file_txt);
+  return parse_commented_json(file_txt, file_name);
 }
 }  // namespace
 
@@ -25,7 +25,7 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& cfg, const std::
 Config read_config_file(const std::string& path_to_config_file) {
   Config config;
   auto config_str = file_util::read_text_file(path_to_config_file);
-  auto cfg = parse_commented_json(config_str);
+  auto cfg = parse_commented_json(config_str, path_to_config_file);
 
   config.game_version = cfg.at("game_version").get<int>();
 
