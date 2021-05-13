@@ -316,7 +316,7 @@ TEST_F(DataDecompTest, ContinuePoint) {
                     "                      -0.1328\n"
                     "                      0.5831\n"
                     "                      )\n"
-                    "     :load-commands '('('special \"citb-exit-plat-4\" #t))\n"
+                    "     :load-commands '((special \"citb-exit-plat-4\" #t))\n"
                     "     :vis-nick 'fin\n"
                     "     :lev0 'finalboss\n"
                     "     :disp0 'display\n"

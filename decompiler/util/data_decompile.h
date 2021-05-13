@@ -37,7 +37,8 @@ goos::Object decompile_structure(const TypeSpec& actual_type,
 goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<DecompilerLabel>& labels,
                             const std::vector<std::vector<LinkedWord>>& words,
-                            const TypeSystem& ts);
+                            const TypeSystem& ts,
+                            bool add_quote);
 goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
