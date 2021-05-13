@@ -5,13 +5,6 @@
 ;; name in dgo: dynamics-h
 ;; dgos: GAME, ENGINE
 
-;; TODO move these elsewhere
-(defglobalconstant TICKS_TO_SECONDS (/ 1.0 300)) ;; #x3b5a740e - 0.0033333333...
-(defmacro vel-to-tick (vel)
-  "turn a velocity value into a per-tick value"
-  `(* ,TICKS_TO_SECONDS ,vel)
-  )
-
 (deftype dynamics (basic)
   ((name           basic          :offset-assert 4)
    (gravity-max    float          :offset-assert 8)  ;; meters
@@ -27,7 +20,7 @@
   )
 
 (defun time-to-apex ((arg0 float) (arg1 float))
-  (the int (/ arg0 (- (vel-to-tick arg1))))
+  (the int (/ arg0 (- (vel-tick arg1))))
   )
 
 (defun time-to-ground ((velocity float) (gravity float) (height float))
@@ -36,8 +29,8 @@
         (ticks 0))
    ;; loop in ticks until we reach the ground
    (while (< (- height) height-checked)
-    (let ((velocity (- velocity (vel-to-tick gravity))))
-     (+! height-checked (vel-to-tick velocity))
+    (let ((velocity (- velocity (vel-tick gravity))))
+     (+! height-checked (vel-tick velocity))
      )
     (+! ticks 1)
     )
