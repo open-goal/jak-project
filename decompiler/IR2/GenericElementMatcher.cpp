@@ -105,6 +105,20 @@ Matcher Matcher::if_with_else(const Matcher& condition,
   return m;
 }
 
+Matcher Matcher::if_no_else(const Matcher& condition, const Matcher& true_case) {
+  Matcher m;
+  m.m_kind = Kind::IF_NO_ELSE;
+  m.m_sub_matchers = {condition, true_case};
+  return m;
+}
+
+Matcher Matcher::or_expression(const std::vector<Matcher>& elts) {
+  Matcher m;
+  m.m_kind = Kind::SC_OR;
+  m.m_sub_matchers = elts;
+  return m;
+}
+
 Matcher Matcher::deref(const Matcher& root,
                        bool is_addr_of,
                        const std::vector<DerefTokenMatcher>& tokens) {
@@ -148,7 +162,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       bool got = false;
       RegisterAccess result;
 
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_var()) {
           got = true;
@@ -156,7 +170,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_var()) {
@@ -180,7 +194,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       bool got = false;
       int result;
 
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_label()) {
           got = true;
@@ -188,7 +202,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_label()) {
@@ -208,7 +222,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::GENERIC_OP: {
-      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_element());
+      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
         if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
           return false;
@@ -229,7 +243,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::GENERIC_OP_WITH_REST: {
-      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_element());
+      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
         if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
           return false;
@@ -271,7 +285,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::CAST: {
-      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_element());
+      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
       if (as_cast) {
         if (as_cast->type().print() == m_str) {
           return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
@@ -281,7 +295,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::INT: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_int()) {
           if (!m_int_match.has_value()) {
@@ -291,7 +305,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_int()) {
@@ -306,7 +320,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::ANY_INT: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_int()) {
           if (m_int_out_id != -1) {
@@ -316,7 +330,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_int()) {
@@ -331,7 +345,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::ANY_QUOTED_SYMBOL: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_sym_ptr()) {
           if (m_string_out_id != -1) {
@@ -341,7 +355,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_ptr()) {
@@ -355,7 +369,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     case Kind::ANY_SYMBOL: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_sym_val()) {
           if (m_string_out_id != -1) {
@@ -365,7 +379,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_val()) {
@@ -379,14 +393,14 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     case Kind::SYMBOL: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_sym_val()) {
           return as_simple_atom->atom().get_str() == m_str;
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_val()) {
@@ -397,7 +411,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     case Kind::DEREF_OP: {
-      auto as_deref = dynamic_cast<DerefElement*>(input->try_as_single_element());
+      auto as_deref = dynamic_cast<DerefElement*>(input->try_as_single_active_element());
       if (as_deref) {
         if (as_deref->is_addr_of() != m_deref_is_addr_of) {
           return false;
@@ -419,7 +433,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     case Kind::SET: {
-      auto as_set = dynamic_cast<SetFormFormElement*>(input->try_as_single_element());
+      auto as_set = dynamic_cast<SetFormFormElement*>(input->try_as_single_active_element());
       if (!as_set) {
         return false;
       }
@@ -435,7 +449,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::IF_WITH_ELSE: {
-      auto as_cond = dynamic_cast<CondWithElseElement*>(input->try_as_single_element());
+      auto as_cond = dynamic_cast<CondWithElseElement*>(input->try_as_single_active_element());
       if (!as_cond) {
         return false;
       }
@@ -458,8 +472,47 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return true;
     } break;
 
+    case Kind::IF_NO_ELSE: {
+      auto as_cond = dynamic_cast<CondNoElseElement*>(input->try_as_single_active_element());
+      if (!as_cond) {
+        return false;
+      }
+
+      if (as_cond->entries.size() != 1) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out)) {
+        return false;
+      }
+
+      return true;
+    } break;
+
+    case Kind::SC_OR: {
+      auto as_sc = dynamic_cast<ShortCircuitElement*>(input->try_as_single_active_element());
+      if (!as_sc || as_sc->kind != ShortCircuitElement::OR) {
+        return false;
+      }
+      if (as_sc->entries.size() != m_sub_matchers.size()) {
+        return false;
+      }
+
+      for (size_t i = 0; i < m_sub_matchers.size(); i++) {
+        if (!m_sub_matchers.at(i).do_match(as_sc->entries.at(i).condition, maps_out)) {
+          return false;
+        }
+      }
+
+      return true;
+    } break;
+
     case Kind::WHILE_LOOP: {
-      auto as_while = dynamic_cast<WhileElement*>(input->try_as_single_element());
+      auto as_while = dynamic_cast<WhileElement*>(input->try_as_single_active_element());
       if (!as_while) {
         return false;
       }

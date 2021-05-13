@@ -45,8 +45,10 @@ class Matcher {
   static Matcher if_with_else(const Matcher& condition,
                               const Matcher& true_case,
                               const Matcher& false_case);
+  static Matcher if_no_else(const Matcher& condition, const Matcher& true_case);
   static Matcher while_loop(const Matcher& condition, const Matcher& body);
   static Matcher any_constant_token(int match_id = -1);
+  static Matcher or_expression(const std::vector<Matcher>& elts);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -64,8 +66,10 @@ class Matcher {
     ANY_LABEL,
     SYMBOL,
     IF_WITH_ELSE,
+    IF_NO_ELSE,
     WHILE_LOOP,
     ANY_CONSTANT_TOKEN,
+    SC_OR,
     INVALID
   };
 
