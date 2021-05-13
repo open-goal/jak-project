@@ -82,7 +82,9 @@ void subscribe_component() {
     throw std::runtime_error("[VM] Cannot add new components when VM is dead!");
   }
 
+  status_mutex.lock();
   ++components;
+  status_mutex.unlock();
 
   // stall component until VM is ready
   if (status == Status::Uninited) {
@@ -91,7 +93,9 @@ void subscribe_component() {
 }
 
 void unsubscribe_component() {
+  status_mutex.lock();
   --components;
+  status_mutex.unlock();
   vm_dead_cv.notify_all();
 }
 
