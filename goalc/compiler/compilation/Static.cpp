@@ -465,6 +465,10 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
     segment = MAIN_SEGMENT;
   }
   if (form.is_pair()) {
+    if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
+                                            form.as_pair()->car.as_symbol()->name == "the")) {
+      return compile_static(form, env);
+    }
     auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env);
     auto cdr = compile_static_no_eval_for_pairs(form.as_pair()->cdr, env);
     auto pair_structure = std::make_unique<StaticPair>(car, cdr, segment);
@@ -490,7 +494,7 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
     fie->add_static(std::move(obj));
     return result;
   } else {
-    assert(false);  // not yet implemented
+    throw_compiler_error(form, "Cannot put the following form in a static pair: {}", form.print());
     return {};
   }
 }
@@ -622,6 +626,18 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
         if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
           if (integer_fits(value, 4, false)) {
             return StaticResult::make_constant_data(value, TypeSpec("float"));
+          }
+        }
+      }
+    } else if (first.is_symbol() && first.as_symbol()->name == "the") {
+      auto args = get_va(form, rest);
+      va_check(form, args, {{}, {}}, {});
+      auto type = parse_typespec(args.unnamed.at(0));
+      if (type == TypeSpec("binteger")) {
+        s64 value;
+        if (try_getting_constant_integer(args.unnamed.at(1), &value, env)) {
+          if (integer_fits(value, 4, true)) {
+            return StaticResult::make_constant_data(value << 3, TypeSpec("binteger"));
           }
         }
       }

@@ -49,7 +49,8 @@ struct FormToken {
     DOT,
     CLOSE_PAREN,
     EMPTY_PAIR,
-    SPECIAL_STRING  // has different alignment rules than STRING
+    SPECIAL_STRING,  // has different alignment rules than STRING
+    QUOTE
   } kind;
   explicit FormToken(TokenKind _kind, std::string _str = "") : kind(_kind), str(std::move(_str)) {}
 
@@ -78,6 +79,9 @@ struct FormToken {
         break;
       case TokenKind::SPECIAL_STRING:
         s.append(str);
+        break;
+      case TokenKind::QUOTE:
+        s.push_back('\'');
         break;
       default:
         throw std::runtime_error("toString unknown token kind");
@@ -110,6 +114,18 @@ void add_to_token_list(const goos::Object& obj, std::vector<FormToken>* tokens) 
       // it's important to break the pair up into smaller tokens which can then be split
       // across lines.
     case goos::ObjectType::PAIR: {
+      // look for a (quote x) to print as 'x
+
+      auto& first = obj.as_pair()->car;
+      if (first.is_symbol() && first.as_symbol()->name == "quote") {
+        auto& second = obj.as_pair()->cdr;
+        if (second.is_pair() && second.as_pair()->cdr.is_empty_list()) {
+          tokens->emplace_back(FormToken::TokenKind::QUOTE);
+          add_to_token_list(second.as_pair()->car, tokens);
+          return;
+        }
+      }
+
       tokens->emplace_back(FormToken::TokenKind::OPEN_PAREN);
       auto* to_print = &obj;
       for (;;) {
@@ -212,6 +228,9 @@ struct NodePool {
  * node.
  */
 void insertNewlineAfter(NodePool& pool, PrettyPrinterNode* node, int specialIndentDelta) {
+  while (node->tok && node->tok->kind == FormToken::TokenKind::QUOTE && node->next) {
+    node = node->next;
+  }
   if (node->next && !node->next->is_line_separator) {
     auto* nl = pool.allocate();
     auto* next = node->next;
@@ -229,6 +248,9 @@ void insertNewlineAfter(NodePool& pool, PrettyPrinterNode* node, int specialInde
  * first node.
  */
 void insertNewlineBefore(NodePool& pool, PrettyPrinterNode* node, int specialIndentDelta) {
+  while (node->prev && node->prev->tok && node->prev->tok->kind == FormToken::TokenKind::QUOTE) {
+    node = node->prev;
+  }
   if (node->prev && !node->prev->is_line_separator) {
     auto* nl = pool.allocate();
     auto* prev = node->prev;
