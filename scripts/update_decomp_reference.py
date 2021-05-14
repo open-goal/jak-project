@@ -20,8 +20,6 @@ def main():
 
     location_map = {os.path.basename(x) : x for x in get_goal_files(args.reference)}
 
-    replacements = []
-
     for replacement in get_goal_files(args.diff):
     	base = os.path.basename(replacement)
     	if base not in location_map:
