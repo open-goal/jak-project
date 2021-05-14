@@ -320,6 +320,10 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
         return TP_Type::make_from_ts(field.type());
       }
+
+      if (m_kind == Kind::RIGHT_SHIFT_ARITH) {
+        return TP_Type::make_from_ts(TypeSpec("int"));
+      }
     } break;
 
     case Kind::MUL_SIGNED: {

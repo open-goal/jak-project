@@ -1175,6 +1175,23 @@ void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env
           result->push_back(as_bitfield_access);
         }
       } else {
+        /*
+        int sa = m_expr.get_arg(1).get_int();
+        if (sa < 10) {
+          if (!arg0_u) {
+            arg = cast_form(arg, TypeSpec("uint"), pool, env);
+          }
+          s64 multiplier = (s64(1) << sa);
+
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg,
+              pool.alloc_single_element_form<SimpleAtomElement>(
+                  nullptr, SimpleAtom::make_int_constant(multiplier)));
+          result->push_back(new_form);
+          return;
+        }
+         */
+
         if (!arg0_i && !arg0_u) {
           auto new_form = pool.alloc_element<GenericElement>(
               GenericOperator::make_fixed(FixedOperatorKind::SHR),
@@ -1211,6 +1228,25 @@ void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env
     assert(other);  // should be a high field.
     result->push_back(other);
   } else {
+    if (m_expr.get_arg(1).is_int() && m_expr.get_arg(1).get_int() < 10) {
+      auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+      auto arg =
+          pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+      int sa = m_expr.get_arg(1).get_int();
+
+      if (!arg0_i) {
+        arg = cast_form(arg, TypeSpec("int"), pool, env);
+      }
+      s64 multiplier = (s64(1) << sa);
+
+      auto new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg,
+          pool.alloc_single_element_form<SimpleAtomElement>(
+              nullptr, SimpleAtom::make_int_constant(multiplier)));
+      result->push_back(new_form);
+      return;
+    }
+
     update_from_stack_copy_first_int_2(env, FixedOperatorKind::SAR, pool, stack, result,
                                        allow_side_effects);
   }

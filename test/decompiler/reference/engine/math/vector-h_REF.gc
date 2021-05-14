@@ -36,7 +36,7 @@
       allocation
       type-to-make
       (+
-       (+ (sar (logand -8 (+ length 7)) 3) -1)
+       (+ (/ (logand -8 (+ length 7)) 8) -1)
        (the-as int (-> type-to-make size))
        )
       )
@@ -60,14 +60,14 @@
    int
    (+
     (-> obj type size)
-    (the-as uint (sar (logand -8 (+ (-> obj allocated-length) 7)) 3))
+    (the-as uint (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
     )
    )
   )
 
 ;; definition for method 9 of type bit-array
 (defmethod get-bit bit-array ((obj bit-array) (arg0 int))
-  (let ((v1-2 (-> obj bytes (sar arg0 3))))
+  (let ((v1-2 (-> obj bytes (/ arg0 8))))
    (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg0 7)))))
    )
   )
@@ -75,9 +75,9 @@
 ;; definition for method 10 of type bit-array
 (defmethod clear-bit bit-array ((obj bit-array) (arg0 int))
   (set!
-   (-> obj bytes (sar arg0 3))
+   (-> obj bytes (/ arg0 8))
    (logand
-    (-> obj bytes (sar arg0 3))
+    (-> obj bytes (/ arg0 8))
     (the-as uint (lognot (ash 1 (logand arg0 7))))
     )
    )
@@ -87,15 +87,15 @@
 ;; definition for method 11 of type bit-array
 (defmethod set-bit bit-array ((obj bit-array) (arg0 int))
   (set!
-   (-> obj bytes (sar arg0 3))
-   (logior (-> obj bytes (sar arg0 3)) (the-as uint (ash 1 (logand arg0 7))))
+   (-> obj bytes (/ arg0 8))
+   (logior (-> obj bytes (/ arg0 8)) (the-as uint (ash 1 (logand arg0 7))))
    )
   0
   )
 
 ;; definition for method 12 of type bit-array
 (defmethod clear bit-array ((obj bit-array))
-  (let ((idx (sar (logand -8 (+ (-> obj allocated-length) 7)) 3)))
+  (let ((idx (/ (logand -8 (+ (-> obj allocated-length) 7)) 8)))
    (while (nonzero? idx)
     (+! idx -1)
     (nop!)
@@ -963,7 +963,3 @@
 
 ;; definition for symbol *zero-vector*, type vector
 (define *zero-vector* (new 'static 'vector))
-
-
-
-

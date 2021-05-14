@@ -218,23 +218,49 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
                                                     const BitFieldType* type,
                                                     const TypeSystem& ts) {
   // (shr (shl arg1 59) 44) for example
-  auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHR),
-                             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
-                                          {Matcher::any(0), Matcher::any_integer(1)}),
-                              Matcher::any_integer(2)});
-  auto mr = match(matcher, strip_int_or_uint_cast(form));
-  if (mr.matched) {
-    auto value = mr.maps.forms.at(0);
-    int left = mr.maps.ints.at(1);
-    int right = mr.maps.ints.at(2);
-    int size = 64 - left;
-    int offset = left - right;
-    auto& f = find_field(ts, type, offset, size, {});
-    BitFieldDef def;
-    def.value = value;
-    def.field_name = f.name();
-    def.is_signed = false;  // we don't know.
-    return def;
+  {
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHR),
+                               {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                            {Matcher::any(0), Matcher::any_integer(1)}),
+                                Matcher::any_integer(2)});
+    auto mr = match(matcher, strip_int_or_uint_cast(form));
+    if (mr.matched) {
+      auto value = mr.maps.forms.at(0);
+      int left = mr.maps.ints.at(1);
+      int right = mr.maps.ints.at(2);
+      int size = 64 - left;
+      int offset = left - right;
+      auto& f = find_field(ts, type, offset, size, {});
+      BitFieldDef def;
+      def.value = value;
+      def.field_name = f.name();
+      def.is_signed = false;  // we don't know.
+      return def;
+    }
+  }
+
+  {
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::DIVISION),
+                               {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                            {Matcher::any(0), Matcher::any_integer(1)}),
+                                Matcher::any_integer(2)});
+    auto mr = match(matcher, strip_int_or_uint_cast(form));
+    if (mr.matched) {
+      auto power_of_two = get_power_of_two(mr.maps.ints.at(2));
+      if (power_of_two) {
+        auto value = mr.maps.forms.at(0);
+        int left = mr.maps.ints.at(1);
+        int right = *power_of_two;
+        int size = 64 - left;
+        int offset = left - right;
+        auto& f = find_field(ts, type, offset, size, {});
+        BitFieldDef def;
+        def.value = value;
+        def.field_name = f.name();
+        def.is_signed = false;  // we don't know.
+        return def;
+      }
+    }
   }
 
   // also possible to omit the shr if it would be zero:
@@ -267,7 +293,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                               const TypeSystem& ts,
                                               FormPool& pool,
-                                              const Env&) {
+                                              const Env& env) {
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // for left/right shift combo to get a field.
     m_steps.push_back(step);
@@ -384,7 +410,12 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     assert(field);
 
     auto val = get_bitfield_initial_set(step.value, as_bitfield, ts);
-    assert(val);
+
+    if (!val) {
+      throw std::runtime_error(
+          fmt::format("Failed to get_bitfield_initial_set: {}\n", step.value->to_string(env)));
+    }
+
     if (val->field_name != field->name()) {
       throw std::runtime_error("Incompatible bitfield set");
     }
