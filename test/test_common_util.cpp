@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <limits>
 
 #include "common/util/FileUtil.h"
 #include "common/util/Trie.h"
