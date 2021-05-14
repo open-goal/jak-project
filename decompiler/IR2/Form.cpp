@@ -821,8 +821,8 @@ CondWithElseElement::CondWithElseElement(std::vector<Entry> _entries, Form* _els
 goos::Object CondWithElseElement::to_form_internal(const Env& env) const {
   // for now we only turn it into an if statement if both cases won't require a begin at the top
   // level. I think it is more common to write these as a two-case cond instead of an if with begin.
-  if (entries.size() == 1 && entries.front().body->is_single_element() &&
-      else_ir->is_single_element()) {
+  if (entries.size() == 1 && entries.front().body->is_reasonable_for_if() &&
+      else_ir->is_reasonable_for_if()) {
     std::vector<goos::Object> list;
     list.push_back(pretty_print::to_symbol("if"));
     list.push_back(entries.front().condition->to_form_as_condition(env));
@@ -1126,7 +1126,7 @@ CondNoElseElement::CondNoElseElement(std::vector<Entry> _entries) : entries(std:
 }
 
 goos::Object CondNoElseElement::to_form_internal(const Env& env) const {
-  if (entries.size() == 1 && entries.front().body->is_single_element()) {
+  if (entries.size() == 1 && entries.front().body->is_reasonable_for_if()) {
     // print as an if statement if we can put the body in a single form.
     std::vector<goos::Object> list;
     list.push_back(pretty_print::to_symbol("if"));

@@ -149,7 +149,7 @@ goos::Object decompile_at_label(const TypeSpec& type,
   }
 
   if (type == TypeSpec("pair")) {
-    return decompile_pair(label, labels, words, ts);
+    return decompile_pair(label, labels, words, ts, true);
   }
 
   throw std::runtime_error("Unimplemented decompile_at_label for " + type.print());
@@ -237,6 +237,19 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
   return pretty_print::build_list(array_def);
 }
 
+namespace {
+std::string print_def(const goos::Object& obj) {
+  if (obj.is_pair() && obj.as_pair()->car.is_symbol() &&
+      obj.as_pair()->car.as_symbol()->name == "quote") {
+    auto& rest = obj.as_pair()->cdr;
+    if (rest.is_pair() && rest.as_pair()->cdr.is_empty_list()) {
+      return fmt::format("'{}", rest.as_pair()->car.print());
+    }
+  }
+  return obj.print();
+}
+}  // namespace
+
 goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
                                  const std::vector<DecompilerLabel>& labels,
@@ -255,11 +268,11 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   // check alignment
   auto offset_location = label.offset - type_info->get_offset();
-  if ((offset_location % 8) == 2) {
-    // TEMP HACK
-    lg::error("Data decompile was looking for a structure, but it looks like a pair instead.");
-    return decompile_pair(label, labels, words, ts);
-  }
+  //  if ((offset_location % 8) == 2) {
+  //    // TEMP HACK
+  //    lg::error("Data decompile was looking for a structure, but it looks like a pair instead.");
+  //    return decompile_pair(label, labels, words, ts);
+  //  }
   if (offset_location % 8) {
     throw std::runtime_error(
         fmt::format("Structure type {} (type offset {}) has alignment {}, which is not valid.",
@@ -526,7 +539,7 @@ goos::Object decompile_structure(const TypeSpec& type,
     auto str = f.second.print();
     if (str.length() < 40) {
       result_def.push_back(
-          pretty_print::to_symbol(fmt::format(":{} {}", f.first, f.second.print())));
+          pretty_print::to_symbol(fmt::format(":{} {}", f.first, print_def(f.second))));
     } else {
       result_def.push_back(pretty_print::to_symbol(fmt::format(":{}", f.first)));
       result_def.push_back(f.second);
@@ -741,16 +754,23 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts) {
   if (word.kind == LinkedWord::PTR) {
-    return decompile_at_label_guess_type(labels.at(word.label_id), labels, words, ts);
+    auto& label = labels.at(word.label_id);
+    auto guessed_type = get_type_of_label(label, words);
+    if (!guessed_type.has_value()) {
+      throw std::runtime_error("Could not guess the type of " + label.name);
+    }
+
+    if (guessed_type == TypeSpec("pair")) {
+      return decompile_pair(label, labels, words, ts, false);
+    }
+
+    return decompile_at_label(*guessed_type, label, labels, words, ts);
   } else if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
     // do nothing, the default is zero?
     return pretty_print::to_symbol("0");
   } else if (word.kind == LinkedWord::SYM_PTR) {
-    if (word.symbol_name == "#f" || word.symbol_name == "#t") {
-      return pretty_print::to_symbol(fmt::format("{}", word.symbol_name));
-    } else {
-      return pretty_print::to_symbol(fmt::format("'{}", word.symbol_name));
-    }
+    // never quote symbols in a list.
+    return pretty_print::to_symbol(fmt::format("{}", word.symbol_name));
   } else if (word.kind == LinkedWord::EMPTY_PTR) {
     return pretty_print::to_symbol("'()");
   } else if (word.kind == LinkedWord::PLAIN_DATA && (word.data & 0b111) == 0) {
@@ -764,7 +784,8 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
 goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<DecompilerLabel>& labels,
                             const std::vector<std::vector<LinkedWord>>& words,
-                            const TypeSystem& ts) {
+                            const TypeSystem& ts,
+                            bool add_quote) {
   if ((label.offset % 8) != 2) {
     if ((label.offset % 4) != 0) {
       throw std::runtime_error(fmt::format("Invalid alignment for pair {}\n", label.offset % 16));
@@ -796,7 +817,11 @@ goos::Object decompile_pair(const DecompilerLabel& label,
       auto cdr_word = words.at(to_print.target_segment).at((to_print.offset + 2) / 4);
       // if empty
       if (cdr_word.kind == LinkedWord::EMPTY_PTR) {
-        return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
+        if (add_quote) {
+          return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
+        } else {
+          return pretty_print::build_list(list_tokens);
+        }
       }
       // if pointer
       if (cdr_word.kind == LinkedWord::PTR) {
@@ -810,7 +835,11 @@ goos::Object decompile_pair(const DecompilerLabel& label,
           "could not find a test case yet.");
       list_tokens.push_back(pretty_print::to_symbol("."));
       list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts));
-      return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
+      if (add_quote) {
+        return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
+      } else {
+        return pretty_print::build_list(list_tokens);
+      }
     } else {
       if ((to_print.offset % 4) != 0) {
         throw std::runtime_error(
@@ -829,7 +858,11 @@ goos::Object decompile_pair(const DecompilerLabel& label,
         list_tokens.push_back(pretty_print::to_symbol("."));
         list_tokens.push_back(decompile_pair_elt(
             words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts));
-        return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
+        if (add_quote) {
+          return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
+        } else {
+          return pretty_print::build_list(list_tokens);
+        }
       }
     }
   }

@@ -22,6 +22,7 @@ add_library(common
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp
+        util/print_float.cpp
         )
 
 target_link_libraries(common fmt lzokay replxx)

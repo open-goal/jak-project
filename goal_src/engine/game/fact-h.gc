@@ -8,44 +8,43 @@
 ;; NOT FINISHED
 
 (deftype fact-bank (basic)
-  ((eco-level-max        float     :offset-assert 4)
-   (eco-single-inc       float     :offset-assert 8)
-   (eco-full-inc         float     :offset-assert 12)
+  ((eco-level-max        float   :offset-assert 4)
+   (eco-single-inc       float   :offset-assert 8)
+   (eco-full-inc         float   :offset-assert 12)
    (eco-single-timeout   uint64  :offset-assert 16) ; usec
    (eco-full-timeout     uint64  :offset-assert 24) ; usec
    (dummy                uint64  :offset-assert 32) ; usec
-   (health-max-default   float     :offset-assert 40)
-   (health-single-inc    float     :offset-assert 44)
-   (eco-pill-max-default float     :offset-assert 48)
-   (health-small-inc     float     :offset-assert 52)
-   (buzzer-max-default   float     :offset-assert 56)
-   (buzzer-single-inc    float     :offset-assert 60)
-   (suck-bounce-dist     float    :offset-assert 64) ; meters
-   (suck-suck-dist       float    :offset-assert 68) ; meters
-   (default-pill-inc     float     :offset-assert 72)
+   (health-max-default   float   :offset-assert 40)
+   (health-single-inc    float   :offset-assert 44)
+   (eco-pill-max-default float   :offset-assert 48)
+   (health-small-inc     float   :offset-assert 52)
+   (buzzer-max-default   float   :offset-assert 56)
+   (buzzer-single-inc    float   :offset-assert 60)
+   (suck-bounce-dist     float   :offset-assert 64) ; meters
+   (suck-suck-dist       float   :offset-assert 68) ; meters
+   (default-pill-inc     float   :offset-assert 72)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
 
-(define *FACT-bank*
-    (new 'static 'fact-bank
-         :eco-level-max 2.000000
-         :eco-single-inc 1.000000
-         :eco-full-inc 5.000000
-         :eco-single-timeout #x5dc
-         :eco-full-timeout #x1770
-         :dummy #x1194
-         :health-max-default 3.000000
-         :health-single-inc 1.000000
-         :eco-pill-max-default 50.000000
-         :health-small-inc 1.000000
-         :buzzer-max-default 7.000000
-         :buzzer-single-inc 1.000000
-         :suck-bounce-dist 73728.000000
-         :suck-suck-dist 30720.000000
-         )
+(define *FACT-bank* (new 'static 'fact-bank
+                         :eco-level-max 2.0
+                         :eco-single-inc 1.0
+                         :eco-full-inc 5.0
+                         :eco-single-timeout (seconds 5)
+                         :eco-full-timeout (seconds 20)
+                         :dummy (seconds 15)
+                         :health-max-default 3.0
+                         :health-single-inc 1.0
+                         :eco-pill-max-default 50.0
+                         :health-small-inc 1.0
+                         :buzzer-max-default 7.0
+                         :buzzer-single-inc 1.0
+                         :suck-bounce-dist (meters 18)
+                         :suck-suck-dist (meters 7.5)
+                         )
   )
 
 (defenum pickup-type
@@ -91,8 +90,8 @@
   (:methods
     (new (symbol type process pickup-type float) _type_ 0)
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 (_type_) none 11)
+    (dummy-10 (_type_ symbol) none 10)
+    (dummy-11 (_type_) float 11)
     )
   )
 
@@ -100,7 +99,7 @@
   ((eco-type              int32     :offset-assert 40)
    (eco-level             float     :offset-assert 44)
    (eco-pickup-time       uint64    :offset-assert 48)
-   (eco-timeout           uint64  :offset-assert 56) ;; usec
+   (eco-timeout           uint64    :offset-assert 56) ;; usec
    (health                float     :offset-assert 64)
    (health-max            float     :offset-assert 68)
    (buzzer                float     :offset-assert 72)
@@ -118,18 +117,28 @@
   :method-count-assert 12
   :size-assert         #x90
   :flag-assert         #xc00000090
+  (:methods
+    (new (symbol type process pickup-type float) _type_ 0)
+    )
   )
 
 (deftype fact-info-enemy (fact-info)
   ((speed               float   :offset-assert 40)
-   (idle-distance       float  :offset-assert 44) ; meters 
-   (notice-top          float  :offset-assert 48) ; meters 
-   (notice-bottom       float  :offset-assert 52) ; meters 
-   (cam-horz            float  :offset-assert 56) ; meters 
-   (cam-vert            float  :offset-assert 60) ; meters 
-   (cam-notice-dist     float  :offset-assert 64) ; meters 
+   (idle-distance       float   :offset-assert 44) ; meters
+   (notice-top          float   :offset-assert 48) ; meters
+   (notice-bottom       float   :offset-assert 52) ; meters
+   (cam-horz            float   :offset-assert 56) ; meters
+   (cam-vert            float   :offset-assert 60) ; meters
+   (cam-notice-dist     float   :offset-assert 64) ; meters
    )
   :method-count-assert 12
   :size-assert         #x44
   :flag-assert         #xc00000044
+  (:methods
+    (new (symbol type process pickup-type float) _type_ 0)
+    )
+  )
+
+(defmethod dummy-11 fact-info ((obj fact-info))
+  0.0
   )

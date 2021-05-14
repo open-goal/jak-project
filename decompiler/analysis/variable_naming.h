@@ -111,6 +111,7 @@ struct SSA {
     std::vector<VarSSA> src;
     int op_id = -1;
     bool is_arg_coloring_move = false;
+    bool is_gpr_fpr_coloring_move = false;
     bool is_dead_set = false;
 
     std::string print(const VarMapSSA& var_map) const;

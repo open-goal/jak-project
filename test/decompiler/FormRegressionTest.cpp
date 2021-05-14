@@ -153,6 +153,8 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   EXPECT_TRUE(test->func.cfg->is_fully_resolved());
   if (!test->func.cfg->is_fully_resolved()) {
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());
+  } else {
+    test->func.cfg_ok = true;
   }
 
   // find stack spill slots
