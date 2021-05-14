@@ -252,6 +252,11 @@ bool is_arg_reg(Register r) {
   }
 }
 
+int arg_reg_idx(Register r) {
+  assert(is_arg_reg(r));
+  return (int)r.get_gpr() - (int)Reg::A0;
+}
+
 bool is_saved_reg(Register r) {
   if (r.get_kind() == Reg::GPR) {
     if (r.get_gpr() == Reg::GP) {
@@ -349,8 +354,19 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
 
             if (is_possible_coloring_move(dst, src) &&
                 rui.op.at(op_id).consumes.find(src) != rui.op.at(op_id).consumes.end()) {
-              ssa_i.is_arg_coloring_move = true;
-              got_not_arg_coloring = false;
+              // an integer argument going into a fpr for int->float conversion shouldn't
+              // be recognized as a coloring move.
+              if (function.type.arg_count() > 0) {
+                auto arg_idx = arg_reg_idx(src);
+                if (dst.get_kind() != Reg::FPR ||
+                    function.type.get_arg(arg_idx) == TypeSpec("float")) {
+                  ssa_i.is_arg_coloring_move = true;
+                  if (dst.get_kind() == Reg::FPR) {
+                    ssa_i.is_gpr_fpr_coloring_move = true;
+                  }
+                  got_not_arg_coloring = false;
+                }
+              }
             }
           }
         }
@@ -758,6 +774,7 @@ std::unordered_map<RegId, UseDefInfo, RegId::hash> SSA::get_use_def_info(
       if (instr.is_dead_set) {
         continue;
       }
+
       if (instr.dst.has_value()) {
         // get the SSA var:
         auto ssa_var_id =

@@ -1135,3 +1135,22 @@ TEST_F(FormRegressionTest, StupidFloatMove) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+// gpr->fpr not being propagated
+TEST_F(FormRegressionTest, Method11FontContext) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    mtc1 f0, a1\n"
+      "    cvt.s.w f0, f0\n"
+      "    swc1 f0, 20(a0)\n"
+      "    or v0, a0, r0\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function font-context int font-context)";
+  std::string expected =
+      "(begin\n"
+      "  (set! (-> arg0 origin z) (the float arg1))\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
