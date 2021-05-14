@@ -563,15 +563,7 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
   assert(type_info->is_bitfield());
   auto integer = get_goal_integer_constant(strip_int_or_uint_cast(in), env);
   if (integer) {
-    auto elts =
-        decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, *integer);
-    auto oper = GenericOperator::make_function(
-        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
-    std::vector<Form*> form_elts;
-    for (auto& x : elts) {
-      form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
-    }
-    return pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
+    return cast_to_bitfield_enum(type_info, pool, env, *integer);
   } else {
     // all failed, just return whatever.
     return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
@@ -594,11 +586,24 @@ Form* cast_to_int_enum(const EnumType* type_info,
 }
 
 Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
+  assert(!type_info->is_bitfield());
   auto entry = decompile_int_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   auto oper = GenericOperator::make_function(
       pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
   return pool.alloc_single_element_form<GenericElement>(
       nullptr, oper, pool.alloc_single_element_form<ConstantTokenElement>(nullptr, entry));
+}
+
+Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
+  assert(type_info->is_bitfield());
+  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
+  auto oper = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
+  std::vector<Form*> form_elts;
+  for (auto& x : elts) {
+    form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
+  }
+  return pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
 }
 
 }  // namespace decompiler
