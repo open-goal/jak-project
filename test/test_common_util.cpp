@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <limits>
 
 #include "common/util/FileUtil.h"
 #include "common/util/Trie.h"
@@ -9,6 +10,7 @@
 #include "common/util/json_util.h"
 #include "common/util/Range.h"
 #include "third-party/fmt/core.h"
+#include "common/util/print_float.h"
 
 TEST(CommonUtil, get_file_path) {
   std::vector<std::string> test = {"cabbage", "banana", "apple"};
@@ -94,4 +96,39 @@ TEST(CommonUtil, BitRange) {
   EXPECT_EQ(get_bit_range(UINT64_MAX), Range<int>(0, 64));
   EXPECT_EQ(get_bit_range(UINT64_MAX - 1), Range<int>(1, 64));
   EXPECT_EQ(get_bit_range(UINT64_MAX / 2), Range<int>(0, 63));
+}
+
+TEST(CommonUtil, FloatToString) {
+  float test_floats[] = {0.f,
+                         1.f,
+                         -1.f,
+                         0.1f,
+                         -0.1f,
+                         1234,
+                         12340,
+                         123400,
+                         -1234000,
+                         0.00342f,
+                         -0.003423f,
+                         std::numeric_limits<float>::min(),
+                         std::numeric_limits<float>::max(),
+                         std::numeric_limits<float>::lowest(),
+                         std::numeric_limits<float>::epsilon(),
+                         std::numeric_limits<float>::denorm_min(),
+                         -std::numeric_limits<float>::min(),
+                         -std::numeric_limits<float>::max(),
+                         -std::numeric_limits<float>::lowest(),
+                         -std::numeric_limits<float>::epsilon(),
+                         -std::numeric_limits<float>::denorm_min()};
+
+  for (auto x : test_floats) {
+    EXPECT_TRUE(x == (float)std::stod(float_to_string(x)));
+  }
+
+  // all three of these constants should become _exactly_ 1460961.25 when converted to a float.
+  // to break a tie, dragonbox defaults to round to even, which is nice because that's the
+  // default rounding mode.
+  EXPECT_EQ("1460961.2", float_to_string(1460961.25));
+  EXPECT_EQ("1460961.2", float_to_string(1460961.20));
+  EXPECT_EQ("1460961.2", float_to_string(1460961.30));
 }
