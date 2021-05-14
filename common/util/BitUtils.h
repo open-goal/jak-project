@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include "common/util/assert.h"
 
 #include "common/util/Range.h"
 
@@ -39,4 +40,24 @@ std::optional<Range<int>> get_bit_range(T value) {
   }
 
   return Range<int>{start_bit, end_bit};
+}
+
+/*!
+ * Note: this only works on numbers that are greater than or equal to 0.
+ */
+template <typename T>
+std::optional<int> get_power_of_two(T in) {
+  if (in == 0) {
+    return std::nullopt;
+  }
+  if ((in & (in - 1)) == 0) {
+    for (int i = 0; i < 64; i++) {
+      if (in == (T(1) << i)) {
+        return i;
+      }
+    }
+    assert(false);
+  } else {
+    return std::nullopt;
+  }
 }

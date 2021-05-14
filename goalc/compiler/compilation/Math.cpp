@@ -1,4 +1,5 @@
 #include "goalc/compiler/Compiler.h"
+#include "common/util/BitUtils.h"
 
 MathMode Compiler::get_math_mode(const TypeSpec& ts) {
   if (m_ts.tc(m_ts.make_typespec("binteger"), ts)) {
@@ -163,15 +164,27 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT: {
-      // todo, signed vs unsigned?
       auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_val->to_gpr(env)));
 
       for (size_t i = 1; i < args.unnamed.size(); i++) {
-        env->emit(std::make_unique<IR_IntegerMath>(
-            IntegerMathKind::IMUL_32, result,
-            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
-                ->to_gpr(env)));
+        auto val = compile_error_guard(args.unnamed.at(i), env);
+        auto val_as_int = dynamic_cast<IntegerConstantVal*>(val);
+        int power_of_two = -1;
+        if (val_as_int && val_as_int->value() > 0) {
+          auto p = get_power_of_two(val_as_int->value());
+          if (p) {
+            power_of_two = *p;
+          }
+        }
+
+        if (power_of_two >= 0) {
+          env->emit_ir<IR_IntegerMath>(IntegerMathKind::SHL_64, result, power_of_two);
+        } else {
+          env->emit(std::make_unique<IR_IntegerMath>(
+              IntegerMathKind::IMUL_32, result,
+              to_math_type(form, val, math_type, env)->to_gpr(env)));
+        }
       }
       return result;
     }
@@ -374,16 +387,40 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
       auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_thing));
 
-      IRegConstraint result_rax_constraint;
-      result_rax_constraint.instr_idx = fe->code().size();
-      result_rax_constraint.ireg = result->ireg();
-      result_rax_constraint.desired_register = emitter::RAX;
-      fe->constrain(result_rax_constraint);
+      auto val = compile_error_guard(args.unnamed.at(1), env);
+      auto val_as_int = dynamic_cast<IntegerConstantVal*>(val);
+      int power_of_two = -1;
+      if (val_as_int && val_as_int->value() > 0) {
+        auto p = get_power_of_two(val_as_int->value());
+        if (p) {
+          power_of_two = *p;
+        }
+      }
 
-      env->emit(std::make_unique<IR_IntegerMath>(
-          IntegerMathKind::IDIV_32, result,
-          to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
-              ->to_gpr(env)));
+      if (power_of_two >= 0) {
+        if (is_singed_integer_or_binteger(first_type)) {
+          env->emit_ir<IR_IntegerMath>(IntegerMathKind::SAR_64, result, power_of_two);
+        } else {
+          env->emit_ir<IR_IntegerMath>(IntegerMathKind::SHR_64, result, power_of_two);
+        }
+      } else {
+        IRegConstraint result_rax_constraint;
+        result_rax_constraint.instr_idx = fe->code().size();
+        result_rax_constraint.ireg = result->ireg();
+        result_rax_constraint.desired_register = emitter::RAX;
+        fe->constrain(result_rax_constraint);
+
+        if (is_singed_integer_or_binteger(first_type)) {
+          env->emit(std::make_unique<IR_IntegerMath>(
+              IntegerMathKind::IDIV_32, result,
+              to_math_type(form, val, math_type, env)->to_gpr(env)));
+        } else {
+          env->emit(std::make_unique<IR_IntegerMath>(
+              IntegerMathKind::UDIV_32, result,
+              to_math_type(form, val, math_type, env)->to_gpr(env)));
+        }
+      }
+
       return result;
     }
 
