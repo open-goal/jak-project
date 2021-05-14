@@ -143,9 +143,14 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           submit_reg_to_var.push_back(var_idx);
           submit_regs.push_back(var.reg());
         } else {
-          //          fmt::print("Unsafe to pop {}: used {} times, def {} times, expected use {}\n",
-          //                     var.to_string(env), use_def.use_count(), use_def.def_count(),
-          //                     times);
+          /*auto var_id = env.get_program_var_id(var);
+          fmt::print(
+              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd: {}) ({}
+             {})\n", var.to_string(env), use_def.use_count(), use_def.def_count(), times,
+              var.reg().to_string(), var.idx(), var.mode() == AccessMode::READ,
+             var_id.reg.to_string(), var_id.id);
+              */
+
           //          if (var.to_string(env) == "a3-0") {
           //            for (auto& use : use_def.uses) {
           //              if (!use.disabled) {

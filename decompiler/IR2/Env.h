@@ -162,11 +162,7 @@ class Env {
   const std::vector<StackVarEntry>& stack_var_hints() const { return m_stack_vars; }
 
   const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
-  void disable_use(const RegisterAccess& access) {
-    if (has_local_vars()) {
-      m_var_names.disable_use(access);
-    }
-  }
+  void disable_use(const RegisterAccess& access);
 
   void disable_def(const RegisterAccess& access, DecompWarnings& warnings);
 

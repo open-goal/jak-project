@@ -489,6 +489,12 @@ void Env::disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
   }
 }
 
+void Env::disable_use(const RegisterAccess& access) {
+  if (has_local_vars()) {
+    m_var_names.disable_use(access);
+  }
+}
+
 /*!
  * Set the stack hints. This must be done before type analysis.
  * This actually parses the types, so it should be done after the dts is set up.
