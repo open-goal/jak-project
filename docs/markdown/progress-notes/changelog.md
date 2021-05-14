@@ -146,3 +146,5 @@
 - The `new` method of basic now has a method return type of `_type_`. Previously it was `basic`, meaning you always needed to declare `new` with the right type.
 - Using `(new` and `(the binteger` inside static pair definitions is now supported
 - Invalid static pairs now have nice errors instead of exiting the compiler
+- Added unsigned division (previously signed division was used for unsigned numbers)
+- Use shifts (64-bit) for positive power of two multiply and divide. Otherwise use 32-bit. This matches GOAL.
