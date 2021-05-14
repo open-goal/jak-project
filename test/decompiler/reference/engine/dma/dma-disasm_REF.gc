@@ -268,11 +268,11 @@
        (format
         stream
         "  #x~X:    #x~2X #x~2X #x~2X #x~2X~%"
-        (+ (+ (shl i 2) 4) (the-as int data))
-        (-> data-ptr (shl i 2))
-        (-> data-ptr (+ (shl i 2) 1))
-        (-> data-ptr (+ (shl i 2) 2))
-        (-> data-ptr (+ (shl i 2) 3))
+        (+ (+ (* i 4) 4) (the-as int data))
+        (-> data-ptr (* i 4))
+        (-> data-ptr (+ (* i 4) 1))
+        (-> data-ptr (+ (* i 4) 2))
+        (-> data-ptr (+ (* i 4) 3))
         )
        )
       )
@@ -299,11 +299,11 @@
        (format
         stream
         "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
-        (+ (+ (shl s2-2 4) 4) (the-as int data))
-        (-> s3-2 (shl s2-2 2))
-        (-> s3-2 (+ (shl s2-2 2) 1))
-        (-> s3-2 (+ (shl s2-2 2) 2))
-        (-> s3-2 (+ (shl s2-2 2) 3))
+        (+ (+ (* s2-2 16) 4) (the-as int data))
+        (-> s3-2 (* s2-2 4))
+        (-> s3-2 (+ (* s2-2 4) 1))
+        (-> s3-2 (+ (* s2-2 4) 2))
+        (-> s3-2 (+ (* s2-2 4) 3))
         )
        )
       )
@@ -314,11 +314,11 @@
        (format
         stream
         "  #x~X:    #x~4x #x~4x #x~4x #x~4x~%"
-        (+ (+ (shl s2-3 3) 4) (the-as int data))
-        (-> s3-3 (shl s2-3 2))
-        (-> s3-3 (+ (shl s2-3 2) 1))
-        (-> s3-3 (+ (shl s2-3 2) 2))
-        (-> s3-3 (+ (shl s2-3 2) 3))
+        (+ (+ (* s2-3 8) 4) (the-as int data))
+        (-> s3-3 (* s2-3 4))
+        (-> s3-3 (+ (* s2-3 4) 1))
+        (-> s3-3 (+ (* s2-3 4) 2))
+        (-> s3-3 (+ (* s2-3 4) 3))
         )
        )
       )
@@ -357,7 +357,7 @@
        (format
         stream
         "  #x~X:    #x~4x #x~4x~%"
-        (+ (+ (shl s2-6 2) 4) (the-as int data))
+        (+ (+ (* s2-6 4) 4) (the-as int data))
         (-> (&+ s3-6 (* 6 s2-6)) 0)
         (-> s3-6 (+ (* 3 s2-6) 1))
         )
@@ -389,7 +389,7 @@
    (unpack-imm vif-unpack-imm)
    )
   (let ((byte-idx 0))
-   (while (< byte-idx (shl words 2))
+   (while (< byte-idx (* words 4))
     (let ((packet-size 4))
      (let ((first-tag (-> data 0)))
       (format stream "  #x~X:" data)
@@ -481,7 +481,7 @@
                         (set! packet-size #x100000)
                         (set!
                          packet-size
-                         (the-as int (shl (the-as int (-> first-tag imm)) 4))
+                         (the-as int (* (-> first-tag imm) 16))
                          )
                         )
                        (format
@@ -497,11 +497,11 @@
                         (format
                          stream
                          "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
-                         (+ (+ (shl data-idx 4) 4) (the-as int data))
-                         (-> data-ptr (shl data-idx 2))
-                         (-> data-ptr (+ (shl data-idx 2) 1))
-                         (-> data-ptr (+ (shl data-idx 2) 2))
-                         (-> data-ptr (+ (shl data-idx 2) 3))
+                         (+ (+ (* data-idx 16) 4) (the-as int data))
+                         (-> data-ptr (* data-idx 4))
+                         (-> data-ptr (+ (* data-idx 4) 1))
+                         (-> data-ptr (+ (* data-idx 4) 2))
+                         (-> data-ptr (+ (* data-idx 4) 3))
                          )
                         (set! data-idx (+ data-idx 1))
                         )
@@ -578,7 +578,7 @@
      (&+! data packet-size)
      )
     )
-   (- byte-idx (shl words 2))
+   (- byte-idx (* words 4))
    )
   )
 
@@ -744,10 +744,7 @@
               (pointer vif-tag)
               (+ (the-as uint addr) (the-as uint v0-9))
               )
-             (the-as
-              int
-              (- (shl (the-as int qwc) 2) (the-as uint (sar v0-9 2)))
-              )
+             (the-as int (- (* qwc 4) (the-as uint (/ v0-9 4))))
              stream-2
              (= mode-2 'details)
              )
@@ -772,7 +769,7 @@
                (pointer vif-tag)
                (&-> (the-as (pointer uint64) data-2) 1)
                )
-              (the-as int (+ (shl (the-as int qwc) 2) 2))
+              (the-as int (+ (* qwc 4) 2))
               stream-2
               (= mode-2 'details)
               )
@@ -783,10 +780,7 @@
               dma-packet
               (+
                (the-as uint data-2)
-               (the-as
-                uint
-                (shl (the-as int (+ (the-as uint qwc) (the-as uint 1))) 4)
-                )
+               (the-as uint (* (+ (the-as uint qwc) (the-as uint 1)) 16))
                )
               )
              )
@@ -802,7 +796,7 @@
                (pointer vif-tag)
                (&-> (the-as (pointer uint64) data-2) 1)
                )
-              (the-as int (+ (shl (the-as int qwc) 2) 2))
+              (the-as int (+ (* qwc 4) 2))
               stream-2
               (= mode-2 'details)
               )
@@ -826,7 +820,7 @@
                  (pointer vif-tag)
                  (&-> (the-as (pointer uint64) data-2) 1)
                  )
-                (the-as int (+ (shl (the-as int qwc) 2) 2))
+                (the-as int (+ (* qwc 4) 2))
                 stream-2
                 (= mode-2 'details)
                 )
@@ -855,7 +849,7 @@
                  (pointer vif-tag)
                  (&-> (the-as (pointer uint64) data-2) 1)
                  )
-                (the-as int (+ (shl (the-as int qwc) 2) 2))
+                (the-as int (+ (* qwc 4) 2))
                 stream-2
                 (= mode-2 'details)
                 )
@@ -891,7 +885,7 @@
                               (pointer vif-tag)
                               (&-> (the-as (pointer uint64) data-2) 1)
                               )
-                             (the-as int (+ (shl (the-as int qwc) 2) 2))
+                             (the-as int (+ (* qwc 4) 2))
                              stream-2
                              (= mode-2 'details)
                              )

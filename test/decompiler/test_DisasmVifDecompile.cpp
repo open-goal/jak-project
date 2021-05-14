@@ -515,7 +515,7 @@ TEST_F(FormRegressionTest, ExprDisasmVif) {
   std::string type = "(function (pointer vif-tag) int symbol symbol int)";
   std::string expected =
       "(let ((gp-0 0))\n"
-      "  (while (< gp-0 (shl arg1 2))\n"
+      "  (while (< gp-0 (* arg1 4))\n"
       "   (let ((s0-0 4))\n"
       "    (let ((s1-0 (-> arg0 0)))\n"
       "     (format arg2 \" #x~X:\" arg0)\n"
@@ -600,10 +600,7 @@ TEST_F(FormRegressionTest, ExprDisasmVif) {
       "                     ((= a0-12 6)\n"
       "                      (if (-> s1-0 imm)\n"
       "                       (set! s0-0 #x100000)\n"
-      "                       (set!\n"
-      "                        s0-0\n"
-      "                        (the-as int (shl (the-as int (-> s1-0 imm)) 4))\n"
-      "                        )\n"
+      "                       (set! s0-0 (the-as int (* (-> s1-0 imm) 16)))\n"
       "                       )\n"
       "                      (format\n"
       "                       arg2\n"
@@ -618,11 +615,11 @@ TEST_F(FormRegressionTest, ExprDisasmVif) {
       "                       (format\n"
       "                        arg2\n"
       "                        \"  #x~X:    #x~8x #x~8x #x~8x #x~8x~%\"\n"
-      "                        (+ (+ (shl sv-48 4) 4) (the-as int arg0))\n"
-      "                        (-> sv-32 (shl sv-48 2))\n"
-      "                        (-> sv-32 (+ (shl sv-48 2) 1))\n"
-      "                        (-> sv-32 (+ (shl sv-48 2) 2))\n"
-      "                        (-> sv-32 (+ (shl sv-48 2) 3))\n"
+      "                        (+ (+ (* sv-48 16) 4) (the-as int arg0))\n"
+      "                        (-> sv-32 (* sv-48 4))\n"
+      "                        (-> sv-32 (+ (* sv-48 4) 1))\n"
+      "                        (-> sv-32 (+ (* sv-48 4) 2))\n"
+      "                        (-> sv-32 (+ (* sv-48 4) 3))\n"
       "                        )\n"
       "                       (set! sv-48 (+ sv-48 1))\n"
       "                       )\n"
@@ -692,7 +689,7 @@ TEST_F(FormRegressionTest, ExprDisasmVif) {
       "    (&+! arg0 s0-0)\n"
       "    )\n"
       "   )\n"
-      "  (- gp-0 (shl arg1 2))\n"
+      "  (- gp-0 (* arg1 4))\n"
       "  )";
   test_with_expr(func, type, expected, false, "",
                  {{"L139", " #x~X:"},

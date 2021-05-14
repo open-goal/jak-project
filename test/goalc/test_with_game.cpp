@@ -714,6 +714,14 @@ TEST_F(WithGameTests, Matrix) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, WeirdMultiply) {
+  runner.run_static_test(env, testCategory, "test-weird-multiplies.gc",
+                         {"2 100000002\n"
+                          "100000000 100000000\n"
+                          "55555552 -3 7ffffffffffffffb -5\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

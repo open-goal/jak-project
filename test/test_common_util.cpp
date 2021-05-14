@@ -132,3 +132,12 @@ TEST(CommonUtil, FloatToString) {
   EXPECT_EQ("1460961.2", float_to_string(1460961.20));
   EXPECT_EQ("1460961.2", float_to_string(1460961.30));
 }
+
+TEST(CommonUtil, PowerOfTwo) {
+  EXPECT_EQ(get_power_of_two(0), std::nullopt);
+  EXPECT_EQ(get_power_of_two(1), 0);
+  EXPECT_EQ(get_power_of_two(2), 1);
+  EXPECT_EQ(get_power_of_two(3), std::nullopt);
+  EXPECT_EQ(get_power_of_two(4), 2);
+  EXPECT_EQ(get_power_of_two(u64(1) << 63), 63);
+}

@@ -104,32 +104,14 @@
         (height (-> *video-parms* screen-sy))
         (file (new 'debug 'file-stream "image.raw" 'write))
         )
-   (let ((buff0 (new 'debug 'boxed-array uint128 (sar (* width height) 2))))
-    (let ((buff1 (new 'debug 'boxed-array uint128 (sar (* width height) 2))))
+   (let ((buff0 (new 'debug 'boxed-array uint128 (/ (* width height) 4))))
+    (let ((buff1 (new 'debug 'boxed-array uint128 (/ (* width height) 4))))
      (let ((packet (new 'static 'gs-store-image-packet)))
-      (gs-set-default-store-image
-       packet
-       #x2800
-       (sar width 6)
-       0
-       0
-       0
-       width
-       height
-       )
+      (gs-set-default-store-image packet #x2800 (/ width 64) 0 0 0 width height)
       (flush-cache 0)
       (gs-store-image packet (-> buff0 data))
       (sync-path 0 0)
-      (gs-set-default-store-image
-       packet
-       #x3000
-       (sar width 6)
-       0
-       0
-       0
-       width
-       height
-       )
+      (gs-set-default-store-image packet #x3000 (/ width 64) 0 0 0 width height)
       (flush-cache 0)
       (gs-store-image packet (-> buff1 data))
       )
@@ -142,13 +124,13 @@
         (while (< y-idx height)
          (file-stream-write
           file
-          (&+ ptr-0 (* y-idx (shl width 2)))
-          (the-as uint (shl width 2))
+          (&+ ptr-0 (* y-idx (* width 4)))
+          (the-as uint (* width 4))
           )
          (file-stream-write
           file
-          (&+ ptr-1 (* y-idx (shl width 2)))
-          (the-as uint (shl width 2))
+          (&+ ptr-1 (* y-idx (* width 4)))
+          (the-as uint (* width 4))
           )
          (set! y-idx (+ y-idx 1))
          )
@@ -158,13 +140,13 @@
         (while (< y-idx-2 height)
          (file-stream-write
           file
-          (&+ ptr-1 (* y-idx-2 (shl width 2)))
-          (the-as uint (shl width 2))
+          (&+ ptr-1 (* y-idx-2 (* width 4)))
+          (the-as uint (* width 4))
           )
          (file-stream-write
           file
-          (&+ ptr-0 (* y-idx-2 (shl width 2)))
-          (the-as uint (shl width 2))
+          (&+ ptr-0 (* y-idx-2 (* width 4)))
+          (the-as uint (* width 4))
           )
          (set! y-idx-2 (+ y-idx-2 1))
          )
@@ -182,6 +164,3 @@
   )
 
 )
-
-
-

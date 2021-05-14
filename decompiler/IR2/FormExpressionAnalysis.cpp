@@ -6,6 +6,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/data_decompile.h"
 #include "decompiler/IR2/bitfields.h"
+#include "common/util/BitUtils.h"
 
 /*
  * TODO
@@ -676,8 +677,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           // (+ (shl (-> a0-0 reg-count) 3) 28)
           auto arg0_matcher =
               Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
-                                       {Matcher::any(0), Matcher::integer(p2)}),
+                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                       {Matcher::any(0), Matcher::integer(input.stride)}),
                            Matcher::integer(input.offset)});
           auto match_result = match(arg0_matcher, args.at(0));
           if (match_result.matched) {
@@ -1120,6 +1121,23 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
     assert(!other);  // shouldn't be complete.
     result->push_back(read_elt);
   } else {
+    // try to turn this into a multiplication, if possible
+    if (m_expr.get_arg(1).is_int()) {
+      int sa = m_expr.get_arg(1).get_int();
+      // somewhat arbitrary threshold to switch from multiplications to shift.
+      if (sa < 10) {
+        s64 multiplier = (s64(1) << sa);
+
+        auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0),
+            pool.alloc_single_element_form<SimpleAtomElement>(
+                nullptr, SimpleAtom::make_int_constant(multiplier)));
+        result->push_back(new_form);
+        return;
+      }
+    }
+
     update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
                                        allow_side_effects);
   }
@@ -1157,6 +1175,23 @@ void SimpleExpressionElement::update_from_stack_right_shift_logic(const Env& env
           result->push_back(as_bitfield_access);
         }
       } else {
+        /*
+        int sa = m_expr.get_arg(1).get_int();
+        if (sa < 10) {
+          if (!arg0_u) {
+            arg = cast_form(arg, TypeSpec("uint"), pool, env);
+          }
+          s64 multiplier = (s64(1) << sa);
+
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg,
+              pool.alloc_single_element_form<SimpleAtomElement>(
+                  nullptr, SimpleAtom::make_int_constant(multiplier)));
+          result->push_back(new_form);
+          return;
+        }
+         */
+
         if (!arg0_i && !arg0_u) {
           auto new_form = pool.alloc_element<GenericElement>(
               GenericOperator::make_fixed(FixedOperatorKind::SHR),
@@ -1193,6 +1228,25 @@ void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env
     assert(other);  // should be a high field.
     result->push_back(other);
   } else {
+    if (m_expr.get_arg(1).is_int() && m_expr.get_arg(1).get_int() < 10) {
+      auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+      auto arg =
+          pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+      int sa = m_expr.get_arg(1).get_int();
+
+      if (!arg0_i) {
+        arg = cast_form(arg, TypeSpec("int"), pool, env);
+      }
+      s64 multiplier = (s64(1) << sa);
+
+      auto new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg,
+          pool.alloc_single_element_form<SimpleAtomElement>(
+              nullptr, SimpleAtom::make_int_constant(multiplier)));
+      result->push_back(new_form);
+      return;
+    }
+
     update_from_stack_copy_first_int_2(env, FixedOperatorKind::SAR, pool, stack, result,
                                        allow_side_effects);
   }
@@ -2840,9 +2894,10 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
   auto reg1_matcher =
       Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
 
-  // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
-  auto sll_matcher = Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(2)});
-  auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
+  // (+ (* method-id 4) (the-as int child-type))
+  auto mult_matcher =
+      Matcher::fixed_op(FixedOperatorKind::MULTIPLICATION, {reg0_matcher, Matcher::integer(4)});
+  auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
   auto match_result = match(matcher, new_val);
   if (!match_result.matched) {
     throw std::runtime_error("Could not match DynamicMethodAccess values: " +
@@ -2913,17 +2968,17 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                              Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
-      auto sll_matcher =
-          Matcher::fixed_op(FixedOperatorKind::SHL, {reg1_matcher, Matcher::integer(power_of_two)});
-      sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});
+      auto mult_matcher = Matcher::fixed_op(FixedOperatorKind::MULTIPLICATION,
+                                            {reg1_matcher, Matcher::integer(m_expected_stride)});
+      mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
       auto matcher = Matcher::match_or(
-          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, sll_matcher}),
-           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {reg0_matcher, sll_matcher})});
+          {Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, mult_matcher}),
+           Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {reg0_matcher, mult_matcher})});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
         matcher = Matcher::match_or(
-            {Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg0_matcher}),
-             Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {sll_matcher, reg0_matcher})});
+            {Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg0_matcher}),
+             Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {mult_matcher, reg0_matcher})});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
           fmt::print("power {}\n", power_of_two);
@@ -2986,22 +3041,24 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto reg1_matcher =
           Matcher::match_or({Matcher::cast("uint", Matcher::any(1)),
                              Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
-      auto sll_matcher =
-          Matcher::fixed_op(FixedOperatorKind::SHL, {reg0_matcher, Matcher::integer(power_of_two)});
-      sll_matcher = Matcher::match_or({Matcher::cast("uint", sll_matcher), sll_matcher});
-      auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {sll_matcher, reg1_matcher});
+      auto mult_matcher = Matcher::fixed_op(FixedOperatorKind::MULTIPLICATION,
+                                            {reg0_matcher, Matcher::integer(m_expected_stride)});
+      mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
+      auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
+      Form* idx = nullptr;
+      Form* base = nullptr;
       // TODO - figure out why it sometimes happens the other way.
       if (!match_result.matched) {
-        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg1_matcher, sll_matcher});
+        matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg1_matcher, mult_matcher});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
           throw std::runtime_error("Could not match ArrayFieldAccess (stride power of 2) values: " +
                                    new_val->to_string(env));
         }
       }
-      auto idx = match_result.maps.forms.at(0);
-      auto base = match_result.maps.forms.at(1);
+      idx = match_result.maps.forms.at(0);
+      base = match_result.maps.forms.at(1);
 
       assert(idx && base);
 
