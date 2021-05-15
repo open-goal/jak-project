@@ -36,14 +36,13 @@
 
 (defun radmod ((arg0 float))
   "Wrap arg0 to be within (-pi, pi)."
-  (local-vars (f0-1 float))
-  (set! f0-1 (+ PI arg0))
-  (if (< 0.0 f0-1)
-      (+ MINUS_PI (- f0-1 (* (the float (the int (/ f0-1 TWO_PI))) TWO_PI)))
-      (+ PI (- f0-1 (* (the float (the int (/ f0-1 TWO_PI))) TWO_PI)))
-      )
+  (let ((f0-1 (+ PI arg0)))
+    (if (< 0.0 f0-1)
+        (+ MINUS_PI (- f0-1 (* (the float (the int (/ f0-1 6.283185))) 6.283185)))
+        (+ PI (- f0-1 (* (the float (the int (/ f0-1 6.283185))) 6.283185)))
+        )
+    )
   )
-
 
 (defun deg- ((arg0 float) (arg1 float))
   "Compute arg0-arg1, unwrapped, using rotation units.
@@ -64,52 +63,45 @@
 
 (defun deg-seek ((in float) (target float) (max-diff float))
   "Move in toward target by at most max-diff, using rotation units"
-  (local-vars
-   (in-int int)
-   (target-int int)
-   (max-diff-int int)
-   (diff int)
-   (abs-diff int)
-   )
-  (set! in-int (shl (the int in) 48))
-  (set! target-int (shl (the int target) 48))
-  (set! max-diff-int (shl (the int max-diff) 48))
-  (set! diff (- target-int in-int))
-  (set! abs-diff (abs diff))
-  (the float
-       (sar (cond
-              ((< abs-diff 0) ;; ??
-               (+ in-int max-diff-int)
-               )
-              ((>= max-diff-int abs-diff)
-               target-int
-               )
-              ((>= diff 0)
-               (+ in-int max-diff-int)
-               )
-              (else
-               (- in-int max-diff-int)
-               )
-              )
-            48
+  (let ((in-int (shl (the int in) 48))
+        (target-int (shl (the int target) 48))
+        )
+    (let* ((max-diff-int (shl (the int max-diff) 48))
+           (diff (- target-int in-int))
+           (abs-diff (abs diff))
+           )
+      (set! target-int (cond
+                         ((< abs-diff 0)
+                          (+ in-int max-diff-int)
+                          )
+                         ((>= max-diff-int abs-diff)
+                          target-int
+                          )
+                         ((>= diff 0)
+                          (+ in-int max-diff-int)
+                          )
+                         (else
+                          (- in-int max-diff-int)
+                          )
+                         )
             )
-       )
+      )
+    (the float (sar target-int 48))
+    )
   )
 
 (defun deg-seek-smooth ((in float) (target float) (max-diff float) (amount float))
   "Step amount of the way from in to target, by at most max-diff, using rotation units"
-  (local-vars (step float))
-  ;; how much we want to go
-  (set! step (* (deg- target in) amount))
-  ;; can we make it in one go?
-  (if (< max-diff (fabs step))
-      ;; nope, saturate.
-      (if (>= step 0.00000000)
-          (set! step max-diff)
-          (set! step (- max-diff))
-          )
-      )
-  (+ in step)
+  (let ((step (* (deg- target in) amount)))
+    (if (< max-diff (fabs step))
+        (set! step (if (>= step 0.0)
+                       max-diff
+                       (- max-diff)
+                       )
+              )
+        )
+    (+ in step)
+    )
   )
 
 (defun deg-lerp-clamp ((min-val float) (max-val float) (in float))
@@ -220,31 +212,23 @@
 
 (defun sin ((arg0 float))
   "Compute the sine of an angle in rotation units. Unwraps it."
-  (local-vars
-   (f0-1 float)
-   (f0-3 float)
-   (f0-4 float)
-   (f1-4 float)
-   (f1-5 float)
-   (f1-6 float)
-   (f1-7 float)
-   (f2-0 float)
-   (f2-1 float)
-   (f2-2 float)
-   (f2-3 float)
-   )
-  (set! f2-0 (* ROT_TO_RAD (the float (sar (shl (the int arg0) 48) 48))))
-  (set! f0-1 f2-0)
-  (set! f1-4 (* (the-as float #x3f7fffde) f2-0))
-  (set! f0-3 (* f2-0 f2-0))
-  (set! f2-1 (* f2-0 f0-3))
-  (set! f1-5 (+ f1-4 (* (the-as float #xbe2aa8f5) f2-1)))
-  (set! f2-2 (* f2-1 f0-3))
-  (set! f1-6 (+ f1-5 (* (the-as float #x3c086bf6) f2-2)))
-  (set! f2-3 (* f2-2 f0-3))
-  (set! f1-7 (+ f1-6 (* (the-as float #xb94d2072) f2-3)))
-  (set! f0-4 (* f2-3 f0-3))
-  (+ f1-7 (* (the-as float #x361aa27f) f0-4))
+  ;; convert
+  (let ((f2-0 (* 0.000095873795 (the float (sar (shl (the int arg0) 48) 48)))))
+    (let ((f0-1 f2-0))
+      )
+    (let* ((f1-4 (* 0.999998 f2-0))
+           (f0-3 (* f2-0 f2-0))
+           (f2-1 (* f2-0 f0-3))
+           (f1-5 (+ f1-4 (* -0.16666014 f2-1)))
+           (f2-2 (* f2-1 f0-3))
+           (f1-6 (+ f1-5 (* 0.008326521 f2-2)))
+           (f2-3 (* f2-2 f0-3))
+           (f1-7 (+ f1-6 (* -0.0001956241 f2-3)))
+           (f0-4 (* f2-3 f0-3))
+           )
+      (+ f1-7 (* 0.0000023042373 f0-4))
+      )
+    )
   )
 
 (defun sin-rad ((arg0 float))
@@ -610,7 +594,7 @@
         (set! f17 (the-as float #xBEFF0000))
         )
        )
-    
+
      ;; sll r0, r0, 0
      ;; mul.s f5, f3, f2
      (set! f5 (* f3 f2))
@@ -938,7 +922,7 @@
 
 (defun atan-rad ((arg0 float))
   "inverse tangent in radians"
-  (atan-series-rad (/ (+ -1.000000 arg0) (+ 1.000000 arg0)))
+  (atan-series-rad (/ (+ -1.0 arg0) (+ 1.0 arg0)))
   )
 
 (defun sign ((arg0 float))
@@ -950,42 +934,44 @@
      -1.000000)
     (else
      0.000000)
-   )
+    )
   )
 
+
 (defun atan2-rad ((arg0 float) (arg1 float))
-  (local-vars
-   (f0-6 float)
-   (f0-14 float)
-   (f0-22 float)
-   (f0-28 float)
-   (f30-1 float)
-   (f30-2 float)
-   )
-  (if (= arg1 0.000000)
-      (* PI_OVER_2 (sign arg0))
-      (cond
-        ((and (< arg0 0.000000) (< arg1 0.000000))
-         ;; this was probably an inline call to atan-rad
-         (set! f30-1 MINUS_PI)
-         (set! f0-6 (/ arg0 arg1))
-         (+ f30-1 (atan-series-rad (/ (+ -1.000000 f0-6) (+ 1.000000 f0-6))))
-         )
-        ((< arg0 0.000000)
-         (set! f0-14 (- (/ arg0 arg1)))
-         (- (atan-series-rad (/ (+ -1.000000 f0-14) (+ 1.000000 f0-14))))
-         )
-        ((< arg1 0.000000)
-         (set! f30-2 PI)
-         (set! f0-22 (- (/ arg0 arg1)))
-         (- f30-2 (atan-series-rad (/ (+ -1.000000 f0-22) (+ 1.000000 f0-22))))
-         )
-        (else
-         (set! f0-28 (/ arg0 arg1))
-         (atan-series-rad (/ (+ -1.000000 f0-28) (+ 1.000000 f0-28)))
-         )
+  (cond
+    ((= arg1 0.0)
+     (* 1.5707963 (sign arg0))
+     )
+    (else
+     (cond
+       ((and (< arg0 0.0) (< arg1 0.0))
+        (let ((f30-1 MINUS_PI)
+              (f0-6 (/ arg0 arg1))
+              )
+          (+ f30-1 (atan-series-rad (/ (+ -1.0 f0-6) (+ 1.0 f0-6))))
+          )
         )
-      )
+       ((< arg0 0.0)
+        (let ((f0-14 (- (/ arg0 arg1))))
+          (- (atan-series-rad (/ (+ -1.0 f0-14) (+ 1.0 f0-14))))
+          )
+        )
+       ((< arg1 0.0)
+        (let ((f30-2 PI)
+              (f0-22 (- (/ arg0 arg1)))
+              )
+          (- f30-2 (atan-series-rad (/ (+ -1.0 f0-22) (+ 1.0 f0-22))))
+          )
+        )
+       (else
+        (let ((f0-28 (/ arg0 arg1)))
+          (atan-series-rad (/ (+ -1.0 f0-28) (+ 1.0 f0-28)))
+          )
+        )
+       )
+     )
+    )
   )
 
 ;; ????
@@ -1220,49 +1206,52 @@
    (and (= arg1 0.0) (= arg0 0.0))
    0.000000
    (cond
-    ((and (< arg1 0.0) (< arg0 0.0))
-     (+ -32768.0 (atan0 (- arg0) (- arg1)))
+     ((and (< arg1 0.0) (< arg0 0.0))
+      (+ -32768.0 (atan0 (- arg0) (- arg1)))
+      )
+     ((< arg0 0.)
+      (- (atan0 (- arg0) arg1))
+      )
+     ((< arg1 0.)
+      (- 32768.0 (atan0 arg0 (- arg1)))
+      )
+     (else
+      (atan0 arg0 arg1)
+      )
      )
-    ((< arg0 0.)
-     (- (atan0 (- arg0) arg1))
-     )
-    ((< arg1 0.)
-     (- 32768.0 (atan0 arg0 (- arg1)))
-     )
-    (else
-     (atan0 arg0 arg1)
-     )
-    )
    )
   )
 
 (defun asin ((arg0 float))
   "Inverse sine. Returns rotation units"
-  (local-vars
-   (v1-1 symbol)
-   (v1-2 float)
-   (v1-4 float)
-   (gp-0 symbol)
-   (f0-0 float)
-   (f0-5 float)
-   (f0-6 float)
-   (f0-8 float)
-   (f1-2 float)
-   )
-  (set! gp-0 '#f)
-  (set! f0-0 0.000000)
-  (when (< arg0 0.000000) (set! arg0 (- arg0)) (set! gp-0 '#t) (set! v1-1 gp-0))
-  (cond
-   ((< 1.000000 arg0) (set! f0-5 (the-as float #x467ffffc)) (set! v1-2 f0-5))
-   (else
-    (set! f0-6 1.000000)
-    (set! f1-2 arg0)
-    (set! f0-8 (sqrtf (- f0-6 (* f1-2 f1-2))))
-    (set! f0-5 (atan0 arg0 f0-8))
-    (set! v1-4 f0-5)
+  (let ((gp-0 #f))
+    (let ((f0-0 0.0))
+      )
+    (when (< arg0 0.0)
+      (set! arg0 (- arg0))
+      (set! gp-0 #t)
+      )
+    (let ((f0-5 (cond
+                  ((< 1.0 arg0)
+                   16383.996
+                   )
+                  (else
+                   (let* ((f0-6 1.0)
+                          (f1-2 arg0)
+                          (f0-8 (sqrtf (- f0-6 (* f1-2 f1-2))))
+                          )
+                     (atan0 arg0 f0-8)
+                     )
+                   )
+                  )
+            )
+          )
+      (if gp-0
+          (- f0-5)
+          f0-5
+          )
+      )
     )
-   )
-  (if gp-0 (- f0-5) f0-5)
   )
 
 (defun acos ((arg0 float))
@@ -1272,33 +1261,26 @@
 
 (defun acos-rad ((arg0 float))
   "Inverse cosine, returning radians."
-  (local-vars
-   (a1-0 none)
-   (f0-1 float)
-   (f0-3 float)
-   (f0-5 float)
-   (f0-6 float)
-   (f0-8 float)
-   (f0-10 float)
-   (f1-1 float)
-   (f1-6 float)
-   )
   (cond
-   ((>= arg0 0.000000)
-    (set! f0-1 1.000000)
-    (set! f1-1 arg0)
-    (set! f0-3 (sqrtf (- f0-1 (* f1-1 f1-1))))
-    (set! f0-5 (/ (- f0-3 arg0) (+ f0-3 arg0)))
-    (atan-series-rad f0-5)
+    ((>= arg0 0.0)
+     (let* ((f0-1 1.0)
+            (f1-1 arg0)
+            (f0-3 (sqrtf (- f0-1 (* f1-1 f1-1))))
+            (f0-5 (/ (- f0-3 arg0) (+ f0-3 arg0)))
+            )
+       (atan-series-rad f0-5)
+       )
+     )
+    (else
+     (let* ((f0-6 1.0)
+            (f1-6 arg0)
+            (f0-8 (sqrtf (- f0-6 (* f1-6 f1-6))))
+            (f0-10 (/ (+ f0-8 arg0) (- f0-8 arg0)))
+            )
+       (- PI (atan-series-rad f0-10))
+       )
+     )
     )
-   (else
-    (set! f0-6 1.000000)
-    (set! f1-6 arg0)
-    (set! f0-8 (sqrtf (- f0-6 (* f1-6 f1-6))))
-    (set! f0-10 (/ (+ f0-8 arg0) (- f0-8 arg0)))
-    (- (the-as float #x40490fda) (atan-series-rad f0-10))
-    )
-   )
   )
 
 (defun sinerp ((minimum float) (maximum float) (amount float))
@@ -1309,10 +1291,10 @@
 (defun sinerp-clamp ((minimum float) (maximum float) (amount float))
   "Like sinerp, but clamp to min,max"
   (cond
-   ((>= 0.000000 amount) minimum)
-   ((>= amount 1.000000) maximum)
-   (else (sinerp minimum maximum amount))
-   )
+    ((>= 0.000000 amount) minimum)
+    ((>= amount 1.000000) maximum)
+    (else (sinerp minimum maximum amount))
+    )
   )
 
 (defun coserp ((minimum float) (maximum float) (amount float))
@@ -1323,10 +1305,10 @@
 (defun coserp-clamp ((minimum float) (maximum float) (amount float))
   "Weird 90 degree lerp with cosine, clamped to min,max"
   (cond
-   ((>= 0.000000 amount) minimum)
-   ((>= amount 1.000000) maximum)
-   (else (coserp minimum maximum amount))
-   )
+    ((>= 0.000000 amount) minimum)
+    ((>= amount 1.000000) maximum)
+    (else (coserp minimum maximum amount))
+    )
   )
 
 (defun coserp180 ((minimum float) (maximum float) (amount float))

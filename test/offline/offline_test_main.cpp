@@ -15,8 +15,8 @@ namespace {
 
 // list of object files to ignore during reference checks
 const std::unordered_set<std::string> g_object_files_to_ignore_ref_checks = {
-    "pskernel", "transformq-h", "geometry",     "trigonometry", "math-camera", "timer",
-    "texture",  "ocean-tables", "ocean-frames", "time-of-day",  "display"};
+    "pskernel",     "geometry",     "math-camera", "timer",  "texture",
+    "ocean-tables", "ocean-frames", "time-of-day", "display"};
 
 const std::unordered_set<std::string> g_object_files_to_ignore_decompiling = {
     // TODO - not implemented, if you want to ignore decompiling something currently, don't include
@@ -49,6 +49,8 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     // bounding-box
     "(method 9 bounding-box)",   // handwritten asm loop
     "(method 14 bounding-box)",  // handwritten asm loop
+    // trig
+    "exp", "atan0", "sincos!", "sincos-rad!",
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
     "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
@@ -96,6 +98,13 @@ const std::unordered_set<std::string> skip_in_compiling = {
     /// MATH
     "rand-vu-init", "rand-vu", "rand-vu-nostep",  // random hardware
     "log2",                                       // weird tricky int-as-float stuff
+
+    // trig
+    "sin-rad",                    // fpu acc
+    "cos-rad",                    // fpu acc
+    "atan-series-rad",            // fpu acc
+    "vector-rad<-vector-deg!",    // bad decisions on float vs int128
+    "vector-rad<-vector-deg/2!",  // bad decisions on float vs int128
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
