@@ -144,12 +144,14 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           submit_reg_to_var.push_back(var_idx);
           submit_regs.push_back(var.reg());
         } else {
-          /*auto var_id = env.get_program_var_id(var);
+          /*
+          auto var_id = env.get_program_var_id(var);
           fmt::print(
-              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd: {}) ({}
-             {})\n", var.to_string(env), use_def.use_count(), use_def.def_count(), times,
+              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd: {}) ({} "
+              "{})\n",
+              var.to_string(env), use_def.use_count(), use_def.def_count(), times,
               var.reg().to_string(), var.idx(), var.mode() == AccessMode::READ,
-             var_id.reg.to_string(), var_id.id);
+              var_id.reg.to_string(), var_id.id);
               */
 
           //          if (var.to_string(env) == "a3-0") {
@@ -1706,18 +1708,9 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
 
   TypeSpec function_type;
-  bool is_virtual_method = false;
   auto& tp_type = env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg());
   if (env.has_type_analysis()) {
-    if (tp_type.kind == TP_Type::Kind::VIRTUAL_METHOD && all_pop_vars.size() >= 1) {
-      is_virtual_method = true;
-    }
     function_type = tp_type.typespec();
-  }
-
-  if (is_virtual_method != m_op->is_method()) {
-    lg::error("Disagreement on method!");
-    throw std::runtime_error("Disagreement on method");
   }
 
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
@@ -1732,129 +1725,52 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   std::vector<Form*> arg_forms;
 
-  if (is_virtual_method) {
-    for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
-      auto val = unstacked.at(arg_id + 1);  // first is the function itself.
-      auto& var = all_pop_vars.at(arg_id + 1);
-      if (env.has_type_analysis() && function_type.arg_count() == nargs + 2) {
-        auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-        auto desired_arg_type = function_type.get_arg(arg_id + 1);
-        if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-          arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
-        } else {
-          arg_forms.push_back(val);
-        }
+  for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
+    auto val = unstacked.at(arg_id + 1);  // first is the function itself.
+    auto& var = all_pop_vars.at(arg_id + 1);
+    if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
+      auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+      auto desired_arg_type = function_type.get_arg(arg_id);
+      if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
+        arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
       } else {
         arg_forms.push_back(val);
       }
-    }
-  } else {
-    for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
-      auto val = unstacked.at(arg_id + 1);  // first is the function itself.
-      auto& var = all_pop_vars.at(arg_id + 1);
-      if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
-        auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-        auto desired_arg_type = function_type.get_arg(arg_id);
-        if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-          arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
-        } else {
-          arg_forms.push_back(val);
-        }
-      } else {
-        arg_forms.push_back(val);
-      }
+    } else {
+      arg_forms.push_back(val);
     }
   }
 
   FormElement* new_form = nullptr;
-  if (is_virtual_method) {
-    //    fmt::print("STACK:\n{}\n\n", stack.print(env));
+
+  {
+    // deal with virtual method calls.
     auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
-                               {Matcher::any(0), Matcher::any(1)});
+                               {Matcher::any_reg(0), Matcher::any(1)});
     auto mr = match(matcher, unstacked.at(0));
-    if (!mr.matched) {
-      throw std::runtime_error("Failed to match method call. Got " +
-                               unstacked.at(0)->to_string(env));
-    }
+    if (mr.matched && nargs >= 1) {
+      auto vtable_reg = mr.maps.regs.at(0);
+      assert(vtable_reg);
+      auto vtable_var_name = env.get_variable_name(*vtable_reg);
+      auto arg0_mr = match(Matcher::any_reg(0), unstacked.at(1));
+      if (arg0_mr.matched && env.get_variable_name(*arg0_mr.maps.regs.at(0)) == vtable_var_name) {
+        // fmt::print("STACK\n{}\n\n", stack.print(env));
+        auto pop =
+            pop_to_forms({*arg0_mr.maps.regs.at(0)}, env, pool, stack, allow_side_effects, {}, {2})
+                .at(0);
+        // fmt::print("GOT: {}\n", pop->to_string(env));
+        arg_forms.at(0) = pop;
 
-    auto unsafe = stack.unsafe_peek(Register(Reg::GPR, Reg::A0), env);
-    if (!unsafe) {
-      if (!stack.is_root()) {
-        fmt::print("STACK:\n{}\n\n", stack.print(env));
-        throw std::runtime_error("Peek got to back and not root stack");
-      }
-      // failed to peek by reaching the end AND root stack, means we just take the function
-      // argument.
-      unsafe = mr.maps.forms.at(0);
-    }
-
-    bool resolved = false;
-    if (unsafe) {
-      if (!unsafe->try_as_single_element()) {
-        throw std::runtime_error(
-            fmt::format("Peek got something weird: {}\n", unsafe->to_string(env)));
-      }
-
-      if (unsafe->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
-        resolved = true;
-      }
-
-      if (!resolved) {
-        if (unsafe->try_as_single_element()->to_form(env) ==
-            mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
-          resolved = true;
-          if (debug_method_calls) {
-            lg::warn(fmt::format(
-                "Rare method call (type 1). {} vs {}. Not an error, but check carefully",
-                unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
-          }
-        }
-      }
-
-      if (!resolved) {
-        if (debug_method_calls) {
-          lg::warn(
-              fmt::format("Rare method call (type 2). {} vs {}. Not an error, but check carefully",
-                          unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
-        }
-
-        auto unsafe_as_se = dynamic_cast<SimpleExpressionElement*>(unsafe->try_as_single_element());
-        if (unsafe_as_se && unsafe_as_se->expr().is_identity() &&
-            unsafe_as_se->expr().get_arg(0).is_var()) {
-          auto var = unsafe_as_se->expr().get_arg(0).var();
-          auto unsafe_2 = stack.unsafe_peek(var.reg(), env);
-          if (unsafe_2) {
-            if (unsafe_2->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
-              resolved = true;
-              unsafe = unsafe_2;
-            } else {
-              if (unsafe_2->try_as_single_element()->to_form(env) ==
-                  mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
-                if (debug_method_calls) {
-                  lg::warn("Check even more carefully");
-                }
-                resolved = true;
-                unsafe = unsafe_2;
-              }
-            }
-          }
-        }
+        new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
+        result->push_back(new_form);
+        return;
       }
     }
-
-    if (!resolved) {
-      throw std::runtime_error("Failed to resolve.");
-    }
-
-    arg_forms.insert(arg_forms.begin(), mr.maps.forms.at(0));
-
-    new_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
-
-  } else {
-    new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
-                                                  arg_forms);
   }
+
+  new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
+                                                arg_forms);
 
   {
     // detect method calls:
