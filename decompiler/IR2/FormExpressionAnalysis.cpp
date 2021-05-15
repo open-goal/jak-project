@@ -1715,7 +1715,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
-  if (is_virtual_method != m_op->is_method()) {
+  if (is_virtual_method != m_op->is_virtual_method()) {
     lg::error("Disagreement on method!");
     throw std::runtime_error("Disagreement on method");
   }
@@ -1773,83 +1773,85 @@ void FunctionCallElement::update_from_stack(const Env& env,
                                {Matcher::any(0), Matcher::any(1)});
     auto mr = match(matcher, unstacked.at(0));
     if (!mr.matched) {
-      throw std::runtime_error("Failed to match method call. Got " +
-                               unstacked.at(0)->to_string(env));
-    }
-
-    auto unsafe = stack.unsafe_peek(Register(Reg::GPR, Reg::A0), env);
-    if (!unsafe) {
-      if (!stack.is_root()) {
-        fmt::print("STACK:\n{}\n\n", stack.print(env));
-        throw std::runtime_error("Peek got to back and not root stack");
-      }
-      // failed to peek by reaching the end AND root stack, means we just take the function
-      // argument.
-      unsafe = mr.maps.forms.at(0);
-    }
-
-    bool resolved = false;
-    if (unsafe) {
-      if (!unsafe->try_as_single_element()) {
-        throw std::runtime_error(
-            fmt::format("Peek got something weird: {}\n", unsafe->to_string(env)));
+      new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
+                                                    arg_forms);
+    } else {
+      auto unsafe = stack.unsafe_peek(Register(Reg::GPR, Reg::A0), env);
+      if (!unsafe) {
+        if (!stack.is_root()) {
+          fmt::print("STACK:\n{}\n\n", stack.print(env));
+          throw std::runtime_error("Peek got to back and not root stack");
+        }
+        // failed to peek by reaching the end AND root stack, means we just take the function
+        // argument.
+        unsafe = mr.maps.forms.at(0);
       }
 
-      if (unsafe->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
-        resolved = true;
-      }
+      bool resolved = false;
+      if (unsafe) {
+        if (!unsafe->try_as_single_element()) {
+          throw std::runtime_error(
+              fmt::format("Peek got something weird: {}\n", unsafe->to_string(env)));
+        }
 
-      if (!resolved) {
-        if (unsafe->try_as_single_element()->to_form(env) ==
-            mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
+        if (unsafe->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
           resolved = true;
-          if (debug_method_calls) {
-            lg::warn(fmt::format(
-                "Rare method call (type 1). {} vs {}. Not an error, but check carefully",
-                unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+        }
+
+        if (!resolved) {
+          if (unsafe->try_as_single_element()->to_form(env) ==
+              mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
+            resolved = true;
+            if (debug_method_calls) {
+              lg::warn(fmt::format(
+                  "Rare method call (type 1). {} vs {}. Not an error, but check carefully",
+                  unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+            }
           }
         }
-      }
 
-      if (!resolved) {
-        if (debug_method_calls) {
-          lg::warn(
-              fmt::format("Rare method call (type 2). {} vs {}. Not an error, but check carefully",
-                          unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
-        }
+        if (!resolved) {
+          if (debug_method_calls) {
+            lg::warn(fmt::format(
+                "Rare method call (type 2). {} vs {}. Not an error, but check carefully",
+                unsafe->to_string(env), mr.maps.forms.at(0)->to_string(env)));
+          }
 
-        auto unsafe_as_se = dynamic_cast<SimpleExpressionElement*>(unsafe->try_as_single_element());
-        if (unsafe_as_se && unsafe_as_se->expr().is_identity() &&
-            unsafe_as_se->expr().get_arg(0).is_var()) {
-          auto var = unsafe_as_se->expr().get_arg(0).var();
-          auto unsafe_2 = stack.unsafe_peek(var.reg(), env);
-          if (unsafe_2) {
-            if (unsafe_2->try_as_single_element() == mr.maps.forms.at(0)->try_as_single_element()) {
-              resolved = true;
-              unsafe = unsafe_2;
-            } else {
-              if (unsafe_2->try_as_single_element()->to_form(env) ==
-                  mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
-                if (debug_method_calls) {
-                  lg::warn("Check even more carefully");
-                }
+          auto unsafe_as_se =
+              dynamic_cast<SimpleExpressionElement*>(unsafe->try_as_single_element());
+          if (unsafe_as_se && unsafe_as_se->expr().is_identity() &&
+              unsafe_as_se->expr().get_arg(0).is_var()) {
+            auto var = unsafe_as_se->expr().get_arg(0).var();
+            auto unsafe_2 = stack.unsafe_peek(var.reg(), env);
+            if (unsafe_2) {
+              if (unsafe_2->try_as_single_element() ==
+                  mr.maps.forms.at(0)->try_as_single_element()) {
                 resolved = true;
                 unsafe = unsafe_2;
+              } else {
+                if (unsafe_2->try_as_single_element()->to_form(env) ==
+                    mr.maps.forms.at(0)->try_as_single_element()->to_form(env)) {
+                  if (debug_method_calls) {
+                    lg::warn("Check even more carefully");
+                  }
+                  resolved = true;
+                  unsafe = unsafe_2;
+                }
               }
             }
           }
         }
       }
+
+      if (!resolved) {
+        throw std::runtime_error("Failed to resolve.");
+      }
+
+      arg_forms.insert(arg_forms.begin(), mr.maps.forms.at(0));
+
+      new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
     }
-
-    if (!resolved) {
-      throw std::runtime_error("Failed to resolve.");
-    }
-
-    arg_forms.insert(arg_forms.begin(), mr.maps.forms.at(0));
-
-    new_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
 
   } else {
     new_form = pool.alloc_element<GenericElement>(GenericOperator::make_function(unstacked.at(0)),
