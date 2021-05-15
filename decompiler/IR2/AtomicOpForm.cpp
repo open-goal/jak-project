@@ -233,12 +233,31 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
         auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source, true, tokens);
 
         return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+      } else {
+        // try again with no deref.
+        rd_in.deref = {};
+        auto rd_no_deref = env.dts->ts.reverse_field_lookup(rd_in);
+        if (rd_no_deref.success) {
+          auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
+              nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
+          std::vector<DerefToken> tokens;
+          for (auto& x : rd_no_deref.tokens) {
+            tokens.push_back(to_token(x));
+          }
+          auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source,
+                                                                   rd_no_deref.addr_of, tokens);
+          // this cast isn't required (.svf will take anything), but it makes it clear that there's
+          // some sketchy type stuff going on.
+          addr = pool.alloc_single_element_form<CastElement>(
+              nullptr, TypeSpec("pointer", {TypeSpec("uint128")}), addr);
+
+          return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+        }
       }
     }
   }
 
-  // nothing worked.
-  throw std::runtime_error("NYI get_vf_store_as_form fallback");
+  return pool.alloc_element<StoreElement>(this);
 }
 
 FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
