@@ -148,3 +148,4 @@
 - Invalid static pairs now have nice errors instead of exiting the compiler
 - Added unsigned division (previously signed division was used for unsigned numbers)
 - Use shifts (64-bit) for positive power of two multiply and divide. Otherwise use 32-bit. This matches GOAL.
+- Allow setting a 64-bit or less memory location from a 128-bit variable (upper bits are discarded).

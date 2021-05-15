@@ -777,7 +777,7 @@ void TypeSystem::add_builtin_types() {
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
   // the type.  Dynamic structures use new-dynamic-structure, which is used exactly once ever.
-  add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "structure"));
+  add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "_type_"));
   // structure_type is a field-less StructureType, so we have to do this to match the runtime.
   //  structure_type->override_size_in_memory(4);
 
