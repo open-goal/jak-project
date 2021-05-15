@@ -910,8 +910,6 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   (void)env;
   const Reg::Gpr arg_regs[8] = {Reg::A0, Reg::A1, Reg::A2, Reg::A3,
                                 Reg::T0, Reg::T1, Reg::T2, Reg::T3};
-
-  m_is_virtual_method = false;
   TypeState end_types = input;
 
   auto in_tp = input.get(Register(Reg::GPR, Reg::T9));
@@ -1002,11 +1000,6 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
   for (uint32_t i = 0; i < in_type.arg_count() - 1; i++) {
     m_read_regs.emplace_back(Reg::GPR, arg_regs[i]);
     m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
-    if (i == 0 && in_tp.kind == TP_Type::Kind::VIRTUAL_METHOD) {
-      m_read_regs.pop_back();
-      m_arg_vars.pop_back();
-      m_is_virtual_method = true;
-    }
   }
 
   m_write_regs.clear();
