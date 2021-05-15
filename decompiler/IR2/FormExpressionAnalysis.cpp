@@ -2371,6 +2371,40 @@ Matcher make_int_uint_cast_matcher(const Matcher& thing) {
 // ConditionElement
 ///////////////////
 
+namespace {
+/*!
+ * Try to make a pretty looking constant out of value for comparing to something of type.
+ * If we can't do anything nice, return nullptr.
+ */
+Form* try_make_constant_for_compare(Form* value,
+                                    const TypeSpec& type,
+                                    FormPool& pool,
+                                    const Env& env) {
+  if (get_goal_integer_constant(value, env) && env.dts->ts.try_enum_lookup(type)) {
+    return cast_form(value, type, pool, env);
+  }
+  return nullptr;
+}
+
+Form* try_make_constant_from_int_for_compare(s64 value,
+                                             const TypeSpec& type,
+                                             FormPool& pool,
+                                             const Env& env) {
+  auto enum_type_info = env.dts->ts.try_enum_lookup(type);
+  if (enum_type_info) {
+    if (enum_type_info->is_bitfield()) {
+      if (value != 0) {
+        // prefer (zero? x) for bitfield enums.
+        return cast_to_bitfield_enum(enum_type_info, pool, env, value);
+      }
+    } else {
+      return cast_to_int_enum(enum_type_info, pool, env, value);
+    }
+  }
+  return nullptr;
+}
+}  // namespace
+
 FormElement* ConditionElement::make_zero_check_generic(const Env& env,
                                                        FormPool& pool,
                                                        const std::vector<Form*>& source_forms,
@@ -2403,6 +2437,13 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
           GenericOperator::make_fixed(FixedOperatorKind::EQ),
           std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
     }
+  }
+
+  auto nice_constant = try_make_constant_from_int_for_compare(0, source_types.at(0), pool, env);
+  if (nice_constant) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::EQ),
+        std::vector<Form*>{source_forms.at(0), nice_constant});
   }
 
   return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
@@ -2442,12 +2483,11 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
     return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NULLP),
                                               source_forms.at(0));
   } else {
-    auto int_val = get_goal_integer_constant(source_forms.at(1), env);
-    auto src0_as_enum = env.dts->ts.try_enum_lookup(source_types.at(0));
-    if (src0_as_enum && int_val) {
-      // if comparing an enum against a constant integer, rewrite the enum.
+    auto nice_constant =
+        try_make_constant_for_compare(source_forms.at(1), source_types.at(0), pool, env);
+    if (nice_constant) {
       auto forms_with_cast = source_forms;
-      forms_with_cast.at(1) = cast_form(source_forms.at(1), source_types.at(0), pool, env);
+      forms_with_cast.at(1) = nice_constant;
       return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
                                                 forms_with_cast);
     } else {
