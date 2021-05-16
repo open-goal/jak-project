@@ -53,10 +53,6 @@
 
 namespace decompiler {
 
-namespace {
-bool debug_method_calls = false;
-}
-
 bool Form::has_side_effects() {
   bool has_side_effect = false;
   apply([&](FormElement* elt) {
@@ -3159,8 +3155,18 @@ void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormS
   stack.push_form_element(pool.alloc_element<SetFormFormElement>(dst, src), true);
 }
 
-void VectorFloatLoadStoreElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
+
+  auto loc_as_deref = m_location->try_as_element<DerefElement>();
+  if (loc_as_deref) {
+    auto root = loc_as_deref->base();
+    auto atom = form_as_atom(root);
+    if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
+      loc_as_deref->set_base(pop_to_forms({atom->var()}, env, pool, stack, true).at(0));
+    }
+  }
+
   stack.push_form_element(this, true);
 }
 

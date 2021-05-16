@@ -169,6 +169,14 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
       src_in_reg = src_128;
     }
 
+    if (as_mem_deref->info.size != 16 && (src_in_reg->ireg().reg_class == RegClass::VECTOR_FLOAT ||
+                                          src_in_reg->ireg().reg_class == RegClass::INT_128)) {
+      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto src_gpr = fe->make_ireg(src_in_reg->type(), RegClass::GPR_64);
+      env->emit_ir<IR_RegSet>(src_gpr, src_in_reg);
+      src_in_reg = src_gpr;
+    }
+
     // setting somewhere in memory
     auto base = as_mem_deref->base;
     auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);

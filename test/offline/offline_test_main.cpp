@@ -15,7 +15,7 @@ namespace {
 
 // list of object files to ignore during reference checks
 const std::unordered_set<std::string> g_object_files_to_ignore_ref_checks = {
-    "pskernel",     "geometry",     "math-camera", "timer",  "texture",
+    "pskernel",     "geometry",     "timer",       "texture",
     "ocean-tables", "ocean-frames", "time-of-day", "display"};
 
 const std::unordered_set<std::string> g_object_files_to_ignore_decompiling = {
@@ -122,6 +122,9 @@ const std::unordered_set<std::string> skip_in_compiling = {
 
     // gs
     "(method 3 gif-tag)",  // inspect for a 128-bit type.
+
+    // math camera
+    "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
 
     // display-h
     "put-draw-env",
