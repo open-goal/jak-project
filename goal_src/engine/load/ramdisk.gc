@@ -5,3 +5,67 @@
 ;; name in dgo: ramdisk
 ;; dgos: GAME, ENGINE
 
+;; see game/overlord/ramdisk.cpp
+;; unlike most other loads, ramdisk actually uses the response buffer of the RPC
+;; to send the data.
+
+;; command to load something into the OVERLORD RAMDISK from the DVD
+;; use with fno = 1
+(deftype ramdisk-rpc-fill (structure)
+  ((rsvd1    int32     :offset-assert 0)
+   (ee-id    int32     :offset-assert 4)
+   (rsvd2    int32   2 :offset-assert 8)
+   (filename uint128   :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; get data in ramdisk on EE.
+(deftype ramdisk-rpc-load (structure)
+  ((rsvd   int32   :offset-assert 0)
+   (ee-id  int32   :offset-assert 4)
+   (offset uint32  :offset-assert 8)
+   (length uint32  :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; load file directly to EE.
+;; this seems very similar to some functionality in STR.
+(deftype ramdisk-rpc-load-to-ee (structure)
+  ((rsvd     int32    :offset-assert 0)
+   (addr     int32    :offset-assert 4)
+   (offset   int32    :offset-assert 8)
+   (length   int32    :offset-assert 12)
+   (filename uint128  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+;; allocate the ramdisk RPC buffer
+(define *ramdisk-rpc* (new 'global 'rpc-buffer-pair (the-as uint 32) (the-as uint 1) 2))
+
+(define *current-ramdisk-id* 0)
+
+(defun ramdisk-load ((file-id int) (offset uint) (length uint) (buffer pointer))
+  "Helper to grab load from ramdisk to ee"
+  (let ((cmd (the-as ramdisk-rpc-load (add-element *ramdisk-rpc*))))
+    (set! (-> cmd offset) offset)
+    (set! (-> cmd ee-id) file-id)
+    (set! (-> cmd length) length)
+    )
+  (call *ramdisk-rpc* (the-as uint 0) buffer length)
+  0
+  )
+
+(defun ramdisk-sync ()
+  "Wait for ramdisk RPC to complete."
+  (sync *ramdisk-rpc* #t)
+  (none)
+  )
