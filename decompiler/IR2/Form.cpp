@@ -938,8 +938,7 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
   // NOTE - initialize any relevant registers in the body first
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
-      rletForm.push_back(
-          pretty_print::to_symbol("(init-vf0-vector)")); // Defined in vector-h.gc
+      rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
     }
   }
 
