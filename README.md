@@ -1,9 +1,14 @@
-# Jak Project
+<p align="center">
+  <img width="500" height="100%" src="./docs/img/logo-text-colored.5cda006b.png">
+</p>
 
-![Linux](https://github.com/water111/jak-project/workflows/Linux/badge.svg)
-![Windows](https://github.com/water111/jak-project/workflows/Windows/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9)](https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade)
+<p align="center">
+  <a href="https://water111.github.io/jak-project/" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
+  <a target="_blank" rel="noopener noreferrer" href="https://github.com/water111/jak-project/workflows/Linux/badge.svg"><img src="https://github.com/water111/jak-project/workflows/Linux/badge.svg" alt="Linux" style="max-width:100%;"></a>
+  <a target="_blank" rel="noopener noreferrer" href="https://github.com/water111/jak-project/workflows/Windows/badge.svg"><img src="https://github.com/water111/jak-project/workflows/Windows/badge.svg" alt="Windows" style="max-width:100%;"></a>
+  <a href="https://coveralls.io/github/water111/jak-project?branch=master" rel="nofollow"><img src="https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master" alt="Coverage Status" style="max-width:100%;"></a>
+  <a href="https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9" alt="Codacy Badge" style="max-width:100%;"></a>
+</p>
 
 ## Table of Contents
 
