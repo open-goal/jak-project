@@ -63,6 +63,38 @@
   v0-0
   )
 
-;; TODO - show-mc-info - failed to decompile
-;; WARN: Type Propagation failed: Failed to find a stack variable at offset 16
-;; WARN: Type Propagation failed: Type analysis failed
+(defun show-mc-info ((dma-buf dma-buffer))
+  "Print mc info to the screen."
+  (let ((info (new 'stack-no-clear 'mc-slot-info)))
+    (dotimes (slot-idx 2)
+      (mc-get-slot-info slot-idx)
+      (cond
+        ((zero? (-> info known))
+         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot-idx)
+         )
+        ((zero? (-> info handle))
+         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot-idx)
+         )
+        ((zero? (-> info formatted))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot-idx (-> info handle))
+         )
+        ((zero? (-> info inited))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
+                 slot-idx (-> info handle) (-> info mem-required) (-> info mem-actual))
+         )
+        (else
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> info handle))
+         (format *temp-string* "SAVES ~D ~D ~D ~D : LAST ~D~%"
+          (-> info file 0 present)
+          (-> info file 1 present)
+          (-> info file 2 present)
+          (-> info file 3 present)
+          (-> info last-file)
+          )
+         )
+        )
+      (draw-string-xy *temp-string* dma-buf 32 (+ (* 12 slot-idx) 8) 3 1)
+      )
+    )
+  (none)
+  )

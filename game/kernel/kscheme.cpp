@@ -222,8 +222,8 @@ u64 new_structure(u32 heap, u32 type) {
 /*!
  * Allocate a structure with a dynamic size
  */
-u64 new_dynamic_structure(u32 heap, u32 type, u32 size) {
-  return alloc_from_heap(heap, type, size);
+u64 new_dynamic_structure(u32 heap_symbol, u32 type, u32 size) {
+  return alloc_from_heap(heap_symbol, type, size);
 }
 
 /*!
