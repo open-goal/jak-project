@@ -15,9 +15,9 @@ namespace {
 
 // list of object files to ignore during reference checks
 const std::unordered_set<std::string> g_files_to_skip_compiling = {
-    "timer", // accessing timer regs
-    "display", // interrupt handlers
-    "game-info-h", // variable scoped at object file top-level issue.
+    "timer",        // accessing timer regs
+    "display",      // interrupt handlers
+    "game-info-h",  // variable scoped at object file top-level issue.
 };
 
 // the functions we expect the decompiler to skip
