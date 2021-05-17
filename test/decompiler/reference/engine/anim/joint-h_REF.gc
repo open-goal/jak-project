@@ -1,0 +1,200 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type joint-control-channel
+(deftype joint-control-channel (structure)
+  ((parent           basic    :offset-assert 0)
+   (command          basic    :offset-assert 4)
+   (frame-interp     float    :offset-assert 8)
+   (frame-group      basic    :offset-assert 12)
+   (frame-num        float    :offset-assert 16)
+   (num-func         basic    :offset-assert 20)
+   (param            uint32 2 :offset-assert 24)
+   (group-sub-index  int16    :offset-assert 32)
+   (group-size       int16    :offset-assert 34)
+   (dist             float    :offset-assert 36)
+   (eval-time        uint32   :offset-assert 40)
+   (inspector-amount float    :offset-assert 44)
+   )
+  :method-count-assert 10
+  :size-assert         #x30
+  :flag-assert         #xa00000030
+  (:methods
+    (dummy-9 () none 9)
+    )
+  )
+
+;; definition for method 3 of type joint-control-channel
+(defmethod inspect joint-control-channel ((obj joint-control-channel))
+  (format #t "[~8x] ~A~%" obj 'joint-control-channel)
+  (format #t "~Tparent: ~A~%" (-> obj parent))
+  (format #t "~Tcommand: ~A~%" (-> obj command))
+  (format #t "~Tframe-interp: ~f~%" (-> obj frame-interp))
+  (format #t "~Tframe-group: ~A~%" (-> obj frame-group))
+  (format #t "~Tframe-num: ~f~%" (-> obj frame-num))
+  (format #t "~Tnum-func: ~A~%" (-> obj num-func))
+  (format #t "~Tparam[2] @ #x~X~%" (-> obj param))
+  (format #t "~Tgroup-sub-index: ~D~%" (-> obj group-sub-index))
+  (format #t "~Tgroup-size: ~D~%" (-> obj group-size))
+  (format #t "~Tdist: (meters ~m)~%" (-> obj dist))
+  (format #t "~Teval-time: ~D~%" (-> obj eval-time))
+  (format #t "~Tinspector-amount: ~f~%" (-> obj inspector-amount))
+  obj
+  )
+
+;; definition of type joint-control
+(deftype joint-control (basic)
+  ((status                  uint16                            :offset-assert 4)
+   (allocated-length        int16                             :offset-assert 6)
+   (root-channel            uint32                :offset  16)
+   (blend-index             int32                             :offset-assert 20)
+   (active-channels         int32                             :offset-assert 24)
+   (generate-frame-function basic                             :offset-assert 28)
+   (prebind-function        basic                             :offset-assert 32)
+   (postbind-function       basic                             :offset-assert 36)
+   (effect                  basic                             :offset-assert 40)
+   (channel                 joint-control-channel 3 :inline   :offset-assert 48)
+   (frame-group0            basic                 :offset  60)
+   (frame-num0              float                 :offset  64)
+   (frame-interp0           float                 :offset  56)
+   (frame-group1            basic                 :offset 108)
+   (frame-num1              float                 :offset 112)
+   (frame-interp1           float                 :offset 104)
+   (frame-group2            basic                 :offset 156)
+   (frame-num2              float                 :offset 160)
+   (frame-interp2           float                 :offset 152)
+   )
+  :method-count-assert 11
+  :size-assert         #xc0
+  :flag-assert         #xb000000c0
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+;; definition for method 3 of type joint-control
+(defmethod inspect joint-control ((obj joint-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tstatus: ~D~%" (-> obj status))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Troot-channel: #x~X~%" (-> obj root-channel))
+  (format #t "~Tblend-index: ~D~%" (-> obj blend-index))
+  (format #t "~Tactive-channels: ~D~%" (-> obj active-channels))
+  (format #t "~Tgenerate-frame-function: ~A~%" (-> obj generate-frame-function))
+  (format #t "~Tprebind-function: ~A~%" (-> obj prebind-function))
+  (format #t "~Tpostbind-function: ~A~%" (-> obj postbind-function))
+  (format #t "~Teffect: ~A~%" (-> obj effect))
+  (format #t "~Tchannel[0] @ #x~X~%" (-> obj channel))
+  (format #t "~Tframe-group0: ~A~%" (-> obj channel 0 frame-group))
+  (format #t "~Tframe-num0: ~f~%" (-> obj channel 0 frame-num))
+  (format #t "~Tframe-interp0: ~f~%" (-> obj channel 0 frame-interp))
+  (format #t "~Tframe-group1: ~A~%" (-> obj channel 1 frame-group))
+  (format #t "~Tframe-num1: ~f~%" (-> obj channel 1 frame-num))
+  (format #t "~Tframe-interp1: ~f~%" (-> obj channel 1 frame-interp))
+  (format #t "~Tframe-group2: ~A~%" (-> obj channel 2 frame-group))
+  (format #t "~Tframe-num2: ~f~%" (-> obj channel 2 frame-num))
+  (format #t "~Tframe-interp2: ~f~%" (-> obj channel 2 frame-interp))
+  obj
+  )
+
+;; definition of type matrix-stack
+(deftype matrix-stack (structure)
+  ((top  matrix            :offset-assert 0)
+   (data matrix 24 :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x610
+  :flag-assert         #x900000610
+  )
+
+;; definition for method 3 of type matrix-stack
+(defmethod inspect matrix-stack ((obj matrix-stack))
+  (format #t "[~8x] ~A~%" obj 'matrix-stack)
+  (format #t "~Ttop: #<matrix @ #x~X>~%" (-> obj top))
+  (format #t "~Tdata[24] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition of type channel-upload-info
+(deftype channel-upload-info (structure)
+  ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
+   (fixed-qwc int32                        :offset-assert 4)
+   (frame     joint-anim-compressed-frame  :offset-assert 8)
+   (frame-qwc int32                        :offset-assert 12)
+   (amount    float                        :offset-assert 16)
+   (interp    float                        :offset-assert 20)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+;; definition for method 3 of type channel-upload-info
+(defmethod inspect channel-upload-info ((obj channel-upload-info))
+  (format #t "[~8x] ~A~%" obj 'channel-upload-info)
+  (format #t "~Tfixed: #<joint-anim-compressed-fixed @ #x~X>~%" (-> obj fixed))
+  (format #t "~Tfixed-qwc: ~D~%" (-> obj fixed-qwc))
+  (format #t "~Tframe: #<joint-anim-compressed-frame @ #x~X>~%" (-> obj frame))
+  (format #t "~Tframe-qwc: ~D~%" (-> obj frame-qwc))
+  (format #t "~Tamount: ~f~%" (-> obj amount))
+  (format #t "~Tinterp: ~f~%" (-> obj interp))
+  obj
+  )
+
+;; definition of type joint-work
+(deftype joint-work (structure)
+  ((temp-mtx       matrix                      :inline     :offset-assert 0)
+   (joint-stack    matrix-stack                :inline     :offset-assert 64)
+   (fix-jmp-table  uint32                      16          :offset-assert 1616)
+   (frm-jmp-table  uint32                      16          :offset-assert 1680)
+   (pair-jmp-table uint32                      16          :offset-assert 1744)
+   (uploads        channel-upload-info         24 :inline  :offset-assert 1808)
+   (num-uploads    int32                                   :offset-assert 2384)
+   (mtx-acc        matrix                      2 :inline   :offset-assert 2400)
+   (tq-acc         transformq                  100 :inline :offset-assert 2528)
+   (jacp-hdr       joint-anim-compressed-hdr   :inline     :offset-assert 7328)
+   (fixed-data     joint-anim-compressed-fixed :inline     :offset-assert 7392)
+   (frame-data     joint-anim-compressed-frame 2 :inline   :offset-assert 9600)
+   )
+  :method-count-assert 9
+  :size-assert         #x3640
+  :flag-assert         #x900003640
+  )
+
+;; definition for method 3 of type joint-work
+(defmethod inspect joint-work ((obj joint-work))
+  (format #t "[~8x] ~A~%" obj 'joint-work)
+  (format #t "~Ttemp-mtx: #<matrix @ #x~X>~%" (-> obj temp-mtx))
+  (format #t "~Tjoint-stack: #<matrix-stack @ #x~X>~%" (-> obj joint-stack))
+  (format #t "~Tfix-jmp-table[16] @ #x~X~%" (-> obj fix-jmp-table))
+  (format #t "~Tfrm-jmp-table[16] @ #x~X~%" (-> obj frm-jmp-table))
+  (format #t "~Tpair-jmp-table[16] @ #x~X~%" (-> obj pair-jmp-table))
+  (format #t "~Tuploads[24] @ #x~X~%" (-> obj uploads))
+  (format #t "~Tnum-uploads: ~D~%" (-> obj num-uploads))
+  (format #t "~Tmtx-acc[2] @ #x~X~%" (-> obj mtx-acc))
+  (format #t "~Ttq-acc[100] @ #x~X~%" (-> obj tq-acc))
+  (format
+   #t
+   "~Tjacp-hdr: #<joint-anim-compressed-hdr @ #x~X>~%"
+   (-> obj jacp-hdr)
+   )
+  (format
+   #t
+   "~Tfixed-data: #<joint-anim-compressed-fixed @ #x~X>~%"
+   (-> obj fixed-data)
+   )
+  (format #t "~Tframe-data[2] @ #x~X~%" (-> obj frame-data))
+  (format #t "~Tflatten-array[576] @ #x~X~%" (-> obj mtx-acc))
+  (format #t "~Tflattened[24] @ #x~X~%" (-> obj mtx-acc))
+  obj
+  )
+
+;; failed to figure out what this is:
+(let ((v0-5 0))
+  )
+
+
+
+

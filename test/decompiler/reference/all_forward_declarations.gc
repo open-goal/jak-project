@@ -482,6 +482,17 @@
   :flag-assert         #x900000010
   )
 
+(deftype plane (vector)
+  ((a float :offset   0)
+   (b float :offset   4)
+   (c float :offset   8)
+   (d float :offset  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
 (deftype attack-info (structure)
   ((trans        vector :inline :offset-assert 0)
    (vector       vector :inline :offset-assert 16)
@@ -588,6 +599,48 @@
 (define-extern vector-rad<-vector-deg/2! (function vector vector int))
 
 (define-extern sprite-distorter-generate-tables (function none))
+
+(defenum load-msg-result
+  :type uint16
+  :bitfield #f
+  (done 0)
+  (error 1)
+  (more 2)
+  (aborted 3)
+  (invalid 666)
+  )
+
+(declare-type rpc-buffer-pair basic)
+(define-extern string->sound-name (function string uint128))
+(define-extern *dgo-name* string)
+(define-extern *load-dgo-rpc* rpc-buffer-pair)
+(define-extern *load-str-rpc* rpc-buffer-pair)
+(define-extern *play-str-rpc* rpc-buffer-pair)
+(define-extern *load-str-lock* symbol)
+(define-extern *que-str-lock* symbol)
+
+(define-extern get-video-mode (function symbol))
+(define-extern draw-string-xy (function string dma-buffer int int int int none))
+(declare-type game-info basic)
+(define-extern *game-info* game-info)
+
+;; shadow-cpu
+(deftype shadow-settings (structure)
+  ((center        vector :inline :offset-assert 0)
+   (flags         int32          :offset 12)
+   (shadow-dir    vector :inline :offset-assert 16)
+   (dist-to-locus float          :offset 28)
+   (bot-plane     plane  :inline :offset-assert 32)
+   (top-plane     plane  :inline :offset-assert 48)
+   (fade-dist     float          :offset-assert 64)
+   (fade-start    float          :offset-assert 68)
+   (dummy-2       int32          :offset-assert 72)
+   (dummy-3       int32          :offset-assert 76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
 
 (defmacro init-vf0-vector ()
   "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"

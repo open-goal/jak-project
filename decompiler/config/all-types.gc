@@ -80,6 +80,22 @@
 (define-extern mc-run (function none))
 (define-extern mc-check-result (function int))
 
+(defenum link-flag
+    :bitfield #t
+    :type int32
+    (output-load-msg 0)
+    (output-load-true-msg 1)
+    (execute-login 2)
+    (print-login 3)
+    (force-debug 4)
+    (fast-link 5)
+    )
+
+(define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
+
+(define-extern rpc-call (function int uint uint uint int uint int uint))
+(define-extern rpc-busy? (function int uint))
+
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; GCOMMON             ;;;;;;;;;;;;;;;;;;;
@@ -8504,6 +8520,11 @@
   :flag-assert         #x900000090
   )
 
+;;;; engine
+(define-extern *background-draw-engine* engine)
+(define-extern *camera-engine* engine)
+(define-extern *debug-engine* engine)
+
 ;; res-h
 
 (deftype res-tag (uint128)
@@ -13147,15 +13168,31 @@
 ;     )
 ;   )
 
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; LOAD-DGO            ;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~;
+
+(defenum load-msg-result
+  :type uint16
+  :bitfield #f
+  (done 0)
+  (error 1)
+  (more 2)
+  (aborted 3)
+  (invalid 666)
+  )
+
 ;; load-dgo
 (deftype load-dgo-msg (structure)
   ((rsvd    uint16   :offset-assert 0)
-   (result  uint16   :offset-assert 2)
+   (result  load-msg-result   :offset-assert 2)
    (b1      uint32   :offset-assert 4)
    (b2      uint32   :offset-assert 8)
    (bt      uint32   :offset-assert 12)
-   ;(name    uint128  :offset-assert 16)
-   (name uint8 16 :offset-assert 16)
+   (name    uint128  :offset-assert 16)
+   (name-chars uint8 16 :offset 16)
    (address uint32   :offset 4)
    )
   :method-count-assert 9
@@ -13166,7 +13203,7 @@
 ;; load-dgo
 (deftype load-chunk-msg (structure)
   ((rsvd     uint16     :offset-assert 0)
-   (result   uint16     :offset-assert 2)
+   (result   load-msg-result     :offset-assert 2)
    (address  pointer    :offset-assert 4)
    (section  uint32     :offset-assert 8)
    (maxlen   uint32     :offset-assert 12)
@@ -13182,23 +13219,51 @@
 (deftype dgo-header (structure)
   ((length   uint32     :offset-assert 0)
    (rootname uint8 60 :offset-assert 4)
+   ;; added
+   (data uint8 :dynamic :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
 
-; ;; ramdisk
-; (deftype ramdisk-rpc-fill (structure)
-;   ((rsvd1    int32     :offset-assert 0)
-;    (ee-id    int32     :offset-assert 4)
-;    (rsvd2    UNKNOWN 2 :offset-assert 8)
-;    (filename uint128   :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(define-extern *load-dgo-rpc* rpc-buffer-pair)
+(define-extern *load-str-rpc* rpc-buffer-pair)
+(define-extern *play-str-rpc* rpc-buffer-pair)
+(define-extern *load-str-lock* symbol)
+(define-extern *que-str-lock* symbol)
+(define-extern *dgo-name* string)
+(define-extern str-load (function string int pointer int symbol))
+(define-extern str-load-status (function (pointer int32) symbol))
+(define-extern str-load-cancel (function none))
+(define-extern str-play-async (function string pointer none))
+(define-extern str-play-stop (function string none))
+(define-extern str-play-queue (function string none))
+(define-extern str-ambient-play (function string none))
+(define-extern str-ambient-stop (function string none))
+(define-extern dgo-load-begin (function string int int int load-dgo-msg))
+(define-extern dgo-load-get-next (function (pointer symbol) pointer))
+(define-extern dgo-load-continue (function pointer int))
+(define-extern dgo-load-cancel (function none))
+(define-extern find-temp-buffer (function int pointer))
+(define-extern dgo-load-link (function dgo-header kheap symbol symbol symbol))
+(define-extern destroy-mem (function (pointer uint32) (pointer uint32) none))
+(define-extern string->sound-name (function string uint128))
+(define-extern str-play-kick (function none))
+(define-extern *dgo-time* uint)
+
+
+;; ramdisk
+(deftype ramdisk-rpc-fill (structure)
+  ((rsvd1    int32     :offset-assert 0)
+   (ee-id    int32     :offset-assert 4)
+   (rsvd2    int32 2 :offset-assert 8)
+   (filename uint128   :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 ;; ramdisk
 (deftype ramdisk-rpc-load (structure)
@@ -13224,6 +13289,11 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
+
+(define-extern *current-ramdisk-id* int)
+(define-extern ramdisk-load (function int uint uint pointer int))
+(define-extern *ramdisk-rpc* rpc-buffer-pair)
+(define-extern ramdisk-sync (function none))
 
 ; ;; gsound
 ; (deftype sound-iop-info (basic)
@@ -33538,7 +33608,7 @@
 (define-extern art-joint-anim type)
 (define-extern joint-anim-compressed type)
 (define-extern art-joint-geo type)
-(define-extern new-dynamic-structure (function kheap type int structure)) ;; unknown type
+(define-extern new-dynamic-structure (function symbol type int structure)) ;; unknown type
 (define-extern merc-fragment-fp-data (function merc-fragment pointer))
 (define-extern ripple-wave-set type)
 (define-extern merc-ctrl type)
@@ -33563,10 +33633,9 @@
 (define-extern *merc-globals* symbol) ;; unknown type
 (define-extern *matrix-engine* (array handle)) ;; unknown type
 ;;(define-extern camera-eng object) ;; unknown type
-;;(define-extern *camera-engine* object) ;; unknown type
-;;(define-extern *background-draw-engine* object) ;; unknown type
+
+
 ;;(define-extern draw object) ;; unknown type
-;;(define-extern *debug-engine* object) ;; unknown type
 (define-extern *res-key-string* string) ;; unknown type
 (define-extern *res-static-buf* pointer) ;; unknown type
 (define-extern part-group-pointer? function)
@@ -33867,38 +33936,12 @@
 ;;(define-extern nav-max-users object) ;; unknown type
 ;;(define-extern nav-engine object) ;; unknown type
 ;;(define-extern nearest-y-threshold object) ;; unknown type
-(define-extern dgo-load-begin (function int int int int int))
-(define-extern dgo-load-continue function)
-(define-extern destroy-mem function)
-(define-extern str-load (function string int pointer int symbol))
-(define-extern *load-str-rpc* rpc-buffer-pair) ;; unknown type
-;;(define-extern *dgo-name* object) ;; unknown type
-(define-extern str-ambient-play (function string none))
-(define-extern *load-str-lock* symbol) ;; unknown type
-(define-extern str-load-status (function (pointer int32) symbol))
-(define-extern str-load-cancel (function none))
-(define-extern str-play-queue (function string none))
-(define-extern str-ambient-stop (function string none))
-(define-extern dgo-load-get-next function)
-(define-extern find-temp-buffer function)
-(define-extern str-play-kick (function none))
-(define-extern *load-dgo-rpc* rpc-buffer-pair) ;; unknown type
-(define-extern *que-str-lock* symbol) ;; unknown type
-(define-extern dgo-load-cancel function)
-(define-extern dgo-load-link function)
-;;(define-extern *dgo-time* object) ;; unknown type
-(define-extern str-play-async (function string int none))
-(define-extern str-play-stop (function string none))
-(define-extern *play-str-rpc* rpc-buffer-pair) ;; unknown type
-(define-extern string->sound-name function)
+
+
 ;;(define-extern complete object) ;; unknown type
 ;;(define-extern busy object) ;; unknown type
 ;;(define-extern link-begin object) ;; unknown type
-;;(define-extern *current-ramdisk-id* object) ;; unknown type
-(define-extern ramdisk-load function)
-;;(define-extern *ramdisk-rpc* object) ;; unknown type
-(define-extern ramdisk-sync function)
-;;(define-extern ramdisk-rpc-fill object) ;; unknown type
+
 (define-extern swap-sound-buffers function)
 (define-extern sound-group-stop function)
 (define-extern sound-set-ear-trans function)
@@ -34820,9 +34863,9 @@
 (define-extern save-boundary-cmd function)
 (define-extern command-get-int function)
 (define-extern check-boundary function)
-(define-extern load-state-want-vis function)
+(define-extern load-state-want-vis (function int none))
 (define-extern add-boundary-shader function)
-(define-extern load-state-want-levels function)
+(define-extern load-state-want-levels (function int int none))
 (define-extern lb-add-vtx-before function)
 (define-extern draw-boundary-polygon function)
 (define-extern load-boundary-from-template function)
@@ -34840,7 +34883,7 @@
 (define-extern lb-set-camera function)
 (define-extern draw-boundary-cap function)
 (define-extern lb-add function)
-(define-extern load-state-want-display-level function)
+(define-extern load-state-want-display-level (function int int none))
 (define-extern render-boundary function)
 (define-extern init-boundary-regs function)
 (define-extern lb-del function)
@@ -34956,7 +34999,7 @@
 (define-extern level-update-after-load function)
 (define-extern update-sound-banks function)
 (define-extern add-bsp-drawable function)
-;;(define-extern *print-login* object) ;; unknown type
+(define-extern *print-login* symbol) ;; unknown type
 ;;(define-extern link-resume object) ;; unknown type
 ;;(define-extern display-self object) ;; unknown type
 ;;(define-extern loading-done object) ;; unknown type
