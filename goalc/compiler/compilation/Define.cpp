@@ -112,7 +112,6 @@ void Compiler::set_bits_in_bitfield(int size,
   auto temp = fe->make_gpr(src->type());
   // mask value should be 1's everywhere except for the field so we can AND with it
   u64 mask_val = ~((((u64)1 << (u64)size) - (u64)1) << (u64)offset);
-  fmt::print("bits {} {} {:x}\n", size, offset, mask_val);
   env->emit(std::make_unique<IR_LoadConstant64>(temp, mask_val));
   // modify the original!
   env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, dst, temp));
