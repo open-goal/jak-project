@@ -13,6 +13,7 @@
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
 #include "StaticObject.h"
+#include "goalc/compiler/ConstantValue.h"
 
 class RegVal;
 class Env;
@@ -237,13 +238,16 @@ class AliasVal : public Val {
 
 class IntegerConstantVal : public Val {
  public:
-  IntegerConstantVal(TypeSpec ts, s64 value) : Val(std::move(ts)), m_value(value) {}
-  std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
+  IntegerConstantVal(TypeSpec ts, void* data, int size) : Val(std::move(ts)), m_value(data, size) {
+    assert(size == 8 || size == 16);
+  }
+
+  std::string print() const override { return m_value.print(); }
   RegVal* to_reg(Env* fe) override;
-  s64 value() const { return m_value; }
+  const ConstantValue& value() const { return m_value; }
 
  protected:
-  s64 m_value = -1;
+  ConstantValue m_value;
 };
 
 class FloatConstantVal : public Val {

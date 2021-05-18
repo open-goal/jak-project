@@ -89,9 +89,14 @@ const std::optional<emitter::Register>& RegVal::rlet_constraint() const {
 }
 
 RegVal* IntegerConstantVal::to_reg(Env* fe) {
-  auto rv = fe->make_gpr(coerce_to_reg_type(m_ts));
-  fe->emit(std::make_unique<IR_LoadConstant64>(rv, m_value));
-  return rv;
+  if (m_value.uses_gpr()) {
+    auto rv = fe->make_gpr(coerce_to_reg_type(m_ts));
+    fe->emit(std::make_unique<IR_LoadConstant64>(rv, m_value.value_64()));
+    return rv;
+  } else {
+    assert(false);
+    return nullptr;
+  }
 }
 
 RegVal* SymbolVal::to_reg(Env* fe) {

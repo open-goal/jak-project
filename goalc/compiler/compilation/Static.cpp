@@ -8,42 +8,6 @@
 #include "third-party/fmt/core.h"
 #include "common/goos/ParseHelpers.h"
 
-namespace {
-bool integer_fits(s64 in, int size, bool is_signed) {
-  switch (size) {
-    case 1:
-      if (is_signed) {
-        return in >= INT8_MIN && in <= INT8_MAX;
-      } else {
-        return in >= 0 && in <= UINT8_MAX;
-      }
-    case 2:
-      if (is_signed) {
-        return in >= INT16_MIN && in <= INT16_MAX;
-      } else {
-        return in >= 0 && in <= UINT16_MAX;
-      }
-    case 4:
-      if (is_signed) {
-        return in >= INT32_MIN && in <= INT32_MAX;
-      } else {
-        return in >= 0 && in <= UINT32_MAX;
-      }
-    case 8:
-      return true;
-    default:
-      assert(false);
-      return false;
-  }
-}
-
-u32 float_as_u32(float x) {
-  u32 result;
-  memcpy(&result, &x, 4);
-  return result;
-}
-}  // namespace
-
 /*!
  * Compile the fields of a static structure into the given StaticStructure*, applying an offset.
  * This can be used to generate an entire structure (set offset to 0), or to fill out an inline
@@ -170,7 +134,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       // we are not strict with the type checking here, as long as you give an "integer" and it
       // ends up fitting, it's okay.
       typecheck(form, TypeSpec("integer"), sr.typespec());
-      value = sr.constant_data();
+      value = sr.constant_u64();  // TODO
 
       if (!integer_fits(value, deref_info.load_size, deref_info.sign_extend)) {
         throw_compiler_error(form,
@@ -186,7 +150,6 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         assert(false);
       }
     } else if (is_structure(field_info.type) || is_pair(field_info.type)) {
-      // todo - rewrite this to correctly handle structures within structures.
       if (is_pair(field_info.type)) {
         assert(!field_info.field.is_inline());
       }
@@ -264,7 +227,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         throw_compiler_error(form, "Could not use {} for a float field", field_value.print());
       }
       typecheck(form, TypeSpec("float"), sr.typespec());
-      u64 value = sr.constant_data();
+      u64 value = sr.constant_u64();
       memcpy(structure->data.data() + field_offset, &value, sizeof(float));
     }
 
@@ -609,8 +572,8 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
         } else if (is_bitfield(ts)) {
           auto val = dynamic_cast<const IntegerConstantVal*>(
               compile_bitfield_definition(form, ts, constructor_args, false, env));
-          assert(val);
-          return StaticResult::make_constant_data(val->value(), val->type());
+          assert(val && val->value().uses_gpr());  // TODO
+          return StaticResult::make_constant_data(val->value().value_64(), val->type());
         } else if (is_structure(ts)) {
           return compile_new_static_structure(form, ts, constructor_args, env);
         } else {
@@ -682,11 +645,12 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
       assert(deref_info.stride == 4);
       structure->add_pointer_record(elt_offset, sr.reference(), sr.reference()->get_addr_offset());
     } else if (sr.is_constant_data()) {
-      if (!integer_fits(sr.constant_data(), deref_info.load_size, deref_info.sign_extend)) {
+      // TODO
+      if (!integer_fits(sr.constant_u64(), deref_info.load_size, deref_info.sign_extend)) {
         throw_compiler_error(form, "The integer {} doesn't fit in element {} of array of {}",
-                             sr.constant_data(), arg_idx, content_type.print());
+                             sr.constant_u64(), arg_idx, content_type.print());
       }
-      u64 data = sr.constant_data();
+      u64 data = sr.constant_u64();
       memcpy(structure->data.data() + elt_offset, &data, deref_info.load_size);
     } else {
       assert(false);
