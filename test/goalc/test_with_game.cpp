@@ -365,6 +365,15 @@ TEST_F(WithGameTests, TrickyBitField) {
                          get_test_pass_string("bitfield-tricky-access", 14));
 }
 
+TEST_F(WithGameTests, Bitfield128) {
+  runner.run_static_test(env, testCategory, "test-access-bitfield128.gc",
+                         {"-abcdbeef 77777777 66666666 12347890\n"
+                          "-abcdbeef 77777777 66666666 00000001\n"
+                          "-abcdbeef 77777777 00000002 00000001\n"
+                          "-abcdbeef 00000003 00000002 00000001\n"
+                          "00000004 00000003 00000002 00000001\n0\n"});
+}
+
 TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
 }

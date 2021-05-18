@@ -7,7 +7,6 @@
  * Fallback to_gpr if a more optimized one is not provided.
  */
 RegVal* Val::to_gpr(Env* fe) {
-  // TODO - handle 128-bit stuff here!
   auto rv = to_reg(fe);
   if (rv->ireg().reg_class == RegClass::GPR_64) {
     return rv;
@@ -231,20 +230,34 @@ RegVal* StackVarAddrVal::to_reg(Env* fe) {
 }
 
 std::string BitFieldVal::print() const {
-  return fmt::format("[bitfield sz {} off {} sx {} of {}]", m_size, m_offset, m_sign_extend,
-                     m_parent->print());
+  return fmt::format("[bitfield sz {} off {} sx {} of {} 128? {}]", m_size, m_offset, m_sign_extend,
+                     m_parent->print(), m_use_128);
 }
 
 RegVal* BitFieldVal::to_reg(Env* env) {
-  // first get the parent value
-  auto parent_reg = m_parent->to_gpr(env);
-
+  int start_bit = -1;
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto result = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::GPR_64);
-  env->emit(std::make_unique<IR_RegSet>(result, parent_reg));
+  RegVal* result = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::GPR_64);
 
-  int start_bit = m_offset;
-  int end_bit = m_offset + m_size;
+  // this first step gets the right 64-bits into a GPR that is also used as the result.
+  if (m_offset < 64) {
+    // accessing in the lower 64 bits, we can just get the value in a GPR.
+    start_bit = m_offset;
+    RegVal* gpr = m_parent->to_gpr(env);
+    env->emit(std::make_unique<IR_RegSet>(result, gpr));
+  } else {
+    // we need to get the value as a 128-bit integer
+    auto xmm = m_parent->to_reg(env);
+    assert(xmm->ireg().reg_class == RegClass::INT_128);
+    auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
+    env->emit_ir<IR_Int128Math3Asm>(true, xmm_temp, xmm, xmm, IR_Int128Math3Asm::Kind::PCPYUD);
+    env->emit_ir<IR_RegSet>(result, xmm_temp);
+    start_bit = m_offset - 64;
+  }
+
+  // this second step does up to 2 shifts to extract the bitfield and sign extend as needed.
+  int end_bit = start_bit + m_size;
+  assert(end_bit <= 64);  // should be checked by the type system.
   int epad = 64 - end_bit;
   assert(epad >= 0);
   int spad = start_bit;
