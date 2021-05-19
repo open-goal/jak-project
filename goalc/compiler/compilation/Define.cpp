@@ -248,7 +248,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
           src_in_reg, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
       return src_in_reg;
     } else {
-      // nope, the pointer to dereference is some compliated thing.
+      // nope, the pointer to dereference is some complicated thing.
       auto ti = m_ts.lookup_type(as_mem_deref->type());
       env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, 0, base->to_gpr(env),
                                                       ti->get_load_size()));

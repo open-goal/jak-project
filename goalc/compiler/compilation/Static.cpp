@@ -398,35 +398,83 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     return integer;
   } else {
     assert(allow_dynamic_construction);
-    assert(!use_128);
 
-    RegVal* integer_reg = integer->to_gpr(env);
+    if (use_128) {
+      auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(env);
+      auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(env);
+      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto rv = fe->make_ireg(type, RegClass::INT_128);
+      auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
-    for (auto& def : dynamic_defs) {
-      auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
-      if (!m_ts.tc(def.expected_type, field_val->type())) {
-        throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
-                             def.field_name, field_val->type().print(), def.expected_type.print());
+      for (auto& def : dynamic_defs) {
+        auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+        if (!m_ts.tc(def.expected_type, field_val->type())) {
+          throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
+                               def.field_name, field_val->type().print(),
+                               def.expected_type.print());
+        }
+
+        bool start_lo = def.field_offset < 64;
+        bool end_lo = def.field_offset + def.field_size <= 64;
+        assert(start_lo == end_lo);
+        assert(def.field_size <= 64);
+
+        int corrected_offset = def.field_offset;
+        if (!start_lo) {
+          corrected_offset -= 64;
+        }
+
+        int left_shift_amnt = 64 - def.field_size;
+        int right_shift_amnt = (64 - def.field_size) - corrected_offset;
+        assert(right_shift_amnt >= 0);
+
+        if (left_shift_amnt > 0) {
+          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val,
+                                                     left_shift_amnt));
+        }
+
+        if (right_shift_amnt > 0) {
+          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val,
+                                                     right_shift_amnt));
+        }
+
+        env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64,
+                                                   start_lo ? integer_lo : integer_hi, field_val));
       }
-      int left_shift_amnt = 64 - def.field_size;
-      int right_shift_amnt = (64 - def.field_size) - def.field_offset;
-      assert(right_shift_amnt >= 0);
 
-      if (left_shift_amnt > 0) {
-        env->emit(
-            std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val, left_shift_amnt));
+      fe->emit_ir<IR_RegSet>(xmm_temp, integer_lo);
+      fe->emit_ir<IR_RegSet>(rv, integer_hi);
+      fe->emit_ir<IR_Int128Math3Asm>(true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
+      return rv;
+    } else {
+      RegVal* integer_reg = integer->to_gpr(env);
+      for (auto& def : dynamic_defs) {
+        auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+        if (!m_ts.tc(def.expected_type, field_val->type())) {
+          throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
+                               def.field_name, field_val->type().print(),
+                               def.expected_type.print());
+        }
+        int left_shift_amnt = 64 - def.field_size;
+        int right_shift_amnt = (64 - def.field_size) - def.field_offset;
+        assert(right_shift_amnt >= 0);
+
+        if (left_shift_amnt > 0) {
+          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val,
+                                                     left_shift_amnt));
+        }
+
+        if (right_shift_amnt > 0) {
+          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val,
+                                                     right_shift_amnt));
+        }
+
+        env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, integer_reg, field_val));
       }
 
-      if (right_shift_amnt > 0) {
-        env->emit(
-            std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val, right_shift_amnt));
-      }
-
-      env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, integer_reg, field_val));
+      integer_reg->set_type(type);
+      return integer_reg;
     }
-
-    integer_reg->set_type(type);
-    return integer_reg;
   }
 }
 

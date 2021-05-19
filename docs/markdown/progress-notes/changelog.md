@@ -153,3 +153,6 @@
 - Fixed a bug where a let/immediate lambda with an argument with type of child of int128/uint128 would end up in a 64 bit register.
 - Support accessing and setting fields of a 128-bit bitfield type.
 - Fixed a bug where the mask constant for clearing a bitfield was not computed correctly
+- Support 128-bit bitfields inside of static structure
+- Support 128-bit bitfield constants
+- Support dynamic construction of 128-bit bitfield values

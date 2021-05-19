@@ -94,8 +94,17 @@ RegVal* IntegerConstantVal::to_reg(Env* fe) {
     fe->emit(std::make_unique<IR_LoadConstant64>(rv, m_value.value_64()));
     return rv;
   } else {
-    assert(false);
-    return nullptr;
+    auto rv = fe->make_ireg(m_ts, RegClass::INT_128);
+    auto gpr = fe->make_gpr(TypeSpec("object"));
+    auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
+
+    fe->emit_ir<IR_LoadConstant64>(gpr, m_value.value_128_lo());
+    fe->emit_ir<IR_RegSet>(xmm_temp, gpr);
+    fe->emit_ir<IR_LoadConstant64>(gpr, m_value.value_128_hi());
+    fe->emit_ir<IR_RegSet>(rv, gpr);
+    fe->emit_ir<IR_Int128Math3Asm>(true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
+
+    return rv;
   }
 }
 
