@@ -505,7 +505,8 @@ Val* Compiler::get_field_of_bitfield(const BitFieldType* type,
   Val* result = nullptr;
   auto bitfield_info = m_ts.lookup_bitfield_info(type->get_name(), field_name);
   result = fe->alloc_val<BitFieldVal>(bitfield_info.result_type, object, bitfield_info.offset,
-                                      bitfield_info.size, bitfield_info.sign_extend);
+                                      bitfield_info.size, bitfield_info.sign_extend,
+                                      type->get_load_size() == 16);
   return result;
 }
 
@@ -582,7 +583,8 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       if (bitfield_type) {
         auto bitfield_info = m_ts.lookup_bitfield_info(type_info->get_name(), field_name);
         result = fe->alloc_val<BitFieldVal>(bitfield_info.result_type, result, bitfield_info.offset,
-                                            bitfield_info.size, bitfield_info.sign_extend);
+                                            bitfield_info.size, bitfield_info.sign_extend,
+                                            type_info->get_load_size() == 16);
         continue;
       }
     }
@@ -745,7 +747,7 @@ Val* Compiler::compile_print_type(const goos::Object& form, const goos::Object& 
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
   auto result = compile(args.unnamed.at(0), env)->to_reg(env);
-  fmt::print("[TYPE] {}\n", result->type().print());
+  fmt::print("[TYPE] {} {}\n", result->type().print(), result->print());
   return result;
 }
 
@@ -1107,7 +1109,7 @@ u64 Compiler::enum_lookup(const goos::Object& form,
           return;
         }
       }
-      value |= (1 << kv->second);
+      value |= ((u64)1 << (u64)kv->second);
     });
 
     return value;

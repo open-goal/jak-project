@@ -5,9 +5,6 @@
  * The GOAL Value. A value represents a place (where the value is stored) and a type.
  */
 
-#ifndef JAK_VAL_H
-#define JAK_VAL_H
-
 #include <utility>
 #include <string>
 #include <stdexcept>
@@ -16,6 +13,7 @@
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
 #include "StaticObject.h"
+#include "goalc/compiler/ConstantValue.h"
 
 class RegVal;
 class Env;
@@ -240,13 +238,17 @@ class AliasVal : public Val {
 
 class IntegerConstantVal : public Val {
  public:
-  IntegerConstantVal(TypeSpec ts, s64 value) : Val(std::move(ts)), m_value(value) {}
-  std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
+  IntegerConstantVal(TypeSpec ts, const void* data, int size)
+      : Val(std::move(ts)), m_value(data, size) {
+    assert(size == 8 || size == 16);
+  }
+
+  std::string print() const override { return std::string("integer-constant-") + m_value.print(); }
   RegVal* to_reg(Env* fe) override;
-  s64 value() const { return m_value; }
+  const ConstantValue& value() const { return m_value; }
 
  protected:
-  s64 m_value = -1;
+  ConstantValue m_value;
 };
 
 class FloatConstantVal : public Val {
@@ -261,12 +263,13 @@ class FloatConstantVal : public Val {
 
 class BitFieldVal : public Val {
  public:
-  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend)
+  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend, bool use128)
       : Val(std::move(ts)),
         m_parent(parent),
         m_offset(offset),
         m_size(size),
-        m_sign_extend(sign_extend) {
+        m_sign_extend(sign_extend),
+        m_use_128(use128) {
     m_is_settable = parent->settable();
   }
   std::string print() const override;
@@ -274,6 +277,7 @@ class BitFieldVal : public Val {
   int offset() const { return m_offset; }
   int size() const { return m_size; }
   bool sext() const { return m_sign_extend; }
+  bool use_128_bit() const { return m_use_128; }
   Val* parent() { return m_parent; }
 
  protected:
@@ -281,6 +285,5 @@ class BitFieldVal : public Val {
   int m_offset = -1;
   int m_size = -1;
   bool m_sign_extend = false;
+  bool m_use_128 = false;
 };
-
-#endif  // JAK_VAL_H

@@ -64,6 +64,15 @@ class Compiler {
   goos::Object expand_macro_completely(const goos::Object& src, Env* env);
 
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
+  void set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
+
+  void set_bits_in_bitfield(int size,
+                            int offset,
+                            RegVal* dst,
+                            RegVal* src,
+                            FunctionEnv* fe,
+                            Env* env);
+
   Val* do_set(const goos::Object& form, Val* dst, RegVal* src_in_reg, Val* src, Env* env);
   Val* compile_goos_macro(const goos::Object& o,
                           const goos::Object& macro_obj,
@@ -71,6 +80,7 @@ class Compiler {
                           Env* env);
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
+  Val* compile_integer(const U128& value, Env* env);
   Val* compile_integer(s64 value, Env* env);
   Val* compile_char(const goos::Object& code, Env* env);
   Val* compile_float(const goos::Object& code, Env* env);

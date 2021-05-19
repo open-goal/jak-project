@@ -475,6 +475,9 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     assert(pto);
     auto new_type = std::make_unique<BitFieldType>(
         parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
+    auto parent_value = dynamic_cast<ValueType*>(pto);
+    assert(parent_value);
+    new_type->inherit(parent_value);
     new_type->set_runtime_type(pto->get_runtime_name());
     auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;

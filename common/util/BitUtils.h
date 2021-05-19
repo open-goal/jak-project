@@ -2,8 +2,8 @@
 
 #include <optional>
 #include "common/util/assert.h"
-
 #include "common/util/Range.h"
+#include "common/common_types.h"
 
 constexpr int BITS_PER_BYTE = 8;
 template <typename T>
@@ -61,3 +61,6 @@ std::optional<int> get_power_of_two(T in) {
     return std::nullopt;
   }
 }
+
+bool integer_fits(s64 in, int size, bool is_signed);
+u32 float_as_u32(float x);

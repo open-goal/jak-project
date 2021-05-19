@@ -171,8 +171,8 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
         auto val = compile_error_guard(args.unnamed.at(i), env);
         auto val_as_int = dynamic_cast<IntegerConstantVal*>(val);
         int power_of_two = -1;
-        if (val_as_int && val_as_int->value() > 0) {
-          auto p = get_power_of_two(val_as_int->value());
+        if (val_as_int && val_as_int->value().uses_gpr() && val_as_int->value().value_64() > 0) {
+          auto p = get_power_of_two(val_as_int->value().value_64());
           if (p) {
             power_of_two = *p;
           }
@@ -390,8 +390,8 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
       auto val = compile_error_guard(args.unnamed.at(1), env);
       auto val_as_int = dynamic_cast<IntegerConstantVal*>(val);
       int power_of_two = -1;
-      if (val_as_int && val_as_int->value() > 0) {
-        auto p = get_power_of_two(val_as_int->value());
+      if (val_as_int && val_as_int->value().uses_gpr() && val_as_int->value().value_64() > 0) {
+        auto p = get_power_of_two(val_as_int->value().value_64());
         if (p) {
           power_of_two = *p;
         }
