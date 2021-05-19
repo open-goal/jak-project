@@ -80,6 +80,7 @@ class Compiler {
                           Env* env);
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
+  Val* compile_integer(const U128& value, Env* env);
   Val* compile_integer(s64 value, Env* env);
   Val* compile_char(const goos::Object& code, Env* env);
   Val* compile_float(const goos::Object& code, Env* env);

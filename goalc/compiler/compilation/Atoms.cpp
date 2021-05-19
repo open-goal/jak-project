@@ -311,6 +311,11 @@ Val* Compiler::compile_integer(s64 value, Env* env) {
   return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), &value, 8);
 }
 
+Val* Compiler::compile_integer(const U128& value, Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), &value, 16);
+}
+
 /*!
  * Get a SymbolVal representing a GOAL symbol object.
  */

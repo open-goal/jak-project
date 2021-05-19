@@ -238,11 +238,12 @@ class AliasVal : public Val {
 
 class IntegerConstantVal : public Val {
  public:
-  IntegerConstantVal(TypeSpec ts, void* data, int size) : Val(std::move(ts)), m_value(data, size) {
+  IntegerConstantVal(TypeSpec ts, const void* data, int size)
+      : Val(std::move(ts)), m_value(data, size) {
     assert(size == 8 || size == 16);
   }
 
-  std::string print() const override { return m_value.print(); }
+  std::string print() const override { return std::string("integer-constant-") + m_value.print(); }
   RegVal* to_reg(Env* fe) override;
   const ConstantValue& value() const { return m_value; }
 

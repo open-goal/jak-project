@@ -130,6 +130,11 @@ class StaticResult {
     return m_constant_data->value_64();
   }
 
+  const ConstantValue& constant() const {
+    assert(m_constant_data.has_value());
+    return *m_constant_data;
+  }
+
  private:
   // used for all types
   TypeSpec m_ts;

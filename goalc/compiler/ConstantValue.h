@@ -3,20 +3,28 @@
 #include <string>
 #include "common/util/assert.h"
 #include "common/common_types.h"
+#include "common/util/BitUtils.h"
 #include "third-party/fmt/core.h"
+
+struct U128 {
+  U128() = default;
+  U128(u64 _lo, u64 _hi) : lo(_lo), hi(_hi) {}
+  u64 lo = 0;
+  u64 hi = 0;
+};
 
 class ConstantValue {
  public:
-  ConstantValue(void* data, int size) : m_size(size) {
+  ConstantValue(const void* data, int size) : m_size(size) {
     assert(size == 8 || size == 16);
     memcpy(m_value, data, size);
   }
 
   std::string print() const {
     if (m_size == 8) {
-      return "integer-constant-" + std::to_string(value_64());
+      return std::to_string(value_64());
     } else {
-      return fmt::format("integer-constant128-0x{:08x}{:08x}", value_128_hi(), value_128_lo());
+      return fmt::format("0x{:08x}{:08x}", value_128_hi(), value_128_lo());
     }
   }
 
@@ -50,6 +58,28 @@ class ConstantValue {
    * Okay to put this in a gpr?
    */
   bool uses_gpr() const { return m_size == 8; }
+
+  /*!
+   * Try to copy data to destination.
+   */
+  bool copy_to(void* destination, int size, bool is_signed) const {
+    if (m_size == 8) {
+      if (!integer_fits(value_64(), size, is_signed)) {
+        return false;
+      }
+      memcpy(destination, m_value, size);
+      return true;
+    } else if (m_size == 16) {
+      if (size != 16) {
+        return false;
+      }
+      memcpy(destination, m_value, 16);
+      return true;
+    } else {
+      assert(false);
+    }
+    return false;
+  }
 
  protected:
   u8 m_value[16] = {0};
