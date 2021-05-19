@@ -938,11 +938,7 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
   // NOTE - initialize any relevant registers in the body first
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
-      // TODO - a good idea to move this to a macro like initialize-constant-vector! or something.
-      // There could be some clever way to do this initialization that's faster that a normal static
-      // load.
-      rletForm.push_back(
-          pretty_print::to_symbol("(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))"));
+      rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
     }
   }
 

@@ -8,6 +8,7 @@
 #include "defenum.h"
 #include "deftype.h"
 #include "third-party/fmt/core.h"
+#include "common/util/BitUtils.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {
@@ -28,34 +29,6 @@ const goos::Object* cdr(const goos::Object* x) {
 
 bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSystem* ts) {
   return ts->tc(ts->make_typespec(expected), actual);
-}
-
-bool integer_fits(s64 in, int size, bool is_signed) {
-  switch (size) {
-    case 1:
-      if (is_signed) {
-        return in >= INT8_MIN && in <= INT8_MAX;
-      } else {
-        return in >= 0 && in <= UINT8_MAX;
-      }
-    case 2:
-      if (is_signed) {
-        return in >= INT16_MIN && in <= INT16_MAX;
-      } else {
-        return in >= 0 && in <= UINT16_MAX;
-      }
-    case 4:
-      if (is_signed) {
-        return in >= INT32_MIN && in <= INT32_MAX;
-      } else {
-        return in >= 0 && in <= UINT32_MAX;
-      }
-    case 8:
-      return true;
-    default:
-      assert(false);
-      return false;
-  }
 }
 
 std::string symbol_string(const goos::Object& obj) {

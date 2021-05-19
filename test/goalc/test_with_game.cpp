@@ -365,6 +365,19 @@ TEST_F(WithGameTests, TrickyBitField) {
                          get_test_pass_string("bitfield-tricky-access", 14));
 }
 
+TEST_F(WithGameTests, Bitfield128) {
+  runner.run_static_test(env, testCategory, "test-access-bitfield128.gc",
+                         {"-abcdbeef 77777777 66666666 12347890\n"
+                          "-abcdbeef 77777777 66666666 00000001\n"
+                          "-abcdbeef 77777777 00000002 00000001\n"
+                          "-abcdbeef 00000003 00000002 00000001\n"
+                          "00000004 00000003 00000002 00000001\n"
+                          "12341234 00000007 00000666 -deadbeef\n"
+                          "12124545 -92929292 78787878 23232323\n"
+                          "00009878 00003333 00002222 00001212\n"
+                          "0\n"});
+}
+
 TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
 }
@@ -711,6 +724,14 @@ TEST_F(WithGameTests, Matrix) {
                           "\t[    -94.0000] [     86.0000] [    172.0000] [      1.0000]\n"
                           "\t[   -103.0000] [     95.0000] [    190.0000] [      1.0000]\n"
                           "\t[      0.0000] [      0.0000] [      0.0000] [      0.0000]\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, WeirdMultiply) {
+  runner.run_static_test(env, testCategory, "test-weird-multiplies.gc",
+                         {"2 100000002\n"
+                          "100000000 100000000\n"
+                          "55555552 -3 7ffffffffffffffb -5\n"
                           "0\n"});
 }
 

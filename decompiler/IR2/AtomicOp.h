@@ -636,12 +636,10 @@ class CallOp : public AtomicOp {
   void collect_vars(RegAccessSet& vars) const override;
   const std::vector<RegisterAccess>& arg_vars() const { return m_arg_vars; }
   RegisterAccess function_var() const { return m_function_var; }
-  bool is_method() const { return m_is_virtual_method; }
 
  protected:
   TypeSpec m_call_type;
   bool m_call_type_set = false;
-  bool m_is_virtual_method = false;
 
   std::vector<RegisterAccess> m_arg_vars;
   RegisterAccess m_function_var;

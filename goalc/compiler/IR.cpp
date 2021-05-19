@@ -491,6 +491,8 @@ std::string IR_IntegerMath::print() {
       return fmt::format("imul64 {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::IDIV_32:
       return fmt::format("idiv {}, {}", m_dest->print(), m_arg->print());
+    case IntegerMathKind::UDIV_32:
+      return fmt::format("udiv {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::IMOD_32:
       return fmt::format("imod {}, {}", m_dest->print(), m_arg->print());
     case IntegerMathKind::SARV_64:
@@ -528,7 +530,8 @@ RegAllocInstr IR_IntegerMath::to_rai() {
     rai.read.push_back(m_arg->ireg());
   }
 
-  if (m_kind == IntegerMathKind::IDIV_32 || m_kind == IntegerMathKind::IMOD_32) {
+  if (m_kind == IntegerMathKind::IDIV_32 || m_kind == IntegerMathKind::IMOD_32 ||
+      m_kind == IntegerMathKind::UDIV_32) {
     rai.exclude.emplace_back(emitter::RDX);
   }
   return rai;
@@ -595,6 +598,12 @@ void IR_IntegerMath::do_codegen(emitter::ObjectGenerator* gen,
     case IntegerMathKind::IDIV_32: {
       gen->add_instr(IGen::cdq(), irec);
       gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
+    } break;
+    case IntegerMathKind::UDIV_32: {
+      // zero extend, not sign extend to avoid overflow
+      gen->add_instr(IGen::xor_gpr64_gpr64(Register(RDX), Register(RDX)), irec);
+      gen->add_instr(IGen::unsigned_div_gpr32(get_reg(m_arg, allocs, irec)), irec);
       gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
     } break;
     case IntegerMathKind::IMOD_32: {

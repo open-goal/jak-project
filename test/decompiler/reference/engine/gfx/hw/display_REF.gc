@@ -53,7 +53,7 @@
   (set! (-> env smode2) (new 'static 'gs-smode2 :int #x1 :ffmd #x1))
   (set!
    (-> env dspfb)
-   (new 'static 'gs-display-fb :psm psm :fbw (sar width 6) :fbp fbp)
+   (new 'static 'gs-display-fb :psm psm :fbw (/ width 64) :fbp fbp)
    )
   (set!
    (-> env display)
@@ -61,7 +61,7 @@
     :dw #x9ff
     :dy (+ dy 50)
     :dx (+ (* dx (/ 2560 width)) 652)
-    :dh (+ (shl height 1) -1)
+    :dh (+ (* height 2) -1)
     :magh (+ (/ (+ width 2559) width) -1)
     )
    )
@@ -83,7 +83,7 @@
   (set! (-> env frame1addr) (gs-reg64 frame-1))
   (set!
    (-> env frame1)
-   (new 'static 'gs-frame :fbw (sar width 6) :psm (logand psm 15) :fbp fbp)
+   (new 'static 'gs-frame :fbw (/ width 64) :psm (logand psm 15) :fbp fbp)
    )
   (set! (-> env dtheaddr) (gs-reg64 dthe))
   (cond
@@ -121,7 +121,7 @@
    (-> env xyoffset1)
    (new 'static 'gs-xy-offset
     :ofx #x7000
-    :ofy (shl (-> *video-parms* screen-miny) 4)
+    :ofy (* (-> *video-parms* screen-miny) 16)
     )
    )
   (set! (-> env scissor1addr) (gs-reg64 scissor-1))
@@ -141,8 +141,8 @@
   (set!
    (-> env xyoffset1)
    (new 'static 'gs-xy-offset
-    :ofx (shl (- x (the-as int (shr (the-as int (+ (the-as uint (-> env scissor1 scax1)) (the-as uint 1))) 1))) 4)
-    :ofy (+ (shl (- y (the-as int (shr (the-as int (+ (the-as uint (-> env scissor1 scay1)) (the-as uint 1))) 1))) 4) (if (zero? arg3) 0 8))
+    :ofx (* (- x (the-as int (shr (the-as int (+ (the-as uint (-> env scissor1 scax1)) (the-as uint 1))) 1))) 16)
+    :ofy (+ (* (- y (the-as int (shr (the-as int (+ (the-as uint (-> env scissor1 scay1)) (the-as uint 1))) 1))) 16) (if (zero? arg3) 0 8))
     )
    )
   env
@@ -283,7 +283,7 @@
 
 ;; definition for method 11 of type profile-bar
 (defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
-  (if *debug-segment*
+  (when *debug-segment*
    (let ((new-frame (-> obj data (-> obj profile-frame-count))))
     (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
     (set! (-> new-frame name) name)
@@ -341,7 +341,7 @@
    )
   (let ((block-idx 1)
         (block-count (-> obj profile-frame-count))
-        (left (shl *profile-x* 4))
+        (left (* *profile-x* 16))
         (end-time 0)
         (worst-time-cache (new 'static 'array uint32 2 #x0 #x0))
         )
@@ -355,10 +355,7 @@
            )
      (set!
       (-> direct-tag dma)
-      (new 'static 'dma-tag
-       :id (dma-tag-id cnt)
-       :qwc (+ (shl block-count 1) -1)
-       )
+      (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (+ (* block-count 2) -1))
       )
      (set! (-> direct-tag vif0) (new 'static 'vif-tag))
      (set!
@@ -366,7 +363,7 @@
       (new 'static 'vif-tag
        :cmd (vif-cmd direct)
        :msk #x1
-       :imm (+ (shl block-count 1) -1)
+       :imm (+ (* block-count 2) -1)
        )
       )
      (set! (-> t1-0 base) (&+ (the-as pointer direct-tag) 16))
@@ -410,7 +407,7 @@
         (-> (the-as (pointer gs-xyzf) t3-8) 2)
         (new 'static 'gs-xyzf
          :z #x3fffff
-         :y (shl (+ *profile-y* screen-y) 4)
+         :y (* (+ *profile-y* screen-y) 16)
          :x left
          )
         )
@@ -421,7 +418,7 @@
        )
       (set!
        left
-       (shl
+       (*
         (+
          *profile-x*
          (the-as
@@ -432,7 +429,7 @@
            )
           )
          )
-        4
+        16
         )
        )
       )
@@ -443,7 +440,7 @@
        (-> (the-as (pointer gs-xyzf) t2-8) 0)
        (new 'static 'gs-xyzf
         :z #x3fffff
-        :y (shl (+ (+ *profile-y* screen-y) *profile-h*) 4)
+        :y (* (+ (+ *profile-y* screen-y) *profile-h*) 16)
         :x left
         )
        )
@@ -573,21 +570,21 @@
      )
     (set!
      (-> (the-as (pointer gs-xyzf) gif-buf) 2)
-     (new 'static 'gs-xyzf :z #x3fffff :y (shl draw-y 4) :x (shl draw-x 4))
+     (new 'static 'gs-xyzf :z #x3fffff :y (* draw-y 16) :x (* draw-x 16))
      )
     (set!
      (-> (the-as (pointer gs-xyzf) gif-buf) 3)
      (new 'static 'gs-xyzf
       :z #x3fffff
-      :y (shl (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 4)
-      :x (shl (max 1792 (min 2304 (+ draw-x draw-w))) 4)
+      :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
+      :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
       )
      )
     (set! (-> a2-4 base) (&+ gif-buf 32))
     )
    (let
     ((total-qwc
-      (sar (&+ (- -16 (the-as int (the-as pointer end-dma))) (-> buf base)) 4)
+      (/ (&+ (- -16 (the-as int (the-as pointer end-dma))) (-> buf base)) 16)
       )
      )
     (cond
@@ -676,7 +673,7 @@
      )
     (set!
      (-> (the-as (pointer gs-xyzf) gif-buf) 2)
-     (new 'static 'gs-xyzf :y (shl draw-y 4) :x (shl draw-x 4))
+     (new 'static 'gs-xyzf :y (* draw-y 16) :x (* draw-x 16))
      )
     (set!
      (-> (the-as (pointer gs-rgbaq) gif-buf) 3)
@@ -685,8 +682,8 @@
     (set!
      (-> (the-as (pointer gs-xyzf) gif-buf) 4)
      (new 'static 'gs-xyzf
-      :y (shl draw-y 4)
-      :x (shl (max 1792 (min 2304 (+ draw-x draw-w))) 4)
+      :y (* draw-y 16)
+      :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
       )
      )
     (set!
@@ -696,8 +693,8 @@
     (set!
      (-> (the-as (pointer gs-xyzf) gif-buf) 6)
      (new 'static 'gs-xyzf
-      :y (shl (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 4)
-      :x (shl draw-x 4)
+      :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
+      :x (* draw-x 16)
       )
      )
     (set!
@@ -707,14 +704,14 @@
     (set!
      (-> (the-as (pointer gs-xyzf) gif-buf) 8)
      (new 'static 'gs-xyzf
-      :y (shl (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 4)
-      :x (shl (max 1792 (min 2304 (+ draw-x draw-w))) 4)
+      :y (* (max (min (+ draw-y draw-h) (-> *video-parms* screen-maxy)) (-> *video-parms* screen-miny)) 16)
+      :x (* (max 1792 (min 2304 (+ draw-x draw-w))) 16)
       )
      )
     (set! (-> (the-as (pointer uint64) gif-buf) 9) (the-as uint 0))
     (set! (-> t0-2 base) (&+ gif-buf 80))
     )
-   (let ((total-qwc (sar (&+ (- -16 (the-as int end-dma)) (-> buf base)) 4)))
+   (let ((total-qwc (/ (&+ (- -16 (the-as int end-dma)) (-> buf base)) 16)))
     (cond
      ((nonzero? total-qwc)
       (set!
@@ -794,7 +791,7 @@
 (defun
   set-display-gs-state
   ((dma-buf dma-buffer) (fbp int) (scx int) (scy int) (fb-msk int) (psm int))
-  (let ((fbw (sar (+ scx 63) 6)))
+  (let ((fbw (/ (+ scx 63) 64)))
    (let* ((v1-1 dma-buf)
           (dma (the-as dma-packet (-> v1-1 base)))
           )
@@ -886,7 +883,7 @@
    (off-x int)
    (off-y int)
    )
-  (let ((fbw (sar (+ width 63) 6)))
+  (let ((fbw (/ (+ width 63) 64)))
    (let* ((v1-1 dma-buf)
           (dma (the-as dma-packet (-> v1-1 base)))
           )
@@ -935,7 +932,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 1) (gs-reg64 scissor-1))
     (set!
      (-> (the-as (pointer gs-xy-offset) gif-data) 2)
-     (new 'static 'gs-xy-offset :ofx (shl off-x 4) :ofy (shl off-y 4))
+     (new 'static 'gs-xy-offset :ofx (* off-x 16) :ofy (* off-y 16))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 3) (gs-reg64 xyoffset-1))
     (set!
@@ -970,7 +967,7 @@
 ;; INFO: Return type mismatch display vs none.
 (defun reset-display-gs-state ((disp display) (dma-buf dma-buffer) (oddeven int))
   (let* ((onscreen (-> disp on-screen))
-         (hoff (shl oddeven 3))
+         (hoff (* oddeven 8))
          (fbp (-> disp frames onscreen draw frame1 fbp))
          )
    (let* ((a3-1 dma-buf)
@@ -1024,7 +1021,7 @@
      (-> (the-as (pointer gs-xy-offset) gif-data) 2)
      (new 'static 'gs-xy-offset
       :ofx #x7000
-      :ofy (+ (shl (-> *video-parms* screen-miny) 4) hoff)
+      :ofy (+ (* (-> *video-parms* screen-miny) 16) hoff)
       )
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 3) (gs-reg64 xyoffset-1))
@@ -1064,7 +1061,3 @@
 
 ;; failed to figure out what this is:
 (allocate-dma-buffers *display*)
-
-
-
-

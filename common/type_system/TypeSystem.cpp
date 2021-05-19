@@ -777,7 +777,7 @@ void TypeSystem::add_builtin_types() {
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
   // the type.  Dynamic structures use new-dynamic-structure, which is used exactly once ever.
-  add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "structure"));
+  add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "_type_"));
   // structure_type is a field-less StructureType, so we have to do this to match the runtime.
   //  structure_type->override_size_in_memory(4);
 
@@ -1322,6 +1322,14 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
         "type is {} bits)\n",
         type->get_name(), field_name, field_size + offset, type->get_load_size() * 8);
   }
+
+  // 128-bit bitfields have the limitation that fields cannot cross the 64-bit boundary.
+  if (offset < 64 && offset + field_size > 64) {
+    throw_typesystem_error(
+        "Type {}'s bitfield {} will cross bit 64, which is not permitted. Range [{}, {})",
+        type->get_name(), field_name, offset, offset + field_size);
+  }
+
   BitField field(field_type, field_name, offset, field_size);
   type->m_fields.push_back(field);
 }

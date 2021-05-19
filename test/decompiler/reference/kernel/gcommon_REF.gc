@@ -227,7 +227,7 @@
 ;; definition for method 5 of type type
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of type ((obj type))
-  (the-as int (logand #xfffffff0 (+ (shl (-> obj allocated-length) 2) 43)))
+  (the-as int (logand #xfffffff0 (+ (* (-> obj allocated-length) 4) 43)))
   )
 
 ;; definition for function basic-type?
@@ -893,7 +893,7 @@
 ;; Used lq/sq
 (defun qmem-copy<-! ((dst pointer) (src pointer) (size int))
   (let ((result dst))
-   (let ((qwc (sar (+ size 15) 4)))
+   (let ((qwc (/ (+ size 15) 16)))
     (while (nonzero? qwc)
      (+! qwc -1)
      (set!
@@ -912,9 +912,9 @@
 ;; Used lq/sq
 (defun qmem-copy->! ((dst pointer) (src pointer) (size int))
   (let ((result dst))
-   (let* ((qwc (sar (+ size 15) 4))
-          (dst-ptr (&+ dst (shl qwc 4)))
-          (src-ptr (&+ src (shl qwc 4)))
+   (let* ((qwc (/ (+ size 15) 16))
+          (dst-ptr (&+ dst (* qwc 16)))
+          (src-ptr (&+ src (* qwc 16)))
           )
     (while (nonzero? qwc)
      (+! qwc -1)
@@ -995,15 +995,15 @@
 
 ;; definition (debug) for function mem-print
 (defun-debug mem-print ((data (pointer uint32)) (word-count int))
-  (dotimes (current-qword (sar word-count 2))
+  (dotimes (current-qword (/ word-count 4))
    (format
     0
     "~X: ~X ~X ~X ~X~%"
-    (&-> data (shl current-qword 2))
-    (-> data (shl current-qword 2))
-    (-> data (+ (shl current-qword 2) 1))
-    (-> data (+ (shl current-qword 2) 2))
-    (-> data (+ (shl current-qword 2) 3))
+    (&-> data (* current-qword 4))
+    (-> data (* current-qword 4))
+    (-> data (+ (* current-qword 4) 1))
+    (-> data (+ (* current-qword 4) 2))
+    (-> data (+ (* current-qword 4) 3))
     )
    )
   #f

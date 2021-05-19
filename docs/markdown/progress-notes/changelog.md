@@ -146,3 +146,13 @@
 - The `new` method of basic now has a method return type of `_type_`. Previously it was `basic`, meaning you always needed to declare `new` with the right type.
 - Using `(new` and `(the binteger` inside static pair definitions is now supported
 - Invalid static pairs now have nice errors instead of exiting the compiler
+- Added unsigned division (previously signed division was used for unsigned numbers)
+- Use shifts (64-bit) for positive power of two multiply and divide. Otherwise use 32-bit. This matches GOAL.
+- Allow setting a 64-bit or less memory location from a 128-bit variable (upper bits are discarded).
+- It is now a compiler error to declare a bitfield type where a field crosses bit 64.
+- Fixed a bug where a let/immediate lambda with an argument with type of child of int128/uint128 would end up in a 64 bit register.
+- Support accessing and setting fields of a 128-bit bitfield type.
+- Fixed a bug where the mask constant for clearing a bitfield was not computed correctly
+- Support 128-bit bitfields inside of static structure
+- Support 128-bit bitfield constants
+- Support dynamic construction of 128-bit bitfield values

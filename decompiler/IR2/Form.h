@@ -960,6 +960,7 @@ class GenericElement : public FormElement {
   const GenericOperator& op() const { return m_head; }
   GenericOperator& op() { return m_head; }
   const std::vector<Form*>& elts() const { return m_elts; }
+  std::vector<Form*>& elts() { return m_elts; }
 
  private:
   GenericOperator m_head;

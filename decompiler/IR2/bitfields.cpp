@@ -218,23 +218,49 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
                                                     const BitFieldType* type,
                                                     const TypeSystem& ts) {
   // (shr (shl arg1 59) 44) for example
-  auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHR),
-                             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
-                                          {Matcher::any(0), Matcher::any_integer(1)}),
-                              Matcher::any_integer(2)});
-  auto mr = match(matcher, strip_int_or_uint_cast(form));
-  if (mr.matched) {
-    auto value = mr.maps.forms.at(0);
-    int left = mr.maps.ints.at(1);
-    int right = mr.maps.ints.at(2);
-    int size = 64 - left;
-    int offset = left - right;
-    auto& f = find_field(ts, type, offset, size, {});
-    BitFieldDef def;
-    def.value = value;
-    def.field_name = f.name();
-    def.is_signed = false;  // we don't know.
-    return def;
+  {
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHR),
+                               {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                            {Matcher::any(0), Matcher::any_integer(1)}),
+                                Matcher::any_integer(2)});
+    auto mr = match(matcher, strip_int_or_uint_cast(form));
+    if (mr.matched) {
+      auto value = mr.maps.forms.at(0);
+      int left = mr.maps.ints.at(1);
+      int right = mr.maps.ints.at(2);
+      int size = 64 - left;
+      int offset = left - right;
+      auto& f = find_field(ts, type, offset, size, {});
+      BitFieldDef def;
+      def.value = value;
+      def.field_name = f.name();
+      def.is_signed = false;  // we don't know.
+      return def;
+    }
+  }
+
+  {
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::DIVISION),
+                               {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                            {Matcher::any(0), Matcher::any_integer(1)}),
+                                Matcher::any_integer(2)});
+    auto mr = match(matcher, strip_int_or_uint_cast(form));
+    if (mr.matched) {
+      auto power_of_two = get_power_of_two(mr.maps.ints.at(2));
+      if (power_of_two) {
+        auto value = mr.maps.forms.at(0);
+        int left = mr.maps.ints.at(1);
+        int right = *power_of_two;
+        int size = 64 - left;
+        int offset = left - right;
+        auto& f = find_field(ts, type, offset, size, {});
+        BitFieldDef def;
+        def.value = value;
+        def.field_name = f.name();
+        def.is_signed = false;  // we don't know.
+        return def;
+      }
+    }
   }
 
   // also possible to omit the shr if it would be zero:
@@ -267,7 +293,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                               const TypeSystem& ts,
                                               FormPool& pool,
-                                              const Env&) {
+                                              const Env& env) {
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // for left/right shift combo to get a field.
     m_steps.push_back(step);
@@ -384,7 +410,12 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     assert(field);
 
     auto val = get_bitfield_initial_set(step.value, as_bitfield, ts);
-    assert(val);
+
+    if (!val) {
+      throw std::runtime_error(
+          fmt::format("Failed to get_bitfield_initial_set: {}\n", step.value->to_string(env)));
+    }
+
     if (val->field_name != field->name()) {
       throw std::runtime_error("Incompatible bitfield set");
     }
@@ -532,15 +563,7 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
   assert(type_info->is_bitfield());
   auto integer = get_goal_integer_constant(strip_int_or_uint_cast(in), env);
   if (integer) {
-    auto elts =
-        decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, *integer);
-    auto oper = GenericOperator::make_function(
-        pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
-    std::vector<Form*> form_elts;
-    for (auto& x : elts) {
-      form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
-    }
-    return pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
+    return cast_to_bitfield_enum(type_info, pool, env, *integer);
   } else {
     // all failed, just return whatever.
     return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
@@ -563,11 +586,24 @@ Form* cast_to_int_enum(const EnumType* type_info,
 }
 
 Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
+  assert(!type_info->is_bitfield());
   auto entry = decompile_int_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
   auto oper = GenericOperator::make_function(
       pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
   return pool.alloc_single_element_form<GenericElement>(
       nullptr, oper, pool.alloc_single_element_form<ConstantTokenElement>(nullptr, entry));
+}
+
+Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env& env, s64 in) {
+  assert(type_info->is_bitfield());
+  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
+  auto oper = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, type_info->get_name()));
+  std::vector<Form*> form_elts;
+  for (auto& x : elts) {
+    form_elts.push_back(pool.alloc_single_element_form<ConstantTokenElement>(nullptr, x));
+  }
+  return pool.alloc_single_element_form<GenericElement>(nullptr, oper, form_elts);
 }
 
 }  // namespace decompiler

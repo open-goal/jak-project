@@ -1651,7 +1651,6 @@ class IGen {
 
   /*!
    * Divide (idiv, 32 bit)
-   * todo UNTESTED
    */
   static Instruction idiv_gpr32(Register reg) {
     Instruction instr(0xf7);
@@ -1660,9 +1659,15 @@ class IGen {
     return instr;
   }
 
+  static Instruction unsigned_div_gpr32(Register reg) {
+    Instruction instr(0xf7);
+    assert(reg.is_gpr());
+    instr.set_modrm_and_rex(6, reg.hw_id(), 3, false);
+    return instr;
+  }
+
   /*!
    * Convert doubleword to quadword for division.
-   * todo UNTESTED
    */
   static Instruction cdq() {
     Instruction instr(0x99);

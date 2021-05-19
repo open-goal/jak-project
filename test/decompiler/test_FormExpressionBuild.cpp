@@ -422,7 +422,7 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
       "    daddiu sp, sp, 16";
   std::string type = "(function type uint)";
 
-  std::string expected = "(logand (l.d L346) (+ (shl (-> arg0 allocated-length) 2) 43))";
+  std::string expected = "(logand (l.d L346) (+ (* (-> arg0 allocated-length) 4) 43))";
   test_with_expr(func, type, expected, false, "");
 }
 
@@ -2610,9 +2610,9 @@ TEST_F(FormRegressionTest, QMemCpy) {
   std::string type = "(function pointer pointer int pointer)";
   std::string expected =
       "(let ((v0-0 arg0))\n"
-      "  (let* ((v1-1 (sar (+ arg2 15) 4))\n"
-      "         (a0-1 (&+ arg0 (shl v1-1 4)))\n"
-      "         (a1-1 (&+ arg1 (shl v1-1 4)))\n"
+      "  (let* ((v1-1 (/ (+ arg2 15) 16))\n"
+      "         (a0-1 (&+ arg0 (* v1-1 16)))\n"
+      "         (a1-1 (&+ arg1 (* v1-1 16)))\n"
       "         )\n"
       "   (while (nonzero? v1-1)\n"
       "    (+! v1-1 -1)\n"
@@ -2911,8 +2911,8 @@ TEST_F(FormRegressionTest, AshPropagation) {
   std::string expected =
       "(begin\n"
       "  (set!\n"
-      "   (-> arg0 bytes (sar arg1 3))\n"
-      "   (logior (-> arg0 bytes (sar arg1 3)) (the-as uint (ash 1 (logand arg1 7))))\n"
+      "   (-> arg0 bytes (/ arg1 8))\n"
+      "   (logior (-> arg0 bytes (/ arg1 8)) (the-as uint (ash 1 (logand arg1 7))))\n"
       "   )\n"
       "  0\n"
       "  )";
@@ -2947,7 +2947,7 @@ TEST_F(FormRegressionTest, AshPropagation2) {
       "    daddu sp, sp, r0";
   std::string type = "(function bit-array int symbol)";
   std::string expected =
-      "(let ((v1-2 (-> arg0 bytes (sar arg1 3))))\n"
+      "(let ((v1-2 (-> arg0 bytes (/ arg1 8))))\n"
       "  (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg1 7)))))\n"
       "  )";
   test_with_expr(func, type, expected);

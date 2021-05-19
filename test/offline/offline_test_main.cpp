@@ -14,17 +14,14 @@ namespace fs = std::filesystem;
 namespace {
 
 // list of object files to ignore during reference checks
-const std::unordered_set<std::string> g_object_files_to_ignore_ref_checks = {
-    "pskernel", "transformq-h", "geometry",     "trigonometry", "math-camera", "timer",
-    "texture",  "ocean-tables", "ocean-frames", "time-of-day",  "display"};
-
-const std::unordered_set<std::string> g_object_files_to_ignore_decompiling = {
-    // TODO - not implemented, if you want to ignore decompiling something currently, don't include
-    // it in the reference folder
+const std::unordered_set<std::string> g_files_to_skip_compiling = {
+    "timer",        // accessing timer regs
+    "display",      // interrupt handlers
+    "game-info-h",  // variable scoped at object file top-level issue.
 };
 
 // the functions we expect the decompiler to skip
-const std::unordered_set<std::string> expected_skip_in_decompiler = {
+const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // gcommon
     "quad-copy!",  // asm mempcy
     // gkernel
@@ -49,6 +46,8 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     // bounding-box
     "(method 9 bounding-box)",   // handwritten asm loop
     "(method 14 bounding-box)",  // handwritten asm loop
+    // trig
+    "exp", "atan0", "sincos!", "sincos-rad!",
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
     "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
@@ -68,7 +67,7 @@ const std::unordered_set<std::string> expected_skip_in_decompiler = {
     "(method 15 sync-info-paused)",  // needs *res-static-buf*
 };
 
-const std::unordered_set<std::string> skip_in_compiling = {
+const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
     "abs", "ash", "min", "max", "lognor",
@@ -97,6 +96,13 @@ const std::unordered_set<std::string> skip_in_compiling = {
     "rand-vu-init", "rand-vu", "rand-vu-nostep",  // random hardware
     "log2",                                       // weird tricky int-as-float stuff
 
+    // trig
+    "sin-rad",                    // fpu acc
+    "cos-rad",                    // fpu acc
+    "atan-series-rad",            // fpu acc
+    "vector-rad<-vector-deg!",    // bad decisions on float vs int128
+    "vector-rad<-vector-deg/2!",  // bad decisions on float vs int128
+
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
     "vector-dot",         // fpu acc
@@ -114,12 +120,18 @@ const std::unordered_set<std::string> skip_in_compiling = {
     // gs
     "(method 3 gif-tag)",  // inspect for a 128-bit type.
 
+    // math camera
+    "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
+
     // display-h
     "put-draw-env",
 
     // vector
     // bad decisions on float vs int128
     "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
+
+    // asm
+    "invalidate-cache-line",
 
     // capture
     "(method 3 gs-store-image-packet)",  // print giftag weirdness
@@ -318,8 +330,8 @@ TEST_F(OfflineDecompilation, AsmFunction) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (func.suspected_asm) {
-      if (expected_skip_in_decompiler.find(func.guessed_name.to_string()) ==
-          expected_skip_in_decompiler.end()) {
+      if (g_functions_expected_to_reject.find(func.guessed_name.to_string()) ==
+          g_functions_expected_to_reject.end()) {
         lg::error("Function {} was marked as asm, but wasn't expected.",
                   func.guessed_name.to_string());
         failed_count++;
@@ -446,11 +458,6 @@ void strip_trailing_newlines(std::string& in) {
 
 TEST_F(OfflineDecompilation, Reference) {
   for (auto& file : g_object_files_to_decompile_or_ref_check) {
-    if (g_object_files_to_ignore_ref_checks.find(file.first) !=
-        g_object_files_to_ignore_ref_checks.end()) {
-      continue;
-    }
-
     auto& obj_l = db->obj_files_by_name.at(file.first);
     ASSERT_EQ(obj_l.size(), 1);
 
@@ -501,8 +508,7 @@ TEST_F(OfflineDecompilation, Compile) {
   Timer timer;
   int total_lines = 0;
   for (auto& file : g_object_files_to_decompile_or_ref_check) {
-    if (g_object_files_to_ignore_ref_checks.find(file.first) !=
-        g_object_files_to_ignore_ref_checks.end()) {
+    if (g_files_to_skip_compiling.find(file.first) != g_files_to_skip_compiling.end()) {
       continue;
     }
 
@@ -511,7 +517,7 @@ TEST_F(OfflineDecompilation, Compile) {
     auto& obj_l = db->obj_files_by_name.at(file.first);
     ASSERT_EQ(obj_l.size(), 1);
 
-    std::string src = db->ir2_final_out(obj_l.at(0), skip_in_compiling);
+    std::string src = db->ir2_final_out(obj_l.at(0), g_functions_to_skip_compiling);
     total_lines += line_count(src);
 
     compiler.run_full_compiler_on_string_no_save(src);

@@ -193,27 +193,6 @@ Form* FormStack::pop_reg(Register reg,
   return nullptr;
 }
 
-Form* FormStack::unsafe_peek(Register reg, const Env& env) {
-  RegSet modified;
-  for (size_t i = m_stack.size(); i-- > 0;) {
-    auto& entry = m_stack.at(i);
-    if (entry.active) {
-      fmt::print("PEEK ERROR {}:\n{}\n", reg.to_string(), print(env));
-      throw std::runtime_error("Failed to unsafe peek 1");
-    }
-
-    entry.source->get_modified_regs(modified);
-    if (modified.find(reg) != modified.end()) {
-      throw std::runtime_error("Failed to unsafe peek 2");
-    }
-
-    if (entry.destination.has_value() && entry.destination->reg() == reg) {
-      return entry.source;
-    }
-  }
-  return nullptr;
-}
-
 FormElement* FormStack::pop_back(FormPool& pool) {
   auto& back = m_stack.back();
   assert(back.active);
