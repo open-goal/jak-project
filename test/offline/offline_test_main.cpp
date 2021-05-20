@@ -60,6 +60,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
+    // stats-h
+    "(method 11 perf-stat)", "(method 12 perf-stat)",
 
     // sync-info
     "(method 15 sync-info)",         // needs *res-static-buf*
