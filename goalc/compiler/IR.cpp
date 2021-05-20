@@ -130,8 +130,8 @@ void regset_common(emitter::ObjectGenerator* gen,
 ///////////
 // Return
 ///////////
-IR_Return::IR_Return(const RegVal* return_reg, const RegVal* value)
-    : m_return_reg(return_reg), m_value(value) {}
+IR_Return::IR_Return(const RegVal* return_reg, const RegVal* value, emitter::Register ret_reg)
+    : m_return_reg(return_reg), m_value(value), m_ret_reg(ret_reg) {}
 std::string IR_Return::print() {
   return fmt::format("ret {} {}", m_return_reg->print(), m_value->print());
 }
@@ -154,7 +154,7 @@ void IR_Return::add_constraints(std::vector<IRegConstraint>* constraints, int my
 
   c.ireg = m_return_reg->ireg();
   c.instr_idx = my_id;
-  c.desired_register = emitter::RAX;
+  c.desired_register = m_ret_reg;
   constraints->push_back(c);
 }
 
@@ -167,7 +167,8 @@ void IR_Return::do_codegen(emitter::ObjectGenerator* gen,
   if (val_reg == dest_reg) {
     gen->add_instr(IGen::null(), irec);
   } else {
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
+    regset_common(gen, allocs, irec, m_return_reg, m_value, true);
+    // gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
   }
 }
 
@@ -361,8 +362,16 @@ void IR_GotoLabel::resolve(const Label* dest) {
 // FunctionCall
 /////////////////////
 
-IR_FunctionCall::IR_FunctionCall(const RegVal* func, const RegVal* ret, std::vector<RegVal*> args)
-    : m_func(func), m_ret(ret), m_args(std::move(args)) {}
+IR_FunctionCall::IR_FunctionCall(const RegVal* func,
+                                 const RegVal* ret,
+                                 std::vector<RegVal*> args,
+                                 std::vector<emitter::Register> arg_regs,
+                                 std::optional<emitter::Register> ret_reg)
+    : m_func(func),
+      m_ret(ret),
+      m_args(std::move(args)),
+      m_arg_regs(std::move(arg_regs)),
+      m_ret_reg(ret_reg) {}
 
 std::string IR_FunctionCall::print() {
   std::string result = fmt::format("call {} (ret {}) (args ", m_func->print(), m_ret->print());
@@ -398,15 +407,17 @@ void IR_FunctionCall::add_constraints(std::vector<IRegConstraint>* constraints, 
     IRegConstraint c;
     c.ireg = m_args.at(i)->ireg();
     c.instr_idx = my_id;
-    c.desired_register = emitter::gRegInfo.get_arg_reg(i);
+    c.desired_register = m_arg_regs.at(i);
     constraints->push_back(c);
   }
 
-  IRegConstraint c;
-  c.ireg = m_ret->ireg();
-  c.desired_register = emitter::gRegInfo.get_ret_reg();
-  c.instr_idx = my_id;
-  constraints->push_back(c);
+  if (m_ret_reg) {
+    IRegConstraint c;
+    c.ireg = m_ret->ireg();
+    c.desired_register = *m_ret_reg;
+    c.instr_idx = my_id;
+    constraints->push_back(c);
+  }
 }
 
 void IR_FunctionCall::do_codegen(emitter::ObjectGenerator* gen,

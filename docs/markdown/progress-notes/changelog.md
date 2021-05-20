@@ -156,3 +156,5 @@
 - Support 128-bit bitfields inside of static structure
 - Support 128-bit bitfield constants
 - Support dynamic construction of 128-bit bitfield values
+
+## V0.8 New Calling Convention for 128-bit
