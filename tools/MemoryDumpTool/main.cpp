@@ -49,7 +49,6 @@ struct Ram {
     std::string result;
     for (int i = 0; i < max_len; i++) {
       if (!in_memory<u8>(addr)) {
-        fmt::print("fail\n");
         return {};
       }
       auto next = read<u8>(addr++);
@@ -181,11 +180,6 @@ std::unordered_map<std::string, std::vector<u32>> find_basics(
   }
 
   fmt::print("Got {} objects of {} unique types\n", total_objects, result.size());
-
-  /*
-
-   */
-
   return result;
 }
 
@@ -288,16 +282,13 @@ int main(int argc, char** argv) {
 
   u32 one_mb = (1 << 20);
 
-  bool large_ram = false;
   if (data.size() == 32 * one_mb) {
     fmt::print("Got 32MB file\n");
   } else if (data.size() == 128 * one_mb) {
     fmt::print("Got 128MB file\n");
-    large_ram = true;
   } else if (data.size() == 127 * one_mb) {
     fmt::print("Got a 127MB file. Assuming this is a dump with the first 1 MB missing.\n");
     data.insert(data.begin(), one_mb, 0);
-    large_ram = true;
     assert(data.size() == 128 * one_mb);
   } else {
     fmt::print("Invalid size: {} bytes\n", data.size());
