@@ -1,6 +1,7 @@
 #include <string>
 #include <cassert>
 #include "third-party/fmt/core.h"
+#include "third-party/11zip/include/elzip/elzip.hpp"
 
 #include "common/util/FileUtil.h"
 #include "common/goal_constants.h"
@@ -206,7 +207,10 @@ void inspect_basics(const Ram& ram,
     }
 
     auto type = dynamic_cast<BasicType*>(type_system.lookup_type(name));
-    assert(type);
+    if (!type) {
+      fmt::print("Could not cast Type! Skipping!!");
+      continue;
+    }
 
     for (auto& field : type->fields()) {
       if (!field.is_array() && !field.is_inline() && !field.is_dynamic() &&
@@ -264,11 +268,16 @@ void inspect_basics(const Ram& ram,
   }
 }
 
+static bool ends_with(const std::string& str, const std::string& suffix) {
+  return str.size() >= suffix.size() &&
+         0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
+
 int main(int argc, char** argv) {
   fmt::print("MemoryDumpTool\n");
 
   if (argc != 2) {
-    fmt::print("usage: memory_dump_tool <ee_ram.bin>\n");
+    fmt::print("usage: memory_dump_tool <ee_ram.bin|savestate.p2s>\n");
     return 1;
   }
 
@@ -276,8 +285,23 @@ int main(int argc, char** argv) {
   decompiler::DecompilerTypeSystem dts;
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
-  fmt::print("Loading memory...\n");
   std::string file_name = argv[1];
+
+  // If it's a PCSX2 savestate, lets extract the ee memory automatically
+  if (ends_with(file_name, "p2s")) {
+    fmt::print("Detected PCSX2 Save-state '{}', extracting memory...\n", file_name);
+    elz::extractZip(file_name, "./savestate-out");
+    // Then, check for and use the eeMemory.bin file
+    if (fs::exists("./savestate-out/eeMemory.bin")) {
+      file_name = "./savestate-out/eeMemory.bin";
+      fmt::print("EE Memory extracted\n");
+    } else {
+      fmt::print("Couldn't locate EE Memory, aborting!\n");
+      return 1;
+    }
+  }
+
+  fmt::print("Loading memory from '{}'\n", file_name);
   auto data = file_util::read_binary_file(file_name);
 
   u32 one_mb = (1 << 20);

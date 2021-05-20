@@ -8,6 +8,6 @@ target_link_libraries(dgo_packer common)
 
 add_executable(memory_dump_tool
         MemoryDumpTool/main.cpp)
-target_link_libraries(memory_dump_tool common decomp)
+target_link_libraries(memory_dump_tool common decomp elzip)
 
 install(TARGETS dgo_unpacker dgo_packer)
