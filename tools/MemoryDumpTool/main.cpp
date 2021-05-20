@@ -289,20 +289,19 @@ int main(int argc, char** argv) {
 
   // If it's a PCSX2 savestate, lets extract the ee memory automatically
   if (ends_with(file_name, "p2s")) {
-    fmt::print("Detected PCSX2 Save-state, extracting memory...");
+    fmt::print("Detected PCSX2 Save-state '{}', extracting memory...\n", file_name);
     elz::extractZip(file_name, "./savestate-out");
     // Then, check for and use the eeMemory.bin file
     if (fs::exists("./savestate-out/eeMemory.bin")) {
       file_name = "./savestate-out/eeMemory.bin";
-      fmt::print("EE Memory extracted, loading...");
+      fmt::print("EE Memory extracted\n");
     } else {
-      fmt::print("Couldn't locate EE Memory, aborting!");
+      fmt::print("Couldn't locate EE Memory, aborting!\n");
       return 1;
     }
-  } else {
-    fmt::print("Loading memory...\n");
   }
 
+  fmt::print("Loading memory from '{}'\n", file_name);
   auto data = file_util::read_binary_file(file_name);
 
   u32 one_mb = (1 << 20);
