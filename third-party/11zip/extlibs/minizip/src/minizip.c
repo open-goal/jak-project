@@ -92,7 +92,7 @@ uLong* dt; /* dostime */
     return ret;
 }
 #else
-#ifdef unix || __APPLE__
+#if defined unix || defined __APPLE__
 uLong filetime(f, tmzip, dt)
     char *f;               /* name of file to get info on */
     tm_zip *tmzip;         /* return value: access, modific. and creation times */
