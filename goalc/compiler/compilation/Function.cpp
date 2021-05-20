@@ -260,8 +260,17 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
         final_result = result->to_gpr(new_func_env.get());
       }
 
-      new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result, ret_hw_reg));
       func_block_env->return_types.push_back(final_result->type());
+      for (const auto& possible_type : func_block_env->return_types) {
+        if (possible_type != TypeSpec("none") &&
+            m_ts.lookup_type(possible_type)->get_load_size() == 16) {
+          return_reg->change_class(RegClass::INT_128);
+          break;
+        }
+      }
+
+      new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result, ret_hw_reg));
+
       auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
       lambda_ts.add_arg(return_type);
     } else {
@@ -439,7 +448,6 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     RegVal* result_reg_if_return_from = nullptr;
     if (auto_inline || got_inlined_lambda) {
       inlined_block_env = fe->alloc_env<BlockEnv>(inlined_compile_env, "#f");
-      result_reg_if_return_from = inlined_compile_env->make_gpr(get_none()->type());
       RegClass ret_class = RegClass::GPR_64;
       if (head->type().last_arg() != TypeSpec("none") &&
           m_ts.lookup_type(head->type().last_arg())->get_load_size() == 16) {
@@ -475,9 +483,18 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // return gpr.
       if (!dynamic_cast<None*>(result)) {
         auto final_result = result->to_reg(inlined_compile_env);
+        inlined_block_env->return_types.push_back(final_result->type());
+
+        for (const auto& possible_type : inlined_block_env->return_types) {
+          if (possible_type != TypeSpec("none") &&
+              m_ts.lookup_type(possible_type)->get_load_size() == 16) {
+            result_reg_if_return_from->change_class(RegClass::INT_128);
+          }
+        }
+
         inlined_compile_env->emit(
             std::make_unique<IR_RegSet>(result_reg_if_return_from, final_result));
-        inlined_block_env->return_types.push_back(final_result->type());
+
         auto return_type = m_ts.lowest_common_ancestor(inlined_block_env->return_types);
         inlined_block_env->return_value->set_type(return_type);
       } else {
@@ -588,7 +605,6 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   for (int i = 0; i < (int)args.size(); i++) {
     const auto& arg = args.at(i);
     auto reg = cc.arg_regs.at(i);
-    // todo calling convention
     arg_outs.push_back(
         env->make_ireg(arg->type(), reg.is_xmm() ? RegClass::INT_128 : RegClass::GPR_64));
     arg_outs.back()->mark_as_settable();

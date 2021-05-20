@@ -158,3 +158,4 @@
 - Support dynamic construction of 128-bit bitfield values
 
 ## V0.8 New Calling Convention for 128-bit
+- 128-bit values may now be used in function arguments and return values.

@@ -418,7 +418,6 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
-    // todo calling convention
     auto ireg = new_func_env->make_ireg(
         lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
     ireg->mark_as_settable();
@@ -432,7 +431,6 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   place->func = new_func_env.get();
 
   // nasty function block env setup
-  // todo calling convention
   auto return_reg = new_func_env->make_gpr(get_none()->type());
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
@@ -468,9 +466,18 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
       final_result = result->to_gpr(new_func_env.get());
     }
 
+    func_block_env->return_types.push_back(final_result->type());
+
+    for (const auto& possible_type : func_block_env->return_types) {
+      if (possible_type != TypeSpec("none") &&
+          m_ts.lookup_type(possible_type)->get_load_size() == 16) {
+        return_reg->change_class(RegClass::INT_128);
+        break;
+      }
+    }
+
     new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result, ret_hw_reg));
 
-    func_block_env->return_types.push_back(final_result->type());
     auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
     lambda_ts.add_arg(return_type);
   } else {
