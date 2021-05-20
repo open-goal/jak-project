@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <sstream>
 #include <ctime>
+#include <cstring>
 
 #include <minizip/zlib.h>
 
@@ -74,7 +75,8 @@ namespace ziputils
             }
 
             //?? we dont need the stinking time
-            zip_fileinfo zi = {0};
+            zip_fileinfo zi;
+            memset(&zi, 0, sizeof(zi));
             getTime(zi.tmz_date);
 
             int err = zipOpenNewFileInZip(zipFile_, filename, &zi,
@@ -109,7 +111,6 @@ namespace ziputils
     {
         int err = ZIP_OK;
         char buf[BUFSIZE];
-        unsigned long nRead = 0;
 
         if (isOpenEntry())
         {

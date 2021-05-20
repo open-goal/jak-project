@@ -166,6 +166,10 @@ ZEXTERN z_off64_t ZEXPORT gzoffset64 OF((gzFile));
 #define COPY 1      /* copy input directly */
 #define GZIP 2      /* decompress a gzip stream */
 
+#ifdef __unix__
+#include <unistd.h>
+#endif
+
 /* internal gzip file state data structure */
 typedef struct
 {

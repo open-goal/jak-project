@@ -52,6 +52,7 @@
 #else
 # include <unistd.h>
 # include <utime.h>
+#include <sys/stat.h>
 #endif
 
 
@@ -99,7 +100,7 @@ tm_unz tmu_date;
     SetFileTime(hFile, &ftm, &ftLastAcc, &ftm);
     CloseHandle(hFile);
 #else
-#ifdef unix || __APPLE__
+#if defined unix || defined __APPLE__
   struct utimbuf ut;
   struct tm newdate;
   newdate.tm_sec = tmu_date.tm_sec;
