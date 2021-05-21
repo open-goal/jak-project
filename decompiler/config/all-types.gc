@@ -8526,22 +8526,24 @@
 (define-extern *debug-engine* engine)
 
 ;; res-h
-
 (deftype res-tag (uint128)
-  ((unk0  uint32  :offset 0  :size 32)
-   (unk1  uint16  :offset 32 :size 16)
-   (unk2  uint64  :offset 64 :size 64)
+  ((name        symbol  :offset 0)
+   (key-frame   float   :offset 32)
+   (elt-type    type    :offset 64)
+   (data-offset uint16  :offset 96) ;; guess. (data-offset is 16-bit in Crash)
+   (elt-count   uint32  :offset 112 :size 15)
+   (inlined?    uint8   :offset 127 :size 1)
    )
   :flag-assert #x900000010
   )
 
 (deftype res-lump (basic)
-  ((length           int32   :offset-assert 4)
-   (allocated-length int32   :offset-assert 8)
-   (data-base        pointer  :offset-assert 12)
-   (data-top         pointer  :offset-assert 16)
-   (data-size        int32   :offset-assert 20)
-   (extra            basic   :offset-assert 24)
+  ((length           int32              :offset-assert 4)
+   (allocated-length int32              :offset-assert 8)
+   (data-base        pointer            :offset-assert 12)
+   (data-top         pointer            :offset-assert 16)
+   (data-size        int32              :offset-assert 20)
+   (extra            basic              :offset-assert 24)
    (tag              (pointer res-tag)  :offset-assert 28)
    )
   :method-count-assert 22
@@ -8554,8 +8556,8 @@
     (dummy-10 (_type_ symbol symbol int symbol symbol pointer) int 10)
     (dummy-11 (_type_ symbol symbol int int symbol pointer) int 11)
     (dummy-12 (_type_ symbol symbol float float symbol pointer) float 12)
-    (dummy-13 (_type_ int) pointer 13) ;; advance tag pointer
-    (dummy-14 (_type_ uint) pointer 14)
+    (dummy-13 (_type_ int) pointer 13)
+    (dummy-14 (_type_ res-tag) pointer 14)
     (dummy-15 (_type_) none 15)
     (dummy-16 (_type_ int int int int) none 16)
     (dummy-17 (_type_ int int) res-lump 17)
