@@ -1,0 +1,157 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type trajectory
+;; Used lq/sq
+(defmethod TODO-RENAME-9 trajectory ((obj trajectory) (arg0 float) (arg1 vector))
+  (let ((v1-0 arg1))
+   (set! (-> v1-0 quad) (-> obj initial-position quad))
+   )
+  (set! (-> arg1 x) (+ (-> arg1 x) (* arg0 (-> obj initial-velocity x))))
+  (set! (-> arg1 y) (+ (-> arg1 y) (* arg0 (-> obj initial-velocity y))))
+  (set! (-> arg1 z) (+ (-> arg1 z) (* arg0 (-> obj initial-velocity z))))
+  (set! (-> arg1 y) (+ (-> arg1 y) (* (* (* 0.5 arg0) arg0) (-> obj gravity))))
+  arg1
+  )
+
+;; definition for method 10 of type trajectory
+;; Used lq/sq
+(defmethod
+  TODO-RENAME-10
+  trajectory
+  ((obj trajectory) (arg0 float) (arg1 vector))
+  (let ((v1-0 arg1))
+   (set! (-> v1-0 quad) (-> obj initial-velocity quad))
+   )
+  (set! (-> arg1 y) (+ (-> arg1 y) (* arg0 (-> obj gravity))))
+  arg1
+  )
+
+;; definition for method 11 of type trajectory
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defmethod
+  TODO-RENAME-11
+  trajectory
+  ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+   (init-vf0-vector)
+   (let ((v1-0 (-> obj initial-position)))
+    (set! (-> v1-0 quad) (-> arg0 quad))
+    )
+   (set! (-> obj gravity) arg3)
+   (set! (-> obj time) arg2)
+   (let ((f0-3 (/ (vector-vector-xz-distance arg1 arg0) arg2)))
+    (let ((a1-2 (-> obj initial-velocity)))
+     (let ((v1-1 arg1)
+           (a0-4 arg0)
+           )
+      (.lvf vf4 (&-> v1-1 quad))
+      (.lvf vf5 (&-> a0-4 quad))
+      )
+     (.mov.vf vf6 vf0 :mask #b1000)
+     (.sub.vf vf6 vf4 vf5 :mask #b111)
+     (.svf (&-> a1-2 quad) vf6)
+     )
+    (vector-xz-normalize! (-> obj initial-velocity) f0-3)
+    )
+   (set!
+    (-> obj initial-velocity y)
+    (- (/ (- (-> arg1 y) (-> arg0 y)) arg2) (* (* 0.5 arg2) (-> obj gravity)))
+    )
+   (let ((v0-2 0))
+    )
+   (none)
+   )
+  )
+
+;; definition for method 12 of type trajectory
+;; INFO: Return type mismatch int vs none.
+(defmethod
+  TODO-RENAME-12
+  trajectory
+  ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let ((f0-1 (/ (vector-vector-xz-distance arg1 arg0) arg2)))
+   ((method-of-type trajectory TODO-RENAME-11) obj arg0 arg1 f0-1 arg3)
+   )
+  (let ((v0-1 0))
+   )
+  (none)
+  )
+
+;; definition for method 13 of type trajectory
+;; INFO: Return type mismatch int vs none.
+(defmethod
+  TODO-RENAME-13
+  trajectory
+  ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let* ((f0-0 arg2)
+         (f1-3 (- (* f0-0 f0-0) (* (* 2.0 (- (-> arg0 y) (-> arg1 y))) arg3)))
+         (f0-3 900.0)
+         )
+   (when (>= f1-3 0.0)
+    (let ((f0-4 (sqrtf f1-3)))
+     (set! f0-3 (fmax (/ (- (- arg2) f0-4) arg3) (/ (+ (- arg2) f0-4) arg3)))
+     )
+    )
+   ((method-of-type trajectory TODO-RENAME-11) obj arg0 arg1 f0-3 arg3)
+   )
+  (let ((v0-1 0))
+   )
+  (none)
+  )
+
+;; definition for method 14 of type trajectory
+;; INFO: Return type mismatch int vs none.
+(defmethod
+  TODO-RENAME-14
+  trajectory
+  ((obj trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
+  (let* ((f1-2 (+ arg2 (fmax (-> arg0 y) (-> arg1 y))))
+         (f1-5 (* (* 2.0 (- (-> arg0 y) f1-2)) arg3))
+         (f0-3 4096.0)
+         )
+   (if (< 0.0 f1-5)
+    (set! f0-3 (sqrtf f1-5))
+    )
+   ((method-of-type trajectory TODO-RENAME-13) obj arg0 arg1 f0-3 arg3)
+   )
+  (let ((v0-1 0))
+   )
+  (none)
+  )
+
+;; definition for method 15 of type trajectory
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defmethod TODO-RENAME-15 trajectory ((obj trajectory))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 10)
+        )
+   (let ((v1-0 s4-0))
+    (set! (-> v1-0 quad) (-> obj initial-position quad))
+    )
+   (dotimes (s2-0 s3-0)
+    (let ((v1-1 s5-0))
+     (set! (-> v1-1 quad) (-> s4-0 quad))
+     )
+    (let
+     ((f0-1 (* (-> obj time) (/ (+ 1.0 (the float s2-0)) (the float s3-0)))))
+     ((method-of-type trajectory TODO-RENAME-9) obj f0-1 s4-0)
+     )
+    (add-debug-line #t 68 s5-0 s4-0 (new 'static 'rgba :r #xff :a #x80) #f -1)
+    )
+   )
+  (let ((v0-2 0))
+   )
+  (none)
+  )
+
+
+
+

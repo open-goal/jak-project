@@ -32,7 +32,7 @@ class IR {
 
 class IR_Return : public IR {
  public:
-  IR_Return(const RegVal* return_reg, const RegVal* value);
+  IR_Return(const RegVal* return_reg, const RegVal* value, emitter::Register ret_reg);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void add_constraints(std::vector<IRegConstraint>* constraints, int my_id) override;
@@ -44,6 +44,7 @@ class IR_Return : public IR {
  protected:
   const RegVal* m_return_reg = nullptr;
   const RegVal* m_value = nullptr;
+  emitter::Register m_ret_reg;
 };
 
 class IR_LoadConstant64 : public IR {
@@ -119,7 +120,11 @@ class IR_RegSet : public IR {
 
 class IR_FunctionCall : public IR {
  public:
-  IR_FunctionCall(const RegVal* func, const RegVal* ret, std::vector<RegVal*> args);
+  IR_FunctionCall(const RegVal* func,
+                  const RegVal* ret,
+                  std::vector<RegVal*> args,
+                  std::vector<emitter::Register> arg_regs,
+                  std::optional<emitter::Register> ret_reg);
   std::string print() override;
   RegAllocInstr to_rai() override;
   void do_codegen(emitter::ObjectGenerator* gen,
@@ -131,6 +136,8 @@ class IR_FunctionCall : public IR {
   const RegVal* m_func = nullptr;
   const RegVal* m_ret = nullptr;
   std::vector<RegVal*> m_args;
+  std::vector<emitter::Register> m_arg_regs;
+  std::optional<emitter::Register> m_ret_reg;
 };
 
 class IR_StaticVarAddr : public IR {
