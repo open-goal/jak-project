@@ -18,7 +18,8 @@ struct BitfieldManip {
     LOGIOR_WITH_FORM,
     LOGAND_WITH_FORM,
     NONZERO_COMPARE,
-    SLLV_SEXT, // sllv x, y, r0
+    SLLV_SEXT,  // sllv x, y, r0
+    PEXTUW,
     INVALID
   } kind = Kind::INVALID;
   s64 amount = -1;
@@ -75,6 +76,8 @@ struct BitfieldManip {
         return "nonzero-compare";
       case Kind::SLLV_SEXT:
         return "sllv-sext";
+      case Kind::PEXTUW:
+        return "pextuw";
       case Kind::INVALID:
       default:
         assert(false);

@@ -347,6 +347,23 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     return result;
   }
 
+  if (m_steps.empty() && step.kind == BitfieldManip::Kind::PEXTUW) {
+    if (m_got_pcpyud) {
+      throw std::runtime_error("unknown pcpyud PEXTUW sequence in bitfield");
+    }
+    bool is_unsigned = true;
+    int size = 32;
+    int start_bit = 64;
+    auto type = ts.lookup_type(m_type);
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    assert(as_bitfield);
+    auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
+  }
+
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // second op in left/right shift combo
     int end_bit = pcpyud_offset + 64 - m_steps.at(0).amount;

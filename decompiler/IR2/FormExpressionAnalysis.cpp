@@ -1152,8 +1152,9 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
         if (bti) {
           auto new_form = pool.alloc_element<GenericElement>(
               GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),
-              cast_form(pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)),
-                        arg0_type, pool, env));
+              cast_form(
+                  pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)),
+                  arg0_type, pool, env));
           result->push_back(new_form);
         } else {
           auto new_form = pool.alloc_element<GenericElement>(
@@ -2821,7 +2822,7 @@ void push_asm_srl_to_stack(const AsmOp* op,
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                             env.get_variable_type(*dst, true));
   } else {
-    //stack.push_form_element(form_elt, true);
+    // stack.push_form_element(form_elt, true);
     auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
     if (as_ba) {
@@ -2910,6 +2911,38 @@ void push_asm_pcpyud_to_stack(const AsmOp* op,
   }
 }
 
+void push_asm_pextuw_to_stack(const AsmOp* op,
+                              FormElement* form_elt,
+                              const Env& env,
+                              FormPool& pool,
+                              FormStack& stack) {
+  // (.pextuw t0-0 r0-0 obj)
+
+  auto var = op->src(1);
+  assert(var.has_value());
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto possible_r0 = op->src(0);
+  assert(possible_r0.has_value());
+
+  auto arg0_type = env.get_variable_type(*var, true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
+    auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
+    BitfieldManip step(BitfieldManip::Kind::PEXTUW, 0);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
+    assert(other);  // should immediately get a field.
+    stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                            env.get_variable_type(*dst, true));
+  } else {
+    stack.push_form_element(form_elt, true);
+  }
+}
+
 void push_asm_to_stack(const AsmOp* op,
                        FormElement* form_elt,
                        const Env& env,
@@ -2924,6 +2957,9 @@ void push_asm_to_stack(const AsmOp* op,
       break;
     case InstructionKind::PCPYUD:
       push_asm_pcpyud_to_stack(op, form_elt, env, pool, stack);
+      break;
+    case InstructionKind::PEXTUW:
+      push_asm_pextuw_to_stack(op, form_elt, env, pool, stack);
       break;
     default:
       stack.push_form_element(form_elt, true);
