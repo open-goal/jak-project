@@ -156,8 +156,7 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
   if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(rfp())) {
     // it's an FP relative load.
     src = SimpleAtom::make_static_address(i0.get_src(0).get_label()).as_expr();
-  } else if (i0.get_src(0).is_imm() && i0.get_src(1).is_reg(rsp()) &&
-             (kind == LoadVarOp::Kind::SIGNED || kind == LoadVarOp::Kind::UNSIGNED)) {
+  } else if (i0.get_src(0).is_imm() && i0.get_src(1).is_reg(rsp())) {
     // it's a stack spill.
     return std::make_unique<StackSpillLoadOp>(make_dst_var(i0, idx), load_size,
                                               i0.get_src(0).get_imm(),
@@ -178,7 +177,7 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
                                               int idx,
                                               int store_size,
                                               StoreOp::Kind kind) {
-  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP)) && kind == StoreOp::Kind::INTEGER) {
+  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
     if (kind == StoreOp::Kind::INTEGER && store_size == 4 && i0.get_src(1).get_imm() == 0) {
       // this is a bit of a hack. enter-state does a sw onto the stack that's not a spill, but
       // instead manipulates the stores "ra" register that will later be restored.
