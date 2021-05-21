@@ -70,6 +70,7 @@ class RegVal : public Val {
   RegVal(IRegister ireg, const TypeSpec& ts) : Val(coerce_to_reg_type(ts)), m_ireg(ireg) {}
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
+  void change_class(RegClass new_class) { m_ireg.reg_class = new_class; }
   std::string print() const override { return m_ireg.to_string(); };
   RegVal* to_reg(Env* fe) override;
   RegVal* to_gpr(Env* fe) override;

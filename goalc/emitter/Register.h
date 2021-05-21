@@ -121,7 +121,6 @@ class RegisterInfo {
   static RegisterInfo make_register_info();
 
   struct Info {
-    int argument_id = -1;  // -1 if not argument
     bool saved = false;    // does the callee save it?
     bool special = false;  // is it a special GOAL register?
     std::string name;
@@ -130,13 +129,15 @@ class RegisterInfo {
   };
 
   const Info& get_info(Register r) const { return m_info.at(r.id()); }
-  Register get_arg_reg(int id) const { return m_arg_regs.at(id); }
+  Register get_gpr_arg_reg(int id) const { return m_gpr_arg_regs.at(id); }
+  Register get_xmm_arg_reg(int id) const { return m_xmm_arg_regs.at(id); }
   Register get_saved_gpr(int id) const { return m_saved_gprs.at(id); }
   Register get_saved_xmm(int id) const { return m_saved_xmms.at(id); }
   Register get_process_reg() const { return R13; }
   Register get_st_reg() const { return R14; }
   Register get_offset_reg() const { return R15; }
-  Register get_ret_reg() const { return RAX; }
+  Register get_gpr_ret_reg() const { return RAX; }
+  Register get_xmm_ret_reg() const { return XMM0; }
   const std::vector<Register>& get_gpr_alloc_order() { return m_gpr_alloc_order; }
   const std::vector<Register>& get_xmm_alloc_order() { return m_xmm_alloc_order; }
   const std::vector<Register>& get_gpr_temp_alloc_order() { return m_gpr_temp_only_alloc_order; }
@@ -148,7 +149,8 @@ class RegisterInfo {
  private:
   RegisterInfo() = default;
   std::array<Info, N_REGS> m_info;
-  std::array<Register, N_ARGS> m_arg_regs;
+  std::array<Register, N_ARGS> m_gpr_arg_regs;
+  std::array<Register, N_ARGS> m_xmm_arg_regs;
   std::array<Register, N_SAVED_GPRS> m_saved_gprs;
   std::array<Register, N_SAVED_XMMS> m_saved_xmms;
   std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS> m_saved_all;

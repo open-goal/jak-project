@@ -5,3 +5,23 @@
 ;; name in dgo: gsound
 ;; dgos: GAME, ENGINE
 
+
+(defun string->sound-name ((str string))
+  (let ((snd-name (new 'stack-no-clear 'qword)))
+   (set! (-> snd-name quad) (the-as uint128 0))
+   (let ((out-ptr (the-as (pointer uint8) snd-name))
+         (in-ptr (-> str data))
+         )
+    (while
+     (and
+      (nonzero? (-> in-ptr 0))
+      (< (&- in-ptr (the-as uint (-> str data))) 15)
+      )
+     (set! (-> out-ptr 0) (-> in-ptr 0))
+     (set! out-ptr (&-> out-ptr 1))
+     (set! in-ptr (&-> in-ptr 1))
+     )
+    )
+   (the-as sound-name (-> snd-name quad))
+   )
+  )

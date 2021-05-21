@@ -206,11 +206,7 @@
 (define format _format)
 
 ;; vec4s - this is present in the game as a 128-bit integer with 4 packed floats.
-;; 128-bit integers seem to be used almost never in GOAL and I suspect they were not
-;; fully implemented in the compiler.  Instead, 128-bit integer code used inline assembly.
-;; OpenGOAL does not support 128-bit integer types, so this is a bit useless.
-;; Note - the actually used vector type stores the vector in memory, not a register.
-;; inline assembly code puts the register in vf registers, not integer registers.
+;; this isn't used very much.
 (deftype vec4s (uint128)
   ((x float :offset 0)
    (y float :offset 32)
@@ -221,7 +217,24 @@
   :flag-assert         #x900000010
   )
 
-;; NOTE: there is a print/inspect for vec4s that is not implemented.
+(defmethod inspect vec4s ((obj vec4s))
+  (format #t "[~8x] ~A~%" obj 'vec4s)
+  (format #t "~Tx: ~f~%" (-> obj x))
+  (format #t "~Ty: ~f~%" (-> obj y))
+  (format #t "~Tz: ~f~%" (-> obj z))
+  (format #t "~Tw: ~f~%" (-> obj w))
+  obj
+  )
+
+(defmethod print vec4s ((obj vec4s))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>"
+          (-> obj x)
+          (-> obj y)
+          (-> obj z)
+          (-> obj w)
+          obj)
+  obj
+  )
 
 (defmacro print128 (value &key (stream #t))
   "Print a 128-bit value"
