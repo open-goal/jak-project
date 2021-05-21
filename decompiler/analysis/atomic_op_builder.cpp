@@ -215,7 +215,6 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
 
 std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
   switch (i0.kind) {
-    case InstructionKind::POR:
     case InstructionKind::SLLV:  // goal will use dsllv
     case InstructionKind::SLL:   // goal will use dsll
     case InstructionKind::PCPYUD:
@@ -440,6 +439,14 @@ std::unique_ptr<AtomicOp> convert_or_1(const Instruction& i0, int idx) {
     src = make_2reg_expr(i0, SimpleExpression::Kind::OR, idx);
   }
   return std::make_unique<SetVarOp>(dest, src, idx);
+}
+
+std::unique_ptr<AtomicOp> convert_por_1(const Instruction& i0, int idx) {
+  if (is_gpr_3(i0, InstructionKind::POR, {}, {}, rr0())) {
+    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
+                                      make_src_atom(i0.get_src(0).get_reg(), idx).as_expr(), idx);
+  }
+  return std::make_unique<AsmOp>(i0, idx);
 }
 
 std::unique_ptr<AtomicOp> convert_ori_1(const Instruction& i0, int idx) {
@@ -713,6 +720,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_in
   switch (i0.kind) {
     case InstructionKind::OR:
       return convert_or_1(i0, idx);
+    case InstructionKind::POR:
+      return convert_por_1(i0, idx);
     case InstructionKind::ORI:
       return convert_ori_1(i0, idx);
     case InstructionKind::AND:

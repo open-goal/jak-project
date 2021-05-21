@@ -18,6 +18,7 @@ struct BitfieldManip {
     LOGIOR_WITH_FORM,
     LOGAND_WITH_FORM,
     NONZERO_COMPARE,
+    SLLV_SEXT, // sllv x, y, r0
     INVALID
   } kind = Kind::INVALID;
   s64 amount = -1;
@@ -72,6 +73,8 @@ struct BitfieldManip {
         return "logand-form";
       case Kind::NONZERO_COMPARE:
         return "nonzero-compare";
+      case Kind::SLLV_SEXT:
+        return "sllv-sext";
       case Kind::INVALID:
       default:
         assert(false);
@@ -94,8 +97,10 @@ class BitfieldAccessElement : public FormElement {
                          const TypeSystem& ts,
                          FormPool& pool,
                          const Env& env);
+  void push_pcpyud();
 
  private:
+  bool m_got_pcpyud = false;
   Form* m_base = nullptr;
   TypeSpec m_type;
   std::vector<BitfieldManip> m_steps;
