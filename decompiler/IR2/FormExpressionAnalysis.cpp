@@ -3470,4 +3470,14 @@ void StackSpillValueElement::update_from_stack(const Env&,
   result->push_back(this);
 }
 
+void LabelElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
+  stack.push_form_element(this, true);
+}
+
+void BreakElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
+  stack.push_form_element(this, true);
+}
+
 }  // namespace decompiler

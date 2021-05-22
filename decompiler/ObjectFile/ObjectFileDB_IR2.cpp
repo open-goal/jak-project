@@ -242,13 +242,17 @@ void ObjectFileDB::ir2_stack_spill_slot_pass() {
     if (!func.cfg_ok) {
       return;
     }
-    auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
-    auto map_size = spill_map.size();
-    if (map_size) {
-      functions_with_spills++;
-      total_slots += map_size;
+    try {
+      auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
+      auto map_size = spill_map.size();
+      if (map_size) {
+        functions_with_spills++;
+        total_slots += map_size;
+      }
+      func.ir2.env.set_stack_spills(spill_map);
+    } catch (std::exception& e) {
+      func.warnings.general_warning("stack spill failed: {}", e.what());
     }
-    func.ir2.env.set_stack_spills(spill_map);
   });
   lg::info("Analyzed stack spills: found {} functions with spills (total {} vars), took {:.2f} ms",
            functions_with_spills, total_slots, timer.getMs());

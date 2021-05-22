@@ -146,6 +146,10 @@ goos::Object BlockVtx::to_form() const {
   return pretty_print::to_symbol("b" + std::to_string(block_id));
 }
 
+int BlockVtx::get_first_block_id() const {
+  return block_id;
+}
+
 std::string SequenceVtx::to_string() const {
   assert(!seq.empty());
   // todo - this is not a great way to print it. Maybe sequences should have an ID or name?
@@ -163,6 +167,10 @@ goos::Object SequenceVtx::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int SequenceVtx::get_first_block_id() const {
+  return seq.at(0)->get_first_block_id();
+}
+
 std::string EntryVtx::to_string() const {
   return "ENTRY";
 }
@@ -171,12 +179,22 @@ goos::Object EntryVtx::to_form() const {
   return pretty_print::to_symbol("entry");
 }
 
+int EntryVtx::get_first_block_id() const {
+  assert(false);
+  return -1;
+}
+
 std::string ExitVtx::to_string() const {
   return "EXIT";
 }
 
 goos::Object ExitVtx::to_form() const {
   return pretty_print::to_symbol("exit");
+}
+
+int ExitVtx::get_first_block_id() const {
+  assert(false);
+  return -1;
 }
 
 std::string CondWithElse::to_string() const {
@@ -195,6 +213,10 @@ goos::Object CondWithElse::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int CondWithElse::get_first_block_id() const {
+  return entries.at(0).condition->get_first_block_id();
+}
+
 std::string CondNoElse::to_string() const {
   return "CONDNE" + std::to_string(uid);
 }
@@ -209,6 +231,10 @@ goos::Object CondNoElse::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int CondNoElse::get_first_block_id() const {
+  return entries.at(0).condition->get_first_block_id();
+}
+
 std::string WhileLoop::to_string() const {
   return "WHL" + std::to_string(uid);
 }
@@ -217,6 +243,11 @@ goos::Object WhileLoop::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("while"), condition->to_form(),
                                      body->to_form()};
   return pretty_print::build_list(forms);
+}
+
+int WhileLoop::get_first_block_id() const {
+  assert(false);
+  return -1;
 }
 
 std::string UntilLoop::to_string() const {
@@ -229,6 +260,10 @@ goos::Object UntilLoop::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int UntilLoop::get_first_block_id() const {
+  return condition->get_first_block_id();
+}
+
 std::string UntilLoop_single::to_string() const {
   return "UNTLS" + std::to_string(uid);
 }
@@ -238,6 +273,11 @@ goos::Object UntilLoop_single::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int UntilLoop_single::get_first_block_id() const {
+  assert(false);
+  return -1;
+}
+
 std::string InfiniteLoopBlock::to_string() const {
   return "INFL" + std::to_string(uid);
 }
@@ -245,6 +285,11 @@ std::string InfiniteLoopBlock::to_string() const {
 goos::Object InfiniteLoopBlock::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("inf-loop"), block->to_form()};
   return pretty_print::build_list(forms);
+}
+
+int InfiniteLoopBlock::get_first_block_id() const {
+  assert(false);
+  return -1;
 }
 
 std::string ShortCircuit::to_string() const {
@@ -264,6 +309,10 @@ goos::Object ShortCircuit::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int ShortCircuit::get_first_block_id() const {
+  return entries.at(0).condition->get_first_block_id();
+}
+
 std::string GotoEnd::to_string() const {
   return "goto_end" + std::to_string(uid);
 }
@@ -274,15 +323,23 @@ goos::Object GotoEnd::to_form() const {
   return pretty_print::build_list(forms);
 }
 
+int GotoEnd::get_first_block_id() const {
+  return body->get_first_block_id();
+}
+
 std::string Break::to_string() const {
   return "goto" + std::to_string(uid);
 }
 
 goos::Object Break::to_form() const {
   std::vector<goos::Object> forms = {pretty_print::to_symbol("break"),
-                                     pretty_print::to_symbol(std::to_string(dest_block)),
+                                     pretty_print::to_symbol(std::to_string(dest_block_id)),
                                      body->to_form(), unreachable_block->to_form()};
   return pretty_print::build_list(forms);
+}
+
+int Break::get_first_block_id() const {
+  return body->get_first_block_id();
 }
 
 std::string EmptyVtx::to_string() const {
@@ -291,6 +348,11 @@ std::string EmptyVtx::to_string() const {
 
 goos::Object EmptyVtx::to_form() const {
   return pretty_print::build_list("empty");
+}
+
+int EmptyVtx::get_first_block_id() const {
+  assert(false);
+  return -1;
 }
 
 ControlFlowGraph::ControlFlowGraph() {
@@ -796,9 +858,11 @@ bool ControlFlowGraph::find_goto_not_end() {
       replaced = true;
 
       auto* new_goto = alloc<Break>();
+      m_has_break = true;
       new_goto->body = b0;
       new_goto->unreachable_block = b1;
-      // todo set block number
+      new_goto->dest_block_id = b0->succ_branch->get_first_block_id();
+      m_blocks.at(new_goto->dest_block_id)->needs_label = true;
 
       for (auto* new_pred : b0->pred) {
         //        printf("fix up pred %s of %s\n", new_pred->to_string().c_str(),
