@@ -289,7 +289,11 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         // this could be a bitfield access or a multiply.
         // we pick bitfield access if the parent is a bitfield.
         if (dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()))) {
-          return TP_Type::make_from_left_shift_bitfield(arg0_type.typespec(), m_args[1].get_int());
+          return TP_Type::make_from_left_shift_bitfield(arg0_type.typespec(), m_args[1].get_int(),
+                                                        false);
+        } else if (arg0_type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+          return TP_Type::make_from_left_shift_bitfield(arg0_type.get_bitfield_type(),
+                                                        m_args[1].get_int(), true);
         } else {
           return TP_Type::make_from_product(1ull << m_args[1].get_int(), is_signed(dts, arg0_type));
         }
@@ -307,6 +311,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       if (arg0_type.kind == TP_Type::Kind::LEFT_SHIFTED_BITFIELD && m_args[1].is_int()) {
         // second op in left/right shift combo
         int end_bit = 64 - arg0_type.get_left_shift();
+        if (arg0_type.pcpyud()) {
+          end_bit += 64;
+        }
 
         int size = 64 - m_args[1].get_int();
         int start_bit = end_bit - size;
@@ -590,6 +597,35 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
     assert(m_dst);
     result.get(m_dst->reg()) = TP_Type::make_from_ts("float");
     return result;
+  }
+
+  if (m_instr.kind == InstructionKind::PCPYUD) {
+    if (m_src[1] && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+      assert(m_src[0]);
+      auto& in_type = result.get(m_src[0]->reg());
+      auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(in_type.typespec()));
+      if (bf) {
+        assert(m_dst);
+        result.get(m_dst->reg()) = TP_Type::make_from_pcpyud_bitfield(in_type.typespec());
+        return result;
+      }
+    }
+  }
+
+  // pextuw t0, r0, gp
+  if (m_instr.kind == InstructionKind::PEXTUW) {
+    if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
+      // sponge
+      assert(m_src[1]);
+      auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
+      auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+      if (as_bitfield) {
+        auto field = find_field(dts.ts, as_bitfield, 64, 32, true);
+        assert(m_dst);
+        result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
+        return result;
+      }
+    }
   }
 
   if (m_dst.has_value()) {
