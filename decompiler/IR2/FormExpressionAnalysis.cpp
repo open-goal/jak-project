@@ -1121,12 +1121,22 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
   } else {
     // try to turn this into a multiplication, if possible
     if (m_expr.get_arg(1).is_int()) {
+      auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
       int sa = m_expr.get_arg(1).get_int();
+
+      auto as_ba = args.at(0)->try_as_element<BitfieldAccessElement>();
+      if (as_ba) {
+        BitfieldManip step(BitfieldManip::Kind::LEFT_SHIFT, m_expr.get_arg(1).get_int());
+        auto other = as_ba->push_step(step, env.dts->ts, pool, env);
+        assert(!other);  // shouldn't be complete.
+        result->push_back(as_ba);
+        return;
+      }
+
       // somewhat arbitrary threshold to switch from multiplications to shift.
       if (sa < 10) {
         s64 multiplier = (s64(1) << sa);
 
-        auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
         auto new_form = pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(FixedOperatorKind::MULTIPLICATION), args.at(0),
             pool.alloc_single_element_form<SimpleAtomElement>(
@@ -1134,6 +1144,33 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
         result->push_back(new_form);
         return;
       }
+
+      auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+      auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+      if (!arg0_i && !arg0_u) {
+        auto bti = dynamic_cast<EnumType*>(env.dts->ts.lookup_type(arg0_type));
+        if (bti) {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),
+              cast_form(
+                  pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)),
+                  arg0_type, pool, env));
+          result->push_back(new_form);
+        } else {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::SHL),
+              pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
+              pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+          result->push_back(new_form);
+        }
+      } else {
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),
+            pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+        result->push_back(new_form);
+      }
+
+      return;
     }
 
     update_from_stack_copy_first_int_2(env, FixedOperatorKind::SHL, pool, stack, result,
@@ -1226,22 +1263,52 @@ void SimpleExpressionElement::update_from_stack_right_shift_arith(const Env& env
     assert(other);  // should be a high field.
     result->push_back(other);
   } else {
-    if (m_expr.get_arg(1).is_int() && m_expr.get_arg(1).get_int() < 10) {
-      auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
-      auto arg =
-          pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
-      int sa = m_expr.get_arg(1).get_int();
+    if (m_expr.get_arg(1).is_int()) {
+      if (m_expr.get_arg(1).get_int() < 10) {
+        auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+        auto arg =
+            pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
+        int sa = m_expr.get_arg(1).get_int();
 
-      if (!arg0_i) {
-        arg = cast_form(arg, TypeSpec("int"), pool, env);
+        if (!arg0_i) {
+          arg = cast_form(arg, TypeSpec("int"), pool, env);
+        }
+        s64 multiplier = (s64(1) << sa);
+
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg,
+            pool.alloc_single_element_form<SimpleAtomElement>(
+                nullptr, SimpleAtom::make_int_constant(multiplier)));
+        result->push_back(new_form);
+        return;
       }
-      s64 multiplier = (s64(1) << sa);
 
-      auto new_form = pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(FixedOperatorKind::DIVISION), arg,
-          pool.alloc_single_element_form<SimpleAtomElement>(
-              nullptr, SimpleAtom::make_int_constant(multiplier)));
-      result->push_back(new_form);
+      auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
+      auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+      auto args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
+
+      auto as_ba = args.at(0)->try_as_element<BitfieldAccessElement>();
+      if (as_ba) {
+        BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_ARITH, m_expr.get_arg(1).get_int());
+        auto other = as_ba->push_step(step, env.dts->ts, pool, env);
+        assert(other);  // should be a high field.
+        result->push_back(other);
+        return;
+      }
+
+      if (!arg0_i && !arg0_u) {
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::SAR),
+            pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
+            pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+        result->push_back(new_form);
+      } else {
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::SAR), args.at(0),
+            pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+        result->push_back(new_form);
+      }
+
       return;
     }
 
@@ -2728,7 +2795,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 namespace {
 
 void push_asm_srl_to_stack(const AsmOp* op,
-                           FormElement* form_elt,
+                           FormElement* /*form_elt*/,
                            const Env& env,
                            FormPool& pool,
                            FormStack& stack) {
@@ -2755,6 +2822,123 @@ void push_asm_srl_to_stack(const AsmOp* op,
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                             env.get_variable_type(*dst, true));
   } else {
+    // stack.push_form_element(form_elt, true);
+    auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
+    auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
+    if (as_ba) {
+      BitfieldManip step(BitfieldManip::Kind::RIGHT_SHIFT_LOGICAL_32BIT, integer);
+      auto other = as_ba->push_step(step, env.dts->ts, pool, env);
+      assert(other);  // should immediately get a field.
+      stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                              env.get_variable_type(*dst, true));
+    } else {
+      throw std::runtime_error("Got invalid bitfield manip for srl");
+    }
+  }
+}
+
+void push_asm_sllv_to_stack(const AsmOp* op,
+                            FormElement* form_elt,
+                            const Env& env,
+                            FormPool& pool,
+                            FormStack& stack) {
+  auto var = op->src(0);
+  assert(var.has_value());
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto sav = op->src(1);
+  assert(sav.has_value());
+
+  auto arg0_type = env.get_variable_type(*var, true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (sav->reg() == Register(Reg::GPR, Reg::R0)) {
+    if (bitfield_info) {
+      auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
+      auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
+      BitfieldManip step(BitfieldManip::Kind::SLLV_SEXT, 0);
+      auto other = read_elt->push_step(step, env.dts->ts, pool, env);
+      assert(other);  // should immediately get a field.
+      stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                              env.get_variable_type(*dst, true));
+    } else {
+      auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
+      auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
+      if (as_ba) {
+        BitfieldManip step(BitfieldManip::Kind::SLLV_SEXT, 0);
+        auto other = as_ba->push_step(step, env.dts->ts, pool, env);
+        assert(other);  // should immediately get a field.
+        stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                                env.get_variable_type(*dst, true));
+      } else {
+        throw std::runtime_error("Got invalid bitfield manip for sllv");
+      }
+    }
+  } else {
+    stack.push_form_element(form_elt, true);
+  }
+}
+
+void push_asm_pcpyud_to_stack(const AsmOp* op,
+                              FormElement* form_elt,
+                              const Env& env,
+                              FormPool& pool,
+                              FormStack& stack) {
+  // pcpyud v1, gp, r0 for example.
+
+  auto var = op->src(0);
+  assert(var.has_value());
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto possible_r0 = op->src(1);
+  assert(possible_r0.has_value());
+
+  auto arg0_type = env.get_variable_type(*var, true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
+    auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
+    read_elt->push_pcpyud();
+    stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, read_elt), true,
+                            env.get_variable_type(*dst, true));
+  } else {
+    stack.push_form_element(form_elt, true);
+  }
+}
+
+void push_asm_pextuw_to_stack(const AsmOp* op,
+                              FormElement* form_elt,
+                              const Env& env,
+                              FormPool& pool,
+                              FormStack& stack) {
+  // (.pextuw t0-0 r0-0 obj)
+
+  auto var = op->src(1);
+  assert(var.has_value());
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto possible_r0 = op->src(0);
+  assert(possible_r0.has_value());
+
+  auto arg0_type = env.get_variable_type(*var, true);
+  auto type_info = env.dts->ts.lookup_type(arg0_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
+    auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
+    auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
+    BitfieldManip step(BitfieldManip::Kind::PEXTUW, 0);
+    auto other = read_elt->push_step(step, env.dts->ts, pool, env);
+    assert(other);  // should immediately get a field.
+    stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
+                            env.get_variable_type(*dst, true));
+  } else {
     stack.push_form_element(form_elt, true);
   }
 }
@@ -2767,6 +2951,15 @@ void push_asm_to_stack(const AsmOp* op,
   switch (op->instruction().kind) {
     case InstructionKind::SRL:
       push_asm_srl_to_stack(op, form_elt, env, pool, stack);
+      break;
+    case InstructionKind::SLLV:
+      push_asm_sllv_to_stack(op, form_elt, env, pool, stack);
+      break;
+    case InstructionKind::PCPYUD:
+      push_asm_pcpyud_to_stack(op, form_elt, env, pool, stack);
+      break;
+    case InstructionKind::PEXTUW:
+      push_asm_pextuw_to_stack(op, form_elt, env, pool, stack);
       break;
     default:
       stack.push_form_element(form_elt, true);

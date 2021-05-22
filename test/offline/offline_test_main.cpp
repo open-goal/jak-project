@@ -75,8 +75,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "abs", "ash", "min", "max", "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
-    // int128 fancy stuff.
-    "(method 3 vec4s)", "(method 2 vec4s)",
     // does weird stuff with the type system.
     "print", "printl", "inspect",
     // inline assembly
@@ -118,9 +116,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // dma-disasm
     "disasm-dma-list",  // missing a single cast :(
-
-    // gs
-    "(method 3 gif-tag)",  // inspect for a 128-bit type.
 
     // math camera
     "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
