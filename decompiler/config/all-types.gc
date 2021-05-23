@@ -336,13 +336,14 @@
   )
 
 ;; gkernel
+(declare-type entity-actor basic)
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
-   (entity basic :offset-assert #x34) ;; entity
+   (entity entity-actor :offset-assert #x34)
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
@@ -8890,7 +8891,7 @@
 
 ;; game-h
 (deftype process-drawable (process)
-  ((root        basic   :offset-assert 112) ; NOTE - Whatever this is, it has a type at offset 140 that has a `res-lump` at offset 52
+  ((root        trsqv   :offset-assert 112) ; NOTE - Whatever this is, it has a type at offset 140 that has a `res-lump` at offset 52
    (node-list   basic   :offset-assert 116)
    (draw        basic   :offset-assert 120)
    (skel        basic   :offset-assert 124)
@@ -11861,9 +11862,10 @@
   )
 
 ;; entity
+(declare-type nav-mesh basic)
 (deftype entity-actor (entity)
   (
-    (nav-mesh uint32 :offset-assert 52)
+    (nav-mesh nav-mesh :offset-assert 52)
     (etype uint32 :offset-assert 56)
     (task uint8 :offset-assert 60)
     (vis-id uint16 :offset-assert 62)
@@ -13213,8 +13215,7 @@
     )
   )
 
-; second arg is whatever the `root` field in `process-drawable` is
-(define-extern nav-mesh-connect (function nav-mesh basic symbol none)) ; TODO ret type
+(define-extern nav-mesh-connect (function process-drawable trsqv symbol none)) ; TODO ret type
 (define-extern has-nav-mesh? (function entity-actor int))
 ;;(define-extern nav-mesh-actor object) ;; unknown type
 ;;(define-extern *default-nav-mesh* object) ;; unknown type
@@ -33842,7 +33843,7 @@
 (define-extern actor-link-dead-hook function)
 (define-extern entity-actor-count function)
 (define-extern alt-actor-list-subtask-incomplete-count function)
-(define-extern entity-actor-lookup function)
+(define-extern entity-actor-lookup (function entity-actor symbol integer entity-actor))
 ;;(define-extern next-actor object) ;; unknown type
 ;;(define-extern alt-actor object) ;; unknown type
 (define-extern entity-by-name function)
