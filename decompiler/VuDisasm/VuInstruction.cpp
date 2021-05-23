@@ -83,4 +83,10 @@ std::string VuInstructionAtom::to_string(const std::vector<std::string>& labels)
   }
 }
 
+VuInstruction VuInstruction::make_fp_constant(u32 value) {
+  VuInstruction result;
+  memcpy(&result.fp, &value, sizeof(float));
+  result.kind = VuInstrK::FP_CONSTANT;
+  return result;
+}
 }  // namespace decompiler

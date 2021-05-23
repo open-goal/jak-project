@@ -19,6 +19,7 @@ struct VuDecodeStep {
     IMM11_SIGNED,
     IMM15_UNSIGNED,
     IMM5_SIGNED,
+    IMM24_UNSIGNED,
     FTF,
     FSF,
     NONE,
@@ -31,15 +32,18 @@ struct VuDecodeStep {
     DST_VI,
     DST_ACC,
     DST_Q,
+    DST_P,
+    SRC_P,
     SRC_Q,
+    SRC_I,
     SRC_VF,
     SRC_VI,
     SRC_IMM,
     BC,
     ASSERT_ZERO,
     LOAD_STORE_OFFSET,
-    FTF,
-    FSF,
+    SECOND_SOURCE_FIELD,
+    FIRST_SOURCE_FIELD,
     BRANCH_TARGET
   } atom;
 };
@@ -108,7 +112,10 @@ class VuDisassembler {
     OpInfo& dst_acc() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::DST_ACC}); }
     OpInfo& dst_vfd() { return step({VuDecodeStep::FieldK::FD, VuDecodeStep::AtomK::DST_VF}); }
     OpInfo& dst_q() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::DST_Q}); }
+    OpInfo& dst_p() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::DST_P}); }
     OpInfo& src_q() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::SRC_Q}); }
+    OpInfo& src_i() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::SRC_I}); }
+    OpInfo& src_p() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::SRC_P}); }
 
     OpInfo& step(VuDecodeStep x) {
       decode.push_back(x);
@@ -121,6 +128,20 @@ class VuDisassembler {
 
     OpInfo& vft_zero() {
       return step({VuDecodeStep::FieldK::FT, VuDecodeStep::AtomK::ASSERT_ZERO});
+    }
+
+    OpInfo& vit_zero() { return vft_zero(); }
+
+    OpInfo& vis_zero() {
+      return step({VuDecodeStep::FieldK::FS, VuDecodeStep::AtomK::ASSERT_ZERO});
+    }
+
+    OpInfo& ftf_zero() {
+      return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::ASSERT_ZERO});
+    }
+
+    OpInfo& fsf_zero() {
+      return step({VuDecodeStep::FieldK::FSF, VuDecodeStep::AtomK::ASSERT_ZERO});
     }
 
     OpInfo& src_vit() { return step({VuDecodeStep::FieldK::FT, VuDecodeStep::AtomK::SRC_VI}); }
@@ -147,16 +168,30 @@ class VuDisassembler {
 
     OpInfo& dst_vid() { return step({VuDecodeStep::FieldK::FD, VuDecodeStep::AtomK::DST_VI}); }
 
-    OpInfo& ftf() { return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::FTF}); }
-
-    OpInfo& fsf() { return step({VuDecodeStep::FieldK::FSF, VuDecodeStep::AtomK::FSF}); }
+    OpInfo& ftf_1() {
+      return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::SECOND_SOURCE_FIELD});
+    }
+    OpInfo& ftf_0() {
+      return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::FIRST_SOURCE_FIELD});
+    }
+    OpInfo& fsf_0() {
+      return step({VuDecodeStep::FieldK::FSF, VuDecodeStep::AtomK::FIRST_SOURCE_FIELD});
+    }
 
     OpInfo& src_imm11_load_store() {
       return step({VuDecodeStep::FieldK::IMM11_SIGNED, VuDecodeStep::AtomK::LOAD_STORE_OFFSET});
     }
 
+    OpInfo& imm11_zero() {
+      return step({VuDecodeStep::FieldK::IMM11_SIGNED, VuDecodeStep::AtomK::ASSERT_ZERO});
+    }
+
     OpInfo& src_imm15_unsigned() {
       return step({VuDecodeStep::FieldK::IMM15_UNSIGNED, VuDecodeStep::AtomK::SRC_IMM});
+    }
+
+    OpInfo& src_imm24_unsigned() {
+      return step({VuDecodeStep::FieldK::IMM24_UNSIGNED, VuDecodeStep::AtomK::SRC_IMM});
     }
 
     OpInfo& src_imm5_signed() {

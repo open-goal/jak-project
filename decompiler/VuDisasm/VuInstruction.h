@@ -9,46 +9,46 @@ namespace decompiler {
 
 enum class VuInstrK {
   // upper
-  ABS,
+  // ABS,
   ADD,
   ADDi,
   ADDq,
   ADDbc,
   ADDA,
-  ADDAi,
-  ADDAq,
+  //  ADDAi,
+  //  ADDAq,
   ADDAbc,
   SUB,
-  SUBi,  // 10
-  SUBq,
+  //  SUBi,  // 10
+  //  SUBq,
   SUBbc,
-  SUBA,
-  SUBAi,
-  SUBAq,
-  SUBAbc,
+  //  SUBA,
+  //  SUBAi,
+  //  SUBAq,
+  //  SUBAbc,
   MUL,
   MULi,
   MULq,
   MULbc,  // 20
   MULA,
-  MULAi,
-  MULAq,
+  //  MULAi,
+  //  MULAq,
   MULAbc,
   MADD,
-  MADDi,
-  MADDq,
+  //  MADDi,
+  //  MADDq,
   MADDbc,
   MADDA,
-  MADDAi,  // 30
-  MADDAq,
+  //  MADDAi,  // 30
+  //  MADDAq,
   MADDAbc,
-  MSUB,
-  MSUBi,
-  MSUBq,
+  //  MSUB,
+  //  MSUBi,
+  //  MSUBq,
   MSUBbc,
-  MSUBA,
-  MSUBAi,
-  MSUBAq,
+  //  MSUBA,
+  //  MSUBAi,
+  //  MSUBAq,
   MSUBAbc,  // 40
   MAX,
   MAXi,
@@ -62,16 +62,16 @@ enum class VuInstrK {
   FTOI0,  // 50
   FTOI4,
   FTOI12,
-  FTOI15,
+  //  FTOI15,
   ITOF0,
-  ITOF4,
+  //  ITOF4,
   ITOF12,
   ITOF15,
   CLIP,
 
   // lower
   DIV,
-  SQRT,
+  SQRT,  // 60
   RSQRT,
   IADD,
   IADDI,
@@ -81,7 +81,7 @@ enum class VuInstrK {
   ISUB,
   ISUBIU,
   MOVE,
-  MFIR,
+  MFIR,  // 70
   MTIR,
   MR32,
   LQ,
@@ -91,28 +91,29 @@ enum class VuInstrK {
   SQD,
   SQI,
   ILW,
-  ISW,
+  ISW,  // 80
   ILWR,
   ISWR,
-  LOI,
-  RINIT,
-  RGET,
-  RNEXT,
-  RXOR,
+  //  LOI,
+  //  RINIT,
+  //  RGET,
+  //  RNEXT,
+  //  RXOR,
   WAITQ,
   FSAND,
-  FSEQ,
-  FSOR,
-  FSSET,
+  //  FSEQ, // 90
+  //  FSOR,
+  //  FSSET,
   FMAND,
-  FMEQ,
-  FMOR,
+  //  FMEQ,
+  //  FMOR,
   FCAND,
-  FCEQ,
+  //  FCEQ,
   FCOR,
   FCSET,
-  FCGET,
-  IBEZ,
+  FCGET,  // 100
+  IBEQ,
+  //  IBEZ,
   IBGEZ,
   IBGTZ,
   IBLEZ,
@@ -120,27 +121,29 @@ enum class VuInstrK {
   IBNE,
   B,
   BAL,
-  JR,
+  JR,  // 110
   JALR,
   MFP,
-  WAITP,
-  ESADD,
-  ERSADD,
-  ELENG,
+  //  WAITP,
+  //  ESADD,
+  //  ERSADD,
+  //  ELENG,
   ERLENG,
-  EATANxy,
-  EATANxz,
-  ESUM,
-  ERCPR,
-  ESQRT,
-  ERSQRT,
-  ESIN,
-  IATAN,
-  EEXP,
+  //  EATANxy,
+  //  EATANxz,
+  //  ESUM,
+  //  ERCPR,
+  //  ESQRT,
+  //  ERSQRT,
+  //  ESIN,
+  //  IATAN,
+  //  EEXP,
   XGKICK,
   XTOP,
-  XITOP,
+  //  XITOP,
   LOWER_NOP,  // really iadd vi0 vi0 vi0
+
+  FP_CONSTANT,
 
   INVALID
 };
@@ -191,7 +194,12 @@ struct VuInstruction {
   std::optional<int> bc;
   std::optional<int> mask;
   std::optional<int> iemdt;
-  std::optional<int> fsf, ftf;
+  std::optional<int> first_src_field, second_src_field;
+  float fp;
+
+  bool i_bit() const { return iemdt && (*iemdt & 0b1000000); }
+
+  static VuInstruction make_fp_constant(u32 value);
 };
 
 struct VuInstructionPair {
