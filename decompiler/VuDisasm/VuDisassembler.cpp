@@ -108,6 +108,7 @@ VuDisassembler::VuDisassembler() {
   add_op(VuInstrK::FTOI0, "ftoi0").iemdt().dst_mask().dst_vf_ft().src_vf_fs();
   add_op(VuInstrK::ITOF0, "itof0").iemdt().dst_mask().dst_vf_ft().src_vf_fs();
   add_op(VuInstrK::ITOF12, "itof12").iemdt().dst_mask().dst_vf_ft().src_vf_fs();
+  add_op(VuInstrK::FTOI12, "ftoi12").iemdt().dst_mask().dst_vf_ft().src_vf_fs();
   add_op(VuInstrK::ADD, "add").iemdt().dst_mask().dss_fd_fs_ft();
   add_op(VuInstrK::MULbc, "mul").iemdt().dst_mask().bc().dss_fd_fs_ft();
   add_op(VuInstrK::ADDbc, "add").iemdt().dst_mask().dss_fd_fs_ft().bc();
@@ -117,6 +118,15 @@ VuDisassembler::VuDisassembler() {
   add_op(VuInstrK::MSUBAbc, "msuba").iemdt().bc().dst_mask().dst_acc().src_vfs().src_vft();
   add_op(VuInstrK::MADDbc, "madd").iemdt().dst_mask().dss_fd_fs_ft().bc();
   add_op(VuInstrK::SUBbc, "sub").iemdt().dst_mask().dss_fd_fs_ft().bc();
+  add_op(VuInstrK::OPMULA, "opmula").iemdt().dst_mask().dst_acc().src_vfs().src_vft();
+  add_op(VuInstrK::OPMSUB, "opmsub").iemdt().dst_mask().dss_fd_fs_ft();
+  add_op(VuInstrK::MUL, "mul").iemdt().dst_mask().dss_fd_fs_ft();
+  add_op(VuInstrK::MULq, "mul").iemdt().dst_mask().dst_vfd().src_vfs().src_q().vft_zero();
+  add_op(VuInstrK::SUB, "sub").iemdt().dst_mask().dss_fd_fs_ft();
+  add_op(VuInstrK::MSUBbc, "sub").iemdt().dst_mask().dss_fd_fs_ft();
+  add_op(VuInstrK::MADDA, "madda").iemdt().dst_mask().dst_acc().src_vfs().src_vft();
+  add_op(VuInstrK::MULA, "mula").iemdt().dst_mask().dst_acc().src_vfs().src_vft();
+  add_op(VuInstrK::MINIbc, "mini").iemdt().dst_mask().bc().dss_fd_fs_ft();
 
   m_lower_op6_table[0b000000].set(VuInstrK::LQ);
   m_lower_op6_table[0b000001].set(VuInstrK::SQ);
@@ -140,6 +150,10 @@ VuDisassembler::VuDisassembler() {
   add_op(VuInstrK::ISUB, "isub").dst_mask_zero().dst_vid().src_vis().src_vit();
   add_op(VuInstrK::SQ, "sq").dst_mask().dst_vfs().src_imm11_load_store().src_vit();
   add_op(VuInstrK::FMAND, "fmand").imm15_zero().dst_vit().src_vis();
+  add_op(VuInstrK::DIV, "div").ftf().fsf().dst_q().src_vfs().src_vft();
+  add_op(VuInstrK::MOVE, "move").dst_mask().dst_vft().src_vfs();
+  add_op(VuInstrK::MR32, "mr32").dst_mask().dst_vft().src_vfs();
+  add_op(VuInstrK::RSQRT, "rsqrt").ftf().fsf().dst_q().src_vfs().src_vft();
 }
 
 VuDisassembler::OpInfo& VuDisassembler::add_op(VuInstrK kind, const std::string& name) {
@@ -167,11 +181,19 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
         return VuInstrK::ISUB;
     }
     switch (in & 0b11111111111) {
-      case 0b01101111101:
-        return VuInstrK::SQI;
-      case 0b01101111100:
+      case 0b01100'1111'00:
+        return VuInstrK::MOVE;
+      case 0b01100'1111'01:
+        return VuInstrK::MR32;
+      case 0b01101'1111'00:
         return VuInstrK::LQI;
-      case 0b11011111100:
+      case 0b01101'1111'01:
+        return VuInstrK::SQI;
+      case 0b01110'1111'00:
+        return VuInstrK::DIV;
+      case 0b01110'1111'10:
+        return VuInstrK::RSQRT;
+      case 0b11011'1111'00:
         return VuInstrK::XGKICK;
     }
     fmt::print("Unknown lower special: 0b{:b}\n", in);
@@ -210,11 +232,19 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
         return VuInstrK::FTOI0;
       case 0b00101'1111'01:
         return VuInstrK::FTOI4;
+      case 0b00101'1111'10:
+        return VuInstrK::FTOI12;
       case 0b00110'1111'00:
       case 0b00110'1111'01:
       case 0b00110'1111'10:
       case 0b00110'1111'11:
         return VuInstrK::MULAbc;
+      case 0b01010'1111'01:
+        return VuInstrK::MADDA;
+      case 0b01010'1111'10:
+        return VuInstrK::MULA;
+      case 0b01011'1111'10:
+        return VuInstrK::OPMULA;
       case 0b01011'1111'11:
         assert(upper_dest_mask(in) == 0);
         assert(upper_fs(in) == 0);
@@ -310,6 +340,14 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
         value = (signed_value >> 27);
         break;
       }
+      case VuDecodeStep::FieldK::FTF:
+        value = (data >> 23) & 0b11;
+        break;
+
+      case VuDecodeStep::FieldK::FSF:
+        value = (data >> 21) & 0b11;
+        break;
+
       default:
         assert(false);
     }
@@ -355,6 +393,19 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
         assert(!instr.dst);
         instr.dst = VuInstructionAtom::make_acc();
         break;
+      case VuDecodeStep::AtomK::DST_Q:
+        assert(!instr.dst);
+        instr.dst = VuInstructionAtom::make_q();
+        break;
+      case VuDecodeStep::AtomK::SRC_Q:
+        instr.src.push_back(VuInstructionAtom::make_q());
+        break;
+      case VuDecodeStep::AtomK::FTF:
+        instr.ftf = value;
+        break;
+      case VuDecodeStep::AtomK::FSF:
+        instr.fsf = value;
+        break;
       default:
         assert(false);
     }
@@ -363,29 +414,30 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
   return instr;
 }
 
+namespace {
+char bc_to_part(int x) {
+  switch (x) {
+    case 0:
+      return 'x';
+    case 1:
+      return 'y';
+    case 2:
+      return 'z';
+    case 3:
+      return 'w';
+    default:
+      return '?';
+  }
+}
+}  // namespace
+
 std::string VuDisassembler::to_string(const VuInstruction& instr) const {
   auto& in = info(instr.kind);
   std::string result;
   result += in.name;
 
   if (instr.bc) {
-    switch (*instr.bc) {
-      case 0:
-        result += 'x';
-        break;
-      case 1:
-        result += 'y';
-        break;
-      case 2:
-        result += 'z';
-        break;
-      case 3:
-        result += 'w';
-        break;
-      default:
-        result += '?';
-        break;
-    }
+    result += bc_to_part(*instr.bc);
   }
 
   if (instr.mask) {
@@ -414,6 +466,7 @@ std::string VuDisassembler::to_string(const VuInstruction& instr) const {
   }
 
   bool close = false;
+  int idx = 0;
   for (auto& src : instr.src) {
     if (close) {
     } else {
@@ -421,6 +474,17 @@ std::string VuDisassembler::to_string(const VuInstruction& instr) const {
     }
 
     result += src.to_string(m_label_names);
+
+    if (idx == 0 && instr.fsf) {
+      result += '.';
+      result += bc_to_part(*instr.fsf);
+    }
+
+    if (idx == 1 && instr.ftf) {
+      result += '.';
+      result += bc_to_part(*instr.ftf);
+    }
+
     if (src.kind() == VuInstructionAtom::Kind::LOAD_STORE_IMM) {
       result += '(';
       close = true;
@@ -434,6 +498,8 @@ std::string VuDisassembler::to_string(const VuInstruction& instr) const {
         comma = true;
       }
     }
+
+    idx++;
   }
 
   assert(!close);

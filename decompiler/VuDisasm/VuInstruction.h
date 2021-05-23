@@ -191,6 +191,7 @@ struct VuInstruction {
   std::optional<int> bc;
   std::optional<int> mask;
   std::optional<int> iemdt;
+  std::optional<int> fsf, ftf;
 };
 
 struct VuInstructionPair {

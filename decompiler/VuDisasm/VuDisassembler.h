@@ -19,6 +19,8 @@ struct VuDecodeStep {
     IMM11_SIGNED,
     IMM15_UNSIGNED,
     IMM5_SIGNED,
+    FTF,
+    FSF,
     NONE,
   } field;
 
@@ -28,12 +30,16 @@ struct VuDecodeStep {
     DST_VF,
     DST_VI,
     DST_ACC,
+    DST_Q,
+    SRC_Q,
     SRC_VF,
     SRC_VI,
     SRC_IMM,
     BC,
     ASSERT_ZERO,
     LOAD_STORE_OFFSET,
+    FTF,
+    FSF,
     BRANCH_TARGET
   } atom;
 };
@@ -100,6 +106,9 @@ class VuDisassembler {
     }
 
     OpInfo& dst_acc() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::DST_ACC}); }
+    OpInfo& dst_vfd() { return step({VuDecodeStep::FieldK::FD, VuDecodeStep::AtomK::DST_VF}); }
+    OpInfo& dst_q() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::DST_Q}); }
+    OpInfo& src_q() { return step({VuDecodeStep::FieldK::NONE, VuDecodeStep::AtomK::SRC_Q}); }
 
     OpInfo& step(VuDecodeStep x) {
       decode.push_back(x);
@@ -137,6 +146,10 @@ class VuDisassembler {
     OpInfo& dst_vit() { return step({VuDecodeStep::FieldK::FT, VuDecodeStep::AtomK::DST_VI}); }
 
     OpInfo& dst_vid() { return step({VuDecodeStep::FieldK::FD, VuDecodeStep::AtomK::DST_VI}); }
+
+    OpInfo& ftf() { return step({VuDecodeStep::FieldK::FTF, VuDecodeStep::AtomK::FTF}); }
+
+    OpInfo& fsf() { return step({VuDecodeStep::FieldK::FSF, VuDecodeStep::AtomK::FSF}); }
 
     OpInfo& src_imm11_load_store() {
       return step({VuDecodeStep::FieldK::IMM11_SIGNED, VuDecodeStep::AtomK::LOAD_STORE_OFFSET});
