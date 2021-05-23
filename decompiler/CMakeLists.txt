@@ -56,6 +56,10 @@ add_library(
         util/DecompilerTypeSystem.cpp
         util/TP_Type.cpp
 
+        VuDisasm/VuDisassembler.cpp
+        VuDisasm/VuInstruction.cpp
+        VuDisasm/VuProgram.cpp
+
         config.cpp)
 
 target_link_libraries(decomp
