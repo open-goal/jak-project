@@ -99,30 +99,29 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
   return get_none();
 }
 
-void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
-
-  // first, get the value we want to modify:
-  auto original_original = dst->parent()->to_gpr(env);
-  // let's not directly modify original, and instead create a copy then use do_set on parent.
-  // this way we avoid "cheating" the set system, although it should be safe...
-  auto original = fe->make_gpr(original_original->type());
-  env->emit(std::make_unique<IR_RegSet>(original, original_original));
-
+/*!
+ * Modify dst by setting the bitfield with give size/offset to the value in src.
+ */
+void Compiler::set_bits_in_bitfield(int size,
+                                    int offset,
+                                    RegVal* dst,
+                                    RegVal* src,
+                                    FunctionEnv* fe,
+                                    Env* env) {
   // we'll need a temp register to hold a mask:
   auto temp = fe->make_gpr(src->type());
   // mask value should be 1's everywhere except for the field so we can AND with it
-  u64 mask_val = ~(((1 << dst->size()) - 1) << dst->offset());
+  u64 mask_val = ~((((u64)1 << (u64)size) - (u64)1) << (u64)offset);
   env->emit(std::make_unique<IR_LoadConstant64>(temp, mask_val));
   // modify the original!
-  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, original, temp));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, dst, temp));
 
   // put the source in temp
   env->emit(std::make_unique<IR_RegSet>(temp, src));
 
   // to shift us all the way to the left and clear upper bits
-  int left_shift_amnt = 64 - dst->size();
-  int right_shift_amnt = (64 - dst->size()) - dst->offset();
+  int left_shift_amnt = 64 - size;
+  int right_shift_amnt = (64 - size) - offset;
   assert(right_shift_amnt >= 0);
 
   if (left_shift_amnt > 0) {
@@ -133,8 +132,70 @@ void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* 
     env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, temp, right_shift_amnt));
   }
 
-  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, original, temp));
+  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, dst, temp));
+}
+
+void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
+  if (dst->use_128_bit()) {
+    set_bitfield_128(form, dst, src, env);
+    return;
+  }
+
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+
+  // first, get the value we want to modify:
+  auto original_original = dst->parent()->to_gpr(env);
+  // let's not directly modify original, and instead create a copy then use do_set on parent.
+  // this way we avoid "cheating" the set system, although it should be safe...
+  auto original = fe->make_gpr(original_original->type());
+  env->emit(std::make_unique<IR_RegSet>(original, original_original));
+  set_bits_in_bitfield(dst->size(), dst->offset(), original, src, fe, env);
+
   do_set(form, dst->parent(), original, original, env);
+}
+
+void Compiler::set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+
+  bool get_top = dst->offset() >= 64;
+
+  // first, get the value we want to modify:
+  assert(m_ts.lookup_type(dst->parent()->type())->get_preferred_reg_class() == RegClass::INT_128);
+  RegVal* original_original = dst->parent()->to_xmm128(env);
+
+  // next, get the 64-bit part we want to modify in the lower 64 bits of an XMM
+  RegVal* xmm_temp = fe->make_ireg(original_original->type(), RegClass::INT_128);
+  if (get_top) {
+    env->emit_ir<IR_Int128Math3Asm>(true, xmm_temp, original_original, original_original,
+                                    IR_Int128Math3Asm::Kind::PCPYUD);
+  } else {
+    env->emit_ir<IR_RegSet>(xmm_temp, original_original);
+  }
+
+  // convert that xmm to a GPR.
+  RegVal* gpr_64_section = fe->make_gpr(original_original->type());
+  env->emit_ir<IR_RegSet>(gpr_64_section, xmm_temp);
+
+  // set the bits in the GPR
+  int corrected_offset = get_top ? dst->offset() - 64 : dst->offset();
+  set_bits_in_bitfield(dst->size(), corrected_offset, gpr_64_section, src, fe, env);
+
+  // back to xmm
+  env->emit_ir<IR_RegSet>(xmm_temp, gpr_64_section);
+
+  // rebuild the xmm
+  if (get_top) {
+    env->emit_ir<IR_Int128Math3Asm>(true, xmm_temp, xmm_temp, original_original,
+                                    IR_Int128Math3Asm::Kind::PCPYLD);
+  } else {
+    env->emit_ir<IR_Int128Math3Asm>(true, xmm_temp, xmm_temp, xmm_temp,
+                                    IR_Int128Math3Asm::Kind::PCPYLD);
+    env->emit_ir<IR_Int128Math3Asm>(true, xmm_temp, xmm_temp, original_original,
+                                    IR_Int128Math3Asm::Kind::PCPYUD);
+  }
+
+  // set
+  do_set(form, dst->parent(), xmm_temp, xmm_temp, env);
 }
 
 /*!
@@ -187,7 +248,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
           src_in_reg, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
       return src_in_reg;
     } else {
-      // nope, the pointer to dereference is some compliated thing.
+      // nope, the pointer to dereference is some complicated thing.
       auto ti = m_ts.lookup_type(as_mem_deref->type());
       env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, 0, base->to_gpr(env),
                                                       ti->get_load_size()));

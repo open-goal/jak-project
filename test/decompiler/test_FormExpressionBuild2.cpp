@@ -1143,3 +1143,87 @@ TEST_F(FormRegressionTest, Method11FontContext) {
       "  )";
   test_with_expr(func, type, expected);
 }
+
+// 128-bit bitfields, also type for pextuw
+TEST_F(FormRegressionTest, Method4ResTag) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L135:\n"
+      "    pcpyud v1, a0, r0\n"
+      "    dsrl32 v1, v1, 31\n"
+      "    bne v1, r0, L136\n"
+      "    sll r0, r0, 0\n"
+
+      "    pcpyud v1, a0, r0\n"
+      "    dsll v1, v1, 1\n"
+      "    dsrl32 v1, v1, 17\n"
+      "    dsll v0, v1, 2\n"
+      "    beq r0, r0, L137\n"
+      "    sll r0, r0, 0\n"
+
+      "L136:\n"
+      "    pcpyud v1, a0, r0\n"
+      "    dsll v1, v1, 1\n"
+      "    dsrl32 v1, v1, 17\n"
+      "    pextuw a0, r0, a0\n"
+      "    lhu a0, 8(a0)\n"
+      "    multu3 v0, v1, a0\n"
+
+      "L137:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function res-tag int)";
+  std::string expected =
+      "(the-as int (if (zero? (-> arg0 inlined?))\n"
+      "            (* (-> arg0 elt-count) 4)\n"
+      "            (* (the-as uint (-> arg0 elt-count)) (-> arg0 elt-type size))\n"
+      "            )\n"
+      "  )";
+  test_with_expr(func, type, expected);
+}
+
+TEST_F(FormRegressionTest, Method2Vec4s) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+
+      "    por gp, a0, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L344\n"
+      "    sllv a2, gp, r0\n"
+      "    dsra32 a3, gp, 0\n"
+      "    pcpyud v1, gp, r0\n"
+      "    sllv t0, v1, r0\n"
+      "    pcpyud v1, gp, r0\n"
+      "    dsra32 t1, v1, 0\n"
+      "    por t2, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    por v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32";
+  std::string type = "(function vec4s vec4s)";
+  std::string expected =
+      "(begin\n"
+      "  (format\n"
+      "   #t\n"
+      "   \"#<vector ~F ~F ~F ~F @ #x~X>\"\n"
+      "   (-> arg0 x)\n"
+      "   (-> arg0 y)\n"
+      "   (-> arg0 z)\n"
+      "   (-> arg0 w)\n"
+      "   arg0\n"
+      "   )\n"
+      "  arg0\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {{"L344", "#<vector ~F ~F ~F ~F @ #x~X>"}});
+}

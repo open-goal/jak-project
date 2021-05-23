@@ -4,6 +4,7 @@
  */
 
 #include "goalc/compiler/Compiler.h"
+#include "goalc/emitter/CallingConvention.h"
 #include "third-party/fmt/core.h"
 
 namespace {
@@ -189,20 +190,27 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     // set up arguments
     if (lambda.params.size() > 8) {
       throw_compiler_error(form,
-                           "Cannot generate an x86-64 function for a lambda with {} parameters.  "
+                           "Cannot generate a real function for a lambda with {} parameters.  "
                            "The current limit is 8.",
                            lambda.params.size());
     }
 
     // set up argument register constraints.
     std::vector<RegVal*> args_for_coloring;
+    std::vector<TypeSpec> arg_types;
+    for (auto& parm : lambda.params) {
+      arg_types.push_back(parm.type);
+    }
+    auto arg_regs = get_arg_registers(m_ts, arg_types);
+
     for (u32 i = 0; i < lambda.params.size(); i++) {
       IRegConstraint constr;
       constr.instr_idx = 0;  // constraint at function start
-      auto ireg = new_func_env->make_gpr(lambda.params.at(i).type);
+      auto ireg = new_func_env->make_ireg(
+          lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
       ireg->mark_as_settable();
       constr.ireg = ireg->ireg();
-      constr.desired_register = emitter::gRegInfo.get_arg_reg(i);
+      constr.desired_register = arg_regs.at(i);
       new_func_env->params[lambda.params.at(i).name] = ireg;
       new_func_env->constrain(constr);
       args_for_coloring.push_back(ireg);
@@ -211,6 +219,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     place->func = new_func_env.get();
 
     // nasty function block env setup
+    // TODO use calling convention
     auto return_reg = new_func_env->make_gpr(get_none()->type());
     auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
     func_block_env->return_value = return_reg;
@@ -239,9 +248,29 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       lambda_ts.add_arg(new_func_env->asm_func_return_type);
     } else if (result && !dynamic_cast<None*>(result)) {
       // got a result, so to_gpr it and return it.
-      auto final_result = result->to_gpr(new_func_env.get());
-      new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result));
+
+      RegVal* final_result;
+      emitter::Register ret_hw_reg = emitter::gRegInfo.get_gpr_ret_reg();
+      if (result->type() != TypeSpec("none") &&
+          m_ts.lookup_type(result->type())->get_load_size() == 16) {
+        ret_hw_reg = emitter::gRegInfo.get_xmm_ret_reg();
+        final_result = result->to_xmm128(new_func_env.get());
+        return_reg->change_class(RegClass::INT_128);
+      } else {
+        final_result = result->to_gpr(new_func_env.get());
+      }
+
       func_block_env->return_types.push_back(final_result->type());
+      for (const auto& possible_type : func_block_env->return_types) {
+        if (possible_type != TypeSpec("none") &&
+            m_ts.lookup_type(possible_type)->get_load_size() == 16) {
+          return_reg->change_class(RegClass::INT_128);
+          break;
+        }
+      }
+
+      new_func_env->emit(std::make_unique<IR_Return>(return_reg, final_result, ret_hw_reg));
+
       auto return_type = m_ts.lowest_common_ancestor(func_block_env->return_types);
       lambda_ts.add_arg(return_type);
     } else {
@@ -364,7 +393,6 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
   std::vector<RegVal*> eval_args;
   for (uint32_t i = 1; i < args.unnamed.size(); i++) {
     auto intermediate = compile_error_guard(args.unnamed.at(i), env);
-    // todo, are the eval/to_reg'd in batches?
     eval_args.push_back(intermediate->to_reg(env));
   }
 
@@ -420,7 +448,14 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
     RegVal* result_reg_if_return_from = nullptr;
     if (auto_inline || got_inlined_lambda) {
       inlined_block_env = fe->alloc_env<BlockEnv>(inlined_compile_env, "#f");
-      result_reg_if_return_from = inlined_compile_env->make_gpr(get_none()->type());
+      RegClass ret_class = RegClass::GPR_64;
+      if (head->type().last_arg() != TypeSpec("none") &&
+          m_ts.lookup_type(head->type().last_arg())->get_load_size() == 16) {
+        ret_class = RegClass::INT_128;
+      }
+      result_reg_if_return_from =
+          inlined_compile_env->make_ireg(head->type().last_arg(), ret_class);
+
       inlined_block_env->return_value = result_reg_if_return_from;
       inlined_block_env->end_label = Label(fe);
       inlined_compile_env = inlined_block_env;
@@ -447,10 +482,19 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       // there were return froms used in the function, so we fall back to using the separate
       // return gpr.
       if (!dynamic_cast<None*>(result)) {
-        auto final_result = result->to_gpr(inlined_compile_env);
+        auto final_result = result->to_reg(inlined_compile_env);
+        inlined_block_env->return_types.push_back(final_result->type());
+
+        for (const auto& possible_type : inlined_block_env->return_types) {
+          if (possible_type != TypeSpec("none") &&
+              m_ts.lookup_type(possible_type)->get_load_size() == 16) {
+            result_reg_if_return_from->change_class(RegClass::INT_128);
+          }
+        }
+
         inlined_compile_env->emit(
             std::make_unique<IR_RegSet>(result_reg_if_return_from, final_result));
-        inlined_block_env->return_types.push_back(final_result->type());
+
         auto return_type = m_ts.lowest_common_ancestor(inlined_block_env->return_types);
         inlined_block_env->return_value->set_type(return_type);
       } else {
@@ -526,7 +570,13 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     return_ts = function->type().last_arg();
   }
 
-  auto return_reg = env->make_gpr(return_ts);
+  auto cc = get_function_calling_convention(function->type(), m_ts);
+  RegClass ret_reg_class = RegClass::GPR_64;
+  if (cc.return_reg && cc.return_reg->is_xmm()) {
+    ret_reg_class = RegClass::INT_128;
+  }
+
+  auto return_reg = env->make_ireg(return_ts, ret_reg_class);
 
   // check arg count:
   if (function->type().arg_count() && !is_varargs_function(function->type())) {
@@ -552,8 +602,11 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
 
   // set args (introducing a move here makes coloring more likely to be possible)
   std::vector<RegVal*> arg_outs;
-  for (auto& arg : args) {
-    arg_outs.push_back(env->make_gpr(arg->type()));
+  for (int i = 0; i < (int)args.size(); i++) {
+    const auto& arg = args.at(i);
+    auto reg = cc.arg_regs.at(i);
+    arg_outs.push_back(
+        env->make_ireg(arg->type(), reg.is_xmm() ? RegClass::INT_128 : RegClass::GPR_64));
     arg_outs.back()->mark_as_settable();
     env->emit(std::make_unique<IR_RegSet>(arg_outs.back(), arg));
   }
@@ -561,10 +614,11 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
   // todo, there's probably a more efficient way to do this.
   auto temp_function = fe->make_gpr(function->type());
   env->emit(std::make_unique<IR_RegSet>(temp_function, function));
-  env->emit(std::make_unique<IR_FunctionCall>(temp_function, return_reg, arg_outs));
+  env->emit(std::make_unique<IR_FunctionCall>(temp_function, return_reg, arg_outs, cc.arg_regs,
+                                              cc.return_reg));
 
   if (m_settings.emit_move_after_return) {
-    auto result_reg = env->make_gpr(return_reg->type());
+    auto result_reg = env->make_ireg(return_reg->type(), ret_reg_class);
     env->emit(std::make_unique<IR_RegSet>(result_reg, return_reg));
     return result_reg;
   } else {

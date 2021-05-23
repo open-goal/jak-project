@@ -10,6 +10,8 @@
 #include <filesystem>
 #include "common/common_types.h"
 
+namespace fs = std::filesystem;
+
 namespace file_util {
 std::filesystem::path get_user_home_dir();
 std::string get_project_path();

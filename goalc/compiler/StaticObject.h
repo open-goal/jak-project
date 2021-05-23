@@ -1,12 +1,11 @@
 #pragma once
 
-#ifndef JAK_STATICOBJECT_H
-#define JAK_STATICOBJECT_H
-
 #include <string>
 #include <vector>
 #include "common/type_system/TypeSpec.h"
 #include "goalc/emitter/ObjectGenerator.h"
+#include "goalc/compiler/ConstantValue.h"
+#include "common/util/BitUtils.h"
 
 class StaticObject {
  public:
@@ -99,7 +98,8 @@ class StaticResult {
   StaticResult() = default;
 
   static StaticResult make_structure_reference(StaticStructure* structure, TypeSpec ts);
-  static StaticResult make_constant_data(u64 value, TypeSpec ts);
+  static StaticResult make_constant_data(const ConstantValue& data, TypeSpec ts);
+  static StaticResult make_constant_data(u64 data, const TypeSpec& ts);
   static StaticResult make_symbol(const std::string& name);
 
   std::string print() const;
@@ -114,10 +114,10 @@ class StaticResult {
     return m_struct;
   }
 
-  s32 get_as_s32() const {
-    assert(is_constant_data());
-    // todo, check that it fits.
-    return (s32)m_constant_data;
+  s32 constant_s32() const {
+    assert(is_constant_data() && m_constant_data && m_constant_data->size() == 8 &&
+           integer_fits(m_constant_data->value_64(), 4, true));
+    return (s32)m_constant_data->value_64();
   }
 
   const std::string& symbol_name() const {
@@ -125,9 +125,14 @@ class StaticResult {
     return m_symbol;
   }
 
-  u64 constant_data() const {
-    assert(is_constant_data());
-    return m_constant_data;
+  u64 constant_u64() const {
+    assert(is_constant_data() && m_constant_data && m_constant_data->size() == 8);
+    return m_constant_data->value_64();
+  }
+
+  const ConstantValue& constant() const {
+    assert(m_constant_data.has_value());
+    return *m_constant_data;
   }
 
  private:
@@ -138,7 +143,7 @@ class StaticResult {
   StaticStructure* m_struct = nullptr;
 
   // used for only constant data
-  u64 m_constant_data = 0;
+  std::optional<ConstantValue> m_constant_data;
 
   // used for only symbol
   std::string m_symbol;
@@ -156,5 +161,3 @@ class StaticPair : public StaticStructure {
  private:
   StaticResult m_car, m_cdr;
 };
-
-#endif  // JAK_STATICOBJECT_H

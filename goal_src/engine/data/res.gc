@@ -5,3 +5,119 @@
 ;; name in dgo: res
 ;; dgos: GAME, ENGINE
 
+;; TODO! Needs a lot of 128-bit type support for res-tag
+
+;; res is a very generic resource storage system used for the game entities.
+;; It can be used to store all of the data for some sort of "object" (such as an entity), and that data can be of many types.
+;; The data itself can also be sorted in many different manners, such as:
+;; - single element
+;; - array of elements
+;; - array of arrays?
+;; - keyframed array of elements
+;; - array of keyframed array of elements?
+;;
+;; A res-lump stores and is used to access all of the data for a single "resource".
+;; This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
+;;
+;; A res-tag is a tag that contains information about a particular property of this resource.
+;; For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
+;;
+;; Keyframes are used to specify when/where the data is relevant.
+;; For example (this is made-up), say you have a camera spline, and you want the FOV to change three times:
+;; when it starts, somewhere in the middle, and at the end.
+;; You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
+;; the FOV change should occur. A similar concept is used for keyframe animation.
+;;
+;; Properties are looked up from a res-lump using their name, stored as a symbol.
+;;
+;; This is updated from the resource system used for entities in Crash 2, which had most of these features and worked very similarly!
+
+(defmacro res-ref? (tag)
+  "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
+
+  `(zero? (-> ,tag inlined?))
+  )
+
+(defmethod print res-tag ((obj res-tag))
+  "print a res-tag."
+
+  (let ((obj obj))
+    (if (res-ref? obj)
+
+      (format #t "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+                  (-> obj name)
+                  (-> obj key-frame)
+                  (-> obj elt-type)
+                  (-> obj elt-count)
+                  )
+
+      (format #t "#<res-tag (i) :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+                  (-> obj name)
+                  (-> obj key-frame)
+                  (-> obj elt-type)
+                  (-> obj elt-count)
+                  )
+      )
+
+    obj
+    )
+  )
+
+(defmethod length res-tag ((obj res-tag))
+  "get the length in bytes of this tag's resource."
+
+  (the int
+  (if (res-ref? obj)
+
+    (* (-> obj elt-count) 4)
+
+    (* (-> obj elt-count) (-> obj elt-type size))
+    )
+    )
+  )
+
+(defmethod dummy-13 res-lump ((obj res-lump) (n int))
+  "get the address of the n'th property."
+
+  (&+ (-> obj data-base)
+      (-> obj tag n data-offset))
+  )
+
+(defmethod dummy-14 res-lump ((obj res-lump) (tag res-tag))
+  "get the address of the specified property."
+
+  (&+ (-> obj data-base)
+      (-> tag data-offset))
+  )
+
+(defmethod new res-lump ((allocation symbol) (type-to-make type) (data-count int) (data-size int))
+  "Allocate a new res-lump."
+
+  (let ((obj (object-new allocation type-to-make (the int (+ (+ (-> type-to-make size)
+                                                                (* (1- data-count) (size-of res-tag))
+                                                                )
+                                                             data-size)))))
+        (set! (-> obj allocated-length) data-count)
+        (set! (-> obj data-size) data-size)
+        (set! (-> obj length) 0)
+        (set! (-> obj data-base) (&-> (-> obj tag) data-count))
+        (set! (-> obj data-top) (&-> (-> obj tag) data-count))
+        obj
+        )
+  )
+
+(defmethod length res-lump ((obj res-lump))
+  "get the amount of resources in a res-lump."
+
+  (-> obj length)
+  )
+
+(defmethod asize-of res-lump ((obj res-lump))
+  "get the allocated size of a res-lump."
+
+  (the int (+ (+ (-> obj type psize) ;; psize is used here, but size is used in the allocation?
+                 (* (-> obj allocated-length) (size-of res-tag))
+                 )
+              (-> obj data-size)))
+  )
+

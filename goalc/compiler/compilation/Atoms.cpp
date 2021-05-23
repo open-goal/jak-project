@@ -308,7 +308,12 @@ Val* Compiler::compile_char(const goos::Object& code, Env* env) {
  */
 Val* Compiler::compile_integer(s64 value, Env* env) {
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), value);
+  return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), &value, 8);
+}
+
+Val* Compiler::compile_integer(const U128& value, Env* env) {
+  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), &value, 16);
 }
 
 /*!

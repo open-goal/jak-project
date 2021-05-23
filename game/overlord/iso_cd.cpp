@@ -354,10 +354,10 @@ void LoadMusicTweaks(u8* buffer) {
   MakeISOName(iso_name, "TWEAKVAL.MUS");
   FileRecord* fr = FS_FindIN(iso_name);
   if (!fr || !ReadSectorsNow(fr->location, 1, buffer)) {
-    *(s32*)gMusicTweakInfo = 0;
+    gMusicTweakInfo.TweakCount = 0;
     lg::warn("[OVERLORD ISO CD] Failed to load music tweaks!");
   } else {
-    memcpy(gMusicTweakInfo, buffer, MUSIC_TWEAK_SIZE);
+    memcpy((void*)&gMusicTweakInfo, buffer, sizeof(MusicTweaks));
   }
 }
 

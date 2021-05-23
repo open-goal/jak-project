@@ -171,7 +171,9 @@ const BitField& find_field(const TypeSystem& ts,
                            std::optional<bool> looking_for_unsigned) {
   for (auto& field : type->fields()) {
     if (field.size() == size && field.offset() == start_bit) {
-      bool is_int = ts.tc(TypeSpec("integer"), field.type());
+      // the GOAL compiler sign extended floats.
+      bool is_int =
+          ts.tc(TypeSpec("integer"), field.type()) || ts.tc(TypeSpec("float"), field.type());
       bool is_uint = ts.tc(TypeSpec("uinteger"), field.type());
       // allow sign match, or unsigned+not a number.
 
@@ -180,6 +182,12 @@ const BitField& find_field(const TypeSystem& ts,
         if ((is_int && !want_unsigned) || (is_uint && want_unsigned) ||
             (!is_int && !is_uint && want_unsigned)) {
           // matched!
+          return field;
+        }
+
+        // this is a hack to work around bad code where extracting the (pointer process)
+        // would sign extend the address.
+        if (!is_int && !is_uint && type->get_name() == "handle") {
           return field;
         }
       } else {
@@ -286,6 +294,13 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 
 }  // namespace
 
+void BitfieldAccessElement::push_pcpyud() {
+  if (!m_steps.empty()) {
+    throw std::runtime_error("Unexpected pcpyud!");
+  }
+  m_got_pcpyud = true;
+}
+
 /*!
  * Add a step to the bitfield access. If this completes the access, returns a form representing the
  * access
@@ -294,6 +309,8 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                               const TypeSystem& ts,
                                               FormPool& pool,
                                               const Env& env) {
+  int pcpyud_offset = m_got_pcpyud ? 64 : 0;
+
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // for left/right shift combo to get a field.
     m_steps.push_back(step);
@@ -305,7 +322,38 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     bool is_unsigned = step.right_shift_unsigned();
     int shift_size = step.get_shift_start_bit();
     int size = shift_size - step.amount;
-    int start_bit = shift_size - size;
+    int start_bit = pcpyud_offset + shift_size - size;
+    auto type = ts.lookup_type(m_type);
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    assert(as_bitfield);
+    auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
+  }
+
+  if (m_steps.empty() && step.kind == BitfieldManip::Kind::SLLV_SEXT) {
+    bool is_unsigned = false;
+    int size = 32;
+    int start_bit = 0 + pcpyud_offset;
+    auto type = ts.lookup_type(m_type);
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    assert(as_bitfield);
+    auto field = find_field(ts, as_bitfield, start_bit, size, is_unsigned);
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field.name()));
+    result->inline_nested();
+    return result;
+  }
+
+  if (m_steps.empty() && step.kind == BitfieldManip::Kind::PEXTUW) {
+    if (m_got_pcpyud) {
+      throw std::runtime_error("unknown pcpyud PEXTUW sequence in bitfield");
+    }
+    bool is_unsigned = true;
+    int size = 32;
+    int start_bit = 64;
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
@@ -318,7 +366,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LEFT_SHIFT) {
     // second op in left/right shift combo
-    int end_bit = 64 - m_steps.at(0).amount;
+    int end_bit = pcpyud_offset + 64 - m_steps.at(0).amount;
     if (!step.is_right_shift()) {
       throw std::runtime_error("Unexpected step 1");
     }
@@ -342,12 +390,18 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT) {
     // and with mask
+    if (m_got_pcpyud) {
+      throw std::runtime_error("unknown pcpyud LOGAND_WITH_CONSTANT_INT sequence in bitfield");
+    }
     m_steps.push_back(step);
     return nullptr;
   }
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT &&
       step.kind == BitfieldManip::Kind::NONZERO_COMPARE) {
+    if (m_got_pcpyud) {
+      throw std::runtime_error("unknown pcpyud NONZERO_COMPARE sequence in bitfield");
+    }
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
@@ -364,6 +418,9 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT &&
       step.kind == BitfieldManip::Kind::LOGIOR_WITH_CONSTANT_INT) {
+    if (m_got_pcpyud) {
+      throw std::runtime_error("unknown pcpyud LOGIOR_WITH_CONSTANT_INT sequence in bitfield");
+    }
     // this is setting a bitfield to a constant.
     // first, let's check that the mask is used properly:
     u64 mask = m_steps.at(0).amount;
@@ -399,6 +456,9 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT &&
       step.kind == BitfieldManip::Kind::LOGIOR_WITH_FORM) {
+    if (m_got_pcpyud) {
+      throw std::runtime_error("unknown pcpyud LOGIOR_WITH_FORM sequence in bitfield");
+    }
     // this is setting a bitfield to a variable
     u64 mask = m_steps.at(0).amount;
 

@@ -156,8 +156,7 @@ std::unique_ptr<AtomicOp> make_standard_load(const Instruction& i0,
   if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(rfp())) {
     // it's an FP relative load.
     src = SimpleAtom::make_static_address(i0.get_src(0).get_label()).as_expr();
-  } else if (i0.get_src(0).is_imm() && i0.get_src(1).is_reg(rsp()) &&
-             (kind == LoadVarOp::Kind::SIGNED || kind == LoadVarOp::Kind::UNSIGNED)) {
+  } else if (i0.get_src(0).is_imm() && i0.get_src(1).is_reg(rsp())) {
     // it's a stack spill.
     return std::make_unique<StackSpillLoadOp>(make_dst_var(i0, idx), load_size,
                                               i0.get_src(0).get_imm(),
@@ -178,7 +177,7 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
                                               int idx,
                                               int store_size,
                                               StoreOp::Kind kind) {
-  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP)) && kind == StoreOp::Kind::INTEGER) {
+  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
     if (kind == StoreOp::Kind::INTEGER && store_size == 4 && i0.get_src(1).get_imm() == 0) {
       // this is a bit of a hack. enter-state does a sw onto the stack that's not a spill, but
       // instead manipulates the stores "ra" register that will later be restored.
@@ -216,7 +215,6 @@ std::unique_ptr<AtomicOp> make_standard_store(const Instruction& i0,
 
 std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
   switch (i0.kind) {
-    case InstructionKind::POR:
     case InstructionKind::SLLV:  // goal will use dsllv
     case InstructionKind::SLL:   // goal will use dsll
     case InstructionKind::PCPYUD:
@@ -441,6 +439,14 @@ std::unique_ptr<AtomicOp> convert_or_1(const Instruction& i0, int idx) {
     src = make_2reg_expr(i0, SimpleExpression::Kind::OR, idx);
   }
   return std::make_unique<SetVarOp>(dest, src, idx);
+}
+
+std::unique_ptr<AtomicOp> convert_por_1(const Instruction& i0, int idx) {
+  if (is_gpr_3(i0, InstructionKind::POR, {}, {}, rr0())) {
+    return std::make_unique<SetVarOp>(make_dst_var(i0, idx),
+                                      make_src_atom(i0.get_src(0).get_reg(), idx).as_expr(), idx);
+  }
+  return std::make_unique<AsmOp>(i0, idx);
 }
 
 std::unique_ptr<AtomicOp> convert_ori_1(const Instruction& i0, int idx) {
@@ -714,6 +720,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_in
   switch (i0.kind) {
     case InstructionKind::OR:
       return convert_or_1(i0, idx);
+    case InstructionKind::POR:
+      return convert_por_1(i0, idx);
     case InstructionKind::ORI:
       return convert_ori_1(i0, idx);
     case InstructionKind::AND:

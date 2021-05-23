@@ -1,0 +1,95 @@
+(deftype b128 (uint128)
+  ((f1 int32 :offset 0)
+   (f2 int32 :offset 32)
+   (f3 int32 :offset 64)
+   (f4 int32 :offset 96))
+  )
+
+(deftype b128-structure (structure)
+  ((val b128))
+  )
+
+
+  (let ((val (the b128 (make-u128 #xabcdbeef77777777 #x6666666612347890)))
+        (struct (new 'stack 'b128-structure))
+        )
+    (set! (-> struct val) val)
+    (format #t "~8x ~8x ~8x ~8x~%"
+            (-> struct val f4)
+            (-> struct val f3)
+            (-> struct val f2)
+            (-> struct val f1)
+            )
+    (set! (-> struct val f1) 1)
+    (format #t "~8x ~8x ~8x ~8x~%"
+            (-> struct val f4)
+            (-> struct val f3)
+            (-> struct val f2)
+            (-> struct val f1)
+            )
+    (set! (-> struct val f2) 2)
+    (format #t "~8x ~8x ~8x ~8x~%"
+            (-> struct val f4)
+            (-> struct val f3)
+            (-> struct val f2)
+            (-> struct val f1)
+            )
+    (set! (-> struct val f3) 3)
+    (format #t "~8x ~8x ~8x ~8x~%"
+            (-> struct val f4)
+            (-> struct val f3)
+            (-> struct val f2)
+            (-> struct val f1)
+            )
+    (set! (-> struct val f4) 4)
+    (format #t "~8x ~8x ~8x ~8x~%"
+            (-> struct val f4)
+            (-> struct val f3)
+            (-> struct val f2)
+            (-> struct val f1)
+            )
+    )
+
+(let ((static-structure (new 'static 'b128-structure
+                             :val (new 'static 'b128
+                                       :f1 #x12341234
+                                       :f2 #x7
+                                       :f3 #x666
+                                       :f4 #xdeadbeef))))
+  (format #t "~8x ~8x ~8x ~8x~%"
+          (-> static-structure val f1)
+          (-> static-structure val f2)
+          (-> static-structure val f3)
+          (-> static-structure val f4))
+  )
+
+(let ((val (new 'static 'b128
+                :f1 #x23232323
+                :f2 #x78787878
+                :f3 #x92929292
+                :f4 #x12124545))
+      )
+  (format #t "~8x ~8x ~8x ~8x~%"
+          (-> val f4)
+          (-> val f3)
+          (-> val f2)
+          (-> val f1)
+          )
+  )
+
+(let* ((f1 #xffffffff00001212)
+       (f4 #xffffffff00009878)
+       (val (new 'static 'b128
+                 :f1 f1
+                 :f2 #x2222
+                 :f3 #x3333
+                 :f4 f4
+                 )))
+  (format #t "~8x ~8x ~8x ~8x~%"
+          (-> val f4)
+          (-> val f3)
+          (-> val f2)
+          (-> val f1)
+          )
+  )
+
