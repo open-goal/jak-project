@@ -767,41 +767,56 @@ void ReturnElement::get_modified_regs(RegSet& regs) const {
 // BreakElement
 /////////////////////////////
 
-BreakElement::BreakElement(Form* _return_code, Form* _dead_code)
-    : return_code(_return_code), dead_code(_dead_code) {
+BreakElement::BreakElement(Form* _return_code, Form* _dead_code, int _lid)
+    : return_code(_return_code), dead_code(_dead_code), lid(_lid) {
   return_code->parent_element = this;
-  dead_code->parent_element = this;
+  if (dead_code) {
+    dead_code->parent_element = this;
+  }
 }
 
 goos::Object BreakElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
-  forms.push_back(pretty_print::to_symbol("break"));
-  forms.push_back(pretty_print::build_list(return_code->to_form(env)));
-  forms.push_back(pretty_print::build_list(dead_code->to_form(env)));
+  if (dead_code) {
+    forms.push_back(pretty_print::to_symbol("break"));
+    forms.push_back(pretty_print::build_list(return_code->to_form(env)));
+    forms.push_back(pretty_print::build_list(dead_code->to_form(env)));
+  } else {
+    forms.push_back(pretty_print::to_symbol("begin"));
+    return_code->inline_forms(forms, env);
+    forms.push_back(pretty_print::build_list(fmt::format("goto cfg-{}", lid)));
+  }
   return pretty_print::build_list(forms);
 }
 
 void BreakElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   return_code->apply(f);
-  dead_code->apply(f);
+  if (dead_code) {
+    dead_code->apply(f);
+  }
 }
 
 void BreakElement::apply_form(const std::function<void(Form*)>& f) {
   return_code->apply_form(f);
-  dead_code->apply_form(f);
+  if (dead_code) {
+    dead_code->apply_form(f);
+  }
 }
 
 void BreakElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   if (recursive) {
     return_code->collect_vars(vars, recursive);
-    dead_code->collect_vars(vars, recursive);
+    if (dead_code) {
+      dead_code->collect_vars(vars, recursive);
+    }
   }
 }
 
 void BreakElement::get_modified_regs(RegSet& regs) const {
-  for (auto x : {return_code, dead_code}) {
-    x->get_modified_regs(regs);
+  return_code->get_modified_regs(regs);
+  if (dead_code) {
+    dead_code->get_modified_regs(regs);
   }
 }
 
@@ -1503,6 +1518,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "none";
     case FixedOperatorKind::PCPYLD:
       return "make-u128";
+    case FixedOperatorKind::SYMBOL_TO_STRING:
+      return "symbol->string";
     default:
       assert(false);
       return "";
@@ -2368,6 +2385,55 @@ void MethodOfTypeElement::collect_vars(RegAccessSet& vars, bool) const {
 }
 
 void MethodOfTypeElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// LabelElement
+///////////////////////////////
+
+LabelElement::LabelElement(int lid) : m_lid(lid) {}
+
+goos::Object LabelElement::to_form_internal(const Env&) const {
+  return pretty_print::build_list(fmt::format("label cfg-{}", m_lid));
+}
+
+void LabelElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void LabelElement::apply_form(const std::function<void(Form*)>&) {}
+void LabelElement::collect_vars(RegAccessSet&, bool) const {}
+void LabelElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// GetSymbolStringPointer
+//////////////////////////////
+
+GetSymbolStringPointer::GetSymbolStringPointer(Form* src) : m_src(src) {
+  m_src->parent_element = this;
+}
+
+goos::Object GetSymbolStringPointer::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("sym->str-ptr", m_src->to_form(env));
+}
+
+void GetSymbolStringPointer::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_src->apply(f);
+}
+
+void GetSymbolStringPointer::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+}
+
+void GetSymbolStringPointer::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_src->collect_vars(vars, recursive);
+  }
+}
+
+void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
+  return m_src->get_modified_regs(regs);
+}
 
 ////////////////////////////////
 // Utilities

@@ -144,6 +144,7 @@ enum class FixedOperatorKind {
   PAIRP,
   NONE,
   PCPYLD,
+  SYMBOL_TO_STRING,
   INVALID
 };
 

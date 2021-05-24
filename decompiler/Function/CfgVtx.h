@@ -67,6 +67,7 @@ class CfgVtx {
  public:
   virtual std::string to_string() const = 0;  // convert to a single line string for debugging
   virtual goos::Object to_form() const = 0;   // recursive print as LISP form.
+  virtual int get_first_block_id() const = 0;
   virtual ~CfgVtx() = default;
 
   CfgVtx* parent = nullptr;       // parent structure, or nullptr if top level
@@ -76,6 +77,8 @@ class CfgVtx {
   CfgVtx* prev = nullptr;         // previous code in memory
   std::vector<CfgVtx*> pred;      // all vertices which have us as succ_branch or succ_ft
   int uid = -1;
+
+  bool needs_label = false;
 
   enum class DelaySlotKind { NO_BRANCH, SET_REG_FALSE, SET_REG_TRUE, NOP, OTHER, NO_DELAY };
 
@@ -134,6 +137,7 @@ class EntryVtx : public CfgVtx {
   EntryVtx() = default;
   goos::Object to_form() const override;
   std::string to_string() const override;
+  int get_first_block_id() const override;
 };
 
 /*!
@@ -143,6 +147,7 @@ class ExitVtx : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 };
 
 /*!
@@ -153,6 +158,7 @@ class BlockVtx : public CfgVtx {
   explicit BlockVtx(int id) : block_id(id) {}
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
   int block_id = -1;                 // which block are we?
   bool is_early_exit_block = false;  // are we an empty block at the end for early exits to jump to?
 };
@@ -165,6 +171,7 @@ class SequenceVtx : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
   std::vector<CfgVtx*> seq;
 };
 
@@ -177,6 +184,7 @@ class CondWithElse : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 
   struct Entry {
     Entry() = default;
@@ -198,6 +206,7 @@ class CondNoElse : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 
   struct Entry {
     Entry() = default;
@@ -213,6 +222,7 @@ class WhileLoop : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 
   CfgVtx* condition = nullptr;
   CfgVtx* body = nullptr;
@@ -222,6 +232,7 @@ class UntilLoop : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 
   CfgVtx* condition = nullptr;
   CfgVtx* body = nullptr;
@@ -231,6 +242,7 @@ class UntilLoop_single : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 
   CfgVtx* block = nullptr;
 };
@@ -239,6 +251,7 @@ class ShortCircuit : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
   struct Entry {
     CfgVtx* condition = nullptr;
     CfgVtx* likely_delay = nullptr;  // will be nullptr on last case
@@ -250,6 +263,7 @@ class InfiniteLoopBlock : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
   CfgVtx* block;
 };
 
@@ -257,6 +271,7 @@ class GotoEnd : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
   CfgVtx* body = nullptr;
   CfgVtx* unreachable_block = nullptr;
 };
@@ -265,15 +280,17 @@ class Break : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
-  int dest_block = -1;
+  int get_first_block_id() const override;
   CfgVtx* body = nullptr;
   CfgVtx* unreachable_block = nullptr;
+  int dest_block_id = -1;
 };
 
 class EmptyVtx : public CfgVtx {
  public:
   std::string to_string() const override;
   goos::Object to_form() const override;
+  int get_first_block_id() const override;
 };
 
 struct BasicBlock;
@@ -292,6 +309,7 @@ class ControlFlowGraph {
   int get_top_level_vertices_count();
   bool is_fully_resolved();
   CfgVtx* get_single_top_level();
+  bool contains_break() const { return m_has_break; }
 
   void flag_early_exit(const std::vector<BasicBlock>& blocks);
 
@@ -359,6 +377,7 @@ class ControlFlowGraph {
   EntryVtx* m_entry;                 // the entry vertex
   ExitVtx* m_exit;                   // the exit vertex
   int m_uid = 0;
+  bool m_has_break = false;
 };
 
 class LinkedObjectFile;

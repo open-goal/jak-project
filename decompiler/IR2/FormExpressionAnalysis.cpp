@@ -629,6 +629,15 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     // lookup types.
     auto arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
     auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+
+    // try to find symbol to string stuff
+    auto arg0_int = get_goal_integer_constant(args.at(0), env);
+    if (arg0_int && (*arg0_int == SYM_INFO_OFFSET + 4) &&
+        arg1_type.typespec() == TypeSpec("symbol")) {
+      result->push_back(pool.alloc_element<GetSymbolStringPointer>(args.at(1)));
+      return;
+    }
+
     if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
       // try to see if this is valid, from the type system.
       FieldReverseLookupInput input;
@@ -1980,6 +1989,14 @@ void DerefElement::update_from_stack(const Env& env,
   mark_popped();
   // todo - update var tokens from stack?
   m_base->update_children_from_stack(env, pool, stack, allow_side_effects);
+
+  // look for sym->str-ptr
+  auto sym_str = m_base->try_as_element<GetSymbolStringPointer>();
+  if (sym_str && m_tokens.size() == 1 && m_tokens.at(0).is_int(0)) {
+    result->push_back(pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::SYMBOL_TO_STRING), sym_str->src()));
+    return;
+  }
 
   // merge nested ->'s
   inline_nested();
@@ -3468,6 +3485,36 @@ void StackSpillValueElement::update_from_stack(const Env&,
                                                bool) {
   mark_popped();
   result->push_back(this);
+}
+
+void GetSymbolStringPointer::update_from_stack(const Env&,
+                                               FormPool&,
+                                               FormStack&,
+                                               std::vector<FormElement*>* result,
+                                               bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void LabelElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
+  mark_popped();
+  stack.push_form_element(this, true);
+}
+
+void BreakElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  mark_popped();
+
+  FormStack temp_stack(false);
+  for (auto& elt : return_code->elts()) {
+    elt->push_to_stack(env, pool, temp_stack);
+  }
+
+  auto new_entries = temp_stack.rewrite(pool, env);
+  return_code->clear();
+  for (auto e : new_entries) {
+    return_code->push_back(e);
+  }
+  stack.push_form_element(this, true);
 }
 
 }  // namespace decompiler
