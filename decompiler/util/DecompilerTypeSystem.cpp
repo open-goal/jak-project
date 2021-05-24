@@ -5,6 +5,7 @@
 #include "decompiler/Disasm/Register.h"
 #include "common/log/log.h"
 #include "TP_Type.h"
+#include "third-party/json.hpp"
 
 namespace decompiler {
 DecompilerTypeSystem::DecompilerTypeSystem() {
@@ -101,6 +102,8 @@ TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
   return parse_typespec(&ts, car(data));
 }
 
+
+
 std::string DecompilerTypeSystem::dump_symbol_types() {
   assert(symbol_add_order.size() == symbols.size());
   std::string result;
@@ -113,6 +116,27 @@ std::string DecompilerTypeSystem::dump_symbol_types() {
     }
   }
   return result;
+}
+
+std::string DecompilerTypeSystem::dump_symbol_mapping() {
+  using namespace nlohmann;
+  json j;
+
+  for (auto& symbol_name : symbol_add_order) {
+    std::string file_name = "unknown or built-in";
+    if (symbol_metadata.count(symbol_name)) {
+      auto meta = symbol_metadata[symbol_name];
+      if (!meta.associated_file.empty()) {
+        file_name = meta.associated_file;
+      }
+    }
+    if (!j.contains(file_name)) {
+      j[file_name] = json::array();
+    }
+    j[file_name].push_back(symbol_name);
+  }
+
+  return j.dump(4);
 }
 
 void DecompilerTypeSystem::add_type_flags(const std::string& name, u64 flags) {

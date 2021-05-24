@@ -74,8 +74,9 @@ static uint32_t c_symlink2(LinkedObjectFile& f,
                            SymbolLinkKind kind,
                            const char* name,
                            int seg_id,
-                           DecompilerTypeSystem& dts) {
-  dts.add_symbol(name);
+                           DecompilerTypeSystem& dts,
+                           const std::string& file_name = "") {
+  dts.add_symbol(name, DecompilerTypeSystem::SymbolMetadata(file_name));
   auto initial_offset = code_ptr_offset;
   do {
     auto table_value = data.at(link_ptr_offset);
@@ -154,8 +155,9 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
                            SymbolLinkKind kind,
                            const char* name,
                            int seg,
-                           DecompilerTypeSystem& dts) {
-  dts.add_symbol(name);
+                           DecompilerTypeSystem& dts,
+                           const std::string& file_name = "") {
+  dts.add_symbol(name, DecompilerTypeSystem::SymbolMetadata(file_name));
   auto initial_offset = code_ptr;
   do {
     // seek, with a variable length encoding that sucks.
@@ -378,7 +380,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
 
       link_ptr_offset += strlen(s_name) + 1;
       f.stats.total_v2_symbol_count++;
-      link_ptr_offset = c_symlink2(f, data, code_offset, link_ptr_offset, kind, s_name, 0, dts);
+      link_ptr_offset = c_symlink2(f, data, code_offset, link_ptr_offset, kind, s_name, 0, dts, name);
       if (data.at(link_ptr_offset) == 0)
         break;
     }
@@ -561,10 +563,10 @@ static void link_v5(LinkedObjectFile& f,
 
           if (std::string("_empty_") == sname) {
             link_ptr = c_symlink2(f, data, segment_data_offsets[seg_id], link_ptr,
-                                  SymbolLinkKind::EMPTY_LIST, sname, seg_id, dts);
+                                  SymbolLinkKind::EMPTY_LIST, sname, seg_id, dts, name);
           } else {
             link_ptr = c_symlink2(f, data, segment_data_offsets[seg_id], link_ptr,
-                                  SymbolLinkKind::SYMBOL, sname, seg_id, dts);
+                                  SymbolLinkKind::SYMBOL, sname, seg_id, dts, name);
           }
         } else if ((reloc & 0x3f) == 0x3f) {
           assert(false);  // todo, does this ever get hit?
@@ -578,7 +580,7 @@ static void link_v5(LinkedObjectFile& f,
           const char* sname = (const char*)(&data.at(link_ptr));
           link_ptr += strlen(sname) + 1;
           link_ptr = c_symlink2(f, data, segment_data_offsets[seg_id], link_ptr,
-                                SymbolLinkKind::TYPE, sname, seg_id, dts);
+                                SymbolLinkKind::TYPE, sname, seg_id, dts, name);
         }
 
         sub_link_ptr = link_ptr;
@@ -774,7 +776,7 @@ static void link_v3(LinkedObjectFile& f,
 
       link_ptr += strlen(s_name) + 1;
       f.stats.v3_symbol_count++;
-      link_ptr = c_symlink3(f, data, base_ptr, link_ptr, kind, s_name, seg_id, dts);
+      link_ptr = c_symlink3(f, data, base_ptr, link_ptr, kind, s_name, seg_id, dts, name);
     }
     segment_link_ends[seg_id] = link_ptr;
   }
