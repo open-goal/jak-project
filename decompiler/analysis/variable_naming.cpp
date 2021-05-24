@@ -419,7 +419,9 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       if (succ != -1) {
         for (auto reg : end_op_info.live) {
           // only update phis for variables that are actually live at the next block.
-          ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          if (reg.get_kind() != Reg::VF) {
+            ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          }
         }
       }
     }

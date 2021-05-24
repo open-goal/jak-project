@@ -42,12 +42,17 @@ struct StackVariableHint {
   int stack_offset = 0;     // where it's located on the stack (relative to sp after prologue)
 };
 
+struct CondWithElseLengthHack {
+  std::unordered_map<std::string, int> max_length_by_start_block;
+};
+
 struct DecompileHacks {
   std::unordered_set<std::string> types_with_bad_inspect_methods;
   std::unordered_set<std::string> no_type_analysis_functions_by_name;
   std::unordered_set<std::string> hint_inline_assembly_functions;
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
+  std::unordered_map<std::string, CondWithElseLengthHack> cond_with_else_len_by_func_name;
 };
 
 struct Config {
@@ -71,6 +76,7 @@ struct Config {
   bool hexdump_code = false;
   bool hexdump_data = false;
   bool dump_objs = false;
+  bool print_cfgs = false;
 
   std::unordered_set<std::string> allowed_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>

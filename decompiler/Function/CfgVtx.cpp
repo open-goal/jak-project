@@ -1124,7 +1124,7 @@ bool is_found_after(CfgVtx* a, CfgVtx* b) {
 
 }  // namespace
 
-bool ControlFlowGraph::find_cond_w_else() {
+bool ControlFlowGraph::find_cond_w_else(const CondWithElseLengthHack& hack) {
   bool found = false;
 
   for_each_top_level_vtx([&](CfgVtx* vtx) {
@@ -1258,6 +1258,13 @@ bool ControlFlowGraph::find_cond_w_else() {
         entries.emplace_back(c, b);
         prev_body = b;
         prev_condition = c;
+      }
+    }
+
+    auto hack_lookup = hack.max_length_by_start_block.find(c0->to_form().print());
+    if (hack_lookup != hack.max_length_by_start_block.end()) {
+      if ((int)entries.size() > hack_lookup->second) {
+        return true;
       }
     }
 
@@ -1967,7 +1974,10 @@ CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
 /*!
  * Build and resolve a Control Flow Graph as much as possible.
  */
-std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int seg, Function& func) {
+std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
+                                            int seg,
+                                            Function& func,
+                                            const CondWithElseLengthHack& cond_with_else_hack) {
   //  fmt::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
@@ -2121,7 +2131,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int se
 
     // todo - should we lower the priority of the conds?
 
-    changed = changed || cfg->find_cond_w_else();
+    changed = changed || cfg->find_cond_w_else(cond_with_else_hack);
 
     changed = changed || cfg->find_while_loop_top_level();
     changed = changed || cfg->find_seq_top_level();
