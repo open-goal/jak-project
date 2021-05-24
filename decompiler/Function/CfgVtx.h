@@ -317,7 +317,7 @@ class ControlFlowGraph {
   void link_fall_through(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   void link_fall_through_likely(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
   void link_branch(BlockVtx* first, BlockVtx* second, std::vector<BasicBlock>& blocks);
-  bool find_cond_w_else();
+  bool find_cond_w_else(const CondWithElseLengthHack& hacks);
   bool find_cond_w_empty_else();
   bool find_cond_n_else();
 
@@ -382,6 +382,9 @@ class ControlFlowGraph {
 
 class LinkedObjectFile;
 class Function;
-std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file, int seg, Function& func);
+std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
+                                            int seg,
+                                            Function& func,
+                                            const CondWithElseLengthHack& cond_with_else_hack);
 }  // namespace decompiler
 #endif  // JAK_DISASSEMBLER_CFGVTX_H
