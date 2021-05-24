@@ -58,7 +58,6 @@ add_library(
 
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
-        VuDisasm/VuProgram.cpp
 
         config.cpp)
 

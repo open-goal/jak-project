@@ -1017,6 +1017,8 @@ class DerefToken {
     return m_kind == Kind::FIELD_NAME && m_name == name;
   }
 
+  bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
+
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
     assert(m_kind == Kind::FIELD_NAME);
@@ -1423,6 +1425,25 @@ class LabelElement : public FormElement {
 
  private:
   int m_lid = -1;
+};
+
+class GetSymbolStringPointer : public FormElement {
+ public:
+  GetSymbolStringPointer(Form* src);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  Form* src() { return m_src; }
+
+ private:
+  Form* m_src = nullptr;
 };
 
 /*!

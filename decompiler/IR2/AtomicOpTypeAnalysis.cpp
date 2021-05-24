@@ -308,6 +308,19 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     case Kind::RIGHT_SHIFT_ARITH:
     case Kind::RIGHT_SHIFT_LOGIC: {
       bool is_unsigned = m_kind == Kind::RIGHT_SHIFT_LOGIC;
+
+      if (m_args[1].is_int()) {
+        auto bf = dynamic_cast<BitFieldType*>(dts.ts.lookup_type(arg0_type.typespec()));
+        if (bf) {
+          int shift_size = 64;
+          int size = shift_size - m_args[1].get_int();
+          int start_bit = shift_size - size;
+          auto field = find_field(dts.ts, bf, start_bit, size, is_unsigned);
+          return TP_Type::make_from_ts(field.type());
+          // auto field = find_field(arg0_type.typespec(), bf, 64)
+        }
+      }
+
       if (arg0_type.kind == TP_Type::Kind::LEFT_SHIFTED_BITFIELD && m_args[1].is_int()) {
         // second op in left/right shift combo
         int end_bit = 64 - arg0_type.get_left_shift();

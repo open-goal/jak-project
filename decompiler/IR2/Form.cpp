@@ -1518,6 +1518,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "none";
     case FixedOperatorKind::PCPYLD:
       return "make-u128";
+    case FixedOperatorKind::SYMBOL_TO_STRING:
+      return "symbol->string";
     default:
       assert(false);
       return "";
@@ -2401,6 +2403,37 @@ void LabelElement::apply(const std::function<void(FormElement*)>& f) {
 void LabelElement::apply_form(const std::function<void(Form*)>&) {}
 void LabelElement::collect_vars(RegAccessSet&, bool) const {}
 void LabelElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// GetSymbolStringPointer
+//////////////////////////////
+
+GetSymbolStringPointer::GetSymbolStringPointer(Form* src) : m_src(src) {
+  m_src->parent_element = this;
+}
+
+goos::Object GetSymbolStringPointer::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("sym->str-ptr", m_src->to_form(env));
+}
+
+void GetSymbolStringPointer::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_src->apply(f);
+}
+
+void GetSymbolStringPointer::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+}
+
+void GetSymbolStringPointer::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_src->collect_vars(vars, recursive);
+  }
+}
+
+void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
+  return m_src->get_modified_regs(regs);
+}
 
 ////////////////////////////////
 // Utilities

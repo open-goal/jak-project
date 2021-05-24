@@ -121,3 +121,179 @@
               (-> obj data-size)))
   )
 
+(defmethod lookup-tag-idx res-lump ((obj res-lump) (name-sym symbol) (mode symbol) (time float))
+  "Look up the index of the tag containing with the given name and timestamp.
+   This will actually return two tags: one in the lower 32 bits and one in the upper 32 bits.
+   Depending on the mode, they may be the same, or they may be two tags that you should interpolate
+   between, if the exact time was not found.
+
+   name-sym should be the name of the thing you want.
+   time is for the timestamp you want.
+   If mode = 'base, then both the indices are the same and the timestamp is ignored.
+   If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found)
+   If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
+   If things go wrong, returns a negative number"
+  (local-vars (tag-idx int))
+  ;; for some unknown reason, these names cannot be looked up with this method.
+  (when (or
+         (= name-sym 'id)
+         (= name-sym 'aid)
+         (= name-sym 'trans)
+         (= name-sym 'rot)
+         (= name-sym 'nav-mesh)
+         (= name-sym 'process-type)
+         (= name-sym 'task)
+         )
+    (crash!)
+    )
+
+  ;; check that we are valid.
+  (if (or (not obj) (zero? obj) (<= (-> obj length) 0))
+      (return -1)
+      )
+
+  ;; these are the outputs of the function.
+  (let ((hi-tag-idx-out -1)
+        (lo-tag-idx-out -1)
+        )
+    ;; this value is the index of the most recently passed tag with an "invalid" timestamp
+    (let ((most-recent-invalid-time-idx -1)
+          ;; read 8 chars of the name we want
+          (type-chars (-> (the-as (pointer uint64) (-> (symbol->string name-sym) data)) 0))
+          )
+
+      ;; now we will do a binary search.  The names are stored in ascending order if you
+      ;; treat the first 8 chars as an integer
+      ;; min/max are inclusive.
+      (let ((max-search (+ (-> obj length) -1))
+            (min-search 0)
+            )
+        ;; inclusive, so >= is correct
+        (while (>= max-search min-search)
+          ;; check in the middle of the range to bisect it.
+          (let* ((check-idx (+ min-search (/ (- max-search min-search) 2)))
+                 ;; subtract the two words.  The sign of this tells us if we are too high or too low
+                 (diff (- type-chars
+                          (-> (the-as (pointer uint64) (-> (symbol->string (-> (-> obj tag) check-idx name)) data)) 0)
+                          )
+                   )
+                 )
+            (cond
+              ((zero? diff)
+               ;; perfect match! we are done, set the tag-idx and get out of here.
+               (begin
+                (set! tag-idx check-idx)
+                (goto cfg-32)
+                )
+               )
+              (else
+               ;; didn't match. pick the appropriate half of the remaining tags
+               (if (< (the-as int diff) 0)
+                   (set! max-search (+ check-idx -1))
+                   (set! min-search (+ check-idx 1))
+                   )
+               )
+              )
+            )
+          )
+        )
+      ;; got to the end of the loop without finding the answer. Set a negative tag
+      (set! tag-idx -1)
+
+      (label cfg-32)
+      (if (< tag-idx 0)
+          (return tag-idx)
+          )
+
+      ;; if there are multiple tags with the same name and different timesteps, we can't be sure which we ended on.
+      ;; this loop brings us to the first tag with the correct name.
+      (while (and (> tag-idx 0)
+                  (= type-chars
+                     (-> (the-as (pointer uint64) (-> (symbol->string (-> (-> obj tag) (+ tag-idx -1) name)) data)) 0)
+                     )
+                  )
+        (+! tag-idx -1)
+        )
+
+      ;; in 'base mode, we just want the earliest tag with the right name.
+      ;; tags are in increasing timestamps, so we found it!
+      (if (= mode 'base)
+          (begin
+           ;; both lo and hi are the same
+           (set! lo-tag-idx-out tag-idx)
+           (set! hi-tag-idx-out tag-idx)
+           (goto cfg-73)
+           )
+          )
+
+      ;; next we will iterate through tags with the right name and find the one(s) with the right timestamp
+      ;; interp-tag-idx is the index of tag-ptr always
+      ;; (the fact that they keep a pointer to a tag and not actually load the tag makes it seem like
+      ;; they ran into some 128-bit integer issues here...)
+      (let ((interp-tag-idx tag-idx)
+            (tag-ptr (&-> (-> obj tag) tag-idx))
+            )
+        ;; loop, until we reach another name or the end of the table
+        (while (not (or
+                     (>= interp-tag-idx (-> obj length))
+                     ;; < is correct here because we are incrementing and names get larger
+                     (< type-chars
+                        (-> (the-as (pointer uint64) (-> (symbol->string (-> tag-ptr 0 name)) data)) 0)
+                        )
+                     )
+                    )
+          (cond
+            ;; The checks above only made sure that the first 8 chars were correct.
+            ;; This skips items with matching first 8 chars, but differences after that.
+            ((!= name-sym (-> tag-ptr 0 name))
+             )
+
+            ;; check for exact match
+            ((= (-> tag-ptr 0 key-frame) time)
+             ;; in all cases, just return the exact match.
+             (begin
+              (set! lo-tag-idx-out interp-tag-idx)
+              (set! hi-tag-idx-out interp-tag-idx)
+              (goto cfg-73)
+              )
+             )
+
+            ;; check for being not far enough
+            ((and (>= time (-> tag-ptr 0 key-frame)) (!= mode 'exact))
+             ;; in all cases, except for exact, we'll want to remember this.
+             ;; just in case there are no more tags
+             (set! lo-tag-idx-out interp-tag-idx)
+             (set! hi-tag-idx-out interp-tag-idx)
+             ;; also remember if we hit an invalid one
+             (if (= (-> tag-ptr 0 key-frame) -1000000000.0)
+                 (set! most-recent-invalid-time-idx interp-tag-idx)
+                 )
+             )
+
+            ;; check for being too far (passed the time)
+            ((< time (-> tag-ptr 0 key-frame))
+             (begin
+              ;; if we're interpolation mode and valid, set the high one.
+              ;; not sure what the invalid time thing is about.
+              (if (and (!= lo-tag-idx-out most-recent-invalid-time-idx) (= mode 'interp))
+               (set! hi-tag-idx-out interp-tag-idx)
+               )
+              (goto cfg-73)
+              )
+             )
+            )
+
+          ;; advance to next tag
+          (+! interp-tag-idx 1)
+          (set! tag-ptr (&-> tag-ptr 1))
+          )
+        )
+      )
+    (label cfg-73)
+    ;; end: return the tags.
+    (logior
+     (logand #xffffffff (the-as uint lo-tag-idx-out))
+     (the-as uint (shl hi-tag-idx-out 32))
+     )
+    )
+  )
