@@ -7,14 +7,9 @@
 
 ;; TODO! Needs a lot of 128-bit type support for res-tag
 
-;; res is a very generic resource storage system used for the game entities.
-;; It can be used to store all of the data for some sort of "object" (such as an entity), and that data can be of many types.
-;; The data itself can also be sorted in many different manners, such as:
-;; - single element
-;; - array of elements
-;; - array of arrays?
-;; - keyframed array of elements
-;; - array of keyframed array of elements?
+;; res is a generic storage system for values, used for the game entities.
+;; The types of values it can store as follows: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector
+;; The data itself can also be sorted as a single value or an array.
 ;;
 ;; A res-lump stores and is used to access all of the data for a single "resource".
 ;; This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
@@ -23,14 +18,14 @@
 ;; For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
 ;;
 ;; Keyframes are used to specify when/where the data is relevant.
-;; For example (this is made-up), say you have a camera spline, and you want the FOV to change three times:
+;; For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
 ;; when it starts, somewhere in the middle, and at the end.
 ;; You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
-;; the FOV change should occur. A similar concept is used for keyframe animation.
+;; the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
 ;;
-;; Properties are looked up from a res-lump using their name, stored as a symbol.
+;; Properties are looked up from a res-lump using their name, stored as a symbol. This can return an index to a tag.
 ;;
-;; This is updated from the resource system used for entities in Crash 2, which had most of these features and worked very similarly!
+;; This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
 
 (defmacro res-ref? (tag)
   "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
@@ -76,14 +71,14 @@
     )
   )
 
-(defmethod dummy-13 res-lump ((obj res-lump) (n int))
+(defmethod get-property-index-data res-lump ((obj res-lump) (n int))
   "get the address of the n'th property."
 
   (&+ (-> obj data-base)
       (-> obj tag n data-offset))
   )
 
-(defmethod dummy-14 res-lump ((obj res-lump) (tag res-tag))
+(defmethod get-property-data res-lump ((obj res-lump) (tag res-tag))
   "get the address of the specified property."
 
   (&+ (-> obj data-base)
@@ -93,9 +88,8 @@
 (defmethod new res-lump ((allocation symbol) (type-to-make type) (data-count int) (data-size int))
   "Allocate a new res-lump."
 
-  (let ((obj (object-new allocation type-to-make (the int (+ (+ (-> type-to-make size)
-                                                                (* (1- data-count) (size-of res-tag))
-                                                                )
+  (let ((obj (object-new allocation type-to-make (the int (+ (-> type-to-make size)
+                                                             (* (1- data-count) (size-of res-tag))
                                                              data-size)))))
         (set! (-> obj allocated-length) data-count)
         (set! (-> obj data-size) data-size)
@@ -115,9 +109,8 @@
 (defmethod asize-of res-lump ((obj res-lump))
   "get the allocated size of a res-lump."
 
-  (the int (+ (+ (-> obj type psize) ;; psize is used here, but size is used in the allocation?
-                 (* (-> obj allocated-length) (size-of res-tag))
-                 )
+  (the int (+ (-> obj type psize) ;; psize is used here, but size is used in the allocation?
+              (* (-> obj allocated-length) (size-of res-tag))
               (-> obj data-size)))
   )
 
@@ -297,3 +290,98 @@
      )
     )
   )
+
+(defmacro read-res-int-data (interp elt-count dest src-lo src-hi ty)
+  `(let ((fixed-pt (the int (* 4096.0 ,interp))))
+    (dotimes (i ,elt-count)
+      (set! (deref ,ty ,dest 0) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt))
+                                        (* (deref ,ty ,src-hi i) fixed-pt))
+                                     -12))
+      )
+    )
+  )
+
+(defmethod read-property-data res-lump ((obj res-lump) (time float) (lookup-result res-tag-lookup-result) (dest int))
+  "Reads the data of a looked-up property. The data is copied to dest if the results need interpolation, based on time.
+   dest must have enough space to copy all of the data.
+   
+   Returns a pointer to the original data if no copying is necessary."
+  
+  (let* ((tag-lo (-> (-> obj tag) (-> lookup-result lo)))
+         (tag-hi (-> (-> obj tag) (-> lookup-result hi)))
+         (elt-count (-> tag-lo elt-count))
+         )
+    (cond
+      ((res-ref? tag-lo)
+       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       )
+      ((or (not dest)
+           (= (-> lookup-result lo) (-> lookup-result hi))
+           (!= elt-count (-> tag-hi elt-count))
+           (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
+       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       )
+      (else
+        (let ((interp (/ (- time (-> tag-lo key-frame))
+                         (- (-> tag-hi key-frame) (-> tag-lo key-frame)))) ;; DBZ
+              (src-lo (&+ (-> obj data-base) (-> tag-lo data-offset)))
+              (src-hi (&+ (-> obj data-base) (-> tag-hi data-offset)))
+              )
+          (case (-> tag-lo elt-type symbol)
+            (('float)
+              (dotimes (i elt-count)
+                (set! (deref float dest 0) (+ (* (deref float src-lo i) (- 1.0 interp))
+                                              (* (deref float src-hi i) interp)
+                                              ))
+                )
+              )
+            (('integer 'sinteger 'uinteger 'int64 'uint64)
+              (read-res-int-data interp elt-count dest src-lo src-hi uint64)
+              )
+            (('int8)
+              (read-res-int-data interp elt-count dest src-lo src-hi int8)
+              )
+            (('uint8)
+              (read-res-int-data interp elt-count dest src-lo src-hi uint8)
+              )
+            (('int16)
+              (read-res-int-data interp elt-count dest src-lo src-hi int16)
+              )
+            (('uint16)
+              (read-res-int-data interp elt-count dest src-lo src-hi uint16)
+              )
+            (('int32)
+              (read-res-int-data interp elt-count dest src-lo src-hi int32)
+              )
+            (('uint32)
+              (read-res-int-data interp elt-count dest src-lo src-hi uint32)
+              )
+            (('vector)
+              (rlet ((vf1 :class vf)
+                     (vf2 :class vf)
+                     (vf3 :class vf)
+                     (vf4 :class vf)
+                     )
+                (.mov vf3 interp)
+                (.mov vf4 (- 1.0 interp))
+                (dotimes (i elt-count)
+                  (.lvf vf1 (&deref int128 src-lo i))
+                  (.lvf vf2 (&deref int128 src-hi i))
+                  (.mul.x.vf vf1 vf1 vf4)
+                  (.mul.x.vf vf2 vf2 vf3)
+                  (.add.vf vf1 vf1 vf2)
+                  (.svf (&deref int128 dest i) vf1)
+                  )
+                )
+              )
+            (else
+              (&+ (-> obj data-base) (-> tag-lo data-offset))
+              )
+            )
+          )
+        )
+      )
+    ;(none)
+    )
+  )
+
