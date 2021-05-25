@@ -172,7 +172,7 @@
 ;; has issues:
 (define-extern breakpoint-range-set! (function uint uint uint int))
 
-(defenum process-mask
+(defenum kernel-process-mask
     :bitfield #t :type uint32
     (execute         0) ;; 1
     (draw            1) ;; 2
@@ -203,9 +203,9 @@
 
 ;; gkernel-h
 (deftype kernel-context (basic)
-  ((prevent-from-run   process-mask  :offset-assert 4)
-   (require-for-run    process-mask  :offset-assert 8)
-   (allow-to-run       process-mask  :offset-assert 12)
+  ((prevent-from-run   kernel-process-mask  :offset-assert 4)
+   (require-for-run    kernel-process-mask  :offset-assert 8)
+   (allow-to-run       kernel-process-mask  :offset-assert 12)
    (next-pid           int32         :offset-assert 16)
    (fast-stack-top     pointer       :offset-assert 20)
    (current-process    basic         :offset-assert 24)
@@ -276,7 +276,7 @@
 ;; gkernel-h
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
-   (mask process-mask :offset-assert 8)
+   (mask kernel-process-mask :offset-assert 8)
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
@@ -8538,7 +8538,7 @@
   :flag-assert         #x90000004c
   )
 
-(defenum pickup-type
+(defenum fact-pickup-type
   (none)
   (eco-yellow)
   (eco-red)
@@ -8550,12 +8550,12 @@
   (buzzer)
   (eco-pill-random)
   )
-(define-extern pickup-type->string (function pickup-type string))
+(define-extern pickup-type->string (function fact-pickup-type string))
 
 ;; fact-h
 (deftype fact-info (basic)
   ((process             process :offset-assert 4)
-   (pickup-type         pickup-type   :offset-assert 8)
+   (pickup-type         fact-pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)
    (pickup-spawn-amount float   :offset-assert 16)
    (options             uint64  :offset-assert 24)
@@ -8565,7 +8565,7 @@
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process fact-pickup-type float) _type_ 0)
     (dummy-9 () none 9)
     (dummy-10 (_type_ symbol) none 10)
     (dummy-11 (_type_) float 11)
@@ -8596,7 +8596,7 @@
   :size-assert         #x90
   :flag-assert         #xc00000090
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process fact-pickup-type float) _type_ 0)
     )
   )
 
@@ -8614,7 +8614,7 @@
   :size-assert         #x44
   :flag-assert         #xc00000044
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process fact-pickup-type float) _type_ 0)
     )
   )
 
