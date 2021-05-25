@@ -71,15 +71,15 @@
     )
   )
 
-(defmethod get-property-index-data res-lump ((obj res-lump) (n int))
-  "get the address of the n'th property."
+(defmethod get-tag-index-data res-lump ((obj res-lump) (n int))
+  "get the data address of the n'th tag."
 
   (&+ (-> obj data-base)
       (-> obj tag n data-offset))
   )
 
-(defmethod get-property-data res-lump ((obj res-lump) (tag res-tag))
-  "get the address of the specified property."
+(defmethod get-tag-data res-lump ((obj res-lump) (tag res-tag))
+  "get the data address of the specified tag."
 
   (&+ (-> obj data-base)
       (-> tag data-offset))
@@ -293,23 +293,22 @@
     )
   )
 
-(defmacro read-res-int-data (interp elt-count dest src-lo src-hi ty)
+(defmacro make-res-int-data (interp elt-count buf src-lo src-hi ty)
   `(let ((fixed-pt (the int (* 4096.0 ,interp))))
     (dotimes (i ,elt-count)
-      (set! (deref ,ty ,dest 0) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt))
+      (set! (deref ,ty ,buf 0) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt))
                                         (* (deref ,ty ,src-hi i) fixed-pt))
                                      -12))
       )
-    dest
+    buf
     )
   )
 
-(defmethod read-property-data res-lump ((obj res-lump) (time float) (tag-pair res-tag-pair) (dest pointer))
-  "Reads the value data of a property with the tag-pair.
-   If tag-pair does not represent an exact point in the timeline, the data is interpolated based on time and copied into dest.
-   dest must have enough space to copy all of the data.
-   
-   Returns a pointer to the target data (non-mutable! this may be dest or somewhere in the resource binary)."
+(defmethod make-property-data res-lump ((obj res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
+  "Returns (a pointer to) the value data of a property with the tag-pair.
+   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+   with the result written into buf. buf must have enough space to copy all of the data.
+   Otherwise, simply returns an address to the resource binary."
   
   (let* ((tag-lo (-> obj tag (-> tag-pair lo)))
          (tag-hi (-> obj tag (-> tag-pair hi)))
@@ -319,7 +318,7 @@
       ((res-ref? tag-lo)
        (&+ (-> obj data-base) (-> tag-lo data-offset))
        )
-      ((or (not dest)
+      ((or (not buf)
            (= (-> tag-pair lo) (-> tag-pair hi))
            (!= elt-count (-> tag-hi elt-count))
            (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
@@ -334,32 +333,32 @@
           (case (-> tag-lo elt-type symbol)
             (('float)
               (dotimes (i elt-count)
-                (set! (deref float dest 0) (+ (* (deref float src-lo i) (- 1.0 interp))
+                (set! (deref float buf 0) (+ (* (deref float src-lo i) (- 1.0 interp))
                                               (* (deref float src-hi i) interp)
                                               ))
                 )
-              dest
+              buf
               )
             (('integer 'sinteger 'uinteger 'int64 'uint64)
-              (read-res-int-data interp elt-count dest src-lo src-hi uint64)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint64)
               )
             (('int8)
-              (read-res-int-data interp elt-count dest src-lo src-hi int8)
+              (make-res-int-data interp elt-count buf src-lo src-hi int8)
               )
             (('uint8)
-              (read-res-int-data interp elt-count dest src-lo src-hi uint8)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint8)
               )
             (('int16)
-              (read-res-int-data interp elt-count dest src-lo src-hi int16)
+              (make-res-int-data interp elt-count buf src-lo src-hi int16)
               )
             (('uint16)
-              (read-res-int-data interp elt-count dest src-lo src-hi uint16)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint16)
               )
             (('int32)
-              (read-res-int-data interp elt-count dest src-lo src-hi int32)
+              (make-res-int-data interp elt-count buf src-lo src-hi int32)
               )
             (('uint32)
-              (read-res-int-data interp elt-count dest src-lo src-hi uint32)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint32)
               )
             (('vector)
               (rlet ((vf1 :class vf)
@@ -375,10 +374,10 @@
                   (.mul.x.vf vf1 vf1 vf4)
                   (.mul.x.vf vf2 vf2 vf3)
                   (.add.vf vf1 vf1 vf2)
-                  (.svf (&deref int128 dest i) vf1)
+                  (.svf (&deref int128 buf i) vf1)
                   )
                 )
-              dest
+              buf
               )
             (else
               (&+ (-> obj data-base) (-> tag-lo data-offset))
@@ -388,5 +387,28 @@
         )
       )
     )
+  )
+
+(defmethod get-property-data res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
+  "Returns an address to a given property's data at a specific time stamp.
+   name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+   data-addr is an address to the new data, or simply the old data if lookup failed.
+   tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+   buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+
+  (let ((tag-pair (lookup-tag-idx obj name mode time)))
+      (cond
+        ((< (the-as int tag-pair) 0)
+         (empty)
+         )
+        (else
+          (set! data-addr (make-property-data obj time tag-pair buf-addr))
+          (if tag-addr
+            (set! (-> tag-addr) (-> obj tag (-> tag-pair lo)))
+            )
+          )
+      )
+    )
+  data-addr
   )
 
