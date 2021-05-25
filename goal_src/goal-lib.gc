@@ -358,9 +358,33 @@
    else can be used as the default case, but it must be the last one."
 
   (with-gensyms (sw)
+    ;; save the switch to a variable (only evaluated once)
     `(let ((sw ,switch))
+        ;; build the cond construct with each case
         (cond ,@(apply
-                  (lambda (x) `(,@(if (eq? (first x) 'else) `(else ,@(rest x)) `((= sw ,(first x)) ,@(rest x)))))
+                  (lambda (x) `(
+                      ;; each case is of format ((cond cond cond...) body)
+                      ,@(let ((cond-list (first x)) ;; list of conds, OR just else
+                              (body (rest x))) ;; the body
+
+                        (cond
+                          ;; if the cond is just 'else'
+                          ( (eq? cond-list 'else)
+                            `(else ,@body)
+                            )
+                          ;; if the list is made up of a single cond
+                          ( (= (length cond-list) 1)
+                            `((= sw ,(first cond-list)) ,@body)
+                            )
+                          ;; otherwise it is made up of multiple conds, or them together!
+                          (#t
+                            `((or ,@(apply (lambda (c) `(= sw ,c)) cond-list)) ,@body)
+                            )
+                          )
+
+                        )
+                      )
+                    )
                    cases)
                    )
         )
@@ -429,6 +453,14 @@
 
 (defmacro logand! (place amount)
   `(set! ,place (logand ,place ,amount))
+  )
+
+(defmacro deref (t addr &rest fields)
+  `(-> (the-as (pointer ,t) ,addr) ,@fields)
+  )
+
+(defmacro &deref (t addr &rest fields)
+  `(&-> (the-as (pointer ,t) ,addr) ,@fields)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;

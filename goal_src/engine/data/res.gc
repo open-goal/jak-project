@@ -7,14 +7,9 @@
 
 ;; TODO! Needs a lot of 128-bit type support for res-tag
 
-;; res is a very generic resource storage system used for the game entities.
-;; It can be used to store all of the data for some sort of "object" (such as an entity), and that data can be of many types.
-;; The data itself can also be sorted in many different manners, such as:
-;; - single element
-;; - array of elements
-;; - array of arrays?
-;; - keyframed array of elements
-;; - array of keyframed array of elements?
+;; res is a generic storage system for values, used for the game entities.
+;; The types of values it can store as follows: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector
+;; The data itself can also be sorted as a single value or an array.
 ;;
 ;; A res-lump stores and is used to access all of the data for a single "resource".
 ;; This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
@@ -23,14 +18,14 @@
 ;; For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
 ;;
 ;; Keyframes are used to specify when/where the data is relevant.
-;; For example (this is made-up), say you have a camera spline, and you want the FOV to change three times:
+;; For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
 ;; when it starts, somewhere in the middle, and at the end.
 ;; You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
-;; the FOV change should occur. A similar concept is used for keyframe animation.
+;; the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
 ;;
-;; Properties are looked up from a res-lump using their name, stored as a symbol.
+;; Properties are looked up from a res-lump using their name, stored as a symbol. This can return an index to a tag.
 ;;
-;; This is updated from the resource system used for entities in Crash 2, which had most of these features and worked very similarly!
+;; This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
 
 (defmacro res-ref? (tag)
   "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
@@ -76,15 +71,15 @@
     )
   )
 
-(defmethod dummy-13 res-lump ((obj res-lump) (n int))
-  "get the address of the n'th property."
+(defmethod get-tag-index-data res-lump ((obj res-lump) (n int))
+  "get the data address of the n'th tag."
 
   (&+ (-> obj data-base)
       (-> obj tag n data-offset))
   )
 
-(defmethod dummy-14 res-lump ((obj res-lump) (tag res-tag))
-  "get the address of the specified property."
+(defmethod get-tag-data res-lump ((obj res-lump) (tag res-tag))
+  "get the data address of the specified tag."
 
   (&+ (-> obj data-base)
       (-> tag data-offset))
@@ -93,9 +88,8 @@
 (defmethod new res-lump ((allocation symbol) (type-to-make type) (data-count int) (data-size int))
   "Allocate a new res-lump."
 
-  (let ((obj (object-new allocation type-to-make (the int (+ (+ (-> type-to-make size)
-                                                                (* (1- data-count) (size-of res-tag))
-                                                                )
+  (let ((obj (object-new allocation type-to-make (the int (+ (-> type-to-make size)
+                                                             (* (1- data-count) (size-of res-tag))
                                                              data-size)))))
         (set! (-> obj allocated-length) data-count)
         (set! (-> obj data-size) data-size)
@@ -115,15 +109,14 @@
 (defmethod asize-of res-lump ((obj res-lump))
   "get the allocated size of a res-lump."
 
-  (the int (+ (+ (-> obj type psize) ;; psize is used here, but size is used in the allocation?
-                 (* (-> obj allocated-length) (size-of res-tag))
-                 )
+  (the int (+ (-> obj type psize) ;; psize is used here, but size is used in the allocation?
+              (* (-> obj allocated-length) (size-of res-tag))
               (-> obj data-size)))
   )
 
 (defmethod lookup-tag-idx res-lump ((obj res-lump) (name-sym symbol) (mode symbol) (time float))
   "Look up the index of the tag containing with the given name and timestamp.
-   This will actually return two tags: one in the lower 32 bits and one in the upper 32 bits.
+   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
    Depending on the mode, they may be the same, or they may be two tags that you should interpolate
    between, if the exact time was not found.
 
@@ -149,7 +142,7 @@
 
   ;; check that we are valid.
   (if (or (not obj) (zero? obj) (<= (-> obj length) 0))
-      (return -1)
+      (return (the res-tag-pair -1))
       )
 
   ;; these are the outputs of the function.
@@ -202,7 +195,7 @@
 
       (label cfg-32)
       (if (< tag-idx 0)
-          (return tag-idx)
+          (return (the res-tag-pair tag-idx))
           )
 
       ;; if there are multiple tags with the same name and different timesteps, we can't be sure which we ended on.
@@ -291,9 +284,131 @@
       )
     (label cfg-73)
     ;; end: return the tags.
-    (logior
-     (logand #xffffffff (the-as uint lo-tag-idx-out))
-     (the-as uint (shl hi-tag-idx-out 32))
+    (the-as res-tag-pair
+     (logior
+      (logand #xffffffff (the-as uint lo-tag-idx-out))
+      (the-as uint (shl hi-tag-idx-out 32))
+      )
      )
     )
   )
+
+(defmacro make-res-int-data (interp elt-count buf src-lo src-hi ty)
+  `(let ((fixed-pt (the int (* 4096.0 ,interp))))
+    (dotimes (i ,elt-count)
+      (set! (deref ,ty ,buf 0) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt))
+                                        (* (deref ,ty ,src-hi i) fixed-pt))
+                                     -12))
+      )
+    buf
+    )
+  )
+
+(defmethod make-property-data res-lump ((obj res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
+  "Returns (a pointer to) the value data of a property with the tag-pair.
+   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+   with the result written into buf. buf must have enough space to copy all of the data.
+   Otherwise, simply returns an address to the resource binary."
+  
+  (let* ((tag-lo (-> obj tag (-> tag-pair lo)))
+         (tag-hi (-> obj tag (-> tag-pair hi)))
+         (elt-count (-> tag-lo elt-count))
+         )
+    (cond
+      ((res-ref? tag-lo)
+       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       )
+      ((or (not buf)
+           (= (-> tag-pair lo) (-> tag-pair hi))
+           (!= elt-count (-> tag-hi elt-count))
+           (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
+       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       )
+      (else
+        (let ((interp (/ (- time (-> tag-lo key-frame))
+                         (- (-> tag-hi key-frame) (-> tag-lo key-frame)))) ;; DBZ
+              (src-lo (&+ (-> obj data-base) (-> tag-lo data-offset)))
+              (src-hi (&+ (-> obj data-base) (-> tag-hi data-offset)))
+              )
+          (case (-> tag-lo elt-type symbol)
+            (('float)
+              (dotimes (i elt-count)
+                (set! (deref float buf 0) (+ (* (deref float src-lo i) (- 1.0 interp))
+                                              (* (deref float src-hi i) interp)
+                                              ))
+                )
+              buf
+              )
+            (('integer 'sinteger 'uinteger 'int64 'uint64)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint64)
+              )
+            (('int8)
+              (make-res-int-data interp elt-count buf src-lo src-hi int8)
+              )
+            (('uint8)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint8)
+              )
+            (('int16)
+              (make-res-int-data interp elt-count buf src-lo src-hi int16)
+              )
+            (('uint16)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint16)
+              )
+            (('int32)
+              (make-res-int-data interp elt-count buf src-lo src-hi int32)
+              )
+            (('uint32)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint32)
+              )
+            (('vector)
+              (rlet ((vf1 :class vf)
+                     (vf2 :class vf)
+                     (vf3 :class vf)
+                     (vf4 :class vf)
+                     )
+                (.mov vf3 interp)
+                (.mov vf4 (- 1.0 interp))
+                (dotimes (i elt-count)
+                  (.lvf vf1 (&deref int128 src-lo i))
+                  (.lvf vf2 (&deref int128 src-hi i))
+                  (.mul.x.vf vf1 vf1 vf4)
+                  (.mul.x.vf vf2 vf2 vf3)
+                  (.add.vf vf1 vf1 vf2)
+                  (.svf (&deref int128 buf i) vf1)
+                  )
+                )
+              buf
+              )
+            (else
+              (&+ (-> obj data-base) (-> tag-lo data-offset))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod get-property-data res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
+  "Returns an address to a given property's data at a specific time stamp.
+   name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+   data-addr is an address to the new data, or simply the old data if lookup failed.
+   tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+   buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+
+  (let ((tag-pair (lookup-tag-idx obj name mode time)))
+      (cond
+        ((< (the-as int tag-pair) 0)
+         (empty)
+         )
+        (else
+          (set! data-addr (make-property-data obj time tag-pair buf-addr))
+          (if tag-addr
+            (set! (-> tag-addr) (-> obj tag (-> tag-pair lo)))
+            )
+          )
+      )
+    )
+  data-addr
+  )
+
