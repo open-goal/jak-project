@@ -116,7 +116,7 @@
 
 (defmethod lookup-tag-idx res-lump ((obj res-lump) (name-sym symbol) (mode symbol) (time float))
   "Look up the index of the tag containing with the given name and timestamp.
-   This will actually return two tags: one in the lower 32 bits and one in the upper 32 bits.
+   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
    Depending on the mode, they may be the same, or they may be two tags that you should interpolate
    between, if the exact time was not found.
 
@@ -142,7 +142,7 @@
 
   ;; check that we are valid.
   (if (or (not obj) (zero? obj) (<= (-> obj length) 0))
-      (return -1)
+      (return (the res-tag-pair -1))
       )
 
   ;; these are the outputs of the function.
@@ -195,7 +195,7 @@
 
       (label cfg-32)
       (if (< tag-idx 0)
-          (return tag-idx)
+          (return (the res-tag-pair tag-idx))
           )
 
       ;; if there are multiple tags with the same name and different timesteps, we can't be sure which we ended on.
@@ -284,9 +284,11 @@
       )
     (label cfg-73)
     ;; end: return the tags.
-    (logior
-     (logand #xffffffff (the-as uint lo-tag-idx-out))
-     (the-as uint (shl hi-tag-idx-out 32))
+    (the-as res-tag-pair
+     (logior
+      (logand #xffffffff (the-as uint lo-tag-idx-out))
+      (the-as uint (shl hi-tag-idx-out 32))
+      )
      )
     )
   )
@@ -298,17 +300,19 @@
                                         (* (deref ,ty ,src-hi i) fixed-pt))
                                      -12))
       )
+    dest
     )
   )
 
-(defmethod read-property-data res-lump ((obj res-lump) (time float) (lookup-result res-tag-lookup-result) (dest int))
-  "Reads the data of a looked-up property. The data is copied to dest if the results need interpolation, based on time.
+(defmethod read-property-data res-lump ((obj res-lump) (time float) (tag-pair res-tag-pair) (dest pointer))
+  "Reads the value data of a property with the tag-pair.
+   If tag-pair does not represent an exact point in the timeline, the data is interpolated based on time and copied into dest.
    dest must have enough space to copy all of the data.
    
-   Returns a pointer to the original data if no copying is necessary."
+   Returns a pointer to the target data (non-mutable! this may be dest or somewhere in the resource binary)."
   
-  (let* ((tag-lo (-> (-> obj tag) (-> lookup-result lo)))
-         (tag-hi (-> (-> obj tag) (-> lookup-result hi)))
+  (let* ((tag-lo (-> obj tag (-> tag-pair lo)))
+         (tag-hi (-> obj tag (-> tag-pair hi)))
          (elt-count (-> tag-lo elt-count))
          )
     (cond
@@ -316,7 +320,7 @@
        (&+ (-> obj data-base) (-> tag-lo data-offset))
        )
       ((or (not dest)
-           (= (-> lookup-result lo) (-> lookup-result hi))
+           (= (-> tag-pair lo) (-> tag-pair hi))
            (!= elt-count (-> tag-hi elt-count))
            (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
        (&+ (-> obj data-base) (-> tag-lo data-offset))
@@ -334,6 +338,7 @@
                                               (* (deref float src-hi i) interp)
                                               ))
                 )
+              dest
               )
             (('integer 'sinteger 'uinteger 'int64 'uint64)
               (read-res-int-data interp elt-count dest src-lo src-hi uint64)
@@ -373,6 +378,7 @@
                   (.svf (&deref int128 dest i) vf1)
                   )
                 )
+              dest
               )
             (else
               (&+ (-> obj data-base) (-> tag-lo data-offset))
@@ -381,7 +387,6 @@
           )
         )
       )
-    ;(none)
     )
   )
 
