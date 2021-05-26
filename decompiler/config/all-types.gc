@@ -6804,8 +6804,9 @@
   )
 
 ;; art-h
+(declare-type merc-ctrl basic)
 (deftype lod-group (structure)
-  ((geo  basic   :offset-assert 0)
+  ((geo  merc-ctrl   :offset-assert 0)
    (dist float  :offset-assert 4) ;; meters
    )
   :pack-me
@@ -6829,6 +6830,9 @@
   )
 
 ;; art-h
+(declare-type ripple-control basic)
+(declare-type shadow-geo basic)
+(declare-type shadow-control basic)
 (deftype draw-control (basic)
   ((status                   uint8           :offset-assert 4)
    (matrix-type              uint8           :offset-assert 5)
@@ -6845,7 +6849,7 @@
    (force-lod                int8            :offset-assert 61)
    (cur-lod                  int8            :offset-assert 62)
    (desired-lod              int8            :offset-assert 63)
-   (ripple                   basic           :offset-assert 64)
+   (ripple                   ripple-control  :offset-assert 64)
    (longest-edge             float           :offset-assert 68) ;; meters
    (longest-edge?            uint32          :offset 68)
    (light-index              uint8           :offset-assert 72)
@@ -6855,10 +6859,10 @@
    (death-timer-org          uint8           :offset-assert 77)
    (death-vertex-skip        uint16          :offset-assert 78)
    (death-effect             uint32          :offset-assert 80)
-   (sink-group               basic           :offset-assert 84) ;; dma-foreground-sink-group?
+   (sink-group               dma-foreground-sink-group :offset-assert 84) ;; dma-foreground-sink-group?
    (process                  process         :offset-assert 88)
-   (shadow                   basic           :offset-assert 92)
-   (shadow-ctrl              basic           :offset-assert 96)
+   (shadow                   shadow-geo           :offset-assert 92)
+   (shadow-ctrl              shadow-control           :offset-assert 96)
    (origin                   vector  :inline :offset-assert 112)
    (bounds                   vector  :inline :offset-assert 128)
    (radius                   float           :offset 140) ;; meters
@@ -7216,7 +7220,7 @@
 (deftype merc-ctrl (art-element)
   ((num-joints int32                     :offset 20)
    (header     merc-ctrl-header :inline  :offset-assert 32)
-   (effect     uint8          :dynamic :offset-assert 112)
+   (effect     merc-effect         :inline :dynamic :offset-assert 112)
    )
   :method-count-assert 13
   :size-assert         #x70
@@ -7280,7 +7284,7 @@
    (far-fade-dist           float  :offset-assert 16)
    (faded-scale             float  :offset-assert 20)
    (individual-normal-scale float  :offset-assert 24)
-   (waveform                basic  :offset-assert 28)
+   (waveform                ripple-wave-set  :offset-assert 28)
    (send-query              basic  :offset-assert 32)
    (query                   basic  :offset-assert 36)
    )
@@ -8897,9 +8901,9 @@
 
 ;; game-h
 (deftype process-drawable (process)
-  ((root        basic   :offset-assert 112)
+  ((root        trsqv   :offset-assert 112)
    (node-list   basic   :offset-assert 116)
-   (draw        basic   :offset-assert 120)
+   (draw        draw-control   :offset-assert 120)
    (skel        basic   :offset-assert 124)
    (nav         basic   :offset-assert 128)
    (align       basic   :offset-assert 132)
@@ -13630,25 +13634,38 @@
 ;     )
 ;   )
 
-; ;; ripple
-; (deftype ripple-request (structure)
-;   ((waveform basic        :offset-assert 0)
-;    (effect   merc-effect  :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
+;; ripple
+(deftype ripple-request (structure)
+  ((waveform ripple-wave  :offset-assert 0)
+   (effect   merc-effect  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
 
-; ;; ripple
-; (deftype ripple-globals (structure)
-;   ((count    int32      :offset-assert 0)
-;    (requests UNKNOWN 16 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x84
-;   :flag-assert         #x900000084
-;   )
+;; ripple
+(deftype ripple-globals (structure)
+  ((count    int32      :offset-assert 0)
+   (requests ripple-request 16 :inline :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x84
+  :flag-assert         #x900000084
+  )
+
+(define-extern ripple-execute-init (function none))
+(define-extern *ripple-globals* ripple-globals)
+(define-extern ripple-slow-add-sine-waves (function ripple-wave-set float float float))
+(define-extern ripple-apply-wave-table (function merc-effect symbol))
+(define-extern ripple-find-height (function process-drawable basic vector float))
+(define-extern ripple-matrix-scale function)
+(define-extern ripple-add-debug-sphere (function process-drawable vector float float none)) ; TODO - this could be a child type of process-drawable instead
+(define-extern ripple-execute (function none))
+(define-extern ripple-update-waveform-offs (function ripple-wave-set none))
+(define-extern ripple-create-wave-table (function ripple-wave-set int))
+(define-extern ripple-make-request (function ripple-wave merc-effect none))
 
 ; ;; bones
 ; (deftype bone-calculation (structure)
@@ -33619,7 +33636,6 @@
 (define-extern art-joint-geo type)
 (define-extern new-dynamic-structure (function symbol type int structure)) ;; unknown type
 (define-extern merc-fragment-fp-data (function merc-fragment pointer))
-(define-extern ripple-wave-set type)
 (define-extern merc-ctrl type)
 (define-extern *generic-debug* generic-debug) ;; unknown type
 
@@ -34146,7 +34162,7 @@
 (define-extern history-init function)
 (define-extern debug-draw-buffers function)
 (define-extern display-file-info function)
-(define-extern add-debug-sphere function)
+(define-extern add-debug-sphere (function symbol int vector float int int))
 (define-extern add-debug-outline-triangle function)
 (define-extern add-debug-x function)
 (define-extern add-debug-points function)
@@ -34209,19 +34225,6 @@
 (define-extern merc-stats function)
 (define-extern merc-stats-display function)
 (define-extern get-eye-block function)
-(define-extern ripple-execute-init function)
-;;(define-extern *ripple-globals* object) ;; unknown type
-(define-extern ripple-slow-add-sine-waves function)
-;;(define-extern ripple-request object) ;; unknown type
-(define-extern ripple-apply-wave-table function)
-(define-extern ripple-find-height function)
-(define-extern ripple-matrix-scale function)
-(define-extern ripple-add-debug-sphere function)
-(define-extern ripple-execute function)
-(define-extern ripple-update-waveform-offs function)
-(define-extern ripple-create-wave-table function)
-(define-extern ripple-make-request function)
-;;(define-extern ripple-globals object) ;; unknown type
 (define-extern dump-qword function)
 (define-extern bones-reset-sqwc function)
 ;;(define-extern bone-calculation-list object) ;; unknown type
