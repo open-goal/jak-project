@@ -376,17 +376,18 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     auto tok = get_next_token(ts);
 
     // reader macro thing:
-    bool got_reader_macro = false;
-
-    std::string reader_macro_string;
+    std::vector<std::string> reader_macro_string_stack;
     auto kv = reader_macros.find(tok.text);
     if (kv != reader_macros.end()) {
-      // we found a reader macro! Remember this, and get the next token.
-      got_reader_macro = true;
-      reader_macro_string = kv->second;
-      tok = get_next_token(ts);
+      while (kv != reader_macros.end()) {
+        // build a stack of reader macros to apply to this form.
+        reader_macro_string_stack.push_back(kv->second);
+        tok = get_next_token(ts);
+        kv = reader_macros.find(tok.text);
+      }
     } else {
-      // no reader macro
+      // only look for the dot when we aren't following a quote.
+      // this makes '. work.
       if (tok.text == ".") {
         // list dot notation (ex, (1 . 2))
         if (got_dot) {
@@ -402,17 +403,22 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     }
 
     // inserter function, used to properly insert a next object
-    auto insert_object = [&](Object o) {
+    auto insert_object = [&](const Object& o) {
       if (got_thing_after_dot) {
         throw_reader_error(ts, "A list cannot have multiple entries after the dot", -1);
       }
 
-      // create child list if we got a reader macro (ex 'x -> (quote x))
-      if (got_reader_macro) {
-        objects.push_back(
-            build_list({SymbolObject::make_new(symbolTable, reader_macro_string), o}));
-      } else {
+      if (reader_macro_string_stack.empty()) {
         objects.push_back(o);
+      } else {
+        Object to_push_back = o;
+        while (!reader_macro_string_stack.empty()) {
+          to_push_back =
+              build_list({SymbolObject::make_new(symbolTable, reader_macro_string_stack.back()),
+                          to_push_back});
+          reader_macro_string_stack.pop_back();
+        }
+        objects.push_back(to_push_back);
       }
 
       // remember if we got an object after the dot

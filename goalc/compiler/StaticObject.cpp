@@ -180,7 +180,7 @@ void StaticPair::generate_item(const StaticResult& item, int offset) {
     // if it's a constant data, it should always be a boxed integer for a pair.
     // or I guess you could put a normal integer too. Either way, we assume signed here,
     // though we may need to allow overflow so you can store either signed/unsigned things in pairs
-    s32 value = item.get_as_s32();
+    s32 value = item.constant_s32();
     memcpy(data.data() + offset, &value, POINTER_SIZE);
   }
 }
@@ -197,12 +197,16 @@ StaticResult StaticResult::make_structure_reference(StaticStructure* structure, 
   return result;
 }
 
-StaticResult StaticResult::make_constant_data(u64 value, TypeSpec ts) {
+StaticResult StaticResult::make_constant_data(const ConstantValue& data, TypeSpec ts) {
   StaticResult result;
   result.m_kind = Kind::CONSTANT_DATA;
-  result.m_constant_data = value;
+  result.m_constant_data = data;
   result.m_ts = std::move(ts);
   return result;
+}
+
+StaticResult StaticResult::make_constant_data(u64 data, const TypeSpec& ts) {
+  return make_constant_data(ConstantValue((void*)&data, sizeof(u64)), ts);
 }
 
 StaticResult StaticResult::make_symbol(const std::string& name) {

@@ -139,7 +139,8 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
 
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
-    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get())));
+    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get()),
+                                         emitter::gRegInfo.get_gpr_ret_reg()));
   }
 
   fe->finish();

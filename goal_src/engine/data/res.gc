@@ -5,3 +5,410 @@
 ;; name in dgo: res
 ;; dgos: GAME, ENGINE
 
+;; TODO! Needs a lot of 128-bit type support for res-tag
+
+;; res is a generic storage system for values, used for the game entities.
+;; The types of values it can store as follows: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector
+;; The data itself can also be sorted as a single value or an array.
+;;
+;; A res-lump stores and is used to access all of the data for a single "resource".
+;; This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
+;;
+;; A res-tag is a tag that contains information about a particular property of this resource.
+;; For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
+;;
+;; Keyframes are used to specify when/where the data is relevant.
+;; For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
+;; when it starts, somewhere in the middle, and at the end.
+;; You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
+;; the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
+;;
+;; Properties are looked up from a res-lump using their name, stored as a symbol. This can return an index to a tag.
+;;
+;; This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
+
+(defmacro res-ref? (tag)
+  "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
+
+  `(zero? (-> ,tag inlined?))
+  )
+
+(defmethod print res-tag ((obj res-tag))
+  "print a res-tag."
+
+  (let ((obj obj))
+    (if (res-ref? obj)
+
+      (format #t "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+                  (-> obj name)
+                  (-> obj key-frame)
+                  (-> obj elt-type)
+                  (-> obj elt-count)
+                  )
+
+      (format #t "#<res-tag (i) :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
+                  (-> obj name)
+                  (-> obj key-frame)
+                  (-> obj elt-type)
+                  (-> obj elt-count)
+                  )
+      )
+
+    obj
+    )
+  )
+
+(defmethod length res-tag ((obj res-tag))
+  "get the length in bytes of this tag's resource."
+
+  (the int
+  (if (res-ref? obj)
+
+    (* (-> obj elt-count) 4)
+
+    (* (-> obj elt-count) (-> obj elt-type size))
+    )
+    )
+  )
+
+(defmethod get-tag-index-data res-lump ((obj res-lump) (n int))
+  "get the data address of the n'th tag."
+
+  (&+ (-> obj data-base)
+      (-> obj tag n data-offset))
+  )
+
+(defmethod get-tag-data res-lump ((obj res-lump) (tag res-tag))
+  "get the data address of the specified tag."
+
+  (&+ (-> obj data-base)
+      (-> tag data-offset))
+  )
+
+(defmethod new res-lump ((allocation symbol) (type-to-make type) (data-count int) (data-size int))
+  "Allocate a new res-lump."
+
+  (let ((obj (object-new allocation type-to-make (the int (+ (-> type-to-make size)
+                                                             (* (1- data-count) (size-of res-tag))
+                                                             data-size)))))
+        (set! (-> obj allocated-length) data-count)
+        (set! (-> obj data-size) data-size)
+        (set! (-> obj length) 0)
+        (set! (-> obj data-base) (&-> (-> obj tag) data-count))
+        (set! (-> obj data-top) (&-> (-> obj tag) data-count))
+        obj
+        )
+  )
+
+(defmethod length res-lump ((obj res-lump))
+  "get the amount of resources in a res-lump."
+
+  (-> obj length)
+  )
+
+(defmethod asize-of res-lump ((obj res-lump))
+  "get the allocated size of a res-lump."
+
+  (the int (+ (-> obj type psize) ;; psize is used here, but size is used in the allocation?
+              (* (-> obj allocated-length) (size-of res-tag))
+              (-> obj data-size)))
+  )
+
+(defmethod lookup-tag-idx res-lump ((obj res-lump) (name-sym symbol) (mode symbol) (time float))
+  "Look up the index of the tag containing with the given name and timestamp.
+   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
+   Depending on the mode, they may be the same, or they may be two tags that you should interpolate
+   between, if the exact time was not found.
+
+   name-sym should be the name of the thing you want.
+   time is for the timestamp you want.
+   If mode = 'base, then both the indices are the same and the timestamp is ignored.
+   If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found)
+   If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
+   If things go wrong, returns a negative number"
+  (local-vars (tag-idx int))
+  ;; for some unknown reason, these names cannot be looked up with this method.
+  (when (or
+         (= name-sym 'id)
+         (= name-sym 'aid)
+         (= name-sym 'trans)
+         (= name-sym 'rot)
+         (= name-sym 'nav-mesh)
+         (= name-sym 'process-type)
+         (= name-sym 'task)
+         )
+    (crash!)
+    )
+
+  ;; check that we are valid.
+  (if (or (not obj) (zero? obj) (<= (-> obj length) 0))
+      (return (the res-tag-pair -1))
+      )
+
+  ;; these are the outputs of the function.
+  (let ((hi-tag-idx-out -1)
+        (lo-tag-idx-out -1)
+        )
+    ;; this value is the index of the most recently passed tag with an "invalid" timestamp
+    (let ((most-recent-invalid-time-idx -1)
+          ;; read 8 chars of the name we want
+          (type-chars (-> (the-as (pointer uint64) (-> (symbol->string name-sym) data)) 0))
+          )
+
+      ;; now we will do a binary search.  The names are stored in ascending order if you
+      ;; treat the first 8 chars as an integer
+      ;; min/max are inclusive.
+      (let ((max-search (+ (-> obj length) -1))
+            (min-search 0)
+            )
+        ;; inclusive, so >= is correct
+        (while (>= max-search min-search)
+          ;; check in the middle of the range to bisect it.
+          (let* ((check-idx (+ min-search (/ (- max-search min-search) 2)))
+                 ;; subtract the two words.  The sign of this tells us if we are too high or too low
+                 (diff (- type-chars
+                          (-> (the-as (pointer uint64) (-> (symbol->string (-> (-> obj tag) check-idx name)) data)) 0)
+                          )
+                   )
+                 )
+            (cond
+              ((zero? diff)
+               ;; perfect match! we are done, set the tag-idx and get out of here.
+               (begin
+                (set! tag-idx check-idx)
+                (goto cfg-32)
+                )
+               )
+              (else
+               ;; didn't match. pick the appropriate half of the remaining tags
+               (if (< (the-as int diff) 0)
+                   (set! max-search (+ check-idx -1))
+                   (set! min-search (+ check-idx 1))
+                   )
+               )
+              )
+            )
+          )
+        )
+      ;; got to the end of the loop without finding the answer. Set a negative tag
+      (set! tag-idx -1)
+
+      (label cfg-32)
+      (if (< tag-idx 0)
+          (return (the res-tag-pair tag-idx))
+          )
+
+      ;; if there are multiple tags with the same name and different timesteps, we can't be sure which we ended on.
+      ;; this loop brings us to the first tag with the correct name.
+      (while (and (> tag-idx 0)
+                  (= type-chars
+                     (-> (the-as (pointer uint64) (-> (symbol->string (-> (-> obj tag) (+ tag-idx -1) name)) data)) 0)
+                     )
+                  )
+        (+! tag-idx -1)
+        )
+
+      ;; in 'base mode, we just want the earliest tag with the right name.
+      ;; tags are in increasing timestamps, so we found it!
+      (if (= mode 'base)
+          (begin
+           ;; both lo and hi are the same
+           (set! lo-tag-idx-out tag-idx)
+           (set! hi-tag-idx-out tag-idx)
+           (goto cfg-73)
+           )
+          )
+
+      ;; next we will iterate through tags with the right name and find the one(s) with the right timestamp
+      ;; interp-tag-idx is the index of tag-ptr always
+      ;; (the fact that they keep a pointer to a tag and not actually load the tag makes it seem like
+      ;; they ran into some 128-bit integer issues here...)
+      (let ((interp-tag-idx tag-idx)
+            (tag-ptr (&-> (-> obj tag) tag-idx))
+            )
+        ;; loop, until we reach another name or the end of the table
+        (while (not (or
+                     (>= interp-tag-idx (-> obj length))
+                     ;; < is correct here because we are incrementing and names get larger
+                     (< type-chars
+                        (-> (the-as (pointer uint64) (-> (symbol->string (-> tag-ptr 0 name)) data)) 0)
+                        )
+                     )
+                    )
+          (cond
+            ;; The checks above only made sure that the first 8 chars were correct.
+            ;; This skips items with matching first 8 chars, but differences after that.
+            ((!= name-sym (-> tag-ptr 0 name))
+             )
+
+            ;; check for exact match
+            ((= (-> tag-ptr 0 key-frame) time)
+             ;; in all cases, just return the exact match.
+             (begin
+              (set! lo-tag-idx-out interp-tag-idx)
+              (set! hi-tag-idx-out interp-tag-idx)
+              (goto cfg-73)
+              )
+             )
+
+            ;; check for being not far enough
+            ((and (>= time (-> tag-ptr 0 key-frame)) (!= mode 'exact))
+             ;; in all cases, except for exact, we'll want to remember this.
+             ;; just in case there are no more tags
+             (set! lo-tag-idx-out interp-tag-idx)
+             (set! hi-tag-idx-out interp-tag-idx)
+             ;; also remember if we hit an invalid one
+             (if (= (-> tag-ptr 0 key-frame) -1000000000.0)
+                 (set! most-recent-invalid-time-idx interp-tag-idx)
+                 )
+             )
+
+            ;; check for being too far (passed the time)
+            ((< time (-> tag-ptr 0 key-frame))
+             (begin
+              ;; if we're interpolation mode and valid, set the high one.
+              ;; not sure what the invalid time thing is about.
+              (if (and (!= lo-tag-idx-out most-recent-invalid-time-idx) (= mode 'interp))
+               (set! hi-tag-idx-out interp-tag-idx)
+               )
+              (goto cfg-73)
+              )
+             )
+            )
+
+          ;; advance to next tag
+          (+! interp-tag-idx 1)
+          (set! tag-ptr (&-> tag-ptr 1))
+          )
+        )
+      )
+    (label cfg-73)
+    ;; end: return the tags.
+    (the-as res-tag-pair
+     (logior
+      (logand #xffffffff (the-as uint lo-tag-idx-out))
+      (the-as uint (shl hi-tag-idx-out 32))
+      )
+     )
+    )
+  )
+
+(defmacro make-res-int-data (interp elt-count buf src-lo src-hi ty)
+  `(let ((fixed-pt (the int (* 4096.0 ,interp))))
+    (dotimes (i ,elt-count)
+      (set! (deref ,ty ,buf 0) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt))
+                                        (* (deref ,ty ,src-hi i) fixed-pt))
+                                     -12))
+      )
+    buf
+    )
+  )
+
+(defmethod make-property-data res-lump ((obj res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
+  "Returns (a pointer to) the value data of a property with the tag-pair.
+   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+   with the result written into buf. buf must have enough space to copy all of the data.
+   Otherwise, simply returns an address to the resource binary."
+  
+  (let* ((tag-lo (-> obj tag (-> tag-pair lo)))
+         (tag-hi (-> obj tag (-> tag-pair hi)))
+         (elt-count (-> tag-lo elt-count))
+         )
+    (cond
+      ((res-ref? tag-lo)
+       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       )
+      ((or (not buf)
+           (= (-> tag-pair lo) (-> tag-pair hi))
+           (!= elt-count (-> tag-hi elt-count))
+           (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
+       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       )
+      (else
+        (let ((interp (/ (- time (-> tag-lo key-frame))
+                         (- (-> tag-hi key-frame) (-> tag-lo key-frame)))) ;; DBZ
+              (src-lo (&+ (-> obj data-base) (-> tag-lo data-offset)))
+              (src-hi (&+ (-> obj data-base) (-> tag-hi data-offset)))
+              )
+          (case (-> tag-lo elt-type symbol)
+            (('float)
+              (dotimes (i elt-count)
+                (set! (deref float buf 0) (+ (* (deref float src-lo i) (- 1.0 interp))
+                                              (* (deref float src-hi i) interp)
+                                              ))
+                )
+              buf
+              )
+            (('integer 'sinteger 'uinteger 'int64 'uint64)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint64)
+              )
+            (('int8)
+              (make-res-int-data interp elt-count buf src-lo src-hi int8)
+              )
+            (('uint8)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint8)
+              )
+            (('int16)
+              (make-res-int-data interp elt-count buf src-lo src-hi int16)
+              )
+            (('uint16)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint16)
+              )
+            (('int32)
+              (make-res-int-data interp elt-count buf src-lo src-hi int32)
+              )
+            (('uint32)
+              (make-res-int-data interp elt-count buf src-lo src-hi uint32)
+              )
+            (('vector)
+              (rlet ((vf1 :class vf)
+                     (vf2 :class vf)
+                     (vf3 :class vf)
+                     (vf4 :class vf)
+                     )
+                (.mov vf3 interp)
+                (.mov vf4 (- 1.0 interp))
+                (dotimes (i elt-count)
+                  (.lvf vf1 (&deref int128 src-lo i))
+                  (.lvf vf2 (&deref int128 src-hi i))
+                  (.mul.x.vf vf1 vf1 vf4)
+                  (.mul.x.vf vf2 vf2 vf3)
+                  (.add.vf vf1 vf1 vf2)
+                  (.svf (&deref int128 buf i) vf1)
+                  )
+                )
+              buf
+              )
+            (else
+              (&+ (-> obj data-base) (-> tag-lo data-offset))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod get-property-data res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
+  "Returns an address to a given property's data at a specific time stamp.
+   name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+   data-addr is an address to the new data, or simply the old data if lookup failed.
+   tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+   buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+
+  (let ((tag-pair (lookup-tag-idx obj name mode time)))
+      (cond
+        ((< (the-as int tag-pair) 0)
+         (empty)
+         )
+        (else
+          (set! data-addr (make-property-data obj time tag-pair buf-addr))
+          (if tag-addr
+            (set! (-> tag-addr) (-> obj tag (-> tag-pair lo)))
+            )
+          )
+      )
+    )
+  data-addr
+  )
+

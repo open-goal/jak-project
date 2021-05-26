@@ -69,7 +69,7 @@ class ObjectFileDB {
   void analyze_functions_ir2(const std::string& output_dir, const Config& config);
   void ir2_top_level_pass(const Config& config);
   void ir2_stack_spill_slot_pass();
-  void ir2_basic_block_pass();
+  void ir2_basic_block_pass(const Config& config);
   void ir2_atomic_op_pass(const Config& config);
   void ir2_type_analysis_pass(const Config& config);
   void ir2_register_usage_pass();
@@ -80,8 +80,8 @@ class ObjectFileDB {
   void ir2_insert_lets();
   void ir2_rewrite_inline_asm_instructions();
   void ir2_insert_anonymous_functions();
-  void ir2_write_results(const std::string& output_dir);
-  std::string ir2_to_file(ObjectFileData& data);
+  void ir2_write_results(const std::string& output_dir, const Config& config);
+  std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
   std::string ir2_final_out(ObjectFileData& data,
                             const std::unordered_set<std::string>& skip_functions = {});

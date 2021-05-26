@@ -8526,22 +8526,31 @@
 (define-extern *debug-engine* engine)
 
 ;; res-h
-
 (deftype res-tag (uint128)
-  ((unk0  uint32  :offset 0  :size 32)
-   (unk1  uint16  :offset 32 :size 16)
-   (unk2  uint64  :offset 64 :size 64)
+  ((name        symbol  :offset 0)
+   (key-frame   float   :offset 32)
+   (elt-type    type    :offset 64)
+   (data-offset uint16  :offset 96) ;; guess. (data-offset is 16-bit in Crash)
+   (elt-count   uint32  :offset 112 :size 15)
+   (inlined?    uint8   :offset 127 :size 1) ;; guess.
    )
   :flag-assert #x900000010
   )
 
+(deftype res-tag-pair (uint64)
+  ((lo  uint32 :offset 0)
+   (hi  uint32 :offset 32)
+   )
+  ;; made-up type
+  )
+
 (deftype res-lump (basic)
-  ((length           int32   :offset-assert 4)
-   (allocated-length int32   :offset-assert 8)
-   (data-base        pointer  :offset-assert 12)
-   (data-top         pointer  :offset-assert 16)
-   (data-size        int32   :offset-assert 20)
-   (extra            basic   :offset-assert 24)
+  ((length           int32              :offset-assert 4)
+   (allocated-length int32              :offset-assert 8)
+   (data-base        pointer            :offset-assert 12)
+   (data-top         pointer            :offset-assert 16)
+   (data-size        int32              :offset-assert 20)
+   (extra            basic              :offset-assert 24)
    (tag              (pointer res-tag)  :offset-assert 28)
    )
   :method-count-assert 22
@@ -8550,18 +8559,18 @@
   ;; field extra is a basic loaded with a signed load
   (:methods
     (new (symbol type int int) _type_ 0)
-    (dummy-9 (_type_ symbol symbol int symbol (pointer res-tag) pointer) symbol 9)
+    (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer 9)
     (dummy-10 (_type_ symbol symbol int symbol symbol pointer) int 10)
     (dummy-11 (_type_ symbol symbol int int symbol pointer) int 11)
     (dummy-12 (_type_ symbol symbol float float symbol pointer) float 12)
-    (dummy-13 (_type_ int) pointer 13) ;; advance tag pointer
-    (dummy-14 (_type_ uint) pointer 14)
+    (get-tag-index-data (_type_ int) pointer 13)
+    (get-tag-data (_type_ res-tag) pointer 14)
     (dummy-15 (_type_) none 15)
     (dummy-16 (_type_ int int int int) none 16)
     (dummy-17 (_type_ int int) res-lump 17)
     (dummy-18 (_type_ int int) none 18)
-    (dummy-19 (_type_ symbol symbol int) int 19)
-    (dummy-20 (_type_ int int) none 20)
+    (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair 19)
+    (make-property-data (_type_ float res-tag-pair pointer) pointer 20)
     (dummy-21 (_type_ int int int int int) none 21)
     )
   )
@@ -9432,13 +9441,13 @@
     :size-assert         #x28
     :flag-assert         #x1000000028
     (:methods
-      (dummy-9 () none 9)
-      (dummy-10 () none 10)
-      (dummy-11 () none 11)
-      (dummy-12 () none 12)
-      (dummy-13 () none 13)
-      (dummy-14 () none 14)
-      (dummy-15 () none 15)
+      (TODO-RENAME-9 (_type_ float vector) vector 9)
+      (TODO-RENAME-10 (_type_ float vector) vector 10)
+      (TODO-RENAME-11 (_type_ vector vector float float) none 11)
+      (TODO-RENAME-12 (_type_ vector vector float float) none 12)
+      (TODO-RENAME-13 (_type_ vector vector float float) none 13)
+      (TODO-RENAME-14 (_type_ vector vector float float) none 14)
+      (TODO-RENAME-15 (_type_) none 15)
       )
     )
 
@@ -10587,11 +10596,11 @@
   :size-assert         #x34
   :flag-assert         #xe00000034
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (dummy-9 (_type_) none 9)
+    (dummy-10 (_type_) none 10)
+    (PERF-COUNTER-REG-ACCESS-11 (_type_) none 11)
+    (PERF-COUNTER-REG-ACCESS-12 (_type_) none 12)
+    (update-wait-stats-13 (_type_ uint uint uint) none 13)
     )
   )
 
@@ -13312,7 +13321,7 @@
 (define-extern find-temp-buffer (function int pointer))
 (define-extern dgo-load-link (function dgo-header kheap symbol symbol symbol))
 (define-extern destroy-mem (function (pointer uint32) (pointer uint32) none))
-(define-extern string->sound-name (function string uint128))
+(define-extern string->sound-name (function string sound-name))
 (define-extern str-play-kick (function none))
 (define-extern *dgo-time* uint)
 
@@ -34119,7 +34128,7 @@
 ;;(define-extern *debug-sphere-table* object) ;; unknown type
 (define-extern add-debug-sphere-from-table function)
 (define-extern debug-sphere-table type)
-(define-extern add-debug-line function)
+(define-extern add-debug-line (function symbol int vector vector rgba symbol int int))
 (define-extern internal-draw-debug-text-3d function)
 (define-extern add-debug-curve2 function)
 (define-extern history-init function)
@@ -34130,7 +34139,7 @@
 (define-extern add-debug-x function)
 (define-extern add-debug-points function)
 (define-extern add-debug-text-3d function)
-(define-extern add-debug-vector function)
+;; (define-extern add-debug-vector (function symbol int trajectory ? float float))
 (define-extern transform-float-point function)
 (define-extern add-debug-curve function)
 ;;(define-extern *debug-lines* object) ;; unknown type

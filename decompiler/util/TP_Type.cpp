@@ -60,7 +60,13 @@ std::string TP_Type::print() const {
     case Kind::NON_VIRTUAL_METHOD:
       return fmt::format("<method {}>", m_ts.print());
     case Kind::LEFT_SHIFTED_BITFIELD:
-      return fmt::format("(<{}> << {})", m_ts.print(), m_int);
+      if (m_pcpyud) {
+        return fmt::format("(<{}> << {}) :u", m_ts.print(), m_int);
+      } else {
+        return fmt::format("(<{}> << {})", m_ts.print(), m_int);
+      }
+    case Kind::PCPYUD_BITFIELD:
+      return fmt::format("<pcpyud {}>", m_ts.print());
     case Kind::INVALID:
     default:
       assert(false);
@@ -108,7 +114,9 @@ bool TP_Type::operator==(const TP_Type& other) const {
       return m_int == other.m_int && m_ts == other.m_ts &&
              m_extra_multiplier == other.m_extra_multiplier;
     case Kind::LEFT_SHIFTED_BITFIELD:
-      return m_int == other.m_int && m_ts == other.m_ts;
+      return m_int == other.m_int && m_ts == other.m_ts && m_pcpyud == other.m_pcpyud;
+    case Kind::PCPYUD_BITFIELD:
+      return m_pcpyud == other.m_pcpyud && m_ts == other.m_ts;
     case Kind::INVALID:
     default:
       assert(false);
@@ -163,6 +171,8 @@ TypeSpec TP_Type::typespec() const {
       return m_ts;
     case Kind::LEFT_SHIFTED_BITFIELD:
       return TypeSpec("int");  // ideally this is never used.
+    case Kind::PCPYUD_BITFIELD:
+      return TypeSpec("int");
     case Kind::INVALID:
     default:
       assert(false);

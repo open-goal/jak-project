@@ -1322,6 +1322,14 @@ void TypeSystem::add_field_to_bitfield(BitFieldType* type,
         "type is {} bits)\n",
         type->get_name(), field_name, field_size + offset, type->get_load_size() * 8);
   }
+
+  // 128-bit bitfields have the limitation that fields cannot cross the 64-bit boundary.
+  if (offset < 64 && offset + field_size > 64) {
+    throw_typesystem_error(
+        "Type {}'s bitfield {} will cross bit 64, which is not permitted. Range [{}, {})",
+        type->get_name(), field_name, offset, offset + field_size);
+  }
+
   BitField field(field_type, field_name, offset, field_size);
   type->m_fields.push_back(field);
 }

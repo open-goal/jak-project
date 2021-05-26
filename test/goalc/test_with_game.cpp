@@ -365,6 +365,19 @@ TEST_F(WithGameTests, TrickyBitField) {
                          get_test_pass_string("bitfield-tricky-access", 14));
 }
 
+TEST_F(WithGameTests, Bitfield128) {
+  runner.run_static_test(env, testCategory, "test-access-bitfield128.gc",
+                         {"-abcdbeef 77777777 66666666 12347890\n"
+                          "-abcdbeef 77777777 66666666 00000001\n"
+                          "-abcdbeef 77777777 00000002 00000001\n"
+                          "-abcdbeef 00000003 00000002 00000001\n"
+                          "00000004 00000003 00000002 00000001\n"
+                          "12341234 00000007 00000666 -deadbeef\n"
+                          "12124545 -92929292 78787878 23232323\n"
+                          "00009878 00003333 00002222 00001212\n"
+                          "0\n"});
+}
+
 TEST_F(WithGameTests, Math) {
   runner.run_static_test(env, testCategory, "test-math.gc", get_test_pass_string("math", 31));
 }
@@ -720,6 +733,17 @@ TEST_F(WithGameTests, WeirdMultiply) {
                           "100000000 100000000\n"
                           "55555552 -3 7ffffffffffffffb -5\n"
                           "0\n"});
+}
+
+TEST_F(WithGameTests, Function128) {
+  runner.run_static_test(
+      env, testCategory, "test-function128.gc",
+      {"#<vector       1.0000       2.0000       3.0000       4.0000 @ #x400000003f800000>\n"
+       "#<vector       1.0000      20.0000       3.0000       4.0000 @ #x41a000003f800000>\n"
+       "#<vector      10.0000       2.0000       3.0000       4.0000 @ #x4000000041200000>\n"
+       " 0 1 2 3 4 5 6 7 8 9 a b c d e\n"
+       "arg0: 1 arg2: 2\n"
+       "0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

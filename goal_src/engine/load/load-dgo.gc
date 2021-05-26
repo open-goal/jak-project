@@ -266,21 +266,6 @@ struct DgoHeader {
 ;; DGO LOAD and LINK
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun string->sound-name! ((out (pointer uint128)) (in string))
-  "This function was added as a temporary workaround for not having
-   uint128 return values in OpenGOAL yet."
-  (set! (-> out) (the uint128 0))
-  (let ((out-ptr (the (pointer uint8) out))
-        (in-ptr (-> in data)))
-    (while (and (nonzero? (-> in-ptr))
-                (< (&- in-ptr (-> in data)) 15))
-      (set! (-> out-ptr) (-> in-ptr))
-      (&+! out-ptr 1)
-      (&+! in-ptr 1)
-      )
-    )
-  )
-
 (define *dgo-time* (the-as uint 0))
 
 (defun dgo-load-begin ((name string) (buffer1 int) (buffer2 int) (current-heap int))
@@ -301,8 +286,7 @@ struct DgoHeader {
     (set! (-> cmd b2) (the-as uint buffer2))
     (set! (-> cmd bt) (the-as uint current-heap))
     ;; modified due to OpenGOAL not supporting uint128 return values yet
-    ;;(set! (-> cmd name) (string->sound-name name))
-    (string->sound-name! (&-> cmd name) name)
+    (set! (-> cmd name) (string->sound-name name))
     ;; call now!
     (call *load-dgo-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 32))
     cmd

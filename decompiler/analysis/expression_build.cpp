@@ -101,6 +101,26 @@ bool convert_to_expressions(
       assert(x->parent_form == top_level_form);
     }
 
+    // if we were don't return, make sure we didn't find a return form.
+    if (f.type.last_arg() == TypeSpec("none")) {
+      bool found_return = false;
+      top_level_form->apply([&](FormElement* elt) {
+        if (dynamic_cast<ReturnElement*>(elt)) {
+          found_return = true;
+        }
+      });
+
+      if (found_return) {
+        auto warn = fmt::format(
+            "Function {} has a return type of none, but the expression builder found a return "
+            "statement.",
+            f.guessed_name.to_string());
+        f.warnings.expression_build_warning(warn);
+        lg::warn(warn);
+        return false;
+      }
+    }
+
   } catch (std::exception& e) {
     f.warnings.expression_build_warning("In {}: {}", f.guessed_name.to_string(), e.what());
     lg::warn("In {}: {}", f.guessed_name.to_string(), e.what());

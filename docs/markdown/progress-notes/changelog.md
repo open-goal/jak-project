@@ -40,12 +40,10 @@
 - The `&+` form now works on `inline-array` and `structure`.
 - In the case where the type system would use a result type of `lca(none, x)`, the result type is now `none` instead of compiler abort.
 - The "none value" is now `(none)` instead of `none`
-
 - Creating a field of 128-bit value type no longer causes a compiler crash
 - 128-bit fields are inspected as `<cannot-print>`
 - Static fields can now contain floating point values
 - Fixed a bug where loading a float from an object and immediately using it math would cause a compiler crash
-
 - Arrays of value types can be created on the stack with `new`.
 
 ## V0.2
@@ -149,3 +147,15 @@
 - Added unsigned division (previously signed division was used for unsigned numbers)
 - Use shifts (64-bit) for positive power of two multiply and divide. Otherwise use 32-bit. This matches GOAL.
 - Allow setting a 64-bit or less memory location from a 128-bit variable (upper bits are discarded).
+- It is now a compiler error to declare a bitfield type where a field crosses bit 64.
+- Fixed a bug where a let/immediate lambda with an argument with type of child of int128/uint128 would end up in a 64 bit register.
+- Support accessing and setting fields of a 128-bit bitfield type.
+- Fixed a bug where the mask constant for clearing a bitfield was not computed correctly
+- Support 128-bit bitfields inside of static structure
+- Support 128-bit bitfield constants
+- Support dynamic construction of 128-bit bitfield values
+
+## V0.8 New Calling Convention for 128-bit
+- 128-bit values may now be used in function arguments and return values.
+- Fixed a bug where reader errors in `goal-lib.gc` or any error in `goos-lib.gs` would cause a crash
+- Fixed a bug where `''a` or similar repeated reader macros would generate a reader error.
