@@ -46,19 +46,23 @@ int main(int argc, char** argv) {
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   // Init REPL
-  std::unique_ptr<Compiler> compiler = std::make_unique<Compiler>();
-
-  if (argument.empty()) {
-    ReplStatus status = ReplStatus::WANT_RELOAD;
-    while (status == ReplStatus::WANT_RELOAD) {
-      compiler = std::make_unique<Compiler>(std::make_unique<ReplWrapper>());
-      status = compiler->execute_repl(auto_listen);
-      if (status == ReplStatus::WANT_RELOAD) {
-        fmt::print("Reloading compiler...\n");
+  // the compiler may throw an exception if it fails to load its standard library.
+  try {
+    std::unique_ptr<Compiler> compiler = std::make_unique<Compiler>();
+    if (argument.empty()) {
+      ReplStatus status = ReplStatus::WANT_RELOAD;
+      while (status == ReplStatus::WANT_RELOAD) {
+        compiler = std::make_unique<Compiler>(std::make_unique<ReplWrapper>());
+        status = compiler->execute_repl(auto_listen);
+        if (status == ReplStatus::WANT_RELOAD) {
+          fmt::print("Reloading compiler...\n");
+        }
       }
+    } else {
+      compiler->run_front_end_on_string(argument);
     }
-  } else {
-    compiler->run_front_end_on_string(argument);
+  } catch (std::exception& e) {
+    fmt::print("Compiler Fatal Error: {}\n", e.what());
   }
 
   return 0;

@@ -1255,6 +1255,14 @@ TEST(GoosSpecialForms, Quote) {
   }
 }
 
+TEST(GoosSpecialForms, DoubleQuote) {
+  Interpreter i;
+  e(i, "(define x ''y)");
+  EXPECT_EQ(e(i, "x"), "(quote y)");
+  e(i, "(define x `'`y)");
+  EXPECT_EQ(e(i, "x"), "(quote (quasiquote y))");
+}
+
 TEST(GoosSpecialForms, QuasiQuote) {
   Interpreter i;
   e(i, "(define x 'y)");

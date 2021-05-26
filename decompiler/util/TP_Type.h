@@ -32,6 +32,7 @@ class TP_Type {
     DYNAMIC_METHOD_ACCESS,           // partial access into a
     VIRTUAL_METHOD,
     NON_VIRTUAL_METHOD,
+    PCPYUD_BITFIELD,
     LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
     INVALID
   } kind = Kind::UNINITIALIZED;
@@ -59,6 +60,7 @@ class TP_Type {
       case Kind::VIRTUAL_METHOD:
       case Kind::NON_VIRTUAL_METHOD:
       case Kind::LEFT_SHIFTED_BITFIELD:
+      case Kind::PCPYUD_BITFIELD:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -211,11 +213,20 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_from_left_shift_bitfield(const TypeSpec& ts, int amount) {
+  static TP_Type make_from_left_shift_bitfield(const TypeSpec& ts, int amount, bool pcpyud) {
     TP_Type result;
     result.kind = Kind::LEFT_SHIFTED_BITFIELD;
     result.m_ts = ts;
     result.m_int = amount;
+    result.m_pcpyud = pcpyud;
+    return result;
+  }
+
+  static TP_Type make_from_pcpyud_bitfield(const TypeSpec& ts) {
+    TP_Type result;
+    result.kind = Kind::PCPYUD_BITFIELD;
+    result.m_ts = ts;
+    result.m_pcpyud = true;
     return result;
   }
 
@@ -265,14 +276,23 @@ class TP_Type {
   }
 
   const TypeSpec& get_bitfield_type() const {
-    assert(kind == Kind::LEFT_SHIFTED_BITFIELD);
+    assert(kind == Kind::LEFT_SHIFTED_BITFIELD || kind == Kind::PCPYUD_BITFIELD);
     return m_ts;
+  }
+
+  bool pcpyud() const {
+    if (kind == Kind::LEFT_SHIFTED_BITFIELD) {
+      return m_pcpyud;
+    }
+    assert(false);
+    return false;
   }
 
  private:
   TypeSpec m_ts;
   std::string m_str;
   int64_t m_int = 0;
+  bool m_pcpyud = false;  // have we extracted the top doubleword of a bitfield?
 
   int64_t m_extra_multiplier = 0;
 };

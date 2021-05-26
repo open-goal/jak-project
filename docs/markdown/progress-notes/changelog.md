@@ -40,12 +40,10 @@
 - The `&+` form now works on `inline-array` and `structure`.
 - In the case where the type system would use a result type of `lca(none, x)`, the result type is now `none` instead of compiler abort.
 - The "none value" is now `(none)` instead of `none`
-
 - Creating a field of 128-bit value type no longer causes a compiler crash
 - 128-bit fields are inspected as `<cannot-print>`
 - Static fields can now contain floating point values
 - Fixed a bug where loading a float from an object and immediately using it math would cause a compiler crash
-
 - Arrays of value types can be created on the stack with `new`.
 
 ## V0.2
@@ -159,3 +157,5 @@
 
 ## V0.8 New Calling Convention for 128-bit
 - 128-bit values may now be used in function arguments and return values.
+- Fixed a bug where reader errors in `goal-lib.gc` or any error in `goos-lib.gs` would cause a crash
+- Fixed a bug where `''a` or similar repeated reader macros would generate a reader error.
