@@ -62,6 +62,11 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "vif1-handler", "vif1-handler-debug",
     // stats-h
     "(method 11 perf-stat)", "(method 12 perf-stat)",
+    // ripple - asm
+    "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
+    "ripple-matrix-scale",
+    // ripple - calls an asm function
+    "ripple-execute",
 
     // sync-info
     "(method 15 sync-info)",         // needs *res-static-buf*
@@ -72,11 +77,17 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs", "ash", "min", "max", "lognor",
+    "abs",
+    "ash",
+    "min",
+    "max",
+    "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
     // does weird stuff with the type system.
-    "print", "printl", "inspect",
+    "print",
+    "printl",
+    "inspect",
     // inline assembly
     "valid?",
 
@@ -93,8 +104,10 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "send-event-function",  // pp asm (eventually we should make this work)
 
     /// MATH
-    "rand-vu-init", "rand-vu", "rand-vu-nostep",  // random hardware
-    "log2",                                       // weird tricky int-as-float stuff
+    "rand-vu-init",
+    "rand-vu",
+    "rand-vu-nostep",  // random hardware
+    "log2",            // weird tricky int-as-float stuff
 
     // trig
     "sin-rad",                    // fpu acc
@@ -118,14 +131,19 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "disasm-dma-list",  // missing a single cast :(
 
     // math camera
-    "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
+    "transform-point-vector!",
+    "transform-point-qword!",
+    "transform-point-vector-scale!",
 
     // display-h
     "put-draw-env",
 
     // vector
     // bad decisions on float vs int128
-    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
+    "vector-degf",
+    "vector-degmod",
+    "vector-deg-diff",
+    "vector-degi",
 
     // asm
     "invalidate-cache-line",
@@ -137,6 +155,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
     "(method 15 sync-info-paused)",  // needs display stuff first
+
+    // ripple - calls an asm function
+    "ripple-execute",
 };
 
 // default location for the data. It can be changed with a command line argument.
