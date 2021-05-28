@@ -389,10 +389,10 @@
     )
   )
 
-(defmethod get-property-data res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "Returns an address to a given property's data at a specific time stamp, or data-addr on error.
+(defmethod get-property-data res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
+  "Returns an address to a given property's data at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-   data-addr is an address to the old data, returned in the case of an error.
+   default is the default result returned in the case of an error.
    tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
    buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
 
@@ -402,21 +402,20 @@
          (empty)
          )
         (else
-          (set! data-addr (make-property-data obj time tag-pair buf-addr))
+          (set! default (make-property-data obj time tag-pair buf-addr))
           (if tag-addr
             (set! (-> tag-addr) (-> obj tag (-> tag-pair lo)))
             )
           )
         )
       )
-  data-addr
+  default
   )
 
-;; data-addr is actually pointer
-(defmethod get-property-struct res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "Returns a given struct property's value at a specific time stamp, or data-addr on error.
+(defmethod get-property-struct res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
+  "Returns a given struct property's value at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-   data-addr is an address to the old data, returned in the case of an error.
+   default is the default result returned in the case of an error.
    tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
    buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
 
@@ -426,27 +425,26 @@
          (empty)
          )
         (else
-          (set! data-addr (the-as structure (make-property-data obj time tag-pair buf-addr)))
+          (set! default (the-as structure (make-property-data obj time tag-pair buf-addr)))
           (let ((tag (-> obj tag (-> tag-pair lo))))
             (if tag-addr
               (set! (-> tag-addr 0) tag)
               )
             (if (res-ref? tag)
-              (set! data-addr (deref structure data-addr))
+              (set! default (deref structure default))
               (empty)
               )
             )
           )
         )
       )
-  data-addr
+  default
   )
 
-;; data-addr is actually pointer
-(defmethod get-property-value res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "Returns a given value property's value at a specific time stamp, or data-addr on error.
+(defmethod get-property-value res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
+  "Returns a given value property's value at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-   data-addr is an address to the old data, returned in the case of an error.
+   default is the default result returned in the case of an error.
    tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
    buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
 
@@ -466,24 +464,24 @@
               (cond
                 ((type-type? tag-type uinteger)
                  (case (-> tag elt-type size)
-                   ((1) (set! data-addr (the-as uint128 (deref uint8 data))))
-                   ((2) (set! data-addr (the-as uint128 (deref uint16 data))))
-                   ((4) (set! data-addr (the-as uint128 (deref uint32 data))))
-                   ((16) (set! data-addr (the-as uint128 (deref uint128 data))))
-                   (else (set! data-addr (the-as uint128 (deref uint64 data))))
+                   ((1) (set! default (the-as uint128 (deref uint8 data))))
+                   ((2) (set! default (the-as uint128 (deref uint16 data))))
+                   ((4) (set! default (the-as uint128 (deref uint32 data))))
+                   ((16) (set! default (the-as uint128 (deref uint128 data))))
+                   (else (set! default (the-as uint128 (deref uint64 data))))
                    )
                  )
                 ((type-type? tag-type integer)
                  (case (-> tag elt-type size)
-                   ((1) (set! data-addr (the-as uint128 (deref int8 data))))
-                   ((2) (set! data-addr (the-as uint128 (deref int16 data))))
-                   ((4) (set! data-addr (the-as uint128 (deref int32 data))))
-                   ((16) (set! data-addr (the-as uint128 (deref uint128 data))))
-                   (else (set! data-addr (the-as uint128 (deref uint64 data))))
+                   ((1) (set! default (the-as uint128 (deref int8 data))))
+                   ((2) (set! default (the-as uint128 (deref int16 data))))
+                   ((4) (set! default (the-as uint128 (deref int32 data))))
+                   ((16) (set! default (the-as uint128 (deref uint128 data))))
+                   (else (set! default (the-as uint128 (deref uint64 data))))
                    )
                  )
                 ((type-type? tag-type float)
-                 (set! data-addr (the-as uint128 (deref float data)))
+                 (set! default (the-as uint128 (deref float data)))
                  )
                 (else
                   (empty)
@@ -493,11 +491,10 @@
           )
         )
       )
-  data-addr
+  default
   )
 
-;; data-addr is actually pointer
-(defmethod get-property-value2 res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (data-addr uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
+(defmethod get-property-value2 res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "same as get-property-value but float type is checked first?"
 
   (let ((tag-pair (lookup-tag-idx obj name mode time)))
@@ -515,24 +512,24 @@
                 )
               (cond
                 ((type-type? tag-type float)
-                 (set! data-addr (the-as uint128 (deref float data)))
+                 (set! default (the-as uint128 (deref float data)))
                  )
                 ((type-type? tag-type uinteger)
                  (case (-> tag elt-type size)
-                   ((1) (set! data-addr (the-as uint128 (deref uint8 data))))
-                   ((2) (set! data-addr (the-as uint128 (deref uint16 data))))
-                   ((4) (set! data-addr (the-as uint128 (deref uint32 data))))
-                   ((16) (set! data-addr (the-as uint128 (deref uint128 data))))
-                   (else (set! data-addr (the-as uint128 (deref uint64 data))))
+                   ((1) (set! default (the-as uint128 (deref uint8 data))))
+                   ((2) (set! default (the-as uint128 (deref uint16 data))))
+                   ((4) (set! default (the-as uint128 (deref uint32 data))))
+                   ((16) (set! default (the-as uint128 (deref uint128 data))))
+                   (else (set! default (the-as uint128 (deref uint64 data))))
                    )
                  )
                 ((type-type? tag-type integer)
                  (case (-> tag elt-type size)
-                   ((1) (set! data-addr (the-as uint128 (deref int8 data))))
-                   ((2) (set! data-addr (the-as uint128 (deref int16 data))))
-                   ((4) (set! data-addr (the-as uint128 (deref int32 data))))
-                   ((16) (set! data-addr (the-as uint128 (deref uint128 data))))
-                   (else (set! data-addr (the-as uint128 (deref uint64 data))))
+                   ((1) (set! default (the-as uint128 (deref int8 data))))
+                   ((2) (set! default (the-as uint128 (deref int16 data))))
+                   ((4) (set! default (the-as uint128 (deref int32 data))))
+                   ((16) (set! default (the-as uint128 (deref uint128 data))))
+                   (else (set! default (the-as uint128 (deref uint64 data))))
                    )
                  )
                 (else
@@ -543,7 +540,7 @@
           )
         )
       )
-  data-addr
+  default
   )
 
 (defmethod sort! res-lump ((obj res-lump))
