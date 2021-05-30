@@ -336,13 +336,14 @@
   )
 
 ;; gkernel
+(declare-type entity basic)
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
-   (entity basic :offset-assert #x34) ;; entity
+   (entity entity :offset-assert #x34)
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
@@ -12939,61 +12940,57 @@
     )
   )
 
-; ;; path-h
-; (deftype path-control (basic)
-;   ((flags      uint32         :offset-assert 4)
-;    (name       basic          :offset-assert 8)
-;    (process    basic          :offset-assert 12)
-;    (curve      curve  :inline :offset-assert 16)
-;    (num-cverts int32          :offset-assert 20)
-;    (cverts     uint32         :offset-assert 16)
-;    )
-;   :method-count-assert 21
-;   :size-assert         #x24
-;   :flag-assert         #x1500000024
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
-
-; ;; path-h
-; (deftype curve-control (path-control)
-;   ((flags      uint32         :offset-assert 4)
-;    (name       basic          :offset-assert 8)
-;    (process    basic          :offset-assert 12)
-;    (curve      curve  :inline :offset-assert 16)
-;    (num-cverts int32          :offset-assert 20)
-;    (cverts     uint32         :offset-assert 16)
-;    )
-;   :method-count-assert 21
-;   :size-assert         #x24
-;   :flag-assert         #x1500000024
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+;; path-h
+(deftype path-control (basic)
+  ((flags      uint32         :offset-assert 4)
+   (name       basic          :offset-assert 8)
+   (process    process-drawable          :offset-assert 12) ;; NOTE - maybe too specific
+   (curve      curve  :inline :offset-assert 16)
+   (num-cverts int32          :offset 20)
+   (cverts     uint32         :offset 16)
+   )
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+    ; process, name
+    (new (symbol type process-drawable basic float) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    )
+  )
+;; path-h
+(deftype curve-control (path-control)
+  ()
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+    (new (symbol type basic basic) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    )
+  )
 
 ;; navigate-h
 (deftype nav-poly (structure)
@@ -33878,7 +33875,7 @@
 (define-extern actor-link-dead-hook function)
 (define-extern entity-actor-count function)
 (define-extern alt-actor-list-subtask-incomplete-count function)
-(define-extern entity-actor-lookup function)
+(define-extern entity-actor-lookup (function entity symbol int process-drawable)) ;; NOTE - return value is not confirmed
 ;;(define-extern next-actor object) ;; unknown type
 ;;(define-extern alt-actor object) ;; unknown type
 (define-extern entity-by-name function)
