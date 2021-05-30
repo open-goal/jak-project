@@ -143,6 +143,8 @@ Config read_config_file(const std::string& path_to_config_file) {
       hacks_json.at("no_type_analysis_functions_by_name").get<std::unordered_set<std::string>>();
   config.hacks.types_with_bad_inspect_methods =
       hacks_json.at("types_with_bad_inspect_methods").get<std::unordered_set<std::string>>();
+  config.hacks.reject_cond_to_value = hacks_json.at("aggressively_reject_cond_to_value_rewrite")
+                                          .get<std::unordered_set<std::string>>();
 
   for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
     auto func_name = entry.at(0).get<std::string>();
