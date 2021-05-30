@@ -349,6 +349,11 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
             config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
         }
+
+        if (config.hacks.reject_cond_to_value.find(func_name) !=
+            config.hacks.reject_cond_to_value.end()) {
+          func.ir2.env.aggressively_reject_cond_to_value_rewrite = true;
+        }
         func.ir2.env.set_stack_var_hints(try_lookup(config.stack_var_hints_by_function, func_name));
         if (run_type_analysis_ir2(ts, dts, func)) {
           successful_functions++;

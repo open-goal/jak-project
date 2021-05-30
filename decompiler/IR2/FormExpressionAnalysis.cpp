@@ -1725,7 +1725,7 @@ void StoreArrayAccess::push_to_stack(const Env& env, FormPool& pool, FormStack& 
   auto fr = pool.alloc_element<SetFormFormElement>(
       form_out, make_optional_cast(m_src_cast_type, expr_form, pool, env));
   fr->mark_popped();
-  stack.push_form_element(fr, true);
+  fr->push_to_stack(env, pool, stack);
 }
 
 ///////////////////
@@ -2178,6 +2178,8 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   // check all to see if they write the value.
   std::vector<SetVarElement*> dest_sets;
   std::vector<TypeSpec> source_types;  // only explicit accesses that aren't move-eliminated
+
+  int empty_count = 0;
   for (auto form : write_output_forms) {
     auto last_in_body = dynamic_cast<SetVarElement*>(form->elts().back());
     if (last_in_body) {
@@ -2191,9 +2193,11 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       }
       last_var = last_in_body->dst();
     }
-    // For now, I am fine with letting this fail. For example, if the set is eliminated by a
-    // coloring move.  If this makes really ugly code later on, we could use this to disable
-    // write as set.
+    empty_count++;
+  }
+
+  if (empty_count > 0 && env.aggressively_reject_cond_to_value_rewrite) {
+    rewrite_as_set = false;
   }
 
   if (!last_var.has_value()) {

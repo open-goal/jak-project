@@ -67,9 +67,19 @@ bool convert_to_expressions(
     if (f.type.last_arg() != TypeSpec("none")) {
       auto return_var = f.ir2.atomic_ops->end_op().return_var();
       new_entries = rewrite_to_get_var(stack, pool, return_var, f.ir2.env);
-      auto reg_return_type =
-          f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(return_var.reg());
-      if (!dts.ts.tc(f.type.last_arg(), reg_return_type.typespec())) {
+      TypeSpec return_type = f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1)
+                                 .get(return_var.reg())
+                                 .typespec();
+      auto back_as_atom = form_element_as_atom(new_entries.back());
+      if (back_as_atom && back_as_atom->is_var()) {
+        return_type = f.ir2.env.get_variable_type(back_as_atom->var(), true);
+        auto var_cast = f.ir2.env.get_variable_and_cast(back_as_atom->var());
+        if (var_cast.cast) {
+          return_type = *var_cast.cast;
+        }
+      }
+
+      if (!dts.ts.tc(f.type.last_arg(), return_type)) {
         // we need to cast the final value.
         auto to_cast = new_entries.back();
         new_entries.pop_back();

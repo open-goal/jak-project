@@ -15,9 +15,8 @@ namespace {
 
 // list of object files to ignore during reference checks
 const std::unordered_set<std::string> g_files_to_skip_compiling = {
-    "timer",        // accessing timer regs
-    "display",      // interrupt handlers
-    "game-info-h",  // variable scoped at object file top-level issue.
+    "timer",    // accessing timer regs
+    "display",  // interrupt handlers
 };
 
 // the functions we expect the decompiler to skip
@@ -107,7 +106,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "rand-vu-init",
     "rand-vu",
     "rand-vu-nostep",  // random hardware
-    "log2",            // weird tricky int-as-float stuff
 
     // trig
     "sin-rad",                    // fpu acc
@@ -147,9 +145,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // asm
     "invalidate-cache-line",
-
-    // capture
-    "(method 3 gs-store-image-packet)",  // print giftag weirdness
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first

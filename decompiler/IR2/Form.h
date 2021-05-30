@@ -304,6 +304,8 @@ class SetVarElement : public FormElement {
   const SetVarInfo& info() const { return m_var_info; }
   const TypeSpec src_type() const { return m_src_type; }
 
+  std::optional<TypeSpec> required_cast(const Env& env) const;
+
  private:
   RegisterAccess m_dst;
   Form* m_src = nullptr;
@@ -1636,6 +1638,7 @@ class FormPool {
   std::vector<FormElement*> m_elements;
 };
 
+std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
 FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);

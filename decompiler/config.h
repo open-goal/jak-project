@@ -53,6 +53,7 @@ struct DecompileHacks {
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_map<std::string, CondWithElseLengthHack> cond_with_else_len_by_func_name;
+  std::unordered_set<std::string> reject_cond_to_value;
 };
 
 struct Config {
