@@ -351,6 +351,15 @@ std::string write_from_top_level(const Function& top_level,
     }
 
     if (!something_matched) {
+      auto empty = dynamic_cast<EmptyElement*>(x);
+      if (empty) {
+        something_matched = true;
+      } else if (!x->active()) {
+        something_matched = true;
+      }
+    }
+
+    if (!something_matched) {
       result += ";; failed to figure out what this is:\n";
       result += pretty_print::to_string(x->to_form(env));
       result += "\n\n";
