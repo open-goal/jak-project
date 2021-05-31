@@ -11,6 +11,7 @@ add_library(
         analysis/insert_lets.cpp
         analysis/reg_usage.cpp
         analysis/stack_spill.cpp
+        analysis/symbol_def_map.cpp
         analysis/type_analysis.cpp
         analysis/variable_naming.cpp
 

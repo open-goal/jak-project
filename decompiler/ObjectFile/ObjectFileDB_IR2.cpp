@@ -19,6 +19,7 @@
 #include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/anonymous_function_def.h"
+#include "decompiler/analysis/symbol_def_map.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 
@@ -39,6 +40,12 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Co
   ir2_stack_spill_slot_pass();
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass(config);
+
+  if (config.generate_symbol_definition_map) {
+    lg::info("Generating symbol definition map...");
+    ir2_symbol_definition_map(output_dir);
+  }
+
   lg::info("Running type analysis...");
   ir2_type_analysis_pass(config);
   lg::info("Register usage analysis...");
@@ -304,6 +311,18 @@ void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
            successful, attempted, total_functions, timer.getMs());
   lg::info("{:.2f}% were attempted, {:.2f}% of attempted succeeded\n",
            100.f * attempted / total_functions, 100.f * successful / attempted);
+}
+
+void ObjectFileDB::ir2_symbol_definition_map(const std::string& output_dir) {
+  Timer timer;
+  SymbolMapBuilder map_builder;
+  for_each_obj([&](ObjectFileData& data) { map_builder.add_object(data); });
+  map_builder.build_map();
+  std::string result = map_builder.convert_to_json();
+  auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
+  file_util::write_text_file(file_name, result);
+
+  lg::info("Built symbol map in {:.2f} ms", timer.getMs());
 }
 
 template <typename Key, typename Value>

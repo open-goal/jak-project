@@ -7,9 +7,6 @@
  * (there may be different object files with the same name sometimes)
  */
 
-#ifndef JAK2_DISASSEMBLER_OBJECTFILEDB_H
-#define JAK2_DISASSEMBLER_OBJECTFILEDB_H
-
 #include "common/util/assert.h"
 #include <string>
 #include <unordered_map>
@@ -80,6 +77,7 @@ class ObjectFileDB {
   void ir2_insert_lets();
   void ir2_rewrite_inline_asm_instructions();
   void ir2_insert_anonymous_functions();
+  void ir2_symbol_definition_map(const std::string& output_dir);
   void ir2_write_results(const std::string& output_dir, const Config& config);
   std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
@@ -130,12 +128,9 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_function(Func f) {
     for_each_obj([&](ObjectFileData& data) {
-      //      printf("IN %s\n", data.record.to_unique_name().c_str());
       for (int i = 0; i < int(data.linked_data.segments); i++) {
-        //        printf("seg %d\n", i);
         int fn = 0;
         for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
-          //          printf("fn %d\n", fn);
           f(goal_func, i, data);
           fn++;
         }
@@ -146,13 +141,9 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_function_def_order(Func f) {
     for_each_obj([&](ObjectFileData& data) {
-      //      printf("IN %s\n", data.record.to_unique_name().c_str());
       for (int i = 0; i < int(data.linked_data.segments); i++) {
-        //        printf("seg %d\n", i);
         int fn = 0;
-        //        for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
         for (size_t j = data.linked_data.functions_by_seg.at(i).size(); j-- > 0;) {
-          //          printf("fn %d\n", fn);
           f(data.linked_data.functions_by_seg.at(i).at(j), i, data);
           fn++;
         }
@@ -175,5 +166,3 @@ class ObjectFileDB {
   } stats;
 };
 }  // namespace decompiler
-
-#endif  // JAK2_DISASSEMBLER_OBJECTFILEDB_H
