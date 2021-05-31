@@ -1012,10 +1012,13 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     update_from_stack_copy_first_int_2(env, kind, pool, stack, result, allow_side_effects);
   } else {
     // and, two forms
+    auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
     auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
     auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
     auto arg1_i = is_int_type(env, m_my_idx, m_expr.get_arg(1).var());
     auto arg1_u = is_uint_type(env, m_my_idx, m_expr.get_arg(1).var());
+    auto arg0_n = arg0_i || arg0_u;
+    auto arg1_n = arg1_i || arg1_u;
 
     auto args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
                              allow_side_effects);
@@ -1065,8 +1068,11 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       }
     }
 
-    if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
+    if ((arg0_i && arg1_i) || (arg0_u && arg1_u) ||
+        (arg0_n && arg1_type.base_type() == "pointer") ||
+        (arg1_n && arg0_type.base_type() == "pointer")) {
       // types already good
+      // we also allow (logand intvar pointer) and (logand pointer intvar)
       auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
                                                          args.at(0), args.at(1));
       result->push_back(new_form);
