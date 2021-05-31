@@ -665,6 +665,8 @@ class RLetElement : public FormElement {
 
   explicit RLetElement(Form* _body, RegSet _regs);
   goos::Object to_form_internal(const Env& env) const override;
+  goos::Object reg_list() const;
+  bool needs_vf0_init() const;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
