@@ -261,6 +261,100 @@ FormElement* fix_up_abs_2(LetElement* in, const Env& env, FormPool& pool) {
   return in;
 }
 
+FormElement* fix_up_vector_inline_zero(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+   * (let ((local-trans (new 'stack-no-clear 'vector)))
+   *   (set! (-> local-trans quad) (the-as uint128 0))
+   */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  if (in->body()->elts().empty()) {
+    return nullptr;
+  }
+
+  Form* src = in->entries().at(0).src;
+  auto src_as_stackvar = src->try_as_element<StackVarDefElement>();
+  if (!src_as_stackvar) {
+    return nullptr;
+  }
+
+  bool is_vector = src_as_stackvar->type() == TypeSpec("vector");
+  bool is_matrix = src_as_stackvar->type() == TypeSpec("matrix");
+
+  if (is_vector) {
+    auto first_elt = in->body()->elts().at(0);
+
+    auto matcher = Matcher::set(
+        Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("quad")}),
+        Matcher::cast("uint128", Matcher::integer(0)));
+
+    Form hack;
+    hack.elts().push_back(first_elt);
+    auto mr = match(matcher, &hack);
+
+    if (mr.matched) {
+      auto var = in->entries().at(0).dest;
+      auto var_name = env.get_variable_name(var);
+
+      if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        return nullptr;
+      }
+
+      auto new_op = pool.alloc_single_element_form<GenericElement>(
+          nullptr,
+          GenericOperator::make_function(
+              pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "new-stack-vector0")));
+      src->parent_element = in;
+      in->entries().at(0).src = new_op;
+      in->body()->elts().erase(in->body()->elts().begin());
+      return in;
+    }
+  } else if (is_matrix) {
+    if (in->body()->elts().size() < 4) {
+      return nullptr;
+    }
+
+    auto var = in->entries().at(0).dest;
+    auto var_name = env.get_variable_name(var);
+
+    for (int i = 0; i < 4; i++) {
+      auto elt = in->body()->elts().at(i);
+
+      auto matcher = Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false,
+                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                          DerefTokenMatcher::string("quad")}),
+          Matcher::cast("uint128", Matcher::integer(0)));
+
+      Form hack;
+      hack.elts().push_back(elt);
+      auto mr = match(matcher, &hack);
+
+      if (mr.matched) {
+        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+          return nullptr;
+        }
+      } else {
+        return nullptr;
+      }
+    }
+
+    auto new_op = pool.alloc_single_element_form<GenericElement>(
+        nullptr,
+        GenericOperator::make_function(
+            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "new-stack-matrix0")));
+    src->parent_element = in;
+    in->entries().at(0).src = new_op;
+    in->body()->elts().erase(in->body()->elts().begin(), in->body()->elts().begin() + 4);
+    return in;
+  }
+
+  return nullptr;
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -278,6 +372,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_abs_2 = fix_up_abs_2(in, env, pool);
   if (as_abs_2) {
     return as_abs_2;
+  }
+
+  auto as_vector = fix_up_vector_inline_zero(in, env, pool);
+  if (as_vector) {
+    return as_vector;
   }
 
   // nothing matched.

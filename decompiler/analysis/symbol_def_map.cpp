@@ -57,7 +57,8 @@ std::string SymbolMapBuilder::convert_to_json() const {
     result[file.object_file_name] = syms;
   }
 
-  return result.dump();
+  // adding the 4 here should make it pretty print
+  return result.dump(4);
 }
 
 namespace {

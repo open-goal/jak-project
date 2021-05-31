@@ -943,7 +943,7 @@ void RLetElement::apply(const std::function<void(FormElement*)>& f) {
   body->apply(f);
 }
 
-goos::Object RLetElement::to_form_internal(const Env& env) const {
+goos::Object RLetElement::reg_list() const {
   std::vector<goos::Object> regs;
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF ||
@@ -953,16 +953,26 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
           pretty_print::build_list(pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));
     }
   }
+  return pretty_print::build_list(regs);
+}
 
-  std::vector<goos::Object> rletForm;
-  rletForm.push_back(pretty_print::to_symbol("rlet"));
-  rletForm.push_back(pretty_print::build_list(regs));
-
-  // NOTE - initialize any relevant registers in the body first
+bool RLetElement::needs_vf0_init() const {
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
-      rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
+      return true;
     }
+  }
+  return false;
+}
+
+goos::Object RLetElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> rletForm;
+  rletForm.push_back(pretty_print::to_symbol("rlet"));
+  rletForm.push_back(reg_list());
+
+  // NOTE - initialize any relevant registers in the body first
+  if (needs_vf0_init()) {
+    rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
   }
 
   body->inline_forms(rletForm, env);

@@ -551,6 +551,13 @@ DerefTokenMatcher DerefTokenMatcher::string(const std::string& str) {
   return result;
 }
 
+DerefTokenMatcher DerefTokenMatcher::integer(int value) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::CONSTANT_INTEGER;
+  result.m_int = value;
+  return result;
+}
+
 DerefTokenMatcher DerefTokenMatcher::any_string(int match_id) {
   DerefTokenMatcher result;
   result.m_kind = Kind::ANY_STRING;
@@ -570,6 +577,8 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
         return true;
       }
       return false;
+    case Kind::CONSTANT_INTEGER:
+      return input.kind() == DerefToken::Kind::INTEGER_CONSTANT && input.is_int(m_int);
     default:
       assert(false);
       return false;
