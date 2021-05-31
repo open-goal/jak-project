@@ -114,6 +114,31 @@
               (-> obj data-size)))
   )
 
+(defmethod inspect res-lump ((obj res-lump))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Textra: ~A~%" (-> obj extra))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata-base: #x~X~%" (-> obj data-base))
+  (format #t "~Tdata-top: #x~X~%" (-> obj data-top))
+  (format #t "~Tdata-size: #x~X~%" (-> obj data-size))
+  (format #t "~Ttag[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj tag))
+  (dotimes (i (-> obj length))
+    (format #t "~T  [~D] " i)
+    (print (-> (-> obj tag) i))
+    (format #t " @ #x~X" (&+ (-> obj data-base) (-> obj tag i data-offset)))
+    (cond
+      ((res-ref? (-> obj tag i))
+        (format #t " = ~A~%" (deref basic (&+ (-> obj data-base) (-> obj tag i data-offset))))
+        )
+      (else
+        (format #t "~%")
+        )
+      )
+    )
+  obj
+  )
+
 (defmethod lookup-tag-idx res-lump ((obj res-lump) (name-sym symbol) (mode symbol) (time float))
   "Look up the index of the tag containing with the given name and timestamp.
    Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
@@ -573,6 +598,12 @@
       )
   obj
   )
+
+;; method 15 res-lump
+;; method 17 res-lump
+;; method 18 res-lump
+;; method 21 res-lump
+;; mem-usage res-lump
 
 
 (define *res-static-buf* (malloc 'global 128))
