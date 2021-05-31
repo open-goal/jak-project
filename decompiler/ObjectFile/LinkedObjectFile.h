@@ -5,9 +5,6 @@
  * An object file's data with linking information included.
  */
 
-#ifndef NEXT_LINKEDOBJECTFILE_H
-#define NEXT_LINKEDOBJECTFILE_H
-
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -135,5 +132,3 @@ class LinkedObjectFile {
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
 }  // namespace decompiler
-
-#endif  // NEXT_LINKEDOBJECTFILE_H

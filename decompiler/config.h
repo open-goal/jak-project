@@ -79,6 +79,8 @@ struct Config {
   bool dump_objs = false;
   bool print_cfgs = false;
 
+  bool generate_symbol_definition_map = false;
+
   std::unordered_set<std::string> allowed_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>
       type_casts_by_function_by_atomic_op_idx;
