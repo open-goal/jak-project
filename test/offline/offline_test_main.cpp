@@ -245,6 +245,8 @@ class OfflineDecompilation : public ::testing::Test {
       object_files.insert(p.first);
     }
     config->allowed_objects = object_files;
+    // don't try to do this because we can't write the file
+    config->generate_symbol_definition_map = false;
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO"};
     std::vector<std::string> dgo_paths;
