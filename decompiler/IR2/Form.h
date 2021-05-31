@@ -1329,6 +1329,7 @@ class StackVarDefElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  const TypeSpec& type() const { return m_entry.ref_type; }
 
  private:
   StackVarEntry m_entry;

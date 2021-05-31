@@ -1796,12 +1796,23 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
 
   std::vector<Form*> arg_forms;
+  bool has_good_types = env.has_type_analysis() && function_type.arg_count() == nargs + 1;
+  TypeSpec first_arg_type;
 
   for (size_t arg_id = 0; arg_id < nargs; arg_id++) {
     auto val = unstacked.at(arg_id + 1);  // first is the function itself.
     auto& var = all_pop_vars.at(arg_id + 1);
-    if (env.has_type_analysis() && function_type.arg_count() == nargs + 1) {
+    if (has_good_types) {
       auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+      auto val_atom = form_as_atom(val);
+      if (val_atom && val_atom->is_var()) {
+        actual_arg_type = env.get_variable_type(val_atom->var(), true);
+      }
+
+      if (arg_id == 0) {
+        first_arg_type = actual_arg_type;
+      }
+
       auto desired_arg_type = function_type.get_arg(arg_id);
       if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
         arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
@@ -1826,6 +1837,17 @@ void FunctionCallElement::update_from_stack(const Env& env,
       auto vtable_var_name = env.get_variable_name(*vtable_reg);
       auto arg0_mr = match(Matcher::any_reg(0), unstacked.at(1));
       if (arg0_mr.matched && env.get_variable_name(*arg0_mr.maps.regs.at(0)) == vtable_var_name) {
+        if (tp_type.kind != TP_Type::Kind::VIRTUAL_METHOD) {
+          throw std::runtime_error(
+              "Method internal mismatch. METHOD_OF_OBJECT operator didn't get a VIRTUAL_METHOD "
+              "type.");
+        }
+
+        if (!env.dts->ts.should_use_virtual_methods(tp_type.method_from_type())) {
+          throw std::runtime_error(
+              fmt::format("Method call on {} used a virtual call unexpectedly.",
+                          tp_type.method_from_type().print()));
+        }
         // fmt::print("STACK\n{}\n\n", stack.print(env));
         auto pop =
             pop_to_forms({*arg0_mr.maps.regs.at(0)}, env, pool, stack, allow_side_effects, {}, {2})
@@ -1944,7 +1966,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   {
     // detect method calls:
-    // ex: ((method-of-type x new) (quote global) pair gp-0 a3-0)
+    // ex: ((method-of-type x blah) arg...)
     constexpr int method_name = 0;
     constexpr int type_source = 1;
 
@@ -1957,7 +1979,73 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto match_result = match(matcher, temp_form);
     if (match_result.matched) {
       auto name = match_result.maps.strings.at(method_name);
+      if (name != "new") {
+        // only do these checks on non-new methods.  New methods are treated as functions because
+        // they are never virtual and are never called like a method.
+        if (tp_type.kind != TP_Type::Kind::NON_VIRTUAL_METHOD) {
+          throw std::runtime_error(fmt::format(
+              "Method internal mismatch. METHOD_OF_TYPE operator didn't get a NON_VIRTUAL_METHOD "
+              "type. Got {} instead.",
+              tp_type.print()));
+        }
+
+        if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type())) {
+          throw std::runtime_error(
+              fmt::format("Expected type {} to use virtual methods, but it didn't.  Set option "
+                          ":final in the deftype to disable virtual method calls",
+                          tp_type.method_from_type().print()));
+        }
+      }
+
       auto type_source_form = match_result.maps.forms.at(type_source);
+
+      // if the type is the exact type of the argument, we want to build it into a method call
+      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
+        auto method_op = pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name);
+        auto gop = GenericOperator::make_function(method_op);
+
+        result->push_back(pool.alloc_element<GenericElement>(gop, arg_forms));
+        return;
+      }
+
+      if (name == "new" && arg_forms.size() >= 2) {
+        bool got_stack_new = true;
+        // method
+        // (the-as symbol (new 'stack-no-clear 'draw-context))
+        //  draw-context
+        auto first_cast = arg_forms.at(0)->try_as_element<CastElement>();
+        if (!first_cast || first_cast->type() != TypeSpec("symbol")) {
+          got_stack_new = false;
+        }
+
+        if (got_stack_new) {
+          auto new_op = first_cast->source()->try_as_element<StackVarDefElement>();
+          if (!new_op || new_op->type().base_type() != type_source_form->to_string(env)) {
+            got_stack_new = false;
+          }
+        }
+
+        if (got_stack_new) {
+          if (arg_forms.at(1)->to_string(env) != type_source_form->to_string(env)) {
+            got_stack_new = false;
+          }
+        }
+
+        if (got_stack_new) {
+          std::vector<Form*> stack_new_args;
+          stack_new_args.push_back(
+              pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "'stack"));
+          stack_new_args.push_back(pool.alloc_single_element_form<ConstantTokenElement>(
+              nullptr, fmt::format("'{}", type_source_form->to_string(env))));
+          for (size_t i = 2; i < arg_forms.size(); i++) {
+            stack_new_args.push_back(arg_forms.at(i));
+          }
+          result->push_back(pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(FixedOperatorKind::NEW), stack_new_args));
+          return;
+        }
+      }
+
       auto method_op =
           pool.alloc_single_element_form<GetMethodElement>(nullptr, type_source_form, name, false);
       auto gop = GenericOperator::make_function(method_op);
